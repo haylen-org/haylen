@@ -143,12 +143,16 @@ set(HAYLEN_TEST_SOURCES
   text/TextLuaTests.cpp
   ui/AnchorTests.cpp
   ui/BackendTests.cpp
+  ui/CollectionDiffTests.cpp
+  ui/CollectionLuaTests.cpp
+  ui/CollectionTests.cpp
   ui/ComponentTests.cpp
   ui/GuiTests.cpp
   ui/LabelTests.cpp
   ui/LayoutTests.cpp
   ui/FocusTests.cpp
   ui/GameComponentTests.cpp
+  ui/GridLayoutTests.cpp
   ui/MountLinkTests.cpp
   ui/NodeEventTests.cpp
   ui/OverlayTests.cpp
@@ -157,6 +161,8 @@ set(HAYLEN_TEST_SOURCES
   ui/RightToLeftTests.cpp
   ui/ScalingTests.cpp
   ui/SceneGuiTests.cpp
+  ui/ScrollerTests.cpp
+  ui/SizeCacheTests.cpp
   ui/TextInputTests.cpp
   ui/StyleTests.cpp
   ui/ThemeTests.cpp

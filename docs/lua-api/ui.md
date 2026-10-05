@@ -103,7 +103,7 @@ ui.mount(card)
 
 ### ui.kinds()
 
-Returns a sorted list of the names of every component kind, the 62 kinds documented on this page.
+Returns a sorted list of the names of every component kind, the 64 kinds documented on this page.
 
 ```lua
 local ui = require('haylen.ui')
@@ -308,7 +308,7 @@ scene.push({
 
 ### ui.focused()
 
-Returns the [`Gui`](#gui) and the node id that hold the keyboard, gamepad and remote focus, or `nil` when no mounted GUI holds it. A focused node without an id returns the GUI alone. The [focus guide](#focus-and-navigation) explains how the focus moves.
+Returns the [`Gui`](#gui) and the node id that hold the keyboard, gamepad and remote focus, or `nil` when no mounted GUI holds it. A focused node without an id returns the GUI alone. Inside a cell of a [`collection`](#uicollectionproperties) the node id is the id of the collection, followed by the id of the item and the part of the template that holds the focus, which is `nil` for a cell that takes the focus as a whole. The [focus guide](#focus-and-navigation) explains how the focus moves.
 
 ```lua
 local scene = require('haylen.scene')
@@ -605,7 +605,7 @@ scene.push({
 
 Sends a command to the node `id`. The argument `arguments` is optional, and only `show` takes some.
 
-- The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
+- The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea`, `collection` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, a collection keeps the focus on its focused item or focuses its first item in view, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.
 - The command `'show'` adds a notice to a `toast`, with the arguments `text`, `tone` and `duration`, which default to the properties of the toast. Every notice takes its place in the stack of the toast, so notices shown one after the other never cover each other. Unknown arguments raise `Unknown key "<key>" in the "show" command of a "toast".`, and wrong values raise the errors of the properties of the same names.
 
@@ -686,6 +686,19 @@ tween.to(title, 0.6, {opacity = 1, offset = math2d.vec2(0, 0)}, {ease = 'backOut
 tween.to(menu:transform('play'), 0.4, {scale = math2d.vec2(1.1, 1.1)}, {repeatCount = -1, loopMode = 'yoyo'})
 ```
 
+### gui:collection(id)
+
+Returns the [`UiCollection`](#uicollection) of the `collection` node `id`, the same object every time while the node exists. An unknown id raises `The GUI has no node with the id "<id>".`, a node of another kind raises `The node "<id>" is a "<kind>", not a "collection".`, and an unmounted GUI raises `The GUI is not mounted.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local gui = ui.mount(ui.collection{id = 'saves', height = 600, types = {save = {template = ui.label{part = 'name', bind = {text = 'name'}}}}})
+local saves = gui:collection('saves')
+saves:setItems({{id = 'slot1', name = 'Slot 1'}, {id = 'slot2', name = 'Slot 2'}})
+print(saves.count)
+```
+
 ### gui.visible
 
 Readable and writable boolean, `true` after `mount`. A hidden GUI is neither drawn nor reports events, except the `release` of a touch button that was pressed when it was hidden, and it keeps its state for when it shows again.
@@ -729,6 +742,119 @@ local ui = require('haylen.ui')
 
 local hud = ui.mount(ui.label{text = 'HP 10'}, {placement = 'screen'})
 print(hud.placement)
+```
+
+## UiCollection
+
+A `UiCollection` gives a [`collection`](#uicollectionproperties) its items and scrolls, focuses and reads it. Indices count from 1, as Lua lists do, and a target is the id of an item or its index. Reading a member it does not have raises `The type "haylen.UiCollection" has no member "<name>".`, writing a read-only property raises `The type "haylen.UiCollection" has no writable property "<name>".`, every member raises `The GUI is not mounted.` after `unmount`, and `This "haylen.UiCollection" was already released.` once `replaceChildren` removed the node.
+
+| Member | Meaning |
+| --- | --- |
+| `setItems(list)` | Shows the items of a Lua list, which the GUI keeps and the collection reads. Every item is a table with a non-empty string `id`, unique in the list, a `type` unless the collection declares one type, and the fields its templates bind. A second call, with the same list changed in place or with another list, compares the items by id, so the items that stay keep their measured sizes, their selection and the focus. |
+| `setPages(options)` | Shows `count` items that the function `load(first, count)` gives a page at a time, as a list of `count` items or a promise of one, such as the promise of `jobs.spawn`. The loader runs before the GUIs draw for the pages the view and its prefetch need, the items of a page on its way show the `placeholder` type, and at most `maxPages` pages stay, so the pages farthest from the view go. A second call with the same `load` keeps the pages it loaded. |
+| `insert(index, items)` | Inserts the items of the list `items` into the list at `index`, from 1 to the count plus 1, and shows them. |
+| `remove(index, count)` | Removes `count` items, 1 by default, from `index`. |
+| `move(from, to)` | Moves one item. |
+| `replace(index, item)` | Puts another item table at `index`, which keeps the cell when the id stays. |
+| `reload(target)` | Binds again the items whose fields the app changed in place, given as a target or a list of targets. |
+| `setBinder(type, binder)` | Registers `binder(cell, item, index)`, which runs for every cell of the type that receives an item, after its bindings, with a [`UiCell`](#uicell), the item table and its index. The function `nil` removes it. |
+| `scrollTo(target, options)` | Scrolls to an item, which keeps aiming while the items on the way are measured. |
+| `scrollBy(distance, options)` | Scrolls by a distance in design units. |
+| `focus(target)` | Gives the focus to the item, scrolling it into view with the `focusAlign` of the collection. |
+| `indexOf(id)` | Returns the index of the item with the id, or `nil`. |
+| `cellOf(target)` | Returns the `UiCell` that shows the item, or `nil` while it has no cell. |
+| `visibleRange()` | Returns the indices of the first and the last item in view, or `nil` before the collection drew items. |
+| `saveState()` | Returns where the collection is, as a table with the id of the first item in view as `item`, how far its start lies from the start of the view as `distance`, and the item that has the focus as `focused`. |
+| `restoreState(state)` | Brings the saved item back to its saved distance and gives the focus back to the saved item, for the items that still exist, whatever happened to the other items meanwhile. |
+| `count` | Read-only number of items. |
+| `scrollOffset` | Readable and writable offset of the view from the start of the content, in design units. Writing it jumps there. |
+| `contentLength`, `viewportLength` | Read-only lengths along the axis, where the content counts the estimated length of the items not measured yet. |
+| `focusedItem` | Read-only id of the item that has the focus, or `nil`. |
+| `selected` | Read-only list of the ids of the selected items, in item order. |
+
+The options of `scrollTo` are `align`, one of `'nearest'`, which scrolls the least that shows the whole item and nothing when it already shows, `'start'`, `'center'` or `'end'`, `'nearest'` by default, `offset`, how far inside the aligned edge the item stays, `0` by default, and `animated`, `true` by default, which follows the item with a spring and jumps close to a far item first. The options of `scrollBy` are `animated`, `true` by default.
+
+Lua code may change the properties of the nodes while a binder or a page loader runs, but not the items of the collection, nor the nodes of its GUI.
+
+Errors raised:
+
+- `The item at index <index> of the collection "<id>" needs a non-empty string id.` and `The item at index <index> of the collection "<id>" must be a table.`
+- `The items of the collection "<id>" use the id "<item>" more than once.`
+- `The item "<item>" of the collection "<id>" has the type "<type>", which the collection does not declare.`, `The item "<item>" of the collection "<id>" needs a type, because the collection declares several.` and `The type of the item "<item>" of the collection "<id>" must be a string.`
+- `The collection "<id>" has no item with the id "<item>".` and `The index <index> is outside the items of the collection "<id>", which holds <count>.`
+- `The collection "<id>" has no type named "<type>".` for `setBinder`.
+- `The collection "<id>" pages its items, so it changes them with "setPages".` for `insert`, `remove`, `move`, `replace` and `reload` of a paged collection, and `The collection "<id>" has no list of items. Give it one with "setItems".` for them before `setItems`.
+- `The collection "<id>" cannot change its items while it binds cells.` for a change of the items from a binder or a page loader, and `The GUI cannot replace nodes or unmount while its collections bind cells.` for `replaceChildren` and `unmount`, which stop the app from inside a binder.
+- `Unknown option "<key>".`, `The option "align" must be "nearest", "start", "center" or "end".`, `The option "count" is required.`, `The option "count" must be at least 0.`, `The option "pageSize" must be at least 1.`, the same for `maxPages`, and `The option "load" must be a function.`
+- `The page loader of the collection "<id>" must return a list of items or a promise of one.`, `The page loader of the collection "<id>" returned <count> items for a page of <length>.` and `The page loader of the collection "<id>" failed.` followed by the reason of a rejected promise, which stop the app like an error inside a binder.
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local Inventory = {}
+Inventory.__index = Inventory
+
+function Inventory:enter()
+    self.items = {}
+    for index = 1, 500 do
+        self.items[index] = {id = 'item-' .. index, name = 'Item ' .. index, count = index % 9 + 1}
+    end
+    self.gui = ui.mount(ui.column{padding = 24, gap = 16,
+        ui.row{gap = 12,
+            ui.button{text = 'Add', onClick = function() self.list:insert(1, {{id = 'new-' .. #self.items, name = 'New item', count = 1}}) end},
+            ui.button{text = 'Go to 250', onClick = function() self.list:scrollTo(250, {align = 'center'}) end},
+        },
+        ui.collection{id = 'items', grow = 1, selection = 'single', types = {item = {template = ui.row{gap = 16,
+            ui.label{part = 'name', bind = {text = 'name'}, grow = 1},
+            ui.badge{part = 'count', bind = {text = 'count'}},
+        }}}, onSelect = function(event) print('picked ' .. event.item) end},
+    }, {owner = self})
+    self.list = self.gui:collection('items')
+    self.list:setItems(self.items)
+    if self.saved then
+        self.list:restoreState(self.saved)
+    end
+end
+
+function Inventory:exit()
+    self.saved = self.list:saveState()
+end
+
+scene.push(setmetatable({}, Inventory))
+```
+
+## UiCell
+
+A `UiCell` is a cell of a collection while it shows one item, which a binder receives and `cellOf` returns. Once the cell shows another item, `bound` is `false` and every other member raises `This cell no longer shows the item "<item>".`.
+
+| Member | Meaning |
+| --- | --- |
+| `set(part, properties)` | Changes properties of a part of this cell, checked like `gui:set`. The part takes its template values again before the cell shows another item. |
+| `transform(part)` | Returns the [`UiTransform`](#guitransformid) of a part, which a new transform replaces before the cell shows another item, so a tween on it stops with the item. |
+| `item`, `index`, `type` | Read-only id, index and type of the item the cell shows. |
+| `bound` | Read-only, `true` while the cell shows the item it was handed out for. |
+
+An unknown part raises `The template of the type "<type>" has no part named "<part>".`, and a `set` with `kind`, `id`, `children`, `part` or `bind` raises `The "set" method of a cell changes properties only, so it takes an object without "kind", "id", "children", "part" or "bind".`.
+
+```lua
+local tween = require('haylen.tween')
+local ui = require('haylen.ui')
+
+local gui = ui.mount(ui.collection{id = 'scores', height = 600, types = {score = {template = ui.row{
+    ui.label{part = 'name', bind = {text = 'name'}, grow = 1},
+    ui.label{part = 'points', text = '', font = 'heading'},
+}}}})
+local scores = gui:collection('scores')
+
+-- The binder writes what a binding cannot, and the best score of the list pulses while it shows.
+scores:setBinder('score', function(cell, item, index)
+    cell:set('points', {text = item.points .. ' points', color = index == 1 and 'warningText' or 'text'})
+    if index == 1 then
+        tween.to(cell:transform('points'), 0.4, {opacity = 0.5}, {repeatCount = -1, loopMode = 'yoyo'})
+    end
+end)
+scores:setItems({{id = 'ana', name = 'Ana', points = 1200}, {id = 'leo', name = 'Leo', points = 950}})
 ```
 
 ## Screen format
@@ -907,12 +1033,14 @@ Buttons, choices, inputs, list rows, slots and the other interactive parts of a 
 | `uiLeft`, `uiRight`, `uiUp`, `uiDown` | the arrow keys, the directional pad and the left stick | Moves the focus. |
 | `uiMenu` | `key:menu`, `button:north` | Opens the context menu around the focus. |
 | `uiFocus` | `button:back` | Moves the focus from a play area to the control of its GUI that last had it, or to its first control, and back. |
+| `uiPagePrevious`, `uiPageNext` | `key:pageUp` and `button:leftShoulder`, `key:pageDown` and `button:rightShoulder` | Scrolls the innermost collection around the focus by one view and moves the focus to the first item of the new view. |
+| `uiFirst`, `uiLast` | `key:home`, `key:end` | Moves the focus to the first or the last item of the innermost collection around the focus. |
 
 - A direction moves the focus to the nearest control in that direction, preferring controls in line with the focused one, unless the focused node names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
 - Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited, and a text field they reach starts editing.
 - The focus stays inside its GUI, and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A GUI that stops drawing, such as the GUI of a covered scene or one with `visible` set to `false`, gives the focus back to the control that had it once it draws again, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its GUI, so a move reaches its controls from the rest of the GUI and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
 - The property `focusWrap` wraps a move that would leave a node around to its other side, such as the end of a row of cards back to its first card.
-- A scroll brings the focused control into view.
+- A scroll brings the focused control into view, and so does a collection, which also keeps the focus on an item whose cell the wheel or a finger took out of view. The first direction or accept after that only brings the item back into view, and the next one moves on or presses it. A collection binds the items around the focused one, so the focus reaches items that do not show yet, and the property `focusWrap` of a collection along its axis wraps from its last item to its first even when they do not show.
 - The focused node reports `focus` and its previous node reports `blur`, as long as that node still draws.
 - The action `uiCancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the GUI that holds the focus, or of the topmost GUI when nothing has it. A screen goes back from its root handler, as in the example below.
 - The ring shows around the focus once the player navigates, and a click or a touch hides it. On a device without a pointer, such as an Apple TV or an Android TV, it shows from the start. The function `ui.focusRingVisible()` tells whether it shows.
@@ -1020,6 +1148,13 @@ Events are collected while the GUI draws and handed to the handlers once per fra
 | `list` with `draggable`, `slotGrid` | `dragStart` | `item` (id of the row or slot picked up or dragged) |
 | `list` with `draggable`, `slotGrid` | `drop` | `item` (id of the row or slot dropped on), `source` (id of the node the item left), `sourceItem` (its row or slot id) |
 | `carousel` | `change` | `page` (number, from 1) |
+| `collection` | `select` | `item` (item id), `index` (number, from 1), `selected` (boolean, with a selection) |
+| `collection` | `itemFocus` | `item` (item id), `index` (number, from 1) |
+| `collection` | `visibleChange` | `first`, `last` (numbers, from 1) |
+| `collection` | `scrollEnd` | `offset` (number), `item` (item id) |
+| `collection` | `endReached`, `startReached` | `count` (number) |
+| `collection` | `refresh` | none |
+| `collection` | the events of the parts of its cells | their values, `part` (part name), `cell` (`item`, `index` and `type`) |
 | `window` | `move` | `x`, `y` (numbers) |
 | `window` | `close` | none |
 | `splitter` | `resize` | `ratio` (number) |
@@ -2288,6 +2423,252 @@ local inventory = ui.mount(ui.slotGrid{id = 'bag', columns = 4, slots = slots(),
 end})
 ```
 
+### ui.collection(properties)
+
+Shows any number of items of several types in a vertical or horizontal list or in a grid that scrolls along one axis. It builds cells from the templates of its types, binds them to the items in view and reuses them as the player scrolls, so its cost follows the visible items, not the item count, and a list of a hundred thousand items costs about what a list of a hundred does. The app gives it its items through the [`UiCollection`](#uicollection) that [`gui:collection(id)`](#guicollectionid) returns, as a Lua list with `setItems` or in pages with `setPages`. Its one child, such as an `emptyState`, shows while it has no items. The [long lists guide](../ui.md#long-lists) explains how it works and what it costs.
+
+A vertical collection is as long as its content within its size bounds, like `scroll`, so it needs a `height`, a `maxHeight` or `grow` to scroll, and it fills the width it gets. A horizontal collection needs a `width` or `grow` along a row, and it is as tall as its `height`, or as the tallest cell it has measured, which never shrinks while it lives. The wheel scrolls the collection under the pointer, a horizontal one with the vertical wheel too, a finger drags it along its axis and flings it when it lets go, past its ends with resistance, the scrollbar on its end edge drags and pages it, and the focus scrolls the item that takes it into view. Mouse dragging of the content stays off, as in the lists of desktop platforms.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `types` | object | required | Item types mapped to their definitions, described below. |
+| `axis` | string | `'vertical'` | The scroll axis, `'vertical'` or `'horizontal'`. |
+| `layout` | string | `'linear'` | The value `'linear'` places one item per line, and `'grid'` places cells in lanes across the axis. |
+| `lanes` | integer from 1 to 64 | `2` | Cells across the axis of a grid: columns of a vertical grid, rows of a horizontal one. |
+| `minCellSize` | number from 0 to 10000 | `0` | Above zero, a grid fits as many lanes as cells at least this long across, instead of `lanes`. |
+| `cellAspect` | number from 0 to 100 | `0` | Above zero, grid cells that span less than the whole line are this many times as long along the axis as across, so they need no measuring. |
+| `gap` | number from 0 to 10000 | theme `itemSpacing` | Space between lines and between lanes. |
+| `padding` | insets | `0` | Space between the edges of the view and the content, which scrolls with the content. |
+| `placeholder` | string | none | The type that shows the items of pages that did not load yet. Without it those items take their estimated length and draw nothing. |
+| `stickToEnd` | boolean | `false` | Lays short content against the end edge, and keeps the view at the end while items arrive when it was at the end, as a chat does. |
+| `snap` | string | `'none'` | Once the content rests, `'item'` settles on the start of the nearest item, `'center'` centers the nearest item, and `'page'` settles on whole views. |
+| `scrollbar` | boolean | `true` | Shows the scrollbar while the content is longer than the view. It fades while the content rests after touch input. |
+| `prefetch` | number from 0 to 4 | `0.5` | Views bound ahead in the direction of scrolling, so items show bound when they arrive. |
+| `poolSize` | integer from 0 to 256 | `8` | Detached cells each type keeps for reuse between frames. |
+| `selection` | string | `'none'` | The values `'single'` and `'multiple'` let presses select items. |
+| `selected` | list of strings | empty | Ids of the selected items. The player changes the selection afterwards, and setting it again replaces it. |
+| `selectionFollowsFocus` | boolean | `false` | With single selection, selects the item that takes the focus, as TV lists do. |
+| `focusAlign` | string | `'nearest'` | Where an item that takes the focus scrolls to: `'nearest'` only brings it into view, and `'start'`, `'center'` and `'end'` align it with that part of the view. |
+| `rememberFocus` | boolean | `false` | A move that enters the collection from outside lands on the item that had the focus there last, while that item is near the view, instead of on the nearest item. |
+| `refreshable` | boolean | `false` | Lets a touch drag past the start of a vertical collection report `refresh`. |
+| `refreshing` | boolean | `false` | Shows the busy indicator at the start. A pull sets it, and the app sets it to `false` with `gui:set` when the refresh ends. |
+| `endThreshold` | integer from 0 to 10000 | `5` | Items from either end at which `endReached` and `startReached` report. |
+| `animateChanges` | boolean | `true` | Slides the items that a change moves, fades in the items it inserts and fades out the items it removes, for the items in view. |
+
+The common properties apply too. The property `focusWrap` along the axis wraps the focus from the last item to the first and back, even when they do not show, and `focusScope` keeps the focus inside the collection.
+
+#### Types and templates
+
+Each entry of `types` names a type and holds its definition, and every item names its type in its `type` field, which a collection of one type does not need.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `template` | node | required | The tree every cell of the type is built from, in the screen format. |
+| `estimatedSize` | number from 0 to 100000 | `0` | Length along the axis of an item of the type before it is measured. The value `0` learns it from the measured items of the type, starting from the theme `listRowHeight`. |
+| `span` | integer from 1 to 64 or `'full'` | `1` | Lanes a cell of a grid takes, where `'full'` takes the whole line. |
+| `sticky` | boolean | `false` | Pins the current item of the type at the start of the view while the items after it scroll under it, until the next one pushes it out, as section headers do. |
+| `interactive` | boolean | automatic | Makes the whole cell one focus target that reports `select` when pressed and paints the cell surfaces of the theme behind it. By default a cell is interactive when its template has no part that takes the focus, so a row of labels and pictures takes the focus as a whole, and a row with a toggle lets the toggle take it. |
+
+A template is a node tree with two keys that only templates take. The key `part` names a node of the template, unique in it, so binders, events and `cell:set` can refer to it, and templates take no `id`, since a template is built many times, and no handlers, since the events of every part arrive at the collection with the part name. The key `bind` maps properties of the node to fields of the item, such as `bind = {text = 'title', image = 'picture'}`, and the pseudo fields `'$index'`, the index of the item from 1, and `'$selected'`, whether it is selected, bind what the item does not hold. A field the item lacks gives the property its value in the template, so templates give a value to every property that some items leave out, which keeps reuse cheap.
+
+Bindings write back. When the player changes a bound property, such as the `checked` of a toggle bound to `on`, the collection stores the new value in that field of the item before the handlers of the event run, so the handlers read the item already changed and the next bind of the item shows it. Before a cell shows another item, every part takes the values of its template again: properties that a binder or `cell:set` changed go back to their template values, and a part the player changed, or one whose changed property the template leaves out, is built again from the template. Controls keep the state the UI keeps for them, such as the knob of a toggle, by the item they show, never by the cell, so no state passes from one item to the next.
+
+Templates do not hold a `scroll` or another `collection`, whose child windows and nested items a cell cannot reuse, and the cells of a collection never count against the node limit of their GUI.
+
+Errors are reported when the GUI is mounted or set:
+
+- `A "collection" needs at least one type in "types".` and `The property "types" of a "collection" must map type names to type definitions.`
+- `The type "<type>" of a "collection" needs a "template" node.` and `Unknown key "<key>" in "collection.types.<type>".`
+- `The "estimatedSize" of the type "<type>" must be a number from 0 to 100000.`, `The "span" of the type "<type>" must be a whole number from 1 to 64 or "full".`, and `The "sticky" of the type "<type>" must be "true" or "false".`, the same for `interactive`.
+- `A node inside a collection template names itself with "part", not "id".` and `The "part" of a "<kind>" in the template of the type "<type>" must be a non-empty string.`
+- `A collection template takes no handlers. Handle the events of its parts on the collection, where they arrive with "part" and "cell".`
+- `The part "<part>" is used more than once in the template of the type "<type>".`
+- `The "bind" of a "<kind>" in the template of the type "<type>" must map property names to field names.`
+- `The template of the type "<type>" cannot hold a "scroll" or a "collection".`
+- `The template of the type "<type>" has a problem.` followed by the error of the node, such as `The property "width" of a "label" must be a non-negative number or "auto".`
+- `The property "placeholder" of a "collection" names the type "<type>", which it does not declare.`
+- `The sticky type "<type>" of a grid collection must span the whole line.`
+- `The property "selected" of a "collection" must be a list of item ids.` and the usual property errors, such as `The property "axis" of a "collection" must be "vertical" or "horizontal".`
+
+An item whose bound value a part does not accept stops the app when its cell binds, with `The item "<item>" gives the part "<part>" a value it does not accept.` followed by the property error, which names `a "<kind>" of its cell` for a node without a part.
+
+#### Events
+
+| Event | Values | When |
+| --- | --- | --- |
+| `select` | `item`, `index`, and `selected` unless `selection` is `'none'` | An interactive cell was pressed with the pointer, a tap or accept. In multiple selection a press turns the selection of the item over, and a press on the selected item of a single selection reports it again. |
+| `itemFocus` | `item`, `index` | The focus moved to another item of the collection. |
+| `visibleChange` | `first`, `last` | The indices of the first and last items in view changed, at most once per frame. |
+| `scrollEnd` | `offset`, `item` | Scrolling by the player or a `scrollTo` came to rest, with the first item in view whole. |
+| `endReached`, `startReached` | `count` | The items in view came within `endThreshold` items of the end or the start, once per item count, so an app appends a page at a time. |
+| `refresh` | none | A pull at the start went past the theme `refreshDistance` and let go. |
+| the event of a part | its values, `part`, `cell` | A part of a cell reported it, such as `click` of a button or `change` of a toggle, with the name of the part as `part` and the item it shows as `cell`, a table with `item`, `index` and `type`. |
+
+Indices count from 1. Every event of a part arrives on the collection, so a handler such as `onClick` on the collection answers the buttons of every cell and tells them apart by `event.part` and `event.cell.item`.
+
+#### Examples
+
+A list of mixed message types with a binder:
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local Chat = {}
+Chat.__index = Chat
+
+function Chat:enter()
+    self.sent = 0
+    self.messages = {
+        {id = 'day-1', type = 'day', text = 'Monday'},
+        {id = 'm-1', type = 'incoming', author = 'Ana', text = 'Ready for the night watch?'},
+        {id = 'm-2', type = 'outgoing', text = 'Almost, my bow needs a new string.'},
+        {id = 'n-1', type = 'notice', text = 'Leo joined the camp'},
+    }
+    self.gui = ui.mount(ui.column{padding = 24, gap = 16, onCancel = function() scene.pop() end,
+        ui.collection{id = 'chat', grow = 1, stickToEnd = true, types = {
+            day = {template = ui.label{part = 'text', bind = {text = 'text'}, font = 'caption', color = 'textMuted', textAlign = 'center'}, interactive = false},
+            incoming = {template = ui.card{ui.label{part = 'author', bind = {text = 'author'}, font = 'caption', color = 'accentText'}, ui.label{part = 'text', bind = {text = 'text'}}}},
+            outgoing = {template = ui.card{ui.label{part = 'text', bind = {text = 'text'}}, ui.label{part = 'state', text = '', font = 'caption', color = 'textMuted'}}},
+            notice = {template = ui.alert{part = 'notice', bind = {message = 'text'}, tone = 'information'}, interactive = false},
+        }, onSelect = function(event) print('opened the message ' .. event.item) end},
+        ui.textField{id = 'draft', placeholder = 'Message', returnKey = 'send', onSubmit = function(event) self:send(event.value) end},
+    }, {owner = self})
+    self.chat = self.gui:collection('chat')
+    self.chat:setItems(self.messages)
+    self.chat:setBinder('outgoing', function(cell, item)
+        cell:set('state', {text = item.pending and 'Sending' or 'Delivered'})
+    end)
+end
+
+-- The new message lands at the end, and the chat stays at the end because it sticks to it.
+function Chat:send(value)
+    if value == '' then
+        return
+    end
+    self.sent = self.sent + 1
+    self.chat:insert(#self.messages + 1, {{id = 'out-' .. self.sent, type = 'outgoing', text = value, pending = true}})
+    self.gui:set('draft', {value = ''})
+end
+
+scene.push(setmetatable({}, Chat))
+```
+
+A store grid with sticky sections and multiple selection:
+
+```lua
+local ui = require('haylen.ui')
+
+local catalog = {}
+for section, title in ipairs({'Tools', 'Food', 'Boats'}) do
+    catalog[#catalog + 1] = {id = 'section-' .. section, type = 'section', title = title}
+    for item = 1, 30 do
+        catalog[#catalog + 1] = {id = title .. '-' .. item, type = 'product', name = title .. ' ' .. item, price = (item * 7) .. ' coins'}
+    end
+end
+
+local gui = ui.mount(ui.collection{
+    id = 'store',
+    layout = 'grid',
+    minCellSize = 320,
+    cellAspect = 0.75,
+    selection = 'multiple',
+    padding = 24,
+    types = {
+        section = {template = ui.sectionTitle{part = 'title', bind = {text = 'title'}}, span = 'full', sticky = true},
+        product = {template = ui.card{
+            ui.label{part = 'name', bind = {text = 'name'}, wrap = false},
+            ui.badge{part = 'price', bind = {text = 'price'}, tone = 'accent'},
+            ui.label{part = 'chosen', text = 'In the cart', color = 'successText', bind = {visible = '$selected'}},
+        }},
+    },
+    onSelect = function(event)
+        print(event.item .. (event.selected and ' added to' or ' removed from') .. ' the cart')
+    end,
+})
+
+local store = gui:collection('store')
+store:setItems(catalog)
+
+-- A filtered list compares with the list shown by id, so the products that stay keep their cells, selection and focus.
+local function showOnly(prefix)
+    local shown = {}
+    for _, entry in ipairs(catalog) do
+        if entry.type == 'section' or entry.id:sub(1, #prefix) == prefix then
+            shown[#shown + 1] = entry
+        end
+    end
+    store:setItems(shown)
+end
+
+showOnly('Tools')
+```
+
+Settings rows whose controls write back to their items:
+
+```lua
+local preferences = require('haylen.preferences')
+local ui = require('haylen.ui')
+
+local rows = {
+    {id = 'audio', type = 'header', title = 'Audio'},
+    {id = 'music', type = 'slider', label = 'Music', value = preferences.get('music', 0.7)},
+    {id = 'video', type = 'header', title = 'Video'},
+    {id = 'fullscreen', type = 'toggle', label = 'Fullscreen', on = preferences.get('fullscreen', false)},
+}
+local fields = {slider = 'value', toggle = 'on'}
+
+local gui = ui.mount(ui.panel{
+    ui.collection{id = 'settings', grow = 1, types = {
+        header = {template = ui.sectionTitle{part = 'title', bind = {text = 'title'}}, sticky = true, interactive = false},
+        slider = {template = ui.settingsRow{part = 'row', bind = {label = 'label'}, ui.slider{part = 'value', bind = {value = 'value'}, width = 440}}},
+        toggle = {template = ui.settingsRow{part = 'row', bind = {label = 'label'}, ui.toggle{part = 'value', bind = {checked = 'on'}}}},
+    },
+    -- The item already holds the new value when the handler runs, because the bound value writes back.
+    onChange = function(event)
+        local row = rows[event.cell.index]
+        preferences.set(row.id, row[fields[row.type]])
+    end},
+})
+gui:collection('settings'):setItems(rows)
+```
+
+A hundred thousand entries loaded in pages:
+
+```lua
+local jobs = require('haylen.jobs')
+local ui = require('haylen.ui')
+
+local gui = ui.mount(ui.column{padding = 24, gap = 12,
+    ui.label{id = 'where', text = 'Entry 1'},
+    ui.collection{id = 'entries', grow = 1, placeholder = 'loading', types = {
+        entry = {template = ui.row{gap = 16,
+            ui.label{part = 'number', bind = {text = '$index'}, width = 160, color = 'textMuted'},
+            ui.label{part = 'title', bind = {text = 'title'}, grow = 1},
+        }, estimatedSize = 64},
+        loading = {template = ui.row{height = 64, ui.busyIndicator{size = 32}}, interactive = false},
+    }, onVisibleChange = function(event)
+        event.gui:set('where', {text = 'Entries ' .. event.first .. ' to ' .. event.last})
+    end},
+})
+
+local entries = gui:collection('entries')
+
+-- Each page builds in a job that shares the frame budget, so a fast fling never stalls the frame.
+entries:setPages{count = 100000, pageSize = 100, load = function(first, count)
+    return jobs.spawn(function()
+        local page = {}
+        for index = first, first + count - 1 do
+            page[#page + 1] = {id = 'entry-' .. index, type = 'entry', title = 'Entry ' .. index}
+            jobs.checkpoint()
+        end
+        return page
+    end)
+end}
+
+entries:scrollTo(50000, {align = 'center', animated = false})
+```
+
 ## Settings
 
 ### ui.settingsForm(properties)
@@ -2721,6 +3102,8 @@ Both built-in themes share these metrics, in design units.
 | `checkRadius` | `8` | Corner radius of check boxes. |
 | `menuPadding` | `8` | Space between the edge of the popup of a combo, a menu button or a context menu and its rows. |
 | `splitterSize` | `10` | Thickness of the handle of splitters. |
+| `cellRadius` | `12` | Corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |
+| `refreshDistance` | `120` | How far a pull at the start of a refreshable collection goes before it refreshes. |
 
 ## Theme fonts
 
@@ -2764,6 +3147,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `menu` | The popups of combos, menu buttons, context menus, popovers and color fields. |
 | `window` | Windows. |
 | `slot`, `slotHighlighted` | Slots of slot grids, and the selected or hovered slot. |
+| `cell`, `cellHover`, `cellPressed`, `cellSelected` | The backgrounds of interactive collection cells: always, while hovered, while pressed and while selected. Without images the state surfaces paint the `hover`, `pressed` and `selection` colors, and `cell` paints nothing. |
 
 A surface image is an object with these keys.
 

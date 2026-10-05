@@ -29,6 +29,13 @@ class Stepper final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void collectPlayerValues(core::Json& values) const override {
+        if (items.empty()) {
+            values["value"] = value;
+        } else {
+            values["selected"] = selected;
+        }
+    }
 
   private:
     [[nodiscard]] std::string getShownText(Context& context) const;

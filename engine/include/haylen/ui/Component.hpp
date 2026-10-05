@@ -30,6 +30,7 @@
 
 namespace haylen::ui {
 
+class ComponentRegistry;
 class Context;
 
 // A node of a retained tree. Properties arrive as JSON, and the node measures, draws and reports its events on its own. Sizes are in design units.
@@ -196,6 +197,18 @@ class Component {
         return false;
     }
 
+    // Builds what the node needs from the registry once its properties are applied, such as the cell templates of a collection.
+    virtual void compile(const ComponentRegistry&) {}
+
+    // Whether the node prepares itself before the GUIs draw, where Lua may run, such as a collection that binds its cells.
+    [[nodiscard]] virtual bool hasPreparation() const noexcept {
+        return false;
+    }
+    virtual void prepare(Context&) {}
+
+    // Adds the values the player changed, such as the `checked` of a toggle, under the names of their properties.
+    virtual void collectPlayerValues(core::Json&) const {}
+
     // A floating component places itself while it renders and reports that place as the rectangle it was drawn in.
     void setBounds(const math::Rect& value) noexcept {
         drawnBounds = value;
@@ -213,6 +226,8 @@ class Component {
     [[nodiscard]] std::optional<FocusDirection> takeFocusDirection(Context& context) const;
 
   private:
+    friend class CellTemplate;
+    friend class Collection;
     friend class Gui;
 
     static constexpr float kMinAspectRatio = 0.01F;
@@ -272,6 +287,9 @@ class Component {
     math::Rect drawnBounds;
     std::shared_ptr<Transform> transform = std::make_shared<Transform>();
     ImGuiID drawId = 0;
+
+    // The place of the node in the template of a collection cell, which names its ImGui items in place of its address, so they follow the item the cell shows.
+    int identity = -1;
     std::uint64_t measuredFrame = 0;
     std::uint64_t drawnFrame = 0;
     float measuredWidth = -1.0F;

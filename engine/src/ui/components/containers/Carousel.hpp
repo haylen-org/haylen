@@ -30,6 +30,9 @@ class Carousel final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void collectPlayerValues(core::Json& values) const override {
+        values["page"] = page;
+    }
 
   private:
     // How much of the way to the page a slide covers per transition duration of the theme.

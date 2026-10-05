@@ -26,11 +26,14 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Collection.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Scaling.hpp"
 #include "lua/Owners.hpp"
 #include "lua/ScriptedScene.hpp"
+#include "lua/StackScope.hpp"
+#include "ui/CollectionLua.hpp"
 #include "ui/MountLink.hpp"
 #include "ui/TransformLua.hpp"
 
@@ -66,22 +69,6 @@ template <> struct EnumNames<ui::FocusNavigator::Owner> {
 } // namespace haylen::lua
 
 namespace haylen::ui {
-
-// Restores the Lua stack top when it goes out of scope.
-class UiLua::StackScope final {
-  public:
-    explicit StackScope(lua_State* L) : state(L), top(lua_gettop(L)) {}
-    ~StackScope() {
-        lua_settop(state, top);
-    }
-
-    StackScope(const StackScope&) = delete;
-    StackScope& operator=(const StackScope&) = delete;
-
-  private:
-    lua_State* state;
-    int top;
-};
 
 plugins::UiPlugin& UiLua::getPlugin(lua_State* L) {
     return lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>();
@@ -139,6 +126,9 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
     const int node = lua_absindex(L, index);
     const int base = lua_gettop(L);
     core::Json json = core::Json::object();
+    lua_getfield(L, node, "kind");
+    const bool collection = lua_type(L, -1) == LUA_TSTRING && lua::Stack::read<std::string_view>(L, -1) == "collection";
+    lua_pop(L, 1);
 
     lua_newtable(L);
     const int collected = lua_gettop(L);
@@ -155,11 +145,14 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
             luaL_error(L, "UI node keys must be strings.");
         }
         if (const std::optional<std::string> event = handlerEvent(L, key, value)) {
+            if (handlers == 0) {
+                luaL_error(L, "A collection template takes no handlers. Handle the events of its parts on the collection, where they arrive with \"part\" and \"cell\".");
+            }
             lua_pushvalue(L, value);
             lua_setfield(L, collected, event->c_str());
             hasHandlers = true;
         } else if (const std::string name = lua::Stack::read<std::string>(L, key); name != "children") {
-            json[name] = lua::JsonConverter::read(L, value);
+            json[name] = collection && name == "types" ? convertTypes(L, value, depth, count) : lua::JsonConverter::read(L, value);
         }
         lua_pop(L, 1);
     }
@@ -204,8 +197,37 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
     return json;
 }
 
-// Converts a properties table for `set`, collecting its handlers by event name into the table at the collected index. Every other key must be a property.
-core::Json UiLua::convertProperties(lua_State* L, int index, int collected) {
+// Converts the types of a collection, whose templates are node tables without handlers. Values of any other shape go to the collection as they are, which reports what is wrong with them.
+core::Json UiLua::convertTypes(lua_State* L, int index, std::size_t depth, std::size_t& count) {
+    if (lua_type(L, index) != LUA_TTABLE) {
+        return lua::JsonConverter::read(L, index);
+    }
+    const int types = lua_absindex(L, index);
+    core::Json json = core::Json::object();
+    lua_pushnil(L);
+    while (lua_next(L, types) != 0) {
+        const std::string name = lua::Stack::read<std::string>(L, -2);
+        if (lua_type(L, -1) != LUA_TTABLE) {
+            json[name] = lua::JsonConverter::read(L, -1);
+            lua_pop(L, 1);
+            continue;
+        }
+        const int definition = lua_gettop(L);
+        core::Json converted = core::Json::object();
+        lua_pushnil(L);
+        while (lua_next(L, definition) != 0) {
+            const std::string key = lua::Stack::read<std::string>(L, -2);
+            converted[key] = key == "template" && lua_istable(L, -1) ? convertNode(L, -1, 0, depth + 1, count) : lua::JsonConverter::read(L, -1);
+            lua_pop(L, 1);
+        }
+        json[name] = std::move(converted);
+        lua_pop(L, 1);
+    }
+    return json;
+}
+
+// Converts a properties table for `set`, collecting its handlers by event name into the table at the collected index. Every other key must be a property, and the types of a collection convert their templates.
+core::Json UiLua::convertProperties(lua_State* L, int index, int collected, bool collection) {
     luaL_checktype(L, index, LUA_TTABLE);
     const int table = lua_absindex(L, index);
     core::Json json = core::Json::object();
@@ -218,7 +240,9 @@ core::Json UiLua::convertProperties(lua_State* L, int index, int collected) {
             lua_setfield(L, collected, event->c_str());
         } else {
             luaL_argcheck(L, lua_type(L, key) == LUA_TSTRING, index, "property names must be strings");
-            json[lua::Stack::read<std::string>(L, key)] = lua::JsonConverter::read(L, value);
+            const std::string name = lua::Stack::read<std::string>(L, key);
+            std::size_t count = 0;
+            json[name] = collection && name == "types" ? convertTypes(L, value, 1, count) : lua::JsonConverter::read(L, value);
         }
         lua_pop(L, 1);
     }
@@ -378,7 +402,8 @@ int UiLua::guiSet(lua_State* L) {
     const int handlers = lua_gettop(L);
     lua_newtable(L);
     const int collected = lua_gettop(L);
-    self.set(id, convertProperties(L, 3, collected));
+    const Component* node = self.find(id);
+    self.set(id, convertProperties(L, 3, collected, node != nullptr && node->getKind() == "collection"));
 
     lua_pushnil(L);
     while (lua_next(L, collected) != 0) {
@@ -410,6 +435,7 @@ int UiLua::guiReplaceChildren(lua_State* L) {
         lua_pop(L, 1);
     }
     self.replaceChildren(id, children);
+    CollectionLua::prune(L, self);
 
     std::vector<std::string> rebuilt;
     for (const core::Json& child : children) {
@@ -526,6 +552,16 @@ int UiLua::guiTransform(lua_State* L) {
     lua_pop(L, 1);
     TransformLua::push(L, component->getTransform());
     lua::Userdata::setField(L, 1, key.c_str(), -1);
+    return 1;
+}
+
+// Returns the handle of the collection with the id, the same one while the node exists.
+int UiLua::guiCollection(lua_State* L) {
+    const std::shared_ptr<Gui>& gui = lua::Userdata::checkShared<Gui>(L, 1);
+    if (!getPlugin(L).isMounted(*gui)) {
+        return luaL_error(L, "The GUI is not mounted.");
+    }
+    CollectionLua::push(L, gui, gui->getCollection(lua::Stack::read<std::string_view>(L, 2)));
     return 1;
 }
 
@@ -691,7 +727,7 @@ int UiLua::onEvent(lua_State* L) {
     // clang-format off
     core::Connection connection = getPlugin(L).events.connect([function, main](Gui& gui, const Event& event) {
         lua::Runtime::runReporting(main, [&] {
-            const StackScope scope(main);
+            const lua::StackScope scope(main);
             if (!function->push(main)) {
                 return;
             }
@@ -737,12 +773,21 @@ int UiLua::focused(lua_State* L) {
         return 1;
     }
     pushGui(L, gui);
-    const std::string_view name = plugin.getFocus().getFocusedName();
-    if (name.empty()) {
+    const FocusNavigator& focus = plugin.getFocus();
+    if (focus.getFocusedName().empty()) {
         return 1;
     }
-    lua::Stack::push(L, name);
-    return 2;
+    lua::Stack::push(L, focus.getFocusedName());
+    if (focus.getFocusedItem().empty()) {
+        return 2;
+    }
+    lua::Stack::push(L, focus.getFocusedItem());
+    if (focus.getFocusedPart().empty()) {
+        lua_pushnil(L);
+    } else {
+        lua::Stack::push(L, focus.getFocusedPart());
+    }
+    return 4;
 }
 
 int UiLua::focusOwner(lua_State* L) {
@@ -847,12 +892,13 @@ void UiLua::install(lua_State* L) {
     lua_setfield(L, LUA_REGISTRYINDEX, kHandlersKey);
     core::EventsLua::addPayload<std::shared_ptr<Gui>>(&pushGui);
     TransformLua::install(L);
-    lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).install();
+    CollectionLua::install(L);
+    lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).function("collection", &lua::Binding::native<&guiCollection>).install();
     lua::Binding::preload(L, "haylen.ui", &open);
 }
 
 void UiLua::deliverEvent(lua_State* L, Gui& gui, const Event& event) {
-    const StackScope scope(L);
+    const lua::StackScope scope(L);
     pushRoot(L);
     lua_rawgetp(L, -1, &gui);
     if (!lua_istable(L, -1)) {
@@ -868,7 +914,7 @@ void UiLua::deliverEvent(lua_State* L, Gui& gui, const Event& event) {
 
 // Listeners, tweens and timers that the GUI owns end with it.
 void UiLua::forgetGui(lua_State* L, const Gui& gui) {
-    const StackScope scope(L);
+    const lua::StackScope scope(L);
     pushRoot(L);
     if (!lua_istable(L, -1)) {
         return;
@@ -879,6 +925,7 @@ void UiLua::forgetGui(lua_State* L, const Gui& gui) {
     }
     lua_pushnil(L);
     lua_rawsetp(L, root, &gui);
+    CollectionLua::forget(L, gui);
 }
 
 } // namespace haylen::ui

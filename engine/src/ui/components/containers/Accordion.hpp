@@ -31,6 +31,9 @@ class Accordion final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void collectPlayerValues(core::Json& values) const override {
+        values["expanded"] = expanded;
+    }
 
   private:
     [[nodiscard]] Component* getSection(std::size_t index) const;

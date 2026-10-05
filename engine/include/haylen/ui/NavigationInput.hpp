@@ -12,7 +12,7 @@
 
 namespace haylen::ui {
 
-// The actions that move the UI focus, press the focused control, go back, open context menus and move the focus between a play area and the controls: `uiAccept`, `uiCancel`, `uiLeft`, `uiRight`, `uiUp`, `uiDown`, `uiMenu` and `uiFocus`. An app remaps one by defining an action with its name in its action map, and the others keep their built-in bindings.
+// The actions that move the UI focus, press the focused control, go back, open context menus, move the focus between a play area and the controls and page through collections: `uiAccept`, `uiCancel`, `uiLeft`, `uiRight`, `uiUp`, `uiDown`, `uiMenu`, `uiFocus`, `uiPagePrevious`, `uiPageNext`, `uiFirst` and `uiLast`. An app remaps one by defining an action with its name in its action map, and the others keep their built-in bindings.
 class NavigationInput final {
   public:
     enum class Action : std::uint8_t {
@@ -24,10 +24,14 @@ class NavigationInput final {
         Down,
         Menu,
         Focus,
+        PagePrevious,
+        PageNext,
+        First,
+        Last,
     };
 
-    static constexpr std::size_t kActionCount = 8;
-    static constexpr std::array<std::string_view, kActionCount> kNames{"uiAccept", "uiCancel", "uiLeft", "uiRight", "uiUp", "uiDown", "uiMenu", "uiFocus"};
+    static constexpr std::size_t kActionCount = 12;
+    static constexpr std::array<std::string_view, kActionCount> kNames{"uiAccept", "uiCancel", "uiLeft", "uiRight", "uiUp", "uiDown", "uiMenu", "uiFocus", "uiPagePrevious", "uiPageNext", "uiFirst", "uiLast"};
 
     NavigationInput();
 

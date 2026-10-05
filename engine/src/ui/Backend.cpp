@@ -587,7 +587,9 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     closeAbandonedPopups();
     feedGamepad(input, navigation);
 
-    blockedPrevious = std::exchange(blocked, {});
+    // The two lists trade places, so the areas of every frame reuse the storage of the frame before the last one.
+    std::swap(blockedPrevious, blocked);
+    blocked.clear();
     requestedCursor.reset();
     frameTextures.clear();
     renderCalls.clear();

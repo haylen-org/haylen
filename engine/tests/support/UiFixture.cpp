@@ -75,6 +75,15 @@ void UiFixture::drag(math::Vec2 from, math::Vec2 to, int steps) {
     frames(2);
 }
 
+void UiFixture::wheel(math::Vec2 point, float delta, float horizontal) {
+    pointer(platform::Event::Type::MouseMove, point);
+    platform::Event event;
+    event.type = platform::Event::Type::MouseScroll;
+    event.scroll = {horizontal, delta};
+    getEngine().handleEvent(event);
+    frames();
+}
+
 void UiFixture::key(input::Key code) {
     for (const platform::Event::Type type : {platform::Event::Type::KeyDown, platform::Event::Type::KeyUp}) {
         platform::Event event;
@@ -119,6 +128,10 @@ const math::Rect& UiFixture::getBounds(const ui::Gui& gui, std::string_view id) 
 bool UiFixture::isFocused(const ui::Gui& gui, std::string_view id) {
     const ui::FocusNavigator& focus = getUi().getFocus();
     return focus.getFocusedGui() == &gui && focus.getFocusedName() == id;
+}
+
+std::string UiFixture::getFocusedItem() {
+    return std::string(getUi().getFocus().getFocusedItem());
 }
 
 const ui::Event& UiFixture::findLastEvent(std::string_view name) const {

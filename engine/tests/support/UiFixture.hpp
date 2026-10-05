@@ -42,6 +42,9 @@ class UiFixture {
     void click(const ui::Gui& gui, std::string_view id);
     void drag(math::Vec2 from, math::Vec2 to, int steps = 4);
 
+    // Turns the mouse wheel over a point, with positive deltas scrolling up, and runs a frame.
+    void wheel(math::Vec2 point, float delta, float horizontal = 0.0F);
+
     // Presses and releases a key or a gamepad button, running a frame after each.
     void key(input::Key code);
     void button(input::GamepadButton pressed);
@@ -50,6 +53,9 @@ class UiFixture {
 
     [[nodiscard]] const math::Rect& getBounds(const ui::Gui& gui, std::string_view id) const;
     [[nodiscard]] bool isFocused(const ui::Gui& gui, std::string_view id);
+
+    // The id of the collection item that holds the focus, empty outside collections.
+    [[nodiscard]] std::string getFocusedItem();
     [[nodiscard]] std::vector<std::string> getEventNames() const;
     [[nodiscard]] const ui::Event& getLastEvent() const {
         return events.back();

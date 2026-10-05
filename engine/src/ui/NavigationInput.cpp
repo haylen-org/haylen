@@ -17,6 +17,10 @@ NavigationInput::NavigationInput() {
                         {{"name", "uiDown"}, {"type", "button"}, {"bindings", {"key:down", "button:dpadDown", "axis:leftY+"}}},
                         {{"name", "uiMenu"}, {"type", "button"}, {"bindings", {"key:menu", "button:north"}}},
                         {{"name", "uiFocus"}, {"type", "button"}, {"bindings", {"button:back"}}},
+                        {{"name", "uiPagePrevious"}, {"type", "button"}, {"bindings", {"key:pageUp", "button:leftShoulder"}}},
+                        {{"name", "uiPageNext"}, {"type", "button"}, {"bindings", {"key:pageDown", "button:rightShoulder"}}},
+                        {{"name", "uiFirst"}, {"type", "button"}, {"bindings", {"key:home"}}},
+                        {{"name", "uiLast"}, {"type", "button"}, {"bindings", {"key:end"}}},
                     }}});
     resolved = defaults;
 }

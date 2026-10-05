@@ -10,10 +10,21 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Collection.hpp"
 #include "haylen/ui/Component.hpp"
 #include "ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
+
+Context::EventRedirect::EventRedirect(Context& drawing, Collection& collection, CollectionCell& cell) noexcept : context(drawing), previousCollection(drawing.redirectCollection), previousCell(drawing.redirectCell) {
+    context.redirectCollection = &collection;
+    context.redirectCell = &cell;
+}
+
+Context::EventRedirect::~EventRedirect() {
+    context.redirectCollection = previousCollection;
+    context.redirectCell = previousCell;
+}
 
 Context::Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, Sources contextSources, std::shared_ptr<text::RichTextRegistry> registry) : backend(uiBackend), focus(focusNavigator), catalog(textCatalog), input(devices), sources(std::move(contextSources)), textRegistry(std::move(registry)) {}
 
@@ -166,6 +177,10 @@ void Context::beginFrame(double now, float delta) noexcept {
 void Context::emit(const Component& component, std::string name, core::Json value) {
     if (events == nullptr) {
         throw std::logic_error("A component emitted an event outside of a GUI.");
+    }
+    if (redirectCell != nullptr) {
+        events->push_back(redirectCollection->toCellEvent(*redirectCell, component, std::move(name), std::move(value)));
+        return;
     }
     events->push_back({.id = component.getId(), .name = std::move(name), .value = std::move(value)});
 }

@@ -34,6 +34,9 @@ class KeyCapture final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void collectPlayerValues(core::Json& values) const override {
+        values["value"] = value;
+    }
     void drawingStopped(Context&) override;
 
   private:

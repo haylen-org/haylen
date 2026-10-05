@@ -425,6 +425,8 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-018` | Text input | The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform. |  |
 | `GUI-019` | Touch controls | Two touch sticks at once, one that follows the finger drawn with images and one fixed drawn with circles, and touch buttons that drive actions of the action map next to keys and gamepads. |  |
 | `GUI-020` | Layouts | Justify, alignItems, growing within size bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and the aspect ratio at any width. |  |
+| `GUI-021` | Recycled lists | Mixed item types in a list with sticky sections, a grid and a horizontal shelf built from recycled cells, with inserts, removals, moves, a shuffle, scrolling to an item and the focus of every device. |  |
+| `GUI-022` | Long lists | A hundred thousand entries loaded in pages with placeholders, and a number field that scrolls to any entry. |  |
 | `GUI-023` | Toast stacks | Toasts at every position of the safe area that stack without covering each other, a queue past the limit of a stack and a dialog whose backdrop fades with it. |  |
 | `GUI-024` | Theme overrides | Styles that replace colors, metrics, fonts and surfaces of one subtree, styles that nest, subtrees in other themes in every state and the cursor of each node. |  |
 | `GUI-025` | Node events | The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log. |  |

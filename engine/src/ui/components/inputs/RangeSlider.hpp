@@ -26,6 +26,10 @@ class RangeSlider final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void collectPlayerValues(core::Json& values) const override {
+        values["low"] = low;
+        values["high"] = high;
+    }
 
   private:
     // Left and right move a range without a step by a twentieth of its span.

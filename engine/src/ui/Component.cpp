@@ -197,7 +197,11 @@ void Component::draw(Context& context, const math::Rect& layout) {
     drawnBounds = bounds;
     drawnFrame = context.getFrame();
 
-    ImGui::PushID(this);
+    if (identity >= 0) {
+        ImGui::PushID(identity);
+    } else {
+        ImGui::PushID(this);
+    }
     drawId = ImGui::GetID("##node");
     FocusNavigator& focus = context.getFocus();
     focus.enter(*this, drawId, bounds);

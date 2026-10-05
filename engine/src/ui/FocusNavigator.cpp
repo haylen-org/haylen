@@ -11,6 +11,8 @@
 
 namespace haylen::ui {
 
+const ImGuiInputFlags FocusNavigator::kRepeat = static_cast<ImGuiInputFlags>(ImGuiInputFlags_Repeat) | static_cast<ImGuiInputFlags>(ImGuiInputFlags_RepeatRateNavMove);
+
 bool FocusNavigator::isManaged(const ImGuiWindow* window) noexcept {
     return window != nullptr && (window->Flags & ImGuiWindowFlags_NoNavInputs) != 0;
 }
@@ -41,6 +43,8 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
     lastInput = lastDevice;
     pointerAvailable = hasPointerDevice;
     pendingDirection.reset();
+    pendingPaging.reset();
+    reveal = 0;
 
     // A player without a pointer only navigates, so the ring always shows, and a pointer press hides it until the player navigates again.
     if (!hasPointerDevice) {
@@ -88,7 +92,7 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
         cancel(current);
     }
     // The directions, accept and menu of a play area belong to the game, which reads them from the action map.
-    if (current == nullptr || current->play) {
+    if (current == nullptr || current->play || takeRevealing(*current, accept)) {
         return;
     }
     if (accept) {
@@ -96,20 +100,51 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
         activate(*current);
         return;
     }
-
-    constexpr std::array<std::pair<ImGuiKey, FocusDirection>, 4> kKeys{{
-        {ImGuiKey_GamepadDpadLeft, FocusDirection::Left},
-        {ImGuiKey_GamepadDpadRight, FocusDirection::Right},
-        {ImGuiKey_GamepadDpadUp, FocusDirection::Up},
-        {ImGuiKey_GamepadDpadDown, FocusDirection::Down},
-    }};
-    const ImGuiInputFlags repeat = static_cast<ImGuiInputFlags>(ImGuiInputFlags_Repeat) | static_cast<ImGuiInputFlags>(ImGuiInputFlags_RepeatRateNavMove);
-    for (const auto& [key, direction] : kKeys) {
-        if (ImGui::IsKeyPressed(key, repeat, ImGuiKeyOwner_NoOwner)) {
+    if (takePageAction(navigation, *current)) {
+        return;
+    }
+    for (const auto& [key, direction] : kDirectionKeys) {
+        if (ImGui::IsKeyPressed(key, kRepeat, ImGuiKeyOwner_NoOwner)) {
             move(*current, direction);
             return;
         }
     }
+}
+
+// A direction or accept while the focused control lies outside the clip of its window, such as an item a collection scrolled away, brings it back into view instead of moving or pressing.
+bool FocusNavigator::takeRevealing(const Target& current, bool accept) {
+    if (current.shown) {
+        return false;
+    }
+    const bool pressed = accept || std::ranges::any_of(kDirectionKeys, [](const auto& entry) { return ImGui::IsKeyPressed(entry.first, kRepeat, ImGuiKeyOwner_NoOwner); });
+    if (!pressed) {
+        return false;
+    }
+    ringVisible = true;
+    reveal = current.id;
+    setFocus(current.id, current.window, current.bounds);
+    return true;
+}
+
+// The page actions go to the innermost collection around the focus, which scrolls and moves the focus itself while it draws.
+bool FocusNavigator::takePageAction(const NavigationInput& navigation, const Target& current) {
+    constexpr std::array<std::pair<NavigationInput::Action, Paging::Kind>, 4> kPages{{
+        {NavigationInput::Action::PagePrevious, Paging::Kind::Previous},
+        {NavigationInput::Action::PageNext, Paging::Kind::Next},
+        {NavigationInput::Action::First, Paging::Kind::First},
+        {NavigationInput::Action::Last, Paging::Kind::Last},
+    }};
+    for (const auto& [action, kind] : kPages) {
+        if (!navigation.isPressed(action)) {
+            continue;
+        }
+        if (const std::optional<std::size_t> scope = findCollection(drawn.nodes[current.node].scope)) {
+            ringVisible = true;
+            pendingPaging = {drawn.scopes[*scope].id, Paging{.kind = kind}};
+        }
+        return true;
+    }
+    return false;
 }
 
 void FocusNavigator::beginDraw() {
@@ -120,6 +155,7 @@ void FocusNavigator::beginDraw() {
     levels.clear();
     cancelWindows.clear();
     currentGui = nullptr;
+    cellOwner = nullptr;
 }
 
 void FocusNavigator::beginGui(const Gui& gui) {
@@ -150,22 +186,33 @@ void FocusNavigator::leave() {
 }
 
 void FocusNavigator::addTarget(ImGuiID item, const math::Rect& bounds) {
-    addItem(item, bounds, false);
+    const ImRect& clip = ImGui::GetCurrentWindow()->ClipRect;
+    const bool shown = bounds.x < clip.Max.x && bounds.getRight() > clip.Min.x && bounds.y < clip.Max.y && bounds.getBottom() > clip.Min.y;
+    addItem(item, bounds, false, shown);
 }
 
 void FocusNavigator::addPlayArea(ImGuiID item, const math::Rect& bounds) {
-    addItem(item, bounds, true);
+    addItem(item, bounds, true, true);
 }
 
-void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play) {
+void FocusNavigator::addProxyTarget(ImGuiID item, const math::Rect& bounds) {
+    addItem(item, bounds, false, false);
+}
+
+void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play, bool shown) {
     if (suspended || levels.empty() || !levels.back().focusable || (GImGui->CurrentItemFlags & ImGuiItemFlags_Disabled) != 0) {
         return;
     }
 
-    // A component becomes a node the first time it registers a target in a frame, so components without targets cost nothing.
+    // A component becomes a node the first time it registers a target in a frame, so components without targets cost nothing. The targets a collection registers for its cells each name their own item, so each one is a node.
     Level& level = levels.back();
-    if (!level.node) {
-        Node node{.id = level.id, .gui = currentGui, .name = level.component->getId(), .neighbors = level.component->getCommon().focusNeighbors, .usedDirections = 0, .scope = level.scope};
+    if (!level.node || (cellOwner != nullptr && level.component == cellOwner)) {
+        Node node{.id = level.id, .gui = currentGui, .name = level.component->getId(), .item = {}, .part = {}, .neighbors = level.component->getCommon().focusNeighbors, .usedDirections = 0, .scope = level.scope};
+        if (cellOwner != nullptr) {
+            node.name = cellOwner->getId();
+            node.item = cellItem;
+            node.part = level.component == cellOwner ? std::string() : level.component->getId();
+        }
         for (const FocusDirection direction : {FocusDirection::Left, FocusDirection::Right, FocusDirection::Up, FocusDirection::Down}) {
             if (level.component->usesFocusDirection(direction)) {
                 node.usedDirections |= toBit(direction);
@@ -175,7 +222,65 @@ void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play) 
         level.node = building.nodes.size() - 1;
     }
     const bool inputable = GImGui->LastItemData.ID == item && (GImGui->LastItemData.ItemFlags & ImGuiItemFlags_Inputable) != 0;
-    building.targets.push_back({.id = item, .window = ImGui::GetCurrentWindow(), .bounds = bounds, .node = *level.node, .inputable = inputable, .play = play});
+    building.targets.push_back({.id = item, .window = ImGui::GetCurrentWindow(), .bounds = bounds, .node = *level.node, .inputable = inputable, .play = play, .shown = shown});
+}
+
+// The collection reuses the scope a focus wrap of its own opened, so its wraps along the axis reach it.
+void FocusNavigator::beginCollection(const math::Rect& bounds, bool horizontal, ImGuiID preferred) {
+    Level& level = levels.back();
+    if (!level.scope || building.scopes[*level.scope].id != level.id) {
+        building.scopes.push_back({.id = level.id, .bounds = bounds, .trap = false, .wrap = FocusWrap::None, .parent = level.scope});
+        level.scope = building.scopes.size() - 1;
+    }
+    Scope& scope = building.scopes[*level.scope];
+    scope.bounds = bounds;
+    scope.collection = true;
+    scope.horizontal = horizontal;
+    scope.preferred = preferred;
+}
+
+std::optional<FocusNavigator::Paging> FocusNavigator::takePaging() {
+    if (!pendingPaging || levels.empty() || !levels.back().scope || building.scopes[*levels.back().scope].id != pendingPaging->first) {
+        return std::nullopt;
+    }
+    return std::exchange(pendingPaging, std::nullopt)->second;
+}
+
+void FocusNavigator::enterCell(const Component& collection, std::string_view item) {
+    cellOwner = &collection;
+    cellItem = item;
+}
+
+void FocusNavigator::leaveCell() noexcept {
+    cellOwner = nullptr;
+    cellItem = {};
+}
+
+std::optional<ImGuiID> FocusNavigator::findFocusedSince(std::size_t first) const {
+    const ImGuiID focused = GImGui->NavId;
+    if (focused == 0 || !hasTargetSince(first, focused)) {
+        return std::nullopt;
+    }
+    return focused;
+}
+
+bool FocusNavigator::hasTargetSince(std::size_t first, ImGuiID item) const {
+    return item != 0 && std::any_of(building.targets.begin() + static_cast<std::ptrdiff_t>(std::min(first, building.targets.size())), building.targets.end(), [item](const Target& target) { return target.id == item; });
+}
+
+void FocusNavigator::markShownSince(std::size_t first) noexcept {
+    for (std::size_t index = first; index < building.targets.size(); ++index) {
+        building.targets[index].shown = true;
+    }
+}
+
+bool FocusNavigator::focusFirstSince(std::size_t first) {
+    if (first >= building.targets.size()) {
+        return false;
+    }
+    const Target target = building.targets[first];
+    focus(target.id, target.bounds);
+    return true;
 }
 
 void FocusNavigator::endDraw() {
@@ -213,6 +318,8 @@ void FocusNavigator::endDraw() {
     focusedPlay = focused != nullptr && focused->play;
     focusedGui = node != nullptr ? node->gui : nullptr;
     focusedName = node != nullptr ? node->name : std::string();
+    focusedCellItem = node != nullptr ? node->item : std::string();
+    focusedPart = node != nullptr ? node->part : std::string();
     focusedRoot = focused != nullptr ? focused->window->RootWindow : nullptr;
     focusedBounds = focused != nullptr ? focused->bounds : math::Rect{};
 
@@ -232,6 +339,7 @@ FocusNavigator::Owner FocusNavigator::getOwner() const noexcept {
 
 void FocusNavigator::focus(ImGuiID item, const math::Rect& bounds) {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
+    reveal = item;
     ringVisible = ringVisible || lastInput == input::InputDevice::Gamepad || !pointerAvailable;
     if (const Target* target = find(building, item)) {
         remember(building, *target);
@@ -319,6 +427,14 @@ std::string_view FocusNavigator::getFocusedName() const noexcept {
     return focusedName;
 }
 
+std::string_view FocusNavigator::getFocusedItem() const noexcept {
+    return focusedCellItem;
+}
+
+std::string_view FocusNavigator::getFocusedPart() const noexcept {
+    return focusedPart;
+}
+
 const FocusNavigator::Target* FocusNavigator::find(const Frame& frame, ImGuiID item) const noexcept {
     if (item == 0) {
         return nullptr;
@@ -384,8 +500,8 @@ const FocusNavigator::Target* FocusNavigator::search(const Target& source, const
     return found ? candidates[*found] : nullptr;
 }
 
-// A node that wraps along the direction keeps the move inside it and starts again from its other side when nothing lies ahead.
-const FocusNavigator::Target* FocusNavigator::searchAround(const Target& source, FocusDirection direction) const {
+// A node that wraps along the direction keeps the move inside it and starts again from its other side when nothing lies ahead. A collection does not draw every item, so it answers a wrap along its axis itself.
+const FocusNavigator::Target* FocusNavigator::searchAround(const Target& source, FocusDirection direction) {
     const Node& node = drawn.nodes[source.node];
     const std::optional<std::size_t> trap = findTrap(node.scope);
     const std::optional<std::size_t> wrap = findWrap(node.scope, trap, direction);
@@ -395,7 +511,30 @@ const FocusNavigator::Target* FocusNavigator::searchAround(const Target& source,
     if (const Target* ahead = search(source, source.bounds, wrap, direction)) {
         return ahead;
     }
-    return search(source, FocusSearch::wrap(source.bounds, drawn.scopes[*wrap].bounds, direction), wrap, direction);
+    const Scope& scope = drawn.scopes[*wrap];
+    const bool horizontal = direction == FocusDirection::Left || direction == FocusDirection::Right;
+    if (scope.collection && horizontal == scope.horizontal) {
+        pendingPaging = {scope.id, Paging{.kind = Paging::Kind::Wrap, .direction = direction}};
+        return nullptr;
+    }
+    return search(source, FocusSearch::wrap(source.bounds, scope.bounds, direction), wrap, direction);
+}
+
+std::optional<std::size_t> FocusNavigator::findCollection(std::optional<std::size_t> scope) const noexcept {
+    while (scope && !drawn.scopes[*scope].collection) {
+        scope = drawn.scopes[*scope].parent;
+    }
+    return scope;
+}
+
+// A move that enters a collection from outside lands on the item that had the focus there last, when the collection remembers it and draws it.
+const FocusNavigator::Target& FocusNavigator::prefer(const Target& source, const Target& target) const noexcept {
+    const std::optional<std::size_t> scope = findCollection(drawn.nodes[target.node].scope);
+    if (!scope || drawn.scopes[*scope].preferred == 0 || isInside(source, scope)) {
+        return target;
+    }
+    const Target* preferred = find(drawn, drawn.scopes[*scope].preferred);
+    return preferred != nullptr ? *preferred : target;
 }
 
 // The play area of the GUI that holds the focus, or of the topmost GUI that draws one while nothing has the focus.
@@ -467,7 +606,7 @@ void FocusNavigator::move(const Target& source, FocusDirection direction) {
         }
     }
     if (const Target* target = searchAround(source, direction)) {
-        apply(*target);
+        apply(prefer(source, *target));
     }
 }
 
@@ -492,6 +631,7 @@ void FocusNavigator::tab(const Target& source, bool backward) {
 }
 
 void FocusNavigator::apply(const Target& target) {
+    reveal = target.id;
     remember(drawn, target);
     keepControl(target);
     setFocus(target.id, target.window, target.bounds);

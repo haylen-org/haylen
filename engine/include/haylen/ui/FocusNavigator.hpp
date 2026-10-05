@@ -34,6 +34,20 @@ class FocusNavigator final {
         PlayArea,
     };
 
+    // A move the innermost collection around the focus answers itself: a page back or forward, its first or last item, or a wrap past one of its ends along its axis in the direction the player pressed.
+    struct Paging {
+        enum class Kind : std::uint8_t {
+            Previous,
+            Next,
+            First,
+            Last,
+            Wrap,
+        };
+
+        Kind kind = Kind::Next;
+        FocusDirection direction = FocusDirection::Down;
+    };
+
     // An item a player carries with the keyboard or a gamepad to drop on another item, the way the pointer drags it.
     struct Carry {
         std::string source;
@@ -51,10 +65,42 @@ class FocusNavigator final {
     void enter(const Component& component, ImGuiID node, const math::Rect& bounds);
     void leave();
 
-    // Registers an item of the component being drawn as a place the focus can go, unless it or a node around it cannot take the focus or it is disabled.
+    // Registers an item of the component being drawn as a place the focus can go, unless it or a node around it cannot take the focus or it is disabled. A target outside the clip of its window did not show, so a direction or accept while it has the focus brings it into view first.
     void addTarget(ImGuiID item, const math::Rect& bounds);
     void addPlayArea(ImGuiID item, const math::Rect& bounds);
     void endDraw();
+
+    // Makes the component being drawn a collection that scrolls itself: its targets form a scope that answers paging and the wraps along its axis, and a move that enters it from outside lands on `preferred` when that target is registered.
+    void beginCollection(const math::Rect& bounds, bool horizontal, ImGuiID preferred);
+
+    // Takes the paging the player asked of the collection being drawn this frame.
+    [[nodiscard]] std::optional<Paging> takePaging();
+
+    // The target to bring into view this frame, because the focus moved to it or the player asked to see it again.
+    [[nodiscard]] ImGuiID getReveal() const noexcept {
+        return reveal;
+    }
+
+    // Names the targets the components of a cell register after the collection that owns the cell, with the item it shows and the part they belong to.
+    void enterCell(const Component& collection, std::string_view item);
+    void leaveCell() noexcept;
+
+    // Registers the focused target of an item whose cell does not draw, at the place the item would take, so the focus stays on the item.
+    void addProxyTarget(ImGuiID item, const math::Rect& bounds);
+
+    [[nodiscard]] std::size_t getTargetCount() const noexcept {
+        return building.targets.size();
+    }
+
+    // Returns the focused target among the targets registered since `first`, or nothing.
+    [[nodiscard]] std::optional<ImGuiID> findFocusedSince(std::size_t first) const;
+    [[nodiscard]] bool hasTargetSince(std::size_t first, ImGuiID item) const;
+
+    // Gives the focus to the first target registered since `first` and returns whether there is one.
+    bool focusFirstSince(std::size_t first);
+
+    // Counts the targets registered since `first` as shown, such as those of an item a collection scrolls into view, so a direction moves on from them before they arrive.
+    void markShownSince(std::size_t first) noexcept;
 
     // Keeps the controls drawn meanwhile out of navigation, such as those of a carousel page sliding out.
     void suspendTargets(bool value) noexcept {
@@ -127,11 +173,17 @@ class FocusNavigator final {
     [[nodiscard]] const Gui* getFocusedGui() const noexcept;
     [[nodiscard]] std::string_view getFocusedName() const noexcept;
 
+    // The item and the part of a collection cell that hold the focus, empty outside cells.
+    [[nodiscard]] std::string_view getFocusedItem() const noexcept;
+    [[nodiscard]] std::string_view getFocusedPart() const noexcept;
+
   private:
     struct Node {
         ImGuiID id = 0;
         const Gui* gui = nullptr;
         std::string name;
+        std::string item;
+        std::string part;
         std::array<std::string, 4> neighbors;
         std::uint8_t usedDirections = 0;
         std::optional<std::size_t> scope;
@@ -143,6 +195,9 @@ class FocusNavigator final {
         bool trap = false;
         FocusWrap wrap = FocusWrap::None;
         std::optional<std::size_t> parent;
+        bool collection = false;
+        bool horizontal = false;
+        ImGuiID preferred = 0;
     };
 
     struct Target {
@@ -152,6 +207,7 @@ class FocusNavigator final {
         std::size_t node = 0;
         bool inputable = false;
         bool play = false;
+        bool shown = true;
     };
 
     struct GuiEntry {
@@ -177,6 +233,15 @@ class FocusNavigator final {
         std::optional<std::size_t> scope;
     };
 
+    // Directions repeat while held at the rate ImGui moves its own navigation.
+    static const ImGuiInputFlags kRepeat;
+    static constexpr std::array<std::pair<ImGuiKey, FocusDirection>, 4> kDirectionKeys{{
+        {ImGuiKey_GamepadDpadLeft, FocusDirection::Left},
+        {ImGuiKey_GamepadDpadRight, FocusDirection::Right},
+        {ImGuiKey_GamepadDpadUp, FocusDirection::Up},
+        {ImGuiKey_GamepadDpadDown, FocusDirection::Down},
+    }};
+
     [[nodiscard]] static bool isManaged(const ImGuiWindow* window) noexcept;
     [[nodiscard]] static std::uint8_t toBit(FocusDirection direction) noexcept;
     [[nodiscard]] static bool wrapsAlong(FocusWrap wrap, FocusDirection direction) noexcept;
@@ -189,13 +254,17 @@ class FocusNavigator final {
     [[nodiscard]] bool isInside(const Target& target, std::optional<std::size_t> scope) const noexcept;
     [[nodiscard]] bool isPeer(const Target& source, const Target& target) const noexcept;
     [[nodiscard]] const Target* search(const Target& source, const math::Rect& from, std::optional<std::size_t> scope, FocusDirection direction) const;
-    [[nodiscard]] const Target* searchAround(const Target& source, FocusDirection direction) const;
+    [[nodiscard]] const Target* searchAround(const Target& source, FocusDirection direction);
     [[nodiscard]] ImGuiID getTrapId(const Frame& frame, const Target& target) const noexcept;
     [[nodiscard]] bool hasTargets(const Gui* gui) const noexcept;
     [[nodiscard]] const Target* findPlayArea(const Target* source) const noexcept;
     [[nodiscard]] const Target* findControl(const Target& playArea) const noexcept;
+    [[nodiscard]] std::optional<std::size_t> findCollection(std::optional<std::size_t> scope) const noexcept;
+    [[nodiscard]] const Target& prefer(const Target& source, const Target& target) const noexcept;
+    [[nodiscard]] bool takeRevealing(const Target& current, bool accept);
+    [[nodiscard]] bool takePageAction(const NavigationInput& navigation, const Target& current);
 
-    void addItem(ImGuiID item, const math::Rect& bounds, bool play);
+    void addItem(ImGuiID item, const math::Rect& bounds, bool play, bool shown);
     void switchFocus(const Target* source);
     void move(const Target& source, FocusDirection direction);
     void tab(const Target& source, bool backward);
@@ -219,6 +288,12 @@ class FocusNavigator final {
     std::vector<std::pair<const Gui*, ImGuiID>> parked;
     std::vector<std::pair<ImGuiID, std::string_view>> notices;
     std::optional<std::pair<ImGuiID, FocusDirection>> pendingDirection;
+    std::optional<std::pair<ImGuiID, Paging>> pendingPaging;
+    ImGuiID reveal = 0;
+
+    // The collection and the item of the cell being drawn, whose targets take their names.
+    const Component* cellOwner = nullptr;
+    std::string_view cellItem;
     std::optional<Carry> carried;
     std::vector<const ImGuiWindow*> cancelWindows;
     ImGuiID focusedItem = 0;
@@ -226,6 +301,8 @@ class FocusNavigator final {
     ImGuiID focusedNode = 0;
     const Gui* focusedGui = nullptr;
     std::string focusedName;
+    std::string focusedCellItem;
+    std::string focusedPart;
     ImGuiWindow* focusedRoot = nullptr;
     math::Rect focusedBounds;
     int popupsAtEnd = 0;

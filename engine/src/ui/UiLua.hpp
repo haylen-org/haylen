@@ -33,8 +33,6 @@ class UiLua final {
     static void forgetGui(lua_State* L, const Gui& gui);
 
   private:
-    class StackScope;
-
     // The registry keeps one entry per mounted GUI, keyed by the GUI address: its userdata and the handlers of its nodes by id and event name.
     static constexpr const char* kHandlersKey = "haylen.ui.handlers";
     static constexpr std::array<std::string_view, 3> kMountFields{"placement", "layer", "owner"};
@@ -45,8 +43,10 @@ class UiLua final {
     [[nodiscard]] static std::optional<std::string> handlerEvent(lua_State* L, int key, int value);
     static void storeHandler(lua_State* L, int handlers, const std::string& id, const std::string& event, int value);
     [[nodiscard]] static std::string nextGeneratedId(lua_State* L);
+    // Converts a node table, pulling its handlers into the handlers table at the given index. A handlers index of 0 converts the node of a collection template, which takes no handlers.
     [[nodiscard]] static core::Json convertNode(lua_State* L, int index, int handlers, std::size_t depth, std::size_t& count);
-    [[nodiscard]] static core::Json convertProperties(lua_State* L, int index, int collected);
+    [[nodiscard]] static core::Json convertTypes(lua_State* L, int index, std::size_t depth, std::size_t& count);
+    [[nodiscard]] static core::Json convertProperties(lua_State* L, int index, int collected, bool collection);
     static void collectIds(const core::Json& node, std::vector<std::string>& ids);
     [[nodiscard]] static bool pushHandlers(lua_State* L, const Gui& gui);
     static void pruneHandlers(lua_State* L, int handlers, const Gui& gui);
@@ -70,6 +70,7 @@ class UiLua final {
     static int guiMounted(lua_State* L);
     static int guiPlacement(lua_State* L);
     static int guiTransform(lua_State* L);
+    static int guiCollection(lua_State* L);
     static int node(lua_State* L);
     static int kindBuilder(lua_State* L);
     static int moduleIndex(lua_State* L);

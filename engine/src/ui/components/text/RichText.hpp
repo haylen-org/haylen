@@ -48,7 +48,7 @@ class RichText final : public Component {
     }};
 
     // Makes the rich text match the properties and the theme, keeping its effects and reveal while only the width changes.
-    [[nodiscard]] text::RichText& prepare(Context& context);
+    [[nodiscard]] text::RichText& refreshText(Context& context);
     void interactWithLinks(Context& context, math::Vec2 origin);
     void showHint(Context& context, math::Vec2 origin);
 

@@ -21,6 +21,9 @@ class TextEntry : public Component {
     void readProperties(PropertyReader& reader) override;
     virtual void readMore(PropertyReader&) {}
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
+    void collectPlayerValues(core::Json& values) const override {
+        values["value"] = value;
+    }
 
     // Draws the editor with the keyboard of the entry and space kept free for icons on either side.
     void drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart = 0.0F, float reserveEnd = 0.0F);

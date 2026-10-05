@@ -165,6 +165,7 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     if (!drawBegun) {
         drawBegun = true;
         shownGuis.clear();
+        prepareGuis();
         focus.beginDraw();
     }
     if (view.current) {
@@ -174,7 +175,7 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     }
 }
 
-// The GUIs a view draws in layer order: those of its scenes, and in the current view those of no scene too. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its GUIs in the current view.
+// Collects the GUIs a view draws in layer order, into storage every frame reuses: those of its scenes, and in the current view those of no scene too. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its GUIs in the current view.
 void UiPlugin::collectGuis(core::Engine& engine, const core::SceneView& view) {
     const std::vector<core::SceneView>& views = engine.getScenes().getViews();
     const auto current = std::ranges::find_if(views, &core::SceneView::current);
@@ -198,6 +199,20 @@ void UiPlugin::collectGuis(core::Engine& engine, const core::SceneView& view) {
         }
     }
     std::ranges::sort(drawnGuis, [](const Mounted* lhs, const Mounted* rhs) { return lhs->layer != rhs->layer ? lhs->layer < rhs->layer : lhs->order < rhs->order; });
+}
+
+// Collections bind their cells and run their binders before anything draws, where Lua may run. A binder may unmount other GUIs, so the pass walks a copy and skips GUIs that are gone.
+void UiPlugin::prepareGuis() {
+    preparing.clear();
+    for (const Mounted& entry : guis) {
+        preparing.push_back(entry.gui);
+    }
+    for (const std::shared_ptr<ui::Gui>& gui : preparing) {
+        if (gui->isVisible() && isMounted(*gui)) {
+            gui->prepare(*context);
+        }
+    }
+    preparing.clear();
 }
 
 void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
@@ -288,6 +303,10 @@ input::ActionMap::Capture UiPlugin::getCapture() const {
         {Action::Down, control},
         {Action::Menu, control},
         {Action::Focus, focus.answersFocus()},
+        {Action::PagePrevious, control},
+        {Action::PageNext, control},
+        {Action::First, control},
+        {Action::Last, control},
     }};
     for (const auto& [action, answered] : answers) {
         if (answered) {
@@ -381,6 +400,7 @@ bool UiPlugin::unmount(const ui::Gui& gui) {
     if (found == guis.end()) {
         return false;
     }
+    gui.checkNotPreparing();
     const std::shared_ptr<ui::Gui> unmounted = found->gui;
     guis.erase(found);
     focus.forget(*unmounted);

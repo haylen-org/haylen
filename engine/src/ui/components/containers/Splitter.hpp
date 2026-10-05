@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <string_view>
 
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
@@ -26,6 +27,9 @@ class Splitter final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void collectPlayerValues(core::Json& values) const override {
+        values["ratio"] = core::JsonNumber::fromFloat(ratio);
+    }
 
   private:
     static constexpr float kFocusStep = 0.05F;

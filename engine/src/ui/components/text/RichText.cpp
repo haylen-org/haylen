@@ -32,7 +32,7 @@ void RichText::readProperties(PropertyReader& reader) {
 }
 
 // The theme gives the family, size, style and color and the node its language and the side start and end name, so a change of them lays the text out again, which starts its reveal over. Paragraphs read in the direction of their first strong letter unless their markup sets one. The text takes the em size of the widgets of its role, so it lines up with labels in the same font. Fonts and images resolve through the context the options were made with.
-text::RichText& RichText::prepare(Context& context) {
+text::RichText& RichText::refreshText(Context& context) {
     std::string markup = context.getText(text);
     std::shared_ptr<text::FontFamily> family = context.getFontFamily(font);
     const float size = context.getEmSize(font);
@@ -71,7 +71,7 @@ text::RichText& RichText::prepare(Context& context) {
 
 // Text that fits on one line keeps its natural width, and longer text wraps at the width it gets.
 math::Vec2 RichText::measureContent(Context& context, float availableWidth) {
-    text::RichText& prepared = prepare(context);
+    text::RichText& prepared = refreshText(context);
     const math::Vec2 natural = prepared.getLayout(0.0F).size;
     if (!wrap || !(availableWidth > 0.0F) || natural.x <= availableWidth) {
         return natural;
@@ -80,7 +80,7 @@ math::Vec2 RichText::measureContent(Context& context, float availableWidth) {
 }
 
 void RichText::render(Context& context, const math::Rect& bounds) {
-    text::RichText& prepared = prepare(context);
+    text::RichText& prepared = refreshText(context);
     if (updatedFrame != context.getFrame()) {
         updatedFrame = context.getFrame();
         prepared.update(context.getDeltaSeconds());

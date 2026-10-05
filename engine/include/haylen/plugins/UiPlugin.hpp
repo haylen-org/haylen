@@ -64,7 +64,7 @@ class UiPlugin final : public Plugin {
 
     [[nodiscard]] std::shared_ptr<ui::Gui> createGui(const core::Json& tree, ui::Placement placement = ui::Placement::Safe) const;
 
-    // GUIs draw in layer order, and GUIs on the same layer in the order they were mounted. A GUI of a scene draws only while its scene shows and goes into the image of its scene during a transition, so it travels with its scene, while a GUI of no scene draws above the scenes the app runs. Mounting and unmounting publish `guiMounted` and `guiUnmounted` with the shared pointer of the GUI.
+    // GUIs draw in layer order, and GUIs on the same layer in the order they were mounted. A GUI of a scene draws only while its scene shows and goes into the image of its scene during a transition, so it travels with its scene, while a GUI of no scene draws above the scenes the app runs. Mounting and unmounting publish `guiMounted` and `guiUnmounted` with the shared pointer of the GUI. A GUI whose collections bind cells refuses to unmount.
     void mount(std::shared_ptr<ui::Gui> gui, int layer = 0, const std::shared_ptr<const core::Scene>& scene = nullptr);
     bool unmount(const ui::Gui& gui);
     [[nodiscard]] bool isMounted(const ui::Gui& gui) const;
@@ -141,6 +141,7 @@ class UiPlugin final : public Plugin {
     void collectGuis(core::Engine& engine, const core::SceneView& view);
     void deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event);
     void deliverAtOnce(ui::Gui& gui, const ui::Event& event);
+    void prepareGuis();
     void beginWindow(const char* name, ImGuiWindowFlags flags);
     void drawGuis();
     void drawLeaving(core::Engine& engine, const core::SceneView& view);
@@ -166,6 +167,7 @@ class UiPlugin final : public Plugin {
     std::vector<Mounted> delivering;
     std::vector<const Mounted*> drawnGuis;
     std::vector<const ui::Gui*> shownGuis;
+    std::vector<std::shared_ptr<ui::Gui>> preparing;
     std::uint64_t nextOrder = 0;
     std::array<std::map<std::string, ImageEntry, std::less<>>, 2> images;
     std::map<std::string, std::string, std::less<>> fontPaths;

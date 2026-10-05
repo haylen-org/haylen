@@ -199,7 +199,7 @@ Touch controls count as interface for `ui.usingPointer()`, so an app that checks
 
 The keyboard, gamepads and TV remotes drive both the interface, through its navigation actions, and the game, through the action map. The focus decides which one hears a press, so the two never fight over the same key:
 
-- While a control of a GUI has the focus, the interface owns the navigation input: the directions, accept, cancel, menu, Tab and `uiFocus` move and press its controls, and the action map reads their keys, buttons and left stick as up.
+- While a control of a GUI has the focus, the interface owns the navigation input: the directions, accept, cancel, menu, Tab and `uiFocus` move and press its controls, `uiPagePrevious`, `uiPageNext`, `uiFirst` and `uiLast` page through its collections, and the action map reads their keys, buttons and left stick as up.
 - While a [play area](lua-api/ui.md#uiplayareaproperties) has the focus, the game owns the directions, accept and menu, so the arrows, WASD, the d-pad, the left stick, Space, Enter and the south button reach the action map and never move the focus. Cancel, Tab and `uiFocus` still belong to the interface, so Escape, the east button and the Menu button of a TV remote reach the `onCancel` handler of the GUI, and Tab or `uiFocus` move the focus to the controls of the GUI and back.
 - While nothing has the focus, the action map reads every key, and the interface only takes the presses it answers itself, such as the cancel that closes a popup.
 

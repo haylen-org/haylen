@@ -42,6 +42,8 @@ class RichTextRegistry;
 namespace haylen::ui {
 
 class Backend;
+class Collection;
+class CollectionCell;
 class Component;
 class FocusNavigator;
 
@@ -53,6 +55,21 @@ class Context final {
         math::Vec2 scale{1.0F, 1.0F};
         math::Vec2 offset{};
         math::Color color = math::Color::white();
+    };
+
+    // Turns the events of the components of a collection cell into events of the collection while the cell draws.
+    class EventRedirect final {
+      public:
+        EventRedirect(Context& drawing, Collection& collection, CollectionCell& cell) noexcept;
+        ~EventRedirect();
+
+        EventRedirect(const EventRedirect&) = delete;
+        EventRedirect& operator=(const EventRedirect&) = delete;
+
+      private:
+        Context& context;
+        Collection* previousCollection;
+        CollectionCell* previousCell;
     };
 
     // Returns the texture of a UI image path, or an empty texture while it is still loading.
@@ -204,6 +221,8 @@ class Context final {
     // The active theme at the bottom and the themes and styles the nodes being drawn push above it.
     std::vector<Layer> layers{Layer{}};
     std::vector<Event>* events = nullptr;
+    Collection* redirectCollection = nullptr;
+    CollectionCell* redirectCell = nullptr;
     std::set<std::string, std::less<>> heldButtons;
     std::map<std::string, math::Vec2, std::less<>> sticks;
     std::vector<Reshape> reshapes;

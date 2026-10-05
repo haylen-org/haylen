@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/ui/Collection.hpp"
 #include "haylen/ui/ComponentRegistry.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
@@ -30,6 +31,23 @@ class Gui::EventScope final {
     Context& context;
 };
 
+// Marks the GUI as preparing while it lives, also when a binder fails.
+class Gui::PreparingScope final {
+  public:
+    explicit PreparingScope(bool& flag) noexcept : preparing(flag) {
+        preparing = true;
+    }
+    ~PreparingScope() {
+        preparing = false;
+    }
+
+    PreparingScope(const PreparingScope&) = delete;
+    PreparingScope& operator=(const PreparingScope&) = delete;
+
+  private:
+    bool& preparing;
+};
+
 Gui::Gui(const ComponentRegistry& componentRegistry, const core::Json& tree, Placement where) : registry(componentRegistry), placement(where) {
     std::size_t count = 0;
     Built built = build(tree, 0, count);
@@ -37,6 +55,16 @@ Gui::Gui(const ComponentRegistry& componentRegistry, const core::Json& tree, Pla
     ids = std::move(built.ids);
     properties = std::move(built.properties);
     nodeCount = count;
+    collectPreparations(*root, preparations);
+}
+
+void Gui::collectPreparations(Component& component, std::vector<Component*>& found) {
+    if (component.hasPreparation()) {
+        found.push_back(&component);
+    }
+    for (const auto& child : component.getChildren()) {
+        collectPreparations(*child, found);
+    }
 }
 
 void Gui::collectIds(const Component& component, std::vector<std::string>& found) {
@@ -103,6 +131,7 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
         built.properties.emplace(component.id, std::move(values));
     }
     component.apply(node);
+    component.compile(registry);
 
     const auto children = node.find("children");
     if (children == node.end()) {
@@ -145,6 +174,30 @@ Component& Gui::require(std::string_view id) const {
     return *component;
 }
 
+Collection& Gui::getCollection(std::string_view id) const {
+    Component& component = require(id);
+    auto* collection = dynamic_cast<Collection*>(&component);
+    if (collection == nullptr) {
+        throw std::invalid_argument("The node \"" + std::string(id) + "\" is " + PropertyReader::describeKind(component.getKind()) + ", not a \"collection\".");
+    }
+    return *collection;
+}
+
+void Gui::checkNotPreparing() const {
+    if (preparing) {
+        throw std::logic_error("The GUI cannot replace nodes or unmount while its collections bind cells.");
+    }
+}
+
+// Preparing may run Lua, which may change properties but never the structure of the GUI, so the list of nodes stays valid.
+void Gui::prepare(Context& context) {
+    checkNotPreparing();
+    const PreparingScope scope(preparing);
+    for (Component* component : preparations) {
+        component->prepare(context);
+    }
+}
+
 void Gui::set(std::string_view id, const core::Json& changes) {
     Component& component = require(id);
     if (!changes.is_object() || changes.contains("kind") || changes.contains("id") || changes.contains("children")) {
@@ -154,12 +207,16 @@ void Gui::set(std::string_view id, const core::Json& changes) {
     // A fresh component of the same kind checks the whole merged state first, so a bad value never leaves the node half updated.
     core::Json merged = properties.at(std::string(id));
     merged.update(changes);
-    registry.create(component.getKind())->apply(merged);
+    const std::unique_ptr<Component> checked = registry.create(component.getKind());
+    checked->apply(merged);
+    checked->compile(registry);
     component.apply(changes);
+    component.compile(registry);
     properties.insert_or_assign(std::string(id), std::move(merged));
 }
 
 void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
+    checkNotPreparing();
     Component& component = require(id);
     if (!trees.is_array()) {
         throw std::invalid_argument("The \"replaceChildren\" method of a GUI takes a list of nodes.");
@@ -200,6 +257,9 @@ void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
     ids = std::move(remainingIds);
     properties = std::move(remainingProperties);
     nodeCount = count;
+    preparations.clear();
+    collectPreparations(*root, preparations);
+
     if (!delivery) {
         return;
     }

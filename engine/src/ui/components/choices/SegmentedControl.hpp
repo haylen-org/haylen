@@ -32,6 +32,9 @@ class SegmentedControl final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void collectPlayerValues(core::Json& values) const override {
+        values["selected"] = selected;
+    }
 
   private:
     [[nodiscard]] ImDrawFlags getCorners(const Context& context, std::size_t index) const noexcept;

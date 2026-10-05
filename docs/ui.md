@@ -176,7 +176,7 @@ ui.mount(ui.column{
 
 ## Component catalog
 
-The engine ships 62 component kinds, and `ui.kinds()` lists them. They are grouped by purpose below, and each group links to its section of the reference.
+The engine ships 64 component kinds, and `ui.kinds()` lists them. They are grouped by purpose below, and each group links to its section of the reference.
 
 | Purpose | Kinds |
 | --- | --- |
@@ -186,7 +186,7 @@ The engine ships 62 component kinds, and `ui.kinds()` lists them. They are group
 | [Choices](lua-api/ui.md#choices) | `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl` |
 | [Inputs](lua-api/ui.md#inputs) | `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `colorField`, `keyCapture` |
 | [Indicators](lua-api/ui.md#indicators) | `badge`, `statusIndicator`, `busyIndicator`, `progress`, `circularProgress`, `icon`, `image`, `avatar` |
-| [Collections](lua-api/ui.md#collections) | `list` (with draggable rows), `tree`, `table`, `slotGrid` |
+| [Collections](lua-api/ui.md#collections) | `list` (with draggable rows), `tree`, `table`, `slotGrid`, `collection` (any number of items of several types in lists and grids with recycled cells, described in [Long lists](#long-lists)) |
 | [Settings](lua-api/ui.md#settings) | `settingsForm`, `settingsRow`, `settingsActions` |
 | [Overlays](lua-api/ui.md#overlays) | `dialog`, `toast`, `window`, `contextMenu` |
 | [Touch controls](lua-api/ui.md#touch-controls) | `touchStick`, `touchButton` |
@@ -221,7 +221,7 @@ While a text field edits, the keys it types belong to the field alone and never 
 
 ### Focus, navigation and TV remotes
 
-Buttons, choices, inputs, rows, slots, play areas and the other interactive parts of a GUI take the keyboard, gamepad and remote focus, and the [navigation actions](lua-api/ui.md#focus-and-navigation) move it: `uiUp`, `uiDown`, `uiLeft` and `uiRight` on the arrow keys, the directional pad and the left stick, `uiAccept` on Enter, Space and the south button, `uiCancel` on Escape and the east button, `uiMenu` on the menu key and the north button, and `uiFocus` on the View button, which moves the focus between a play area and the controls of its GUI. An app remaps any of them by defining an action with the same name in its action map, and the others keep their built-in bindings.
+Buttons, choices, inputs, rows, slots, play areas and the other interactive parts of a GUI take the keyboard, gamepad and remote focus, and the [navigation actions](lua-api/ui.md#focus-and-navigation) move it: `uiUp`, `uiDown`, `uiLeft` and `uiRight` on the arrow keys, the directional pad and the left stick, `uiAccept` on Enter, Space and the south button, `uiCancel` on Escape and the east button, `uiMenu` on the menu key and the north button, `uiFocus` on the View button, which moves the focus between a play area and the controls of its GUI, and `uiPagePrevious`, `uiPageNext`, `uiFirst` and `uiLast` on Page Up, Page Down, Home, End and the shoulder buttons, which page through collections. An app remaps any of them by defining an action with the same name in its action map, and the others keep their built-in bindings.
 
 - A direction moves the focus to the nearest control that way, unless the node names its neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Sliders, range sliders, steppers, segmented controls and carousel dots use left and right themselves. Tab walks the controls in drawing order, also from one text field on to the next.
 - A screen gives the first focus with `autofocus = true` on a node, or with `gui:command(id, 'focus')`, which every Tiny Island screen does so a gamepad player can start at once. A screen where the game plays next to controls gives the first focus to its play area, so the keys play the game and Tab, `uiFocus`, a click or a tap reach the controls. Setting `focusable = false` keeps a HUD button out of navigation, and `ui.clearFocus()` drops the focus.
@@ -247,6 +247,60 @@ ui.mount(ui.column{
     end},
 })
 ```
+
+## Long lists
+
+The kind [`collection`](lua-api/ui.md#uicollectionproperties) shows any number of items of several types in a vertical or horizontal list or in a grid, the way the native lists of phones do. It builds a cell from the template of a type only when no cell of that type is free, binds it to the item it shows, and gives it to another item of the same type once it leaves the view, so a list of a hundred thousand items keeps a few dozen cells and costs about what a list of a hundred does. The [reference](lua-api/ui.md#uicollectionproperties) lists every property, the template keys, the events and the errors, and [`UiCollection`](lua-api/ui.md#uicollection) and [`UiCell`](lua-api/ui.md#uicell) the classes Lua drives it with.
+
+```lua
+local ui = require('haylen.ui')
+
+local gui = ui.mount(ui.collection{id = 'quests', height = 640, selection = 'single', types = {
+    chapter = {template = ui.sectionTitle{part = 'title', bind = {text = 'title'}}, sticky = true, interactive = false},
+    quest = {template = ui.row{gap = 16,
+        ui.label{part = 'name', bind = {text = 'name'}, grow = 1},
+        ui.toggle{part = 'done', bind = {checked = 'done'}},
+    }},
+}, onSelect = function(event) print('opened ' .. event.item) end})
+
+local quests = {}
+for chapter = 1, 20 do
+    quests[#quests + 1] = {id = 'chapter-' .. chapter, type = 'chapter', title = 'Chapter ' .. chapter}
+    for quest = 1, 50 do
+        quests[#quests + 1] = {id = chapter .. '-' .. quest, type = 'quest', name = 'Quest ' .. quest, done = false}
+    end
+end
+gui:collection('quests'):setItems(quests)
+```
+
+### Items, types and cells
+
+Items are Lua tables that the app keeps. The function `setItems` gives the collection a list of them, every item with a unique `id` and a `type`, and the collection caches the ids and the types and reads only the fields a cell binds, with raw table access that runs no Lua code. The methods `insert`, `remove`, `move` and `replace` change the list and the collection together, `reload` binds items again after the app changed their fields in place, and a second `setItems`, with the same list changed or another list, compares the items by id, so the items that stay keep their measured sizes, their selection, the focus and their cells. A list too long to build at once loads in pages with `setPages`, whose loader returns a page or a promise of one, while the items of pages on their way show the `placeholder` type and the collection keeps at most `maxPages` pages.
+
+The template of a type is a node tree in the screen format whose nodes name themselves with `part` and map their properties to fields of the item with `bind`. A binder, `setBinder(type, binder)` in Lua and `Collection::setBinder` in C++, fills what a binding cannot express with `cell:set`. Binders and page loaders run before the GUIs draw, in a preparation that runs once per frame before the first GUI draws, which is where Lua may run during the UI, and an item that a jump, such as a drag of the scrollbar, brings into view without a cell gets one while the GUI draws, with its bindings, unless its type has a binder, in which case it waits for the next preparation and shows nothing for that one frame. A cell returns to its template before it shows another item, the values the player changes in a bound control write back to the item before the handlers run, and the state the UI keeps for a control, such as the knob of a toggle, its focus and its hover, follows the item rather than the cell, because the ImGui ids of the components of a cell come from the item and from their place in the template.
+
+### Layout, sizes and anchoring
+
+A list places one item per line, and a grid fills `lanes` cells across its axis, or as many as fit at `minCellSize`, where a type with a `span` takes several lanes or the whole line. Every line is as long as its longest cell. An item that was never laid out takes the `estimatedSize` of its type, which the measured items of the type teach when the type declares none, and the lines keep their lengths in a Fenwick tree, so the line at an offset and the offset of a line cost a logarithm of the line count. With `cellAspect`, grid cells take their length from their width and need no measuring.
+
+The view holds what the player sees while the items or their sizes change: before a change it keeps the focused item, or the first measured item in view, and after the change it puts that item back where it was, so items inserted above, items measured above for the first time and a reordered list never move what shows, and a collection with `stickToEnd` that showed its end keeps showing it. A `scrollTo` aims again every frame while the items on the way are measured, with an alignment of `'nearest'`, `'start'`, `'center'` or `'end'`, and `saveState` and `restoreState` keep a place by item rather than by offset.
+
+### Scrolling and the focus
+
+The wheel scrolls the collection under the pointer, a finger drags it along its axis and flings it, stretching past the ends and springing back, the scrollbar on its end edge drags and pages it, `snap` settles it on items or whole views, and a pull at the start of a `refreshable` list reports `refresh`. The keyboard, gamepads and TV remotes move the focus between items with the directions, and the actions `uiPagePrevious`, `uiPageNext`, `uiFirst` and `uiLast`, on Page Up, Page Down, Home, End and the shoulder buttons, page through the innermost collection around the focus. The collection binds the items around the focused one, so the focus moves on to items that do not show yet and scrolls them in with `focusAlign`, which `'center'` keeps in the middle of the view as TV lists do. An item whose cell the wheel or a finger took out of view keeps the focus, and the next direction brings it back first. With `rememberFocus` the focus that enters the collection lands on its last focused item, and `focusWrap` along the axis wraps from the last item to the first.
+
+### What a long list costs
+
+The command `python3 haylen.py bench --suite ui` runs the UI benchmark, `engine/bench/UiBenchmark.cpp`, on the headless host: a list and a grid of a hundred thousand items of three types, a sticky header type, a plain type and a type with a binder, take a fling every 45 frames for 900 frames and then rest for 300 frames. It prints the average and the worst CPU time of a frame, the items bound, the binder calls and the cells created in each phase, and the cells alive at its end. These are the numbers of an Apple M5 Pro in Release:
+
+| Layout | Phase | Frame ms | Worst ms | Binds | Binder calls | Cells created | Cells alive |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| List | Fling | 0.063 | 0.365 | 1174 | 385 | 33 | 37 |
+| List | Rest | 0.046 | 0.247 | 0 | 0 | 0 | 37 |
+| Grid | Fling | 0.088 | 0.481 | 817 | 683 | 93 | 37 |
+| Grid | Rest | 0.067 | 0.318 | 0 | 0 | 0 | 35 |
+
+A frame at rest binds nothing, calls no binder and creates no cell, and the engine tests check that it calls no Lua and that the collection allocates nothing in it. A frame while flinging binds only the items that enter the window, and the cells stay bounded by the window, its prefetch and the pools of the types. The components inside the cells keep their own costs, since every visible container measures its children every frame, so cells of few parts keep long lists cheapest.
 
 ## Text and translations
 
@@ -487,4 +541,4 @@ A retained GUI is built once and then changed by id, which keeps per-frame Lua w
 
 ## From C++
 
-The same system is available to C++ code through `haylen::plugins::UiPlugin` (`haylen/plugins/UiPlugin.hpp`), reached with `engine.getPlugin<plugins::UiPlugin>()`. It builds `haylen::ui::Gui` trees from JSON with `createGui` and shows them with `mount`, which publishes `guiMounted` on the event bus of the engine, like `unmount` publishes `guiUnmounted`. It also loads and switches themes (`haylen::ui::Theme` in `haylen/ui/Theme.hpp`) and publishes every `haylen::ui::Event` of a GUI through its `events` signal. The method `UiPlugin::getComponents()` returns the `haylen::ui::ComponentRegistry`, where a C++ plugin registers its own component kinds, subclasses of `haylen::ui::Component` that read their properties with a `PropertyReader` and draw through the `haylen::ui::Context` they receive, which Lua then builds with `ui.<kind>{...}` like the built-in ones. The method `UiPlugin::getBackend()` returns the `haylen::ui::Backend` that owns the Dear ImGui context, for C++ code that draws immediate mode windows, and whose `addRenderCallback` lets a component draw with the 2D renderer at its place among the ImGui draws, as `richText` does. The method `UiPlugin::addFontFamily` registers a `haylen::text::FontFamily` under a font name, which reaches the backend as `Backend::FontFiles`, its TrueType faces and fallbacks. The method `UiPlugin::getFocus()` returns the `haylen::ui::FocusNavigator`, which tells which GUI and node hold the focus and whether the ring shows, and `UiPlugin::getNavigation()` the `haylen::ui::NavigationInput` with the navigation actions. A C++ component makes an ImGui item a focus target with `FocusNavigator::addTarget` while it draws, and keeps a direction for itself by overriding `Component::usesFocusDirection`. The methods `core::Engine::setSafeAreaSimulation` and `setBackLeavesApp` are the C++ side of the safe area simulation and the back button, and `setScaling` and `setDesignSize` change the mapping of design space the UI lays out in while the app runs. Text fields reach the platform through `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`), which `Window::getTextInput()` returns and which the [text input guide](text-input.md) describes. See [Architecture](architecture.md) for plugins and [Lua](lua.md) for the scripting model.
+The same system is available to C++ code through `haylen::plugins::UiPlugin` (`haylen/plugins/UiPlugin.hpp`), reached with `engine.getPlugin<plugins::UiPlugin>()`. It builds `haylen::ui::Gui` trees from JSON with `createGui` and shows them with `mount`, which publishes `guiMounted` on the event bus of the engine, like `unmount` publishes `guiUnmounted`. It also loads and switches themes (`haylen::ui::Theme` in `haylen/ui/Theme.hpp`) and publishes every `haylen::ui::Event` of a GUI through its `events` signal. The method `UiPlugin::getComponents()` returns the `haylen::ui::ComponentRegistry`, where a C++ plugin registers its own component kinds, subclasses of `haylen::ui::Component` that read their properties with a `PropertyReader` and draw through the `haylen::ui::Context` they receive, which Lua then builds with `ui.<kind>{...}` like the built-in ones. The method `UiPlugin::getBackend()` returns the `haylen::ui::Backend` that owns the Dear ImGui context, for C++ code that draws immediate mode windows, and whose `addRenderCallback` lets a component draw with the 2D renderer at its place among the ImGui draws, as `richText` does. The method `UiPlugin::addFontFamily` registers a `haylen::text::FontFamily` under a font name, which reaches the backend as `Backend::FontFiles`, its TrueType faces and fallbacks. Long lists are `haylen::ui::Collection` nodes (`haylen/ui/Collection.hpp`), which `Gui::getCollection(id)` finds: a C++ app gives one its items through a `haylen::ui::CollectionSource`, such as the ready `haylen::ui::CollectionItems`, binds cells with `Collection::setBinder` and a `haylen::ui::CollectionCell`, and places items its own way with a `haylen::ui::CollectionLayout`. The method `UiPlugin::getFocus()` returns the `haylen::ui::FocusNavigator`, which tells which GUI and node hold the focus and whether the ring shows, and `UiPlugin::getNavigation()` the `haylen::ui::NavigationInput` with the navigation actions. A C++ component makes an ImGui item a focus target with `FocusNavigator::addTarget` while it draws, and keeps a direction for itself by overriding `Component::usesFocusDirection`. The methods `core::Engine::setSafeAreaSimulation` and `setBackLeavesApp` are the C++ side of the safe area simulation and the back button, and `setScaling` and `setDesignSize` change the mapping of design space the UI lays out in while the app runs. Text fields reach the platform through `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`), which `Window::getTextInput()` returns and which the [text input guide](text-input.md) describes. See [Architecture](architecture.md) for plugins and [Lua](lua.md) for the scripting model.

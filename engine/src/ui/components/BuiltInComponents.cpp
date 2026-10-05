@@ -1,5 +1,6 @@
 #include "ui/components/BuiltInComponents.hpp"
 
+#include "haylen/ui/Collection.hpp"
 #include "haylen/ui/ComponentRegistry.hpp"
 #include "ui/components/buttons/Button.hpp"
 #include "ui/components/buttons/Chip.hpp"
@@ -121,6 +122,7 @@ void BuiltInComponents::registerAll(ComponentRegistry& registry) {
     registry.add<Tree>("tree");
     registry.add<Table>("table");
     registry.add<SlotGrid>("slotGrid");
+    registry.add<Collection>("collection");
     registry.add<SettingsForm>("settingsForm");
     registry.add<SettingsRow>("settingsRow");
     registry.add<SettingsActions>("settingsActions");

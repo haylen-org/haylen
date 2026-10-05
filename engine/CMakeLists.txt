@@ -457,8 +457,14 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/choices/RadioGroup.cpp
   src/ui/components/choices/SegmentedControl.cpp
   src/ui/components/choices/Toggle.cpp
+  src/ui/components/collections/CellTemplate.cpp
+  src/ui/components/collections/CellTypes.cpp
+  src/ui/components/collections/CollectionDiff.cpp
+  src/ui/components/collections/GridLayout.cpp
+  src/ui/components/collections/LinearLayout.cpp
   src/ui/components/collections/List.cpp
   src/ui/components/collections/ListRow.cpp
+  src/ui/components/collections/SizeCache.cpp
   src/ui/components/collections/SlotGrid.cpp
   src/ui/components/collections/Table.cpp
   src/ui/components/collections/Tree.cpp
@@ -512,16 +518,24 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/touch/PointerTracker.cpp
   src/ui/components/touch/TouchButton.cpp
   src/ui/components/touch/TouchStick.cpp
+  src/ui/Collection.cpp
+  src/ui/CollectionCell.cpp
+  src/ui/CollectionItems.cpp
+  src/ui/CollectionLua.cpp
   src/ui/Context.cpp
   src/ui/FocusNavigator.cpp
   src/ui/FocusSearch.cpp
   src/ui/Gui.cpp
   src/ui/ImGuiConverter.cpp
   src/ui/ImGuiLua.cpp
+  src/ui/LuaItemSource.cpp
+  src/ui/LuaPageSource.cpp
   src/ui/MountLink.cpp
   src/ui/NavigationInput.cpp
   src/ui/PropertyReader.cpp
   src/ui/Scaling.cpp
+  src/ui/Scrollbar.cpp
+  src/ui/Scroller.cpp
   src/ui/Style.cpp
   src/ui/Surfaces.cpp
   src/ui/TextEditor.cpp
@@ -799,6 +813,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-physics-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
   set_target_properties(haylen-physics-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-physics-benchmark)
+
+  # The UI benchmark flings collections of a hundred thousand items on the headless host, which times what the frame thread spends on long lists and counts their binds and cells.
+  add_executable(haylen-ui-benchmark bench/UiBenchmark.cpp)
+  target_include_directories(haylen-ui-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-ui-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-ui-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-ui-benchmark)
 
   # The Lua benchmark runs the bunnymark package in bench/lua-benchmark on the headless host, which times what Lua costs to update and draw many sprites through tables and through float buffers.
   add_executable(haylen-lua-benchmark bench/LuaBenchmark.cpp)
