@@ -384,7 +384,7 @@ TEST(JobsLuaTest, RejectsFailuresAndMisuse) {
 
     EXPECT_NE(fixture.lua("jobs.checkpoint()").find("only runs inside a job"), std::string::npos);
     EXPECT_NE(fixture.lua("jobs.setBudget(0)").find("positive number"), std::string::npos);
-    EXPECT_NE(fixture.lua("jobs.setBudget(0.0004)").find("positive number"), std::string::npos) << "A budget that rounds to no microsecond is no budget.";
+    EXPECT_EQ(fixture.lua("jobs.setBudget(0.0004) return jobs.budget()"), "0.001") << "A positive budget below a microsecond gets one.";
 }
 
 TEST(JobsLuaTest, CountsTheJobThatRuns) {
