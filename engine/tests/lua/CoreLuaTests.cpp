@@ -31,6 +31,7 @@ TEST(CoreLuaTest, ExposesEngineInformationAndClock) {
     EXPECT_DOUBLE_EQ(fixture.engine().getClock().getTimeScale(), 0.5);
     fixture.runLua("haylen.setTimeScale(-2)");
     EXPECT_EQ(fixture.lua("return haylen.timeScale()"), "0.0");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(haylen.setTimeScale, math.huge) return message .. ' ' .. haylen.timeScale()"), "The time scale must be a finite number. 0.0");
 
     fixture.runLua("haylen.reportError('from lua')");
     ASSERT_NE(fixture.engine().getError(), nullptr);

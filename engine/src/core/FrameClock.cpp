@@ -1,6 +1,8 @@
 #include "haylen/core/FrameClock.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <stdexcept>
 
 namespace haylen::core {
 
@@ -27,7 +29,11 @@ bool FrameClock::consumeFixedStep() noexcept {
     return true;
 }
 
-void FrameClock::setTimeScale(double value) noexcept {
+// An infinite scale would make every frame owe endless fixed steps, so the frame loop would never end.
+void FrameClock::setTimeScale(double value) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument("The time scale must be a finite number.");
+    }
     timeScale = std::max(0.0, value);
 }
 

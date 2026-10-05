@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -42,6 +43,15 @@ TEST(FrameClockTest, TimeScaleAffectsScaledTimeOnly) {
 
     clock.setTimeScale(-2.0);
     EXPECT_DOUBLE_EQ(clock.getTimeScale(), 0.0);
+}
+
+// An infinite scale would owe endless fixed steps, so the frame loop that consumes them would never end.
+TEST(FrameClockTest, RefusesTimeScalesThatAreNotFinite) {
+    core::FrameClock clock;
+    clock.setTimeScale(2.0);
+    EXPECT_THROW(clock.setTimeScale(std::numeric_limits<double>::infinity()), std::invalid_argument);
+    EXPECT_THROW(clock.setTimeScale(std::numeric_limits<double>::quiet_NaN()), std::invalid_argument);
+    EXPECT_DOUBLE_EQ(clock.getTimeScale(), 2.0);
 }
 
 TEST(FrameClockTest, PauseStopsFixedStepsAndGatesProcessModes) {

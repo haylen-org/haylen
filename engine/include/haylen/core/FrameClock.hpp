@@ -19,7 +19,8 @@ class FrameClock final {
         skipNext = true;
     }
 
-    void setTimeScale(double value) noexcept;
+    // Negative scales count as zero. Throws std::invalid_argument for a scale that is not finite.
+    void setTimeScale(double value);
     [[nodiscard]] double getTimeScale() const noexcept {
         return timeScale;
     }
