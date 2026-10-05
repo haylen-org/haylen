@@ -375,6 +375,9 @@ TEST(TweenLuaTest, ReportsMistakes) {
     EXPECT_NE(fixture.lua("tween.fromTo(box, 1, {x = 1}, {})").find("needs an end value for the field \"x\""), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(5, 1, {})").find("must be a table or a userdata"), std::string::npos);
 
+    // A list counts the elements it holds, whatever its `__len` claims.
+    EXPECT_NE(fixture.lua("tween.path({x = 0, y = 0}, 1, setmetatable({}, {__len = function() return -1 end}))").find("A path needs at least one point."), std::string::npos);
+
     // clang-format off
     fixture.runLua(R"(
         target = setmetatable({}, {__index = function() return 0 end, __newindex = function() error('setter refused') end})

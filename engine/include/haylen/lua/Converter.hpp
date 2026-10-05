@@ -156,10 +156,11 @@ template <typename T> struct Converter<std::vector<T>> {
             lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
         }
     }
+    // The elements are read raw, so the length is the raw one too, which no `__len` of the table can make up.
     static std::vector<T> read(lua_State* L, int index) {
         luaL_checktype(L, index, LUA_TTABLE);
         const int table = lua_absindex(L, index);
-        const auto length = static_cast<std::size_t>(luaL_len(L, table));
+        const auto length = static_cast<std::size_t>(lua_rawlen(L, table));
         std::vector<T> values;
         values.reserve(length);
         for (std::size_t element = 1; element <= length; ++element) {
