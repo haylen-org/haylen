@@ -8,6 +8,7 @@ std::mutex& AndroidActivity::mutex = *new std::mutex();
 math::Insets AndroidActivity::safeAreaInsets{};
 std::atomic<bool> AndroidActivity::framePresented = false;
 std::atomic<bool> AndroidActivity::television = false;
+std::atomic<float> AndroidActivity::density = 1.0F;
 std::atomic<Orientation> AndroidActivity::orientation = Orientation::Landscape;
 
 const GameActivity& AndroidActivity::getNative() {
@@ -22,6 +23,14 @@ void AndroidActivity::setSafeAreaInsets(const math::Insets& value) {
 math::Insets AndroidActivity::getSafeAreaInsets() {
     const std::scoped_lock lock(mutex);
     return safeAreaInsets;
+}
+
+void AndroidActivity::setDensity(float value) noexcept {
+    density.store(value, std::memory_order_release);
+}
+
+float AndroidActivity::getDensity() noexcept {
+    return density.load(std::memory_order_acquire);
 }
 
 void AndroidActivity::setOrientation(Orientation value) noexcept {

@@ -224,6 +224,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeKeyboard(JNIEnv*, jc
     haylen::platform::AndroidTextInput::receiveKeyboard(x, y, width, height);
 }
 
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeDensity(JNIEnv*, jclass, jfloat density) {
+    haylen::platform::AndroidActivity::setDensity(density);
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeOrientation(JNIEnv*, jclass, jboolean portrait) {
     haylen::platform::AndroidActivity::setOrientation(portrait == JNI_TRUE ? haylen::platform::Orientation::Portrait : haylen::platform::Orientation::Landscape);
 }

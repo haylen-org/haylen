@@ -23,7 +23,7 @@ print(string.format('rendering at %dx%d pixels', width, height))
 
 ### window.dpiScale()
 
-Returns the ratio between framebuffer pixels and window points, for example `2.0` on a Retina display and `1.0` on a standard one.
+Returns the ratio between framebuffer pixels and window points, for example `2.0` on a Retina display and `1.0` on a standard one. On Android a point is a density-independent pixel, so a phone of 420 dots per inch reports `2.625`, and on the web it is a CSS pixel.
 
 ```lua
 local window = require('haylen.window')

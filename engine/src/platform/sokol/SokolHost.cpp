@@ -13,6 +13,7 @@
 
 #include "platform/web/BrowserAudioOutput.hpp"
 #elif defined(__ANDROID__)
+#include "platform/android/AndroidActivity.hpp"
 #include "platform/android/JavaBridge.hpp"
 #endif
 
@@ -22,8 +23,13 @@ math::Vec2 SokolHost::getFramebufferSize() const noexcept {
     return {sapp_widthf(), sapp_heightf()};
 }
 
+// Sokol reports one pixel per point on Android, where the activity reports the density of the display instead.
 float SokolHost::getDpiScale() const noexcept {
+#if defined(__ANDROID__)
+    return AndroidActivity::getDensity();
+#else
     return sapp_dpi_scale();
+#endif
 }
 
 bool SokolHost::isFullscreen() const noexcept {

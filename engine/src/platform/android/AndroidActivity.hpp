@@ -18,6 +18,10 @@ class AndroidActivity final {
     static void setSafeAreaInsets(const math::Insets& value);
     [[nodiscard]] static math::Insets getSafeAreaInsets();
 
+    // The pixels of the display per density-independent pixel, which the activity reports when it starts and whenever the configuration changes.
+    static void setDensity(float value) noexcept;
+    [[nodiscard]] static float getDensity() noexcept;
+
     static void setOrientation(Orientation value) noexcept;
     [[nodiscard]] static Orientation getOrientation() noexcept;
 
@@ -37,6 +41,7 @@ class AndroidActivity final {
     static math::Insets safeAreaInsets;
     static std::atomic<bool> framePresented;
     static std::atomic<bool> television;
+    static std::atomic<float> density;
     static std::atomic<Orientation> orientation;
 };
 

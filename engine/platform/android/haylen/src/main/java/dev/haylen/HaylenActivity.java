@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.os.LocaleList;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -71,6 +72,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             setIntent(link);
         }
         nativeTelevision(isTelevision(this));
+        nativeDensity(getResources().getDisplayMetrics().density);
         nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(getResources().getConfiguration()));
         battery.register();
@@ -151,6 +153,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     @Override
     public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
+        nativeDensity(configuration.densityDpi / (float) DisplayMetrics.DENSITY_DEFAULT);
         nativeOrientation(configuration.orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(configuration));
         overlays.refresh();
@@ -404,6 +407,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeLowMemory();
 
     private static native void nativeKeyboard(int x, int y, int width, int height);
+
+    private static native void nativeDensity(float density);
 
     private static native void nativeOrientation(boolean portrait);
 
