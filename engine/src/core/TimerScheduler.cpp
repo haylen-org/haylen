@@ -1,6 +1,7 @@
 #include "haylen/core/TimerScheduler.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <stdexcept>
 #include <utility>
@@ -101,39 +102,46 @@ bool TimerScheduler::isActive(Id id) const noexcept {
     return timer != nullptr && !timer->cancelled;
 }
 
-TimerScheduler::Timer* TimerScheduler::findNextDue() const noexcept {
-    Timer* due = nullptr;
-    for (const std::shared_ptr<Timer>& timer : timers) {
-        const bool eligible = !timer->cancelled && !timer->paused && !timer->firedThisUpdate && timer->repeatsLeft != 0;
-        if (eligible && timer->remaining <= 0.0F && (due == nullptr || timer->remaining < due->remaining)) {
-            due = timer.get();
-        }
-    }
-    return due;
-}
-
 void TimerScheduler::update(const FrameClock& clock) {
     updating = true;
+    due.clear();
 
     // A timer that its process mode holds keeps its remaining time and cannot fire in this update.
-    for (const std::shared_ptr<Timer>& timer : timers) {
-        const bool running = !timer->cancelled && !timer->paused && clock.canProcess(resolveMode(timer->options));
-        timer->firedThisUpdate = !running;
-        if (running) {
-            timer->remaining -= static_cast<float>(timer->options.unscaled ? clock.getUnscaledDelta() : clock.getDelta());
+    for (std::size_t index = 0; index < timers.size(); ++index) {
+        Timer& timer = *timers[index];
+        const bool running = !timer.cancelled && !timer.paused && clock.canProcess(resolveMode(timer.options));
+        timer.firedThisUpdate = !running;
+        if (!running) {
+            continue;
+        }
+        timer.remaining -= static_cast<float>(timer.options.unscaled ? clock.getUnscaledDelta() : clock.getDelta());
+        if (timer.remaining <= 0.0F && timer.repeatsLeft != 0) {
+            due.emplace_back(timer.remaining, index);
         }
     }
 
-    // Due timers fire in the order they expired, so a timer can still cancel another one that expires later in the same update.
+    // Due timers fire in the order they expired, the earlier one in the list first on a tie, so a timer can still cancel another one that expires later in the same update. A repeating timer that fell behind fires again while it is still due, and the timers that the callbacks create wait in the pending list for the next update.
+    std::ranges::make_heap(due, std::greater<>());
     try {
-        while (Timer* timer = findNextDue()) {
-            if (timer->repeatsLeft > 0) {
-                --timer->repeatsLeft;
+        while (!due.empty()) {
+            std::ranges::pop_heap(due, std::greater<>());
+            const std::size_t index = due.back().second;
+            due.pop_back();
+            Timer& timer = *timers[index];
+            if (timer.cancelled || timer.paused || timer.firedThisUpdate || timer.repeatsLeft == 0) {
+                continue;
             }
-            timer->remaining += timer->interval;
-            timer->firedThisUpdate = timer->interval <= 0.0F;
-            timer->cancelled = timer->repeatsLeft == 0;
-            timer->callback();
+            if (timer.repeatsLeft > 0) {
+                --timer.repeatsLeft;
+            }
+            timer.remaining += timer.interval;
+            timer.firedThisUpdate = timer.interval <= 0.0F;
+            timer.cancelled = timer.repeatsLeft == 0;
+            timer.callback();
+            if (!timer.cancelled && !timer.paused && !timer.firedThisUpdate && timer.remaining <= 0.0F) {
+                due.emplace_back(timer.remaining, index);
+                std::ranges::push_heap(due, std::greater<>());
+            }
         }
     } catch (...) {
         finishUpdate();

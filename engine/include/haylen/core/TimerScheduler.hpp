@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Connection.hpp"
@@ -76,11 +77,13 @@ class TimerScheduler final {
 
     Id add(float interval, float delay, int count, std::function<void()> callback, Options options);
     [[nodiscard]] Timer* find(Id id) const noexcept;
-    [[nodiscard]] Timer* findNextDue() const noexcept;
     void finishUpdate();
 
     std::vector<std::shared_ptr<Timer>> timers;
     std::vector<std::shared_ptr<Timer>> pending;
+
+    // The due timers of the running update, as a heap of their remaining time and their place in the list, which every update reuses.
+    std::vector<std::pair<float, std::size_t>> due;
     Id nextId = 1;
     bool updating = false;
 };
