@@ -166,6 +166,19 @@ TEST_F(PlayAreaTest, GivesTheGamepadToTheGameOrToTheControls) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"second:click"}));
 }
 
+// A direction that the app binds to a whole stick takes both axes of that stick from the game while a control has the focus.
+TEST_F(PlayAreaTest, TakesBothAxesOfAStickThatADirectionIsBoundTo) {
+    getEngine().getActions().define({.name = "uiDown", .bindings = {*input::ActionMap::Binding::parse("stick:right")}});
+    focus("first");
+    input::GamepadState pushed{.connected = true};
+    pushed.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = 1.0F;
+    pushed.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = 1.0F;
+    getFixture().host().setGamepad(0, pushed);
+    frames(2);
+    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, input::GamepadAxis::RightX));
+    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, input::GamepadAxis::RightY));
+}
+
 TEST_F(PlayAreaTest, TakesTheFocusFromAClickOrATouchThatTheGameAlsoReads) {
     focus("first");
     const math::Vec2 center = getBounds(*gui, "stage").getCenter();

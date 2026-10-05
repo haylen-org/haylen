@@ -139,6 +139,7 @@ TEST_F(DebugDrawingTest, SwitchesDrawingsFromLua) {
     fixture.runLua("debugging = require('haylen.debug') graphics2d = require('haylen.graphics2d')");
     EXPECT_EQ(fixture.lua("return tostring(debugging.drawing('bounds')) .. ' ' .. #debugging.drawings() .. ' ' .. table.concat(debugging.drawingNames(), ',') .. ' ' .. debugging.drawKey()"), "false 0 bounds,physics f4");
     EXPECT_EQ(fixture.lua("debugging.setDrawing('bounds', true) return tostring(debugging.drawing('bounds')) .. ' ' .. debugging.drawings()[1]"), "true bounds");
+    EXPECT_EQ(fixture.lua("debugging.setDrawing('bounds', false) debugging.setDrawing('paths', false) return tostring(debugging.drawing('bounds')) .. ' ' .. #debugging.drawings()"), "false 0");
     EXPECT_EQ(fixture.lua("debugging.setDrawKey('f6') local key = debugging.drawKey() debugging.setDrawKey(nil) return key .. ' ' .. tostring(debugging.drawKey())"), "f6 nil");
 
     // clang-format off

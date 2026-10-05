@@ -65,6 +65,22 @@ TEST(SpringTest, DampsVectors) {
     Vec2 jump{};
     EXPECT_NEAR(Spring::smoothDamp(Vec2{}, {5.0F, 0.0F}, jump, 0.1F, 100.0F).x, 5.0F, 1e-4F);
     EXPECT_LT(jump.getLength(), 1e-3F);
+
+    // A step without time changes nothing.
+    Vec2 still{3.0F, 0.0F};
+    EXPECT_EQ(Spring::smoothDamp(Vec2{1.0F, 2.0F}, {5.0F, 0.0F}, still, 0.3F, 0.0F), Vec2(1.0F, 2.0F));
+    EXPECT_EQ(still, Vec2(3.0F, 0.0F));
+}
+
+// A spring that rushes at its target would pass it within one step, so it rests on the target instead.
+TEST(SpringTest, StopsOnTheTargetInsteadOfPassingIt) {
+    float velocity = 1000.0F;
+    EXPECT_EQ(Spring::smoothDamp(0.0F, 10.0F, velocity, 0.25F, 1.0F / 60.0F), 10.0F);
+    EXPECT_EQ(velocity, 0.0F);
+
+    Vec2 rushing{1000.0F, 0.0F};
+    EXPECT_EQ(Spring::smoothDamp(Vec2{}, {10.0F, 0.0F}, rushing, 0.25F, 1.0F / 60.0F), Vec2(10.0F, 0.0F));
+    EXPECT_TRUE(rushing.isZero());
 }
 
 TEST(ShuffleBagTest, DealsEveryItemOncePerRound) {

@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 
+#include "haylen/assets/Manager.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -183,6 +186,13 @@ TEST(Particles2DLuaTest, CreatesSystemsTrailsAndImageShapes) {
     EXPECT_EQ(fixture.lua("local x = sparkle:particle(1).x return x >= -10 and x <= 10"), "true");
     EXPECT_NE(fixture.lua("assets.load('images/faint.png', 'imageShape')").find("at least one pixel"), std::string::npos);
     EXPECT_NE(fixture.lua("assets.load('images/dot.png', 'imageShape', {edge = 1})").find("edge"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return assets.load('images/faint.png', 'imageShape', {alphaThreshold = 0.1}).count"), "4");
+    EXPECT_NE(fixture.lua("assets.load('images/dot.png', 'imageShape', {source = {0, 0, 2}})").find("The source of an image shape needs four numbers: x, y, width and height."), std::string::npos);
+
+    // Options that C++ leaves out are the same as no options.
+    assets::Manager& manager = fixture.engine().getAssets();
+    EXPECT_EQ(manager.load("imageShape", "images/dot.png", core::Json()), manager.load("imageShape", "images/dot.png"));
+    EXPECT_EQ(manager.load("particles", "effects/spark.particles", core::Json()), manager.load("particles", "effects/spark.particles"));
 }
 
 TEST(Particles2DLuaTest, LoadsEffectFilesForLua) {

@@ -72,6 +72,11 @@ TEST_F(BehaviorTreeTest, DecoratorsReshapeResults) {
     BehaviorTree giveUp(BehaviorTree::retry(BehaviorTree::condition([](Blackboard&) { return false; }), 2));
     EXPECT_EQ(giveUp.tick(0.1F), Status::Running);
     EXPECT_EQ(giveUp.tick(0.1F), Status::Failure);
+
+    // A repeater waits while its child runs, and only a finished child counts.
+    BehaviorTree once(BehaviorTree::repeater(step("walk", 2, Status::Success), 1));
+    EXPECT_EQ(once.tick(0.1F), Status::Running);
+    EXPECT_EQ(once.tick(0.1F), Status::Success);
 }
 
 TEST_F(BehaviorTreeTest, TimersFollowTheTreeClock) {
@@ -171,6 +176,7 @@ TEST(UtilitySelectorTest, PicksTheOptionWithTheBestScore) {
     health = 100.0F;
     distance = 200.0F;
     EXPECT_FALSE(selector.choose().has_value());
+    EXPECT_FALSE(selector.choose(random, 0.5F).has_value());
     EXPECT_THROW(selector.add({.considerations = {{.input = [] { return 0.0F; }, .maximum = 0.0F}}}), std::invalid_argument);
 }
 
@@ -221,6 +227,16 @@ TEST(InfluenceMapTest, StampsSpreadsAndFindsExtremes) {
     EXPECT_THROW((void)allies.get(20, 0), std::out_of_range);
     EXPECT_THROW(InfluenceMap(0, 1, 1.0F), std::invalid_argument);
     EXPECT_EQ(InfluenceMap::falloffFromName("quadratic"), InfluenceMap::Falloff::Quadratic);
+    EXPECT_EQ(InfluenceMap::falloffName(InfluenceMap::Falloff::Constant), "constant");
+}
+
+// A stamp without a radius reaches no cell, not even the one whose center it sits on.
+TEST(InfluenceMapTest, StampsWithoutARadiusChangeNothing) {
+    InfluenceMap map(2, 2, 10.0F);
+    map.stamp(map.getCellCenter(0, 0), 5.0F, 0.0F);
+    map.stamp(map.getCellCenter(1, 1), 5.0F, -1.0F, InfluenceMap::Falloff::Constant);
+    EXPECT_EQ(map.get(0, 0), 0.0F);
+    EXPECT_EQ(map.get(1, 1), 0.0F);
 }
 
 } // namespace haylen::ai

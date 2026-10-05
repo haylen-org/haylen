@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <lua.hpp>
+
 #include <algorithm>
 #include <map>
 #include <memory>
@@ -14,6 +16,7 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/plugins/AssetsPlugin.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -403,6 +406,12 @@ TEST_F(AssetsManagerTest, RegistersCustomTypes) {
     ASSERT_TRUE(fixture.frameUntil([&] { return !failure.empty(); }));
     EXPECT_EQ(failure, "The fragile asset could not be built.");
     EXPECT_EQ(assets.getPendingCount(), 0U);
+
+    // Lua loads an asset of a new type once the plugin of the type tells how Lua sees it.
+    fixture.runLua("assets = require('haylen.assets')");
+    EXPECT_NE(fixture.lua("assets.load('levels/one.level')").find("The asset type \"level\" has no Lua representation."), std::string::npos);
+    fixture.engine().getPlugin<plugins::AssetsPlugin>().registerLuaPusher("level", [](lua_State* L, const std::shared_ptr<void>& asset) { lua_pushinteger(L, *std::static_pointer_cast<int>(asset)); });
+    EXPECT_EQ(fixture.lua("return assets.load('levels/one.level')"), "3");
 }
 
 } // namespace haylen::assets

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <numbers>
 #include <stdexcept>
 #include <vector>
 
@@ -72,6 +73,12 @@ TEST_F(PolygonTest, OffsetGrowsAndShrinks) {
     // Round corners add a quarter circle at each corner instead of a square.
     EXPECT_NEAR(area(Polygon::offset(shape, 1.0F)), 140.0F + Math::kPi, 0.05F);
     EXPECT_TRUE(Polygon::offset(shape, -6.0F).empty());
+
+    // A bevel cuts each corner straight between the grown sides, and a square join cuts it at the offset distance from the corner.
+    EXPECT_NEAR(area(Polygon::offset(shape, 1.0F, Polygon::Join::Bevel)), 142.0F, 1e-2F);
+    EXPECT_NEAR(area(Polygon::offset(shape, 1.0F, Polygon::Join::Square)), 132.0F + 8.0F * std::numbers::sqrt2_v<float>, 0.05F);
+    EXPECT_EQ(Polygon::joinFromName("square"), Polygon::Join::Square);
+    EXPECT_EQ(Polygon::joinName(Polygon::Join::Bevel), "bevel");
 }
 
 TEST_F(PolygonTest, SimplifyDropsPointsWithinTheTolerance) {
@@ -168,6 +175,15 @@ TEST(MarchingSquaresTest, TracesHolesAndSeparateIslandsOfABitmap) {
     EXPECT_EQ(holes, 1);
     // Outlines cut an eighth of a pixel from every outer corner, so the ring covers 9 - 0.5 around a hole of 0.5, and the lone pixel covers 0.5.
     EXPECT_NEAR(total, 8.5F, 1e-4F);
+    EXPECT_THROW((void)MarchingSquares::traceBitmap(pixels, 4, 3), std::invalid_argument);
+}
+
+// A cell with only two diagonal corners inside joins them when the average of its four samples is inside, and keeps them apart otherwise.
+TEST(MarchingSquaresTest, JoinsDiagonalCornersWhoseCenterIsInside) {
+    EXPECT_EQ(MarchingSquares::trace(std::vector<float>{1.0F, 0.2F, 0.2F, 1.0F}, 2, 2).size(), 1U);
+    EXPECT_EQ(MarchingSquares::trace(std::vector<float>{0.2F, 1.0F, 1.0F, 0.2F}, 2, 2).size(), 1U);
+    EXPECT_EQ(MarchingSquares::trace(std::vector<float>{0.6F, 0.0F, 0.0F, 0.6F}, 2, 2).size(), 2U);
+    EXPECT_EQ(MarchingSquares::trace(std::vector<float>{0.0F, 0.6F, 0.6F, 0.0F}, 2, 2).size(), 2U);
 }
 
 TEST(MarchingSquaresTest, ClosesAreasAlongTheEdgeOfTheGrid) {
@@ -205,6 +221,22 @@ TEST(SplineTest, SamplesEvenlyByDistance) {
     const Vec2 middle = curve.getPointAtDistance(curve.getLength() * 0.5F);
     EXPECT_EQ(middle, curve.getPoint(curve.getParameterAtDistance(curve.getLength() * 0.5F)));
     EXPECT_NEAR(curve.getTangentAtDistance(0.0F).getLength(), 1.0F, 1e-4F);
+    EXPECT_EQ(curve.getParameterAtDistance(curve.getLength() + 50.0F), 1.0F);
+}
+
+TEST(SplineTest, CurvesWithoutLengthStayAtTheirStart) {
+    const Spline dot({{0.0F, 0.0F}, {0.0F, 0.0F}});
+    EXPECT_EQ(dot.getLength(), 0.0F);
+    EXPECT_EQ(dot.getParameterAtDistance(10.0F), 0.0F);
+    EXPECT_EQ(dot.sampleByDistance(1.0F), std::vector<Vec2>{Vec2{}});
+}
+
+// A closed Bezier curve takes 3n points and its last segment ends on the first point.
+TEST(SplineTest, ClosedBezierCurvesReturnToTheirFirstPoint) {
+    const Spline loop({{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}}, Spline::Kind::Bezier, true);
+    EXPECT_EQ(loop.getSegmentCount(), 1U);
+    EXPECT_EQ(loop.getPoint(0.5F), Vec2(7.5F, 3.75F));
+    EXPECT_THROW(Spline({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 0.0F}}, Spline::Kind::Bezier, true), std::invalid_argument);
 }
 
 TEST(SplineTest, ClosedCurvesKeepWrappedDistancesOnTheCurve) {

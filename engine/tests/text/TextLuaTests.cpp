@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -267,6 +268,11 @@ TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
     lua("family = graphics.newFontFamily({regular = font}) ui.addFont('story', family) ui.addFont('pixel', assets.font('fonts/pixel.fnt'))");
     EXPECT_EQ(lua("local story = graphics2d.newRichText('[font=serif]x[/font]', {fonts = {serif = family}}) return story.characterCount"), "1");
     EXPECT_NE(lua("ui.addFont('story', family)").find("already has a font named \"story\""), std::string::npos);
+}
+
+TEST(TextPluginTest, RequiresAStartedEngine) {
+    plugins::TextPlugin plugin;
+    EXPECT_THROW((void)plugin.getRegistry(), std::logic_error);
 }
 
 } // namespace haylen

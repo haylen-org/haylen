@@ -158,4 +158,34 @@ TEST(AiLuaTest, RunsLuaStatesWithArguments) {
     EXPECT_EQ(fixture.lua("machine.onChange = nil machine:change('idle') return tostring(machine.onChange)"), "nil");
 }
 
+TEST(AiLuaTest, ChangesQueuedByAnEnterKeepTheirOwnArguments) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        ai = require('haylen.ai')
+        log = {}
+        machine = ai.newStateMachine({
+            start = {enter = function(m) m:change('walk', 'north') m:change('run', 'south', 2) end},
+            walk = {enter = function(m, heading) log[#log + 1] = 'walk ' .. heading end},
+            run = {enter = function(m, heading, speed) log[#log + 1] = 'run ' .. heading .. ' ' .. speed end},
+        })
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("machine:change('start') return table.concat(log, ', ') .. ' ' .. machine.current"), "walk north, run south 2 run");
+}
+
+// The machine reads the callbacks from the table of states when it calls them, so edits of that table reach it, and a state whose table is gone changes without callbacks.
+TEST(AiLuaTest, ReadsTheCallbacksOfStatesFromTheirTable) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        log = {}
+        states = {idle = {enter = function() log[#log + 1] = 'first' end}, gone = {enter = function() log[#log + 1] = 'gone' end}}
+        machine = require('haylen.ai').newStateMachine(states)
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("states.idle.enter = function() log[#log + 1] = 'second' end machine:change('idle') return table.concat(log, ', ')"), "second");
+    EXPECT_EQ(fixture.lua("states.gone = nil machine:change('gone') return table.concat(log, ', ') .. ' ' .. machine.current"), "second gone");
+}
+
 } // namespace haylen::ai

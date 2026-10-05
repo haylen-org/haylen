@@ -384,6 +384,7 @@ TEST(JobsLuaTest, RejectsFailuresAndMisuse) {
 
     EXPECT_NE(fixture.lua("jobs.checkpoint()").find("only runs inside a job"), std::string::npos);
     EXPECT_NE(fixture.lua("jobs.setBudget(0)").find("positive number"), std::string::npos);
+    EXPECT_NE(fixture.lua("jobs.setBudget(0.0004)").find("positive number"), std::string::npos) << "A budget that rounds to no microsecond is no budget.";
 }
 
 TEST(JobsLuaTest, CountsTheJobThatRuns) {
@@ -406,6 +407,13 @@ TEST(JobsLuaTest, StartsWithMoreArgumentsThanTheMinimumStack) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(result)") != "nil"; }));
     EXPECT_EQ(fixture.lua("return result"), "600");
+}
+
+// The job starts with copies of its arguments, so arguments that fill more than half of the Lua stack cannot start one.
+TEST(JobsLuaTest, RefusesMoreArgumentsThanTheStackHolds) {
+    test::EngineFixture fixture;
+    EXPECT_EQ(fixture.lua("local values = {} for i = 1, 600000 do values[i] = i end return select(2, pcall(require('haylen.jobs').spawn, function() end, table.unpack(values)))"), "A job cannot start with that many arguments.");
+    EXPECT_EQ(fixture.lua("return require('haylen.jobs').runningCount()"), "0");
 }
 
 TEST(SignalLuaTest, ConnectsEmitsAndDisconnects) {

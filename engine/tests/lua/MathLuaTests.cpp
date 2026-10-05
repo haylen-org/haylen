@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <stdexcept>
 #include <string>
 
 #include "haylen/lua/Stack.hpp"
@@ -143,6 +144,17 @@ TEST_F(MathLuaTest, PushesCurvesInTheFormsItReads) {
     lua::Stack::push(L, FloatRange{2.0F, 5.0F});
     lua_setglobal(L, "range");
     EXPECT_EQ(lua("return range[1] .. ' ' .. range[2]"), "2.0 5.0");
+}
+
+TEST_F(MathLuaTest, RejectsCurvesWhoseValuesDoNotFit) {
+    EXPECT_NE(lua("return m.ease({curve = 'quadIn', period = 0.5}, 0.5)").find("An amplitude and a period only apply to the elastic curves."), std::string::npos);
+    EXPECT_NE(lua("return m.ease({curve = 'elasticOut', period = 0}, 0.5)").find("An elastic curve needs a positive period."), std::string::npos);
+    EXPECT_NE(lua("return m.ease({points = {0.5}}, 0.5)").find("A points curve needs at least two points."), std::string::npos);
+    EXPECT_NE(lua("return m.ease({points = {{1, 0}, {0, 1}}}, 0.5)").find("The points of a curve must be ordered by x."), std::string::npos);
+    EXPECT_THROW((void)EasingCurve::custom(nullptr), std::invalid_argument);
+
+    // Past its last point a points curve holds the value of that point.
+    EXPECT_EQ(lua("return m.ease({points = {{0, 0}, {0.5, 1}}}, 0.8)"), "1.0");
 }
 
 TEST_F(MathLuaTest, ConstructorsAcceptEveryValueForm) {

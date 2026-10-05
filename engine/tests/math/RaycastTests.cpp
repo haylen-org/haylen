@@ -67,6 +67,7 @@ TEST(RaycastTest, CastsAgainstChainsAndSegmentLists) {
     EXPECT_FLOAT_EQ(math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {100.0F, 5.0F}), stairs, false)->distance, 10.0F);
     EXPECT_EQ(math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {30.0F, -20.0F}), stairs, true)->index, 3U);
     EXPECT_FALSE(math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {30.0F, -20.0F}), stairs, false).has_value());
+    EXPECT_FALSE(math::Raycast::chain(ray, std::vector<math::Vec2>{{30.0F, 5.0F}}, true).has_value()) << "A single point has no edge to hit.";
 
     const std::vector<math::Segment> fences{{{60.0F, 0.0F}, {60.0F, 10.0F}}, {{30.0F, 0.0F}, {30.0F, 10.0F}}, {{90.0F, 0.0F}, {90.0F, 10.0F}}};
     const std::optional<math::RayHit> closest = math::Raycast::segments(ray, fences);

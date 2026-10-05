@@ -38,9 +38,11 @@ TEST(ColorTest, ConvertsEveryHueSector) {
     EXPECT_EQ(Color::fromHsv(1.0F / 3.0F, 1.0F, 1.0F).g, 1.0F);
     EXPECT_EQ(Color::fromHsv(2.0F / 3.0F, 1.0F, 1.0F).b, 1.0F);
     for (int sector = 0; sector < 6; ++sector) {
-        const Color color = Color::fromHsv((static_cast<float>(sector) + 0.5F) / 6.0F, 1.0F, 1.0F, 0.25F);
+        const float hue = (static_cast<float>(sector) + 0.5F) / 6.0F;
+        const Color color = Color::fromHsv(hue, 1.0F, 1.0F, 0.25F);
         EXPECT_FLOAT_EQ(color.a, 0.25F);
         EXPECT_FLOAT_EQ(std::max({color.r, color.g, color.b}), 1.0F);
+        EXPECT_NEAR(color.toHsv().hue, hue, 1e-5F) << sector;
     }
 }
 
@@ -51,8 +53,9 @@ TEST(ColorLuaTest, ConvertsToHsvAndBlendsAroundTheHueCircle) {
     EXPECT_EQ(fixture.lua("return string.format('%.3f %.1f %.1f %.2f', m.color(0, 0, 1, 0.25):toHsv())"), "0.667 1.0 1.0 0.25");
     // Red to blue passes through magenta in HSV instead of the dark purple of a plain lerp.
     EXPECT_EQ(fixture.lua("local red, blue = m.color('#FFFF0000'), m.color('#FF0000FF') return tostring(red:lerpHsv(blue, 0.5)) .. ' ' .. tostring(red:lerp(blue, 0.5))"), "#FFFF00FF #FF800080");
-    // A gray takes the hue of the other color, so only the saturation changes.
+    // A gray takes the hue of the other color, so only the saturation changes, whichever end it is.
     EXPECT_EQ(fixture.lua("return tostring(m.color(1, 1, 1):lerpHsv({1, 0, 0}, 0.5))"), "#FFFF8080");
+    EXPECT_EQ(fixture.lua("return tostring(m.color(1, 0, 0):lerpHsv({1, 1, 1}, 0.5))"), "#FFFF8080");
 }
 
 TEST(Transform2DTest, ComposesAndInverts) {

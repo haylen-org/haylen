@@ -182,6 +182,7 @@ TEST_F(BitmapFontTest, LoadsAsAssetsAndDrawsLikeAnyFont) {
     EXPECT_EQ(assets.load("gridFont", "fonts/grid.png", {{"characters", "0123456789"}, {"cellWidth", 8}, {"cellHeight", 8}}), assets.load("gridFont", "fonts/grid.png", {{"characters", "0123456789"}, {"cellWidth", 8.0}, {"cellHeight", 8.0}, {"spacing", {0, 0}}}));
     EXPECT_THROW((void)assets.load("gridFont", "fonts/grid.png", {{"cellWidth", 8}, {"cellHeight", 8}}), std::invalid_argument);
     EXPECT_THROW((void)assets.load("gridFont", "fonts/grid.png", {{"characters", "0"}, {"cellWidth", 8}, {"cellHeight", 8}, {"spacing", 2}}), std::invalid_argument);
+    EXPECT_THROW((void)assets.load("gridFont", "fonts/grid.png", {{"characters", "0"}, {"cellWidth", 8}, {"cellHeight", 8}, {"advance", "wide"}}), std::invalid_argument);
 
     fixture.frames(1);
     // clang-format off

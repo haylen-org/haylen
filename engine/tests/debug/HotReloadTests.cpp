@@ -202,6 +202,16 @@ TEST_F(AssetReloadTest, RebuildsCatalogsAndThemesFromChangedFiles) {
     EXPECT_EQ(fixture.lua("return localization.text('greeting')"), "Hi again");
     EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. ui.themeColor('accent'):toHex()"), "wood #FF405060");
     EXPECT_FALSE(fixture.engine().isRestartRequested());
+
+    // An editor may still be writing, so texts that are not JSON yet and a theme that does not build yet keep what the app had.
+    fixture.package().setFile("content/locale/en.json", test::TestFiles::bytes("{"));
+    fixture.package().setFile("content/themes/wood.json", test::TestFiles::bytes(R"({"name": "wood", "colors": {"accent": "teal"}})"));
+    fixture.host().getDevelopmentSession()->addChanges(changed);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return localization.text('greeting')"), "Hi again");
+    EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex()"), "#FF405060");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
 }
 
 TEST_F(HotReloadPluginTest, RestartsForChangedFonts) {

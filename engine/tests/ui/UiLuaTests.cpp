@@ -385,6 +385,23 @@ TEST_F(UiLuaTest, HandsTheEventsOfEveryKindToTheHandlersThatAnswerThem) {
     EXPECT_NE(std::string_view(getEngine().getError()->what()).find("unmount failed"), std::string::npos);
 }
 
+// A handler that unmounts its GUI ends the events of that GUI that were still waiting in the same frame.
+TEST_F(UiLuaTest, DropsTheEventsOfAGuiThatAHandlerUnmounted) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        heard = {}
+        gui = ui.mount(ui.column{
+            ui.card{id = 'first', width = 100, height = 100, onMount = function(event) heard[#heard + 1] = event.id gui:unmount() end},
+            ui.card{id = 'second', width = 100, height = 100, onMount = function(event) heard[#heard + 1] = event.id end},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "first");
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 TEST_F(UiLuaTest, StylesNodesWithStylesThemesAndCursors) {
     // clang-format off
     fixture.runLua(R"(
@@ -475,6 +492,11 @@ TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
     fixture.frames(2);
     EXPECT_NE(fixture.lua("return screen:bounds('heading').width"), bold);
     EXPECT_NE(fixture.lua("ui.addTheme({name = 'odd', fonts = {body = {bold = 'yes'}}})").find("The theme font \"body\" must set \"bold\" to \"true\" or \"false\"."), std::string::npos);
+
+    // A font that is neither registered nor the default has no family.
+    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
+    EXPECT_NE(plugin.getFontFamily(fixture.engine(), "story"), nullptr);
+    EXPECT_EQ(plugin.getFontFamily(fixture.engine(), "missing"), nullptr);
 }
 
 TEST_F(UiLuaTest, DrawsImmediateWindowsInsideScenes) {

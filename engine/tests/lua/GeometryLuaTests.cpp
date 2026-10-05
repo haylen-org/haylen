@@ -26,6 +26,7 @@ TEST_F(GeometryLuaTest, CombinesAndOffsetsPolygons) {
     EXPECT_EQ(lua("local grown = m.polygon.offset(square, 1, {join = 'miter'}) return m.polygon.area(grown)"), "144.0");
     EXPECT_EQ(lua("return #m.polygon.offset(square, -6)"), "0");
     EXPECT_EQ(lua("local ring = m.polygon.subtract(square, {{3, 3}, {7, 3}, {7, 7}, {3, 7}}) return #ring .. ' ' .. m.polygon.area(ring)"), "2 84.0");
+    EXPECT_EQ(lua("return m.polygon.area({m.vec2(0, 0), m.vec2(10, 0), m.vec2(10, 10), m.vec2(0, 10)}) .. ' ' .. m.polygon.area({})"), "100.0 0.0");
     EXPECT_NE(lua("return m.polygon.offset(square, 1, {join = 'sharp'})").find("unknown value 'sharp'"), std::string::npos);
     EXPECT_NE(lua("return m.polygon.offset(square, 1, {limit = 3})").find("Unknown option \"limit\""), std::string::npos);
 }
@@ -62,6 +63,8 @@ TEST_F(GeometryLuaTest, TracesFieldsAndBitmaps) {
     // clang-format on
     EXPECT_EQ(lua("local outlines = m.marchingSquares.trace(field, 5, 5, {threshold = 0.5, spacing = 2, origin = {100, 0}}) return #outlines .. ' ' .. m.polygonSignedArea(outlines[1])"), "1 34.0");
     EXPECT_EQ(lua("local outlines = m.marchingSquares.traceBitmap({1, 0, 1, true, false, 0}, 3, 2) return #outlines"), "2");
+    EXPECT_EQ(lua("local outline = m.marchingSquares.traceBitmap({1}, 1, 1, {spacing = 2, origin = {10, 20}})[1] return tostring(m.bounds(outline)) .. ' ' .. m.polygonSignedArea(outline)"), "Rect(10.0, 20.0, 2.0, 2.0) 2.0");
+    EXPECT_NE(lua("return m.marchingSquares.traceBitmap({1}, 1, 1, {threshold = 0.5})").find("Unknown option \"threshold\""), std::string::npos);
     EXPECT_NE(lua("return m.marchingSquares.trace(field, 4, 5)").find("width times height"), std::string::npos);
     EXPECT_NE(lua("return m.marchingSquares.trace(field, 5, 5, {level = 1})").find("Unknown option \"level\""), std::string::npos);
 }

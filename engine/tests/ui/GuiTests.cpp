@@ -191,4 +191,16 @@ TEST(ComponentRegistryTest, CreatesRegisteredKinds) {
     EXPECT_THROW(registry.add("", {}), std::invalid_argument);
 }
 
+TEST(UiPluginTest, RequiresAStartedEngine) {
+    plugins::UiPlugin plugin;
+    EXPECT_THROW((void)plugin.getBackend(), std::logic_error);
+    EXPECT_THROW((void)plugin.getContext(), std::logic_error);
+    EXPECT_THROW(plugin.mount(plugin.createGui(core::Json::parse(R"({"kind": "label", "text": "Idle"})"))), std::logic_error);
+    EXPECT_THROW(plugin.addFontFamily("empty", nullptr), std::invalid_argument);
+
+    // A theme chosen before the UI starts is the theme it starts with.
+    plugin.setTheme("light");
+    EXPECT_EQ(plugin.getTheme().getName(), "light");
+}
+
 } // namespace haylen::ui

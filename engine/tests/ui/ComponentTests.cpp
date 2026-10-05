@@ -706,6 +706,24 @@ TEST_F(ComponentTest, TouchControlsLetGoWhenTheyStopDrawing) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"attack:press", "attack:release", "attack:press", "attack:release"}));
 }
 
+TEST_F(ComponentTest, TouchControlsLetGoWhenTheUiStops) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "row", "padding": 40, "gap": 400, "children": [
+        {"kind": "touchStick", "id": "stick", "action": "move", "radius": 100, "deadZone": 0},
+        {"kind": "touchButton", "id": "attack", "action": "attack", "size": 120}
+    ]})");
+    // clang-format on
+    input::VirtualInput& controls = getEngine().getVirtualInput();
+    touch(platform::Event::Type::TouchBegan, 1, getBounds(*gui, "stick").getCenter() + math::Vec2{50.0F, 0.0F});
+    touch(platform::Event::Type::TouchBegan, 2, getBounds(*gui, "attack").getCenter());
+    frames(2);
+    ASSERT_TRUE(controls.isButtonDown("attack"));
+
+    getUi().stop(getEngine());
+    EXPECT_FALSE(controls.isButtonDown("attack"));
+    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+}
+
 TEST_F(ComponentTest, KeepsMouseClicksOnTheInterfaceFromActions) {
     getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "attack", "type": "button", "bindings": ["mouse:left", "virtual:attack"]}]})"));
     auto gui = mount(R"({"kind": "stack", "children": [{"kind": "button", "id": "pause", "text": "Pause", "align": "start"}]})");

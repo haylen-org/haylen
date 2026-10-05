@@ -43,10 +43,38 @@ TEST(EasingTest, CurvesHaveTheirCharacteristicShape) {
     }
 }
 
+TEST(EasingTest, BouncesLandOnTheEndValue) {
+    for (const float landing : {1.0F, 2.0F, 2.5F}) {
+        EXPECT_NEAR(Easing::apply(Easing::Type::BounceOut, landing / 2.75F), 1.0F, 1e-5F) << landing;
+    }
+    EXPECT_NEAR(Easing::apply(Easing::Type::BounceOut, 2.25F / 2.75F), 0.9375F, 1e-5F);
+}
+
+TEST(EasingTest, ParametersOnlyShapeTheBackAndElasticCurves) {
+    EXPECT_FLOAT_EQ(Easing::apply(Easing::Type::QuadIn, 0.5F, 3.0F, 0.5F), Easing::apply(Easing::Type::QuadIn, 0.5F));
+    EXPECT_LT(Easing::apply(Easing::Type::BackIn, 0.2F, 3.0F, 0.0F), Easing::apply(Easing::Type::BackIn, 0.2F));
+}
+
+TEST(EasingTest, StepsJumpWhereTheirPositionSays) {
+    EXPECT_FLOAT_EQ(Easing::steps(0.5F, 4, Easing::StepPosition::End), 0.5F);
+    EXPECT_FLOAT_EQ(Easing::steps(0.0F, 4, Easing::StepPosition::Start), 0.25F);
+    EXPECT_FLOAT_EQ(Easing::steps(0.0F, 4, Easing::StepPosition::Both), 0.2F);
+    EXPECT_FLOAT_EQ(Easing::steps(0.5F, 4, Easing::StepPosition::Both), 0.6F);
+    EXPECT_FLOAT_EQ(Easing::steps(0.5F, 4, Easing::StepPosition::None), 2.0F / 3.0F);
+    EXPECT_FLOAT_EQ(Easing::steps(1.0F, 4, Easing::StepPosition::None), 1.0F);
+}
+
+// The x of this curve starts flat, which stops the Newton steps at once, and bisection still finds where the curve reaches the time.
+TEST(EasingTest, SolvesBezierCurvesThatStartFlat) {
+    EXPECT_NEAR(Easing::cubicBezier(1e-4F, 0.0F, 0.0F, 0.0F, 0.0F), 1e-4F, 1e-6F);
+}
+
 TEST(EasingTest, ResolvesNames) {
     EXPECT_EQ(Easing::parse("linear"), Easing::Type::Linear);
     EXPECT_EQ(Easing::parse("elasticInOut"), Easing::Type::ElasticInOut);
     EXPECT_FALSE(Easing::parse("unknown").has_value());
+    EXPECT_EQ(Easing::parseStepPosition("both"), Easing::StepPosition::Both);
+    EXPECT_FALSE(Easing::parseStepPosition("middle").has_value());
 }
 
 TEST(RandomTest, IsDeterministicPerSeed) {

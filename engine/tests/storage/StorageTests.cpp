@@ -1,17 +1,21 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
@@ -144,6 +148,25 @@ TEST(SaveSlotsTest, RejectsBadNamesAndDamagedFiles) {
 
     saves.write("real", {{"ok", true}});
     EXPECT_GT(saves.getInfo("real")->savedAt, 1'700'000'000);
+}
+
+// A slot that is there but cannot be read fails, instead of reading as a slot that was never saved.
+TEST(SaveSlotsTest, FailsForSlotsThatCannotBeRead) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    SaveSlots saves(storage);
+    saves.write("locked", {{"day", 1}});
+
+    // A file without read permission fails to read, except on platforms or for users that read it anyway.
+    const std::filesystem::path file = directory.getPath() / "saves" / "locked.json";
+    std::filesystem::permissions(file, std::filesystem::perms::none);
+    if (std::ifstream(file).is_open()) {
+        std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
+        GTEST_SKIP() << "This platform reads files without read permission.";
+    }
+    EXPECT_THROW((void)saves.read("locked"), std::runtime_error);
+    std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
+    EXPECT_EQ(saves.read("locked"), (core::Json{{"day", 1}}));
 }
 
 TEST(PreferencesTest, StoresDottedKeysAndPersists) {
@@ -435,6 +458,52 @@ TEST(StoragePluginTest, KeepsRunningOperationsAfterOneFails) {
     std::atomic<bool> later = false;
     plugin.queueOperation([&later] { later = true; });
     EXPECT_TRUE(fixture.frameUntil([&] { return later.load(); }));
+}
+
+TEST(StoragePluginTest, StartsWithDefaultPreferencesWhenTheFileIsDamaged) {
+    test::EngineFixture fixture;
+    fixture.engine().getStorage().writeText("preferences.json", "{");
+    std::vector<std::string> warnings;
+    std::mutex logMutex;
+    // clang-format off
+    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level level, std::string_view line) {
+        const std::scoped_lock lock(logMutex);
+        if (level == core::Log::Level::Warning) {
+            warnings.emplace_back(line);
+        }
+    });
+    // clang-format on
+    fixture.restart();
+    core::Log::removeListener(listener);
+
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(fixture.engine().getPlugin<plugins::StoragePlugin>().getPreferences().getValues(), core::Json::object());
+    EXPECT_TRUE(std::ranges::any_of(warnings, [](const std::string& line) { return line.find("The preferences file \"preferences.json\" is damaged. The app starts with default preferences, and the next save replaces the file.") != std::string::npos; }));
+    fixture.runLua("local preferences = require('haylen.preferences') preferences.set('volume', 0.5) preferences.save()");
+    EXPECT_EQ(fixture.engine().getStorage().readText("preferences.json"), "{\n  \"volume\": 0.5\n}");
+}
+
+// Saving on suspension never stops the app, so a file that cannot be written leaves the changes waiting for the next save.
+TEST(StoragePluginTest, LogsPreferencesThatCannotBeSaved) {
+    test::EngineFixture fixture;
+    std::filesystem::create_directories(fixture.engine().getStorage().getRoot() / "preferences.json" / "blocked");
+    std::vector<std::string> errors;
+    std::mutex logMutex;
+    // clang-format off
+    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level level, std::string_view line) {
+        const std::scoped_lock lock(logMutex);
+        if (level == core::Log::Level::Error) {
+            errors.emplace_back(line);
+        }
+    });
+    // clang-format on
+    fixture.runLua("require('haylen.preferences').set('volume', 0.5)");
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    core::Log::removeListener(listener);
+
+    EXPECT_TRUE(std::ranges::any_of(errors, [](const std::string& line) { return line.find("The preferences could not be saved: The storage file \"preferences.json\" could not be written.") != std::string::npos; }));
+    EXPECT_TRUE(fixture.engine().getPlugin<plugins::StoragePlugin>().getPreferences().isDirty());
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST(StoragePluginTest, RequiresAStartedEngine) {

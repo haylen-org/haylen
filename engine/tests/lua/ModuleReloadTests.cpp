@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -11,10 +12,12 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
+#include "plugins/HotReloadPlugin.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -950,6 +953,31 @@ TEST_F(HotReloadLuaTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
     EXPECT_EQ(shipped.lua("return hotReload.active()"), "false");
     EXPECT_EQ(shipped.lua("return hotReload.keep('a', function() return {} end) ~= hotReload.keep('a', function() return {} end)"), "true");
     EXPECT_EQ(shipped.lua("hotReload.restartOnChange() return 'ignored'"), "ignored");
+}
+
+TEST_F(ModuleReloadTest, ReportsNothingForSavesThatTouchNoLoadedFile) {
+    start({{"source/main.lua", ""}});
+    int reports = 0;
+    const core::Connection connection = fixture->engine().getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&reports](const plugins::HotReloadPlugin::Report&) { ++reports; });
+    edit({{"source/.main.lua.swp", "swap"}, {"source/later.lua", "return {value = 'new'}"}});
+    EXPECT_EQ(reports, 0);
+    EXPECT_FALSE(restarted());
+}
+
+TEST_F(ModuleReloadTest, RestartsWhenASaveTouchesMoreModulesThanReloadInPlace) {
+    const std::size_t count = plugins::HotReloadPlugin::kRestartModules + 1;
+    std::map<std::string, std::string> files{{"source/main.lua", "for index = 1, " + std::to_string(count) + " do require('part' .. index) end"}};
+    std::map<std::string, std::string> edits;
+    for (std::size_t index = 1; index <= count; ++index) {
+        const std::string path = "source/part" + std::to_string(index) + ".lua";
+        files.emplace(path, "return {}");
+        edits.emplace(path, "return {edited = true}");
+    }
+    start(std::move(files));
+    recordLog();
+    edit(edits);
+    EXPECT_TRUE(restarted());
+    EXPECT_TRUE(logged("The change touches " + std::to_string(count) + " loaded modules, more than the " + std::to_string(plugins::HotReloadPlugin::kRestartModules) + " that reload in place, so the app restarts."));
 }
 // clang-format on
 

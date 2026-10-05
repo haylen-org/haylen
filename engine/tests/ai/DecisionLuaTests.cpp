@@ -40,6 +40,8 @@ TEST_F(DecisionLuaTest, TicksBehaviorTreesWithLuaLeaves) {
     EXPECT_EQ(lua("return guard:tick(1) .. ' ' .. table.concat(log, ',')"), "success patrol");
     EXPECT_EQ(lua("guard.blackboard.enemy = 'player' return guard:tick(1) .. ' ' .. guard:tick(1) .. ' ' .. guard.status"), "running success success");
     EXPECT_EQ(lua("return table.concat(log, ',') .. ' ' .. guard.nodeCount .. ' ' .. guard.time"), "patrol,chase,chase 5 3.0");
+    EXPECT_EQ(lua("guard.blackboard = {distance = 5, enemy = 'wolf'} return guard:tick(1) .. ' ' .. guard.blackboard.distance"), "success -5.0");
+    EXPECT_NE(lua("guard.blackboard = 5").find("table expected"), std::string::npos);
 
     // clang-format off
     fixture.runLua(R"(
@@ -61,6 +63,7 @@ TEST_F(DecisionLuaTest, TicksBehaviorTreesWithLuaLeaves) {
     fixture.runLua("broken = ai.newBehaviorTree(ai.action(function() return 'maybe' end))");
     EXPECT_NE(lua("broken:tick(0)").find("unknown status \"maybe\""), std::string::npos);
     EXPECT_NE(lua("broken:tick(0)").find("unknown status \"maybe\""), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree(ai.action(function() return 1 end)):tick(0)").find("A behavior tree action must return a status name, a boolean or nothing."), std::string::npos);
     EXPECT_NE(lua("ai.newBehaviorTree({kind = 'loop'})").find("Unknown behavior tree node \"loop\""), std::string::npos);
     EXPECT_NE(lua("ai.newBehaviorTree(ai.parallel({}, 1))").find("parallel node"), std::string::npos);
     EXPECT_NE(lua("local tree tree = ai.newBehaviorTree(ai.action(function() tree:tick(0) end)) tree:tick(0)").find("already ticking"), std::string::npos);

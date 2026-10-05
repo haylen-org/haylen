@@ -44,6 +44,13 @@ TEST_F(CatalogTest, TranslatesFormatsAndPluralizes) {
     EXPECT_FALSE(catalog.has("menu"));
 }
 
+TEST_F(CatalogTest, ShowsKeysUnchangedBeforeAnyLanguageIsAdded) {
+    const Catalog catalog;
+    EXPECT_TRUE(catalog.getLanguage().empty());
+    EXPECT_FALSE(catalog.has("menu.play"));
+    EXPECT_EQ(catalog.getText("menu.play", {{"count", 2}}), "menu.play");
+}
+
 TEST_F(CatalogTest, FallsBackAndMergesLanguages) {
     Catalog catalog = makeEnglish();
     catalog.add("pt-BR", core::Json::parse(R"({"menu": {"play": "Jogar"}})"));
