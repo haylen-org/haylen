@@ -34,8 +34,8 @@ EasingCurve EasingCurve::elastic(Easing::Type curve, float amplitude, float peri
 }
 
 EasingCurve EasingCurve::steps(int count, Easing::StepPosition position) {
-    if (count < 1) {
-        throw std::invalid_argument("A steps curve needs at least one step.");
+    if (count < 1 || count > kMaxSteps) {
+        throw std::invalid_argument("A steps curve needs between 1 and 16777216 steps.");
     }
     EasingCurve result;
     result.kind = Kind::Steps;

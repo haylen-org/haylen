@@ -143,7 +143,8 @@ float Spline::getParameterAtDistance(float distance) const noexcept {
         return 0.0F;
     }
 
-    const float along = closed ? distance - std::floor(distance / length) * length : std::clamp(distance, 0.0F, length);
+    // Rounding can carry a wrapped distance just outside the curve, so it is clamped like the distance of an open curve.
+    const float along = std::clamp(closed ? distance - std::floor(distance / length) * length : distance, 0.0F, length);
     const auto upper = std::upper_bound(lengths.begin(), lengths.end(), along);
     if (upper == lengths.end()) {
         return 1.0F;
@@ -174,12 +175,12 @@ std::vector<Vec2> Spline::sample(std::size_t count) const {
 }
 
 std::vector<Vec2> Spline::sampleByDistance(float spacing) const {
-    if (spacing <= 0.0F) {
-        throw std::invalid_argument("Sampling by distance needs a positive spacing.");
+    const double steps = std::ceil(static_cast<double>(getLength()) / static_cast<double>(spacing));
+    if (!std::isfinite(spacing) || spacing <= 0.0F || !(steps <= static_cast<double>(kMaxSteps))) {
+        throw std::invalid_argument("Sampling by distance needs a finite spacing above 0 that takes at most 16777216 steps along the curve.");
     }
 
-    const float length = getLength();
-    const auto count = static_cast<std::size_t>(std::ceil(length / spacing));
+    const auto count = static_cast<std::size_t>(steps);
     std::vector<Vec2> result;
     result.reserve(count + 1);
     for (std::size_t index = 0; index < count; ++index) {

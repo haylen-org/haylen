@@ -124,6 +124,8 @@ TEST_F(MathLuaTest, ProvidesScalarHelpers) {
     EXPECT_EQ(lua("return m.tau == 2 * m.pi and m.halfPi == m.pi / 2"), "true");
     EXPECT_EQ(lua("return m.sign(-3) .. ' ' .. m.sign(0) .. ' ' .. m.sign(0.2)"), "-1.0 0.0 1.0");
     EXPECT_EQ(lua("return m.saturate(1.5) .. ' ' .. m.saturate(-2) .. ' ' .. m.saturate(0.25)"), "1.0 0.0 0.25");
+    EXPECT_EQ(lua("return m.ease({steps = 16777216}, 0.5)"), "0.5");
+    EXPECT_NE(lua("return m.ease({steps = 16777217}, 0.5)").find("A steps curve needs between 1 and 16777216 steps."), std::string::npos);
 }
 
 // Curves push back in the form Lua reads them, and a curve of a C++ function pushes as a value Lua calls like a function.
@@ -181,6 +183,9 @@ TEST_F(MathLuaTest, SamplesPoissonDisks) {
     EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, accept = function() error('rejected') end})").find("rejected"), std::string::npos);
     EXPECT_EQ(lua("local options = {area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4)} options.accept = function() options.random = nil collectgarbage() return true end local points = m.poissonDisk(options) local expected = m.poissonDisk({area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4)}) return #points == #expected and points[#points] == expected[#expected]"), "true");
     EXPECT_NE(lua("return m.poissonDisk('area')").find("error: "), std::string::npos);
+    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, attempts = 0})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
+    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, attempts = 1073741824})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
+    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 10, maximumDistance = 20, distance = function() return 'far' end})").find("A Poisson distance function must return a number, not string."), std::string::npos);
 }
 
 } // namespace haylen::math

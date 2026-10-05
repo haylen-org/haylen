@@ -331,13 +331,13 @@ Polygon::Outline Polygon::simplify(std::span<const Vec2> points, float tolerance
         line.pop_back();
     }
 
-    // A closed outline thinner than the tolerance keeps the point farthest from the line through its two remaining points.
-    if (closed && std::count(kept.begin(), kept.end(), true) < 3) {
+    // A closed outline thinner than the tolerance keeps the points farthest from the line through its first and middle points until it has three, even when every point is the same.
+    for (auto count = std::count(kept.begin(), kept.end(), true); closed && count < 3; ++count) {
         std::size_t extra = 0;
         float farthest = -1.0F;
         for (std::size_t index = 1; index < line.size(); ++index) {
             const float distance = distanceSquaredToSegment(line[index], line.front(), line[middle]);
-            if (index != middle && distance > farthest) {
+            if (!kept[index] && distance > farthest) {
                 farthest = distance;
                 extra = index;
             }

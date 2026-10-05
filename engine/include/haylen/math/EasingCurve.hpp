@@ -30,6 +30,7 @@ class EasingCurve final {
 
     [[nodiscard]] static EasingCurve back(Easing::Type curve, float overshoot);
     [[nodiscard]] static EasingCurve elastic(Easing::Type curve, float amplitude, float period);
+    // Throws `std::invalid_argument` for a count outside 1 to 16777216.
     [[nodiscard]] static EasingCurve steps(int count, Easing::StepPosition position = Easing::StepPosition::End);
     [[nodiscard]] static EasingCurve cubicBezier(float x1, float y1, float x2, float y2);
 
@@ -66,6 +67,9 @@ class EasingCurve final {
     }
 
   private:
+    // The largest step count, which the float parameters hold exactly.
+    static constexpr int kMaxSteps = 16777216;
+
     [[nodiscard]] float applyPoints(float t) const noexcept;
 
     Kind kind = Kind::Preset;

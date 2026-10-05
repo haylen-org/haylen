@@ -89,6 +89,9 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
     if (largest < options.minimumDistance) {
         throw std::invalid_argument("A varying Poisson distance needs a maximum distance of at least the minimum distance.");
     }
+    if (options.attempts < 1 || options.attempts > kMaxAttempts) {
+        throw std::invalid_argument("Poisson sampling needs between 1 and 1000 attempts.");
+    }
 
     Grid grid(options.area, options.minimumDistance / std::sqrt(2.0F));
     const int reach = grid.reachOf(largest);

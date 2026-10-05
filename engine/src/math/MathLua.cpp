@@ -424,7 +424,11 @@ int MathLua::poissonDisk(lua_State* L) {
             lua_pushvalue(L, spacing);
             lua::Stack::push(L, point);
             lua::Runtime::protectedCall(L, 1, 1);
-            const auto distance = static_cast<float>(luaL_checknumber(L, -1));
+            int isNumber = 0;
+            const auto distance = static_cast<float>(lua_tonumberx(L, -1, &isNumber));
+            if (isNumber == 0) {
+                luaL_error(L, "A Poisson distance function must return a number, not %s.", luaL_typename(L, -1));
+            }
             lua_pop(L, 1);
             return distance;
         };

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -91,8 +92,9 @@ TEST_F(PolygonTest, SimplifyDropsPointsWithinTheTolerance) {
     EXPECT_EQ(corners.size(), 4U);
     EXPECT_NEAR(std::fabs(Geometry::signedArea(corners)), 1580.0F, 1e-3F);
 
-    // An outline thinner than the tolerance still keeps three points.
+    // An outline thinner than the tolerance still keeps three points, even when all its points are the same.
     EXPECT_EQ(Polygon::simplify(std::vector<Vec2>{{0.0F, 0.0F}, {10.0F, 0.1F}, {20.0F, 0.0F}, {10.0F, -0.1F}}, 1.0F).size(), 3U);
+    EXPECT_EQ(Polygon::simplify(std::vector<Vec2>{{5.0F, 5.0F}, {5.0F, 5.0F}, {5.0F, 5.0F}, {5.0F, 5.0F}}, 1.0F).size(), 3U);
 }
 
 TEST_F(PolygonTest, DecompositionCoversTheShapeWithConvexPieces) {
@@ -203,6 +205,15 @@ TEST(SplineTest, SamplesEvenlyByDistance) {
     const Vec2 middle = curve.getPointAtDistance(curve.getLength() * 0.5F);
     EXPECT_EQ(middle, curve.getPoint(curve.getParameterAtDistance(curve.getLength() * 0.5F)));
     EXPECT_NEAR(curve.getTangentAtDistance(0.0F).getLength(), 1.0F, 1e-4F);
+}
+
+TEST(SplineTest, ClosedCurvesKeepWrappedDistancesOnTheCurve) {
+    const Spline loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline::Kind::CatmullRom, true);
+
+    // The tiniest negative distance wraps to a remainder that rounds just below zero.
+    const float parameter = loop.getParameterAtDistance(-std::numeric_limits<float>::denorm_min());
+    EXPECT_GE(parameter, 0.0F);
+    EXPECT_LE(parameter, 1.0F);
 }
 
 TEST(SplineTest, BSplineReachesItsEndsAndSmoothsBetween) {

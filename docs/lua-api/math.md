@@ -379,7 +379,7 @@ Evaluates an easing curve at `t` and returns the eased value. The argument `t` i
 
 Functions of the engine that return a curve, such as the `config` of a particle emitter, return it in the form of this table: a name, or a table with the keys above. A curve that a C++ function makes returns as an `EasingCurve` value, which Lua calls like a function, `curve(t)`, and which every option that takes a curve accepts.
 
-An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`, another value raises `bad argument #1 to 'ease' (easing curve name, function or table expected, got boolean)`, and an unknown key raises `Unknown option "<key>".` An `overshoot` on another curve raises `An overshoot only applies to the back curves.`, an `amplitude` or `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.` Fewer than one step raises `A steps curve needs at least one step.`, a `cubicBezier` list without four numbers raises `A "cubicBezier" curve needs the four numbers "x1", "y1", "x2" and "y2".`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.` Fewer than two points raise `A points curve needs at least two points.`, points out of order raise `The points of a curve must be ordered by x.`, and a function that returns anything but a number raises `An easing function must return a number.`
+An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`, another value raises `bad argument #1 to 'ease' (easing curve name, function or table expected, got boolean)`, and an unknown key raises `Unknown option "<key>".` An `overshoot` on another curve raises `An overshoot only applies to the back curves.`, an `amplitude` or `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.` A step count outside `1` to `16777216` raises `A steps curve needs between 1 and 16777216 steps.`, a `cubicBezier` list without four numbers raises `A "cubicBezier" curve needs the four numbers "x1", "y1", "x2" and "y2".`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.` Fewer than two points raise `A points curve needs at least two points.`, points out of order raise `The points of a curve must be ordered by x.`, and a function that returns anything but a number raises `An easing function must return a number.`
 
 ```lua
 local m = require('haylen.math')
@@ -444,7 +444,7 @@ print(pitch) -- about 1.22
 
 ### m.smoothstep(edge0, edge1, value)
 
-Returns `0` below `edge0`, `1` above `edge1` and a smooth S curve in between.
+Returns `0` below `edge0`, `1` above `edge1` and a smooth S curve in between. Equal edges make a step that returns `0` below the edge and `1` from the edge on.
 
 ```lua
 local m = require('haylen.math')
@@ -723,8 +723,8 @@ Returns evenly spread random points inside an area, where no two points are clos
 | `area` | Rect | Empty | Area to fill. An empty area returns no points. |
 | `minimumDistance` | number | `64` | Smallest distance between two points. A value that is not positive returns no points, an infinite or NaN value raises `Poisson distances must be finite.`, and a value so small for the area that sampling would need more than 16777216 grid cells raises an error. |
 | `maximumDistance` | number | `0` | Largest distance a `distance` function may ask for. It must be finite and at least `minimumDistance` when `distance` is set. |
-| `distance` | function | `nil` | Called with each candidate `Vec2` and returns the spacing wanted there, such as from a density or noise map. Results are clamped between `minimumDistance` and `maximumDistance`, and two points stay at least the larger of their own spacings apart. A result that is infinite or NaN raises `A Poisson distance function must return finite distances.` |
-| `attempts` | integer | `30` | Candidates tried around each point before it stops growing. Higher values fill the area more tightly. |
+| `distance` | function | `nil` | Called with each candidate `Vec2` and returns the spacing wanted there, such as from a density or noise map. Results are clamped between `minimumDistance` and `maximumDistance`, and two points stay at least the larger of their own spacings apart. A result that is not a number raises `A Poisson distance function must return a number, not <type>.`, and one that is infinite or NaN raises `A Poisson distance function must return finite distances.` |
+| `attempts` | integer | `30` | Candidates tried around each point before it stops growing, from `1` to `1000`. Higher values fill the area more tightly, and other counts raise `Poisson sampling needs between 1 and 1000 attempts.` |
 | `random` | Random | `nil` | Generator to draw from, which advances as points are sampled. |
 | `seed` | integer | `0` | Seed of a private generator, used when `random` is absent. |
 | `accept` | function | `nil` | Called with each candidate `Vec2`, and only candidates for which it returns a true value are kept. |
@@ -1647,7 +1647,7 @@ end
 
 ### random:weightedIndex(weights)
 
-Picks an index of the `weights` sequence with a probability proportional to each weight and returns it, starting at `1`. An index whose weight is zero is never picked. An empty sequence raises `bad argument #1 to 'pick' (expected at least one weight)`, a negative, infinite or NaN weight raises `Weights must be finite and not negative.`, and weights that are all zero raise `A weighted pick needs at least one positive weight.`
+Picks an index of the `weights` sequence with a probability proportional to each weight and returns it, starting at `1`. An index whose weight is zero is never picked. An empty sequence raises `bad argument #1 to 'weightedIndex' (expected at least one weight)`, a negative, infinite or NaN weight raises `Weights must be finite and not negative.`, and weights that are all zero raise `A weighted pick needs at least one positive weight.`
 
 ```lua
 local m = require('haylen.math')
@@ -1685,7 +1685,7 @@ print(random:nextFloat() == first) -- true
 
 ## Noise2D
 
-Seeded gradient noise created with `m.noise`. Every function returns values between `-1` and `1` that change smoothly with the coordinates, and features are about one unit apart, so scale world coordinates down before sampling.
+Seeded gradient noise created with `m.noise`. The functions `perlin`, `simplex` and `fractal` return values between `-1` and `1` that change smoothly with the coordinates, `worley` returns distances and a region value and `warp` returns coordinates. Features are about one unit apart, so scale world coordinates down before sampling.
 
 ### noise:perlin(x, y)
 
@@ -1969,7 +1969,7 @@ require('haylen.scene').push({
 
 ### spline:sample(count), spline:sampleByDistance(spacing)
 
-Returns `count` points spread evenly over the parameter, or points `spacing` apart along the curve plus the end point of an open curve. A spacing that is not positive raises `Sampling by distance needs a positive spacing.`
+Returns `count` points spread evenly over the parameter, or points `spacing` apart along the curve plus the end point of an open curve. A spacing that is not finite and above 0, or so small that it would take more than 16777216 steps along the curve, raises `Sampling by distance needs a finite spacing above 0 that takes at most 16777216 steps along the curve.`
 
 ```lua
 local m = require('haylen.math')
@@ -2083,7 +2083,7 @@ print(bag.remaining) -- 2
 
 ## WeightedChoice
 
-Picks items in proportion to fixed weights in constant time with Vose's alias method, which pays off when the same weights serve many picks. The method `random:pick` suits weights that change between picks.
+Picks items in proportion to fixed weights in constant time with Vose's alias method, which pays off when the same weights serve many picks. The method `random:weightedIndex` suits weights that change between picks.
 
 ### m.weightedChoice(items, weights, seed)
 

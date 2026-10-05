@@ -78,7 +78,7 @@ Places points over a region, keeps them out of exclusion zones and gives each on
 | `spacing` | number | `32` | Cell size for `'grid'` and smallest distance for `'poisson'`. |
 | `maximumSpacing` | number | required with `'poisson'` and a density map | Largest distance for `'poisson'` where the density map is 0, at least `spacing`. |
 | `jitter` | number | `1` | Share of half the spacing a grid point may move. |
-| `attempts` | integer | `30` | Candidates tried around each Poisson point. |
+| `attempts` | integer | `30` | Candidates tried around each Poisson point, from `1` to `1000`. Other counts raise `Poisson sampling needs between 1 and 1000 attempts.` |
 | `densityMap` | function or noise | `nil` | Value from 0 to 1 at a point. The methods `'random'` and `'grid'` keep each point with that probability, and `'poisson'` spaces points from `spacing` where it is 1 to `maximumSpacing` where it is 0. |
 | `exclude` | table | `{}` | List of regions that receive no points. |
 | `weights` | table | `{}` | Weight of each type, so the type of a point is drawn in proportion to them. |

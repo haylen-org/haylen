@@ -29,7 +29,11 @@ class Math final {
         return std::clamp(value, 0.0F, 1.0F);
     }
 
+    // Equal edges make a step, which is 0 below the edge and 1 from the edge on.
     [[nodiscard]] static constexpr float smoothstep(float edge0, float edge1, float value) noexcept {
+        if (edge0 == edge1) {
+            return value < edge0 ? 0.0F : 1.0F;
+        }
         const float t = saturate(inverseLerp(edge0, edge1, value));
         return t * t * (3.0F - 2.0F * t);
     }

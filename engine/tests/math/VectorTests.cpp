@@ -64,6 +64,8 @@ TEST(MathTest, ScalarHelpers) {
     EXPECT_FLOAT_EQ(Math::remap(5.0F, 0.0F, 10.0F, 100.0F, 200.0F), 150.0F);
     EXPECT_FLOAT_EQ(Math::saturate(2.0F), 1.0F);
     EXPECT_FLOAT_EQ(Math::smoothstep(0.0F, 1.0F, 0.5F), 0.5F);
+    EXPECT_FLOAT_EQ(Math::smoothstep(2.0F, 2.0F, 1.0F), 0.0F);
+    EXPECT_FLOAT_EQ(Math::smoothstep(2.0F, 2.0F, 2.0F), 1.0F);
     EXPECT_FLOAT_EQ(Math::moveToward(0.0F, 10.0F, 3.0F), 3.0F);
     EXPECT_FLOAT_EQ(Math::moveToward(10.0F, 0.0F, 3.0F), 7.0F);
     EXPECT_FLOAT_EQ(Math::moveToward(1.0F, 2.0F, 5.0F), 2.0F);

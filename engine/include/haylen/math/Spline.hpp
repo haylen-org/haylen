@@ -53,12 +53,13 @@ class Spline final {
 
     // Returns `count` points spread evenly over the parameter, both ends included.
     [[nodiscard]] std::vector<Vec2> sample(std::size_t count) const;
-    // Returns points `spacing` apart along the curve from its start, plus the end point of open curves.
+    // Returns points `spacing` apart along the curve from its start, plus the end point of open curves. Throws `std::invalid_argument` for a spacing that is not finite and above 0 or that would take more than 16777216 steps along the curve.
     [[nodiscard]] std::vector<Vec2> sampleByDistance(float spacing) const;
 
   private:
     static const std::array<std::pair<std::string_view, Kind>, 3> kKindNames;
     static constexpr std::size_t kStepsPerSegment = 32;
+    static constexpr std::size_t kMaxSteps = 16777216;
     static constexpr float kAlpha = 0.5F;
 
     [[nodiscard]] static std::size_t countSegments(std::size_t pointCount, Kind curveKind, bool loop);
