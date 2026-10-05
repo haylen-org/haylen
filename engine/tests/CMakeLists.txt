@@ -155,6 +155,7 @@ set(HAYLEN_TEST_SOURCES
   ui/PlayAreaTests.cpp
   ui/RichTextComponentTests.cpp
   ui/RightToLeftTests.cpp
+  ui/ScalingTests.cpp
   ui/SceneGuiTests.cpp
   ui/TextInputTests.cpp
   ui/StyleTests.cpp

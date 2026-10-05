@@ -64,6 +64,8 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. Other sessions reject `true`. |
 | `input.mouseAsTouch` | boolean | `false` | Makes the mouse act as a finger from the start, as [`input.setMouseAsTouch`](lua-api/input.md#inputsetmouseastouchenabled) describes. |
 | `input.touchAsMouse` | boolean | `false` | Makes a finger act as the mouse from the start, as [`input.setTouchAsMouse`](lua-api/input.md#inputsettouchasmouseenabled) describes. |
+| `ui.scaleMode` | string | `"design"` | How large the interface draws: `"design"` or `"physical"`, as [`ui.setScaleMode`](lua-api/ui.md#uisetscalemodemode) describes. |
+| `ui.scale` | number | `1` | Factor from 0.25 to 4 that multiplies the size of the interface, as [`ui.setScale`](lua-api/ui.md#uisetscalefactor) describes. |
 | `debug.stats` | string | `"off"` | Debug statistics the app starts with: `"off"`, `"compact"` for the frame rate, frame time, draw calls, vertices and instances in a corner, or `"full"` for the debug overlay, described in [`haylen.debug`](lua-api/debug.md). |
 | `debug.drawings` | list of strings | `[]` | The [debug drawings](lua-api/debug.md#drawings) the app starts with, such as `["physics", "bounds"]`. An empty name raises `The "debug.drawings" list in "app.json" has an empty drawing name.` |
 | `debug.objectEvents` | boolean | `false` | Publishes `objectCreated` and `objectDestroyed` for every counted object, as [`haylen.debug`](lua-api/debug.md#object-counts-and-events) describes. |

@@ -43,10 +43,7 @@ void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const 
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushTexture(context.getTextureReference(image.slice.texture));
     // clang-format off
-    context.getBackend().addRenderCallback([texture = image.slice.texture, sprites = std::move(sprites)](graphics2d::Renderer& renderer, math::Vec2 offset) mutable {
-        for (graphics2d::SpriteInstance& sprite : sprites) {
-            sprite.position += offset;
-        }
+    context.getBackend().addRenderCallback([texture = image.slice.texture, sprites = std::move(sprites)](graphics2d::Renderer& renderer) {
         renderer.drawBatch(texture, sprites);
     });
     // clang-format on

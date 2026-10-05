@@ -82,6 +82,22 @@ class Backend final {
         return frameActive;
     }
 
+    // The design units one UI unit spans, which the next frame takes, so the interface grows or shrinks without changing its layout in UI units.
+    [[nodiscard]] float getScale() const noexcept {
+        return scale;
+    }
+    void setScale(float value) noexcept {
+        scale = value;
+    }
+
+    // Converts between design coordinates and UI coordinates, whose origin is the top left of the visible area.
+    [[nodiscard]] math::Vec2 toUi(math::Vec2 designPoint) const noexcept {
+        return (designPoint - origin) / scale;
+    }
+    [[nodiscard]] math::Vec2 toDesign(math::Vec2 uiPoint) const noexcept {
+        return uiPoint * scale + origin;
+    }
+
     // The visible and safe areas in ImGui coordinates, whose origin is the top left of the visible area.
     [[nodiscard]] math::Rect getDisplayRect() const noexcept;
     [[nodiscard]] math::Rect getSafeRect() const noexcept {
@@ -104,8 +120,8 @@ class Backend final {
     // Returns an ImGui reference for an app texture, valid until the end of the frame.
     [[nodiscard]] ImTextureRef getTextureReference(const graphics::Texture& texture);
 
-    // Draws with the renderer at this point of the draw list of the window being built, clipped like the items around it, once the frame renders. The function receives the offset from UI coordinates to the screen canvas it draws in.
-    void addRenderCallback(std::function<void(graphics2d::Renderer& renderer, math::Vec2 offset)> draw);
+    // Draws with the renderer at this point of the draw list of the window being built, clipped like the items around it, once the frame renders, in a canvas whose coordinates are UI coordinates.
+    void addRenderCallback(std::function<void(graphics2d::Renderer& renderer)> draw);
 
     // Adds a font under a name and returns its regular face. Fonts are sized when drawn, so one font serves every size, and a fallback draws the characters a face lacks with its em square as large as the em square of that face.
     ImFont* addFont(const std::string& name, FontFiles files);
@@ -186,13 +202,15 @@ class Backend final {
     std::map<std::string, Typeface, std::less<>> fonts;
     std::unordered_map<ImTextureID, graphics::Texture> atlasTextures;
     std::unordered_map<ImTextureID, graphics::Texture> frameTextures;
-    std::vector<std::function<void(graphics2d::Renderer&, math::Vec2)>> renderCalls;
+    std::vector<std::function<void(graphics2d::Renderer&)>> renderCalls;
     std::vector<const ImDrawList*> renderedLists;
+    std::vector<const ImDrawList*> drawnLists;
     std::vector<graphics2d::MeshVertex> meshVertices;
     std::vector<std::uint32_t> meshIndices;
     graphics2d::Renderer* rendering = nullptr;
     ImTextureID nextAtlasTexture = 1;
     math::Vec2 origin;
+    float scale = 1.0F;
     math::Rect safeRect;
     std::vector<math::Rect> blocked;
     std::vector<math::Rect> blockedPrevious;

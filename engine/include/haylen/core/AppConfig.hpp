@@ -14,6 +14,7 @@
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
+#include "haylen/ui/Scaling.hpp"
 
 namespace haylen::io {
 class Package;
@@ -86,6 +87,9 @@ struct AppConfig {
     // How the app shares sound with the system and other apps, from the `audio` object with `iosSession` and `mixWithOthers`.
     audio::Session audioSession{};
     Input input{};
+
+    // How large the interface draws, from the `ui` object with `scaleMode` and `scale`.
+    ui::Scaling uiScaling{};
     Debug debug{};
 
     // Lua modules that load before the first scene and live for the whole app.

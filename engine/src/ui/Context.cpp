@@ -133,7 +133,15 @@ ImTextureRef Context::getTextureReference(const graphics::Texture& texture) cons
 }
 
 math::Vec2 Context::toUi(math::Vec2 designPoint) const noexcept {
-    return designPoint - origin;
+    return backend.toUi(designPoint);
+}
+
+math::Vec2 Context::toDesign(math::Vec2 uiPoint) const noexcept {
+    return backend.toDesign(uiPoint);
+}
+
+math::Rect Context::toDesign(const math::Rect& uiRect) const noexcept {
+    return math::Rect::fromMinMax(backend.toDesign(uiRect.getMin()), backend.toDesign(uiRect.getMax()));
 }
 
 void Context::holdButton(std::string_view name) {
@@ -144,7 +152,7 @@ void Context::setStick(std::string_view name, math::Vec2 value) {
     sticks.insert_or_assign(std::string(name), value);
 }
 
-void Context::beginFrame(double now, float delta, math::Vec2 visibleOrigin) noexcept {
+void Context::beginFrame(double now, float delta) noexcept {
     ++frame;
     heldButtons.clear();
     sticks.clear();
@@ -153,7 +161,6 @@ void Context::beginFrame(double now, float delta, math::Vec2 visibleOrigin) noex
     toasts.beginFrame();
     time = now;
     deltaSeconds = delta;
-    origin = visibleOrigin;
 }
 
 void Context::emit(const Component& component, std::string name, core::Json value) {

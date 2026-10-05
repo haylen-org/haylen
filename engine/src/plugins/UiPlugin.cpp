@@ -46,6 +46,7 @@ void UiPlugin::start(core::Engine& engine) {
     owner = &engine;
     backend = std::make_unique<ui::Backend>(engine.getGraphics(), engine.getWindow(), core::EmbeddedFiles::getDefaultFont());
     safeAreaVisible = engine.getConfig().debug.showSafeArea;
+    scaling = engine.getConfig().uiScaling;
     // clang-format off
     ui::Context::Sources sources{
         .images = [this](std::string_view path) { return requestImage(*owner, path, getTheme().getImageFilter()); },
@@ -114,8 +115,11 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     elapsed += delta;
     drawBegun = false;
     navigation.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked(), focus.getOwner() == ui::FocusNavigator::Owner::PlayArea);
-    backend->beginFrame(delta, engine.getViewport(), engine.getInput(), navigation);
-    context->beginFrame(elapsed, delta, engine.getViewport().getVisibleRect().getMin());
+    const graphics::Viewport& viewport = engine.getViewport();
+    const math::Vec2 pixelsPerUnit = viewport.getPixelsPerUnit();
+    backend->setScale(scaling.resolve(std::min(pixelsPerUnit.x, pixelsPerUnit.y), engine.getWindow().getDpiScale(), viewport.getVisibleRect().getSize()));
+    backend->beginFrame(delta, viewport, engine.getInput(), navigation);
+    context->beginFrame(elapsed, delta);
 
     // Text reads in the current language, and an automatic direction takes the one that language declares.
     const localization::Catalog& catalog = engine.getPlugin<LocalizationPlugin>().getCatalog();

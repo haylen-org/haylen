@@ -134,13 +134,12 @@ class Context final {
         return toasts;
     }
 
-    // Converts a point in design coordinates, such as a touch position, to UI coordinates.
+    // Converts between design coordinates, such as those of a touch, and UI coordinates.
     [[nodiscard]] math::Vec2 toUi(math::Vec2 designPoint) const noexcept;
-    [[nodiscard]] math::Vec2 toDesign(math::Vec2 uiPoint) const noexcept {
-        return uiPoint + origin;
-    }
+    [[nodiscard]] math::Vec2 toDesign(math::Vec2 uiPoint) const noexcept;
+    [[nodiscard]] math::Rect toDesign(const math::Rect& uiRect) const noexcept;
 
-    void beginFrame(double now, float delta, math::Vec2 visibleOrigin) noexcept;
+    void beginFrame(double now, float delta) noexcept;
     [[nodiscard]] std::uint64_t getFrame() const noexcept {
         return frame;
     }
@@ -212,7 +211,6 @@ class Context final {
 
     // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
     std::vector<Writing> writings{Writing{}};
-    math::Vec2 origin;
     std::uint64_t frame = 0;
     double time = 0.0;
     float deltaSeconds = 0.0F;

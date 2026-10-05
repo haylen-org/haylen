@@ -30,8 +30,8 @@ class TextSession final {
         keyboard = frame;
     }
 
-    // Starts a frame over the visible area, whose origin is the origin of UI coordinates, and moves the UI toward the offset that keeps the focused field above the keyboard.
-    void beginFrame(const graphics::Viewport& frameViewport, float deltaSeconds);
+    // Starts a frame over the visible area, whose origin is the origin of UI coordinates, at the design units one UI unit spans, and moves the UI toward the offset that keeps the focused field above the keyboard.
+    void beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds);
 
     // Declares a text field drawn this frame before its `InputText` call, whose callback synchronizes it.
     void addField(ImGuiID id, const math::Rect& bounds, const platform::TextInput::Options& options);
@@ -100,6 +100,7 @@ class TextSession final {
     platform::TextInput& input;
     graphics::Viewport viewport;
     math::Vec2 origin;
+    float scale = 1.0F;
     std::vector<Entry> fields;
     std::vector<platform::TextInput::Field> sentFields;
     std::optional<platform::TextInput::Field> published;

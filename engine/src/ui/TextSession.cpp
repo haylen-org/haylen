@@ -58,9 +58,10 @@ void TextSession::receiveEdit(platform::TextInput::Edit edit) {
     }
 }
 
-void TextSession::beginFrame(const graphics::Viewport& frameViewport, float deltaSeconds) {
+void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds) {
     viewport = frameViewport;
     origin = frameViewport.getVisibleRect().getMin();
+    scale = uiScale;
     fields.clear();
     activeThisFrame = false;
 
@@ -173,7 +174,7 @@ void TextSession::publish() {
 }
 
 math::Rect TextSession::toFramebuffer(const math::Rect& rect) const noexcept {
-    return math::Rect::fromMinMax(viewport.toFramebuffer(rect.getMin() + origin), viewport.toFramebuffer(rect.getMax() + origin));
+    return math::Rect::fromMinMax(viewport.toFramebuffer(rect.getMin() * scale + origin), viewport.toFramebuffer(rect.getMax() * scale + origin));
 }
 
 void TextSession::publishVisibleFields() {

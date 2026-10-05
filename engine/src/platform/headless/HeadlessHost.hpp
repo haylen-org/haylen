@@ -40,7 +40,12 @@ class HeadlessHost final : public Host {
         return framebufferSize;
     }
     [[nodiscard]] float getDpiScale() const noexcept override {
-        return 1.0F;
+        return dpiScale;
+    }
+
+    // Sets the framebuffer pixels per window point that the host reports, as a dense screen would.
+    void setDpiScale(float value) noexcept {
+        dpiScale = value;
     }
     [[nodiscard]] bool isFullscreen() const noexcept override {
         return fullscreen;
@@ -325,6 +330,7 @@ class HeadlessHost final : public Host {
   private:
     std::filesystem::path dataDirectory;
     math::Vec2 framebufferSize;
+    float dpiScale = 1.0F;
     math::Insets safeAreaInsets{};
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
     std::vector<PlatformCall> platformCalls;

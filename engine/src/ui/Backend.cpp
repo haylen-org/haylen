@@ -225,12 +225,12 @@ void Backend::resetRenderState(const ImDrawList*, const ImDrawCmd*) {}
 void Backend::runRenderCall(const ImDrawList* list, const ImDrawCmd* command) {
     const RenderCall& call = *reinterpret_cast<const RenderCall*>(list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset);
     Backend& owner = *call.owner;
-    const math::Rect clip = math::Rect::fromMinMax({command->ClipRect.x, command->ClipRect.y}, {command->ClipRect.z, command->ClipRect.w}).translated(owner.origin);
+    const math::Rect clip = math::Rect::fromMinMax({command->ClipRect.x, command->ClipRect.y}, {command->ClipRect.z, command->ClipRect.w});
     if (clip.isEmpty()) {
         return;
     }
     owner.rendering->pushClip(clip);
-    owner.renderCalls[call.index](*owner.rendering, owner.origin);
+    owner.renderCalls[call.index](*owner.rendering);
     owner.rendering->popClip();
 }
 
@@ -394,8 +394,7 @@ void Backend::handleEvent(const platform::Event& event, const graphics::Viewport
         handleTextAction(event);
         break;
     case platform::Event::Type::KeyboardChanged: {
-        const math::Vec2 visible = viewport.getVisibleRect().getMin();
-        textSession->setKeyboardFrame(math::Rect::fromMinMax(viewport.toDesign(event.keyboardFrame.getMin()) - visible, viewport.toDesign(event.keyboardFrame.getMax()) - visible));
+        textSession->setKeyboardFrame(math::Rect::fromMinMax(toUi(viewport.toDesign(event.keyboardFrame.getMin())), toUi(viewport.toDesign(event.keyboardFrame.getMax()))));
         break;
     }
     case platform::Event::Type::FocusGained:
@@ -412,7 +411,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     ImGuiIO& io = ImGui::GetIO();
     // clang-format off
     const auto place = [&](math::Vec2 framebufferPoint) {
-        const math::Vec2 point = viewport.toDesign(framebufferPoint) - origin;
+        const math::Vec2 point = toUi(viewport.toDesign(framebufferPoint));
         io.AddMousePosEvent(point.x, point.y);
         pointerPosition = framebufferPoint;
     };
@@ -571,20 +570,20 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     }
 
     const math::Rect visible = viewport.getVisibleRect();
-    const math::Vec2 density = viewport.getPixelsPerUnit();
+    const math::Vec2 density = viewport.getPixelsPerUnit() * scale;
     origin = visible.getMin();
-    safeRect = viewport.getSafeRect().translated(-origin);
+    safeRect = math::Rect::fromMinMax(toUi(viewport.getSafeRect().getMin()), toUi(viewport.getSafeRect().getMax()));
 
     // The pointer keeps its place on the screen when design space moves under it, such as after the app changes its scaling.
     if (pointerPosition) {
-        const math::Vec2 point = viewport.toDesign(*pointerPosition) - origin;
+        const math::Vec2 point = toUi(viewport.toDesign(*pointerPosition));
         io.AddMousePosEvent(point.x, point.y);
     }
 
-    io.DisplaySize = {visible.width, visible.height};
+    io.DisplaySize = {visible.width / scale, visible.height / scale};
     io.DisplayFramebufferScale = {density.x, density.y};
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
-    textSession->beginFrame(viewport, deltaSeconds);
+    textSession->beginFrame(viewport, scale, deltaSeconds);
     closeAbandonedPopups();
     feedGamepad(input, navigation);
 
@@ -631,7 +630,7 @@ bool Backend::isUsingKeyboard() const {
     return imguiContext->IO.WantCaptureKeyboard;
 }
 
-void Backend::addRenderCallback(std::function<void(graphics2d::Renderer& renderer, math::Vec2 offset)> draw) {
+void Backend::addRenderCallback(std::function<void(graphics2d::Renderer& renderer)> draw) {
     renderCalls.push_back(std::move(draw));
     RenderCall call{.owner = this, .index = renderCalls.size() - 1};
     ImGui::GetWindowDrawList()->AddCallback(&runRenderCall, &call, sizeof(call));
@@ -708,26 +707,26 @@ void Backend::render(graphics2d::Renderer& renderer) {
         window.setCursor(wanted);
     }
 
-    std::vector<const ImDrawList*> lists;
+    drawnLists.clear();
     for (const ImDrawList* list : data.CmdLists) {
         if (std::ranges::find(renderedLists, list) == renderedLists.end()) {
-            lists.push_back(list);
+            drawnLists.push_back(list);
         }
     }
-    drawLists(renderer, lists);
+    drawLists(renderer, drawnLists);
 }
 
 void Backend::renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& root) {
     makeCurrent();
-    std::vector<const ImDrawList*> lists;
-    collectLists(root, lists);
+    drawnLists.clear();
+    collectLists(root, drawnLists);
     for (const ImGuiPopupData& popup : GImGui->OpenPopupStack) {
         if (popup.Window != nullptr && popup.Window->RootWindowPopupTree == &root && popup.Window != &root) {
-            collectLists(*popup.Window, lists);
+            collectLists(*popup.Window, drawnLists);
         }
     }
-    drawLists(renderer, lists);
-    renderedLists.insert(renderedLists.end(), lists.begin(), lists.end());
+    drawLists(renderer, drawnLists);
+    renderedLists.insert(renderedLists.end(), drawnLists.begin(), drawnLists.end());
 }
 
 void Backend::collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists) {
@@ -746,7 +745,11 @@ void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawLi
     if (empty && renderCalls.empty()) {
         return;
     }
-    renderer.beginScreen();
+    // The canvas maps UI coordinates to the visible area at the scale of the UI, so the meshes of ImGui and the draws of the components keep their UI coordinates.
+    graphics2d::Camera camera;
+    camera.anchor = graphics2d::Camera::Anchor::TopLeft;
+    camera.setZoom({scale, scale});
+    renderer.beginWorld(camera);
     rendering = &renderer;
     for (const ImDrawList* list : lists) {
         for (const ImDrawCmd& command : list->CmdBuffer) {
@@ -757,7 +760,7 @@ void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawLi
 
             const ImTextureData* atlas = command.TexRef._TexData;
             const graphics::Texture* texture = atlas != nullptr && atlas->TexID == ImTextureID_Invalid ? nullptr : findTexture(command.GetTexID());
-            const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w}).translated(origin);
+            const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
             if (texture == nullptr || command.ElemCount == 0 || clip.isEmpty()) {
                 continue;
             }
@@ -769,7 +772,7 @@ void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawLi
             meshVertices.clear();
             for (std::size_t index = first; index <= command.VtxOffset + highest; ++index) {
                 const ImDrawVert& vertex = list->VtxBuffer[static_cast<int>(index)];
-                meshVertices.push_back({.position = math::Vec2{vertex.pos.x, vertex.pos.y} + origin, .uv = {vertex.uv.x, vertex.uv.y}, .color = toColor(vertex.col)});
+                meshVertices.push_back({.position = {vertex.pos.x, vertex.pos.y}, .uv = {vertex.uv.x, vertex.uv.y}, .color = toColor(vertex.col)});
             }
             meshIndices.clear();
             for (const ImDrawIdx index : used) {

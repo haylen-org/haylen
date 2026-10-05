@@ -22,6 +22,7 @@
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/NavigationInput.hpp"
 #include "haylen/ui/Placement.hpp"
+#include "haylen/ui/Scaling.hpp"
 #include "haylen/ui/Theme.hpp"
 
 namespace haylen::core {
@@ -101,6 +102,14 @@ class UiPlugin final : public Plugin {
         return direction;
     }
 
+    // How large the interface draws from the next frame, which the `ui` section of `app.json` sets at start. The backend reports the design units one UI unit spans that it resolves to.
+    void setScaling(const ui::Scaling& value) noexcept {
+        scaling = value;
+    }
+    [[nodiscard]] const ui::Scaling& getScaling() const noexcept {
+        return scaling;
+    }
+
     // Shades the screen outside the safe area and outlines it over everything, to check layouts against notches and system bars. The `debug.showSafeArea` option of `app.json` turns it on at start.
     void setSafeAreaVisible(bool value) noexcept {
         safeAreaVisible = value;
@@ -167,6 +176,7 @@ class UiPlugin final : public Plugin {
     double elapsed = 0.0;
     text::Direction direction = text::Direction::LeftToRight;
     bool safeAreaVisible = false;
+    ui::Scaling scaling;
     bool drawBegun = false;
     core::Engine* owner = nullptr;
 };

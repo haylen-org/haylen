@@ -59,8 +59,8 @@ void Typography::drawLayout(Context& context, Theme::Font font, std::string_view
     painted.scale = shape.scale;
     const math::Vec2 origin = math::Vec2{std::floor(position.x), std::floor(position.y)} * shape.scale + shape.offset;
     // clang-format off
-    context.getBackend().addRenderCallback([family = context.getFontFamily(font), content = std::string(text), painted, origin](graphics2d::Renderer& renderer, math::Vec2 offset) {
-        renderer.drawText(*family, content, origin + offset, painted);
+    context.getBackend().addRenderCallback([family = context.getFontFamily(font), content = std::string(text), painted, origin](graphics2d::Renderer& renderer) {
+        renderer.drawText(*family, content, origin, painted);
     });
     // clang-format on
 }

@@ -395,6 +395,50 @@ viewport.setSafeAreaSimulation('iphoneDynamicIsland')
 ui.setSafeAreaVisible(true)
 ```
 
+### ui.setScaleMode(mode)
+
+Sets how large the interface draws from the next frame. The mode `'design'`, the default, lays the UI out in the design units of the app, so it grows and shrinks with the screen like the rest of the app. The mode `'physical'` gives a UI unit the same size on every screen, three quarters of a point, so the default control height of 64 units is 48 points on a phone, a tablet and a desktop, and the shorter side of the visible area never holds fewer than 480 UI units, so a layout always has room. A point is the unit the platform reports through [`window.dpiScale()`](window.md): a point of Apple platforms, a density-independent pixel on Android and a CSS pixel on the web. Sizes, positions, `gui:bounds` and the values of events stay in design coordinates, and only the room the UI has changes, which a layout that grows with `grow`, `wrap` and `minColumnWidth` takes in its stride. The `app.json` key `ui.scaleMode` sets it at start. An unknown mode raises `The UI scale mode "<mode>" is unknown. It is "design" or "physical".`.
+
+```lua
+local system = require('haylen.system')
+local ui = require('haylen.ui')
+
+if system.info().deviceKind == 'phone' then
+    ui.setScaleMode('physical')
+end
+```
+
+### ui.scaleMode()
+
+Returns the scale mode, `'design'` or `'physical'`.
+
+```lua
+local ui = require('haylen.ui')
+
+print(ui.scaleMode())
+```
+
+### ui.setScale(factor)
+
+Multiplies the size of the interface by a factor from 0.25 to 4 in both modes, such as a text size setting of the player. The `app.json` key `ui.scale` sets it at start. A factor out of range raises `The UI scale must be from 0.25 to 4.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.setScale(1.25)
+```
+
+### ui.scale()
+
+Returns the factor `ui.setScale` set and the design units one UI unit spans in the last frame, which the physical mode derives from the density of the screen.
+
+```lua
+local ui = require('haylen.ui')
+
+local factor, scale = ui.scale()
+print('A control of 64 units spans ' .. 64 * scale .. ' design units.')
+```
+
 ### ui.setDirection(direction)
 
 Sets the direction of the whole UI: `'leftToRight'`, the default, `'rightToLeft'`, or `'auto'`, which follows the direction the current language of [`haylen.localization`](localization.md#localizationdirection) declares, so picking Arabic mirrors every GUI from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.

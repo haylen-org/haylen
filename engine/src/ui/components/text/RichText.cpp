@@ -99,8 +99,8 @@ void RichText::render(Context& context, const math::Rect& bounds) {
     // The transforms of the nodes around it scale and color the text the way they reshape the vertices of ImGui.
     const Context::Reshape shape = context.getReshape();
     // clang-format off
-    context.getBackend().addRenderCallback([shown = richText, origin, shape](graphics2d::Renderer& renderer, math::Vec2 offset) {
-        renderer.drawRichText(*shown, origin * shape.scale + shape.offset + offset, {}, shape.scale, shape.color);
+    context.getBackend().addRenderCallback([shown = richText, origin, shape](graphics2d::Renderer& renderer) {
+        renderer.drawRichText(*shown, origin * shape.scale + shape.offset, {}, shape.scale, shape.color);
     });
     // clang-format on
 }

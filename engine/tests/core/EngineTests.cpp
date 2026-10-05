@@ -125,6 +125,7 @@ TEST(AppConfigTest, ReadsEveryField) {
         "clearColor": "#102030",
         "splash": {"logo": "ui/logo.png", "background": "#405060"},
         "input": {"mouseAsTouch": true},
+        "ui": {"scaleMode": "physical", "scale": 1.25},
         "native": {"steam_api": {"files": {"macos": "platform/apple/libsteam_api.dylib"}}}
     })"));
 
@@ -148,6 +149,10 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_TRUE(config.input.mouseAsTouch);
     EXPECT_FALSE(config.input.touchAsMouse);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"input", {{"mouseAsFinger", true}}}}), std::invalid_argument);
+    EXPECT_EQ(config.uiScaling.mode, ui::Scaling::Mode::Physical);
+    EXPECT_EQ(config.uiScaling.factor, 1.25F);
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"ui", {{"scaleMode", "huge"}}}}), std::invalid_argument);
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"ui", {{"scale", 9}}}}), std::invalid_argument);
     EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"clearColor", "#102030"}}).splash.background, math::Color::fromHex(0x102030FFU));
     EXPECT_EQ(config.native.at("steam_api").at("files").at("macos"), "platform/apple/libsteam_api.dylib");
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"native", core::Json::array()}}), std::invalid_argument);

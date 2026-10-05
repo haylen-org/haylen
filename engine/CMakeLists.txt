@@ -520,6 +520,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/MountLink.cpp
   src/ui/NavigationInput.cpp
   src/ui/PropertyReader.cpp
+  src/ui/Scaling.cpp
   src/ui/Style.cpp
   src/ui/Surfaces.cpp
   src/ui/TextEditor.cpp

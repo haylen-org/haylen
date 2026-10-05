@@ -323,7 +323,7 @@ void Component::reportPointer(Context& context, const math::Rect& bounds) {
 // A press that starts over the node follows its button wherever the pointer goes, until the button lets go.
 void Component::reportPress(Context& context, bool over) {
     const ImGuiIO& io = ImGui::GetIO();
-    const math::Vec2 point = context.toDesign({io.MousePos.x, io.MousePos.y});
+    const math::Vec2 point = context.toDesign(math::Vec2{io.MousePos.x, io.MousePos.y});
     if (!pressedButton) {
         for (int button = 0; button < static_cast<int>(input::Controls::kMouseButtonCount); ++button) {
             if (!over || !ImGui::IsMouseClicked(button)) {
@@ -408,7 +408,7 @@ void Component::noticeStoppedDrawing(Context& context) {
             context.emit(*this, "hover", {{"hovered", false}});
         }
         if (const std::optional<int> button = std::exchange(pressedButton, std::nullopt); button && isListening(Notice::Release)) {
-            const math::Vec2 point = context.toDesign({ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y});
+            const math::Vec2 point = context.toDesign(math::Vec2{ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y});
             context.emit(*this, "release", {{"x", point.x}, {"y", point.y}, {"button", getButtonName(*button)}, {"inside", false}});
         }
         if (isListening(Notice::Hide)) {

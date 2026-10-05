@@ -80,6 +80,10 @@ self:show('health', 'tone', health < 0.3 and 'danger' or 'success')
 self:show('day', 'text', widgets.text('hud.day', {day = game.cycle.day}), game.cycle.day)
 ```
 
+## Scale and screen density
+
+A GUI lays out in UI units. With the default scale mode `'design'`, a UI unit is a design unit, so the interface grows and shrinks with the screen like the rest of the app, which suits games drawn for one screen shape and televisions. With `ui.setScaleMode('physical')` or `"ui": {"scaleMode": "physical"}` in `app.json`, a UI unit keeps the same physical size on every screen, from the density the platform reports, so buttons and text are as large on a phone as on a desktop monitor, and the shorter side of the visible area always holds at least 480 units. Then the room the UI has changes with the screen, and layouts that grow, wrap and fit their columns follow it. The factor of `ui.setScale`, such as a text size setting, multiplies both modes, and `ui.scale()` reports the factor and the design units a UI unit spans.
+
 ## Placement and the safe area
 
 Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. See [Rendering](rendering.md) for the scaling policies that map design units to the screen. The functions [`viewport.setScaling`](lua-api/viewport.md#viewportsetscalingpolicy) and [`viewport.setDesignSize`](lua-api/viewport.md#viewportsetdesignsizewidth-height) change them while the app runs, and every GUI lays out in the new visible and safe areas from the next frame on.
