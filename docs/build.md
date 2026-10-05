@@ -199,6 +199,7 @@ python3 haylen.py clean
 | `HAYLEN_BUILD_FRAMEWORK` | off | Apple only, with `HAYLEN_BUILD_SDK`: merge the SDK and the player into the `libhaylen.a` of one `Haylen.xcframework` slice, installed by the `haylen_framework` component. |
 | `HAYLEN_ENABLE_COVERAGE` | off | Instrument the engine and tests with LLVM coverage. Requires Clang. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the engine targets, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
+| `HAYLEN_BUILD_TOOLS` | on at the top level | Desktop hosts only: build the content tool `haylen-content` and its library `haylen_content_tool`, which the tests link too. |
 | `HAYLEN_BUILD_FUZZERS` | off | Build `haylen_content_fuzzer`, the libFuzzer target of the parsers of the content formats, and instrument every target for it with AddressSanitizer. Requires a Clang that links libFuzzer, which Apple Clang does not ship. |
 
 The workspace `CMakeLists.txt` at the repository root adds `engine/` and turns the player, the tests and the benchmark on. Shaders in `engine/shaders` are compiled by `sokol-shdc` at build time for GLSL 4.30, GLSL 3.00 ES, HLSL 5, Metal for macOS, iOS and the simulator and WGSL, and the runtime picks the variant of the active backend. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every compile runs from `engine/shaders/include`, the shader library that app shaders include too.
@@ -291,7 +292,7 @@ build/macos-debug/bin/haylen/haylen --dev ~/apps/my-game
 build/macos-debug/bin/haylen/haylen my-game.zip
 ```
 
-`--dev` turns on development mode, which `haylen.py run` passes. When the package is a folder, the player then watches its `app.json`, `source/` and `content/`: a changed texture updates in place, other changed assets leave the cache so the next load reads them again, and a changed file under `source/` or a changed `app.json` restarts the app, even from the error screen. Without `--dev` the player runs the package like a shipped app. A package that fails to load keeps the window open and shows the error. `haylen.py engine --platform desktop` copies the player to `build/artifacts/desktop/<os>-<arch>/`.
+`--dev` turns on development mode, which `haylen.py run` passes. When the package is a folder, the player then watches its `app.json`, `source/` and `content/`: a changed texture updates in place, other changed assets leave the cache so the next load reads them again, and a changed file under `source/` or a changed `app.json` restarts the app, even from the error screen. Without `--dev` the player runs the package like a shipped app. A package that fails to load keeps the window open and shows the error. `haylen.py engine --platform desktop` copies the player to `build/artifacts/desktop/<os>-<arch>/`, next to the content tool `haylen-content`, which builds the protected releases of apps as the [content guide](content.md#the-content-tool) describes.
 
 ## Web builds
 

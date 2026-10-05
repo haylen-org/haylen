@@ -3,7 +3,12 @@
 #include <monocypher.h>
 
 #include <algorithm>
+#include <fstream>
+#include <stdexcept>
 #include <string_view>
+#include <vector>
+
+#include "content/crypto/Hasher.hpp"
 
 namespace haylen::content {
 
@@ -17,12 +22,43 @@ Digest Digest::of(std::span<const std::uint8_t> message) noexcept {
     return digest;
 }
 
+Digest Digest::ofFile(const std::filesystem::path& file) {
+    std::ifstream stream(file, std::ios::binary);
+    if (!stream) {
+        throw std::runtime_error("The file \"" + file.generic_string() + "\" could not be read.");
+    }
+    std::vector<std::uint8_t> buffer(kFileBlockSize);
+    Hasher hasher;
+    while (stream) {
+        stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
+        hasher.update(std::span(buffer).first(static_cast<std::size_t>(stream.gcount())));
+    }
+    if (stream.bad()) {
+        throw std::runtime_error("The file \"" + file.generic_string() + "\" could not be read to its end.");
+    }
+    return hasher.finish();
+}
+
 bool Digest::isZero() const noexcept {
     return std::ranges::all_of(bytes, [](std::uint8_t byte) { return byte == 0; });
 }
 
+std::optional<Digest> Digest::fromHex(std::string_view text) noexcept {
+    if (text.size() != kSize * 2) {
+        return std::nullopt;
+    }
+    Digest digest;
+    for (std::size_t index = 0; index < text.size(); ++index) {
+        const std::size_t value = kDigits.find(text[index]);
+        if (value == std::string_view::npos) {
+            return std::nullopt;
+        }
+        digest.bytes[index / 2] = static_cast<std::uint8_t>(digest.bytes[index / 2] | (index % 2 == 0 ? value << 4 : value));
+    }
+    return digest;
+}
+
 std::string Digest::toHex() const {
-    static constexpr std::string_view kDigits = "0123456789abcdef";
     std::string text;
     text.reserve(kSize * 2);
     for (const std::uint8_t byte : bytes) {

@@ -81,21 +81,10 @@ ShardReference ShardWriter::finish() {
         throw std::runtime_error("The shard file \"" + temporary.generic_string() + "\" could not be completed.");
     }
 
-    const ShardReference reference{.shardId = header.shardId, .fileSize = header.indexOffset + header.indexSize, .fileDigest = digestFile()};
+    const ShardReference reference{.shardId = header.shardId, .fileSize = header.indexOffset + header.indexSize, .fileDigest = Digest::ofFile(temporary)};
     std::filesystem::rename(temporary, folder / reference.getFileName());
     finished = true;
     return reference;
-}
-
-Digest ShardWriter::digestFile() const {
-    std::ifstream file(temporary, std::ios::binary);
-    std::vector<std::uint8_t> buffer(kDigestBufferSize);
-    Hasher hasher;
-    while (file) {
-        file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
-        hasher.update(std::span(buffer).first(static_cast<std::size_t>(file.gcount())));
-    }
-    return hasher.finish();
 }
 
 } // namespace haylen::content

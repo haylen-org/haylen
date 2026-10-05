@@ -18,6 +18,7 @@ set(HAYLEN_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE INTERNAL "Haylen CM
 option(HAYLEN_BUILD_PLAYER "Build the haylen player: the executable on desktop and web, and the library of the Android activity on Android." ${PROJECT_IS_TOP_LEVEL})
 option(HAYLEN_BUILD_TESTS "Build the engine tests." ${PROJECT_IS_TOP_LEVEL})
 option(HAYLEN_BUILD_BENCHMARKS "Build the engine benchmarks." ${PROJECT_IS_TOP_LEVEL})
+option(HAYLEN_BUILD_TOOLS "Build the content tool haylen-content, which builds and publishes the protected releases of apps on desktop hosts." ${PROJECT_IS_TOP_LEVEL})
 option(HAYLEN_BUILD_SDK "Merge the engine into the SDK that cmake --install --component haylen_sdk installs for find_package(haylen)." OFF)
 option(HAYLEN_BUILD_FRAMEWORK "Merge the SDK and the player into the static library of one Haylen.xcframework slice. Apple platforms only." OFF)
 option(HAYLEN_ENABLE_COVERAGE "Instrument the engine and its tests for code coverage." OFF)
@@ -214,6 +215,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/format/ShardReference.cpp
   src/content/HpakFileReader.cpp
   src/content/HpakPackage.cpp
+  src/content/RecordCache.cpp
+  src/content/ReleaseBuilder.cpp
   src/content/ReleasePackage.cpp
   src/content/ShardReader.cpp
   src/content/ShardSet.cpp
@@ -777,6 +780,10 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-lua-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
   set_target_properties(haylen-lua-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-lua-benchmark)
+endif()
+
+if((HAYLEN_BUILD_TOOLS OR HAYLEN_BUILD_TESTS) AND HAYLEN_DESKTOP)
+  add_subdirectory(tools/content)
 endif()
 
 if(HAYLEN_BUILD_TESTS AND HAYLEN_DESKTOP)

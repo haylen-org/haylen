@@ -31,6 +31,7 @@ python3 haylen.py run ~/apps/my-game --platform web
 | `android-key <app> [--release\|--debug] [--alias] [--password] [--dname] [--force]` | Creates the upload key of release builds, or a debug key, in `platform/android/keystore/` of an app, with its certificate and the properties that sign its builds. |
 | `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
+| `content build\|verify\|inspect\|diff\|publish\|compact\|keys <app> ...` | Builds, verifies, inspects, compares, publishes and compacts the protected releases of an app, and shows or rotates its keys, as the [content guide](content.md#the-content-tool) describes. |
 | `shaders <app> [--force]` | Compiles the shaders under `content/shaders/` of an app into `.shader` files. |
 | `serve <folder> [--host] [--port] [--coep] [--coop] [--open]` | Serves a folder with the headers WebAssembly pages need. |
 | `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or a plugin repository at a branch, tag or commit, into `plugins/` of an app and lists it in its `app.json`. |
@@ -238,6 +239,7 @@ build/artifacts/
   web/webgpu/                   haylen.js and haylen.wasm of the player for WebGPU, and haylen-audio-worklet.js, the processor of its audio output.
   web/webgl2/                   The same files for WebGL2.
   desktop/<os>-<arch>/haylen    The player of this machine.
+  desktop/<os>-<arch>/haylen-content  The content tool of this machine, which builds, verifies, inspects and publishes protected releases.
 ```
 
 The intermediate build trees live in `build/engine/` for Apple and Android, and in the regular build trees of `haylen.py build` (`build/web-<config>`, `build/web-webgl2-<config>` and `build/<host>-<config>`) for the web and the desktop.

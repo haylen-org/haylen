@@ -42,10 +42,7 @@ class ShardWriter final {
     [[nodiscard]] ShardReference finish();
 
   private:
-    static constexpr std::size_t kDigestBufferSize = 1024 * 1024;
-
     [[nodiscard]] Digest identify() const;
-    [[nodiscard]] Digest digestFile() const;
     void write(std::span<const std::uint8_t> bytes);
 
     std::filesystem::path folder;

@@ -265,5 +265,29 @@ class AndroidKeyTest(unittest.TestCase):
         self.assertEqual(lines[1:], ["storeFile=release.jks", "storePassword=pa=ss\\u2713", "keyAlias=upload", "keyPassword=pa=ss\\u2713"])
 
 
+class ContentKeysTest(unittest.TestCase):
+    def test_keys_live_outside_every_project_unless_continuous_integration_names_their_folder(self):
+        environment = {name: value for name, value in os.environ.items() if name != haylen.KEYS_VARIABLE}
+        with mock.patch.dict(os.environ, environment, clear=True):
+            folder = haylen.keys_folder("com.example.game")
+            self.assertEqual(folder, haylen.user_config_folder() / "keys" / "com.example.game")
+            self.assertFalse(folder.is_relative_to(haylen.ROOT))
+        with mock.patch.dict(os.environ, {haylen.KEYS_VARIABLE: "/secrets/keys"}):
+            self.assertEqual(haylen.keys_folder("com.example.game"), Path("/secrets/keys/com.example.game"))
+
+    def test_continuous_integration_receives_keys_and_never_creates_them(self):
+        with tempfile.TemporaryDirectory() as scratch, mock.patch.dict(os.environ, {haylen.KEYS_VARIABLE: scratch}):
+            app = mock.Mock(identifier="com.example.game")
+            with self.assertRaisesRegex(haylen.BuildError, 'holds no keys of "com.example.game"'):
+                haylen.ensure_keys(app, Path("haylen-content"))
+            (Path(scratch) / "com.example.game").mkdir()
+            (Path(scratch) / "com.example.game" / "keys.json").write_text("{}")
+            self.assertEqual(haylen.ensure_keys(app, Path("haylen-content")), Path(scratch) / "com.example.game")
+
+    def test_every_platform_with_a_project_has_a_content_profile(self):
+        self.assertEqual(set(haylen.CONTENT_PROFILES), set(haylen.RUN_TARGETS) - {"web"})
+        self.assertEqual({haylen.CONTENT_PROFILES[name] for name in haylen.APPLE_RUNS}, {"apple"})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3,6 +3,7 @@
 #include <zstd.h>
 
 #include <algorithm>
+#include <format>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -36,6 +37,10 @@ Compression::Encoded Compression::encode(std::span<const std::uint8_t> plain) {
 
 bool Compression::isSupported(std::uint8_t codec, std::uint8_t profile) noexcept {
     return (codec == static_cast<std::uint8_t>(Codec::None) && profile == kNoneProfile) || (codec == static_cast<std::uint8_t>(Codec::Zstd) && profile == kZstdProfile);
+}
+
+std::string Compression::getEncoderName() {
+    return std::format("zstd-{}-profile-{}", ZSTD_versionNumber(), kZstdProfile);
 }
 
 void Compression::decode(Codec codec, std::span<const std::uint8_t> encoded, std::span<std::uint8_t> plain) {

@@ -84,6 +84,14 @@ ANDROID_MIN_SDK = 27
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
 # The Android libraries that `haylen.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
 ANDROID_LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-coroutines")
+# The host tool that builds, verifies, inspects, compares and publishes the protected releases of apps with the format library of the engine, which the desktop artifacts carry.
+CONTENT_TOOL = "haylen-content"
+# The variable that names the folder of the key folders of apps, as continuous integration gives it, instead of the configuration folder of the user.
+KEYS_VARIABLE = "HAYLEN_KEYS_DIR"
+# The content profile of each run platform, which a protected release is built for. The Apple platforms share one release, since their targets share one project.
+CONTENT_PROFILES = {"macos": "apple", "catalyst": "apple", "ios": "apple", "ios-simulator": "apple", "tvos": "apple", "tvos-simulator": "apple", "android": "android", "windows": "windows", "linux": "linux"}
+# A compaction of a publication tree keeps the current generation of every channel and the one before it.
+CONTENT_KEPT_GENERATIONS = 2
 # The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and `sokol_app` draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
 APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "14.0"}
@@ -94,7 +102,7 @@ WEB_PLATFORMS = {"web", "web-webgl2"}
 CONFIGS = ["Debug", "Release", "RelWithDebInfo"]
 ARTIFACT_PLATFORMS = ["apple", "android", "web", "desktop"]
 FORMAT_EXTENSIONS = {".h", ".hpp", ".c", ".cpp", ".m", ".mm"}
-FORMAT_ROOTS = ["engine/include", "engine/src", "engine/tests", "samples", "templates"]
+FORMAT_ROOTS = ["engine/include", "engine/src", "engine/tests", "engine/tools", "samples", "templates"]
 # Build outputs inside those roots, such as the native tree Gradle keeps in each Android project, hold generated and third-party code.
 FORMAT_SKIPPED_FOLDERS = {".cxx", ".gradle", "build", "_deps"}
 # A package is `app.json` with the Lua modules under `source` and the assets under `content`, and nothing else in its folder ships.
@@ -821,16 +829,20 @@ def build_web_artifacts(config: str, jobs: int) -> None:
             shutil.copy2(built / name, destination)
 
 
-def desktop_artifact() -> Path:
-    return ARTIFACTS_DIR / "desktop" / f"{host_name()}-{host_arch()}" / executable_name("haylen")
+def desktop_artifact(name: str = "haylen") -> Path:
+    return ARTIFACTS_DIR / "desktop" / f"{host_name()}-{host_arch()}" / executable_name(name)
 
 
 def build_desktop_artifacts(config: str, jobs: int) -> None:
-    command_build(build_options(host_name(), config, "haylen", jobs))
-    destination = desktop_artifact()
-    shutil.rmtree(destination.parent, ignore_errors=True)
-    destination.parent.mkdir(parents=True)
-    shutil.copy2(build_dir(host_name(), config) / "bin" / "haylen" / executable_name("haylen"), destination)
+    """Builds the player and the content tool of this machine."""
+    for target in ("haylen", CONTENT_TOOL):
+        command_build(build_options(host_name(), config, target, jobs))
+    destination = desktop_artifact().parent
+    shutil.rmtree(destination, ignore_errors=True)
+    destination.mkdir(parents=True)
+    built = build_dir(host_name(), config) / "bin"
+    shutil.copy2(built / "haylen" / executable_name("haylen"), desktop_artifact())
+    shutil.copy2(built / executable_name(CONTENT_TOOL), desktop_artifact(CONTENT_TOOL))
 
 
 ARTIFACT_BUILDERS = {"apple": build_apple_artifacts, "android": build_android_artifacts, "web": build_web_artifacts, "desktop": build_desktop_artifacts}
@@ -3298,6 +3310,121 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) 
     terminal.success(f'Bundled "{target}" for WebGPU and WebGL2 into `{shown_path(output)}`.')
 
 
+# Protected releases: the content tool builds them from the package of an app with the keys of the app, which live outside every project.
+
+
+def content_tool(config: str, jobs: int) -> Path:
+    """Returns the content tool of this machine, built with the desktop artifacts when they are missing or older than the engine sources."""
+    ensure_artifacts("desktop", config, jobs)
+    return desktop_artifact(CONTENT_TOOL)
+
+
+def user_config_folder() -> Path:
+    """The folder where the tools of Haylen keep what belongs to the user rather than to a project, such as the keys of apps."""
+    system = host_name()
+    if system == "macos":
+        return Path.home() / "Library" / "Application Support" / "Haylen"
+    if system == "windows":
+        return Path(os.environ["APPDATA"]) / "Haylen"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "haylen"
+
+
+def keys_folder(identifier: str) -> Path:
+    """The key folder of an app: under the folder that "HAYLEN_KEYS_DIR" names, as continuous integration gives it, or else under the configuration folder of the user, never inside a project."""
+    root = os.environ.get(KEYS_VARIABLE)
+    return (Path(root).expanduser() if root else user_config_folder() / "keys") / identifier
+
+
+def ensure_keys(app: App, tool: Path) -> Path:
+    """Returns the key folder of an app, and creates its keys on the machine of the developer when it has none yet. Continuous integration receives the keys and never creates them, since every release of an app needs the same keys."""
+    folder = keys_folder(app.identifier)
+    if (folder / "keys.json").is_file():
+        return folder
+    if os.environ.get(KEYS_VARIABLE):
+        raise BuildError(f'The key folder `{shown_path(folder)}` holds no keys of "{app.identifier}". Give "{KEYS_VARIABLE}" a copy of the key folders made where the releases of the app were built first.')
+    terminal.step(f'Creating the content keys of "{app.identifier}"')
+    run([tool, "keys", "create", folder, "--identifier", app.identifier])
+    terminal.warning(f"Created the keys of the protected releases of the app in `{shown_path(folder)}`.", f'Back up this folder, since every release of the app needs its keys, and give continuous integration a copy through "{KEYS_VARIABLE}".')
+    return folder
+
+
+def release_folder(app: App, profile: str) -> Path:
+    return app.build_folder / "release" / profile
+
+
+def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
+    """Builds the protected release of an app for a content profile into its build folder with the content tool, reusing the shards of the release before it and the build cache of the app, and returns the folder of the release."""
+    compile_app_shaders(app.folder)
+    tool = content_tool(config, jobs)
+    keys = ensure_keys(app, tool)
+    folder = release_folder(app, profile)
+    staging = folder.with_name(f"{profile}.new")
+    shutil.rmtree(staging, ignore_errors=True)
+    command = [tool, "build", app.folder, "--keys", keys, "--profile", profile, "--build", str(app.version_code), "--output", staging, "--cache", app.build_folder / "content-cache"]
+    if (folder / "app.hmanifest").is_file():
+        command += ["--previous", folder]
+    terminal.step(f'Building the protected release of `{shown_path(app.folder)}` for the profile "{profile}"')
+    run(command)
+    shutil.rmtree(folder, ignore_errors=True)
+    staging.rename(folder)
+    return folder
+
+
+def content_release(app: App, args: argparse.Namespace) -> Path:
+    """Returns the release folder that a content command names with "--release", or else the last release of the app for its platform."""
+    folder = Path(args.release).resolve() if args.release else release_folder(app, CONTENT_PROFILES[args.platform])
+    if not (folder / "app.hmanifest").is_file():
+        raise BuildError(f'The folder `{shown_path(folder)}` holds no protected release. Build one with "{TOOL} content build {shown_path(app.folder)} --platform {args.platform}".')
+    return folder
+
+
+def command_content_build(args: argparse.Namespace) -> None:
+    app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
+    folder = build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs)
+    terminal.success(f"Built the protected release `{shown_path(folder)}`.")
+
+
+def command_content_verify(args: argparse.Namespace) -> None:
+    app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
+    tool = content_tool(args.engine_config, args.jobs)
+    run([tool, "verify", content_release(app, args), "--keys", ensure_keys(app, tool)])
+
+
+def command_content_inspect(args: argparse.Namespace) -> None:
+    app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
+    tool = content_tool(args.engine_config, args.jobs)
+    run([tool, "inspect", content_release(app, args), "--keys", ensure_keys(app, tool), *(["--chunks"] if args.chunks else [])], echo=False)
+
+
+def command_content_diff(args: argparse.Namespace) -> None:
+    app = App(resolve_app(args.app), host_name())
+    tool = content_tool(args.engine_config, args.jobs)
+    run([tool, "diff", Path(args.earlier).resolve(), Path(args.later).resolve(), "--keys", ensure_keys(app, tool)], echo=False)
+
+
+def command_content_publish(args: argparse.Namespace) -> None:
+    app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
+    compile_app_shaders(app.folder)
+    tool = content_tool(args.engine_config, args.jobs)
+    keys = ensure_keys(app, tool)
+    terminal.step(f'Publishing the content of `{shown_path(app.folder)}` to the channel "{args.channel}" of `{shown_path(Path(args.output).resolve())}`')
+    run([tool, "publish", app.folder, "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.version_code), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache"])
+
+
+def command_content_compact(args: argparse.Namespace) -> None:
+    app = App(resolve_app(args.app), host_name())
+    tool = content_tool(args.engine_config, args.jobs)
+    run([tool, "compact", Path(args.tree).resolve(), "--keys", ensure_keys(app, tool), "--keep", str(args.keep)])
+
+
+def command_content_keys(args: argparse.Namespace) -> None:
+    app = App(resolve_app(args.app), host_name())
+    tool = content_tool(args.engine_config, args.jobs)
+    folder = ensure_keys(app, tool)
+    run([tool, "keys", "rotate" if args.rotate else "show", folder], echo=False)
+    terminal.info(f"The keys of the app live in `{shown_path(folder)}`.")
+
+
 def command_package(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     compile_app_shaders(app)
@@ -3514,6 +3641,48 @@ def build_parser() -> argparse.ArgumentParser:
     add_jobs_option(run_cpp)
     add_web_server_options(run_cpp, 8000)
     run_cpp.set_defaults(handler=command_run_cpp)
+
+    content = commands.add_parser("content", help="Build, verify, inspect, compare, publish and compact the protected releases of an app, and show or rotate its keys.")
+    content_actions = content.add_subparsers(dest="action", required=True, metavar="action")
+    content_platforms = list(CONTENT_PROFILES)
+    content_build = content_actions.add_parser("build", help="Build the protected release of an app for a platform into its build folder.")
+    add_app_argument(content_build)
+    content_build.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose release to build.")
+    content_build.set_defaults(handler=command_content_build)
+    content_verify = content_actions.add_parser("verify", help="Check every manifest, shard and file of a protected release with the keys of the app.")
+    add_app_argument(content_verify)
+    content_verify.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose last release to verify.")
+    content_verify.add_argument("--release", help="A release folder to verify instead of the last release of the platform.")
+    content_verify.set_defaults(handler=command_content_verify)
+    content_inspect = content_actions.add_parser("inspect", help="List the manifests, shards and files of a protected release with their sizes, chunks and deduplication.")
+    add_app_argument(content_inspect)
+    content_inspect.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose last release to inspect.")
+    content_inspect.add_argument("--release", help="A release folder to inspect instead of the last release of the platform.")
+    content_inspect.add_argument("--chunks", action="store_true", help="List every chunk of every file too.")
+    content_inspect.set_defaults(handler=command_content_inspect)
+    content_diff = content_actions.add_parser("diff", help="Compare two protected releases of an app: the chunks they share, add and drop, the files that changed and what an update downloads.")
+    add_app_argument(content_diff)
+    content_diff.add_argument("earlier", help="The folder of the earlier release.")
+    content_diff.add_argument("later", help="The folder of the later release.")
+    content_diff.set_defaults(handler=command_content_diff)
+    content_publish = content_actions.add_parser("publish", help="Publish the content of an app as the next generation of an update channel in a tree of static files for a web server or content delivery network.")
+    add_app_argument(content_publish)
+    content_publish.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose apps take the content.")
+    content_publish.add_argument("--channel", default="stable", help='The update channel, "stable" by default.')
+    content_publish.add_argument("--output", required=True, help="The folder of the publication tree, which keeps every earlier generation.")
+    content_publish.set_defaults(handler=command_content_publish)
+    content_compact = content_actions.add_parser("compact", help="Delete the manifests and packs of a publication tree that no channel reaches within its last generations.")
+    add_app_argument(content_compact)
+    content_compact.add_argument("tree", help="The folder of the publication tree.")
+    content_compact.add_argument("--keep", type=int, default=CONTENT_KEPT_GENERATIONS, help=f"The generations of every channel to keep, {CONTENT_KEPT_GENERATIONS} by default.")
+    content_compact.set_defaults(handler=command_content_compact)
+    content_keys = content_actions.add_parser("keys", help="Show the key folder and the key IDs of an app, which are created when it has none, or add a new content key.")
+    add_app_argument(content_keys)
+    content_keys.add_argument("--rotate", action="store_true", help="Add a content key, which encrypts the content of later releases while the earlier keys stay for installed content.")
+    content_keys.set_defaults(handler=command_content_keys)
+    for action in (content_build, content_verify, content_inspect, content_diff, content_publish, content_compact, content_keys):
+        action.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the content tool of the desktop artifacts.")
+        add_jobs_option(action)
 
     package = commands.add_parser("package", help='Zip the "app.json", "source" and "content" of an app.')
     add_app_argument(package)

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace haylen::content {
@@ -30,6 +31,9 @@ class Compression final {
     [[nodiscard]] static Encoded encode(std::span<const std::uint8_t> plain);
 
     [[nodiscard]] static bool isSupported(std::uint8_t codec, std::uint8_t profile) noexcept;
+
+    // Names the encoder that `encode` uses, its profiles and the version of its library, which together decide every encoded byte.
+    [[nodiscard]] static std::string getEncoderName();
 
     // Decodes into a target of exactly the plain size, and throws `CorruptChunk` when the encoded bytes are not exactly that.
     static void decode(Codec codec, std::span<const std::uint8_t> encoded, std::span<std::uint8_t> plain);

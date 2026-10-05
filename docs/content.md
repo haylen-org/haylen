@@ -50,20 +50,26 @@ A zip archive stays on disk and reads each entry when it is asked for. An entry 
 
 ## Building content
 
-`content::ContentBuilder` builds the shards and the plain catalog of one domain from the files of a source package, and `Manifest::write` encrypts the catalog and signs the manifest.
+`content::ReleaseBuilder` builds the release of an app package into a folder of its own: `app.hmanifest` with the shards of the app domain and `content.hmanifest` with the shards of the content domain. The app domain takes `app.json`, every file under `source` and, for every plugin that `app.json` lists, its `plugin.json` and the files under its `source`, and the content domain takes every file under `content`. Nothing else of the package folder takes part, so platform projects, notes, plugins the app does not list and the `.DS_Store` files of file managers never reach a release, and the builder decides the domain of every file by its folder, so no file of `source` can ever become content. `app.json` must be valid, as the engine reads it.
 
 ```cpp
-content::ContentBuilder builder(outputFolder, contentKey);
-builder.reuse(previousCatalog, previousManifest.getEnvelope().shards);
-content::ContentBuilder::Result result = builder.build(sourcePackage, {{.path = "content/maps/island.tmj"}, {.path = "content/music/theme.ogg"}});
-std::vector<std::uint8_t> manifest = content::Manifest::write(envelope, result.catalog, *contentKey, signingKey);
+content::ReleaseBuilder builder(keys, activeKeyId, signingKey, std::make_shared<const content::RecordCache>(cacheFolder));
+content::ReleaseBuilder::Result result = builder.build(*io::Package::openDirectory(appFolder), releaseFolder, earlierReleaseFolder, {.profile = "apple", .appBuild = 1002003});
 ```
 
-The builder takes the files in path order, whatever order they arrive in, and reads each in windows of at most one maximum chunk, so no file is ever loaded whole. It splits a file into chunks, and a chunk whose content ID an earlier chunk of the build or of the earlier release given to `reuse` has already stored is referenced where it is instead of being stored again. So identical chunks are stored once, a renamed or copied file stores nothing new, and an update stores only the chunks that changed. New chunks are sealed and written into new shards, and the shard list of the result keeps the earlier shards that its files still use, in their order, followed by the new ones, so an update never rewrites an old shard.
+The output folder must not exist yet. A release that ships with an app serves its build alone, so both manifests name the build as their whole range of app builds, generation 1 and no channel. A build that names the folder of an earlier release of the app reuses its shards, as described below, and links the shards it keeps into the new folder, or copies them where the file system cannot link, after it checks each one against the size and the digest that the earlier manifest signs, so a damaged earlier release stops the build instead of reaching the new one.
+
+`content::ContentBuilder` builds the shards and the plain catalog of one domain, and `Manifest::write` encrypts the catalog and signs the manifest. The builder takes the files in path order, whatever order they arrive in, and reads each in windows of at most one maximum chunk, so no file is ever loaded whole. It first splits every file into chunks and identifies them, and then stores the chunks it has not stored yet, reading their bytes again by range: a chunk whose content ID an earlier chunk of the build or of the earlier release given to `reuse` has already stored is referenced where it is instead of being stored again. So identical chunks are stored once, a renamed or copied file stores nothing new, and an update stores only the chunks that changed. A file whose bytes change between the two passes stops the build, since a chunk is stored only with the bytes its ID names.
+
+An earlier shard stays in the release only while the files still use at least half of its record bytes, and the chunks they still use of a shard below that move into the new shards, so a long line of updates never carries more dead bytes than live ones, while an ordinary update leaves every earlier shard as it is. New chunks are sealed and written into new shards, and the shard list of the result keeps the earlier shards in their order, followed by the new ones, so an update never rewrites an old shard.
 
 A new shard closes before a record would take it past the target size, one gibibyte by default, unless the record continues a file no larger than a sixteenth of the target, which stays whole in one shard. A shard also closes at its limit of records, and a single large file spans as many shards as it needs. The target is a parameter of the builder because a store with a stricter limit per file packs smaller shards of the same format. A shard grows under a temporary name and takes the name of its ID only when it is complete.
 
-The same files and keys always build the same bytes. Chunk boundaries depend only on the bytes of each file, compression is deterministic, the nonce of every record derives from the record itself, and no time, path, user name or random value enters a shard, so an unchanged chunk is byte for byte the same record in every build, which keeps the patches of stores that compare files small. The result reports the new chunks, their plain and stored bytes, and the chunks and bytes it reused.
+The same files and keys always build the same bytes. Chunk boundaries depend only on the bytes of each file, compression is deterministic, the nonce of every record derives from the record itself, and no time, path, user name or random value enters a shard or a manifest, so an unchanged chunk is byte for byte the same record in every build, a clean build of the same files repeats every file, and an update leaves the files of an unchanged domain byte for byte as they were, which keeps the patches of stores that compare files small. The result reports the new chunks, their plain and stored bytes, the chunks it took from the build cache, the chunks and bytes it reused and the earlier shards it dropped.
+
+### Build cache
+
+`content::RecordCache` keeps the sealed records of earlier builds in a folder, by the ID of the content key that sealed them, the encoder, which names the version of Zstandard and the compression profile, and the content ID of their chunk. A build that finds the record of a chunk there copies it into the new shard instead of compressing and encrypting the chunk again, which is most of the work of a build. Records hold only ciphertext, so the cache holds no plain content, and sealing is deterministic, so a cached record is the record a fresh build writes: a build with a warm cache, a cold one or none writes the same bytes. An entry serves only when it authenticates under the key and decodes to the chunk it names, so a damaged or foreign entry only costs the time to seal its chunk again, and deleting the cache never changes a build. `haylen.py` keeps the cache of each app in `build/apps/<app>-<hash>/content-cache/`.
 
 ## Chunking
 
@@ -296,6 +302,58 @@ The envelope before the catalog fields, its context, is the additional data of t
 A `content::Compatibility` holds what the running build accepts: the digest of its app, its build number and its profile. A manifest of another app, made for another profile, or whose range of app builds leaves the build out raises `ManifestIncompatible` with the reason. The versions of the shard and catalog formats are checked when a manifest is read, and unknown versions raise `UnsupportedVersion`.
 
 The publisher of a channel raises the generation with every release. `ChannelDescriptor::offersUpdate` tells whether a descriptor offers content newer than the generation and manifest the app accepted last, and raises `ManifestRollbackRejected` for an older generation, or for the same generation with another manifest, so a server that replays an old descriptor cannot roll an app back. A rollback is published as a new generation that names the earlier content. `ChannelDescriptor::describes` tells whether a manifest is the content manifest that a descriptor names for its app, channel and generation.
+
+## The content tool
+
+`haylen-content` is the host tool that builds, verifies, inspects, compares and publishes releases with the format library of the engine, so no format or cryptography exists twice. `haylen.py engine --platform desktop` builds it into `build/artifacts/desktop/<os>-<arch>/` next to the desktop player, and `haylen.py` runs it, so a developer works with the `content` commands of `haylen.py`, and the release builds of the platforms run it on their own.
+
+| Command of `haylen.py` | What it does |
+| --- | --- |
+| `content build <app> --platform <platform>` | Builds the release of the app for the content profile of the platform into `build/apps/<app>-<hash>/release/<profile>/`, reusing the release before it and the build cache of the app. |
+| `content verify <app> --platform <platform> [--release <folder>]` | Checks that the release folder holds the two manifests, the shards they name and nothing else, every shard against the size and digest its manifest signs, and every file by reading it whole, which authenticates every chunk. |
+| `content inspect <app> --platform <platform> [--release <folder>] [--chunks]` | Lists each manifest with its generation, profile, range of app builds and shards, and each file with its delivery, size, chunks, stored bytes and shards, with the savings of deduplication, and every chunk with its offset and IDs with `--chunks`. |
+| `content diff <app> <earlier> <later>` | Compares two releases domain by domain: the chunks they share, add and drop, the new shards, the files added, changed and removed, and the bytes an app that holds the earlier release downloads to reach the later one. |
+| `content publish <app> --platform <platform> --output <tree> [--channel stable]` | Publishes the content domain as the next generation of an update channel in a tree of static files. |
+| `content compact <app> <tree> [--keep 2]` | Deletes the manifests and packs of a publication tree that no channel reaches within its last generations. |
+| `content keys <app> [--rotate]` | Shows the key folder of the app with the IDs of its keys and its public key, and with `--rotate` adds a content key. |
+
+```sh
+python3 haylen.py content build ~/apps/my-game --platform android
+python3 haylen.py content inspect ~/apps/my-game --platform android
+python3 haylen.py content diff ~/apps/my-game old-release build/apps/my-game-1a2b3c4d/release/android
+python3 haylen.py content publish ~/apps/my-game --platform android --channel stable --output ~/cdn/my-game
+```
+
+The profile of a release names the platform family it was made for: `apple` for every target of the Apple project, `android`, `windows` and `linux`. The build number of an app comes from its version, `1.2.3` being 1002003, as on Android.
+
+### Key folders
+
+The keys of an app live in a key folder of their own, outside every repository, project and build folder: `~/Library/Application Support/Haylen/keys/<identifier>/` on macOS, `%APPDATA%\Haylen\keys\<identifier>\` on Windows and `$XDG_CONFIG_HOME/haylen/keys/<identifier>/`, which defaults to `~/.config/haylen/keys/<identifier>/`, on Linux. The folder holds `keys.json`, which names the app, its content key IDs in the order they were added and its signing key ID, one `content-<key ID>.key` file of 32 bytes per content key, the last of which encrypts new content, and `signing.key`, the 32-byte seed of the Ed25519 signing key. The folder is readable by its owner alone (`0700`, and `0600` for its files), and no command prints a key: they show IDs and the public key only.
+
+`haylen.py` creates the keys of an app the first time a command needs them, from the random generator of the system, and warns that the folder needs a backup, since every later release of the app must be built with the same keys, or installed apps cannot read it. `content keys --rotate` adds a content key that encrypts the content of later builds while the earlier keys stay for content that installed apps already hold. Continuous integration receives a copy of the key folders as a secret and names their parent folder with `HAYLEN_KEYS_DIR`, and there `haylen.py` never creates keys, so a missing folder stops the build instead of producing a release no installed app can read:
+
+```yaml
+env:
+  HAYLEN_KEYS_DIR: ${{ runner.temp }}/haylen-keys
+steps:
+  - run: |
+      mkdir -p "$HAYLEN_KEYS_DIR"
+      echo "${{ secrets.HAYLEN_CONTENT_KEYS }}" | base64 --decode | tar -x -C "$HAYLEN_KEYS_DIR"
+```
+
+The command `tar -c -C ~/Library/Application\ Support/Haylen/keys com.example.mygame | base64` prints the text of that secret.
+
+### Publication trees
+
+A publication tree is a folder of static files that any web server or content delivery network serves, every one named by an opaque ID, so no name tells what a file holds:
+
+```text
+channels/<channel>.hchannel    The signed pointer of a channel to its current content manifest, with its generation.
+manifests/<id>.hmanifest       Every published content manifest, named by its ID.
+packs/<ab>/<id>.hpak           Every published shard, named by its ID under the first two digits of the ID.
+```
+
+`content publish` builds the content domain of the app as the next generation of the channel, reusing the packs of the current one, so it adds only the packs of new chunks and a new manifest, which names the previous one and serves the build of the app and every later build. Manifests and packs are immutable: a publish that would write other bytes under a name that exists stops before it changes anything. New packs grow in `staging/` of the tree and move into place, the new manifest follows, the whole new generation verifies against the files in the tree, and only then does the channel pointer move, written under another name and renamed over the old one, so a publish that fails at any point leaves every channel at its earlier generation. Only the content domain is published, since the code of an app belongs to the build that ships it. `content compact` keeps the current generation of every channel and the ones before it up to `--keep`, two by default, and deletes the manifests and packs that none of them names.
 
 ## Limits
 

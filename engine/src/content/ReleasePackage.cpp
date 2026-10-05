@@ -13,12 +13,17 @@ namespace haylen::content {
 
 std::unique_ptr<io::Package> ReleasePackage::open(std::shared_ptr<const io::Package> files, std::shared_ptr<const KeyRing> keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility) {
     std::vector<std::shared_ptr<const io::Package>> layers;
-    layers.push_back(mount(files, kAppManifestFile, Manifest::Domain::App, keys, trustedKeys, compatibility));
-    layers.push_back(mount(files, kContentManifestFile, Manifest::Domain::Content, keys, trustedKeys, compatibility));
+    layers.push_back(mount(files, Manifest::Domain::App, keys, trustedKeys, compatibility));
+    layers.push_back(mount(files, Manifest::Domain::Content, keys, trustedKeys, compatibility));
     return std::make_unique<io::CompositePackage>(std::string(files->getName()), std::move(layers));
 }
 
-std::shared_ptr<const io::Package> ReleasePackage::mount(const std::shared_ptr<const io::Package>& files, std::string_view manifestFile, Manifest::Domain domain, const std::shared_ptr<const KeyRing>& keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility) {
+std::string_view ReleasePackage::getManifestFile(Manifest::Domain domain) noexcept {
+    return domain == Manifest::Domain::App ? kAppManifestFile : kContentManifestFile;
+}
+
+std::shared_ptr<const io::Package> ReleasePackage::mount(const std::shared_ptr<const io::Package>& files, Manifest::Domain domain, const std::shared_ptr<const KeyRing>& keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility) {
+    const std::string_view manifestFile = getManifestFile(domain);
     const Manifest manifest = Manifest::read(files->read(manifestFile), trustedKeys);
     if (manifest.getEnvelope().domain != domain) {
         throw Error(Error::Code::CorruptManifest, "The manifest \"" + std::string(manifestFile) + "\" belongs to the other domain.");

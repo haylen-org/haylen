@@ -4,8 +4,11 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace haylen::content {
 
@@ -24,6 +27,12 @@ class Digest final {
     // Hashes bytes with BLAKE2b-256 and no key.
     [[nodiscard]] static Digest of(std::span<const std::uint8_t> message) noexcept;
 
+    // Hashes a whole file with BLAKE2b-256 in blocks of bounded size, and throws `std::runtime_error` when the file cannot be read.
+    [[nodiscard]] static Digest ofFile(const std::filesystem::path& file);
+
+    // Reads the 64 lowercase hexadecimal digits that `toHex` writes, or nothing for any other text.
+    [[nodiscard]] static std::optional<Digest> fromHex(std::string_view text) noexcept;
+
     [[nodiscard]] std::span<const std::uint8_t, kSize> getBytes() const noexcept {
         return bytes;
     }
@@ -34,6 +43,9 @@ class Digest final {
     friend std::strong_ordering operator<=>(const Digest&, const Digest&) = default;
 
   private:
+    static constexpr std::size_t kFileBlockSize = 1024 * 1024;
+    static constexpr std::string_view kDigits = "0123456789abcdef";
+
     std::array<std::uint8_t, kSize> bytes{};
 };
 

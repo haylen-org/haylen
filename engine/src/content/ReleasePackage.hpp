@@ -20,8 +20,11 @@ class ReleasePackage final {
 
     [[nodiscard]] static std::unique_ptr<io::Package> open(std::shared_ptr<const io::Package> files, std::shared_ptr<const KeyRing> keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility);
 
+    // The name of the manifest file of a domain in a release.
+    [[nodiscard]] static std::string_view getManifestFile(Manifest::Domain domain) noexcept;
+
   private:
-    [[nodiscard]] static std::shared_ptr<const io::Package> mount(const std::shared_ptr<const io::Package>& files, std::string_view manifestFile, Manifest::Domain domain, const std::shared_ptr<const KeyRing>& keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility);
+    [[nodiscard]] static std::shared_ptr<const io::Package> mount(const std::shared_ptr<const io::Package>& files, Manifest::Domain domain, const std::shared_ptr<const KeyRing>& keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility);
 };
 
 } // namespace haylen::content
