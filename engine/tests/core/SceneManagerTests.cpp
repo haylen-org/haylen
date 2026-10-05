@@ -72,6 +72,13 @@ class LoadScene final : public Scene {
     void load(Engine&, SceneLoad& context) override {
         run(context);
     }
+    void unload(Engine&) override {
+        if (!unloadFailure.empty()) {
+            throw lua::Error(unloadFailure);
+        }
+    }
+
+    std::string unloadFailure;
 
   private:
     std::function<void(SceneLoad&)> run;
@@ -731,6 +738,28 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     fixture.frames(4, 0.125);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_STREQ(fixture.engine().getError()->what(), "A preloaded scene keeps the \"params\" of its preload.");
+}
+
+TEST(SceneManagerTest, SettlesPreloadsWhoseSceneFailsToUnload) {
+    test::EngineFixture fixture;
+    SceneManager& scenes = fixture.engine().getScenes();
+    std::optional<SceneLoad::Deferral> deferral;
+    auto broken = std::make_shared<LoadScene>([&](SceneLoad& context) { deferral.emplace(context.defer()); });
+    broken->unloadFailure = "the unload broke";
+    std::vector<SceneManager::Outcome> outcomes;
+    scenes.preload(broken, {}, [&](const SceneManager::Result& result) { outcomes.push_back(result.outcome); });
+    EXPECT_THROW(scenes.cancelPreload(*broken), lua::Error);
+    EXPECT_EQ(outcomes, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Dropped});
+
+    // A load that fails settles its preload with the failure, even when the unload that follows fails too.
+    auto failing = std::make_shared<LoadScene>([&](SceneLoad& context) { deferral.emplace(context.defer()); });
+    failing->unloadFailure = "the unload broke";
+    scenes.preload(failing, {}, [&](const SceneManager::Result& result) { outcomes.push_back(result.outcome); });
+    deferral->fail(lua::Error("the load broke"));
+    fixture.frames(1);
+    EXPECT_EQ(outcomes, (std::vector<SceneManager::Outcome>{SceneManager::Outcome::Dropped, SceneManager::Outcome::Failed}));
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_STREQ(fixture.engine().getError()->what(), "the unload broke");
 }
 
 TEST(SceneManagerTest, UnloadsAFailedPreloadOnceWhenAListenerCancelsIt) {

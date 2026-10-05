@@ -250,6 +250,7 @@ class SceneManager final {
     void settle(const std::shared_ptr<Scene>& scene);
     void settleLoads();
     void notifyWatchers(const Scene& scene, const Result& result);
+    void unloadNotifying(const std::shared_ptr<Scene>& scene, const Result& result);
 
     // Takes scenes off the stack: they exit and unload at once, or wait in the leaving list for the exit point of an effect that shows both scenes.
     void release(const std::shared_ptr<Scene>& scene, bool exitNow);

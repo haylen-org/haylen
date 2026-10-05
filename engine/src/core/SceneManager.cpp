@@ -110,8 +110,7 @@ void SceneManager::cancelPreload(const Scene& scene) {
     }
     const std::shared_ptr<Scene> cancelled = *found;
     preloaded.erase(found);
-    unloadScene(cancelled);
-    notifyWatchers(*cancelled, {.outcome = Outcome::Dropped});
+    unloadNotifying(cancelled, {.outcome = Outcome::Dropped});
 }
 
 void SceneManager::clear() {
@@ -282,8 +281,21 @@ void SceneManager::settle(const std::shared_ptr<Scene>& scene) {
     if (pending && pending->scene == scene && pending->phase != Phase::Start) {
         pending->failure = error;
     }
-    unloadScene(scene);
-    notifyWatchers(*scene, {.outcome = Outcome::Failed, .error = error});
+    unloadNotifying(scene, {.outcome = Outcome::Failed, .error = error});
+}
+
+// The preloads that wait for the scene settle even when its unload hook fails, whose error is raised once they did.
+void SceneManager::unloadNotifying(const std::shared_ptr<Scene>& scene, const Result& result) {
+    std::exception_ptr failure;
+    try {
+        unloadScene(scene);
+    } catch (...) {
+        failure = std::current_exception();
+    }
+    notifyWatchers(*scene, result);
+    if (failure) {
+        std::rethrow_exception(failure);
+    }
 }
 
 // Settling runs the listeners of the load events, which may change which scenes load, so the loading scenes are taken first.
