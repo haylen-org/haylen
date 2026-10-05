@@ -405,6 +405,24 @@ TEST(SceneLuaTest, ATaskThatEndsItsSceneKeepsRunningThroughACollection) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+TEST(SceneLuaTest, ATaskThatEndsItsSceneStillReportsItsErrors) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        scene = require('haylen.scene')
+        scene.push({enter = function(self)
+            scene.spawn(self, function()
+                scene.clear()
+                error('the task broke after the clear')
+            end)
+        end})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("the task broke after the clear"), std::string::npos);
+}
+
 TEST(SceneLuaTest, AFailingCloseOfACancelledTaskShowsTheError) {
     {
         test::EngineFixture fixture;

@@ -99,10 +99,11 @@ int Task::collectHolder(lua_State* L) {
     return 0;
 }
 
+// A task cancelled while its own code ran goes on to its next wait, so an error of that code still reaches the completion, and only its normal end goes unreported.
 void Task::finish(const std::optional<Error>& error) {
     finished = true;
     release();
-    if (cancelled || !completion) {
+    if (!completion || (cancelled && !error)) {
         return;
     }
     try {

@@ -687,7 +687,7 @@ end)
 
 ### scene.spawn(owner, fn)
 
-Runs `fn` as a task that `owner` holds, the way `async.spawn` runs a task: it may wait on promises with `:await()`, and an error it raises reaches the error screen with the stack of the task. When the owner is released, such as a scene when it unloads, the task stops for good the way `task.cancel()` of `async` stops a task: it never resumes, even when a promise it waits for settles later, and its pending to-be-closed variables close. A task that releases its own owner stops and closes at its next wait. Tasks started with `async.spawn` belong to nobody and run to their end unless `task.cancel()` of the handle it returns stops them. The argument `owner` must be a table or a userdata.
+Runs `fn` as a task that `owner` holds, the way `async.spawn` runs a task: it may wait on promises with `:await()`, and an error it raises reaches the error screen with the stack of the task. When the owner is released, such as a scene when it unloads, the task stops for good the way `task.cancel()` of `async` stops a task: it never resumes, even when a promise it waits for settles later, and its pending to-be-closed variables close. A task that releases its own owner stops and closes at its next wait, and an error it raises before then still reaches the error screen. Tasks started with `async.spawn` belong to nobody and run to their end unless `task.cancel()` of the handle it returns stops them. The argument `owner` must be a table or a userdata.
 
 ```lua
 local scene = require('haylen.scene')
