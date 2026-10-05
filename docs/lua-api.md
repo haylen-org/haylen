@@ -6,7 +6,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 
 | Module | Purpose |
 | --- | --- |
-| [`haylen`](lua-api/haylen.md) | Engine version, platform, graphics backend, the resolved `app.json`, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting and fatal errors. |
+| [`haylen`](lua-api/haylen.md) | Engine version, platform, graphics backend, the resolved `app.json`, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. |
 | [`haylen.scene`](lua-api/scene.md) | The stack of scenes and their lifecycle: asynchronous loads with progress, preloads, loading views, transitions that cover, hold and reveal or keep both scenes alive with built-in and custom effects, completion promises, tasks and listeners that end with their scene, process modes and platform events. |
 | [`haylen.events`](lua-api/events.md) | The event bus with channels, priorities, filters, owners and queued delivery, and the lifecycle events of the engine. |
 | [`haylen.signal`](lua-api/signal.md) | Signals with priorities, one-shot, deferred and owned listeners, and the `Connection` of every listener. |

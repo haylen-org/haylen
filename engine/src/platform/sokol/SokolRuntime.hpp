@@ -32,10 +32,13 @@ class DevelopmentSession;
 // Plays apps with sokol_app. It opens the window for the package that the command line names, or the bundled one, and replaces the running app whenever a package restarts it.
 class SokolRuntime final {
   public:
-#if defined(__APPLE__)
-    // Plays the command line until the window closes. Apple apps enter here through haylen_main, because sokol_app leaves main to them.
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
+    // Plays the command line until the window closes. Apple apps enter here through haylen_main, because sokol_app leaves main to them, and Windows and Linux processes through the entry point of the runtime, which exits with the status this returns. AppKit and UIKit end the process themselves instead.
     static int run(int argc, char* argv[]);
 #endif
+
+    // The status that the last app quit with, or 1 when the engine could not start, which desktop processes exit with.
+    [[nodiscard]] static int getExitStatus() noexcept;
 
     // Prepares the runtime for the command line and describes the window of the app to sokol_app.
     [[nodiscard]] static sapp_desc describe(int argc, char* argv[]);
@@ -107,11 +110,12 @@ class SokolRuntime final {
         std::vector<std::string> nativeFolders;
     };
 
-    // What outlives every runtime of the process: the runtime that plays, which the frame thread creates when sokol_app asks for the app and destroys in the cleanup of sokol_app, and the events other threads queue for it. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
+    // What outlives every runtime of the process: the runtime that plays, which the frame thread creates when sokol_app asks for the app and destroys in the cleanup of sokol_app, the events other threads queue for it and the status the process exits with. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
     struct Process {
         std::unique_ptr<SokolRuntime> current;
         std::mutex postedMutex;
         std::vector<Event> posted;
+        int exitStatus = 0;
     };
 
     [[nodiscard]] static Process& getProcess() noexcept;

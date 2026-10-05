@@ -359,7 +359,7 @@ O guia `docs/architecture.md` descreve a arquitetura em detalhe. Esta seção é
 | --- | --- |
 | `haylen::engine` | Biblioteca estática portável com toda a API C++ e todos os bindings Lua. Fala com a GPU pelo Sokol gfx e nunca chama o Sokol app nem APIs do sistema. |
 | `haylen::platform` | Partes portáveis do runtime: tradução dos eventos do Sokol, handlers da bridge no desktop e o aviso de memória. |
-| `haylen::runtime` | Host real de cada plataforma: ponto de entrada (`sokol_main`, ou `haylen_main` na Apple), `SokolHost` e os serviços da pasta da plataforma. |
+| `haylen::runtime` | Host real de cada plataforma: ponto de entrada (`main` no Linux, `WinMain` no Windows, `sokol_main` no Android e na web, ou `haylen_main` na Apple), `SokolHost` e os serviços da pasta da plataforma. |
 | `haylen::headless` | Host dos testes: backend dummy do Sokol, mixer sem dispositivo e chamadas da bridge gravadas. |
 | `haylen` | Player que roda qualquer pacote (`engine/src/platform/sokol/LuaPlayer.cpp`): executável no desktop e na web e `libhaylen.so` no Android. |
 | `haylen_add_app` | Função CMake que monta o app C++ de um pacote para a plataforma do build. |
@@ -1217,7 +1217,7 @@ Mapa de namespaces (um por contexto, igual ao nome da pasta, e com o sufixo `2d`
 
 - [x] Todo o código em sub-namespaces por contexto, com pastas e namespaces batendo um com o outro: a engine, os testes com os helpers compartilhados, os benchmarks e o sample C++. A varredura com o AST do clang está limpa.
 - [x] Um arquivo por classe, com o nome da classe. Tipos que pertencem a uma classe (opções, eventos e enums usados só por ela) ficam aninhados nela.
-- [x] Nenhuma função livre: utilitários são métodos estáticos de uma classe (`Easing`, `Geometry`, `Math`), helpers de `.cpp` são métodos privados, e os bindings Lua são classes de binding. As únicas exceções são os pontos de entrada exigidos pela plataforma (`main`, `sokol_main`, funções JNI e exports do Emscripten), que só repassam para uma classe.
+- [x] Nenhuma função livre: utilitários são métodos estáticos de uma classe (`Easing`, `Geometry`, `Math`), helpers de `.cpp` são métodos privados, e os bindings Lua são classes de binding. As únicas exceções são os pontos de entrada exigidos pela plataforma (`main`, `WinMain`, `sokol_main`, funções JNI e exports do Emscripten), que só repassam para uma classe.
 - [x] Membros sem prefixo nem sufixo, com acessores `get`, `set`, `is` e `has`. Em Lua, os pares `get` e `set` aparecem como propriedades.
 - [x] Plugins na pasta `plugins/` e no namespace `haylen::plugins`, incluindo a interface `Plugin` e o `PluginRegistry`, com os nomes dos plugins iguais aos módulos Lua.
 - [x] `plugins::StoragePlugin` no contexto `storage` (`UserStorage`, `Preferences` e `SaveSlots`), com os módulos Lua `haylen.storage` (arquivos e slots: `writeSlot`, `readSlot`, `slotInfo`, `slotExists`, `removeSlot` e `listSlots`) e `haylen.preferences` (arquivo `preferences.json`).
@@ -1668,6 +1668,7 @@ Checklist:
 - [x] Revisão de cada teste existente, um por um, rodando e conferindo o resultado, e corrigindo o que der erro ou funcionar mal (como a piscada da outra cena na transição). Cada teste rodou no player headless e no Chrome com WebGL2, com os textos no padrão de escrita, colisões de nomes com o harness, sobreposições, a escada do ragdoll, as paredes e o torque do carro, estado que vazava entre testes e o foco perdido depois que uma cena de cima sai (SCN-001 a SCN-006) corrigidos. Sons, fontes e créditos de terceiros saíram.
 - [x] Testes e exemplos do Varn (async, promises, timers, http, socket, websocket, json, fs, zip, crypto, log, datetime, xml, process e ffi), para aprender a usá-lo pela Haylen. VRN-001 a VRN-016, cada um com o Lua que roda no painel e um botão para rodar de novo.
 - [x] Os samples antigos de recursos saem do repositório depois da migração, os comandos e docs que os citam passam a citar o projeto de testes, e o harness sem janela roda o projeto inteiro. O `haylen-headless samples/tests` roda cada teste por 2 segundos e falha em qualquer erro, e o job `tests-project` do CI roda o projeto inteiro.
+- [x] Status de saída para apps. O `haylen.quit({status = 1})` guarda o status, de 0 a 255, no `core::Engine` (`quit(status)` e `getExitStatus()`), o `haylen-headless` sai com ele, ou com 1 quando houve erro, e o player `haylen` e os apps de desktop saem com ele no macOS, no Windows e no Linux, com 1 quando a engine não inicia, enquanto iOS, tvOS, Mac Catalyst, Android e web o ignoram. Testado em `EngineTests`, `CoreLuaTests` e `HeadlessPlayerTests`, com o player do macOS compilado e o `WinMain` do Windows e o `main` do Linux conferidos com MinGW e GCC.
 
 #### AJ. API estável entre C++ e Lua
 

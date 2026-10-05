@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -119,6 +120,7 @@ struct EngineState {
     bool coveredFrameDrawn = false;
     bool started = false;
     bool running = true;
+    std::uint8_t exitStatus = 0;
     bool restartRequested = false;
 
     // Whether the app state muted the master bus, through muteOnFocusLoss or a cover, and whether it was muted before, so the app coming back restores the choice of the player.

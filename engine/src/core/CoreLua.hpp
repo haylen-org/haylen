@@ -16,6 +16,7 @@ class CoreLua final {
     static void install(lua_State* L);
 
   private:
+    static constexpr std::array<std::string_view, 1> kQuitFields{"status"};
     static constexpr std::array<std::string_view, 3> kLifecycleFields{"pauseOnBackground", "pauseOnFocusLoss", "muteOnFocusLoss"};
 
     [[nodiscard]] static std::string joinArguments(lua_State* L);

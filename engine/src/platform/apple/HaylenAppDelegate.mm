@@ -1,15 +1,19 @@
 #import "platform/apple/HaylenAppDelegate.h"
 
 #if TARGET_OS_OSX
+#include <cstdlib>
+
 #import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenOverlayLayer.h"
+#include "platform/sokol/SokolRuntime.hpp"
 #include "sokol_app.h"
 
 using haylen::platform::AppleNotifications;
 using haylen::platform::ApplePlugins;
 using haylen::platform::AppleTheme;
+using haylen::platform::SokolRuntime;
 
 @implementation HaylenAppDelegate
 
@@ -73,6 +77,14 @@ using haylen::platform::AppleTheme;
         [window close];
     }
     return NSTerminateNow;
+}
+
+// AppKit ends the process with the status 0 once the app terminated, so an app that quit with another status ends it here, after `sokol_app` stopped the app.
+- (void)applicationWillTerminate:(NSNotification*)notification {
+    [super applicationWillTerminate:notification];
+    if (const int status = SokolRuntime::getExitStatus(); status != 0) {
+        std::exit(status);
+    }
 }
 
 - (void)application:(NSApplication*)application openURLs:(NSArray<NSURL*>*)urls {

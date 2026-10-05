@@ -621,6 +621,14 @@ TEST(EngineTest, QuitStopsFramesAndAsksTheHost) {
     EXPECT_EQ(fixture.engine().getClock().getFrameIndex(), before);
 }
 
+TEST(EngineTest, KeepsTheExitStatusOfTheQuit) {
+    test::EngineFixture fixture;
+    EXPECT_EQ(fixture.engine().getExitStatus(), 0);
+    fixture.engine().quit(42);
+    EXPECT_FALSE(fixture.engine().isRunning());
+    EXPECT_EQ(fixture.engine().getExitStatus(), 42);
+}
+
 TEST(EngineTest, ExposesServicesAndPlatformName) {
     test::EngineFixture fixture;
     core::Engine& engine = fixture.engine();

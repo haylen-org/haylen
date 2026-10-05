@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -85,8 +86,15 @@ int CoreLua::openLog(lua_State* L) {
     return 1;
 }
 
+// Stops the app with `haylen.quit(options)`, whose `status` option is the exit status of the process, 0 by default.
 int CoreLua::rootQuit(lua_State* L) {
-    lua::Runtime::getEngine(L).quit();
+    std::uint8_t status = 0;
+    if (!lua_isnoneornil(L, 1)) {
+        luaL_checktype(L, 1, LUA_TTABLE);
+        lua::Table::checkFields(L, 1, {kQuitFields});
+        lua::Table::readField(L, 1, "status", status);
+    }
+    lua::Runtime::getEngine(L).quit(status);
     return 0;
 }
 

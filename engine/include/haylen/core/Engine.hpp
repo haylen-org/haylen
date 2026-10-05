@@ -201,8 +201,10 @@ class Engine final {
     // Leaves the error screen at the start of the next frame, before the app updates: the engine publishes appRecovered with the error, whose listeners put the app in order, and the app runs on from there. Nothing happens while no error stops the app.
     void recover() noexcept;
 
-    void quit();
+    // Stops the app and asks the platform to close it. The status, 0 for success, is the exit status of the process on macOS, Windows and Linux, and the other platforms have none and ignore it.
+    void quit(std::uint8_t status = 0);
     [[nodiscard]] bool isRunning() const noexcept;
+    [[nodiscard]] std::uint8_t getExitStatus() const noexcept;
 
     // Asks the runtime to start the app again from its package once this frame ends, which is how edited scripts reload.
     void requestRestart() noexcept;

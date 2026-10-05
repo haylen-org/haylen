@@ -40,6 +40,22 @@ TEST(CoreLuaTest, ExposesEngineInformationAndClock) {
     fixture.runLua("haylen.quit()");
     EXPECT_FALSE(fixture.engine().isRunning());
     EXPECT_TRUE(fixture.host().isQuitRequested());
+    EXPECT_EQ(fixture.engine().getExitStatus(), 0);
+}
+
+TEST(CoreLuaTest, QuitsWithAnExitStatus) {
+    test::EngineFixture fixture;
+    fixture.runLua("haylen = require('haylen')");
+    EXPECT_NE(fixture.lua("haylen.quit(1)").find("bad argument #1 to 'quit' (table expected, got number)"), std::string::npos);
+    EXPECT_NE(fixture.lua("haylen.quit({code = 1})").find("Unknown option \"code\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("haylen.quit({status = 1.5})").find("The option \"status\" of \"quit\" is invalid: number has no integer representation."), std::string::npos);
+    EXPECT_NE(fixture.lua("haylen.quit({status = -1})").find("The option \"status\" of \"quit\" is invalid: expected a non-negative integer."), std::string::npos);
+    EXPECT_NE(fixture.lua("haylen.quit({status = 256})").find("The option \"status\" of \"quit\" is invalid: integer out of range."), std::string::npos);
+    EXPECT_TRUE(fixture.engine().isRunning());
+
+    fixture.runLua("haylen.quit({status = 3})");
+    EXPECT_FALSE(fixture.engine().isRunning());
+    EXPECT_EQ(fixture.engine().getExitStatus(), 3);
 }
 
 TEST(CoreLuaTest, ReportsTheFixedStepClock) {

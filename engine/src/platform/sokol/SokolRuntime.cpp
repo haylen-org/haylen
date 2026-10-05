@@ -32,18 +32,30 @@
 #include "platform/android/JavaBridge.hpp"
 #elif defined(__EMSCRIPTEN__)
 #include "platform/web/WebPage.hpp"
+#elif defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+
+#include <cstdlib>
 #endif
 
 namespace haylen::platform {
 
-#if defined(__APPLE__)
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
 int SokolRuntime::run(int argc, char* argv[]) {
     sapp_desc desc = describe(argc, argv);
+#if defined(__APPLE__)
     desc.apple.delegate_class = AppleRuntime::getDelegateClass();
+#endif
     sapp_run(&desc);
-    return 0;
+    return getExitStatus();
 }
 #endif
+
+int SokolRuntime::getExitStatus() noexcept {
+    return getProcess().exitStatus;
+}
 
 sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     Services::initialize();
@@ -347,6 +359,7 @@ void SokolRuntime::launch() {
         core::Log::error("The engine could not start: {}", error.what());
         Services::reportError(lua::Error(error.what()).toJson());
 #if !defined(__EMSCRIPTEN__)
+        getProcess().exitStatus = 1;
         sapp_quit();
 #endif
         return;
@@ -379,6 +392,7 @@ void SokolRuntime::close() noexcept {
 #elif defined(__APPLE__)
     AppleRuntime::setAppRunning(false);
 #endif
+    getProcess().exitStatus = engine->getExitStatus();
     engine.reset();
 #if defined(__EMSCRIPTEN__)
     if (playing) {
@@ -441,8 +455,17 @@ void SokolRuntime::replace(App app) {
 int haylen_main(int argc, char* argv[]) {
     return haylen::platform::SokolRuntime::run(argc, argv);
 }
-#else
+#elif defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 sapp_desc sokol_main(int argc, char* argv[]) {
     return haylen::platform::SokolRuntime::describe(argc, argv);
+}
+#elif defined(_WIN32)
+// Windows apps run in the windows subsystem, and the UTF-8 code page of the manifest of the engine gives them their command line in UTF-8.
+int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+    return haylen::platform::SokolRuntime::run(__argc, __argv);
+}
+#else
+int main(int argc, char* argv[]) {
+    return haylen::platform::SokolRuntime::run(argc, argv);
 }
 #endif

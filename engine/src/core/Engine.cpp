@@ -818,13 +818,18 @@ bool Engine::isRestartRequested() const noexcept {
     return state->restartRequested;
 }
 
-void Engine::quit() {
+void Engine::quit(std::uint8_t status) {
     state->running = false;
+    state->exitStatus = status;
     state->host.requestQuit();
 }
 
 bool Engine::isRunning() const noexcept {
     return state->running;
+}
+
+std::uint8_t Engine::getExitStatus() const noexcept {
+    return state->exitStatus;
 }
 
 const AppConfig& Engine::getConfig() const noexcept {

@@ -405,9 +405,17 @@ local music = haylen.autoload('soundtrack', 'systems.music')
 print(haylen.autoloads.soundtrack == music, require('systems.music') == music) -- true true
 ```
 
-### haylen.quit()
+### haylen.quit(options)
 
-Stops the app and asks the platform to close it. No further frames run. On Android the activity of the app finishes.
+Stops the app and asks the platform to close it. No further frames run. On Android the activity of the app finishes. The optional `options` table holds the exit status of the process, and unknown keys raise `Unknown option "<key>".`
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `status` | integer | `0` | The exit status of the process, from 0 to 255, where 0 means success. |
+
+A status that is not such an integer raises `The option "status" of "quit" is invalid: <reason>.`, with the reason `expected a non-negative integer` below 0, `integer out of range` above 255 and `number has no integer representation` for a fraction.
+
+On macOS, Windows and Linux the process exits with the status, in the player `haylen` as in a built app, and so does the [headless player](../testing.md#the-test-project), which exits with 1 instead when an error was reported. A process whose window closes, such as through its close button or Command+Q, exits with 0, and one whose engine could not start exits with 1. iOS, tvOS, Mac Catalyst, Android and the web have no exit status for an app, so they ignore it.
 
 ```lua
 local haylen = require('haylen')
@@ -422,6 +430,22 @@ require('haylen.scene').push({
         end
     end,
 })
+```
+
+```lua
+local haylen = require('haylen')
+local log = require('haylen.log')
+
+-- A check that runs on the headless player, such as in continuous integration, fails the job with the status 1 when a level has no exit.
+local levels = {{name = 'forest', exit = {x = 12, y = 4}}, {name = 'cave'}}
+local broken = 0
+for _, level in ipairs(levels) do
+    if not level.exit then
+        log.error(string.format('The level "%s" has no exit.', level.name))
+        broken = broken + 1
+    end
+end
+haylen.quit({status = broken == 0 and 0 or 1})
 ```
 
 ### haylen.requestRestart()

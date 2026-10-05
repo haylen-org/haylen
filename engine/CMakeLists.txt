@@ -758,6 +758,7 @@ endif()
 if(HAYLEN_DESKTOP)
   add_library(haylen_headless STATIC
     src/platform/headless/HeadlessHost.cpp
+    src/platform/headless/HeadlessPlayer.cpp
     src/platform/headless/SokolDummy.c
   )
   add_library(haylen::headless ALIAS haylen_headless)
@@ -794,7 +795,7 @@ endif()
 
 # The headless player runs any package without a window, GPU or audio device on the host of the engine tests, which suits automatic runs of apps such as the test project in continuous integration.
 if(HAYLEN_BUILD_PLAYER AND HAYLEN_DESKTOP)
-  add_executable(haylen-headless src/platform/headless/HeadlessPlayer.cpp)
+  add_executable(haylen-headless src/platform/headless/HeadlessMain.cpp)
   target_include_directories(haylen-headless PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
   target_link_libraries(haylen-headless PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
   set_target_properties(haylen-headless PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
