@@ -1,5 +1,6 @@
 #include "haylen/lua/Promise.hpp"
 
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
@@ -27,7 +28,8 @@ void Promise::resolve(core::Json value) const {
         reject(error.what());
         return;
     }
-    promise->resolveCustom([value = std::move(value)](lua_State* L) { JsonConverter::push(L, value); });
+    // Varn copies the function every time a coroutine awaits the promise, so the value is shared instead of copied each time.
+    promise->resolveCustom([value = std::make_shared<const core::Json>(std::move(value))](lua_State* L) { JsonConverter::push(L, *value); });
 }
 
 void Promise::resolveWith(std::function<void(lua_State* L)> pushValue) const {

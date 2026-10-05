@@ -17,6 +17,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
@@ -210,6 +211,32 @@ TEST(PromiseTest, SettlesFromNativeCodeOnAnyThread) {
     EXPECT_TRUE(loaded.isSettled());
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #results") == "5"; }));
     EXPECT_EQ(fixture.lua("return table.concat(results, ' ')"), "island 36 nil The map is missing. 7");
+}
+
+// Varn copies the function that pushes the value every time a coroutine awaits, so a large reply must never be copied with it.
+TEST(PromiseTest, SharesTheResolvedValueWithEveryAwait) {
+    test::EngineFixture fixture;
+    lua_State* L = fixture.lua();
+    const Promise reply(fixture.engine());
+    reply.push(L);
+    lua_setglobal(L, "reply");
+    // clang-format off
+    fixture.runLua(R"(
+        sizes = {}
+        for task = 1, 8 do
+            require('async').spawn(function()
+                local size = #reply:await()
+                sizes[#sizes + 1] = size
+            end)
+        end
+    )");
+    // clang-format on
+    reply.resolve(core::Json(std::vector<int>(100000, 7)));
+
+    const test::AllocationTracker tracker;
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #sizes") == "8"; }));
+    EXPECT_EQ(fixture.lua("return sizes[8]"), "100000");
+    EXPECT_LT(tracker.getTotal(), 1000000U) << "The eight awaits copied the reply.";
 }
 
 TEST(PromiseTest, RejectsValuesThatLuaCannotHold) {
