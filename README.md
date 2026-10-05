@@ -24,60 +24,44 @@ The engine for games, multimedia apps and applications, with a fast C++20 core, 
 
 <br>
 
-## Project
+## What Haylen is
 
-Haylen is a reusable engine for games, multimedia apps and applications, 2D today, with a fast C++20 core and a complete Lua API. Apps are written in Lua, and every capability stays fully usable from C++. One app package, a folder or a zip file with `app.json`, its Lua modules under `source/` and its assets under `content/`, runs on macOS, Windows, Linux, iOS, iPadOS, Mac Catalyst, tvOS, Android phones, tablets and TVs, and the web with WebGPU or WebGL2.
+Haylen is a reusable engine for games, multimedia apps and applications. It is 2D today and organized so that 3D grows next to it. Its core is C++20, and its whole API is exported to Lua through the [Varn](https://github.com/varn-org/varn) runtime, so apps are written in Lua while every capability stays usable from C++.
 
-The repository holds the engine, the `haylen` desktop player, the platform templates, the native plugin tooling and the samples, among them Tiny Island, a complete survival game built with the Tiny Swords art pack.
+An app is a package: a folder or a zip file with `app.json`, its Lua modules under `source/` and its assets under `content/`. The same package runs on every platform, the engine is built once into prebuilt artifacts, and the project of each platform belongs to the developer, who edits it like any native project.
 
-## Highlights
+## Features
 
-- Batched sprite rendering through Sokol, with millions of animated sprites per frame, SDF text, nine-slices, 2D lights, post-processing and render targets.
-- Tiled maps with every orientation, animated tiles, parallax, blend modes, collision and object spawning.
-- Box2D physics, particles, 2D lighting, A\* navigation with steering, tweens, state machines and a spatial hash.
-- Keyboard, mouse, touch, gestures and gamepads behind one action map, with on-screen touch controls.
-- Text in every script, shaped with HarfBuzz and ordered right to left where a language reads that way, in 2D drawing, rich text and a UI that mirrors for Arabic and Hebrew.
-- A themed UI with menus, HUD components, dialogs and nine-slice skins, plus Dear ImGui for tools.
-- Audio buses, streamed music with crossfades and positional sounds.
-- Asset preload groups, saves, settings, localization, WebSockets and a JSON bridge to native platform code.
-- Async Lua through the [Varn](https://github.com/varn-org/varn) runtime: promises, coroutines, HTTP, sockets and worker pools that never block the frame.
-- A web runtime ready for a browser editor: packages loaded at runtime, restart, hot reload, logs and Lua stack traces forwarded to JavaScript.
+- **2D rendering.** Batched sprites, sprite batches, shapes, meshes, nine-slices, cameras with smoothing and shake, parallax layers, render targets, custom shaders and materials, lit canvases with normal maps, post-processing and y-sorted draw order.
+- **Animation and effects.** Frame animations, tweens of fields and engine properties with timelines, particle emitters and effect files, and 2D lights with shadows and occluders.
+- **Physics.** Rigid bodies, shapes, joints, contacts, sensors and every kind of ray and shape cast, with ready-made ropes, bridges, ragdolls, vehicles, one-way platforms, conveyors, explosions, destructible terrain and fluids.
+- **Tiled maps.** Maps and worlds in every orientation, animated tiles, parallax, collision, object spawning and ray casts against tiles and objects.
+- **World and gameplay.** Path finding on grids, waypoint graphs and navigation meshes, steering and crowds, spatial queries, procedural generation, state machines, behavior trees and utility selectors.
+- **UI and themes.** Themed menus, HUDs, dialogs, lists and touch controls with focus navigation that works with every device, layouts that follow the safe area, mirroring for right-to-left languages, and debug panels for tools.
+- **Text.** Text shaped in every script and ordered in both directions, distance field fonts, bitmap fonts, rich text with effects, localization with plural forms and native text fields with input methods and on-screen keyboards.
+- **Audio.** Sounds, streamed music, buses, effects, positional audio, pause modes and the audio sessions and interruptions of mobile platforms.
+- **Input.** Keyboard, mouse, touch, gestures, gamepads and TV remotes behind one action map, with virtual touch controls.
+- **Networking.** HTTP, sockets and WebSocket connections that never block the frame, with promises and coroutines.
+- **Native plugins.** Plugins that bring a Lua API with its Swift or Objective-C, Kotlin or Java, JavaScript and C or C++ parts, an asynchronous bridge with typed errors, timeouts and cancellation, and native libraries called from Lua.
+- **Platform services.** System information, native dialogs, opening URLs, vibration, the app lifecycle, safe areas, orientation, and desktop windows that are frameless, transparent, always on top or click-through.
+- **Web runtime.** WebAssembly with WebGPU or WebGL2, packages loaded at runtime, restart and hot reload without reloading the page, and logs, statistics and errors with Lua stack traces forwarded to JavaScript.
+- **Tools.** One command line, `haylen.py`, that creates, runs, checks and packages apps, builds the engine for every platform, compiles shaders, signs Android apps, serves web pages and runs the tests, with hot reload and an error screen that keeps the app alive.
+
+## Platforms
+
+macOS, Windows, Linux, iOS and iPadOS, Mac Catalyst, tvOS, Android phones, tablets and TVs from one APK, and the web with WebGPU or WebGL2. visionOS runs the iPad app. The [distribution guide](docs/distribution.md#platform-support) lists the minimum versions and how each platform runs.
 
 ## Quick start
 
-Haylen needs CMake 3.28 or newer, Ninja, Python 3.10 or newer and a C++20 compiler. The script `haylen.py` downloads the pinned shader compiler, and the Emscripten SDK and Gradle the first time a web or Android build needs them. Apple platforms need Xcode and Android needs the Android SDK with NDK 30.
-
-```sh
-python3 haylen.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
-python3 haylen.py run games/tiny-island
-```
-
-The first command imports the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) pack into the Tiny Island sample, and the second builds the desktop player and runs the game with hot reload. The command `python3 haylen.py test` builds and runs the engine tests.
-
-A new app starts with `haylen.py new`, which writes a small starter app and a project of every platform, which belongs to the developer:
+Haylen builds with CMake, Ninja, Python and a C++20 compiler, and `haylen.py` downloads the other tools it needs. Apple platforms need Xcode, and Android needs the Android SDK.
 
 ```sh
 python3 haylen.py new ~/apps/my-app --name "My App" --identifier com.example.myapp
 python3 haylen.py run ~/apps/my-app
-python3 haylen.py run ~/apps/my-app --platform ios-simulator
-python3 haylen.py run ~/apps/my-app --platform android
 python3 haylen.py run ~/apps/my-app --platform web
 ```
 
-With `--platform`, `run` builds the prebuilt engine for that platform once, writes the app into the generated folder of the platform project, builds the project and launches it on macOS, iOS and tvOS simulators and devices, Mac Catalyst, Android devices and emulators, or a local web server. The app itself never compiles the engine.
-
-An app is a folder like this one:
-
-```text
-my-app/
-  app.json          Name, identifier, version, window, design resolution and splash screen.
-  source/
-    main.lua        Entry point.
-    scenes/         Any other Lua modules, loaded with require('scenes.title').
-  content/          Textures, sounds, fonts, maps and data.
-  plugins/          Plugins with native code, such as sign-in or ads.
-  platform/         The Xcode, Android and web projects, which haylen.py builds where they are.
-```
+The command `new` writes a starter app with a project of every platform, and `run` opens it in the desktop player with hot reload, or builds it for a platform with `--platform`, such as `ios-simulator`, `android` or `web`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -86,22 +70,18 @@ local scene = require('haylen.scene')
 scene.push({
     render = function(self)
         graphics2d.beginScreen()
-        graphics2d.drawText(nil, 'Hello, island', 960, 540, {size = 96, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, 'Hello, Haylen', 960, 540, {size = 96, anchor = {0.5, 0.5}})
     end,
 })
 ```
 
-The command `python3 haylen.py package my-app` zips the package, and the [distribution guide](docs/distribution.md) covers every platform. C++ apps add the engine to their CMake project and call `haylen_add_app`, as the [embedding guide](docs/embedding.md) shows.
-
 ## Documentation
 
-- [Lua API reference](docs/lua-api.md)
-- [Lua guide](docs/lua.md), [lifecycle](docs/lifecycle.md) and [architecture](docs/architecture.md)
-- [Distributing apps](docs/distribution.md), [plugins](docs/plugins.md), [building the engine](docs/build.md) and [using the engine as a library](docs/embedding.md)
-- [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [Tiled](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop apps](docs/desktop.md)
-- [Platform bridge](docs/platform_bridge.md) and [testing](docs/testing.md)
-- [Tiny Island](samples/games/tiny-island/README.md)
+- [Lua API reference](docs/lua-api.md), the [Lua guide](docs/lua.md) and the [lifecycle](docs/lifecycle.md)
+- [Architecture](docs/architecture.md), [building the engine](docs/build.md), [distributing apps](docs/distribution.md) and [using the engine from C++](docs/embedding.md)
+- [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [Tiled maps](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop windows](docs/desktop.md)
+- [Plugins](docs/plugins.md), [native code](docs/native.md), the [platform bridge](docs/platform_bridge.md) and [testing](docs/testing.md)
 
 ## License
 
-Haylen is released under the license in [LICENSE](LICENSE). The Tiny Swords art belongs to Pixel Frog and is not part of this repository. The sounds and fonts of Tiny Island are CC0, with credits next to them.
+Haylen is released under the license in [LICENSE](LICENSE).

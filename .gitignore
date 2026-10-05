@@ -5,7 +5,7 @@
 /.idea/
 /.vscode/
 .DS_Store
-# The Tiny Swords license allows using the art in games but not redistributing the pack, so haylen.py assets imports it from the original zip.
+# The art of this sample is not redistributable, so it stays out of the repository.
 /samples/games/tiny-island/content/tiny_swords/
 __pycache__/
 # Gradle, Kotlin and the Android plugin write their outputs next to the Android library project, and apps assemble their projects under build/.
@@ -15,6 +15,8 @@ __pycache__/
 /engine/platform/android/build/
 /engine/platform/android/*/build/
 local.properties
+# The signing keys that `haylen.py android-key` writes into the Android project of an app, with their passwords.
+**/platform/android/keystore/
 *.profraw
 MISSING.md
 PLAN.md

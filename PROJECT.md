@@ -152,7 +152,7 @@ Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, 
 98. O nome da engine é Haylen (em minúsculas, `haylen`) em todos os lugares: arquivos, pastas, docs, README, classes, namespaces, alvos e funções do CMake, módulos Lua, pacotes Java, JavaScript, artefatos, templates e logo.
 99. Ciclo de vida de cena com carregamento: a transição começa (cobre a cena atual), a engine chama um método de carregamento da nova cena (assíncrono), e depois a transição de saída exibe a nova cena carregada. Isso permite exibir um loading próprio se o desenvolvedor quiser, ou usar a própria transição como loading. A arquitetura precisa dar todas as possibilidades, com eventos assíncronos e ciclo de vida funcionando perfeitamente, pensada como arquitetura de software, com o máximo de desempenho e sem gambiarras, não importa o tamanho do trabalho.
 100. Revisar tudo de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que podem derrubar o app, corrigindo o que faz sentido (não código que nunca pode acontecer nem coisas aleatórias só para mostrar trabalho), e manter as regras gerais no AGENTS.md e esta mega lista detalhada.
-101. Os samples ficam em subpastas por categoria, e o comando recebe o caminho da categoria, por exemplo `python3 haylen.py run games/tiny-island`, para ficar mais organizado.
+101. Os samples ficam em subpastas por categoria, para ficar mais organizado.
 102. Aplicações sem moldura e transparentes, como o Taskbar Hero: janela sem barra de título e sem bordas, fundo transparente, o jogo rodando no rodapé da tela e arrastável, com a GUI/UI do jogo funcionando. É outra modalidade de jogo que a engine precisa suportar.
 103. Comunicação fácil com qualquer plataforma (iOS, Android, desktop, web e as outras): enviar e receber a resposta da plataforma de forma assíncrona, para usar qualquer coisa nativa da plataforma.
 104. Chamar bibliotecas e SDKs nativos, como a biblioteca da Steam, bibliotecas nativas em geral e SDKs como o P2P da Epic Online Services (NAT P2P). O `ffi` do Varn pode ser parte da solução. Não é preciso usar esses SDKs, eles são só exemplos, mas a capacidade precisa ser testada nas plataformas.
@@ -462,7 +462,7 @@ As versões mínimas são iOS e tvOS 16.3, macOS 13.3, Mac Catalyst 16.4 e Andro
 | `assets` e `map` | Importam o Tiny Swords e geram o mapa da ilha do Tiny Island. |
 | `clean` | Apaga `build/`. |
 
-Os comandos recebem o caminho do sample a partir de `samples/` (`python3 haylen.py run games/tiny-island`), e `run` sem app roda o Tiny Island.
+Os comandos recebem a pasta do app, relativa à pasta atual ou absoluta (`python3 haylen.py run samples/games/tiny-island`), e `run` sem app ou com uma pasta que não é app para com um erro claro.
 
 ### 7.3 Como um app é montado
 
@@ -496,7 +496,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **Aplicação Lua** (`lua::Application`): carrega o pacote, executa `source/main.lua` e encaminha o ciclo da engine para as cenas Lua.
 - [x] **Player** `haylen [--dev] <pasta|zip>` no desktop (validado com Metal no macOS) e o player web pré-compilado, que recebe o `app.zip` da página do template web (validado com WebGPU no Chrome).
 - [~] **haylen_add_app** gerando apps C++ para todas as plataformas com o pacote como conteúdo. Desktop, web, Android (APK no emulador com bridge, HTTP, pausa e retomada), simulador iOS e Mac Catalyst validados. Falta rodar no tvOS.
-- [x] **Engine como biblioteca**: três formas de consumo da pasta `engine/`, todas com `haylen::engine`, `haylen::runtime` e `haylen_add_app`. `add_subdirectory` e `CPMAddPackage` compilam a engine dentro do projeto, com C++20 e o suporte a exceções da web propagados pelo target, e testes, player e benchmarks desligados quando a engine não é o projeto principal. `find_package(haylen)` usa o SDK de `haylen.py sdk --platform <macos|linux|windows|web|web-webgl2>`: todas as bibliotecas estáticas do fechamento da engine (Varn, Poco, OpenSSL, libuv, Lua, Box2D e as outras) são fundidas em `libhaylen` e o runtime em `libhaylen_runtime`, com os headers públicos, os headers de Dear ImGui, Lua e nlohmann/json que eles usam, o `haylen-config.cmake` e os arquivos de `haylen_add_app` em `share/haylen`, instalados pelo componente `haylen_sdk`. O sample `samples/cpp/embedding` é um projeto CMake próprio compilado nos três modos por `haylen.py embedding --mode subdirectory|cpm|package` (validados no macOS, e o modo `package` também na web com o SDK WebGPU no Chrome). Apps C++ para Android, iOS, tvOS e Mac Catalyst compilam a engine pelo CMake com `haylen.py run-cpp`.
+- [x] **Engine como biblioteca**: três formas de consumo da pasta `engine/`, todas com `haylen::engine`, `haylen::runtime` e `haylen_add_app`. `add_subdirectory` e `CPMAddPackage` compilam a engine dentro do projeto, com C++20 e o suporte a exceções da web propagados pelo target, e testes, player e benchmarks desligados quando a engine não é o projeto principal. `find_package(haylen)` usa o SDK de `haylen.py sdk --platform <macos|linux|windows|web|web-webgl2>`: todas as bibliotecas estáticas do fechamento da engine (Varn, Poco, OpenSSL, libuv, Lua, Box2D e as outras) são fundidas em `libhaylen` e o runtime em `libhaylen_runtime`, com os headers públicos, os headers de Dear ImGui, Lua e nlohmann/json que eles usam, o `haylen-config.cmake` e os arquivos de `haylen_add_app` em `share/haylen`, instalados pelo componente `haylen_sdk`. O projeto `engine/tests/consumer` é um projeto CMake próprio compilado nos três modos por `haylen.py sdk --check-consumers subdirectory|cpm|package` (validados no macOS, e o modo `package` também na web com o SDK WebGPU no Chrome). Apps C++ para Android, iOS, tvOS e Mac Catalyst compilam a engine pelo CMake com `haylen.py run-cpp`.
 - [x] **API C++ para bindings** (`haylen/lua/`) para que outros projetos exponham seus próprios módulos, inclusive `lua::Promise` para bindings assíncronos, que o app espera com `:await()` e que o código nativo resolve de qualquer thread sem depender dos headers do Varn (o SDK não instala esses headers).
 - [x] **Erros de tarefas assíncronas**: um erro que escapa de `async.spawn` ou `async.run` mostra a tela de erro com a pilha da corrotina e chega ao `onError` da página, como um erro de callback de cena. Falhas em `start`, `installLua` e `endFrame` de plugins também viram tela de erro.
 
@@ -733,7 +733,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 
 ### 9.1 Conceito
 
-O jogo é escrito em Lua e fica em `samples/games/tiny-island/`: `app.json`, `source/` (`main.lua`, `config.lua` com os valores de ajuste, e as pastas `data/`, `scenes/`, `systems/`, `entities/` e `ui/`) e `content/` com os assets. O app de cada plataforma é montado a partir dos templates por `python3 haylen.py run games/tiny-island [--platform ...]`, e `platform/` guarda só o login Google do Android e da web.
+O jogo é escrito em Lua e fica em `samples/games/tiny-island/`: `app.json`, `source/` (`main.lua`, `config.lua` com os valores de ajuste, e as pastas `data/`, `scenes/`, `systems/`, `entities/` e `ui/`) e `content/` com os assets. O app de cada plataforma é montado a partir dos templates por `python3 haylen.py run samples/games/tiny-island [--platform ...]`, e `platform/` guarda só o login Google do Android e da web.
 
 Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta árvores e alimenta a fogueira. À noite os inimigos aparecem e só a luz da fogueira mantém um círculo seguro. Quanto menos madeira, menor o círculo.
 
@@ -758,7 +758,7 @@ Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta á
 
 ### 9.4 Mapa
 
-- Gerado por `tools/generate_island_map.py` (`haylen.py map`) e salvo como `samples/games/tiny-island/content/maps/island.tmj`, editável no Tiled.
+- Gerado por `samples/games/tiny-island/tools/generate_island_map.py` e salvo como `samples/games/tiny-island/content/maps/island.tmj`, editável no Tiled.
 - Camadas: fundo de água, espuma animada na costa, grama com bordas por autotile (Wang set de bordas), platô elevado com penhascos e sombra, decorações (arbustos, pedras, pedras na água e nuvens em parallax) e objetos.
 - Objetos: posição da fogueira, posição inicial do jogador, regiões de spawn de árvores, pontos de spawn de inimigos na costa e colisões da borda da ilha e dos penhascos.
 
@@ -836,7 +836,6 @@ Todos os sons são CC0. Os créditos ficam em `samples/games/tiny-island/content
 
 ### 9.14 Itens do jogo
 
-- [x] **Importação do Tiny Swords**: `haylen.py assets <zip>` copia o pacote para `samples/games/tiny-island/content/tiny_swords/` com nomes em `snake_case`, gera as peças de nine-slice da UI e versões claras das barras para o tema colorir.
 - [x] **Jogo em Lua** usando só a API Lua da engine e os módulos do Varn.
 - [x] **Pacote em zip**: o mesmo jogo roda a partir de `tiny-island.zip` no player desktop (Metal) e no navegador (WebGPU).
 - [x] **Mapa da ilha** gerado e editável no Tiled.
@@ -1083,9 +1082,9 @@ Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 
 #### N. Samples
 
-Os samples ficam em categorias, e os comandos recebem o caminho a partir de `samples/` (`python3 haylen.py run games/tiny-island`, `python3 haylen.py run graphics/lighting --platform web`, `python3 haylen.py run-cpp cpp/embedding`), com `python3 haylen.py samples` listando todos: `games/` (tiny-island e taskbar-quest), `graphics/` (sprites, camera, lighting, shaders, particles, nine-patch, fonts e scenes), `gameplay/` (physics, algorithms, tiled, tween, events, input e audio), `interface/` (ui, safe-area e orientation), `system/` (filesystem, preferences, localization, network, platform e native) e `cpp/` (embedding).
+Os samples ficam em categorias, e os comandos recebem a pasta do sample como a de qualquer app (`python3 haylen.py run samples/games/tiny-island`, `python3 haylen.py run-cpp samples/cpp/embedding`): `games/` (tiny-island e taskbar-quest), `graphics/` (sprites, camera, lighting, shaders, particles, nine-patch, fonts e scenes), `gameplay/` (physics, algorithms, tiled, tween, events, input e audio), `interface/` (ui, safe-area e orientation), `system/` (filesystem, preferences, localization, network, platform e native) e `cpp/` (embedding).
 
-- [x] Samples em categorias, `haylen.py run` e `run-cpp` resolvendo o caminho a partir de `samples/`, `haylen.py samples` listando todos, e README, docs, AGENTS.md e os READMEs dos samples no mesmo formato.
+- [x] Samples em categorias, `haylen.py run` e `run-cpp` recebendo a pasta do sample como a de qualquer app, e README, docs, AGENTS.md e os READMEs dos samples no mesmo formato.
 
 Todo sample de recursos tem um menu simples para escolher o teste, cada teste é uma cena com um botão para voltar ao menu, e roda em todas as plataformas pelos templates.
 
@@ -1638,14 +1637,14 @@ Checklist:
 - [x] As regras do projeto ficam todas no `AGENTS.md`, que todas as referências do repositório citam.
 - [x] Regras novas no `AGENTS.md`: commit todo em minúsculas (`feature: add scene loading lifecycle`); logs, mensagens e textos ao usuário com a caixa normal de frase; comentários só onde forem muito necessários; nunca citar jogos, empresas, autores ou ferramentas de terceiros nem usar imagens de terceiros; usar a última versão de todas as dependências; gerar a arte dos samples com o Codex (como chamar, tamanho exato, transparência, estilo único); o terminal do `haylen.py` destaca expressões por cor e mostra URLs e caminhos sem aspas.
 - [x] A ferramenta da engine é o `haylen.py` em tudo: código, testes (`tools/test_haylen.py`), CI, templates, docs, README, mensagens e o `AGENTS.md`.
-- [ ] O `haylen.py` só tem comandos da engine: sai o comando de importar os assets do Tiny Island e qualquer regra de sample. O `run` sem app ou com um caminho inválido para com uma mensagem clara e não abre nenhum sample por padrão.
-- [ ] Saída profissional e colorida do `haylen.py`: títulos e passos, sucesso, avisos e erros em cores distintas, comandos ecoados discretos, URLs e caminhos sem aspas para o terminal deixar clicar, cores desligadas sem TTY ou com `NO_COLOR`, e erros com a causa e o que fazer.
-- [ ] Comando `haylen.py android-key <app> [--debug|--release]` (nome final a decidir pelo padrão dos comandos) que gera a chave de upload com o `keytool` (RSA 2048, validade longa, alias e senhas configuráveis, padrão `upload`) e o certificado `.pem`, na pasta do projeto Android do app, ignorada pelo `.gitignore`, e liga a assinatura de release do Gradle a ela por propriedades locais, documentado.
-- [ ] Ferramentas e assets de samples saem de `tools/`: o importador de arte de terceiros sai, e geradores que só um sample usa vão para dentro do sample ou saem, com os assets gerados versionados no sample.
+- [x] O `haylen.py` só tem comandos da engine: sai o comando de importar os assets do Tiny Island e qualquer regra de sample. O `run` sem app ou com um caminho inválido para com uma mensagem clara e não abre nenhum sample por padrão. Saíram `assets`, `map`, `samples` e `embedding`, que virou `sdk --check-consumers` com o projeto `engine/tests/consumer`.
+- [x] Saída profissional e colorida do `haylen.py`: títulos e passos, sucesso, avisos e erros em cores distintas, comandos ecoados discretos, URLs e caminhos sem aspas para o terminal deixar clicar, cores desligadas sem TTY ou com `NO_COLOR`, e erros com a causa e o que fazer.
+- [x] Comando `haylen.py android-key <app> [--debug|--release]` (nome final a decidir pelo padrão dos comandos) que gera a chave de upload com o `keytool` (RSA 2048, validade longa, alias e senhas configuráveis, padrão `upload`) e o certificado `.pem`, na pasta do projeto Android do app, ignorada pelo `.gitignore`, e liga a assinatura de release do Gradle a ela por propriedades locais, documentado. Conferido com um APK de release assinado pela chave gerada (`apksigner`), também só com variáveis de ambiente.
+- [x] Ferramentas e assets de samples saem de `tools/`: o importador de arte de terceiros sai, e geradores que só um sample usa vão para dentro do sample ou saem, com os assets gerados versionados no sample. O importador saiu, e o gerador do mapa foi para `samples/games/tiny-island/tools/`.
 - [ ] Nenhuma arte ou menção de terceiros no repositório: os pacotes de arte (Tiny Swords e os pacotes CC0), os `CREDITS.md` que citam autores, os nomes de fontes ou pacotes de terceiros onde não forem obrigatórios por licença, e o `.gitignore` de arte importada saem, e a arte própria entra no lugar. Fontes de licença aberta que a engine embute ficam só com a licença exigida.
-- [ ] CI só testa: confirmar que nenhum workflow publica artefatos em releases, e que o release do GitHub é só o código.
+- [x] CI só testa: confirmar que nenhum workflow publica artefatos em releases, e que o release do GitHub é só o código. Nenhum artefato é publicado, e tags e releases não disparam o CI.
 - [ ] Auditoria das versões de todas as dependências (Sokol, Box2D, miniaudio, Dear ImGui, HarfBuzz, SheenBidi, libunibreak, msdfgen, stb, zstd, Clipper2, nlohmann/json, GameActivity, AndroidX, XcodeGen, emsdk, NDK, Gradle, AGP, Kotlin e as do CI), subindo cada uma para a última versão, adotando a API atual e removendo patches que não forem mais necessários.
-- [ ] README do produto Haylen: objetivo, recursos por área, plataformas, início rápido, sem versões além das essenciais (C++20) e sem samples específicos em destaque.
+- [x] README do produto Haylen: objetivo, recursos por área, plataformas, início rápido, sem versões além das essenciais (C++20) e sem samples específicos em destaque.
 - [ ] Varredura de texto estrita (continua o grupo AE): todo texto que os samples, os templates e a engine mostram ou imprimem começa com maiúscula, inclusive títulos, botões e cada linha de leitura na tela, com expressões reservadas marcadas.
 
 #### AI. Projeto único de testes da engine

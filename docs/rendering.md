@@ -234,7 +234,7 @@ The engine embeds Roboto Medium from Dear ImGui as its default font, which `grap
 
 ## Nine-slices
 
-A `NineSlice` (`engine/include/haylen/2d/graphics/NineSlice.hpp`) is a texture with nine source rectangles, row by row from the top-left corner. The method `NineSlice::fromBorders` cuts one source rectangle with fixed borders, and `NineSlice::fromPieces` takes nine separate rectangles, like the packed Tiny Swords pieces that `haylen.py assets` writes to `ui/sliced.json`. In Lua, `graphics2d.newNineSlice(texture, {borders = ...})` or `{pieces = ...}` builds one.
+A `NineSlice` (`engine/include/haylen/2d/graphics/NineSlice.hpp`) is a texture with nine source rectangles, row by row from the top-left corner. The method `NineSlice::fromBorders` cuts one source rectangle with fixed borders, and `NineSlice::fromPieces` takes nine separate rectangles, such as the pieces that an atlas packs apart. In Lua, `graphics2d.newNineSlice(texture, {borders = ...})` or `{pieces = ...}` builds one.
 
 The method `drawNineSlice(slice, area, color, order, borderScale)` keeps the corners at their size times `borderScale`, and shrinks the borders proportionally when the area is smaller than them. With the `stretch` fill the edges and the center stretch. With the `tile` fill they repeat at their scaled size and the last tile of each row and column is cropped. All pieces go into one draw item with the slice's texture, so frames that share a texture batch together. UI themes use nine-slices for their surfaces, as the [UI guide](ui.md) explains.
 

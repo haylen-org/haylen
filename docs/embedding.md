@@ -197,12 +197,12 @@ A plugin is the place for native code that the app compiles itself: a C++ SDK pu
 
 ## Checking the three modes
 
-The command `haylen.py embedding` builds `samples/cpp/embedding` the way another repository would consume the engine.
+The option `--check-consumers` of `haylen.py sdk` builds `engine/tests/consumer`, a CMake project of its own with a small C++ app, the way another repository consumes the engine, after it builds and installs the SDK of the host.
 
 ```sh
-python3 haylen.py embedding --mode subdirectory
-python3 haylen.py embedding --mode cpm
-python3 haylen.py embedding --mode package
+python3 haylen.py sdk --check-consumers
+python3 haylen.py sdk --check-consumers subdirectory cpm
+python3 haylen.py sdk --check-consumers package
 ```
 
-Each mode builds in `build/embedding-<mode>-<config>`, with `--config` defaulting to `Debug`, and places the app in `bin/embedding/` of that tree. The `package` mode first runs `haylen.py sdk` for the host with the same configuration and points `CMAKE_PREFIX_PATH` at the result. The CI workflow runs `python haylen.py embedding --mode package --config Release` on macOS, Linux and Windows, as the [testing guide](testing.md#continuous-integration) describes.
+The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`, and each way builds in `build/consumers/<mode>-<config>`, with `--config` defaulting to `Release`. The `package` way points `CMAKE_PREFIX_PATH` at the SDK that the command installed. The CI workflow runs `python haylen.py sdk --config Release --check-consumers package` on macOS, Linux and Windows, as the [testing guide](testing.md#continuous-integration) describes.

@@ -22,6 +22,7 @@ This file is binding for every change. It describes the project as it is and the
 
 - Every request of the owner goes into the checklist of `PROJECT.md` before the work starts, so nothing is lost, and an item is checked only when it is implemented, tested where possible and documented.
 - Commit and push to `main` after each finished block of work, once the build, the tests and the format check pass. A block that is committed builds and passes its tests on its own, so separate unrelated changes into separate commits and verify a commit from a clean checkout when the working tree holds other work.
+- CI only tests and publishes nothing, and the GitHub release of the repository is the source archive alone, because developers build the engine themselves.
 - A commit message is one short lowercase sentence after a type prefix, `feature: ...`, `fix: ...`, `refactor: ...`, `perf: ...`, `test: ...`, `docs: ...`, `build: ...` or `chore: ...`, for example `feature: add scene loading lifecycle`. It has no body, no co-author and no other trailer, and never names Claude or anyone else.
 - Before every commit, review what is staged (`git status` and `git diff --cached --stat`) and make sure nothing private or temporary goes in: build outputs, caches, generated projects under `build/`, local tool folders, logs, screenshots, secrets, API keys, tokens, signing keys and keystores, `local.properties`, `.env` files, machine-specific paths or settings, and personal data. Anything like that belongs in `.gitignore`, never in the repository.
 - Screenshots used to check a change capture only the app window or the page, never the whole screen.
@@ -52,7 +53,7 @@ This file is binding for every change. It describes the project as it is and the
 - Mobile apps follow the platform lifecycle: app states (`active`, `inactive`, `background`), audio sessions and interruptions, low-memory warnings and orientation. UI positions itself in the safe area the engine reports.
 - The Apple template is an XcodeGen `project.yml` that includes `haylen/project.yml`, with the generated `App.xcodeproj` always committed next to it. After editing the `project.yml` of the template, run `python3 haylen.py xcodegen --template` and commit both. The completed `Info.plist`, entitlements and privacy manifest follow one rule: the value of the developer wins, the keys of plugins and `app.json` only fill what is missing, arrays gain the items they lack, and two plugins that disagree stop the build.
 - Android apps run in `dev.haylen.HaylenActivity`, a GameActivity of AndroidX (an `AppCompatActivity`, so also a `FragmentActivity` and a `ComponentActivity`) that draws the game into a `SurfaceView`, through the engine's sokol patch for GameActivity. Plugins therefore use the Activity Result API with stable keys, fragments and Compose, and native views are normal views above the game. The activity launches as `singleTop`, and links and notification taps enter through `HaylenLinkActivity`, which only the `haylen-links` library declares, so the launcher icon never destroys a screen opened above the game and an app without link or notification plugins exports nothing besides its launcher. The activity registers the Activity Result launchers of the engine under keys that start with `haylen.`, those of the native dialogs and `haylen.<id>.<screen>` for the screens of plugins, and keeps the screen that shows in its saved state, so a result that arrives after the end of the process reaches the next app as `screenRestored`.
-- The Android template is a Gradle app without C++ that depends on the haylen AAR and reads `haylen/haylen.properties`, and its modules find the engine version in the extra property `haylenEngineVersion`. Build products go to `build/apps/<app>-<hash>/`, outside the projects of the developer, and Apple apps declare the APIs with required reasons of the engine in a privacy manifest merged from the engine, the plugins and the developer. The web template is a loading page with the app or engine logo, a progress bar, the backend choice and the error screen.
+- The Android template is a Gradle app without C++ that depends on the haylen AAR and reads `haylen/haylen.properties`, and its modules find the engine version in the extra property `haylenEngineVersion`. Release builds sign with the upload key that `haylen.py android-key` writes into `platform/android/keystore/`, or with the key that CI gives through Gradle properties or environment variables, and stop with a clear message without one. Build products go to `build/apps/<app>-<hash>/`, outside the projects of the developer, and Apple apps declare the APIs with required reasons of the engine in a privacy manifest merged from the engine, the plugins and the developer. The web template is a loading page with the app or engine logo, a progress bar, the backend choice and the error screen.
 - Splash screens follow `app.json` and work in landscape and portrait on every device.
 
 ## Async and threading
@@ -115,7 +116,7 @@ This file is binding for every change. It describes the project as it is and the
 
 ```text
 CMakeLists.txt            Root project: engine, player and tests.
-haylen.py                 Single build entry point for every platform and task: engine builds and artifacts, creating, preparing, checking, running and packaging apps, samples, shaders, serving web pages, tests, coverage, sanitizers, formatting and benchmarks.
+haylen.py                 Single entry point for every platform and task of the engine: engine builds and artifacts, creating, preparing, checking, running and packaging apps, Android signing keys, shaders, serving web pages, tests, coverage, sanitizers, formatting, benchmarks and the SDK with its consumer check.
 PROJECT.md                Master plan, owner's requests and feature checklist (Portuguese).
 engine/
   CMakeLists.txt          Standalone engine project, consumable by other projects.
@@ -128,7 +129,7 @@ engine/
   platform/web/           JavaScript runtime, audio worklet and bridge, and the HTML shell and backend picker of C++ web apps.
   platform/apple/         Info.plist and launch screen templates of Apple apps built with CMake, and the PrivacyInfo.xcprivacy of the engine.
   bench/                  The benchmark apps (sprites, algorithms, procedural, Lua).
-  tests/                  GoogleTest suite with its support helpers, test fonts and the native test library.
+  tests/                  GoogleTest suite with its support helpers, test fonts and the native test library, and the consumer project that `haylen.py sdk --check-consumers` builds.
 samples/
   <category>/<sample>/    Samples grouped by category (games, graphics, gameplay, interface, system, cpp). A Lua sample folder is the app package plus its README and platform overrides.
 templates/
@@ -138,7 +139,7 @@ templates/
     apple/                XcodeGen project.yml that includes haylen/project.yml, with the generated App.xcodeproj next to it: iOS and iPadOS with Mac Catalyst, tvOS and macOS.
     android/              Gradle app project without C++ that depends on the haylen AAR and reads haylen/haylen.properties.
     web/                  Loading page with the app or engine logo, the progress bar, the backend choice and the error screen.
-tools/                    Python tools (Tiny Swords importer, island map generator, PNG reader and writer) and test_haylen.py, the tests of the rules of haylen.py.
+tools/                    The PNG reader and writer of the tools that draw sample art, and test_haylen.py, the tests of the rules of haylen.py.
 docs/                     Guides and the Lua API reference.
 extras/images/            Brand images: the vertical and horizontal logos, the symbol, and the logo variants with a white wordmark for dark backgrounds.
 ```
@@ -181,7 +182,7 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 
 ## Samples
 
-- Samples are Lua apps grouped by category under `samples/`: `games/` for complete games, `graphics/`, `gameplay/`, `interface/` and `system/` for feature samples, and `cpp/` for C++ projects. Commands take the path from `samples/`, such as `python3 haylen.py run games/tiny-island`, and `python3 haylen.py samples` lists them.
+- Samples are Lua apps grouped by category under `samples/`: `games/` for complete games, `graphics/`, `gameplay/`, `interface/` and `system/` for feature samples, and `cpp/` for C++ projects. Commands take a sample's folder like any app folder, such as `python3 haylen.py run samples/games/tiny-island`. No command names a sample or treats one as special, and a tool that only one sample uses lives in its `tools/` folder.
 - A Lua sample holds `app.json`, `README.md`, `source/` and `content/`, and its native code lives in local plugins under `plugins/`. Samples keep no platform projects, so they build copies of the templates. Only `app.json`, `source/`, `content/` and the Lua of the listed plugins are deployed.
 - A feature sample covers one feature set. `source/main.lua` pushes the menu scene of `source/scenes/menu.lua`, `source/tests.lua` lists the tests, and each test is one scene under `source/tests/` with a header, on-screen hints, a Back button in the safe area and Escape, gamepad B and the TV menu button going back to the menu.
 - Samples use only documented Lua APIs, work with mouse, touch, keyboard, gamepads and TV remotes, run on every platform and clean up everything they create through owners. When a sample needs something the engine lacks, the engine gains the capability instead of the sample working around it.
@@ -226,7 +227,7 @@ These rules apply to every text the project writes: code comments, documentation
 - Every sentence starts with a capital letter. When a sentence would begin with a command, identifier, path, key or value written in lowercase, keep its exact spelling and put a capitalized word in front of it, such as "The command", "Run", "The function" or "The file".
 - The same holds for every text that is not a full sentence: titles, button and menu texts, captions, hints, labels and each line of an on-screen readout start with a capital letter, such as `Name %s, %d coins`. Only code shown as code keeps its own form.
 - Reserved expressions are always marked, so they never read as part of the prose: commands, code, identifiers, file names and paths, keys, option names and values. Markdown documents and code comments wrap them in backticks. Plain-text messages, logs and command output wrap them in double quotes, for example `Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.`
-- The colored terminal output of `haylen.py` marks reserved expressions by color instead of quotes, and prints URLs and paths bare so terminals can open them. Without color it falls back to the double quotes, except around URLs and paths.
+- The terminal output of `haylen.py` marks reserved expressions by color instead of quotes, and prints URLs and paths bare and underlined so terminals can open them. In its source, messages mark reserved expressions with double quotes and paths and URLs with backticks, and without color the output keeps the double quotes and drops the backticks.
 
 ## Comment standard
 

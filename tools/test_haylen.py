@@ -1,10 +1,15 @@
-"""Tests of the rules of haylen.py that need no build: how it merges Info.plist keys, entitlements and privacy manifests, what it checks in a built app and when it generates App.xcodeproj again."""
+"""Tests of the rules of haylen.py that need no build: how it merges Info.plist keys, entitlements and privacy manifests, what it checks in a built app, when it generates App.xcodeproj again, how it prints to the terminal and how its commands read their arguments."""
 
+import contextlib
+import io
+import os
 import plistlib
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -30,7 +35,7 @@ class DeveloperKeysTest(unittest.TestCase):
         warnings: list[str] = []
         completed = haylen.complete_keys({"NSCameraUsageDescription": "Ours"}, {"NSCameraUsageDescription": "Theirs"}, {"NSCameraUsageDescription": 'the plugin "camera"'}, "ios/Info.plist", warnings)
         self.assertEqual(completed, {"NSCameraUsageDescription": "Ours"})
-        self.assertEqual(warnings, ['The key "NSCameraUsageDescription" of "ios/Info.plist" keeps its value "Ours", while the plugin "camera" gives "Theirs".'])
+        self.assertEqual(warnings, ['The key "NSCameraUsageDescription" of `ios/Info.plist` keeps its value "Ours", while the plugin "camera" gives "Theirs".'])
 
     def test_generated_keys_fill_what_the_developer_lacks(self):
         warnings: list[str] = []
@@ -73,9 +78,16 @@ class RequirementTest(unittest.TestCase):
         self.assertEqual(haylen.plist_snippet("NSCameraUsageDescription", "Scans codes."), "<key>NSCameraUsageDescription</key>\n<string>Scans codes.</string>")
         self.assertEqual(plistlib.loads(("<plist><dict>" + haylen.plist_snippet("UIApplicationSceneManifest", {"UIApplicationSupportsMultipleScenes": True}) + "</dict></plist>").encode()), {"UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes": True}})
 
-    def test_a_requirement_names_the_file_and_indents_the_snippet(self):
-        requirement = haylen.Requirement('The plugin "demo" needs "NSCameraUsageDescription".', 'Add to "ios/Info.plist":', "<key>NSCameraUsageDescription</key>\n<string>Why.</string>")
-        self.assertEqual(requirement.describe(), 'The plugin "demo" needs "NSCameraUsageDescription".\n  Add to "ios/Info.plist":\n    <key>NSCameraUsageDescription</key>\n    <string>Why.</string>')
+    def test_a_requirement_names_the_file_and_keeps_the_snippet_as_it_is(self):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        requirement = haylen.Requirement('The plugin "demo" needs "android.permission.CAMERA".', "Add to `app/src/main/AndroidManifest.xml`:", '<uses-permission android:name="android.permission.CAMERA" />')
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(stdout, stderr, {"FORCE_COLOR": "1"})):
+            haylen.report_requirements([requirement])
+        lines = stderr.getvalue().splitlines()
+        self.assertEqual(lines[0], "\x1b[1;33mWarning:\x1b[0m The plugin \x1b[36mdemo\x1b[0m needs \x1b[36mandroid.permission.CAMERA\x1b[0m.")
+        self.assertEqual(lines[1], "  Add to \x1b[4mapp/src/main/AndroidManifest.xml\x1b[0m:")
+        self.assertEqual(lines[2], '    <uses-permission android:name="android.permission.CAMERA" />')
+        self.assertEqual(stdout.getvalue(), "")
 
 
 class ProjectGenerationTest(unittest.TestCase):
@@ -111,6 +123,146 @@ class ProjectGenerationTest(unittest.TestCase):
 class PropertiesTest(unittest.TestCase):
     def test_values_survive_as_ascii_with_escapes(self):
         self.assertEqual(haylen.java_property("Ilha Tropical ✓\\n"), "Ilha Tropical \\u2713\\\\n")
+
+
+class TerminalStream(io.StringIO):
+    """A stream that answers like a terminal."""
+
+    def isatty(self) -> bool:
+        return True
+
+
+class TerminalTest(unittest.TestCase):
+    def test_without_color_reserved_expressions_keep_their_quotes_and_paths_and_urls_print_bare(self):
+        message = 'Serving `build/apps/demo-70da5b67/web` at `http://127.0.0.1:8000/` with "--coep off"'
+        self.assertEqual(haylen.Terminal.render(message, False), 'Serving build/apps/demo-70da5b67/web at http://127.0.0.1:8000/ with "--coep off"')
+
+    def test_with_color_reserved_expressions_and_paths_take_their_styles_and_the_line_keeps_its_own(self):
+        rendered = haylen.Terminal.render('Run "python3 haylen.py run" in `apps/demo`.', True, haylen.Terminal.SUCCESS)
+        self.assertEqual(rendered, "\x1b[32mRun \x1b[36mpython3 haylen.py run\x1b[0m\x1b[32m in \x1b[4mapps/demo\x1b[0m\x1b[32m.\x1b[0m")
+
+    def test_an_empty_quote_stays_as_it_is(self):
+        self.assertEqual(haylen.Terminal.render('The key "name" is "".', True), 'The key \x1b[36mname\x1b[0m is "".')
+
+    @mock.patch.object(haylen.Terminal, "enable_escapes", return_value=True)
+    def test_color_follows_the_terminal_and_the_environment(self, _):
+        self.assertTrue(haylen.Terminal.shows_color(TerminalStream(), {}))
+        self.assertFalse(haylen.Terminal.shows_color(io.StringIO(), {}))
+        self.assertTrue(haylen.Terminal.shows_color(io.StringIO(), {"FORCE_COLOR": "1"}))
+        self.assertFalse(haylen.Terminal.shows_color(TerminalStream(), {"NO_COLOR": "1"}))
+        self.assertFalse(haylen.Terminal.shows_color(TerminalStream(), {"NO_COLOR": "1", "FORCE_COLOR": "1"}))
+        self.assertFalse(haylen.Terminal.shows_color(TerminalStream(), {"TERM": "dumb"}))
+        self.assertTrue(haylen.Terminal.shows_color(TerminalStream(), {"NO_COLOR": ""}))
+
+    def test_the_serve_line_keeps_its_url_bare_without_color(self):
+        stdout = io.StringIO()
+        terminal = haylen.Terminal(stdout, io.StringIO(), {"NO_COLOR": "1"})
+        terminal.success("Serving `build/apps/demo-70da5b67/web` at `http://127.0.0.1:8000/`")
+        self.assertEqual(stdout.getvalue(), "Serving build/apps/demo-70da5b67/web at http://127.0.0.1:8000/\n")
+
+    def test_an_error_is_one_block_with_the_output_of_the_tool_as_it_is(self):
+        stderr = io.StringIO()
+        terminal = haylen.Terminal(io.StringIO(), stderr, {})
+        terminal.error('The shader `content/shaders/tint.glsl` does not compile as the "sprite" program.', "tint.glsl:3: error: 'tint' undeclared")
+        self.assertEqual(stderr.getvalue(), "Error: The shader content/shaders/tint.glsl does not compile as the \"sprite\" program.\ntint.glsl:3: error: 'tint' undeclared\n")
+
+    def test_a_command_prints_as_a_line_to_copy_and_dim(self):
+        stdout = io.StringIO()
+        haylen.Terminal(stdout, io.StringIO(), {"FORCE_COLOR": "1"}).command(["cmake", "-S", "my app", '-DNAME="value"'])
+        expected = haylen.Terminal.command_line(["cmake", "-S", "my app", '-DNAME="value"'])
+        self.assertEqual(stdout.getvalue(), f"\x1b[2m$ {expected}\x1b[0m\n")
+        self.assertIn("my app", expected)
+
+    def test_an_expected_error_stops_without_a_traceback(self):
+        stderr = io.StringIO()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), stderr, {})), mock.patch.object(sys, "argv", ["haylen.py", "run"]):
+            with self.assertRaises(SystemExit) as stopped:
+                haylen.main()
+        self.assertEqual(stopped.exception.code, 1)
+        self.assertTrue(stderr.getvalue().startswith("Error: The command needs the folder of an app"))
+        self.assertNotIn("Traceback", stderr.getvalue())
+
+
+class AppArgumentTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        previous = Path.cwd()
+        os.chdir(self.scratch)
+        self.addCleanup(os.chdir, previous)
+
+    def test_run_without_an_app_explains_what_an_app_folder_is(self):
+        self.assertIsNone(haylen.build_parser().parse_args(["run"]).app)
+        for value in (None, ""):
+            with self.assertRaisesRegex(haylen.BuildError, 'needs the folder of an app.*"app.json"'):
+                haylen.resolve_app(value)
+
+    def test_a_path_that_names_no_app_stops_with_the_reason(self):
+        (self.scratch / "notes").mkdir()
+        with self.assertRaisesRegex(haylen.BuildError, "The path `missing` does not exist"):
+            haylen.resolve_app("missing")
+        with self.assertRaisesRegex(haylen.BuildError, 'The path `notes` is not an app folder, because it holds no "app.json"'):
+            haylen.resolve_app("notes")
+
+    def test_an_app_resolves_from_the_current_folder_and_never_from_the_samples(self):
+        (self.scratch / "game").mkdir()
+        (self.scratch / "game" / "app.json").write_text("{}")
+        self.assertEqual(haylen.resolve_app("game"), self.scratch / "game")
+        self.assertEqual(haylen.resolve_app(str(self.scratch / "game")), self.scratch / "game")
+        os.chdir(haylen.ROOT)
+        with self.assertRaisesRegex(haylen.BuildError, "does not exist"):
+            haylen.resolve_app("games/tiny-island")
+
+
+class ConsumerArgumentTest(unittest.TestCase):
+    def test_the_consumer_check_builds_the_listed_ways_or_every_way(self):
+        parser = haylen.build_parser()
+        self.assertEqual(haylen.consumer_modes(parser.parse_args(["sdk"])), [])
+        self.assertEqual(haylen.consumer_modes(parser.parse_args(["sdk", "--check-consumers"])), ["subdirectory", "cpm", "package"])
+        self.assertEqual(haylen.consumer_modes(parser.parse_args(["sdk", "--check-consumers", "package"])), ["package"])
+
+    def test_the_consumer_check_runs_only_for_this_machine(self):
+        with self.assertRaisesRegex(haylen.BuildError, '"--check-consumers" builds consumer projects for this machine'):
+            haylen.consumer_modes(haylen.build_parser().parse_args(["sdk", "--platform", "web", "--check-consumers"]))
+
+
+class AndroidKeyTest(unittest.TestCase):
+    def setUp(self):
+        self.app = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.app)
+        (self.app / "app.json").write_text("{}")
+
+    def arguments(self, *extra: str):
+        return haylen.build_parser().parse_args(["android-key", str(self.app), *extra])
+
+    def test_the_upload_key_of_release_builds_is_the_default(self):
+        args = self.arguments()
+        self.assertEqual((args.kind, args.alias, args.password, args.dname, args.force), ("release", "upload", "upload", "CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR", False))
+        self.assertEqual(self.arguments("--debug").kind, "debug")
+        self.assertEqual(self.arguments("--release", "--alias", "store", "--password", "secret1").alias, "store")
+
+    def test_release_and_debug_exclude_each_other(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.arguments("--debug", "--release")
+
+    def test_a_short_password_stops_before_anything_changes(self):
+        with self.assertRaisesRegex(haylen.BuildError, "at least 6 characters"):
+            haylen.command_android_key(self.arguments("--password", "short"))
+        self.assertFalse((self.app / "platform").exists())
+
+    def test_an_existing_key_stays_unless_forced(self):
+        keystore = self.app / "platform" / "android" / "keystore" / "release.jks"
+        keystore.parent.mkdir(parents=True)
+        keystore.write_bytes(b"key")
+        with self.assertRaisesRegex(haylen.BuildError, 'already has a release key.*"--force"'):
+            haylen.command_android_key(self.arguments())
+        self.assertEqual(keystore.read_bytes(), b"key")
+
+    def test_the_properties_name_the_keystore_next_to_them_and_escape_the_values(self):
+        properties = haylen.android_key_properties("release", "upload", "pa=ss✓")
+        lines = properties.splitlines()
+        self.assertTrue(lines[0].startswith("# "))
+        self.assertEqual(lines[1:], ["storeFile=release.jks", "storePassword=pa=ss\\u2713", "keyAlias=upload", "keyPassword=pa=ss\\u2713"])
 
 
 if __name__ == "__main__":

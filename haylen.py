@@ -16,6 +16,7 @@ import os
 import platform as host_platform
 import plistlib
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -27,14 +28,14 @@ import urllib.request
 import webbrowser
 import xml.etree.ElementTree
 import zipfile
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Callable
+from typing import Callable, TextIO
 
 ROOT = Path(__file__).resolve().parent
 BUILD_ROOT = ROOT / "build"
 TOOLS_DIR = ROOT / ".tools"
 ENGINE_DIR = ROOT / "engine"
-SAMPLES_DIR = ROOT / "samples"
 TEMPLATES_DIR = ROOT / "templates"
 APP_TEMPLATE = TEMPLATES_DIR / "app"
 PLUGIN_TEMPLATE = TEMPLATES_DIR / "plugin"
@@ -50,7 +51,16 @@ ANDROID_LIBRARY_PROJECT = ENGINE_DIR / "platform" / "android"
 ENGINE_LOGO = PLATFORM_TEMPLATES_DIR / "web" / "haylen-logo.svg"
 # The web runtime loads the AudioWorklet processor of its audio output from next to its script, so every web build ships it beside the `.js` and `.wasm` files.
 WEB_AUDIO_WORKLET = "haylen-audio-worklet.js"
-DEFAULT_APP = "games/tiny-island"
+# The project of the engine tests that adds the engine like another project does, in each of the ways of `CONSUMER_MODES`, which `sdk --check-consumers` builds.
+CONSUMER_PROJECT = ENGINE_DIR / "tests" / "consumer"
+CONSUMER_MODES = {"subdirectory": '"add_subdirectory"', "cpm": "CPM", "package": 'the installed SDK and "find_package"'}
+# The keys that `android-key` writes into `keystore/` of an Android project, where the Gradle scripts of the template find them, with the size, validity and default name of a new key.
+ANDROID_KEY_FOLDER = "keystore"
+ANDROID_KEY_SIZE = 2048
+ANDROID_KEY_DAYS = 10000
+ANDROID_KEY_NAME = "CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR"
+# The command `keytool` refuses passwords shorter than this.
+ANDROID_KEY_PASSWORD_LENGTH = 6
 
 SHDC_COMMIT = "11d0cf678105d614d675e6d9bd2aaf3eeff12f8c"
 # App shaders include the shader library as `haylen/material.glsl`, which sokol-shdc finds from its working directory.
@@ -131,16 +141,149 @@ MIME_TYPES = {".wasm": "application/wasm", ".js": "text/javascript", ".mjs": "te
 
 
 class BuildError(RuntimeError):
-    pass
+    """A failure that haylen.py expects, which stops the command with its message, and the output of the tool that failed as its details, instead of a traceback."""
+
+    def __init__(self, message: str, details: str = "") -> None:
+        super().__init__(message)
+        self.details = details
 
 
-def run(command: list, *, cwd: Path = ROOT, env: dict[str, str] | None = None) -> None:
-    print("+", " ".join(str(part) for part in command), flush=True)
-    subprocess.run([str(part) for part in command], cwd=cwd, env=env, check=True)
+class Terminal:
+    """Prints what haylen.py does: the titles of its steps, the commands it runs, successes, warnings and errors. A message marks reserved expressions with double quotes and paths and URLs with backticks. On a terminal with color, reserved expressions print in color without their quotes and paths and URLs print underlined, and without color reserved expressions keep their quotes. Paths and URLs always print bare, so terminals can open them."""
+
+    MARKUP = re.compile(r'`([^`\n]+)`|"([^"\n]+)"')
+    STEP = "1"
+    COMMAND = "2"
+    SUCCESS = "32"
+    WARNING = "1;33"
+    ERROR = "1;31"
+    EMPHASIS = "1"
+    EXPRESSION = "36"
+    LOCATION = "4"
+    # The console mode of Windows that shows escape sequences, which consoles leave off for older programs.
+    VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
+    def __init__(self, stdout: TextIO, stderr: TextIO, environment: Mapping[str, str]) -> None:
+        self.stdout = stdout
+        self.stderr = stderr
+        self.stdout_color = Terminal.shows_color(stdout, environment)
+        self.stderr_color = Terminal.shows_color(stderr, environment)
+
+    @staticmethod
+    def shows_color(stream: TextIO, environment: Mapping[str, str]) -> bool:
+        """Tells whether a stream prints color: never with `NO_COLOR`, always with `FORCE_COLOR`, and otherwise on a terminal that is not `dumb`."""
+        if environment.get("NO_COLOR"):
+            return False
+        terminal = stream.isatty() and Terminal.enable_escapes(stream)
+        return bool(environment.get("FORCE_COLOR")) or (terminal and environment.get("TERM") != "dumb")
+
+    @staticmethod
+    def enable_escapes(stream: TextIO) -> bool:
+        """Turns on escape sequences in a Windows console and tells whether the terminal of a stream shows them, which every other terminal does."""
+        if os.name != "nt":
+            return True
+        import ctypes
+        import msvcrt
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = msvcrt.get_osfhandle(stream.fileno())
+        mode = ctypes.c_uint32()
+        return bool(kernel32.GetConsoleMode(handle, ctypes.byref(mode))) and bool(kernel32.SetConsoleMode(handle, mode.value | Terminal.VIRTUAL_TERMINAL_PROCESSING))
+
+    @staticmethod
+    def paint(text: str, color: bool, style: str) -> str:
+        return f"\x1b[{style}m{text}\x1b[0m" if color and style else text
+
+    @staticmethod
+    def render(message: str, color: bool, style: str = "") -> str:
+        """Turns the marks of a message into color within the style of the line, or without color keeps the quotes of reserved expressions and drops the backticks of paths and URLs."""
+        if not color:
+            return Terminal.MARKUP.sub(lambda match: match[0] if match[1] is None else match[1], message)
+        base = f"\x1b[{style}m" if style else ""
+
+        def mark(match: re.Match) -> str:
+            code, text = (Terminal.EXPRESSION, match[2]) if match[1] is None else (Terminal.LOCATION, match[1])
+            return f"\x1b[{code}m{text}\x1b[0m{base}"
+
+        rendered = Terminal.MARKUP.sub(mark, message)
+        return f"{base}{rendered}\x1b[0m" if base else rendered
+
+    @staticmethod
+    def command_line(parts: list[str]) -> str:
+        return subprocess.list2cmdline(parts) if os.name == "nt" else shlex.join(parts)
+
+    def step(self, title: str) -> None:
+        print(Terminal.render(f"==> {title}", self.stdout_color, Terminal.STEP), file=self.stdout, flush=True)
+
+    def command(self, parts: list[str]) -> None:
+        print(Terminal.paint(f"$ {Terminal.command_line(parts)}", self.stdout_color, Terminal.COMMAND), file=self.stdout, flush=True)
+
+    def info(self, message: str) -> None:
+        print(Terminal.render(message, self.stdout_color), file=self.stdout, flush=True)
+
+    def success(self, message: str) -> None:
+        print(Terminal.render(message, self.stdout_color, Terminal.SUCCESS), file=self.stdout, flush=True)
+
+    def warning(self, message: str, *notes: str) -> None:
+        """Prints a warning with the notes that tell what to do about it, each on a line of its own."""
+        lines = [f"{Terminal.paint('Warning:', self.stderr_color, Terminal.WARNING)} {Terminal.render(message, self.stderr_color)}"]
+        lines += [f"  {Terminal.render(note, self.stderr_color)}" for note in notes]
+        print("\n".join(lines), file=self.stderr, flush=True)
+
+    def error(self, message: str, details: str = "") -> None:
+        """Prints an error with its cause and what to do in one block, followed by the output of the tool that failed, as it is."""
+        lines = [f"{Terminal.paint('Error:', self.stderr_color, Terminal.ERROR)} {Terminal.render(message, self.stderr_color, Terminal.EMPHASIS)}"]
+        if details:
+            lines.append(Terminal.paint(details, self.stderr_color, Terminal.COMMAND))
+        print("\n".join(lines), file=self.stderr, flush=True)
+
+    def verbatim(self, text: str, error: bool = False) -> None:
+        """Prints text that must stay as it is, such as a snippet to copy or a diff."""
+        print(text, file=self.stderr if error else self.stdout, flush=True)
+
+
+terminal = Terminal(sys.stdout, sys.stderr, os.environ)
+
+
+def shown_path(path: Path) -> str:
+    """Names a path relative to the current folder when it lies inside it, so messages stay short and terminals still open it."""
+    return str(path.relative_to(Path.cwd())) if path.is_relative_to(Path.cwd()) else str(path)
+
+
+# The command that runs haylen.py from the current folder, which the messages that suggest a command start with.
+TOOL = Terminal.command_line(["python" if os.name == "nt" else "python3", shown_path(ROOT / "haylen.py")])
+APP_FOLDER = f'An app folder holds "app.json", its Lua modules under "source" and its assets under "content", and "{TOOL} new <folder>" creates one.'
+
+
+def missing_command(executable: str) -> str:
+    return f'The command "{Path(executable).name}" was not found. Install it, or add its folder to "PATH".'
+
+
+def run(command: list, *, cwd: Path = ROOT, env: dict[str, str] | None = None, echo: bool = True) -> None:
+    """Runs a command with its output in the terminal, after printing the command unless the caller describes it in a step of its own, and stops with an error that names the command when it fails."""
+    parts = [str(part) for part in command]
+    if echo:
+        terminal.command(parts)
+    try:
+        subprocess.run(parts, cwd=cwd, env=env, check=True)
+    except FileNotFoundError as error:
+        raise BuildError(missing_command(parts[0])) from error
+    except subprocess.CalledProcessError as error:
+        name = Path(parts[0]).name
+        if error.returncode < 0:
+            raise BuildError(f'The command "{name}" was stopped by the signal {-error.returncode}.') from error
+        raise BuildError(f'The command "{name}" failed with exit code {error.returncode}, and its output above shows why.') from error
 
 
 def capture(command: list, *, cwd: Path = ROOT) -> str:
-    return subprocess.run([str(part) for part in command], cwd=cwd, check=True, capture_output=True, text=True).stdout
+    """Runs a command quietly and returns its standard output, and stops with its error output when it fails."""
+    parts = [str(part) for part in command]
+    try:
+        return subprocess.run(parts, cwd=cwd, check=True, capture_output=True, text=True).stdout
+    except FileNotFoundError as error:
+        raise BuildError(missing_command(parts[0])) from error
+    except subprocess.CalledProcessError as error:
+        raise BuildError(f'The command "{Path(parts[0]).name}" failed with exit code {error.returncode}.', (error.stderr or error.stdout).strip()) from error
 
 
 def default_jobs() -> int:
@@ -175,11 +318,11 @@ def engine_version() -> str:
 def download(url: str, target: Path, sha256: str | None = None) -> None:
     """Downloads a file and, when a hash is pinned, deletes the download and fails unless its SHA-256 matches."""
     target.parent.mkdir(parents=True, exist_ok=True)
-    print(f'Downloading "{url}".', flush=True)
+    terminal.step(f"Downloading `{url}`")
     urllib.request.urlretrieve(url, target)
     if sha256 and hashlib.sha256(target.read_bytes()).hexdigest() != sha256:
         target.unlink()
-        raise BuildError(f'The file "{url}" does not match its pinned SHA-256 "{sha256}", so "haylen.py" deleted the download.')
+        raise BuildError(f'The download of `{url}` does not match its pinned SHA-256 "{sha256}", so it was deleted. Try again, and if it still differs, the file on the server changed.')
 
 
 def ensure_shdc() -> Path:
@@ -191,7 +334,7 @@ def ensure_shdc() -> Path:
     folders = {("macos", "arm64"): "osx_arm64", ("macos", "x64"): "osx", ("linux", "arm64"): "linux_arm64", ("linux", "x64"): "linux", ("windows", "x64"): "win32"}
     folder = folders.get((host_name(), host_arch()))
     if folder is None:
-        raise BuildError("The sokol-shdc tool has no prebuilt binary for this host.")
+        raise BuildError(f'The shader compiler "sokol-shdc" has no prebuilt binary for "{host_name()}" on "{host_arch()}". Use a host with a prebuilt binary, as the build guide lists.')
 
     download(f"https://raw.githubusercontent.com/floooh/sokol-tools-bin/{SHDC_COMMIT}/bin/{folder}/{executable}", target)
     target.chmod(0o755)
@@ -239,6 +382,7 @@ def ensure_emsdk() -> Path:
     if emcmake.exists():
         return emcmake
 
+    terminal.step(f"Installing Emscripten {EMSDK_VERSION} into `{shown_path(root)}`")
     if not root.exists():
         run(["git", "clone", "--depth", "1", "https://github.com/emscripten-core/emsdk.git", root])
     script = root / ("emsdk.bat" if host_name() == "windows" else "emsdk")
@@ -260,7 +404,7 @@ def android_ndk() -> Path:
     candidate = android_sdk() / "ndk" / ANDROID_NDK_VERSION
     if candidate.exists():
         return candidate
-    raise BuildError(f"The Android NDK {ANDROID_NDK_VERSION} was not found in \"{android_sdk() / 'ndk'}\". Install it with \"sdkmanager 'ndk;{ANDROID_NDK_VERSION}'\".")
+    raise BuildError(f"The Android NDK {ANDROID_NDK_VERSION} was not found in `{android_sdk() / 'ndk'}`. Install it with \"sdkmanager 'ndk;{ANDROID_NDK_VERSION}'\".")
 
 
 def adb() -> Path:
@@ -277,7 +421,7 @@ def require_host(platform_name: str) -> None:
     apple = {"macos", "ios", "tvos", "apple", "ios-simulator", "tvos-simulator", "catalyst"}
     required = "macos" if platform_name in apple else {"linux": "linux", "windows": "windows"}.get(platform_name)
     if required is not None and host_name() != required:
-        raise BuildError(f'Builds for "{platform_name}" require a "{required}" host.')
+        raise BuildError(f'Builds for "{platform_name}" need a "{required}" host, and this one is "{host_name()}".')
 
 
 def build_dir(platform_name: str, config: str, sanitizers: str | None = None) -> Path:
@@ -334,17 +478,20 @@ def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
 
 
 def command_tools(args: argparse.Namespace) -> None:
-    print(ensure_shdc())
+    tools = {"sokol-shdc": ensure_shdc}
     if host_name() == "macos":
-        print(ensure_xcodegen())
+        tools["XcodeGen"] = ensure_xcodegen
     if args.emsdk:
-        print(ensure_emsdk())
+        tools["Emscripten"] = ensure_emsdk
     if args.gradle:
-        print(ensure_gradle())
+        tools["Gradle"] = ensure_gradle
+    for name, ensure in tools.items():
+        terminal.success(f'The tool "{name}" is ready at `{shown_path(ensure())}`.')
 
 
 def command_configure(args: argparse.Namespace) -> None:
     command, env = configure_command(args)
+    terminal.step(f'Configuring the "{args.platform}" build in `{shown_path(build_dir(args.platform, args.config, args.sanitizers))}`')
     run(command, env=env)
 
 
@@ -353,7 +500,7 @@ def cmake_cache_value(directory: Path, name: str) -> str:
     for line in (directory / "CMakeCache.txt").read_text().splitlines():
         if line.startswith(prefix):
             return line.split("=", 1)[1]
-    raise BuildError(f'The variable "{name}" is missing from the CMake cache in "{directory}".')
+    raise BuildError(f'The variable "{name}" is missing from the CMake cache of `{shown_path(directory)}`. Configure the build tree again with "{TOOL} configure".')
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
@@ -369,6 +516,8 @@ def command_build(args: argparse.Namespace) -> None:
     command = ["cmake", "--build", directory, "--config", args.config, "--parallel", str(args.jobs)]
     if args.target:
         command += ["--target", args.target]
+    built = f'the target "{args.target}"' if args.target else "the engine"
+    terminal.step(f'Building {built} for "{args.platform}" in `{shown_path(directory)}`')
     run(command)
 
 
@@ -376,7 +525,9 @@ def command_test(args: argparse.Namespace) -> None:
     args.platform = host_name()
     args.target = "haylen_tests"
     command_build(args)
+    terminal.step("Running the engine tests")
     run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)])
+    terminal.success("The engine tests passed.")
 
 
 def llvm_tool(name: str) -> str:
@@ -384,7 +535,7 @@ def llvm_tool(name: str) -> str:
         return capture(["xcrun", "--find", name]).strip()
     tool = shutil.which(name)
     if tool is None:
-        raise BuildError(f'The tool "{name}" was not found. Install LLVM to produce coverage reports.')
+        raise BuildError(f'The LLVM tool "{name}" was not found. Install LLVM and add its folder to "PATH" to measure coverage.')
     return tool
 
 
@@ -398,16 +549,19 @@ def command_coverage(args: argparse.Namespace) -> None:
 
     command, env = configure_command(args)
     command[command.index("-B") + 1] = str(directory)
+    terminal.step(f"Building the engine tests with coverage in `{shown_path(directory)}`")
     run(command, env=env)
     run(["cmake", "--build", directory, "--target", "haylen_tests", "--parallel", str(args.jobs)])
 
     profiles = directory / "coverage"
     shutil.rmtree(profiles, ignore_errors=True)
+    terminal.step("Running the engine tests")
     run(["ctest", "--test-dir", directory, "--output-on-failure", "--parallel", str(args.jobs)])
 
     raw = sorted(profiles.glob("*.profraw"))
     if not raw:
-        raise BuildError("The test run produced no coverage profiles.")
+        raise BuildError(f"The test run wrote no coverage profiles into `{shown_path(profiles)}`. Measure coverage with Clang, which the guide of the build describes.")
+    terminal.step("Writing the coverage report")
     merged = profiles / "haylen.profdata"
     run([llvm_tool("llvm-profdata"), "merge", "-sparse", *raw, "-o", merged])
 
@@ -416,7 +570,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     report = [llvm_tool("llvm-cov"), "report", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}"]
     run(report)
     run([llvm_tool("llvm-cov"), "show", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}", "-format=html", f"-output-dir={profiles / 'html'}"])
-    print(profiles / "html" / "index.html")
+    terminal.success(f"The coverage report is in `{shown_path(profiles / 'html' / 'index.html')}`.")
 
 
 def format_sources() -> list[Path]:
@@ -443,33 +597,36 @@ def unguarded_lambdas(files: list[Path]) -> list[str]:
             elif stripped == "// clang-format on":
                 guarded = False
             elif not guarded and LAMBDA_START.search(stripped) and not stripped.startswith(("//", "[[", "#")):
-                findings.append(f'{path.relative_to(ROOT)}:{number}: Multi-line lambda outside "clang-format off".')
+                findings.append(f'The file `{shown_path(path)}:{number}` has a multi-line lambda outside "clang-format off".')
     return findings
 
 
 def command_format(args: argparse.Namespace) -> None:
     clang_format = shutil.which("clang-format")
     if clang_format is None:
-        raise BuildError('The clang-format tool was not found on "PATH".')
+        raise BuildError(missing_command("clang-format"))
 
     files = format_sources()
     command = [clang_format, "--style=file"] + (["--dry-run", "--Werror"] if args.check else ["-i"])
+    terminal.step(f"{'Checking the format of' if args.check else 'Formatting'} {len(files)} files with \"clang-format\"")
+    failed = False
+    # The files go in groups, which keeps every command line within the limits of the system, and the command lines stay unprinted, since they list every file.
     for start in range(0, len(files), 200):
-        run(command + files[start : start + 200])
+        try:
+            run(command + files[start : start + 200], echo=False)
+        except BuildError:
+            failed = True
 
     findings = unguarded_lambdas(files)
     for finding in findings:
-        print(finding)
+        terminal.warning(finding)
+    if failed and args.check:
+        raise BuildError(f'Some files are not formatted, as the output of "clang-format" above shows. Format them with "{TOOL} format".')
+    if failed:
+        raise BuildError('The command "clang-format" could not format some files, and its output above shows why.')
     if findings and args.check:
-        raise BuildError(f'{len(findings)} multi-line lambdas need "clang-format off" and "on" markers.')
-
-
-def command_assets(args: argparse.Namespace) -> None:
-    run([sys.executable, ROOT / "tools" / "import_tiny_swords.py", Path(args.archive).expanduser().resolve(), "--destination", SAMPLES_DIR / DEFAULT_APP / "content" / "tiny_swords"])
-
-
-def command_map(_: argparse.Namespace) -> None:
-    run([sys.executable, ROOT / "tools" / "generate_island_map.py", "--package", SAMPLES_DIR / DEFAULT_APP])
+        raise BuildError(f'The {len(findings)} multi-line lambdas above need "// clang-format off" and "// clang-format on" markers around them.')
+    terminal.success(f"The {len(files)} files are formatted." if args.check else f"Formatted {len(files)} files.")
 
 
 def command_bench(args: argparse.Namespace) -> None:
@@ -477,17 +634,20 @@ def command_bench(args: argparse.Namespace) -> None:
     if args.suite in CPU_BENCHMARKS:
         build = build_options(host_name(), "Release", CPU_BENCHMARKS[args.suite], args.jobs)
         command_build(build)
+        terminal.step(f'Running the "{args.suite}" benchmark')
         run([build_dir(build.platform, build.config) / "bin" / executable_name(build.target)])
         return
 
     if args.suite == "lua":
         build = build_options(host_name(), "Release", "haylen-lua-benchmark", args.jobs)
         command_build(build)
+        terminal.step('Running the "lua" benchmark')
         run([build_dir(build.platform, build.config) / "bin" / executable_name(build.target), ENGINE_DIR / "bench" / "lua-benchmark"])
         return
 
     build = build_options(host_name(), "Release", "haylen-sprite-benchmark", args.jobs)
     command_build(build)
+    terminal.step('Running the "sprites" benchmark')
     run([cmake_app_executable(build_dir(build.platform, build.config), build.target)])
 
 
@@ -495,33 +655,50 @@ def sdk_dir(platform_name: str, config: str) -> Path:
     return BUILD_ROOT / "sdk" / f"haylen-{platform_name}-{config.lower()}"
 
 
+def consumer_modes(args: argparse.Namespace) -> list[str]:
+    """Returns the ways of adding the engine that `sdk --check-consumers` builds a consumer project with: the ones it lists, or every one when it lists none, and none without the option."""
+    if args.check_consumers is None:
+        return []
+    if args.platform != host_name():
+        raise BuildError(f'The option "--check-consumers" builds consumer projects for this machine, "{host_name()}", so it cannot follow "--platform {args.platform}".')
+    return args.check_consumers or list(CONSUMER_MODES)
+
+
 def command_sdk(args: argparse.Namespace) -> None:
-    """Builds the engine SDK for a platform and installs it where `find_package(haylen)` finds it."""
+    """Builds the engine SDK for a platform, installs it where `find_package(haylen)` finds it and builds a consumer project in every way that `--check-consumers` asks for."""
+    modes = consumer_modes(args)
     options = build_options(args.platform, args.config, jobs=args.jobs)
     directory = BUILD_ROOT / f"sdk-build-{args.platform}-{args.config.lower()}"
     command, env = configure_command(options)
     command[command.index("-S") + 1] = str(ENGINE_DIR)
     command[command.index("-B") + 1] = str(directory)
     command += ["-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+    terminal.step(f'Building the SDK of the engine for "{args.platform}" in the "{args.config}" configuration')
     run(command, env=env)
     run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen_sdk", "--parallel", str(args.jobs)])
-    output = Path(args.output).resolve() if args.output else sdk_dir(args.platform, args.config)
-    run(["cmake", "--install", directory, "--config", args.config, "--component", "haylen_sdk", "--prefix", output])
+    prefix = Path(args.output).resolve() if args.output else sdk_dir(args.platform, args.config)
+    run(["cmake", "--install", directory, "--config", args.config, "--component", "haylen_sdk", "--prefix", prefix])
+    terminal.success(f"Installed the SDK into `{shown_path(prefix)}`.")
+    for mode in modes:
+        check_consumer(mode, args.config, args.jobs, prefix)
 
 
-def command_embedding(args: argparse.Namespace) -> None:
-    """Builds the C++ embedding sample, which adds the engine the way another repository would."""
-    directory = BUILD_ROOT / f"embedding-{args.mode}-{args.config.lower()}"
-    command = ["cmake", "-S", SAMPLES_DIR / "cpp" / "embedding", "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", f"-DCPP_EMBEDDING_MODE={args.mode}"]
+def check_consumer(mode: str, config: str, jobs: int, sdk: Path) -> None:
+    """Builds the consumer project of the engine tests, which adds the engine through `add_subdirectory`, CPM or the installed SDK like another project does, and compiles a C++ app against its public headers."""
+    directory = BUILD_ROOT / "consumers" / f"{mode}-{config.lower()}"
+    # The project shares the dependency cache of the build trees of the engine, instead of downloading every dependency into its own folder.
+    cache = os.environ.get("CPM_SOURCE_CACHE", str(ROOT / ".cache" / "cpm"))
+    command = ["cmake", "-S", CONSUMER_PROJECT, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_CONSUMER_MODE={mode}", f"-DCPM_SOURCE_CACHE={cache}"]
     if host_name() != "windows" or shutil.which("ninja"):
         command += ["-G", "Ninja"]
     if host_name() == "macos":
         command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
-    if args.mode == "package":
-        command_sdk(argparse.Namespace(platform=host_name(), config=args.config, jobs=args.jobs, output=None))
-        command.append(f"-DCMAKE_PREFIX_PATH={sdk_dir(host_name(), args.config)}")
+    if mode == "package":
+        command.append(f"-DCMAKE_PREFIX_PATH={sdk}")
+    terminal.step(f"Building a project that adds the engine through {CONSUMER_MODES[mode]}")
     run(command)
-    run(["cmake", "--build", directory, "--config", args.config, "--parallel", str(args.jobs)])
+    run(["cmake", "--build", directory, "--config", config, "--parallel", str(jobs)])
+    terminal.success(f"A project adds the engine through {CONSUMER_MODES[mode]}.")
 
 
 def cmake_app_executable(directory: Path, target: str) -> Path:
@@ -660,10 +837,11 @@ ARTIFACT_BUILDERS = {"apple": build_apple_artifacts, "android": build_android_ar
 
 
 def build_artifacts(platform_name: str, config: str, jobs: int) -> None:
+    terminal.step(f'Building the "{platform_name}" artifacts of Haylen {engine_version()} in the "{config}" configuration')
     sources = engine_sources_hash()
     ARTIFACT_BUILDERS[platform_name](config, jobs)
     write_manifest(platform_name, config, sources)
-    print(f'The "{platform_name}" artifacts of Haylen {engine_version()} are in "{ARTIFACTS_DIR}".')
+    terminal.success(f'The "{platform_name}" artifacts of Haylen {engine_version()} are in `{shown_path(ARTIFACTS_DIR / platform_name)}`.')
 
 
 def ensure_artifacts(platform_name: str, config: str, jobs: int) -> None:
@@ -671,7 +849,7 @@ def ensure_artifacts(platform_name: str, config: str, jobs: int) -> None:
     entry = read_manifest()["platforms"].get(platform_name)
     if entry == {"config": config, "sources": engine_sources_hash()}:
         return
-    print(f'The "{platform_name}" artifacts are missing or stale, so "haylen.py" builds them first.', flush=True)
+    terminal.info(f'The "{platform_name}" artifacts of the engine are missing or older than its sources, so they build first.')
     build_artifacts(platform_name, config, jobs)
 
 
@@ -683,14 +861,15 @@ def command_engine(args: argparse.Namespace) -> None:
 # Apps: a package folder assembled with a platform template into a project under `build/apps`, then built and launched.
 
 
-def resolve_app(value: str) -> Path:
-    """Accepts an app folder or the name of a sample."""
-    candidate = Path(value).expanduser()
-    if not candidate.exists() and (SAMPLES_DIR / value).is_dir():
-        candidate = SAMPLES_DIR / value
-    folder = candidate.resolve()
+def resolve_app(value: str | None) -> Path:
+    """Returns the folder of an app that a command names by its path, relative to the current folder or absolute, and stops with what an app folder is when the path names none."""
+    if not value:
+        raise BuildError(f"The command needs the folder of an app, named after it. {APP_FOLDER}")
+    folder = Path(value).expanduser().resolve()
+    if not folder.exists():
+        raise BuildError(f"The path `{shown_path(folder)}` does not exist. {APP_FOLDER}")
     if not (folder / "app.json").is_file():
-        raise BuildError(f'The path "{value}" is neither an app folder with an "app.json" nor a sample path from "samples/", such as "games/tiny-island". List them with "python3 haylen.py samples".')
+        raise BuildError(f'The path `{shown_path(folder)}` is not an app folder, because it holds no "app.json". {APP_FOLDER}')
     return folder
 
 
@@ -710,18 +889,19 @@ class App:
 
     def __init__(self, folder: Path, platform: str) -> None:
         self.folder = folder
+        where = shown_path(folder / "app.json")
         document = json.loads((folder / "app.json").read_text())
         for key in ("name", "identifier", "version"):
             if not isinstance(document.get(key), str) or not document[key]:
-                raise BuildError(f'The "app.json" of "{folder}" needs a "{key}" to build an app.')
+                raise BuildError(f'The file `{where}` needs a "{key}" to build an app.')
         self.name: str = document["name"]
         self.identifier: str = document["identifier"]
         self.version: str = document["version"]
         self.orientation: str = document.get("orientation", "landscape")
         if self.orientation not in ANDROID_ORIENTATIONS:
-            raise BuildError(f'The orientation of "{folder}/app.json" must be "landscape", "portrait" or "any".')
+            raise BuildError(f'The "orientation" of `{where}` must be "landscape", "portrait" or "any".')
         if not re.fullmatch(r"\d+(\.\d+){0,2}", self.version):
-            raise BuildError(f'The version of "{folder}/app.json" must be one to three numbers separated by dots, such as "1.2.0".')
+            raise BuildError(f'The "version" of `{where}` must be one to three numbers separated by dots, such as "1.2.0".')
 
         # A transparent window clears to transparent, and an app without a taskbar button also leaves out its Dock icon on macOS.
         window = document.get("window", {})
@@ -733,11 +913,11 @@ class App:
         if splash.get("logo"):
             self.splash_logo = folder / "content" / splash["logo"]
             if not self.splash_logo.is_file():
-                raise BuildError(f'The splash logo "{self.splash_logo}" of "{folder}/app.json" does not exist.')
+                raise BuildError(f'The splash logo `{shown_path(self.splash_logo)}` that `{where}` names does not exist. Give "splash.logo" the path of an image relative to "content".')
 
         native = document.get("native", {})
         if not isinstance(native, dict):
-            raise BuildError(f'The "native" section of "{folder}/app.json" maps library names to their files or CMake projects.')
+            raise BuildError(f'The "native" section of `{where}` must map library names to their files or CMake projects.')
         self.native = [NativeLibrary.parse(folder, name, entry, folder / "app.json") for name, entry in native.items()]
 
         # The native library of a plugin joins the ones of `app.json`, so every platform builds and places it the same way.
@@ -746,7 +926,7 @@ class App:
             if plugin.native is None:
                 continue
             if any(library.name == plugin.native.name for library in self.native):
-                raise BuildError(f'The plugin "{plugin.id}" adds the native library "{plugin.native.name}", which "{folder}/app.json" or another plugin already names.')
+                raise BuildError(f'The plugin "{plugin.id}" adds the native library "{plugin.native.name}", which `{where}` or another plugin already names. Rename one of the libraries.')
             self.native.append(plugin.native)
 
     @property
@@ -769,14 +949,14 @@ def package_files(folder: Path) -> list[Path]:
     """Lists the files of the package of an app folder: `app.json`, `source`, `content` and, for every plugin that `app.json` lists, its `plugin.json` and its `source` folder."""
     plugins = json.loads((folder / "app.json").read_text()).get("plugins", {})
     if not isinstance(plugins, dict):
-        raise BuildError(f'The "plugins" section of "{folder}/app.json" maps plugin ids to objects of parameter values.')
+        raise BuildError(f'The "plugins" section of `{shown_path(folder / "app.json")}` must map plugin ids to objects of parameter values.')
 
     roots = [folder / name for name in PACKAGE_FOLDERS]
     manifests = []
     for identifier in plugins:
         manifest = folder / "plugins" / identifier / "plugin.json"
         if not manifest.is_file():
-            raise BuildError(f'The file "{folder}/app.json" lists the plugin "{identifier}", whose "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 haylen.py plugin add {identifier} --app {folder}".')
+            raise BuildError(f'The file `{shown_path(folder / "app.json")}` lists the plugin "{identifier}", whose `{shown_path(manifest)}` does not exist. Add the plugin with "{TOOL} plugin add <plugin folder or repository> --app {shown_path(folder)}".')
         manifests.append(manifest)
         roots.append(manifest.parent / "source")
     return [folder / "app.json", *sorted([*manifests, *(path for root in roots for path in root.rglob("*") if path.is_file() and path.name != ".DS_Store")])]
@@ -795,14 +975,11 @@ def copy_package(app: App, destination: Path) -> list[str]:
 
 
 def package_folder(folder: Path, output: Path) -> None:
-    if not (folder / "app.json").is_file():
-        raise BuildError(f'The folder "{folder}" is not an app package because it has no "app.json".')
     files = package_files(folder)
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in files:
             archive.write(path, path.relative_to(folder).as_posix())
-    print(f'Packaged "{folder}" into "{output}".')
 
 
 # Native libraries: what the `native` section of `app.json` lists, prebuilt or built from a CMake project, placed where each platform package loads it.
@@ -832,7 +1009,7 @@ class NativeLibrary:
     @staticmethod
     def parse(folder: Path, name: str, entry: object, source: Path) -> "NativeLibrary":
         """Reads an entry of the `native` section of `app.json`, or the `native` section of a plugin, whose paths are relative to the folder of the file."""
-        where = f'The native library "{name}" in "{source}"'
+        where = f'The native library "{name}" in `{shown_path(source)}`'
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or not isinstance(entry, dict):
             raise BuildError(f"{where} needs a name of letters, digits and underscores and an object with its files or its CMake project.")
         unknown = set(entry) - {"files", "cmake", "platforms", "link", "symbols"}
@@ -850,10 +1027,10 @@ class NativeLibrary:
                 raise BuildError(f"{where} names the unknown platform \"{platform}\". Native libraries ship to {', '.join(f'"{name}"' for name in NATIVE_PLATFORMS)}.")
         for path in files.values():
             if not path.exists():
-                raise BuildError(f'{where} lists "{path}", which does not exist.')
+                raise BuildError(f"{where} lists `{shown_path(path)}`, which does not exist.")
         cmake = folder / entry["cmake"] if "cmake" in entry else None
         if cmake is not None and not (cmake / "CMakeLists.txt").is_file():
-            raise BuildError(f'{where} names the CMake project "{cmake}", which has no "CMakeLists.txt".')
+            raise BuildError(f'{where} names the CMake project `{shown_path(cmake)}`, which has no "CMakeLists.txt".')
 
         link = entry.get("link", "dynamic")
         symbols = tuple(entry.get("symbols", ()))
@@ -874,6 +1051,7 @@ def build_native_target(library: NativeLibrary, directory: Path, options: list[s
     command += [f"-DCMAKE_{kind}_OUTPUT_DIRECTORY{suffix}={output}" for kind in ("LIBRARY", "ARCHIVE", "RUNTIME") for suffix in ("", "_RELEASE")]
     if host_name() != "windows" or shutil.which("ninja"):
         command += ["-G", "Ninja"]
+    terminal.step(f'Building the native library "{library.name}" in `{shown_path(directory)}`')
     run(command + options)
     run(["cmake", "--build", directory / "build", "--config", "Release", "--target", library.name, "--parallel", str(jobs)])
     return output
@@ -919,7 +1097,7 @@ def prebuilt_apple_native(path: Path, slice_name: str) -> Path:
     for entry in plistlib.loads((path / "Info.plist").read_bytes())["AvailableLibraries"]:
         if entry["SupportedPlatform"] == platform and entry.get("SupportedPlatformVariant") == variant:
             return path / entry["LibraryIdentifier"] / entry["LibraryPath"]
-    raise BuildError(f'The xcframework "{path}" has no slice for "{slice_name}".')
+    raise BuildError(f'The xcframework `{shown_path(path)}` has no slice for "{slice_name}". Add that slice to the xcframework, or leave the platform out of the "platforms" of the library.')
 
 
 def copy_into(source: Path, folder: Path) -> Path:
@@ -1028,7 +1206,7 @@ def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
         output = build_native_target(library, app.build_folder / "native" / library.name / platform, options, jobs)
         built = sorted(output.glob({"macos": f"lib{library.name}.dylib", "windows": f"*{library.name}.dll", "linux": f"lib{library.name}.so"}[platform]))
         if not built:
-            raise BuildError(f'The CMake target "{library.name}" of "{library.cmake}" built no shared library into "{output}".')
+            raise BuildError(f'The CMake target "{library.name}" of `{shown_path(library.cmake)}` built no shared library into `{shown_path(output)}`. Make the target a shared library named after the library.')
         placed.append(copy_into(built[0], folder))
     return placed
 
@@ -1103,14 +1281,14 @@ class Plugin:
         """Reads the `plugin.json` of a plugin folder and fails with every problem it finds, each with the path and the key."""
         path = folder / "plugin.json"
         if not path.is_file():
-            raise BuildError(f'The folder "{folder}" is no plugin, because it has no "plugin.json".')
+            raise BuildError(f'The folder `{shown_path(folder)}` is not a plugin, because it holds no "plugin.json".')
         try:
             manifest = json.loads(path.read_text())
         except json.JSONDecodeError as error:
-            raise BuildError(f'The file "{path}" is not valid JSON: {error}.') from error
+            raise BuildError(f"The file `{shown_path(path)}` is not valid JSON: {error}.") from error
         problems = PluginManifestCheck.problems_of(folder, manifest)
         if problems:
-            raise BuildError("\n".join(f"{path}: {problem}" for problem in problems))
+            raise BuildError("\n".join([f"The plugin manifest `{shown_path(path)}` has these problems:", *(f"  {problem}" for problem in problems)]))
         native = NativeLibrary.parse(folder, manifest["id"].replace("-", "_"), manifest["native"], path) if "native" in manifest else None
         return Plugin(folder, manifest, native)
 
@@ -1191,7 +1369,7 @@ class PluginManifestCheck:
     def check_identity(self) -> None:
         self.check_keys("", self.manifest, PLUGIN_KEYS, {"id", "name", "version", "description", "platforms"})
         if "id" in self.manifest and (not isinstance(self.identifier, str) or not PLUGIN_ID.fullmatch(self.identifier)):
-            self.report("id", 'must be in "dash-case", such as "firebase-analytics".')
+            self.report("id", 'must be in "dash-case", such as "camera-scanner".')
         elif "id" in self.manifest and self.identifier != self.folder.name:
             self.report("id", f'must match the name of the plugin folder, "{self.folder.name}".')
         for key in ("name", "description"):
@@ -1244,7 +1422,7 @@ class PluginManifestCheck:
             self.report("apple", 'needs "ios", "catalyst", "tvos" or "macos" in "platforms".')
         self.check_keys("apple", apple, {"class", "sources", "packages", "frameworks", "infoPlist", "entitlements", "privacy", "resources", "buildScripts"}, set())
         if "class" in apple and not (isinstance(apple["class"], str) and OBJC_CLASS.fullmatch(apple["class"])):
-            self.report("apple.class", 'must be the Objective-C name of the plugin class, such as "HaylenAdMobPlugin".')
+            self.report("apple.class", 'must be the Objective-C name of the plugin class, such as "HaylenCameraScannerPlugin".')
         if "sources" in apple:
             self.check_path("apple.sources", apple["sources"], "folder")
 
@@ -1325,7 +1503,7 @@ class PluginManifestCheck:
 
         gradle_plugins = android.get("gradlePlugins", [])
         if not isinstance(gradle_plugins, list) or not all(isinstance(entry, dict) and set(entry) == {"id", "version"} and isinstance(entry["id"], str) and GRADLE_PLUGIN_ID.fullmatch(entry["id"]) and isinstance(entry["version"], str) and GRADLE_PLUGIN_VERSION.fullmatch(entry["version"]) for entry in gradle_plugins):
-            self.report("android.gradlePlugins", 'must list the id and the version of each Gradle plugin, such as {"id": "com.google.gms.google-services", "version": "4.5.0"}.')
+            self.report("android.gradlePlugins", 'must list the id and the version of each Gradle plugin, such as {"id": "com.example.services", "version": "1.0.0"}.')
         placeholders = android.get("placeholders", {})
         if self.is_object("android.placeholders", placeholders, "must map manifest placeholder names to their values."):
             for name, value in placeholders.items():
@@ -1343,7 +1521,7 @@ class PluginManifestCheck:
             if "from" in entry:
                 self.check_source(f"{key}.from", entry["from"])
             if "to" in entry and (not isinstance(entry["to"], str) or not entry["to"] or Path(entry["to"]).is_absolute() or ".." in Path(entry["to"]).parts):
-                self.report(f"{key}.to", 'must be a path inside the Android project, such as "app/google-services.json".')
+                self.report(f"{key}.to", 'must be a path inside the Android project, such as "app/services.json".')
         self.check_references("android", android)
 
     def check_web(self) -> None:
@@ -1355,7 +1533,7 @@ class PluginManifestCheck:
         self.check_keys("web", web, {"module"}, {"module"})
         module = web.get("module")
         if "module" in web and (not isinstance(module, str) or not module.startswith("web/") or Path(module).suffix not in (".js", ".mjs")):
-            self.report("web.module", 'must be an ES module in the "web" folder of the plugin, such as "web/admob.js".')
+            self.report("web.module", 'must be an ES module in the "web" folder of the plugin, such as "web/camera-scanner.js".')
         elif "module" in web:
             self.check_path("web.module", module, "file")
 
@@ -1420,15 +1598,15 @@ def plugin_order(plugins: dict[str, Plugin]) -> list[Plugin]:
 
 def load_app_plugins(folder: Path, section: object, platform: str) -> tuple[list[Plugin], dict[str, dict]]:
     """Loads the plugins that `app.json` lists from `plugins/` of the app and checks the values it gives them to build for a platform. Returns the plugins in load order and their values with the defaults applied, or fails with every problem."""
-    where = folder / "app.json"
+    where = shown_path(folder / "app.json")
     if not isinstance(section, dict):
-        raise BuildError(f'{where}: The key "plugins" must map plugin ids to objects of parameter values.')
+        raise BuildError(f'The key "plugins" of `{where}` must map plugin ids to objects of parameter values.')
 
     problems: list[str] = []
     plugins: dict[str, Plugin] = {}
     for identifier in section:
         if not (folder / "plugins" / identifier / "plugin.json").is_file():
-            problems.append(f'{where}: The key "plugins.{identifier}" names no plugin of the app, because "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 haylen.py plugin add {identifier} --app {folder}".')
+            problems.append(f'The key "plugins.{identifier}" names no plugin of the app, because `{shown_path(folder / "plugins" / identifier / "plugin.json")}` does not exist. Add the plugin with "{TOOL} plugin add <plugin folder or repository> --app {shown_path(folder)}".')
             continue
         try:
             plugins[identifier] = Plugin.load(folder / "plugins" / identifier)
@@ -1437,11 +1615,11 @@ def load_app_plugins(folder: Path, section: object, platform: str) -> tuple[list
 
     values: dict[str, dict] = {}
     for plugin in plugins.values():
-        problems += [f'{where}: The plugin "{plugin.id}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in section]
+        problems += [f'The plugin "{plugin.id}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in section]
         values[plugin.id], found = parameter_values(folder, plugin, section[plugin.id], platform)
-        problems += [f"{where}: {problem}" for problem in found]
+        problems += found
     if problems:
-        raise BuildError("\n".join(problems))
+        raise BuildError("\n".join([f'The plugins of `{where}` cannot build for "{platform}":', *(f"  {line}" for problem in problems for line in problem.splitlines())]))
     return plugin_order(plugins), values
 
 
@@ -1477,7 +1655,7 @@ def plugin_file(app: App, plugin: Plugin, value: str) -> Path | None:
     if given is None:
         return None
     if not (app.folder / given).exists():
-        raise BuildError(f'The parameter "{reference[1]}" of the plugin "{plugin.id}" names "{given}", which is no file of "{app.folder}".')
+        raise BuildError(f'The parameter "{reference[1]}" of the plugin "{plugin.id}" names `{shown_path(app.folder / given)}`, which does not exist. Give it the path of a file relative to the app folder.')
     return app.folder / given
 
 
@@ -1568,13 +1746,13 @@ def compile_shader(source: Path, output: Path) -> None:
     text = source.read_text()
     declared = re.findall(r"^\s*@program\s+(\w+)\s+(\w+)\s+(\w+)", text, re.MULTILINE)
     if len(declared) != 1 or declared[0][1] != "haylen_vs":
-        raise BuildError(f'The shader "{source}" must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".')
+        raise BuildError(f'The shader `{shown_path(source)}` must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".')
     name = declared[0][0]
 
     def shdc(arguments: list, program: str) -> None:
         compiled = subprocess.run([str(part) for part in [ensure_shdc(), "--input", source.resolve(), *arguments]], cwd=SHADER_LIBRARY_DIR, capture_output=True, text=True)
         if compiled.returncode != 0:
-            raise BuildError(f'The sokol-shdc tool could not compile the "{program}" program of "{source}":\n{compiled.stdout}{compiled.stderr}'.rstrip())
+            raise BuildError(f'The shader `{shown_path(source)}` does not compile as the "{program}" program, and "sokol-shdc" names the lines below.', f"{compiled.stdout}{compiled.stderr}".strip())
 
     sources: list[str] = []
     known: dict[str, int] = {}
@@ -1595,7 +1773,7 @@ def compile_shader(source: Path, output: Path) -> None:
     textures = [{"name": view["texture"]["name"], "slot": view["texture"]["slot"]} for view in reflection.get("views", []) if view["texture"]["name"] not in SHADER_ENGINE_TEXTURES]
     document = {"format": "haylen-shader", "version": 1, "name": name, "blocks": blocks, "textures": textures, "sources": sources, "programs": programs}
     output.write_text(json.dumps(document, separators=(",", ":")))
-    print(f'Compiled "{source}" into "{output}".', flush=True)
+    terminal.success(f"Compiled `{shown_path(source)}` into `{shown_path(output)}`.")
 
 
 def shader_sources(folder: Path) -> list[Path]:
@@ -1632,19 +1810,20 @@ def watch_app_shaders(folder: Path, stop: threading.Event) -> None:
         try:
             compile_app_shaders(folder)
         except BuildError as error:
-            print(f"Error: {error}", file=sys.stderr, flush=True)
+            terminal.error(str(error), error.details)
 
 
 def command_shaders(args: argparse.Namespace) -> None:
     folder = resolve_app(args.app)
     if not shader_sources(folder):
-        print(f'The app "{folder}" has no shaders under "content/shaders".')
+        terminal.info(f"The app `{shown_path(folder)}` has no shaders under `{shown_path(folder / 'content' / 'shaders')}`.")
         return
     if args.force:
         for source in shader_sources(folder):
             compile_shader(source, source.with_suffix(".shader"))
         return
     compile_app_shaders(folder)
+    terminal.success(f"The {len(shader_sources(folder))} shaders of `{shown_path(folder)}` are up to date.")
 
 
 def platform_templates() -> list[str]:
@@ -1701,15 +1880,6 @@ def project_root(app: App, template: str) -> Path:
     return copy
 
 
-def shown_path(path: Path) -> str:
-    """Names a file of a project relative to the current folder when it lies inside it, so messages stay short."""
-    return str(path.relative_to(Path.cwd())) if path.is_relative_to(Path.cwd()) else str(path)
-
-
-def warn(message: str) -> None:
-    print(f"Warning: {message}", file=sys.stderr, flush=True)
-
-
 def value_text(value: object) -> str:
     return json.dumps(value, default=str, ensure_ascii=False)
 
@@ -1726,7 +1896,7 @@ def merge_plugin_keys(merged: dict, values: dict, owners: dict[str, str], owner:
         elif isinstance(merged[key], list) and isinstance(value, list):
             merged[key] += [item for item in value if item not in merged[key]]
         elif merged[key] != value:
-            raise BuildError(f'The {label} key "{key}" is {value_text(merged[key])} for {owners[first]} and {value_text(value)} for {owner}.')
+            raise BuildError(f'The {label} key "{key}" is {value_text(merged[key])} for {owners[first]} and {value_text(value)} for {owner}. Give both the same value, or remove one of them.')
 
 
 def complete_keys(own: dict, generated: dict, owners: dict[str, str], where: str, warnings: list[str], top: str | None = None) -> dict:
@@ -1741,7 +1911,7 @@ def complete_keys(own: dict, generated: dict, owners: dict[str, str], where: str
         elif isinstance(completed[key], list) and isinstance(value, list):
             completed[key] = completed[key] + [item for item in value if item not in completed[key]]
         elif completed[key] != value:
-            warnings.append(f'The key "{key}" of "{where}" keeps its value {value_text(completed[key])}, while {owners[first]} gives {value_text(value)}.')
+            warnings.append(f'The key "{key}" of `{where}` keeps its value {value_text(completed[key])}, while {owners[first]} gives {value_text(value)}.')
     return completed
 
 
@@ -1787,16 +1957,13 @@ class Requirement:
     advice: str
     snippet: str = ""
 
-    def describe(self) -> str:
-        lines = [self.message, f"  {self.advice}"]
-        lines += [f"    {line}" for line in self.snippet.splitlines()]
-        return "\n".join(lines)
-
 
 def report_requirements(requirements: list[Requirement]) -> None:
-    """Prints what a built app lacks as warnings, which `run` shows before it launches the app, since the features that need them answer `unsupported` instead of stopping the app."""
+    """Prints what a built app lacks as warnings with the snippet to copy, which `run` shows before it launches the app, since the features that need them answer `unsupported` instead of stopping the app."""
     for requirement in requirements:
-        warn(requirement.describe())
+        terminal.warning(requirement.message, requirement.advice)
+        if requirement.snippet:
+            terminal.verbatim(textwrap.indent(requirement.snippet, "    "), error=True)
 
 
 # Apple projects: `project.yml` includes `haylen/project.yml`, whose target templates bring the engine, the package and the plugins to the targets that name them, and `App.xcconfig` includes `haylen/Haylen.xcconfig`.
@@ -1843,7 +2010,7 @@ def read_plist(path: Path) -> dict:
     try:
         return plistlib.loads(path.read_bytes())
     except plistlib.InvalidFileException as error:
-        raise BuildError(f'The file "{path}" is not a property list: {error}.') from error
+        raise BuildError(f"The file `{shown_path(path)}` is not a property list: {error}.") from error
 
 
 def write_apple_plists(app: App, root: Path, generated: Path) -> None:
@@ -1854,13 +2021,13 @@ def write_apple_plists(app: App, root: Path, generated: Path) -> None:
     for template, (folder, platforms, _) in APPLE_TEMPLATES.items():
         own = root / folder / "Info.plist"
         if not own.is_file():
-            raise BuildError(f'The Apple project "{root}" has no "{folder}/Info.plist", which the target template "{template}" completes into the Info.plist of its targets.')
+            raise BuildError(f'The Apple project `{shown_path(root)}` has no `{shown_path(own)}`, which the target template "{template}" completes into the "Info.plist" of its targets. Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} --template apple" shows.')
         owners: dict[str, str] = {}
         generated_keys = apple_plugin_keys(app, platforms, "infoPlist", fills[folder], owners, '"Info.plist"')
         completed = complete_keys(read_plist(own), generated_keys, owners, shown_path(own), warnings)
         write_if_changed(generated / folder / "Info.plist", plistlib.dumps(completed, sort_keys=True).decode())
     for warning in warnings:
-        warn(warning)
+        terminal.warning(warning)
 
 
 def write_apple_entitlements(app: App, root: Path, generated: Path) -> dict[str, dict[str, str]]:
@@ -1877,7 +2044,7 @@ def write_apple_entitlements(app: App, root: Path, generated: Path) -> dict[str,
         write_if_changed(generated / path, plistlib.dumps(completed, sort_keys=True).decode())
         settings[template][setting] = f"{GENERATED_FOLDER}/{path}"
     for warning in warnings:
-        warn(warning)
+        terminal.warning(warning)
     return settings
 
 
@@ -1986,7 +2153,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
             if source is None:
                 continue
             if source.name in bundled:
-                raise BuildError(f'The plugins "{bundled[source.name]}" and "{plugin.id}" both place "{source.name}" at the root of the app bundle.')
+                raise BuildError(f'The plugins "{bundled[source.name]}" and "{plugin.id}" both place "{source.name}" at the root of the app bundle. Keep only one of them, or rename the file in one.')
             bundled[source.name] = plugin.id
             copy_into(source, copied / "resources")
         if (copied / "resources").is_dir():
@@ -1995,7 +2162,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         for name, package in apple.get("packages", {}).items():
             declared = {"url": package["url"], "exactVersion": package["exactVersion"]}
             if packages.setdefault(name, declared) != declared:
-                raise BuildError(f'The plugins "{package_owners[name]}" and "{plugin.id}" ask for the Swift package "{name}" from different URLs or versions.')
+                raise BuildError(f'The plugins "{package_owners[name]}" and "{plugin.id}" ask for the Swift package "{name}" from different URLs or versions. Use versions of the plugins that pin the same package.')
             package_owners.setdefault(name, plugin.id)
 
         # A product or framework that two plugins link joins the template once, for every destination either plugin builds for.
@@ -2045,6 +2212,7 @@ def prepare_apple(app: App, root: Path, run_platform: str, jobs: int) -> None:
     """Writes the folder `haylen/` of an Apple project, with the native libraries of a run platform, and nothing else of the project."""
     require_host("apple")
     generated = root / GENERATED_FOLDER
+    terminal.step(f"Preparing the Apple project `{shown_path(root)}`")
     generated.mkdir(parents=True, exist_ok=True)
     framework = ARTIFACTS_DIR / "apple" / "Haylen.xcframework"
     link = generated / "Haylen.xcframework"
@@ -2110,10 +2278,11 @@ def generate_apple_project(app: App, root: Path, forced: bool) -> None:
         # A project that someone generated from the same inputs, such as the one a fresh clone of a repository holds, only needs its record.
         if action == "compare":
             if trial_apple_project(root) != current:
-                raise BuildError(f'The project "{root / "App.xcodeproj"}" changed since haylen.py generated it from "project.yml", or haylen.py never generated it, so haylen.py leaves it as it is. Move the changes made in Xcode into "project.yml" and run "python3 haylen.py xcodegen {app.folder}", which generates the project again.')
+                raise BuildError(f'The project `{shown_path(root / "App.xcodeproj")}` changed since its last generation from "project.yml", or was never generated from it, so it stays as it is. Move the changes made in Xcode into "project.yml" and run "{TOOL} xcodegen {shown_path(app.folder)}", which generates the project again.')
             write_state(root, {**state, "xcodegen": {"inputs": inputs, "project": current}})
             return
 
+    terminal.step(f'Generating `{shown_path(root / "App.xcodeproj")}` from "project.yml"')
     run([ensure_xcodegen(), "generate", "--quiet", "--spec", root / "project.yml"], cwd=root)
     write_state(root, {**state, "xcodegen": {"inputs": inputs, "project": file_hash(project)}})
 
@@ -2125,7 +2294,7 @@ def apple_simulator(family: str, requested: str | None) -> dict:
     if requested:
         matches = [device for device in candidates if requested in (device["udid"], device["name"])]
         if not matches:
-            raise BuildError(f'No available {family} simulator is named "{requested}".')
+            raise BuildError(f'No available {family} simulator is named "{requested}". Use the command "xcrun simctl list devices available" to list them.')
         return matches[0]
     if not candidates:
         raise BuildError(f'No {family} simulator is installed. Install the runtime with "xcodebuild -downloadPlatform {family}".')
@@ -2182,6 +2351,7 @@ def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None)
             run([bundle / "Contents" / "MacOS" / executable])
     elif simulator:
         udid = simulator["udid"]
+        terminal.step(f'Launching "{identifier}" on the simulator "{simulator["name"]}"')
         if simulator["state"] != "Booted":
             run(["xcrun", "simctl", "boot", udid])
         run(["xcrun", "simctl", "bootstatus", udid, "-b"])
@@ -2191,6 +2361,7 @@ def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None)
     else:
         if not args.device:
             raise BuildError('Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.')
+        terminal.step(f'Launching "{identifier}" on the device "{args.device}"')
         run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
         run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier])
 
@@ -2200,7 +2371,7 @@ def apple_product(app: App, platform: str, config: str) -> Path:
     folder = app.build_folder / "xcode" / "Build" / "Products" / f"{config}{APPLE_RUNS[platform]['products']}"
     bundles = sorted(folder.glob("*.app"), key=lambda bundle: bundle.stat().st_mtime) if folder.is_dir() else []
     if not bundles:
-        raise BuildError(f'No app of "{app.folder}" was built for "{platform}" in the "{config}" configuration. Build it with "python3 haylen.py run {app.folder} --platform {platform}".')
+        raise BuildError(f'No app of `{shown_path(app.folder)}` was built for "{platform}" in the "{config}" configuration. Build it with "{TOOL} run {shown_path(app.folder)} --platform {platform}".')
     return bundles[-1]
 
 
@@ -2214,6 +2385,7 @@ def build_apple(app: App, root: Path, args: argparse.Namespace) -> tuple[Path, d
     command = ["xcodebuild", "-project", root / "App.xcodeproj", "-scheme", settings["scheme"], "-configuration", args.config, "-destination", destination, "-derivedDataPath", app.build_folder / "xcode", "-jobs", str(args.jobs), "build"]
     if args.platform in {"ios", "tvos"}:
         command += ["-allowProvisioningUpdates", f"DEVELOPMENT_TEAM={apple_team()}"]
+    terminal.step(f'Building the "{settings["scheme"]}" scheme for "{args.platform}" in the "{args.config}" configuration')
     run(command)
     return apple_product(app, args.platform, args.config), simulator
 
@@ -2263,7 +2435,7 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
     symbols = {symbol for code in apple_code(executable) for symbol in capture(["nm", "-jU", code]).split()}
     plugin_platform = RUN_TARGETS[args.platform].plugins
     entitlements_file = APPLE_ENTITLEMENTS[plugin_platform][0]
-    targets = f'the target of "{shown_path(root / "project.yml")}"'
+    targets = f'the target of `{shown_path(root / "project.yml")}`'
     missing: list[Requirement] = []
 
     def need_framework(owner: str, framework: str) -> None:
@@ -2272,17 +2444,17 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
 
     def need_plist(owner: str, key: str, value: object) -> None:
         if not holds(info, {key: value}):
-            missing.append(Requirement(f'{owner} needs "{key}" in the Info.plist of the app, which the built app lacks.', f'Add to "{shown_path(root / folder / "Info.plist")}":', plist_snippet(key, value)))
+            missing.append(Requirement(f'{owner} needs "{key}" in the "Info.plist" of the app, which the built app lacks.', f'Add to `{shown_path(root / folder / "Info.plist")}`:', plist_snippet(key, value)))
 
     def need_privacy(owner: str, needed: dict) -> None:
         for key, value in needed.items():
             if not holds(privacy, {key: value}):
-                missing.append(Requirement(f'{owner} needs "{key}" in the privacy manifest of the app, which the built app lacks.', f'Keep "templates: [{template}]" on {targets}, or add to "{shown_path(root / "PrivacyInfo.xcprivacy")}":', plist_snippet(key, value)))
+                missing.append(Requirement(f'{owner} needs "{key}" in the privacy manifest of the app, which the built app lacks.', f'Keep "templates: [{template}]" on {targets}, or add to `{shown_path(root / "PrivacyInfo.xcprivacy")}`:', plist_snippet(key, value)))
 
     for framework in apple_frameworks()[settings["frameworks"]]:
         need_framework("Haylen", framework)
     if folder != "macos" and "UIApplicationSceneManifest" not in info:
-        missing.append(Requirement('Haylen needs "UIApplicationSceneManifest" in the Info.plist of the app, which the built app lacks, since the runtime draws in the window of a scene.', f'Add to "{shown_path(root / folder / "Info.plist")}":', plist_snippet("UIApplicationSceneManifest", {"UIApplicationSupportsMultipleScenes": folder == "ios"})))
+        missing.append(Requirement('Haylen needs "UIApplicationSceneManifest" in the "Info.plist" of the app, which the built app lacks, since the runtime draws in the window of a scene.', f'Add to `{shown_path(root / folder / "Info.plist")}`:', plist_snippet("UIApplicationSceneManifest", {"UIApplicationSupportsMultipleScenes": folder == "ios"})))
     need_privacy("Haylen", engine_privacy())
 
     for plugin in app.plugins:
@@ -2298,7 +2470,7 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
             need_plist(owner, key, value)
         for key, value in apple.get("entitlements", {}).items():
             if not holds(entitlements, {key: value}):
-                missing.append(Requirement(f'{owner} needs the entitlement "{key}", which the built app is not signed with.', f'Add to "{shown_path(root / entitlements_file)}":', plist_snippet(key, value)))
+                missing.append(Requirement(f'{owner} needs the entitlement "{key}", which the built app is not signed with.', f'Add to `{shown_path(root / entitlements_file)}`:', plist_snippet(key, value)))
         need_privacy(owner, apple.get("privacy", {}))
         for resource in plugin.manifest["apple"].get("resources", []):
             source = plugin_file(app, plugin, resource)
@@ -2331,7 +2503,7 @@ def java_property(value: str) -> str:
 
 
 def prepare_android_plugins(app: App, root: Path) -> dict[str, str]:
-    """Copies the library module of every plugin into `haylen/plugins/<id>` and returns the properties that include the modules, apply their Gradle plugins and set their manifest placeholders. The files that plugins place in the project, such as `app/google-services.json`, go only into a copy of the template that haylen.py owns, since the project of a developer is theirs, and `check` names the ones it lacks."""
+    """Copies the library module of every plugin into `haylen/plugins/<id>` and returns the properties that include the modules, apply their Gradle plugins and set their manifest placeholders. The files that plugins place in the project, such as `app/services.json`, go only into a copy of the template that haylen.py owns, since the project of a developer is theirs, and `check` names the ones it lacks."""
     modules: list[str] = []
     gradle_plugins: dict[str, str] = {}
     placeholders: dict[str, str] = {}
@@ -2345,16 +2517,16 @@ def prepare_android_plugins(app: App, root: Path) -> dict[str, str]:
 
         for entry in android.get("gradlePlugins", []):
             if gradle_plugins.setdefault(entry["id"], entry["version"]) != entry["version"]:
-                raise BuildError(f"The plugins \"{owners['gradle'][entry['id']]}\" and \"{plugin.id}\" apply the Gradle plugin \"{entry['id']}\" in different versions.")
+                raise BuildError(f"The plugins \"{owners['gradle'][entry['id']]}\" and \"{plugin.id}\" apply the Gradle plugin \"{entry['id']}\" in different versions. Use versions of the plugins that apply the same one.")
             owners["gradle"].setdefault(entry["id"], plugin.id)
         for name, value in android.get("placeholders", {}).items():
             if placeholders.setdefault(name, parameter_text(value)) != parameter_text(value):
-                raise BuildError(f"The plugins \"{owners['placeholder'][name]}\" and \"{plugin.id}\" give the manifest placeholder \"{name}\" different values.")
+                raise BuildError(f"The plugins \"{owners['placeholder'][name]}\" and \"{plugin.id}\" give the manifest placeholder \"{name}\" different values. Give both the same value, or keep only one of the plugins.")
             owners["placeholder"].setdefault(name, plugin.id)
 
         for source, destination in android_plugin_files(app, plugin):
             if destination in owners["file"]:
-                raise BuildError(f"The plugins \"{owners['file'][destination]}\" and \"{plugin.id}\" both place \"{destination}\" in the Android project.")
+                raise BuildError(f"The plugins \"{owners['file'][destination]}\" and \"{plugin.id}\" both place \"{destination}\" in the Android project. Keep only one of them.")
             owners["file"][destination] = plugin.id
             if is_owned(root):
                 (root / destination).parent.mkdir(parents=True, exist_ok=True)
@@ -2388,7 +2560,7 @@ def write_android_splash(app: App, resources: Path) -> None:
     write_if_changed(resources / "values" / "haylen_splash.xml", colors)
     if app.splash_logo:
         if app.splash_logo.suffix.lower() not in {".png", ".webp", ".jpg", ".jpeg"}:
-            raise BuildError(f'Android splash logos are PNG, WebP or JPEG images, not "{app.splash_logo.name}".')
+            raise BuildError(f'Android splash logos are PNG, WebP or JPEG images, so `{shown_path(app.splash_logo)}` does not fit. Give "splash.logo" an image in one of those formats.')
         (resources / "drawable").mkdir(parents=True, exist_ok=True)
         shutil.copy2(app.splash_logo, resources / "drawable" / f"haylen_splash_logo{app.splash_logo.suffix.lower()}")
 
@@ -2396,6 +2568,7 @@ def write_android_splash(app: App, resources: Path) -> None:
 def prepare_android(app: App, root: Path, library: str, jobs: int) -> None:
     """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version and orientation of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, the package with its index in `assets/app`, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
     generated = root / GENERATED_FOLDER
+    terminal.step(f"Preparing the Android project `{shown_path(root)}`")
     for name in ("assets", "res", "jniLibs", "plugins"):
         shutil.rmtree(generated / name, ignore_errors=True)
     files = copy_package(app, generated / "assets" / "app")
@@ -2443,13 +2616,14 @@ def android_product(app: App, config: str) -> Path:
     folder = app.build_folder / "gradle" / "app" / "outputs" / "apk"
     apks = sorted((path for path in folder.rglob("*.apk") if variant in path.parent.parts), key=lambda path: path.stat().st_mtime) if folder.is_dir() else []
     if not apks:
-        raise BuildError(f'No APK of "{app.folder}" was built in the "{config}" configuration. Build it with "python3 haylen.py run {app.folder} --platform android".')
+        raise BuildError(f'No APK of `{shown_path(app.folder)}` was built in the "{config}" configuration. Build it with "{TOOL} run {shown_path(app.folder)} --platform android".')
     return apks[-1]
 
 
 def build_android(app: App, root: Path, args: argparse.Namespace) -> Path:
     """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project."""
     variant = "Release" if args.config == "Release" else "Debug"
+    terminal.step(f'Building the APK of `{shown_path(root)}` with Gradle in the "{args.config}" configuration')
     run([ensure_gradle(), "-p", root, f":app:assemble{variant}", f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache"])
     return android_product(app, args.config)
 
@@ -2457,6 +2631,7 @@ def build_android(app: App, root: Path, args: argparse.Namespace) -> Path:
 def launch_android(apk: Path, args: argparse.Namespace, device: str) -> None:
     """Installs an APK on a device, starts it and streams the log of its process until it ends."""
     package = capture([aapt2(), "dump", "packagename", apk]).strip()
+    terminal.step(f'Launching "{package}" on the Android device "{device}"')
     run([adb(), "-s", device, "install", "-r", apk])
     # The launcher intent starts the task of the app, so the launcher icon brings that task back as it is later.
     run([adb(), "-s", device, "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", f"{package}/dev.haylen.HaylenActivity"])
@@ -2506,7 +2681,7 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         entries = set(archive.namelist())
     manifest = root / "app" / "src" / "main" / "AndroidManifest.xml"
     own = manifest.read_text() if manifest.is_file() else ""
-    modules = f'Keep the plugin modules of "{GENERATED_FOLDER}/haylen.properties" in "{shown_path(root / "settings.gradle.kts")}" and "{shown_path(root / "app" / "build.gradle.kts")}".'
+    modules = f'Keep the plugin modules of "{GENERATED_FOLDER}/haylen.properties" in `{shown_path(root / "settings.gradle.kts")}` and `{shown_path(root / "app" / "build.gradle.kts")}`.'
     missing: list[Requirement] = []
 
     def need(owner: str, tag: str, name: str) -> None:
@@ -2515,9 +2690,9 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         if tag == "uses-permission":
             message = f'{owner} needs the permission "{name}", which the merged manifest of the built app lacks.'
             if re.search(rf'<uses-permission[^>]*"{re.escape(name)}"[^>]*tools:node="remove"', own):
-                missing.append(Requirement(message, f'The file "{shown_path(manifest)}" removes it with "tools:node="remove"". Delete that entry, or keep it, and the calls that need the permission answer "unsupported".'))
+                missing.append(Requirement(message, f'The file `{shown_path(manifest)}` removes it with the attribute "tools:node" set to "remove". Delete that entry, or keep it, and the calls that need the permission answer "unsupported".'))
             else:
-                missing.append(Requirement(message, f'Add to "{shown_path(manifest)}":', f'<uses-permission android:name="{name}" />'))
+                missing.append(Requirement(message, f'Add to `{shown_path(manifest)}`:', f'<uses-permission android:name="{name}" />'))
             return
         missing.append(Requirement(f'{owner} needs the {tag} "{name}", which the merged manifest of the built app lacks.', modules))
 
@@ -2526,7 +2701,7 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         need("Haylen", "provider", "dev.haylen.HaylenPluginProvider")
     for library in app.native:
         if library.ships_to("android") and not any(entry.startswith("lib/") and entry.endswith(f"/lib{library.name}.so") for entry in entries):
-            missing.append(Requirement(f'The app needs the native library "{library.name}", which the built app lacks.', f'Keep "{GENERATED_FOLDER}/jniLibs" among the "jniLibs" folders of "{shown_path(root / "app" / "build.gradle.kts")}".'))
+            missing.append(Requirement(f'The app needs the native library "{library.name}", which the built app lacks.', f'Keep "{GENERATED_FOLDER}/jniLibs" among the "jniLibs" folders of `{shown_path(root / "app" / "build.gradle.kts")}`.'))
 
     for plugin in app.plugins:
         android = plugin_section(app, plugin, "android")
@@ -2537,7 +2712,7 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
             need(owner, tag, name)
         for source, destination in android_plugin_files(app, plugin):
             if not (root / destination).exists():
-                missing.append(Requirement(f'{owner} needs "{destination}" in the Android project, which the project lacks.', f'Copy "{shown_path(source)}" to "{shown_path(root / destination)}".'))
+                missing.append(Requirement(f'{owner} needs "{destination}" in the Android project, which the project lacks.', f'Copy `{shown_path(source)}` to `{shown_path(root / destination)}`.'))
     return missing
 
 
@@ -2585,6 +2760,7 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
     """Makes the site of an app again: the files of `platform/web` of the app, or of the template, as they are, and next to them the prebuilt runtimes and the generated files."""
     own = app.folder / "platform" / "web"
     site = app.build_folder / "web"
+    terminal.step(f"Preparing the site `{shown_path(site)}`")
     shutil.rmtree(site, ignore_errors=True)
     shutil.copytree(own if own.is_dir() else PLATFORM_TEMPLATES_DIR / "web", site, ignore=COPY_IGNORED)
     for backend in ("webgpu", "webgl2"):
@@ -2596,7 +2772,7 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
 def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requirement]:
     """Checks the site of an app: every plugin with a web part in `config.json` with its module, and plugins whose screens open popups on a page that the opener policy `same-origin` cuts off from them."""
     if not (site / "config.json").is_file():
-        raise BuildError(f'The site of "{app.folder}" was not made yet. Make it with "python3 haylen.py prepare {app.folder} --platform web".')
+        raise BuildError(f'The site of `{shown_path(app.folder)}` was not made yet. Make it with "{TOOL} prepare {shown_path(app.folder)} --platform web".')
     listed = {entry["id"]: entry for entry in json.loads((site / "config.json").read_text()).get("plugins", [])}
     missing: list[Requirement] = []
     for plugin in app.plugins:
@@ -2605,7 +2781,7 @@ def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requiremen
         owner = f'The plugin "{plugin.id}"'
         entry = listed.get(plugin.id)
         if entry is None or not (site / entry["module"]).is_file():
-            missing.append(Requirement(f'{owner} needs its web module in the site, which "config.json" does not list.', f'Make the site again with "python3 haylen.py prepare {app.folder} --platform web".'))
+            missing.append(Requirement(f'{owner} needs its web module in the site, which "config.json" does not list.', f'Make the site again with "{TOOL} prepare {shown_path(app.folder)} --platform web".'))
         # Popups of screens are the one feature of plugins that the opener policy breaks, and a module registers its screens by name.
         screens = any("registerScreen(" in path.read_text() for path in (plugin.folder / "web").rglob("*") if path.suffix in (".js", ".mjs"))
         if screens and args.coop == "same-origin":
@@ -2625,6 +2801,7 @@ def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
     """Lays out the shipped folder of a Windows or Linux app: the files of `platform/<platform>` of the app as they are, the player named after the app with the package in an app folder next to it, and the native libraries next to it on Windows and in `lib` on Linux, which the `RUNPATH` of the player covers."""
     require_host(args.platform)
     folder = app.build_folder / args.platform
+    terminal.step(f"Preparing the app folder `{shown_path(folder)}`")
     shutil.rmtree(folder, ignore_errors=True)
     own = app.folder / "platform" / args.platform
     if own.is_dir():
@@ -2681,6 +2858,7 @@ def command_run(args: argparse.Namespace) -> None:
         native_options = ["--native", native] if prepare_host_native(info, native, args.jobs) else []
         stop = threading.Event()
         threading.Thread(target=watch_app_shaders, args=(app, stop), daemon=True).start()
+        terminal.step(f"Running `{shown_path(app)}` in the player with hot reload, until the app quits or Ctrl+C stops it")
         try:
             run([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), "--dev", *native_options, app])
         finally:
@@ -2700,7 +2878,7 @@ def command_prepare(args: argparse.Namespace) -> None:
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
     ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
-    print(f'Prepared "{target.prepare(info, args)}" for "{args.platform}".')
+    terminal.success(f'Prepared `{shown_path(target.prepare(info, args))}` for "{args.platform}".')
 
 
 def command_xcodegen(args: argparse.Namespace) -> None:
@@ -2714,7 +2892,7 @@ def command_xcodegen(args: argparse.Namespace) -> None:
     root = project_root(info, "apple")
     prepare_apple(info, root, args.platform, args.jobs)
     generate_apple_project(info, root, forced=True)
-    print(f'Generated "{root / "App.xcodeproj"}" from "{root / "project.yml"}".')
+    terminal.success(f"Generated `{shown_path(root / 'App.xcodeproj')}` from `{shown_path(root / 'project.yml')}`.")
 
 
 def generate_template_project(args: argparse.Namespace) -> None:
@@ -2725,26 +2903,24 @@ def generate_template_project(args: argparse.Namespace) -> None:
         copy = Path(scratch) / "apple"
         shutil.copytree(template, copy, symlinks=True, ignore=COPY_IGNORED)
         prepare_apple(App(APP_TEMPLATE, "macos"), copy, "macos", args.jobs)
+        terminal.step(f"Generating `{shown_path(template / 'App.xcodeproj')}` from \"project.yml\"")
         run([ensure_xcodegen(), "generate", "--quiet", "--spec", copy / "project.yml"], cwd=copy)
         shutil.rmtree(template / "App.xcodeproj")
         shutil.copytree(copy / "App.xcodeproj", template / "App.xcodeproj", ignore=shutil.ignore_patterns("xcuserdata", ".DS_Store"))
-    print(f'Generated "{template / "App.xcodeproj"}" from "{template / "project.yml"}".')
+    terminal.success(f"Generated `{shown_path(template / 'App.xcodeproj')}` from `{shown_path(template / 'project.yml')}`.")
 
 
 def command_check(args: argparse.Namespace) -> None:
     """Checks the last build of an app for a platform against what the engine and its plugins need, and prints each missing requirement with who needs it and the snippet that adds it."""
     app = resolve_app(args.app)
     target = RUN_TARGETS[args.platform]
-    if target.check is None:
-        raise BuildError(f'The platform "{args.platform}" has no project whose requirements "haylen.py" checks.')
     info = App(app, target.plugins)
     root = app.build_folder / "web" if args.platform == "web" else project_root(info, target.template)
     missing = target.check(info, root, args)
-    for requirement in missing:
-        print(requirement.describe(), flush=True)
+    report_requirements(missing)
     if missing:
-        raise BuildError(f'The app lacks {len(missing)} requirements of the engine or its plugins on "{args.platform}".')
-    print(f'The app built for "{args.platform}" has everything the engine and its plugins need.')
+        raise BuildError(f'The app built for "{args.platform}" lacks the {len(missing)} requirements of the engine or its plugins above.')
+    terminal.success(f'The app built for "{args.platform}" has everything the engine and its plugins need.')
 
 
 def copy_template(template: str, destination: Path) -> None:
@@ -2755,7 +2931,7 @@ def command_new(args: argparse.Namespace) -> None:
     """Creates an app from the starter app and a copy of every platform template, which the developer owns from then on."""
     folder = Path(args.folder).expanduser().resolve()
     if folder.exists() and any(folder.iterdir()):
-        raise BuildError(f'The folder "{folder}" already exists and is not empty.')
+        raise BuildError(f"The folder `{shown_path(folder)}` already exists and is not empty. Name a new folder or an empty one.")
 
     slug = re.sub(r"[^a-z0-9]+", "-", folder.name.lower()).strip("-")
     if not slug:
@@ -2776,7 +2952,8 @@ def command_new(args: argparse.Namespace) -> None:
     (folder / "app.json").write_text(json.dumps(document, indent=4) + "\n")
     for template in platform_templates():
         copy_template(template, folder / "platform" / template)
-    print(f'Created "{name}" ("{identifier}") in "{folder}". Run it with "python3 haylen.py run {folder}".')
+    terminal.success(f'Created the app "{name}" with the identifier "{identifier}" in `{shown_path(folder)}`.')
+    terminal.info(f'Run it with "{TOOL} run {shown_path(folder)}".')
 
 
 def command_platform_add(args: argparse.Namespace) -> None:
@@ -2784,9 +2961,9 @@ def command_platform_add(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     destination = app / "platform" / args.template
     if destination.exists():
-        raise BuildError(f'The app "{app}" already has the project "{destination}". Compare it with the template with "python3 haylen.py platform diff {app} --template {args.template}".')
+        raise BuildError(f'The app already has the project `{shown_path(destination)}`. Compare it with the template with "{TOOL} platform diff {shown_path(app)} --template {args.template}".')
     copy_template(args.template, destination)
-    print(f'Created "{destination}" from the "{args.template}" template.')
+    terminal.success(f'Created `{shown_path(destination)}` from the "{args.template}" template.')
 
 
 def project_files(folder: Path) -> dict[str, Path]:
@@ -2800,25 +2977,81 @@ def command_platform_diff(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     project = app / "platform" / args.template
     if not project.is_dir():
-        raise BuildError(f'The app "{app}" has no "{args.template}" project. Create it with "python3 haylen.py platform add {app} {args.template}".')
+        raise BuildError(f'The app `{shown_path(app)}` has no "{args.template}" project. Create it with "{TOOL} platform add {shown_path(app)} {args.template}".')
     template = project_files(PLATFORM_TEMPLATES_DIR / args.template)
     own = project_files(project)
     differences = 0
     for path in sorted(template.keys() | own.keys()):
         if path not in own:
-            print(f'Only in the template: "{path}".')
+            terminal.info(f"Only the template has `{shown_path(template[path])}`.")
         elif path not in template:
-            print(f'Only in the app: "{path}".')
+            terminal.info(f"Only the app has `{shown_path(own[path])}`.")
         elif template[path].read_bytes() != own[path].read_bytes():
             try:
                 lines = difflib.unified_diff(template[path].read_text().splitlines(keepends=True), own[path].read_text().splitlines(keepends=True), f"template/{path}", f"app/{path}")
-                print("".join(lines), end="")
+                terminal.verbatim("".join(lines).rstrip("\n"))
             except UnicodeDecodeError:
-                print(f'The binary file "{path}" differs.')
+                terminal.info(f"The binary file `{shown_path(own[path])}` differs from `{shown_path(template[path])}`.")
         else:
             continue
         differences += 1
-    print(f'The project differs from the "{args.template}" template in {differences} files.' if differences else f'The project matches the "{args.template}" template.')
+    terminal.success(f'The project differs from the "{args.template}" template in {differences} files.' if differences else f'The project matches the "{args.template}" template.')
+
+
+def keytool() -> Path:
+    """Finds the command `keytool` of the JDK that Gradle uses, the one of `JAVA_HOME`, or else the one on `PATH`."""
+    home = os.environ.get("JAVA_HOME")
+    if home and (Path(home) / "bin" / executable_name("keytool")).is_file():
+        return Path(home) / "bin" / executable_name("keytool")
+    found = shutil.which("keytool")
+    if found is None:
+        raise BuildError('The command "keytool" of the JDK was not found. Install JDK 17 or newer and set "JAVA_HOME" to its folder.')
+    return Path(found)
+
+
+def android_key_files(root: Path, kind: str) -> dict[str, Path]:
+    """Names the files of the release or debug key of an Android project: the keystore, its certificate and the properties that the Gradle scripts read."""
+    folder = root / ANDROID_KEY_FOLDER
+    return {"keystore": folder / f"{kind}.jks", "certificate": folder / f"{kind}.pem", "properties": folder / f"{kind}.properties"}
+
+
+def android_key_properties(kind: str, alias: str, password: str) -> str:
+    """Writes the properties that the Gradle scripts of the template read to sign a build type with its key, with the keystore relative to them."""
+    values = {"storeFile": f"{kind}.jks", "storePassword": password, "keyAlias": alias, "keyPassword": password}
+    lines = [f'# Written by "haylen.py android-key". It holds the passwords of the {kind} key, so the folder stays out of the repository.']
+    return "\n".join([*lines, *(f"{key}={java_property(value)}" for key, value in values.items())]) + "\n"
+
+
+def command_android_key(args: argparse.Namespace) -> None:
+    """Creates the release upload key or the debug key of the Android project of an app with `keytool`, exports its certificate as PEM and writes the properties that the signing of the Gradle scripts reads. An app without an Android project gets one from the template first."""
+    app = resolve_app(args.app)
+    if not args.alias:
+        raise BuildError('The option "--alias" needs a name for the key.')
+    if len(args.password) < ANDROID_KEY_PASSWORD_LENGTH:
+        raise BuildError(f'The option "--password" needs at least {ANDROID_KEY_PASSWORD_LENGTH} characters, which "keytool" asks of every keystore.')
+
+    root = app / "platform" / "android"
+    files = android_key_files(root, args.kind)
+    existing = [path for path in files.values() if path.exists()]
+    if existing and not args.force:
+        raise BuildError(f'The Android project already has a {args.kind} key in `{shown_path(existing[0])}`. Keep it, since an app signed with another key cannot update the installed one, or replace it with "--force".')
+    tool = keytool()
+    if not root.is_dir():
+        copy_template("android", root)
+        terminal.success(f'Created `{shown_path(root)}` from the "android" template.')
+    for path in existing:
+        path.unlink()
+
+    # The password reaches `keytool` through the environment, so neither the printed commands nor the list of processes show it.
+    environment = {**os.environ, "HAYLEN_KEY_PASSWORD": args.password}
+    password = ["-storepass:env", "HAYLEN_KEY_PASSWORD"]
+    files["keystore"].parent.mkdir(parents=True, exist_ok=True)
+    terminal.step(f"Creating the {args.kind} key of `{shown_path(root)}`")
+    run([tool, "-genkeypair", "-keystore", files["keystore"], "-storetype", "PKCS12", "-alias", args.alias, "-keyalg", "RSA", "-keysize", str(ANDROID_KEY_SIZE), "-validity", str(ANDROID_KEY_DAYS), "-dname", args.dname, *password], env=environment)
+    run([tool, "-exportcert", "-rfc", "-keystore", files["keystore"], "-alias", args.alias, "-file", files["certificate"], *password], env=environment)
+    files["properties"].write_text(android_key_properties(args.kind, args.alias, args.password))
+    terminal.success(f"Created the {args.kind} key `{shown_path(files['keystore'])}` with its certificate `{shown_path(files['certificate'])}`.")
+    terminal.info(f"The {args.kind} builds of the project sign with it, through `{shown_path(files['properties'])}`, and the folder stays out of the repository.")
 
 
 def write_app_json(folder: Path, document: dict) -> None:
@@ -2841,15 +3074,15 @@ def command_plugin_add(args: argparse.Namespace) -> None:
             run(["git", "-C", checkout, "fetch", "--quiet", "--depth", "1", args.plugin, args.ref or "HEAD"])
             run(["git", "-C", checkout, "checkout", "--quiet", "FETCH_HEAD"])
             if not (checkout / "plugin.json").is_file():
-                raise BuildError(f'The address "{args.plugin}" is no plugin repository, because it has no "plugin.json" at its root.')
+                raise BuildError(f'The repository `{args.plugin}` is not a plugin, because it holds no "plugin.json" at its root.')
             identifier = json.loads((checkout / "plugin.json").read_text()).get("id")
             source = checkout.rename(Path(scratch) / identifier) if isinstance(identifier, str) and PLUGIN_ID.fullmatch(identifier) else checkout
         elif args.ref:
-            raise BuildError('The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none.')
+            raise BuildError('The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.')
         else:
             source = Path(args.plugin).expanduser().resolve()
         if not (source / "plugin.json").is_file():
-            raise BuildError(f'The folder "{args.plugin}" is no plugin, because it has no "plugin.json" at its root.')
+            raise BuildError(f'The path `{shown_path(source)}` is not a plugin folder, because it holds no "plugin.json".')
         plugin = Plugin.load(source)
         target = app / "plugins" / plugin.id
         if source != target:
@@ -2864,13 +3097,14 @@ def command_plugin_add(args: argparse.Namespace) -> None:
             values[name] = parameter.get("default", "")
     write_app_json(app, document)
 
-    print(f'Added "{plugin.id}" {plugin.version} to "{app}".')
+    terminal.success(f'Added the plugin "{plugin.id}" {plugin.version} to `{shown_path(app)}`.')
     missing = [name for name, value in values.items() if value == "" and plugin.parameters.get(name, {}).get("required")]
     if missing:
-        print(f"Fill in {', '.join(f'"{name}"' for name in missing)} under \"plugins.{plugin.id}\" of \"{app / 'app.json'}\".")
+        names = ", ".join(f'"{name}"' for name in missing)
+        terminal.warning(f'Fill in {names} under "plugins.{plugin.id}" of `{shown_path(app / "app.json")}` before the app builds.')
     for required in plugin.requires:
         if required not in listed:
-            print(f'The plugin "{plugin.id}" requires "{required}", which the app does not list yet. Add it with "python3 haylen.py plugin add" and its folder or repository.')
+            terminal.warning(f'The plugin "{plugin.id}" requires the plugin "{required}", which the app does not list yet. Add it with "{TOOL} plugin add" and its folder or repository.')
 
 
 def command_plugin_remove(args: argparse.Namespace) -> None:
@@ -2880,7 +3114,7 @@ def command_plugin_remove(args: argparse.Namespace) -> None:
     document = json.loads((app / "app.json").read_text())
     listed = document.get("plugins", {})
     if args.id not in listed and not folder.exists():
-        raise BuildError(f'The app "{app}" has no plugin "{args.id}".')
+        raise BuildError(f'The app `{shown_path(app)}` has no plugin "{args.id}". List its plugins with "{TOOL} plugin list --app {shown_path(app)}".')
 
     shutil.rmtree(folder, ignore_errors=True)
     if folder.parent.is_dir() and not any(folder.parent.iterdir()):
@@ -2890,18 +3124,18 @@ def command_plugin_remove(args: argparse.Namespace) -> None:
         if not listed:
             del document["plugins"]
         write_app_json(app, document)
-    print(f'Removed "{args.id}" from "{app}".')
+    terminal.success(f'Removed the plugin "{args.id}" from `{shown_path(app)}`.')
 
 
 def plugin_status(app: Path, identifier: str, listed: dict) -> list[str]:
     """Describes a plugin of an app in one line, followed by the problems that keep it from building for any of its platforms."""
     folder = app / "plugins" / identifier
     if not (folder / "plugin.json").is_file():
-        return [f'{identifier:<24} Missing, because "app.json" lists it and "plugins/{identifier}/plugin.json" does not exist.']
+        return [f'{identifier:<24} Missing, because "app.json" lists it and `{shown_path(folder / "plugin.json")}` does not exist.']
     try:
         plugin = Plugin.load(folder)
     except BuildError as error:
-        return [f"{identifier:<24} invalid", *(f"    {line}" for line in str(error).splitlines())]
+        return [f"{identifier:<24} Invalid", *(f"    {line}" for line in str(error).splitlines())]
 
     problems: list[str] = []
     status = 'Not in "app.json", so no build carries it.'
@@ -2909,7 +3143,7 @@ def plugin_status(app: Path, identifier: str, listed: dict) -> list[str]:
         problems += [f'The plugin "{identifier}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in listed]
         for platform in plugin.manifest["platforms"]:
             problems += [problem for problem in parameter_values(app, plugin, listed[identifier], platform)[1] if problem not in problems]
-        status = f"{len(problems)} problems" if problems else "ok"
+        status = f"Problems: {len(problems)}" if problems else "Ready"
 
     return [f"{identifier:<24} {plugin.version:<10} {', '.join(plugin.manifest['platforms']):<48} {status}", *(f"    {problem}" for problem in problems)]
 
@@ -2921,9 +3155,9 @@ def command_plugin_list(args: argparse.Namespace) -> None:
     folders = sorted(path.name for path in (app / "plugins").iterdir() if path.is_dir()) if (app / "plugins").is_dir() else []
     identifiers = [*listed, *(name for name in folders if name not in listed)]
     if not identifiers:
-        print(f'The app "{app}" has no plugins.')
+        terminal.info(f"The app `{shown_path(app)}` has no plugins.")
     for identifier in identifiers:
-        print("\n".join(plugin_status(app, identifier, listed)))
+        terminal.info("\n".join(plugin_status(app, identifier, listed)))
 
 
 def command_plugin_new(args: argparse.Namespace) -> None:
@@ -2931,11 +3165,11 @@ def command_plugin_new(args: argparse.Namespace) -> None:
     folder = Path(args.folder).expanduser().resolve()
     identifier = args.id or folder.name
     if not PLUGIN_ID.fullmatch(identifier):
-        raise BuildError(f'The name "{identifier}" is no plugin id. Plugin ids are "dash-case", such as "firebase-analytics".')
+        raise BuildError(f'The name "{identifier}" is not a plugin id. Plugin ids are "dash-case", such as "camera-scanner".')
     if identifier != folder.name:
         raise BuildError(f'A plugin folder is named after the id of the plugin, so the folder of "{identifier}" is named "{identifier}", not "{folder.name}".')
     if folder.exists() and any(folder.iterdir()):
-        raise BuildError(f'The folder "{folder}" already exists and is not empty.')
+        raise BuildError(f"The folder `{shown_path(folder)}` already exists and is not empty. Name a new folder or an empty one.")
 
     words = identifier.split("-")
     tokens = {"{{ID}}": identifier, "{{NAME}}": "".join(word.capitalize() for word in words), "{{TITLE}}": " ".join(word.capitalize() for word in words), "{{PACKAGE}}": "".join(words)}
@@ -2949,7 +3183,8 @@ def command_plugin_new(args: argparse.Namespace) -> None:
         target = folder / substitute(source.relative_to(PLUGIN_TEMPLATE).as_posix())
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(substitute(source.read_text()))
-    print(f'Created the plugin "{identifier}" in "{folder}". Add it to an app with "python3 haylen.py plugin add {folder} --app <app>".')
+    terminal.success(f'Created the plugin "{identifier}" in `{shown_path(folder)}`.')
+    terminal.info(f'Add it to an app with "{TOOL} plugin add {shown_path(folder)} --app <app folder>".')
 
 
 # The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, their simulators and Android.
@@ -2962,10 +3197,11 @@ def cpp_target(project: Path, requested: str | None) -> str:
 
 def command_run_cpp(args: argparse.Namespace) -> None:
     """Builds a C++ app project, which compiles the engine through its own CMake, and runs it on this machine, in the browser, on an Apple simulator or device, on Mac Catalyst or on Android."""
-    candidate = Path(args.project).expanduser()
-    project = (candidate if candidate.exists() else SAMPLES_DIR / args.project).resolve()
+    if not args.project:
+        raise BuildError('The command needs the folder of a C++ app project, named after it, which is a CMake project that adds the engine and calls "haylen_add_app".')
+    project = Path(args.project).expanduser().resolve()
     if not (project / "CMakeLists.txt").is_file():
-        raise BuildError(f'The path "{args.project}" is neither a CMake project folder nor the name of a C++ sample.')
+        raise BuildError(f'The path `{shown_path(project)}` is not a CMake project, because it holds no "CMakeLists.txt". Name the folder of a project that adds the engine and calls "haylen_add_app".')
     target = cpp_target(project, args.target)
     folder = CPP_BUILDS_DIR / build_folder_name(project)
 
@@ -2983,8 +3219,10 @@ def command_run_cpp(args: argparse.Namespace) -> None:
             command += ["-G", "Ninja"]
         if host_name() == "macos":
             command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
+        terminal.step(f'Building the target "{target}" in `{shown_path(directory)}`')
         run(command)
         run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
+        terminal.step(f'Running "{target}"')
         run([cmake_app_executable(directory, target)])
 
 
@@ -2998,6 +3236,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     command = ["cmake", "-S", project, "-B", directory, "-G", generator, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch)]
     if device:
         command.append(f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}")
+    terminal.step(f'Building the target "{target}" for "{args.platform}" in `{shown_path(directory)}`')
     run(command)
     run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs), *(["--", "-allowProvisioningUpdates"] if device else [])])
 
@@ -3012,8 +3251,9 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     device = android_device(args.device)
     abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
     if abi not in ANDROID_ABIS:
-        raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {', '.join(f'"{name}"' for name in ANDROID_ABIS)}.")
+        raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {', '.join(f'"{name}"' for name in ANDROID_ABIS)}. Use a device or an emulator of one of those.")
     directory = folder / f"android-{abi}-{args.config.lower()}"
+    terminal.step(f'Building the target "{target}" for "{abi}" in `{shown_path(directory)}`')
     run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi)])
     run(["cmake", "--build", directory, "--target", target, "--parallel", str(args.jobs)])
 
@@ -3035,6 +3275,7 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) 
     shutil.rmtree(output, ignore_errors=True)
     for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
         directory = folder / f"{platform_name}-{config.lower()}"
+        terminal.step(f'Building the target "{target}" for "{platform_name}" in `{shown_path(directory)}`')
         if not (directory / "CMakeCache.txt").exists():
             renderer = "WGPU" if platform_name == "web" else "GLES3"
             run([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}"])
@@ -3051,39 +3292,18 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) 
     shell = (built / f"{target}.shell.html").read_text()
     picker = (ENGINE_DIR / "platform" / "web" / "backend-picker.html").read_text().replace("{{TARGET}}", target)
     if "{{{ SCRIPT }}}" not in shell:
-        raise BuildError(f'The web shell of "{target}" has no "{{{{{{ SCRIPT }}}}}}" placeholder.')
+        raise BuildError(f'The web shell of "{target}" has no "{{{{{{ SCRIPT }}}}}}" placeholder, where the page loads the runtime. Add it to the shell that "WEB_SHELL" names.')
     (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()))
     shutil.copy2(built / ENGINE_LOGO.name, output)
-    print(f'Bundled "{target}" for WebGPU and WebGL2 into "{output}".')
-
-
-def list_samples() -> list[tuple[str, str]]:
-    """Returns the path from `samples/` and the kind of every sample: a C++ project has a `CMakeLists.txt`, a Lua app only an `app.json`."""
-    found = []
-    for folder in sorted(path for path in SAMPLES_DIR.glob("*/*") if path.is_dir()):
-        if (folder / "CMakeLists.txt").is_file():
-            found.append((folder.relative_to(SAMPLES_DIR).as_posix(), "cpp"))
-        elif (folder / "app.json").is_file():
-            found.append((folder.relative_to(SAMPLES_DIR).as_posix(), "lua"))
-    return found
-
-
-def command_samples(_: argparse.Namespace) -> None:
-    """Lists the samples by category with the command that runs each one."""
-    category = ""
-    for path, kind in list_samples():
-        current = path.split("/")[0]
-        if current != category:
-            category = current
-            print(f"{category}/")
-        runner = "run-cpp" if kind == "cpp" else "run"
-        print(f"  {path:<32} python3 haylen.py {runner} {path}")
+    terminal.success(f'Bundled "{target}" for WebGPU and WebGL2 into `{shown_path(output)}`.')
 
 
 def command_package(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     compile_app_shaders(app)
-    package_folder(app, Path(args.output).resolve())
+    output = Path(args.output).resolve()
+    package_folder(app, output)
+    terminal.success(f"Packaged `{shown_path(app)}` into `{shown_path(output)}`.")
 
 
 class WebHandler(http.server.SimpleHTTPRequestHandler):
@@ -3125,9 +3345,14 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
 
 def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coop: str = "off", open_page: bool = False) -> None:
     handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep, "coop": coop}), directory=str(directory))
-    with http.server.ThreadingHTTPServer((host, port), handler) as server:
+    try:
+        server = http.server.ThreadingHTTPServer((host, port), handler)
+    except OSError as error:
+        raise BuildError(f'The web server cannot listen on port {port} of "{host}": {error.strerror}. Stop what uses the port, or pick another one with "--port".') from error
+    with server:
         url = f"http://{host}:{port}/"
-        print(f'Serving "{directory}" at "{url}".', flush=True)
+        terminal.success(f"Serving `{shown_path(directory)}` at `{url}`")
+        terminal.info("Press Ctrl+C to stop the server.")
         if open_page:
             webbrowser.open(url)
         try:
@@ -3137,22 +3362,29 @@ def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coo
 
 
 def command_serve(args: argparse.Namespace) -> None:
-    serve(Path(args.directory).resolve(), args.host, args.port, args.coep, args.coop, args.open)
+    directory = Path(args.directory).resolve()
+    if not directory.is_dir():
+        raise BuildError(f"The folder `{shown_path(directory)}` does not exist. Name the folder of a web page.")
+    serve(directory, args.host, args.port, args.coep, args.coop, args.open)
 
 
 def command_clean(_: argparse.Namespace) -> None:
     shutil.rmtree(BUILD_ROOT, ignore_errors=True)
-    print(f'Removed "{BUILD_ROOT}".')
+    terminal.success(f"Removed `{shown_path(BUILD_ROOT)}`.")
+
+
+def add_jobs_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--jobs", type=int, default=default_jobs(), help="Parallel jobs of the builds, one less than the processors of this machine by default.")
 
 
 def add_build_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--platform", default=host_name(), choices=PLATFORMS)
-    parser.add_argument("--config", default="Debug", choices=CONFIGS)
-    parser.add_argument("--backend", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"])
+    parser.add_argument("--platform", default=host_name(), choices=PLATFORMS, help="Platform of the build tree, this machine by default.")
+    parser.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the build tree, "Debug" by default.')
+    parser.add_argument("--backend", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"], help="Graphics backend, the default of the platform otherwise.")
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)
-    parser.add_argument("--target")
-    parser.add_argument("--jobs", type=int, default=default_jobs())
+    parser.add_argument("--target", help="CMake target to build, every target by default.")
+    add_jobs_option(parser)
 
 
 def add_sanitizer_option(parser: argparse.ArgumentParser) -> None:
@@ -3160,20 +3392,24 @@ def add_sanitizer_option(parser: argparse.ArgumentParser) -> None:
 
 
 def add_web_server_options(parser: argparse.ArgumentParser, port: int) -> None:
-    parser.add_argument("--host", default="127.0.0.1", help='Address the local web server listens on. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer AudioWorklet only to pages served over https or from "localhost".')
+    parser.add_argument("--host", default="127.0.0.1", help='Address the local web server listens on. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer "AudioWorklet" only to pages served over https or from "localhost".')
     parser.add_argument("--port", type=int, default=port, help="Port of the local web server.")
-    parser.add_argument("--coep", default="require-corp", choices=["require-corp", "credentialless", "off"], help='The "Cross-Origin-Embedder-Policy" header. Pages that load third-party scripts, such as Google sign-in, need "credentialless" or "off".')
+    parser.add_argument("--coep", default="require-corp", choices=["require-corp", "credentialless", "off"], help='The "Cross-Origin-Embedder-Policy" header. Pages that load third-party scripts, such as sign-in libraries, need "credentialless" or "off".')
     parser.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header, none by default, since the single-threaded runtime needs no cross-origin isolation and "same-origin" cuts the page off from the sign-in and payment popups of plugins. The value "same-origin" with a "--coep" policy isolates the page for "SharedArrayBuffer" and threads.')
     parser.add_argument("--open", action="store_true", help="Open the page in the default browser.")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Haylen build entry point.")
+def add_app_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("app", nargs="?", help='The app folder, relative to the current folder or absolute, which holds "app.json", "source" and "content".')
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="haylen.py", description="Builds, tests and runs the Haylen engine, and creates, runs, checks and packages the apps that a developer names by their folder.")
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
 
     tools = commands.add_parser("tools", help="Download the pinned build tools.")
-    tools.add_argument("--emsdk", action="store_true", help=f'Install Emscripten {EMSDK_VERSION} into ".tools".')
-    tools.add_argument("--gradle", action="store_true", help=f'Install Gradle {GRADLE_VERSION} into ".tools".')
+    tools.add_argument("--emsdk", action="store_true", help=f"Install Emscripten {EMSDK_VERSION} into .tools.")
+    tools.add_argument("--gradle", action="store_true", help=f"Install Gradle {GRADLE_VERSION} into .tools.")
     tools.set_defaults(handler=command_tools)
 
     for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, "Build and run the engine tests on this machine.")):
@@ -3181,34 +3417,34 @@ def main() -> None:
         add_build_options(sub)
         sub.set_defaults(handler=handler)
 
-    engine = commands.add_parser("engine", help='Build the prebuilt engine artifacts that apps use, into "build/artifacts".')
-    engine.add_argument("--platform", default="all", choices=[*ARTIFACT_PLATFORMS, "all"])
-    engine.add_argument("--config", default="Release", choices=CONFIGS)
-    engine.add_argument("--jobs", type=int, default=default_jobs())
+    engine = commands.add_parser("engine", help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")
+    engine.add_argument("--platform", default="all", choices=[*ARTIFACT_PLATFORMS, "all"], help='Platform of the artifacts, "all" by default.')
+    engine.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the artifacts, "Release" by default.')
+    add_jobs_option(engine)
     engine.set_defaults(handler=command_engine)
 
     new = commands.add_parser("new", help="Create an app with the starter code and a project of every platform template, which the developer owns.")
     new.add_argument("folder", help="Folder of the new app, which must not exist or be empty.")
     new.add_argument("--name", help="Display name, from the folder name by default.")
     new.add_argument("--identifier", help='Reverse domain identifier, "com.example.<folder>" by default.')
-    new.add_argument("--orientation", default="landscape", choices=["landscape", "portrait", "any"])
+    new.add_argument("--orientation", default="landscape", choices=["landscape", "portrait", "any"], help='Orientation of the app, "landscape" by default.')
     new.set_defaults(handler=command_new)
 
     plugin = commands.add_parser("plugin", help="Add plugins to an app, remove them, list them or create a plugin.")
     actions = plugin.add_subparsers(dest="action", required=True, metavar="action")
-    add_plugin = actions.add_parser("add", help='Copy a plugin folder or a plugin repository into "plugins/" of an app and list it in "app.json".')
-    add_plugin.add_argument("plugin", help='A plugin folder, or the git repository of a plugin, such as "https://github.com/haylen-org/<plugin>.git".')
+    add_plugin = actions.add_parser("add", help='Copy a plugin folder or a plugin repository into "plugins" of an app and list it in "app.json".')
+    add_plugin.add_argument("plugin", help="A plugin folder, or the git repository of a plugin, such as https://github.com/haylen-org/<plugin>.git.")
     add_plugin.add_argument("--ref", help="Branch, tag or commit of the repository, its default branch otherwise.")
-    add_plugin.add_argument("--app", default=".", help='App folder or sample path from "samples/", the current folder by default.')
+    add_plugin.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     add_plugin.set_defaults(handler=command_plugin_add)
-    remove_plugin = actions.add_parser("remove", help='Delete a plugin from "plugins/" of an app and from its "app.json".')
+    remove_plugin = actions.add_parser("remove", help='Delete a plugin from "plugins" of an app and from its "app.json".')
     remove_plugin.add_argument("id", help="Id of the plugin.")
-    remove_plugin.add_argument("--app", default=".", help='App folder or sample path from "samples/", the current folder by default.')
+    remove_plugin.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     remove_plugin.set_defaults(handler=command_plugin_remove)
     list_plugins = actions.add_parser("list", help="List the plugins of an app with their status.")
-    list_plugins.add_argument("--app", default=".", help='App folder or sample path from "samples/", the current folder by default.')
+    list_plugins.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     list_plugins.set_defaults(handler=command_plugin_list)
-    new_plugin = actions.add_parser("new", help='Create a plugin from "templates/plugin".')
+    new_plugin = actions.add_parser("new", help="Create a plugin from templates/plugin.")
     new_plugin.add_argument("folder", help="Folder of the new plugin, named after its id, which must not exist or be empty.")
     new_plugin.add_argument("--id", help='Id of the plugin in "dash-case", the folder name by default.')
     new_plugin.set_defaults(handler=command_plugin_new)
@@ -3216,116 +3452,121 @@ def main() -> None:
     platform_project = commands.add_parser("platform", help="Create the project of a platform in an app or compare it with the template.")
     platform_actions = platform_project.add_subparsers(dest="action", required=True, metavar="action")
     add_platform = platform_actions.add_parser("add", help='Create "platform/<template>" of an app from the template of the platform.')
-    add_platform.add_argument("app", help='App folder or sample path from "samples/".')
-    add_platform.add_argument("template", choices=platform_templates())
+    add_app_argument(add_platform)
+    add_platform.add_argument("template", choices=platform_templates(), help="The platform template to copy.")
     add_platform.set_defaults(handler=command_platform_add)
     diff_platform = platform_actions.add_parser("diff", help='Show how "platform/<template>" of an app differs from the current template, without changing anything.')
-    diff_platform.add_argument("app", help='App folder or sample path from "samples/".')
-    diff_platform.add_argument("--template", required=True, choices=platform_templates())
+    add_app_argument(diff_platform)
+    diff_platform.add_argument("--template", required=True, choices=platform_templates(), help="The platform template to compare with.")
     diff_platform.set_defaults(handler=command_platform_diff)
 
-    commands.add_parser("samples", help="List the samples by category, with the command that runs each one.").set_defaults(handler=command_samples)
-
     run_app = commands.add_parser("run", help="Run an app: in the player of this machine with hot reload, or built from its project for a platform.")
-    run_app.add_argument("app", nargs="?", default=DEFAULT_APP, help=f'App folder or sample path from "samples/", "{DEFAULT_APP}" by default.')
+    add_app_argument(run_app)
     run_app.add_argument("--platform", choices=list(RUN_TARGETS), help="Build the project of the app for a platform. Without it the desktop player runs the app folder in development mode.")
     run_app.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
     run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the player or of the platform project.")
     run_app.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the platform project uses.")
-    run_app.add_argument("--jobs", type=int, default=default_jobs())
+    add_jobs_option(run_app)
     add_web_server_options(run_app, 8000)
     run_app.set_defaults(handler=command_run)
 
-    prepare = commands.add_parser("prepare", help='Write the folder "haylen/" of the project of a platform, or the site or folder of the app, and nothing else.')
-    prepare.add_argument("app", help='App folder or sample path from "samples/".')
-    prepare.add_argument("--platform", required=True, choices=list(RUN_TARGETS))
+    prepare = commands.add_parser("prepare", help='Write the folder "haylen" of the project of a platform, or the site or folder of the app, and nothing else.')
+    add_app_argument(prepare)
+    prepare.add_argument("--platform", required=True, choices=list(RUN_TARGETS), help="The platform whose project to prepare.")
     prepare.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
-    prepare.add_argument("--jobs", type=int, default=default_jobs())
+    add_jobs_option(prepare)
     prepare.set_defaults(handler=command_prepare)
 
-    xcodegen = commands.add_parser("xcodegen", help='Write "haylen/" of the Apple project of an app and generate its "App.xcodeproj" again from "project.yml".')
-    xcodegen.add_argument("app", nargs="?", default=".", help='App folder or sample path from "samples/", the current folder by default.')
+    xcodegen = commands.add_parser("xcodegen", help='Write "haylen" of the Apple project of an app and generate its "App.xcodeproj" again from "project.yml".')
+    xcodegen.add_argument("app", nargs="?", default=".", help="The app folder, the current folder by default.")
     xcodegen.add_argument("--platform", default="macos", choices=list(APPLE_RUNS), help="Apple platform whose native libraries the project gets.")
     xcodegen.add_argument("--template", action="store_true", help='Generate the "App.xcodeproj" of the Apple template of the engine instead, after a change to its "project.yml".')
     xcodegen.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
-    xcodegen.add_argument("--jobs", type=int, default=default_jobs())
+    add_jobs_option(xcodegen)
     xcodegen.set_defaults(handler=command_xcodegen)
 
     check = commands.add_parser("check", help="Check the last build of an app for a platform against what the engine and its plugins need.")
-    check.add_argument("app", help='App folder or sample path from "samples/".')
-    check.add_argument("--platform", required=True, choices=[name for name, target in RUN_TARGETS.items() if target.check])
+    add_app_argument(check)
+    check.add_argument("--platform", required=True, choices=[name for name, target in RUN_TARGETS.items() if target.check], help="The platform whose last build to check.")
     check.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the build to check.")
     check.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header that the server of the site sends, on the web.')
     check.set_defaults(handler=command_check)
 
+    android_key = commands.add_parser("android-key", help='Create the upload key of release builds, or the debug key, in "platform/android/keystore" of an app, with its certificate and the properties that sign its builds.')
+    add_app_argument(android_key)
+    kinds = android_key.add_mutually_exclusive_group()
+    kinds.add_argument("--release", dest="kind", action="store_const", const="release", help="Create the upload key that signs release builds, which is the default.")
+    kinds.add_argument("--debug", dest="kind", action="store_const", const="debug", help="Create a debug key of the project, which signs its debug builds instead of the debug key of the Android SDK.")
+    android_key.set_defaults(kind="release")
+    android_key.add_argument("--alias", default="upload", help='Alias of the key, "upload" by default.')
+    android_key.add_argument("--password", default="upload", help=f'Password of the keystore and the key, at least {ANDROID_KEY_PASSWORD_LENGTH} characters, "upload" by default.')
+    android_key.add_argument("--dname", default=ANDROID_KEY_NAME, help=f'Distinguished name of the certificate, "{ANDROID_KEY_NAME}" by default.')
+    android_key.add_argument("--force", action="store_true", help="Replace a key that the project already has.")
+    android_key.set_defaults(handler=command_android_key)
+
     run_cpp = commands.add_parser("run-cpp", help="Build and run a C++ app project, which compiles the engine through CMake.")
-    run_cpp.add_argument("project", help='CMake project folder or C++ sample path from "samples/", such as "cpp/embedding".')
-    run_cpp.add_argument("--platform", default=host_name(), choices=CPP_RUN_PLATFORMS)
+    run_cpp.add_argument("project", nargs="?", help='The folder of a CMake project that adds the engine and calls "haylen_add_app", relative to the current folder or absolute.')
+    run_cpp.add_argument("--platform", default=host_name(), choices=CPP_RUN_PLATFORMS, help="The platform to build and run on, this machine by default.")
     run_cpp.add_argument("--target", help='The "haylen_add_app" target, named like the project folder by default.')
     run_cpp.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
-    run_cpp.add_argument("--config", default="Debug", choices=CONFIGS)
+    run_cpp.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the project, "Debug" by default.')
     run_cpp.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the "haylen" Android library whose Java classes Android apps use.')
-    run_cpp.add_argument("--jobs", type=int, default=default_jobs())
+    add_jobs_option(run_cpp)
     add_web_server_options(run_cpp, 8000)
     run_cpp.set_defaults(handler=command_run_cpp)
 
     package = commands.add_parser("package", help='Zip the "app.json", "source" and "content" of an app.')
-    package.add_argument("app", help='App folder or sample path from "samples/".')
-    package.add_argument("-o", "--output", default="app.zip", help='Zip file to write, "app.zip" by default.')
+    add_app_argument(package)
+    package.add_argument("-o", "--output", default="app.zip", help="Zip file to write, app.zip in the current folder by default.")
     package.set_defaults(handler=command_package)
 
     shaders = commands.add_parser("shaders", help='Compile the shaders under "content/shaders" of an app into ".shader" files for every backend.')
-    shaders.add_argument("app", help='App folder or sample path from "samples/".')
+    add_app_argument(shaders)
     shaders.add_argument("--force", action="store_true", help="Compile every shader, including the ones that are up to date.")
     shaders.set_defaults(handler=command_shaders)
 
     serve_folder = commands.add_parser("serve", help="Serve a folder with the headers WebAssembly pages need.")
-    serve_folder.add_argument("directory")
+    serve_folder.add_argument("directory", help="The folder of the web page.")
     add_web_server_options(serve_folder, 8000)
     serve_folder.set_defaults(handler=command_serve)
 
     coverage = commands.add_parser("coverage", help="Measure engine code coverage with LLVM source-based coverage.")
-    coverage.add_argument("--jobs", type=int, default=default_jobs())
+    add_jobs_option(coverage)
     add_sanitizer_option(coverage)
     coverage.set_defaults(handler=command_coverage)
 
-    formatter = commands.add_parser("format", help="Format the C, C++ and Objective-C sources with clang-format.")
+    formatter = commands.add_parser("format", help='Format the C, C++ and Objective-C sources with "clang-format".')
     formatter.add_argument("--check", action="store_true", help="Fail instead of rewriting files.")
     formatter.set_defaults(handler=command_format)
 
-    bench = commands.add_parser("bench", help="Build and run a benchmark in Release on this machine.")
+    bench = commands.add_parser("bench", help="Build and run a benchmark of the engine in Release on this machine.")
     bench.add_argument("--suite", default="sprites", choices=["sprites", "algorithms", "procedural", "lua"], help="The sprite benchmark on the GPU, the algorithm or procedural benchmark on the CPU or the Lua bunnymark on the CPU.")
-    bench.add_argument("--jobs", type=int, default=default_jobs())
+    add_jobs_option(bench)
     bench.set_defaults(handler=command_bench)
 
-    sdk = commands.add_parser("sdk", help='Build the engine SDK and install it for "find_package(haylen)".')
-    sdk.add_argument("--platform", default=host_name(), choices=sorted(DESKTOP_PLATFORMS | WEB_PLATFORMS))
-    sdk.add_argument("--config", default="Release", choices=CONFIGS)
-    sdk.add_argument("--output", help='Install prefix, "build/sdk/haylen-<platform>-<config>" by default.')
-    sdk.add_argument("--jobs", type=int, default=default_jobs())
+    sdk = commands.add_parser("sdk", help='Build the engine SDK and install it for "find_package(haylen)", and check that other projects consume the engine.')
+    sdk.add_argument("--platform", default=host_name(), choices=sorted(DESKTOP_PLATFORMS | WEB_PLATFORMS), help="Platform of the SDK, this machine by default.")
+    sdk.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the SDK, "Release" by default.')
+    sdk.add_argument("--output", help="Install prefix, build/sdk/haylen-<platform>-<config> by default.")
+    sdk.add_argument("--check-consumers", nargs="*", choices=list(CONSUMER_MODES), metavar="mode", help='Then build a project that adds the engine in each listed way, "subdirectory", "cpm" or "package", or in every way without a list.')
+    add_jobs_option(sdk)
     sdk.set_defaults(handler=command_sdk)
 
-    embedding = commands.add_parser("embedding", help='Build the C++ embedding sample through "add_subdirectory", CPM or an installed SDK.')
-    embedding.add_argument("--mode", default="subdirectory", choices=["subdirectory", "cpm", "package"])
-    embedding.add_argument("--config", default="Debug", choices=CONFIGS)
-    embedding.add_argument("--jobs", type=int, default=default_jobs())
-    embedding.set_defaults(handler=command_embedding)
+    commands.add_parser("clean", help="Remove every build tree, the engine artifacts and the build folders of apps.").set_defaults(handler=command_clean)
+    return parser
 
-    assets = commands.add_parser("assets", help="Import the Tiny Swords pack into the Tiny Island sample.")
-    assets.add_argument("archive", help='Path to "Tiny Swords (Free Pack).zip".')
-    assets.set_defaults(handler=command_assets)
 
-    commands.add_parser("map", help="Generate the Tiny Island Tiled map.").set_defaults(handler=command_map)
-    commands.add_parser("clean", help="Remove all build trees.").set_defaults(handler=command_clean)
-
-    args = parser.parse_args()
+def main() -> None:
+    args = build_parser().parse_args()
     # The OpenSSL build that Varn adds is one step of the build, which runs as many jobs as `CMAKE_BUILD_PARALLEL_LEVEL` named when the tree was configured, so the commands never see the variable and every build keeps to its `--jobs`.
     os.environ.pop("CMAKE_BUILD_PARALLEL_LEVEL", None)
     try:
         args.handler(args)
-    except (BuildError, subprocess.CalledProcessError, OSError) as error:
-        print(f"Error: {error}", file=sys.stderr)
-        raise SystemExit(1) from error
+    except BuildError as error:
+        terminal.error(str(error), error.details)
+        raise SystemExit(1) from None
+    except KeyboardInterrupt:
+        raise SystemExit(130) from None
 
 
 if __name__ == "__main__":

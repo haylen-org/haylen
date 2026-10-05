@@ -1,4 +1,4 @@
-"""Reads and writes 8-bit RGBA PNG images, which is the only format the Tiny Swords pack uses, so the tools need nothing beyond the Python standard library."""
+"""Reads and writes 8-bit RGBA PNG images with the Python standard library alone, for the tools that draw the art of the samples."""
 
 from __future__ import annotations
 

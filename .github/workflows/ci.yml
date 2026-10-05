@@ -1,7 +1,9 @@
 name: CI
 
+# The workflow only tests: it publishes nothing, and tags and releases start no run.
 on:
   push:
+    branches: ["**"]
   pull_request:
 
 # Every commit of `main` gets a complete run of its own, while a newer push to another branch or pull request supersedes the run in progress.
@@ -51,8 +53,8 @@ jobs:
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Test
         run: python haylen.py test --config Debug
-      - name: Build the SDK and an app that finds it with "find_package"
-        run: python haylen.py embedding --mode package --config Release
+      - name: Build the SDK and a project that finds it with "find_package"
+        run: python haylen.py sdk --config Release --check-consumers package
 
   coverage:
     runs-on: macos-latest
@@ -66,10 +68,6 @@ jobs:
           path: .cache/cpm
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - run: python haylen.py coverage
-      - uses: actions/upload-artifact@v7
-        with:
-          name: coverage
-          path: build/coverage/coverage/html
 
   web:
     runs-on: ubuntu-latest
@@ -89,10 +87,6 @@ jobs:
           key: emsdk-${{ hashFiles('haylen.py') }}
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py engine --platform web
-      - uses: actions/upload-artifact@v7
-        with:
-          name: haylen-web
-          path: build/artifacts/web
 
   android:
     runs-on: ubuntu-latest
@@ -114,10 +108,6 @@ jobs:
           key: cpm-android-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Build the Android library and publish it to the local Maven repository
         run: python haylen.py engine --platform android
-      - uses: actions/upload-artifact@v7
-        with:
-          name: haylen-android
-          path: build/artifacts/android/maven
 
   apple:
     runs-on: macos-latest
@@ -133,7 +123,3 @@ jobs:
           key: cpm-apple-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Build "Haylen.xcframework"
         run: python haylen.py engine --platform apple
-      - uses: actions/upload-artifact@v7
-        with:
-          name: haylen-apple
-          path: build/artifacts/apple

@@ -1,0 +1,10 @@
+{
+    "name": "Haylen Consumer",
+    "identifier": "dev.haylen.consumer",
+    "version": "1.0.0",
+    "window": {
+        "title": "Haylen Consumer",
+        "width": 960,
+        "height": 540
+    }
+}

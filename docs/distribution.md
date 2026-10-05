@@ -24,10 +24,11 @@ python3 haylen.py run ~/apps/my-game --platform web
 | `new <folder> [--name] [--identifier] [--orientation]` | Creates an app from `templates/app` with a project of every platform template of `templates/platform` under `platform/`. |
 | `platform add <app> <template>` | Creates `platform/<template>` of an app from the template of a platform. |
 | `platform diff <app> --template` | Shows how `platform/<template>` of an app differs from the current template, without changing anything. |
-| `run [app] [--platform] [--device] [--config] [--engine-config]` | Runs an app folder or a sample, in the desktop player by default or built for a platform. |
+| `run <app> [--platform] [--device] [--config] [--engine-config]` | Runs an app, in the desktop player by default or built for a platform. |
 | `prepare <app> --platform [--engine-config]` | Writes the folder `haylen/` of the project of a platform and nothing else, or the site of the web or the folder of a Windows or Linux app. |
 | `xcodegen [app] [--platform] [--template]` | Writes `haylen/` of the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, or generates the project of the Apple template. |
 | `check <app> --platform [--config] [--coop]` | Checks the last build of an app against what the engine and its plugins need, and prints every missing requirement with the snippet that adds it. |
+| `android-key <app> [--release\|--debug] [--alias] [--password] [--dname] [--force]` | Creates the upload key of release builds, or a debug key, in `platform/android/keystore/` of an app, with its certificate and the properties that sign its builds. |
 | `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
 | `shaders <app> [--force]` | Compiles the shaders under `content/shaders/` of an app into `.shader` files. |
@@ -37,7 +38,7 @@ python3 haylen.py run ~/apps/my-game --platform web
 | `plugin list [--app]` | Lists the plugins of an app with their status. |
 | `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/`. |
 
-`app` is an app folder or the path of a sample from `samples/`, so `python3 haylen.py run games/tiny-island` and `python3 haylen.py run samples/games/tiny-island` are the same. Without an app, `run` runs Tiny Island.
+`app` is the folder of an app, relative to the current folder or absolute. A command without an app, or with a path that holds no `app.json`, stops with an error that says what an app folder is, and never runs another app in its place.
 
 ### engine
 
@@ -59,13 +60,13 @@ Copies `templates/app` into the folder with its `.gitignore`, `.editorconfig` an
 ### run
 
 ```sh
-python3 haylen.py run samples/games/tiny-island
-python3 haylen.py run games/tiny-island --platform macos
-python3 haylen.py run games/tiny-island --platform catalyst
-python3 haylen.py run games/tiny-island --platform ios-simulator --device "iPad Pro 13-inch (M5)"
-python3 haylen.py run games/tiny-island --platform tvos-simulator
-python3 haylen.py run games/tiny-island --platform android --device emulator-5554
-python3 haylen.py run games/tiny-island --platform web --coep off --open
+python3 haylen.py run ~/apps/my-game
+python3 haylen.py run ~/apps/my-game --platform macos
+python3 haylen.py run ~/apps/my-game --platform catalyst
+python3 haylen.py run ~/apps/my-game --platform ios-simulator --device "iPad Pro 13-inch (M5)"
+python3 haylen.py run ~/apps/my-game --platform tvos-simulator
+python3 haylen.py run ~/apps/my-game --platform android --device emulator-5554
+python3 haylen.py run ~/apps/my-game --platform web --coep off --open
 ```
 
 Before anything else, `run` compiles the shaders of the app whose sources changed, as [shaders](#shaders) describes. Without `--platform`, `run` builds the `haylen` player in the build tree of this machine (`build/<host>-<config>`), builds or copies the [native libraries](#native-libraries) of the app for this machine into `native/development` of the [build folder of the app](#platform-projects), and starts the player with `--dev`, `--native` and that folder when there are libraries, and the app folder. While the player runs it compiles every shader source that changes again, which the player then reloads. With `--platform` it prepares the project of the platform as [platform projects](#platform-projects) describes and then:
@@ -85,14 +86,14 @@ Before anything else, `run` compiles the shaders of the app whose sources change
 ### run-cpp
 
 ```sh
-python3 haylen.py run-cpp cpp/embedding
-python3 haylen.py run-cpp samples/cpp/embedding --platform web
-python3 haylen.py run-cpp cpp/embedding --platform ios-simulator --device "iPhone 17"
-python3 haylen.py run-cpp cpp/embedding --platform catalyst
-python3 haylen.py run-cpp cpp/embedding --platform android --device emulator-5554
+python3 haylen.py run-cpp ~/apps/my-cpp-game
+python3 haylen.py run-cpp ~/apps/my-cpp-game --platform web
+python3 haylen.py run-cpp ~/apps/my-cpp-game --platform ios-simulator --device "iPhone 17"
+python3 haylen.py run-cpp ~/apps/my-cpp-game --platform catalyst
+python3 haylen.py run-cpp ~/apps/my-cpp-game --platform android --device emulator-5554
 ```
 
-Configures a CMake project that calls `haylen_add_app`, such as `samples/cpp/embedding`, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is named after the project folder unless `--target` names another one. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes.
+Configures the CMake project in the folder it names, relative to the current folder or absolute, which adds the engine and calls `haylen_add_app`, as the [embedding guide](embedding.md) shows, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is named after the project folder unless `--target` names another one. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes.
 
 | Platform | Build | Launch |
 | --- | --- | --- |
@@ -106,7 +107,7 @@ Configures a CMake project that calls `haylen_add_app`, such as `samples/cpp/emb
 ### package
 
 ```sh
-python3 haylen.py package games/tiny-island -o build/tiny-island.zip
+python3 haylen.py package ~/apps/my-game -o dist/my-game.zip
 ```
 
 Compiles the shaders of the app whose sources changed, then zips `app.json`, `source/` and `content/` of the app, with `plugin.json` and `source/` of every plugin that `app.json` lists, and nothing else in its folder, into `app.zip` or the file `-o` names. The desktop player runs the zip with `haylen app.zip`, and a web page hands it to the runtime as described in [the web loader](#web-loader).
@@ -114,7 +115,7 @@ Compiles the shaders of the app whose sources changed, then zips `app.json`, `so
 ### shaders
 
 ```sh
-python3 haylen.py shaders tiny-island
+python3 haylen.py shaders ~/apps/my-game
 python3 haylen.py shaders ~/apps/my-game --force
 ```
 
@@ -138,15 +139,15 @@ Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. `-
 | `Access-Control-Allow-Origin` | `*` |
 | `Cache-Control` | `no-cache` |
 
-The web runtime is single-threaded, so its pages need no cross-origin isolation, and the server sends no opener policy by default: `same-origin` would put the sign-in and payment popups of plugins into a browsing context group of their own, which cuts them off from the page, as the [plugin guide](plugins.md#web-screens) explains. `--coop same-origin` together with a `--coep` policy makes a page cross-origin isolated, for pages that use `SharedArrayBuffer` or threads of their own, and `--coop same-origin-allow-popups` keeps the popups of the page linked to it. Pages that load third-party scripts, such as the Google sign-in library of Tiny Island, need `--coep credentialless` or `--coep off`, because those scripts do not send the resource policy that `require-corp` asks for. The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg` and `.png` explicitly. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding` when the browser accepts that encoding.
+The web runtime is single-threaded, so its pages need no cross-origin isolation, and the server sends no opener policy by default: `same-origin` would put the sign-in and payment popups of plugins into a browsing context group of their own, which cuts them off from the page, as the [plugin guide](plugins.md#web-screens) explains. `--coop same-origin` together with a `--coep` policy makes a page cross-origin isolated, for pages that use `SharedArrayBuffer` or threads of their own, and `--coop same-origin-allow-popups` keeps the popups of the page linked to it. Pages that load third-party scripts, such as sign-in libraries, need `--coep credentialless` or `--coep off`, because those scripts do not send the resource policy that `require-corp` asks for. The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg` and `.png` explicitly. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding` when the browser accepts that encoding.
 
 ### plugin
 
 ```sh
 python3 haylen.py plugin list
-python3 haylen.py plugin add admob --app ~/apps/my-game
+python3 haylen.py plugin add ~/plugins/camera-scanner --app ~/apps/my-game
 python3 haylen.py plugin list --app ~/apps/my-game
-python3 haylen.py plugin remove admob --app ~/apps/my-game
+python3 haylen.py plugin remove camera-scanner --app ~/apps/my-game
 python3 haylen.py plugin new ~/plugins/my-plugin
 ```
 
@@ -165,7 +166,7 @@ python3 haylen.py platform diff ~/apps/my-game --template apple
 
 ```sh
 python3 haylen.py prepare ~/apps/my-game --platform ios-simulator
-python3 haylen.py prepare games/tiny-island --platform android
+python3 haylen.py prepare ~/apps/my-game --platform android
 ```
 
 Builds the engine artifacts of the platform when they are missing or stale and writes the folder `haylen/` of the project of the platform, and nothing else, which is enough to open the project in Xcode or Android Studio and build, run or archive it there. On the web it makes the site, and on Windows and Linux the folder of the app. The native libraries of an Apple project are the ones of the platform it names.
@@ -178,6 +179,50 @@ python3 haylen.py xcodegen --template
 ```
 
 Prepares the Apple project of an app, with the native libraries of `--platform`, `macos` by default, and generates its `App.xcodeproj` again from `project.yml` with the XcodeGen that haylen.py pins, after the developer changed `project.yml`, as [generating App.xcodeproj](#generating-appxcodeproj) describes. `--template` generates the `App.xcodeproj` of the Apple template of the engine again, in a copy with the `haylen/` folder of the starter app, after a change to its `project.yml`.
+
+### android-key
+
+```sh
+python3 haylen.py android-key ~/apps/my-game
+python3 haylen.py android-key ~/apps/my-game --debug
+python3 haylen.py android-key ~/apps/my-game --alias store --password "a long secret" --dname "CN=My Company, O=My Company, C=US"
+```
+
+Creates the upload key that signs the release builds of an app, or with `--debug` a debug key of the project, which signs its debug builds in place of the debug key of the Android SDK, so every machine of a team builds with the same signature. It runs `keytool -genkeypair` for an RSA key of 2048 bits that stays valid for 10000 days in a PKCS12 keystore, with the alias of `--alias` and the password of `--password` for the keystore and the key, both `upload` by default, and the distinguished name of `--dname`, `CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR` by default. Then it exports the certificate as PEM with `keytool -exportcert -rfc`, which is the file a store asks for when it registers or resets an upload key. The password reaches `keytool` through the environment, so the printed commands never show it, and `keytool` asks for at least 6 characters. The command finds `keytool` in the JDK of `JAVA_HOME`, or else on `PATH`.
+
+The key goes into `platform/android/keystore/` of the app as `<type>.jks`, `<type>.pem` and `<type>.properties`, where the type is `release` or `debug`. An app without `platform/android/` gets the project from the template first. The command refuses to replace a key that the project has unless `--force` is given, since an app signed with another key cannot update the installed one, and the `.gitignore` of the app keeps the folder out of the repository.
+
+The app module of the Android template signs each build type with the key that `keystore/<type>.properties` describes, which names the keystore next to it:
+
+```properties
+storeFile=release.jks
+storePassword=upload
+keyAlias=upload
+keyPassword=upload
+```
+
+Continuous integration, where the folder does not exist, gives a key through Gradle properties or environment variables instead:
+
+| Gradle property | Environment variable | Value |
+| --- | --- | --- |
+| `haylen.release.storeFile` | `HAYLEN_RELEASE_STORE_FILE` | The keystore, as an absolute path or a path relative to the Android project. |
+| `haylen.release.storePassword` | `HAYLEN_RELEASE_STORE_PASSWORD` | The password of the keystore. |
+| `haylen.release.keyAlias` | `HAYLEN_RELEASE_KEY_ALIAS` | The alias of the key. |
+| `haylen.release.keyPassword` | `HAYLEN_RELEASE_KEY_PASSWORD` | The password of the key. |
+
+The debug key takes the same names with `debug`, such as `haylen.debug.storeFile` and `HAYLEN_DEBUG_STORE_FILE`. A key needs its four values, the properties file wins over the Gradle properties, and a Gradle property wins over its environment variable. A release build without an upload key stops before it compiles with a message that names both ways to add one, and a debug build without a key of the project signs with the debug key of the Android SDK. A workflow keeps the keystore as Base64 in a secret and writes it to a file before the build:
+
+```yaml
+env:
+  HAYLEN_RELEASE_STORE_FILE: ${{ runner.temp }}/release.jks
+  HAYLEN_RELEASE_STORE_PASSWORD: ${{ secrets.HAYLEN_RELEASE_STORE_PASSWORD }}
+  HAYLEN_RELEASE_KEY_ALIAS: ${{ secrets.HAYLEN_RELEASE_KEY_ALIAS }}
+  HAYLEN_RELEASE_KEY_PASSWORD: ${{ secrets.HAYLEN_RELEASE_KEY_PASSWORD }}
+steps:
+  - run: echo "${{ secrets.HAYLEN_RELEASE_KEYSTORE }}" | base64 --decode > "$HAYLEN_RELEASE_STORE_FILE"
+```
+
+The command `base64 < platform/android/keystore/release.jks` prints the text of the `HAYLEN_RELEASE_KEYSTORE` secret, and `apksigner verify --print-certs` of the build tools of the Android SDK shows the certificate that signed an APK.
 
 ## Engine artifacts
 
@@ -288,7 +333,7 @@ templates/platform/android/
   app/src/main/res/           Adaptive launcher icon with its monochrome layer and Android TV banner.
 ```
 
-The app module reads the application id, version name and code, label, screen orientation, native library and manifest placeholders from `haylen/haylen.properties` and adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version code comes from the version, with 1.2.3 becoming 1002003. The SDK levels, R8 and the debug signing of release builds are choices of the developer, while the `minSdk` of 27 is what the engine library needs. The manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` as visible defaults, which network access, the network events and `system.vibrate` need and which an app deletes when it does not use them, since the engine library declares no permission: a feature whose permission is missing logs once what is missing and does nothing or fails, as the [plugin guide](plugins.md#android-requirements) describes. The `<application>` sets `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. The manifest declares `HaylenActivity` single top, so the launcher icon brings back every screen that shows over the app, such as a purchase, with the `android.app.lib_name` meta-data set to the native library, which GameActivity loads, `haylen` for Lua apps, the Lua player of the haylen library, and the library of the app for C++ apps, whose APK leaves the Lua player out, the `LAUNCHER` and `LEANBACK_LAUNCHER` categories, the TV banner, and a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. The links and notifications of the app go to `HaylenLinkActivity`, which the `haylen-links` library of the plugins that receive them declares with their intent filters, so an app without such plugins has no exported component besides its launcher activity, and `haylen.py run` starts the app with the launcher intent, whose task the launcher icon then brings back as it is.
+The app module reads the application id, version name and code, label, screen orientation, native library and manifest placeholders from `haylen/haylen.properties` and adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version code comes from the version, with 1.2.3 becoming 1002003. The SDK levels and R8 are choices of the developer, the signing reads the keys of `keystore/` as [android-key](#android-key) describes, and the `minSdk` of 27 is what the engine library needs. The manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` as visible defaults, which network access, the network events and `system.vibrate` need and which an app deletes when it does not use them, since the engine library declares no permission: a feature whose permission is missing logs once what is missing and does nothing or fails, as the [plugin guide](plugins.md#android-requirements) describes. The `<application>` sets `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. The manifest declares `HaylenActivity` single top, so the launcher icon brings back every screen that shows over the app, such as a purchase, with the `android.app.lib_name` meta-data set to the native library, which GameActivity loads, `haylen` for Lua apps, the Lua player of the haylen library, and the library of the app for C++ apps, whose APK leaves the Lua player out, the `LAUNCHER` and `LEANBACK_LAUNCHER` categories, the TV banner, and a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. The links and notifications of the app go to `HaylenLinkActivity`, which the `haylen-links` library of the plugins that receive them declares with their intent filters, so an app without such plugins has no exported component besides its launcher activity, and `haylen.py run` starts the app with the launcher intent, whose task the launcher icon then brings back as it is.
 
 The resources are vector drawables of the Haylen brand. The adaptive launcher icon has the gradient symbol inside the safe zone of its foreground, over `ic_launcher_background`, the navy `#07112F` of the brand, and a monochrome layer with the silhouette of the symbol, which launchers tint for themed icons. The Android TV banner shows the horizontal logo with its white wordmark on the same navy.
 
@@ -336,7 +381,7 @@ The completed `Info.plist` and entitlements follow one rule: the value of the de
 The developer changes the project in `project.yml` and generates `App.xcodeproj` again with `python3 haylen.py xcodegen <app>`, which prepares `haylen/` and runs the XcodeGen that haylen.py pins. `run` generates it on its own when `project.yml` includes `haylen/project.yml` and the inputs changed since the last generation, which are `project.yml`, `haylen/project.yml`, the XcodeGen version and the files of the plugin sources, such as after the app gained a plugin, as long as `project.pbxproj` still has the hash of the last generation or is an untouched copy of the template in a project without a record. `haylen/state.json` keeps both hashes. A project whose inputs did not change builds as it is, edits made in Xcode included. When the inputs changed and `project.pbxproj` differs from the last generation, or haylen.py never generated it, such as in a fresh clone of the repository of an app, haylen.py generates the project once more in a scratch folder that links the entries of the project: when the result is the same file, haylen.py records it and goes on, and otherwise it stops without touching the project and says what to do:
 
 ```text
-Error: The project "platform/apple/App.xcodeproj" changed since haylen.py generated it from "project.yml", or haylen.py never generated it, so haylen.py leaves it as it is. Move the changes made in Xcode into "project.yml" and run "python3 haylen.py xcodegen <app>", which generates the project again.
+Error: The project platform/apple/App.xcodeproj changed since its last generation from "project.yml", or was never generated from it, so it stays as it is. Move the changes made in Xcode into "project.yml" and run "python3 haylen.py xcodegen .", which generates the project again.
 ```
 
 A `project.yml` without the include is never generated by `run`, and [check](#check) reports what its targets lack.
@@ -374,12 +419,12 @@ The folder of a Windows or Linux app, `build/apps/<app>-<hash>/<platform>/`, sta
 | Web | `config.json` of the site and the modules of the plugins. | Every plugin with a web part in `config.json`, and with `--coop same-origin`, every plugin whose web module registers screens, since that opener policy cuts popups off from the page. |
 
 ```text
-The plugin "native-demo" needs "NSCameraUsageDescription" in the Info.plist of the app, which the built app lacks.
-  Add to "platform/apple/ios/Info.plist":
+Warning: The plugin "native-demo" needs "NSCameraUsageDescription" in the "Info.plist" of the app, which the built app lacks.
+  Add to platform/apple/ios/Info.plist:
     <key>NSCameraUsageDescription</key>
     <string>The Native Demo plugin asks for the camera to show how a plugin requests a permission.</string>
-The plugin "native-demo" needs the permission "android.permission.POST_NOTIFICATIONS", which the merged manifest of the built app lacks.
-  The file "platform/android/app/src/main/AndroidManifest.xml" removes it with "tools:node="remove"". Delete that entry, or keep it, and the calls that need the permission answer "unsupported".
+Warning: The plugin "native-demo" needs the permission "android.permission.POST_NOTIFICATIONS", which the merged manifest of the built app lacks.
+  The file platform/android/app/src/main/AndroidManifest.xml removes it with the attribute "tools:node" set to "remove". Delete that entry, or keep it, and the calls that need the permission answer "unsupported".
 ```
 
 ## Privacy manifest

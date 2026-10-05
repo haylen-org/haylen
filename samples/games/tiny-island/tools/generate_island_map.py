@@ -1,6 +1,6 @@
 """Generates the Tiny Island map as Tiled JSON files that open and edit in Tiled 1.12.
 
-The island shape comes from seeded noise, so the same seed always gives the same map. The map uses the imported Tiny Swords art, so run `haylen.py assets` first.
+The island shape comes from seeded noise, so the same seed always gives the same map. The tilesets use the art in `content/tiny_swords` of the sample, which the generator needs.
 """
 
 from __future__ import annotations
@@ -349,13 +349,13 @@ def build_map(seed: int) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--package", type=Path, required=True, help="The Tiny Island package folder.")
+    parser.add_argument("--package", type=Path, default=Path(__file__).resolve().parents[1], help="The Tiny Island package folder, the sample that holds this tool by default.")
     parser.add_argument("--seed", type=int, default=20260927)
     args = parser.parse_args()
 
     maps = args.package / "content" / "maps"
     if not (args.package / "content" / "tiny_swords").is_dir():
-        raise SystemExit('The Tiny Swords art is missing. Run "haylen.py assets" with the pack first.')
+        raise SystemExit(f'The art of the tilesets is missing from "{args.package / "content" / "tiny_swords"}".')
     maps.mkdir(parents=True, exist_ok=True)
     for name, tileset in tilesets().items():
         (maps / name).write_text(json.dumps(tileset, indent=2) + "\n")

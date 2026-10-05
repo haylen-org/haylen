@@ -5,6 +5,8 @@
 /.cache/
 # The folder that haylen.py writes into each platform project on every build.
 platform/*/haylen/
+# The signing keys of the Android project with their passwords, which `haylen.py android-key` writes.
+platform/android/keystore/
 # Files of Finder and of the editors.
 .DS_Store
 .idea/
