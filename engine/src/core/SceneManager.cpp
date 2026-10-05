@@ -367,77 +367,96 @@ void SceneManager::update(const FrameClock& clock) {
     }
 }
 
-// Hooks and listeners may clear the stack or request other changes, so every step checks that its change is still the pending one after it runs them. The time of an update goes to the effect unless the change spent it waiting for its load.
+// A change whose hook or listener fails ends there, with the scenes as the failure left them, so once the app recovers from the error no step runs twice, such as a pop that would pop one scene more.
 void SceneManager::advance(float deltaSeconds) {
     float remaining = deltaSeconds;
     while (pending) {
         const std::shared_ptr<Change> change = pending;
-        switch (change->phase) {
-        case Phase::Start:
-            start(change);
-            break;
-        case Phase::Load:
-            if (!waitForLoad(change, remaining)) {
+        try {
+            if (!step(change, remaining)) {
                 return;
             }
-            if (change->blocked) {
-                remaining = 0.0F;
-            }
-            if (pending == change && change->failure) {
+        } catch (const std::exception& exception) {
+            if (pending == change) {
                 takeNext();
-                reportFailure(*change, change->from != nullptr);
                 if (change->options.completion) {
-                    change->options.completion({.outcome = Outcome::Failed, .error = change->failure});
+                    const auto* error = dynamic_cast<const lua::Error*>(&exception);
+                    change->options.completion({.outcome = Outcome::Failed, .error = error != nullptr ? *error : lua::Error(exception.what())});
                 }
-            } else if (pending == change) {
-                switchScenes(change);
             }
-            break;
-        case Phase::Cover:
-            change->elapsed += std::exchange(remaining, 0.0F);
-            if (!isFinished(*change) && getProgress(*change) < change->options.transition.effect->getSwitchProgress()) {
-                return;
-            }
-            coverScreen(change);
-            break;
-        case Phase::Hold:
-            if (!waitForLoad(change, remaining)) {
-                return;
-            }
-            if (change->blocked) {
-                remaining = 0.0F;
-            }
-            if (pending == change && change->failure) {
-                restoreScenes(change);
-            } else if (pending == change) {
-                revealScene(change);
-            }
-            break;
-        case Phase::Reveal:
-            change->elapsed += std::exchange(remaining, 0.0F);
-            if (!change->exited && (isFinished(*change) || getProgress(*change) >= change->options.transition.effect->getExitProgress())) {
-                change->exited = true;
-                exitLeaving();
-                break;
-            }
-            if (!isFinished(*change)) {
-                return;
-            }
-            finish(change);
-            break;
+            throw;
         }
     }
+}
+
+// Hooks and listeners may clear the stack or request other changes, so every step checks that its change is still the pending one after it runs them. The time of an update goes to the effect unless the change spent it waiting for its load. Returns false while the change waits for its load or its effect.
+bool SceneManager::step(const std::shared_ptr<Change>& change, float& remaining) {
+    switch (change->phase) {
+    case Phase::Start:
+        start(change);
+        return true;
+    case Phase::Load:
+        if (!waitForLoad(change, remaining)) {
+            return false;
+        }
+        if (change->blocked) {
+            remaining = 0.0F;
+        }
+        if (pending == change && change->failure) {
+            takeNext();
+            reportFailure(*change, change->from != nullptr);
+            if (change->options.completion) {
+                change->options.completion({.outcome = Outcome::Failed, .error = change->failure});
+            }
+        } else if (pending == change) {
+            switchScenes(change);
+        }
+        return true;
+    case Phase::Cover:
+        change->elapsed += std::exchange(remaining, 0.0F);
+        if (!isFinished(*change) && getProgress(*change) < change->options.transition.effect->getSwitchProgress()) {
+            return false;
+        }
+        coverScreen(change);
+        return true;
+    case Phase::Hold:
+        if (!waitForLoad(change, remaining)) {
+            return false;
+        }
+        if (change->blocked) {
+            remaining = 0.0F;
+        }
+        if (pending == change && change->failure) {
+            restoreScenes(change);
+        } else if (pending == change) {
+            revealScene(change);
+        }
+        return true;
+    case Phase::Reveal:
+        change->elapsed += std::exchange(remaining, 0.0F);
+        if (!change->exited && (isFinished(*change) || getProgress(*change) >= change->options.transition.effect->getExitProgress())) {
+            change->exited = true;
+            exitLeaving();
+            return true;
+        }
+        if (!isFinished(*change)) {
+            return false;
+        }
+        finish(change);
+        return true;
+    }
+    return true;
 }
 
 void SceneManager::start(const std::shared_ptr<Change>& change) {
     change->from = getTopShared();
     const std::shared_ptr<Scene>& scene = change->scene;
     if (scene && (find(*scene) || std::ranges::find(leaving, scene) != leaving.end())) {
-        reject(change, "The scene is already on the stack.");
+        throw lua::Error("The scene is already on the stack.");
     }
     if (const auto taken = std::ranges::find(preloaded, scene); scene && taken != preloaded.end()) {
         if (change->options.params.has_value()) {
-            reject(change, "A preloaded scene keeps the \"params\" of its preload.");
+            throw lua::Error("A preloaded scene keeps the \"params\" of its preload.");
         }
         preloaded.erase(taken);
     }
@@ -722,16 +741,6 @@ void SceneManager::finish(const std::shared_ptr<Change>& change) {
     if (change->options.completion) {
         change->options.completion(change->failure ? Result{.outcome = Outcome::Failed, .error = change->failure} : Result{});
     }
-}
-
-// A change that cannot start ends before it changed anything, so the changes queued behind it still run once the error that it raises is fixed.
-void SceneManager::reject(const std::shared_ptr<Change>& change, const std::string& message) {
-    takeNext();
-    const lua::Error error(message);
-    if (change->options.completion) {
-        change->options.completion({.outcome = Outcome::Failed, .error = error});
-    }
-    throw error;
 }
 
 void SceneManager::takeNext() noexcept {

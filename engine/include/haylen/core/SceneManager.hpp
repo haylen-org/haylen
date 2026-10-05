@@ -7,7 +7,6 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -227,6 +226,7 @@ class SceneManager final {
 
     void request(Change change);
     void advance(float deltaSeconds);
+    [[nodiscard]] bool step(const std::shared_ptr<Change>& change, float& remaining);
     void start(const std::shared_ptr<Change>& change);
     void coverScreen(const std::shared_ptr<Change>& change);
     void revealScene(const std::shared_ptr<Change>& change);
@@ -236,7 +236,6 @@ class SceneManager final {
 
     // Ends the pending change and makes the next queued change pending.
     void takeNext() noexcept;
-    [[noreturn]] void reject(const std::shared_ptr<Change>& change, const std::string& message);
     void reportFailure(const Change& change, bool currentKept);
 
     // Moves time on for the load of the change and its loading view, and returns whether the change may go on.

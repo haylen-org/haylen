@@ -683,6 +683,39 @@ TEST(SceneManagerTest, QueuesChangesInRequestOrder) {
     EXPECT_EQ(scenes.getTop(), first.get());
 }
 
+// A change whose hook fails ends there, so once the app recovers no step runs again and pops one scene more.
+TEST(SceneManagerTest, ChangesWhoseHookFailsEndWhereTheyFailed) {
+    std::vector<std::string> log;
+    test::EngineFixture fixture;
+    SceneManager& scenes = fixture.engine().getScenes();
+    auto menu = std::make_shared<test::RecordingScene>("menu", log);
+    auto pause = std::make_shared<test::RecordingScene>("pause", log);
+    // clang-format off
+    pause->onHook = [](const std::string& entry) {
+        if (entry == "pause:exit") {
+            throw lua::Error("the exit broke");
+        }
+    };
+    // clang-format on
+    std::optional<SceneManager::Result> popped;
+    scenes.push(menu);
+    scenes.push(pause);
+    fixture.frames(1);
+    scenes.pop(SceneManager::Transition::fade(0.2F), [&](const SceneManager::Result& result) { popped = result; });
+    fixture.frames(10, 0.05);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_STREQ(fixture.engine().getError()->what(), "the exit broke");
+    ASSERT_TRUE(popped.has_value());
+    EXPECT_EQ(popped->outcome, SceneManager::Outcome::Failed);
+
+    fixture.engine().recover();
+    fixture.frames(10, 0.05);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_FALSE(scenes.isTransitioning());
+    EXPECT_EQ(scenes.getTop(), menu.get());
+    EXPECT_EQ(std::count(log.begin(), log.end(), "menu:exit"), 0);
+}
+
 TEST(SceneManagerTest, ChangesThatCannotStartFailWithoutHoldingTheQueue) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
