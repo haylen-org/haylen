@@ -1,4 +1,4 @@
--- The local server of the Varn tests: one Varn HTTP app on 127.0.0.1 that answers JSON requests, streams server-sent events and a download, and echoes WebSocket messages, so the network tests never reach the internet. Varn gives a server no way to stop, so it runs until the app stops, and the first test that needs it starts it for every other.
+-- The local server of the Varn and network tests: one Varn HTTP app on 127.0.0.1 that answers JSON requests, measures uploads, streams server-sent events and a download, and echoes WebSocket messages, so these tests never reach the internet. Varn gives a server no way to stop, so it runs until the app stops, and the first test that needs it starts it for every other.
 local async = require('async')
 local http = require('http')
 
@@ -61,11 +61,20 @@ function localServer.start()
         ctx:type('application/octet-stream'):send(localServer.download)
     end)
 
+    app:post('/upload', function(ctx)
+        local body = ctx.req.body
+        ctx:json({received = #body, intact = body == string.rep('u', #body)})
+    end)
+
     app:ws('/echo', {
         open = function(conn)
             conn:send('Welcome.')
         end,
         message = function(conn, data)
+            if data == '/drop' then
+                conn:close()
+                return
+            end
             local news = data:match('^/broadcast (.+)$')
             if news then
                 app:wsBroadcast('/echo', news)
