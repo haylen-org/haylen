@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/coin_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "loopRandomStart",
+    "frameRate": 12,
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 12}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [1.0, 1.4],
+    "speed": [300, 520],
+    "direction": -1.5708,
+    "spread": 1.4,
+    "gravity": [0, 1400],
+    "collision": {"type": "floor", "y": 40, "bounce": 0.5, "friction": 0.4, "result": "bounce"},
+    "startSize": [22, 26],
+    "endSize": [22, 26],
+    "endSizeScale": 1,
+    "colors": ["#FFFFFFFF", "#FFFFFFFF", "#00FFFFFF"],
+    "colorTimes": [0, 0.85, 1]
+}

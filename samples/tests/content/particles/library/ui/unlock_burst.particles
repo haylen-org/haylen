@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/star_5point.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 12}],
+    "duration": 0.05,
+    "maxParticles": 12,
+    "lifetime": [0.6, 0.9],
+    "speed": [200, 360],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "gravity": [0, 500],
+    "damping": 1.5,
+    "startSize": 4,
+    "endSize": 20,
+    "sizeCurve": {"points": [0, 1.2, 1, 0.5]},
+    "rotation": [0, 6.2832],
+    "spin": [-5, 5],
+    "colors": ["#FFFFE36E", "#FFFFE36E", "#00FFE36E"]
+}

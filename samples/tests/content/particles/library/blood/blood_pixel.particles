@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/pixel_square.png",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 12}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [0.3, 0.6],
+    "speed": [150, 300],
+    "direction": -1.5708,
+    "spread": 2.2,
+    "gravity": [0, 1000],
+    "collision": {"type": "floor", "y": 40, "result": "stick"},
+    "startSize": 8,
+    "endSize": 8,
+    "colors": ["#FFE8452C", "#FF8A2342"],
+    "colorBlend": "steps",
+    "pixelSnap": 4
+}

@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 40,
+    "maxParticles": 48,
+    "lifetime": [0.6, 0.9],
+    "speed": 120,
+    "directionMode": "tangent",
+    "spread": 0,
+    "radialAcceleration": -180,
+    "tangentialAcceleration": 0,
+    "startSize": [4, 6],
+    "endSize": 1,
+    "colors": ["#00C0F0FF", "#FFC0F0FF", "#00C0F0FF"],
+    "shape": "ellipse",
+    "shapeSize": [80, 0],
+    "localSpace": true,
+    "blend": "additive"
+}

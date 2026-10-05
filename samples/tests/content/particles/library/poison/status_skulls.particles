@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/skull.png",
+    "filter": "linear",
+    "rate": 2,
+    "maxParticles": 4,
+    "lifetime": [1, 1.4],
+    "speed": [30, 50],
+    "direction": -1.5708,
+    "spread": 0.3,
+    "startSize": 14,
+    "endSize": 18,
+    "sizeCurve": "backOut",
+    "colors": ["#0080E050", "#FF80E050", "#0080E050"],
+    "colorTimes": [0, 0.2, 1],
+    "localSpace": true
+}

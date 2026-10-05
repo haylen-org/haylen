@@ -1,0 +1,23 @@
+{
+    "texture": "../textures/droplet.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 40}],
+    "duration": 0.05,
+    "maxParticles": 48,
+    "lifetime": [0.5, 0.9],
+    "speed": [300, 600],
+    "direction": -1.5708,
+    "spread": 1,
+    "gravity": [0, 1400],
+    "bounds": [-400, -800, 800, 800],
+    "boundsMode": "kill",
+    "startSize": [8, 14],
+    "endSize": [4, 8],
+    "rotation": -1.5708,
+    "alignToVelocity": true,
+    "colors": ["#E0E8F8FF", "#A0B0D8F0", "#00B0D8F0"],
+    "shape": "rectangle",
+    "shapeSize": [30, 2],
+    "subEmitters": [{"effect": "../water/ripple_ring.particles", "trigger": "death", "probability": 0.2, "count": 1}]
+}

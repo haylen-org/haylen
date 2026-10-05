@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 10,
+    "prewarm": 10,
+    "maxParticles": 96,
+    "lifetime": [5, 8],
+    "speed": [5, 20],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "turbulence": {"strength": 20, "frequency": 0.01, "speed": 0.3},
+    "boundsMode": "wrap",
+    "startSize": [3, 5],
+    "endSize": [3, 5],
+    "colors": ["#00FFF0A0", "#C0FFF0A0", "#00FFF0A0"],
+    "shape": "rectangle",
+    "shapeSize": [900, 500],
+    "blend": "additive"
+}

@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/coin_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "loop",
+    "frameRate": 12,
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 10}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [0.8, 1.0],
+    "speed": [200, 400],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 2,
+    "attractors": [{"space": "world", "strength": 2400, "radius": 4000, "killRadius": 16}],
+    "startSize": 24,
+    "endSize": 16,
+    "colors": ["#FFFFFFFF"]
+}

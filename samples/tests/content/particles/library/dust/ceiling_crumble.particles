@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/debris_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 6,
+    "maxParticles": 32,
+    "lifetime": [1.0, 1.4],
+    "speed": [0, 30],
+    "direction": 1.5708,
+    "spread": 0.4,
+    "gravity": [0, 900],
+    "collision": {"type": "floor", "y": 500, "result": "die"},
+    "startSize": [4, 8],
+    "endSize": [4, 8],
+    "rotation": [0, 6.2832],
+    "spin": [-6, 6],
+    "colors": ["#FF8A8078"],
+    "shape": "rectangle",
+    "shapeSize": [120, 2],
+    "subEmitters": [{"effect": "../dust/footstep_dust.particles", "trigger": "collision", "count": 2, "overrides": {"startSize": [6, 10], "endSize": [16, 24]}}]
+}

@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/star_4point.png",
+    "filter": "linear",
+    "rate": 2,
+    "prewarm": 10,
+    "maxParticles": 32,
+    "lifetime": [2, 4],
+    "speed": 0,
+    "startSize": [4, 10],
+    "endSize": [4, 10],
+    "endSizeScale": 1,
+    "colors": ["#00FFFFFF", "#FFFFFFFF", "#00FFFFFF"],
+    "shape": "rectangle",
+    "shapeSize": [960, 300],
+    "blend": "additive",
+    "unshaded": true
+}

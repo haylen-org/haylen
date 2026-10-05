@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 1}, {"time": 0.12, "count": 1}],
+    "duration": 0.15,
+    "maxParticles": 2,
+    "lifetime": 0.12,
+    "speed": 0,
+    "startSize": 1600,
+    "endSize": 1800,
+    "colors": ["#C0F0F4FF", "#00C0D0FF"],
+    "light": {"type": "directional", "intensity": 2, "fade": "count"},
+    "blend": "additive",
+    "unshaded": true
+}

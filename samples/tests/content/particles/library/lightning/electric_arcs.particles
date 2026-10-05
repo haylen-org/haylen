@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/bolt_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 12,
+    "maxParticles": 8,
+    "lifetime": [0.08, 0.15],
+    "speed": 0,
+    "startSize": [40, 64],
+    "endSize": [40, 64],
+    "rotation": [0, 6.2832],
+    "colors": ["#FFFFFFFF", "#FFA0E0FF"],
+    "shape": "circle",
+    "shapeSize": [30, 0],
+    "light": {"radius": 200, "color": "#FFA0E0FF", "flicker": {"speed": 30, "amount": 0.6}},
+    "blend": "additive",
+    "unshaded": true
+}

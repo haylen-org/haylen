@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/flash_burst.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 1}],
+    "duration": 0.05,
+    "maxParticles": 1,
+    "lifetime": 0.06,
+    "speed": 0,
+    "startSize": 60,
+    "endSize": 80,
+    "rotation": [0, 6.2832],
+    "colors": ["#FFFFFFFF", "#0040C0FF"],
+    "light": {"radius": 180, "color": "#FF40C0FF", "fade": "count"},
+    "blend": "additive"
+}

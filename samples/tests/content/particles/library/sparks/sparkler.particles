@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 220,
+    "maxParticles": 256,
+    "lifetime": [0.15, 0.35],
+    "speed": [120, 260],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "gravity": [0, 200],
+    "damping": 2,
+    "startSize": [3, 5],
+    "endSize": 0,
+    "stretch": 0.02,
+    "alignToVelocity": true,
+    "colors": ["#FFFFFFFF", "#FFFFF0B0", "#00FFC060"],
+    "shape": "circle",
+    "shapeSize": [4, 0],
+    "light": {"radius": 160, "flicker": {"speed": 25, "amount": 0.3}},
+    "blend": "additive"
+}

@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/rain_streak.png",
+    "filter": "linear",
+    "rate": 700,
+    "maxParticles": 2048,
+    "lifetime": 0.8,
+    "speed": [1200, 1450],
+    "direction": 1.7,
+    "spread": 0.04,
+    "bounds": [-1400, 0, 2800, 1100],
+    "boundsMode": "kill",
+    "startSize": [40, 56],
+    "endSize": [40, 56],
+    "endSizeScale": 1,
+    "stretch": 0.02,
+    "rotation": -1.5708,
+    "alignToVelocity": true,
+    "colors": ["#90A8C0D8"],
+    "shape": "rectangle",
+    "shapeSize": [1300, 10],
+    "subEmitters": [{"effect": "../weather/rain_splash.particles", "trigger": "death", "count": [2, 4], "probability": 0.5, "overrides": {"shape": "point"}}]
+}

@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/sparkle_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 30}],
+    "duration": 0.05,
+    "maxParticles": 32,
+    "lifetime": [0.4, 0.8],
+    "speed": [200, 400],
+    "direction": -1.5708,
+    "directionMode": "outward",
+    "spread": 6.2832,
+    "damping": 3,
+    "startSize": [14, 22],
+    "endSize": [14, 22],
+    "endSizeScale": 1,
+    "colors": ["#FFFFFFFF", "#FFE0A0FF", "#00A060FF"],
+    "shape": "ring",
+    "shapeSize": [40, 0],
+    "blend": "additive"
+}

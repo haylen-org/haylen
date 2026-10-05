@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/plus_sign.png",
+    "filter": "linear",
+    "rate": 10,
+    "maxParticles": 16,
+    "lifetime": [0.8, 1.2],
+    "speed": [40, 80],
+    "direction": -1.5708,
+    "spread": 0.3,
+    "startSize": [14, 20],
+    "endSize": [10, 14],
+    "colors": ["#00A0FF90", "#FFA0FF90", "#0060E070"],
+    "colorTimes": [0, 0.2, 1],
+    "shape": "ellipse",
+    "shapeSize": [40, 12],
+    "localSpace": true,
+    "blend": "additive",
+    "emission": 1
+}

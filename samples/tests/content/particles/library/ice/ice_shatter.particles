@@ -1,0 +1,23 @@
+{
+    "texture": "../textures/shard.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 16}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [0.6, 1.0],
+    "speed": [200, 450],
+    "direction": -1.5708,
+    "spread": 3,
+    "gravity": [0, 1200],
+    "damping": 0.5,
+    "collision": {"type": "floor", "y": 60, "bounce": 0.3, "result": "bounce"},
+    "startSize": [8, 16],
+    "endSize": [6, 12],
+    "endSizeScale": 0.8,
+    "rotation": [0, 6.2832],
+    "spin": [-10, 10],
+    "colors": ["#FFE0F8FF", "#FFB0E0FF", "#00B0E0FF"],
+    "shape": "circle",
+    "shapeSize": [16, 0]
+}

@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/sparkle_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "loopRandomStart",
+    "frameRate": 10,
+    "rate": 6,
+    "maxParticles": 16,
+    "lifetime": [0.8, 1.2],
+    "speed": [20, 40],
+    "direction": -1.5708,
+    "spread": 0.4,
+    "startSize": [12, 16],
+    "endSize": [12, 16],
+    "colors": ["#FFE0FFC0", "#0080FF80"],
+    "shape": "rectangle",
+    "shapeSize": [30, 40],
+    "localSpace": true,
+    "blend": "additive",
+    "emission": 1
+}

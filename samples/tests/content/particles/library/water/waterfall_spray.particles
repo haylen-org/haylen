@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 80,
+    "maxParticles": 128,
+    "lifetime": [0.4, 0.8],
+    "speed": [150, 300],
+    "direction": -1.5708,
+    "spread": 1.8,
+    "gravity": [0, 800],
+    "boundsMode": "kill",
+    "startSize": [6, 10],
+    "endSize": [2, 4],
+    "colors": ["#E0F0F8FF", "#00F0F8FF"],
+    "shape": "rectangle",
+    "shapeSize": [120, 4]
+}

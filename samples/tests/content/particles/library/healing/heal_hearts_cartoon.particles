@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/heart.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 6}],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [0.8, 1.0],
+    "speed": [80, 140],
+    "direction": -1.5708,
+    "spread": 1.4,
+    "gravity": [0, -40],
+    "damping": 2,
+    "startSize": 0,
+    "endSize": 22,
+    "sizeCurve": {"curve": "backOut", "overshoot": 3},
+    "colors": ["#FFFF5A8C", "#FFFF5A8C", "#00FF5A8C"],
+    "colorTimes": [0, 0.75, 1]
+}

@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/feather.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 8}],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [1.5, 2.2],
+    "speed": [150, 280],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "gravity": [0, 80],
+    "damping": 3,
+    "turbulence": {"strength": 50, "frequency": 0.02, "speed": 1},
+    "startSize": [14, 20],
+    "endSize": [14, 20],
+    "rotation": [0, 6.2832],
+    "spin": [-3, 3],
+    "colors": ["#FFFFFFFF", "#FFFFFFFF", "#00FFFFFF"],
+    "tints": ["#FFFFFFFF", "#FFFFF0D0", "#FFE0E8FF"]
+}

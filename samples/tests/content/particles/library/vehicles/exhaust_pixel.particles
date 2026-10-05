@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/pixel_smoke_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 6,
+    "maxParticles": 12,
+    "lifetime": [0.5, 0.7],
+    "speed": [30, 50],
+    "direction": 3.1416,
+    "spread": 0.4,
+    "gravity": [0, -20],
+    "startSize": 64,
+    "endSize": 64,
+    "colors": ["#FFFFFFFF"],
+    "pixelSnap": 4
+}

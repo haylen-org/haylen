@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/droplet.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 30}],
+    "duration": 0.05,
+    "maxParticles": 32,
+    "lifetime": [0.3, 0.6],
+    "speed": [150, 350],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "gravity": [0, 900],
+    "collision": {"type": "floor", "y": 60, "result": "stick"},
+    "startSize": [4, 9],
+    "endSize": [2, 4],
+    "rotation": -1.5708,
+    "alignToVelocity": true,
+    "colors": ["#FFA01020", "#FF700A14", "#00500810"]
+}

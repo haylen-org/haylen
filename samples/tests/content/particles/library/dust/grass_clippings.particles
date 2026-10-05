@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/leaf_sheet.png",
+    "filter": "linear",
+    "frames": [[0, 0, 64, 64]],
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 12}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [0.6, 1.0],
+    "speed": [120, 240],
+    "direction": -1.5708,
+    "spread": 1.8,
+    "gravity": [0, 500],
+    "damping": 1.5,
+    "turbulence": {"strength": 40, "frequency": 0.02, "speed": 1},
+    "startSize": [8, 12],
+    "endSize": [8, 12],
+    "rotation": [0, 6.2832],
+    "spin": [-8, 8],
+    "colors": ["#FF6CBF4A", "#FF4E9A36", "#004E9A36"],
+    "tints": ["#FFFFFFFF", "#FFC8FFB0", "#FFA0D890"]
+}

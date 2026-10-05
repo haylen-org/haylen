@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 16}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [1.0, 1.4],
+    "speed": [100, 250],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 3,
+    "attractors": [{"space": "world", "strength": 1600, "radius": 2000, "killRadius": 16}],
+    "startSize": [10, 14],
+    "endSize": [10, 14],
+    "colors": ["#FFB0FF60", "#FF80FF40"],
+    "particleLights": {"radius": 24, "intensity": 0.4, "max": 16},
+    "blend": "additive",
+    "emission": 1
+}

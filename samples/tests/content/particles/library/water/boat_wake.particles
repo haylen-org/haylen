@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 40,
+    "rateOverDistance": 0.3,
+    "maxParticles": 96,
+    "lifetime": [1.2, 1.8],
+    "speed": [20, 60],
+    "direction": 3.1416,
+    "spread": 1.2,
+    "inheritVelocity": -0.3,
+    "damping": 1,
+    "startSize": [10, 16],
+    "endSize": [30, 40],
+    "colors": ["#C0FFFFFF", "#60F0F8FF", "#00F0F8FF"],
+    "shape": "rectangle",
+    "shapeSize": [6, 20]
+}

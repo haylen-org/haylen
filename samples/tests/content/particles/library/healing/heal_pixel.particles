@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/pixel_square.png",
+    "rate": 12,
+    "maxParticles": 16,
+    "lifetime": [0.6, 0.9],
+    "speed": [30, 60],
+    "direction": -1.5708,
+    "spread": 0.2,
+    "startSize": 8,
+    "endSize": 8,
+    "colors": ["#FFFFF8E0", "#FF52D273", "#FF2E8B57"],
+    "colorBlend": "steps",
+    "shape": "rectangle",
+    "shapeSize": [24, 4],
+    "localSpace": true,
+    "pixelSnap": 4
+}

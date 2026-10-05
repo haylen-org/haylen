@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/droplet.png",
+    "filter": "linear",
+    "rate": 0.5,
+    "maxParticles": 4,
+    "lifetime": 0.9,
+    "speed": 0,
+    "direction": 1.5708,
+    "gravity": [0, 800],
+    "collision": {"type": "floor", "y": 320, "result": "die"},
+    "startSize": [4, 6],
+    "endSize": [4, 6],
+    "endSizeScale": 1,
+    "colors": ["#E0C8E0F0"],
+    "subEmitters": [{"effect": "../water/splash_small.particles", "trigger": "death", "count": 5}]
+}

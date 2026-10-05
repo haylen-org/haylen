@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/debris_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 10}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [0.4, 0.7],
+    "speed": [150, 280],
+    "direction": -1.5708,
+    "spread": 2.4,
+    "gravity": [0, 1100],
+    "collision": {"type": "floor", "y": 40, "bounce": 0.2, "result": "stick"},
+    "startSize": [6, 10],
+    "endSize": [5, 8],
+    "rotation": [0, 6.2832],
+    "spin": [-10, 10],
+    "colors": ["#FFC98B4F", "#00996033"]
+}

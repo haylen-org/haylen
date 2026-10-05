@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/pixel_bolt_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 8,
+    "maxParticles": 4,
+    "lifetime": [0.1, 0.2],
+    "speed": 0,
+    "startSize": 64,
+    "endSize": 64,
+    "rotation": [0, 6.2832],
+    "rotationStep": 1.5708,
+    "colors": ["#FFFFFFFF"],
+    "shape": "circle",
+    "shapeSize": [24, 0],
+    "pixelSnap": 4
+}

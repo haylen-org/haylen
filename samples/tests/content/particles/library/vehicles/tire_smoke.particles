@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/smoke_puff.png",
+    "filter": "linear",
+    "rate": 50,
+    "rateOverDistance": 0.15,
+    "maxParticles": 128,
+    "lifetime": [1.2, 1.8],
+    "speed": [20, 60],
+    "direction": -1.5708,
+    "spread": 2,
+    "gravity": [0, -20],
+    "damping": 1.2,
+    "startSize": [20, 30],
+    "endSize": [100, 140],
+    "rotation": [0, 6.2832],
+    "spin": [-0.6, 0.6],
+    "colors": ["#B0E0E0E0", "#60D0D0D0", "#00C0C0C0"],
+    "shape": "rectangle",
+    "shapeSize": [10, 4],
+    "particleOrder": "newestFirst"
+}

@@ -1,0 +1,8 @@
+{
+    "emitters": [
+        {"name": "red", "effect": "../celebration/firework_burst.particles", "offset": [-320, -180], "overrides": {"colors": ["#FFFFFFFF", "#FFFF6060", "#00C02000"]}},
+        {"name": "willow", "effect": "../celebration/firework_willow.particles", "offset": [260, -260], "delay": 0.6},
+        {"name": "blue", "effect": "../celebration/firework_burst.particles", "offset": [0, -340], "delay": 1.2, "overrides": {"colors": ["#FFFFFFFF", "#FF60A0FF", "#002040C0"]}},
+        {"name": "crackle", "effect": "../celebration/firework_crackle.particles", "offset": [0, -340], "delay": 1.2}
+    ]
+}

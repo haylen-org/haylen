@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/snowflake.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 60}],
+    "duration": 0.05,
+    "maxParticles": 64,
+    "lifetime": [0.5, 0.7],
+    "speed": [500, 560],
+    "direction": -1.5708,
+    "directionMode": "outward",
+    "spread": 0,
+    "damping": 3,
+    "startSize": [20, 28],
+    "endSize": [6, 10],
+    "rotation": [0, 6.2832],
+    "spin": [-3, 3],
+    "colors": ["#FFFFFFFF", "#C0A0E0FF", "#0060A0FF"],
+    "shape": "ring",
+    "shapeSize": [10, 0],
+    "blend": "additive"
+}

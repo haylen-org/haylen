@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/sparkle_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 2, "cycles": 3, "interval": 0.6}],
+    "duration": 1.8,
+    "loop": true,
+    "maxParticles": 8,
+    "lifetime": [0.4, 0.6],
+    "speed": 0,
+    "startSize": 14,
+    "endSize": 14,
+    "colors": ["#FFFFFFFF"],
+    "shape": "circle",
+    "shapeSize": [18, 0],
+    "localSpace": true,
+    "blend": "additive"
+}

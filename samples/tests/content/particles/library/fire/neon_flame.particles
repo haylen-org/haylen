@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/flame_soft.png",
+    "filter": "linear",
+    "rate": 70,
+    "maxParticles": 96,
+    "lifetime": [0.4, 0.7],
+    "speed": [90, 150],
+    "direction": -1.5708,
+    "spread": 0.3,
+    "gravity": [0, -120],
+    "startSize": [36, 52],
+    "endSize": [4, 8],
+    "colors": ["#FFFFFFFF", "#FF40F0FF", "#C0FF30C0", "#00601080"],
+    "shape": "circle",
+    "shapeSize": [14, 0],
+    "blend": "additive",
+    "unshaded": true
+}

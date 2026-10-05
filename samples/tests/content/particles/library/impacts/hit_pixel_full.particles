@@ -1,0 +1,6 @@
+{
+    "emitters": [
+        {"name": "ring", "effect": "../impacts/hit_pixel.particles"},
+        {"name": "sparks", "effect": "../sparks/spark_pixel.particles"}
+    ]
+}

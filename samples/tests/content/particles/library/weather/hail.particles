@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 120,
+    "maxParticles": 512,
+    "lifetime": 0.9,
+    "speed": [1000, 1200],
+    "direction": 1.62,
+    "spread": 0.05,
+    "collision": {"type": "floor", "y": 900, "bounce": 0.4, "friction": 0.3, "result": "bounce", "lifeLoss": 0.5},
+    "startSize": [8, 12],
+    "endSize": [8, 12],
+    "endSizeScale": 1,
+    "colors": ["#FFE8F0F8"],
+    "shape": "rectangle",
+    "shapeSize": [1100, 10]
+}

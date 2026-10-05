@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/pixel_leaf_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "loopRandomStart",
+    "frameRate": 4,
+    "rate": 2,
+    "prewarm": 8,
+    "maxParticles": 24,
+    "lifetime": [6, 8],
+    "speed": [30, 50],
+    "direction": 1.5708,
+    "spread": 0.6,
+    "gravity": [10, 0],
+    "startSize": 32,
+    "endSize": 32,
+    "colors": ["#FFFF9A2E"],
+    "tints": ["#FFFF9A2E", "#FFE8452C", "#FFFFD84A"],
+    "shape": "rectangle",
+    "shapeSize": [900, 8],
+    "pixelSnap": 4
+}

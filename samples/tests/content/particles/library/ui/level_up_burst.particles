@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 40}],
+    "duration": 0.05,
+    "maxParticles": 48,
+    "lifetime": [0.6, 1.0],
+    "speed": [200, 500],
+    "direction": -1.5708,
+    "directionMode": "outward",
+    "spread": 6.2832,
+    "damping": 3,
+    "startSize": [10, 16],
+    "endSize": 2,
+    "colors": ["#FFFFFFFF", "#FFFFE08A", "#00FFA030"],
+    "shape": "ring",
+    "subEmitters": [{"effect": "../rewards/pickup_sparkle.particles", "trigger": "death", "probability": 0.15, "count": 2}],
+    "blend": "additive"
+}

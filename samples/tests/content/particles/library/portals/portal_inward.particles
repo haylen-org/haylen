@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/spark_streak.png",
+    "filter": "linear",
+    "rate": 50,
+    "maxParticles": 64,
+    "lifetime": [0.8, 1.0],
+    "speed": 0,
+    "radialAcceleration": [-500, -400],
+    "attractors": [{"x": 0, "y": 0, "strength": 700, "radius": 300, "killRadius": 20}],
+    "startSize": [8, 12],
+    "endSize": 2,
+    "stretch": 0.02,
+    "alignToVelocity": true,
+    "colors": ["#00C0A0FF", "#C0E0C0FF", "#FFFFFFFF"],
+    "shape": "ring",
+    "shapeSize": [260, 0],
+    "localSpace": true,
+    "blend": "additive"
+}

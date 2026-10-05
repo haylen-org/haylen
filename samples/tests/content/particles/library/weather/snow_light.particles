@@ -1,0 +1,23 @@
+{
+    "texture": "../textures/snowflake.png",
+    "filter": "linear",
+    "rate": 30,
+    "prewarm": 10,
+    "maxParticles": 512,
+    "lifetime": [9, 11],
+    "speed": [50, 90],
+    "direction": 1.5708,
+    "spread": 0.5,
+    "gravity": [15, 4],
+    "turbulence": {"strength": 30, "frequency": 0.005, "speed": 0.3},
+    "bounds": [-1100, 0, 2200, 1200],
+    "boundsMode": "wrap",
+    "startSize": [10, 20],
+    "endSize": [10, 20],
+    "endSizeScale": 1,
+    "rotation": [0, 6.2832],
+    "spin": [-1.5, 1.5],
+    "colors": ["#F0F4F8FF"],
+    "shape": "rectangle",
+    "shapeSize": [1100, 10]
+}

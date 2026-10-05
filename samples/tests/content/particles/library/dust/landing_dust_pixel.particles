@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/pixel_smoke_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 4}],
+    "duration": 0.05,
+    "maxParticles": 4,
+    "lifetime": [0.3, 0.45],
+    "speed": [60, 100],
+    "direction": -1.5708,
+    "spread": 3,
+    "damping": 6,
+    "startSize": 64,
+    "endSize": 64,
+    "colors": ["#FFFFFFFF"],
+    "shape": "rectangle",
+    "shapeSize": [12, 0],
+    "pixelSnap": 4
+}

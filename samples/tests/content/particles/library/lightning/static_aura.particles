@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/bolt_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 6,
+    "maxParticles": 4,
+    "lifetime": [0.06, 0.12],
+    "speed": 0,
+    "startSize": [20, 32],
+    "endSize": [20, 32],
+    "rotation": [0, 6.2832],
+    "colors": ["#FFE0F4FF", "#FF80C0FF"],
+    "shape": "circle",
+    "shapeSize": [50, 0],
+    "localSpace": true,
+    "blend": "additive"
+}

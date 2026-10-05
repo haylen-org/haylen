@@ -1,0 +1,23 @@
+{
+    "texture": "../textures/fireball_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 160,
+    "maxParticles": 256,
+    "lifetime": [0.35, 0.6],
+    "speed": [500, 700],
+    "direction": 0,
+    "spread": 0.14,
+    "inheritVelocity": 1,
+    "gravity": [0, -200],
+    "damping": 2.2,
+    "startSize": [12, 20],
+    "endSize": [80, 120],
+    "rotation": [0, 6.2832],
+    "spin": [-2, 2],
+    "colors": ["#FFFFFFF0", "#FFFFC040", "#E0FF6010", "#80A02000", "#00301008"],
+    "shape": "cone",
+    "shapeSize": [10, 0],
+    "subEmitters": [{"effect": "../smoke/smoke_wisps.particles", "trigger": "death", "count": 1, "probability": 0.2}],
+    "blend": "additive"
+}

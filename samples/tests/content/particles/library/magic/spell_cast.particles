@@ -1,0 +1,7 @@
+{
+    "emitters": [
+        {"name": "runes", "effect": "../magic/spell_circle_runes.particles", "overrides": {"duration": 1.2}},
+        {"name": "charge", "effect": "../magic/spell_charge.particles", "overrides": {"duration": 0.6}},
+        {"name": "burst", "effect": "../magic/magic_burst.particles", "delay": 0.6}
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 260,
+    "maxParticles": 384,
+    "lifetime": [0.8, 1.1],
+    "speed": [650, 750],
+    "direction": -0.6,
+    "spread": 0.06,
+    "gravity": [0, 1100],
+    "startSize": [6, 10],
+    "endSize": [12, 18],
+    "colors": ["#E0D8ECFF", "#A0B0D8F0", "#00B0D8F0"],
+    "subEmitters": [{"effect": "../water/splash_small.particles", "trigger": "collision", "probability": 0.1, "count": 3}]
+}

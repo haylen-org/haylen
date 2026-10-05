@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/star_4point.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 8}],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [0.3, 0.5],
+    "speed": [60, 140],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 4,
+    "startSize": [16, 22],
+    "endSize": 0,
+    "rotation": [0, 0.8],
+    "colors": ["#FFFFFFFF", "#FFFFE36E", "#00FFC040"],
+    "blend": "additive"
+}

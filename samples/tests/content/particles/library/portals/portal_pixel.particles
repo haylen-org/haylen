@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/pixel_dot_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 30,
+    "maxParticles": 32,
+    "lifetime": [0.6, 0.9],
+    "speed": 0,
+    "radialAcceleration": -80,
+    "tangentialAcceleration": 400,
+    "startSize": 32,
+    "endSize": 32,
+    "colors": ["#FFB45AF2", "#FFFF7BD5", "#FFFFFFFF"],
+    "colorBlend": "steps",
+    "shape": "ring",
+    "shapeSize": [64, 0],
+    "localSpace": true,
+    "pixelSnap": 4
+}

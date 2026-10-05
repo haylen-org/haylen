@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/pixel_bubble.png",
+    "filter": "nearest",
+    "rate": 4,
+    "maxParticles": 16,
+    "lifetime": [2, 3],
+    "speed": [30, 50],
+    "direction": -1.5708,
+    "spread": 0.2,
+    "boundsMode": "kill",
+    "startSize": 32,
+    "endSize": 32,
+    "colors": ["#FFFFFFFF"],
+    "shape": "rectangle",
+    "shapeSize": [100, 4],
+    "pixelSnap": 4
+}

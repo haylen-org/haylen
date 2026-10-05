@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/bubble.png",
+    "filter": "linear",
+    "rate": 30,
+    "maxParticles": 32,
+    "lifetime": [0.3, 0.6],
+    "speed": [10, 30],
+    "direction": -1.5708,
+    "spread": 0.4,
+    "startSize": [4, 8],
+    "endSize": [10, 14],
+    "colors": ["#C0FFFFFF", "#00FFFFFF"],
+    "tints": ["#FFFFFFFF", "#FFC0FFC0", "#FFFFD0A0"],
+    "shape": "rectangle",
+    "shapeSize": [50, 4]
+}

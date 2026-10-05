@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/droplet.png",
+    "filter": "linear",
+    "rate": 2,
+    "maxParticles": 8,
+    "lifetime": [0.5, 0.8],
+    "speed": [0, 10],
+    "direction": 1.5708,
+    "spread": 0.2,
+    "gravity": [0, 700],
+    "collision": {"type": "floor", "y": 60, "result": "die"},
+    "startSize": [4, 6],
+    "endSize": [4, 6],
+    "endSizeScale": 1,
+    "colors": ["#FFA01020", "#FF801018"],
+    "subEmitters": [{"effect": "../water/splash_small.particles", "trigger": "death", "inheritColor": true, "count": 5}]
+}

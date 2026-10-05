@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/swirl.png",
+    "filter": "linear",
+    "rate": 24,
+    "maxParticles": 64,
+    "lifetime": [1, 1.6],
+    "speed": [20, 60],
+    "direction": -1.5708,
+    "spread": 1.2,
+    "gravity": [0, -40],
+    "tangentialAcceleration": [-60, 60],
+    "turbulence": {"strength": 60, "frequency": 0.02, "speed": 1},
+    "startSize": [24, 36],
+    "endSize": [40, 60],
+    "rotation": [0, 6.2832],
+    "spin": [-2, 2],
+    "colors": ["#00301040", "#C0501A70", "#00200830"],
+    "shape": "circle",
+    "shapeSize": [24, 0]
+}

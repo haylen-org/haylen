@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/cartoon_puff.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 6}],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [0.3, 0.45],
+    "speed": [60, 140],
+    "direction": 3.1416,
+    "spread": 0.8,
+    "damping": 5,
+    "startSize": 12,
+    "endSize": 36,
+    "sizeCurve": {"points": [0, 1.1, 1, 0]},
+    "rotation": [0, 6.2832],
+    "colors": ["#FFFFFFFF", "#00F0E8E0"]
+}

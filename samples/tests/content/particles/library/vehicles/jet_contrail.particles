@@ -1,0 +1,15 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 80,
+    "rateOverDistance": 0.3,
+    "maxParticles": 384,
+    "lifetime": [2.5, 3.5],
+    "speed": [0, 10],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 0.5,
+    "startSize": [6, 8],
+    "endSize": [30, 40],
+    "colors": ["#C0FFFFFF", "#60FFFFFF", "#00FFFFFF"]
+}

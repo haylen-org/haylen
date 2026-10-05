@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/light_beam.png",
+    "filter": "linear",
+    "rate": 8,
+    "maxParticles": 16,
+    "lifetime": [0.6, 1.0],
+    "speed": [10, 20],
+    "direction": -1.5708,
+    "spread": 0.05,
+    "startSize": [80, 140],
+    "endSize": [80, 140],
+    "aspect": 0.3,
+    "colors": ["#00FFF0C0", "#80FFF0C0", "#00FFF0C0"],
+    "shape": "rectangle",
+    "shapeSize": [60, 4],
+    "blend": "additive",
+    "emission": 1
+}

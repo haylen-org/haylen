@@ -1,0 +1,14 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 60,
+    "maxParticles": 16,
+    "lifetime": [0.08, 0.15],
+    "speed": 0,
+    "startSize": [40, 60],
+    "endSize": [20, 30],
+    "colors": ["#FFFFFFFF", "#00FF4040"],
+    "light": {"radius": 140, "color": "#FFFF4040", "flicker": {"speed": 30, "amount": 0.3}},
+    "blend": "additive",
+    "unshaded": true
+}

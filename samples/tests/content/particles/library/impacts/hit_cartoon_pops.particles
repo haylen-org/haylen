@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 6}],
+    "duration": 0.05,
+    "maxParticles": 6,
+    "lifetime": [0.2, 0.3],
+    "speed": [200, 320],
+    "direction": -1.5708,
+    "directionMode": "outward",
+    "spread": 6.2832,
+    "damping": 6,
+    "startSize": [10, 14],
+    "endSize": 0,
+    "colors": ["#FFFFFFFF", "#FFFFE36E"],
+    "shape": "ring",
+    "shapeSize": [14, 0]
+}

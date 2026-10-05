@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 6,
+    "prewarm": 6,
+    "maxParticles": 48,
+    "lifetime": [4, 6],
+    "speed": [20, 50],
+    "direction": -1.5708,
+    "spread": 1,
+    "gravity": [10, -6],
+    "turbulence": {"strength": 40, "frequency": 0.01, "speed": 0.5},
+    "startSize": [3, 5],
+    "endSize": [1, 2],
+    "colors": ["#00FFB040", "#FFFF9020", "#00C04010"],
+    "shape": "rectangle",
+    "shapeSize": [800, 40],
+    "particleLights": {"radius": 16, "intensity": 0.3, "max": 16},
+    "blend": "additive",
+    "emission": 1
+}

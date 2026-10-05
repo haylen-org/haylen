@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 60,
+    "maxParticles": 128,
+    "lifetime": [0.8, 1.4],
+    "speed": [40, 160],
+    "direction": 1.5708,
+    "spread": 2,
+    "gravity": [0, 900],
+    "damping": 0.3,
+    "collision": {"type": "floor", "y": 300, "bounce": 0.4, "result": "bounce"},
+    "startSize": [3, 5],
+    "endSize": 1,
+    "alignToVelocity": true,
+    "colors": ["#FFFFFFE0", "#FFFFC050", "#00FF7010"],
+    "blend": "additive"
+}

@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/bubble.png",
+    "filter": "linear",
+    "rate": 8,
+    "maxParticles": 16,
+    "lifetime": [0.8, 1.4],
+    "speed": [20, 50],
+    "direction": -1.5708,
+    "spread": 0.6,
+    "gravity": [0, -30],
+    "turbulence": {"strength": 20, "frequency": 0.05, "speed": 1},
+    "startSize": [8, 14],
+    "endSize": [12, 18],
+    "colors": ["#FF90F060", "#FF60D040", "#0060D040"],
+    "shape": "rectangle",
+    "shapeSize": [24, 8],
+    "localSpace": true,
+    "subEmitters": [{"effect": "../bubbles/bubble_pop.particles", "trigger": "death", "inheritColor": true, "count": 6, "overrides": {"startSize": [2, 3]}}]
+}

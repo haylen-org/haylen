@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 24}],
+    "duration": 0.05,
+    "maxParticles": 32,
+    "lifetime": [0.6, 1.1],
+    "speed": [30, 80],
+    "direction": -1.5708,
+    "spread": 1.2,
+    "gravity": [0, -80],
+    "startSize": [8, 14],
+    "endSize": 2,
+    "colors": ["#FFC8FFA0", "#0050FF40"],
+    "shape": "ellipse",
+    "shapeSize": [34, 12],
+    "blend": "additive",
+    "emission": 1
+}

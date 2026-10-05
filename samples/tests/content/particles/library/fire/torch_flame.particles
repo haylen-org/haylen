@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/flame_soft.png",
+    "filter": "linear",
+    "rate": 40,
+    "maxParticles": 64,
+    "lifetime": [0.3, 0.55],
+    "speed": [50, 90],
+    "direction": -1.5708,
+    "spread": 0.25,
+    "gravity": [0, -80],
+    "turbulence": {"strength": 20, "frequency": 0.03, "speed": 1.5},
+    "startSize": [26, 36],
+    "endSize": [4, 8],
+    "colors": ["#FFFFF4C8", "#FFFFA838", "#A0E04A10", "#00601000"],
+    "shape": "circle",
+    "shapeSize": [6, 0],
+    "light": {"radius": 220, "color": "#FFFFB060", "flicker": {"speed": 9, "amount": 0.25}},
+    "blend": "additive",
+    "emission": 1
+}

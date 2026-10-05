@@ -1,0 +1,14 @@
+{
+    "texture": "../textures/ring_thin.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 1, "cycles": 2, "interval": 0.25}],
+    "duration": 0.3,
+    "maxParticles": 1,
+    "lifetime": 0.8,
+    "speed": 0,
+    "startSize": 10,
+    "endSize": 120,
+    "sizeCurve": "quadOut",
+    "colors": ["#A0FFFFFF", "#00FFFFFF"]
+}

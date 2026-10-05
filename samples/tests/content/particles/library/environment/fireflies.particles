@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 3,
+    "prewarm": 10,
+    "maxParticles": 32,
+    "lifetime": [4, 7],
+    "speed": [5, 20],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "turbulence": {"strength": 30, "frequency": 0.01, "speed": 0.5},
+    "startSize": [6, 10],
+    "endSize": [6, 10],
+    "endSizeScale": 1,
+    "colors": ["#00D8FF60", "#FFD8FF60", "#00D8FF60", "#FFD8FF60", "#00D8FF60"],
+    "shape": "rectangle",
+    "shapeSize": [600, 200],
+    "particleLights": {"radius": 40, "intensity": 0.5, "max": 32},
+    "blend": "additive",
+    "emission": 1
+}

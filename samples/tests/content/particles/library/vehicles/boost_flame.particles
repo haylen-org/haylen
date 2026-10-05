@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/flame_soft.png",
+    "filter": "linear",
+    "rate": 140,
+    "maxParticles": 64,
+    "lifetime": [0.08, 0.16],
+    "speed": [400, 600],
+    "direction": 3.1416,
+    "spread": 0.1,
+    "startSize": [30, 40],
+    "endSize": [6, 10],
+    "stretch": 0.05,
+    "rotation": 1.5708,
+    "alignToVelocity": true,
+    "colors": ["#FFFFFFFF", "#FFA0D8FF", "#C04080FF", "#00102080"],
+    "localSpace": true,
+    "light": {"radius": 200, "color": "#FFA0D8FF", "flicker": {"speed": 20, "amount": 0.3}},
+    "blend": "additive",
+    "emission": 1
+}

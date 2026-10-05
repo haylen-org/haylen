@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/smoke_puff.png",
+    "filter": "linear",
+    "rate": 8,
+    "maxParticles": 16,
+    "lifetime": [1, 1.6],
+    "speed": [30, 50],
+    "direction": -1.4,
+    "spread": 0.3,
+    "gravity": [6, -6],
+    "turbulence": {"strength": 15, "frequency": 0.03, "speed": 0.6},
+    "startSize": [6, 10],
+    "endSize": [30, 40],
+    "rotation": [0, 6.2832],
+    "colors": ["#00FFFFFF", "#60FFFFFF", "#00FFFFFF"]
+}

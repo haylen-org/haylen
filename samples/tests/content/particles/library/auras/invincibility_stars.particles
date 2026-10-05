@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/star_5point.png",
+    "filter": "linear",
+    "rate": 6,
+    "maxParticles": 8,
+    "lifetime": [1.0, 1.2],
+    "speed": 150,
+    "directionMode": "tangent",
+    "spread": 0,
+    "radialAcceleration": -375,
+    "tangentialAcceleration": 0,
+    "startSize": [14, 18],
+    "endSize": [6, 8],
+    "spin": [3, 5],
+    "colors": ["#FFFFE36E", "#FFFF7BD5", "#003FA9F5"],
+    "tints": ["#FFFFFFFF", "#FFFFD0F0", "#FFD0F0FF"],
+    "shape": "ring",
+    "shapeSize": [60, 0],
+    "localSpace": true
+}

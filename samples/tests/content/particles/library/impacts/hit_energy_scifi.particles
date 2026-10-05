@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/hex_cell.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 6}],
+    "duration": 0.05,
+    "maxParticles": 6,
+    "lifetime": [0.25, 0.4],
+    "speed": [80, 180],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 4,
+    "startSize": [14, 20],
+    "endSize": [6, 10],
+    "rotation": [0, 6.2832],
+    "spin": [-4, 4],
+    "colors": ["#FFE0FFFF", "#FF40C0FF", "#000060C0"],
+    "blend": "additive",
+    "unshaded": true
+}

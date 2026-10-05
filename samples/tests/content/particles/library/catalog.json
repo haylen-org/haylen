@@ -1,0 +1,1616 @@
+{
+    "categories": [
+        {
+            "id": "fire",
+            "title": "Fire",
+            "effects": [
+                {
+                    "id": "campfire_realistic",
+                    "name": "Campfire",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "campfire_cartoon",
+                    "name": "Campfire",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "campfire_pixel",
+                    "name": "Campfire",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "torch_flame",
+                    "name": "Torch flame",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "candle_flame",
+                    "name": "Candle flame",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "burning_ground",
+                    "name": "Burning ground",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "flamethrower_jet",
+                    "name": "Flamethrower jet",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "gas_burner_blue",
+                    "name": "Gas burner",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "neon_flame",
+                    "name": "Neon flame",
+                    "style": "neon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "spirit_flame",
+                    "name": "Spirit flame",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "ember_rise",
+                    "name": "Rising embers",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "burning_object",
+                    "name": "Burning object",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "heat_haze",
+                    "name": "Heat haze",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "campfire_full",
+                    "name": "Full campfire",
+                    "style": "realistic",
+                    "kind": "loop",
+                    "composite": true
+                },
+                {
+                    "id": "torch_full",
+                    "name": "Full torch",
+                    "style": "realistic",
+                    "kind": "loop",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "smoke",
+            "title": "Smoke",
+            "effects": [
+                {
+                    "id": "campfire_smoke",
+                    "name": "Campfire smoke",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "chimney_smoke",
+                    "name": "Chimney smoke",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "smoke_stack_industrial",
+                    "name": "Industrial smoke stack",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "smoke_puff_cartoon",
+                    "name": "Smoke poof",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "smoke_puff_pixel",
+                    "name": "Smoke poof",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "smoke_bomb",
+                    "name": "Smoke bomb",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "black_smoke_damage",
+                    "name": "Damage smoke",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "smoke_wisps",
+                    "name": "Smoke wisps",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "smoke_ring",
+                    "name": "Smoke ring",
+                    "style": "realistic",
+                    "kind": "once"
+                }
+            ]
+        },
+        {
+            "id": "explosions",
+            "title": "Explosions",
+            "effects": [
+                {
+                    "id": "flash_white",
+                    "name": "Explosion flash",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "shockwave_ring",
+                    "name": "Shockwave ring",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "fireball_realistic",
+                    "name": "Fireball",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_sparks",
+                    "name": "Explosion sparks",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "debris_chunks",
+                    "name": "Debris chunks",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_smoke",
+                    "name": "Explosion smoke",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_cartoon",
+                    "name": "Explosion",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_cartoon_stars",
+                    "name": "Explosion stars",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_pixel",
+                    "name": "Explosion",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_pixel_debris",
+                    "name": "Explosion debris",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_neon",
+                    "name": "Explosion",
+                    "style": "neon",
+                    "kind": "once"
+                },
+                {
+                    "id": "plasma_blast_scifi",
+                    "name": "Plasma blast",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "shockwave_distortion",
+                    "name": "Shockwave distortion",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "explosion_realistic",
+                    "name": "Full explosion",
+                    "style": "realistic",
+                    "kind": "once",
+                    "composite": true
+                },
+                {
+                    "id": "explosion_cartoon_full",
+                    "name": "Full explosion",
+                    "style": "cartoon",
+                    "kind": "once",
+                    "composite": true
+                },
+                {
+                    "id": "explosion_pixel_full",
+                    "name": "Full explosion",
+                    "style": "pixel",
+                    "kind": "once",
+                    "composite": true
+                },
+                {
+                    "id": "explosion_neon_full",
+                    "name": "Full explosion",
+                    "style": "neon",
+                    "kind": "once",
+                    "composite": true
+                },
+                {
+                    "id": "plasma_full",
+                    "name": "Full plasma blast",
+                    "style": "scifi",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "sparks",
+            "title": "Sparks",
+            "effects": [
+                {
+                    "id": "welding_sparks",
+                    "name": "Welding sparks",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "grinder_stream",
+                    "name": "Grinder stream",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "metal_hit_sparks",
+                    "name": "Metal hit sparks",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "spark_shower",
+                    "name": "Spark shower",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "sparkler",
+                    "name": "Sparkler",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "spark_pixel",
+                    "name": "Sparks",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "neon_sparks",
+                    "name": "Sparks",
+                    "style": "neon",
+                    "kind": "once"
+                },
+                {
+                    "id": "ricochet_sparks",
+                    "name": "Ricochet sparks",
+                    "style": "realistic",
+                    "kind": "once"
+                }
+            ]
+        },
+        {
+            "id": "weather",
+            "title": "Weather",
+            "effects": [
+                {
+                    "id": "rain_light",
+                    "name": "Light rain",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "rain_heavy",
+                    "name": "Heavy rain",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "rain_pixel",
+                    "name": "Rain",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "rain_splash",
+                    "name": "Rain splashes",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "snow_light",
+                    "name": "Light snow",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "snow_blizzard",
+                    "name": "Blizzard",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "snow_pixel",
+                    "name": "Snow",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "hail",
+                    "name": "Hail",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "fog_bank",
+                    "name": "Fog bank",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "sandstorm",
+                    "name": "Sandstorm",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "wind_streaks",
+                    "name": "Wind streaks",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "rainstorm",
+                    "name": "Rainstorm",
+                    "style": "realistic",
+                    "kind": "loop",
+                    "composite": true
+                },
+                {
+                    "id": "blizzard_full",
+                    "name": "Full blizzard",
+                    "style": "realistic",
+                    "kind": "loop",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "dust",
+            "title": "Dust and debris",
+            "effects": [
+                {
+                    "id": "footstep_dust",
+                    "name": "Footstep dust",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "landing_dust",
+                    "name": "Landing dust",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "run_dust_trail",
+                    "name": "Running dust",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "dash_dust_cartoon",
+                    "name": "Dash puff",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "landing_dust_pixel",
+                    "name": "Landing dust",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "ceiling_crumble",
+                    "name": "Crumbling ceiling",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "wood_chips",
+                    "name": "Wood chips",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "stone_chips",
+                    "name": "Stone chips",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "grass_clippings",
+                    "name": "Grass clippings",
+                    "style": "realistic",
+                    "kind": "once"
+                }
+            ]
+        },
+        {
+            "id": "blood",
+            "title": "Blood and hits",
+            "effects": [
+                {
+                    "id": "blood_spurt",
+                    "name": "Blood spurt",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "blood_splatter",
+                    "name": "Blood splatter",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "blood_drip",
+                    "name": "Blood drip",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "blood_pixel",
+                    "name": "Blood",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "gore_chunks",
+                    "name": "Gore chunks",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_toned_down",
+                    "name": "Soft hit drops",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "ichor_alien",
+                    "name": "Alien ichor",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "oil_spurt_robot",
+                    "name": "Oil spurt",
+                    "style": "realistic",
+                    "kind": "once"
+                }
+            ]
+        },
+        {
+            "id": "magic",
+            "title": "Magic",
+            "effects": [
+                {
+                    "id": "arcane_vortex",
+                    "name": "Arcane vortex",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "spell_charge",
+                    "name": "Spell charge",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "fairy_dust",
+                    "name": "Fairy dust",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "spell_circle_runes",
+                    "name": "Spell circle runes",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "dark_wisps",
+                    "name": "Dark wisps",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "holy_rays",
+                    "name": "Holy rays",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "mana_absorb",
+                    "name": "Mana absorb",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "enchant_glint",
+                    "name": "Enchant glint",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "magic_burst",
+                    "name": "Magic burst",
+                    "style": "magic",
+                    "kind": "once"
+                },
+                {
+                    "id": "pixel_sparkle",
+                    "name": "Sparkles",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "spell_cast",
+                    "name": "Spell cast",
+                    "style": "magic",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "healing",
+            "title": "Healing",
+            "effects": [
+                {
+                    "id": "heal_rise_plus",
+                    "name": "Healing crosses",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "heal_ring_glow",
+                    "name": "Healing ring",
+                    "style": "magic",
+                    "kind": "once"
+                },
+                {
+                    "id": "regen_sparkles",
+                    "name": "Regeneration sparkles",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "heal_hearts_cartoon",
+                    "name": "Healing hearts",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "heal_pixel",
+                    "name": "Healing",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "revive_pillar",
+                    "name": "Revive pillar",
+                    "style": "magic",
+                    "kind": "once"
+                }
+            ]
+        },
+        {
+            "id": "poison",
+            "title": "Poison",
+            "effects": [
+                {
+                    "id": "poison_bubbles",
+                    "name": "Poison bubbles",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "toxic_cloud",
+                    "name": "Toxic cloud",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "acid_splash",
+                    "name": "Acid splash",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "status_skulls",
+                    "name": "Poisoned status",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "swamp_gas",
+                    "name": "Swamp gas",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "poison_pixel",
+                    "name": "Poison",
+                    "style": "pixel",
+                    "kind": "loop"
+                }
+            ]
+        },
+        {
+            "id": "ice",
+            "title": "Ice and frost",
+            "effects": [
+                {
+                    "id": "frost_breath",
+                    "name": "Frost breath",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "ice_shatter",
+                    "name": "Ice shatter",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "freeze_aura",
+                    "name": "Freezing mist",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "frozen_glints",
+                    "name": "Frozen glints",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "frost_nova",
+                    "name": "Frost nova",
+                    "style": "magic",
+                    "kind": "once"
+                },
+                {
+                    "id": "ice_shatter_pixel",
+                    "name": "Ice shatter",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "cold_breath",
+                    "name": "Cold breath",
+                    "style": "realistic",
+                    "kind": "cycle"
+                }
+            ]
+        },
+        {
+            "id": "lightning",
+            "title": "Lightning",
+            "effects": [
+                {
+                    "id": "electric_arcs",
+                    "name": "Electric arcs",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "strike_flash",
+                    "name": "Lightning flash",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "ground_impact",
+                    "name": "Lightning impact",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "static_aura",
+                    "name": "Static crackle",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "tesla_discharge",
+                    "name": "Coil discharge",
+                    "style": "scifi",
+                    "kind": "cycle"
+                },
+                {
+                    "id": "electric_pixel",
+                    "name": "Electricity",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "bolt_path_sparks",
+                    "name": "Bolt path sparks",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "strike_full",
+                    "name": "Full lightning strike",
+                    "style": "realistic",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "portals",
+            "title": "Portals",
+            "effects": [
+                {
+                    "id": "portal_swirl",
+                    "name": "Portal swirl",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "portal_rim_scifi",
+                    "name": "Portal rim",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "portal_inward",
+                    "name": "Portal pull",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "portal_open_burst",
+                    "name": "Portal opening",
+                    "style": "magic",
+                    "kind": "once"
+                },
+                {
+                    "id": "portal_pixel",
+                    "name": "Portal",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "void_rift",
+                    "name": "Void rift",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "portal_full",
+                    "name": "Full portal",
+                    "style": "magic",
+                    "kind": "loop",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "rewards",
+            "title": "Coins and rewards",
+            "effects": [
+                {
+                    "id": "coin_burst",
+                    "name": "Coin burst",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "coin_collect",
+                    "name": "Coins to counter",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "pickup_sparkle",
+                    "name": "Pickup sparkle",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "gem_burst",
+                    "name": "Gem burst",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "xp_orbs",
+                    "name": "Experience orbs",
+                    "style": "magic",
+                    "kind": "once"
+                },
+                {
+                    "id": "chest_open_glow",
+                    "name": "Chest opening",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "loot_beam",
+                    "name": "Loot beam",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "coin_pixel",
+                    "name": "Coin burst",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "chest_open_full",
+                    "name": "Full chest opening",
+                    "style": "cartoon",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "celebration",
+            "title": "Celebration",
+            "effects": [
+                {
+                    "id": "confetti_cannon",
+                    "name": "Confetti cannon",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "confetti_rain",
+                    "name": "Confetti rain",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "confetti_pop",
+                    "name": "Confetti pop",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "confetti_pixel",
+                    "name": "Confetti",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "firework_burst",
+                    "name": "Firework burst",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "firework_rocket_trail",
+                    "name": "Rocket trail",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "firework_crackle",
+                    "name": "Firework crackle",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "firework_willow",
+                    "name": "Willow firework",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "fireworks_show",
+                    "name": "Fireworks show",
+                    "style": "realistic",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "nature",
+            "title": "Leaves and petals",
+            "effects": [
+                {
+                    "id": "falling_leaves",
+                    "name": "Falling leaves",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "cherry_petals",
+                    "name": "Falling petals",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "petal_burst",
+                    "name": "Petal burst",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "leaf_pixel",
+                    "name": "Falling leaves",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "pollen_drift",
+                    "name": "Pollen",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "feathers_hit",
+                    "name": "Feathers",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "bush_rustle",
+                    "name": "Rustling bush",
+                    "style": "realistic",
+                    "kind": "once"
+                }
+            ]
+        },
+        {
+            "id": "bubbles",
+            "title": "Bubbles",
+            "effects": [
+                {
+                    "id": "underwater_rising",
+                    "name": "Rising bubbles",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "soap_bubbles",
+                    "name": "Soap bubbles",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "boiling_pot",
+                    "name": "Boiling liquid",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "diver_breath",
+                    "name": "Breath bubbles",
+                    "style": "realistic",
+                    "kind": "cycle"
+                },
+                {
+                    "id": "bubble_pop",
+                    "name": "Bubble pop",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "bubble_pixel",
+                    "name": "Bubbles",
+                    "style": "pixel",
+                    "kind": "loop"
+                }
+            ]
+        },
+        {
+            "id": "trails",
+            "title": "Trails",
+            "effects": [
+                {
+                    "id": "projectile_glow",
+                    "name": "Projectile glow",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "rocket_smoke",
+                    "name": "Rocket smoke",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "comet_tail",
+                    "name": "Comet tail",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "sword_slash",
+                    "name": "Sword slash",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "speed_lines",
+                    "name": "Speed lines",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "rainbow_trail",
+                    "name": "Rainbow trail",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "neon_trail",
+                    "name": "Light trail",
+                    "style": "neon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "pixel_trail",
+                    "name": "Trail",
+                    "style": "pixel",
+                    "kind": "loop"
+                }
+            ]
+        },
+        {
+            "id": "impacts",
+            "title": "Impacts",
+            "effects": [
+                {
+                    "id": "hit_spark_realistic",
+                    "name": "Hit sparks",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_flash_realistic",
+                    "name": "Hit flash",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_cartoon",
+                    "name": "Hit burst",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_cartoon_pops",
+                    "name": "Hit pops",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_pixel",
+                    "name": "Hit ring",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_neon",
+                    "name": "Hit",
+                    "style": "neon",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_magic",
+                    "name": "Hit",
+                    "style": "magic",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_energy_scifi",
+                    "name": "Hit",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "critical_hit",
+                    "name": "Critical hit",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "bullet_wall_dust",
+                    "name": "Bullet dust",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "bullet_metal",
+                    "name": "Bullet on metal",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "ground_slam",
+                    "name": "Ground slam",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "hit_realistic_full",
+                    "name": "Full hit",
+                    "style": "realistic",
+                    "kind": "once",
+                    "composite": true
+                },
+                {
+                    "id": "hit_cartoon_full",
+                    "name": "Full hit",
+                    "style": "cartoon",
+                    "kind": "once",
+                    "composite": true
+                },
+                {
+                    "id": "hit_pixel_full",
+                    "name": "Full hit",
+                    "style": "pixel",
+                    "kind": "once",
+                    "composite": true
+                },
+                {
+                    "id": "hit_neon_full",
+                    "name": "Full hit",
+                    "style": "neon",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "auras",
+            "title": "Auras",
+            "effects": [
+                {
+                    "id": "power_up_energy",
+                    "name": "Power-up energy",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "holy_aura",
+                    "name": "Holy aura",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "dark_aura",
+                    "name": "Dark aura",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "rage_aura",
+                    "name": "Rage aura",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "shield_shimmer",
+                    "name": "Shield shimmer",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "invincibility_stars",
+                    "name": "Invincibility stars",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "aura_pixel",
+                    "name": "Aura",
+                    "style": "pixel",
+                    "kind": "loop"
+                }
+            ]
+        },
+        {
+            "id": "ui",
+            "title": "Interface feedback",
+            "effects": [
+                {
+                    "id": "button_press_burst",
+                    "name": "Button press",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "button_hover_glint",
+                    "name": "Button glint",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "level_up_burst",
+                    "name": "Level up burst",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "level_up_rays",
+                    "name": "Level up rays",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "unlock_burst",
+                    "name": "Unlock burst",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "star_rating_burst",
+                    "name": "Star rating",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "notification_sparkle",
+                    "name": "Notification sparkle",
+                    "style": "cartoon",
+                    "kind": "cycle"
+                },
+                {
+                    "id": "cursor_trail",
+                    "name": "Cursor trail",
+                    "style": "magic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "progress_fill_sparks",
+                    "name": "Progress sparks",
+                    "style": "cartoon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "tap_ripple",
+                    "name": "Tap ripple",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "level_up_full",
+                    "name": "Full level up",
+                    "style": "cartoon",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "environment",
+            "title": "Environment",
+            "effects": [
+                {
+                    "id": "fireflies",
+                    "name": "Fireflies",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "floating_embers",
+                    "name": "Floating embers",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "waterfall_mist",
+                    "name": "Waterfall mist",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "steam_vent",
+                    "name": "Steam vent",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "kettle_steam",
+                    "name": "Kettle steam",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "dust_motes_sunbeam",
+                    "name": "Dust motes",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "cave_drip",
+                    "name": "Cave drip",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "lava_bubbles",
+                    "name": "Lava bubbles",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "torch_sparks",
+                    "name": "Torch sparks",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "twinkling_stars",
+                    "name": "Twinkling stars",
+                    "style": "realistic",
+                    "kind": "loop"
+                }
+            ]
+        },
+        {
+            "id": "water",
+            "title": "Water",
+            "effects": [
+                {
+                    "id": "splash_big",
+                    "name": "Big splash",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "splash_small",
+                    "name": "Small splash",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "ripple_ring",
+                    "name": "Ripple",
+                    "style": "realistic",
+                    "kind": "once"
+                },
+                {
+                    "id": "boat_wake",
+                    "name": "Boat wake",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "swim_bubbles",
+                    "name": "Swim bubbles",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "hose_jet",
+                    "name": "Water jet",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "splash_pixel",
+                    "name": "Splash",
+                    "style": "pixel",
+                    "kind": "once"
+                },
+                {
+                    "id": "splash_cartoon",
+                    "name": "Splash",
+                    "style": "cartoon",
+                    "kind": "once"
+                },
+                {
+                    "id": "waterfall_spray",
+                    "name": "Waterfall spray",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "splash_full",
+                    "name": "Full splash",
+                    "style": "realistic",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "vehicles",
+            "title": "Vehicles",
+            "effects": [
+                {
+                    "id": "exhaust_smoke",
+                    "name": "Exhaust smoke",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "tire_smoke",
+                    "name": "Tire smoke",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "boost_flame",
+                    "name": "Boost flame",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "nitro_neon",
+                    "name": "Nitro streaks",
+                    "style": "neon",
+                    "kind": "loop"
+                },
+                {
+                    "id": "dirt_kickup",
+                    "name": "Dirt kick-up",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "scrape_sparks",
+                    "name": "Scrape sparks",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "jet_contrail",
+                    "name": "Contrail",
+                    "style": "realistic",
+                    "kind": "loop"
+                },
+                {
+                    "id": "ship_thruster",
+                    "name": "Ship thruster",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "exhaust_pixel",
+                    "name": "Exhaust",
+                    "style": "pixel",
+                    "kind": "loop"
+                },
+                {
+                    "id": "boost_full",
+                    "name": "Full boost",
+                    "style": "realistic",
+                    "kind": "loop",
+                    "composite": true
+                }
+            ]
+        },
+        {
+            "id": "scifi",
+            "title": "Science fiction",
+            "effects": [
+                {
+                    "id": "laser_beam_motes",
+                    "name": "Laser motes",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "laser_impact",
+                    "name": "Laser impact",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "plasma_muzzle",
+                    "name": "Plasma muzzle flash",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "shield_hit_hex",
+                    "name": "Shield hit",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "shield_ripple",
+                    "name": "Shield ripple",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "warp_stars",
+                    "name": "Warp stars",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "teleport_beam_in",
+                    "name": "Teleport beam",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "teleport_out_dissolve",
+                    "name": "Teleport dissolve",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "energy_charge",
+                    "name": "Energy charge",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "data_bits",
+                    "name": "Data bits",
+                    "style": "scifi",
+                    "kind": "loop"
+                },
+                {
+                    "id": "shield_ripple_distortion",
+                    "name": "Shield ripple distortion",
+                    "style": "scifi",
+                    "kind": "once"
+                },
+                {
+                    "id": "teleport_full",
+                    "name": "Full teleport",
+                    "style": "scifi",
+                    "kind": "once",
+                    "composite": true
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/glow_line.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 30}],
+    "duration": 0.05,
+    "maxParticles": 32,
+    "lifetime": [0.3, 0.6],
+    "speed": [250, 550],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 3,
+    "startSize": [5, 8],
+    "endSize": 1,
+    "stretch": 0.04,
+    "alignToVelocity": true,
+    "colors": ["#FFFFFFFF", "#FF30FFA0", "#0020C0FF"],
+    "trail": {"length": 6, "lifetime": 0.15},
+    "blend": "additive",
+    "unshaded": true
+}

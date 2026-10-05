@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/glow_line.png",
+    "filter": "linear",
+    "rate": 40,
+    "maxParticles": 32,
+    "lifetime": [0.15, 0.25],
+    "speed": [500, 800],
+    "direction": 3.1416,
+    "spread": 0.08,
+    "startSize": [40, 80],
+    "endSize": [40, 80],
+    "colors": ["#FFFFFFFF", "#FF30FFE0", "#00FF30C0"],
+    "shape": "rectangle",
+    "shapeSize": [4, 10],
+    "blend": "additive",
+    "unshaded": true
+}

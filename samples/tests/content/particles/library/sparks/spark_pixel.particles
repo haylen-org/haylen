@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/pixel_spark.png",
+    "filter": "nearest",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 8}],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [0.2, 0.4],
+    "speed": [120, 240],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "gravity": [0, 600],
+    "damping": 2,
+    "startSize": 32,
+    "endSize": 32,
+    "colors": ["#FFFFF8E0", "#FFFFD84A", "#FFFF9A2E"],
+    "colorBlend": "steps",
+    "pixelSnap": 4
+}

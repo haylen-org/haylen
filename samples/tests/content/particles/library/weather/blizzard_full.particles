@@ -1,0 +1,6 @@
+{
+    "emitters": [
+        {"name": "haze", "effect": "../weather/fog_bank.particles", "overrides": {"speed": [200, 300], "colors": ["#00F0F4F8", "#60F0F4F8", "#60F0F4F8", "#00F0F4F8"]}},
+        {"name": "snow", "effect": "../weather/snow_blizzard.particles"}
+    ]
+}

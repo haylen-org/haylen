@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/spark_streak.png",
+    "filter": "linear",
+    "rate": 300,
+    "maxParticles": 1024,
+    "lifetime": [0.4, 1.0],
+    "speed": [400, 900],
+    "direction": -0.6,
+    "spread": 1.2,
+    "gravity": [0, 1400],
+    "damping": 1,
+    "collision": {"type": "floor", "y": 120, "bounce": 0.35, "friction": 0.4, "result": "bounce"},
+    "startSize": [3, 6],
+    "endSize": 1,
+    "stretch": 0.025,
+    "alignToVelocity": true,
+    "colors": ["#FFFFFFF0", "#FFFFE080", "#FFFF9020", "#00A03000"],
+    "shape": "cone",
+    "shapeSize": [8, 0],
+    "light": {"radius": 300, "color": "#FFC0E0FF", "flicker": {"speed": 20, "amount": 0.5}},
+    "blend": "additive"
+}

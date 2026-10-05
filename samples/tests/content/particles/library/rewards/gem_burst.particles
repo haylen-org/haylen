@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/gem.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 8}],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [1.2, 1.6],
+    "speed": [350, 520],
+    "direction": -1.5708,
+    "spread": 1.2,
+    "gravity": [0, 1400],
+    "collision": {"type": "floor", "y": 40, "bounce": 0.45, "result": "bounce"},
+    "startSize": [20, 24],
+    "endSize": [20, 24],
+    "endSizeScale": 1,
+    "spin": [-4, 4],
+    "colors": ["#FF6AE0FF"],
+    "tints": ["#FF6AE0FF", "#FFFF5A78", "#FF52D273", "#FFB45AF2"]
+}

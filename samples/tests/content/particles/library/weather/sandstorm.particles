@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 500,
+    "maxParticles": 2048,
+    "lifetime": [1.6, 2.2],
+    "speed": [700, 1000],
+    "direction": 0.08,
+    "spread": 0.12,
+    "gravity": [0, 40],
+    "turbulence": {"strength": 150, "frequency": 0.003, "speed": 1},
+    "boundsMode": "wrap",
+    "startSize": [2, 4],
+    "endSize": [2, 4],
+    "stretch": 0.01,
+    "alignToVelocity": true,
+    "colors": ["#C0D8B080", "#00D8B080"],
+    "shape": "rectangle",
+    "shapeSize": [20, 600]
+}

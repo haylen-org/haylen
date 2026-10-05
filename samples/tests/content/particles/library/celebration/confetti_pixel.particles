@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/pixel_square.png",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 40}],
+    "duration": 0.05,
+    "maxParticles": 48,
+    "lifetime": [2, 3],
+    "speed": [300, 500],
+    "direction": -1.5708,
+    "spread": 1.2,
+    "gravity": [0, 300],
+    "damping": 1.5,
+    "startSize": 8,
+    "endSize": 8,
+    "colors": ["#FFFF7BD5"],
+    "tints": ["#FFFF7BD5", "#FFFFD84A", "#FF52D273", "#FF3FA9F5", "#FFB45AF2"],
+    "pixelSnap": 4
+}

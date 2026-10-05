@@ -1,0 +1,7 @@
+{
+    "emitters": [
+        {"name": "dissolve", "effect": "../scifi/teleport_out_dissolve.particles"},
+        {"name": "beam", "effect": "../scifi/teleport_beam_in.particles", "delay": 0.6},
+        {"name": "flash", "effect": "../explosions/flash_white.particles", "scale": 0.3, "delay": 0.6}
+    ]
+}

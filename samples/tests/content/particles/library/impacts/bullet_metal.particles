@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 10}],
+    "duration": 0.05,
+    "maxParticles": 12,
+    "lifetime": [0.1, 0.25],
+    "speed": [300, 600],
+    "direction": 3.1416,
+    "spread": 1.2,
+    "gravity": [0, 800],
+    "damping": 3,
+    "startSize": [3, 5],
+    "endSize": 1,
+    "stretch": 0.03,
+    "alignToVelocity": true,
+    "colors": ["#FFFFFFFF", "#FFFFE090", "#00FF9030"],
+    "blend": "additive"
+}

@@ -1,0 +1,23 @@
+{
+    "texture": "../textures/sparkle_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "loopRandomStart",
+    "frameRate": 10,
+    "rate": 40,
+    "duration": 1,
+    "maxParticles": 48,
+    "lifetime": [0.6, 1.0],
+    "speed": [120, 220],
+    "direction": -1.5708,
+    "spread": 0.8,
+    "gravity": [0, -60],
+    "startSize": [14, 20],
+    "endSize": [14, 20],
+    "colors": ["#FFFFFFFF", "#FFFFE08A", "#00FFC040"],
+    "shape": "rectangle",
+    "shapeSize": [30, 4],
+    "light": {"radius": 240, "color": "#FFFFE08A", "fade": "cycle"},
+    "blend": "additive",
+    "emission": 1
+}

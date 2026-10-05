@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/pixel_dot_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 6,
+    "maxParticles": 12,
+    "lifetime": [0.6, 0.9],
+    "speed": [20, 40],
+    "direction": -1.5708,
+    "spread": 0.4,
+    "startSize": 32,
+    "endSize": 32,
+    "colors": ["#FF52D273", "#FF2E8B57"],
+    "colorBlend": "steps",
+    "localSpace": true,
+    "pixelSnap": 4
+}

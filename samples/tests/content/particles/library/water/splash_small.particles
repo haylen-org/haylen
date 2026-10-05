@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/droplet.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 10}],
+    "duration": 0.05,
+    "maxParticles": 12,
+    "lifetime": [0.3, 0.5],
+    "speed": [120, 220],
+    "direction": -1.5708,
+    "spread": 1.6,
+    "gravity": [0, 1200],
+    "startSize": [4, 7],
+    "endSize": [2, 4],
+    "rotation": -1.5708,
+    "alignToVelocity": true,
+    "colors": ["#E0E8F8FF", "#00B0D8F0"],
+    "shape": "rectangle",
+    "shapeSize": [10, 1]
+}

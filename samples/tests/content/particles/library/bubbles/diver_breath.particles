@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/bubble.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 8}, {"time": 0.1, "count": 5}],
+    "duration": 3,
+    "loop": true,
+    "maxParticles": 32,
+    "lifetime": [2, 3],
+    "speed": [60, 100],
+    "direction": -1.5708,
+    "spread": 0.5,
+    "gravity": [0, -60],
+    "turbulence": {"strength": 30, "frequency": 0.03, "speed": 1},
+    "boundsMode": "kill",
+    "startSize": [6, 14],
+    "endSize": [6, 14],
+    "endSizeScale": 1.1,
+    "colors": ["#00FFFFFF", "#D0FFFFFF", "#D0FFFFFF"]
+}

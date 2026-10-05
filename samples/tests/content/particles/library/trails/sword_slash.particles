@@ -1,0 +1,15 @@
+{
+    "texture": "../textures/slash_arc.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 1}],
+    "duration": 0.05,
+    "maxParticles": 1,
+    "lifetime": 0.18,
+    "speed": 0,
+    "startSize": 140,
+    "endSize": 160,
+    "rotation": [-0.2, 0.2],
+    "colors": ["#FFFFFFFF", "#00C0E0FF"],
+    "blend": "additive"
+}

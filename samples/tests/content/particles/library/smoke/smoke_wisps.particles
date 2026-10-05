@@ -1,0 +1,15 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 12,
+    "maxParticles": 48,
+    "lifetime": [2, 3],
+    "speed": [30, 50],
+    "direction": -1.5708,
+    "spread": 0.15,
+    "gravity": [0, -10],
+    "turbulence": {"strength": 40, "frequency": 0.02, "speed": 0.6},
+    "startSize": [10, 14],
+    "endSize": [40, 56],
+    "colors": ["#00A0A0A8", "#40A0A0A8", "#00A0A0A8"]
+}

@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/debris_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 40,
+    "maxParticles": 96,
+    "lifetime": [0.4, 0.7],
+    "speed": [200, 380],
+    "direction": -2.5,
+    "spread": 0.6,
+    "inheritVelocity": 0.3,
+    "gravity": [0, 1200],
+    "startSize": [4, 8],
+    "endSize": [4, 8],
+    "spin": [-10, 10],
+    "colors": ["#FF7A5A3C", "#007A5A3C"]
+}

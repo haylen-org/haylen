@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/hex_cell.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 14}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [0.3, 0.6],
+    "speed": [20, 80],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 3,
+    "startSize": [18, 24],
+    "endSize": [18, 24],
+    "endSizeScale": 1,
+    "colors": ["#FFE0FFFF", "#A040C0FF", "#00206080"],
+    "colorTimes": [0, 0.3, 1],
+    "shape": "arc",
+    "shapeSize": [90, 0],
+    "shapeArc": [-0.6, 0.6],
+    "blend": "additive"
+}

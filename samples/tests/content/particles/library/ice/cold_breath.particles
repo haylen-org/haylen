@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/smoke_puff.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": [4, 6], "cycles": 3, "interval": 0.08}],
+    "duration": 2.5,
+    "loop": true,
+    "maxParticles": 16,
+    "lifetime": [0.8, 1.2],
+    "speed": [20, 40],
+    "direction": -0.3,
+    "spread": 0.4,
+    "gravity": [0, -10],
+    "damping": 1.5,
+    "startSize": [8, 12],
+    "endSize": [30, 40],
+    "colors": ["#80F0F4F8", "#00F0F4F8"]
+}

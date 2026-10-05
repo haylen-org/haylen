@@ -1,0 +1,15 @@
+{
+    "texture": "../textures/pixel_ring_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 1}],
+    "duration": 0.05,
+    "maxParticles": 1,
+    "lifetime": 0.2,
+    "speed": 0,
+    "startSize": 64,
+    "endSize": 64,
+    "colors": ["#FFFFFFFF"],
+    "pixelSnap": 4
+}

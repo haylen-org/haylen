@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 200,
+    "maxParticles": 128,
+    "lifetime": [0.1, 0.25],
+    "speed": [20, 80],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "startSize": [3, 5],
+    "endSize": 1,
+    "colors": ["#FFFFFFFF", "#FFA0E0FF", "#004080FF"],
+    "shape": "rectangle",
+    "shapeSize": [200, 2],
+    "blend": "additive"
+}

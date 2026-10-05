@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/flame_soft.png",
+    "filter": "linear",
+    "rate": 120,
+    "maxParticles": 96,
+    "lifetime": [0.15, 0.25],
+    "speed": [80, 120],
+    "direction": -1.5708,
+    "spread": 0.1,
+    "startSize": [10, 14],
+    "endSize": [2, 4],
+    "colors": ["#FFC8E8FF", "#E04080FF", "#802040FF", "#00101880"],
+    "shape": "ring",
+    "shapeSize": [40, 0],
+    "localSpace": true,
+    "light": {"radius": 100, "color": "#FF80B0FF"},
+    "blend": "additive",
+    "emission": 1
+}

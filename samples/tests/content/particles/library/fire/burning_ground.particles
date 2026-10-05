@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/flame_soft.png",
+    "filter": "linear",
+    "rate": 90,
+    "maxParticles": 160,
+    "lifetime": [0.4, 0.8],
+    "speed": [30, 80],
+    "direction": -1.5708,
+    "spread": 0.4,
+    "gravity": [0, -110],
+    "startSize": [30, 50],
+    "endSize": [6, 10],
+    "colors": ["#FFFFE8A0", "#FFFF9A30", "#A0D04010", "#00501000"],
+    "shape": "rectangle",
+    "shapeSize": [160, 10],
+    "blend": "additive",
+    "emission": 1
+}

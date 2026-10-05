@@ -1,0 +1,6 @@
+{
+    "emitters": [
+        {"name": "flash", "effect": "../impacts/hit_flash_realistic.particles"},
+        {"name": "sparks", "effect": "../impacts/hit_spark_realistic.particles"}
+    ]
+}

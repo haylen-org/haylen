@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/bubble.png",
+    "filter": "linear",
+    "rate": 6,
+    "maxParticles": 16,
+    "lifetime": [1, 1.6],
+    "speed": [30, 60],
+    "direction": -1.5708,
+    "spread": 0.6,
+    "gravity": [0, -60],
+    "turbulence": {"strength": 20, "frequency": 0.04, "speed": 1},
+    "boundsMode": "kill",
+    "startSize": [4, 8],
+    "endSize": [4, 8],
+    "colors": ["#00FFFFFF", "#C0FFFFFF", "#00FFFFFF"]
+}

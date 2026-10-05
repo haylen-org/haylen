@@ -1,0 +1,9 @@
+{
+    "emitters": [
+        {"name": "dust", "effect": "../dust/landing_dust.particles", "scale": 2},
+        {"name": "impact", "effect": "../lightning/ground_impact.particles"},
+        {"name": "arcs", "effect": "../lightning/electric_arcs.particles", "overrides": {"duration": 0.5}},
+        {"name": "shockwave", "effect": "../explosions/shockwave_ring.particles", "overrides": {"colors": ["#FFA0E0FF", "#004080FF"]}},
+        {"name": "flash", "effect": "../lightning/strike_flash.particles"}
+    ]
+}

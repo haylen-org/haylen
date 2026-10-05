@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/pixel_square.png",
+    "rate": 40,
+    "prewarm": 10,
+    "maxParticles": 512,
+    "lifetime": [8, 10],
+    "speed": [40, 60],
+    "direction": 1.5708,
+    "spread": 0.3,
+    "turbulence": {"strength": 20, "frequency": 0.006, "speed": 0.3},
+    "boundsMode": "wrap",
+    "startSize": 8,
+    "endSize": 8,
+    "colors": ["#FFFFF8E0"],
+    "shape": "rectangle",
+    "shapeSize": [1000, 8],
+    "pixelSnap": 4
+}

@@ -1,0 +1,15 @@
+{
+    "texture": "../textures/pixel_star_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 8,
+    "maxParticles": 16,
+    "lifetime": [0.4, 0.6],
+    "speed": 0,
+    "startSize": 32,
+    "endSize": 32,
+    "colors": ["#FFFFFFFF"],
+    "shape": "rectangle",
+    "shapeSize": [40, 40],
+    "pixelSnap": 4
+}

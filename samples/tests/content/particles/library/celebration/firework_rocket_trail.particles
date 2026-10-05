@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 90,
+    "rateOverDistance": 0.4,
+    "maxParticles": 96,
+    "lifetime": [0.4, 0.7],
+    "speed": [0, 40],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "inheritVelocity": -0.1,
+    "gravity": [0, 120],
+    "startSize": [6, 10],
+    "endSize": 0,
+    "colors": ["#FFFFE0A0", "#FFFF9040", "#00802000"],
+    "blend": "additive"
+}

@@ -1,0 +1,22 @@
+{
+    "texture": "../textures/cartoon_puff.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 12}],
+    "duration": 0.05,
+    "maxParticles": 16,
+    "lifetime": [0.4, 0.6],
+    "speed": [150, 300],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 5,
+    "startSize": [20, 30],
+    "endSize": [70, 100],
+    "sizeCurve": {"points": [0, 1.2, 1, 0]},
+    "rotation": [0, 6.2832],
+    "spin": [-3, 3],
+    "colors": ["#FFFFF06A", "#FFFF9A2E", "#FFE8452C", "#00585058"],
+    "colorTimes": [0, 0.3, 0.7, 1],
+    "shape": "circle",
+    "shapeSize": [16, 0]
+}

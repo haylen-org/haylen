@@ -1,0 +1,8 @@
+{
+    "emitters": [
+        {"name": "shockwave", "effect": "../explosions/shockwave_ring.particles", "overrides": {"colors": ["#FF80E0FF", "#002060FF"]}},
+        {"name": "blast", "effect": "../explosions/plasma_blast_scifi.particles"},
+        {"name": "cells", "effect": "../scifi/shield_hit_hex.particles", "scale": 1.5},
+        {"name": "sparks", "effect": "../sparks/neon_sparks.particles", "overrides": {"colors": ["#FFFFFFFF", "#FF80C0FF", "#002060FF"]}}
+    ]
+}

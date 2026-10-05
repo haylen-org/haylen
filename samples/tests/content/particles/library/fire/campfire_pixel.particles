@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/pixel_flame_sheet.png",
+    "filter": "nearest",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 16,
+    "maxParticles": 32,
+    "lifetime": [0.45, 0.7],
+    "speed": [40, 70],
+    "direction": -1.5708,
+    "spread": 0.3,
+    "gravity": [0, -40],
+    "startSize": 64,
+    "endSize": 64,
+    "colors": ["#FFFFFFFF"],
+    "shape": "rectangle",
+    "shapeSize": [12, 2],
+    "pixelSnap": 4
+}

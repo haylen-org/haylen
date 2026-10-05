@@ -1,0 +1,15 @@
+{
+    "texture": "../textures/ring_thin.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 1}],
+    "duration": 0.05,
+    "maxParticles": 1,
+    "lifetime": 0.45,
+    "speed": 0,
+    "startSize": 40,
+    "endSize": 640,
+    "sizeCurve": "expoOut",
+    "colors": ["#C0FFF0D0", "#00FFA060"],
+    "blend": "additive"
+}

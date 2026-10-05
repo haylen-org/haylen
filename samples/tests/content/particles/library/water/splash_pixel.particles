@@ -1,0 +1,18 @@
+{
+    "texture": "../textures/pixel_drop.png",
+    "filter": "nearest",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 10}],
+    "duration": 0.05,
+    "maxParticles": 12,
+    "lifetime": [0.4, 0.6],
+    "speed": [150, 280],
+    "direction": -1.5708,
+    "spread": 1.6,
+    "gravity": [0, 1000],
+    "startSize": 32,
+    "endSize": 32,
+    "colors": ["#FF9BE7FF", "#FF3FA9F5"],
+    "colorBlend": "steps",
+    "pixelSnap": 4
+}

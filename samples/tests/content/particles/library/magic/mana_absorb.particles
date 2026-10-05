@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 40,
+    "maxParticles": 64,
+    "lifetime": [0.8, 1.0],
+    "speed": [60, 120],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "radialAcceleration": -400,
+    "attractors": [{"space": "world", "strength": 1200, "radius": 600, "killRadius": 12}],
+    "startSize": [10, 14],
+    "endSize": [4, 6],
+    "colors": ["#FF60C0FF", "#FF80E0FF", "#00FFFFFF"],
+    "shape": "ring",
+    "shapeSize": [160, 0],
+    "trail": {"length": 6, "lifetime": 0.15},
+    "blend": "additive"
+}

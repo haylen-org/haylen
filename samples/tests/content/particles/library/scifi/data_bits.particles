@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/pixel_square.png",
+    "filter": "nearest",
+    "rate": 20,
+    "maxParticles": 32,
+    "lifetime": [0.6, 1.0],
+    "speed": [40, 80],
+    "direction": -1.5708,
+    "spread": 0.1,
+    "startSize": 8,
+    "endSize": 8,
+    "colors": ["#0040FFA0", "#FF40FFA0", "#0040FFA0"],
+    "colorTimes": [0, 0.1, 0.9],
+    "colorBlend": "steps",
+    "shape": "rectangle",
+    "shapeSize": [40, 60],
+    "pixelSnap": 4,
+    "blend": "additive"
+}

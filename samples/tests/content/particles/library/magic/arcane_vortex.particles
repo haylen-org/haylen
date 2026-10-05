@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/soft_dot.png",
+    "filter": "linear",
+    "rate": 120,
+    "maxParticles": 384,
+    "lifetime": [1.2, 1.6],
+    "speed": [0, 10],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "radialAcceleration": -120,
+    "tangentialAcceleration": 260,
+    "startSize": [18, 26],
+    "endSize": 4,
+    "colors": ["#00A060FF", "#FFB070FF", "#FF60E0FF", "#0040C0FF"],
+    "shape": "ring",
+    "shapeSize": [200, 0],
+    "blend": "additive",
+    "emission": 1
+}

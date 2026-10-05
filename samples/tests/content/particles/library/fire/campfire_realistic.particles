@@ -1,0 +1,23 @@
+{
+    "texture": "../textures/flame_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "rate": 70,
+    "maxParticles": 128,
+    "lifetime": [0.5, 0.9],
+    "speed": [80, 150],
+    "direction": -1.5708,
+    "spread": 0.35,
+    "gravity": [0, -120],
+    "turbulence": {"strength": 30, "frequency": 0.02, "speed": 1},
+    "startSize": [56, 84],
+    "endSize": [12, 20],
+    "rotation": [-0.3, 0.3],
+    "spin": [-0.6, 0.6],
+    "colors": ["#FFFFF4C8", "#FFFFB040", "#C0F05010", "#00701000"],
+    "shape": "circle",
+    "shapeSize": [20, 0],
+    "light": {"radius": 260, "color": "#FFFFB060", "intensity": 1.2, "flicker": {"speed": 8, "amount": 0.2}},
+    "blend": "additive",
+    "emission": 1
+}

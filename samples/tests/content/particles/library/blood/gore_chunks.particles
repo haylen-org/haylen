@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/debris_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 6}],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [0.8, 1.2],
+    "speed": [250, 450],
+    "direction": -1.5708,
+    "spread": 2.4,
+    "gravity": [0, 1300],
+    "collision": {"type": "floor", "y": 60, "result": "stick"},
+    "startSize": [10, 16],
+    "endSize": [10, 16],
+    "spin": [-10, 10],
+    "colors": ["#FF7A1420", "#FF5A0E18"],
+    "subEmitters": [{"effect": "../blood/blood_drip.particles", "trigger": "alive", "rate": 4}]
+}

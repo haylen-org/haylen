@@ -1,0 +1,21 @@
+{
+    "texture": "../textures/droplet.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 20}],
+    "duration": 0.05,
+    "maxParticles": 24,
+    "lifetime": [0.4, 0.8],
+    "speed": [200, 450],
+    "direction": 0,
+    "spread": 0.9,
+    "gravity": [0, 1200],
+    "damping": 0.8,
+    "collision": {"type": "floor", "y": 60, "result": "stick"},
+    "startSize": [5, 10],
+    "endSize": [3, 6],
+    "stretch": 0.01,
+    "rotation": -1.5708,
+    "alignToVelocity": true,
+    "colors": ["#FFA01020", "#FF700A14", "#00500810"]
+}

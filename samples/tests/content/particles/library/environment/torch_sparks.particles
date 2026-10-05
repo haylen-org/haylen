@@ -1,0 +1,17 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 3,
+    "maxParticles": 16,
+    "lifetime": [0.6, 1.2],
+    "speed": [40, 100],
+    "direction": -1.5708,
+    "spread": 0.8,
+    "gravity": [0, -20],
+    "turbulence": {"strength": 40, "frequency": 0.02, "speed": 1},
+    "startSize": [2, 4],
+    "endSize": 1,
+    "colors": ["#FFFFE080", "#00FF6010"],
+    "blend": "additive",
+    "emission": 1
+}

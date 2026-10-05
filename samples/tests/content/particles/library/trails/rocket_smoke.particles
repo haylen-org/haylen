@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/smoke_puff.png",
+    "filter": "linear",
+    "rate": 60,
+    "rateOverDistance": 0.25,
+    "maxParticles": 128,
+    "lifetime": [0.8, 1.4],
+    "speed": [10, 40],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "gravity": [0, -20],
+    "damping": 1,
+    "startSize": [10, 16],
+    "endSize": [50, 70],
+    "rotation": [0, 6.2832],
+    "spin": [-1, 1],
+    "colors": ["#C0E0E0E0", "#80B0B0B0", "#00909090"],
+    "particleOrder": "newestFirst"
+}

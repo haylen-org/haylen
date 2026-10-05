@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/light_beam.png",
+    "filter": "linear",
+    "rate": 30,
+    "duration": 1.2,
+    "maxParticles": 32,
+    "lifetime": [0.3, 0.5],
+    "speed": [200, 300],
+    "direction": -1.5708,
+    "spread": 0,
+    "startSize": [60, 80],
+    "endSize": [60, 80],
+    "aspect": 0.35,
+    "colors": ["#00FFF8D0", "#C0FFF8D0", "#00FFF8D0"],
+    "shape": "rectangle",
+    "shapeSize": [24, 4],
+    "light": {"radius": 240, "color": "#FFFFF8D0", "fade": "cycle"},
+    "blend": "additive",
+    "emission": 1
+}

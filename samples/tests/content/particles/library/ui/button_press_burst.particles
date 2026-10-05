@@ -1,0 +1,20 @@
+{
+    "texture": "../textures/star_4point.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 10}],
+    "duration": 0.05,
+    "maxParticles": 12,
+    "lifetime": [0.25, 0.4],
+    "speed": [150, 260],
+    "direction": -1.5708,
+    "directionMode": "outward",
+    "spread": 6.2832,
+    "damping": 5,
+    "startSize": [12, 16],
+    "endSize": 0,
+    "colors": ["#FFFFFFFF", "#FFFFE36E", "#00FFC040"],
+    "shape": "rectangleEdge",
+    "shapeSize": [140, 40],
+    "blend": "additive"
+}

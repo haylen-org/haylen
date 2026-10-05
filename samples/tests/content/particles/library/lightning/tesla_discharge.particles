@@ -1,0 +1,23 @@
+{
+    "texture": "../textures/hard_dot.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 20, "probability": 0.7}, {"time": 0.5, "count": 20, "probability": 0.7}],
+    "duration": 1,
+    "loop": true,
+    "maxParticles": 48,
+    "lifetime": [0.1, 0.3],
+    "speed": [200, 500],
+    "direction": -1.5708,
+    "directionMode": "outward",
+    "spread": 6.2832,
+    "damping": 3,
+    "startSize": [3, 6],
+    "endSize": 1,
+    "alignToVelocity": true,
+    "colors": ["#FFFFFFFF", "#FFB0A0FF", "#006040FF"],
+    "shape": "ring",
+    "shapeSize": [20, 0],
+    "light": {"radius": 260, "color": "#FFB0A0FF", "flicker": {"speed": 30, "amount": 0.7}},
+    "blend": "additive"
+}

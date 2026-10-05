@@ -1,0 +1,16 @@
+{
+    "texture": "../textures/impact_star.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 1}],
+    "duration": 0.05,
+    "maxParticles": 1,
+    "lifetime": 0.18,
+    "speed": 0,
+    "startSize": 20,
+    "endSize": 90,
+    "sizeCurve": {"curve": "backOut", "overshoot": 2},
+    "rotation": [0, 6.2832],
+    "colors": ["#FFFFFFFF", "#FFFFE36E", "#00FFE36E"],
+    "colorTimes": [0, 0.6, 1]
+}

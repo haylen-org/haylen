@@ -1,0 +1,7 @@
+{
+    "emitters": [
+        {"name": "smoke", "effect": "../smoke/smoke_wisps.particles", "offset": [0, -30]},
+        {"name": "flame", "effect": "../fire/torch_flame.particles"},
+        {"name": "sparks", "effect": "../environment/torch_sparks.particles"}
+    ]
+}

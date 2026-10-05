@@ -1,0 +1,7 @@
+{
+    "emitters": [
+        {"name": "burst", "effect": "../impacts/hit_cartoon.particles"},
+        {"name": "pops", "effect": "../impacts/hit_cartoon_pops.particles"},
+        {"name": "drops", "effect": "../blood/hit_toned_down.particles"}
+    ]
+}

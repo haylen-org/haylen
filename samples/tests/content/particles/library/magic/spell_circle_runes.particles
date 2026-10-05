@@ -1,0 +1,19 @@
+{
+    "texture": "../textures/rune_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 10,
+    "maxParticles": 24,
+    "lifetime": [0.8, 1.2],
+    "speed": [10, 20],
+    "direction": -1.5708,
+    "spread": 0.2,
+    "startSize": [20, 26],
+    "endSize": [20, 26],
+    "colors": ["#00A0F0FF", "#FFA0F0FF", "#00A0F0FF"],
+    "colorTimes": [0, 0.25, 1],
+    "shape": "ellipse",
+    "shapeSize": [90, 30],
+    "blend": "additive"
+}
