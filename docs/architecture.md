@@ -218,7 +218,7 @@ The frame loop reuses its storage, so a steady frame with scenes, timers and twe
 | 1000 JSON assets loaded in the background, with the frames that wait for them | 12.2 |
 | 1000 JSON assets loaded on the frame thread | 3.9 |
 
-Due timers fire from a heap, so an update of 10000 timers that fire every frame costs 0.58 milliseconds where a search of every timer for each one cost 186. An owner gives its process mode once per frame to everything it owns, so the 1000 tweens of a scene cost 0.20 milliseconds a frame where asking the owner for each tween cost about 0.6.
+Due timers fire from a heap, so an update grows with the timers that fire and not with every timer the scheduler holds for each one that fires. An owner gives its process mode once per frame to everything it owns, so the tweens of a scene cost about what tweens without an owner cost.
 
 ## Resource ownership
 
