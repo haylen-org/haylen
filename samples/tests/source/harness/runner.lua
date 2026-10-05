@@ -19,7 +19,7 @@ local Progress = haylen.class('Progress', scene.Scene)
 
 function Progress:enter()
     window.setBackLeavesApp(false)
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         padding = {32, 48},
         gap = 24,
         onCancel = function() runner.stop() end,
@@ -30,24 +30,24 @@ function Progress:enter()
         ui.label{id = 'progress', text = '', font = 'heading'},
         ui.scroll{grow = 1, ui.column{id = 'failures', gap = 8, padding = {0, 24, 0, 0}}},
     }, {owner = self})
-    self.document:command('back', 'focus')
+    self.gui:command('back', 'focus')
     runner.show()
 end
 
 -- Shows how far the run is, and the failures so far.
 function runner.show()
-    local document = runner.screen and runner.screen.document
-    if not document then
+    local gui = runner.screen and runner.screen.gui
+    if not gui then
         return
     end
     local total = #runner.queue
     local text = runner.index > total and string.format('Done: %d tests ran, %d failed.', total, #runner.failures) or string.format('Running %d of %d, %d failed so far.', runner.index, total, #runner.failures)
-    document:set('progress', {text = text})
+    gui:set('progress', {text = text})
     local rows = {}
     for index, failure in ipairs(runner.failures) do
         rows[index] = ui.label{text = string.format('%s  %s: %s', failure.test.code, failure.test.title, failure.message), color = 'dangerText'}
     end
-    document:replaceChildren('failures', rows)
+    gui:replaceChildren('failures', rows)
 end
 
 -- Puts the progress screen alone on the stack, dropping whatever the last test left there.

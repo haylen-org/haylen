@@ -126,7 +126,7 @@ class Context final {
         return deltaSeconds;
     }
 
-    // Events go to the queue of the document being drawn.
+    // Events go to the queue of the GUI being drawn.
     void setEventQueue(std::vector<Event>* value) noexcept {
         events = value;
     }

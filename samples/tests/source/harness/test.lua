@@ -27,7 +27,7 @@ Test.green = '#FF6FDCA0'
 Test.red = '#FFFF8A84'
 Test.violet = '#FFC9A0FF'
 
--- The stage camera shows stage-local coordinates, where 0, 0 is the top-left corner of the play area wherever the layout puts it, unless the frame names a `view` to fit. A test keeps `entry`, `camera`, `view`, `document`, `stage`, `area` and `statusTime` on itself for the harness, so its own fields and methods take other names, and `log`, `status`, `set`, `cancel`, `spawn` and `listen` stay the methods of the harness and of scenes, as do the scene hooks such as `load`, `pause`, `resume` and `event`, which the scene system calls.
+-- The stage camera shows stage-local coordinates, where 0, 0 is the top-left corner of the play area wherever the layout puts it, unless the frame names a `view` to fit. A test keeps `entry`, `camera`, `view`, `gui`, `stage`, `area` and `statusTime` on itself for the harness, so its own fields and methods take other names, and `log`, `status`, `set`, `cancel`, `spawn` and `listen` stay the methods of the harness and of scenes, as do the scene hooks such as `load`, `pause`, `resume` and `event`, which the scene system calls.
 function Test:init(entry)
     self.entry = entry
     self.statusTime = Test.statusInterval
@@ -83,8 +83,8 @@ function Test:frame(options)
         children[#children + 1] = node
     end
 
-    self.document = ui.mount(ui.column{padding = 24, gap = 12, onCancel = function() self:cancel() end, children = children}, {owner = self})
-    self.document:command(options.focus or (stage and options.play and 'stage') or 'back', 'focus')
+    self.gui = ui.mount(ui.column{padding = 24, gap = 12, onCancel = function() self:cancel() end, children = children}, {owner = self})
+    self.gui:command(options.focus or (stage and options.play and 'stage') or 'back', 'focus')
     log.info(string.format('[%s] Started.', entry.code))
 end
 
@@ -102,15 +102,15 @@ function Test:cancel()
 end
 
 -- Loads the action map of the test, which the project keeps with the action that moves the focus between the test and its controls, until the test exits.
-function Test:loadActions(document)
-    navigation.useActions(document)
+function Test:loadActions(actions)
+    navigation.useActions(actions)
 end
 
 -- Follows the play area, calling `resize` with the stage-local area whenever its size changes. Tests call it first from their own update.
 function Test:update(dt)
     self.statusTime = self.statusTime + haylen.unscaledDelta()
 
-    local stage = self.document and self.document:bounds('stage')
+    local stage = self.gui and self.gui:bounds('stage')
     if not stage then
         return
     end
@@ -151,12 +151,12 @@ end
 function Test:status(text)
     if self.statusTime >= Test.statusInterval then
         self.statusTime = 0
-        self.document:set('status', {text = text})
+        self.gui:set('status', {text = text})
     end
 end
 
 function Test:set(id, properties)
-    self.document:set(id, properties)
+    self.gui:set(id, properties)
 end
 
 -- Writes a line to the log with the code of the test in front of it.

@@ -253,11 +253,11 @@ Shop.__index = Shop
 
 function Shop:enter()
     window.setBackLeavesApp(false)
-    self.document = ui.mount(ui.column{onCancel = function() scene.pop() end, ui.button{text = 'Buy', autofocus = true}})
+    self.gui = ui.mount(ui.column{onCancel = function() scene.pop() end, ui.button{text = 'Buy', autofocus = true}})
 end
 
 function Shop:exit()
-    self.document:unmount()
+    self.gui:unmount()
     window.setBackLeavesApp(true)
 end
 

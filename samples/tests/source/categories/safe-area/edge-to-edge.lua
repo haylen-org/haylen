@@ -1,4 +1,4 @@
--- The app draws its world over the whole screen, under the notch, the rounded corners and the home indicator, while a screen document keeps its HUD in the safe area with `ui.safeArea`.
+-- The app draws its world over the whole screen, under the notch, the rounded corners and the home indicator, while a screen GUI keeps its HUD in the safe area with `ui.safeArea`.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -15,7 +15,7 @@ function EdgeToEdge:init(entry)
     self.border = true
 end
 
--- The HUD is a screen document under the frame: `ui.safeArea` keeps its row inside the safe area, and the label outside it sits against the screen, under the notch of a phone held sideways.
+-- The HUD is a screen GUI under the frame: `ui.safeArea` keeps its row inside the safe area, and the label outside it sits against the screen, under the notch of a phone held sideways.
 function EdgeToEdge:enter()
     self.simulation = areas.simulate()
     self:frame{

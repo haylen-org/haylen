@@ -143,14 +143,14 @@ set(HAYLEN_TEST_SOURCES
   ui/AnchorTests.cpp
   ui/BackendTests.cpp
   ui/ComponentTests.cpp
-  ui/DocumentTests.cpp
+  ui/GuiTests.cpp
   ui/FocusTests.cpp
   ui/GameComponentTests.cpp
   ui/MountLinkTests.cpp
   ui/PlayAreaTests.cpp
   ui/RichTextComponentTests.cpp
   ui/RightToLeftTests.cpp
-  ui/SceneDocumentTests.cpp
+  ui/SceneGuiTests.cpp
   ui/TextInputTests.cpp
   ui/ThemeTests.cpp
   ui/TransformTests.cpp

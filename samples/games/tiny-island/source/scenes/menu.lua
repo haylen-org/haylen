@@ -44,7 +44,7 @@ function menu:enter()
     end
 
     local best = preferences.best()
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         padding = 48,
         gap = 32,
         justify = 'center',
@@ -52,20 +52,20 @@ function menu:enter()
         ui.column{width = 520, align = 'center', gap = 20, children = buttons},
         widgets.caption('best', widgets.text('menu.best', {count = best and best.days or 0})),
     })
-    self.document:command('play', 'focus')
+    self.gui:command('play', 'focus')
 end
 
 function menu:exit()
-    self.document:unmount()
+    self.gui:unmount()
 end
 
 function menu:pause()
-    self.document.visible = false
+    self.gui.visible = false
 end
 
 function menu:resume()
     window.setBackLeavesApp(true)
-    self.document.visible = true
+    self.gui.visible = true
 end
 
 function menu:update(dt)

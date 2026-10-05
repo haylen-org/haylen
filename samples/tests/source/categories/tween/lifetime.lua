@@ -17,7 +17,7 @@ tween.to(target, 1, {x = 750}, {loopMode = 'yoyo', repeatCount = -1})  -- Holds 
 target = nil
 collectgarbage()  -- The tween stops before it writes again.]]
 
--- A transparent scene over the test that owns a spinning tween and a document, both of which end when it unloads.
+-- A transparent scene over the test that owns a spinning tween and a GUI, both of which end when it unloads.
 local Child = haylen.class('Child', scene.Scene)
 Child.transparent = true
 

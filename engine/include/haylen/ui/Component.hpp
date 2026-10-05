@@ -148,7 +148,7 @@ class Component {
     [[nodiscard]] virtual math::Vec2 measureContent(Context& context, float availableWidth) = 0;
     virtual void render(Context& context, const math::Rect& bounds) = 0;
 
-    // Runs in the first frame a component that was drawn is no longer drawn, because it or its document was hidden, so it lets go of what it held.
+    // Runs in the first frame a component that was drawn is no longer drawn, because it or its GUI was hidden, so it lets go of what it held.
     virtual void drawingStopped(Context&) {}
 
     // A floating component places itself while it renders and reports that place as the rectangle it was drawn in.
@@ -166,7 +166,7 @@ class Component {
     [[nodiscard]] std::optional<FocusDirection> takeFocusDirection(Context& context) const;
 
   private:
-    friend class Document;
+    friend class Gui;
 
     static constexpr double kTooltipDelaySeconds = 0.5;
     static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{

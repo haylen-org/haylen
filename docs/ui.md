@@ -4,11 +4,11 @@ Haylen has two interface modules, and both draw over the app in design units wit
 
 The worked example throughout is the Tiny Island sample: its theme in `samples/games/tiny-island/content/ui/theme.json`, its screens in `samples/games/tiny-island/source/scenes/`, the HUD in `samples/games/tiny-island/source/ui/hud.lua` and the shared building blocks in `samples/games/tiny-island/source/ui/widgets.lua`.
 
-## Documents
+## GUIs
 
-A document is a tree of nodes. Every node is a flat Lua table with a `kind`, an optional `id`, its children and the properties of its kind. Every kind is also a function of the module, so `ui.button{text = 'Play'}` builds a button node and `ui.node('button', {text = 'Play'})` does the same when the kind comes from a variable. Children go in the array part of a node or in a `children` list, never in both.
+A GUI is a tree of nodes. Every node is a flat Lua table with a `kind`, an optional `id`, its children and the properties of its kind. Every kind is also a function of the module, so `ui.button{text = 'Play'}` builds a button node and `ui.node('button', {text = 'Play'})` does the same when the kind comes from a variable. Children go in the array part of a node or in a `children` list, never in both.
 
-The function `ui.mount(tree, options)` builds the components, draws them over the app every frame and returns a `UiDocument`. A document mounted with `owner = self` in a scene belongs to the scene: it unmounts when the scene unloads, it draws only while the scene shows, so a scene pushed over it hides it and keeps its state until the scene shows again, and it goes through scene transitions with its scene, into the image of the scene that leaves or the scene that arrives, so it never flashes over the other scene. A document without a scene stays on screen above the scenes until `document:unmount()`, even when scenes change, which suits a HUD of an autoload.
+The function `ui.mount(tree, options)` builds the components, draws them over the app every frame and returns a `Gui`. A GUI mounted with `owner = self` in a scene belongs to the scene: it unmounts when the scene unloads, it draws only while the scene shows, so a scene pushed over it hides it and keeps its state until the scene shows again, and it goes through scene transitions with its scene, into the image of the scene that leaves or the scene that arrives, so it never flashes over the other scene. A GUI without a scene stays on screen above the scenes until `gui:unmount()`, even when scenes change, which suits a HUD of an autoload.
 
 ```lua
 local ui = require('haylen.ui')
@@ -17,7 +17,7 @@ local pause = {}
 pause.__index = pause
 
 function pause:enter()
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         justify = 'center',
         padding = 64,
         ui.panel{
@@ -29,11 +29,11 @@ function pause:enter()
             end},
         },
     }, {owner = self})
-    self.document:command('resume', 'focus')
+    self.gui:command('resume', 'focus')
 end
 ```
 
-Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. A document holds at most 64 levels, the root included, and 20000 nodes, and `document:replace` keeps it within them. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end.
+Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. A GUI holds at most 64 levels, the root included, and 20000 nodes, and `gui:replaceChildren` keeps it within them. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end.
 
 ### Screens in JSON
 
@@ -49,17 +49,17 @@ menu:set('play', {onClick = function() print('play') end})
 
 An empty Lua table converts to an empty JSON object, and list properties such as `items`, `rows`, `columns`, `buttons` and `expanded` read an empty object as an empty list, so `items = {}` works, and so does a JSON screen with an empty list once it passes through Lua. An empty `children` table works too, because the engine builds the children list itself.
 
-### Changing a mounted document
+### Changing a mounted GUI
 
-A mounted document is changed by node id instead of being rebuilt.
+A mounted GUI is changed by node id instead of being rebuilt.
 
 | Method | Use |
 | --- | --- |
-| `document:set(id, properties)` | Changes some properties of a node and keeps the others. The merged result is validated first, so a bad value leaves the node untouched. The `onX` keys add or replace handlers. |
-| `document:replaceChildren(id, children)` | Replaces every child of a node, such as the rows of a shop list. |
-| `document:get(id)` and `document:has(id)` | The method `get` returns a copy of the properties the tree and later `set` calls gave a node, and `has` tells whether the id exists. |
-| `document:bounds(id)` | Returns where the node was last drawn, which suits tutorials that point at a button. |
-| `document:command(id, 'focus')` | Moves the keyboard and gamepad focus to a focusable node. |
+| `gui:set(id, properties)` | Changes some properties of a node and keeps the others. The merged result is validated first, so a bad value leaves the node untouched. The `onX` keys add or replace handlers. |
+| `gui:replaceChildren(id, children)` | Replaces every child of a node, such as the rows of a shop list. |
+| `gui:get(id)` and `gui:has(id)` | The method `get` returns a copy of the properties the tree and later `set` calls gave a node, and `has` tells whether the id exists. |
+| `gui:bounds(id)` | Returns where the node was last drawn, which suits tutorials that point at a button. |
+| `gui:command(id, 'focus')` | Moves the keyboard and gamepad focus to a focusable node. |
 
 Values the player changed, such as typed text or a moved slider, stay in the component unless a `set` call names that same property.
 
@@ -71,7 +71,7 @@ function hud:show(id, key, value, compared)
     compared = compared or value
     if self.shown[shownKey] ~= compared then
         self.shown[shownKey] = compared
-        self.document:set(id, {[key] = value})
+        self.gui:set(id, {[key] = value})
     end
 end
 
@@ -82,23 +82,23 @@ self:show('day', 'text', widgets.text('hud.day', {day = game.cycle.day}), game.c
 
 ## Placement and the safe area
 
-Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. See [Rendering](rendering.md) for the scaling policies that map design units to the screen. The functions [`viewport.setScaling`](lua-api/viewport.md#viewportsetscalingpolicy) and [`viewport.setDesignSize`](lua-api/viewport.md#viewportsetdesignsizewidth-height) change them while the app runs, and every document lays out in the new visible and safe areas from the next frame on.
+Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. See [Rendering](rendering.md) for the scaling policies that map design units to the screen. The functions [`viewport.setScaling`](lua-api/viewport.md#viewportsetscalingpolicy) and [`viewport.setDesignSize`](lua-api/viewport.md#viewportsetdesignsizewidth-height) change them while the app runs, and every GUI lays out in the new visible and safe areas from the next frame on.
 
 The function `ui.mount` takes three options.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `placement` | `'safe'` | The value `'safe'` lays the root out inside the safe area, away from notches, rounded corners and system bars. The value `'screen'` lays it out over the whole visible screen. |
-| `layer` | `0` | Documents draw in ascending layer order, and documents on the same layer draw in mount order. |
-| `owner` | none | A table or userdata, such as a scene, that owns the document. The document unmounts when the owner is released, as a scene is when it unloads, so a scene that mounts with `owner = self` needs no `unmount` of its own. |
+| `layer` | `0` | GUIs draw in ascending layer order, and GUIs on the same layer draw in mount order. |
+| `owner` | none | A table or userdata, such as a scene, that owns the GUI. The GUI unmounts when the owner is released, as a scene is when it unloads, so a scene that mounts with `owner = self` needs no `unmount` of its own. |
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
-A document that paints a background to the screen edges uses `placement = 'screen'` and wraps its controls in `ui.safeArea`, which keeps its one child inside the safe area. Toasts always appear at the top or bottom of the safe area. Every Tiny Island screen, the HUD included, uses the default safe placement.
+A GUI that paints a background to the screen edges uses `placement = 'screen'` and wraps its controls in `ui.safeArea`, which keeps its one child inside the safe area. Toasts always appear at the top or bottom of the safe area. Every Tiny Island screen, the HUD included, uses the default safe placement.
 
 ### Anchors
 
-The app draws over the whole screen on every platform, under notches, dynamic islands, rounded corners and gesture bars, and the interface chooses where each part of it sits. Any node, the document root included, can leave the layout of its parent with an [anchor](lua-api/ui.md#anchors) and sit against the safe area or the whole screen: at a corner, at the middle of an edge, at the center, or stretched along an edge, a band or the whole area. The property `margin` keeps it away from the edges, and anchored nodes follow the safe area when it changes, such as when a phone turns.
+The app draws over the whole screen on every platform, under notches, dynamic islands, rounded corners and gesture bars, and the interface chooses where each part of it sits. Any node, the GUI root included, can leave the layout of its parent with an [anchor](lua-api/ui.md#anchors) and sit against the safe area or the whole screen: at a corner, at the middle of an edge, at the center, or stretched along an edge, a band or the whole area. The property `margin` keeps it away from the edges, and anchored nodes follow the safe area when it changes, such as when a phone turns.
 
 ```lua
 ui.mount(ui.stack{
@@ -185,13 +185,13 @@ The engine ships 62 component kinds, and `ui.kinds()` lists them. They are group
 
 Every kind also accepts the [common properties](lua-api/ui.md#common-properties): `visible`, `enabled`, `tooltip`, `grow`, the size bounds, `align`, the anchor, the focus properties, `direction` and `language`. A hidden node takes no room.
 
-Games reach for a few of them often. The kind `circularProgress` with `style = 'cooldown'` shades an ability icon while it recharges. The kinds `stepper` and `segmentedControl` pick settings with left and right, the way console menus do. The kind `slotGrid` holds inventories and hotbars and moves items between slots, draggable lists and other documents, with the pointer and by carrying them with a gamepad or a remote. The kind `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen and returns a binding the action map takes. The kind `window` floats a draggable panel over the game, and `contextMenu` opens actions on a right click, a long press or `uiMenu`.
+Games reach for a few of them often. The kind `circularProgress` with `style = 'cooldown'` shades an ability icon while it recharges. The kinds `stepper` and `segmentedControl` pick settings with left and right, the way console menus do. The kind `slotGrid` holds inventories and hotbars and moves items between slots, draggable lists and other GUIs, with the pointer and by carrying them with a gamepad or a remote. The kind `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen and returns a binding the action map takes. The kind `window` floats a draggable panel over the game, and `contextMenu` opens actions on a right click, a long press or `uiMenu`.
 
 The Tiny Island screens use a small part of the catalog. The menu is the logo as an `image` over a column of buttons. The class selection screen uses a `pageHeader` with `banner = true`, `imageButton` portraits whose `tint` dims the classes that are not chosen, and `progress` bars for the stats. The settings sheet is a `panel` holding a `settingsForm` of `settingsRow` nodes with sliders, a combo and toggles. The HUD uses panels, icons, labels, progress bars, an icon button, a toast and the touch controls.
 
 ## Events and handlers
 
-A node table key that starts with `on` followed by an upper-case letter and holds a function is a handler. The handler `onClick` answers the `click` event and `onChange` answers `change`. The handler receives one table with the values of the event plus `id`, `name` and `document`, so a handler can change its own document through `event.document:set`.
+A node table key that starts with `on` followed by an upper-case letter and holds a function is a handler. The handler `onClick` answers the `click` event and `onChange` answers `change`. The handler receives one table with the values of the event plus `id`, `name` and `gui`, so a handler can change its own GUI through `event.gui:set`.
 
 ```lua
 ui.settingsRow{label = widgets.text('settings.music'), ui.slider{value = preferences.get('music'), width = 440, onChange = function(event)
@@ -199,26 +199,26 @@ ui.settingsRow{label = widgets.text('settings.music'), ui.slider{value = prefere
 end}}
 ```
 
-Events are collected while the document draws and handed to the handlers once per frame, in the engine update of the next frame, before the scenes update. An error inside a handler stops the app and shows the error screen with the message and its Lua stack trace. A node with handlers and no `id` gets an engine id such as `#1`. The method `set` adds or replaces handlers, and handlers leave with their node.
+Events are collected while the GUI draws and handed to the handlers once per frame, in the engine update of the next frame, before the scenes update. An error inside a handler stops the app and shows the error screen with the message and its Lua stack trace. A node with handlers and no `id` gets an engine id such as `#1`. The method `set` adds or replaces handlers, and handlers leave with their node.
 
-The [event table](lua-api/ui.md#events-and-handlers) of the reference lists which kind reports which event. Event values never use the names `id`, `name` and `document`, so the item of a `select` arrives as `event.item` and the button of an `answer` as `event.button`, next to the node id in `event.id`. Every node also reports `focus` and `blur` as the focus comes and goes, and focus scopes and document roots hear `cancel`.
+The [event table](lua-api/ui.md#events-and-handlers) of the reference lists which kind reports which event. Event values never use the names `id`, `name` and `gui`, so the item of a `select` arrives as `event.item` and the button of an `answer` as `event.button`, next to the node id in `event.id`. Every node also reports `focus` and `blur` as the focus comes and goes, and focus scopes and GUI roots hear `cancel`.
 
 ### Pointer, keyboard and gamepad
 
 The function `ui.usingPointer()` returns `true` while the pointer is over something the interface owns: an interactive component, an open dialog, menu or picker, an ImGui window, or a card, panel or touch control. Empty space inside columns, rows and stacks lets the pointer through. The function `ui.usingKeyboard()` returns `true` while a text field has the focus. Gameplay that reacts to raw clicks or key presses checks them first.
 
-A press the interface answers itself never reaches the actions of the app, like a click on a button. While a control has the focus, every navigation key, button and the left stick belong to the interface, and while a [play area](lua-api/ui.md#uiplayareaproperties) has the focus, the directions, accept and menu belong to the game and only cancel, Tab and `uiFocus` stay with the interface. Escape, the east button and the Menu button of a TV remote that close a popup, a combo list, a dialog, a closable window or a carried item, or that end the editing of a control, every key while a text field edits, and every key and button while a `keyCapture` listens stay with the interface too, until they are released, so an action bound to the same key, such as a `pause` bound to Escape, fires only when the interface answers nothing. A screen goes back with the `onCancel` handler of its document root, which hears `uiCancel` only when nothing else in the interface answers it. The keys and buttons are those of the navigation actions, remapped or built in. The [input guide](input.md#who-owns-the-keyboard-and-the-gamepad) explains how this relates to the action map.
+A press the interface answers itself never reaches the actions of the app, like a click on a button. While a control has the focus, every navigation key, button and the left stick belong to the interface, and while a [play area](lua-api/ui.md#uiplayareaproperties) has the focus, the directions, accept and menu belong to the game and only cancel, Tab and `uiFocus` stay with the interface. Escape, the east button and the Menu button of a TV remote that close a popup, a combo list, a dialog, a closable window or a carried item, or that end the editing of a control, every key while a text field edits, and every key and button while a `keyCapture` listens stay with the interface too, until they are released, so an action bound to the same key, such as a `pause` bound to Escape, fires only when the interface answers nothing. A screen goes back with the `onCancel` handler of its GUI root, which hears `uiCancel` only when nothing else in the interface answers it. The keys and buttons are those of the navigation actions, remapped or built in. The [input guide](input.md#who-owns-the-keyboard-and-the-gamepad) explains how this relates to the action map.
 
 While a text field edits, the keys it types belong to the field alone and never navigate, so Space types a space and Enter starts a new line in a `textArea` instead of pressing the field. Enter still submits a single line and Escape still cancels, as keys of the field, and the gamepad buttons of `uiAccept` and `uiCancel` still end the editing.
 
 ### Focus, navigation and TV remotes
 
-Buttons, choices, inputs, rows, slots, play areas and the other interactive parts of a document take the keyboard, gamepad and remote focus, and the [navigation actions](lua-api/ui.md#focus-and-navigation) move it: `uiUp`, `uiDown`, `uiLeft` and `uiRight` on the arrow keys, the directional pad and the left stick, `uiAccept` on Enter, Space and the south button, `uiCancel` on Escape and the east button, `uiMenu` on the menu key and the north button, and `uiFocus` on the View button, which moves the focus between a play area and the controls of its document. An app remaps any of them by defining an action with the same name in its action map, and the others keep their built-in bindings.
+Buttons, choices, inputs, rows, slots, play areas and the other interactive parts of a GUI take the keyboard, gamepad and remote focus, and the [navigation actions](lua-api/ui.md#focus-and-navigation) move it: `uiUp`, `uiDown`, `uiLeft` and `uiRight` on the arrow keys, the directional pad and the left stick, `uiAccept` on Enter, Space and the south button, `uiCancel` on Escape and the east button, `uiMenu` on the menu key and the north button, and `uiFocus` on the View button, which moves the focus between a play area and the controls of its GUI. An app remaps any of them by defining an action with the same name in its action map, and the others keep their built-in bindings.
 
 - A direction moves the focus to the nearest control that way, unless the node names its neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Sliders, range sliders, steppers, segmented controls and carousel dots use left and right themselves. Tab walks the controls in drawing order, also from one text field on to the next.
-- A screen gives the first focus with `autofocus = true` on a node, or with `document:command(id, 'focus')`, which every Tiny Island screen does so a gamepad player can start at once. A screen where the game plays next to controls gives the first focus to its play area, so the keys play the game and Tab, `uiFocus`, a click or a tap reach the controls. Setting `focusable = false` keeps a HUD button out of navigation, and `ui.clearFocus()` drops the focus.
-- The focus stays inside its document: dialogs, popovers and menus keep it until they close and then give it back to where it was, and a node with `focusScope = true` keeps it the same way. A document that stops drawing, such as the document of a scene that another scene covers, keeps the control that had the focus and gives it the focus again once it draws, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its document, so moves reach it and bring it to the front. The property `focusWrap` wraps it around the ends of a row or a column, and a scroll brings the focused control into view.
-- The action `uiCancel` closes the open popup or dialog, puts back an item carried from a slot grid, and otherwise sends `cancel` to the innermost focus scope or to the document root, where a screen goes back with an `onCancel` handler.
+- A screen gives the first focus with `autofocus = true` on a node, or with `gui:command(id, 'focus')`, which every Tiny Island screen does so a gamepad player can start at once. A screen where the game plays next to controls gives the first focus to its play area, so the keys play the game and Tab, `uiFocus`, a click or a tap reach the controls. Setting `focusable = false` keeps a HUD button out of navigation, and `ui.clearFocus()` drops the focus.
+- The focus stays inside its GUI: dialogs, popovers and menus keep it until they close and then give it back to where it was, and a node with `focusScope = true` keeps it the same way. A GUI that stops drawing, such as the GUI of a scene that another scene covers, keeps the control that had the focus and gives it the focus again once it draws, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its GUI, so moves reach it and bring it to the front. The property `focusWrap` wraps it around the ends of a row or a column, and a scroll brings the focused control into view.
+- The action `uiCancel` closes the open popup or dialog, puts back an item carried from a slot grid, and otherwise sends `cancel` to the innermost focus scope or to the GUI root, where a screen goes back with an `onCancel` handler.
 - The focused node shows a ring in the `focus` color of the theme, `focusWidth` thick and following the corners of the control, once the player navigates with the keyboard, a gamepad or a remote. A scripted focus keeps the ring as the player last saw it and shows it at once when a gamepad was the last device used, so a mouse or touch player never sees a ring appear on its own. The first direction while the ring is hidden only shows it, and the first accept shows it and presses the focused node. Dialogs focus their last button.
 
 On an Apple TV and an Android TV there is no pointer, so the ring shows from the start. The Siri Remote moves the focus with swipes on its touch surface and the clicks of its edges, presses with a click, goes back with Menu and reports play and pause as the pause key and the west button. The remote of an Android TV moves the focus with its directional pad, presses with select and goes back with Back. On the root screen of an app, Menu and Back leave the app as Apple and Google ask, and elsewhere the app keeps them with [`window.setBackLeavesApp`](lua-api/window.md#windowsetbackleavesappenabled) set to `false`, while an open popup or dialog always keeps them.
@@ -227,7 +227,7 @@ On an Apple TV and an Android TV there is no pointer, so the ring shows from the
 
 The text components (`textField`, `secretField`, `textArea`, `filterField` and `numberField`) edit through the native text input of the platform. The focused field hands its text, selection, place on screen and keyboard options to a hidden native field of the platform, which opens the on-screen keyboard on phones, tablets, TVs and mobile browsers and brings input methods, autocorrection, dictation, the emoji picker and native paste, copy and undo. What the user types comes back to the field, text the input method still composes is underlined, and return, tab and escape submit, move to the next field and cancel. The properties `keyboard`, `returnKey`, `autocorrect`, `autocapitalize` and `maxLength` choose the keyboard, as the [reference](lua-api/ui.md#inputs) lists.
 
-When the on-screen keyboard would cover the focused field, every mounted document moves up together until the field shows above the keyboard, and moves back when the keyboard closes. The events `keyboardShown` and `keyboardHidden` of [`haylen.events`](lua-api/events.md) tell the app where the keyboard is. The [text input guide](text-input.md) describes what each platform does.
+When the on-screen keyboard would cover the focused field, every mounted GUI moves up together until the field shows above the keyboard, and moves back when the keyboard closes. The events `keyboardShown` and `keyboardHidden` of [`haylen.events`](lua-api/events.md) tell the app where the keyboard is. The [text input guide](text-input.md) describes what each platform does.
 
 ```lua
 local ui = require('haylen.ui')
@@ -242,7 +242,7 @@ ui.mount(ui.column{
 
 ## Text and translations
 
-Every text property takes a string, a number or a translation such as `{key = 'hud.day', args = {day = 3}}`. A translation is resolved through [`haylen.localization`](lua-api/localization.md) every time the text is drawn, so switching the language changes every mounted document at once without rebuilding anything. Plural forms pick their `zero`, `one` or `other` text from the `count` argument.
+Every text property takes a string, a number or a translation such as `{key = 'hud.day', args = {day = 3}}`. A translation is resolved through [`haylen.localization`](lua-api/localization.md) every time the text is drawn, so switching the language changes every mounted GUI at once without rebuilding anything. Plural forms pick their `zero`, `one` or `other` text from the `count` argument.
 
 Tiny Island wraps this in `widgets.text`, and its settings screen switches the language live through `localization.setLanguage`.
 
@@ -268,9 +268,9 @@ end}
 
 ImGui lays out and draws the widgets, and the text layout of the engine sets their text. Every component measures its text with the shaped layout of the font family of its role, and draws it through the 2D renderer from a callback of the ImGui draw list, at its place among the ImGui draws and inside their clip, moved, scaled and tinted by the transforms around it. Labels, buttons, fields, lists, tables, tooltips, dialogs and rich text therefore show Arabic, Hebrew, Persian, Urdu, Hindi, Thai and every other script the fonts of the family cover, with joined letters, conjuncts, marks and the bidirectional order of mixed text, as the [text guide](text.md#scripts-and-directions) describes. Layouts are cached by text and style, so a label that stays the same shapes once. The fonts of ImGui itself only serve the text editing engine of fields, which draws nothing, and the debug windows of `haylen.imgui`.
 
-Every paragraph of the UI reads in the direction of its first strong letter, so an Arabic label reads from the right and an English one from the left in any interface. The direction of the layout is separate, and it is left to right unless the app changes it. The call `ui.setDirection('rightToLeft')` mirrors every document: rows start from the right, start and end alignments name the right and the left, check boxes and toggles put their box on the right, sliders and progress bars fill from the right, steppers and carousels swap their ends, menus open from the right edge and the arrow keys move sliders and steppers the way they point. A node with `direction = 'rightToLeft'` or `'leftToRight'` sets the direction of its own subtree, and `language` sets the language its text is shaped for, which otherwise is the current language. The [reference](lua-api/ui.md#right-to-left-interfaces) lists everything that mirrors.
+Every paragraph of the UI reads in the direction of its first strong letter, so an Arabic label reads from the right and an English one from the left in any interface. The direction of the layout is separate, and it is left to right unless the app changes it. The call `ui.setDirection('rightToLeft')` mirrors every GUI: rows start from the right, start and end alignments name the right and the left, check boxes and toggles put their box on the right, sliders and progress bars fill from the right, steppers and carousels swap their ends, menus open from the right edge and the arrow keys move sliders and steppers the way they point. A node with `direction = 'rightToLeft'` or `'leftToRight'` sets the direction of its own subtree, and `language` sets the language its text is shaped for, which otherwise is the current language. The [reference](lua-api/ui.md#right-to-left-interfaces) lists everything that mirrors.
 
-A language declares its direction in its catalog with `"@direction": "rightToLeft"`, as [`haylen.localization`](lua-api/localization.md) describes, and `ui.setDirection('auto')` makes the UI follow it, so switching to Arabic or Hebrew mirrors every mounted document from the next frame and switching back restores it. Apps opt in, because a game may prefer to keep its HUD in one layout whatever the language. Anchors and four-sided padding stay where they are, and images are never flipped.
+A language declares its direction in its catalog with `"@direction": "rightToLeft"`, as [`haylen.localization`](lua-api/localization.md) describes, and `ui.setDirection('auto')` makes the UI follow it, so switching to Arabic or Hebrew mirrors every mounted GUI from the next frame and switching back restores it. Apps opt in, because a game may prefer to keep its HUD in one layout whatever the language. Anchors and four-sided padding stay where they are, and images are never flipped.
 
 ```lua
 local assets = require('haylen.assets')
@@ -294,7 +294,7 @@ Text fields show complex scripts and right-to-left text the same way, and the ca
 
 ## Themes
 
-A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark`, which is active at start, and `light`. The function `ui.setTheme(name)` switches every document and every ImGui window at once, `ui.theme()` returns the active name and `ui.themes()` lists the registered ones.
+A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark`, which is active at start, and `light`. The function `ui.setTheme(name)` switches every GUI and every ImGui window at once, `ui.theme()` returns the active name and `ui.themes()` lists the registered ones.
 
 An app adds its own theme with a JSON file loaded by `ui.loadTheme(path, base)`. The theme starts as a copy of the registered theme `base`, which defaults to `dark`, so the file only lists what it changes. The function `loadTheme` registers the fonts of `fontFiles`, loads the surface images and returns the theme name without switching to it. Loading a file whose `name` matches a registered theme replaces that theme, and the change shows at once when it is active. Tiny Island loads its theme at startup in `source/main.lua`.
 
@@ -381,13 +381,13 @@ Four-number insets such as `slice` and `padding` run clockwise from the top: top
 
 ## Touch controls
 
-The kinds `touchStick` and `touchButton` put on-screen controls in a document and drive the virtual sticks and buttons that the [action map](input.md#the-action-map) reads. A stick with `action = 'move'` feeds every action bound to `virtualStick:move`, and a button with `action = 'attack'` feeds every action bound to `virtual:attack`, so gameplay code reads `input.vector('move')` and `input.pressed('attack')` the same way for keyboards, gamepads and touch.
+The kinds `touchStick` and `touchButton` put on-screen controls in a GUI and drive the virtual sticks and buttons that the [action map](input.md#the-action-map) reads. A stick with `action = 'move'` feeds every action bound to `virtualStick:move`, and a button with `action = 'attack'` feeds every action bound to `virtual:attack`, so gameplay code reads `input.vector('move')` and `input.pressed('attack')` the same way for keyboards, gamepads and touch.
 
 - Every control follows its own finger, so a stick and several buttons work at the same time. The mouse drives them when no finger is down.
 - A stick reports a vector of length 0 to 1 with its `deadZone` removed. A `floating` stick centers where the finger lands inside its area, so give it a generous `width` and `height`.
 - Setting `touchOnly = true` shows a control only while the last input came from a touch screen, as `input.lastDevice()` reports it. Keyboard and gamepad players never see them.
 - Controls keep the pointer from reaching the app behind them.
-- A control that stops drawing, because it, its parent or its document was hidden or removed, releases what it held. Values reach the actions at the start of the next frame.
+- A control that stops drawing, because it, its parent or its GUI was hidden or removed, releases what it held. Values reach the actions at the start of the next frame.
 - A `touchButton` also reports `press` and `release` events for feedback such as sounds.
 
 The Tiny Island HUD puts a floating stick in a large area at the bottom left and three buttons at the bottom right, all touch-only, inside a row whose visibility follows the player's touch controls setting. The buttons show the icons of the attack and the special of the chosen class.
@@ -451,8 +451,8 @@ ImGui windows use the colors, metrics and body font of the active theme, and `ui
 | Windows whose content changes shape every frame, such as entity lists | `haylen.imgui` |
 | Plots, drag values and quick tools that never ship to players | `haylen.imgui` |
 
-A retained document is built once and then changed by id, which keeps per-frame Lua work low and lets the engine validate every property. Immediate mode code is shorter for tools but runs Lua for every widget every frame and follows the ImGui look rather than the app's components.
+A retained GUI is built once and then changed by id, which keeps per-frame Lua work low and lets the engine validate every property. Immediate mode code is shorter for tools but runs Lua for every widget every frame and follows the ImGui look rather than the app's components.
 
 ## From C++
 
-The same system is available to C++ code through `haylen::plugins::UiPlugin` (`haylen/plugins/UiPlugin.hpp`), reached with `engine.getPlugin<plugins::UiPlugin>()`. It builds `haylen::ui::Document` trees from JSON with `createDocument` and shows them with `mount`, which publishes `uiDocumentMounted` on the event bus of the engine, like `unmount` publishes `uiDocumentUnmounted`. It also loads and switches themes (`haylen::ui::Theme` in `haylen/ui/Theme.hpp`) and publishes every `haylen::ui::Event` of a document through its `events` signal. The method `UiPlugin::getComponents()` returns the `haylen::ui::ComponentRegistry`, where a C++ plugin registers its own component kinds, subclasses of `haylen::ui::Component` that read their properties with a `PropertyReader` and draw through the `haylen::ui::Context` they receive, which Lua then builds with `ui.<kind>{...}` like the built-in ones. The method `UiPlugin::getBackend()` returns the `haylen::ui::Backend` that owns the Dear ImGui context, for C++ code that draws immediate mode windows, and whose `addRenderCallback` lets a component draw with the 2D renderer at its place among the ImGui draws, as `richText` does. The method `UiPlugin::addFontFamily` registers a `haylen::text::FontFamily` under a font name, which reaches the backend as `Backend::FontFiles`, its TrueType faces and fallbacks. The method `UiPlugin::getFocus()` returns the `haylen::ui::FocusNavigator`, which tells which document and node hold the focus and whether the ring shows, and `UiPlugin::getNavigation()` the `haylen::ui::NavigationInput` with the navigation actions. A C++ component makes an ImGui item a focus target with `FocusNavigator::addTarget` while it draws, and keeps a direction for itself by overriding `Component::usesFocusDirection`. The methods `core::Engine::setSafeAreaSimulation` and `setBackLeavesApp` are the C++ side of the safe area simulation and the back button, and `setScaling` and `setDesignSize` change the mapping of design space the UI lays out in while the app runs. Text fields reach the platform through `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`), which `Window::getTextInput()` returns and which the [text input guide](text-input.md) describes. See [Architecture](architecture.md) for plugins and [Lua](lua.md) for the scripting model.
+The same system is available to C++ code through `haylen::plugins::UiPlugin` (`haylen/plugins/UiPlugin.hpp`), reached with `engine.getPlugin<plugins::UiPlugin>()`. It builds `haylen::ui::Gui` trees from JSON with `createGui` and shows them with `mount`, which publishes `guiMounted` on the event bus of the engine, like `unmount` publishes `guiUnmounted`. It also loads and switches themes (`haylen::ui::Theme` in `haylen/ui/Theme.hpp`) and publishes every `haylen::ui::Event` of a GUI through its `events` signal. The method `UiPlugin::getComponents()` returns the `haylen::ui::ComponentRegistry`, where a C++ plugin registers its own component kinds, subclasses of `haylen::ui::Component` that read their properties with a `PropertyReader` and draw through the `haylen::ui::Context` they receive, which Lua then builds with `ui.<kind>{...}` like the built-in ones. The method `UiPlugin::getBackend()` returns the `haylen::ui::Backend` that owns the Dear ImGui context, for C++ code that draws immediate mode windows, and whose `addRenderCallback` lets a component draw with the 2D renderer at its place among the ImGui draws, as `richText` does. The method `UiPlugin::addFontFamily` registers a `haylen::text::FontFamily` under a font name, which reaches the backend as `Backend::FontFiles`, its TrueType faces and fallbacks. The method `UiPlugin::getFocus()` returns the `haylen::ui::FocusNavigator`, which tells which GUI and node hold the focus and whether the ring shows, and `UiPlugin::getNavigation()` the `haylen::ui::NavigationInput` with the navigation actions. A C++ component makes an ImGui item a focus target with `FocusNavigator::addTarget` while it draws, and keeps a direction for itself by overriding `Component::usesFocusDirection`. The methods `core::Engine::setSafeAreaSimulation` and `setBackLeavesApp` are the C++ side of the safe area simulation and the back button, and `setScaling` and `setDesignSize` change the mapping of design space the UI lays out in while the app runs. Text fields reach the platform through `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`), which `Window::getTextInput()` returns and which the [text input guide](text-input.md) describes. See [Architecture](architecture.md) for plugins and [Lua](lua.md) for the scripting model.

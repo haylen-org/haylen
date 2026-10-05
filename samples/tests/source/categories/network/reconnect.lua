@@ -78,7 +78,7 @@ function Reconnect:start()
     local socket = self:keep(net.connectWebSocket(url, {reconnect = Reconnect.settings}))
     self.socket = socket
     self.bars = {}
-    self.document:replaceChildren('attempts', {})
+    self.gui:replaceChildren('attempts', {})
     self:set('url', {text = url})
     self:record('Connecting', url)
     self:on(socket, 'open', function()
@@ -96,7 +96,7 @@ function Reconnect:start()
             ui.label{text = 'Attempt ' .. attempt, width = 160},
             ui.progress{value = delay / Reconnect.settings.maxDelay, text = string.format('%.2f s', delay), grow = 1},
         }
-        self.document:replaceChildren('attempts', self.bars)
+        self.gui:replaceChildren('attempts', self.bars)
     end)
     self:on(socket, 'close', function(code, reason)
         self:record('Event "close"', string.format('Code %d%s', code, reason ~= '' and ', ' .. reason or ''))

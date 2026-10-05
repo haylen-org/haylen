@@ -10,14 +10,14 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Component.hpp"
-#include "haylen/ui/Document.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::ui {
 
 namespace {
 
-// What the documents drew in the last frame: the box around every vertex and the strongest value of two color channels.
+// What the GUIs drew in the last frame: the box around every vertex and the strongest value of two color channels.
 struct Drawn {
     math::Rect box;
     std::uint32_t alpha = 0;
@@ -51,20 +51,20 @@ class UiTransformTest : public ::testing::Test {
 TEST_F(UiTransformTest, MovesScalesFadesAndTintsANode) {
     test::EngineFixture fixture;
     plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
-    const std::shared_ptr<Document> document = plugin.createDocument({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
-    plugin.mount(document, 0);
+    const std::shared_ptr<Gui> gui = plugin.createGui({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
+    plugin.mount(gui, 0);
     fixture.frames(2);
-    const math::Rect plain = document->find("title")->getBounds();
+    const math::Rect plain = gui->find("title")->getBounds();
     const Drawn before = getDrawn(plugin);
     EXPECT_EQ(before.alpha, 255U);
 
-    Transform& shape = *document->find("title")->getTransform();
+    Transform& shape = *gui->find("title")->getTransform();
     shape.offset = {30.0F, 10.0F};
     shape.scale = {2.0F, 2.0F};
     shape.opacity = 0.5F;
     shape.tint = {1.0F, 0.0F, 0.0F, 1.0F};
     fixture.frames(1);
-    const math::Rect moved = document->find("title")->getBounds();
+    const math::Rect moved = gui->find("title")->getBounds();
     EXPECT_FLOAT_EQ(moved.x, plain.x + 30.0F);
     EXPECT_FLOAT_EQ(moved.y, plain.y + 10.0F);
 

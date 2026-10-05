@@ -76,7 +76,7 @@ class Backend final {
     // Ends the frame and draws it with the renderer, leaving out the windows that `renderWindow` drew already.
     void render(graphics2d::Renderer& renderer);
 
-    // Draws a window that ended, with its child windows and its popups, before the frame ends, such as the documents of a scene that leaves through a transition into an image of its own.
+    // Draws a window that ended, with its child windows and its popups, before the frame ends, such as the GUIs of a scene that leaves through a transition into an image of its own.
     void renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& root);
     [[nodiscard]] bool isFrameActive() const noexcept {
         return frameActive;
@@ -93,7 +93,7 @@ class Backend final {
     [[nodiscard]] bool isUsingKeyboard() const;
     void blockPointer(const math::Rect& area);
 
-    // Marks the window being built as transparent to the pointer outside its items and blocked areas, which suits a window that hosts app UI documents.
+    // Marks the window being built as transparent to the pointer outside its items and blocked areas, which suits a window that hosts app GUIs.
     void setTransparentWindow();
 
     // Returns an ImGui reference for an app texture, valid until the end of the frame.
@@ -165,7 +165,7 @@ class Backend final {
     void handleTextAction(const platform::Event& event);
     void feedGamepad(const input::Input& input, const NavigationInput& navigation);
 
-    // Closes every popup that no component drew in the last frame, such as the dialog of a node that was hidden or of a document that was unmounted, so it never keeps the pointer and cancel from the windows under it.
+    // Closes every popup that no component drew in the last frame, such as the dialog of a node that was hidden or of a GUI that was unmounted, so it never keeps the pointer and cancel from the windows under it.
     static void closeAbandonedPopups();
     void updateTextures(ImDrawData& data);
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);

@@ -8,7 +8,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/ComponentRegistry.hpp"
-#include "haylen/ui/Document.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "support/EngineFixture.hpp"
 #include "ui/components/BuiltInComponents.hpp"
 
@@ -16,14 +16,14 @@ namespace haylen::ui {
 
 namespace {
 
-class DocumentTest : public ::testing::Test {
+class GuiTest : public ::testing::Test {
   protected:
-    DocumentTest() {
+    GuiTest() {
         BuiltInComponents::registerAll(registry);
     }
 
-    [[nodiscard]] Document document(const std::string& json) const {
-        return Document(registry, core::Json::parse(json));
+    [[nodiscard]] Gui gui(const std::string& json) const {
+        return Gui(registry, core::Json::parse(json));
     }
 
     // Runs an action that should fail and returns the message it failed with.
@@ -41,9 +41,9 @@ class DocumentTest : public ::testing::Test {
 
 } // namespace
 
-TEST_F(DocumentTest, BuildsTreesWithUniqueIds) {
+TEST_F(GuiTest, BuildsTreesWithUniqueIds) {
     // clang-format off
-    Document menu = document(R"({"kind": "column", "id": "root", "gap": 8, "children": [
+    Gui menu = gui(R"({"kind": "column", "id": "root", "gap": 8, "children": [
         {"kind": "label", "id": "title", "text": "Tiny Island", "font": "title"},
         {"kind": "row", "children": [{"kind": "button", "id": "play", "text": "Play", "variant": "primary"}]}
     ]})");
@@ -58,15 +58,15 @@ TEST_F(DocumentTest, BuildsTreesWithUniqueIds) {
     menu.setVisible(false);
     EXPECT_FALSE(menu.isVisible());
 
-    EXPECT_NE(captureError([&] { (void)document(R"({"kind": "column", "children": [{"kind": "label", "id": "a"}, {"kind": "label", "id": "a"}]})"); }).find("used more than once"), std::string::npos);
-    EXPECT_NE(captureError([&] { (void)document(R"({"kind": "spaceship"})"); }).find("no UI component kind named \"spaceship\""), std::string::npos);
-    EXPECT_NE(captureError([&] { (void)document(R"({"text": "no kind"})"); }).find("needs a kind"), std::string::npos);
-    EXPECT_NE(captureError([&] { (void)document(R"([1, 2])"); }).find("must be an object"), std::string::npos);
-    EXPECT_NE(captureError([&] { (void)document(R"({"kind": "label", "id": ""})"); }).find("non-empty string"), std::string::npos);
-    EXPECT_NE(captureError([&] { (void)document(R"({"kind": "label", "children": [{"kind": "label"}]})"); }).find("at most 0 children"), std::string::npos);
-    EXPECT_NE(captureError([&] { (void)document(R"({"kind": "column", "children": {"kind": "label"}})"); }).find("must be a list"), std::string::npos);
+    EXPECT_NE(captureError([&] { (void)gui(R"({"kind": "column", "children": [{"kind": "label", "id": "a"}, {"kind": "label", "id": "a"}]})"); }).find("used more than once"), std::string::npos);
+    EXPECT_NE(captureError([&] { (void)gui(R"({"kind": "spaceship"})"); }).find("no UI component kind named \"spaceship\""), std::string::npos);
+    EXPECT_NE(captureError([&] { (void)gui(R"({"text": "no kind"})"); }).find("needs a kind"), std::string::npos);
+    EXPECT_NE(captureError([&] { (void)gui(R"([1, 2])"); }).find("must be an object"), std::string::npos);
+    EXPECT_NE(captureError([&] { (void)gui(R"({"kind": "label", "id": ""})"); }).find("non-empty string"), std::string::npos);
+    EXPECT_NE(captureError([&] { (void)gui(R"({"kind": "label", "children": [{"kind": "label"}]})"); }).find("at most 0 children"), std::string::npos);
+    EXPECT_NE(captureError([&] { (void)gui(R"({"kind": "column", "children": {"kind": "label"}})"); }).find("must be a list"), std::string::npos);
 
-    // A document holds 64 levels, the root included.
+    // A GUI holds 64 levels, the root included.
     // clang-format off
     const auto nested = [](int levels) {
         std::string tree = R"({"kind": "label"})";
@@ -76,12 +76,12 @@ TEST_F(DocumentTest, BuildsTreesWithUniqueIds) {
         return tree;
     };
     // clang-format on
-    EXPECT_NO_THROW((void)document(nested(64)));
-    EXPECT_NE(captureError([&] { (void)document(nested(65)); }).find("limited to 64 levels"), std::string::npos);
+    EXPECT_NO_THROW((void)gui(nested(64)));
+    EXPECT_NE(captureError([&] { (void)gui(nested(65)); }).find("limited to 64 levels"), std::string::npos);
 }
 
-TEST_F(DocumentTest, PatchesPropertiesAtomically) {
-    Document form = document(R"({"kind": "column", "children": [{"kind": "slider", "id": "volume", "min": 0, "max": 1, "value": 0.5}, {"kind": "touchButton", "id": "attack", "action": "attack"}]})");
+TEST_F(GuiTest, PatchesPropertiesAtomically) {
+    Gui form = gui(R"({"kind": "column", "children": [{"kind": "slider", "id": "volume", "min": 0, "max": 1, "value": 0.5}, {"kind": "touchButton", "id": "attack", "action": "attack"}]})");
 
     form.set("volume", core::Json{{"value", 0.25}, {"showValue", true}});
     EXPECT_EQ(*form.getProperties("volume"), (core::Json{{"min", 0}, {"max", 1}, {"value", 0.25}, {"showValue", true}}));
@@ -96,8 +96,8 @@ TEST_F(DocumentTest, PatchesPropertiesAtomically) {
     EXPECT_NE(captureError([&] { form.set("nothing", core::Json::object()); }).find("no node with the id \"nothing\""), std::string::npos);
 }
 
-TEST_F(DocumentTest, ReplacesChildrenAndTheirIds) {
-    Document list = document(R"({"kind": "column", "id": "list", "children": [{"kind": "label", "id": "first"}, {"kind": "label", "id": "keep"}]})");
+TEST_F(GuiTest, ReplacesChildrenAndTheirIds) {
+    Gui list = gui(R"({"kind": "column", "id": "list", "children": [{"kind": "label", "id": "first"}, {"kind": "label", "id": "keep"}]})");
     list.replaceChildren("list", core::Json::parse(R"([{"kind": "label", "id": "first"}, {"kind": "label", "id": "second", "text": "two"}])"));
     EXPECT_NE(list.find("second"), nullptr);
     EXPECT_EQ(list.find("keep"), nullptr);
@@ -111,14 +111,14 @@ TEST_F(DocumentTest, ReplacesChildrenAndTheirIds) {
     EXPECT_NE(captureError([&] { list.replaceChildren("list", core::Json::object()); }).find("list of nodes"), std::string::npos);
 }
 
-// New children start at the level of the node they join and count with every node of the document, so no series of replaces grows it past its limits.
-TEST_F(DocumentTest, ReplacesChildrenWithinTheLimitsOfTheDocument) {
+// New children start at the level of the node they join and count with every node of the GUI, so no series of replaces grows it past its limits.
+TEST_F(GuiTest, ReplacesChildrenWithinTheLimitsOfTheGui) {
     const auto column = [](std::size_t id) { return core::Json::array({core::Json{{"kind", "column"}, {"id", std::to_string(id)}}}); };
-    Document chain = document(R"({"kind": "column", "id": "0"})");
-    for (std::size_t depth = 1; depth < Document::kMaxDepth; ++depth) {
+    Gui chain = gui(R"({"kind": "column", "id": "0"})");
+    for (std::size_t depth = 1; depth < Gui::kMaxDepth; ++depth) {
         chain.replaceChildren(std::to_string(depth - 1), column(depth));
     }
-    EXPECT_NE(captureError([&] { chain.replaceChildren(std::to_string(Document::kMaxDepth - 1), column(Document::kMaxDepth)); }).find("limited to 64 levels"), std::string::npos);
+    EXPECT_NE(captureError([&] { chain.replaceChildren(std::to_string(Gui::kMaxDepth - 1), column(Gui::kMaxDepth)); }).find("limited to 64 levels"), std::string::npos);
 
     // clang-format off
     const auto labels = [](std::size_t count, bool named) {
@@ -129,17 +129,17 @@ TEST_F(DocumentTest, ReplacesChildrenWithinTheLimitsOfTheDocument) {
         return list;
     };
     // clang-format on
-    Document rows = document(R"({"kind": "column", "id": "list"})");
+    Gui rows = gui(R"({"kind": "column", "id": "list"})");
     rows.replaceChildren("list", labels(12000, true));
     EXPECT_NO_THROW(rows.replaceChildren("list", labels(12000, true))) << "The replaced rows leave room for the new ones.";
 
-    Document screen = document(R"({"kind": "column", "children": [{"kind": "column", "id": "plain"}, {"kind": "column", "id": "named"}]})");
+    Gui screen = gui(R"({"kind": "column", "children": [{"kind": "column", "id": "plain"}, {"kind": "column", "id": "named"}]})");
     screen.replaceChildren("plain", labels(12000, false));
     EXPECT_NE(captureError([&] { screen.replaceChildren("named", labels(8000, false)); }).find("20000 nodes"), std::string::npos) << "Nodes without ids count too.";
 }
 
-TEST_F(DocumentTest, ReadsPropertyValuesStrictly) {
-    Document sample = document(R"({"kind": "column", "children": [
+TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
+    Gui sample = gui(R"({"kind": "column", "children": [
         {"kind": "label", "id": "count", "text": 42, "width": "auto", "minWidth": 10, "align": "center", "tooltip": {"key": "hint", "args": {"n": 1}}},
         {"kind": "column", "id": "padded", "padding": [4, 8], "gap": 2, "justify": "spaceBetween"},
         {"kind": "divider", "id": "line", "color": "borderStrong"},
@@ -151,7 +151,7 @@ TEST_F(DocumentTest, ReadsPropertyValuesStrictly) {
     EXPECT_FALSE(sample.find("count")->getCommon().width.has_value());
     EXPECT_EQ(sample.find("line")->getRowAlignment(), Alignment::Center);
 
-    const auto invalid = [&](const std::string& json) { return captureError([&] { (void)document(json); }); };
+    const auto invalid = [&](const std::string& json) { return captureError([&] { (void)gui(json); }); };
     EXPECT_NE(invalid(R"({"kind": "label", "width": -3})").find("The property \"width\" of a \"label\" must be a non-negative number or \"auto\"."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "align": "middle"})").find("The property \"align\" of a \"label\" must be \"start\", \"center\", \"end\" or \"stretch\"."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "visible": "yes"})").find("The property \"visible\" of a \"label\" must be \"true\" or \"false\"."), std::string::npos);

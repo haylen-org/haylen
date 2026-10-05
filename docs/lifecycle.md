@@ -16,7 +16,7 @@ Every frame then runs the same steps.
 1. Window and gamepad changes are published, assets that finished decoding in the background create their GPU resources within the upload budget of the frame, Varn's event loop runs, where promises settle and `async` coroutines and scene tasks resume, and native replies of the platform bridge arrive.
 2. Fixed steps run for the time that passed: the top scene gets `fixedUpdate`, fixed-step tweens advance and the autoloads get `fixedUpdate`.
 3. Timers and tweens advance and the autoloads get `update`. Then scene loads that finished or failed settle, the pending scene change moves through its phases, the loading view gets `update` and the top scene gets `update`.
-4. The visible scenes get `render`, the loading view and the autoloads get `render`, the visible scenes get `renderUi`, and the loading view, the autoloads and UI documents get `renderUi`. A UI document owned by a scene draws only while its scene shows. During a scene transition, the scenes before and after the change do this into their own images, each with the UI documents it owns, the loading view, the autoloads and the documents of no scene drawing with the current scenes, and the transition effect draws the two images on the screen.
+4. The visible scenes get `render`, the loading view and the autoloads get `render`, the visible scenes get `renderUi`, and the loading view, the autoloads and GUIs get `renderUi`. A GUI owned by a scene draws only while its scene shows. During a scene transition, the scenes before and after the change do this into their own images, each with the GUIs it owns, the loading view, the autoloads and the GUIs of no scene drawing with the current scenes, and the transition effect draws the two images on the screen.
 5. Events queued with `events.post` and deferred signal listeners run.
 
 Platform events, such as keys, touches and focus changes, arrive between frames. The autoloads get them first and then the top scene, as the [scene reference](lua-api/scene.md#events) describes.
@@ -146,7 +146,7 @@ Assets announce their life as well. `assetLoaded` follows an asset into the cach
 
 Every WebSocket of [haylen.net](lua-api/net.md) publishes `webSocketConnected` when it opens and `webSocketDisconnected` when an open connection ends. A socket opened with reconnection publishes `webSocketReconnecting` with the attempt number and the wait before it, each time it schedules an attempt, until a connection opens again or it gives up.
 
-The debug statistics count objects by type: every userdata type exported to Lua, and engine resources such as textures, fonts, sounds, bodies, emitters, UI documents and tweens. While object events are on, through `debug.setObjectEvents(true)` or `debug.objectEvents` in `app.json`, every creation and destruction also publishes `objectCreated` or `objectDestroyed` with the type name, queued for the end of the frame. They are off by default because a busy app creates many objects every frame.
+The debug statistics count objects by type: every userdata type exported to Lua, and engine resources such as textures, fonts, sounds, bodies, emitters, GUIs and tweens. While object events are on, through `debug.setObjectEvents(true)` or `debug.objectEvents` in `app.json`, every creation and destruction also publishes `objectCreated` or `objectDestroyed` with the type name, queued for the end of the frame. They are off by default because a busy app creates many objects every frame.
 
 ```lua
 local events = require('haylen.events')
@@ -216,7 +216,7 @@ scene.replace(game, {duration = 1, loading = view, loadingDelay = 0.2, minimumLo
                                                                                                    sceneEnterTransitionFinished game
 ```
 
-The hold draws the effect at its switch point with the last frame of the outgoing scenes and no scene at all, so the transition itself is the loading screen when the change has no loading view, and waiting costs almost no GPU work. Once the load is done and the view stayed its minimum time, the view fades out into the covered frame over `loadingFadeOut` seconds, 0.25 by default, so the reveal starts from the covered frame without a cut. During the fade the view, the autoloads and the UI documents render over the covered frame into an image of their own, which the effect blends over the covered frame with the opacity left, and a `loadingFadeOut` of 0 takes the view away at once. A view over the current scenes, before an effect that shows both scenes or a change without an effect, goes away at once, since the scenes under it keep running. A pushed-over scene only receives `pause` at full cover and `resume` when the pushed scene pops, and popped scenes exit and unload at full cover while the scene below them receives `resume`.
+The hold draws the effect at its switch point with the last frame of the outgoing scenes and no scene at all, so the transition itself is the loading screen when the change has no loading view, and waiting costs almost no GPU work. Once the load is done and the view stayed its minimum time, the view fades out into the covered frame over `loadingFadeOut` seconds, 0.25 by default, so the reveal starts from the covered frame without a cut. During the fade the view, the autoloads and the GUIs render over the covered frame into an image of their own, which the effect blends over the covered frame with the opacity left, and a `loadingFadeOut` of 0 takes the view away at once. A view over the current scenes, before an effect that shows both scenes or a change without an effect, goes away at once, since the scenes under it keep running. A pushed-over scene only receives `pause` at full cover and `resume` when the pushed scene pops, and popped scenes exit and unload at full cover while the scene below them receives `resume`.
 
 ### Effects that show both scenes
 
@@ -238,7 +238,7 @@ scene.replace(game, {effect = 'slideIn', duration = 0.5})
                                                                                                    sceneEnterTransitionFinished game
 ```
 
-The scenes that leave the stack exit at the exit point of the effect, in the update that reaches it and before that frame renders, so nothing draws them after they exit. The UI documents that a scene owns go into its image, so the documents of the menu leave with the menu and never show over the game, and they take no input while they leave. A scene that a push covers keeps its documents mounted, and they show again when it is on top.
+The scenes that leave the stack exit at the exit point of the effect, in the update that reaches it and before that frame renders, so nothing draws them after they exit. The GUIs that a scene owns go into its image, so the GUIs of the menu leave with the menu and never show over the game, and they take no input while they leave. A scene that a push covers keeps its GUIs mounted, and they show again when it is on top.
 
 ### Loading, preloading and errors
 
@@ -254,7 +254,7 @@ A failed load, an error in `load`, a rejected promise it returned or an asset of
 - **Background and focus loss**: a halted app lets no time pass, so a change stands still in its phase and its loading delay and minimum time wait too. Its load keeps going while the platform runs frames, since Varn's event loop still runs, promises still settle and the worker pools still decode, but an app in the background creates no GPU resources, so decoded assets wait for it to come back. Once the app runs again, the finished load settles in the next update and the change goes on.
 - **Restart and stop**: the engine removes every scene, the scene that is still loading and the preloaded scenes unload too, their tasks are cancelled and the pending asset callbacks are dropped, so a hot reload in the middle of a load leaves nothing behind.
 
-Everything a scene creates with itself as the owner belongs to it and ends when it unloads, so no timer, tween, listener, UI document or coroutine of a scene ever runs once it is gone, as [Subscription scopes](#subscription-scopes) explains.
+Everything a scene creates with itself as the owner belongs to it and ends when it unloads, so no timer, tween, listener, GUI or coroutine of a scene ever runs once it is gone, as [Subscription scopes](#subscription-scopes) explains.
 
 ```lua
 local async = require('async')
@@ -307,7 +307,7 @@ The mode decides whether the top scene gets `update`, `fixedUpdate` and input ev
 
 When the pause changes, every scene on the stack whose mode stops or starts it hears about it, from the bottom of the stack up. A scene gets `paused` when the change stops it and `unpaused` when the change lets it run again. A scene in `'whenPaused'` therefore gets `unpaused` when the game pauses, and scenes in `'always'` or `'disabled'` hear nothing.
 
-Timers and tweens also choose their clock. By default they count scaled time, which `haylen.setTimeScale` slows down or freezes, and with `unscaled = true` they count real time. The pause and the time scale are independent: a time scale of zero freezes scaled time but keeps calling updates with a delta of zero, while the pause stops what it pauses. UI documents of [haylen.ui](lua-api/ui.md) keep real time, so menus animate and answer input while the game is paused.
+Timers and tweens also choose their clock. By default they count scaled time, which `haylen.setTimeScale` slows down or freezes, and with `unscaled = true` they count real time. The pause and the time scale are independent: a time scale of zero freezes scaled time but keeps calling updates with a delta of zero, while the pause stops what it pauses. GUIs of [haylen.ui](lua-api/ui.md) keep real time, so menus animate and answer input while the game is paused.
 
 ```lua
 local haylen = require('haylen')
@@ -419,7 +419,7 @@ A listener, a timer or a tween that outlives the thing it belongs to keeps runni
 | Owner | Ends |
 | --- | --- |
 | A scene table | When the scene unloads. |
-| A UI document | When it is unmounted. |
+| A GUI | When it is unmounted. |
 | Any other table or userdata, such as an autoload or a game object | When the garbage collector frees it. What it held ends at the end of that frame. |
 
 The owner holds the functions of its listeners and the bus does not hold the owner, so a function may refer to its owner without keeping it alive. `scene.listen(owner, signalOrName, fn, options)` connects to a signal or subscribes to an event in one call, and a scene built on `scene.Scene` with `haylen.class` calls it as `self:listen(signalOrName, fn, options)`. A timer or tween that inherits its process mode follows the one of its owner too.

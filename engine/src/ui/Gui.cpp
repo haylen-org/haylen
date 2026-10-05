@@ -1,4 +1,4 @@
-#include "haylen/ui/Document.hpp"
+#include "haylen/ui/Gui.hpp"
 
 #include <optional>
 #include <stdexcept>
@@ -11,10 +11,10 @@
 
 namespace haylen::ui {
 
-debug::ObjectCounter& Document::counter = *new debug::ObjectCounter("UiDocument", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& Gui::counter = *new debug::ObjectCounter("Gui", debug::ObjectCounter::Kind::Native);
 
-// Points the context at the event queue of the document while it draws, and away from it afterwards even when drawing fails.
-class Document::EventScope final {
+// Points the context at the event queue of the GUI while it draws, and away from it afterwards even when drawing fails.
+class Gui::EventScope final {
   public:
     EventScope(Context& drawing, std::vector<Event>& queue) : context(drawing) {
         context.setEventQueue(&queue);
@@ -30,7 +30,7 @@ class Document::EventScope final {
     Context& context;
 };
 
-Document::Document(const ComponentRegistry& componentRegistry, const core::Json& tree, Placement where) : registry(componentRegistry), placement(where) {
+Gui::Gui(const ComponentRegistry& componentRegistry, const core::Json& tree, Placement where) : registry(componentRegistry), placement(where) {
     std::size_t count = 0;
     Built built = build(tree, 0, count);
     root = std::move(built.component);
@@ -39,7 +39,7 @@ Document::Document(const ComponentRegistry& componentRegistry, const core::Json&
     nodeCount = count;
 }
 
-void Document::collectIds(const Component& component, std::vector<std::string>& found) {
+void Gui::collectIds(const Component& component, std::vector<std::string>& found) {
     if (!component.getId().empty()) {
         found.push_back(component.getId());
     }
@@ -48,7 +48,7 @@ void Document::collectIds(const Component& component, std::vector<std::string>& 
     }
 }
 
-std::size_t Document::countNodes(const Component& component) {
+std::size_t Gui::countNodes(const Component& component) {
     std::size_t count = 1;
     for (const auto& child : component.getChildren()) {
         count += countNodes(*child);
@@ -56,7 +56,7 @@ std::size_t Document::countNodes(const Component& component) {
     return count;
 }
 
-std::optional<std::size_t> Document::findDepth(const Component& component, const Component& target, std::size_t depth) {
+std::optional<std::size_t> Gui::findDepth(const Component& component, const Component& target, std::size_t depth) {
     if (&component == &target) {
         return depth;
     }
@@ -68,19 +68,19 @@ std::optional<std::size_t> Document::findDepth(const Component& component, const
     return std::nullopt;
 }
 
-math::Rect Document::place(const Context& context, const Component& component, math::Vec2 size, const math::Rect& area) {
+math::Rect Gui::place(const Context& context, const Component& component, math::Vec2 size, const math::Rect& area) {
     if (component.getAlignment() == Alignment::Stretch) {
         return area;
     }
     return {context.alignHorizontally(component.getAlignment(), area.x, area.width, size.x), Component::align(component.getAlignment(), area.y, area.height, size.y), size.x, size.y};
 }
 
-Document::Built Document::build(const core::Json& node, std::size_t depth, std::size_t& count) const {
+Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& count) const {
     if (!node.is_object()) {
         throw std::invalid_argument("A UI node must be an object with a kind.");
     }
     if (depth >= kMaxDepth || ++count > kMaxNodes) {
-        throw std::invalid_argument("A UI document is limited to " + std::to_string(kMaxDepth) + " levels and " + std::to_string(kMaxNodes) + " nodes.");
+        throw std::invalid_argument("A GUI is limited to " + std::to_string(kMaxDepth) + " levels and " + std::to_string(kMaxNodes) + " nodes.");
     }
     const auto kind = node.find("kind");
     if (kind == node.end() || !kind->is_string()) {
@@ -127,28 +127,28 @@ Document::Built Document::build(const core::Json& node, std::size_t depth, std::
     return built;
 }
 
-Component* Document::find(std::string_view id) const {
+Component* Gui::find(std::string_view id) const {
     const auto found = ids.find(id);
     return found != ids.end() ? found->second : nullptr;
 }
 
-const core::Json* Document::getProperties(std::string_view id) const {
+const core::Json* Gui::getProperties(std::string_view id) const {
     const auto found = properties.find(id);
     return found != properties.end() ? &found->second : nullptr;
 }
 
-Component& Document::require(std::string_view id) const {
+Component& Gui::require(std::string_view id) const {
     Component* component = find(id);
     if (component == nullptr) {
-        throw std::invalid_argument("The UI document has no node with the id \"" + std::string(id) + "\".");
+        throw std::invalid_argument("The GUI has no node with the id \"" + std::string(id) + "\".");
     }
     return *component;
 }
 
-void Document::set(std::string_view id, const core::Json& changes) {
+void Gui::set(std::string_view id, const core::Json& changes) {
     Component& component = require(id);
     if (!changes.is_object() || changes.contains("kind") || changes.contains("id") || changes.contains("children")) {
-        throw std::invalid_argument("The \"set\" method of a document changes properties only, so it takes an object without \"kind\", \"id\" or \"children\".");
+        throw std::invalid_argument("The \"set\" method of a GUI changes properties only, so it takes an object without \"kind\", \"id\" or \"children\".");
     }
 
     // A fresh component of the same kind checks the whole merged state first, so a bad value never leaves the node half updated.
@@ -159,16 +159,16 @@ void Document::set(std::string_view id, const core::Json& changes) {
     properties.insert_or_assign(std::string(id), std::move(merged));
 }
 
-void Document::replaceChildren(std::string_view id, const core::Json& trees) {
+void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
     Component& component = require(id);
     if (!trees.is_array()) {
-        throw std::invalid_argument("The \"replaceChildren\" method of a document takes a list of nodes.");
+        throw std::invalid_argument("The \"replaceChildren\" method of a GUI takes a list of nodes.");
     }
     if (trees.size() > component.getChildLimit()) {
         throw std::invalid_argument("The component kind \"" + std::string(component.getKind()) + "\" takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
 
-    // The new children count against the limits of the whole document, from the level of the node on and with the nodes they replace left out.
+    // The new children count against the limits of the whole GUI, from the level of the node on and with the nodes they replace left out.
     std::vector<std::string> removed;
     std::size_t count = nodeCount;
     for (const auto& child : component.getChildren()) {
@@ -201,18 +201,18 @@ void Document::replaceChildren(std::string_view id, const core::Json& trees) {
     nodeCount = count;
 }
 
-void Document::command(Context& context, std::string_view id, std::string_view name, const core::Json& arguments) {
+void Gui::command(Context& context, std::string_view id, std::string_view name, const core::Json& arguments) {
     require(id).command(context, name, arguments);
 }
 
-// The root places itself in the direction it sets for the document.
-void Document::draw(Context& context, const math::Rect& area) {
+// The root places itself in the direction it sets for the GUI.
+void Gui::draw(Context& context, const math::Rect& area) {
     if (!visible) {
         skip(context);
         return;
     }
     const EventScope scope(context, events);
-    context.getFocus().beginDocument(*this);
+    context.getFocus().beginGui(*this);
     const bool writing = root->pushWriting(context);
     const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context) : place(context, *root, root->measure(context, area.width), area);
     if (writing) {
@@ -222,12 +222,12 @@ void Document::draw(Context& context, const math::Rect& area) {
     root->noticeStoppedDrawing(context);
 }
 
-void Document::skip(Context& context) {
+void Gui::skip(Context& context) {
     const EventScope scope(context, events);
     root->noticeStoppedDrawing(context);
 }
 
-std::vector<Event> Document::takeEvents() {
+std::vector<Event> Gui::takeEvents() {
     return std::exchange(events, {});
 }
 

@@ -8,7 +8,7 @@
 
 namespace haylen::ui {
 
-// The part of a document where the game shows, as a place the focus can go. While it has the focus, the directions, accept and menu reach the action map instead of the UI, and it never takes the pointer, so clicks and touches on it reach the game too.
+// The part of a GUI where the game shows, as a place the focus can go. While it has the focus, the directions, accept and menu reach the action map instead of the UI, and it never takes the pointer, so clicks and touches on it reach the game too.
 class PlayArea final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {

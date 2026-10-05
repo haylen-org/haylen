@@ -1,4 +1,4 @@
--- An inventory, a hotbar mounted as another document and a draggable chest list that trade items. The grids only report moves, so the test keeps the items and sets the new slots after every drop.
+-- An inventory, a hotbar mounted as another GUI and a draggable chest list that trade items. The grids only report moves, so the test keeps the items and sets the new slots after every drop.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -71,12 +71,12 @@ function SlotGrid:drop(event)
 end
 
 function SlotGrid:refresh()
-    self.document:set('bag', {slots = slots(self.bag, 'bag', SlotGrid.bagSize)})
-    self.document:set('chest', {items = self:chestItems()})
-    self.hotbarDocument:set('hotbar', {slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize)})
+    self.gui:set('bag', {slots = slots(self.bag, 'bag', SlotGrid.bagSize)})
+    self.gui:set('chest', {items = self:chestItems()})
+    self.hotbarGui:set('hotbar', {slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize)})
 end
 
--- The hotbar is a document of its own above the hint line, and items still move between it and the frame.
+-- The hotbar is a GUI of its own above the hint line, and items still move between it and the frame.
 function SlotGrid:enter()
     local function onDrop(event)
         self:drop(event)
@@ -98,7 +98,7 @@ function SlotGrid:enter()
             }),
         }},
     }
-    self.hotbarDocument = ui.mount(ui.slotGrid{id = 'hotbar', anchor = 'bottom', margin = {0, 0, 150, 0}, columns = SlotGrid.hotbarSize, slotSize = 88, slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize), onDrop = onDrop, onCancel = function()
+    self.hotbarGui = ui.mount(ui.slotGrid{id = 'hotbar', anchor = 'bottom', margin = {0, 0, 150, 0}, columns = SlotGrid.hotbarSize, slotSize = 88, slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize), onDrop = onDrop, onCancel = function()
         self:cancel()
     end}, {owner = self})
 end

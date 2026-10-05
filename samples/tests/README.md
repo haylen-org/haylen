@@ -256,9 +256,9 @@ Signals, the event bus, owners that end their listeners, scene scopes, the engin
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
 | `EVT-001` | Signals | Connect, once, priority, deferred, blocking and disconnecting during an emit. |  |
-| `EVT-002` | Owners | Listeners that disconnect by themselves when the object or document that owns them ends. |  |
+| `EVT-002` | Owners | Listeners that disconnect by themselves when the object or GUI that owns them ends. |  |
 | `EVT-003` | Event bus | Channels, filters, priorities, consumed events and events queued for the end of the frame. |  |
-| `EVT-004` | Scene scopes | Listeners, timers, tweens, tasks and documents of a scene that all end when it unloads. |  |
+| `EVT-004` | Scene scopes | Listeners, timers, tweens, tasks and GUIs of a scene that all end when it unloads. |  |
 | `EVT-005` | Lifecycle log | Every engine event as it happens: app states, scene loads and transitions, window, assets, objects and sockets. |  |
 | `EVT-006` | Pause | A pause menu that stops the game, and the "paused" and "unpaused" hooks and events. |  |
 | `EVT-007` | Autoloads | A player data singleton that lives through every scene, and an autoload added at run time. |  |
@@ -417,7 +417,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-010` | Overlays | Dialogs, toasts, tooltips, popovers and context menus. |  |
 | `GUI-011` | Game controls | Steppers, segmented controls, range sliders and key capture fields that rebind actions of the action map. |  |
 | `GUI-012` | Windows and pages | A draggable window, accordions, a carousel and a scroll that snaps to its cards. |  |
-| `GUI-013` | Slot grid | An inventory, a hotbar in another document and a chest list that trade items by drag and drop. |  |
+| `GUI-013` | Slot grid | An inventory, a hotbar in another GUI and a chest list that trade items by drag and drop. |  |
 | `GUI-014` | Rich text | Markup with styles, links, hints, images, icons, lists, tables, effects and a typewriter reveal. |  |
 | `GUI-015` | Themes | The dark and light themes and a textured theme drawn with nine-slice surfaces. |  |
 | `GUI-016` | Focus navigation | Directional and explicit neighbours, focus scopes, wrapping and going back with keys, gamepads and TV remotes. |  |

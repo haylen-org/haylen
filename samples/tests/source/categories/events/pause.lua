@@ -30,7 +30,7 @@ function PauseMenu:enter(params)
     self:card('Paused', {ui.label{id = 'time', text = 'Paused for 0 seconds', color = 'textMuted'}})
     timer.every(1, function()
         self.seconds = self.seconds + 1
-        self.document:set('time', {text = string.format('Paused for %d %s', self.seconds, self.seconds == 1 and 'second' or 'seconds')})
+        self.gui:set('time', {text = string.format('Paused for %d %s', self.seconds, self.seconds == 1 and 'second' or 'seconds')})
     end, {owner = self})
 end
 

@@ -14,11 +14,11 @@ function loading.new(class, scenery)
     return setmetatable({class = class, backdrop = scenery}, loading)
 end
 
--- The document belongs to the view, so it goes away when the view does.
+-- The GUI belongs to the view, so it goes away when the view does.
 function loading:enter()
     self.backdrop:focus(self.class.id)
     self.shown = 0
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         id = 'content',
         padding = 96,
         gap = 28,
@@ -26,7 +26,7 @@ function loading:enter()
         widgets.caption('title', widgets.text('loading.title')),
         ui.progress{id = 'progress', width = 900, align = 'center'},
     }, {owner = self})
-    local content = self.document:transform('content')
+    local content = self.gui:transform('content')
     content.opacity = 0
     tween.to(content, fadeTime, {opacity = 1}, {owner = self})
 end
@@ -34,7 +34,7 @@ end
 function loading:update(dt, progress)
     self.shown = self.shown + dt
     self.backdrop:update(dt)
-    self.document:set('progress', {value = progress})
+    self.gui:set('progress', {value = progress})
 end
 
 function loading:render()

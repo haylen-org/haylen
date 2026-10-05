@@ -11,7 +11,7 @@ function Home.new()
 end
 
 function Home:enter()
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         align = 'center',
         gap = 32,
         ui.image{image = 'logo.png', width = 256, height = 256, align = 'center'},
@@ -24,17 +24,17 @@ function Home:enter()
     })
 
     -- Gamepads and TV remotes move the focus, so the button starts with it.
-    self.document:command('press', 'focus')
+    self.gui:command('press', 'focus')
 end
 
 function Home:press()
     self.presses = self.presses + 1
     local text = self.presses == 1 and 'Pressed once.' or ('Pressed ' .. self.presses .. ' times.')
-    self.document:set('presses', {text = text})
+    self.gui:set('presses', {text = text})
 end
 
 function Home:exit()
-    self.document:unmount()
+    self.gui:unmount()
 end
 
 scene.push(Home.new())

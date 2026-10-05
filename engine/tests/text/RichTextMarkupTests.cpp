@@ -29,7 +29,7 @@ class RichTextMarkupTest : public ::testing::Test {
 
 } // namespace
 
-// Paragraph markup reads the alignment and direction names that Lua and UI documents use, from the one table the text style keeps.
+// Paragraph markup reads the alignment and direction names that Lua and GUIs use, from the one table the text style keeps.
 TEST_F(RichTextMarkupTest, ReadsTheAlignmentAndDirectionNamesOfTheTextStyle) {
     for (const auto& [name, alignment] : Style::kAlignmentNames) {
         EXPECT_EQ(RichText::parse("[p align=" + std::string(name) + "]x[/p]").paragraphs[0].align, alignment);

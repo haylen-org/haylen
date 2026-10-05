@@ -71,7 +71,7 @@ void Context::beginFrame(double now, float delta, math::Vec2 visibleOrigin) noex
 
 void Context::emit(const Component& component, std::string name, core::Json value) {
     if (events == nullptr) {
-        throw std::logic_error("A component emitted an event outside of a document.");
+        throw std::logic_error("A component emitted an event outside of a GUI.");
     }
     events->push_back({.id = component.getId(), .name = std::move(name), .value = std::move(value)});
 }

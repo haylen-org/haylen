@@ -43,12 +43,12 @@ end
 
 -- Sets every control from a table of values, which moves them back to the saved or default state.
 function Settings:show(values)
-    local document = self.document
-    document:set('subtitles', {checked = values.subtitles})
-    document:set('music', {value = values.music})
-    document:set('effects', {value = values.effects})
-    document:set('language', {selected = values.language})
-    document:set('difficulty', {selected = values.difficulty})
+    local gui = self.gui
+    gui:set('subtitles', {checked = values.subtitles})
+    gui:set('music', {value = values.music})
+    gui:set('effects', {value = values.effects})
+    gui:set('language', {selected = values.language})
+    gui:set('difficulty', {selected = values.difficulty})
     for key, value in pairs(values) do
         self.values[key] = value
     end
@@ -80,7 +80,7 @@ function Settings:form()
                         for key, value in pairs(self.values) do
                             self.saved[key] = value
                         end
-                        event.document:set('saved', {open = true})
+                        event.gui:set('saved', {open = true})
                         local values = self.values
                         self:report(string.format('Saved music %.2f, effects %.2f, language "%s" and difficulty "%s".', values.music, values.effects, values.language, values.difficulty))
                     end},

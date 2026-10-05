@@ -15,7 +15,7 @@ Themes.backgrounds = {dark = '#FF101418', light = '#FFDDE2EC', parchment = '#FFC
 function Themes:enter()
     ui.loadTheme('interface/themes/parchment.json', 'light')
     self:frame{
-        hint = 'Switch the theme with the segmented control, or with left and right while it has the focus. Every document restyles at once, the frame of the test included, and leaving the test goes back to the dark theme.',
+        hint = 'Switch the theme with the segmented control, or with left and right while it has the focus. Every GUI restyles at once, the frame of the test included, and leaving the test goes back to the dark theme.',
         focus = 'theme',
         content = self:nodes(),
     }
@@ -66,8 +66,8 @@ function Themes:nodes()
                 },
                 ui.segmentedControl{items = {{id = 'day', text = 'Day'}, {id = 'night', text = 'Night'}}, selected = 'day'},
                 ui.row{gap = 12,
-                    ui.button{text = 'Dialog', onClick = function(event) event.document:set('dialog', {open = true}) end},
-                    ui.button{text = 'Toast', onClick = function(event) event.document:set('toast', {open = true}) end},
+                    ui.button{text = 'Dialog', onClick = function(event) event.gui:set('dialog', {open = true}) end},
+                    ui.button{text = 'Toast', onClick = function(event) event.gui:set('toast', {open = true}) end},
                     ui.button{text = 'Tooltip', tooltip = 'Tooltips take the tooltip surface'},
                 },
             },
@@ -77,7 +77,7 @@ function Themes:nodes()
     }
 end
 
--- The screen behind the documents takes the background of the theme.
+-- The screen behind the GUIs takes the background of the theme.
 function Themes:render()
     graphics2d.beginScreen()
     graphics2d.drawRect(viewport.visibleRect(), Themes.backgrounds[ui.theme()])

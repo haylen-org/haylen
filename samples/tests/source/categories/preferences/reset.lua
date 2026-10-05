@@ -50,7 +50,7 @@ function Reset:enter()
                     self:resetAudio()
                 end},
                 ui.button{id = 'everything', text = 'Reset every setting', variant = 'destructive', align = 'stretch', onClick = function(event)
-                    event.document:set('confirm', {open = true})
+                    event.gui:set('confirm', {open = true})
                 end},
                 ui.label{id = 'result', text = '', color = 'accentText'},
             },

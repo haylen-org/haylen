@@ -17,7 +17,7 @@ namespace haylen::lua {
 
 class Task;
 
-// Ties listeners, tweens, timers, tasks and UI documents to the Lua value that owns them, such as a scene table, an autoload, a UI document or a game object. Everything an owner holds ends when the owner is released, which scenes do when they unload, or when the owner is garbage collected, which ends it at the end of the frame. An owner keeps the functions of its listeners, so a function that refers to its owner never keeps the owner alive.
+// Ties listeners, tweens, timers, tasks and GUIs to the Lua value that owns them, such as a scene table, an autoload, a GUI or a game object. Everything an owner holds ends when the owner is released, which scenes do when they unload, or when the owner is garbage collected, which ends it at the end of the frame. An owner keeps the functions of its listeners, so a function that refers to its owner never keeps the owner alive.
 class Owners final {
   public:
     // Holds the Lua function of a listener: strongly without an owner, or through the owner, in which case the function goes away with it.

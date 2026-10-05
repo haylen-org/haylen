@@ -66,7 +66,7 @@ function Containers:columns()
             layout.section('Component "formField"', {
                 ui.formField{id = 'nameField', label = 'Captain', help = 'Shown on the leaderboard', required = true,
                     ui.textField{id = 'captain', placeholder = 'Your name', maxLength = 16, onChange = function(event)
-                        event.document:set('nameField', {error = #event.value < 3 and 'Use at least three letters' or ''})
+                        event.gui:set('nameField', {error = #event.value < 3 and 'Use at least three letters' or ''})
                     end},
                 },
             }),

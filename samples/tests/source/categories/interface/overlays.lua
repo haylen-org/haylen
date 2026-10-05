@@ -21,7 +21,7 @@ end
 
 function Overlays:toast(id, text)
     return function(event)
-        event.document:set(id, {open = true, text = text})
+        event.gui:set(id, {open = true, text = text})
     end
 end
 
@@ -29,17 +29,17 @@ function Overlays:columns()
     local toneButtons = {}
     for index, tone in ipairs({'information', 'success', 'warning', 'danger'}) do
         toneButtons[index] = ui.button{text = tone:sub(1, 1):upper() .. tone:sub(2), onClick = function(event)
-            event.document:set('notice', {open = true, tone = tone, text = 'A toast in the "' .. tone .. '" tone'})
+            event.gui:set('notice', {open = true, tone = tone, text = 'A toast in the "' .. tone .. '" tone'})
         end}
     end
     return layout.columns{
         ui.column{grow = 1, gap = 24,
             layout.section('Component "dialog"', {
                 ui.button{id = 'delete', text = 'Delete the save', variant = 'destructive', onClick = function(event)
-                    event.document:set('confirm', {open = true})
+                    event.gui:set('confirm', {open = true})
                 end},
                 ui.button{text = 'Open a dialog that must be answered', onClick = function(event)
-                    event.document:set('terms', {open = true})
+                    event.gui:set('terms', {open = true})
                 end},
             }),
             layout.section('Component "toast"', {
@@ -47,7 +47,7 @@ function Overlays:columns()
                 ui.row{gap = 12,
                     ui.button{text = 'At the bottom', onClick = self:toast('bottom', 'Saved at the bottom of the safe area')},
                     ui.button{text = 'Until closed', onClick = self:toast('sticky', 'This toast stays until the button below closes it')},
-                    ui.button{text = 'Close it', variant = 'link', onClick = function(event) event.document:set('sticky', {open = false}) end},
+                    ui.button{text = 'Close it', variant = 'link', onClick = function(event) event.gui:set('sticky', {open = false}) end},
                 },
             }),
         },
@@ -74,7 +74,7 @@ function Overlays:columns()
                     onSelect = function(event) self:report('The context menu picked "' .. event.item .. '".') end,
                     ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/icons/potion.png', align = 'stretch'},
                 },
-                ui.button{text = 'Open the menu from code', variant = 'link', onClick = function(event) event.document:command('slot-menu', 'open') end},
+                ui.button{text = 'Open the menu from code', variant = 'link', onClick = function(event) event.gui:command('slot-menu', 'open') end},
             }),
         },
         ui.dialog{id = 'confirm', title = 'Delete the save?', message = 'The island and everything on it will be gone.',

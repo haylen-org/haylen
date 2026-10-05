@@ -379,7 +379,7 @@ TEST(SceneLuaTest, EverythingASceneOwnsEndsWhenItUnloads) {
                 timer.after(0.05, function() fired[#fired + 1] = 'timer' end, {owner = self})
                 self.value = {x = 0}
                 tween.to(self.value, 0.5, {x = 1}, {owner = self})
-                self.document = ui.mount(ui.label{text = 'hi'}, {owner = self})
+                self.gui = ui.mount(ui.label{text = 'hi'}, {owner = self})
             end,
             unload = function(self) fired[#fired + 1] = 'unload' end,
         }
@@ -388,14 +388,14 @@ TEST(SceneLuaTest, EverythingASceneOwnsEndsWhenItUnloads) {
     // clang-format on
     fixture.frames(1);
     fixture.runLua("events.emit('ping')");
-    EXPECT_EQ(fixture.lua("return tostring(owner.document.mounted) .. ' ' .. table.concat(fired, ', ')"), "true event");
+    EXPECT_EQ(fixture.lua("return tostring(owner.gui.mounted) .. ' ' .. table.concat(fired, ', ')"), "true event");
 
     fixture.runLua("scene.pop()");
     fixture.frames(1);
     const std::string value = fixture.lua("return owner.value.x");
     fixture.runLua("events.emit('ping')");
     fixture.frames(10, 0.05);
-    EXPECT_EQ(fixture.lua("return tostring(owner.document.mounted) .. ' ' .. table.concat(fired, ', ')"), "false event, unload");
+    EXPECT_EQ(fixture.lua("return tostring(owner.gui.mounted) .. ' ' .. table.concat(fired, ', ')"), "false event, unload");
     EXPECT_EQ(fixture.lua("return owner.value.x"), value);
     EXPECT_NE(fixture.lua("ui.mount(ui.label{text = 'x'}, {owner = 3})").find("An owner must be a table or a userdata"), std::string::npos);
 }

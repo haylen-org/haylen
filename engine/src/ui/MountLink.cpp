@@ -3,32 +3,32 @@
 #include <utility>
 
 #include "haylen/plugins/UiPlugin.hpp"
-#include "haylen/ui/Document.hpp"
+#include "haylen/ui/Gui.hpp"
 
 namespace haylen::ui {
 
-MountLink::MountLink(plugins::UiPlugin& owner, std::weak_ptr<Document> value) : plugin(owner), document(std::move(value)) {}
+MountLink::MountLink(plugins::UiPlugin& owner, std::weak_ptr<Gui> value) : plugin(owner), gui(std::move(value)) {}
 
 void MountLink::disconnect() {
-    if (const std::shared_ptr<Document> mounted = document.lock()) {
+    if (const std::shared_ptr<Gui> mounted = gui.lock()) {
         plugin.unmount(*mounted);
     }
-    document.reset();
+    gui.reset();
 }
 
 bool MountLink::isConnected() const noexcept {
-    const std::shared_ptr<Document> mounted = document.lock();
+    const std::shared_ptr<Gui> mounted = gui.lock();
     return mounted && plugin.isMounted(*mounted);
 }
 
 void MountLink::setBlocked(bool value) {
-    if (const std::shared_ptr<Document> mounted = document.lock()) {
+    if (const std::shared_ptr<Gui> mounted = gui.lock()) {
         mounted->setVisible(!value);
     }
 }
 
 bool MountLink::isBlocked() const noexcept {
-    const std::shared_ptr<Document> mounted = document.lock();
+    const std::shared_ptr<Gui> mounted = gui.lock();
     return mounted && !mounted->isVisible();
 }
 

@@ -55,7 +55,7 @@ function SaveSlots:enter()
                         self:loadSlot()
                     end},
                     ui.button{id = 'delete', text = 'Delete', variant = 'destructive', onClick = function(event)
-                        event.document:set('confirm', {open = true, message = 'The slot "' .. self.selected .. '" will be gone for good.'})
+                        event.gui:set('confirm', {open = true, message = 'The slot "' .. self.selected .. '" will be gone for good.'})
                     end},
                     ui.button{id = 'damage', text = 'Damage the file', onClick = function()
                         storage.writeText('saves/' .. self.selected .. '.json', '{"data": ')

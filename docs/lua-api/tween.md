@@ -14,7 +14,7 @@ A tween reads its start values when it first renders, after its delay, so a dela
 
 ## Native properties
 
-Number, `Vec2` and `Color` properties of engine objects are native: a tween reads and writes them in C++ without calling Lua, so thousands of them cost no script time. Sprites, cameras, lights, particle emitters and the transforms of UI nodes are the usual targets. The transform that `document:transform(id)` of [`haylen.ui`](ui.md#documenttransformid) returns moves, scales, fades and tints a node of a UI document, and the document keeps it alive while the node exists, so a tween may target it directly.
+Number, `Vec2` and `Color` properties of engine objects are native: a tween reads and writes them in C++ without calling Lua, so thousands of them cost no script time. Sprites, cameras, lights, particle emitters and the transforms of UI nodes are the usual targets. The transform that `gui:transform(id)` of [`haylen.ui`](ui.md#guitransformid) returns moves, scales, fades and tints a node of a GUI, and the GUI keeps it alive while the node exists, so a tween may target it directly.
 
 ```lua
 local math2d = require('haylen.math')

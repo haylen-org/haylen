@@ -72,8 +72,8 @@ TEST_F(RightToLeftTest, PlacesTheCaretOnTheRightClusterOfRightToLeftText) {
 
 // A text field of a right-to-left node lines its text up on the right, a press left of the text puts the caret at its end, and the arrow keys move the caret on screen.
 TEST_F(RightToLeftTest, MovesTheCaretOfARightToLeftFieldOnScreen) {
-    auto document = ui.mount(R"({"kind": "column", "direction": "rightToLeft", "padding": 20, "children": [{"kind": "textField", "id": "name", "value": "שלום", "width": 400}]})");
-    const math::Rect bounds = ui.getBounds(*document, "name");
+    auto gui = ui.mount(R"({"kind": "column", "direction": "rightToLeft", "padding": 20, "children": [{"kind": "textField", "id": "name", "value": "שלום", "width": 400}]})");
+    const math::Rect bounds = ui.getBounds(*gui, "name");
     ui.click({bounds.x + 30.0F, bounds.getCenter().y});
     EXPECT_EQ(getCaret(), 4);
 

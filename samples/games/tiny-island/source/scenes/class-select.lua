@@ -63,7 +63,7 @@ function classSelect:enter()
     end
 
     -- The stats sheet and the buttons share the right side next to the cards, so the sheet shows every row on short screens, such as TVs inside their safe area and phones in landscape.
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         padding = {40, 64},
         gap = 24,
         onCancel = function()
@@ -99,11 +99,11 @@ function classSelect:enter()
         },
     })
     self:select(preferences.get('class'))
-    self.document:command('start', 'focus')
+    self.gui:command('start', 'focus')
 end
 
 function classSelect:exit()
-    self.document:unmount()
+    self.gui:unmount()
 end
 
 function classSelect:select(id)
@@ -112,20 +112,20 @@ function classSelect:select(id)
     self.backdrop:focus(class.id)
     self.backdrop:cheer(class.id)
 
-    local document = self.document
-    document:set('name', {text = widgets.text('classes.' .. class.id .. '.name')})
-    document:set('special', {text = widgets.text('classes.' .. class.id .. '.special')})
+    local gui = self.gui
+    gui:set('name', {text = widgets.text('classes.' .. class.id .. '.name')})
+    gui:set('special', {text = widgets.text('classes.' .. class.id .. '.special')})
     for _, stat in ipairs(stats) do
         local best = 0
         for _, other in ipairs(classes) do
             best = math.max(best, other[stat.value])
         end
-        document:set('stat_' .. stat.key, {value = class[stat.value] / best})
+        gui:set('stat_' .. stat.key, {value = class[stat.value] / best})
     end
     for _, other in ipairs(classes) do
         local chosen = other == class
-        document:set('pick_' .. other.id, {tint = chosen and '#FFFFFFFF' or '#FF8C8C9C'})
-        document:set('name_' .. other.id, {color = chosen and 'focus' or 'onAccent'})
+        gui:set('pick_' .. other.id, {tint = chosen and '#FFFFFFFF' or '#FF8C8C9C'})
+        gui:set('name_' .. other.id, {color = chosen and 'focus' or 'onAccent'})
     end
 end
 

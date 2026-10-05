@@ -83,7 +83,7 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
         cancelPressed = false;
     }
 
-    // ImGui closes the popups the UI opens, and dialogs and windows take cancel themselves, so documents only hear it while no popup was open.
+    // ImGui closes the popups the UI opens, and dialogs and windows take cancel themselves, so GUIs only hear it while no popup was open.
     if (cancelPressed && popupsAtEnd == 0 && g.OpenPopupStack.Size == 0) {
         cancel(current);
     }
@@ -116,15 +116,15 @@ void FocusNavigator::beginDraw() {
     building.nodes.clear();
     building.scopes.clear();
     building.targets.clear();
-    building.documents.clear();
+    building.guis.clear();
     levels.clear();
     cancelWindows.clear();
-    currentDocument = nullptr;
+    currentGui = nullptr;
 }
 
-void FocusNavigator::beginDocument(const Document& document) {
-    currentDocument = &document;
-    building.documents.push_back({.document = &document, .window = ImGui::GetCurrentWindow()->RootWindow, .root = 0});
+void FocusNavigator::beginGui(const Gui& gui) {
+    currentGui = &gui;
+    building.guis.push_back({.gui = &gui, .window = ImGui::GetCurrentWindow()->RootWindow, .root = 0});
 }
 
 void FocusNavigator::enter(const Component& component, ImGuiID node, const math::Rect& bounds) {
@@ -139,8 +139,8 @@ void FocusNavigator::enter(const Component& component, ImGuiID node, const math:
         building.scopes.push_back({.id = node, .bounds = bounds, .trap = common.focusScope, .wrap = common.focusWrap, .parent = level.scope});
         level.scope = building.scopes.size() - 1;
     }
-    if (!building.documents.empty() && building.documents.back().root == 0) {
-        building.documents.back().root = node;
+    if (!building.guis.empty() && building.guis.back().root == 0) {
+        building.guis.back().root = node;
     }
     levels.push_back(level);
 }
@@ -165,7 +165,7 @@ void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play) 
     // A component becomes a node the first time it registers a target in a frame, so components without targets cost nothing.
     Level& level = levels.back();
     if (!level.node) {
-        Node node{.id = level.id, .document = currentDocument, .name = level.component->getId(), .neighbors = level.component->getCommon().focusNeighbors, .usedDirections = 0, .scope = level.scope};
+        Node node{.id = level.id, .gui = currentGui, .name = level.component->getId(), .neighbors = level.component->getCommon().focusNeighbors, .usedDirections = 0, .scope = level.scope};
         for (const FocusDirection direction : {FocusDirection::Left, FocusDirection::Right, FocusDirection::Up, FocusDirection::Down}) {
             if (level.component->usesFocusDirection(direction)) {
                 node.usedDirections |= toBit(direction);
@@ -188,9 +188,9 @@ void FocusNavigator::endDraw() {
     activeAtEnd = g.ActiveId;
 
     if (find(drawn, g.NavId) == nullptr && focusedItem != 0 && (g.NavId == focusedItem || g.NavId == 0)) {
-        if (!hasTargets(focusedDocument)) {
-            std::erase_if(parked, [this](const auto& entry) { return entry.first == focusedDocument; });
-            parked.emplace_back(focusedDocument, focusedItem);
+        if (!hasTargets(focusedGui)) {
+            std::erase_if(parked, [this](const auto& entry) { return entry.first == focusedGui; });
+            parked.emplace_back(focusedGui, focusedItem);
         }
         restore();
     }
@@ -211,7 +211,7 @@ void FocusNavigator::endDraw() {
     }
     focusedItem = focused != nullptr ? focused->id : 0;
     focusedPlay = focused != nullptr && focused->play;
-    focusedDocument = node != nullptr ? node->document : nullptr;
+    focusedGui = node != nullptr ? node->gui : nullptr;
     focusedName = node != nullptr ? node->name : std::string();
     focusedRoot = focused != nullptr ? focused->window->RootWindow : nullptr;
     focusedBounds = focused != nullptr ? focused->bounds : math::Rect{};
@@ -238,13 +238,13 @@ void FocusNavigator::focus(ImGuiID item, const math::Rect& bounds) {
         keepControl(*target);
     }
     setFocus(item, window, bounds);
-    focusedDocument = currentDocument;
+    focusedGui = currentGui;
     focusedRoot = window->RootWindow;
     focusedBounds = bounds;
 }
 
-void FocusNavigator::forget(const Document& document) {
-    std::erase_if(parked, [&document](const auto& entry) { return entry.first == &document; });
+void FocusNavigator::forget(const Gui& gui) {
+    std::erase_if(parked, [&gui](const auto& entry) { return entry.first == &gui; });
 }
 
 void FocusNavigator::clear() {
@@ -265,7 +265,7 @@ bool FocusNavigator::isFocusable() const noexcept {
 
 bool FocusNavigator::hasFocusHere() const {
     const ImGuiContext& g = *GImGui;
-    return g.NavId != 0 && focusedDocument == currentDocument && focusedRoot == ImGui::GetCurrentWindow()->RootWindow;
+    return g.NavId != 0 && focusedGui == currentGui && focusedRoot == ImGui::GetCurrentWindow()->RootWindow;
 }
 
 bool FocusNavigator::answerCancel(const ImGuiWindow* window) {
@@ -311,8 +311,8 @@ std::vector<std::string_view> FocusNavigator::takeNotices(ImGuiID node) {
     return names;
 }
 
-const Document* FocusNavigator::getFocusedDocument() const noexcept {
-    return focusedItem != 0 ? focusedDocument : nullptr;
+const Gui* FocusNavigator::getFocusedGui() const noexcept {
+    return focusedItem != 0 ? focusedGui : nullptr;
 }
 
 std::string_view FocusNavigator::getFocusedName() const noexcept {
@@ -327,8 +327,8 @@ const FocusNavigator::Target* FocusNavigator::find(const Frame& frame, ImGuiID i
     return found != frame.targets.end() ? &*found : nullptr;
 }
 
-const FocusNavigator::Target* FocusNavigator::findNamed(const Document* document, std::string_view name) const noexcept {
-    const auto found = std::ranges::find_if(drawn.targets, [&](const Target& target) { return drawn.nodes[target.node].document == document && drawn.nodes[target.node].name == name; });
+const FocusNavigator::Target* FocusNavigator::findNamed(const Gui* gui, std::string_view name) const noexcept {
+    const auto found = std::ranges::find_if(drawn.targets, [&](const Target& target) { return drawn.nodes[target.node].gui == gui && drawn.nodes[target.node].name == name; });
     return found != drawn.targets.end() ? &*found : nullptr;
 }
 
@@ -363,12 +363,12 @@ bool FocusNavigator::isInside(const Target& target, std::optional<std::size_t> s
     return false;
 }
 
-// Peers share the document and the innermost focus scope, so the focus never enters a scope it is not in, and a popup keeps the focus inside it.
+// Peers share the GUI and the innermost focus scope, so the focus never enters a scope it is not in, and a popup keeps the focus inside it.
 bool FocusNavigator::isPeer(const Target& source, const Target& target) const noexcept {
     const Node& origin = drawn.nodes[source.node];
     const Node& node = drawn.nodes[target.node];
     const bool popup = ((source.window->RootWindow->Flags | target.window->RootWindow->Flags) & ImGuiWindowFlags_Popup) != 0;
-    return node.document == origin.document && (target.window->RootWindow == source.window->RootWindow || !popup) && findTrap(node.scope) == findTrap(origin.scope);
+    return node.gui == origin.gui && (target.window->RootWindow == source.window->RootWindow || !popup) && findTrap(node.scope) == findTrap(origin.scope);
 }
 
 const FocusNavigator::Target* FocusNavigator::search(const Target& source, const math::Rect& from, std::optional<std::size_t> scope, FocusDirection direction) const {
@@ -398,14 +398,14 @@ const FocusNavigator::Target* FocusNavigator::searchAround(const Target& source,
     return search(source, FocusSearch::wrap(source.bounds, drawn.scopes[*wrap].bounds, direction), wrap, direction);
 }
 
-// The play area of the document that holds the focus, or of the topmost document that draws one while nothing has the focus.
+// The play area of the GUI that holds the focus, or of the topmost GUI that draws one while nothing has the focus.
 const FocusNavigator::Target* FocusNavigator::findPlayArea(const Target* source) const noexcept {
-    const Document* document = source != nullptr ? drawn.nodes[source->node].document : nullptr;
+    const Gui* gui = source != nullptr ? drawn.nodes[source->node].gui : nullptr;
     const Target* found = nullptr;
     for (const Target& target : drawn.targets) {
-        if (target.play && (document == nullptr || drawn.nodes[target.node].document == document)) {
+        if (target.play && (gui == nullptr || drawn.nodes[target.node].gui == gui)) {
             found = &target;
-            if (document != nullptr) {
+            if (gui != nullptr) {
                 break;
             }
         }
@@ -413,13 +413,13 @@ const FocusNavigator::Target* FocusNavigator::findPlayArea(const Target* source)
     return found;
 }
 
-// The control that had the focus before the play area took it, or else the first control of the document of the play area.
+// The control that had the focus before the play area took it, or else the first control of the GUI of the play area.
 const FocusNavigator::Target* FocusNavigator::findControl(const Target& playArea) const noexcept {
-    const Document* document = drawn.nodes[playArea.node].document;
-    if (const Target* remembered = find(drawn, returnControl); remembered != nullptr && drawn.nodes[remembered->node].document == document) {
+    const Gui* gui = drawn.nodes[playArea.node].gui;
+    if (const Target* remembered = find(drawn, returnControl); remembered != nullptr && drawn.nodes[remembered->node].gui == gui) {
         return remembered;
     }
-    const auto first = std::ranges::find_if(drawn.targets, [&](const Target& target) { return !target.play && drawn.nodes[target.node].document == document; });
+    const auto first = std::ranges::find_if(drawn.targets, [&](const Target& target) { return !target.play && drawn.nodes[target.node].gui == gui; });
     return first != drawn.targets.end() ? &*first : nullptr;
 }
 
@@ -432,7 +432,7 @@ ImGuiID FocusNavigator::getTrapId(const Frame& frame, const Target& target) cons
     return 0;
 }
 
-// The action `uiFocus` moves the focus from a play area to the controls of its document and back, showing the ring where it lands.
+// The action `uiFocus` moves the focus from a play area to the controls of its GUI and back, showing the ring where it lands.
 void FocusNavigator::switchFocus(const Target* source) {
     const Target* target = source != nullptr && source->play ? findControl(*source) : findPlayArea(source);
     if (target == nullptr) {
@@ -461,7 +461,7 @@ void FocusNavigator::move(const Target& source, FocusDirection direction) {
         return;
     }
     if (!neighbor.empty()) {
-        if (const Target* target = findNamed(node.document, neighbor)) {
+        if (const Target* target = findNamed(node.gui, neighbor)) {
             apply(*target);
             return;
         }
@@ -495,7 +495,7 @@ void FocusNavigator::apply(const Target& target) {
     remember(drawn, target);
     keepControl(target);
     setFocus(target.id, target.window, target.bounds);
-    focusedDocument = drawn.nodes[target.node].document;
+    focusedGui = drawn.nodes[target.node].gui;
     focusedRoot = target.window->RootWindow;
     focusedBounds = target.bounds;
 }
@@ -510,7 +510,7 @@ void FocusNavigator::activate(const Target& target) {
     g.NavActivateFlags = ImGuiActivateFlags_PreferInput;
 }
 
-// Cancel goes to the innermost focus scope around the focus, or to the root of the document that holds it, or of the topmost document when nothing has the focus. Focus in a window of its own, such as a draggable window, leaves cancel to that window.
+// Cancel goes to the innermost focus scope around the focus, or to the root of the GUI that holds it, or of the topmost GUI when nothing has the focus. Focus in a window of its own, such as a draggable window, leaves cancel to that window.
 void FocusNavigator::cancel(const Target* source) {
     const Node* node = source != nullptr ? &drawn.nodes[source->node] : nullptr;
     if (node != nullptr) {
@@ -519,23 +519,23 @@ void FocusNavigator::cancel(const Target* source) {
             return;
         }
     }
-    if (drawn.documents.empty()) {
+    if (drawn.guis.empty()) {
         return;
     }
-    const Document* document = node != nullptr ? node->document : drawn.documents.back().document;
-    const auto entry = std::ranges::find(drawn.documents, document, &DocumentEntry::document);
-    if (entry != drawn.documents.end() && entry->root != 0 && (source == nullptr || source->window->RootWindow == entry->window)) {
+    const Gui* gui = node != nullptr ? node->gui : drawn.guis.back().gui;
+    const auto entry = std::ranges::find(drawn.guis, gui, &GuiEntry::gui);
+    if (entry != drawn.guis.end() && entry->root != 0 && (source == nullptr || source->window->RootWindow == entry->window)) {
         notify(entry->root, "cancel");
     }
 }
 
-// A move into another document, ImGui window or focus scope remembers where the focus was, so it goes back there when the scope closes.
+// A move into another GUI, ImGui window or focus scope remembers where the focus was, so it goes back there when the scope closes.
 void FocusNavigator::remember(const Frame& frame, const Target& next) {
     const Target* current = find(drawn, GImGui->NavId);
     if (current == nullptr || current->id == next.id) {
         return;
     }
-    const bool elsewhere = drawn.nodes[current->node].document != frame.nodes[next.node].document || current->window->RootWindow != next.window->RootWindow || getTrapId(drawn, *current) != getTrapId(frame, next);
+    const bool elsewhere = drawn.nodes[current->node].gui != frame.nodes[next.node].gui || current->window->RootWindow != next.window->RootWindow || getTrapId(drawn, *current) != getTrapId(frame, next);
     if (!elsewhere) {
         return;
     }
@@ -568,11 +568,11 @@ void FocusNavigator::restore() {
     g.NavId = 0;
 }
 
-bool FocusNavigator::hasTargets(const Document* document) const noexcept {
-    return std::ranges::any_of(drawn.targets, [this, document](const Target& target) { return drawn.nodes[target.node].document == document; });
+bool FocusNavigator::hasTargets(const Gui* gui) const noexcept {
+    return std::ranges::any_of(drawn.targets, [this, gui](const Target& target) { return drawn.nodes[target.node].gui == gui; });
 }
 
-// A document that draws its controls again gives the focus back to the control it parked, unless the focus went elsewhere meanwhile.
+// A GUI that draws its controls again gives the focus back to the control it parked, unless the focus went elsewhere meanwhile.
 void FocusNavigator::unpark() {
     ImGuiContext& g = *GImGui;
     for (auto entry = parked.begin(); entry != parked.end();) {

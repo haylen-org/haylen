@@ -31,7 +31,7 @@ end
 
 function TextInput:enter()
     self:frame{
-        hint = 'Focus the message field: on a phone or a tablet the keyboard opens and every document moves up above it. Try an input method such as Japanese, whose composing text shows underlined. The plain keyboard button types into the line above it without a text field.',
+        hint = 'Focus the message field: on a phone or a tablet the keyboard opens and every GUI moves up above it. Try an input method such as Japanese, whose composing text shows underlined. The plain keyboard button types into the line above it without a text field.',
         focus = 'message',
         content = {self:columns()},
     }
@@ -65,7 +65,7 @@ function TextInput:columns()
                 ui.button{id = 'plain', text = 'Show the plain keyboard', onClick = function(event)
                     self.plain = not self.plain
                     window.setKeyboardVisible(self.plain)
-                    event.document:set('plain', {text = self.plain and 'Hide the plain keyboard' or 'Show the plain keyboard'})
+                    event.gui:set('plain', {text = self.plain and 'Hide the plain keyboard' or 'Show the plain keyboard'})
                 end},
             }),
         },
@@ -75,7 +75,7 @@ function TextInput:columns()
             ui.formField{label = 'Message', help = 'The send key submits, and the field stays above the keyboard.',
                 ui.textField{id = 'message', placeholder = 'Say hello to the keeper', returnKey = 'send', onSubmit = function(event)
                     self:record('Submitted "' .. event.value .. '"')
-                    event.document:set('message', {value = ''})
+                    event.gui:set('message', {value = ''})
                 end},
             },
             ui.textArea{rows = 2, placeholder = 'A text area at the bottom of the screen'},

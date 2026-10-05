@@ -55,7 +55,7 @@ function RichText:enter()
     for index, name in ipairs(RichText.prompts) do
         graphics2d.registerTextIcon(name, prompts, {source = {(index - 1) * 32, 0, 32, 32}})
     end
-    self:frame{hint = 'Move the pointer over a link or the hint: "text:linkAt" and "text:hintAt" report what lies under it in the status line. In a UI document the same links take the focus and the hint shows as a tooltip.'}
+    self:frame{hint = 'Move the pointer over a link or the hint: "text:linkAt" and "text:hintAt" report what lies under it in the status line. In a GUI the same links take the focus and the hint shows as a tooltip.'}
 end
 
 function RichText:update(dt)

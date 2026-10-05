@@ -18,7 +18,7 @@ end
 function Pickers:report(name)
     return function(event)
         if name == 'flag' then
-            event.document:set('flag-preview', {tint = event.value})
+            event.gui:set('flag-preview', {tint = event.value})
         end
         local value = type(event.value) == 'number' and tostring(event.value) or '"' .. tostring(event.value) .. '"'
         self:set('status', {text = string.format('The %s changed to %s.', name, value)})

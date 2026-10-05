@@ -40,7 +40,7 @@ function Collections:reorder(event)
         return
     end
     table.insert(self.quests, to, table.remove(self.quests, from))
-    event.document:set('quests', {items = self:questItems()})
+    event.gui:set('quests', {items = self:questItems()})
     self:report(string.format('Moved "%s" to place %d.', self.quests[to], to))
 end
 

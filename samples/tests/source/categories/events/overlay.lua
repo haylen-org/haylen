@@ -23,8 +23,8 @@ function Overlay:card(title, children)
         nodes[#nodes + 1] = child
     end
     nodes[#nodes + 1] = ui.button{id = 'close', text = 'Close', variant = 'primary', onClick = function() self:close() end}
-    self.document = ui.mount(ui.card{anchor = 'center', width = 760, gap = 16, onCancel = function() self:close() end, children = nodes}, {owner = self, layer = 1})
-    self.document:command('close', 'focus')
+    self.gui = ui.mount(ui.card{anchor = 'center', width = 760, gap = 16, onCancel = function() self:close() end, children = nodes}, {owner = self, layer = 1})
+    self.gui:command('close', 'focus')
 end
 
 function Overlay:close()

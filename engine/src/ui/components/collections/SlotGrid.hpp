@@ -13,7 +13,7 @@
 
 namespace haylen::ui {
 
-// A grid of square slots that hold pictures and counts, such as an inventory or a hotbar. The pointer drags items between slots and lists of any document, and the keyboard, gamepads and remotes carry them with accept. The grid only reports moves, so the app moves its own items.
+// A grid of square slots that hold pictures and counts, such as an inventory or a hotbar. The pointer drags items between slots and lists of any GUI, and the keyboard, gamepads and remotes carry them with accept. The grid only reports moves, so the app moves its own items.
 class SlotGrid final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {

@@ -16,7 +16,7 @@ return {
         {code = 'GUI-010', title = 'Overlays', description = 'Dialogs, toasts, tooltips, popovers and context menus.', module = 'overlays'},
         {code = 'GUI-011', title = 'Game controls', description = 'Steppers, segmented controls, range sliders and key capture fields that rebind actions of the action map.', module = 'game-controls'},
         {code = 'GUI-012', title = 'Windows and pages', description = 'A draggable window, accordions, a carousel and a scroll that snaps to its cards.', module = 'windows-pages'},
-        {code = 'GUI-013', title = 'Slot grid', description = 'An inventory, a hotbar in another document and a chest list that trade items by drag and drop.', module = 'slot-grid'},
+        {code = 'GUI-013', title = 'Slot grid', description = 'An inventory, a hotbar in another GUI and a chest list that trade items by drag and drop.', module = 'slot-grid'},
         {code = 'GUI-014', title = 'Rich text', description = 'Markup with styles, links, hints, images, icons, lists, tables, effects and a typewriter reveal.', module = 'rich-text'},
         {code = 'GUI-015', title = 'Themes', description = 'The dark and light themes and a textured theme drawn with nine-slice surfaces.', module = 'themes'},
         {code = 'GUI-016', title = 'Focus navigation', description = 'Directional and explicit neighbours, focus scopes, wrapping and going back with keys, gamepads and TV remotes.', module = 'focus-navigation'},

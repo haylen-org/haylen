@@ -43,7 +43,7 @@ function settings:enter()
 
     local bridge = {widgets.button('device', 'settings.device', function()
         local info = system.info()
-        self.document:set('bridge', {text = string.format('Device "%s", system "%s" %s, locale "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', info.locale or '')})
+        self.gui:set('bridge', {text = string.format('Device "%s", system "%s" %s, locale "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', info.locale or '')})
     end, {variant = 'default', grow = 1})}
     if googleSignIn.available then
         bridge[2] = widgets.button('google', 'settings.google', function()
@@ -53,7 +53,7 @@ function settings:enter()
         end, {variant = 'default', grow = 1})
     end
 
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         justify = 'center',
         padding = 48,
         onCancel = function()
@@ -73,7 +73,7 @@ function settings:enter()
             end, {sound = 'back'})},
         },
     })
-    self.document:command('back', 'focus')
+    self.gui:command('back', 'focus')
 end
 
 -- Starts a platform call and shows what it answered, or why it failed, under the buttons. The task belongs to the sheet, so an answer that comes after the sheet closed goes nowhere.
@@ -83,7 +83,7 @@ function settings:ask(start, describe)
         if not result then
             sound.play('error')
         end
-        self.document:set('bridge', {text = result and describe(result) or err.message})
+        self.gui:set('bridge', {text = result and describe(result) or err.message})
     end)
 end
 
@@ -96,7 +96,7 @@ function settings:close()
 end
 
 function settings:exit()
-    self.document:unmount()
+    self.gui:unmount()
 end
 
 function settings:update(dt)

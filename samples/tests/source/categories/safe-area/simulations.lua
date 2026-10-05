@@ -15,7 +15,7 @@ function Simulations:init(entry)
     self.custom = {top = 60, right = 0, bottom = 40, left = 120}
 end
 
--- The HUD is a document under the frame whose parts are anchored to the left and right edges of the safe area, so it moves with every device.
+-- The HUD is a GUI under the frame whose parts are anchored to the left and right edges of the safe area, so it moves with every device.
 function Simulations:enter()
     self.simulation = areas.simulate()
     local current = viewport.safeAreaSimulation()

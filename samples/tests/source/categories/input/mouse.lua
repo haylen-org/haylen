@@ -49,7 +49,7 @@ end
 function Mouse:capture(locked)
     window.setMouseLocked(locked)
     self.locked = locked
-    self.document:set('locked', {checked = locked})
+    self.gui:set('locked', {checked = locked})
     if locked then
         self.aimX, self.aimY = self.area.width * 0.5, self.area.height * 0.5
     end

@@ -16,7 +16,7 @@ end
 
 function pause:enter()
     haylen.setPaused(true)
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         justify = 'center',
         padding = 64,
         ui.panel{
@@ -36,7 +36,7 @@ function pause:enter()
             end, {variant = 'destructive', sound = 'back'}),
         },
     })
-    self.document:command('resume', 'focus')
+    self.gui:command('resume', 'focus')
 end
 
 function pause:close()
@@ -47,16 +47,16 @@ function pause:close()
 end
 
 function pause:exit()
-    self.document:unmount()
+    self.gui:unmount()
     haylen.setPaused(false)
 end
 
 function pause:pause()
-    self.document.visible = false
+    self.gui.visible = false
 end
 
 function pause:resume()
-    self.document.visible = true
+    self.gui.visible = true
 end
 
 function pause:update(dt)

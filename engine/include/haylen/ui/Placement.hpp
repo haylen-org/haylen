@@ -4,7 +4,7 @@
 
 namespace haylen::ui {
 
-// Where a document lays out its root: inside the safe area, or over the whole visible screen.
+// Where a GUI lays out its root: inside the safe area, or over the whole visible screen.
 enum class Placement : std::uint8_t {
     Safe,
     Screen,

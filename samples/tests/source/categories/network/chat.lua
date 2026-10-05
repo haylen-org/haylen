@@ -137,7 +137,7 @@ function Chat:showMessages()
             nodes[#nodes + 1] = ui.row{mine and ui.spacer{grow = 1} or bubble, mine and bubble or ui.spacer{grow = 1}}
         end
     end
-    self.document:replaceChildren('messages', nodes)
+    self.gui:replaceChildren('messages', nodes)
 end
 
 return Chat

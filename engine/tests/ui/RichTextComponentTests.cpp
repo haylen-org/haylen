@@ -34,8 +34,8 @@ class RichTextComponentTest : public ::testing::Test, public test::UiFixture {
 } // namespace
 
 TEST_F(RichTextComponentTest, ReportsLinksAndTheirHover) {
-    auto document = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "text": "[url=go]Go on now[/url]"}]})");
-    const math::Rect bounds = getBounds(*document, "story");
+    auto gui = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "text": "[url=go]Go on now[/url]"}]})");
+    const math::Rect bounds = getBounds(*gui, "story");
     EXPECT_GT(bounds.width, 60.0F);
 
     pointer(platform::Event::Type::MouseMove, bounds.getCenter());
@@ -51,9 +51,9 @@ TEST_F(RichTextComponentTest, ReportsLinksAndTheirHover) {
 }
 
 TEST_F(RichTextComponentTest, FocusesEachLinkOnceAndActivatesIt) {
-    auto document = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "autofocus": true, "text": "[url=one]One[/url] and [url=two]Two[/url]"}]})");
+    auto gui = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "autofocus": true, "text": "[url=one]One[/url] and [url=two]Two[/url]"}]})");
     frames();
-    EXPECT_TRUE(isFocused(*document, "story"));
+    EXPECT_TRUE(isFocused(*gui, "story"));
     key(input::Key::Enter);
     EXPECT_EQ(findLastEvent("link").value, (core::Json{{"link", "one"}}));
 
@@ -64,31 +64,31 @@ TEST_F(RichTextComponentTest, FocusesEachLinkOnceAndActivatesIt) {
 }
 
 TEST_F(RichTextComponentTest, TakesTheFocusBeforeItFirstDraws) {
-    std::shared_ptr<Document> document = getUi().createDocument(core::Json::parse(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "text": "[url=go]Go on now[/url]"}]})"), Placement::Screen);
-    getUi().mount(document);
-    document->command(getUi().getContext(), "story", "focus", core::Json::object());
+    std::shared_ptr<Gui> gui = getUi().createGui(core::Json::parse(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "text": "[url=go]Go on now[/url]"}]})"), Placement::Screen);
+    getUi().mount(gui);
+    gui->command(getUi().getContext(), "story", "focus", core::Json::object());
     frames(2);
-    EXPECT_TRUE(isFocused(*document, "story"));
+    EXPECT_TRUE(isFocused(*gui, "story"));
 }
 
 TEST_F(RichTextComponentTest, DrawsThroughTheRendererAndRevealsOverTime) {
-    auto document = mount(R"({"kind": "column", "children": [{"kind": "richText", "id": "story", "text": "[b]abcd[/b] [img=icons/coin.png]", "revealSpeed": 30}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "richText", "id": "story", "text": "[b]abcd[/b] [img=icons/coin.png]", "revealSpeed": 30}]})");
     EXPECT_LT(drawnSprites(), 2U);
     frames(12);
     EXPECT_TRUE(getFixture().frameUntil([&] { return drawnSprites() == 5U; }));
 
-    document->set("story", core::Json{{"visibleCharacters", 2}});
+    gui->set("story", core::Json{{"visibleCharacters", 2}});
     frames();
     EXPECT_EQ(drawnSprites(), 2U);
 
-    document->set("story", core::Json{{"text", "plain"}, {"revealSpeed", 0}, {"visibleCharacters", -1}, {"textAlign", "center"}, {"wrap", false}});
+    gui->set("story", core::Json{{"text", "plain"}, {"revealSpeed", 0}, {"visibleCharacters", -1}, {"textAlign", "center"}, {"wrap", false}});
     frames();
     EXPECT_EQ(drawnSprites(), 5U);
 
     // Text without links never takes the focus.
-    EXPECT_THROW(document->command(getUi().getContext(), "story", "focus", core::Json::object()), std::invalid_argument);
-    EXPECT_THROW(document->set("story", core::Json{{"textAlign", "middle"}}), std::invalid_argument);
-    EXPECT_THROW(document->set("story", core::Json{{"text", "[b]open"}}), std::invalid_argument);
+    EXPECT_THROW(gui->command(getUi().getContext(), "story", "focus", core::Json::object()), std::invalid_argument);
+    EXPECT_THROW(gui->set("story", core::Json{{"textAlign", "middle"}}), std::invalid_argument);
+    EXPECT_THROW(gui->set("story", core::Json{{"text", "[b]open"}}), std::invalid_argument);
 }
 
 TEST_F(RichTextComponentTest, CarriesNodeTransformsToTheRenderer) {

@@ -10,7 +10,7 @@ hud.__index = hud
 
 function hud.new(owner, actions)
     local self = setmetatable({shown = {}}, hud)
-    self.document = ui.mount(ui.stack{
+    self.gui = ui.mount(ui.stack{
         ui.panel{
             id = 'stats',
             anchor = 'topLeft',
@@ -49,7 +49,7 @@ end
 function hud:show(id, value, properties)
     if self.shown[id] ~= value then
         self.shown[id] = value
-        self.document:set(id, properties)
+        self.gui:set(id, properties)
     end
 end
 
@@ -74,18 +74,18 @@ end
 
 -- Returns the center of the coin icon, where the coins fly to.
 function hud:counter()
-    local area = self.document:bounds('coin')
+    local area = self.gui:bounds('coin')
     return area.x + area.width / 2, area.y + area.height / 2
 end
 
 function hud:pulse(id)
-    tween.fromTo(self.document:transform(id), 0.25, {scale = m.vec2(1.5, 1.5)}, {scale = m.vec2(1, 1)}, {ease = 'quadOut', overwrite = true})
+    tween.fromTo(self.gui:transform(id), 0.25, {scale = m.vec2(1.5, 1.5)}, {scale = m.vec2(1, 1)}, {ease = 'quadOut', overwrite = true})
 end
 
 -- Adds the two panels, once drawn, to the regions that keep the mouse.
 function hud:collectRegions(regions)
     for _, id in ipairs({'stats', 'actions'}) do
-        local area = self.document:bounds(id)
+        local area = self.gui:bounds(id)
         if area then
             regions[#regions + 1] = area
         end

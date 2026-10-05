@@ -137,7 +137,7 @@ void Component::draw(Context& context, const math::Rect& layout) {
         context.emit(*this, std::string(notice));
     }
 
-    // Autofocus takes the focus when the node appears and the focus is elsewhere, such as when its document mounts or its dialog opens.
+    // Autofocus takes the focus when the node appears and the focus is elsewhere, such as when its GUI mounts or its dialog opens.
     if (common.autofocus && appeared && isFocusable() && !focus.hasFocusHere()) {
         focusRequested = true;
     }

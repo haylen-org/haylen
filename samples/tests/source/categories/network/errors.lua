@@ -93,7 +93,7 @@ function Errors:showResults()
             ui.label{text = result.outcome, color = result.color},
         }
     end
-    self.document:replaceChildren('results', nodes)
+    self.gui:replaceChildren('results', nodes)
 end
 
 return Errors

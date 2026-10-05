@@ -51,8 +51,8 @@ class LifecycleEvent final {
     static constexpr std::string_view kWindowMoved = "windowMoved";
     static constexpr std::string_view kWindowMonitorsChanged = "windowMonitorsChanged";
 
-    static constexpr std::string_view kUiDocumentMounted = "uiDocumentMounted";
-    static constexpr std::string_view kUiDocumentUnmounted = "uiDocumentUnmounted";
+    static constexpr std::string_view kGuiMounted = "guiMounted";
+    static constexpr std::string_view kGuiUnmounted = "guiUnmounted";
 
     static constexpr std::string_view kGamepadConnected = "gamepadConnected";
     static constexpr std::string_view kGamepadDisconnected = "gamepadDisconnected";

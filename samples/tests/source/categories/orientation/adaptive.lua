@@ -1,4 +1,4 @@
--- A character screen that stacks its parts when the screen is taller than wide and places them side by side otherwise, rebuilt with `document:replaceChildren` when the shape changes. The project starts locked to landscape, so the test lets the screen turn while it shows.
+-- A character screen that stacks its parts when the screen is taller than wide and places them side by side otherwise, rebuilt with `gui:replaceChildren` when the shape changes. The project starts locked to landscape, so the test lets the screen turn while it shows.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
@@ -75,8 +75,8 @@ function Adaptive:update(dt)
     local shape = tall() and 'portrait' or 'landscape'
     if shape ~= self.shape then
         self.shape = shape
-        self.document:replaceChildren('layout', {self:layout(shape)})
-        self.document:command('equip', 'focus')
+        self.gui:replaceChildren('layout', {self:layout(shape)})
+        self.gui:command('equip', 'focus')
     end
     local visible = viewport.visibleRect()
     self:status(string.format('Laid out for "%s", visible %.0f x %.0f design units%s.', shape, visible.width, visible.height, self.last))

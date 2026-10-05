@@ -12,7 +12,7 @@ namespace haylen::test {
 
 UiFixture::UiFixture(std::map<std::string, std::string> files) : fixture(std::move(files)) {
     // clang-format off
-    connection = getUi().events.connect([this](ui::Document&, const ui::Event& event) {
+    connection = getUi().events.connect([this](ui::Gui&, const ui::Event& event) {
         events.push_back(event);
     });
     // clang-format on
@@ -22,11 +22,11 @@ plugins::UiPlugin& UiFixture::getUi() {
     return getEngine().getPlugin<plugins::UiPlugin>();
 }
 
-std::shared_ptr<ui::Document> UiFixture::mount(const std::string& json, ui::Placement placement, int layer) {
-    std::shared_ptr<ui::Document> document = getUi().createDocument(core::Json::parse(json), placement);
-    getUi().mount(document, layer);
+std::shared_ptr<ui::Gui> UiFixture::mount(const std::string& json, ui::Placement placement, int layer) {
+    std::shared_ptr<ui::Gui> gui = getUi().createGui(core::Json::parse(json), placement);
+    getUi().mount(gui, layer);
     frames();
-    return document;
+    return gui;
 }
 
 void UiFixture::frames(int count) {
@@ -58,8 +58,8 @@ void UiFixture::click(math::Vec2 point) {
     frames(2);
 }
 
-void UiFixture::click(const ui::Document& document, std::string_view id) {
-    click(getBounds(document, id).getCenter());
+void UiFixture::click(const ui::Gui& gui, std::string_view id) {
+    click(getBounds(gui, id).getCenter());
 }
 
 void UiFixture::drag(math::Vec2 from, math::Vec2 to, int steps) {
@@ -112,13 +112,13 @@ void UiFixture::type(std::u32string_view text) {
     }
 }
 
-const math::Rect& UiFixture::getBounds(const ui::Document& document, std::string_view id) const {
-    return document.find(id)->getBounds();
+const math::Rect& UiFixture::getBounds(const ui::Gui& gui, std::string_view id) const {
+    return gui.find(id)->getBounds();
 }
 
-bool UiFixture::isFocused(const ui::Document& document, std::string_view id) {
+bool UiFixture::isFocused(const ui::Gui& gui, std::string_view id) {
     const ui::FocusNavigator& focus = getUi().getFocus();
-    return focus.getFocusedDocument() == &document && focus.getFocusedName() == id;
+    return focus.getFocusedGui() == &gui && focus.getFocusedName() == id;
 }
 
 const ui::Event& UiFixture::findLastEvent(std::string_view name) const {

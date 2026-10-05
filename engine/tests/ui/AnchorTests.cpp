@@ -26,7 +26,7 @@ class AnchorTest : public ::testing::Test, public test::UiFixture {
 
 TEST_F(AnchorTest, AnchorsNodesToTheSafeAreaOrTheScreenOutsideTheLayout) {
     // clang-format off
-    auto document = mount(R"({"kind": "column", "children": [
+    auto gui = mount(R"({"kind": "column", "children": [
         {"kind": "label", "id": "title", "text": "Title"},
         {"kind": "button", "id": "pause", "text": "Pause", "width": 120, "height": 60, "anchor": "topRight", "margin": 10},
         {"kind": "button", "id": "map", "text": "Map", "width": 200, "height": 80, "anchor": "bottomLeft", "anchorTo": "screen"},
@@ -34,42 +34,42 @@ TEST_F(AnchorTest, AnchorsNodesToTheSafeAreaOrTheScreenOutsideTheLayout) {
         {"kind": "panel", "id": "bar", "height": 90, "anchor": "stretchBottom", "margin": [0, 20]}
     ]})", Placement::Safe);
     // clang-format on
-    EXPECT_EQ(getBounds(*document, "title").getMin(), math::Vec2(100.0F, 50.0F));
-    EXPECT_EQ(getBounds(*document, "pause"), (math::Rect{1920.0F - 80.0F - 10.0F - 120.0F, 60.0F, 120.0F, 60.0F}));
-    EXPECT_EQ(getBounds(*document, "map"), (math::Rect{0.0F, 1000.0F, 200.0F, 80.0F}));
-    EXPECT_EQ(getBounds(*document, "middle"), (math::Rect{100.0F + (1740.0F - 300.0F) / 2.0F, 50.0F + (990.0F - 100.0F) / 2.0F, 300.0F, 100.0F}));
-    EXPECT_EQ(getBounds(*document, "bar"), (math::Rect{120.0F, 1040.0F - 90.0F, 1700.0F, 90.0F}));
+    EXPECT_EQ(getBounds(*gui, "title").getMin(), math::Vec2(100.0F, 50.0F));
+    EXPECT_EQ(getBounds(*gui, "pause"), (math::Rect{1920.0F - 80.0F - 10.0F - 120.0F, 60.0F, 120.0F, 60.0F}));
+    EXPECT_EQ(getBounds(*gui, "map"), (math::Rect{0.0F, 1000.0F, 200.0F, 80.0F}));
+    EXPECT_EQ(getBounds(*gui, "middle"), (math::Rect{100.0F + (1740.0F - 300.0F) / 2.0F, 50.0F + (990.0F - 100.0F) / 2.0F, 300.0F, 100.0F}));
+    EXPECT_EQ(getBounds(*gui, "bar"), (math::Rect{120.0F, 1040.0F - 90.0F, 1700.0F, 90.0F}));
 
     // A new safe area moves every anchored node with it, and the anchor `none` puts a node back in the layout.
     getFixture().host().setSafeAreaInsets({.left = 0.0F, .top = 0.0F, .right = 0.0F, .bottom = 0.0F});
     frames(2);
-    EXPECT_EQ(getBounds(*document, "pause").getMin(), math::Vec2(1920.0F - 10.0F - 120.0F, 10.0F));
-    document->set("pause", {{"anchor", "none"}});
+    EXPECT_EQ(getBounds(*gui, "pause").getMin(), math::Vec2(1920.0F - 10.0F - 120.0F, 10.0F));
+    gui->set("pause", {{"anchor", "none"}});
     frames();
-    EXPECT_EQ(getBounds(*document, "pause").y, getBounds(*document, "title").getBottom() + getUi().getTheme().getMetric(Theme::Metric::ItemSpacing));
-    EXPECT_THROW(document->set("pause", {{"anchor", "corner"}}), std::invalid_argument);
-    EXPECT_THROW(document->set("pause", {{"anchorTo", "window"}}), std::invalid_argument);
+    EXPECT_EQ(getBounds(*gui, "pause").y, getBounds(*gui, "title").getBottom() + getUi().getTheme().getMetric(Theme::Metric::ItemSpacing));
+    EXPECT_THROW(gui->set("pause", {{"anchor", "corner"}}), std::invalid_argument);
+    EXPECT_THROW(gui->set("pause", {{"anchorTo", "window"}}), std::invalid_argument);
 }
 
-TEST_F(AnchorTest, AnchorsTheRootOfADocument) {
-    auto document = mount(R"({"kind": "panel", "id": "hud", "width": 400, "height": 100, "anchor": "top", "anchorTo": "screen", "margin": [16, 0]})", Placement::Safe);
-    EXPECT_EQ(getBounds(*document, "hud"), (math::Rect{760.0F, 16.0F, 400.0F, 100.0F}));
+TEST_F(AnchorTest, AnchorsTheRootOfAGui) {
+    auto gui = mount(R"({"kind": "panel", "id": "hud", "width": 400, "height": 100, "anchor": "top", "anchorTo": "screen", "margin": [16, 0]})", Placement::Safe);
+    EXPECT_EQ(getBounds(*gui, "hud"), (math::Rect{760.0F, 16.0F, 400.0F, 100.0F}));
 
     auto stretched = mount(R"({"kind": "panel", "id": "side", "width": 300, "anchor": "stretchLeft"})", Placement::Screen);
     EXPECT_EQ(getBounds(*stretched, "side"), (math::Rect{100.0F, 50.0F, 300.0F, 990.0F}));
 }
 
 TEST_F(AnchorTest, MovesAnchoredNodesOutOfTheEdgesThatNativeViewsReserve) {
-    auto document = mount(R"({"kind": "button", "id": "buy", "text": "Buy", "width": 200, "height": 80, "anchor": "bottom"})", Placement::Safe);
-    EXPECT_EQ(getBounds(*document, "buy").getBottom(), 1040.0F);
+    auto gui = mount(R"({"kind": "button", "id": "buy", "text": "Buy", "width": 200, "height": 80, "anchor": "bottom"})", Placement::Safe);
+    EXPECT_EQ(getBounds(*gui, "buy").getBottom(), 1040.0F);
 
     // A banner reserves the bottom edge, and the node anchored to the safe area moves above it until the banner goes.
     getFixture().host().getNativeViews().reserveInsets("banner", {.bottom = 150.0F});
     frames(2);
-    EXPECT_EQ(getBounds(*document, "buy").getBottom(), 930.0F);
+    EXPECT_EQ(getBounds(*gui, "buy").getBottom(), 930.0F);
     getFixture().host().getNativeViews().releaseInsets("banner");
     frames(2);
-    EXPECT_EQ(getBounds(*document, "buy").getBottom(), 1040.0F);
+    EXPECT_EQ(getBounds(*gui, "buy").getBottom(), 1040.0F);
 }
 
 TEST_F(AnchorTest, SimulatesTheSafeAreaOfDevices) {

@@ -14,7 +14,7 @@ namespace haylen::ui {
 class Component;
 class Context;
 
-// Moves items between slot grids and lists, in one document or between documents. The pointer drags them through ImGui drag and drop, and the keyboard, gamepads and remotes carry them: accept picks the focused item up, the focus moves, and accept drops it. Components only report the move, so the app changes its own data.
+// Moves items between slot grids and lists, in one GUI or between GUIs. The pointer drags them through ImGui drag and drop, and the keyboard, gamepads and remotes carry them: accept picks the focused item up, the focus moves, and accept drops it. Components only report the move, so the app changes its own data.
 class DragAndDrop final {
   public:
     // What a component learns about the item it drew last: whether the player picked it up or drags it, whether something is carried or dragged over it, and the node and entry dropped on it.

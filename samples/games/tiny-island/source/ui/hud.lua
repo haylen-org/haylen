@@ -40,7 +40,7 @@ end
 function hud.new(game, onPause)
     local self = setmetatable({game = game, shown = {}}, hud)
     local class = game.player.class
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         padding = 32,
         ui.row{
             align = 'stretch',
@@ -91,7 +91,7 @@ function hud:show(id, key, value, compared)
     compared = compared or value
     if self.shown[shownKey] ~= compared then
         self.shown[shownKey] = compared
-        self.document:set(id, {[key] = value})
+        self.gui:set(id, {[key] = value})
     end
 end
 
@@ -134,19 +134,19 @@ function hud:update()
 end
 
 function hud:notice(key)
-    self.document:set('notice', {text = widgets.text(key), tone = tones[key], open = true})
+    self.gui:set('notice', {text = widgets.text(key), tone = tones[key], open = true})
 end
 
 function hud:setVisible(visible)
-    self.document.visible = visible
+    self.gui.visible = visible
 end
 
 function hud:setTouch(visible)
-    self.document:set('touch', {visible = visible})
+    self.gui:set('touch', {visible = visible})
 end
 
 function hud:destroy()
-    self.document:unmount()
+    self.gui:unmount()
 end
 
 return hud

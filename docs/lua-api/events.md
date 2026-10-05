@@ -136,7 +136,7 @@ end
 
 ## Owners
 
-An owner ties listeners to the life of a table or a userdata, such as a scene, an autoload, a UI document or a game object. Pass it as the `owner` option and every listener it holds unsubscribes when the owner ends. A scene ends when it unloads, a UI document when it is unmounted, and any other owner when the garbage collector frees it, in which case its listeners end at the end of that frame. Timers of [`haylen.timer`](timer.md), tweens of [`haylen.tween`](tween.md), signal connections of [`haylen.signal`](signal.md), monitors of [`haylen.debug`](debug.md#debugaddmonitorname-fn-options) and documents of [`haylen.ui`](ui.md#uimounttree-options) take the same `owner` option, and the tasks of [`scene.spawn`](scene.md#scenespawnowner-fn) stop with their owner too.
+An owner ties listeners to the life of a table or a userdata, such as a scene, an autoload, a GUI or a game object. Pass it as the `owner` option and every listener it holds unsubscribes when the owner ends. A scene ends when it unloads, a GUI when it is unmounted, and any other owner when the garbage collector frees it, in which case its listeners end at the end of that frame. Timers of [`haylen.timer`](timer.md), tweens of [`haylen.tween`](tween.md), signal connections of [`haylen.signal`](signal.md), monitors of [`haylen.debug`](debug.md#debugaddmonitorname-fn-options) and GUIs of [`haylen.ui`](ui.md#uimounttree-options) take the same `owner` option, and the tasks of [`scene.spawn`](scene.md#scenespawnowner-fn) stop with their owner too.
 
 The owner keeps the functions of its listeners, and the bus does not keep the owner. A listener may therefore refer to its owner freely without keeping it alive. The function `scene.listen(owner, name, fn, options)` of [`haylen.scene`](scene.md) is a shorthand for `events.on(name, fn, {owner = owner})`, and scenes built on `scene.Scene` call it as `self:listen(name, fn)`.
 
@@ -163,7 +163,7 @@ collectgarbage()
 
 ## Engine events
 
-The engine publishes these events on the bus. Events with data pass it to listeners as one table, events of scenes and UI documents pass the scene table or the document, and the other events pass nothing. A scene pushed from C++ arrives as `false`, also inside the tables of the transition phases, and a document mounted from C++ arrives as `nil`.
+The engine publishes these events on the bus. Events with data pass it to listeners as one table, events of scenes and GUIs pass the scene table or the GUI, and the other events pass nothing. A scene pushed from C++ arrives as `false`, also inside the tables of the transition phases, and a GUI mounted from C++ arrives as `nil`.
 
 | Event | When | Value |
 | --- | --- | --- |
@@ -196,7 +196,7 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `windowSafeAreaChanged` | The safe area moved, for example after a rotation or when a native view of a plugin reserved or released an edge of the screen. | The table `{x, y, width, height}`, the same rectangle as `viewport.safeRect()`. |
 | `windowMoved` | The desktop window moved, dragged by the player, placed by the app or moved by the system. A move publishes each new position once. | The table `{x, y}`, the top left corner of `window.frame()` of [`haylen.window`](window.md#desktop-windows) in desktop points. |
 | `windowMonitorsChanged` | A monitor connected, disconnected or changed, or its work area changed, such as when the taskbar moved. The function `window.monitors()` returns the new list. | None. |
-| `uiDocumentMounted`, `uiDocumentUnmounted` | A UI document of [`haylen.ui`](ui.md) was mounted or unmounted. | The document. |
+| `guiMounted`, `guiUnmounted` | A GUI of [`haylen.ui`](ui.md) was mounted or unmounted. | The GUI. |
 | `gamepadConnected`, `gamepadDisconnected` | A gamepad was plugged in or removed. Gamepads that are connected when the app starts are announced on its first frame. | The table `{gamepad, name}`, where `gamepad` counts from 1 like [`haylen.input`](input.md). |
 | `audioInterrupted`, `audioResumed` | The system took the audio, such as for a phone call, and every voice paused, or gave it back while the app is active and the voices resumed, as [`haylen.audio`](audio.md#events) explains. | None. |
 | `audioRouteChanged` | The audio output moved to another device, such as headphones that were unplugged. | None. |

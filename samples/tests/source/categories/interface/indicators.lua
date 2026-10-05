@@ -97,15 +97,15 @@ function Indicators:update(dt)
     Indicators.super.update(self, dt)
     self.time = self.time + dt
     local fill = (self.time / 6) % 1
-    local document = self.document
-    document:set('loading', {value = fill})
-    document:set('health', {value = 0.5 + 0.5 * math.cos(self.time), tone = math.cos(self.time) < -0.4 and 'danger' or 'success'})
-    document:set('ring', {value = fill, text = math.floor(fill * 100) .. '%'})
-    document:set('ring-big', {value = 1 - fill})
-    document:set('plain', {value = fill})
+    local gui = self.gui
+    gui:set('loading', {value = fill})
+    gui:set('health', {value = 0.5 + 0.5 * math.cos(self.time), tone = math.cos(self.time) < -0.4 and 'danger' or 'success'})
+    gui:set('ring', {value = fill, text = math.floor(fill * 100) .. '%'})
+    gui:set('ring-big', {value = 1 - fill})
+    gui:set('plain', {value = fill})
     for name, left in pairs(self.left) do
         self.left[name] = math.max(0, left - dt)
-        document:set('cooldown-' .. name, {value = self.left[name] / Indicators.cooldowns[name], text = left > 0 and math.ceil(left) or ''})
+        gui:set('cooldown-' .. name, {value = self.left[name] / Indicators.cooldowns[name], text = left > 0 and math.ceil(left) or ''})
     end
 end
 

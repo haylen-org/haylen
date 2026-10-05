@@ -1,4 +1,4 @@
--- The method `document:transform` returns the transform of a node, whose offset, scale, opacity and tint `haylen.tween` animates natively without running Lua every frame.
+-- The method `gui:transform` returns the transform of a node, whose offset, scale, opacity and tint `haylen.tween` animates natively without running Lua every frame.
 local haylen = require('haylen')
 local m = require('haylen.math')
 local tween = require('haylen.tween')
@@ -24,7 +24,7 @@ function Tweens:enter()
         focus = 'replay',
         content = {self:columns()},
     }
-    tween.to(self.document:transform('pulse'), 0.6, {scale = m.vec2(1.06, 1.06)}, {repeatCount = -1, loopMode = 'yoyo', ease = 'sineInOut', owner = self})
+    tween.to(self.gui:transform('pulse'), 0.6, {scale = m.vec2(1.06, 1.06)}, {repeatCount = -1, loopMode = 'yoyo', ease = 'sineInOut', owner = self})
     self:entrance()
 end
 
@@ -62,11 +62,11 @@ end
 
 -- The title drops in and the cards rise one after another with a stagger.
 function Tweens:entrance()
-    local title = self.document:transform('title')
+    local title = self.gui:transform('title')
     tween.fromTo(title, 0.6, {offset = m.vec2(0, -80), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {ease = 'backOut', owner = self})
     local cards = {}
     for index = 1, #Tweens.icons do
-        cards[index] = self.document:transform('card-' .. index)
+        cards[index] = self.gui:transform('card-' .. index)
         cards[index].opacity = 0
     end
     tween.stagger(cards, 0.08, function(card)
@@ -76,19 +76,19 @@ function Tweens:entrance()
 end
 
 function Tweens:shake()
-    tween.shake(self.document:transform('target'), 0.5, 14, {field = 'offset', vibrato = 16, owner = self})
+    tween.shake(self.gui:transform('target'), 0.5, 14, {field = 'offset', vibrato = 16, owner = self})
     self:report('The panel shakes on its offset.')
 end
 
 function Tweens:fade()
     self.shown = not self.shown
-    tween.to(self.document:transform('target'), 0.4, {opacity = self.shown and 1 or 0.2}, {ease = 'sineInOut', owner = self, overwrite = true})
+    tween.to(self.gui:transform('target'), 0.4, {opacity = self.shown and 1 or 0.2}, {ease = 'sineInOut', owner = self, overwrite = true})
     self:report(self.shown and 'The panel fades in.' or 'The panel fades out.')
 end
 
 function Tweens:cycleTint()
     self.tint = self.tint % #Tweens.tints + 1
-    tween.to(self.document:transform('target'), 0.4, {tint = Tweens.tints[self.tint]}, {owner = self})
+    tween.to(self.gui:transform('target'), 0.4, {tint = Tweens.tints[self.tint]}, {owner = self})
     self:report('The panel tints to "' .. Tweens.tints[self.tint] .. '".')
 end
 

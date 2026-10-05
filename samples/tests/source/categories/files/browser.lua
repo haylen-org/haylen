@@ -55,7 +55,7 @@ function Browser:enter()
                     end},
                     ui.button{id = 'delete', text = 'Delete', variant = 'destructive', onClick = function(event)
                         if self.selected then
-                            event.document:set('confirm', {open = true, message = 'The file "' .. self:relative(self.selected) .. '" will be removed.'})
+                            event.gui:set('confirm', {open = true, message = 'The file "' .. self:relative(self.selected) .. '" will be removed.'})
                         end
                     end},
                     ui.button{id = 'examples', text = 'Add examples', onClick = function()

@@ -18,24 +18,24 @@ class UiPlugin;
 
 namespace haylen::ui {
 
-class Document;
+class Gui;
 struct Event;
 
-// Installs `haylen.ui`, which mounts documents of components built from Lua tables, and the `UiDocument` class.
+// Installs `haylen.ui`, which mounts GUIs of components built from Lua tables, and the `Gui` class.
 class UiLua final {
   public:
     static void install(lua_State* L);
 
-    // Calls the Lua handler a document declared for the event, when it has one.
-    static void deliverEvent(lua_State* L, Document& document, const Event& event);
+    // Calls the Lua handler a GUI declared for the event, when it has one.
+    static void deliverEvent(lua_State* L, Gui& gui, const Event& event);
 
-    // Drops the handlers of a document that is no longer mounted and ends everything its userdata owns.
-    static void forgetDocument(lua_State* L, const Document& document);
+    // Drops the handlers of a GUI that is no longer mounted and ends everything its userdata owns.
+    static void forgetGui(lua_State* L, const Gui& gui);
 
   private:
     class StackScope;
 
-    // The registry keeps one entry per mounted document, keyed by the document address: its userdata and the handlers of its nodes by id and event name.
+    // The registry keeps one entry per mounted GUI, keyed by the GUI address: its userdata and the handlers of its nodes by id and event name.
     static constexpr const char* kHandlersKey = "haylen.ui.handlers";
     static constexpr std::array<std::string_view, 3> kMountFields{"placement", "layer", "owner"};
     static constexpr std::array<std::string_view, 1> kEventFields{"owner"};
@@ -48,26 +48,26 @@ class UiLua final {
     [[nodiscard]] static core::Json convertNode(lua_State* L, int index, int handlers, std::size_t depth, std::size_t& count);
     [[nodiscard]] static core::Json convertProperties(lua_State* L, int index, int collected);
     static void collectIds(const core::Json& node, std::vector<std::string>& ids);
-    [[nodiscard]] static bool pushHandlers(lua_State* L, const Document& document);
-    static void pruneHandlers(lua_State* L, int handlers, const Document& document);
-    static void pushEventTable(lua_State* L, const Document& document, const Event& event);
-    static void pushDocument(lua_State* L, const std::shared_ptr<Document>& document);
-    [[nodiscard]] static Document& checkDocument(lua_State* L);
+    [[nodiscard]] static bool pushHandlers(lua_State* L, const Gui& gui);
+    static void pruneHandlers(lua_State* L, int handlers, const Gui& gui);
+    static void pushEventTable(lua_State* L, const Gui& gui, const Event& event);
+    static void pushGui(lua_State* L, const std::shared_ptr<Gui>& gui);
+    [[nodiscard]] static Gui& checkGui(lua_State* L);
 
     static int mount(lua_State* L);
-    static int documentSet(lua_State* L);
-    static int documentReplaceChildren(lua_State* L);
-    static int documentRemoveHandler(lua_State* L);
-    static int documentGet(lua_State* L);
-    static int documentBounds(lua_State* L);
-    static int documentHas(lua_State* L);
-    static int documentCommand(lua_State* L);
-    static int documentUnmount(lua_State* L);
-    static int documentVisible(lua_State* L);
-    static int documentSetVisible(lua_State* L);
-    static int documentMounted(lua_State* L);
-    static int documentPlacement(lua_State* L);
-    static int documentTransform(lua_State* L);
+    static int guiSet(lua_State* L);
+    static int guiReplaceChildren(lua_State* L);
+    static int guiRemoveHandler(lua_State* L);
+    static int guiGet(lua_State* L);
+    static int guiBounds(lua_State* L);
+    static int guiHas(lua_State* L);
+    static int guiCommand(lua_State* L);
+    static int guiUnmount(lua_State* L);
+    static int guiVisible(lua_State* L);
+    static int guiSetVisible(lua_State* L);
+    static int guiMounted(lua_State* L);
+    static int guiPlacement(lua_State* L);
+    static int guiTransform(lua_State* L);
     static int node(lua_State* L);
     static int kindBuilder(lua_State* L);
     static int moduleIndex(lua_State* L);

@@ -30,7 +30,7 @@ function Relayout:content()
             },
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'Sizes from "document:bounds"'},
+            ui.sectionTitle{text = 'Sizes from "gui:bounds"'},
             ui.label{id = 'sizes', text = '', font = 'monospace'},
             ui.row{gap = 16,
                 ui.label{text = 'Cycle the languages', grow = 1},
@@ -47,7 +47,7 @@ function Relayout:update(dt)
     Relayout.super.update(self, dt)
     local lines = {}
     for _, id in ipairs(Relayout.measured) do
-        local area = self.document:bounds(id)
+        local area = self.gui:bounds(id)
         if area then
             lines[#lines + 1] = string.format('Node %-10s %4.0f x %3.0f', '"' .. id .. '"', area.width, area.height)
         end

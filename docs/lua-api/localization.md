@@ -33,7 +33,7 @@ The usual layout keeps one JSON file per language in a folder of the assets, nam
 
 The first language added becomes both the current language and the fallback language until others are chosen. Keys missing from the current language come from the fallback language, and keys missing from both come back unchanged, so a missing translation shows its key on screen.
 
-UI documents from [`haylen.ui`](ui.md) translate any text given as `{key = 'menu.play'}` or `{key = 'hud.day', args = {day = 3}}` through this module.
+GUIs from [`haylen.ui`](ui.md) translate any text given as `{key = 'menu.play'}` or `{key = 'hud.day', args = {day = 3}}` through this module.
 
 ## Functions
 

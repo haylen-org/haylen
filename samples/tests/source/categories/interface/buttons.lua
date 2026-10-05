@@ -47,8 +47,8 @@ function Buttons:columns()
                 },
                 ui.row{gap = 8,
                     ui.button{id = 'hammer', icon = 'interface/icons/hammer.png', variant = 'toolbar', checked = true, tooltip = 'Build', onClick = function(event)
-                        local checked = not event.document:get('hammer').checked
-                        event.document:set('hammer', {checked = checked})
+                        local checked = not event.gui:get('hammer').checked
+                        event.gui:set('hammer', {checked = checked})
                         self:report('The hammer is ' .. (checked and 'checked.' or 'unchecked.'))
                     end},
                     ui.button{icon = 'interface/icons/gear.png', text = 'Toolbar', variant = 'toolbar', onClick = self:pressed('"toolbar"')},
@@ -77,11 +77,11 @@ function Buttons:columns()
                     ui.chip{text = 'Fish', onChange = self:chip('Fish')},
                 },
                 ui.row{gap = 12,
-                    ui.chip{id = 'tag-north', text = 'North', removable = true, onRemove = function(event) event.document:set('tag-north', {visible = false}) end},
-                    ui.chip{id = 'tag-coast', text = 'Coast', removable = true, onRemove = function(event) event.document:set('tag-coast', {visible = false}) end},
+                    ui.chip{id = 'tag-north', text = 'North', removable = true, onRemove = function(event) event.gui:set('tag-north', {visible = false}) end},
+                    ui.chip{id = 'tag-coast', text = 'Coast', removable = true, onRemove = function(event) event.gui:set('tag-coast', {visible = false}) end},
                     ui.button{text = 'Bring the tags back', variant = 'link', onClick = function(event)
-                        event.document:set('tag-north', {visible = true})
-                        event.document:set('tag-coast', {visible = true})
+                        event.gui:set('tag-north', {visible = true})
+                        event.gui:set('tag-coast', {visible = true})
                     end},
                 },
             }),

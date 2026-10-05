@@ -21,7 +21,7 @@ function Anchors:init(entry)
     self.margin = 24
 end
 
--- The anchored nodes live in a document of the whole screen under the frame, so every preset shows and the frame stays usable.
+-- The anchored nodes live in a GUI of the whole screen under the frame, so every preset shows and the frame stays usable.
 function Anchors:enter()
     self.simulation = areas.simulate()
     self:frame{

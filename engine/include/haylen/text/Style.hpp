@@ -34,7 +34,7 @@ struct Style {
     std::string language;
     bool pixelSnap = false;
 
-    // The alignment names `start`, `end`, `left`, `center`, `right` and `fill` and the direction names `auto`, `leftToRight` and `rightToLeft`, which Lua, markup and UI documents share.
+    // The alignment names `start`, `end`, `left`, `center`, `right` and `fill` and the direction names `auto`, `leftToRight` and `rightToLeft`, which Lua, markup and GUIs share.
     static const std::array<std::pair<std::string_view, Alignment>, 6> kAlignmentNames;
     static const std::array<std::pair<std::string_view, Direction>, 3> kDirectionNames;
 

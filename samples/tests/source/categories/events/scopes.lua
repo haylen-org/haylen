@@ -36,9 +36,9 @@ function Arena:enter(params)
     self:listen('waveStarted', function(number) journal:add('Arena hears wave ' .. number .. ' on the bus', Test.green) end)
     timer.every(0.5, function()
         self.ticks = self.ticks + 1
-        self.document:set('ticks', {text = 'Timer ticks ' .. self.ticks})
+        self.gui:set('ticks', {text = 'Timer ticks ' .. self.ticks})
     end, {owner = self})
-    tween.to(self.glow, 1, {value = 1}, {owner = self, loopMode = 'yoyo', repeatCount = -1, onUpdate = function() self.document:set('glow', {value = self.glow.value}) end})
+    tween.to(self.glow, 1, {value = 1}, {owner = self, loopMode = 'yoyo', repeatCount = -1, onUpdate = function() self.gui:set('glow', {value = self.glow.value}) end})
     self:spawn(function()
         while true do
             async.sleep(1000):await()

@@ -31,7 +31,7 @@ function Shop:enter(params)
             else
                 journal:add('Not enough coins for a ' .. item.id, Test.red)
             end
-            self.document:set('coins', {text = data.coins .. ' coins'})
+            self.gui:set('coins', {text = data.coins .. ' coins'})
         end}
     end
     self:card('The shop', children)

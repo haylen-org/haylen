@@ -28,7 +28,7 @@ class TextInputTest : public ::testing::Test {
     TextInputTest() {
         getInput().setNative(true);
         // clang-format off
-        connection = getUi().events.connect([this](Document&, const Event& event) {
+        connection = getUi().events.connect([this](Gui&, const Event& event) {
             if (event.name != "focus" && event.name != "blur") {
                 events.push_back(event.id + ":" + event.name + " " + event.value.dump());
             }
@@ -49,15 +49,15 @@ class TextInputTest : public ::testing::Test {
         return getInput().getPublished().back();
     }
 
-    std::shared_ptr<Document> mount(const std::string& json) {
-        auto document = getUi().createDocument(core::Json::parse(json), Placement::Screen);
-        getUi().mount(document);
+    std::shared_ptr<Gui> mount(const std::string& json) {
+        auto gui = getUi().createGui(core::Json::parse(json), Placement::Screen);
+        getUi().mount(gui);
         fixture.frames(1);
-        return document;
+        return gui;
     }
 
-    void focus(Document& document, const std::string& id) {
-        document.command(getUi().getContext(), id, "focus", core::Json::object());
+    void focus(Gui& gui, const std::string& id) {
+        gui.command(getUi().getContext(), id, "focus", core::Json::object());
         fixture.frames(2);
     }
 
@@ -95,7 +95,7 @@ class TextInputTest : public ::testing::Test {
 
 TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     // clang-format off
-    auto document = mount(R"({"kind": "column", "padding": 20, "children": [
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
         {"kind": "textField", "id": "email", "value": "ana", "keyboard": "email", "returnKey": "go", "autocorrect": true, "autocapitalize": "words", "maxLength": 40},
         {"kind": "textArea", "id": "notes"},
         {"kind": "secretField", "id": "pin"},
@@ -106,14 +106,14 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     // Every field on screen is offered to the platform with its keyboard, and the defaults follow the keyboard.
     const std::vector<TextInput::Field>& visible = getInput().getVisibleFields();
     ASSERT_EQ(visible.size(), 4U);
-    EXPECT_EQ(visible[0].bounds, document->find("email")->getBounds());
+    EXPECT_EQ(visible[0].bounds, gui->find("email")->getBounds());
     EXPECT_EQ(visible[0].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Email, .returnKey = TextInput::ReturnKey::Go, .capitalization = TextInput::Capitalization::Words, .autocorrect = true, .maxLength = 40}));
     EXPECT_EQ(visible[1].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Multiline}));
     EXPECT_EQ(visible[2].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Password, .capitalization = TextInput::Capitalization::None, .autocorrect = false}));
     EXPECT_EQ(visible[3].options.keyboard, TextInput::Keyboard::Text) << "Numeric keypads have no minus sign.";
     EXPECT_TRUE(getInput().getPublished().empty());
 
-    focus(*document, "email");
+    focus(*gui, "email");
     ASSERT_TRUE(getInput().isEditing());
     const TextInput::Field& field = getPublished();
     EXPECT_EQ(field.id, visible[0].id);
@@ -132,8 +132,8 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
 }
 
 TEST_F(TextInputTest, AppliesEditsOfTheCurrentRevisionOnly) {
-    auto document = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
-    focus(*document, "name");
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
+    focus(*gui, "name");
     const std::uint64_t revision = getPublished().revision;
     const std::uint64_t id = getPublished().id;
     events.clear();
@@ -157,8 +157,8 @@ TEST_F(TextInputTest, AppliesEditsOfTheCurrentRevisionOnly) {
 }
 
 TEST_F(TextInputTest, WaitsForTheInputMethodToCommit) {
-    auto document = mount(R"({"kind": "textField", "id": "name", "maxLength": 3})");
-    focus(*document, "name");
+    auto gui = mount(R"({"kind": "textField", "id": "name", "maxLength": 3})");
+    focus(*gui, "name");
     const std::size_t published = getInput().getPublished().size();
     const ImGuiID field = static_cast<ImGuiID>(getPublished().id);
     const TextSession& session = getUi().getBackend().getTextSession();
@@ -180,8 +180,8 @@ TEST_F(TextInputTest, WaitsForTheInputMethodToCommit) {
 }
 
 TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
-    auto document = mount(R"({"kind": "textField", "id": "name", "value": "abc"})");
-    focus(*document, "name");
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "abc"})");
+    focus(*gui, "name");
     events.clear();
 
     send({.type = platform::Event::Type::Character, .character = U'x'});
@@ -194,9 +194,9 @@ TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
 // Where the UI edits the text itself, Space and Enter type into the field even though they also press the focused control.
 TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
     getInput().setNative(false);
-    auto document = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "textArea", "id": "notes"}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "textArea", "id": "notes"}]})");
 
-    focus(*document, "name");
+    focus(*gui, "name");
     events.clear();
     press(input::Key::A, U'a');
     press(input::Key::Space, U' ');
@@ -206,7 +206,7 @@ TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
     press(input::Key::Enter, U'\r');
     EXPECT_EQ(events.back(), R"(name:submit {"value":"a b"})");
 
-    focus(*document, "notes");
+    focus(*gui, "notes");
     events.clear();
     press(input::Key::A, U'a');
     press(input::Key::Enter, U'\r');
@@ -218,8 +218,8 @@ TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
 // A shift press selects from the caret where it stands, also after typing moved it.
 TEST_F(TextInputTest, SelectsFromTheCaretAfterTyping) {
     getInput().setNative(false);
-    auto document = mount(R"({"kind": "textField", "id": "name"})");
-    focus(*document, "name");
+    auto gui = mount(R"({"kind": "textField", "id": "name"})");
+    focus(*gui, "name");
     press(input::Key::A, U'a');
     press(input::Key::B, U'b');
     press(input::Key::C, U'c');
@@ -231,7 +231,7 @@ TEST_F(TextInputTest, SelectsFromTheCaretAfterTyping) {
 
 TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
     // clang-format off
-    auto document = mount(R"({"kind": "column", "children": [
+    auto gui = mount(R"({"kind": "column", "children": [
         {"kind": "textField", "id": "first", "value": "a"},
         {"kind": "textField", "id": "second", "returnKey": "next"},
         {"kind": "textField", "id": "third"}
@@ -240,13 +240,13 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
     const std::vector<TextInput::Field> fields = getInput().getVisibleFields();
     ASSERT_EQ(fields.size(), 3U);
 
-    focus(*document, "first");
+    focus(*gui, "first");
     act(TextInput::Action::Submit);
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(events.back(), R"(first:submit {"value":"a"})");
     EXPECT_FALSE(getInput().isEditing());
 
-    focus(*document, "first");
+    focus(*gui, "first");
     act(TextInput::Action::Next);
     EXPECT_EQ(getPublished().id, fields[1].id);
 
@@ -262,7 +262,7 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
     EXPECT_FALSE(getInput().isEditing());
     EXPECT_EQ(events.back(), R"(third:change {"value":""})");
 
-    focus(*document, "first");
+    focus(*gui, "first");
     events.clear();
     act(TextInput::Action::Dismissed);
     EXPECT_FALSE(getInput().isEditing());
@@ -270,20 +270,20 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
 }
 
 TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
-    auto document = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
-    const math::Rect resting = document->find("name")->getBounds();
-    focus(*document, "name");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
+    const math::Rect resting = gui->find("name")->getBounds();
+    focus(*gui, "name");
 
     send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(60);
-    const math::Rect lifted = document->find("name")->getBounds();
+    const math::Rect lifted = gui->find("name")->getBounds();
     EXPECT_LE(lifted.getBottom(), 540.0F);
     EXPECT_GE(lifted.getBottom(), 500.0F);
     EXPECT_EQ(getPublished().bounds, lifted) << "The platform follows the field.";
 
     send({.type = platform::Event::Type::KeyboardChanged});
     fixture.frames(60);
-    EXPECT_EQ(document->find("name")->getBounds(), resting);
+    EXPECT_EQ(gui->find("name")->getBounds(), resting);
 }
 
 } // namespace haylen::ui

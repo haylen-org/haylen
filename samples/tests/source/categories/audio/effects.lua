@@ -154,7 +154,7 @@ function Effects:showParams()
             self.effect[param] = param == 'cutoff' and response.frequency(event.value) or event.value
         end}}
     end
-    self.document:replaceChildren('params', nodes)
+    self.gui:replaceChildren('params', nodes)
 end
 
 function Effects:update(dt)

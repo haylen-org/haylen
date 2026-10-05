@@ -37,7 +37,7 @@ function Category:enter()
         }
     end
 
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         padding = {32, 48},
         gap = 24,
         onCancel = navigation.back,
@@ -47,7 +47,7 @@ function Category:enter()
         },
         ui.scroll{grow = 1, ui.column{gap = 12, padding = {0, 24, 0, 0}, children = rows}},
     }, {owner = self})
-    self.document:command(self.selected and self.selected.code or 'back', 'focus')
+    self.gui:command(self.selected and self.selected.code or 'back', 'focus')
 end
 
 -- Coming back from a test keeps the focus on the test that was open, which the UI gives back to the list.

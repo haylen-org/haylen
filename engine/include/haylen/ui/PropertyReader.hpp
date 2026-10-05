@@ -82,7 +82,7 @@ class PropertyReader final {
   private:
     template <typename Number> [[nodiscard]] static std::string describeRange(Number minimum, Number maximum);
 
-    // Keys the document reads itself, so components never see them as unknown properties.
+    // Keys the GUI reads itself, so components never see them as unknown properties.
     static constexpr std::array<std::string_view, 3> kStructuralKeys{"kind", "id", "children"};
 
     const core::Json& properties;

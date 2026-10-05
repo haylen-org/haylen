@@ -12,7 +12,7 @@ function gameOver.new(run, days, kills, record)
 end
 
 function gameOver:enter()
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         justify = 'center',
         padding = 64,
         gap = 28,
@@ -31,7 +31,7 @@ function gameOver:enter()
             end, {sound = 'confirm'})},
         },
     })
-    self.document:command('retry', 'focus')
+    self.gui:command('retry', 'focus')
 end
 
 function gameOver:leave(next)
@@ -43,7 +43,7 @@ function gameOver:leave(next)
 end
 
 function gameOver:exit()
-    self.document:unmount()
+    self.gui:unmount()
 end
 
 return gameOver

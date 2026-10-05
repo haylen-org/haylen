@@ -72,8 +72,8 @@ void UiPlugin::stop(core::Engine& engine) {
     fontPaths.clear();
     fontFamilies.clear();
 
-    // No document is left to report events, and listeners holding Lua functions let go before the Lua state closes.
-    documents.clear();
+    // No GUI is left to report events, and listeners holding Lua functions let go before the Lua state closes.
+    guis.clear();
     events.clear();
     context.reset();
     backend.reset();
@@ -118,21 +118,21 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
 }
 
 void UiPlugin::update(core::Engine& engine, float) {
-    // Handlers may mount or unmount documents, so the loop walks a copy and skips documents that are gone.
-    const std::vector<Mounted> snapshot = documents;
+    // Handlers may mount or unmount GUIs, so the loop walks a copy and skips GUIs that are gone.
+    const std::vector<Mounted> snapshot = guis;
     for (const Mounted& entry : snapshot) {
-        ui::Document& document = *entry.document;
-        for (const ui::Event& event : document.takeEvents()) {
-            if (!isMounted(document)) {
+        ui::Gui& gui = *entry.gui;
+        for (const ui::Event& event : gui.takeEvents()) {
+            if (!isMounted(gui)) {
                 break;
             }
-            events.emit(document, event);
-            ui::UiLua::deliverEvent(engine.getLuaState(), document, event);
+            events.emit(gui, event);
+            ui::UiLua::deliverEvent(engine.getLuaState(), gui, event);
         }
     }
 }
 
-// Every view draws the documents of its scenes, a view that leaves through a transition into its own image before the frame ends, and the current view also the documents that belong to no scene, which ends the frame.
+// Every view draws the GUIs of its scenes, a view that leaves through a transition into its own image before the frame ends, and the current view also the GUIs that belong to no scene, which ends the frame.
 void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     ui::Backend& drawing = getBackend();
     if (!drawing.isFrameActive()) {
@@ -140,7 +140,7 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     }
     if (!drawBegun) {
         drawBegun = true;
-        shownDocuments.clear();
+        shownGuis.clear();
         focus.beginDraw();
     }
     if (view.current) {
@@ -150,8 +150,8 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     }
 }
 
-// The documents a view draws in layer order: those of its scenes, and in the current view those of no scene too. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its documents in the current view.
-std::vector<const UiPlugin::Mounted*> UiPlugin::getDocuments(core::Engine& engine, const core::SceneView& view) const {
+// The GUIs a view draws in layer order: those of its scenes, and in the current view those of no scene too. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its GUIs in the current view.
+std::vector<const UiPlugin::Mounted*> UiPlugin::getGuis(core::Engine& engine, const core::SceneView& view) const {
     const std::vector<core::SceneView>& views = engine.getScenes().getViews();
     const auto current = std::ranges::find_if(views, &core::SceneView::current);
     // clang-format off
@@ -161,7 +161,7 @@ std::vector<const UiPlugin::Mounted*> UiPlugin::getDocuments(core::Engine& engin
     // clang-format on
 
     std::vector<const Mounted*> drawn;
-    for (const Mounted& entry : documents) {
+    for (const Mounted& entry : guis) {
         if (!entry.scened) {
             if (view.current) {
                 drawn.push_back(&entry);
@@ -189,24 +189,24 @@ void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
     ImGui::PopStyleVar(2);
 }
 
-// Every document moves up together while the on-screen keyboard would cover the focused text field.
-void UiPlugin::drawDocuments(const std::vector<const Mounted*>& drawn) {
+// Every GUI moves up together while the on-screen keyboard would cover the focused text field.
+void UiPlugin::drawGuis(const std::vector<const Mounted*>& drawn) {
     ui::Backend& drawing = getBackend();
     const math::Rect display = drawing.getDisplayRect();
     const math::Vec2 lift{0.0F, -drawing.getKeyboardOffset()};
     for (const Mounted* entry : drawn) {
-        ImGui::PushID(entry->document.get());
-        entry->document->draw(*context, (entry->document->getPlacement() == ui::Placement::Safe ? drawing.getSafeRect() : display).translated(lift));
+        ImGui::PushID(entry->gui.get());
+        entry->gui->draw(*context, (entry->gui->getPlacement() == ui::Placement::Safe ? drawing.getSafeRect() : display).translated(lift));
         ImGui::PopID();
-        shownDocuments.push_back(entry->document.get());
+        shownGuis.push_back(entry->gui.get());
     }
 }
 
-// The documents of a leaving view take no input and no focus, and they draw into the image of their view right away.
+// The GUIs of a leaving view take no input and no focus, and they draw into the image of their view right away.
 void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-leaving", ImGuiWindowFlags_NoInputs);
     focus.suspendTargets(true);
-    drawDocuments(getDocuments(engine, view));
+    drawGuis(getGuis(engine, view));
     focus.suspendTargets(false);
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
     ImGui::End();
@@ -215,14 +215,14 @@ void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
 
 void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
     ui::Backend& drawing = getBackend();
-    beginWindow("##haylen-documents", ImGuiWindowFlags_NoNavInputs);
+    beginWindow("##haylen-guis", ImGuiWindowFlags_NoNavInputs);
     drawing.setTransparentWindow();
-    drawDocuments(getDocuments(engine, view));
+    drawGuis(getGuis(engine, view));
 
-    // The documents that no view shows, such as those of a covered scene, hear that they stopped drawing.
-    for (const Mounted& entry : documents) {
-        if (std::ranges::find(shownDocuments, entry.document.get()) == shownDocuments.end()) {
-            entry.document->skip(*context);
+    // The GUIs that no view shows, such as those of a covered scene, hear that they stopped drawing.
+    for (const Mounted& entry : guis) {
+        if (std::ranges::find(shownGuis, entry.gui.get()) == shownGuis.end()) {
+            entry.gui->skip(*context);
         }
     }
     ImGui::End();
@@ -334,42 +334,42 @@ void UiPlugin::applyVirtualInput(core::Engine& engine) {
     }
 }
 
-std::shared_ptr<ui::Document> UiPlugin::createDocument(const core::Json& tree, ui::Placement placement) const {
-    return std::make_shared<ui::Document>(components, tree, placement);
+std::shared_ptr<ui::Gui> UiPlugin::createGui(const core::Json& tree, ui::Placement placement) const {
+    return std::make_shared<ui::Gui>(components, tree, placement);
 }
 
-void UiPlugin::mount(std::shared_ptr<ui::Document> document, int layer, const std::shared_ptr<const core::Scene>& scene) {
+void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_ptr<const core::Scene>& scene) {
     if (owner == nullptr) {
         throw std::logic_error("The UI plugin has not started.");
     }
-    if (!document || isMounted(*document)) {
-        throw std::invalid_argument("Only a document that is not mounted can be mounted.");
+    if (!gui || isMounted(*gui)) {
+        throw std::invalid_argument("Only a GUI that is not mounted can be mounted.");
     }
-    documents.push_back({.document = document, .scene = scene, .scened = scene != nullptr, .layer = layer, .order = nextOrder++});
-    owner->getEvents().emitWith(core::LifecycleEvent::kUiDocumentMounted, document);
+    guis.push_back({.gui = gui, .scene = scene, .scened = scene != nullptr, .layer = layer, .order = nextOrder++});
+    owner->getEvents().emitWith(core::LifecycleEvent::kGuiMounted, gui);
 }
 
-// Documents are only mounted while the plugin runs, so a document that is found has an engine to report to.
-bool UiPlugin::unmount(const ui::Document& document) {
-    const auto found = std::ranges::find_if(documents, [&](const Mounted& entry) { return entry.document.get() == &document; });
-    if (found == documents.end()) {
+// GUIs are only mounted while the plugin runs, so a GUI that is found has an engine to report to.
+bool UiPlugin::unmount(const ui::Gui& gui) {
+    const auto found = std::ranges::find_if(guis, [&](const Mounted& entry) { return entry.gui.get() == &gui; });
+    if (found == guis.end()) {
         return false;
     }
-    const std::shared_ptr<ui::Document> unmounted = found->document;
-    documents.erase(found);
+    const std::shared_ptr<ui::Gui> unmounted = found->gui;
+    guis.erase(found);
     focus.forget(*unmounted);
-    owner->getEvents().emitWith(core::LifecycleEvent::kUiDocumentUnmounted, unmounted);
-    ui::UiLua::forgetDocument(owner->getLuaState(), document);
+    owner->getEvents().emitWith(core::LifecycleEvent::kGuiUnmounted, unmounted);
+    ui::UiLua::forgetGui(owner->getLuaState(), gui);
     return true;
 }
 
-bool UiPlugin::isMounted(const ui::Document& document) const {
-    return std::ranges::any_of(documents, [&](const Mounted& entry) { return entry.document.get() == &document; });
+bool UiPlugin::isMounted(const ui::Gui& gui) const {
+    return std::ranges::any_of(guis, [&](const Mounted& entry) { return entry.gui.get() == &gui; });
 }
 
-std::shared_ptr<ui::Document> UiPlugin::findMounted(const ui::Document* document) const {
-    const auto found = std::ranges::find_if(documents, [&](const Mounted& entry) { return entry.document.get() == document; });
-    return found != documents.end() ? found->document : nullptr;
+std::shared_ptr<ui::Gui> UiPlugin::findMounted(const ui::Gui* gui) const {
+    const auto found = std::ranges::find_if(guis, [&](const Mounted& entry) { return entry.gui.get() == gui; });
+    return found != guis.end() ? found->gui : nullptr;
 }
 
 void UiPlugin::addTheme(ui::Theme theme) {
@@ -412,14 +412,14 @@ std::vector<std::string> UiPlugin::getThemes() const {
     return names;
 }
 
-std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& document, std::string_view base) {
+std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& definition, std::string_view base) {
     const auto baseTheme = themes.find(base);
     if (baseTheme == themes.end()) {
         throw std::invalid_argument("The UI has no theme named \"" + std::string(base) + "\" to start from.");
     }
 
     // clang-format off
-    ui::Theme theme = ui::Theme::fromJson(document, baseTheme->second, [&engine](std::string_view texture, graphics::Texture::Options options) {
+    ui::Theme theme = ui::Theme::fromJson(definition, baseTheme->second, [&engine](std::string_view texture, graphics::Texture::Options options) {
         return engine.getAssets().texture(texture, options);
     });
     // clang-format on

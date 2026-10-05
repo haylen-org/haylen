@@ -619,7 +619,7 @@ bool Backend::isUsingPointer() const {
         return true;
     }
 
-    // Over the transparent document window only items and the areas components blocked in the last frame keep the pointer from the app. A press on empty space makes ImGui hold the move id of that window, which is no item.
+    // Over the transparent GUI window only items and the areas components blocked in the last frame keep the pointer from the app. A press on empty space makes ImGui hold the move id of that window, which is no item.
     const math::Vec2 pointer{state.IO.MousePos.x, state.IO.MousePos.y};
     const auto covers = [pointer](const math::Rect& area) { return area.contains(pointer); };
     const bool activeItem = state.ActiveId != 0 && state.ActiveId != state.HoveredWindow->MoveId;

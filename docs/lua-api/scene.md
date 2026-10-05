@@ -30,7 +30,7 @@ A scene is any table. The engine looks up its hooks by name every time it calls 
 | `transparent` | Read every frame. When it is `true`, the scene below also renders. | Not a function. |
 | `processMode` | Read every frame. One of `'inherit'`, the default, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. | Not a function. |
 
-The visible scenes are the top scene and every scene below it down to the first one that is not transparent. An error raised in a hook stops the app and shows the error screen with the message and its stack trace, except in `load`, where it fails the load as [Errors](#errors) describes. Everything the scene owns ends when it unloads: the task of a `load` that has not finished and the tasks of `scene.spawn`, which stop for good and close their to-be-closed variables, the listeners of `scene.listen`, and the timers, tweens, event listeners, signal connections and UI documents created with the scene as `owner`. So no callback or coroutine of a scene runs once it is gone.
+The visible scenes are the top scene and every scene below it down to the first one that is not transparent. An error raised in a hook stops the app and shows the error screen with the message and its stack trace, except in `load`, where it fails the load as [Errors](#errors) describes. Everything the scene owns ends when it unloads: the task of a `load` that has not finished and the tasks of `scene.spawn`, which stop for good and close their to-be-closed variables, the listeners of `scene.listen`, and the timers, tweens, event listeners, signal connections and GUIs created with the scene as `owner`. So no callback or coroutine of a scene runs once it is gone.
 
 A table is one scene for as long as the engine holds it, so the same table cannot be on the stack twice, and a table whose scene unloaded may be pushed again, which loads it again.
 
@@ -211,7 +211,7 @@ scene.replace({name = 'credits', load = function(self) self.lines = {'art', 'mus
 
 ### Loading views
 
-A loading view is a table with optional hooks, the same ones as a scene, so an ordinary scene table can serve as one. It appears once the load took longer than `loadingDelay`, over the covered frame during the hold of an effect that covers the screen, or over the current scenes before an effect that shows both scenes or a change without an effect. It stays at least `minimumLoadingTime` once it appeared. Over the covered frame it then fades out into it over `loadingFadeOut` seconds, with the engine blending everything it draws, its UI documents included, so the view needs no fade of its own, and over the current scenes it goes away at once. It exits right before the next scene enters. It draws like the top scene, before the drawing of the engine plugins such as UI documents, it runs on real time, and everything it owns ends when it exits.
+A loading view is a table with optional hooks, the same ones as a scene, so an ordinary scene table can serve as one. It appears once the load took longer than `loadingDelay`, over the covered frame during the hold of an effect that covers the screen, or over the current scenes before an effect that shows both scenes or a change without an effect. It stays at least `minimumLoadingTime` once it appeared. Over the covered frame it then fades out into it over `loadingFadeOut` seconds, with the engine blending everything it draws, its GUIs included, so the view needs no fade of its own, and over the current scenes it goes away at once. It exits right before the next scene enters. It draws like the top scene, before the drawing of the engine plugins such as GUIs, it runs on real time, and everything it owns ends when it exits.
 
 | Field | Called | Arguments |
 | --- | --- | --- |
@@ -328,7 +328,7 @@ scene.pop({effect = 'iris', color = '#FF000000', duration = 0.6})
 scene.replace(level('Boss', '#FF5E1B1B'), {effect = 'fadeTiles', direction = 'upRight', duration = 0.7})
 ```
 
-The drawing of the engine plugins, such as mounted UI documents, autoloads and the debug overlay, goes with the current scenes: into the outgoing image during the cover, over the covered frame during the hold, and into the incoming image during the reveal. A UI document mounted with the scene as its `owner` goes away when the scene unloads, and a covered scene hides the documents it keeps in `pause`.
+The drawing of the engine plugins, such as mounted GUIs, autoloads and the debug overlay, goes with the current scenes: into the outgoing image during the cover, over the covered frame during the hold, and into the incoming image during the reveal. A GUI mounted with the scene as its `owner` goes away when the scene unloads, and a covered scene hides the GUIs it keeps in `pause`.
 
 ### Custom effects
 

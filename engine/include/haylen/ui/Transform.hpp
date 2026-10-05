@@ -5,7 +5,7 @@
 
 namespace haylen::ui {
 
-// How a node draws on top of the place its layout gives it. The offset moves the node and its children together with their input areas, while the scale around the center of the node, the opacity and the tint change only how they look. Children inherit the transform of their parents, and tweens animate it natively through the transform handle of a document node.
+// How a node draws on top of the place its layout gives it. The offset moves the node and its children together with their input areas, while the scale around the center of the node, the opacity and the tint change only how they look. Children inherit the transform of their parents, and tweens animate it natively through the transform handle of a GUI node.
 struct Transform {
     math::Vec2 offset{};
     math::Vec2 scale{1.0F, 1.0F};

@@ -16,9 +16,9 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/ComponentRegistry.hpp"
 #include "haylen/ui/Context.hpp"
-#include "haylen/ui/Document.hpp"
 #include "haylen/ui/Event.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "haylen/ui/NavigationInput.hpp"
 #include "haylen/ui/Placement.hpp"
 #include "haylen/ui/Theme.hpp"
@@ -30,7 +30,7 @@ struct SceneView;
 
 namespace haylen::plugins {
 
-// Runs the app UI: Dear ImGui over the app, the themes, the component kinds and the documents the app mounts. Lua sees it as `haylen.ui` and `haylen.imgui`.
+// Runs the app UI: Dear ImGui over the app, the themes, the component kinds and the GUIs the app mounts. Lua sees it as `haylen.ui` and `haylen.imgui`.
 class UiPlugin final : public Plugin {
   public:
     UiPlugin();
@@ -60,26 +60,26 @@ class UiPlugin final : public Plugin {
         return components;
     }
 
-    [[nodiscard]] std::shared_ptr<ui::Document> createDocument(const core::Json& tree, ui::Placement placement = ui::Placement::Safe) const;
+    [[nodiscard]] std::shared_ptr<ui::Gui> createGui(const core::Json& tree, ui::Placement placement = ui::Placement::Safe) const;
 
-    // Documents draw in layer order, and documents on the same layer in the order they were mounted. A document of a scene draws only while its scene shows and goes into the image of its scene during a transition, so it travels with its scene, while a document of no scene draws above the scenes the app runs. Mounting and unmounting publish `uiDocumentMounted` and `uiDocumentUnmounted` with the shared pointer of the document.
-    void mount(std::shared_ptr<ui::Document> document, int layer = 0, const std::shared_ptr<const core::Scene>& scene = nullptr);
-    bool unmount(const ui::Document& document);
-    [[nodiscard]] bool isMounted(const ui::Document& document) const;
+    // GUIs draw in layer order, and GUIs on the same layer in the order they were mounted. A GUI of a scene draws only while its scene shows and goes into the image of its scene during a transition, so it travels with its scene, while a GUI of no scene draws above the scenes the app runs. Mounting and unmounting publish `guiMounted` and `guiUnmounted` with the shared pointer of the GUI.
+    void mount(std::shared_ptr<ui::Gui> gui, int layer = 0, const std::shared_ptr<const core::Scene>& scene = nullptr);
+    bool unmount(const ui::Gui& gui);
+    [[nodiscard]] bool isMounted(const ui::Gui& gui) const;
 
-    // Returns the mounted document at an address, such as the one the focus navigator names, or nothing when no mounted document lives there.
-    [[nodiscard]] std::shared_ptr<ui::Document> findMounted(const ui::Document* document) const;
+    // Returns the mounted GUI at an address, such as the one the focus navigator names, or nothing when no mounted GUI lives there.
+    [[nodiscard]] std::shared_ptr<ui::Gui> findMounted(const ui::Gui* gui) const;
 
-    // Hands out the events of every mounted document once per frame, before the app updates.
-    core::Signal<ui::Document&, const ui::Event&> events;
+    // Hands out the events of every mounted GUI once per frame, before the app updates.
+    core::Signal<ui::Gui&, const ui::Event&> events;
 
     void addTheme(ui::Theme theme);
     void setTheme(std::string_view name);
     [[nodiscard]] const ui::Theme& getTheme() const;
     [[nodiscard]] std::vector<std::string> getThemes() const;
 
-    // Registers a theme from its JSON document on top of the theme named `base`, registers the fonts it lists and returns the theme name.
-    std::string addTheme(core::Engine& engine, const core::Json& document, std::string_view base = "dark");
+    // Registers a theme from its JSON definition on top of the theme named `base`, registers the fonts it lists and returns the theme name.
+    std::string addTheme(core::Engine& engine, const core::Json& definition, std::string_view base = "dark");
     std::string loadTheme(core::Engine& engine, std::string_view path, std::string_view base = "dark");
     void addFont(core::Engine& engine, const std::string& name, std::string_view path);
 
@@ -111,7 +111,7 @@ class UiPlugin final : public Plugin {
 
   private:
     struct Mounted {
-        std::shared_ptr<ui::Document> document;
+        std::shared_ptr<ui::Gui> gui;
         std::weak_ptr<const core::Scene> scene;
         bool scened = false;
         int layer = 0;
@@ -126,9 +126,9 @@ class UiPlugin final : public Plugin {
 
     // Returns the texture of a UI image with the image filter of the theme, which loads in the background and is empty until it arrives.
     [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path);
-    [[nodiscard]] std::vector<const Mounted*> getDocuments(core::Engine& engine, const core::SceneView& view) const;
+    [[nodiscard]] std::vector<const Mounted*> getGuis(core::Engine& engine, const core::SceneView& view) const;
     void beginWindow(const char* name, ImGuiWindowFlags flags);
-    void drawDocuments(const std::vector<const Mounted*>& drawn);
+    void drawGuis(const std::vector<const Mounted*>& drawn);
     void drawLeaving(core::Engine& engine, const core::SceneView& view);
     void drawCurrent(core::Engine& engine, const core::SceneView& view);
     void applyVirtualInput(core::Engine& engine);
@@ -146,8 +146,8 @@ class UiPlugin final : public Plugin {
     std::unique_ptr<ui::Context> context;
     std::map<std::string, ui::Theme, std::less<>> themes;
     std::string themeName = "dark";
-    std::vector<Mounted> documents;
-    std::vector<const ui::Document*> shownDocuments;
+    std::vector<Mounted> guis;
+    std::vector<const ui::Gui*> shownGuis;
     std::uint64_t nextOrder = 0;
     std::map<std::string, ImageEntry, std::less<>> images;
     std::map<std::string, std::string, std::less<>> fontPaths;

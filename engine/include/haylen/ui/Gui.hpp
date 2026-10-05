@@ -22,13 +22,13 @@ namespace haylen::ui {
 class ComponentRegistry;
 class Context;
 
-// A mounted tree of components. A node is an object with `kind`, an optional `id`, `children` and its properties, and ids are unique within the document. Events wait in a queue until the owner takes them.
-class Document final {
+// A mounted tree of components. A node is an object with `kind`, an optional `id`, `children` and its properties, and ids are unique within the GUI. Events wait in a queue until the owner takes them.
+class Gui final {
   public:
     static constexpr std::size_t kMaxDepth = 64;
     static constexpr std::size_t kMaxNodes = 20000;
 
-    Document(const ComponentRegistry& componentRegistry, const core::Json& tree, Placement where = Placement::Safe);
+    Gui(const ComponentRegistry& componentRegistry, const core::Json& tree, Placement where = Placement::Safe);
 
     [[nodiscard]] Component& getRoot() noexcept {
         return *root;
@@ -51,7 +51,7 @@ class Document final {
 
     void draw(Context& context, const math::Rect& area);
 
-    // Tells the components of a document that the UI does not draw this frame, such as the document of a covered scene, that they stopped drawing.
+    // Tells the components of a GUI that the UI does not draw this frame, such as the GUI of a covered scene, that they stopped drawing.
     void skip(Context& context);
     [[nodiscard]] std::vector<Event> takeEvents();
 

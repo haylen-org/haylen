@@ -6,9 +6,9 @@ The module `haylen.ui` builds the app interface, such as menus, HUDs, settings s
 local ui = require('haylen.ui')
 ```
 
-## Documents
+## GUIs
 
-A document is a tree of nodes. Every node is one flat table with a `kind`, an optional `id`, its children and the properties of its kind. The function `ui.mount` builds the components, draws them over the app every frame and returns a [`UiDocument`](#uidocument) that stays mounted until it is unmounted. Several documents can be mounted at once. A scene mounts its documents with itself as `owner`, so they show only while the scene shows, go through scene transitions with it and unmount when it unloads, and a document without a scene owner stays on screen above the scenes.
+A GUI is a tree of nodes. Every node is one flat table with a `kind`, an optional `id`, its children and the properties of its kind. The function `ui.mount` builds the components, draws them over the app every frame and returns a [`Gui`](#gui) that stays mounted until it is unmounted. Several GUIs can be mounted at once. A scene mounts its GUIs with itself as `owner`, so they show only while the scene shows, go through scene transitions with it and unmount when it unloads, and a GUI without a scene owner stays on screen above the scenes.
 
 Sizes and positions are design units of the design resolution in `app.json`. The metrics of the built-in themes suit the default design resolution of 1920 by 1080.
 
@@ -23,7 +23,7 @@ scene.push({
             gap = 24,
             ui.label{text = 'Tiny Island', font = 'title'},
             ui.button{id = 'play', text = 'Play', variant = 'primary', onClick = function(event)
-                event.document:set('status', {text = 'Loading the island'})
+                event.gui:set('status', {text = 'Loading the island'})
             end},
             ui.label{id = 'status', text = ''},
         }, {owner = self})
@@ -35,17 +35,17 @@ scene.push({
 
 ### ui.mount(tree, options)
 
-Builds a document from the node table `tree`, shows it and returns its [`UiDocument`](#uidocument). The options table is optional, and unknown keys raise `Unknown option "<key>".`.
+Builds a GUI from the node table `tree`, shows it and returns its [`Gui`](#gui). The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `placement` | string | `'safe'` | The value `'safe'` lays the root out inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. |
-| `layer` | integer | `0` | Documents draw in ascending layer order, and documents on the same layer draw in the order they were mounted, so later ones cover earlier ones. |
-| `owner` | table or userdata | `nil` | Unmounts the document when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). A scene of the stack as owner also makes the document part of the scene: it draws only while the scene shows, and during a transition it goes into the image of its scene. |
+| `layer` | integer | `0` | GUIs draw in ascending layer order, and GUIs on the same layer draw in the order they were mounted, so later ones cover earlier ones. |
+| `owner` | table or userdata | `nil` | Unmounts the GUI when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). A scene of the stack as owner also makes the GUI part of the scene: it draws only while the scene shows, and during a transition it goes into the image of its scene. |
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
-A placement other than `safe` or `screen` raises `The "placement" option must be "safe" or "screen".`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named "spaceship".` or `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. Mounting publishes the `uiDocumentMounted` event of [`haylen.events`](events.md) with the document.
+A placement other than `safe` or `screen` raises `The "placement" option must be "safe" or "screen".`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named "spaceship".` or `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. Mounting publishes the `guiMounted` event of [`haylen.events`](events.md) with the GUI.
 
 ```lua
 local ui = require('haylen.ui')
@@ -59,7 +59,7 @@ local hud = ui.mount(ui.row{
 }, {placement = 'screen', layer = 1})
 ```
 
-A scene that owns its documents needs no `exit` of its own to unmount them, and no `pause` and `resume` to hide them while another scene covers it. Its documents never show over the scene that covers it, not even while the transition plays.
+A scene that owns its GUIs needs no `exit` of its own to unmount them, and no `pause` and `resume` to hide them while another scene covers it. Its GUIs never show over the scene that covers it, not even while the transition plays.
 
 ```lua
 local scene = require('haylen.scene')
@@ -84,7 +84,7 @@ local tree = ui.node('column', {
     id = 'list',
     children = {ui.node(kind, {text = 'First'}), ui.node(kind, {text = 'Second'})},
 })
-local document = ui.mount(tree)
+local gui = ui.mount(tree)
 ```
 
 ### ui.&lt;kind&gt;(properties)
@@ -115,7 +115,7 @@ end
 
 ### ui.setTheme(name)
 
-Switches the theme of every document and of [`haylen.imgui`](imgui.md) windows. The engine ships the themes `dark`, which is active at start, and `light`. An unknown name raises `The UI has no theme named "<name>".`.
+Switches the theme of every GUI and of [`haylen.imgui`](imgui.md) windows. The engine ships the themes `dark`, which is active at start, and `light`. An unknown name raises `The UI has no theme named "<name>".`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -162,9 +162,9 @@ local name = ui.loadTheme('themes/wood.json', 'light')
 ui.setTheme(name)
 ```
 
-### ui.addTheme(document, base)
+### ui.addTheme(definition, base)
 
-Registers a theme from a table in the [theme file](#themes) format, the way `ui.loadTheme` registers a file, and returns the theme name without switching to it. The theme starts as a copy of the registered theme `base`, which defaults to `'dark'`. It raises the errors of `ui.loadTheme`, and a `document` that is not a table raises an argument error.
+Registers a theme from a table in the [theme file](#themes) format, the way `ui.loadTheme` registers a file, and returns the theme name without switching to it. The theme starts as a copy of the registered theme `base`, which defaults to `'dark'`. It raises the errors of `ui.loadTheme`, and a `definition` that is not a table raises an argument error.
 
 ```lua
 local ui = require('haylen.ui')
@@ -308,7 +308,7 @@ scene.push({
 
 ### ui.focused()
 
-Returns the [`UiDocument`](#uidocument) and the node id that hold the keyboard, gamepad and remote focus, or `nil` when no mounted document holds it. A focused node without an id returns the document alone. The [focus guide](#focus-and-navigation) explains how the focus moves.
+Returns the [`Gui`](#gui) and the node id that hold the keyboard, gamepad and remote focus, or `nil` when no mounted GUI holds it. A focused node without an id returns the GUI alone. The [focus guide](#focus-and-navigation) explains how the focus moves.
 
 ```lua
 local scene = require('haylen.scene')
@@ -322,8 +322,8 @@ local menu = ui.mount(ui.column{
 
 scene.push({
     update = function(self, dt)
-        local document, id = ui.focused()
-        if document == menu then
+        local gui, id = ui.focused()
+        if gui == menu then
             menu:set('hint', {text = id == 'quit' and 'Leave the island' or 'Start a new run'})
         end
     end,
@@ -332,7 +332,7 @@ scene.push({
 
 ### ui.focusOwner()
 
-Returns what holds the keyboard, gamepad and remote focus: `'control'` for a control of a document, `'playArea'` for a [play area](#uiplayareaproperties), whose game gets the directions, accept and menu, or `'none'`.
+Returns what holds the keyboard, gamepad and remote focus: `'control'` for a control of a GUI, `'playArea'` for a [play area](#uiplayareaproperties), whose game gets the directions, accept and menu, or `'none'`.
 
 ```lua
 local input = require('haylen.input')
@@ -352,7 +352,7 @@ scene.push({
 
 ### ui.clearFocus()
 
-Takes the focus away from every document, which suits the start of gameplay, so a key that plays the game never presses a menu control left focused.
+Takes the focus away from every GUI, which suits the start of gameplay, so a key that plays the game never presses a menu control left focused.
 
 ```lua
 local ui = require('haylen.ui')
@@ -397,7 +397,7 @@ ui.setSafeAreaVisible(true)
 
 ### ui.setDirection(direction)
 
-Sets the direction of the whole UI: `'leftToRight'`, the default, `'rightToLeft'`, or `'auto'`, which follows the direction the current language of [`haylen.localization`](localization.md#localizationdirection) declares, so picking Arabic mirrors every document from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.
+Sets the direction of the whole UI: `'leftToRight'`, the default, `'rightToLeft'`, or `'auto'`, which follows the direction the current language of [`haylen.localization`](localization.md#localizationdirection) declares, so picking Arabic mirrors every GUI from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.
 
 ```lua
 local localization = require('haylen.localization')
@@ -420,7 +420,7 @@ print(set, drawn)
 
 ### ui.onEvent(listener, options)
 
-Calls `listener(event)` for every event of every mounted document, with the same table [handlers](#events-and-handlers) receive, and returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. The optional options table takes `owner`, a table or userdata that ends the listener when it is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). Unknown keys raise `Unknown option "<key>".`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` Listeners run before the handlers of the node. It suits screens loaded from JSON, sound effects for every click and analytics. The field `event.document` is `nil` for documents that C++ code mounted. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
+Calls `listener(event)` for every event of every mounted GUI, with the same table [handlers](#events-and-handlers) receive, and returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. The optional options table takes `owner`, a table or userdata that ends the listener when it is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). Unknown keys raise `Unknown option "<key>".`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` Listeners run before the handlers of the node. It suits screens loaded from JSON, sound effects for every click and analytics. The field `event.gui` is `nil` for GUIs that C++ code mounted. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
 
 ```lua
 local assets = require('haylen.assets')
@@ -452,11 +452,11 @@ end
 scene.push(shop)
 ```
 
-## UiDocument
+## Gui
 
-A `UiDocument` is the mounted tree `ui.mount` returns. Its methods find nodes by id. Reading a member it does not have raises `The type "haylen.UiDocument" has no member "<name>".`, and writing a read-only property raises `The type "haylen.UiDocument" has no writable property "<name>".`.
+A `Gui` is the mounted tree `ui.mount` returns. Its methods find nodes by id. Reading a member it does not have raises `The type "haylen.Gui" has no member "<name>".`, and writing a read-only property raises `The type "haylen.Gui" has no writable property "<name>".`.
 
-### document:set(id, properties)
+### gui:set(id, properties)
 
 Changes the given properties of the node `id` and leaves the others as they are. The engine checks the merged properties before it changes anything, so an invalid value leaves the node and its handlers untouched. The `onX` keys add or replace [handlers](#events-and-handlers) of the node once the properties are accepted.
 
@@ -464,9 +464,9 @@ Values the player changed, such as typed text, a checked box or a selected item,
 
 Errors raised:
 
-- The error `The UI document is not mounted.` after `unmount`.
-- The error `The UI document has no node with the id "<id>".` for an unknown id.
-- The error `The "set" method of a document changes properties only, so it takes an object without "kind", "id" or "children".` when `properties` holds `kind`, `id` or `children`.
+- The error `The GUI is not mounted.` after `unmount`.
+- The error `The GUI has no node with the id "<id>".` for an unknown id.
+- The error `The "set" method of a GUI changes properties only, so it takes an object without "kind", "id" or "children".` when `properties` holds `kind`, `id` or `children`.
 - The property errors of the kind, such as `The property "min" of a "slider" must be smaller than "max".` or `The property "colour" of a "slider" does not exist.`.
 
 ```lua
@@ -484,14 +484,14 @@ hud:set('sleep', {onClick = function()
 end})
 ```
 
-### document:replaceChildren(id, children)
+### gui:replaceChildren(id, children)
 
-Replaces every child of the node `id` with the nodes of the list `children`, and an empty list removes them all. The ids of the new nodes are checked before anything changes, so a failed replace leaves the document and its handlers as they were. Once the new children are in place, the handlers of removed nodes are dropped, and a new node that reuses the id of a removed one gets only the handlers of its own table.
+Replaces every child of the node `id` with the nodes of the list `children`, and an empty list removes them all. The ids of the new nodes are checked before anything changes, so a failed replace leaves the GUI and its handlers as they were. Once the new children are in place, the handlers of removed nodes are dropped, and a new node that reuses the id of a removed one gets only the handlers of its own table.
 
 Errors raised:
 
-- The error `The UI document is not mounted.` after `unmount`.
-- The error `The UI document has no node with the id "<id>".` for an unknown id.
+- The error `The GUI is not mounted.` after `unmount`.
+- The error `The GUI has no node with the id "<id>".` for an unknown id.
 - The error `The component kind "<kind>" takes at most <count> children.` when the node cannot hold that many children.
 - The error `The UI id "<id>" is used more than once.` when a new id is already in use outside the replaced children.
 
@@ -513,7 +513,7 @@ end
 showItems({'Axe', 'Rope', 'Lantern'})
 ```
 
-### document:get(id)
+### gui:get(id)
 
 Returns a copy of the properties of the node `id` as the tree created them, updated by every `set`, without `kind`, `id`, `children` and handlers. Returns `nil` for an unknown id. Player changes such as typed text are not part of it.
 
@@ -524,9 +524,9 @@ local hud = ui.mount(ui.label{id = 'gold', text = 10})
 print(hud:get('gold').text)
 ```
 
-### document:has(id)
+### gui:has(id)
 
-Returns `true` when the document holds a node with that id.
+Returns `true` when the GUI holds a node with that id.
 
 ```lua
 local ui = require('haylen.ui')
@@ -537,9 +537,9 @@ if hud:has('hint') then
 end
 ```
 
-### document:bounds(id)
+### gui:bounds(id)
 
-Returns the rectangle where the node was last drawn as a `haylen.Rect` with `x`, `y`, `width` and `height`, in the design coordinates of screen canvases. A `window`, `dialog` or `toast` reports the frame it drew, which follows a window the player drags. Returns `nil` for an unknown id and for a node that was not drawn yet, which is the case until the document has been drawn once and for a window, dialog or toast that is closed.
+Returns the rectangle where the node was last drawn as a `haylen.Rect` with `x`, `y`, `width` and `height`, in the design coordinates of screen canvases. A `window`, `dialog` or `toast` reports the frame it drew, which follows a window the player drags. Returns `nil` for an unknown id and for a node that was not drawn yet, which is the case until the GUI has been drawn once and for a window, dialog or toast that is closed.
 
 ```lua
 local scene = require('haylen.scene')
@@ -557,14 +557,14 @@ scene.push({
 })
 ```
 
-### document:command(id, name, arguments)
+### gui:command(id, name, arguments)
 
 Sends a command to the node `id`. The argument `arguments` is optional, and both commands take none.
 
 - The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.
 
-A kind without that command raises `The component kind "<kind>" does not answer the command "<name>".`, arguments raise `The "focus" command takes no arguments.` or `The "open" command takes no arguments.`, and an unknown id raises `The UI document has no node with the id "<id>".`.
+A kind without that command raises `The component kind "<kind>" does not answer the command "<name>".`, arguments raise `The "focus" command takes no arguments.` or `The "open" command takes no arguments.`, and an unknown id raises `The GUI has no node with the id "<id>".`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -575,22 +575,22 @@ local form = ui.mount(ui.column{
 form:command('name', 'focus')
 ```
 
-### document:removeHandler(id, event)
+### gui:removeHandler(id, event)
 
-Removes the handler of the event named `event`, such as `'click'`, from the node `id`, and returns `true` when the node had one. The error `The UI document is not mounted.` is raised after `unmount`, and an unknown id raises `The UI document has no node with the id "<id>".`.
+Removes the handler of the event named `event`, such as `'click'`, from the node `id`, and returns `true` when the node had one. The error `The GUI is not mounted.` is raised after `unmount`, and an unknown id raises `The GUI has no node with the id "<id>".`.
 
 ```lua
 local ui = require('haylen.ui')
 
 local intro = ui.mount(ui.button{id = 'skip', text = 'Skip', onClick = function(event)
     print('skipped once')
-    event.document:removeHandler('skip', 'click')
+    event.gui:removeHandler('skip', 'click')
 end})
 ```
 
-### document:unmount()
+### gui:unmount()
 
-Removes the document from the screen and forgets its handlers. Returns `true` when the document was mounted and `false` when it was already unmounted. An unmounted document still answers `get`, `has` and `bounds`, while `set` and `replace` raise `The UI document is not mounted.`. Unmounting publishes the `uiDocumentUnmounted` event of [`haylen.events`](events.md) with the document, and then ends every listener, timer and tween that has the document as its `owner`.
+Removes the GUI from the screen and forgets its handlers. Returns `true` when the GUI was mounted and `false` when it was already unmounted. An unmounted GUI still answers `get`, `has` and `bounds`, while `set` and `replaceChildren` raise `The GUI is not mounted.`. Unmounting publishes the `guiUnmounted` event of [`haylen.events`](events.md) with the GUI, and then ends every listener, timer and tween that has the GUI as its `owner`.
 
 ```lua
 local events = require('haylen.events')
@@ -611,9 +611,9 @@ timer.after(2, function()
 end)
 ```
 
-### document:transform(id)
+### gui:transform(id)
 
-Returns the transform of the node with the id, a `haylen.UiTransform` that moves, scales, fades and tints the node and its children on top of the place its layout gives it. The document keeps one transform object per node, so every call returns the same one while the node exists. An unknown id raises `The UI document has no node with the id "<id>".`. Changes show from the next frame.
+Returns the transform of the node with the id, a `haylen.UiTransform` that moves, scales, fades and tints the node and its children on top of the place its layout gives it. The GUI keeps one transform object per node, so every call returns the same one while the node exists. An unknown id raises `The GUI has no node with the id "<id>".`. Changes show from the next frame.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -622,7 +622,7 @@ Returns the transform of the node with the id, a `haylen.UiTransform` that moves
 | `opacity` | number | `1` | Multiplies the alpha of what the node draws, from `0` to `1`. |
 | `tint` | Color | white | Multiplies the colors of what the node draws. |
 
-Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach what the node draws in its document, while popups, tooltips and the content of scroll areas, which draw in windows of their own, keep their look. The four properties are native properties, so [`haylen.tween`](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replace` releases its transform: reading it raises `This "haylen.UiTransform" was already released.`, a tween on it stops, and `transform` returns the transform of the new node.
+Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach what the node draws in its GUI, while popups, tooltips and the content of scroll areas, which draw in windows of their own, keep their look. The four properties are native properties, so [`haylen.tween`](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replaceChildren` releases its transform: reading it raises `This "haylen.UiTransform" was already released.`, a tween on it stops, and `transform` returns the transform of the new node.
 
 ```lua
 local math2d = require('haylen.math')
@@ -641,9 +641,9 @@ tween.to(title, 0.6, {opacity = 1, offset = math2d.vec2(0, 0)}, {ease = 'backOut
 tween.to(menu:transform('play'), 0.4, {scale = math2d.vec2(1.1, 1.1)}, {repeatCount = -1, loopMode = 'yoyo'})
 ```
 
-### document.visible
+### gui.visible
 
-Readable and writable boolean, `true` after `mount`. A hidden document is neither drawn nor reports events, except the `release` of a touch button that was pressed when it was hidden, and it keeps its state for when it shows again.
+Readable and writable boolean, `true` after `mount`. A hidden GUI is neither drawn nor reports events, except the `release` of a touch button that was pressed when it was hidden, and it keeps its state for when it shows again.
 
 ```lua
 local input = require('haylen.input')
@@ -662,7 +662,7 @@ scene.push({
 })
 ```
 
-### document.mounted
+### gui.mounted
 
 Read-only boolean, `true` from `mount` until `unmount`.
 
@@ -675,7 +675,7 @@ if toastLayer.mounted then
 end
 ```
 
-### document.placement
+### gui.placement
 
 Read-only string, `'safe'` or `'screen'`, as `ui.mount` received it.
 
@@ -693,14 +693,14 @@ A node is a table with these keys, and the same shape works as JSON.
 | Key | Type | Meaning |
 | --- | --- | --- |
 | `kind` | string | Component kind, one of the kinds on this page. It is required. |
-| `id` | string | Optional name of the node, unique within the document and not empty. The methods `set`, `replace`, `get`, `bounds` and `command` find nodes by it. Ids starting with `#` are reserved for the engine. |
+| `id` | string | Optional name of the node, unique within the GUI and not empty. The methods `set`, `replaceChildren`, `get`, `bounds` and `command` find nodes by it. Ids starting with `#` are reserved for the engine. |
 | `children` | list of nodes | Child nodes, for kinds that hold children. |
 | any other key | depends on the kind | A property of the kind, from the [common properties](#common-properties) or the properties of the kind. |
 | `onX` | function | Lua only. A [handler](#events-and-handlers) for the event `x`. |
 
 In Lua the children can also go in the array part of the node, which lets trees read like `ui.column{ui.label{...}, ui.button{...}}`. A node takes its children from `children` or from its array part, never from both.
 
-A document has at most 64 levels, the root included, and 20000 nodes, counted over the whole document when `replace` adds children. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end. Every property is checked when the tree is built, so a misspelled key or a wrong value is reported instead of ignored.
+A GUI has at most 64 levels, the root included, and 20000 nodes, counted over the whole GUI when `replaceChildren` adds children. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end. Every property is checked when the tree is built, so a misspelled key or a wrong value is reported instead of ignored.
 
 Errors raised for invalid trees:
 
@@ -710,7 +710,7 @@ Errors raised for invalid trees:
 - `The children of a "<kind>" must be a list.` and `The component kind "<kind>" takes at most <count> children.`
 - `A UI node takes children either in its "children" list or in its array part, not both.`
 - `UI node keys must be strings.` and `A UI node with handlers needs a string id.`
-- `A UI document is limited to 64 levels and 20000 nodes.`
+- `A GUI is limited to 64 levels and 20000 nodes.`
 - The error `The property "<key>" of a "<kind>" does not exist.` for an unknown property, and the value errors listed in [Value types](#value-types).
 
 Screens can live in JSON files in the package assets. Handlers cannot be written in JSON, so the app attaches them with `set` after mounting.
@@ -737,7 +737,7 @@ menu:set('play', {onClick = function() print('play') end})
 menu:set('quit', {onClick = function() print('quit') end})
 ```
 
-Lua has no separate empty list, so an empty table converts to an empty JSON object. List properties such as `items`, `rows`, `columns`, `buttons`, `expanded`, the `children` of tree items and the `cells` of table rows accept an empty object as an empty list, so `{}` works in Lua and a JSON file with an empty list keeps working after it passes through Lua. Both `children = {}` and `replace(id, {})` work too.
+Lua has no separate empty list, so an empty table converts to an empty JSON object. List properties such as `items`, `rows`, `columns`, `buttons`, `expanded`, the `children` of tree items and the `cells` of table rows accept an empty object as an empty list, so `{}` works in Lua and a JSON file with an empty list keeps working after it passes through Lua. Both `children = {}` and `replaceChildren(id, {})` work too.
 
 ## Value types
 
@@ -771,12 +771,12 @@ Every kind accepts these properties.
 | `maxWidth` | number | unbounded | Largest width. |
 | `minHeight` | number | `0` | Smallest height. |
 | `maxHeight` | number | unbounded | Largest height. |
-| `align` | string | depends on the kind | One of `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, a grid inside its cell, and a stack or the document root in both directions. Without `align`, rows center their children. Everywhere else labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars and touch controls use `start`, the busy indicator uses `center`, and every other kind stretches. |
+| `align` | string | depends on the kind | One of `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, a grid inside its cell, and a stack or the GUI root in both directions. Without `align`, rows center their children. Everywhere else labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars and touch controls use `start`, the busy indicator uses `center`, and every other kind stretches. |
 | `anchor` | string | none | Takes the node out of the layout of its parent and places it against the safe area or the screen, as [Anchors](#anchors) describes. The value `'none'` puts it back in the layout. |
 | `anchorTo` | string | `'safe'` | Area an anchored node is placed in: `'safe'` or `'screen'`. |
 | `margin` | insets | `0` | Distance between an anchored node and the edges of its area. |
 | `focusable` | boolean | `true` | The value `false` keeps the controls of the node and of every node inside it out of keyboard, gamepad and remote navigation, and a click presses them without moving the focus there, which suits HUD buttons that share keys with gameplay. |
-| `autofocus` | boolean | `false` | Gives the node the focus when it appears, such as when its document mounts or its dialog opens, unless the focus is already on a control of the same document and window. |
+| `autofocus` | boolean | `false` | Gives the node the focus when it appears, such as when its GUI mounts or its dialog opens, unless the focus is already on a control of the same GUI and window. |
 | `focusScope` | boolean | `false` | Keeps the focus inside the node while it is there, and makes the node hear `cancel`. |
 | `focusWrap` | string | `'none'` | The values `'horizontal'`, `'vertical'` or `'both'` wrap a move that would leave the node around to its other side. |
 | `focusLeft`, `focusRight`, `focusUp`, `focusDown` | string | none | Id of the node the focus moves to in that direction instead of the nearest one. A node that names itself keeps the focus in that direction. |
@@ -797,7 +797,7 @@ ui.mount(ui.row{
 
 ## Anchors
 
-An anchored node leaves the layout of its parent, takes no room there and draws over it, placed against the safe area or the whole visible screen. The document root may be anchored too, which places the whole document. The app draws under notches, dynamic islands, rounded corners and gesture bars on every platform, and anchors choose where each part of the interface sits.
+An anchored node leaves the layout of its parent, takes no room there and draws over it, placed against the safe area or the whole visible screen. The GUI root may be anchored too, which places the whole GUI. The app draws under notches, dynamic islands, rounded corners and gesture bars on every platform, and anchors choose where each part of the interface sits.
 
 | Anchor | Place |
 | --- | --- |
@@ -849,7 +849,7 @@ ui.mount(ui.card{gap = 16,
 
 ## Focus and navigation
 
-Buttons, choices, inputs, list rows, slots and the other interactive parts of a document take the keyboard, gamepad and remote focus. The UI moves it with the navigation actions of [`haylen.input`](input.md#the-action-map), which the app remaps by defining an action with the same name in its action map, while the others keep their built-in bindings.
+Buttons, choices, inputs, list rows, slots and the other interactive parts of a GUI take the keyboard, gamepad and remote focus. The UI moves it with the navigation actions of [`haylen.input`](input.md#the-action-map), which the app remaps by defining an action with the same name in its action map, while the others keep their built-in bindings.
 
 | Action | Built-in bindings | Use |
 | --- | --- | --- |
@@ -857,15 +857,15 @@ Buttons, choices, inputs, list rows, slots and the other interactive parts of a 
 | `uiCancel` | `key:escape`, `button:east` | Goes back: closes the open popup or dialog, puts back a carried item, or sends `cancel`. |
 | `uiLeft`, `uiRight`, `uiUp`, `uiDown` | the arrow keys, the directional pad and the left stick | Moves the focus. |
 | `uiMenu` | `key:menu`, `button:north` | Opens the context menu around the focus. |
-| `uiFocus` | `button:back` | Moves the focus from a play area to the control of its document that last had it, or to its first control, and back. |
+| `uiFocus` | `button:back` | Moves the focus from a play area to the control of its GUI that last had it, or to its first control, and back. |
 
 - A direction moves the focus to the nearest control in that direction, preferring controls in line with the focused one, unless the focused node names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
 - Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited, and a text field they reach starts editing.
-- The focus stays inside its document, and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A document that stops drawing, such as the document of a covered scene or one with `visible` set to `false`, gives the focus back to the control that had it once it draws again, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its document, so a move reaches its controls from the rest of the document and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
+- The focus stays inside its GUI, and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A GUI that stops drawing, such as the GUI of a covered scene or one with `visible` set to `false`, gives the focus back to the control that had it once it draws again, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its GUI, so a move reaches its controls from the rest of the GUI and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
 - The property `focusWrap` wraps a move that would leave a node around to its other side, such as the end of a row of cards back to its first card.
 - A scroll brings the focused control into view.
 - The focused node reports `focus` and its previous node reports `blur`, as long as that node still draws.
-- The action `uiCancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the document that holds the focus, or of the topmost document when nothing has it. A screen goes back from its root handler, as in the example below.
+- The action `uiCancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the GUI that holds the focus, or of the topmost GUI when nothing has it. A screen goes back from its root handler, as in the example below.
 - The ring shows around the focus once the player navigates, and a click or a touch hides it. On a device without a pointer, such as an Apple TV or an Android TV, it shows from the start. The function `ui.focusRingVisible()` tells whether it shows.
 - The first press of a direction while the ring is hidden only shows where the focus is, and the first accept shows the ring and presses the control.
 - A [`playArea`](#uiplayareaproperties) takes the focus like a control, from a click, a touch, Tab, `uiFocus`, a move or the `focus` command. While it has the focus the directions, accept and menu belong to the game, so they never move the focus or press a control, and cancel, Tab and `uiFocus` stay with the UI. The function [`ui.focusOwner`](#uifocusowner) tells which side has the focus.
@@ -883,7 +883,7 @@ Options.__index = Options
 
 function Options:enter()
     window.setBackLeavesApp(false)
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         onCancel = function()
             scene.pop()
         end,
@@ -898,7 +898,7 @@ function Options:enter()
 end
 
 function Options:exit()
-    self.document:unmount()
+    self.gui:unmount()
     window.setBackLeavesApp(true)
 end
 
@@ -935,7 +935,7 @@ ui.mount(ui.list{
 
 Components report what the player does as events. A node table key that starts with `on` followed by an upper-case letter and holds a function is a handler, and it answers the event named by the rest of the key with a lower-case first letter: `onClick` answers `click` and `onChange` answers `change`. A handler key that holds anything other than a function is read as a property and raises `The property "<key>" of a "<kind>" does not exist.`. The engine does not check that the kind reports the event, so a handler for an event the kind never reports is never called.
 
-A node with handlers and no `id` gets an id from the engine, such as `#1`, which handlers see as `event.id`. The method `set` adds or replaces handlers, and `document:removeHandler` removes one.
+A node with handlers and no `id` gets an id from the engine, such as `#1`, which handlers see as `event.id`. The method `set` adds or replaces handlers, and `gui:removeHandler` removes one.
 
 A handler receives one table that holds the values of the event plus these fields.
 
@@ -943,11 +943,11 @@ A handler receives one table that holds the values of the event plus these field
 | --- | --- | --- |
 | `id` | string | Id of the node that reported the event. |
 | `name` | string | Name of the event, such as `'click'`. |
-| `document` | UiDocument | Document that holds the node. |
+| `gui` | Gui | GUI that holds the node. |
 
-Event values never use the names `id`, `name` and `document`, so the item of a `select` arrives as `event.item` and the button of an `answer` as `event.button`, next to the node id in `event.id`.
+Event values never use the names `id`, `name` and `gui`, so the item of a `select` arrives as `event.item` and the button of an `answer` as `event.button`, next to the node id in `event.id`.
 
-Events are collected while the document draws and handed to the handlers once per frame, in the engine update of the next frame, before the scenes update. An error raised inside a handler stops the app and shows the error screen with the message and its stack trace.
+Events are collected while the GUI draws and handed to the handlers once per frame, in the engine update of the next frame, before the scenes update. An error raised inside a handler stops the app and shows the error screen with the message and its stack trace.
 
 | Kind | Event | Values |
 | --- | --- | --- |
@@ -978,7 +978,7 @@ Events are collected while the document draws and handed to the handlers once pe
 | `dialog`, `toast` | `dismiss` | none |
 | `touchButton` | `press`, `release` | none |
 | every kind | `focus`, `blur` | none |
-| a node with `focusScope`, the document root | `cancel` | none |
+| a node with `focusScope`, the GUI root | `cancel` | none |
 
 ```lua
 local ui = require('haylen.ui')
@@ -988,7 +988,7 @@ ui.mount(ui.column{
         print(event.id .. ' ' .. event.name .. ' ' .. tostring(event.checked))
     end},
     ui.slider{id = 'volume', value = 0.8, onChange = function(event)
-        event.document:set('music', {text = 'Music ' .. math.floor(event.value * 100 + 0.5) .. '%'})
+        event.gui:set('music', {text = 'Music ' .. math.floor(event.value * 100 + 0.5) .. '%'})
     end},
 })
 ```
@@ -1271,7 +1271,7 @@ ui.mount(ui.formField{
     help = 'Shown on the leaderboard',
     required = true,
     ui.textField{placeholder = 'Your name', onChange = function(event)
-        event.document:set('nameField', {error = #event.value < 3 and 'Too short' or ''})
+        event.gui:set('nameField', {error = #event.value < 3 and 'Too short' or ''})
     end},
 })
 ```
@@ -1302,7 +1302,7 @@ ui.mount(ui.splitter{
 
 ### ui.safeArea(properties)
 
-Keeps its one child inside the safe area of the screen, and the child fills the part of the safe area the safe area node covers. It suits documents mounted with `placement = 'screen'` that draw a background to the edges but hold controls a notch must not hide. It has no properties of its own.
+Keeps its one child inside the safe area of the screen, and the child fills the part of the safe area the safe area node covers. It suits GUIs mounted with `placement = 'screen'` that draw a background to the edges but hold controls a notch must not hide. It has no properties of its own.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1342,7 +1342,7 @@ ui.mount(ui.column{
 
 ### ui.richText(properties)
 
-Text written in the BBCode markup of the [text guide](../text.md#markup), with bold, italic, colors, outlines, shadows, glows, lists, rules, tables, inline images and icons, links, hints, animated effects and a typewriter reveal. The 2D renderer draws it inside the clip of the UI, from the family of its theme font role, so a font registered as a family with `ui.addFont` gives it real bold and italic faces and fallback fonts. The `[font=name]` tags name fonts registered with `ui.addFont`, `[img=path]` images load through the UI like `ui.image`, and `[icon=name]` shows icons registered with `graphics2d.registerTextIcon`. Links are focusable items that the pointer, the keyboard and gamepads activate, and hints show as tooltips. The [transforms](#documenttransformid) of the node and of the nodes around it scale, fade and tint its text like the rest of the UI.
+Text written in the BBCode markup of the [text guide](../text.md#markup), with bold, italic, colors, outlines, shadows, glows, lists, rules, tables, inline images and icons, links, hints, animated effects and a typewriter reveal. The 2D renderer draws it inside the clip of the UI, from the family of its theme font role, so a font registered as a family with `ui.addFont` gives it real bold and italic faces and fallback fonts. The `[font=name]` tags name fonts registered with `ui.addFont`, `[img=path]` images load through the UI like `ui.image`, and `[icon=name]` shows icons registered with `graphics2d.registerTextIcon`. Links are focusable items that the pointer, the keyboard and gamepads activate, and hints show as tooltips. The [transforms](#guitransformid) of the node and of the nodes around it scale, fade and tint its text like the rest of the UI.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1525,7 +1525,7 @@ ui.mount(ui.row{
         print('wood filter ' .. tostring(event.selected))
     end},
     ui.chip{id = 'stone', text = 'Stone', removable = true, onRemove = function(event)
-        event.document:set('stone', {visible = false})
+        event.gui:set('stone', {visible = false})
     end},
 })
 ```
@@ -2146,7 +2146,7 @@ ui.mount(ui.table{
 
 ### ui.slotGrid(properties)
 
-A grid of square slots that hold pictures and counts, such as an inventory, a chest or a hotbar. A click or a tap selects a slot and reports `select` with the slot id as `item`. The pointer drags the item of a slot onto another slot or a row of any slot grid or draggable list, in the same document or another one, and the keyboard, gamepads and remotes carry it: accept picks the focused slot up, the focus moves, and accept drops it on another slot, while accept on the carried slot or `uiCancel` puts it back. Picking up reports `drag` with the slot id as `item`, and a drop reports `drop` on the node it lands on, with the slot or row it lands on as `item`, the id of the node the item left as `source` and its slot or row as `sourceItem`. The grid only reports moves, so the app moves its items and sets the new slots. Every slot takes the focus.
+A grid of square slots that hold pictures and counts, such as an inventory, a chest or a hotbar. A click or a tap selects a slot and reports `select` with the slot id as `item`. The pointer drags the item of a slot onto another slot or a row of any slot grid or draggable list, in the same GUI or another one, and the keyboard, gamepads and remotes carry it: accept picks the focused slot up, the focus moves, and accept drops it on another slot, while accept on the carried slot or `uiCancel` puts it back. Picking up reports `drag` with the slot id as `item`, and a drop reports `drop` on the node it lands on, with the slot or row it lands on as `item`, the id of the node the item left as `source` and its slot or row as `sourceItem`. The grid only reports moves, so the app moves its items and sets the new slots. Every slot takes the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2181,7 +2181,7 @@ local inventory = ui.mount(ui.slotGrid{id = 'bag', columns = 4, slots = slots(),
     end
     if event.source == 'bag' and from and to then
         order[from], order[to] = order[to], order[from]
-        event.document:set('bag', {slots = slots()})
+        event.gui:set('bag', {slots = slots()})
     end
 end})
 ```
@@ -2242,7 +2242,7 @@ ui.mount(ui.settingsForm{
 
 ### ui.dialog(properties)
 
-A modal window over the whole screen with a title, a message, optional children and answer buttons. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`. A dialog stays inside the screen, and its title, message and children scroll above the buttons when they are taller than it. One dialog shows at a time, so a dialog that opens while another one shows waits until that one closes. A dialog closes when its node stops drawing, because it, a node around it or its document was hidden, and shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
+A modal window over the whole screen with a title, a message, optional children and answer buttons. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`. A dialog stays inside the screen, and its title, message and children scroll above the buttons when they are taller than it. One dialog shows at a time, so a dialog that opens while another one shows waits until that one closes. A dialog closes when its node stops drawing, because it, a node around it or its GUI was hidden, and shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2259,7 +2259,7 @@ local ui = require('haylen.ui')
 
 ui.mount(ui.column{
     ui.button{text = 'Quit', onClick = function(event)
-        event.document:set('confirm', {open = true})
+        event.gui:set('confirm', {open = true})
     end},
     ui.dialog{
         id = 'confirm',
@@ -2299,7 +2299,7 @@ showSaved()
 
 ### ui.window(properties)
 
-A floating window with a title bar that the pointer drags around, holding a column of children, such as an inventory or a map over the game. It takes no room in the layout that holds it and sizes itself to its children unless it has a `width` or `height`. It takes the properties of `column` for its children, pads like a panel and draws with the theme `window` surface. Dragging the title bar reports `move` with the new `x` and `y` once the pointer lets go, and closing reports `close`. Moves reach the controls of the window from the rest of its document and bring it to the front, and `uiCancel` closes a closable window while the focus is inside it.
+A floating window with a title bar that the pointer drags around, holding a column of children, such as an inventory or a map over the game. It takes no room in the layout that holds it and sizes itself to its children unless it has a `width` or `height`. It takes the properties of `column` for its children, pads like a panel and draws with the theme `window` surface. Dragging the title bar reports `move` with the new `x` and `y` once the pointer lets go, and closing reports `close`. Moves reach the controls of the window from the rest of its GUI and bring it to the front, and `uiCancel` closes a closable window while the focus is inside it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2346,7 +2346,7 @@ ui.mount(ui.contextMenu{
 
 ### ui.playArea(properties)
 
-The part of a screen where the game shows, as a place the focus can go, such as the space a level leaves between its controls. It draws nothing but the focus ring and has no properties of its own, so it uses `width`, `height` or `grow`. While it has the focus, the directions, accept and menu of the keyboard, gamepads and TV remotes reach the action map of the app instead of moving the focus or pressing a control, while cancel still reaches the `onCancel` handlers of the document and Tab and `uiFocus` move the focus to the controls of the document and back. It never takes the pointer: a click or a touch on it gives it the focus and reaches the game too, which reads `mouse:` bindings and touches as usual, unless a control drawn over it, such as a touch button, takes the press. It reports `focus` and `blur` like every node, and `document:bounds(id)` tells where it lies, so a camera can draw the world inside it. The [input guide](../input.md#who-owns-the-keyboard-and-the-gamepad) explains the whole model.
+The part of a screen where the game shows, as a place the focus can go, such as the space a level leaves between its controls. It draws nothing but the focus ring and has no properties of its own, so it uses `width`, `height` or `grow`. While it has the focus, the directions, accept and menu of the keyboard, gamepads and TV remotes reach the action map of the app instead of moving the focus or pressing a control, while cancel still reaches the `onCancel` handlers of the GUI and Tab and `uiFocus` move the focus to the controls of the GUI and back. It never takes the pointer: a click or a touch on it gives it the focus and reaches the game too, which reads `mouse:` bindings and touches as usual, unless a control drawn over it, such as a touch button, takes the press. It reports `focus` and `blur` like every node, and `gui:bounds(id)` tells where it lies, so a camera can draw the world inside it. The [input guide](../input.md#who-owns-the-keyboard-and-the-gamepad) explains the whole model.
 
 ```lua
 local input = require('haylen.input')
@@ -2357,7 +2357,7 @@ input.defineAction({name = 'move', type = 'vector', up = {'key:up'}, down = {'ke
 
 scene.push({
     enter = function(self)
-        self.document = ui.mount(ui.row{
+        self.gui = ui.mount(ui.row{
             ui.playArea{id = 'world', grow = 1, autofocus = true, onFocus = function()
                 print('the arrows move the hero')
             end},
@@ -2375,7 +2375,7 @@ scene.push({
 
 ## Touch controls
 
-On-screen controls drive the virtual buttons and sticks of the action layer, which [`haylen.input`](input.md) actions read through the bindings `virtual:<name>` and `virtualStick:<name>`. Every control follows its own finger, so a stick and several buttons work at the same time, and the mouse drives them when no finger is down. They keep the pointer from reaching the app behind them. A control that stops drawing, because it, a container around it or its document was hidden or removed, releases the virtual button or stick it held in that frame. A touch button that was pressed then reports `release`, unless its document was unmounted, and a control that shows again under a finger that is still down waits for a new press. A control with `enabled = false` lets go the same way, ignores fingers and the mouse, and waits for a new press once it is enabled again.
+On-screen controls drive the virtual buttons and sticks of the action layer, which [`haylen.input`](input.md) actions read through the bindings `virtual:<name>` and `virtualStick:<name>`. Every control follows its own finger, so a stick and several buttons work at the same time, and the mouse drives them when no finger is down. They keep the pointer from reaching the app behind them. A control that stops drawing, because it, a container around it or its GUI was hidden or removed, releases the virtual button or stick it held in that frame. A touch button that was pressed then reports `release`, unless its GUI was unmounted, and a control that shows again under a finger that is still down waits for a new press. A control with `enabled = false` lets go the same way, ignores fingers and the mouse, and waits for a new press once it is enabled again.
 
 ### ui.touchStick(properties)
 
@@ -2448,7 +2448,7 @@ scene.push({
 
 ## Themes
 
-A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark` and `light`, and an app adds its own with a JSON file in the package assets loaded by `ui.loadTheme`, or with the same document as a Lua table passed to `ui.addTheme`. A theme file starts from a base theme and lists only what it changes. The active theme also styles [`haylen.imgui`](imgui.md) windows.
+A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark` and `light`, and an app adds its own with a JSON file in the package assets loaded by `ui.loadTheme`, or with the same definition as a Lua table passed to `ui.addTheme`. A theme file starts from a base theme and lists only what it changes. The active theme also styles [`haylen.imgui`](imgui.md) windows.
 
 | Key | Type | Meaning |
 | --- | --- | --- |

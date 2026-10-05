@@ -18,7 +18,7 @@ template <> struct Type<ui::Transform> {
 
 namespace haylen::ui {
 
-// Installs the `UiTransform` class, the handle to the transform of a document node. Its offset, scale, opacity and tint are native properties, so tweens animate them without running Lua, and the handle reads as released once its node is gone.
+// Installs the `UiTransform` class, the handle to the transform of a GUI node. Its offset, scale, opacity and tint are native properties, so tweens animate them without running Lua, and the handle reads as released once its node is gone.
 class TransformLua final {
   public:
     static void install(lua_State* L);

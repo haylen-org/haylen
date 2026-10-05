@@ -41,7 +41,7 @@ function WindowsPages:columns()
         ui.column{grow = 1, gap = 24,
             layout.section('Component "window"', {
                 ui.label{text = 'The window floats over the page and takes no room in it.', color = 'textMuted'},
-                ui.button{id = 'open-window', text = 'Open the window', onClick = function(event) event.document:set('bag', {open = true}) end},
+                ui.button{id = 'open-window', text = 'Open the window', onClick = function(event) event.gui:set('bag', {open = true}) end},
             }),
             layout.section('Component "accordion"', {
                 ui.accordion{items = sections, expanded = {'controls'}, onToggle = function(event)

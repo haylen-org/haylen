@@ -10,12 +10,12 @@ class UiPlugin;
 
 namespace haylen::ui {
 
-class Document;
+class Gui;
 
-// Ties a mounted document to the owner it was mounted with: disconnecting unmounts the document and blocking hides it, and the link ends once the document is unmounted.
+// Ties a mounted GUI to the owner it was mounted with: disconnecting unmounts the GUI and blocking hides it, and the link ends once the GUI is unmounted.
 class MountLink final : public core::Connection::Link {
   public:
-    MountLink(plugins::UiPlugin& owner, std::weak_ptr<Document> value);
+    MountLink(plugins::UiPlugin& owner, std::weak_ptr<Gui> value);
 
     void disconnect() override;
     [[nodiscard]] bool isConnected() const noexcept override;
@@ -24,7 +24,7 @@ class MountLink final : public core::Connection::Link {
 
   private:
     plugins::UiPlugin& plugin;
-    std::weak_ptr<Document> document;
+    std::weak_ptr<Gui> gui;
 };
 
 } // namespace haylen::ui

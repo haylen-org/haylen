@@ -26,8 +26,8 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
-#include "haylen/ui/Document.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "lua/Owners.hpp"
 #include "lua/ScriptedScene.hpp"
 #include "ui/MountLink.hpp"
@@ -35,9 +35,9 @@
 
 namespace haylen::lua {
 
-template <> struct Type<ui::Document> {
-    static constexpr const char* name = "haylen.UiDocument";
-    using Storage = std::shared_ptr<ui::Document>;
+template <> struct Type<ui::Gui> {
+    static constexpr const char* name = "haylen.Gui";
+    using Storage = std::shared_ptr<ui::Gui>;
 };
 
 template <> struct EnumNames<ui::FocusNavigator::Owner> {
@@ -128,11 +128,11 @@ std::string UiLua::nextGeneratedId(lua_State* L) {
     return "#" + std::to_string(next);
 }
 
-// Converts a node table into the JSON the document reads, pulling its handlers into the handlers table. Children come from a `children` list or from the array part of the node, which lets trees read like `ui.column{ui.label{...}}`. The limits of a document apply while converting, so a table that holds itself or shares its children many times over raises an error instead of growing without end.
+// Converts a node table into the JSON the GUI reads, pulling its handlers into the handlers table. Children come from a `children` list or from the array part of the node, which lets trees read like `ui.column{ui.label{...}}`. The limits of a GUI apply while converting, so a table that holds itself or shares its children many times over raises an error instead of growing without end.
 core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t depth, std::size_t& count) {
     luaL_checktype(L, index, LUA_TTABLE);
-    if (depth >= Document::kMaxDepth || ++count > Document::kMaxNodes) {
-        luaL_error(L, "A UI document is limited to %d levels and %d nodes.", static_cast<int>(Document::kMaxDepth), static_cast<int>(Document::kMaxNodes));
+    if (depth >= Gui::kMaxDepth || ++count > Gui::kMaxNodes) {
+        luaL_error(L, "A GUI is limited to %d levels and %d nodes.", static_cast<int>(Gui::kMaxDepth), static_cast<int>(Gui::kMaxNodes));
     }
     luaL_checkstack(L, LUA_MINSTACK, "the UI tree is nested too deeply");
     const int node = lua_absindex(L, index);
@@ -235,10 +235,10 @@ void UiLua::collectIds(const core::Json& node, std::vector<std::string>& ids) {
     }
 }
 
-// Pushes the handlers table of a mounted document, or nothing and `false` when it is not mounted.
-bool UiLua::pushHandlers(lua_State* L, const Document& document) {
+// Pushes the handlers table of a mounted GUI, or nothing and `false` when it is not mounted.
+bool UiLua::pushHandlers(lua_State* L, const Gui& gui) {
     pushRoot(L);
-    lua_rawgetp(L, -1, &document);
+    lua_rawgetp(L, -1, &gui);
     lua_remove(L, -2);
     if (!lua_istable(L, -1)) {
         lua_pop(L, 1);
@@ -249,12 +249,12 @@ bool UiLua::pushHandlers(lua_State* L, const Document& document) {
     return true;
 }
 
-// Removes handlers of ids the document no longer has.
-void UiLua::pruneHandlers(lua_State* L, int handlers, const Document& document) {
+// Removes handlers of ids the GUI no longer has.
+void UiLua::pruneHandlers(lua_State* L, int handlers, const Gui& gui) {
     std::vector<std::string> stale;
     lua_pushnil(L);
     while (lua_next(L, handlers) != 0) {
-        if (lua_type(L, -2) == LUA_TSTRING && document.find(lua::Stack::read<std::string_view>(L, -2)) == nullptr) {
+        if (lua_type(L, -2) == LUA_TSTRING && gui.find(lua::Stack::read<std::string_view>(L, -2)) == nullptr) {
             stale.push_back(lua::Stack::read<std::string>(L, -2));
         }
         lua_pop(L, 1);
@@ -265,28 +265,28 @@ void UiLua::pruneHandlers(lua_State* L, int handlers, const Document& document) 
     }
 }
 
-// Pushes the table listeners and handlers receive: the event values plus `id`, `name` and `document`, which is `nil` for documents mounted from C++.
-void UiLua::pushEventTable(lua_State* L, const Document& document, const Event& event) {
+// Pushes the table listeners and handlers receive: the event values plus `id`, `name` and `gui`, which is `nil` for GUIs mounted from C++.
+void UiLua::pushEventTable(lua_State* L, const Gui& gui, const Event& event) {
     lua::JsonConverter::push(L, event.value.is_object() ? event.value : core::Json::object());
     lua::Stack::push(L, event.id);
     lua_setfield(L, -2, "id");
     lua::Stack::push(L, event.name);
     lua_setfield(L, -2, "name");
     pushRoot(L);
-    if (lua_rawgetp(L, -1, &document) == LUA_TTABLE) {
-        lua_getfield(L, -1, "document");
+    if (lua_rawgetp(L, -1, &gui) == LUA_TTABLE) {
+        lua_getfield(L, -1, "gui");
     } else {
         lua_pushnil(L);
     }
-    lua_setfield(L, -4, "document");
+    lua_setfield(L, -4, "gui");
     lua_pop(L, 2);
 }
 
-Document& UiLua::checkDocument(lua_State* L) {
-    return lua::Userdata::check<Document>(L, 1);
+Gui& UiLua::checkGui(lua_State* L) {
+    return lua::Userdata::check<Gui>(L, 1);
 }
 
-// Mounts a tree with `mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene}])` and returns the document. A document with an owner is unmounted when the owner is released, such as a scene when it unloads.
+// Mounts a tree with `mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene}])` and returns the GUI. A GUI with an owner is unmounted when the owner is released, such as a scene when it unloads.
 int UiLua::mount(lua_State* L) {
     Placement placement = Placement::Safe;
     int layer = 0;
@@ -311,21 +311,21 @@ int UiLua::mount(lua_State* L) {
     const int handlers = lua_gettop(L);
     std::size_t count = 0;
     const core::Json tree = convertNode(L, 1, handlers, 0, count);
-    std::shared_ptr<Document> created = getPlugin(L).createDocument(tree, placement);
+    std::shared_ptr<Gui> created = getPlugin(L).createGui(tree, placement);
 
-    // The document is registered before it mounts, so listeners of the mount event already receive its userdata.
-    lua::Userdata::emplace<Document>(L, created);
+    // The GUI is registered before it mounts, so listeners of the mount event already receive its userdata.
+    lua::Userdata::emplace<Gui>(L, created);
     const int userdata = lua_gettop(L);
     pushRoot(L);
     lua_createtable(L, 0, 2);
     lua_pushvalue(L, userdata);
-    lua_setfield(L, -2, "document");
+    lua_setfield(L, -2, "gui");
     lua_pushvalue(L, handlers);
     lua_setfield(L, -2, "handlers");
     lua_rawsetp(L, -2, created.get());
     lua_pop(L, 1);
 
-    // A document owned by a scene of the stack belongs to that scene, so it shows and leaves with it.
+    // A GUI owned by a scene of the stack belongs to that scene, so it shows and leaves with it.
     const std::shared_ptr<const core::Scene> scene = owner != 0 ? lua::ScriptedScene::find(L, owner) : nullptr;
     getPlugin(L).mount(created, layer, scene);
     if (owner != 0) {
@@ -335,11 +335,11 @@ int UiLua::mount(lua_State* L) {
     return 1;
 }
 
-// Pushes the userdata of a document for Lua listeners of the document events, or `nil` for a document mounted from C++.
-void UiLua::pushDocument(lua_State* L, const std::shared_ptr<Document>& document) {
+// Pushes the userdata of a GUI for Lua listeners of the GUI events, or `nil` for a GUI mounted from C++.
+void UiLua::pushGui(lua_State* L, const std::shared_ptr<Gui>& gui) {
     pushRoot(L);
-    if (lua_rawgetp(L, -1, document.get()) == LUA_TTABLE) {
-        lua_getfield(L, -1, "document");
+    if (lua_rawgetp(L, -1, gui.get()) == LUA_TTABLE) {
+        lua_getfield(L, -1, "gui");
     } else {
         lua_pushnil(L);
     }
@@ -347,12 +347,12 @@ void UiLua::pushDocument(lua_State* L, const std::shared_ptr<Document>& document
     lua_pop(L, 1);
 }
 
-// Handlers change only after the document accepted the properties, so a failed set leaves them as they were.
-int UiLua::documentSet(lua_State* L) {
-    Document& self = checkDocument(L);
+// Handlers change only after the GUI accepted the properties, so a failed set leaves them as they were.
+int UiLua::guiSet(lua_State* L) {
+    Gui& self = checkGui(L);
     const std::string id = lua::Stack::read<std::string>(L, 2);
     if (!pushHandlers(L, self)) {
-        return luaL_error(L, "The UI document is not mounted.");
+        return luaL_error(L, "The GUI is not mounted.");
     }
     const int handlers = lua_gettop(L);
     lua_newtable(L);
@@ -367,13 +367,13 @@ int UiLua::documentSet(lua_State* L) {
     return 0;
 }
 
-// Handlers change only after the document accepted the new children. Then nodes that left the document or were built anew lose their old handlers and the new nodes get theirs.
-int UiLua::documentReplaceChildren(lua_State* L) {
-    Document& self = checkDocument(L);
+// Handlers change only after the GUI accepted the new children. Then nodes that left the GUI or were built anew lose their old handlers and the new nodes get theirs.
+int UiLua::guiReplaceChildren(lua_State* L) {
+    Gui& self = checkGui(L);
     const std::string id = lua::Stack::read<std::string>(L, 2);
     luaL_checktype(L, 3, LUA_TTABLE);
     if (!pushHandlers(L, self)) {
-        return luaL_error(L, "The UI document is not mounted.");
+        return luaL_error(L, "The GUI is not mounted.");
     }
     const int handlers = lua_gettop(L);
     lua_newtable(L);
@@ -408,15 +408,15 @@ int UiLua::documentReplaceChildren(lua_State* L) {
 }
 
 // Removes the handler of one event with `removeHandler(id, event)` and returns whether the node had one.
-int UiLua::documentRemoveHandler(lua_State* L) {
-    Document& self = checkDocument(L);
+int UiLua::guiRemoveHandler(lua_State* L) {
+    Gui& self = checkGui(L);
     const std::string id = lua::Stack::read<std::string>(L, 2);
     const std::string event = lua::Stack::read<std::string>(L, 3);
     if (!pushHandlers(L, self)) {
-        return luaL_error(L, "The UI document is not mounted.");
+        return luaL_error(L, "The GUI is not mounted.");
     }
     if (self.find(id) == nullptr) {
-        return luaL_error(L, "The UI document has no node with the id \"%s\".", id.c_str());
+        return luaL_error(L, "The GUI has no node with the id \"%s\".", id.c_str());
     }
     if (lua_getfield(L, -1, id.c_str()) != LUA_TTABLE) {
         lua::Stack::push(L, false);
@@ -430,8 +430,8 @@ int UiLua::documentRemoveHandler(lua_State* L) {
     return 1;
 }
 
-int UiLua::documentGet(lua_State* L) {
-    const core::Json* properties = checkDocument(L).getProperties(lua::Stack::read<std::string_view>(L, 2));
+int UiLua::guiGet(lua_State* L) {
+    const core::Json* properties = checkGui(L).getProperties(lua::Stack::read<std::string_view>(L, 2));
     if (properties == nullptr) {
         lua_pushnil(L);
         return 1;
@@ -441,8 +441,8 @@ int UiLua::documentGet(lua_State* L) {
 }
 
 // Returns where a node was last drawn with `bounds(id)`, in the design coordinates of screen canvases, or `nil` before it was drawn.
-int UiLua::documentBounds(lua_State* L) {
-    const Component* component = checkDocument(L).find(lua::Stack::read<std::string_view>(L, 2));
+int UiLua::guiBounds(lua_State* L) {
+    const Component* component = checkGui(L).find(lua::Stack::read<std::string_view>(L, 2));
     if (component == nullptr || component->getBounds().isEmpty()) {
         lua_pushnil(L);
         return 1;
@@ -451,47 +451,47 @@ int UiLua::documentBounds(lua_State* L) {
     return 1;
 }
 
-int UiLua::documentHas(lua_State* L) {
-    lua::Stack::push(L, checkDocument(L).find(lua::Stack::read<std::string_view>(L, 2)) != nullptr);
+int UiLua::guiHas(lua_State* L) {
+    lua::Stack::push(L, checkGui(L).find(lua::Stack::read<std::string_view>(L, 2)) != nullptr);
     return 1;
 }
 
-int UiLua::documentCommand(lua_State* L) {
-    Document& self = checkDocument(L);
+int UiLua::guiCommand(lua_State* L) {
+    Gui& self = checkGui(L);
     const core::Json arguments = lua_isnoneornil(L, 4) ? core::Json::object() : lua::JsonConverter::read(L, 4);
     self.command(getPlugin(L).getContext(), lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<std::string_view>(L, 3), arguments);
     return 0;
 }
 
-int UiLua::documentUnmount(lua_State* L) {
-    lua::Stack::push(L, getPlugin(L).unmount(checkDocument(L)));
+int UiLua::guiUnmount(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).unmount(checkGui(L)));
     return 1;
 }
 
-int UiLua::documentVisible(lua_State* L) {
-    lua::Stack::push(L, checkDocument(L).isVisible());
+int UiLua::guiVisible(lua_State* L) {
+    lua::Stack::push(L, checkGui(L).isVisible());
     return 1;
 }
 
-int UiLua::documentSetVisible(lua_State* L) {
-    checkDocument(L).setVisible(lua::Stack::read<bool>(L, 3));
+int UiLua::guiSetVisible(lua_State* L) {
+    checkGui(L).setVisible(lua::Stack::read<bool>(L, 3));
     return 0;
 }
 
-int UiLua::documentMounted(lua_State* L) {
-    lua::Stack::push(L, getPlugin(L).isMounted(checkDocument(L)));
+int UiLua::guiMounted(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).isMounted(checkGui(L)));
     return 1;
 }
 
 // Returns the transform handle of the node with the id, whose offset, scale, opacity and tint tweens animate without running Lua.
-int UiLua::documentTransform(lua_State* L) {
+int UiLua::guiTransform(lua_State* L) {
     const std::string id = lua::Stack::read<std::string>(L, 2);
-    Component* component = checkDocument(L).find(id);
+    Component* component = checkGui(L).find(id);
     if (component == nullptr) {
-        return luaL_error(L, "The UI document has no node with the id \"%s\".", id.c_str());
+        return luaL_error(L, "The GUI has no node with the id \"%s\".", id.c_str());
     }
 
-    // The document keeps one handle per node, so a tween, which holds its target weakly, runs for as long as the document does.
+    // The GUI keeps one handle per node, so a tween, which holds its target weakly, runs for as long as the GUI does.
     const std::string key = "transform " + id;
     lua::Userdata::pushField(L, 1, key.c_str());
     if (lua::Userdata::test<Transform>(L, -1) == component->getTransform().get()) {
@@ -503,8 +503,8 @@ int UiLua::documentTransform(lua_State* L) {
     return 1;
 }
 
-int UiLua::documentPlacement(lua_State* L) {
-    lua::Stack::push(L, checkDocument(L).getPlacement() == Placement::Safe ? "safe" : "screen");
+int UiLua::guiPlacement(lua_State* L) {
+    lua::Stack::push(L, checkGui(L).getPlacement() == Placement::Safe ? "safe" : "screen");
     return 1;
 }
 
@@ -564,7 +564,7 @@ int UiLua::loadTheme(lua_State* L) {
     return 1;
 }
 
-// Registers a theme from a table in the theme file format with `addTheme(document[, base])` and returns its name.
+// Registers a theme from a table in the theme file format with `addTheme(definition[, base])` and returns its name.
 int UiLua::addTheme(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const std::string base = lua_isnoneornil(L, 2) ? std::string("dark") : lua::Stack::read<std::string>(L, 2);
@@ -643,7 +643,7 @@ int UiLua::themeSurface(lua_State* L) {
     return 1;
 }
 
-// Calls `listener(event)` for every event of every mounted document with `onEvent(listener[, {owner = scene}])` and returns the connection. A listener with an owner ends when the owner is released, such as a scene when it unloads.
+// Calls `listener(event)` for every event of every mounted GUI with `onEvent(listener[, {owner = scene}])` and returns the connection. A listener with an owner ends when the owner is released, such as a scene when it unloads.
 int UiLua::onEvent(lua_State* L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
     int owner = 0;
@@ -655,7 +655,7 @@ int UiLua::onEvent(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
-    core::Signal<Document&, const Event&>::Options options;
+    core::Signal<Gui&, const Event&>::Options options;
     if (owner != 0) {
         options.owner = lua::Owners::getLifetime(L, owner);
     }
@@ -663,13 +663,13 @@ int UiLua::onEvent(lua_State* L) {
     lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    core::Connection connection = getPlugin(L).events.connect([function, main](Document& document, const Event& event) {
+    core::Connection connection = getPlugin(L).events.connect([function, main](Gui& gui, const Event& event) {
         lua::Runtime::runReporting(main, [&] {
             const StackScope scope(main);
             if (!function->push(main)) {
                 return;
             }
-            pushEventTable(main, document, event);
+            pushEventTable(main, gui, event);
             lua::Runtime::protectedCall(main, 1, 0);
         });
     }, std::move(options));
@@ -702,15 +702,15 @@ int UiLua::usingKeyboard(lua_State* L) {
     return 1;
 }
 
-// Returns the document and the node id that hold the focus with `focused()`, or `nil` when no mounted document holds it. A focused node without an id returns the document alone.
+// Returns the GUI and the node id that hold the focus with `focused()`, or `nil` when no mounted GUI holds it. A focused node without an id returns the GUI alone.
 int UiLua::focused(lua_State* L) {
     plugins::UiPlugin& plugin = getPlugin(L);
-    const std::shared_ptr<Document> document = plugin.findMounted(plugin.getFocus().getFocusedDocument());
-    if (!document) {
+    const std::shared_ptr<Gui> gui = plugin.findMounted(plugin.getFocus().getFocusedGui());
+    if (!gui) {
         lua_pushnil(L);
         return 1;
     }
-    pushDocument(L, document);
+    pushGui(L, gui);
     const std::string_view name = plugin.getFocus().getFocusedName();
     if (name.empty()) {
         return 1;
@@ -780,16 +780,16 @@ int UiLua::open(lua_State* L) {
 void UiLua::install(lua_State* L) {
     lua_newtable(L);
     lua_setfield(L, LUA_REGISTRYINDEX, kHandlersKey);
-    core::EventsLua::addPayload<std::shared_ptr<Document>>(&pushDocument);
+    core::EventsLua::addPayload<std::shared_ptr<Gui>>(&pushGui);
     TransformLua::install(L);
-    lua::ClassBuilder<Document>(L).function("set", &lua::Binding::native<&documentSet>).function("replaceChildren", &lua::Binding::native<&documentReplaceChildren>).function("get", &lua::Binding::native<&documentGet>).function("has", &lua::Binding::native<&documentHas>).function("bounds", &lua::Binding::native<&documentBounds>).function("command", &lua::Binding::native<&documentCommand>).function("removeHandler", &lua::Binding::native<&documentRemoveHandler>).function("unmount", &lua::Binding::native<&documentUnmount>).property("visible", &documentVisible, &lua::Binding::native<&documentSetVisible>).property("mounted", &documentMounted).property("placement", &documentPlacement).function("transform", &lua::Binding::native<&documentTransform>).install();
+    lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).install();
     lua::Binding::preload(L, "haylen.ui", &open);
 }
 
-void UiLua::deliverEvent(lua_State* L, Document& document, const Event& event) {
+void UiLua::deliverEvent(lua_State* L, Gui& gui, const Event& event) {
     const StackScope scope(L);
     pushRoot(L);
-    lua_rawgetp(L, -1, &document);
+    lua_rawgetp(L, -1, &gui);
     if (!lua_istable(L, -1)) {
         return;
     }
@@ -797,23 +797,23 @@ void UiLua::deliverEvent(lua_State* L, Document& document, const Event& event) {
     if (lua_getfield(L, -1, event.id.c_str()) != LUA_TTABLE || lua_getfield(L, -1, event.name.c_str()) != LUA_TFUNCTION) {
         return;
     }
-    pushEventTable(L, document, event);
+    pushEventTable(L, gui, event);
     lua::Runtime::protectedCall(L, 1, 0);
 }
 
-// Listeners, tweens and timers that the document owns end with it.
-void UiLua::forgetDocument(lua_State* L, const Document& document) {
+// Listeners, tweens and timers that the GUI owns end with it.
+void UiLua::forgetGui(lua_State* L, const Gui& gui) {
     const StackScope scope(L);
     pushRoot(L);
     if (!lua_istable(L, -1)) {
         return;
     }
     const int root = lua_gettop(L);
-    if (lua_rawgetp(L, root, &document) == LUA_TTABLE && lua_getfield(L, -1, "document") == LUA_TUSERDATA) {
+    if (lua_rawgetp(L, root, &gui) == LUA_TTABLE && lua_getfield(L, -1, "gui") == LUA_TUSERDATA) {
         lua::Owners::release(L, -1);
     }
     lua_pushnil(L);
-    lua_rawsetp(L, root, &document);
+    lua_rawsetp(L, root, &gui);
 }
 
 } // namespace haylen::ui

@@ -16,7 +16,7 @@ A direction goes to the nearest control that way, preferring controls in line wi
 The properties [color=gold]focusLeft[/color], [color=gold]focusRight[/color], [color=gold]focusUp[/color] and [color=gold]focusDown[/color] name the neighbour instead.
 A node with [color=gold]focusScope[/color] keeps the focus until the player leaves it, and hears cancel.
 The property [color=gold]focusWrap[/color] wraps a move off one end of a row or a column to its other end.
-Cancel reaches the innermost scope, and then the root of the document, which goes back to the test list.
+Cancel reaches the innermost scope, and then the root of the GUI, which goes back to the test list.
 The ring shows once the player navigates, and always on a TV, where there is no pointer.
 [/ul]]==]
 
@@ -70,16 +70,16 @@ function FocusNavigation:scope()
     local press = function(event) self:pressed(event) end
     return layout.section('Focus scope', {grow = 1,
         ui.button{id = 'enter-scope', text = 'Enter the scope', onClick = function(event)
-            event.document:command('scoped-1', 'focus')
+            event.gui:command('scoped-1', 'focus')
         end},
         ui.panel{id = 'scope', focusScope = true, gap = 12, onCancel = function(event)
-            event.document:command('enter-scope', 'focus')
+            event.gui:command('enter-scope', 'focus')
             self.last = ' Left the scope with cancel.'
         end,
             ui.label{text = 'Moves stay inside this panel. Cancel leaves it.', color = 'textMuted'},
             ui.row{gap = 12, ui.button{id = 'scoped-1', text = 'Inside 1', onClick = press}, ui.button{id = 'scoped-2', text = 'Inside 2', onClick = press}},
             ui.button{id = 'leave-scope', text = 'Leave', variant = 'link', onClick = function(event)
-                event.document:command('enter-scope', 'focus')
+                event.gui:command('enter-scope', 'focus')
             end},
         },
     })

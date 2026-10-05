@@ -80,11 +80,11 @@ function RichText:columns()
                 ui.row{gap = 12,
                     ui.button{id = 'next', text = 'Next line', variant = 'primary', onClick = function(event)
                         self.line = self.line % #RichText.dialogue + 1
-                        event.document:set('dialogue', {text = RichText.dialogue[self.line]})
+                        event.gui:set('dialogue', {text = RichText.dialogue[self.line]})
                         self:report('The dialogue shows line ' .. self.line .. '.')
                     end},
                     ui.button{text = 'Skip', onClick = function(event)
-                        event.document:set('dialogue', {visibleCharacters = -1})
+                        event.gui:set('dialogue', {visibleCharacters = -1})
                     end},
                 },
             }),

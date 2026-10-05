@@ -1,4 +1,4 @@
--- Lifecycle log: a listener on every engine event writes what happens, and the panel triggers the events an app can cause itself: scene loads and transitions, a failed load, fullscreen, a simulated notch, the pause, an asset, a document, sprites and a socket that retries.
+-- Lifecycle log: a listener on every engine event writes what happens, and the panel triggers the events an app can cause itself: scene loads and transitions, a failed load, fullscreen, a simulated notch, the pause, an asset, a GUI, sprites and a socket that retries.
 local assets = require('haylen.assets')
 local async = require('async')
 local debugging = require('haylen.debug')
@@ -27,7 +27,7 @@ local kEvents = {
     'sceneExitTransitionStarted', 'sceneEnterTransitionFinished', 'sceneCoverStarted', 'sceneCoverFinished',
     'sceneHoldStarted', 'sceneHoldFinished', 'sceneRevealStarted', 'sceneRevealFinished', 'autoloadStarted', 'autoloadStopped',
     'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowMonitorsChanged',
-    'uiDocumentMounted', 'uiDocumentUnmounted', 'gamepadConnected', 'gamepadDisconnected', 'audioInterrupted', 'audioResumed', 'audioRouteChanged',
+    'guiMounted', 'guiUnmounted', 'gamepadConnected', 'gamepadDisconnected', 'audioInterrupted', 'audioResumed', 'audioRouteChanged',
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'systemThemeChanged', 'batteryChanged', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
     'assetLoaded', 'assetUnloaded', 'assetReloaded', 'objectCreated', 'objectDestroyed',
 }
@@ -37,7 +37,7 @@ events.on('sceneHoldStarted', function(transfer) print(transfer.from, transfer.t
 scene.push(room, {duration = 0.8, loading = view, loadingDelay = 0.1, minimumLoadingTime = 0.6})
 function room:load(context) context:progress(0.5, 'Building the room') async.sleep(100):await() end]]
 
--- Names a scene or a document by its type, or says that C++ pushed the scene.
+-- Names a scene or a GUI by its type, or says that C++ pushed the scene.
 local function sceneName(value)
     if value == false then
         return 'a C++ scene'
@@ -129,7 +129,7 @@ function Lifecycle:enter()
             ui.toggle{id = 'objects', text = 'Object events', onChange = function(event) debugging.setObjectEvents(event.checked) end},
             ui.button{id = 'sprite', text = 'Create and drop a sprite', onClick = function() self:touchSprite() end},
             ui.button{id = 'asset', text = 'Load and release an asset', onClick = function() self:touchAsset() end},
-            ui.button{id = 'document', text = 'Mount a document', onClick = function() self:touchDocument() end},
+            ui.button{id = 'gui', text = 'Mount a GUI', onClick = function() self:touchGui() end},
             ui.button{id = 'socket', text = 'Open a socket that retries', onClick = function() self:openSocket() end},
             ui.button{id = 'fullscreen', text = 'Toggle fullscreen', onClick = function() window.setFullscreen(not window.fullscreen()) end},
             ui.button{id = 'clear', text = 'Clear the log', onClick = function() journal:clear() end},
@@ -176,8 +176,8 @@ function Lifecycle:touchAsset()
     end, {owner = self})
 end
 
-function Lifecycle:touchDocument()
-    local toast = ui.mount(ui.toast{id = 'toast', text = 'A document that unmounts itself', open = true}, {owner = self, layer = 2})
+function Lifecycle:touchGui()
+    local toast = ui.mount(ui.toast{id = 'toast', text = 'A GUI that unmounts itself', open = true}, {owner = self, layer = 2})
     timer.after(1.2, function() toast:unmount() end, {owner = self})
 end
 

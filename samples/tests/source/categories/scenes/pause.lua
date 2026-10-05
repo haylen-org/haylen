@@ -25,7 +25,7 @@ end
 function PauseMenu:enter()
     haylen.setPaused(true)
     tween.to(self.glow, 0.6, {alpha = 1}, {loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut', owner = self})
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         justify = 'center',
         onCancel = function()
             self:close()
@@ -39,7 +39,7 @@ function PauseMenu:enter()
             ui.button{id = 'spawn', text = 'Spawn while paused', align = 'stretch', onClick = function() self.world:spawn() end},
         },
     }, {layer = 1, owner = self})
-    self.document:command('resume', 'focus')
+    self.gui:command('resume', 'focus')
 end
 
 function PauseMenu:exit()

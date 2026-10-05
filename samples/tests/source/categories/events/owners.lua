@@ -1,4 +1,4 @@
--- Owners: guards listen to an alarm signal and an alarm event with themselves as the owner, and a banner document owns a listener, so removing a guard or unmounting the banner disconnects what they held.
+-- Owners: guards listen to an alarm signal and an alarm event with themselves as the owner, and a banner GUI owns a listener, so removing a guard or unmounting the banner disconnects what they held.
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -14,7 +14,7 @@ local Owners = haylen.class('Owners', EventsTest)
 local kCode = [[
 alarm:connect(function() guard.alert = guard.alert + 1 end, {owner = guard})
 events.on('alarmRaised', function() guard.heard = guard.heard + 1 end, {owner = guard})
-events.on('alarmRaised', showBanner, {owner = bannerDocument})  -- Ends when the banner is unmounted.
+events.on('alarmRaised', showBanner, {owner = bannerGui})  -- Ends when the banner is unmounted.
 guards[#guards] = nil  collectgarbage()  -- The listeners of that guard end at the end of the frame.]]
 
 function Owners:enter()

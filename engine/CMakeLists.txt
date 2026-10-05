@@ -511,7 +511,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/touch/TouchButton.cpp
   src/ui/components/touch/TouchStick.cpp
   src/ui/Context.cpp
-  src/ui/Document.cpp
+  src/ui/Gui.cpp
   src/ui/FocusNavigator.cpp
   src/ui/FocusSearch.cpp
   src/ui/ImGuiConverter.cpp

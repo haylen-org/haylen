@@ -39,8 +39,8 @@ class UiLuaTest : public ::testing::Test {
     }
 
     // Clicks the center of the bounds Lua reports for a node, which are in design coordinates.
-    void click(const std::string& document, const std::string& id) {
-        const std::string center = fixture.lua("local b = " + document + ":bounds('" + id + "') return b.x + b.width / 2 .. ',' .. b.y + b.height / 2");
+    void click(const std::string& gui, const std::string& id) {
+        const std::string center = fixture.lua("local b = " + gui + ":bounds('" + id + "') return b.x + b.width / 2 .. ',' .. b.y + b.height / 2");
         const std::size_t comma = center.find(',');
         ASSERT_NE(comma, std::string::npos) << center;
         const math::Vec2 point = math::Vec2{std::stof(center.substr(0, comma)), std::stof(center.substr(comma + 1))} - getEngine().getViewport().getVisibleRect().getMin();
@@ -83,7 +83,7 @@ TEST_F(UiLuaTest, MountsTreesAndCallsHandlers) {
         clicks = {}
         hud = ui.mount(ui.column{padding = 20,
             ui.label{id = 'day', text = 'Day 1'},
-            ui.button{id = 'play', text = 'Play', onClick = function(event) clicks[#clicks + 1] = event.id .. ':' .. event.name .. ':' .. tostring(event.document == hud) end},
+            ui.button{id = 'play', text = 'Play', onClick = function(event) clicks[#clicks + 1] = event.id .. ':' .. event.name .. ':' .. tostring(event.gui == hud) end},
             ui.checkbox{text = 'Music', onChange = function(event) clicks[#clicks + 1] = 'music ' .. tostring(event.checked) .. ' ' .. event.id end},
         }, {placement = 'screen', layer = 2})
     )");
@@ -108,15 +108,15 @@ TEST_F(UiLuaTest, MountsTreesAndCallsHandlers) {
     EXPECT_EQ(fixture.lua("return clicks[#clicks] .. ' ' .. hud:get('day').text .. ' ' .. hud:get('play').text"), "changed Day 2 Go");
 }
 
-TEST_F(UiLuaTest, PublishesMountsAndEndsWhatDocumentsOwn) {
+TEST_F(UiLuaTest, PublishesMountsAndEndsWhatGuisOwn) {
     // clang-format off
     fixture.runLua(R"(
         ui = require('haylen.ui')
         events = require('haylen.events')
         timer = require('haylen.timer')
         heard = {}
-        events.on('uiDocumentMounted', function(document) mounted = document end)
-        events.on('uiDocumentUnmounted', function(document) heard[#heard + 1] = 'unmounted ' .. tostring(document == hud) end)
+        events.on('guiMounted', function(gui) mounted = gui end)
+        events.on('guiUnmounted', function(gui) heard[#heard + 1] = 'unmounted ' .. tostring(gui == hud) end)
         hud = ui.mount(ui.label{text = 'Day 1'})
         ticks = 0
         timer.every(0.01, function() ticks = ticks + 1 end, {owner = hud})
@@ -131,17 +131,17 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatDocumentsOwn) {
     EXPECT_EQ(fixture.lua("return ticks"), ticks);
     EXPECT_NE(ticks, "0");
 
-    // Documents mounted from C++ reach C++ listeners with their pointer and Lua listeners with `nil`.
+    // GUIs mounted from C++ reach C++ listeners with their pointer and Lua listeners with `nil`.
     plugins::UiPlugin& plugin = getEngine().getPlugin<plugins::UiPlugin>();
-    std::shared_ptr<Document> received;
-    const core::ScopedConnection listener = getEngine().getEvents().on(core::LifecycleEvent::kUiDocumentMounted, [&](core::EventBus::Event& event) { received = *event.get<std::shared_ptr<Document>>(); });
-    const std::shared_ptr<Document> document = plugin.createDocument(core::Json::parse(R"({"kind": "label", "text": "native"})"));
-    plugin.mount(document, 3);
-    EXPECT_EQ(received, document);
+    std::shared_ptr<Gui> received;
+    const core::ScopedConnection listener = getEngine().getEvents().on(core::LifecycleEvent::kGuiMounted, [&](core::EventBus::Event& event) { received = *event.get<std::shared_ptr<Gui>>(); });
+    const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "label", "text": "native"})"));
+    plugin.mount(gui, 3);
+    EXPECT_EQ(received, gui);
     EXPECT_EQ(fixture.lua("return tostring(mounted)"), "nil");
-    EXPECT_THROW(plugin.mount(document), std::invalid_argument);
-    EXPECT_TRUE(plugin.unmount(*document));
-    EXPECT_FALSE(plugin.unmount(*document));
+    EXPECT_THROW(plugin.mount(gui), std::invalid_argument);
+    EXPECT_TRUE(plugin.unmount(*gui));
+    EXPECT_FALSE(plugin.unmount(*gui));
 }
 
 TEST_F(UiLuaTest, MountsDeeplyNestedTrees) {
@@ -152,13 +152,13 @@ TEST_F(UiLuaTest, MountsDeeplyNestedTrees) {
     EXPECT_EQ(getEngine().getError(), nullptr);
     EXPECT_NE(fixture.lua("ui.mount(nested(65))").find("limited to 64 levels"), std::string::npos);
 
-    // A table that holds itself, or shares its children until the tree outgrows a document, fails instead of converting without end.
+    // A table that holds itself, or shares its children until the tree outgrows a GUI, fails instead of converting without end.
     EXPECT_NE(fixture.lua("local c = ui.column{} c[1] = c ui.mount(c)").find("limited to 64 levels"), std::string::npos);
     EXPECT_NE(fixture.lua("local c = ui.column{} c[1] = c ui.mount(ui.column{id = 'list'}):replaceChildren('list', {c})").find("limited to 64 levels"), std::string::npos);
     EXPECT_NE(fixture.lua("local node = ui.label{} for level = 1, 40 do node = ui.column{node, node} end ui.mount(node)").find("20000 nodes"), std::string::npos);
 }
 
-TEST_F(UiLuaTest, ChangesHandlersOnlyAfterTheDocumentAcceptsTheChange) {
+TEST_F(UiLuaTest, ChangesHandlersOnlyAfterTheGuiAcceptsTheChange) {
     // clang-format off
     fixture.runLua(R"(
         ui = require('haylen.ui')
@@ -193,7 +193,7 @@ TEST_F(UiLuaTest, HandsEventValuesAndListenersToLua) {
         ui = require('haylen.ui')
         seen = {}
         heard = {}
-        listener = ui.onEvent(function(event) heard[#heard + 1] = event.id .. ':' .. event.name .. ':' .. tostring(event.document == menu) end)
+        listener = ui.onEvent(function(event) heard[#heard + 1] = event.id .. ':' .. event.name .. ':' .. tostring(event.gui == menu) end)
         menu = ui.mount(ui.column{
             ui.list{id = 'slots', items = {{id = 'slot1', text = 'Slot 1'}}, onSelect = function(event) seen[#seen + 1] = event.id .. ' ' .. event.name .. ' ' .. event.item end},
             ui.dialog{id = 'quit', open = true, buttons = {{id = 'stay', text = 'Stay'}, {id = 'leave', text = 'Leave'}}, onAnswer = function(event) seen[#seen + 1] = event.id .. ' ' .. event.button end},
@@ -552,7 +552,7 @@ TEST_F(UiLuaTest, NavigatesTheFocusAndHearsCancel) {
     )");
     // clang-format on
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("local document, id = ui.focused() return tostring(document == screen) .. ' ' .. id .. ' ' .. tostring(ui.focusRingVisible())"), "true play false");
+    EXPECT_EQ(fixture.lua("local gui, id = ui.focused() return tostring(gui == screen) .. ' ' .. id .. ' ' .. tostring(ui.focusRingVisible())"), "true play false");
 
     key(input::Key::Down);
     key(input::Key::Down);

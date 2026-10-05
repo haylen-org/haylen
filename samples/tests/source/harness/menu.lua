@@ -19,24 +19,24 @@ end
 
 function Menu:enter()
     window.setBackLeavesApp(true)
-    self.document = ui.mount(ui.column{
+    self.gui = ui.mount(ui.column{
         padding = {32, 48},
         gap = 24,
         ui.pageHeader{title = haylen.config.name, caption = string.format('%d tests in %d categories on "%s". Pick a category, or search a test by its code or its title.', #catalog.tests, #catalog.categories, haylen.platform)},
         ui.row{id = 'actions', gap = 16, children = self:actions()},
         ui.scroll{grow = 1, ui.column{id = 'body', gap = 16, padding = {0, 24, 0, 0}, children = self:sections()}},
     }, {owner = self})
-    self.document:command(self.selected.folder, 'focus')
+    self.gui:command(self.selected.folder, 'focus')
 end
 
 -- Coming back from a category offers the test opened last.
 function Menu:resume()
     window.setBackLeavesApp(true)
     local last = navigation.lastTest()
-    if last and self.document:has('continue') then
-        self.document:set('continue', {text = string.format('Continue with %s', last.code)})
+    if last and self.gui:has('continue') then
+        self.gui:set('continue', {text = string.format('Continue with %s', last.code)})
     elseif last then
-        self.document:replaceChildren('actions', self:actions())
+        self.gui:replaceChildren('actions', self:actions())
     end
 end
 
@@ -87,7 +87,7 @@ end
 -- Shows the tests that match the query in place of the categories, or the categories again once the query is empty.
 function Menu:search(query)
     if query:match('^%s*$') then
-        self.document:replaceChildren('body', self:sections())
+        self.gui:replaceChildren('body', self:sections())
         return
     end
     local rows = {}
@@ -102,7 +102,7 @@ function Menu:search(query)
     if #rows == 0 then
         rows[1] = ui.emptyState{title = 'No test matches', message = string.format('No code or title contains "%s".', query)}
     end
-    self.document:replaceChildren('body', rows)
+    self.gui:replaceChildren('body', rows)
 end
 
 return Menu
