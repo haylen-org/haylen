@@ -10,6 +10,8 @@
 		001A1465A5DE9677D50E146A /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E659DE470F86E25B0A48DA55 /* GameController.framework */; };
 		1526223C7B74A786EDC6B392 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */; };
 		23C93E3CA5F3F0934920AC1B /* app in Resources */ = {isa = PBXBuildFile; fileRef = 785CC13C763BA59F86046EB0 /* app */; };
+		2530307C175CA0D60D66C8E6 /* HaylenBootstrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */; };
+		2BEDB2E614DBF2CAFCB8DBAD /* HaylenBootstrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */; };
 		2D35EC6AD06590B6B796CF17 /* Haylen.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DBB0B5A6BA934671179571C /* Haylen.xcframework */; };
 		2EAFDE7EA6AA626BF6FDE31B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C563E05ACD9AEA786427820A /* PrivacyInfo.xcprivacy */; };
 		333C7017465AFE6F9F0E99B5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F8A98F04F8F091EAE21B2075 /* Assets.xcassets */; };
@@ -34,6 +36,7 @@
 		914F3304D2A9BB099291F289 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93773212B32C9B1B03E2D35B /* Network.framework */; };
 		917DE0041DE8C874A225D781 /* Splash.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 037D2CFC365C78ED67618965 /* Splash.xcassets */; };
 		91EE9A5DB424FA32614525BA /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */; };
+		9A0F5AE3909B56954E2164E5 /* HaylenBootstrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */; };
 		9BC83BC6CD4CEFCC79791868 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3CAAB913D12582C4BAC7F7E5 /* CoreVideo.framework */; };
 		9C935C4A0B9EE4AA32F751EB /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64525A5E227A6F8D56316636 /* AVFoundation.framework */; };
 		A2709552647909DD2982048D /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */; };
@@ -71,6 +74,7 @@
 		0A753EF2BDFD938E5832DBA1 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		1A46847C164D474B7B747BC0 /* iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HaylenBootstrap.cpp; sourceTree = "<group>"; };
 		2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		32DFCA6979988D18408B2256 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
 		3AF24FBCB72AEA680A86D5CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -225,6 +229,7 @@
 		9A81640D9CEB68C2FF75F5CD /* haylen */ = {
 			isa = PBXGroup;
 			children = (
+				206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */,
 				C563E05ACD9AEA786427820A /* PrivacyInfo.xcprivacy */,
 				037D2CFC365C78ED67618965 /* Splash.xcassets */,
 			);
@@ -417,6 +422,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9A0F5AE3909B56954E2164E5 /* HaylenBootstrap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -424,6 +430,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2530307C175CA0D60D66C8E6 /* HaylenBootstrap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -431,6 +438,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2BEDB2E614DBF2CAFCB8DBAD /* HaylenBootstrap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

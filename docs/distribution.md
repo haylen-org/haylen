@@ -26,7 +26,7 @@ python3 haylen.py run ~/apps/my-game --platform web
 | `platform diff <app> --template` | Shows how `platform/<template>` of an app differs from the current template, without changing anything. |
 | `run <app> [--platform] [--device] [--config] [--engine-config]` | Runs an app, in the desktop player by default or built for a platform. |
 | `prepare <app> --platform [--config] [--engine-config]` | Writes the folder `haylen/` of the project of a platform and nothing else, or the site of the web or the folder of a Windows or Linux app, with the package as it is or, with `--config Release`, with the protected release of the app. |
-| `xcodegen [app] [--platform] [--template]` | Writes `haylen/` of the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, or generates the project of the Apple template. |
+| `xcodegen [app] [--platform] [--config] [--template]` | Writes `haylen/` of the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, or generates the project of the Apple template. |
 | `check <app> --platform [--config] [--coop]` | Checks the last build of an app against what the engine and its plugins need, and prints every missing requirement with the snippet that adds it. |
 | `android-key <app> [--release\|--debug] [--alias] [--password] [--dname] [--force]` | Creates the upload key of release builds, or a debug key, in `platform/android/keystore/` of an app, with its certificate and the properties that sign its builds. |
 | `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
@@ -179,7 +179,7 @@ python3 haylen.py xcodegen ~/apps/my-game
 python3 haylen.py xcodegen --template
 ```
 
-Prepares the Apple project of an app, with the native libraries of `--platform`, `macos` by default, and generates its `App.xcodeproj` again from `project.yml` with the XcodeGen that haylen.py pins, after the developer changed `project.yml`, as [generating App.xcodeproj](#generating-appxcodeproj) describes. `--template` generates the `App.xcodeproj` of the Apple template of the engine again, in a copy with the `haylen/` folder of the starter app, after a change to its `project.yml`.
+Prepares the Apple project of an app, with the native libraries of `--platform`, `macos` by default, and the package of `--config`, `Debug` by default, and generates its `App.xcodeproj` again from `project.yml` with the XcodeGen that haylen.py pins, after the developer changed `project.yml`, as [generating App.xcodeproj](#generating-appxcodeproj) describes. `--template` generates the `App.xcodeproj` of the Apple template of the engine again, in a copy with the `haylen/` folder of the starter app, after a change to its `project.yml`.
 
 ### android-key
 
@@ -371,7 +371,8 @@ The tool `haylen.py` writes one folder inside a project, `haylen/`, which the `.
 | `ios/App.entitlements`, `ios/Catalyst.entitlements`, `tvos/App.entitlements`, `macos/App.entitlements` | The entitlements of the developer at the same path, completed with the `entitlements` of the plugins of iOS, Mac Catalyst, tvOS and macOS, written when either has any. |
 | `PrivacyInfo.xcprivacy` | The [privacy manifest](#privacy-manifest) of the app. |
 | `Splash.xcassets` | The `splash_logo` image and the `splash_background` color of the [launch screens](#splash-screens). |
-| `app/` | The package, which the bundle carries as `Resources/app`. |
+| `app/` | The package, which the bundle carries as `Resources/app`, or in the Release configuration the protected release of the app. |
+| `HaylenBootstrap.cpp` | The bootstrap of the app, which every target template compiles. In the Release configuration the content tool writes it from the key folder of the app, with its sealed content keys, and in the Debug configuration it holds only a check that stops a release build of the development package with the way to prepare the release. |
 | `native/`, `HaylenNativeSymbols.mm` | The [native libraries](#native-libraries) of the run platform with the file lists of the embed phases, and the table of the symbols of static libraries. |
 | `plugins/<id>/` | The Apple sources and resources of the plugins. |
 | `Haylen.xcframework` | A link to the framework of the artifacts. |
@@ -433,8 +434,11 @@ python3 haylen.py check ~/apps/my-game --platform linux --config Release
 | Platform | Release build |
 | --- | --- |
 | Windows, Linux | Links the executable of the app from the SDK of the desktop artifacts, the Lua player with the bootstrap, with hidden symbols, stripped on Linux and without a PDB on Windows, in `build/apps/<app>-<hash>/release-executable/`, and places the release in `app/` next to it. |
+| macOS, Mac Catalyst, iOS, tvOS | Writes the release of the `apple` profile into `haylen/app/` of the Apple project, which the bundle carries as `Resources/app` and on macOS as `Contents/Resources/app`, and the bootstrap into `haylen/HaylenBootstrap.cpp`, which the targets compile into the app that links `Haylen.xcframework`. Every target of the project shares the release. Xcode keeps the debug information of a release build in a `.dSYM` next to the app, and an archive strips the app. |
 
 After a release build, `run` inspects the built app and stops before it launches when the app holds what a release never may, and `check --config Release` reports the same as missing requirements, so continuous integration fails on it: a `.lua` file, the `haylen-package-index.json` of a development package, a file of the package as it is under any name, other files in the release folder than its manifests and shards, symbol files such as `.pdb`, `.dSYM` or `.debug`, and any content key or the signing key of the app as bytes, as hexadecimal text in either case or as Base64 text. The splash logo is the one file of the package that an app shows outside its release, since the system shows it before the engine starts.
+
+Stores limit the size of an app, so a release build warns when its release is larger than the store of its platform accepts inside an app: the App Store accepts iOS and tvOS apps of at most 4 GB uncompressed. Those limits belong to the stores and never to the format, which serves releases of any size.
 
 ### check
 
@@ -442,7 +446,7 @@ After a release build, `run` inspects the built app and stops before it launches
 
 | Platform | What it reads | What it checks |
 | --- | --- | --- |
-| Apple | The `Info.plist` of the bundle, the frameworks that `otool -L` lists for the executable, the entitlements that `codesign` reports, the privacy manifest of the bundle and the classes of the executable. | The system frameworks of the engine and the scene manifest on iOS and tvOS, and for every plugin its class, its `frameworks`, its `infoPlist` keys, its `entitlements`, its `privacy` declarations and its resources. A value only has to exist, so a usage description may have other words, while items of arrays and booleans must match. |
+| Apple | The `Info.plist` of the bundle, the frameworks that `otool -L` lists for the executable, the entitlements that `codesign` reports, the privacy manifest of the bundle and the classes of the executable, and with `--config Release` every file of the bundle. | The system frameworks of the engine and the scene manifest on iOS and tvOS, and for every plugin its class, its `frameworks`, its `infoPlist` keys, its `entitlements`, its `privacy` declarations and its resources. A value only has to exist, so a usage description may have other words, while items of arrays and booleans must match. With `--config Release`, what a release never ships, as [release builds](#release-builds) describe. |
 | Android | The merged manifest of the APK through `aapt2 dump xmltree`, and its native libraries. | `HaylenActivity`, the provider that loads plugins in an app with plugins, the native libraries of the app, and for every plugin the permissions, components and meta-data of the manifest of its module, and in a project of the developer the `files` it places there. A permission that the manifest of the app removes with `tools:node="remove"` is named with the file that removes it. |
 | Web | `config.json` of the site and the modules of the plugins. | Every plugin with a web part in `config.json`, and with `--coop same-origin`, every plugin whose web module registers screens, since that opener policy cuts popups off from the page. |
 | Windows, Linux | The folder of the app. | With `--config Release`, what a release never ships, as [release builds](#release-builds) describe. |

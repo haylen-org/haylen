@@ -98,6 +98,8 @@ BOOTSTRAP_SOURCE = "HaylenBootstrap.cpp"
 # The files of a release folder besides its shards, and the suffix of the shards.
 RELEASE_MANIFESTS = ("app.hmanifest", "content.hmanifest")
 RELEASE_SHARD_SUFFIX = ".hpak"
+# The largest protected release that the store of a content profile accepts inside an app, with the words that name the limit. The App Store limits the uncompressed size of an iOS or tvOS app.
+STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app")}
 # Symbol files, which stay with the developer and never ship.
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
@@ -2236,7 +2238,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
             entry = {"package": dependency[1], "product": dependency[2]} if dependency[0] == "package" else {"sdk": dependency[1]}
             dependencies.append({**entry, **({"destinationFilters": destinations} if destinations else {})})
 
-        sources = [{"path": "app", "type": "folder", "buildPhase": "resources"}, {"path": "PrivacyInfo.xcprivacy", "buildPhase": "resources"}]
+        sources = [{"path": "app", "type": "folder", "buildPhase": "resources"}, {"path": "PrivacyInfo.xcprivacy", "buildPhase": "resources"}, {"path": BOOTSTRAP_SOURCE}]
         if folder != "macos":
             sources.append({"path": "Splash.xcassets"})
         if symbols and folder != "macos":
@@ -2255,8 +2257,16 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
     write_if_changed(generated / "project.yml", header + json.dumps(document, indent=4) + "\n")
 
 
-def prepare_apple(app: App, root: Path, run_platform: str, jobs: int) -> None:
-    """Writes the folder `haylen/` of an Apple project, with the native libraries of a run platform, and nothing else of the project."""
+# The bootstrap of the debug builds of an Apple project, which read the package as it is, and which stops a release build of a project that holds no protected release.
+DEVELOPMENT_BOOTSTRAP = """// Written by haylen.py for the debug builds of the app, which read its package as it is. A release build needs the protected release and the bootstrap of the app, which "haylen.py prepare" writes with "--config Release".
+#if !DEBUG
+#error "The project holds the development package of the app, which release builds never ship. Prepare it with \"python3 haylen.py prepare\" and the app folder with \"--config Release\"."
+#endif
+"""
+
+
+def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_config: str, jobs: int) -> None:
+    """Writes the folder `haylen/` of an Apple project, with the native libraries of a run platform, and nothing else of the project. The Release configuration writes the protected release of the app and its bootstrap, and the Debug configuration the package as it is."""
     require_host("apple")
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Apple project `{shown_path(root)}`")
@@ -2267,7 +2277,12 @@ def prepare_apple(app: App, root: Path, run_platform: str, jobs: int) -> None:
         link.unlink(missing_ok=True)
         link.symlink_to(framework)
     shutil.rmtree(generated / "app", ignore_errors=True)
-    copy_package(app, generated / "app")
+    if config == "Release":
+        shutil.copytree(build_release(app, CONTENT_PROFILES[run_platform], engine_config, jobs), generated / "app")
+        write_bootstrap(app, CONTENT_PROFILES[run_platform], generated / BOOTSTRAP_SOURCE, engine_config, jobs)
+    else:
+        copy_package(app, generated / "app")
+        write_if_changed(generated / BOOTSTRAP_SOURCE, DEVELOPMENT_BOOTSTRAP)
     write_apple_splash(app, generated)
     write_apple_xcconfig(app, generated, prepare_apple_native(app, generated, run_platform, jobs))
     write_apple_plists(app, root, generated)
@@ -2523,19 +2538,24 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
             source = plugin_file(app, plugin, resource)
             if source is not None and not (resources / source.name).exists():
                 missing.append(Requirement(f'{owner} needs "{source.name}" at the root of the app bundle, which the built app lacks.', f'Keep "templates: [{template}]" on {targets}.'))
+    if args.config == "Release":
+        release = "Contents/Resources/app" if args.platform in {"macos", "catalyst"} else "app"
+        missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(bundle), release, read_secrets(app))]
     return missing
 
 
 def prepare_apple_run(app: App, args: argparse.Namespace) -> Path:
     root = project_root(app, "apple")
-    prepare_apple(app, root, args.platform, args.jobs)
+    prepare_apple(app, root, args.platform, args.config, args.engine_config, args.jobs)
     return root
 
 
 def run_apple(app: App, root: Path, args: argparse.Namespace) -> None:
     generate_apple_project(app, root, forced=False)
     bundle, simulator = build_apple(app, root, args)
-    report_requirements(check_apple(app, root, args))
+    requirements = check_apple(app, root, args)
+    stop_on_release_problems(requirements)
+    report_requirements(requirements)
     launch_apple(bundle, args, simulator)
 
 
@@ -2988,7 +3008,7 @@ def command_xcodegen(args: argparse.Namespace) -> None:
     info = App(app, RUN_TARGETS[args.platform].plugins)
     ensure_artifacts("apple", args.engine_config, args.jobs)
     root = project_root(info, "apple")
-    prepare_apple(info, root, args.platform, args.jobs)
+    prepare_apple(info, root, args.platform, args.config, args.engine_config, args.jobs)
     generate_apple_project(info, root, forced=True)
     terminal.success(f"Generated `{shown_path(root / 'App.xcodeproj')}` from `{shown_path(root / 'project.yml')}`.")
 
@@ -3000,7 +3020,7 @@ def generate_template_project(args: argparse.Namespace) -> None:
     with tempfile.TemporaryDirectory() as scratch:
         copy = Path(scratch) / "apple"
         shutil.copytree(template, copy, symlinks=True, ignore=COPY_IGNORED)
-        prepare_apple(App(APP_TEMPLATE, "macos"), copy, "macos", args.jobs)
+        prepare_apple(App(APP_TEMPLATE, "macos"), copy, "macos", "Debug", args.engine_config, args.jobs)
         terminal.step(f"Generating `{shown_path(template / 'App.xcodeproj')}` from \"project.yml\"")
         run([ensure_xcodegen(), "generate", "--quiet", "--spec", copy / "project.yml"], cwd=copy)
         shutil.rmtree(template / "App.xcodeproj")
@@ -3453,7 +3473,18 @@ def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
     run(command)
     shutil.rmtree(folder, ignore_errors=True)
     staging.rename(folder)
+    warn_store_size(folder, profile)
     return folder
+
+
+def warn_store_size(folder: Path, profile: str) -> None:
+    """Warns when a release is larger than the store of its profile accepts inside an app."""
+    if profile not in STORE_RELEASE_LIMITS:
+        return
+    limit, words = STORE_RELEASE_LIMITS[profile]
+    size = sum(path.stat().st_size for path in folder.iterdir())
+    if size > limit:
+        terminal.warning(f"The protected release `{shown_path(folder)}` holds {size} bytes, more than {words}.", "Keep the content of the app within the limit, since the store refuses a larger app.")
 
 
 def write_bootstrap(app: App, profile: str, destination: Path, config: str, jobs: int) -> None:
@@ -3753,6 +3784,7 @@ def build_parser() -> argparse.ArgumentParser:
     xcodegen.add_argument("app", nargs="?", default=".", help="The app folder, the current folder by default.")
     xcodegen.add_argument("--platform", default="macos", choices=list(APPLE_RUNS), help="Apple platform whose native libraries the project gets.")
     xcodegen.add_argument("--template", action="store_true", help='Generate the "App.xcodeproj" of the Apple template of the engine instead, after a change to its "project.yml".')
+    xcodegen.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
     xcodegen.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
     add_jobs_option(xcodegen)
     xcodegen.set_defaults(handler=command_xcodegen)

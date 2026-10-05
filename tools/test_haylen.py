@@ -330,6 +330,22 @@ class ReleaseInspectionTest(unittest.TestCase):
             self.assertIn('The release holds the content key "1234" of the app in "game".', problems)
             self.assertIn('The release has no protected release in "app".', problems)
 
+    def test_a_release_larger_than_its_store_accepts_warns(self):
+        release = self.app / "release"
+        release.mkdir()
+        (release / "app.hmanifest").write_bytes(b"manifest")
+        errors = io.StringIO()
+        with mock.patch.dict(haylen.STORE_RELEASE_LIMITS, {"apple": (4, "the limit of the test")}), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), errors, {})):
+            haylen.warn_store_size(release, "apple")
+            haylen.warn_store_size(release, "linux")
+        self.assertEqual(errors.getvalue().count("more than the limit of the test"), 1)
+
+    def test_a_run_stops_on_what_a_release_never_ships_and_goes_on_with_other_requirements(self):
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            with self.assertRaisesRegex(haylen.BuildError, "holds the 1 files above that a release never ships"):
+                haylen.stop_on_release_problems([haylen.Requirement('The release holds the Lua text "app/main.lua".', haylen.RELEASE_ADVICE), haylen.Requirement("A plugin needs a key.", "Add it.")])
+            haylen.stop_on_release_problems([haylen.Requirement("A plugin needs a key.", "Add it.")])
+
 
 if __name__ == "__main__":
     unittest.main()
