@@ -18,6 +18,7 @@
 #include "haylen/ui/CollectionCell.hpp"
 #include "haylen/ui/CollectionItems.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/UiFixture.hpp"
 
@@ -73,6 +74,12 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
             throw std::logic_error("The item " + std::to_string(index) + " has no cell.");
         }
         return cell->getRoot().getBounds();
+    }
+
+    // The width the cells of a collection that scrolls take, which leave the lane of the scroll bar.
+    [[nodiscard]] float getCellsWidth(const Collection& collection) {
+        const Theme& theme = getUi().getTheme();
+        return collection.getBounds().width - theme.getMetric(Theme::Metric::ScrollbarGap) - theme.getMetric(Theme::Metric::ScrollbarSize) - theme.getMetric(Theme::Metric::ScrollbarInset);
     }
 
     // The first press of a player who could not see the ring only shows it, so tests that navigate show it with a direction that leads nowhere.
@@ -297,9 +304,10 @@ TEST_F(CollectionTest, PlacesGridSpansAndFullWidthHeaders) {
     }
     show(list, items);
     const math::Rect area = list.getBounds();
-    const float lane = (area.width - 20.0F) / 3.0F;
+    const float width = getCellsWidth(list);
+    const float lane = (width - 20.0F) / 3.0F;
 
-    EXPECT_FLOAT_EQ(getItemBounds(list, 0).width, area.width);
+    EXPECT_FLOAT_EQ(getItemBounds(list, 0).width, width);
     EXPECT_FLOAT_EQ(getItemBounds(list, 0).x, area.x);
     for (const std::size_t index : {1U, 2U, 3U}) {
         EXPECT_NEAR(getItemBounds(list, index).width, lane, 1.0F);
@@ -308,7 +316,7 @@ TEST_F(CollectionTest, PlacesGridSpansAndFullWidthHeaders) {
     EXPECT_NEAR(getItemBounds(list, 2).x, area.x + (lane + 10.0F) * 1.0F, 1.0F);
     EXPECT_FLOAT_EQ(getItemBounds(list, 4).height, 50.0F);
     EXPECT_NEAR(getItemBounds(list, 4).y, getItemBounds(list, 1).getBottom() + 10.0F, 0.5F);
-    EXPECT_FLOAT_EQ(getItemBounds(list, 7).width, area.width);
+    EXPECT_FLOAT_EQ(getItemBounds(list, 7).width, width);
 }
 
 TEST_F(CollectionTest, PinsTheCurrentSectionHeader) {
@@ -739,8 +747,9 @@ TEST_F(CollectionTest, FitsGridLanesToTheMinimumCellSizeAndCellsToTheAspect) {
     Collection& list = gui->getCollection("list");
     show(list, makeItems(40));
     const math::Rect area = list.getBounds();
-    const auto lanes = static_cast<float>(static_cast<int>((area.width + 20.0F) / 320.0F));
-    const float lane = (area.width - 20.0F * (lanes - 1.0F)) / lanes;
+    const float width = getCellsWidth(list);
+    const auto lanes = static_cast<float>(static_cast<int>((width + 20.0F) / 320.0F));
+    const float lane = (width - 20.0F * (lanes - 1.0F)) / lanes;
     EXPECT_NEAR(getItemBounds(list, 0).width, lane, 1.0F);
     EXPECT_NEAR(getItemBounds(list, 0).height, lane * 1.5F, 1.0F);
     EXPECT_NEAR(getItemBounds(list, static_cast<std::size_t>(lanes)).y, area.y + lane * 1.5F + 20.0F, 1.0F);

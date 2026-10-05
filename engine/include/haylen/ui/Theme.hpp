@@ -81,6 +81,8 @@ class Theme final {
         BorderWidth,
         FocusWidth,
         ScrollbarSize,
+        ScrollbarGap,
+        ScrollbarInset,
         IconSize,
         ChoiceSize,
         SliderTrackHeight,
@@ -176,6 +178,9 @@ class Theme final {
         CellHover,
         CellPressed,
         CellSelected,
+        Scrollbar,
+        ScrollbarHover,
+        ScrollbarTrack,
     };
 
     // The font a role draws with, its size and the style of its face, where a font without a face for the style draws with its regular face.
@@ -201,7 +206,7 @@ class Theme final {
     static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::InformationText) + 1;
     static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::SplitterSize) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
-    static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::CellSelected) + 1;
+    static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::ScrollbarTrack) + 1;
 
     [[nodiscard]] static Theme dark();
     [[nodiscard]] static Theme light();
@@ -250,8 +255,8 @@ class Theme final {
         imageFilter = value;
     }
 
-    // Copies the colors and shapes into an ImGui style, so immediate windows match the retained components.
-    void applyTo(ImGuiStyle& style) const;
+    // Copies the colors and shapes into an ImGui style, so immediate windows match the retained components, at a scale where one UI unit spans the given points of the screen.
+    void applyTo(ImGuiStyle& style, float pointsPerUnit) const;
 
   private:
     // A color role with its name and its colors in the dark and light themes, as `0xRRGGBBAA`.
@@ -324,7 +329,9 @@ class Theme final {
         {"panelPadding", 28.0F},
         {"borderWidth", 2.0F},
         {"focusWidth", 3.0F},
-        {"scrollbarSize", 16.0F},
+        {"scrollbarSize", 10.0F},
+        {"scrollbarGap", 8.0F},
+        {"scrollbarInset", 4.0F},
         {"iconSize", 36.0F},
         {"choiceSize", 36.0F},
         {"sliderTrackHeight", 10.0F},
@@ -410,6 +417,9 @@ class Theme final {
         "cellHover",
         "cellPressed",
         "cellSelected",
+        "scrollbar",
+        "scrollbarHover",
+        "scrollbarTrack",
     };
     // clang-format on
     static constexpr std::array<float, kFontCount> kFontSizes{30.0F, 24.0F, 30.0F, 38.0F, 56.0F, 26.0F};

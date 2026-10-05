@@ -571,6 +571,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
 
     const math::Rect visible = viewport.getVisibleRect();
     const math::Vec2 density = viewport.getPixelsPerUnit() * scale;
+    pointsPerUnit = std::min(density.x, density.y) / window.getDpiScale();
     origin = visible.getMin();
     safeRect = math::Rect::fromMinMax(toUi(viewport.getSafeRect().getMin()), toUi(viewport.getSafeRect().getMax()));
 

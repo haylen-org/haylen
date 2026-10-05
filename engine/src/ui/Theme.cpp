@@ -12,6 +12,7 @@
 
 #include "haylen/core/JsonValidator.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/Scrollbar.hpp"
 
 namespace haylen::ui {
 
@@ -294,7 +295,10 @@ void Theme::setSurface(Surface role, std::optional<Image> value) {
     surfaces[static_cast<std::size_t>(role)] = std::move(value);
 }
 
-void Theme::applyTo(ImGuiStyle& style) const {
+// ImGui insets the grab of a scroll bar by the same padding on every side, which it rounds down to whole units, so the padding is the gap rounded up, and a child window without padding keeps its content that far from the grab too.
+void Theme::applyTo(ImGuiStyle& style, float pointsPerUnit) const {
+    const float barSize = getMetric(Metric::ScrollbarSize);
+    const float barPadding = std::ceil(std::max(Scrollbar::getGap(getMetric(Metric::ScrollbarGap), pointsPerUnit), getMetric(Metric::ScrollbarInset)));
     style.FontSizeBase = getFont(Font::Body).size;
     style.WindowRounding = getMetric(Metric::PanelRadius);
     style.ChildRounding = getMetric(Metric::ControlRadius);
@@ -303,8 +307,9 @@ void Theme::applyTo(ImGuiStyle& style) const {
     style.FrameRounding = getMetric(Metric::ControlRadius) * 0.5F;
     style.GrabRounding = getMetric(Metric::ControlRadius) * 0.5F;
     style.TabRounding = getMetric(Metric::ControlRadius) * 0.5F;
-    style.ScrollbarRounding = getMetric(Metric::ScrollbarSize) * 0.5F;
-    style.ScrollbarSize = getMetric(Metric::ScrollbarSize);
+    style.ScrollbarRounding = barSize * 0.5F;
+    style.ScrollbarSize = barSize + barPadding * 2.0F;
+    style.ScrollbarPadding = barPadding;
     style.WindowPadding = {getMetric(Metric::PanelPadding), getMetric(Metric::PanelPadding)};
     style.FramePadding = {getMetric(Metric::ControlPaddingX) * 0.5F, getMetric(Metric::ControlPaddingY) * 0.5F};
     style.ItemSpacing = {getMetric(Metric::ItemSpacing), getMetric(Metric::ItemSpacing) * 0.5F};

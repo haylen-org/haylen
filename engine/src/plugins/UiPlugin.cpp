@@ -124,6 +124,10 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     const math::Vec2 pixelsPerUnit = viewport.getPixelsPerUnit();
     backend->setScale(scaling.resolve(std::min(pixelsPerUnit.x, pixelsPerUnit.y), engine.getWindow().getDpiScale(), viewport.getVisibleRect().getSize()));
     backend->beginFrame(delta, viewport, engine.getInput(), navigation);
+    if (backend->getPointsPerUnit() != styledPoints) {
+        styledPoints = backend->getPointsPerUnit();
+        getTheme().applyTo(ImGui::GetStyle(), styledPoints);
+    }
     context->beginFrame(elapsed, delta);
 
     // Text reads in the current language, and an automatic direction takes the one that language declares.
@@ -449,7 +453,8 @@ void UiPlugin::setTheme(std::string_view name) {
         (void)backend->getFont(theme.getFont(static_cast<ui::Theme::Font>(index)).font);
     }
     backend->makeCurrent();
-    theme.applyTo(ImGui::GetStyle());
+    styledPoints = backend->getPointsPerUnit();
+    theme.applyTo(ImGui::GetStyle(), styledPoints);
     ImGui::GetIO().FontDefault = backend->getFont(theme.getFont(ui::Theme::Font::Body).font);
     context->setTheme(theme);
 }

@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "haylen/math/Rect.hpp"
+#include "ui/Popup.hpp"
 #include "ui/components/buttons/ButtonBase.hpp"
 
 namespace haylen::ui {
@@ -24,6 +25,7 @@ class Popover final : public ButtonBase {
 
   private:
     float contentWidth = 480.0F;
+    Popup popup;
 };
 
 } // namespace haylen::ui

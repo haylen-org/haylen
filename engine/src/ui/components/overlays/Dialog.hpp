@@ -11,11 +11,12 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
+#include "ui/Scrollbar.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {
 
-// A modal window over the whole screen with a title, a message, optional content and answer buttons, over a backdrop that fades in and out with it. It takes no room in the layout that holds it.
+// A modal window over the whole screen with a title, a message, optional content and answer buttons, over a backdrop that fades in and out with it. It takes no room in the layout that holds it, and content taller than the screen scrolls beside a scroll bar at the edge of the dialog.
 class Dialog final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -45,9 +46,10 @@ class Dialog final : public Component {
     [[nodiscard]] static bool isWaiting();
     static void drawBackdrop(Context& context, const math::Rect& display);
     static void close();
+    [[nodiscard]] float getBodyHeight(Context& context, float width);
     [[nodiscard]] float getContentHeight(Context& context, float width);
-    void drawContent(Context& context, const math::Rect& inner);
-    void drawBody(Context& context);
+    void drawContent(Context& context, const math::Rect& frame, const math::Insets& padding);
+    void drawBody(Context& context, const math::Rect& body, const math::Rect& inner);
 
     bool open = false;
     bool dismissible = true;
@@ -55,6 +57,7 @@ class Dialog final : public Component {
     TextValue title;
     TextValue message;
     std::vector<Answer> buttons;
+    Scrollbar scrollbar;
 };
 
 } // namespace haylen::ui

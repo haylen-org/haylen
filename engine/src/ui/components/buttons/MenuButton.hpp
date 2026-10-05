@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "haylen/math/Rect.hpp"
+#include "ui/Popup.hpp"
 #include "ui/components/ChoiceItem.hpp"
 #include "ui/components/buttons/ButtonBase.hpp"
 
@@ -21,6 +22,7 @@ class MenuButton final : public ButtonBase {
 
   private:
     std::vector<ChoiceItem> items;
+    Popup popup;
 };
 
 } // namespace haylen::ui

@@ -13,6 +13,7 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/Scrollbar.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/TextSession.hpp"
 #include "ui/Typography.hpp"
@@ -133,21 +134,31 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const bool multiline = options.input.keyboard == platform::TextInput::Keyboard::Multiline;
     TextSession& session = context.getBackend().getTextSession();
     session.addField(id, bounds, options.input);
-    Surfaces::draw(context, focused ? Theme::Surface::FieldFocused : Theme::Surface::Field, bounds, context.getColor(Theme::Color::Raised), context.getColor(focused ? Theme::Color::Focus : Theme::Color::Border));
+    const Theme::Surface surface = focused ? Theme::Surface::FieldFocused : Theme::Surface::Field;
+    Surfaces::draw(context, surface, bounds, context.getColor(Theme::Color::Raised), context.getColor(focused ? Theme::Color::Focus : Theme::Color::Border));
 
-    const math::Rect padded = bounds.inset(Surfaces::getPadding(context, focused ? Theme::Surface::FieldFocused : Theme::Surface::Field));
-    const math::Rect inner = context.mirror(math::Rect::fromMinMax({padded.x + options.reserveStart, padded.y}, {std::max(padded.x + options.reserveStart, padded.getRight() - options.reserveEnd), padded.getBottom()}), padded);
-    const float paddingX = context.getMetric(Theme::Metric::ControlPaddingX) * 0.5F;
-    const float fontSize = context.getFontSize(Theme::Font::Body);
-    const float paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (inner.height - fontSize) * 0.5F);
-    const math::Rect area = multiline ? inner.inset({paddingX, paddingY, paddingX, paddingY}) : inner.inset({paddingX, 0.0F, paddingX, 0.0F});
-    const bool rightToLeft = context.isRightToLeft();
-    const text::Style style = Typography::getStyle(context, Theme::Font::Body);
-
-    // The scroll of the text lives with the field, and the caret and the selection it had start the frame.
+    // The scroll of the text lives with the field, and so does whether its text was taller than its area in the last frame, which shows the scroll bar of an editor of many lines from the frame after the text grew, so the area never changes while the text lays out.
     ImGuiStorage& storage = *ImGui::GetStateStorage();
     const ImGuiID scrollX = ImGui::GetID("##scrollX");
     const ImGuiID scrollY = ImGui::GetID("##scrollY");
+    const ImGuiID overflowed = ImGui::GetID("##overflowed");
+    const bool barShown = multiline && options.scrollbar != nullptr && storage.GetBool(overflowed);
+
+    // The bar keeps inside the frame of the field, and the text and the ImGui field leave its lane.
+    const bool rightToLeft = context.isRightToLeft();
+    const math::Insets frame = Surfaces::getFrame(context, surface);
+    const math::Rect barArea = bounds.inset(frame);
+    const math::Rect padded = bounds.inset(Surfaces::getPadding(context, surface));
+    const math::Rect whole = context.mirror(math::Rect::fromMinMax({padded.x + options.reserveStart, padded.y}, {std::max(padded.x + options.reserveStart, padded.getRight() - options.reserveEnd), padded.getBottom()}), padded);
+    const math::Rect inner = barShown ? Scrollbar::getContentBox(context, barArea, whole, false) : whole;
+    const float paddingX = context.getMetric(Theme::Metric::ControlPaddingX) * 0.5F;
+    const float fontSize = context.getFontSize(Theme::Font::Body);
+    const float paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (inner.height - fontSize) * 0.5F);
+    const math::Rect spaced = multiline ? whole.inset({paddingX, paddingY, paddingX, paddingY}) : whole.inset({paddingX, 0.0F, paddingX, 0.0F});
+    const math::Rect area = barShown ? Scrollbar::getContentBox(context, barArea, spaced, false) : spaced;
+    const text::Style style = Typography::getStyle(context, Theme::Font::Body);
+
+    // The caret and the selection the field had start the frame.
     Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = area, .scroll = {storage.GetFloat(scrollX), storage.GetFloat(scrollY)}, .rightToLeft = rightToLeft, .password = password, .multiline = multiline};
     // ImGui leaves the start of the last selection behind when the caret moves without selecting, so only a selection anchors a shift press.
     if (const ImGuiInputTextState* state = ImGui::GetInputTextState(id); focused && state != nullptr) {
@@ -164,6 +175,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     }
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {paddingX, paddingY});
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0F);
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0F);
     if (options.focus) {
         ImGui::SetKeyboardFocusHere();
     }
@@ -186,7 +198,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         submitted = submitted || action == platform::TextInput::Action::Submit;
         ImGui::ClearActiveID();
     }
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
     ImGui::PopStyleColor(6);
     ImGui::PopFont();
     limit(value, options.input.maxLength);
@@ -195,17 +207,27 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const TextFieldLayout field = layOut(context, value, style, password);
     const ImGuiInputTextState* state = ImGui::GetActiveID() == id ? ImGui::GetInputTextState(id) : nullptr;
     const auto toPosition = [&value](int bytes) { return core::Utf8::countCodePoints(std::string_view(value).substr(0, static_cast<std::size_t>(std::clamp(bytes, 0, static_cast<int>(value.size()))))); };
+    const float overflow = std::max(0.0F, field.getLayout().size.y - area.height);
     math::Vec2 scroll = editing.scroll;
-    if (multiline && ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(inner.getMin()), ImGuiConverter::toImVec2(inner.getMax()))) {
-        scroll.y = std::clamp(scroll.y - ImGui::GetIO().MouseWheel * fontSize * 3.0F, 0.0F, std::max(0.0F, field.getLayout().size.y - area.height));
+    if (multiline && ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()))) {
+        scroll.y = std::clamp(scroll.y - ImGui::GetIO().MouseWheel * fontSize * 3.0F, 0.0F, overflow);
     }
     if (state != nullptr) {
         follow(scroll, field, field.getCaret(toPosition(state->GetCursorPos())).translated(getOrigin(field, area, scroll, rightToLeft, multiline)), area, rightToLeft, multiline);
     } else if (!multiline) {
         scroll = {};
     }
+    if (barShown) {
+        const float radius = Surfaces::getInnerRadius(context.getMetric(Theme::Metric::ControlRadius), rightToLeft ? frame.left : frame.right);
+        if (const std::optional<double> offset = options.scrollbar->interact(context, barArea, false, false, scroll.y, overflow, area.height, radius)) {
+            scroll.y = static_cast<float>(*offset);
+        }
+    }
     storage.SetFloat(scrollX, scroll.x);
     storage.SetFloat(scrollY, scroll.y);
+    if (multiline) {
+        storage.SetBool(overflowed, overflow > 0.0F);
+    }
     const math::Vec2 origin = getOrigin(field, area, scroll, rightToLeft, multiline);
 
     ImDrawList& list = *ImGui::GetWindowDrawList();
@@ -244,6 +266,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         }
     }
     list.PopClipRect();
+    if (barShown) {
+        options.scrollbar->draw(context, 1.0F);
+    }
 
     context.getFocus().addTarget(id, bounds);
     Widgets::drawFocusRing(context, bounds, id, context.getMetric(Theme::Metric::ControlRadius));

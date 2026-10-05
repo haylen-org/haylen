@@ -8,7 +8,6 @@
 
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/components/PopupList.hpp"
 
 namespace haylen::ui {
@@ -40,9 +39,9 @@ void ContextMenu::render(Context& context, const math::Rect& bounds) {
 
     if (const std::optional<math::Vec2> opening = findOpening(context, bounds)) {
         ImGui::OpenPopup("##context");
-        ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(*opening), ImGuiCond_Always, {context.isRightToLeft() ? 1.0F : 0.0F, 0.0F});
+        openedAt = *opening;
     }
-    if (const std::optional<std::string> picked = PopupList::draw(context, "##context", items, {}, 0.0F)) {
+    if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##context", items, {}, {openedAt.x, openedAt.y, 0.0F, 0.0F}, 0.0F)) {
         context.emit(*this, "select", {{"item", *picked}});
     }
 }

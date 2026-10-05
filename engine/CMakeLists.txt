@@ -547,6 +547,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/LuaPageSource.cpp
   src/ui/MountLink.cpp
   src/ui/NavigationInput.cpp
+  src/ui/Popup.cpp
   src/ui/PropertyReader.cpp
   src/ui/Scaling.cpp
   src/ui/Scrollbar.cpp

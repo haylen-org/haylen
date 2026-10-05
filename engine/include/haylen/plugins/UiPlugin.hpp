@@ -186,6 +186,9 @@ class UiPlugin final : public Plugin {
     text::Direction direction = text::Direction::LeftToRight;
     bool safeAreaVisible = false;
     ui::Scaling scaling;
+
+    // The points per UI unit the ImGui style took its scroll bar gap at, so a change of scale styles it again.
+    float styledPoints = 0.0F;
     bool drawBegun = false;
     core::Engine* owner = nullptr;
 };

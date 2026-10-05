@@ -12,7 +12,6 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/Component.hpp"
-#include "ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
 
@@ -42,7 +41,7 @@ template <typename Value, typename FromStyle, typename FromTheme> Value Context:
     return fromTheme(*layers.front().theme);
 }
 
-// A node that draws also pushes the colors and sizes of the scrollbars and the opacity of disabled nodes into the ImGui style, which ImGui draws with.
+// A node that draws also pushes the opacity of disabled nodes into the ImGui style, which ImGui draws with.
 void Context::pushStyle(std::string_view themeName, const Style* style, bool drawing) {
     const Theme* theme = nullptr;
     if (!themeName.empty()) {
@@ -55,11 +54,6 @@ void Context::pushStyle(std::string_view themeName, const Style* style, bool dra
     if (!drawing) {
         return;
     }
-    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, ImGuiConverter::toImVec4(getColor(Theme::Color::Scrollbar)));
-    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, ImGuiConverter::toImVec4(getColor(Theme::Color::ScrollbarHover)));
-    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, ImGuiConverter::toImVec4(getColor(Theme::Color::ScrollbarHover)));
-    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, getMetric(Theme::Metric::ScrollbarSize));
-    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, getMetric(Theme::Metric::ScrollbarSize) * 0.5F);
     ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, getMetric(Theme::Metric::DisabledOpacity));
 }
 
@@ -68,8 +62,7 @@ void Context::popStyle() {
         return;
     }
     if (layers.back().imgui) {
-        ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(3);
+        ImGui::PopStyleVar();
     }
     layers.pop_back();
 }

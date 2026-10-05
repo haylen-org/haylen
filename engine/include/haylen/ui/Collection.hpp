@@ -210,6 +210,9 @@ class Collection final : public Component {
     [[nodiscard]] float getGap(const Context& context) const;
     [[nodiscard]] float getPaddingStart() const noexcept;
     [[nodiscard]] float getPaddingEnd() const noexcept;
+
+    // Returns the room the cells give up across the axis to the lane of the scroll bar while it shows, the part of the lane that the padding on the side of the bar leaves.
+    [[nodiscard]] float getLaneReserve(const Context& context) const;
     [[nodiscard]] float getMainLength() const noexcept;
     [[nodiscard]] double getBase() const noexcept;
     [[nodiscard]] double getItemStart(std::size_t index) const;
@@ -283,6 +286,7 @@ class Collection final : public Component {
     bool stickToEnd = false;
     Snap snap = Snap::None;
     bool scrollbarShown = true;
+    bool laneReserved = false;
     float prefetch = 0.5F;
     int poolSize = 8;
     Selection selection = Selection::None;

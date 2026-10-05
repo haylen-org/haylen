@@ -860,12 +860,13 @@ int UiLua::setScale(lua_State* L) {
     return 0;
 }
 
-// Returns the factor `setScale` set and the design units one UI unit spans in the last frame, which the physical mode derives from the density of the screen.
+// Returns the factor `setScale` set, and the design units and the points of the screen one UI unit spans in the last frame, which the physical mode derives from the density of the screen.
 int UiLua::scale(lua_State* L) {
     plugins::UiPlugin& plugin = getPlugin(L);
     lua::Stack::push(L, plugin.getScaling().factor);
     lua::Stack::push(L, plugin.getBackend().getScale());
-    return 2;
+    lua::Stack::push(L, plugin.getBackend().getPointsPerUnit());
+    return 3;
 }
 
 int UiLua::setSafeAreaVisible(lua_State* L) {

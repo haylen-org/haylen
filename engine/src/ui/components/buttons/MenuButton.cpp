@@ -6,7 +6,6 @@
 #include <imgui.h>
 
 #include "haylen/ui/Context.hpp"
-#include "ui/Widgets.hpp"
 #include "ui/components/ChoiceItem.hpp"
 #include "ui/components/PopupList.hpp"
 
@@ -20,8 +19,7 @@ void MenuButton::render(Context& context, const math::Rect& bounds) {
     if (drawButton(context, bounds)) {
         ImGui::OpenPopup("##menu");
     }
-    Widgets::placePopup(context, bounds, 0.0F);
-    if (const std::optional<std::string> picked = PopupList::draw(context, "##menu", items, {}, bounds.width)) {
+    if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##menu", items, {}, bounds, bounds.width)) {
         context.emit(*this, "select", {{"item", *picked}});
     }
 }

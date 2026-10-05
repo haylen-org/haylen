@@ -778,20 +778,20 @@ TEST_F(UiLuaTest, PhysicalScaleKeepsControlsTheSameSize) {
         ui = require('haylen.ui')
         clicks = 0
         screen = ui.mount(ui.column{ui.button{id = 'play', text = 'Play', onClick = function() clicks = clicks + 1 end}}, {placement = 'screen'})
-        function describe() local factor, scale = ui.scale() return ui.scaleMode() .. ' ' .. factor .. ' ' .. scale .. ' ' .. screen:bounds('play').height end
+        function describe() local factor, scale, points = ui.scale() return ui.scaleMode() .. ' ' .. factor .. ' ' .. scale .. ' ' .. points .. ' ' .. screen:bounds('play').height end
     )");
     // clang-format on
     fixture.frames(2);
-    EXPECT_EQ(fixture.lua("return describe()"), "design 1.0 1.0 64.0");
+    EXPECT_EQ(fixture.lua("return describe()"), "design 1.0 1.0 1.0 64.0");
 
     // On a screen of one pixel per point and on one of two, the button keeps 48 points: 48 design units of one pixel, then 48 of two pixels.
     fixture.runLua("ui.setScaleMode('physical')");
     fixture.frames(2);
-    EXPECT_EQ(fixture.lua("return describe()"), "physical 1.0 0.75 48.0");
+    EXPECT_EQ(fixture.lua("return describe()"), "physical 1.0 0.75 0.75 48.0");
     fixture.host().setDpiScale(2.0F);
     fixture.host().resize({3840.0F, 2160.0F});
     fixture.frames(2);
-    EXPECT_EQ(fixture.lua("return describe()"), "physical 1.0 0.75 48.0");
+    EXPECT_EQ(fixture.lua("return describe()"), "physical 1.0 0.75 0.75 48.0");
     click("screen", "play");
     EXPECT_EQ(fixture.lua("return clicks"), "1");
 
@@ -799,10 +799,10 @@ TEST_F(UiLuaTest, PhysicalScaleKeepsControlsTheSameSize) {
     fixture.host().setDpiScale(3.0F);
     fixture.host().resize({1200.0F, 540.0F});
     fixture.frames(2);
-    EXPECT_EQ(fixture.lua("return describe()"), "physical 1.0 2.25 144.0");
+    EXPECT_EQ(fixture.lua("return describe()"), "physical 1.0 2.25 0.375 144.0");
     fixture.runLua("ui.setScaleMode('design') ui.setScale(1.5)");
     fixture.frames(2);
-    EXPECT_EQ(fixture.lua("return describe()"), "design 1.5 1.5 96.0");
+    EXPECT_EQ(fixture.lua("return describe()"), "design 1.5 1.5 0.25 96.0");
     click("screen", "play");
     EXPECT_EQ(fixture.lua("return clicks"), "2");
 

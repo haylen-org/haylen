@@ -171,7 +171,7 @@ TEST(ThemeTest, SyncsTheImGuiStyle) {
     ImGuiContext* context = ImGui::CreateContext();
     const Theme theme = Theme::light();
     ImGuiStyle style;
-    theme.applyTo(style);
+    theme.applyTo(style, 1.0F);
     const math::Color text = theme.getColor(Theme::Color::Text);
     EXPECT_EQ(style.Colors[ImGuiCol_Text].x, text.r);
     EXPECT_EQ(style.Colors[ImGuiCol_Text].w, text.a);
@@ -179,8 +179,17 @@ TEST(ThemeTest, SyncsTheImGuiStyle) {
     EXPECT_EQ(style.FontSizeBase, theme.getFont(Theme::Font::Body).size);
     EXPECT_EQ(style.WindowRounding, theme.getMetric(Theme::Metric::PanelRadius));
     EXPECT_EQ(style.DisabledAlpha, theme.getMetric(Theme::Metric::DisabledOpacity));
-    EXPECT_EQ(style.ScrollbarSize, theme.getMetric(Theme::Metric::ScrollbarSize));
     EXPECT_EQ(style.InputTextCursorSize, theme.getMetric(Theme::Metric::CaretWidth));
+
+    // ImGui pads the grab of a scroll bar by the gap on every side, and a scale that shrinks the gap below four points widens it.
+    const float size = theme.getMetric(Theme::Metric::ScrollbarSize);
+    const float gap = theme.getMetric(Theme::Metric::ScrollbarGap);
+    EXPECT_EQ(style.ScrollbarPadding, gap);
+    EXPECT_EQ(style.ScrollbarSize, size + gap * 2.0F);
+    EXPECT_EQ(style.ScrollbarRounding, size * 0.5F);
+    theme.applyTo(style, 0.25F);
+    EXPECT_EQ(style.ScrollbarPadding, 16.0F);
+    EXPECT_EQ(style.ScrollbarSize, size + 32.0F);
     ImGui::DestroyContext(context);
 }
 

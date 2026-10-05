@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 
 #include <imgui.h>
 
@@ -39,16 +40,20 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
     if (state.clicked) {
         ImGui::OpenPopup("##picker");
     }
-    Widgets::placePopup(context, bounds, 360.0F);
-    if (Widgets::beginPopup(context, "##picker", ImGuiWindowFlags_None, context.getMetric(Theme::Metric::PanelPadding))) {
+    if (!ImGui::IsPopupOpen("##picker")) {
+        return;
+    }
+    if (const std::optional<math::Rect> box = popup.begin(context, "##picker", ImGuiWindowFlags_None, context.getMetric(Theme::Metric::PanelPadding), {kPickerWidth, pickerHeight}, bounds, kPickerWidth)) {
         std::array<float, 4> channels{value.r, value.g, value.b, value.a};
         const ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | (alpha ? ImGuiColorEditFlags_AlphaBar : ImGuiColorEditFlags_NoAlpha);
-        ImGui::SetNextItemWidth(360.0F);
+        ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(box->getMin()));
+        ImGui::SetNextItemWidth(kPickerWidth);
         if (ImGui::ColorPicker4("##pick", channels.data(), flags)) {
             value = {channels[0], channels[1], channels[2], alpha ? channels[3] : 1.0F};
             context.emit(*this, "change", {{"value", value.toHex()}});
         }
-        ImGui::EndPopup();
+        pickerHeight = ImGui::GetItemRectSize().y;
+        popup.end(context);
     }
 }
 

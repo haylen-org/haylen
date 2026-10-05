@@ -8,6 +8,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
+#include "ui/Popup.hpp"
 #include "ui/components/ChoiceItem.hpp"
 
 namespace haylen::ui {
@@ -36,6 +37,8 @@ class ContextMenu final : public Component {
     std::vector<ChoiceItem> items;
     bool openRequested = false;
     bool pressHandled = false;
+    math::Vec2 openedAt;
+    Popup popup;
 };
 
 } // namespace haylen::ui

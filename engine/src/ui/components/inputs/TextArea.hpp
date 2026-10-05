@@ -4,6 +4,7 @@
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "ui/Scrollbar.hpp"
 #include "ui/components/inputs/TextEntry.hpp"
 
 namespace haylen::ui {
@@ -21,6 +22,7 @@ class TextArea final : public TextEntry {
 
   private:
     int rows = 4;
+    Scrollbar scrollbar;
 };
 
 } // namespace haylen::ui

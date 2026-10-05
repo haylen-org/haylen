@@ -430,13 +430,13 @@ ui.setScale(1.25)
 
 ### ui.scale()
 
-Returns the factor `ui.setScale` set and the design units one UI unit spans in the last frame, which the physical mode derives from the density of the screen.
+Returns the factor `ui.setScale` set, the design units one UI unit spans in the last frame, which the physical mode derives from the density of the screen, and the points of the screen one UI unit spans in the last frame.
 
 ```lua
 local ui = require('haylen.ui')
 
-local factor, scale = ui.scale()
-print('A control of 64 units spans ' .. 64 * scale .. ' design units.')
+local factor, scale, points = ui.scale()
+print('A control of 64 units spans ' .. 64 * scale .. ' design units and ' .. 64 * points .. ' points.')
 ```
 
 ### ui.setDirection(direction)
@@ -1312,11 +1312,11 @@ ui.mount(ui.stack{
 
 ### ui.scroll(properties)
 
-Shows one child in an area that scrolls up and down or sideways. The mouse wheel, the scrollbar and, on touch screens, dragging the content scroll it, and a drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. The focus scrolls to the focused control. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll, and a horizontal scroll needs a `width`.
+Shows one child in an area that scrolls up and down or sideways. The mouse wheel, the scroll bar and, on touch screens, dragging the content scroll it, and a drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. The focus scrolls to the focused control. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll, and a horizontal scroll needs a `width`. While the child is longer than the area, the [scroll bar](#scroll-bars) takes a lane of its own beside it, and a horizontal scroll adds that lane to its height.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `scrollbar` | boolean | `true` | Shows the scrollbar. |
+| `scrollbar` | boolean | `true` | Shows the scroll bar while the child is longer than the area. Without it the child takes the whole area. |
 | `axis` | string | `'vertical'` | Either `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, also with the mouse wheel. |
 | `snap` | boolean | `false` | Settles, once the player lets go, on the start of the item of the child nearest to the scrolled position, such as a card of a row. |
 
@@ -1861,7 +1861,7 @@ ui.mount(ui.radioGroup{
 
 ### ui.combo(properties)
 
-A field that shows the selected item and opens a list of the others. Picking another item reports `change` with the item id as `value`. It can take the focus.
+A field that shows the selected item and opens a list of the others. Picking another item reports `change` with the item id as `value`. It can take the focus. The list opens below the field, or above it when the room below is too short for it and the room above is larger, and it stays inside the screen, where a list taller than its room scrolls beside a [scroll bar](#scroll-bars). The menus of `menuButton` and `contextMenu` and the popups of `popover` and `colorField` open and scroll the same way.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1958,7 +1958,7 @@ end})
 
 ### ui.textArea(properties)
 
-A text entry of several lines, where Enter, and the return key of the on-screen keyboard, starts a new line. It takes the properties of `textField` except `keyboard`, plus `rows`, reports `change` and can take the focus. It never reports `submit`, and it shows its `placeholder` while it is empty.
+A text entry of several lines, where Enter, and the return key of the on-screen keyboard, starts a new line. It takes the properties of `textField` except `keyboard`, plus `rows`, reports `change` and can take the focus. It never reports `submit`, and it shows its `placeholder` while it is empty. Text taller than the field scrolls with the wheel, with the caret and with a [scroll bar](#scroll-bars) inside the border of the field, which shows from the frame after the text grew taller.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2427,7 +2427,7 @@ end})
 
 Shows any number of items of several types in a vertical or horizontal list or in a grid that scrolls along one axis. It builds cells from the templates of its types, binds them to the items in view and reuses them as the player scrolls, so its cost follows the visible items, not the item count, and a list of a hundred thousand items costs about what a list of a hundred does. The app gives it its items through the [`UiCollection`](#uicollection) that [`gui:collection(id)`](#guicollectionid) returns, as a Lua list with `setItems` or in pages with `setPages`. Its one child, such as an `emptyState`, shows while it has no items. The [long lists guide](../ui.md#long-lists) explains how it works and what it costs.
 
-A vertical collection is as long as its content within its size bounds, like `scroll`, so it needs a `height`, a `maxHeight` or `grow` to scroll, and it fills the width it gets. A horizontal collection needs a `width` or `grow` along a row, and it is as tall as its `height`, or as the tallest cell it has measured, which never shrinks while it lives. The wheel scrolls the collection under the pointer, a horizontal one with the vertical wheel too, a finger drags it along its axis and flings it when it lets go, past its ends with resistance, the scrollbar on its end edge drags and pages it, and the focus scrolls the item that takes it into view. Mouse dragging of the content stays off, as in the lists of desktop platforms.
+A vertical collection is as long as its content within its size bounds, like `scroll`, so it needs a `height`, a `maxHeight` or `grow` to scroll, and it fills the width it gets. A horizontal collection needs a `width` or `grow` along a row, and it is as tall as its `height`, or as the tallest cell it has measured, which never shrinks while it lives. The wheel scrolls the collection under the pointer, a horizontal one with the vertical wheel too, a finger drags it along its axis and flings it when it lets go, past its ends with resistance, the [scroll bar](#scroll-bars) in its lane on the end edge drags and pages it, and the focus scrolls the item that takes it into view. The cells leave the lane from the frame after the items grew longer than the view, and a horizontal collection adds the lane to its height. Mouse dragging of the content stays off, as in the lists of desktop platforms.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2442,7 +2442,7 @@ A vertical collection is as long as its content within its size bounds, like `sc
 | `placeholder` | string | none | The type that shows the items of pages that did not load yet. Without it those items take their estimated length and draw nothing. |
 | `stickToEnd` | boolean | `false` | Lays short content against the end edge, and keeps the view at the end while items arrive when it was at the end, as a chat does. |
 | `snap` | string | `'none'` | Once the content rests, `'item'` settles on the start of the nearest item, `'center'` centers the nearest item, and `'page'` settles on whole views. |
-| `scrollbar` | boolean | `true` | Shows the scrollbar while the content is longer than the view. It fades while the content rests after touch input. |
+| `scrollbar` | boolean | `true` | Shows the scroll bar while the content is longer than the view. It fades while the content rests after touch input, and its lane stays. |
 | `prefetch` | number from 0 to 4 | `0.5` | Views bound ahead in the direction of scrolling, so items show bound when they arrive. |
 | `poolSize` | integer from 0 to 256 | `8` | Detached cells each type keeps for reuse between frames. |
 | `selection` | string | `'none'` | The values `'single'` and `'multiple'` let presses select items. |
@@ -2725,7 +2725,7 @@ ui.mount(ui.settingsForm{
 
 ### ui.dialog(properties)
 
-A modal window over the whole screen with a title, a message, optional children and answer buttons, over a backdrop in the theme `overlay` color that dims everything behind it. The dialog and its backdrop fade in together when it opens and fade out together when it closes, over the theme `transitionDuration`, and a closing dialog takes no more answers. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`. A dialog stays inside the screen, and its title, message and children scroll above the buttons when they are taller than it. One dialog shows at a time, so a dialog that opens while another one shows waits until that one closes. A dialog closes when its node stops drawing, because it, a node around it or its GUI was hidden, and shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
+A modal window over the whole screen with a title, a message, optional children and answer buttons, over a backdrop in the theme `overlay` color that dims everything behind it. The dialog and its backdrop fade in together when it opens and fade out together when it closes, over the theme `transitionDuration`, and a closing dialog takes no more answers. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`. A dialog stays inside the screen, and its title, message and children scroll above the buttons when they are taller than it, beside a [scroll bar](#scroll-bars) at the edge of the dialog, whose padding holds its lane. One dialog shows at a time, so a dialog that opens while another one shows waits until that one closes. A dialog closes when its node stops drawing, because it, a node around it or its GUI was hidden, and shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2931,6 +2931,28 @@ scene.push({
 })
 ```
 
+## Scroll bars
+
+Every area that scrolls, `scroll`, `collection`, the text of `textArea`, the popups of `combo`, `menuButton`, `contextMenu`, `popover` and `colorField`, the body of `dialog` and the windows of [`haylen.imgui`](imgui.md), keeps its scroll bar in a lane of its own along its end edge: the right edge, or the left one in a right-to-left interface, for content that scrolls up and down, and the bottom edge for content that scrolls sideways. The bar never covers the content and never touches it.
+
+| Metric | Default | Part of the lane |
+| --- | --- | --- |
+| `scrollbarGap` | `8` | The space between the content and the bar. The engine never lets it span fewer than 4 points of the screen, so it grows in UI units on a small window, with a small `ui.setScale` factor or in a small physical scale. |
+| `scrollbarSize` | `10` | The thickness of the bar. |
+| `scrollbarInset` | `4` | The space between the bar and the edge of its area. The ends of the bar keep it from the other edges and from the rounded corners of dialogs, popups and text areas. |
+
+The lane takes room from the content only while the content is longer than its area, and padding on the side of the bar counts toward it, so the content of a dialog keeps its width and a popup grows by the part of the lane its padding leaves. The layout never changes back and forth as the bar comes and goes. The colors `scrollbar` and `scrollbarHover` paint the thumb, and the [surfaces](#theme-surfaces) `scrollbar`, `scrollbarHover` and `scrollbarTrack` paint it and its track with images in the same place. A `style` changes all of them for one node and the nodes inside it.
+
+```lua
+local ui = require('haylen.ui')
+
+local lines = {}
+for index = 1, 60 do
+    lines[index] = ui.label{text = 'Entry ' .. index}
+end
+ui.mount(ui.scroll{height = 400, style = {metrics = {scrollbarGap = 12, scrollbarSize = 14}}, ui.column{children = lines}})
+```
+
 ## Themes
 
 A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark` and `light`, and an app adds its own with a JSON file in the package assets loaded by `ui.loadTheme`, or with the same definition as a Lua table passed to `ui.addTheme`. A theme file starts from a base theme and lists only what it changes. The active theme also styles [`haylen.imgui`](imgui.md) windows.
@@ -3015,9 +3037,9 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `caret` | `#FF7AA2FF` | `#FF3A66E0` | The text cursor of fields. |
 | `border` | `#FF3A4058` | `#FFD6D9E4` | Borders and dividers. |
 | `borderStrong` | `#FF525A7A` | `#FFB3B8CC` | Strong borders, hovered fields and empty slider tracks. |
-| `scrollbar` | `#FF3A4058` | `#FFC9CDDB` | Scrollbar grab. |
-| `scrollbarHover` | `#FF525A7A` | `#FFA9AEC2` | Hovered scrollbar grab. |
-| `track` | `#FF3A4058` | `#FFCDD1DD` | Track of a switch that is off. |
+| `scrollbar` | `#FF3A4058` | `#FFC9CDDB` | Thumb of scroll bars. |
+| `scrollbarHover` | `#FF525A7A` | `#FFA9AEC2` | Thumb of hovered or held scroll bars. |
+| `track` | `#FF3A4058` | `#FFCDD1DD` | Track of a switch that is off, and the color a `scrollbarTrack` image with `colorize` takes. |
 | `knob` | `#FFFFFFFF` | `#FFFFFFFF` | Knob of switches. |
 | `text` | `#FFE8EAF2` | `#FF1B1E2B` | Main text. |
 | `textMuted` | `#FFA3A8BF` | `#FF5C6380` | Captions, placeholders, help lines and inactive tabs. |
@@ -3062,7 +3084,9 @@ Both built-in themes share these metrics, in design units.
 | `panelPadding` | `28` | Default padding of cards, panels and dialogs and the margin of toasts. |
 | `borderWidth` | `2` | Width of borders and dividers. |
 | `focusWidth` | `3` | Thickness of the focus ring around the navigation target and of the line under the selected tab. |
-| `scrollbarSize` | `16` | Width of scrollbars. |
+| `scrollbarSize` | `10` | Thickness of [scroll bars](#scroll-bars). |
+| `scrollbarGap` | `8` | Space between scrolling content and its scroll bar, which never spans fewer than 4 points of the screen. |
+| `scrollbarInset` | `4` | Space between a scroll bar and the edges and rounded corners of its area. |
 | `iconSize` | `36` | Size of button icons, row pictures and icons without a size, and the indent of tree levels. |
 | `choiceSize` | `36` | Size of check boxes and radio marks. |
 | `sliderTrackHeight` | `10` | Height of the slider track. |
@@ -3148,6 +3172,8 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `window` | Windows. |
 | `slot`, `slotHighlighted` | Slots of slot grids, and the selected or hovered slot. |
 | `cell`, `cellHover`, `cellPressed`, `cellSelected` | The backgrounds of interactive collection cells: always, while hovered, while pressed and while selected. Without images the state surfaces paint the `hover`, `pressed` and `selection` colors, and `cell` paints nothing. |
+| `scrollbar`, `scrollbarHover` | The thumb of [scroll bars](#scroll-bars), and the thumb while hovered or held, which falls back to `scrollbar`. |
+| `scrollbarTrack` | The track the thumb of a scroll bar runs along, which only an image draws. |
 
 A surface image is an object with these keys.
 

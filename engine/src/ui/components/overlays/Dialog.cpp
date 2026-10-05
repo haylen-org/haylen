@@ -1,6 +1,7 @@
 #include "ui/components/overlays/Dialog.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -81,7 +82,7 @@ void Dialog::render(Context& context, const math::Rect&) {
     const float radius = context.getMetric(Theme::Metric::PanelRadius);
     Surfaces::drawShadow(context, frame, radius);
     Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), radius);
-    drawContent(context, frame.inset(padding));
+    drawContent(context, frame, padding);
 
     if (open && dismissible && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
         open = false;
@@ -158,7 +159,7 @@ math::Insets Dialog::getContentPadding(Context& context) {
     return {image.left + panel, image.top + panel, image.right + panel, image.bottom + panel};
 }
 
-float Dialog::getContentHeight(Context& context, float width) {
+float Dialog::getBodyHeight(Context& context, float width) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float height = 0.0F;
     const auto add = [&](float part) { height += part + (height > 0.0F ? spacing : 0.0F); };
@@ -171,22 +172,29 @@ float Dialog::getContentHeight(Context& context, float width) {
     for (Component* child : getLayoutChildren()) {
         add(child->measure(context, width).y);
     }
-    if (!buttons.empty()) {
-        add(context.getMetric(Theme::Metric::ControlHeight));
-    }
     return height;
 }
 
-void Dialog::drawContent(Context& context, const math::Rect& inner) {
+float Dialog::getContentHeight(Context& context, float width) {
+    const float body = getBodyHeight(context, width);
+    if (buttons.empty()) {
+        return body;
+    }
+    return body + (body > 0.0F ? context.getMetric(Theme::Metric::ItemSpacing) : 0.0F) + context.getMetric(Theme::Metric::ControlHeight);
+}
+
+void Dialog::drawContent(Context& context, const math::Rect& frame, const math::Insets& padding) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     const float height = context.getMetric(Theme::Metric::ControlHeight);
+    const math::Rect inner = frame.inset(padding);
 
-    // The title, the message and the children scroll inside the room the buttons leave.
-    const math::Rect body{inner.x, inner.y, inner.width, std::max(0.0F, inner.height - (buttons.empty() ? 0.0F : height + spacing))};
+    // The title, the message and the children scroll in the room the buttons leave, across the whole width inside the frame, so the scroll bar keeps to the edge of the dialog while the content keeps its padding.
+    const math::Insets edge = Surfaces::getFrame(context, Theme::Surface::Dialog);
+    const math::Rect body = math::Rect::fromMinMax({frame.x + edge.left, inner.y}, {frame.getRight() - edge.right, std::max(inner.y, inner.getBottom() - (buttons.empty() ? 0.0F : height + spacing))});
     if (!body.isEmpty()) {
         ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(body.getMin()));
-        if (ImGui::BeginChild("##body", ImGuiConverter::toImVec2(body.getSize()), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs)) {
-            drawBody(context);
+        if (ImGui::BeginChild("##body", ImGuiConverter::toImVec2(body.getSize()), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar)) {
+            drawBody(context, body, inner);
         }
         ImGui::EndChild();
     }
@@ -211,28 +219,44 @@ void Dialog::drawContent(Context& context, const math::Rect& inner) {
     }
 }
 
-void Dialog::drawBody(Context& context) {
+// The content keeps the padding of the dialog, and while it is taller than the body it gives up the part of the lane of the scroll bar that its padding leaves, and draws only outside the lane.
+void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect& inner) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
-    const ImVec2 origin = ImGui::GetCursorScreenPos();
-    const float width = ImGui::GetContentRegionAvail().x;
-    float y = origin.y;
+    const math::Rect padded{inner.x, body.y, inner.width, body.height};
+    const bool overflowing = getBodyHeight(context, inner.width) > body.height;
+    const math::Rect column = overflowing ? Scrollbar::getContentBox(context, body, padded, false) : padded;
+    if (overflowing) {
+        const double maximum = std::max(0.0F, getBodyHeight(context, column.width) - body.height);
+        if (const std::optional<double> offset = scrollbar.interact(context, body, false, false, ImGui::GetScrollY(), maximum, body.height)) {
+            ImGui::SetScrollY(static_cast<float>(*offset));
+        }
+    }
+
+    const math::Rect clip = overflowing ? Scrollbar::getContentBox(context, body, body, false) : body;
+    ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+    const ImVec2 start = ImGui::GetCursorScreenPos();
+    float y = start.y;
     if (const std::string titleText = context.getText(title); !titleText.empty()) {
-        const float height = Typography::measureParagraph(context, Theme::Font::Heading, titleText, width).y;
-        Typography::drawParagraph(context, Theme::Font::Heading, {origin.x, y, width, height}, context.getColor(Theme::Color::Text), titleText, Alignment::Start);
+        const float height = Typography::measureParagraph(context, Theme::Font::Heading, titleText, column.width).y;
+        Typography::drawParagraph(context, Theme::Font::Heading, {column.x, y, column.width, height}, context.getColor(Theme::Color::Text), titleText, Alignment::Start);
         y += height + spacing;
     }
     if (const std::string messageText = context.getText(message); !messageText.empty()) {
-        const float height = Typography::measureParagraph(context, Theme::Font::Body, messageText, width).y;
-        Typography::drawParagraph(context, Theme::Font::Body, {origin.x, y, width, height}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Start);
+        const float height = Typography::measureParagraph(context, Theme::Font::Body, messageText, column.width).y;
+        Typography::drawParagraph(context, Theme::Font::Body, {column.x, y, column.width, height}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Start);
         y += height + spacing;
     }
     for (Component* child : getLayoutChildren()) {
-        const math::Vec2 size = child->measure(context, width);
-        child->draw(context, {origin.x, y, width, size.y});
+        const math::Vec2 size = child->measure(context, column.width);
+        child->draw(context, {column.x, y, column.width, size.y});
         y += size.y + spacing;
     }
-    ImGui::SetCursorScreenPos(origin);
-    ImGui::Dummy({width, std::max(0.0F, y - spacing - origin.y)});
+    ImGui::PopClipRect();
+    ImGui::SetCursorScreenPos(start);
+    ImGui::Dummy({body.width, std::max(0.0F, y - spacing - start.y)});
+    if (overflowing) {
+        scrollbar.draw(context, 1.0F);
+    }
 }
 
 } // namespace haylen::ui

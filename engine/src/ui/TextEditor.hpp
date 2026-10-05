@@ -16,6 +16,7 @@
 namespace haylen::ui {
 
 class Context;
+class Scrollbar;
 class TextSession;
 
 // Draws a themed text editor of one or many lines over Dear ImGui text input, with its own surface and focus ring. ImGui keeps the text, the undo history and the keys that edit it, while the editor draws the text shaped and ordered for display, its selection and its caret, and places the caret by the shaped text when the pointer or the arrow keys move it. The focused editor edits through the text session of the backend, so the native field of the platform types into it.
@@ -27,6 +28,9 @@ class TextEditor final {
         bool focus = false;
         float reserveStart = 0.0F;
         float reserveEnd = 0.0F;
+
+        // The scroll bar of an editor of many lines, which shows while its text is taller than its area.
+        Scrollbar* scrollbar = nullptr;
     };
 
     struct Result {

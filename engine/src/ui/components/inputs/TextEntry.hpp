@@ -11,6 +11,8 @@
 
 namespace haylen::ui {
 
+class Scrollbar;
+
 // The value, placeholder, length limit and keyboard options every text entry shares. The value the player types stays in the component, so a later patch of other properties keeps it.
 class TextEntry : public Component {
   protected:
@@ -25,8 +27,8 @@ class TextEntry : public Component {
         values["value"] = value;
     }
 
-    // Draws the editor with the keyboard of the entry and space kept free for icons on either side.
-    void drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart = 0.0F, float reserveEnd = 0.0F);
+    // Draws the editor with the keyboard of the entry, space kept free for icons on either side and the scroll bar of an entry of many lines.
+    void drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart = 0.0F, float reserveEnd = 0.0F, Scrollbar* scrollbar = nullptr);
 
     std::string value;
 

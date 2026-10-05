@@ -10,7 +10,7 @@ local imgui = require('haylen.imgui')
 
 Every call must happen while a frame is running, which covers the `update`, `fixedUpdate`, `render` and `renderUi` callbacks of scenes, timer and tween callbacks and [`haylen.ui`](ui.md) handlers. A call anywhere else, such as at the top level of `source/main.lua` or in a callback of [`haylen.platform`](platform.md), raises `The module "haylen.imgui" can only be used while a frame is running.`. The `renderUi` callback of a scene is the usual place.
 
-Positions and sizes are design units, with the origin at the top left of the visible area. Windows are drawn over the app and use the colors, metrics and body font of the active [`haylen.ui`](ui.md) theme. While the pointer is over a window, `ui.usingPointer()` returns `true`.
+Positions and sizes are design units, with the origin at the top left of the visible area. Windows are drawn over the app and use the colors, metrics and body font of the active [`haylen.ui`](ui.md) theme, and their scroll bars keep the [gap](ui.md#scroll-bars) of the theme from their content. While the pointer is over a window, `ui.usingPointer()` returns `true`.
 
 Widgets are identified by their label within the current window. Text after `##` in a label is part of the identity but is not shown, so `'Delete##slot1'` and `'Delete##slot2'` are two buttons that both read `Delete`. The function `imgui.pushId` scopes the identities of the widgets of a loop.
 

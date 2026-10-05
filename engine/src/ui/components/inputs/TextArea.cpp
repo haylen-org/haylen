@@ -17,7 +17,7 @@ math::Vec2 TextArea::measureContent(Context& context, float availableWidth) {
 }
 
 void TextArea::render(Context& context, const math::Rect& bounds) {
-    drawEntry(context, bounds, platform::TextInput::Keyboard::Multiline);
+    drawEntry(context, bounds, platform::TextInput::Keyboard::Multiline, 0.0F, 0.0F, &scrollbar);
 }
 
 } // namespace haylen::ui

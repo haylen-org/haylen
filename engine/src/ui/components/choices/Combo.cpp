@@ -51,8 +51,7 @@ void Combo::render(Context& context, const math::Rect& bounds) {
     if (state.clicked) {
         ImGui::OpenPopup("##list");
     }
-    Widgets::placePopup(context, bounds, bounds.width);
-    if (const std::optional<std::string> picked = PopupList::draw(context, "##list", items, selected, bounds.width); picked && *picked != selected) {
+    if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##list", items, selected, bounds, bounds.width); picked && *picked != selected) {
         selected = *picked;
         context.emit(*this, "change", {{"value", selected}});
     }

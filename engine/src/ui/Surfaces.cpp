@@ -98,6 +98,11 @@ math::Insets Surfaces::getPadding(Context& context, Theme::Surface role) {
     return image != nullptr ? image->padding : math::Insets{};
 }
 
+math::Insets Surfaces::getFrame(Context& context, Theme::Surface role) {
+    const Theme::Image* image = context.getSurface(role);
+    return image != nullptr ? image->padding : math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth));
+}
+
 void Surfaces::drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint, math::Rect source) {
     if (!texture.isValid()) {
         return;

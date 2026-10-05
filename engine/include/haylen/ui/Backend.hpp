@@ -90,6 +90,11 @@ class Backend final {
         scale = value;
     }
 
+    // The points of the screen one UI unit spans in the current frame, from the scale and the density of the screen.
+    [[nodiscard]] float getPointsPerUnit() const noexcept {
+        return pointsPerUnit;
+    }
+
     // Converts between design coordinates and UI coordinates, whose origin is the top left of the visible area.
     [[nodiscard]] math::Vec2 toUi(math::Vec2 designPoint) const noexcept {
         return (designPoint - origin) / scale;
@@ -211,6 +216,7 @@ class Backend final {
     ImTextureID nextAtlasTexture = 1;
     math::Vec2 origin;
     float scale = 1.0F;
+    float pointsPerUnit = 1.0F;
     math::Rect safeRect;
     std::vector<math::Rect> blocked;
     std::vector<math::Rect> blockedPrevious;

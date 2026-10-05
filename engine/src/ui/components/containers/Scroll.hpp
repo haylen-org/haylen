@@ -7,10 +7,11 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
+#include "ui/Scrollbar.hpp"
 
 namespace haylen::ui {
 
-// Shows one child in an area that scrolls up and down or sideways. The wheel, the scrollbar and a finger dragging the content scroll it, the focus scrolls to the focused control, and with snapping it settles on the start of the nearest item of its child.
+// Shows one child in an area that scrolls up and down or sideways. The wheel, the scroll bar and a finger dragging the content scroll it, the focus scrolls to the focused control, and with snapping it settles on the start of the nearest item of its child. While the child is longer than the area, the bar takes a lane of its own beside it.
 class Scroll final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -33,11 +34,12 @@ class Scroll final : public Component {
     void followFinger();
     void settle(Context& context, float position, float limit);
 
-    bool scrollbar = true;
+    bool scrollbarShown = true;
     bool horizontal = false;
     bool snap = false;
     float idle = 0.0F;
     std::vector<float> points;
+    Scrollbar scrollbar;
 };
 
 } // namespace haylen::ui

@@ -6,6 +6,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
+#include "ui/Popup.hpp"
 
 namespace haylen::ui {
 
@@ -29,8 +30,14 @@ class ColorField final : public Component {
     }
 
   private:
+    static constexpr float kPickerWidth = 360.0F;
+
     math::Color value = math::Color::white();
     bool alpha = true;
+    Popup popup;
+
+    // ImGui lays the picker out as it draws it, so its popup takes the height the picker had in the last frame, which the hidden first frame of a popup measures.
+    float pickerHeight = 0.0F;
 };
 
 } // namespace haylen::ui

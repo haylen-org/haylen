@@ -8,6 +8,7 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
+#include "ui/Popup.hpp"
 #include "ui/components/ChoiceItem.hpp"
 
 namespace haylen::ui {
@@ -35,6 +36,7 @@ class Combo final : public Component {
     std::vector<ChoiceItem> items;
     std::string selected;
     TextValue placeholder;
+    Popup popup;
 };
 
 } // namespace haylen::ui

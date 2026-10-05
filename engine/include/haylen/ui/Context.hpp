@@ -99,7 +99,7 @@ class Context final {
         return layers.front().theme->getImageFilter();
     }
 
-    // A node with a theme, named as registered, or a style pushes it around its measuring and drawing, so it and every node inside it read its values. A node that draws also sets the ImGui style of the parts ImGui draws, such as scrollbars.
+    // A node with a theme, named as registered, or a style pushes it around its measuring and drawing, so it and every node inside it read its values. A node that draws also sets the ImGui style of the parts ImGui draws, such as the opacity of disabled items.
     void pushStyle(std::string_view themeName, const Style* style, bool drawing);
     void popStyle();
 

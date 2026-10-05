@@ -166,6 +166,7 @@ set(HAYLEN_TEST_SOURCES
   ui/RightToLeftTests.cpp
   ui/ScalingTests.cpp
   ui/SceneGuiTests.cpp
+  ui/ScrollbarTests.cpp
   ui/ScrollerTests.cpp
   ui/SizeCacheTests.cpp
   ui/TextInputTests.cpp

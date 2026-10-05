@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <string>
 
 #include <imgui.h>
@@ -14,7 +15,7 @@ namespace haylen::ui {
 
 void Scroll::readProperties(PropertyReader& reader) {
     std::string axis = horizontal ? "horizontal" : "vertical";
-    reader.read("scrollbar", scrollbar);
+    reader.read("scrollbar", scrollbarShown);
     reader.read("axis", axis);
     reader.read("snap", snap);
     if (axis != "vertical" && axis != "horizontal") {
@@ -23,13 +24,15 @@ void Scroll::readProperties(PropertyReader& reader) {
     horizontal = axis == "horizontal";
 }
 
+// A horizontal scroll adds the lane of its bar to its height while its child is wider than it, so the child keeps the height it measures.
 math::Vec2 Scroll::measureContent(Context& context, float availableWidth) {
     auto visible = getLayoutChildren();
     if (visible.empty()) {
         return {};
     }
     const math::Vec2 size = visible.front()->measure(context, horizontal ? CommonProperties::kUnbounded : availableWidth);
-    return {std::min(size.x, availableWidth), size.y};
+    const float lane = horizontal && scrollbarShown && size.x > availableWidth ? Scrollbar::getLane(context) : 0.0F;
+    return {std::min(size.x, availableWidth), size.y + lane};
 }
 
 void Scroll::render(Context& context, const math::Rect& bounds) {
@@ -37,28 +40,49 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
     if (bounds.isEmpty()) {
         return;
     }
-    ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(bounds.getMin()));
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs;
-    if (!scrollbar) {
-        flags |= ImGuiWindowFlags_NoScrollbar;
+    auto visible = getLayoutChildren();
+    Component* child = visible.empty() ? nullptr : visible.front();
+
+    // The bar takes its lane while the child at the whole width is longer than the area, so the content never moves back and forth as the bar comes and goes.
+    math::Vec2 size = child != nullptr ? child->measure(context, horizontal ? CommonProperties::kUnbounded : bounds.width) : math::Vec2{};
+    const bool overflowing = scrollbarShown && (horizontal ? size.x > bounds.width : size.y > bounds.height);
+    const math::Rect box = overflowing ? Scrollbar::getContentBox(context, bounds, bounds, horizontal) : bounds;
+    if (overflowing && !horizontal) {
+        size = child->measure(context, box.width);
     }
+
+    ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(bounds.getMin()));
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar;
     if (horizontal) {
         flags |= ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
     }
     if (ImGui::BeginChild("##scroll", ImGuiConverter::toImVec2(bounds.getSize()), ImGuiChildFlags_NavFlattened, flags)) {
+        // The bar takes the pointer in its lane before the content does.
+        if (overflowing) {
+            const float view = horizontal ? bounds.width : bounds.height;
+            const double maximum = std::max(0.0F, (horizontal ? size.x : size.y) - view);
+            const std::optional<double> offset = scrollbar.interact(context, bounds, horizontal, false, horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY(), maximum, view);
+            if (offset && horizontal) {
+                ImGui::SetScrollX(static_cast<float>(*offset));
+            } else if (offset) {
+                ImGui::SetScrollY(static_cast<float>(*offset));
+            }
+        }
+
+        // The child lays out in the box the lane leaves, scrolled, and draws only inside it.
         points.clear();
-        if (auto visible = getLayoutChildren(); !visible.empty()) {
-            Component& child = *visible.front();
-            const ImVec2 origin = ImGui::GetCursorScreenPos();
-            const ImVec2 available = ImGui::GetContentRegionAvail();
-            const math::Vec2 size = child.measure(context, horizontal ? CommonProperties::kUnbounded : available.x);
-            const math::Rect area = horizontal ? math::Rect{origin.x, origin.y, size.x, available.y} : math::Rect{origin.x, origin.y, available.x, size.y};
-            child.draw(context, area);
-            ImGui::SetCursorScreenPos(origin);
-            ImGui::Dummy(ImGuiConverter::toImVec2(area.getSize()));
+        if (child != nullptr) {
+            const ImVec2 start = ImGui::GetCursorScreenPos();
+            const math::Vec2 origin = math::Vec2{start.x, start.y} + (box.getMin() - bounds.getMin());
+            const math::Rect area = horizontal ? math::Rect{origin.x, origin.y, size.x, box.height} : math::Rect{origin.x, origin.y, box.width, size.y};
+            ImGui::PushClipRect(ImGuiConverter::toImVec2(box.getMin()), ImGuiConverter::toImVec2(box.getMax()), true);
+            child->draw(context, area);
+            ImGui::PopClipRect();
+            ImGui::SetCursorScreenPos(start);
+            ImGui::Dummy({area.getRight() - start.x, area.getBottom() - start.y});
 
             // The items of the child are the places snapping settles on, measured from the start of the content.
-            for (const auto& item : child.getChildren()) {
+            for (const auto& item : child->getChildren()) {
                 if (item->getCommon().visible && !item->getBounds().isEmpty()) {
                     points.push_back(horizontal ? item->getBounds().x - origin.x : item->getBounds().y - origin.y);
                 }
@@ -75,6 +99,9 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         idle = touched ? 0.0F : idle + context.getDeltaSeconds();
         if (snap && idle > kSnapDelay) {
             settle(context, horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY(), horizontal ? ImGui::GetScrollMaxX() : ImGui::GetScrollMaxY());
+        }
+        if (overflowing) {
+            scrollbar.draw(context, 1.0F);
         }
     }
     ImGui::EndChild();

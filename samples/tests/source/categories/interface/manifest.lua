@@ -31,5 +31,6 @@ return {
         {code = 'GUI-025', title = 'Node events', description = 'The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log.', module = 'node-events'},
         {code = 'GUI-026', title = 'UI scale', description = 'The design and physical scale modes and the scale factor, with the size of a control in points on the screen.', module = 'ui-scale'},
         {code = 'GUI-027', title = 'Custom GUI in Lua', description = 'A small immediate-mode GUI written in Lua with buttons, a check box, a slider, a native text field, a clipped list, focus, the cursor, the safe area and the UI scale.', module = 'custom-gui'},
+        {code = 'GUI-028', title = 'Scroll bars', description = 'Every component that scrolls side by side, each with its scroll bar in a lane of its own a gap of at least four points away from its content, in the design and physical scales.', module = 'scroll-bars'},
     },
 }

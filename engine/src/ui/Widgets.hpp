@@ -113,12 +113,6 @@ class Widgets final {
     // Returns the step a horizontal direction the player pressed takes along a control that grows toward the end of the UI: one forward when it points toward the end and one back otherwise.
     [[nodiscard]] static int getStep(const Context& context, FocusDirection direction) noexcept;
 
-    // Places a popup just below an anchor, as wide as the anchor unless its content needs more, lined up with the side of the anchor where the UI starts.
-    static void placePopup(const Context& context, const math::Rect& anchor, float width);
-
-    // Begins a popup on the theme `menu` surface over its shadow, with its content the padding away from its edges, and returns whether it is open. An open popup ends with `ImGui::EndPopup`.
-    [[nodiscard]] static bool beginPopup(Context& context, const char* name, ImGuiWindowFlags flags, float padding);
-
   private:
     struct SurfaceSet {
         Theme::Surface normal;

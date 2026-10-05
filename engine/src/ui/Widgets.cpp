@@ -403,28 +403,4 @@ void Widgets::arrow(math::Vec2 center, float size, ImGuiDir direction, math::Col
     ImGui::GetWindowDrawList()->AddTriangleFilled(first, second, tip, ImGuiConverter::toImU32(color));
 }
 
-bool Widgets::beginPopup(Context& context, const char* name, ImGuiWindowFlags flags, float padding) {
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
-    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0F);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {padding, padding});
-    const bool open = ImGui::BeginPopup(name, flags);
-    ImGui::PopStyleVar(2);
-    ImGui::PopStyleColor();
-    if (!open) {
-        return false;
-    }
-    const ImGuiWindow& window = *ImGui::GetCurrentWindow();
-    const math::Rect frame{window.Pos.x, window.Pos.y, window.Size.x, window.Size.y};
-    const float radius = context.getMetric(Theme::Metric::PanelRadius);
-    Surfaces::drawShadow(context, frame, radius);
-    Surfaces::draw(context, Theme::Surface::Menu, frame, context.getColor(Theme::Color::Raised), context.getColor(Theme::Color::Border), radius);
-    return true;
-}
-
-void Widgets::placePopup(const Context& context, const math::Rect& anchor, float width) {
-    const bool rightToLeft = context.isRightToLeft();
-    ImGui::SetNextWindowPos({rightToLeft ? anchor.getRight() : anchor.x, anchor.getBottom() + 4.0F}, ImGuiCond_Always, {rightToLeft ? 1.0F : 0.0F, 0.0F});
-    ImGui::SetNextWindowSizeConstraints({std::max(width, anchor.width), 0.0F}, {FLT_MAX, FLT_MAX});
-}
-
 } // namespace haylen::ui

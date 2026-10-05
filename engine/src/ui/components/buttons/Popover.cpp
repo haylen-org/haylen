@@ -1,11 +1,11 @@
 #include "ui/components/buttons/Popover.hpp"
 
 #include <algorithm>
+#include <optional>
 
 #include <imgui.h>
 
 #include "haylen/ui/Context.hpp"
-#include "ui/Widgets.hpp"
 
 namespace haylen::ui {
 
@@ -17,16 +17,16 @@ void Popover::render(Context& context, const math::Rect& bounds) {
     if (drawButton(context, bounds)) {
         ImGui::OpenPopup("##popover");
     }
-    Widgets::placePopup(context, bounds, contentWidth);
-    if (Widgets::beginPopup(context, "##popover", ImGuiWindowFlags_NoNavInputs, context.getMetric(Theme::Metric::PanelPadding))) {
-        if (!getChildren().empty()) {
-            Component& content = *getChildren().front();
-            const ImVec2 origin = ImGui::GetCursorScreenPos();
-            const math::Vec2 size = content.measure(context, contentWidth);
-            content.draw(context, {origin.x, origin.y, std::max(size.x, contentWidth), size.y});
-            ImGui::Dummy({std::max(size.x, contentWidth), size.y});
+    if (!ImGui::IsPopupOpen("##popover")) {
+        return;
+    }
+    Component* content = getChildren().empty() ? nullptr : getChildren().front().get();
+    const math::Vec2 size = content != nullptr ? content->measure(context, contentWidth) : math::Vec2{};
+    if (const std::optional<math::Rect> box = popup.begin(context, "##popover", ImGuiWindowFlags_NoNavInputs, context.getMetric(Theme::Metric::PanelPadding), {std::max(size.x, contentWidth), size.y}, bounds, contentWidth)) {
+        if (content != nullptr) {
+            content->draw(context, *box);
         }
-        ImGui::EndPopup();
+        popup.end(context);
     }
 }
 

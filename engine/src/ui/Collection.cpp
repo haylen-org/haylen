@@ -384,6 +384,14 @@ float Collection::getPaddingEnd() const noexcept {
     return rightToLeft ? padding.left : padding.right;
 }
 
+float Collection::getLaneReserve(const Context& context) const {
+    if (!laneReserved) {
+        return 0.0F;
+    }
+    const float edge = isVertical() ? (context.isRightToLeft() ? padding.left : padding.right) : padding.bottom;
+    return Scrollbar::getReserve(context, edge);
+}
+
 float Collection::getMainLength() const noexcept {
     return isVertical() ? viewport.height : viewport.width;
 }
@@ -774,11 +782,11 @@ math::Vec2 Collection::measureContent(Context& context, float availableWidth) {
     }
     if (isVertical()) {
         if (bounded && types) {
-            updateGeometry(context, std::max(0.0F, availableWidth - padding.getHorizontal()));
+            updateGeometry(context, std::max(0.0F, availableWidth - padding.getHorizontal() - getLaneReserve(context)));
         }
         return {bounded ? availableWidth : 0.0F, static_cast<float>(getContentLength())};
     }
-    const float height = (tallest > 0.0F ? tallest : context.getMetric(Theme::Metric::ListRowHeight)) + padding.getVertical();
+    const float height = (tallest > 0.0F ? tallest : context.getMetric(Theme::Metric::ListRowHeight)) + padding.getVertical() + getLaneReserve(context);
     return {static_cast<float>(getContentLength()), height};
 }
 
@@ -788,9 +796,10 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     viewport = bounds;
     rightToLeft = context.isRightToLeft();
     context.getFocus().beginCollection(bounds, !isVertical(), rememberFocus ? rememberedTarget : 0);
-    updateGeometry(context, isVertical() ? bounds.width - padding.getHorizontal() : bounds.height - padding.getVertical());
+    updateGeometry(context, (isVertical() ? bounds.width - padding.getHorizontal() : bounds.height - padding.getVertical()) - getLaneReserve(context));
     scroller->setMaximum(getContentLength() - getMainLength());
     if (getCount() == 0) {
+        laneReserved = false;
         animate();
         drawEmpty(context);
         ImGui::PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
@@ -827,16 +836,20 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     settle();
     animate();
 
+    // The bar shows once the cells left its lane, from the frame after the content grew longer than the view, and the lane goes the frame after the content fits again. The bar takes the pointer in its lane before the cells do, which draw only outside it.
     const std::optional<Range> window = findWindow(0.0F);
     const std::optional<std::size_t> sticky = findSticky();
+    const bool overflowing = scrollbarShown && scroller->getMaximum() > 0.0;
+    const bool barShown = overflowing && laneReserved;
+    laneReserved = overflowing;
+    const math::Rect cellArea = barShown ? Scrollbar::getContentBox(context, bounds, bounds, !isVertical()) : bounds;
     ImGui::PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
-    const bool barShown = scrollbarShown && scroller->getMaximum() > 0.0;
-    const float barSize = context.getMetric(Theme::Metric::ScrollbarSize);
-    const math::Rect bar = isVertical() ? math::Rect{rightToLeft ? bounds.x : bounds.getRight() - barSize, bounds.y, barSize, bounds.height} : math::Rect{bounds.x, bounds.getBottom() - barSize, bounds.width, barSize};
-    const std::optional<double> dragged = barShown ? scrollbar->interact(bar, !isVertical(), rightToLeft && !isVertical(), scroller->getOffset(), scroller->getMaximum(), getMainLength()) : std::nullopt;
+    const std::optional<double> dragged = barShown ? scrollbar->interact(context, bounds, !isVertical(), rightToLeft && !isVertical(), scroller->getOffset(), scroller->getMaximum(), getMainLength()) : std::nullopt;
+    ImGui::PushClipRect(ImGuiConverter::toImVec2(cellArea.getMin()), ImGuiConverter::toImVec2(cellArea.getMax()), true);
     drawCells(context, *window, sticky);
     drawLeaving(context);
     drawRefresh(context);
+    ImGui::PopClipRect();
     if (barShown) {
         const bool touch = context.getInput().getLastDevice() == input::InputDevice::Touch;
         scrollbar->draw(context, touch ? std::clamp(1.0F - (idle - kScrollbarFadeDelay) / kScrollbarFade, 0.0F, 1.0F) : 1.0F);
