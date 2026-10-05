@@ -68,7 +68,7 @@ Connects `fn` to the signal and returns a [`Connection`](#connection). The same 
 | `deferred` | boolean | `false` | Calls the listener at the end of the frame with the values of each emit. It is skipped when it disconnects before then. |
 | `owner` | table or userdata | `nil` | Disconnects when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. |
 
-The signal keeps `fn` alive until it disconnects, except for a listener with an owner, whose function the owner keeps. Dropping the returned connection does not disconnect it.
+The signal keeps `fn` alive until it disconnects, except for a listener with an owner, whose function the owner keeps. The signal holds the function the way an owner does, so a listener that refers to the signal, or to a table that holds it, never keeps the signal alive. Dropping the returned connection does not disconnect it.
 
 ```lua
 local signal = require('haylen.signal')

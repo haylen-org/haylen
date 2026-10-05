@@ -88,7 +88,9 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
     if (ownerIndex != 0) {
         settings.owner = lua::Owners::getLifetime(L, ownerIndex);
     }
-    auto callback = std::make_shared<lua::Owners::Function>(L, function, ownerIndex);
+
+    // A listener without an owner is held through the signal, so a listener that refers to the signal never keeps it alive.
+    auto callback = std::make_shared<lua::Owners::Function>(L, function, ownerIndex != 0 ? ownerIndex : signal);
 
     Signal<const ScriptedSignal::Arguments&>::Slot slot;
     if (deferred) {

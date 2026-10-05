@@ -159,6 +159,26 @@ TEST(EventsLuaTest, OwnerFunctionsDoNotKeepTheirOwnerAlive) {
     EXPECT_EQ(fixture.lua("return tostring(next(tracker)) .. ' ' .. require('haylen.events').topics()[1].listeners"), "nil 0");
 }
 
+TEST(SignalLuaTest, ListenersDoNotKeepTheirSignalAlive) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        signal = require('haylen.signal')
+        tracker = setmetatable({}, {__mode = 'k'})
+        do
+            local button = {pressed = signal.new()}
+            tracker[button.pressed] = true
+            button.pressed:connect(function() button.presses = (button.presses or 0) + 1 end)
+            button.pressed:emit()
+            presses = button.presses
+        end
+        collectgarbage() collectgarbage()
+    )");
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(next(tracker)) .. ' ' .. presses"), "nil 1");
+}
+
 TEST(EventsLuaTest, ListenersOfACollectedOwnerCountAsStaleUntilRemoved) {
     test::EngineFixture fixture;
     // clang-format off
