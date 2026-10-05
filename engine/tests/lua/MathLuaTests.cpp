@@ -2,6 +2,9 @@
 
 #include <string>
 
+#include "haylen/lua/Stack.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/math/EasingCurve.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::math {
@@ -121,6 +124,23 @@ TEST_F(MathLuaTest, ProvidesScalarHelpers) {
     EXPECT_EQ(lua("return m.tau == 2 * m.pi and m.halfPi == m.pi / 2"), "true");
     EXPECT_EQ(lua("return m.sign(-3) .. ' ' .. m.sign(0) .. ' ' .. m.sign(0.2)"), "-1.0 0.0 1.0");
     EXPECT_EQ(lua("return m.saturate(1.5) .. ' ' .. m.saturate(-2) .. ' ' .. m.saturate(0.25)"), "1.0 0.0 0.25");
+}
+
+// Curves push back in the form Lua reads them, and a curve of a C++ function pushes as a value Lua calls like a function.
+TEST_F(MathLuaTest, PushesCurvesInTheFormsItReads) {
+    lua_State* L = fixture.lua();
+    for (const auto& [name, curve] : {std::pair{"preset", EasingCurve(Easing::Type::QuadOut)}, std::pair{"back", EasingCurve::back(Easing::Type::BackOut, 3.0F)}, std::pair{"elastic", EasingCurve::elastic(Easing::Type::ElasticIn, 1.5F, 0.4F)}, std::pair{"steps", EasingCurve::steps(4, Easing::StepPosition::Start)}, std::pair{"bezier", EasingCurve::cubicBezier(0.1F, 0.2F, 0.3F, 0.4F)}, std::pair{"points", EasingCurve::points({{0.0F, 0.0F}, {0.5F, 2.0F}, {1.0F, 1.0F}})}, std::pair{"custom", EasingCurve::custom([](float t) { return t * 0.5F; })}}) {
+        lua::Stack::push(L, curve);
+        lua_setglobal(L, name);
+    }
+    EXPECT_EQ(lua("return preset .. ' ' .. back.curve .. back.overshoot .. ' ' .. elastic.curve .. elastic.amplitude .. ' ' .. steps.steps .. steps.position"), "quadOut backOut3.0 elasticIn1.5 4start");
+    EXPECT_EQ(lua("return #bezier.cubicBezier .. ' ' .. #points.points .. ' ' .. points.points[2].y .. ' ' .. m.ease(points, 0.5)"), "4 3 2.0 2.0");
+    EXPECT_EQ(lua("return custom(0.5) .. ' ' .. m.ease(custom, 0.25)"), "0.25 0.125");
+    EXPECT_EQ(lua("return m.ease(back, 0.5) == m.ease({curve = 'backOut', overshoot = 3}, 0.5) and m.ease(steps, 0.3) == m.ease({steps = 4, position = 'start'}, 0.3)"), "true");
+
+    lua::Stack::push(L, FloatRange{2.0F, 5.0F});
+    lua_setglobal(L, "range");
+    EXPECT_EQ(lua("return range[1] .. ' ' .. range[2]"), "2.0 5.0");
 }
 
 TEST_F(MathLuaTest, ConstructorsAcceptEveryValueForm) {

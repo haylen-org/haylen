@@ -1166,6 +1166,28 @@ scene.push({
 })
 ```
 
+### graphics2d.canvasLit()
+
+Returns `true` when the active canvas is lit, a world or render target canvas with `ambientLight`, which is the only kind of canvas that takes lights and occluders. Effects that bring their own light draw it only then. Calling it without an active canvas raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+local night = true
+
+scene.push({
+    render = function(self)
+        graphics2d.beginWorld(camera, night and {ambientLight = '#FF202040'} or nil)
+        graphics2d.drawCircle(0, 0, 40, '#FFFFA040')
+        if graphics2d.canvasLit() then
+            graphics2d.drawLight({x = 0, y = 0, radius = 200, color = '#FFFFB060'})
+        end
+    end,
+})
+```
+
 ### graphics2d.stats()
 
 Returns a table with the renderer counters of the current frame. The draw counters grow while the frame is recorded, and the GPU counters are filled when the frame is submitted, so read them in `update` to see the totals of the previous frame.

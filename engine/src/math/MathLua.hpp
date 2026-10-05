@@ -57,6 +57,7 @@ class MathLua final {
     [[nodiscard]] static Color colorFromHsv(float hue, float saturation, float value, std::optional<float> alpha);
     static int colorToHsv(lua_State* L);
     [[nodiscard]] static float ease(const EasingCurve& curve, float t);
+    static int curveCall(lua_State* L);
     [[nodiscard]] static std::uint8_t checkChannel(lua_State* L, int index);
     static int colorFromRgba8(lua_State* L);
     static int colorFromHex(lua_State* L);

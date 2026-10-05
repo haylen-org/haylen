@@ -1,6 +1,8 @@
 #include "haylen/lua/TypeConverter.hpp"
 
+#include <array>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -183,7 +185,55 @@ graphics2d::PartColors Converter<graphics2d::PartColors>::read(lua_State* L, int
     return colors;
 }
 
+void Converter<math::EasingCurve>::push(lua_State* L, const math::EasingCurve& value) {
+    using Kind = math::EasingCurve::Kind;
+    const std::array<float, 4>& parameters = value.getParameters();
+    switch (value.getKind()) {
+    case Kind::Preset:
+        Stack::push(L, value.getType());
+        return;
+    case Kind::Parametric: {
+        const bool back = value.getType() == math::Easing::Type::BackIn || value.getType() == math::Easing::Type::BackOut || value.getType() == math::Easing::Type::BackInOut;
+        lua_createtable(L, 0, 3);
+        Stack::push(L, value.getType());
+        lua_setfield(L, -2, "curve");
+        Stack::push(L, parameters[0]);
+        lua_setfield(L, -2, back ? "overshoot" : "amplitude");
+        if (!back) {
+            Stack::push(L, parameters[1]);
+            lua_setfield(L, -2, "period");
+        }
+        return;
+    }
+    case Kind::Steps:
+        lua_createtable(L, 0, 2);
+        Stack::push(L, static_cast<int>(parameters[0]));
+        lua_setfield(L, -2, "steps");
+        Stack::push(L, value.getStepPosition());
+        lua_setfield(L, -2, "position");
+        return;
+    case Kind::CubicBezier:
+        lua_createtable(L, 0, 1);
+        Stack::push(L, std::vector<float>(parameters.begin(), parameters.end()));
+        lua_setfield(L, -2, "cubicBezier");
+        return;
+    case Kind::Points: {
+        lua_createtable(L, 0, 1);
+        const std::span<const math::Vec2> points = value.getPoints();
+        Stack::push(L, std::vector<math::Vec2>(points.begin(), points.end()));
+        lua_setfield(L, -2, "points");
+        return;
+    }
+    case Kind::Custom:
+        break;
+    }
+    Userdata::emplace<math::EasingCurve>(L, value);
+}
+
 math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
+    if (const math::EasingCurve* curve = Userdata::test<math::EasingCurve>(L, index)) {
+        return *curve;
+    }
     if (lua_type(L, index) == LUA_TSTRING) {
         return math::EasingCurve(Stack::read<math::Easing::Type>(L, index));
     }
@@ -268,6 +318,33 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
         return math::EasingCurve::elastic(curve, amplitude, period);
     }
     return math::EasingCurve(curve);
+}
+
+void Converter<math::FloatRange>::push(lua_State* L, math::FloatRange value) {
+    lua_createtable(L, 2, 0);
+    Stack::push(L, value.min);
+    lua_rawseti(L, -2, 1);
+    Stack::push(L, value.max);
+    lua_rawseti(L, -2, 2);
+}
+
+math::FloatRange Converter<math::FloatRange>::read(lua_State* L, int index) {
+    if (lua_type(L, index) == LUA_TNUMBER) {
+        const auto value = static_cast<float>(lua_tonumber(L, index));
+        return {value, value};
+    }
+    if (!lua_istable(L, index)) {
+        luaL_typeerror(L, index, "number or {min, max} pair");
+    }
+    const int table = lua_absindex(L, index);
+    lua_rawgeti(L, table, 1);
+    lua_rawgeti(L, table, 2);
+    if (lua_rawlen(L, table) != 2 || lua_type(L, -2) != LUA_TNUMBER || lua_type(L, -1) != LUA_TNUMBER) {
+        luaL_argerror(L, index, "a range needs a number or the pair {min, max}");
+    }
+    const math::FloatRange range{static_cast<float>(lua_tonumber(L, -2)), static_cast<float>(lua_tonumber(L, -1))};
+    lua_pop(L, 2);
+    return range;
 }
 
 graphics2d::DrawOrder TypeConverter::readDrawOrder(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields) {

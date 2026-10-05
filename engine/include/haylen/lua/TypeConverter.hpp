@@ -48,6 +48,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Easing.hpp"
 #include "haylen/math/EasingCurve.hpp"
+#include "haylen/math/FloatRange.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Noise2D.hpp"
 #include "haylen/math/Random.hpp"
@@ -144,6 +145,11 @@ template <> struct Type<math::Random> {
 template <> struct Type<math::Noise2D> {
     static constexpr const char* name = "haylen.Noise2D";
     using Storage = math::Noise2D;
+};
+
+template <> struct Type<math::EasingCurve> {
+    static constexpr const char* name = "haylen.EasingCurve";
+    using Storage = math::EasingCurve;
 };
 
 template <> struct Type<graphics::Texture> {
@@ -282,9 +288,16 @@ template <> struct Converter<graphics2d::PartColors> {
     static graphics2d::PartColors read(lua_State* L, int index);
 };
 
-// Easing curves accept a curve name such as `quadOut`, a function of the progress that returns the eased progress, or a table: `{curve = 'backOut', overshoot = 3}`, `{curve = 'elasticOut', amplitude = 1.5, period = 0.4}`, `{steps = 4, position = 'end'}`, `{cubicBezier = {x1, y1, x2, y2}}` or `{points = {{x, y}, ...}}`, where `points` can also be plain numbers spread evenly from 0 to 1.
+// Easing curves accept a curve name such as `quadOut`, a function of the progress that returns the eased progress, an `EasingCurve` value, or a table: `{curve = 'backOut', overshoot = 3}`, `{curve = 'elasticOut', amplitude = 1.5, period = 0.4}`, `{steps = 4, position = 'end'}`, `{cubicBezier = {x1, y1, x2, y2}}` or `{points = {{x, y}, ...}}`, where `points` can also be plain numbers spread evenly from 0 to 1. They push back in the same forms, and a curve made from a function pushes as an `EasingCurve` value that Lua calls like the function.
 template <> struct Converter<math::EasingCurve> {
+    static void push(lua_State* L, const math::EasingCurve& value);
     static math::EasingCurve read(lua_State* L, int index);
+};
+
+// Ranges accept one number for both ends or a `{min, max}` pair, and push as a `{min, max}` pair.
+template <> struct Converter<math::FloatRange> {
+    static void push(lua_State* L, math::FloatRange value);
+    static math::FloatRange read(lua_State* L, int index);
 };
 
 template <> struct EnumNames<graphics::BlendMode::Type> {

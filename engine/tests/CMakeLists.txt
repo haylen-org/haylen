@@ -14,6 +14,7 @@ set(HAYLEN_TEST_SOURCES
   2d/navigation/Navigation2DTests.cpp
   2d/navigation/NavigationLuaTests.cpp
   2d/navigation/PathfindingTests.cpp
+  2d/particles/Particles2DLuaTests.cpp
   2d/particles/Particles2DTests.cpp
   2d/physics/AssemblyTests.cpp
   2d/physics/BodyMotionTests.cpp

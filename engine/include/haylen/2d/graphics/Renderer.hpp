@@ -203,6 +203,9 @@ class Renderer final {
 
     // Returns the length in canvas coordinates of one unit of the destination, a design unit on the screen or a pixel of a render target, so outlines keep their thickness at any zoom. It needs an active canvas.
     [[nodiscard]] float getCanvasUnitSize() const;
+
+    // Tells whether the open canvas is lit, the only kind of canvas that takes lights. It needs an active canvas.
+    [[nodiscard]] bool isCanvasLit() const;
     [[nodiscard]] bool isCapturing() const noexcept;
 
     // The engine begins and ends every frame, and submits everything drawn in between at its end.

@@ -798,6 +798,10 @@ float Renderer::getCanvasUnitSize() const {
     return 1.0F / std::sqrt(std::fabs(canvas.view.getDeterminant()));
 }
 
+bool Renderer::isCanvasLit() const {
+    return state->getCanvas().isLit();
+}
+
 bool Renderer::isCapturing() const noexcept {
     return !state->openCaptures.empty();
 }

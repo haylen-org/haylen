@@ -98,8 +98,11 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/navigation/Wanderer.cpp
   src/2d/particles/Effect.cpp
   src/2d/particles/Emitter.cpp
-  src/2d/particles/EmitterConfig.cpp
+  src/2d/particles/ImageShape.cpp
   src/2d/particles/Particles2DLua.cpp
+  src/2d/particles/Ribbon.cpp
+  src/2d/particles/System.cpp
+  src/2d/particles/Trail.cpp
   src/2d/physics/AssemblyLua.cpp
   src/2d/physics/Body.cpp
   src/2d/physics/BodyLua.cpp

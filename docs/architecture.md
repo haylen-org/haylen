@@ -42,7 +42,7 @@ Public headers live in `engine/include/haylen/<module>/` and implementation file
 | `localization`, `debug` | The `Catalog` of translated text, and `Profiler` with `ProfileScope`, `ProfileSample`, the `LogLine` records of the debug overlay, the `Stats` snapshot, the `StatsDisplay` that draws the compact statistics, `Monitor`, and `ObjectCounter` with `TrackedObject` and `TrackedCount`, which count the objects of every type. |
 | `lua` | The public C++ toolkit for writing Lua bindings, used by the engine and by projects that extend it, and `lua::Application`. |
 | `2d/graphics` | `Renderer` with its text and rich text drawing, vector images, captures, image blends and canvas overlays, `Sprite`, `SpriteBatch` with the `PartColors` of recolored sprites, `StaticSpriteBatch`, `Camera`, `Parallax`, `NineSlice`, `PostProcess`, `ImageBlend` and `SceneTransition`, the built-in scene transition effects, and the private `VectorAtlas`, which keeps the rasters of vector images in shared pages. |
-| `2d/animation`, `2d/particles`, `2d/lighting` | `Animation`, `Animator` and `SpriteAtlas`, particle `Emitter` and `Effect`, and `Light` with `LightFlicker`. |
+| `2d/animation`, `2d/particles`, `2d/lighting` | `Animation`, `Animator` and `SpriteAtlas`, particle `Emitter`, `System`, `Effect`, `Trail`, `Ribbon` and `ImageShape`, and `Light` with `LightFlicker`. |
 | `2d/physics` | The Box2D wrapper: `World`, `Body`, `Shape` and `Joint` handles, `CollisionFilter`, contact and sensor events and raycast hits. A handle keeps the generation of its world, so it reports `isValid() == false` and throws `std::logic_error` naming the destroyed world once that world is gone, even after a new world takes its Box2D slot and hands out the same ids. A world of more than one thread runs the tasks of its steps on the job system through the private `StepTasks`. The helpers built on worlds are `Rope`, `Ragdoll`, `Vehicle`, `TopDownVehicle`, `Mover`, `Grabber`, `ForceField`, `Fluid`, `Terrain`, `Explosion`, `Fracture`, `PathPredictor`, `Raycaster` and `RayBatch`, and vehicles, force fields and fluids act in every step through the step hooks of their world. The [physics guide](physics.md) explains the system. |
 | `2d/tiled` | Tiled maps: the `Map` model with its layers, objects and tilesets, `World` files, `MapRenderer`, `TileCollision`, which merges the collision of a tile layer into chain loops, and `ObjectFactories`. |
 | `2d/navigation`, `2d/spatial` | The grid A\* `Grid` with `SteeringAgent` and `Wanderer`, and the `HashGrid` spatial hash. |
@@ -85,7 +85,7 @@ Every subsystem is a plugin. A plugin derives from `haylen::plugins::Plugin` in 
 | `assets` | `haylen.assets` | |
 | `text` | | Owns the registry of the effects and icons rich text markup names, and registers the `bitmapFont` and `gridFont` asset types. |
 | `animation2d` | `haylen.animation2d` | Registers the `atlas` asset type. |
-| `particles2d` | `haylen.particles2d` | Registers the `particles` asset type. |
+| `particles2d` | `haylen.particles2d` | Registers the `particles` and `imageShape` asset types. |
 | `audio` | `haylen.audio` | Registers the `sound` asset type. |
 | `physics2d`, `tiled`, `spatial2d`, `navigation2d` | `haylen.physics2d`, `haylen.tiled`, `haylen.spatial2d`, `haylen.navigation2d` | `tiled` registers the `tiled` and `tiledWorld` asset types. |
 | `localization` | `haylen.localization` | |

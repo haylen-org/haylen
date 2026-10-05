@@ -190,6 +190,12 @@ float MathLua::ease(const EasingCurve& curve, float t) {
     return curve.apply(t);
 }
 
+// An `EasingCurve` value is called like the function it stands for, with the progress after the value itself.
+int MathLua::curveCall(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<EasingCurve>(L, 1).apply(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
 std::uint8_t MathLua::checkChannel(lua_State* L, int index) {
     const lua_Integer value = luaL_checkinteger(L, index);
     luaL_argcheck(L, value >= 0 && value <= 255, index, "expected an integer from 0 to 255");
@@ -441,6 +447,8 @@ void MathLua::installClasses(lua_State* L) {
     lua::ClassBuilder<Random>(L).function("nextFloat", &lua::Binding::function<&randomNextFloat>).function("range", &lua::Binding::function<&randomRange>).function("integer", &lua::Binding::function<&randomInteger>).function("chance", &lua::Binding::function<&randomChance>).function("reseed", &lua::Binding::function<&randomReseed>).function("weightedIndex", &lua::Binding::native<&randomWeightedIndex>).function("shuffle", &randomShuffle).install();
 
     lua::ClassBuilder<Noise2D>(L).function("perlin", &lua::Binding::function<&noisePerlin>).function("simplex", &lua::Binding::function<&noiseSimplex>).function("fractal", &lua::Binding::function<&noiseFractal>).function("worley", &lua::Binding::native<&noiseWorley>).function("warp", &lua::Binding::native<&noiseWarp>).install();
+
+    lua::ClassBuilder<EasingCurve>(L).meta("__call", &lua::Binding::native<&curveCall>).install();
 
     SplineLua::install(L);
     SpringLua::install(L);

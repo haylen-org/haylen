@@ -25,7 +25,8 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `json` | `.json` | Plain Lua table, with objects as string keyed tables and arrays as sequences. | None. |
 | `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [`haylen.audio`](audio.md). | The option `stream` keeps the encoded file and decodes it while it plays (default `false`). |
 | `atlas` | None, so load it with the type `'atlas'` | A `SpriteAtlas` from [`haylen.animation2d`](animation2d.md). | The `filter` and `wrap` of its texture. |
-| `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` from [`haylen.particles2d`](particles2d.md). | The `filter` and `wrap` of its texture. |
+| `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` and `particles2d.newSystem()` from [`haylen.particles2d`](particles2d.md). | The `filter` and `wrap` of its textures, which replace the ones the file names. |
+| `imageShape` | None, so load an image with the type `'imageShape'` | An `ImageShape` from [`haylen.particles2d`](particles2d.md#imageshape), the visible pixels of the image for the `image` shape of emitters. | The option `source` is the `{x, y, width, height}` part of the image to read, the whole image by default. The option `alphaThreshold` is the alpha a pixel needs to count, `0.5` by default. |
 | `tiled` | `.tmj` | Tiled map data for `tiled.newMapRenderer()` from [`haylen.tiled`](tiled.md). | The `filter` and `wrap` of its tileset and layer images. |
 | `tiledWorld` | `.world` | List of the maps of a Tiled world. | None. |
 
@@ -561,7 +562,7 @@ print(pixel.nativeSize, digits:hasGlyph('7'))
 
 ### Particle effects
 
-The `.particles` files describe a particle effect and name its texture relative to the file. The effect is passed to `particles2d.newEmitter()` from [`haylen.particles2d`](particles2d.md).
+The `.particles` files describe a particle effect, or a composite of several, and name their textures and the effect files they use relative to the file. The effect is passed to `particles2d.newEmitter()` or `particles2d.newSystem()` from [`haylen.particles2d`](particles2d.md). The type `imageShape` reads the visible pixels of an image for emitters that spawn in the shape of a sprite.
 
 ```lua
 local assets = require('haylen.assets')

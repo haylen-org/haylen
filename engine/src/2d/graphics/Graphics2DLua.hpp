@@ -80,6 +80,7 @@ class Graphics2DLua final {
     static int drawn(lua_State* L);
     static int canvasBounds(lua_State* L);
     static int canvasUnitSize(lua_State* L);
+    static int canvasLit(lua_State* L);
     static int capturing(lua_State* L);
     static int lightTexture(lua_State* L);
     static int hdrLighting(lua_State* L);

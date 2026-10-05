@@ -20,11 +20,12 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/Rect.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 
 namespace haylen::bench {
 
-// Times particle emitters on the CPU: the simulation of one large emitter on one thread and on the job system, many small emitters, spawning, the instances that drawing builds, and emitters driven from Lua.
+// Times particle emitters on the CPU: the simulation of one large emitter on one thread and on the job system, many small emitters, spawning, turbulence, attractors and collision, sub-emitters, the instances and trails that drawing builds, and emitters driven from Lua.
 class ParticleBenchmark final {
   public:
     static int run() {
@@ -46,7 +47,10 @@ class ParticleBenchmark final {
         measureLarge(engine, texture, true);
         measureMany(engine, texture);
         measureSpawning(engine, texture);
+        measureForces(engine, texture);
+        measureSubEmitters(engine, texture);
         measureDraw(engine, host, texture);
+        measureTrails(engine, host, texture);
         measureLua(engine);
         engine.stop();
         return 0;
@@ -129,6 +133,56 @@ class ParticleBenchmark final {
         std::vector<particles2d::Emitter> emitters;
         emitters.emplace_back(config, 2);
         report("Spawning 200000 particles per second", timeUpdates(emitters, &engine.getJobs()), kFrames);
+    }
+
+    // Turbulence samples noise twice for every particle, and the attractor and the floor test every particle each step.
+    static void measureForces(core::Engine& engine, const graphics::Texture& texture) {
+        particles2d::EmitterConfig config = fountain(texture, 100000);
+        config.turbulence = {.strength = 60.0F, .frequency = 0.01F, .speed = 0.5F};
+        config.attractors = {{.position = {0.0F, -300.0F}, .strength = 200.0F, .radius = 400.0F}};
+        config.collision = {.type = particles2d::EmitterConfig::Collision::Type::Floor, .y = 200.0F, .bounce = 0.3F};
+        std::vector<particles2d::Emitter> emitters;
+        emitters.emplace_back(config, 3);
+        report("One emitter of 100000 particles with turbulence, attractor, floor", timeUpdates(emitters, &engine.getJobs()), kFrames);
+    }
+
+    // Every drop that reaches the ground spawns a splash of three particles in the emitter of its sub-emitter.
+    static void measureSubEmitters(core::Engine& engine, const graphics::Texture& texture) {
+        const auto splash = std::make_shared<particles2d::EmitterConfig>(particles2d::EmitterConfig{.texture = texture, .maxParticles = 20000, .lifetime = {0.2F, 0.4F}, .speed = {80.0F, 200.0F}, .spread = 1.4F, .gravity = {0.0F, 900.0F}});
+        particles2d::EmitterConfig rain{.texture = texture, .rate = 2500.0F, .maxParticles = 4000, .lifetime = {2.0F, 2.0F}, .speed = {1200.0F, 1400.0F}, .direction = 1.6F, .spread = 0.04F, .bounds = math::Rect{-1000.0F, -100.0F, 2000.0F, 1100.0F}, .shape = particles2d::EmitterConfig::Shape::Rectangle, .shapeSize = {1000.0F, 10.0F}};
+        rain.subEmitters = {{.config = splash, .trigger = particles2d::EmitterConfig::SubEmitter::Trigger::Death, .count = {3, 3}}};
+        std::vector<particles2d::Emitter> emitters;
+        emitters.emplace_back(rain, 4);
+        report("Rain of 2500 drops per second that splash where they die", timeUpdates(emitters, &engine.getJobs()), kFrames);
+    }
+
+    // Every particle draws a ribbon through its last eight positions, which the emitter builds as one mesh.
+    static void measureTrails(core::Engine& engine, platform::HeadlessHost& host, const graphics::Texture& texture) {
+        particles2d::EmitterConfig config = fountain(texture, 100);
+        config.trail = {.length = 8, .lifetime = 0.3F};
+        std::vector<particles2d::Emitter> emitters;
+        for (std::uint64_t index = 0; index < 100; ++index) {
+            emitters.emplace_back(config, index);
+        }
+        for (int frame = 0; frame < 30; ++frame) {
+            for (particles2d::Emitter& emitter : emitters) {
+                emitter.update(kStep);
+            }
+        }
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        const graphics2d::Camera camera;
+        double total = 0.0;
+        for (int frame = 0; frame < kFrames; ++frame) {
+            renderer.beginFrame(engine.getViewport(), math::Color::black());
+            renderer.beginWorld(camera);
+            const auto start = std::chrono::steady_clock::now();
+            for (const particles2d::Emitter& emitter : emitters) {
+                emitter.draw(renderer);
+            }
+            total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+            renderer.endFrame(host.getFrameTarget());
+        }
+        report("Drawing 100 emitters of 100 particles with trails", total / kFrames, kFrames);
     }
 
     // Times the draw calls of the emitters alone, which build the instances of every particle, inside real frames.
