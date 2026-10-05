@@ -1,6 +1,6 @@
 # Haylen — plano do projeto
 
-Este é o documento central de organização do dono. Ele reúne os pedidos, as decisões técnicas, a estrutura de pastas, a lista completa de recursos da engine e dos samples e o status de cada item. As regras oficiais estão no `CLAUDE.md`.
+Este é o documento central de organização do dono. Ele reúne os pedidos, as decisões técnicas, a estrutura de pastas, a lista completa de recursos da engine e dos samples e o status de cada item. As regras oficiais estão no `AGENTS.md`.
 
 Legenda de status: `[x]` implementado, testado e documentado. `[~]` em andamento. `[ ]` pendente.
 
@@ -50,7 +50,7 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 23. Jogo: em volta da fogueira existe um círculo que impede os inimigos de entrar. O círculo diminui conforme falta madeira e o fogo vai apagando.
 24. Jogo: escolha de personagem, cada um é uma classe.
 25. Mega lista e mega pesquisa de tudo o que o jogo precisa.
-26. Padrão de código e comentários no CLAUDE.md, seguido em todo o código.
+26. Padrão de código e comentários no AGENTS.md, seguido em todo o código.
 27. Pastas em minúsculo.
 28. Áudio no jogo: música de fundo, efeitos de ações e menu, com gerenciamento de música e efeitos.
 29. Sistema de preload com load e unload, onde o desenvolvedor escolhe o que carregar.
@@ -68,7 +68,7 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 41. Sockets vêm do Varn no nativo. Na web, onde não existe TCP bruto, a engine oferece WebSocket pelo JavaScript do navegador, e o HTTP do Varn usa o fetch.
 42. Cuidado com o async do Varn para nunca travar a UI e o loop principal.
 43. A melhor arquitetura e organização possível, bem pesquisada e bem estruturada.
-44. O CLAUDE.md contém as regras, a descrição do projeto, a estrutura e os padrões de código e de projeto.
+44. O AGENTS.md contém as regras, a descrição do projeto, a estrutura e os padrões de código e de projeto.
 45. No futuro haverá um site (em outro repositório) para editar o código Lua e os assets e rodar o app como aplicação wasm com WebGL2 ou WebGPU. A engine precisa funcionar nesse cenário.
 46. Tudo deve ser módulo ou plugin para ficar organizado.
 47. Arquivos `.h`, `.hpp`, `.c`, `.cpp` e `.mm` em PascalCase e arquivos Lua em dash-case. Isso é regra.
@@ -141,7 +141,7 @@ Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, 
 87. Cada arquivo tem a sua própria classe, com o nome da classe.
 88. Um sub-namespace para cada contexto, e não um namespace único para tudo.
 89. Revisar tudo: não pode sobrar coisa solta, perdida ou fora de classe.
-90. As regras gerais valem sempre e ficam no CLAUDE.md: sem gambiarras, fallbacks, código porco, código legado ou compatível com versões anteriores. Comentários raros e só onde precisam. Código e comentários em inglês. Nenhuma frase dividida por ponto e vírgula. Fazer só o que faz sentido, nunca para mostrar trabalho. Manter esta mega lista detalhada e revisar no fim se tudo foi feito 100%, testado e documentado.
+90. As regras gerais valem sempre e ficam no AGENTS.md: sem gambiarras, fallbacks, código porco, código legado ou compatível com versões anteriores. Comentários raros e só onde precisam. Código e comentários em inglês. Nenhuma frase dividida por ponto e vírgula. Fazer só o que faz sentido, nunca para mostrar trabalho. Manter esta mega lista detalhada e revisar no fim se tudo foi feito 100%, testado e documentado.
 91. A tela de erro é bem legível e detalhada, sem caracteres estranhos (como os tabs da pilha do Lua desenhados como quadrados), e sem gambiarras.
 92. Os templates de iOS (e as outras plataformas Apple) e de Android têm a splash funcionando em paisagem e em retrato.
 93. Os templates de plataforma ficam em `templates/platform/<plataforma>/`, com organização modular e extensível.
@@ -151,22 +151,22 @@ Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, 
 97. Raycast.
 98. O nome da engine é Haylen (em minúsculas, `haylen`) em todos os lugares: arquivos, pastas, docs, README, classes, namespaces, alvos e funções do CMake, módulos Lua, pacotes Java, JavaScript, artefatos, templates e logo.
 99. Ciclo de vida de cena com carregamento: a transição começa (cobre a cena atual), a engine chama um método de carregamento da nova cena (assíncrono), e depois a transição de saída exibe a nova cena carregada. Isso permite exibir um loading próprio se o desenvolvedor quiser, ou usar a própria transição como loading. A arquitetura precisa dar todas as possibilidades, com eventos assíncronos e ciclo de vida funcionando perfeitamente, pensada como arquitetura de software, com o máximo de desempenho e sem gambiarras, não importa o tamanho do trabalho.
-100. Revisar tudo de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que podem derrubar o app, corrigindo o que faz sentido (não código que nunca pode acontecer nem coisas aleatórias só para mostrar trabalho), e manter as regras gerais no CLAUDE.md e esta mega lista detalhada.
+100. Revisar tudo de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que podem derrubar o app, corrigindo o que faz sentido (não código que nunca pode acontecer nem coisas aleatórias só para mostrar trabalho), e manter as regras gerais no AGENTS.md e esta mega lista detalhada.
 101. Os samples ficam em subpastas por categoria, e o comando recebe o caminho da categoria, por exemplo `python3 make.py run games/tiny-island`, para ficar mais organizado.
 102. Aplicações sem moldura e transparentes, como o Taskbar Hero: janela sem barra de título e sem bordas, fundo transparente, o jogo rodando no rodapé da tela e arrastável, com a GUI/UI do jogo funcionando. É outra modalidade de jogo que a engine precisa suportar.
 103. Comunicação fácil com qualquer plataforma (iOS, Android, desktop, web e as outras): enviar e receber a resposta da plataforma de forma assíncrona, para usar qualquer coisa nativa da plataforma.
 104. Chamar bibliotecas e SDKs nativos, como a biblioteca da Steam, bibliotecas nativas em geral e SDKs como o P2P da Epic Online Services (NAT P2P). O `ffi` do Varn pode ser parte da solução. Não é preciso usar esses SDKs, eles são só exemplos, mas a capacidade precisa ser testada nas plataformas.
 105. Organizar tudo isso na engine, revisado e testado, não importa o tamanho da refatoração, para a engine cobrir todos os casos do desenvolvimento de jogos. E revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre.
-106. A cada bloco de trabalho terminado, fazer commit e push na `main`. A mensagem do commit tem o prefixo do tipo (feature, fix e os outros) e uma frase curta que começa com maiúscula, sem coautor e sem citar Claude ou qualquer outra pessoa. A regra fica no CLAUDE.md, não na documentação.
-107. Antes de cada commit, conferir que não entra nada de build, arquivo temporário, chave de ambiente, segredo ou qualquer coisa privada ou temporária que não deveria ser commitada. A regra fica no CLAUDE.md.
-108. Nunca citar outras engines, nem em docs, nem em comentários, nem em código, nem mesmo em comparações. A regra fica no CLAUDE.md.
+106. A cada bloco de trabalho terminado, fazer commit e push na `main`. A mensagem do commit tem o prefixo do tipo (feature, fix e os outros) e uma frase curta que começa com maiúscula, sem coautor e sem citar Claude ou qualquer outra pessoa. A regra fica no AGENTS.md, não na documentação.
+107. Antes de cada commit, conferir que não entra nada de build, arquivo temporário, chave de ambiente, segredo ou qualquer coisa privada ou temporária que não deveria ser commitada. A regra fica no AGENTS.md.
+108. Nunca citar outras engines, nem em docs, nem em comentários, nem em código, nem mesmo em comparações. A regra fica no AGENTS.md.
 109. Tudo o que o dono pedir entra nesta lista de coisas a fazer, para nada se perder.
 
-### 2.3 Quarto pedido: CLAUDE.md completo e repositório sem histórico
+### 2.3 Quarto pedido: AGENTS.md completo e repositório sem histórico
 
 Cada ponto abaixo precisa estar coberto pelo grupo O da seção 14.2.
 
-110. O CLAUDE.md descreve o projeto sem histórico e sem versões de bibliotecas, e contém tudo sobre padrões de código, arquitetura, organização e regras, para que cada execução de um agente tenha o que precisa para novos recursos e correções. Histórico e informações de versões anteriores do projeto não podem existir em nenhum lugar do repositório.
+110. O AGENTS.md descreve o projeto sem histórico e sem versões de bibliotecas, e contém tudo sobre padrões de código, arquitetura, organização e regras, para que cada execução de um agente tenha o que precisa para novos recursos e correções. Histórico e informações de versões anteriores do projeto não podem existir em nenhum lugar do repositório.
 
 ### 2.4 Quinto pedido: plugins nativos
 
@@ -176,7 +176,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo Z da seção 14.2.
 112. O sistema de plugins é parte central da engine: precisa ficar fácil usar SDKs como Firebase e AdMob, inclusive os que mostram views nativas por cima do jogo, como o banner.
 113. Tudo isso funciona 100% e otimizado em todas as plataformas, com pesquisa e planejamento de como fazer cada parte.
 114. A cada bloco terminado, fazer commit e push.
-115. Revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre, e manter tudo no CLAUDE.md e nesta mega lista.
+115. Revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre, e manter tudo no AGENTS.md e nesta mega lista.
 116. Os plugins de terceiros citados (Firebase, AdMob e os outros) ficam fora deste repositório, em repositórios próprios em https://github.com/haylen-org, feitos pelo dono depois e separado. Este repositório tem só a arquitetura, a engine e a capacidade, com testes simples e equivalentes, sem bibliotecas de terceiros além das da engine.
 
 ### 2.5 Sexto pedido: diálogos, notificações, informações do sistema e webview
@@ -185,7 +185,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 
 117. Diálogos nativos, notificações do sistema e informações do sistema como recursos da engine: no desktop com bibliotecas C++ boas do GitHub (dependências da engine, como as outras), e no mobile e na web com as APIs de cada plataforma, cada plataforma com o que der.
 118. Um navegador embutido (webview) como view nativa por cima do app: no desktop com a biblioteca C++ `webview`, e no mobile e na web com os equivalentes de cada plataforma.
-119. Revisar bem tudo isso, com as regras gerais de sempre, tudo no CLAUDE.md e nesta mega lista, desenvolvido, testado e documentado 100%.
+119. Revisar bem tudo isso, com as regras gerais de sempre, tudo no AGENTS.md e nesta mega lista, desenvolvido, testado e documentado 100%.
 120. O CI do GitHub precisa passar em todos os jobs: o job do Windows e o do Android falham desde o primeiro push (o MSVC recusa uma comparação de `core::Json` com `std::string_view` no `PropertyReader.hpp`, e o `sdkmanager` não acha `platforms;android-37`, que se chama `platforms;android-37.0`).
 121. Decisão: a engine fica só com o básico, que são as informações do sistema, a caixa de mensagem e os diálogos de arquivos e pastas. Notificações e o webview viram plugins, feitos pelo dono depois em repositórios próprios em https://github.com/haylen-org, e a biblioteca `webview` não entra, porque troca a view do Sokol no macOS, só aceita uma `GtkWindow` no Linux e trava a thread do frame no Windows.
 122. Os plugins precisam ter a capacidade de enviar e receber de forma assíncrona tudo o que os recursos básicos de cada sistema pedem: áudio, câmera, foto, localização, notificação local e os dados de uma notificação push recebida, na web, no Android, no iOS, nos desktops e nas outras plataformas. A engine entrega a capacidade, e o plugin de demonstração testa cada mecanismo sem SDK de terceiros.
@@ -193,16 +193,92 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 124. As imagens da engine usam a marca nova de `extras/images/` (símbolo, `logo-h` e `logo-v`) no lugar da logo antiga: nos ícones e nos espaços pequenos só o símbolo, sobre o fundo azul escuro da fonte (`#07112f`), e a logo onde há espaço.
 125. Nenhuma frase começa com letra minúscula, em comentários, documentação, mensagens de erro e de log e na saída do `make.py`: quando a frase começaria com um comando, identificador ou caminho em minúsculo, vai uma palavra antes, como "O comando" ou "Rode". E toda expressão reservada (comando, código, identificador, caminho, chave e valor) fica marcada para não se misturar com a frase: crases nos documentos Markdown e nos comentários, e aspas duplas nas mensagens, nos logs e na saída dos comandos, como no exemplo do dono e como o Varn e o Workpane fazem. A regra vale para qualquer texto, inclusive as mensagens de commit, cuja frase depois do prefixo do tipo começa com maiúscula.
 126. A engine não impõe nada aos projetos finais do Android e do Xcode. Cada plugin define o que o projeto precisa (frameworks, dependências, permissões, chaves do Info.plist, entitlements e configurações), e o projeto é do desenvolvedor, que o altera como quiser (por exemplo editando o `project.yml` do XcodeGen e gerando de novo), porque cada empresa tem o seu padrão. A engine não carrega nem compila coisas particulares que o app não usa. Quando um requisito de um plugin falta, o plugin registra no log e ignora a chamada até o desenvolvedor cumprir o requisito, em vez de quebrar. Analisar, pesquisar, planejar e revisar a melhor forma de organizar isso.
-127. Regra: o `CLAUDE.md` só cita uma versão ou um número quando uma regra depende dele, como o C++20 da linguagem ou os 100% de cobertura que os testes buscam. Valores secundários que mudam o tempo todo ficam fora: versões de bibliotecas, de ferramentas, de SDKs e da própria engine, e limites, tamanhos, contagens e durações que o código declara. Para esses, a regra diz o tipo de limite e aponta o arquivo que guarda o valor.
+127. Regra: o `AGENTS.md` só cita uma versão ou um número quando uma regra depende dele, como o C++20 da linguagem ou os 100% de cobertura que os testes buscam. Valores secundários que mudam o tempo todo ficam fora: versões de bibliotecas, de ferramentas, de SDKs e da própria engine, e limites, tamanhos, contagens e durações que o código declara. Para esses, a regra diz o tipo de limite e aponta o arquivo que guarda o valor.
 128. Os templates de app e de plugin trazem o `.gitignore`, o `.editorconfig` e o `.clang-format`, então todo projeto criado pelo `make.py new` e pelo `make.py plugin new` já nasce com eles.
 129. O Tiny Island no Apple TV fica lento e pisca de um jeito estranho: há um problema de renderização a achar e corrigir.
 130. O switch desligado (e pressionado) aparece como uma barra azul estranha, enquanto o ligado está certo: o desenho de todos os estados do switch tem que ficar coerente.
 131. No Tiny Island, a fogueira do menu é de partículas e a do jogo é outra coisa: as duas têm que ser a mesma, com o mesmo efeito.
 132. Revisar o render para funcionar bem em tudo, com muita performance, melhor do que as engines atuais, em todas as plataformas.
 
+### 2.6 Sétimo pedido: qualidade, projeto único de testes, UI, física, partículas, apps, conteúdo e ferramentas
+
+133. Mais testes, mais organização, mais perfeccionismo e mais foco em desempenho em toda a engine.
+134. A interface entre C++ e Lua tem que ser muito bem desenhada e estável, para que mudanças futuras não obriguem quem usa a engine a refazer o código porque algo deixou de funcionar do mesmo jeito.
+135. Revisar com calma cada teste dos samples: alguns deram erro e outros funcionaram mal, como a transição entre cenas, que mostra uma piscada da outra cena.
+136. O nine-patch em alguns casos pega pedaços errados da imagem: revisar.
+137. Gerar imagens, sprites, tiles e temas melhores e detalhados, como de jogos e aplicações reais, com o Codex (`codex exec` com `$imagegen`, sem a variável `OPENAI_API_KEY`, para usar a assinatura do dono), em alta definição, polidos e no mesmo estilo visual.
+138. Juntar todos os samples de testes de recursos da engine num único projeto de testes, com um menu de categorias e depois os testes da categoria, navegável em todas as plataformas (inclusive na TV), mostrando o erro ou a incompatibilidade onde algo não roda, com um código por teste para facilitar reportar erros, tudo organizado em pastas. Os projetos independentes (jogos e apps) continuam separados.
+139. Alguns testes não dá para testar porque as setas e as teclas vão para a UI e não para o jogo: o jogo e a UI dividem o input sem um atrapalhar o outro.
+140. O Varn não pode ser impedimento para a Haylen ser a engine mais robusta e com mais capacidade e desempenho: revisar se ele precisa de mudanças e pedir à sessão do Workpane.
+141. As regras da engine ficam no `AGENTS.md`.
+142. Mensagens de commit são sempre todas em minúsculas. Logs e mensagens ao usuário são frases com a caixa normal de uma frase.
+143. Nenhuma imagem de terceiros: criar as nossas para os samples e tirar todas as citações e menções a essas pessoas e empresas.
+144. A estrutura e a arquitetura precisam ser poderosas: refazer ou refatorar o que for preciso, sem se importar com o passado ou com a quantidade de trabalho.
+145. O CI só testa. O release do GitHub contém só o código, porque quem usa a engine compila localmente.
+146. A arquitetura suporta todo tipo de aparelho, de jogo ou de app, inclusive os de duas telas e os dobráveis.
+147. A safe area só existe quando o aparelho tem uma: sem recorte, a área segura é a janela inteira.
+148. Todos os ciclos de vida e eventos possíveis funcionando 100% em todas as plataformas, como uma cena que carrega atrás de uma tela de loading que sai com fade revelando o mapa pronto.
+149. Listas com itens de tipos diferentes, horizontais, verticais e em grade, com reciclagem de células como as listas nativas da Apple e do Google, pesquisada, testada e funcionando em todas as situações.
+150. O `make.py` não tem comandos nem regras de samples (como do Tiny Island): os comandos são da engine, e para rodar algo existe o `run`. O README fala do produto Haylen de forma objetiva e clara, com os recursos, sem versões a não ser as essenciais (como a do C++).
+151. A documentação é organizada por módulo da engine (2D hoje, 3D no futuro).
+152. O `make.py` passa a se chamar `haylen.py`.
+153. O `haylen.py` fica profissional e bonito, colorido, com erros destacados e mensagens bem elaboradas, e com links e caminhos clicáveis no terminal (sem aspas em volta de URLs).
+154. Na web o `haylen.wasm` é baixado duas vezes, e o `splash.png` também: cada arquivo tem que ser baixado uma vez só.
+155. Revisar a fundo a resolução e a escala: na web, ao diminuir o navegador, tudo diminui. Avaliar modos responsivos que acompanham a largura.
+156. Investigar dois jogos de alto desempenho do dono (um clone de MMORPG 2D com sprites e um jogo de luta 2D) para conferir se a engine suporta tudo o que eles precisam em baixo nível, sem citar esses jogos no repositório.
+157. Na web, a escolha entre WebGL2 e WebGPU é automática e também manual, tudo funciona nos dois, e uma limitação real fica escrita no teste.
+158. No macOS, um app iniciado não aparece como app (não dá para fechar com Command+Q). No projeto C++ a janela aparece, mas sem o menu padrão e sem obedecer ao Command+Q.
+159. O sistema de temas cobre literalmente toda a UI, e toda a UI é alterável, com todos os eventos e o ciclo de vida, e com qualquer detalhe visual (borda, espessura, efeito, comportamento).
+160. Bug do switch: ao tocar para desligar, o retângulo de fundo anda para a esquerda.
+161. Avaliar quais outros conceitos, recursos e módulos 2D a engine ainda precisa.
+162. Integração com a plataforma nativa funcionando 100%.
+163. Revisar o hot reload e o tratamento de erros para ficarem perfeitos.
+164. Um sample com shader levou uns 2 segundos para aparecer: validar o carregamento de shaders.
+165. Mais exemplos de física, partículas e efeitos, em estilos diferentes.
+166. Soluções para os problemas mais comuns das engines, como um objeto rápido atravessando uma parede fina na física, pesquisados para todos os cenários comuns e colocados como opções da engine e como samples.
+167. Uns 200 efeitos de partículas dos mais comuns, nos mais diversos estilos de jogos 2D.
+168. Casos de física dos mais comuns em jogos, como samples.
+169. Técnicas menos comuns, como colorir partes de um sprite branco por uma máscara de cores (camadas amarela, vermelha, verde e azul) para roupas personalizáveis.
+170. Regra: nunca citar jogos ou empresas de terceiros e nunca copiar imagens de terceiros, só a ideia, com arte própria.
+171. Validar o suporte a SVG de alto desempenho.
+172. Uma categoria de samples de apps: delivery de comida, marketplace, transporte por app, loja online e streaming de música, com dados falsos mas com navegação de ida e volta, cores e características de cada tipo de app, sem citar nomes.
+173. Regra: usar a última versão de todas as dependências (Sokol, Box2D e as outras).
+174. Ragdoll: fica presa na escada e não dá para puxar.
+175. Carro: atravessa as paredes de proteção e só capota, impossível de dirigir.
+176. Líquidos da física ficaram lentos até num M5.
+177. Otimizar a física de forma profissional.
+178. Sockets, WebSocket e HTTP funcionando perfeitamente.
+179. Testes e exemplos do próprio Varn no projeto de testes, para as pessoas aprenderem a usá-lo.
+180. Mais samples para cada caso, de coisas reais e que testem mais a capacidade da engine.
+181. Debug fácil de ligar e desligar na engine: corpos de física, FPS, sprites e os objetos da cena, com marcação em volta deles.
+182. Configuração para usar o mouse como toque.
+183. Joystick virtual com todos os modos (fixo, flutuante que aparece ao tocar numa zona, que segue o dedo), vários joysticks ao mesmo tempo, ligados a ações do action map, com imagens além de primitivas.
+184. Trocar o nome `document` da UI (como em `self.document`) por um termo geral melhor.
+185. Os templates de todas as plataformas já vêm com a bridge pronta para qualquer SDK futuro (anúncios, compras, login, serviços de jogos), nos dois sentidos, testada nos samples simulando câmera (imagem e áudio), localização, mapa, abrir outro app e o que mais der.
+186. Splash screens de iOS e Android 100% funcionando e fáceis de trocar (cores, logo e ícones), sem nada engessado.
+187. Um comando do `haylen.py` gera a chave de upload (debug ou release) do Android e a coloca na pasta certa do projeto da plataforma.
+188. O toast não empilha: um fica por cima do outro.
+189. Pessoas podem criar as próprias bibliotecas de GUI sem depender da nativa: a engine expõe todo o seu poder para o Lua.
+190. Layouts e alinhamentos funcionando 100%.
+191. A UI suporta o teclado que aparece no mobile.
+192. No mobile as fontes e os elementos ficam bem pequenos, no desktop não: validar a escala.
+193. Documentação de um workflow do GitHub Actions que compila o jogo com o instalador para todas as plataformas suportadas, com os secrets de assinatura e de notarização nomeados como o dono usa e como gerá-los.
+194. O Tiny Island tem guerreiro, arqueiro, lanceiro e mago, inimigos variados, a ovelha que dá comida e efeitos nos ataques, tudo com arte própria polida.
+195. Regra: comentários de código só onde forem muito necessários.
+196. Corrigir o aviso do iOS sobre `application:didReceiveRemoteNotification:fetchCompletionHandler:` implementado sem `remote-notification` nos `UIBackgroundModes`.
+197. O `run` com argumento vazio ou inválido não roda nenhum sample por padrão: nenhum sample é especial.
+198. Os assets ficam nos samples, sem comando, menção especial ou download.
+199. O hot reload não funcionou na web. E o hot reload refaz o app inteiro: pesquisar como recarregar só o script alterado de forma correta e eficiente.
+200. A fonte com contorno ficou estranha: revisar o texto para tudo ser suportado com perfeição.
+201. O fundo de diálogos e overlays faz o efeito devagar e não acompanha o diálogo.
+202. Tema: refazer as imagens (coisas quebradas, passando dos limites, badge com número fora do centro, item selecionado arredondado dentro de um retângulo com espaços vazios), deixar o tema padrão de cores com todas as bordas perfeitas, e criar um tema com imagens no estilo de fantasia casual das referências que o dono indicou, com arte própria.
+203. UI, sprites e tiles mais polidos e em alta definição.
+204. Implementar todo o sistema de conteúdo do `CONTENT_SYSTEM_IMPLEMENTATION.md` (empacotamento, proteção, streaming, desempenho e atualização), com testes, sem deixar nada de fora.
+205. Dar push na `main` conforme o trabalho avança.
+
 ## 3. Regras
 
-As regras oficiais do projeto estão no `CLAUDE.md`, que é obrigatório e precisa ser lido por inteiro antes de qualquer trabalho. Ele reúne os princípios, as regras de trabalho e de commit, os nomes, a organização do código, os bindings Lua, a arquitetura, as dependências, os samples, a formatação, os comentários, os testes e a documentação. Este documento não repete essas regras.
+As regras oficiais do projeto estão no `AGENTS.md`, que é obrigatório e precisa ser lido por inteiro antes de qualquer trabalho. Ele reúne os princípios, as regras de trabalho e de commit, os nomes, a organização do código, os bindings Lua, a arquitetura, as dependências, os samples, a formatação, os comentários, os testes e a documentação. Este documento não repete essas regras.
 
 ## 4. Stack
 
@@ -238,8 +314,8 @@ As versões fixadas de cada componente ficam em `engine/cmake/haylen-dependencie
 ```text
 CMakeLists.txt              Projeto raiz: engine, player, testes e benchmarks.
 make.py                     Ponto único de build para todas as plataformas e tarefas: artefatos da engine, criação, execução e empacotamento de apps, samples, shaders, servidor web, testes, cobertura, sanitizers, formatação e benchmarks.
-CLAUDE.md                   Regras oficiais, descrição do projeto e estrutura.
-AGENTS.md                   Aponta para o CLAUDE.md.
+AGENTS.md                   Regras oficiais, descrição do projeto e estrutura.
+AGENTS.md                   Aponta para o AGENTS.md.
 PROJECT.md                  Este documento.
 README.md                   Apresentação e início rápido.
 .github/workflows/ci.yml    CI: formatação, testes, cobertura, SDK e os artefatos web, Android e Apple.
@@ -826,7 +902,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 
 | Fase | Conteúdo | Status |
 | --- | --- | --- |
-| 1 | Estrutura, CMake com CPM, dependências (incluindo Varn), CLAUDE.md e este plano | Concluída |
+| 1 | Estrutura, CMake com CPM, dependências (incluindo Varn), AGENTS.md e este plano | Concluída |
 | 2 | Core e matemática com testes | Concluída |
 | 3 | Integração com o Varn: runtime, jobs, log, pacote do app (pasta e zip), loader Lua e toolkit de bindings | Concluída |
 | 4 | Host (real e headless), janela, eventos e input | Concluída |
@@ -840,7 +916,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 132 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 205 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -851,9 +927,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 132: decisões e checklist
+## 14. Pedidos 51 a 205: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 132 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -887,12 +963,12 @@ Esta seção cobre os pedidos 51 a 132 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As
 
 #### A. Nomes, pacote e estrutura
 
-- [x] Nome Haylen em tudo (namespace `haylen` com os sub-namespaces por contexto, headers em `haylen/`, alvos `haylen::engine` e `haylen::runtime`, `haylen_add_app`, módulos Lua `haylen.*`, pacote Java `dev.haylen`, `Module.haylen` na web, `Haylen.xcframework`, `haylen_main`, player `haylen`, arquivos `haylen-*.cmake`, docs, README e CLAUDE.md).
+- [x] Nome Haylen em tudo (namespace `haylen` com os sub-namespaces por contexto, headers em `haylen/`, alvos `haylen::engine` e `haylen::runtime`, `haylen_add_app`, módulos Lua `haylen.*`, pacote Java `dev.haylen`, `Module.haylen` na web, `Haylen.xcframework`, `haylen_main`, player `haylen`, arquivos `haylen-*.cmake`, docs, README e AGENTS.md).
 - [x] `app` em tudo o que o desenvolvedor cria (arquivos, CMake, Gradle, JavaScript, `make.py`, docs e mensagens).
 - [x] Pacote com `app.json`, `source/` e `content/`, com hot reload separando scripts (`source/` e `app.json`) de recursos (`content/`). Só essas três entradas são o pacote em todas as plataformas.
 - [x] Módulos Lua 2D com sufixo `2d`, `haylen.graphics` separado de `haylen.graphics2d`, `Font` em `text/` e `FloatRange` em `math/`. Os tipos 2D levam o contexto no namespace (`physics2d::World`), como o grupo P descreve.
 - [x] Ciclo de dia e noite fora da engine, em Lua no Tiny Island (`source/systems/day-night.lua`), e `lighting2d.flicker` (`lighting2d::LightFlicker`) como utilitário genérico.
-- [x] CLAUDE.md, README e guias com a estrutura atual e a regra 2D e 3D.
+- [x] AGENTS.md, README e guias com a estrutura atual e a regra 2D e 3D.
 
 #### B. Distribuição, templates e comandos
 
@@ -1009,7 +1085,7 @@ Esta seção cobre os pedidos 51 a 132 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As
 
 Os samples ficam em categorias, e os comandos recebem o caminho a partir de `samples/` (`python3 make.py run games/tiny-island`, `python3 make.py run graphics/lighting --platform web`, `python3 make.py run-cpp cpp/embedding`), com `python3 make.py samples` listando todos: `games/` (tiny-island e taskbar-quest), `graphics/` (sprites, camera, lighting, shaders, particles, nine-patch, fonts e scenes), `gameplay/` (physics, algorithms, tiled, tween, events, input e audio), `interface/` (ui, safe-area e orientation), `system/` (filesystem, preferences, localization, network, platform e native) e `cpp/` (embedding).
 
-- [x] Samples em categorias, `make.py run` e `run-cpp` resolvendo o caminho a partir de `samples/`, `make.py samples` listando todos, e README, docs, CLAUDE.md e os READMEs dos samples no mesmo formato.
+- [x] Samples em categorias, `make.py run` e `run-cpp` resolvendo o caminho a partir de `samples/`, `make.py samples` listando todos, e README, docs, AGENTS.md e os READMEs dos samples no mesmo formato.
 
 Todo sample de recursos tem um menu simples para escolher o teste, cada teste é uma cena com um botão para voltar ao menu, e roda em todas as plataformas pelos templates.
 
@@ -1122,10 +1198,10 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [x] No Mac Catalyst, as teclas não chegam ao mapa de ações nem à navegação por foco enquanto um campo nativo edita texto.
 - [x] O teclado virtual do Android não reabre depois do Back, validado no emulador com o AAR.
 - [x] Host headless com limite de textura igual ao das GPUs reais (patch `sokol-dummy-limits.patch` do backend dummy do Sokol com os limites de desktop, 16384), para o teste de fumaça sem janela chegar ao gameplay do Tiny Island.
-- [x] Regras de commit e push na `main` por bloco, com prefixo e frase curta começando com maiúscula e sem coautor, a conferência de arquivos privados e temporários antes de cada commit e a proibição de citar outras engines, no CLAUDE.md. Os commits são publicados em `github.com/haylen-org/haylen`.
-- [x] Nenhuma menção a outras engines no repositório (código, comentários, testes, docs, README, CLAUDE.md e este documento).
+- [x] Regras de commit e push na `main` por bloco, com prefixo e frase curta começando com maiúscula e sem coautor, a conferência de arquivos privados e temporários antes de cada commit e a proibição de citar outras engines, no AGENTS.md. Os commits são publicados em `github.com/haylen-org/haylen`.
+- [x] Nenhuma menção a outras engines no repositório (código, comentários, testes, docs, README, AGENTS.md e este documento).
 - [x] Seções 1 a 13 deste documento com os nomes atuais (app, `source/`, `content/`, namespaces, módulos `2d`, `storage` e `preferences`), sem ponto e vírgula, sem histórico e com o status real de cada item.
-- [x] CLAUDE.md descreve o projeto como ele é, sem histórico e sem versões de bibliotecas, e contém os padrões de código, a arquitetura, a organização e as regras de que cada execução de um agente precisa para novos recursos e correções.
+- [x] AGENTS.md descreve o projeto como ele é, sem histórico e sem versões de bibliotecas, e contém os padrões de código, a arquitetura, a organização e as regras de que cada execução de um agente precisa para novos recursos e correções.
 - [ ] Varredura final do repositório inteiro atrás de frases de histórico e de menções a outras engines.
 
 #### P. Organização do código C++
@@ -1139,7 +1215,7 @@ Mapa de namespaces (um por contexto, igual ao nome da pasta, e com o sufixo `2d`
 - [x] Plugins na pasta `plugins/` e no namespace `haylen::plugins`, incluindo a interface `Plugin` e o `PluginRegistry`, com os nomes dos plugins iguais aos módulos Lua.
 - [x] `plugins::StoragePlugin` no contexto `storage` (`UserStorage`, `Preferences` e `SaveSlots`), com os módulos Lua `haylen.storage` (arquivos e slots: `writeSlot`, `readSlot`, `slotInfo`, `slotExists`, `removeSlot` e `listSlots`) e `haylen.preferences` (arquivo `preferences.json`).
 - [ ] Revisão do código inteiro atrás de coisas soltas, perdidas ou fora de classe.
-- [x] CLAUDE.md com todas essas regras.
+- [x] AGENTS.md com todas essas regras.
 
 #### Q. Tela de erro
 
@@ -1262,7 +1338,7 @@ A referência são jogos como o Taskbar Hero, que rodam numa faixa transparente 
 
 - [x] Todos os nomes que a API Lua recebe ou devolve como string em camelCase, sem aliases: os 54 eventos do `core::LifecycleEvent` (`appBackground`, `sceneEnterTransitionFinished`), os eventos de plataforma (`keyDown`, `touchBegan`, `quitRequested`), as teclas e os controles (`leftShift`, `graveAccent`, `keypad0`, `leftShoulder`, `rightTrigger`), os cursores (`pointingHand`, `resizeAll`), os dispositivos (`keyboardMouse`), os easings (`quadOut`, `elasticInOut`), os modos e políticas (`pingPong`, `pixelPerfect`), os gestos (`doubleTap`, `longPress`), as ações de UI (`uiAccept`), o tipo de asset `tiledWorld` e os códigos de erro da bridge (`noHandler`, `invalidJson`). A engine, os testes, a documentação, os samples, o template, o JavaScript da web, o Java do Android e o código Apple usam os mesmos nomes. Preferências gravadas com os nomes antigos deixam de carregar.
 - [x] Nomes Lua iguais aos do C++, na direção que dá o nome mais preciso: tipos `Transform2D`, `Noise2D`, `StaticSpriteBatch` e `HashGrid` (`spatial2d.newHashGrid`), funções como `haylen.elapsed` e `haylen.frameIndex`, `storage.readText` e `storage.writeText`, `input.findTouch`, `localization.findBestMatch`, `native.findSymbol`, `platform.registerHandler`, `assets.unloadGroup`, `window.framebufferSize`, `ui.usingPointer`, `document:replaceChildren`, e do lado C++ `Viewport::getScaling`, `Profiler::beginScope` e `endScope`, `RayBatch::getHit` e os parâmetros `curved` e `closed` do `TweenMotion::path`. Os nomes de tipo Lua são únicos no registro de metatables (`haylen.` e o nome da classe C++, com o contexto na frente quando o nome sozinho é vago, como `Map`, `PhysicsWorld`, `UiDocument` e `NavGrid`).
-- [x] Mensagens de erro no padrão do CLAUDE.md nas 13 mensagens do `AppConfig.cpp` e nas mensagens que começavam com minúscula (UI, ImGui, tween, jobs, libffi, drawBatch, captura, clip, metatables protegidas, opções inválidas e tipos sem membro).
+- [x] Mensagens de erro no padrão do AGENTS.md nas 13 mensagens do `AppConfig.cpp` e nas mensagens que começavam com minúscula (UI, ImGui, tween, jobs, libffi, drawBatch, captura, clip, metatables protegidas, opções inválidas e tipos sem membro).
 - [x] Teclas de dígito com o nome do valor do enum: `Key::Digit0` a `Key::Digit9` em C++ e `'digit0'` a `'digit9'` em Lua (`key:digit1`), com o rótulo de captura mostrando só o número.
 - [x] Direção do texto com o nome do valor do enum: `'leftToRight'` e `'rightToLeft'` no Lua, na UI, no rich text (`[p dir=…]`) e nos catálogos de idioma (`@direction`), com uma tabela de nomes só.
 - [x] As mensagens com um valor anexado viraram frases completas que citam o valor e dizem o que se espera (como `The texture filter must be "nearest" or "linear", not "x".`), e as mensagens de propriedades da UI começam com maiúscula e dizem o esperado (`The property "style.padding" of a "button" must be a number.`), por `PropertyReader::describeProperty` e `describeKind`.
@@ -1350,7 +1426,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 - [x] Sample `samples/system/plugins` com o plugin de demonstração `plugins/native-demo/` (Swift com UIKit e AppKit, Kotlin, JavaScript e C), um teste por capacidade (chamadas na thread principal e em segundo plano, falha tipada, timeout e cancelamento, evento retido na carga, eventos do nativo, configuração com padrão, banner nativo no topo e na base com espaço reservado, toque no banner, tela nativa que cobre o app, seletor de arquivo, URL com o app rodando e a frio, erro do app entregue ao nativo e devolvido ao próximo app, e informações do plugin), validado no simulador iOS, no Mac Catalyst, no simulador tvOS, no app macOS, no emulador Android, na web (WebGPU e WebGL2) e no player de desktop, e no harness sem janela com a parte nativa ausente. O que a plataforma não tem responde `unsupported` (seletor de arquivo no tvOS, banner, cobertura e arquivo no player de desktop).
 - [~] Guia `docs/plugins.md` (usar e escrever plugins: formato, Lua, Swift e Objective-C, Kotlin e Java, JavaScript, overlays, espaço reservado, cobertura, ciclo de vida, configuração, arquivos por app e testes), com `docs/platform_bridge.md`, `docs/distribution.md` e `docs/lua-api/platform.md` atualizados. Falta a parte do plugin de demonstração e do sample.
 - [x] Testes GoogleTest da parte da engine: resolução do Lua dos plugins e colisão de nomes, configuração com padrões, handles e `send`, espaço reservado com a UI ancorada, app coberto, erros para o host, eventos retidos, `HaylenNativeApi.registerPlugin` e política de thread, com 950 testes passando, também sob ThreadSanitizer.
-- [~] Regras dos plugins no CLAUDE.md (pacote, `plugin.json`, configuração, montagem e nomes). Falta completar com as APIs nativas quando o Android e a Apple ficarem prontos.
+- [~] Regras dos plugins no AGENTS.md (pacote, `plugin.json`, configuração, montagem e nomes). Falta completar com as APIs nativas quando o Android e a Apple ficarem prontos.
 - [ ] Caminhos da Apple que o simulador não dispara: resultado combinado do fetch em segundo plano (o `simctl` recusa push silencioso), sessões de URL em segundo plano, atalhos, atividades, token do APNs, resposta de notificação tocada e notificações remotas no macOS, conferir num aparelho.
 
 #### AD. Marca nova nas imagens da engine
@@ -1366,7 +1442,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 - [~] Varredura dos documentos (`docs/`, READMEs dos samples e do plugin de demonstração, `README.md` e `PROJECT.md`): nenhuma frase começa com uma expressão em crase, e toda expressão reservada fica entre crases.
 - [~] Varredura dos comentários de código (C++, Objective-C, Java, Kotlin, Swift, JavaScript, Lua, CMake e Python): toda expressão reservada entre crases e nenhuma frase começando em minúscula.
 - A primeira passada cobriu a engine portátil, os desktops, a web, as ferramentas, os samples, os templates e 73 documentos, e trocou as aspas simples das mensagens por aspas duplas, com os testes. Faltam o `make.py`, o código do Android e da Apple, o `PROJECT.md` e os documentos que as ondas da Apple e do Android estavam editando.
-- [x] O `CLAUDE.md` só cita versões e números de que uma regra depende (o C++20 e os 100% de cobertura), e a regra está nos princípios dele: versões de bibliotecas, ferramentas, SDKs e da engine, e limites, tamanhos, contagens e durações declarados no código ficam fora, com o arquivo que guarda cada valor.
+- [x] O `AGENTS.md` só cita versões e números de que uma regra depende (o C++20 e os 100% de cobertura), e a regra está nos princípios dele: versões de bibliotecas, ferramentas, SDKs e da engine, e limites, tamanhos, contagens e durações declarados no código ficam fora, com o arquivo que guarda cada valor.
 
 #### AA. Informações do sistema e diálogos nativos
 
@@ -1405,7 +1481,7 @@ Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e w
 
 - [x] Testes GoogleTest no host sem janela: pedidos de diálogo gravados e respondidos pelo teste, validação das opções, resultados, cancelamento e timeout, `unsupported`, informações do sistema, tema e bateria com os eventos, e os bindings Lua.
 - [x] Sample `samples/system/system-info` (ou um teste no sample de plataforma) com as informações, o tema e a bateria ao vivo, e um sample ou testes de diálogos com mensagem, abrir arquivos, salvar e pasta, validados no macOS, no simulador iOS, no Mac Catalyst, no simulador tvOS, no emulador Android e na web. Windows e Linux compilados e testados no CI. Os testes "System" e "Dialogs" do sample de plataforma foram conferidos no macOS, nos simuladores, no Mac Catalyst, no emulador Android e na web.
-- [x] Páginas `docs/lua-api/system.md` e `docs/lua-api/dialogs.md` completas com exemplos, `docs/platform_bridge.md` sem os métodos embutidos e as regras no CLAUDE.md.
+- [x] Páginas `docs/lua-api/system.md` e `docs/lua-api/dialogs.md` completas com exemplos, `docs/platform_bridge.md` sem os métodos embutidos e as regras no AGENTS.md.
 
 **Para os plugins futuros, fora desta etapa**
 
@@ -1423,7 +1499,7 @@ Os plugins de câmera, foto, microfone, áudio, localização e notificações m
 - [~] Permissões em tempo de execução pelos plugins, conferidas de ponta a ponta: Android (`requestPermissions` na activity e o resultado pelo repasse do `onRequestPermissionsResult`), Apple (as APIs de cada framework, com as descrições de uso no `infoPlist` do `plugin.json`), web (`navigator.permissions` e o gesto do usuário) e desktops, documentado no guia de plugins. Na Apple, o plugin de demonstração pede a câmera e as notificações, com a descrição de uso no `infoPlist`, conferido no simulador. No Android, `RequestPermission` do Activity Result API, conferido no emulador. Faltam a web e os desktops.
 - [~] Notificações e push nos plugins: o que um plugin de notificações precisa da engine (delegate de notificações na Apple, `onNewIntent` e serviços no Android, service worker na web, eventos guardados com o app fechado), conferido pelo plugin de demonstração com uma notificação local de verdade em cada plataforma que permite, e o toque nela chegando ao Lua, inclusive com o app fechado. Na Apple, uma notificação local do plugin de demonstração, com o toque chegando ao Lua com o app rodando e a frio, conferida no simulador. No Android, a notificação local passa pelo `HaylenLinkActivity` da biblioteca `haylen-links`, conferida no emulador com o app rodando, fechado e com o processo morto. Faltam a web e os desktops.
 - [ ] O plugin de demonstração testa cada mecanismo: um resultado binário (uma imagem gerada no nativo e desenhada no Lua), um stream de vídeo gerado no nativo (um padrão animado), um stream de áudio gerado no nativo (um tom), eventos em lote, um pedido de permissão real e uma notificação local tocada, em cada plataforma.
-- [ ] Guia `docs/plugins.md` com a parte de dados binários, streams, lotes, permissões e notificações, e as regras no CLAUDE.md.
+- [ ] Guia `docs/plugins.md` com a parte de dados binários, streams, lotes, permissões e notificações, e as regras no AGENTS.md.
 
 #### AC. Telas de plugins e o host do Android
 
@@ -1462,7 +1538,7 @@ Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, 
 - [x] API de telas de plugins na engine: `handle:openScreen(nome, parâmetros, {state, opaque, timeout})` e `platform.screenShowing()` no Lua, `platform::Screens` (`engine.getScreens()`) no C++, uma tela por vez (`busy`), só com o app ativo (`notActive`), app coberto antes da plataforma abrir a tela e sem desenhar sob uma tela opaca, cancelamento e timeout que mantêm o app coberto até a plataforma confirmar que a tela fechou, e a tela sobrevivendo ao reinício do app com o evento retido `<id>.screenRestored` (`screen`, `state` e `result` ou `error`), com testes e ThreadSanitizer. A API C versão 5 traz o registro de telas, a janela nativa e a cobertura.
 - [x] `docs/lifecycle.md` corrigido: as respostas da bridge, os timers e os callbacks de rede esperam enquanto a plataforma não roda frames (Android pausado ou sem foco, iOS e tvOS inativos, aba escondida no navegador).
 - [x] O plugin de demonstração abre uma tela nativa de verdade em cada plataforma (uma activity AndroidX com resultado, um view controller e uma tela em SwiftUI, um popup na web e uma janela no desktop) e recebe o resultado, inclusive depois de o processo morrer no Android. Prontos: a Apple (uma tela em UIKit, uma em SwiftUI e uma sheet no macOS), a web e o desktop. No Android, uma activity do AndroidX, com o resultado chegando depois de o processo morrer, conferido no emulador.
-- [x] Guia `docs/plugins.md` com as telas de plugins e as regras no CLAUDE.md.
+- [x] Guia `docs/plugins.md` com as telas de plugins e as regras no AGENTS.md.
 
 #### AG. Render, desempenho e o Tiny Island
 
@@ -1555,4 +1631,137 @@ Checklist:
   - Sem elas: o `check` mostra os trechos, e o app abre e responde `unsupported` em vez de fechar.
   - Com edições do desenvolvedor: chave própria no `Info.plist`, número de build no `App.xcconfig`, framework e alvo mudados no `project.yml`, `targetSdk`, assinatura e sabor no Gradle, e arquivos apagados que não voltam.
 - [x] Templates de app e de plugin com `.gitignore` (saídas de build, cache do CPM, pastas `haylen/` geradas, arquivos de editor e do sistema e o `local.properties`), `.editorconfig` (o do dono) e `.clang-format` (o do repositório), copiados pelo `make.py new` e pelo `make.py plugin new` e fora do pacote do app.
-- [x] Decisões 14.1 (templates, projetos no lugar e `make.py new`), `docs/distribution.md`, `docs/plugins.md`, `docs/build.md`, `docs/embedding.md` e o CLAUDE.md descrevendo a propriedade dos projetos e os requisitos.
+- [x] Decisões 14.1 (templates, projetos no lugar e `make.py new`), `docs/distribution.md`, `docs/plugins.md`, `docs/build.md`, `docs/embedding.md` e o AGENTS.md descrevendo a propriedade dos projetos e os requisitos.
+
+#### AH. Regras, repositório e a ferramenta `haylen.py`
+
+- [x] As regras do projeto ficam todas no `AGENTS.md`, que todas as referências do repositório citam.
+- [x] Regras novas no `AGENTS.md`: commit todo em minúsculas (`feature: add scene loading lifecycle`); logs, mensagens e textos ao usuário com a caixa normal de frase; comentários só onde forem muito necessários; nunca citar jogos, empresas, autores ou ferramentas de terceiros nem usar imagens de terceiros; usar a última versão de todas as dependências; gerar a arte dos samples com o Codex (como chamar, tamanho exato, transparência, estilo único); o terminal do `make.py` destaca expressões por cor e mostra URLs e caminhos sem aspas.
+- [ ] `make.py` renomeado para `haylen.py` em tudo: código, testes (`tools/test_make.py` vira `tools/test_haylen.py`), CI, templates, docs, README, mensagens e o próprio `AGENTS.md`.
+- [ ] O `haylen.py` só tem comandos da engine: sai o comando de importar os assets do Tiny Island e qualquer regra de sample. O `run` sem app ou com um caminho inválido para com uma mensagem clara e não abre nenhum sample por padrão.
+- [ ] Saída profissional e colorida do `haylen.py`: títulos e passos, sucesso, avisos e erros em cores distintas, comandos ecoados discretos, URLs e caminhos sem aspas para o terminal deixar clicar, cores desligadas sem TTY ou com `NO_COLOR`, e erros com a causa e o que fazer.
+- [ ] Comando `haylen.py android-key <app> [--debug|--release]` (nome final a decidir pelo padrão dos comandos) que gera a chave de upload com o `keytool` (RSA 2048, validade longa, alias e senhas configuráveis, padrão `upload`) e o certificado `.pem`, na pasta do projeto Android do app, ignorada pelo `.gitignore`, e liga a assinatura de release do Gradle a ela por propriedades locais, documentado.
+- [ ] Ferramentas e assets de samples saem de `tools/`: o importador de arte de terceiros sai, e geradores que só um sample usa vão para dentro do sample ou saem, com os assets gerados versionados no sample.
+- [ ] Nenhuma arte ou menção de terceiros no repositório: os pacotes de arte (Tiny Swords e os pacotes CC0), os `CREDITS.md` que citam autores, os nomes de fontes ou pacotes de terceiros onde não forem obrigatórios por licença, e o `.gitignore` de arte importada saem, e a arte própria entra no lugar. Fontes de licença aberta que a engine embute ficam só com a licença exigida.
+- [ ] CI só testa: confirmar que nenhum workflow publica artefatos em releases, e que o release do GitHub é só o código.
+- [ ] Auditoria das versões de todas as dependências (Sokol, Box2D, miniaudio, Dear ImGui, HarfBuzz, SheenBidi, libunibreak, msdfgen, stb, zstd, Clipper2, nlohmann/json, GameActivity, AndroidX, XcodeGen, emsdk, NDK, Gradle, AGP, Kotlin e as do CI), subindo cada uma para a última versão, adotando a API atual e removendo patches que não forem mais necessários.
+- [ ] README do produto Haylen: objetivo, recursos por área, plataformas, início rápido, sem versões além das essenciais (C++20) e sem samples específicos em destaque.
+- [ ] Varredura de texto estrita (continua o grupo AE): todo texto que os samples, os templates e a engine mostram ou imprimem começa com maiúscula, inclusive títulos, botões e cada linha de leitura na tela, com expressões reservadas marcadas.
+
+#### AI. Projeto único de testes da engine
+
+- [ ] Um projeto de testes em `samples/tests/` (nome final pelo padrão dos samples) com todos os samples de recursos da engine (gráficos, gameplay, interface e sistema), num menu de categorias e depois os testes da categoria, cada teste numa pasta da sua categoria.
+- [ ] Cada teste tem um código estável e curto (como `GFX-012`) mostrado no menu, no cabeçalho do teste e nos logs, para reportar erros, com a lista de códigos documentada.
+- [ ] Navegação completa com mouse, toque, teclado, controle e controle remoto da TV, com voltar para a categoria e para o menu, busca ou filtro por código, e o último teste lembrado.
+- [ ] Um teste que a plataforma não suporta mostra o motivo exato na tela em vez de quebrar, e um erro de um teste mostra a tela de erro sem derrubar o projeto, que volta ao menu.
+- [ ] O jogo e a UI dividem o input: as setas, WASD e o controle chegam ao jogo enquanto a área de jogo tem o foco, e a UI só navega quando tem o foco (com uma forma clara de levar o foco à UI e de devolver ao jogo), com testes do roteamento.
+- [ ] Revisão de cada teste existente, um por um, rodando e conferindo o resultado, e corrigindo o que der erro ou funcionar mal (como a piscada da outra cena na transição).
+- [ ] Testes e exemplos do Varn (async, promises, timers, http, socket, websocket, json, fs, zip, crypto, log, datetime, xml, process e ffi), para aprender a usá-lo pela Haylen.
+- [ ] Os samples antigos de recursos saem do repositório depois da migração, os comandos e docs que os citam passam a citar o projeto de testes, e o harness sem janela roda o projeto inteiro.
+
+#### AJ. API estável entre C++ e Lua
+
+- [ ] Revisão completa da API pública em C++ e em Lua (nomes, opções, retornos, erros, eventos, donos, assíncrono, tipos de valor), para que cresça sem mudar o que já existe: opções em tabelas, retornos extensíveis, eventos com payload em tabela, enums como strings, nada posicional que precise mudar.
+- [ ] O termo `document` da UI troca por um nome geral melhor em C++, Lua, docs e samples, sem alias.
+- [ ] Tudo o que uma biblioteca de GUI própria precisa está exposto ao Lua: desenho de baixo nível (primitivas, texto com layout, imagens, nine-slice, clipping, stencil, render targets, shaders), medição de texto, entrada (ponteiro, toque, teclado, texto, IME, controle), foco, captura de ponteiro, cursor, área segura e escala, com um exemplo de UI própria em Lua.
+- [ ] Documento de política de API: o que é público e estável, o que é interno, e como uma API nova entra sem quebrar.
+
+#### AK. UI, temas e componentes
+
+- [ ] O sistema de temas cobre literalmente toda a UI: cada componente, cada estado (normal, hover, pressionado, foco, desabilitado, selecionado, ligado e desligado) e cada parte (fundo, borda, espessura, raio, sombra, contorno de foco, ícones, cursor, seleção, barras de rolagem, overlays e animações), com todos os valores alteráveis por tema e por instância.
+- [ ] Todos os componentes têm todos os eventos e o ciclo de vida (montar, mostrar, esconder, desmontar, foco, valor, pressionar, soltar, arrastar, rolar), documentados e testados.
+- [ ] Tema padrão de cores com todas as bordas perfeitas: borda do item selecionado acompanhando o raio do contêiner (sem cantos vazios), badges com o número centralizado, nada passando dos limites, conferido em todos os componentes e escalas.
+- [ ] Tema com imagens no estilo de fantasia casual das referências do dono, com arte própria gerada pelo Codex (botões, painéis, molduras, barras, sliders, switches, checkboxes, abas, ícones, badges, janelas e diálogos), polida e em alta definição, sem citar a referência.
+- [ ] Switch: o desenho de todos os estados com a mesma arte, e a animação de ligar e desligar sem o fundo andar para o lado.
+- [ ] Toast empilha (vários ao mesmo tempo, posição, fila, duração, animação de entrada e saída) sem sobrepor.
+- [ ] O fundo de diálogos e overlays aparece e some junto com o diálogo, rápido.
+- [ ] Listas com itens de tipos diferentes por tipo (como células de tipos diferentes), vertical, horizontal e em grade, com seções, cabeçalhos, tamanhos variados, rolagem de milhares de itens e reciclagem de células, pesquisada nas listas nativas da Apple e do Google, testada em todas as situações (inserir, remover, mover, atualizar, rolar para um item, foco e navegação por controle).
+- [ ] Layouts e alinhamentos 100%: pilhas, grade, alinhamento, distribuição, preenchimento, margens, quebra de linha, tamanhos mínimos e máximos e proporção, testados.
+- [ ] Teclado do mobile: o campo focado sobe para fora do teclado e a rolagem acompanha, em iOS, Android e web mobile.
+- [ ] Escala no mobile: as fontes e os elementos ficam pequenos no mobile e normais no desktop, conferir a escala por densidade de tela e corrigir para um tamanho físico consistente.
+- [ ] Escala responsiva: modos de resolução de design (encaixar, expandir, preencher a largura, sem escala) e UI que acompanha a largura, revisados a fundo, com o redimensionamento da janela e do navegador.
+- [ ] Joystick virtual: modos fixo, flutuante (aparece onde se toca dentro de uma zona) e que segue o dedo, zona morta, vários joysticks e botões ao mesmo tempo, ligados a ações do action map, com imagens ou primitivas, e com testes.
+- [ ] Configuração para o mouse funcionar como toque (e o toque como mouse) no `app.json` e em tempo de execução.
+
+#### AL. Render, texto, shaders e web
+
+- [ ] Nine-patch: achar por que pega pedaços errados em alguns casos (bordas, escala, atlas, filtragem) e corrigir, com testes.
+- [ ] Texto com contorno: corrigir o contorno que fica embolado e revisar todo o texto (fontes, SDF, contorno, sombra, rich text, alinhamento, quebra, idiomas) para tudo funcionar com perfeição.
+- [ ] Shaders: medir os cerca de 2 segundos até a cena com shader aparecer e corrigir a causa (compilação, carga, criação do pipeline), com o tempo documentado.
+- [ ] SVG de alto desempenho: conferir o suporte atual (rasterização, cache, escala) e completar o que faltar, com testes e um teste no projeto de testes.
+- [ ] Transição entre cenas sem piscar a outra cena.
+- [ ] Web: cada arquivo baixado uma vez só (`haylen.wasm`, `splash.png`), escolha automática entre WebGPU e WebGL2 com escolha manual, tudo funcionando nos dois, e as limitações reais escritas nos testes.
+- [ ] Recolorir sprites por máscara: um sprite base branco e uma máscara de cores (amarelo, vermelho, verde e azul) em que cada canal recebe uma cor escolhida, como recurso da engine (material ou shader pronto) e como teste.
+- [ ] Debug ligável em tempo de execução: corpos e juntas de física, FPS e tempos, contorno de sprites e de nós da cena com nomes, e a árvore da cena, por atalho e por API.
+
+#### AM. Física
+
+- [ ] Problemas comuns com solução da engine: objetos rápidos atravessando paredes finas (corpos rápidos com detecção contínua), pilhas instáveis, personagens presos em quinas, plataformas de mão única, escorregar em rampas, atravessar o chão em alta velocidade, e os demais pesquisados, com opção da engine e um teste para cada um.
+- [ ] Ragdoll que não fica presa na escada e que dá para puxar.
+- [ ] Carro que dá para dirigir e não atravessa as paredes.
+- [ ] Líquidos rápidos: medir e otimizar até rodar liso.
+- [ ] Revisão de desempenho da física (passos, sub-passos, sono, broad-phase, consultas, desenho de debug), com números antes e depois.
+- [ ] Casos de física comuns em jogos como testes: plataforma, carros, cordas, pontes, pêndulos, destruição, explosões, ímãs, água e flutuação, esteiras, molas, gangorras, portas e alavancas, projéteis, estilingue, bolas e pinball, entre outros.
+
+#### AN. Partículas e efeitos
+
+- [ ] Uma biblioteca de uns 200 efeitos de partículas prontos, em estilos variados (pixel art, cartoon, realista, neon, mágico, sci-fi), como fogo, fumaça, explosões, faíscas, chuva, neve, poeira, sangue, magia, cura, veneno, raios, portais, moedas, confete, folhas, bolhas, rastros, impactos e auras, em arquivos de efeito com a arte própria.
+- [ ] Um navegador desses efeitos no projeto de testes, com parâmetros ajustáveis ao vivo.
+- [ ] Mais efeitos de tela e de sprite (tremor, flash, distorção, dissolve, contorno, brilho, pós-processamento) em testes.
+
+#### AO. Plataformas, ciclo de vida e integração nativa
+
+- [ ] macOS: o player e os apps aparecem como app (ícone no Dock, ativação, janela na frente), com o menu padrão do app (Sobre, Esconder, Sair com Command+Q, menu Janela) no player, nos apps do template e nos apps C++, e o equivalente nos outros desktops.
+- [ ] iOS: sem o aviso de `remote-notification`: o runtime só responde ao fetch de notificações remotas quando o app declara o modo em segundo plano.
+- [ ] Aparelhos de duas telas e dobráveis: dobra e postura (Jetpack WindowManager no Android), área de cada tela, eventos de mudança, e o equivalente onde a plataforma informa, com testes.
+- [ ] Safe area igual à janela quando o aparelho não tem recorte, em todas as plataformas, com testes.
+- [ ] Todos os ciclos de vida e eventos funcionando em todas as plataformas, conferidos um por um (app, janela, foco, teclado, rede, memória, orientação, áudio, tela, controles, cena e objetos), com uma tabela por plataforma na documentação.
+- [ ] Splash de iOS e Android trocável por `app.json` e pelo projeto (cores, logo, ícones e tempo), conferida em retrato e paisagem.
+- [ ] Templates com a bridge pronta nos dois sentidos para qualquer SDK, e o plugin de demonstração simulando câmera com imagem e áudio, localização, mapa, abrir outro app, compartilhar, compras e anúncios falsos, login falso e o que mais der, em cada plataforma.
+- [ ] Integração nativa revisada de ponta a ponta em todas as plataformas.
+
+#### AP. Rede, Varn e hot reload
+
+- [ ] Sockets TCP e UDP, WebSocket e HTTP perfeitos em todas as plataformas (incluindo a web, onde vale o que o navegador permite), com testes e um teste de cada no projeto de testes.
+- [ ] Revisão do Varn para desempenho e capacidade, com as mudanças necessárias pedidas à sessão do Workpane.
+- [ ] Hot reload na web funcionando.
+- [ ] Hot reload por módulo: o script alterado é recarregado no lugar (funções trocadas, estado mantido, cenas e objetos com gancho de recarga), e o app só reinicia quando não dá para recarregar no lugar, pesquisado e testado.
+- [ ] Revisão do tratamento de erros (tela de erro, recarga depois do erro, erros em corrotinas, callbacks nativos e carregamento de assets).
+
+#### AQ. Arte, samples e jogos
+
+- [ ] Arte própria gerada com o Codex para tudo o que tem imagem: sprites, tiles, UI, ícones, fundos e efeitos, num estilo visual único e polido, em alta definição, com os assets nos samples.
+- [ ] Tiny Island refeito com arte própria: guerreiro, arqueiro, lanceiro e mago jogáveis, inimigos variados, ovelhas que dão comida, ataques com efeitos, fogueira de partículas igual no menu e no jogo, e tudo o que existe hoje.
+- [ ] Categoria de samples de apps com cinco apps (delivery de comida, marketplace, transporte por app, loja online e streaming de música), com dados falsos, navegação de ida e volta, listas, busca, carrinho ou fila, mapas onde fizer sentido, cores e características de cada tipo, sem citar nomes.
+- [ ] Mais samples de casos reais que testem a capacidade da engine (muitos sprites, muitos corpos, mapas grandes, muita UI).
+
+#### AR. Pesquisa de recursos e problemas comuns
+
+- [ ] Pesquisar os dois jogos de alto desempenho do dono (o clone de MMORPG 2D e o jogo de luta 2D) e listar o que eles usam em baixo nível (desenho em lote, atlas, paletas, camadas, câmeras, rede, input), conferindo que a engine faz tudo, e implementando o que faltar, sem citar os jogos.
+- [ ] Pesquisar os conceitos, recursos e módulos 2D que ainda faltam na engine e implementar os que fazem sentido.
+- [ ] Pesquisar os problemas mais comuns de quem faz jogos e apps 2D e dar uma solução da engine e um teste para cada um.
+
+#### AS. Sistema de conteúdo (`CONTENT_SYSTEM_IMPLEMENTATION.md`)
+
+O documento do dono é a especificação completa e manda nas decisões. As fases seguem a seção 67 dele, cada uma num commit válido sozinho.
+
+- [ ] Formato e criptografia: IDs, chunking definido pelo conteúdo, compressão, criptografia autenticada com uma biblioteca portátil auditada, separação de chaves, nonces, IDs de chave e rotação, com testes.
+- [ ] Leitor e escritor do HPAK com shards imutáveis, índice criptografado, catálogo compacto e offsets de 64 bits.
+- [ ] API de pacote com leitura por faixas e streams, pacote HPAK e pacote composto (base mais patches).
+- [ ] Manifestos assinados do app e do conteúdo, catálogo criptografado e proteção contra rollback.
+- [ ] Ferramenta de conteúdo no host e integração com o `haylen.py` (empacotar, inspecionar, publicar), com cache de build e builds reproduzíveis.
+- [ ] Lua de release compilado para o bytecode do Varn com o carregador confiável, sem fonte em texto nos pacotes de release, com diagnósticos e símbolos privados.
+- [ ] Bootstrap de release específico do app e sistema de chaves (provedor de chave, sem chave em texto, sem chave global).
+- [ ] Deploy de release no desktop, na Apple (com tvOS), no Android (com a assinatura corrigida), no Steam e na web, sem assets crus nem Lua em texto.
+- [ ] Mudanças de HTTP com streaming no Varn, pedidas à sessão do Workpane, e o transporte da Haylen sobre elas.
+- [ ] Atualizador transacional com loja local criptografada, retomada, rollback e recuperação na abertura, e downloads retomáveis com checagem de espaço.
+- [ ] Web com streaming e loja persistente, sem baixar o pacote inteiro.
+- [ ] Provedores de entrega das lojas (Background Assets da Apple, Play Asset Delivery, Steam) e políticas de entrega (`required`, `prefetch`, `onDemand`).
+- [ ] UX de atualização pronta e APIs públicas em Lua e C++ (`ContentManager`, erros, progresso).
+- [ ] Leitores de streaming de mídia e de pacotes grandes de verdade, sem buffers inteiros.
+- [ ] Endurecimento, fuzzing, benchmarks, documentação, samples, inspeção de artefatos e verificação em todas as plataformas, com o relatório final que o documento pede.
+
+#### AT. Documentação
+
+- [ ] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro.
+- [ ] Guia de um workflow do GitHub Actions que compila o app com instalador para todas as plataformas (macOS assinado e notarizado, Windows, Linux, iOS, tvOS, Android e web), com os secrets nomeados como o dono usa e como gerar cada um.
