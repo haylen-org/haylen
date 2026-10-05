@@ -119,6 +119,9 @@ Orientation Services::getOrientation() {
 
 void Services::lockOrientation(Orientation) {}
 
+// A Linux app opens its window at once, without a launch screen.
+void Services::endSplashScreen(float) {}
+
 // Linux desktops report no folds or hinges to windows.
 std::optional<Fold> Services::getFold() {
     return std::nullopt;

@@ -8,6 +8,7 @@ std::mutex& AndroidActivity::mutex = *new std::mutex();
 math::Insets AndroidActivity::safeAreaInsets{};
 std::optional<Fold> AndroidActivity::fold;
 std::atomic<bool> AndroidActivity::framePresented = false;
+std::atomic<float> AndroidActivity::splashFadeOut = 0.0F;
 std::atomic<bool> AndroidActivity::television = false;
 std::atomic<float> AndroidActivity::density = 1.0F;
 std::atomic<Orientation> AndroidActivity::orientation = Orientation::Landscape;
@@ -60,8 +61,13 @@ bool AndroidActivity::isTelevision() noexcept {
     return television.load(std::memory_order_acquire);
 }
 
-void AndroidActivity::endSplashScreen() noexcept {
+void AndroidActivity::endSplashScreen(float fadeOutSeconds) noexcept {
+    splashFadeOut.store(fadeOutSeconds, std::memory_order_relaxed);
     framePresented.store(true, std::memory_order_release);
+}
+
+float AndroidActivity::getSplashFadeOut() noexcept {
+    return splashFadeOut.load(std::memory_order_relaxed);
 }
 
 void AndroidActivity::holdSplashScreen() noexcept {

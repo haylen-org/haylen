@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -134,6 +135,7 @@ class SokolRuntime final {
 #endif
 
     [[nodiscard]] std::shared_ptr<io::Package> withOverlay(std::shared_ptr<io::Package> source) const;
+    void endSplashScreenWhenDue();
     void describeDesktop(sapp_desc& desc, const core::AppConfig::Window& window);
     void launch();
     void close() noexcept;
@@ -154,6 +156,10 @@ class SokolRuntime final {
 
     // Whether the app took the last press of the back button, so its release goes to the same place.
     bool backCaptured = false;
+
+    // When the runtime started, which the duration of the splash counts from, and whether the launch screen ended.
+    std::chrono::steady_clock::time_point launched = std::chrono::steady_clock::now();
+    bool splashEnded = false;
 #if defined(__ANDROID__)
     // Whether the activity last heard that the app takes the back button. Each activity creates its own runtime and starts with its back callback disabled.
     bool backReported = false;

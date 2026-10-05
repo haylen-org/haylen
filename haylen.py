@@ -959,6 +959,7 @@ class App:
         self.show_in_taskbar: bool = window.get("showInTaskbar", True)
         splash = document.get("splash", {})
         self.background = parse_color(splash.get("background", document.get("clearColor", "#00000000" if self.transparent else "#FF000000")))
+        self.dark_background = parse_color(splash["darkBackground"]) if "darkBackground" in splash else None
         self.splash_logo: Path | None = None
         if splash.get("logo"):
             self.splash_logo = folder / "content" / splash["logo"]
@@ -2035,14 +2036,20 @@ def apple_frameworks() -> dict[str, list[str]]:
     return json.loads((ARTIFACTS_DIR / "apple" / "haylen-frameworks.json").read_text())
 
 
-def apple_colorset(color: tuple[int, int, int, int]) -> dict:
-    red, green, blue, alpha = color
-    components = {"red": f"{red / 255:.3f}", "green": f"{green / 255:.3f}", "blue": f"{blue / 255:.3f}", "alpha": f"{alpha / 255:.3f}"}
-    return {"colors": [{"color": {"color-space": "srgb", "components": components}, "idiom": "universal"}], "info": {"author": "xcode", "version": 1}}
+def apple_colorset(color: tuple[int, int, int, int], dark: tuple[int, int, int, int] | None = None) -> dict:
+    """Describes a color set of an asset catalog, with a variant for the dark appearance when there is one."""
+    def entry(value: tuple[int, int, int, int]) -> dict:
+        red, green, blue, alpha = value
+        return {"color": {"color-space": "srgb", "components": {"red": f"{red / 255:.3f}", "green": f"{green / 255:.3f}", "blue": f"{blue / 255:.3f}", "alpha": f"{alpha / 255:.3f}"}}, "idiom": "universal"}
+
+    colors = [entry(color)]
+    if dark:
+        colors.append({**entry(dark), "appearances": [{"appearance": "luminosity", "value": "dark"}]})
+    return {"colors": colors, "info": {"author": "xcode", "version": 1}}
 
 
 def write_apple_splash(app: App, generated: Path) -> None:
-    """Writes `Splash.xcassets`, whose `splash_logo` image, the logo of the app or the vector logo of the engine, and `splash_background` color the launch screens of iOS and tvOS show."""
+    """Writes `Splash.xcassets`, whose `splash_logo` image, the logo of the app or the vector logo of the engine, and `splash_background` color, with its dark variant when `app.json` gives one, the launch screens of iOS and tvOS show."""
     catalog = generated / "Splash.xcassets"
     shutil.rmtree(catalog, ignore_errors=True)
     source = app.splash_logo or ENGINE_LOGO
@@ -2053,7 +2060,7 @@ def write_apple_splash(app: App, generated: Path) -> None:
     if source.suffix.lower() == ".svg":
         image["properties"] = {"preserves-vector-representation": True}
     write_if_changed(catalog / "splash_logo.imageset" / "Contents.json", json.dumps(image, indent=2) + "\n")
-    write_if_changed(catalog / "splash_background.colorset" / "Contents.json", json.dumps(apple_colorset(app.background), indent=2) + "\n")
+    write_if_changed(catalog / "splash_background.colorset" / "Contents.json", json.dumps(apple_colorset(app.background, app.dark_background), indent=2) + "\n")
     write_if_changed(catalog / "Contents.json", json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2) + "\n")
 
 
@@ -2639,11 +2646,17 @@ def write_android_plugins(app: App, assets: Path) -> None:
     write_if_changed(assets / ANDROID_PLUGINS_FILE, json.dumps({"plugins": plugins}, indent=4) + "\n")
 
 
+def android_splash_colors(color: tuple[int, int, int, int]) -> str:
+    """Writes the resource file of the splash background, which Android reads as `#AARRGGBB`."""
+    red, green, blue, alpha = color
+    return f'<?xml version="1.0" encoding="utf-8"?>\n<!-- Written by haylen.py from the splash of app.json. -->\n<resources>\n    <color name="haylen_splash_background">#{alpha:02X}{red:02X}{green:02X}{blue:02X}</color>\n</resources>\n'
+
+
 def write_android_splash(app: App, resources: Path) -> None:
-    """Writes the splash background and logo of an app as resources that replace the defaults of the `haylen` library, which show the engine logo."""
-    red, green, blue, alpha = app.background
-    colors = f'<?xml version="1.0" encoding="utf-8"?>\n<!-- Written by haylen.py from the splash of app.json. -->\n<resources>\n    <color name="haylen_splash_background">#{alpha:02X}{red:02X}{green:02X}{blue:02X}</color>\n</resources>\n'
-    write_if_changed(resources / "values" / "haylen_splash.xml", colors)
+    """Writes the splash background and logo of an app as resources that replace the defaults of the `haylen` library, which show the engine logo, with the dark background in the resources of the night mode when `app.json` gives one."""
+    write_if_changed(resources / "values" / "haylen_splash.xml", android_splash_colors(app.background))
+    if app.dark_background:
+        write_if_changed(resources / "values-night" / "haylen_splash.xml", android_splash_colors(app.dark_background))
     if app.splash_logo:
         if app.splash_logo.suffix.lower() not in {".png", ".webp", ".jpg", ".jpeg"}:
             raise BuildError(f'Android splash logos are PNG, WebP or JPEG images, so `{shown_path(app.splash_logo)}` does not fit. Give "splash.logo" an image in one of those formats.')
@@ -2898,15 +2911,22 @@ def write_web_plugins(app: App, site: Path) -> list[dict]:
     return entries
 
 
+def css_color(color: tuple[int, int, int, int]) -> str:
+    red, green, blue, alpha = color
+    return f"rgba({red}, {green}, {blue}, {alpha / 255:.3f})"
+
+
 def write_web_settings(app: App, site: Path) -> None:
     """Writes `app.zip`, the splash logo, the web modules of the plugins and `config.json`, whose sizes let the loader show progress when the server sends no length."""
     package_folder(app.folder, site / "app.zip")
     logo = app.splash_logo or ENGINE_LOGO
     logo_name = f"splash{logo.suffix.lower()}"
     shutil.copy2(logo, site / logo_name)
-    red, green, blue, alpha = app.background
+    splash = {"logo": logo_name, "background": css_color(app.background)}
+    if app.dark_background:
+        splash["darkBackground"] = css_color(app.dark_background)
     sizes = {path: (site / path).stat().st_size for path in ("app.zip", "webgpu/haylen.wasm", "webgl2/haylen.wasm")}
-    config = {"name": app.name, "transparent": app.transparent, "splash": {"logo": logo_name, "background": f"rgba({red}, {green}, {blue}, {alpha / 255:.3f})"}, "sizes": sizes, "plugins": write_web_plugins(app, site)}
+    config = {"name": app.name, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": write_web_plugins(app, site)}
     (site / "config.json").write_text(json.dumps(config, indent=4) + "\n")
 
 

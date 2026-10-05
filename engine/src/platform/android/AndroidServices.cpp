@@ -120,6 +120,10 @@ std::optional<Fold> Services::getFold() {
     return AndroidActivity::getFold();
 }
 
+void Services::endSplashScreen(float fadeOutSeconds) {
+    AndroidActivity::endSplashScreen(fadeOutSeconds);
+}
+
 TextInput& Services::getTextInput() {
     static AndroidTextInput& input = *new AndroidTextInput();
     return input;
@@ -218,6 +222,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTelevision(JNIEnv*, 
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLowMemory(JNIEnv*, jclass) {
     haylen::platform::MemoryWarning::raise();
+}
+
+JNIEXPORT jfloat JNICALL Java_dev_haylen_HaylenSplash_nativeFadeOut(JNIEnv*, jclass) {
+    return haylen::platform::AndroidActivity::getSplashFadeOut();
 }
 
 JNIEXPORT jboolean JNICALL Java_dev_haylen_HaylenSplash_nativeFramePresented(JNIEnv*, jclass) {

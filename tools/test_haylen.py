@@ -128,6 +128,24 @@ class ProjectGenerationTest(unittest.TestCase):
             self.assertNotEqual(haylen.apple_project_inputs(root), first)
 
 
+class SplashTest(unittest.TestCase):
+    def test_the_dark_background_becomes_the_dark_appearance_and_the_night_resources(self):
+        colorset = haylen.apple_colorset((16, 20, 24, 255), (0, 0, 0, 255))
+        self.assertEqual(len(colorset["colors"]), 2)
+        self.assertNotIn("appearances", colorset["colors"][0])
+        self.assertEqual(colorset["colors"][1]["appearances"], [{"appearance": "luminosity", "value": "dark"}])
+        self.assertEqual(colorset["colors"][1]["color"]["components"]["red"], "0.000")
+        self.assertEqual(len(haylen.apple_colorset((16, 20, 24, 255))["colors"]), 1)
+
+        with tempfile.TemporaryDirectory() as scratch:
+            resources = Path(scratch)
+            haylen.write_android_splash(mock.Mock(background=(16, 20, 24, 255), dark_background=None, splash_logo=None), resources)
+            self.assertIn("#FF101418", (resources / "values" / "haylen_splash.xml").read_text())
+            self.assertFalse((resources / "values-night").exists())
+            haylen.write_android_splash(mock.Mock(background=(16, 20, 24, 255), dark_background=(0, 0, 0, 128), splash_logo=None), resources)
+            self.assertIn("#80000000", (resources / "values-night" / "haylen_splash.xml").read_text())
+
+
 class PropertiesTest(unittest.TestCase):
     def test_values_survive_as_ascii_with_escapes(self):
         self.assertEqual(haylen.java_property("Ilha Tropical ✓\\n"), "Ilha Tropical \\u2713\\\\n")

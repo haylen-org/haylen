@@ -1,8 +1,10 @@
 #include "haylen/core/AppConfig.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <optional>
 #include <stdexcept>
+#include <string>
 
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
@@ -38,6 +40,22 @@ void AppConfig::requirePositive(double value, const char* key) {
     if (value <= 0.0) {
         throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" must be positive.");
     }
+}
+
+void AppConfig::requireNonNegative(double value, const char* key) {
+    if (!(value >= 0.0) || !std::isfinite(value)) {
+        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" must be a number of at least 0.");
+    }
+}
+
+math::Color AppConfig::readColor(const Json& object, const char* key, const char* name) {
+    std::string text;
+    readValue(object, key, text);
+    const auto color = math::Color::parse(text);
+    if (!color) {
+        throw std::invalid_argument(std::string("The \"") + name + "\" value \"" + text + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
+    }
+    return *color;
 }
 
 platform::Orientation AppConfig::orientationFromName(const std::string& text) {
@@ -182,18 +200,18 @@ AppConfig AppConfig::fromJson(const Json& document) {
     config.splash.background = config.clearColor;
     if (document.contains("splash")) {
         const Json& splashJson = document.at("splash");
-        JsonValidator::requireKnownKeys(splashJson, {"logo", "background"}, "the \"splash\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(splashJson, {"logo", "background", "darkBackground", "duration", "fadeOut"}, "the \"splash\" section of \"app.json\"");
         readValue(splashJson, "logo", config.splash.logo);
-
-        std::string background;
-        readValue(splashJson, "background", background);
-        if (!background.empty()) {
-            const auto color = math::Color::parse(background);
-            if (!color) {
-                throw std::invalid_argument("The \"splash.background\" value \"" + background + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
-            }
-            config.splash.background = *color;
+        if (splashJson.contains("background")) {
+            config.splash.background = readColor(splashJson, "background", "splash.background");
         }
+        if (splashJson.contains("darkBackground")) {
+            config.splash.darkBackground = readColor(splashJson, "darkBackground", "splash.darkBackground");
+        }
+        readValue(splashJson, "duration", config.splash.duration);
+        requireNonNegative(config.splash.duration, "splash.duration");
+        readValue(splashJson, "fadeOut", config.splash.fadeOut);
+        requireNonNegative(config.splash.fadeOut, "splash.fadeOut");
     }
 
     if (document.contains("lifecycle")) {
@@ -314,12 +332,16 @@ Json AppConfig::toJson() const {
     if (debug.fold) {
         debugJson["fold"] = debug.fold->toJson();
     }
+    Json splashJson = {{"logo", splash.logo}, {"background", splash.background.toHex()}, {"duration", JsonNumber::fromFloat(splash.duration)}, {"fadeOut", JsonNumber::fromFloat(splash.fadeOut)}};
+    if (splash.darkBackground) {
+        splashJson["darkBackground"] = splash.darkBackground->toHex();
+    }
     Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}};
     if (window.position) {
         windowJson["position"] = window.position->toJson();
     }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
     };
 }
 

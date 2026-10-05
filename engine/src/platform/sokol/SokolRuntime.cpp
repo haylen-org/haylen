@@ -1,5 +1,6 @@
 #include "platform/sokol/SokolRuntime.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <optional>
@@ -28,7 +29,6 @@
 #include "haylen/platform/apple/HaylenMain.h"
 #include "platform/apple/AppleRuntime.hpp"
 #elif defined(__ANDROID__)
-#include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidGlesVersion.hpp"
 #include "platform/android/AndroidTextInput.hpp"
@@ -293,8 +293,8 @@ void SokolRuntime::onFrame(void* data) {
         runtime.deliver(event);
     }
     runtime.engine->frame(sapp_frame_duration());
+    runtime.endSplashScreenWhenDue();
 #if defined(__ANDROID__)
-    AndroidActivity::endSplashScreen();
     runtime.reportBackCapture();
 #endif
     if (!runtime.engine->isRunning()) {
@@ -309,6 +309,19 @@ void SokolRuntime::onFrame(void* data) {
     if (runtime.engine->isRestartRequested()) {
         restart();
     }
+}
+
+// The launch screen of the platform stays until the app drew its first frame and the splash of app.json lasted its duration since the launch.
+void SokolRuntime::endSplashScreenWhenDue() {
+    if (splashEnded) {
+        return;
+    }
+    const core::AppConfig::Splash& splash = engine->getConfig().splash;
+    if (std::chrono::steady_clock::now() - launched < std::chrono::duration<float>(splash.duration)) {
+        return;
+    }
+    splashEnded = true;
+    Services::endSplashScreen(splash.fadeOut);
 }
 
 bool SokolRuntime::isBackCaptured() {

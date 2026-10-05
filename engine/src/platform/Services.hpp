@@ -121,6 +121,9 @@ class Services final {
     static void openScreen(const ScreenRequest& request);
     static void cancelScreen(std::uint64_t id);
 
+    // Ends the launch screen that covered the window since the app started, fading it out over the seconds. Platforms without a launch screen of their own do nothing.
+    static void endSplashScreen(float fadeOutSeconds);
+
     // The window of the app on the desktops for native libraries, as `HaylenNativeWindow` describes, and null handles where apps have no desktop window. It exists once `sokol_app` opened the window.
     [[nodiscard]] static HaylenNativeWindow getNativeWindow();
 };

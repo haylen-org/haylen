@@ -4,6 +4,7 @@
 #import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
+#import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenOverlayLayer.h"
 #import "platform/apple/HaylenScreenSceneDelegate.h"
@@ -12,6 +13,7 @@
 using haylen::platform::AppleNotifications;
 using haylen::platform::ApplePlugins;
 using haylen::platform::AppleScreens;
+using haylen::platform::AppleSplash;
 using haylen::platform::AppleTheme;
 
 @implementation HaylenSceneDelegate {
@@ -51,7 +53,7 @@ using haylen::platform::AppleTheme;
     return [super application:application configurationForConnectingSceneSession:connectingSceneSession options:options];
 }
 
-// The library `sokol_app` creates the window here, which the overlay lies over from now on. UIKit hands the links, the user activities and the shortcut item that open the app only to the connection options, so the plugins then receive them as they would while the app runs. The app draws in one window, so a scene that connects while the window of the app has a scene, such as a second window that the person opens on an iPad, goes away at once.
+// The library `sokol_app` creates the window here, which the overlay lies over from now on, under the launch screen until the splash ends. UIKit hands the links, the user activities and the shortcut item that open the app only to the connection options, so the plugins then receive them as they would while the app runs. The app draws in one window, so a scene that connects while the window of the app has a scene, such as a second window that the person opens on an iPad, goes away at once.
 - (void)scene:(UIScene*)scene willConnectToSession:(UISceneSession*)session options:(UISceneConnectionOptions*)connectionOptions {
     if (sapp_isvalid() && ((__bridge UIWindow*)sapp_ios_get_window()).windowScene != nil) {
         if ([session.role isEqualToString:UIWindowSceneSessionRoleApplication]) {
@@ -63,6 +65,7 @@ using haylen::platform::AppleTheme;
     [super scene:scene willConnectToSession:session options:connectionOptions];
     UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
     [HaylenOverlayLayer.shared attachToView:window.rootViewController.view];
+    AppleSplash::cover(window);
     AppleTheme::observe(window);
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin scene:scene willConnectToSession:session options:connectionOptions];

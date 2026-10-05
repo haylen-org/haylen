@@ -165,6 +165,9 @@ Orientation Services::getOrientation() {
 
 void Services::lockOrientation(Orientation) {}
 
+// A Windows app opens its window at once, without a launch screen.
+void Services::endSplashScreen(float) {}
+
 // Windows offers desktop apps no API for the fold or the hinge of a device.
 std::optional<Fold> Services::getFold() {
     return std::nullopt;

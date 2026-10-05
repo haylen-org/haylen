@@ -12,7 +12,7 @@
 
 namespace haylen::platform {
 
-// The `GameActivity` of the app and what its Java side reports: the safe area and the orientation of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
+// The `GameActivity` of the app and what its Java side reports: the safe area, the orientation and the fold of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
 class AndroidActivity final {
   public:
     [[nodiscard]] static const GameActivity& getNative();
@@ -35,8 +35,9 @@ class AndroidActivity final {
     static void setTelevision(bool value) noexcept;
     [[nodiscard]] static bool isTelevision() noexcept;
 
-    // Lets the splash screen of the activity end once the app has drawn a frame, so nothing black shows between the two. The runtime calls it after every frame.
-    static void endSplashScreen() noexcept;
+    // Lets the splash screen of the activity fade out over the seconds once the app has drawn a frame, so nothing black shows between the two.
+    static void endSplashScreen(float fadeOutSeconds) noexcept;
+    [[nodiscard]] static float getSplashFadeOut() noexcept;
 
     // Keeps the splash screen of a new activity until the app draws in it, since the process outlives its activities.
     static void holdSplashScreen() noexcept;
@@ -47,6 +48,7 @@ class AndroidActivity final {
     static math::Insets safeAreaInsets;
     static std::optional<Fold> fold;
     static std::atomic<bool> framePresented;
+    static std::atomic<float> splashFadeOut;
     static std::atomic<bool> television;
     static std::atomic<float> density;
     static std::atomic<Orientation> orientation;

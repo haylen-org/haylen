@@ -72,6 +72,10 @@ EM_JS(int, haylen_js_fold, (float* values), {
     return 1;
 });
 
+EM_JS(void, haylen_js_end_splash, (float fadeOut), {
+    Module.haylen.reportSplashEnded(fadeOut);
+});
+
 EM_JS(void, haylen_js_persist, (), {
     Module.haylen.persist();
 });
@@ -217,6 +221,11 @@ Orientation Services::getOrientation() {
 // Browsers lock the screen orientation only where the Screen Orientation API allows it, which usually means a fullscreen page on a phone.
 void Services::lockOrientation(Orientation value) {
     haylen_js_lock_orientation(static_cast<int>(value));
+}
+
+// The page shows its own splash, which it fades out when the runtime tells it.
+void Services::endSplashScreen(float fadeOutSeconds) {
+    haylen_js_end_splash(fadeOutSeconds);
 }
 
 // The page reads the segments of the viewport, which a browser splits at the fold of the device, and the posture of the device.

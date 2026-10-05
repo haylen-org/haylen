@@ -508,20 +508,28 @@ The `splash` object of `app.json` sets the launch screen of every platform:
 
 ```json
 {
-    "splash": {"logo": "ui/splash.png", "background": "#FF101418"}
+    "splash": {"logo": "ui/splash.png", "background": "#FF101418", "darkBackground": "#FF000000", "duration": 1.5, "fadeOut": 0.4}
 }
 ```
 
-`logo` is an image relative to `content/`, and without it the platforms show the Haylen symbol. `background` is a color as `#RRGGBB` or `#AARRGGBB` and defaults to `clearColor`, so the launch screen blends into the first frame of the app.
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `logo` | The Haylen symbol | An image relative to `content/`. |
+| `background` | `clearColor` | A color as `#RRGGBB` or `#AARRGGBB`, so by default the launch screen blends into the first frame of the app. |
+| `darkBackground` | `background` | The background while the system uses dark colors, which the asset catalog of Apple platforms, the night resources of Android and the `prefers-color-scheme` media query of the web page pick. |
+| `duration` | `0` | The least time in seconds that the launch screen stays from the launch of the app. It always stays until the app drew its first frame. |
+| `fadeOut` | `0.25` | The seconds the launch screen takes to fade out into the app. |
+
+The runtime ends the launch screen after the first frame that the app drew once the `duration` passed since the runtime started, and the platform fades it out over `fadeOut` seconds. The project changes the rest: the `LaunchScreen.storyboard` of the iOS and tvOS targets of the Apple project, whose layout belongs to the developer, the theme `Theme.Haylen.Splash` that the manifest of the Android project names, which a theme of the project may replace, and the page and `loader.css` of the web site. The app icons live in the asset catalogs of the Apple project and the launcher resources of the Android project, which the developer replaces.
 
 | Platform | Launch screen |
 | --- | --- |
-| iOS, iPadOS, Mac Catalyst | `ios/LaunchScreen.storyboard`: the `splash_logo` image centered in the safe area over the `splash_background` color, both from the asset catalog. Auto Layout keeps the logo square, at most 200 points and at most half of the safe area in each direction, so it fits every device, orientation and iPad window size. |
-| tvOS | `tvos/LaunchScreen.storyboard` with the same layout and a logo of at most 360 points. |
-| Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the `Theme.Haylen.Splash` theme of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while `sokol_app` draws only once the activity resumed and its surface exists, so `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon, which stays until the player reports its first frame through `nativeFramePresented`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
-| Web | The page shows the logo over the background with the progress bar until the app starts. |
+| iOS, iPadOS, Mac Catalyst | `ios/LaunchScreen.storyboard`: the `splash_logo` image centered in the safe area over the `splash_background` color, both from the asset catalog. Auto Layout keeps the logo square, at most 200 points and at most half of the safe area in each direction, so it fits every device, orientation and iPad window size. The system takes the launch screen away as soon as the window of the app shows, so `AppleSplash` covers the window with the same storyboard, which the `UILaunchStoryboardName` of the `Info.plist` names, until the runtime ends the splash and fades it out. |
+| tvOS | `tvos/LaunchScreen.storyboard` with the same layout and a logo of at most 360 points, kept over the window the same way. |
+| Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the `Theme.Haylen.Splash` theme of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while `sokol_app` draws only once the activity resumed and its surface exists, so `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon, which stays until the runtime ends the splash through `nativeFramePresented` and then fades out over the seconds of `nativeFadeOut`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
+| Web | The page shows the logo over the background with the progress bar until the runtime ends the splash through `Module.haylen.onSplashEnded`, which fades it out. |
 
-The tool `haylen.py` writes the logo into the `splash_logo` image set of `haylen/Splash.xcassets` of the Apple project, as `templates/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved when the app names none, and the background into its `splash_background` color set, which the launch screens of iOS and tvOS find in the catalogs of their target. On Android it writes the background into `haylen/res/values/haylen_splash.xml` and copies the logo to `haylen/res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images. On the web it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`.
+The tool `haylen.py` writes the logo into the `splash_logo` image set of `haylen/Splash.xcassets` of the Apple project, as `templates/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved when the app names none, and the background into its `splash_background` color set, with the dark background as its dark appearance, which the launch screens of iOS and tvOS find in the catalogs of their target. On Android it writes the background into `haylen/res/values/haylen_splash.xml`, the dark background into `haylen/res/values-night/haylen_splash.xml`, and copies the logo to `haylen/res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images. On the web it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`, and writes both backgrounds into `config.json`.
 
 ## Development mode
 

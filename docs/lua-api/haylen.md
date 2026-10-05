@@ -72,6 +72,9 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `clearColor` | string | `'#FF000000'`, or `'#00000000'` for a transparent window | Background color as `#AARRGGBB`. |
 | `splash.logo` | string | `''` | Image of the launch screen relative to `content/`, empty for the Haylen logo. |
 | `splash.background` | string | The value of `clearColor` | Background color of the launch screen as `#AARRGGBB`. |
+| `splash.darkBackground` | string | absent | Background color of the launch screen while the system uses dark colors, present only when `app.json` sets it. |
+| `splash.duration` | number | `0` | Least seconds the launch screen stays from the launch. |
+| `splash.fadeOut` | number | `0.25` | Seconds the launch screen takes to fade out into the app. |
 | `lifecycle.pauseOnBackground` | boolean | `true` | Whether the app halts in the background, see `haylen.lifecycle()`. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Whether the app halts while its window has no focus. |
 | `lifecycle.muteOnFocusLoss` | boolean | `false` | Whether the master bus is muted while the app is not active. |

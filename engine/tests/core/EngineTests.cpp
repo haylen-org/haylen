@@ -123,7 +123,7 @@ TEST(AppConfigTest, ReadsEveryField) {
         "fixedRate": 30,
         "maxFrameTime": 0.1,
         "clearColor": "#102030",
-        "splash": {"logo": "ui/logo.png", "background": "#405060"},
+        "splash": {"logo": "ui/logo.png", "background": "#405060", "darkBackground": "#FF000000", "duration": 1.5, "fadeOut": 0.5},
         "input": {"mouseAsTouch": true},
         "ui": {"scaleMode": "physical", "scale": 1.25},
         "native": {"steam_api": {"files": {"macos": "platform/apple/libsteam_api.dylib"}}}
@@ -146,6 +146,9 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_EQ(config.clearColor, math::Color::fromHex(0x102030FFU));
     EXPECT_EQ(config.splash.logo, "ui/logo.png");
     EXPECT_EQ(config.splash.background, math::Color::fromHex(0x405060FFU));
+    EXPECT_EQ(config.splash.darkBackground, math::Color::fromHex(0x000000FFU));
+    EXPECT_EQ(config.splash.duration, 1.5F);
+    EXPECT_EQ(config.splash.fadeOut, 0.5F);
     EXPECT_TRUE(config.input.mouseAsTouch);
     EXPECT_FALSE(config.input.touchAsMouse);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"input", {{"mouseAsFinger", true}}}}), std::invalid_argument);
@@ -154,6 +157,12 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"ui", {{"scaleMode", "huge"}}}}), std::invalid_argument);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"ui", {{"scale", 9}}}}), std::invalid_argument);
     EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"clearColor", "#102030"}}).splash.background, math::Color::fromHex(0x102030FFU));
+
+    // Without a splash section the launch screen keeps no dark background, lasts until the first frame and fades out over a quarter of a second.
+    const core::AppConfig::Splash plain = core::AppConfig::fromJson(core::Json::object()).splash;
+    EXPECT_FALSE(plain.darkBackground.has_value());
+    EXPECT_EQ(plain.duration, 0.0F);
+    EXPECT_EQ(plain.fadeOut, 0.25F);
     EXPECT_EQ(config.native.at("steam_api").at("files").at("macos"), "platform/apple/libsteam_api.dylib");
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"native", core::Json::array()}}), std::invalid_argument);
 
@@ -178,7 +187,7 @@ TEST(AppConfigTest, ReadsEveryField) {
 }
 
 TEST(AppConfigTest, RejectsInvalidValues) {
-    for (const char* document : {R"([])", R"({"name": 3})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})"}) {
+    for (const char* document : {R"([])", R"({"name": 3})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})", R"({"splash": {"darkBackground": ""}})", R"({"splash": {"duration": -1}})", R"({"splash": {"fadeOut": "slow"}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
 }

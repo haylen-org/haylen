@@ -9,8 +9,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import androidx.core.splashscreen.SplashScreen;
 
-// Keeps the splash screen of `Theme.Haylen.Splash` on screen until the app has drawn its first frame, so nothing black shows in between.
-// The system splash screen ends with the first frame of the activity window, while the app draws only once the activity resumed and its surface exists, so a view with the same background and icon covers the surface of the app from the first frame of the window until the app has drawn.
+// Keeps the splash screen of `Theme.Haylen.Splash` on screen until the app has drawn its first frame and the splash of `app.json` lasted its duration, so nothing black shows in between, and fades it out into the app.
+// The system splash screen ends with the first frame of the activity window, while the app draws only once the activity resumed and its surface exists, so a view with the same background and icon covers the surface of the app from the first frame of the window until the engine ends the splash.
 final class HaylenSplash {
     private final Activity activity;
     private View cover;
@@ -49,16 +49,19 @@ final class HaylenSplash {
         }
     }
 
+    // The cover fades out over the seconds of `app.json`, and a cover that the activity takes away meanwhile goes at once.
     private void removeOnceAppDrew(long frameTimeNanos) {
         if (cover == null) {
             return;
         }
-        if (nativeFramePresented()) {
-            dismiss();
+        if (!nativeFramePresented()) {
+            Choreographer.getInstance().postFrameCallback(this::removeOnceAppDrew);
             return;
         }
-        Choreographer.getInstance().postFrameCallback(this::removeOnceAppDrew);
+        cover.animate().alpha(0).setDuration(Math.round(nativeFadeOut() * 1000.0)).withEndAction(this::dismiss);
     }
 
     private static native boolean nativeFramePresented();
+
+    private static native float nativeFadeOut();
 }

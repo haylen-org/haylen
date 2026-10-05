@@ -57,6 +57,9 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `clearColor` | string | `"#FF000000"`, or `"#00000000"` for a transparent window | Background color as `"#RRGGBB"` or `"#AARRGGBB"`. |
 | `splash.logo` | string | the Haylen symbol | Image of the launch screen, relative to `content/`, such as `"ui/splash.png"`. |
 | `splash.background` | string | The value of `clearColor` | Background color of the launch screen as `"#RRGGBB"` or `"#AARRGGBB"`. |
+| `splash.darkBackground` | string | The value of `splash.background` | Background color of the launch screen while the system uses dark colors. |
+| `splash.duration` | number | `0` | Least seconds the launch screen stays from the launch, which always lasts until the first frame of the app. |
+| `splash.fadeOut` | number | `0.25` | Seconds the launch screen takes to fade out into the app, as the [distribution guide](distribution.md#splash-screens) describes. |
 | `lifecycle.pauseOnBackground` | boolean | `true` | Halts the app while it is in the background. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Halts the app while its window has no focus. |
 | `lifecycle.muteOnFocusLoss` | boolean | `false` | Mutes the master bus while the app is not active. |

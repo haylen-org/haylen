@@ -1,5 +1,5 @@
 // Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and `app.zip` with a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
-// The script `haylen.py` writes `config.json` next to this file with the name, the transparency, the splash logo and background of `app.json`, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
+// The script `haylen.py` writes `config.json` next to this file with the name, the transparency, the splash logo and backgrounds of `app.json`, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
 
 var Module = {
     canvas: document.getElementById("canvas"),
@@ -137,13 +137,15 @@ var Module = {
         return;
     }
     document.title = config.name;
-    // A transparent app lets the page behind its canvas show through, so only the splash keeps the background of `app.json`.
+    // A transparent app lets the page behind its canvas show through, so only the splash keeps the background of `app.json`, which has a dark variant while the system uses dark colors.
+    const dark = config.splash.darkBackground && matchMedia("(prefers-color-scheme: dark)").matches;
+    const background = dark ? config.splash.darkBackground : config.splash.background;
     if (config.transparent) {
         document.documentElement.style.background = "transparent";
         document.body.style.background = "transparent";
-        splash.style.background = config.splash.background;
+        splash.style.background = background;
     } else {
-        document.body.style.background = config.splash.background;
+        document.body.style.background = background;
     }
     // The splash and the icon of the page show the logo from a single download.
     logo.alt = config.name;
@@ -160,10 +162,13 @@ var Module = {
         return;
     }
 
-    // The page shows the error screen of the runtime once the app runs, so only failures before that replace the splash.
+    // The page shows the error screen of the runtime once the app runs, so only failures before that replace the splash, which fades out once the runtime ends it.
     let started = false;
     Module.haylen.onStarted = () => {
         started = true;
+    };
+    Module.haylen.onSplashEnded = ({fadeOut}) => {
+        splash.style.transitionDuration = `${fadeOut}s`;
         splash.classList.add("hidden");
     };
     Module.haylen.onError = (error) => {

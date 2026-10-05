@@ -47,10 +47,13 @@ struct AppConfig {
         std::optional<platform::WindowPlacement> position;
     };
 
-    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color. The script `haylen.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
+    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color, and another one while the system uses dark colors. It stays until the app drew its first frame and at least the duration in seconds since the launch, and fades out into the app over the fade-out in seconds. The script `haylen.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
     struct Splash {
         std::string logo;
         math::Color background = math::Color::black();
+        std::optional<math::Color> darkBackground;
+        float duration = 0.0F;
+        float fadeOut = 0.25F;
     };
 
     // How the app reacts when it leaves the foreground. Pausing halts updates, so timers, tweens, physics and scenes stand still, while the event loop keeps delivering network replies. An app in the background also stops rendering.
@@ -128,6 +131,8 @@ struct AppConfig {
 
     template <typename T> static void readValue(const Json& object, const char* key, T& target);
     static void requirePositive(double value, const char* key);
+    static void requireNonNegative(double value, const char* key);
+    [[nodiscard]] static math::Color readColor(const Json& object, const char* key, const char* name);
     static void readPlugins(const Json& section, AppConfig& config);
     [[nodiscard]] static bool isPluginId(std::string_view text) noexcept;
     [[nodiscard]] static platform::Orientation orientationFromName(const std::string& text);

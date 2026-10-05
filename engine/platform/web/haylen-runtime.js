@@ -961,6 +961,11 @@ Module.haylen = Module.haylen || {};
         notify("onStopped");
     };
 
+    // The splash of the page ends once the app drew its first frame and the splash of `app.json` lasted its duration, fading out over the seconds it gives.
+    haylen.reportSplashEnded = function (fadeOut) {
+        notify("onSplashEnded", {fadeOut});
+    };
+
     // Reports of hot reload arrive after every batch of changes that applied, as `{restarted: false, mode, modules, assets, resumed, milliseconds}`, or as `{restarted: true, reason}` before a restart.
     haylen.reportReloaded = function (report) {
         notify("onReloaded", report);

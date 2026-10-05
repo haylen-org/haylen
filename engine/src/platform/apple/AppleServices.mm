@@ -24,6 +24,7 @@
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
+#import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/CatalystInput.hpp"
@@ -195,6 +196,13 @@ Orientation Services::getOrientation() {
 void Services::lockOrientation([[maybe_unused]] Orientation value) {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleOrientation::lock(value);
+#endif
+}
+
+// A Mac app has no launch screen, while the other Apple platforms keep theirs over the window until the splash ends.
+void Services::endSplashScreen([[maybe_unused]] float fadeOutSeconds) {
+#if !TARGET_OS_OSX
+    AppleSplash::end(fadeOutSeconds);
 #endif
 }
 

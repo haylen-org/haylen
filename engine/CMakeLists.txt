@@ -701,6 +701,7 @@ if(APPLE)
     src/platform/apple/AppleRuntime.mm
     src/platform/apple/AppleScreens.mm
     src/platform/apple/AppleServices.mm
+    src/platform/apple/AppleSplash.mm
     src/platform/apple/AppleSystem.mm
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/AppleTheme.mm
