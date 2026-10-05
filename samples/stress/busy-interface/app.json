@@ -1,0 +1,19 @@
+{
+    "name": "Busy Interface",
+    "identifier": "dev.haylen.samples.busyinterface",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Busy Interface",
+        "width": 1600,
+        "height": 900,
+        "resizable": true,
+        "highDpi": true
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "clearColor": "#FF0F141C"
+}
