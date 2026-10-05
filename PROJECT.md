@@ -1671,7 +1671,7 @@ Checklist:
 
 #### AI. Projeto único de testes da engine
 
-- [x] Um projeto de testes em `samples/tests/` (nome final pelo padrão dos samples) com todos os samples de recursos da engine (gráficos, gameplay, interface e sistema), num menu de categorias e depois os testes da categoria, cada teste numa pasta da sua categoria. O "Haylen Tests" tem 351 testes em 27 categorias de quatro seções, cada categoria em `source/categories/<categoria>/` com o `manifest.lua`, e os assets em `content/<categoria>/`.
+- [x] Um projeto de testes em `samples/tests/` (nome final pelo padrão dos samples) com todos os samples de recursos da engine (gráficos, gameplay, interface e sistema), num menu de categorias e depois os testes da categoria, cada teste numa pasta da sua categoria. O "Haylen Tests" tem 376 testes em 28 categorias de quatro seções, cada categoria em `source/categories/<categoria>/` com o `manifest.lua`, e os assets em `content/<categoria>/`.
 - [x] Cada teste tem um código estável e curto (como `GFX-012`) mostrado no menu, no cabeçalho do teste e nos logs, para reportar erros, com a lista de códigos documentada. Os códigos são o prefixo da categoria e três dígitos, nunca reaproveitados, listados no `samples/tests/README.md`.
 - [~] Navegação completa com mouse, toque, teclado, controle e controle remoto da TV, com voltar para a categoria e para o menu, busca ou filtro por código, e o último teste lembrado. Busca por código ou título, "Continue with" com o último teste (preferência `tests.last`) e "Run all", conferidos no player headless e no Chrome sem janela com WebGL2. Faltam o iOS, o tvOS, o Android e controles reais.
 - [x] Um teste que a plataforma não suporta mostra o motivo exato na tela em vez de quebrar, e um erro de um teste mostra a tela de erro sem derrubar o projeto, que volta ao menu. O manifesto dá o motivo por plataforma, e a tela de erro ganhou "Back to the app" com `haylen.setRecoverable`, `haylen.recover` e os eventos `appError` e `appRecovered`, testados em `ErrorScreenTests`.
@@ -1806,6 +1806,8 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [ ] Revisão completa do rendering, do texto e da UI: cada caminho de desenho conferido em todos os backends (Metal, Direct3D 11, OpenGL, OpenGL ES 3, WebGPU e WebGL2), com capturas comparadas, custo por quadro medido, nenhuma alocação por quadro, e bugs corrigidos com testes.
 - [ ] Revisão completa do input, do áudio e dos hosts das plataformas: cada evento, dispositivo e ciclo de vida conferido em macOS, Windows, Linux, iOS, tvOS, Mac Catalyst, Android e web, com o que não puder ser conferido nesta máquina escrito com o motivo.
 - [ ] A engine roda perfeitamente bem: o projeto de testes inteiro passa sem falhas no player headless, na web com os dois backends, no simulador de iOS, no simulador de tvOS, no Mac Catalyst e no emulador de Android, sem nenhum aviso de build e sem erro nos logs.
+
+- [ ] Lacunas da engine achadas pelos samples de apps e de estresse: o custo de recarregar e inserir numa `collection` cresce com a lista inteira, as superfícies do tema só aceitam imagens raster (sem SVG), o ruído não tem amostragem em grade de uma vez, o `jobs.spawn` não tem dono nem cancelamento, os lotes não informam a memória de GPU, a leitura de FPS vem do tempo de CPU do quadro e não dos quadros mostrados, e a `ui.table` aceita em silêncio linhas com células a mais. Cada uma corrigida com teste.
 
 #### AT. Documentação
 
