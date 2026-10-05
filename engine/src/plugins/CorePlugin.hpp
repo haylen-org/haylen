@@ -2,10 +2,11 @@
 
 #include "haylen/plugins/Plugin.hpp"
 #include "lua/Autoloads.hpp"
+#include "lua/Warnings.hpp"
 
 namespace haylen::plugins {
 
-// Installs the Lua modules of the engine core: `haylen`, `haylen.log`, `haylen.timer`, `haylen.window`, `haylen.viewport`, `haylen.scene`, `haylen.signal`, `haylen.events` and `haylen.tween`, with `haylen.math` and `haylen.ai`. It also runs the autoloads of the app, before the scenes update and after they render.
+// Installs the Lua modules of the engine core: `haylen`, `haylen.log`, `haylen.timer`, `haylen.window`, `haylen.viewport`, `haylen.scene`, `haylen.signal`, `haylen.events` and `haylen.tween`, with `haylen.math` and `haylen.ai`. It also runs the autoloads of the app, before the scenes update and after they render, and writes the warnings of Lua to the log.
 class CorePlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -25,6 +26,7 @@ class CorePlugin final : public Plugin {
 
   private:
     lua::Autoloads autoloads;
+    lua::Warnings warnings;
 };
 
 } // namespace haylen::plugins

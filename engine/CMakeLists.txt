@@ -346,6 +346,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/TypeConverter.cpp
   src/lua/Userdata.cpp
   src/lua/ValueRemap.cpp
+  src/lua/Warnings.cpp
   src/lua/WeakReference.cpp
   src/math/ChoiceLua.cpp
   src/math/Color.cpp

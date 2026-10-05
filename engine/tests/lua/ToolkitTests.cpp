@@ -3,12 +3,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <vector>
 
+#include "haylen/core/Log.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/lua/JsonConverter.hpp"
@@ -117,6 +119,33 @@ TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_STREQ(fixture.engine().getError()->what(), "reported");
     EXPECT_TRUE(fixture.engine().getError()->getFrames().empty());
+}
+
+TEST(WarningsTest, WritesTheWarningsOfLuaToTheLog) {
+    test::EngineFixture fixture;
+    std::vector<std::string> lines;
+    // clang-format off
+    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level level, std::string_view line) {
+        if (level == core::Log::Level::Warning) {
+            lines.emplace_back(line);
+        }
+    });
+    fixture.runLua(R"(
+        setmetatable({}, {__gc = function() error('The finalizer failed.') end})
+        collectgarbage()
+        collectgarbage()
+        warn('@off')
+        warn('Hidden.')
+        warn('@on')
+        warn('Shown ', 'in pieces.')
+    )");
+    // clang-format on
+    core::Log::removeListener(listener);
+
+    ASSERT_EQ(lines.size(), 2U);
+    EXPECT_NE(lines[0].find("Lua warning: error in __gc (test:2: The finalizer failed.)"), std::string::npos) << lines[0];
+    EXPECT_NE(lines[1].find("Lua warning: Shown in pieces."), std::string::npos) << lines[1];
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST(EnvironmentTest, NamesTheOptionThatHoldsABadValue) {

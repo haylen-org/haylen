@@ -19,6 +19,7 @@ void CorePlugin::stop(core::Engine& engine) {
 }
 
 void CorePlugin::installLua(core::Engine&, lua_State* L) {
+    warnings.install(L);
     core::CoreLua::install(L);
     platform::WindowLua::install(L);
     core::CollectionsLua::install(L);

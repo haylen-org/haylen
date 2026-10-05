@@ -14,7 +14,7 @@ Every frame, during the engine update, the jobs take turns in the order they wer
 
 Starts `fn(...)` as a job and returns a Varn promise. The job begins on the next engine update, not inside the call. The promise resolves with the first value that `fn` returns, or `nil` when it returns nothing. When `fn` raises an error, the promise rejects with the message followed by the stack of the job, one frame per line.
 
-Wait for the result with `:await()` inside `async.spawn` from Varn's `async` module. It returns the value, or `nil` and the error message when the job failed. The argument `fn` must be a function, otherwise the call raises `bad argument #1 to 'spawn' (function expected, got nil)` or the equivalent for the given type.
+Wait for the result with `:await()` inside `async.spawn` from Varn's `async` module. It returns the value, or `nil` and the error message when the job failed. The failure reaches only the code that awaits the promise, so a job whose promise nothing awaits fails without a trace, and a job that must stop the app on failure is awaited by a task that raises the error again. The argument `fn` must be a function, otherwise the call raises `bad argument #1 to 'spawn' (function expected, got nil)` or the equivalent for the given type.
 
 ```lua
 local jobs = require('haylen.jobs')
