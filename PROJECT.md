@@ -276,6 +276,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 204. Implementar todo o sistema de conteúdo do `CONTENT_SYSTEM_IMPLEMENTATION.md` (empacotamento, proteção, streaming, desempenho e atualização), com testes, sem deixar nada de fora.
 205. Dar push na `main` conforme o trabalho avança.
 206. Regra: a barra de rolagem nunca aparece por cima do conteúdo nem colada nele, com pelo menos 4 pt de distância, como pedem as diretrizes de interface das plataformas.
+207. As bordas arredondadas de botões, switches, pinos e de tudo o que tem curva estão serrilhadas: revisar as bordas e o jeito como as curvas são geradas, para ficarem lisas em qualquer escala.
 
 ## 3. Regras
 
@@ -921,7 +922,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 206 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 207 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -932,9 +933,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 206: decisões e checklist
+## 14. Pedidos 51 a 207: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 206 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 207 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1692,6 +1693,7 @@ Checklist:
 - [x] Configuração para o mouse funcionar como toque (e o toque como mouse) no `app.json` e em tempo de execução. O `input::PointerEmulation` da engine troca os eventos antes de tudo: com `input.mouseAsTouch` no `app.json` ou `input.setMouseAsTouch(true)` o botão esquerdo vira um dedo para a UI, os gestos, os controles de toque e o app, e com `input.touchAsMouse` ou `input.setTouchAsMouse(true)` o primeiro dedo também move o mouse, mantendo os toques e o `lastDevice` em `'touch'`. Testado em `PointerEmulationTest`, `InputLuaTest.TurnsTheMouseIntoAFingerAndAFingerIntoTheMouse`, `InputLuaAppTest` e nos testes `INP-002` e `INP-003`.
 - [x] Um rótulo com quebras de linha e `wrap = false` desenha a partir de uma caixa de uma linha, e o texto sai da caixa: manter as quebras, encurtar cada linha e centralizar o bloco, com teste. Cada linha fica na sua linha com reticências, e o bloco fica no meio da altura, testado em `LabelTest`, que vê onde o texto desenha pelo `Renderer::visitDrawn`, também exposto ao Lua como `graphics2d.drawn()`.
 - [ ] Barras de rolagem afastadas do conteúdo: nenhum contêiner rolável (scroll, coleção, lista, árvore, tabela, área de texto, combo, menu e popup) desenha a barra por cima do conteúdo ou colada nele, com pelo menos 4 pt entre o conteúdo e a barra em qualquer escala, por uma métrica do tema, com teste e regra no `AGENTS.md`.
+- [ ] Curvas lisas: as bordas arredondadas de botões, switches, pinos, badges, campos, painéis, círculos e anéis e de toda curva da UI e do `graphics2d` ficam sem serrilhado em qualquer escala, densidade e backend. Achar a causa (antialiasing desligado, poucos segmentos na tesselação, escala depois de rasterizar ou falta de cobertura analítica) e corrigir o jeito como as curvas são geradas, com teste e comparação em capturas.
 
 #### AL. Render, texto, shaders e web
 
