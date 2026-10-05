@@ -33,5 +33,6 @@ return {
         {code = 'GUI-027', title = 'Custom GUI in Lua', description = 'A small immediate-mode GUI written in Lua with buttons, a check box, a slider, a native text field, a clipped list, focus, the cursor, the safe area and the UI scale.', module = 'custom-gui'},
         {code = 'GUI-028', title = 'Scroll bars', description = 'Every component that scrolls side by side, each with its scroll bar in a lane of its own a gap of at least four points away from its content, in the design and physical scales.', module = 'scroll-bars'},
         {code = 'GUI-029', title = 'SVG pictures', description = 'SVG documents as icons, buttons, list rows, avatars and images that stay sharp at every size and UI scale, buttons that tint their icons and pictures with rounded corners.', module = 'svg-pictures'},
+        {code = 'GUI-030', title = 'Shared focus', description = 'A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll.', module = 'shared-focus'},
     },
 }

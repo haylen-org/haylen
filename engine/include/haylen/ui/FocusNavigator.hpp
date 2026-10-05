@@ -245,6 +245,7 @@ class FocusNavigator final {
     [[nodiscard]] static bool isManaged(const ImGuiWindow* window) noexcept;
     [[nodiscard]] static std::uint8_t toBit(FocusDirection direction) noexcept;
     [[nodiscard]] static bool wrapsAlong(FocusWrap wrap, FocusDirection direction) noexcept;
+    [[nodiscard]] static bool isSameSpace(const Gui* first, const Gui* second) noexcept;
     static void setFocus(ImGuiID item, ImGuiWindow* window, const math::Rect& bounds);
 
     [[nodiscard]] const Target* find(const Frame& frame, ImGuiID item) const noexcept;

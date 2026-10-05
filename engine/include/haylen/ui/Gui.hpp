@@ -86,6 +86,14 @@ class Gui final {
         visible = value;
     }
 
+    // GUIs that share the focus form one navigation space, so directions and Tab move the focus between them, such as from the pages of an app to the bars around them.
+    [[nodiscard]] bool hasSharedFocus() const noexcept {
+        return sharedFocus;
+    }
+    void setSharedFocus(bool value) noexcept {
+        sharedFocus = value;
+    }
+
   private:
     class EventScope;
     class PreparingScope;
@@ -122,6 +130,7 @@ class Gui final {
     Delivery delivery;
     Placement placement;
     bool visible = true;
+    bool sharedFocus = false;
 
     // Whether nodes joined the attached GUI since it last drew, so they report it.
     bool arrived = false;

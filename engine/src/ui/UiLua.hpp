@@ -35,7 +35,7 @@ class UiLua final {
   private:
     // The registry keeps one entry per mounted GUI, keyed by the GUI address: its userdata and the handlers of its nodes by id and event name.
     static constexpr const char* kHandlersKey = "haylen.ui.handlers";
-    static constexpr std::array<std::string_view, 3> kMountFields{"placement", "layer", "owner"};
+    static constexpr std::array<std::string_view, 4> kMountFields{"placement", "layer", "owner", "sharedFocus"};
     static constexpr std::array<std::string_view, 1> kEventFields{"owner"};
 
     [[nodiscard]] static plugins::UiPlugin& getPlugin(lua_State* L);
@@ -67,6 +67,8 @@ class UiLua final {
     static int guiUnmount(lua_State* L);
     static int guiVisible(lua_State* L);
     static int guiSetVisible(lua_State* L);
+    static int guiSharedFocus(lua_State* L);
+    static int guiSetSharedFocus(lua_State* L);
     static int guiMounted(lua_State* L);
     static int guiPlacement(lua_State* L);
     static int guiTransform(lua_State* L);

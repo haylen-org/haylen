@@ -133,6 +133,24 @@ TEST_F(FocusTest, KeepsTheFocusInsideScopesAndSendsThemCancel) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"screen:cancel"}));
 }
 
+// GUIs that share the focus form one navigation space, such as the page of an app and a player bar mounted on its own, while any other GUI keeps the focus inside it.
+TEST_F(FocusTest, MovesBetweenGuisThatShareTheFocus) {
+    auto page = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "button", "id": "play", "text": "Play", "autofocus": true}]})");
+    auto bar = mount(R"({"kind": "row", "anchor": "stretchBottom", "height": 100, "children": [{"kind": "button", "id": "pause", "text": "Pause"}]})", Placement::Screen, 1);
+    key(input::Key::Down);
+    key(input::Key::Down);
+    ASSERT_TRUE(isFocused(*page, "play"));
+
+    page->setSharedFocus(true);
+    bar->setSharedFocus(true);
+    key(input::Key::Down);
+    EXPECT_TRUE(isFocused(*bar, "pause"));
+    key(input::Key::Up);
+    EXPECT_TRUE(isFocused(*page, "play"));
+    key(input::Key::Tab);
+    EXPECT_TRUE(isFocused(*bar, "pause"));
+}
+
 TEST_F(FocusTest, SendsCancelToTheTopmostGuiWithoutFocus) {
     mount(R"({"kind": "column", "id": "hud", "children": [{"kind": "label", "text": "HUD"}]})");
     mount(R"({"kind": "column", "id": "pause", "children": [{"kind": "label", "text": "Paused"}]})", Placement::Screen, 1);

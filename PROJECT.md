@@ -670,6 +670,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 - [~] **Texto na web** funcionando (validado no Chrome desktop), com pedido de teclado virtual ao host. Falta validar em navegadores mobile.
 - [x] **Ordem de desenho do scroll**: o conteúdo de um scroll e o corpo de um diálogo desenham no lugar do nó na árvore, pelo `Backend::beginChild`, então os nós que vêm depois, como uma folha ancorada, e as GUIs de camadas acima cobrem o que rola.
 - [x] **Filho do scroll**: o filho estica pelo outro eixo dentro dos limites de tamanho dele, como `maxWidth` e `maxHeight`, ou fica no `align` que ele pede, então um formulário com largura máxima mantém essa largura numa tela larga.
+- [x] **Foco compartilhado entre GUIs**: as GUIs montadas com `sharedFocus = true` formam um espaço de navegação só, então teclado, gamepad e controle remoto vão das páginas de um app para a barra de abas ou do player montada numa GUI própria e voltam, enquanto diálogos, menus e escopos de foco seguram o foco, com o teste `GUI-030` do projeto de testes.
 
 ### 8.14 Plataforma
 

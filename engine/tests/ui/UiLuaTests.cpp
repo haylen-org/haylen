@@ -85,11 +85,12 @@ TEST_F(UiLuaTest, MountsTreesAndCallsHandlers) {
             ui.label{id = 'day', text = 'Day 1'},
             ui.button{id = 'play', text = 'Play', onClick = function(event) clicks[#clicks + 1] = event.id .. ':' .. event.name .. ':' .. tostring(event.gui == hud) end},
             ui.checkbox{text = 'Music', onChange = function(event) clicks[#clicks + 1] = 'music ' .. tostring(event.checked) .. ' ' .. event.id end},
-        }, {placement = 'screen', layer = 2})
+        }, {placement = 'screen', layer = 2, sharedFocus = true})
     )");
     // clang-format on
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(hud.mounted) .. ' ' .. hud.placement .. ' ' .. tostring(hud.visible) .. ' ' .. tostring(hud:has('play'))"), "true screen true true");
+    EXPECT_EQ(fixture.lua("local shared = hud.sharedFocus hud.sharedFocus = false return tostring(shared) .. ' ' .. tostring(hud.sharedFocus)"), "true false");
     EXPECT_EQ(fixture.lua("return hud:get('day').text .. ' ' .. tostring(hud:get('nothing'))"), "Day 1 nil");
     EXPECT_EQ(fixture.lua("return hud:bounds('play').height"), "64.0");
 

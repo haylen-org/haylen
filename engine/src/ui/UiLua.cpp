@@ -330,11 +330,12 @@ Gui& UiLua::checkGui(lua_State* L) {
     return lua::Userdata::check<Gui>(L, 1);
 }
 
-// Mounts a tree with `mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene}])` and returns the GUI. A GUI with an owner is unmounted when the owner is released, such as a scene when it unloads.
+// Mounts a tree with `mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene, sharedFocus = false}])` and returns the GUI. A GUI with an owner is unmounted when the owner is released, such as a scene when it unloads.
 int UiLua::mount(lua_State* L) {
     Placement placement = Placement::Safe;
     int layer = 0;
     int owner = 0;
+    bool sharedFocus = false;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::checkFields(L, 2, {kMountFields});
@@ -345,6 +346,7 @@ int UiLua::mount(lua_State* L) {
         }
         placement = name == "safe" ? Placement::Safe : Placement::Screen;
         lua::Table::readField(L, 2, "layer", layer);
+        lua::Table::readField(L, 2, "sharedFocus", sharedFocus);
         if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
             lua::Owners::checkOwner(L, -1);
             owner = lua_gettop(L);
@@ -359,6 +361,7 @@ int UiLua::mount(lua_State* L) {
     std::size_t count = 0;
     const core::Json tree = convertNode(L, 1, handlers, 0, count);
     std::shared_ptr<Gui> created = getPlugin(L).createGui(tree, placement);
+    created->setSharedFocus(sharedFocus);
     listenToHandlers(L, *created, handlers);
 
     // The GUI is registered before it mounts, so listeners of the mount event already receive its userdata.
@@ -530,6 +533,16 @@ int UiLua::guiVisible(lua_State* L) {
 
 int UiLua::guiSetVisible(lua_State* L) {
     checkGui(L).setVisible(lua::Stack::read<bool>(L, 3));
+    return 0;
+}
+
+int UiLua::guiSharedFocus(lua_State* L) {
+    lua::Stack::push(L, checkGui(L).hasSharedFocus());
+    return 1;
+}
+
+int UiLua::guiSetSharedFocus(lua_State* L) {
+    checkGui(L).setSharedFocus(lua::Stack::read<bool>(L, 3));
     return 0;
 }
 
@@ -897,7 +910,7 @@ void UiLua::install(lua_State* L) {
     core::EventsLua::addPayload<std::shared_ptr<Gui>>(&pushGui);
     TransformLua::install(L);
     CollectionLua::install(L);
-    lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).function("collection", &lua::Binding::native<&guiCollection>).install();
+    lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("sharedFocus", &guiSharedFocus, &lua::Binding::native<&guiSetSharedFocus>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).function("collection", &lua::Binding::native<&guiCollection>).install();
     lua::Binding::preload(L, "haylen.ui", &open);
 }
 

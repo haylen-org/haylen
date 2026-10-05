@@ -42,6 +42,7 @@ Builds a GUI from the node table `tree`, shows it and returns its [`Gui`](#gui).
 | `placement` | string | `'safe'` | The value `'safe'` lays the root out inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. |
 | `layer` | integer | `0` | GUIs draw in ascending layer order, and GUIs on the same layer draw in the order they were mounted, so later ones cover earlier ones. |
 | `owner` | table or userdata | `nil` | Unmounts the GUI when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). A scene of the stack as owner also makes the GUI part of the scene: it draws only while the scene shows, and during a transition it goes into the image of its scene. |
+| `sharedFocus` | boolean | `false` | Joins the navigation space of the other GUIs that share the focus, so directions and Tab move the focus between them, as [`gui.sharedFocus`](#guisharedfocus) describes. |
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
@@ -733,6 +734,18 @@ if toastLayer.mounted then
 end
 ```
 
+### gui.sharedFocus
+
+Readable and writable boolean, `false` unless `ui.mount` received `sharedFocus = true`. Every GUI is a navigation space of its own, where directions and Tab never leave it, and the GUIs that share the focus form one space together, so a remote or a gamepad moves from the pages of an app to a tab bar or a player bar mounted as a GUI of its own and back. Dialogs, popovers, menus and focus scopes still keep the focus inside them, and cancel still goes to the GUI that holds the focus.
+
+```lua
+local ui = require('haylen.ui')
+
+-- The bar outlives the pages, which the scenes mount with the same option.
+local bar = ui.mount(ui.row{anchor = 'stretchBottom', height = 96, ui.button{id = 'play', text = 'Play'}}, {layer = 1, sharedFocus = true})
+local page = ui.mount(ui.column{ui.button{text = 'Album', autofocus = true}}, {sharedFocus = true})
+```
+
 ### gui.placement
 
 Read-only string, `'safe'` or `'screen'`, as `ui.mount` received it.
@@ -1038,7 +1051,7 @@ Buttons, choices, inputs, list rows, slots and the other interactive parts of a 
 
 - A direction moves the focus to the nearest control in that direction, preferring controls in line with the focused one, unless the focused node names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
 - Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited, and a text field they reach starts editing.
-- The focus stays inside its GUI, and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A GUI that stops drawing, such as the GUI of a covered scene or one with `visible` set to `false`, gives the focus back to the control that had it once it draws again, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its GUI, so a move reaches its controls from the rest of the GUI and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
+- The focus stays inside its GUI, or inside the GUIs that share it with [`sharedFocus`](#guisharedfocus), and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A GUI that stops drawing, such as the GUI of a covered scene or one with `visible` set to `false`, gives the focus back to the control that had it once it draws again, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its GUI, so a move reaches its controls from the rest of the GUI and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
 - The property `focusWrap` wraps a move that would leave a node around to its other side, such as the end of a row of cards back to its first card.
 - A scroll brings the focused control into view, and so does a collection, which also keeps the focus on an item whose cell the wheel or a finger took out of view. The first direction or accept after that only brings the item back into view, and the next one moves on or presses it. A collection binds the items around the focused one, so the focus reaches items that do not show yet, and the property `focusWrap` of a collection along its axis wraps from its last item to its first even when they do not show.
 - The focused node reports `focus` and its previous node reports `blur`, as long as that node still draws.

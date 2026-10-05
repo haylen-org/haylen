@@ -5,6 +5,7 @@
 #include <imgui_internal.h>
 
 #include "haylen/ui/Component.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "haylen/ui/NavigationInput.hpp"
 #include "ui/FocusSearch.hpp"
 #include "ui/ImGuiConverter.hpp"
@@ -479,12 +480,17 @@ bool FocusNavigator::isInside(const Target& target, std::optional<std::size_t> s
     return false;
 }
 
-// Peers share the GUI and the innermost focus scope, so the focus never enters a scope it is not in, and a popup keeps the focus inside it.
+// A GUI is a navigation space of its own, and GUIs that share the focus form one together.
+bool FocusNavigator::isSameSpace(const Gui* first, const Gui* second) noexcept {
+    return first == second || (first->hasSharedFocus() && second->hasSharedFocus());
+}
+
+// Peers share the navigation space and the innermost focus scope, so the focus never enters a scope it is not in, and a popup keeps the focus inside it.
 bool FocusNavigator::isPeer(const Target& source, const Target& target) const noexcept {
     const Node& origin = drawn.nodes[source.node];
     const Node& node = drawn.nodes[target.node];
     const bool popup = ((source.window->RootWindow->Flags | target.window->RootWindow->Flags) & ImGuiWindowFlags_Popup) != 0;
-    return node.gui == origin.gui && (target.window->RootWindow == source.window->RootWindow || !popup) && findTrap(node.scope) == findTrap(origin.scope);
+    return isSameSpace(node.gui, origin.gui) && (target.window->RootWindow == source.window->RootWindow || !popup) && findTrap(node.scope) == findTrap(origin.scope);
 }
 
 const FocusNavigator::Target* FocusNavigator::search(const Target& source, const math::Rect& from, std::optional<std::size_t> scope, FocusDirection direction) const {
@@ -669,13 +675,13 @@ void FocusNavigator::cancel(const Target* source) {
     }
 }
 
-// A move into another GUI, ImGui window or focus scope remembers where the focus was, so it goes back there when the scope closes.
+// A move into another navigation space, ImGui window or focus scope remembers where the focus was, so it goes back there when the scope closes.
 void FocusNavigator::remember(const Frame& frame, const Target& next) {
     const Target* current = find(drawn, GImGui->NavId);
     if (current == nullptr || current->id == next.id) {
         return;
     }
-    const bool elsewhere = drawn.nodes[current->node].gui != frame.nodes[next.node].gui || current->window->RootWindow != next.window->RootWindow || getTrapId(drawn, *current) != getTrapId(frame, next);
+    const bool elsewhere = !isSameSpace(drawn.nodes[current->node].gui, frame.nodes[next.node].gui) || current->window->RootWindow != next.window->RootWindow || getTrapId(drawn, *current) != getTrapId(frame, next);
     if (!elsewhere) {
         return;
     }
