@@ -1,0 +1,19 @@
+{
+    "texture": "../library/textures/smoke_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 7,
+    "maxParticles": 64,
+    "lifetime": [3, 4],
+    "speed": [60, 90],
+    "spread": 0.3,
+    "gravity": [0, -10],
+    "turbulence": {"strength": 40, "frequency": 0.005, "speed": 0.5},
+    "startSize": [50, 70],
+    "endSize": [180, 240],
+    "rotation": [0, 6.2832],
+    "spin": [-0.4, 0.4],
+    "colors": ["#00505058", "#80404048", "#00303038"],
+    "layer": 2
+}

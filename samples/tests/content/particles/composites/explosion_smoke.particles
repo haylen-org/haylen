@@ -1,0 +1,21 @@
+{
+    "texture": "../library/textures/smoke_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "random",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 16}],
+    "duration": 0.05,
+    "maxParticles": 32,
+    "lifetime": [1.6, 2.4],
+    "speed": [60, 160],
+    "spread": 6.2832,
+    "damping": 1.5,
+    "gravity": [0, -50],
+    "startSize": [90, 130],
+    "endSize": [220, 300],
+    "rotation": [0, 6.2832],
+    "spin": [-0.8, 0.8],
+    "colors": ["#00404040", "#B0383838", "#00202020"],
+    "layer": 2
+}

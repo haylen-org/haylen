@@ -20,6 +20,28 @@ function ParticleTest.texture(name)
     return assets.texture('particles/images/' .. name .. '.png', {filter = 'linear'})
 end
 
+-- Returns a texture of the shared library in `content/particles/library/textures`, with the linear filter for the smooth images and the nearest filter for the pixel art ones, whose names start with `pixel_`.
+function ParticleTest.library(name)
+    return assets.texture('particles/library/textures/' .. name .. '.png', {filter = name:find('^pixel_') and 'nearest' or 'linear'})
+end
+
+-- Updates every emitter, system or trail of a list and returns how many live particles or points they hold.
+function ParticleTest.updateAll(list, dt)
+    local count = 0
+    for index = 1, #list do
+        local emitter = list[index]
+        emitter:update(dt)
+        count = count + emitter.count
+    end
+    return count
+end
+
+function ParticleTest.drawAll(list)
+    for index = 1, #list do
+        list[index]:draw()
+    end
+end
+
 -- Returns the source rectangles of an image made of square frames side by side.
 function ParticleTest.frames(texture)
     local frames = {}
@@ -71,6 +93,13 @@ function ParticleTest:update(dt)
     end
     self.pointer:update(dt, self)
     self.cursorX, self.cursorY = self.pointer.worldX, self.pointer.worldY
+end
+
+-- Shows a line of live values made with `string.format`, which only runs when the status line refreshes.
+function ParticleTest:report(format, ...)
+    if self.statusTime >= Test.statusInterval then
+        self:status(string.format(format, ...))
+    end
 end
 
 -- Tells whether the cursor pressed this frame, to fire something.

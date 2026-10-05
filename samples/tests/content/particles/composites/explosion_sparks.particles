@@ -1,0 +1,20 @@
+{
+    "texture": "../library/textures/spark_streak.png",
+    "filter": "linear",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": [50, 70]}],
+    "duration": 0.05,
+    "maxParticles": 128,
+    "lifetime": [0.5, 1.1],
+    "speed": [500, 1000],
+    "spread": 6.2832,
+    "gravity": [0, 900],
+    "damping": 1,
+    "startSize": 14,
+    "endSize": 4,
+    "alignToVelocity": true,
+    "stretch": 0.02,
+    "colors": ["#FFFFFFE0", "#FFFFB040", "#00FF5010"],
+    "blend": "additive",
+    "layer": 5
+}

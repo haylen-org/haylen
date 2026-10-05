@@ -150,7 +150,7 @@ Frames cut into nine regions that stretch or tile, from borders or pieces, scale
 
 #### Particles (PRT)
 
-Particle emitters from Lua tables and effect files: weather, fire, bursts, shapes, forces, blending and tens of thousands of particles. The tests are in `source/categories/particles/`.
+Particle emitters from Lua tables, effect files and composite effects: weather, fire, bursts, delays, spawn and image shapes, direction modes, forces, turbulence, attractors, size, speed and spin curves, color stops and tints, rotation and frame modes, collisions with floors, walls and physics worlds, bounds, draw order, moving emitters, sub-emitters, trails and ribbons, lights and shading, pixel art, blending and tens of thousands of particles. The tests are in `source/categories/particles/`, and the composite effects they load in `content/particles/composites/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -172,6 +172,21 @@ Particle emitters from Lua tables and effect files: weather, fire, bursts, shape
 | `PRT-016` | Blend modes | The same particles with alpha, additive, multiply, screen and premultiplied blending. |  |
 | `PRT-017` | Effect files | Effects loaded from ".particles" files in the content folder. |  |
 | `PRT-018` | Many particles | Tens of thousands of particles with their live count. |  |
+| `PRT-019` | Color stops and tints | Colors spread evenly, placed at "colorTimes" and held with "colorBlend" set to "steps", and confetti tinted from "tints" at random, in order or by the cycle time. |  |
+| `PRT-020` | Size, speed and spin curves | Pops whose "sizeCurve" grows past the end size, sizes kept with "endSizeScale", dust that stops with a "speedCurve" and coins that spin down with a "spinCurve". |  |
+| `PRT-021` | Rotation, stretch and frames | Random start rotations, "rotationStep", streaks aligned with their motion and stretched by their speed, "aspect", and the four "frameMode" values on a sheet cut by "frameGrid". |  |
+| `PRT-022` | Turbulence and attractors | Smoke that curls with "turbulence" and coins that fly to an attractor at the cursor and vanish at its kill radius. |  |
+| `PRT-023` | Collision | Sparks that bounce, stick or die on a floor, balls inside the walls of an area and drops that hit the bodies of a physics world given with "setCollisionWorld". |  |
+| `PRT-024` | Bounds and draw order | Rain that dies at the ground with "bounds", snow that wraps around a box, and smoke drawn "oldestFirst" next to "newestFirst". |  |
+| `PRT-025` | Shapes and direction modes | The shapes "ellipse", "rectangleEdge", "arc", "polygon" and "polyline" turned and thickened, the four direction modes, and a polyline that follows the cursor through "setShapePoints". |  |
+| `PRT-026` | Image shapes | A hero sprite read as an "imageShape" that sparkles on its visible pixels and breaks apart into pieces in its own colors with "colorFromImage". |  |
+| `PRT-027` | Moving emitters | Exhaust that inherits the velocity of a ship at the cursor, trails by "rate" and by "rateOverDistance", and the "scale" and "rotation" of an emitter on sliders. |  |
+| `PRT-028` | Delays and burst cycles | A launch whose parts start in sequence with "delay", and crackles, sputters and pulses from bursts with cycles, intervals, probabilities and count ranges. |  |
+| `PRT-029` | Sub-emitters | Rain that splashes where it dies, fireworks whose stars crackle when they die, debris that raises dust at every hit and comets that leave dust while they live, with "inheritColor" and "inheritVelocity". |  |
+| `PRT-030` | Composite effects | An explosion of six parts with delays and a campfire of four parts from composite effect files, moved, scaled and turned as one, with the smoke switched off through "emitter". |  |
+| `PRT-031` | Lights and shading | A night clearing lit by a flickering fire "light", embers and fireflies with "particleLights", flames with "emission" and "unshaded" runes, next to the same scene unlit. |  |
+| `PRT-032` | Trails and ribbons | Neon sparks that each draw a "trail", and a blade ribbon of "newTrail" that follows the cursor with its width and lifetime on sliders. |  |
+| `PRT-033` | Pixel art effects | Pixel leaves, explosions, coins, smoke and flames with "pixelSnap", "rotationStep" and "steps", next to the same effects without them. |  |
 
 #### Scenes and transitions (SCN)
 

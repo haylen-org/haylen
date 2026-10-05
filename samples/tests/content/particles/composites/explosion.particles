@@ -1,0 +1,10 @@
+{
+    "emitters": [
+        {"name": "smoke", "effect": "explosion_smoke.particles", "delay": 0.12},
+        {"name": "debris", "effect": "explosion_debris.particles", "delay": 0.04},
+        {"name": "fireball", "effect": "explosion_fireball.particles"},
+        {"name": "sparks", "effect": "explosion_sparks.particles", "delay": 0.02},
+        {"name": "ring", "effect": "explosion_ring.particles", "delay": 0.03, "scale": 1.2, "overrides": {"colors": ["#C0FFD080", "#00FF6020"]}},
+        {"name": "flash", "effect": "explosion_flash.particles"}
+    ]
+}

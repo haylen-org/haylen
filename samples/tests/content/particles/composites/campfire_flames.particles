@@ -1,0 +1,20 @@
+{
+    "texture": "../library/textures/flame_sheet.png",
+    "filter": "linear",
+    "frameGrid": {"columns": 4, "rows": 1},
+    "frameMode": "loopRandomStart",
+    "frameRate": 10,
+    "rate": 36,
+    "maxParticles": 64,
+    "lifetime": [0.6, 0.9],
+    "speed": [80, 140],
+    "spread": 0.3,
+    "gravity": [0, -120],
+    "startSize": [80, 110],
+    "endSize": [30, 50],
+    "colors": ["#FFFFF0C0", "#FFFFA040", "#C0FF5020", "#00801000"],
+    "shape": "circle",
+    "shapeSize": [30, 0],
+    "blend": "additive",
+    "layer": 3
+}
