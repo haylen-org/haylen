@@ -70,7 +70,7 @@ class Linear : public Component {
     [[nodiscard]] float getLineGap(Context& context) const;
     [[nodiscard]] Alignment getChildAlignment(const Component& child) const noexcept;
     [[nodiscard]] float measureLength(Context& context, Component& child, float crossLength) const;
-    [[nodiscard]] float clampLength(const Component& child, float length) const noexcept;
+    [[nodiscard]] float boundLength(const Component& child, float length) const noexcept;
     [[nodiscard]] math::Vec2 measureWrapped(Context& context, float inner);
     void breakLines(Context& context, float inner);
     void grow(std::size_t first, std::size_t last, float available, float gap);

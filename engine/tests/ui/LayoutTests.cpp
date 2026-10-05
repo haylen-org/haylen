@@ -82,6 +82,19 @@ TEST_F(LayoutTest, GrowsChildrenWithinTheirMinimumAndMaximumSizes) {
     EXPECT_EQ(getBounds(*gui, "three").width, 750.0F);
 }
 
+// A node with a fixed size of zero and a grow factor takes the room the others leave, such as a scroll that fills a panel under its title.
+TEST_F(LayoutTest, GrowsANodeWhoseFixedSizeIsZero) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "column", "height": 500, "gap": 0, "children": [
+        {"kind": "label", "id": "title", "text": "Title"},
+        {"kind": "scroll", "id": "scroll", "grow": 1, "height": 0, "children": [{"kind": "column", "children": [{"kind": "label", "id": "inside", "text": "Inside"}]}]}
+    ]}]})");
+    // clang-format on
+    frames(2);
+    EXPECT_EQ(getBounds(*gui, "scroll").height, 500.0F - getBounds(*gui, "title").height);
+    EXPECT_FALSE(getBounds(*gui, "inside").isEmpty());
+}
+
 TEST_F(LayoutTest, KeepsMarginsAroundChildrenAndPaddingInsideContainers) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": [5, 6, 7, 8], "gap": 4, "children": [

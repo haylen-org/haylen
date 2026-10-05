@@ -135,6 +135,10 @@ class Component {
     [[nodiscard]] float clampWidth(float outer) const noexcept;
     [[nodiscard]] float clampHeight(float outer) const noexcept;
 
+    // Keeps the length a growing node reaches within its minimum and maximum sizes, margin included, while its fixed size does not hold it back, so a node with `grow` and a height of 0 takes the room the others leave.
+    [[nodiscard]] float boundWidth(float outer) const noexcept;
+    [[nodiscard]] float boundHeight(float outer) const noexcept;
+
     // The rectangle the component was last drawn in, in UI coordinates.
     [[nodiscard]] const math::Rect& getBounds() const noexcept {
         return drawnBounds;

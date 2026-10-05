@@ -61,8 +61,8 @@ float Linear::measureLength(Context& context, Component& child, float crossLengt
     return horizontal ? measured.x : measured.y;
 }
 
-float Linear::clampLength(const Component& child, float length) const noexcept {
-    return horizontal ? child.clampWidth(length) : child.clampHeight(length);
+float Linear::boundLength(const Component& child, float length) const noexcept {
+    return horizontal ? child.boundWidth(length) : child.boundHeight(length);
 }
 
 math::Vec2 Linear::measureContent(Context& context, float availableWidth) {
@@ -165,7 +165,7 @@ void Linear::grow(std::size_t first, std::size_t last, float available, float sp
                 continue;
             }
             slot.length = slot.base + free * slot.child->getCommon().grow / growth;
-            const float allowed = clampLength(*slot.child, slot.length);
+            const float allowed = boundLength(*slot.child, slot.length);
             if (allowed != slot.length) {
                 slot.length = allowed;
                 slot.growing = false;

@@ -935,7 +935,7 @@ Every kind accepts these properties.
 | `visible` | boolean | `true` | A hidden node takes no room and is not drawn. |
 | `enabled` | boolean | `true` | A disabled node is drawn dimmed and ignores the player. |
 | `tooltip` | text | none | Text shown next to the pointer after it rests on the node for half a second. |
-| `grow` | number from 0 to 1000 | `0` | Share of the free space the node takes along a column or a row. A growing node starts from nothing rather than from its content, so two nodes with `grow = 1` split the free space in half and a growing `scroll` scrolls inside its share. A column or row that takes the size of its content gives every growing node at least the room its content needs. |
+| `grow` | number from 0 to 1000 | `0` | Share of the free space the node takes along a column or a row. A growing node starts from nothing rather than from its content, so two nodes with `grow = 1` split the free space in half and a growing `scroll` scrolls inside its share. A column or row that takes the size of its content gives every growing node at least the room its content needs. Only `minWidth`, `maxWidth`, `minHeight` and `maxHeight` hold a growing node back, so a scroll with `grow = 1` and `height = 0` measures as nothing and fills the room the others leave. |
 | `width` | length | `'auto'` | Fixed width. |
 | `height` | length | `'auto'` | Fixed height. |
 | `minWidth` | number | `0` | Smallest width. |

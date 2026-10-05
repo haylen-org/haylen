@@ -146,6 +146,16 @@ float Component::clampHeight(float outer) const noexcept {
     return common.height ? *common.height + margin : getBoundedHeight(outer - margin) + margin;
 }
 
+float Component::boundWidth(float outer) const noexcept {
+    const float margin = common.margin.getHorizontal();
+    return getBoundedWidth(outer - margin) + margin;
+}
+
+float Component::boundHeight(float outer) const noexcept {
+    const float margin = common.margin.getVertical();
+    return getBoundedHeight(outer - margin) + margin;
+}
+
 math::Vec2 Component::measure(Context& context, float availableWidth) {
     if (!common.visible || isFloating()) {
         return {};
