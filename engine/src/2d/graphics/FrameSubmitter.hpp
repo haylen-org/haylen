@@ -40,6 +40,9 @@ class FrameSubmitter final {
     // Every render target is created before the first pass, and a failure inside a pass ends it and the frame before it goes on.
     void submit();
 
+    // Returns the pixels of a pass that a clip rectangle of a canvas covers, those whose centers lie inside it.
+    [[nodiscard]] static math::Rect getScissor(const Canvas& canvas, const math::Rect& clip, const math::Rect& passRect) noexcept;
+
   private:
     using Matrix = std::array<float, 16>;
 

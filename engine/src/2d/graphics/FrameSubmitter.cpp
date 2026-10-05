@@ -711,18 +711,20 @@ void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Te
     ++state.stats.drawCalls;
 }
 
-void FrameSubmitter::applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) {
-    if (clip == 0) {
-        sg_apply_scissor_rectf(passRect.x, passRect.y, passRect.width, passRect.height, true);
-        return;
-    }
-
-    const math::Rect& area = state.clips[clip - 1U];
+// A pixel belongs to a clip when its center does, so each edge of the clip rounds to the nearest pixel boundary on its own.
+math::Rect FrameSubmitter::getScissor(const Canvas& canvas, const math::Rect& clip, const math::Rect& passRect) noexcept {
     const math::Vec2 scale = passRect.getSize() / canvas.viewSize;
-    const std::array<math::Vec2, 4> corners{canvas.view.apply(area.getMin()), canvas.view.apply(math::Vec2{area.getRight(), area.getTop()}), canvas.view.apply(area.getMax()), canvas.view.apply(math::Vec2{area.getLeft(), area.getBottom()})};
-    const math::Rect pixels = math::Geometry::bounds(corners);
-    const math::Rect scissor = math::Rect{passRect.x + pixels.x * scale.x, passRect.y + pixels.y * scale.y, pixels.width * scale.x, pixels.height * scale.y}.intersection(passRect);
-    sg_apply_scissor_rectf(scissor.x, scissor.y, std::max(0.0F, scissor.width), std::max(0.0F, scissor.height), true);
+    const std::array<math::Vec2, 4> corners{canvas.view.apply(clip.getMin()), canvas.view.apply(math::Vec2{clip.getRight(), clip.getTop()}), canvas.view.apply(clip.getMax()), canvas.view.apply(math::Vec2{clip.getLeft(), clip.getBottom()})};
+    const math::Rect units = math::Geometry::bounds(corners);
+    const math::Vec2 first = math::Vec2::round(passRect.getMin() + units.getMin() * scale);
+    const math::Vec2 last = math::Vec2::round(passRect.getMin() + units.getMax() * scale);
+    const math::Rect scissor = math::Rect::fromMinMax(first, last).intersection(passRect);
+    return {scissor.x, scissor.y, std::max(0.0F, scissor.width), std::max(0.0F, scissor.height)};
+}
+
+void FrameSubmitter::applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) {
+    const math::Rect scissor = clip == 0 ? passRect : getScissor(canvas, state.clips[clip - 1U], passRect);
+    sg_apply_scissor_rect(static_cast<int>(scissor.x), static_cast<int>(scissor.y), static_cast<int>(scissor.width), static_cast<int>(scissor.height), true);
 }
 
 void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect) {

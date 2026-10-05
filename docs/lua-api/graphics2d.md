@@ -814,7 +814,7 @@ scene.push({
 
 ### graphics2d.pushClip(rect)
 
-Restricts the following draws of the active canvas to `rect`, given in the canvas coordinates. Nested clips intersect with the clip around them. Clips end with `graphics2d.popClip` or when a new canvas begins.
+Restricts the following draws of the active canvas to `rect`, given in the canvas coordinates. The clip keeps the pixels of the destination whose centers lie inside the rectangle, so a clip whose edges fall between pixels neither shows a row past them nor cuts one inside them. Nested clips intersect with the clip around them. Clips end with `graphics2d.popClip` or when a new canvas begins.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

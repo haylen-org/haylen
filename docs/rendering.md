@@ -86,7 +86,7 @@ void openLevel(haylen::core::Engine& engine, std::shared_ptr<haylen::core::Scene
 
 Only offscreen canvases take a `clear` color: screen canvases and world canvases without lighting or post-processing draw straight onto the screen, and they reject a `clear` option with an error.
 
-The functions `pushClip(rect)` and `popClip()` restrict the following draws of the active canvas to a rectangle in the canvas's coordinates. Nested clips intersect, and a new canvas starts without clips.
+The functions `pushClip(rect)` and `popClip()` restrict the following draws of the active canvas to a rectangle in the canvas's coordinates. A clip keeps the pixels whose centers lie inside it, each edge rounded to the nearest pixel boundary on its own, nested clips intersect, and a new canvas starts without clips. Every canvas covers whole pixels of its destination too, since the viewport of the screen and the part of a destination that a camera viewport covers start and end on pixel boundaries, so the canvases of a split screen share their edges without a gap.
 
 ## Draw order
 

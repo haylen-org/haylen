@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -195,6 +196,22 @@ TEST(ViewportTest, PixelPerfectShrinksByWholeDivisorsOnSmallFramebuffers) {
 
     viewport.update(math::Vec2(960.0F, 540.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::PixelPerfect);
     EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 0.0F, 960.0F, 540.0F}));
+}
+
+// A centered viewport lands on whole pixels, where the GPU places it, so pixel art never starts half a pixel in and input maps to the pixels the screen shows.
+TEST(ViewportTest, LandsOnWholePixels) {
+    graphics::Viewport viewport;
+    viewport.update(math::Vec2(1001.0F, 601.0F), math::Vec2(500.0F, 300.0F), graphics::Viewport::ScalingPolicy::PixelPerfect);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{1.0F, 1.0F, 1000.0F, 600.0F}));
+    EXPECT_EQ(viewport.getPixelsPerUnit(), math::Vec2(2.0F, 2.0F));
+    EXPECT_EQ(viewport.toFramebuffer(math::Vec2(10.0F, 20.0F)), math::Vec2(21.0F, 41.0F));
+
+    viewport.update(math::Vec2(1366.0F, 769.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::Fit);
+    const math::Rect fitted = viewport.getPixelRect();
+    for (const float edge : {fitted.x, fitted.y, fitted.getRight(), fitted.getBottom()}) {
+        EXPECT_EQ(edge, std::round(edge));
+    }
+    EXPECT_EQ(viewport.toDesign(fitted.getMin()), math::Vec2(0.0F, 0.0F));
 }
 
 // Each enum keeps its names in one place, which Lua, asset options and `app.json` all read, and every value reads back as the name it came from.

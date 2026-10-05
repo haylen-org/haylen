@@ -31,7 +31,7 @@ class Viewport final {
         None,
     };
 
-    // Resolves the names `fit`, `fill`, `stretch`, `expand` and `pixelPerfect`.
+    // Resolves the names `fit`, `fill`, `stretch`, `expand`, `pixelPerfect`, `fitWidth` and `none`.
     [[nodiscard]] static std::optional<ScalingPolicy> scalingPolicyFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view scalingPolicyName(ScalingPolicy value) noexcept;
 
@@ -48,7 +48,7 @@ class Viewport final {
         return policy;
     }
 
-    // Framebuffer region, in pixels, that receives the visible design rectangle.
+    // Framebuffer region, in whole pixels, that receives the visible design rectangle.
     [[nodiscard]] const math::Rect& getPixelRect() const noexcept {
         return pixelRect;
     }

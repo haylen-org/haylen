@@ -55,8 +55,11 @@ math::Rect RendererState::getPassRect(const Canvas& canvas) const {
         const math::Vec2 size = captures[canvas.capture - 1].target.getSize();
         destination = {0.0F, 0.0F, size.x, size.y};
     }
+    // The edges land on whole pixels, where the GPU places the viewport, so canvases that split a destination share their edges without a gap.
     const math::Rect& part = canvas.frame;
-    return {destination.x + part.x * destination.width, destination.y + part.y * destination.height, part.width * destination.width, part.height * destination.height};
+    const math::Vec2 first{destination.x + part.x * destination.width, destination.y + part.y * destination.height};
+    const math::Vec2 last = first + math::Vec2{part.width * destination.width, part.height * destination.height};
+    return math::Rect::fromMinMax(math::Vec2::round(first), math::Vec2::round(last));
 }
 
 // The view takes canvas units to the units of the view size, which the pass stretches over its pixels.

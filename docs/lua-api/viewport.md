@@ -87,7 +87,7 @@ end)
 
 ### viewport.pixelRect()
 
-Returns the framebuffer region, in pixels, that shows the visible design rectangle, as a `Rect`. It covers the whole framebuffer for `fill`, `stretch` and `expand`, and it leaves the letterbox bars outside for `fit` and `pixelPerfect`.
+Returns the framebuffer region, in pixels, that shows the visible design rectangle, as a `Rect`. It covers the whole framebuffer for `fill`, `stretch` and `expand`, and it leaves the letterbox bars outside for `fit` and `pixelPerfect`. Its edges lie on whole pixels, where the GPU places the viewport, so a centered area never starts half a pixel in and `toDesign` maps every point to what the screen shows there.
 
 ```lua
 local viewport = require('haylen.viewport')

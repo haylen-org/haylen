@@ -8,6 +8,9 @@
 #include <string_view>
 #include <vector>
 
+#include "2d/graphics/Canvas.hpp"
+#include "2d/graphics/FrameSubmitter.hpp"
+#include "2d/graphics/RendererState.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
@@ -601,6 +604,30 @@ TEST(RendererTest, DrawsMetaballsFromManyPoints) {
     EXPECT_THROW(renderer.drawMetaballs(points, 4.0F, {.outlineWidth = -0.1F}), std::invalid_argument);
     EXPECT_THROW(renderer.drawMetaballs(points, 4.0F, {.outlineWidth = 0.6F}), std::invalid_argument);
     fixture.frames(1);
+}
+
+// A clip covers the pixels whose centers lie inside it, whatever the fractions of its edges, so content never shows one pixel past a scroll area nor loses one inside it.
+TEST(RendererTest, ClipsToThePixelsWhoseCentersLieInside) {
+    const graphics2d::Canvas canvas{.viewSize = {100.0F, 100.0F}};
+    const math::Rect pass{0.0F, 0.0F, 100.0F, 100.0F};
+    EXPECT_EQ(graphics2d::FrameSubmitter::getScissor(canvas, {10.6F, 10.6F, 19.8F, 19.8F}, pass), (math::Rect{11.0F, 11.0F, 19.0F, 19.0F}));
+    EXPECT_EQ(graphics2d::FrameSubmitter::getScissor(canvas, {10.4F, 0.0F, 20.2F, 5.0F}, pass), (math::Rect{10.0F, 0.0F, 21.0F, 5.0F}));
+
+    // A pass one and a half times the size of the view puts the clip on the pixels it covers there, inside the pass.
+    const math::Rect scaled{20.0F, 0.0F, 150.0F, 150.0F};
+    EXPECT_EQ(graphics2d::FrameSubmitter::getScissor(canvas, {-10.0F, 50.0F, 70.0F, 70.0F}, scaled), (math::Rect{20.0F, 75.0F, 90.0F, 75.0F}));
+    EXPECT_EQ(graphics2d::FrameSubmitter::getScissor(canvas, {200.0F, 0.0F, 10.0F, 10.0F}, scaled).width, 0.0F);
+}
+
+// Canvases that split a destination of an odd size, such as two halves of a split screen, cover whole pixels and share their edge, with no column left to the clear color.
+TEST(RendererTest, SplitsADestinationIntoWholePixels) {
+    test::EngineFixture fixture;
+    graphics2d::RendererState state(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    state.pixelRect = {0.0F, 0.0F, 1365.0F, 767.0F};
+    const math::Rect left = state.getPassRect({.kind = graphics2d::Canvas::Kind::World, .frame = {0.0F, 0.0F, 0.5F, 0.5F}});
+    const math::Rect right = state.getPassRect({.kind = graphics2d::Canvas::Kind::World, .frame = {0.5F, 0.5F, 0.5F, 0.5F}});
+    EXPECT_EQ(left, (math::Rect{0.0F, 0.0F, 683.0F, 384.0F}));
+    EXPECT_EQ(right, (math::Rect{683.0F, 384.0F, 682.0F, 383.0F}));
 }
 
 } // namespace haylen

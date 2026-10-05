@@ -78,6 +78,9 @@ void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy s
         break;
     }
 
+    // The edges land on whole pixels, as the GPU places the viewport, so a centered area never starts half a pixel in and input maps to what the screen shows.
+    pixelRect = math::Rect::fromMinMax(math::Vec2::round(pixelRect.getMin()), math::Vec2::round(pixelRect.getMax()));
+
     const math::Rect safePixels = fullFramebuffer.inset(safeInsetsPixels).intersection(pixelRect);
     safeRect = math::Rect::fromMinMax(toDesign(safePixels.getMin()), toDesign(safePixels.getMax()));
 }
