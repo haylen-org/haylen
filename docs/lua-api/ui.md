@@ -784,6 +784,9 @@ Every kind accepts these properties.
 | `focusLeft`, `focusRight`, `focusUp`, `focusDown` | string | none | Id of the node the focus moves to in that direction instead of the nearest one. A node that names itself keeps the focus in that direction. |
 | `direction` | string | `'inherit'` | The value `'leftToRight'` or `'rightToLeft'` lays the node and every node inside it out in that direction, whatever the direction of the UI, and `'inherit'` takes the direction of its parent. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. |
 | `language` | string | inherited | BCP 47 tag of the language of the text of the node and of every node inside it, such as `'ar'` or `'hi'`, which the shaper uses to pick the forms a language prefers. It defaults to the current language of [`haylen.localization`](localization.md). |
+| `theme` | string | inherited | Name of a registered theme the node and every node inside it draw with, whatever the active theme, such as a light card in a dark screen. A name that is not registered stops the app with `The UI has no theme named "<name>".` when the node draws. |
+| `style` | table | none | Values that replace those of the theme for the node and every node inside it, as described in [Styles](#styles). Setting it again replaces the whole style, and an empty table goes back to the theme. |
+| `cursor` | string | none | Shape of the mouse cursor while it is over the node: `'default'`, `'arrow'`, `'iBeam'`, `'crosshair'`, `'pointingHand'`, `'resizeHorizontal'`, `'resizeVertical'`, `'resizeDiagonalDown'`, `'resizeDiagonalUp'`, `'resizeAll'` or `'notAllowed'`. The innermost node under the pointer with a cursor wins. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -1988,7 +1991,7 @@ A value between 0 and 1 drawn around a circle: a ring that fills clockwise from 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `value` | number from 0 to 1 | `0` | Filled share of the ring, or share of the picture still shaded. |
-| `style` | string | `'ring'` | `'ring'` or `'cooldown'`. |
+| `variant` | string | `'ring'` | `'ring'` or `'cooldown'`. |
 | `size` | number from 0 to 2048 | `0` | Width and height. The value `0` uses the theme `circularProgressSize` metric. |
 | `thickness` | number from 0 to 512 | `0` | Width of the ring. The value `0` uses the theme `circularProgressThickness` metric. |
 | `tone` | tone | `'accent'` | Color of the ring, and of the circle behind a cooldown without a picture. |
@@ -2001,7 +2004,7 @@ local ui = require('haylen.ui')
 local hud = ui.mount(ui.row{
     gap = 24,
     ui.circularProgress{id = 'loading', value = 0.4, text = '40%'},
-    ui.circularProgress{id = 'dash', style = 'cooldown', image = 'ui/dash.png', size = 96},
+    ui.circularProgress{id = 'dash', variant = 'cooldown', image = 'ui/dash.png', size = 96},
 })
 
 local function showCooldown(left, total)
@@ -2507,6 +2510,26 @@ ui.mount(ui.panel{
 })
 ```
 
+## Styles
+
+A style overrides the theme for one node and every node inside it, so any value a component reads, every color, metric, font and surface, changes for one instance without a theme of its own. It takes the sections of a [theme file](#themes): `colors`, `metrics`, `fonts`, whose roles set only the keys they list, and `surfaces`, whose images load in the background the first time they draw, while the flat colors stand in. A surface set to `false` paints with flat colors whatever the theme has. Values a style leaves out come from the style or theme around the node, so styles nest.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.button{text = 'A plain button'},
+    ui.row{gap = 12, style = {colors = {accent = '#FF2E9E62', accentHover = '#FF3DBE7A'}, metrics = {controlHeight = 80, controlRadius = 40}, fonts = {button = {size = 36, bold = true}}},
+        ui.button{text = 'Rounder and greener', variant = 'primary'},
+        ui.toggle{text = 'Green too', checked = true},
+    },
+    ui.panel{theme = 'light', ui.label{text = 'A light panel in a dark screen'}},
+    ui.button{text = 'Wooden', style = {surfaces = {button = {image = 'ui/wood.png', slice = 12, filter = 'linear'}}}},
+})
+```
+
+A style raises the errors of its values, each starting with the property that holds it: `The property "style" of a "<kind>" must be a table with "colors", "metrics", "fonts" or "surfaces".`, `Unknown key "<key>" in the property "style" of a "<kind>".`, `The property "style" of a "<kind>" must hold a table in "<section>".`, `The property "style" of a "<kind>" has no color role named "<name>".`, the same for metrics, font roles and surfaces, `The color "<name>" of the property "style" of a "<kind>" must be a color such as "#FF2E7D32".`, `The metric "<name>" of the property "style" of a "<kind>" must be a non-negative number.`, `The font "<name>" of the property "style" of a "<kind>" must be a table.`, `... must name its font with a string.`, `... must set "bold" to "true" or "false".`, `The size of the font "<name>" of the property "style" of a "<kind>" must be positive.` and `The image of the surface "<name>" of the property "style" of a "<kind>" must be a path.`. The other values of a surface image are checked once its image has loaded, with the errors of theme surfaces.
+
 ## Theme colors
 
 Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warning`, `danger` and `information`, like the accent, come as a fill, the ink written on that fill, a subtle background and a text color readable on the window.
@@ -2518,10 +2541,12 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `raised` | `#FF2C3147` | `#FFFFFFFF` | Fill of cards, buttons, fields and chips. |
 | `tooltip` | `#F20F111A` | `#F21B1E2B` | Background of tooltips and toasts. |
 | `overlay` | `#A0000000` | `#66000000` | The backdrop behind dialogs and the base of touch controls. |
+| `shadow` | `#66000000` | `#291B1E2B` | The soft shadow under dialogs, windows, toasts, tooltips and the popups of combos, menus, popovers and color fields. |
 | `hover` | `#14FFFFFF` | `#0F000000` | Layer over hovered controls and rows. |
 | `pressed` | `#24FFFFFF` | `#1F000000` | Layer over pressed controls. |
 | `selection` | `#404C7DFF` | `#334C7DFF` | Selected rows, checked buttons and selected text. |
 | `focus` | `#FF7AA2FF` | `#FF3A66E0` | Border of focused fields and the focus ring of the navigation target. |
+| `caret` | `#FF7AA2FF` | `#FF3A66E0` | The text cursor of fields. |
 | `border` | `#FF3A4058` | `#FFD6D9E4` | Borders and dividers. |
 | `borderStrong` | `#FF525A7A` | `#FFB3B8CC` | Strong borders, hovered fields and empty slider tracks. |
 | `scrollbar` | `#FF3A4058` | `#FFC9CDDB` | Scrollbar grab. |
@@ -2597,6 +2622,20 @@ Both built-in themes share these metrics, in design units.
 | `transitionDuration` | `0.15` | Seconds the transitions of the UI take: the knob of a switch, the fades of dialogs and their backdrops, and the fades and moves of toasts. |
 | `toastLimit` | `3` | Notices one stack of toasts shows at once, while the others wait. The value `0` shows them all. |
 | `toneBarWidth` | `6` | Width of the bar of the tone of toasts and alerts. |
+| `panelRadius` | `16` | Corner radius of panels, cards, dialogs, windows, toasts and popups, which the rows of a popup and the title bar of a window follow inside it. |
+| `contentSpacing` | `12` | Space between the box, the switch or the icon of a control and its text. |
+| `focusGap` | `3` | Space between a control and its focus ring. |
+| `disabledOpacity` | `0.5` | Opacity of disabled nodes. |
+| `tooltipDelay` | `0.5` | Seconds the pointer rests on a node before its tooltip shows. |
+| `longPressDuration` | `0.5` | Seconds a finger holds a context menu before it opens. |
+| `shadowSize` | `24` | Reach of the soft shadow of floating surfaces. The value `0` turns shadows off. |
+| `shadowOffset` | `6` | How far below its surface a shadow falls. |
+| `chipHeight` | `48` | Height of chips. |
+| `strokeWidth` | `2` | Width of the lines of drawn icons, such as the cross of a removable chip and the lens of a filter field. |
+| `rowPadding` | `16` | Padding at the start and end of the rows of lists, trees, tables, popups and accordions. |
+| `checkRadius` | `8` | Corner radius of check boxes. |
+| `menuPadding` | `8` | Space between the edge of the popup of a combo, a menu button or a context menu and its rows. |
+| `splitterSize` | `10` | Thickness of the handle of splitters. |
 
 ## Theme fonts
 
@@ -2637,7 +2676,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `chip`, `chipSelected` | Chips. |
 | `badge` | Badges. |
 | `segment`, `segmentSelected` | The strip of segmented controls and their selected segment. |
-| `menu` | The lists of combos, menu buttons and context menus. |
+| `menu` | The popups of combos, menu buttons, context menus, popovers and color fields. |
 | `window` | Windows. |
 | `slot`, `slotHighlighted` | Slots of slot grids, and the selected or hovered slot. |
 

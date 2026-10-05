@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -76,6 +77,9 @@ class UiPlugin final : public Plugin {
     void addTheme(ui::Theme theme);
     void setTheme(std::string_view name);
     [[nodiscard]] const ui::Theme& getTheme() const;
+
+    // Returns a registered theme, or null for a name the UI does not know.
+    [[nodiscard]] const ui::Theme* findTheme(std::string_view name) const;
     [[nodiscard]] std::vector<std::string> getThemes() const;
 
     // Registers a theme from its JSON definition on top of the theme named `base`, registers the fonts it lists and returns the theme name.
@@ -121,11 +125,10 @@ class UiPlugin final : public Plugin {
     struct ImageEntry {
         graphics::Texture texture;
         std::string error;
-        graphics::Texture::Filter filter = graphics::Texture::Filter::Nearest;
     };
 
-    // Returns the texture of a UI image with the image filter of the theme, which loads in the background and is empty until it arrives.
-    [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path);
+    // Returns the texture of a UI image with a filter, which loads in the background and is empty until it arrives.
+    [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path, graphics::Texture::Filter filter);
     [[nodiscard]] std::vector<const Mounted*> getGuis(core::Engine& engine, const core::SceneView& view) const;
     void beginWindow(const char* name, ImGuiWindowFlags flags);
     void drawGuis(const std::vector<const Mounted*>& drawn);
@@ -149,7 +152,7 @@ class UiPlugin final : public Plugin {
     std::vector<Mounted> guis;
     std::vector<const ui::Gui*> shownGuis;
     std::uint64_t nextOrder = 0;
-    std::map<std::string, ImageEntry, std::less<>> images;
+    std::array<std::map<std::string, ImageEntry, std::less<>>, 2> images;
     std::map<std::string, std::string, std::less<>> fontPaths;
     std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fontFamilies;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);

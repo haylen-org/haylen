@@ -1,26 +1,111 @@
 #include "haylen/ui/Context.hpp"
 
+#include <optional>
 #include <stdexcept>
 #include <utility>
+
+#include <imgui.h>
 
 #include "haylen/localization/Catalog.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Component.hpp"
+#include "ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
 
-Context::Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, ImageSource imageSource, FontSource fontSource, std::shared_ptr<text::RichTextRegistry> registry) : backend(uiBackend), focus(focusNavigator), catalog(textCatalog), input(devices), images(std::move(imageSource)), fonts(std::move(fontSource)), textRegistry(std::move(registry)) {}
+Context::Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, Sources contextSources, std::shared_ptr<text::RichTextRegistry> registry) : backend(uiBackend), focus(focusNavigator), catalog(textCatalog), input(devices), sources(std::move(contextSources)), textRegistry(std::move(registry)) {}
+
+template <typename Value, typename FromStyle, typename FromTheme> Value Context::resolve(const FromStyle& fromStyle, const FromTheme& fromTheme) const {
+    for (auto layer = layers.rbegin(); layer != layers.rend(); ++layer) {
+        if (layer->style != nullptr) {
+            if (const auto found = fromStyle(*layer->style)) {
+                return *found;
+            }
+        }
+        if (layer->theme != nullptr) {
+            return fromTheme(*layer->theme);
+        }
+    }
+    return fromTheme(*layers.front().theme);
+}
+
+// A node that draws also pushes the colors and sizes of the scrollbars and the opacity of disabled nodes into the ImGui style, which ImGui draws with.
+void Context::pushStyle(std::string_view themeName, const Style* style, bool drawing) {
+    const Theme* theme = nullptr;
+    if (!themeName.empty()) {
+        theme = sources.themes(themeName);
+        if (theme == nullptr) {
+            throw std::invalid_argument("The UI has no theme named \"" + std::string(themeName) + "\".");
+        }
+    }
+    layers.push_back({.theme = theme, .style = style, .imgui = drawing});
+    if (!drawing) {
+        return;
+    }
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, ImGuiConverter::toImVec4(getColor(Theme::Color::Scrollbar)));
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, ImGuiConverter::toImVec4(getColor(Theme::Color::ScrollbarHover)));
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, ImGuiConverter::toImVec4(getColor(Theme::Color::ScrollbarHover)));
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, getMetric(Theme::Metric::ScrollbarSize));
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, getMetric(Theme::Metric::ScrollbarSize) * 0.5F);
+    ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, getMetric(Theme::Metric::DisabledOpacity));
+}
+
+void Context::popStyle() {
+    if (layers.size() <= 1) {
+        return;
+    }
+    if (layers.back().imgui) {
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(3);
+    }
+    layers.pop_back();
+}
+
+math::Color Context::getColor(Theme::Color role) const noexcept {
+    return resolve<math::Color>([role](const Style& style) { return style.findColor(role); }, [role](const Theme& theme) { return theme.getColor(role); });
+}
+
+float Context::getMetric(Theme::Metric role) const noexcept {
+    return resolve<float>([role](const Style& style) { return style.findMetric(role); }, [role](const Theme& theme) { return theme.getMetric(role); });
+}
+
+// A style that sets a surface paints it with its image, or with flat colors while the image loads or when the style asks for them.
+const Theme::Image* Context::getSurface(Theme::Surface role) const {
+    for (auto layer = layers.rbegin(); layer != layers.rend(); ++layer) {
+        if (layer->style != nullptr && layer->style->hasSurface(role)) {
+            return layer->style->findSurface(role, sources.textures);
+        }
+        if (layer->theme != nullptr) {
+            return layer->theme->getSurface(role);
+        }
+    }
+    return layers.front().theme->getSurface(role);
+}
+
+const std::string& Context::getFontName(Theme::Font role) const noexcept {
+    return *resolve<const std::string*>([role](const Style& style) { return style.getFont(role).font ? std::optional<const std::string*>(&*style.getFont(role).font) : std::nullopt; }, [role](const Theme& theme) { return &theme.getFont(role).font; });
+}
+
+float Context::getFontSize(Theme::Font role) const noexcept {
+    return resolve<float>([role](const Style& style) { return style.getFont(role).size; }, [role](const Theme& theme) { return theme.getFont(role).size; });
+}
+
+bool Context::isFontBold(Theme::Font role) const noexcept {
+    return resolve<bool>([role](const Style& style) { return style.getFont(role).bold; }, [role](const Theme& theme) { return theme.getFont(role).bold; });
+}
+
+bool Context::isFontItalic(Theme::Font role) const noexcept {
+    return resolve<bool>([role](const Style& style) { return style.getFont(role).italic; }, [role](const Theme& theme) { return theme.getFont(role).italic; });
+}
 
 ImFont* Context::getFont(Theme::Font role) const {
-    const Theme::FontStyle& style = theme->getFont(role);
-    return backend.getFont(style.font, style.bold, style.italic);
+    return backend.getFont(getFontName(role), isFontBold(role), isFontItalic(role));
 }
 
 float Context::getEmSize(Theme::Font role) const {
-    const Theme::FontStyle& style = theme->getFont(role);
-    return backend.getEmSize(style.font, style.size);
+    return backend.getEmSize(getFontName(role), getFontSize(role));
 }
 
 std::string Context::getText(const TextValue& value) const {
@@ -28,15 +113,15 @@ std::string Context::getText(const TextValue& value) const {
 }
 
 graphics::Texture Context::getImage(std::string_view path) const {
-    return images(path);
+    return sources.images(path);
 }
 
 std::shared_ptr<text::FontFamily> Context::getFontFamily(Theme::Font role) const {
-    return getFontFamily(theme->getFont(role).font);
+    return getFontFamily(getFontName(role));
 }
 
 std::shared_ptr<text::FontFamily> Context::getFontFamily(std::string_view name) const {
-    std::shared_ptr<text::FontFamily> family = fonts(name);
+    std::shared_ptr<text::FontFamily> family = sources.fonts(name);
     if (!family) {
         throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
     }
@@ -64,6 +149,7 @@ void Context::beginFrame(double now, float delta, math::Vec2 visibleOrigin) noex
     heldButtons.clear();
     sticks.clear();
     reshapes.clear();
+    layers.resize(1);
     toasts.beginFrame();
     time = now;
     deltaSeconds = delta;

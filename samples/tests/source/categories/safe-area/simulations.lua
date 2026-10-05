@@ -28,7 +28,7 @@ function Simulations:enter()
     ui.mount(ui.stack{
         ui.column{anchor = 'left', margin = 16, width = 360, gap = 16,
             ui.panel{gap = 8, ui.label{text = 'Captain Ana'}, ui.progress{value = 0.7, tone = 'success', text = 'Health'}},
-            ui.circularProgress{size = 140, value = 0.35, style = 'cooldown', tone = 'information', text = 'Dash'},
+            ui.circularProgress{size = 140, value = 0.35, variant = 'cooldown', tone = 'information', text = 'Dash'},
         },
         ui.column{anchor = 'right', margin = 16, width = 300, gap = 16,
             ui.panel{height = 160, ui.label{text = 'Map', textAlign = 'center', align = 'stretch'}},

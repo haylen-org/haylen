@@ -426,6 +426,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-019` | Touch controls | A touch stick and touch buttons that drive actions of the action map next to keys and gamepads. |  |
 | `GUI-020` | Layouts | Justify, alignItems, growing within size bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and the aspect ratio at any width. |  |
 | `GUI-023` | Toast stacks | Toasts at every position of the safe area that stack without covering each other, a queue past the limit of a stack and a dialog whose backdrop fades with it. |  |
+| `GUI-024` | Theme overrides | Styles that replace colors, metrics, fonts and surfaces of one subtree, styles that nest, subtrees in other themes in every state and the cursor of each node. |  |
 
 #### Orientation (ORI)
 

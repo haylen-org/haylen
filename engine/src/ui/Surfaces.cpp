@@ -1,5 +1,6 @@
 #include "ui/Surfaces.hpp"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -52,23 +53,51 @@ void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const 
     list.PopTexture();
 }
 
-void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border, float radius) {
-    if (const Theme::Image* image = context.getTheme().getSurface(role)) {
+// A border runs inside the bounds, so it never reaches past them: ImGui strokes a rectangle half a unit inside its corners, and the line moves in by the rest of half its width.
+void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border, float radius, ImDrawFlags corners) {
+    if (const Theme::Image* image = context.getSurface(role)) {
         drawNineSlice(context, *image, bounds, fill);
         return;
     }
-    const float rounding = radius < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) : radius;
+    const float rounding = std::min(radius < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) : radius, std::min(bounds.width, bounds.height) * 0.5F);
     ImDrawList& list = *ImGui::GetWindowDrawList();
     if (fill.a > 0.0F) {
-        list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(fill), rounding);
+        list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(fill), rounding, corners);
     }
-    if (border && border->a > 0.0F) {
-        list.AddRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(*border), rounding, context.getMetric(Theme::Metric::BorderWidth));
+    const float width = context.getMetric(Theme::Metric::BorderWidth);
+    if (border && border->a > 0.0F && width > 0.0F) {
+        const float inset = std::max(0.0F, width * 0.5F - 0.5F);
+        const math::Rect line = bounds.inset(math::Insets::uniform(inset));
+        list.AddRect(ImGuiConverter::toImVec2(line.getMin()), ImGuiConverter::toImVec2(line.getMax()), ImGuiConverter::toImU32(*border), getInnerRadius(rounding, inset), width, corners);
     }
 }
 
+float Surfaces::getInnerRadius(float radius, float inset) noexcept {
+    return std::max(0.0F, radius - inset);
+}
+
+// Layers of growing rounded rectangles in the shadow color, each one fainter, make a soft shadow below the surface.
+void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radius) {
+    const float size = context.getMetric(Theme::Metric::ShadowSize);
+    const math::Color color = context.getColor(Theme::Color::Shadow);
+    if (size <= 0.0F || color.a <= 0.0F) {
+        return;
+    }
+    constexpr int kLayers = 8;
+    const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset)});
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const math::Rect reach = cast.expanded(size);
+    list.PushClipRect(ImGuiConverter::toImVec2(reach.getMin()), ImGuiConverter::toImVec2(reach.getMax()), false);
+    for (int layer = 0; layer < kLayers; ++layer) {
+        const float spread = size * static_cast<float>(kLayers - layer) / static_cast<float>(kLayers);
+        const math::Rect area = cast.expanded(spread);
+        list.AddRectFilled(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), ImGuiConverter::toImU32(color.withAlpha(color.a / static_cast<float>(kLayers))), radius + spread);
+    }
+    list.PopClipRect();
+}
+
 math::Insets Surfaces::getPadding(Context& context, Theme::Surface role) {
-    const Theme::Image* image = context.getTheme().getSurface(role);
+    const Theme::Image* image = context.getSurface(role);
     return image != nullptr ? image->padding : math::Insets{};
 }
 

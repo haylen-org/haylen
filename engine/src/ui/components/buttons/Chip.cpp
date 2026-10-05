@@ -19,7 +19,7 @@ void Chip::readProperties(PropertyReader& reader) {
 }
 
 math::Vec2 Chip::measureContent(Context& context, float) {
-    const float height = context.getMetric(Theme::Metric::ControlHeight) * 0.75F;
+    const float height = context.getMetric(Theme::Metric::ChipHeight);
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX) * 0.75F;
     const float remove = removable ? height * 0.6F : 0.0F;
     return {Typography::measure(context, Theme::Font::Caption, context.getText(text)).x + padding * 2.0F + remove, height};
@@ -49,8 +49,9 @@ void Chip::render(Context& context, const math::Rect& bounds) {
         const float arm = remove * 0.18F;
         ImDrawList& list = *ImGui::GetWindowDrawList();
         const ImU32 color = ImGuiConverter::toImU32(context.getColor(removal.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
-        list.AddLine({center.x - arm, center.y - arm}, {center.x + arm, center.y + arm}, color, 2.0F);
-        list.AddLine({center.x - arm, center.y + arm}, {center.x + arm, center.y - arm}, color, 2.0F);
+        const float stroke = context.getMetric(Theme::Metric::StrokeWidth);
+        list.AddLine({center.x - arm, center.y - arm}, {center.x + arm, center.y + arm}, color, stroke);
+        list.AddLine({center.x - arm, center.y + arm}, {center.x + arm, center.y - arm}, color, stroke);
         if (removal.clicked) {
             context.emit(*this, "remove");
         }

@@ -49,12 +49,12 @@ void Tabs::render(Context& context, const math::Rect& bounds) {
         ImGui::PopID();
 
         const Theme::Surface surface = current ? Theme::Surface::TabSelected : Theme::Surface::Tab;
-        if (context.getTheme().getSurface(surface) != nullptr) {
+        if (context.getSurface(surface) != nullptr) {
             Surfaces::draw(context, surface, tab, math::Color::transparent());
         } else if (state.hovered) {
             list.AddRectFilled(ImGuiConverter::toImVec2(tab.getMin()), ImGuiConverter::toImVec2(tab.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Hover)), context.getMetric(Theme::Metric::ControlRadius) * 0.5F);
         }
-        if (current && context.getTheme().getSurface(surface) == nullptr) {
+        if (current && context.getSurface(surface) == nullptr) {
             const float thickness = context.getMetric(Theme::Metric::FocusWidth);
             list.AddRectFilled({tab.x, tab.getBottom() - thickness}, {tab.getRight(), tab.getBottom()}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Accent)));
         }

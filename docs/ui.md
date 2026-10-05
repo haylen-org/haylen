@@ -189,7 +189,7 @@ The engine ships 62 component kinds, and `ui.kinds()` lists them. They are group
 
 Every kind also accepts the [common properties](lua-api/ui.md#common-properties): `visible`, `enabled`, `tooltip`, `grow`, the size bounds, `align`, the anchor, the focus properties, `direction` and `language`. A hidden node takes no room.
 
-Games reach for a few of them often. The kind `circularProgress` with `style = 'cooldown'` shades an ability icon while it recharges. The kinds `stepper` and `segmentedControl` pick settings with left and right, the way console menus do. The kind `slotGrid` holds inventories and hotbars and moves items between slots, draggable lists and other GUIs, with the pointer and by carrying them with a gamepad or a remote. The kind `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen and returns a binding the action map takes. The kind `window` floats a draggable panel over the game, and `contextMenu` opens actions on a right click, a long press or `uiMenu`.
+Games reach for a few of them often. The kind `circularProgress` with `variant = 'cooldown'` shades an ability icon while it recharges. The kinds `stepper` and `segmentedControl` pick settings with left and right, the way console menus do. The kind `slotGrid` holds inventories and hotbars and moves items between slots, draggable lists and other GUIs, with the pointer and by carrying them with a gamepad or a remote. The kind `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen and returns a binding the action map takes. The kind `window` floats a draggable panel over the game, and `contextMenu` opens actions on a right click, a long press or `uiMenu`.
 
 The Tiny Island screens use a small part of the catalog. The menu is the logo as an `image` over a column of buttons. The class selection screen uses a `pageHeader` with `banner = true`, `imageButton` portraits whose `tint` dims the classes that are not chosen, and `progress` bars for the stats. The settings sheet is a `panel` holding a `settingsForm` of `settingsRow` nodes with sliders, a combo and toggles. The HUD uses panels, icons, labels, progress bars, an icon button, a toast and the touch controls.
 
@@ -352,6 +352,18 @@ A theme may leave out the hover or pressed surface of a button, and the normal s
 Without `colorize`, a surface image ignores the color the component would have used, so every tone of a progress bar and every state of a touch stick look alike. With `colorize = true`, one light image serves every color. Tiny Island draws the fill of every HUD bar from one light image, `track_fill.png`, and the tone of each `progress` node turns it green for health, orange for food and fuel and red when one runs low.
 
 The fill of toggles, sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar image keeps its frame visible around the fill. Tiny Island pads its groove by 5 units so the fill sits inside its outline. A toggle draws its `track` in every state, and its `trackFill` fills the groove and fades in as the `knob` slides on, so the track never moves, an empty groove means off and a full one means on.
+
+### One node in another look
+
+Every node takes the common properties `theme` and `style`, which reach the node and every node inside it. The property `theme` draws the subtree with another registered theme, such as a light card in a dark screen, and `style` replaces single values of the theme, with the sections `colors`, `metrics`, `fonts` and `surfaces` of a theme file, such as one button that is rounder and greener than the others. Styles nest, so a value a style leaves out comes from the style or theme around the node. The property `cursor` sets the mouse cursor shape over a node, and the innermost node under the pointer with a cursor wins.
+
+```lua
+ui.row{style = {colors = {accent = '#FF2E9E62'}, metrics = {controlRadius = 40}},
+    ui.button{text = 'Rounder and greener', variant = 'primary', cursor = 'pointingHand'},
+}
+```
+
+Every part a component draws reads its theme: the shadows of floating surfaces (`shadow`, `shadowSize`, `shadowOffset`), the caret of fields (`caret`), the corner radius of panels and popups (`panelRadius`), which the rows of a popup and the title bar of a window follow inside, the space between a box and its text (`contentSpacing`), the focus ring gap (`focusGap`), the opacity of disabled nodes (`disabledOpacity`) and the delays of tooltips and context menus (`tooltipDelay`, `longPressDuration`).
 
 ### The Tiny Island theme
 

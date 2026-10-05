@@ -24,22 +24,24 @@ void Splitter::readProperties(PropertyReader& reader) {
 math::Vec2 Splitter::measureContent(Context& context, float availableWidth) {
     auto visible = getLayoutChildren();
     auto second = std::ranges::next(visible.begin(), 1, visible.end());
+    const float gutter = context.getMetric(Theme::Metric::SplitterSize);
     const bool shared = !vertical && availableWidth < CommonProperties::kUnbounded;
-    const float first = shared ? std::floor(std::max(0.0F, availableWidth - kHandle) * ratio) : availableWidth;
-    const float rest = shared ? std::max(0.0F, availableWidth - kHandle - first) : availableWidth;
+    const float first = shared ? std::floor(std::max(0.0F, availableWidth - gutter) * ratio) : availableWidth;
+    const float rest = shared ? std::max(0.0F, availableWidth - gutter - first) : availableWidth;
     const math::Vec2 before = visible.empty() ? math::Vec2{} : visible.front()->measure(context, first);
     const math::Vec2 after = second != visible.end() ? (*second)->measure(context, rest) : math::Vec2{};
 
     if (vertical) {
-        return {std::max(before.x, after.x), before.y + kHandle + after.y};
+        return {std::max(before.x, after.x), before.y + gutter + after.y};
     }
-    return {shared ? availableWidth : before.x + kHandle + after.x, std::max(before.y, after.y)};
+    return {shared ? availableWidth : before.x + gutter + after.x, std::max(before.y, after.y)};
 }
 
 void Splitter::render(Context& context, const math::Rect& bounds) {
     const float span = vertical ? bounds.height : bounds.width;
-    const float first = std::floor((span - kHandle) * ratio);
-    const math::Rect handle = vertical ? math::Rect{bounds.x, bounds.y + first, bounds.width, kHandle} : context.mirror({bounds.x + first, bounds.y, kHandle, bounds.height}, bounds);
+    const float gutter = context.getMetric(Theme::Metric::SplitterSize);
+    const float first = std::floor((span - gutter) * ratio);
+    const math::Rect handle = vertical ? math::Rect{bounds.x, bounds.y + first, bounds.width, gutter} : context.mirror({bounds.x + first, bounds.y, gutter, bounds.height}, bounds);
 
     const Widgets::Interaction state = Widgets::interact(context, handle, 0.0F, "##handle");
     if (state.hovered || state.held) {
@@ -48,7 +50,7 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
     if (state.held) {
         const ImVec2 mouse = ImGui::GetIO().MousePos;
         const float offset = vertical ? mouse.y - bounds.y : (context.isRightToLeft() ? bounds.getRight() - mouse.x : mouse.x - bounds.x);
-        ratio = std::clamp((offset - kHandle * 0.5F) / std::max(1.0F, span - kHandle), 0.05F, 0.95F);
+        ratio = std::clamp((offset - gutter * 0.5F) / std::max(1.0F, span - gutter), 0.05F, 0.95F);
         dragging = true;
     } else if (std::exchange(dragging, false)) {
         context.emit(*this, "resize", {{"ratio", core::JsonNumber::fromFloat(ratio)}});
@@ -65,7 +67,7 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
     auto visible = getLayoutChildren();
     const auto second = std::ranges::next(visible.begin(), 1, visible.end());
     const math::Rect before = vertical ? math::Rect{bounds.x, bounds.y, bounds.width, first} : context.mirror({bounds.x, bounds.y, first, bounds.height}, bounds);
-    const math::Rect after = vertical ? math::Rect::fromMinMax({bounds.x, handle.getBottom()}, bounds.getMax()) : context.mirror(math::Rect::fromMinMax({bounds.x + first + kHandle, bounds.y}, bounds.getMax()), bounds);
+    const math::Rect after = vertical ? math::Rect::fromMinMax({bounds.x, handle.getBottom()}, bounds.getMax()) : context.mirror(math::Rect::fromMinMax({bounds.x + first + gutter, bounds.y}, bounds.getMax()), bounds);
     if (!visible.empty()) {
         visible.front()->draw(context, before);
     }

@@ -18,7 +18,14 @@ class Context;
 // Paints theme surfaces and pictures. A surface uses the theme image when the theme has one, and otherwise a rounded rectangle in the flat colors.
 class Surfaces final {
   public:
-    static void draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border = std::nullopt, float radius = -1.0F);
+    // Paints a surface, whose flat colors round the corners the flags name, all of them by default.
+    static void draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border = std::nullopt, float radius = -1.0F, ImDrawFlags corners = ImDrawFlags_RoundCornersAll);
+
+    // Paints the soft shadow of the theme under a floating surface, such as a dialog or a menu, reaching past the clip of its window.
+    static void drawShadow(Context& context, const math::Rect& bounds, float radius);
+
+    // Returns the radius of a rounded rectangle inside a rounded container, an inset away from its edges, so the two curves stay parallel.
+    [[nodiscard]] static float getInnerRadius(float radius, float inset) noexcept;
     [[nodiscard]] static math::Insets getPadding(Context& context, Theme::Surface role);
     static void drawNineSlice(Context& context, const Theme::Image& image, const math::Rect& bounds, math::Color fill);
     static void drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint = math::Color::white(), math::Rect source = {});

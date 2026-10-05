@@ -17,7 +17,7 @@ void CircularProgress::readProperties(PropertyReader& reader) {
     reader.read("value", value, 0.0F, 1.0F);
     reader.read("size", size, 0.0F, 2048.0F);
     reader.read("thickness", thickness, 0.0F, 512.0F);
-    reader.readChoice<Style>("style", style, kStyles);
+    reader.readChoice<Variant>("variant", variant, kVariants);
     reader.readChoice<Widgets::Tone>("tone", tone, Widgets::kTones);
     reader.read("text", text);
     reader.read("image", image);
@@ -31,7 +31,7 @@ math::Vec2 CircularProgress::measureContent(Context& context, float) {
 void CircularProgress::render(Context& context, const math::Rect& bounds) {
     const float radius = std::min(bounds.width, bounds.height) * 0.5F;
     const math::Vec2 center = bounds.getCenter();
-    if (style == Style::Ring) {
+    if (variant == Variant::Ring) {
         drawRing(context, center, radius);
     } else {
         drawCooldown(context, bounds, center, radius);
@@ -44,7 +44,7 @@ void CircularProgress::render(Context& context, const math::Rect& bounds) {
     const Theme::Font font = radius < 40.0F ? Theme::Font::Caption : Theme::Font::Body;
     const float line = Typography::getLineHeight(context, font);
     const math::Rect label{center.x - radius, center.y - line * 0.5F, radius * 2.0F, line};
-    if (style == Style::Ring) {
+    if (variant == Variant::Ring) {
         Typography::drawAligned(context, font, label, context.getColor(Theme::Color::Text), shown, Alignment::Center);
     } else {
         Typography::drawParagraph(context, font, label, context.getColor(Theme::Color::Text), shown, Alignment::Center, context.getColor(Theme::Color::Window), 2.0F);

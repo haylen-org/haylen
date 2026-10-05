@@ -18,20 +18,6 @@ const TypeConverter::NameTable<graphics2d::SceneTransition::Kind, 24> TypeConver
 const TypeConverter::NameTable<graphics2d::SceneTransition::Direction, 8> TypeConverter::kDirections = {{{"left", graphics2d::SceneTransition::Direction::Left}, {"right", graphics2d::SceneTransition::Direction::Right}, {"up", graphics2d::SceneTransition::Direction::Up}, {"down", graphics2d::SceneTransition::Direction::Down}, {"upLeft", graphics2d::SceneTransition::Direction::UpLeft}, {"upRight", graphics2d::SceneTransition::Direction::UpRight}, {"downLeft", graphics2d::SceneTransition::Direction::DownLeft}, {"downRight", graphics2d::SceneTransition::Direction::DownRight}}};
 const TypeConverter::NameTable<input::InputDevice, 3> TypeConverter::kDevices = {{{"keyboardMouse", input::InputDevice::KeyboardMouse}, {"touch", input::InputDevice::Touch}, {"gamepad", input::InputDevice::Gamepad}}};
 const TypeConverter::NameTable<input::TouchPhase, 5> TypeConverter::kPhases = {{{"began", input::TouchPhase::Began}, {"moved", input::TouchPhase::Moved}, {"stationary", input::TouchPhase::Stationary}, {"ended", input::TouchPhase::Ended}, {"cancelled", input::TouchPhase::Cancelled}}};
-const TypeConverter::NameTable<platform::Window::Cursor, 11> TypeConverter::kCursors = {{
-    {"default", platform::Window::Cursor::Default},
-    {"arrow", platform::Window::Cursor::Arrow},
-    {"iBeam", platform::Window::Cursor::IBeam},
-    {"crosshair", platform::Window::Cursor::Crosshair},
-    {"pointingHand", platform::Window::Cursor::PointingHand},
-    {"resizeHorizontal", platform::Window::Cursor::ResizeHorizontal},
-    {"resizeVertical", platform::Window::Cursor::ResizeVertical},
-    {"resizeDiagonalDown", platform::Window::Cursor::ResizeDiagonalDown},
-    {"resizeDiagonalUp", platform::Window::Cursor::ResizeDiagonalUp},
-    {"resizeAll", platform::Window::Cursor::ResizeAll},
-    {"notAllowed", platform::Window::Cursor::NotAllowed},
-}};
-
 const TypeConverter::NameTable<platform::Window::Passthrough, 3> TypeConverter::kPassthroughs = {{{"off", platform::Window::Passthrough::Off}, {"whole", platform::Window::Passthrough::Whole}, {"regions", platform::Window::Passthrough::Regions}}};
 
 const TypeConverter::NameTable<platform::Event::Type, 28> TypeConverter::kEvents = {{

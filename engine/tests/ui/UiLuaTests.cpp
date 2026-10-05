@@ -347,6 +347,32 @@ TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     EXPECT_NE(fixture.lua("ui.addFont('pixel', 'fonts/none.ttf')").find("error: "), std::string::npos);
 }
 
+TEST_F(UiLuaTest, StylesNodesWithStylesThemesAndCursors) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        gui = ui.mount(ui.column{
+            ui.button{id = 'plain', text = 'Plain'},
+            ui.row{id = 'styled', style = {metrics = {controlHeight = 100}, colors = {accent = '#FF2E9E62'}}, ui.button{id = 'inside', text = 'Plain'}},
+            ui.panel{theme = 'light', ui.button{id = 'light', text = 'Light', cursor = 'pointingHand'}},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return gui:bounds('plain').height .. ' ' .. gui:bounds('inside').height"), "64.0 100.0");
+    fixture.runLua("gui:set('styled', {style = {metrics = {controlHeight = 80}}})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return gui:bounds('inside').height"), "80.0");
+    fixture.runLua("gui:set('styled', {style = {}})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return gui:bounds('inside').height"), "64.0");
+
+    EXPECT_NE(fixture.lua("gui:set('inside', {style = {metrics = {controlHeight = 'tall'}}})").find("The metric \"controlHeight\" of the property \"style\" of a \"button\" must be a non-negative number."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{style = {fonts = {body = {bold = 'yes'}}}})").find("The font \"body\" of the property \"style\" of a \"label\" must set \"bold\" to \"true\" or \"false\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{theme = 4})").find("The property \"theme\" of a \"label\" must be a string."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{cursor = 'hand'})").find("The property \"cursor\" of a \"label\" must be \"default\""), std::string::npos);
+}
+
 TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     const std::vector<std::uint8_t> panel = test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/ui/panel.png", std::string(panel.begin(), panel.end())}});
@@ -719,7 +745,7 @@ TEST_F(UiLuaTest, BuildsTheComponentsForGamesAndApps) {
             ui.stepper{id = 'players', value = 1, min = 1, max = 3, autofocus = true, onChange = note},
             ui.segmentedControl{id = 'view', items = {{id = 'a', text = 'A'}, {id = 'b', text = 'B'}}, onChange = note},
             ui.rangeSlider{id = 'range', low = 0.2, high = 0.8},
-            ui.circularProgress{id = 'cooldown', value = 0.5, style = 'cooldown'},
+            ui.circularProgress{id = 'cooldown', value = 0.5, variant = 'cooldown'},
             ui.keyCapture{id = 'jump', value = 'key:space'},
             ui.accordion{id = 'faq', items = {{id = 'one', text = 'One'}}, ui.label{text = 'Answer'}},
             ui.carousel{id = 'pages', height = 120, ui.label{text = 'First'}, ui.label{text = 'Second'}},

@@ -41,7 +41,7 @@ void Table::render(Context& context, const math::Rect& bounds) {
     // Columns run from the right in a right-to-left UI.
     float x = bounds.x;
     for (std::size_t column = 0; column < columns.size(); ++column) {
-        const math::Rect cell = context.mirror({x + ListRow::kPadding, bounds.y, widths[column] - ListRow::kPadding * 2.0F, header}, bounds);
+        const math::Rect cell = context.mirror({x + context.getMetric(Theme::Metric::RowPadding), bounds.y, widths[column] - context.getMetric(Theme::Metric::RowPadding) * 2.0F, header}, bounds);
         Typography::drawAligned(context, Theme::Font::Caption, cell, context.getColor(Theme::Color::TextMuted), context.getText(columns[column].text), columns[column].align);
         x += widths[column];
     }
@@ -58,7 +58,7 @@ void Table::render(Context& context, const math::Rect& bounds) {
         const std::size_t shown = Widgets::isVisible(context, area) ? std::min(columns.size(), entry.cells.size()) : 0;
         x = bounds.x;
         for (std::size_t column = 0; column < shown; ++column) {
-            const math::Rect cell = context.mirror({x + ListRow::kPadding, area.y, widths[column] - ListRow::kPadding * 2.0F, height}, area);
+            const math::Rect cell = context.mirror({x + context.getMetric(Theme::Metric::RowPadding), area.y, widths[column] - context.getMetric(Theme::Metric::RowPadding) * 2.0F, height}, area);
             Typography::drawAligned(context, Theme::Font::Body, cell, context.getColor(Theme::Color::Text), context.getText(entry.cells[column]), columns[column].align);
             x += widths[column];
         }
@@ -134,10 +134,10 @@ float Table::measureWidth(Context& context) const {
             continue;
         }
         ++shared;
-        widest = std::max(widest, Typography::measure(context, Theme::Font::Caption, context.getText(columns[column].text)).x + ListRow::kPadding * 2.0F);
+        widest = std::max(widest, Typography::measure(context, Theme::Font::Caption, context.getText(columns[column].text)).x + context.getMetric(Theme::Metric::RowPadding) * 2.0F);
         for (const Row& row : rows) {
             if (column < row.cells.size()) {
-                widest = std::max(widest, Typography::measure(context, Theme::Font::Body, context.getText(row.cells[column])).x + ListRow::kPadding * 2.0F);
+                widest = std::max(widest, Typography::measure(context, Theme::Font::Body, context.getText(row.cells[column])).x + context.getMetric(Theme::Metric::RowPadding) * 2.0F);
             }
         }
     }

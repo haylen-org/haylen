@@ -32,7 +32,8 @@ class Carousel final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    static constexpr float kSlideSpeed = 10.0F;
+    // How much of the way to the page a slide covers per transition duration of the theme.
+    static constexpr float kSlideRate = 1.5F;
     static constexpr float kSwipeShare = 0.2F;
 
     [[nodiscard]] float getIndicatorHeight(Context& context) const;

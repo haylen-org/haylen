@@ -296,9 +296,10 @@ void Theme::setSurface(Surface role, std::optional<Image> value) {
 
 void Theme::applyTo(ImGuiStyle& style) const {
     style.FontSizeBase = getFont(Font::Body).size;
-    style.WindowRounding = getMetric(Metric::ControlRadius);
+    style.WindowRounding = getMetric(Metric::PanelRadius);
     style.ChildRounding = getMetric(Metric::ControlRadius);
-    style.PopupRounding = getMetric(Metric::ControlRadius);
+    style.PopupRounding = getMetric(Metric::PanelRadius);
+    style.DisabledAlpha = getMetric(Metric::DisabledOpacity);
     style.FrameRounding = getMetric(Metric::ControlRadius) * 0.5F;
     style.GrabRounding = getMetric(Metric::ControlRadius) * 0.5F;
     style.TabRounding = getMetric(Metric::ControlRadius) * 0.5F;

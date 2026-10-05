@@ -87,7 +87,8 @@ void Window::render(Context& context, const math::Rect&) {
     ImGui::PopStyleVar(2);
     if (shown) {
         const math::Rect frame{position->x, position->y, size.x, size.y};
-        Surfaces::draw(context, Theme::Surface::Window, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border));
+        Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::PanelRadius));
+        Surfaces::draw(context, Theme::Surface::Window, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), context.getMetric(Theme::Metric::PanelRadius));
         drawTitle(context, {frame.x, frame.y, frame.width, header});
         Linear::render(context, {frame.x, frame.y + header, frame.width, std::max(0.0F, frame.height - header)});
         if (open && closable && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
@@ -102,7 +103,11 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     const float side = closable ? bar.height : 0.0F;
     const math::Rect grip = context.mirror({bar.x, bar.y, bar.width - side, bar.height}, bar);
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.AddRectFilled(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Raised)), radius, ImDrawFlags_RoundCornersTop);
+
+    // The bar fills the top of the window inside its border, with its top corners parallel to the corners of the window.
+    const float border = context.getMetric(Theme::Metric::BorderWidth);
+    const math::Rect fill = math::Rect::fromMinMax({bar.x + border, bar.y + border}, {bar.getRight() - border, bar.getBottom()});
+    list.AddRectFilled(ImGuiConverter::toImVec2(fill.getMin()), ImGuiConverter::toImVec2(fill.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Raised)), Surfaces::getInnerRadius(context.getMetric(Theme::Metric::PanelRadius), border), ImDrawFlags_RoundCornersTop);
     list.AddLine({bar.x, bar.getBottom()}, {bar.getRight(), bar.getBottom()}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));
     const float inset = context.getMetric(Theme::Metric::ControlPaddingX);
     Typography::drawAligned(context, Theme::Font::Button, {grip.x + inset, grip.y, std::max(0.0F, grip.width - inset * 2.0F), grip.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
@@ -116,8 +121,9 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
         const math::Vec2 center = cross.getCenter();
         const float arm = cross.width * 0.2F;
         const ImU32 color = ImGuiConverter::toImU32(context.getColor(state.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
-        list.AddLine({center.x - arm, center.y - arm}, {center.x + arm, center.y + arm}, color, 2.0F);
-        list.AddLine({center.x - arm, center.y + arm}, {center.x + arm, center.y - arm}, color, 2.0F);
+        const float stroke = context.getMetric(Theme::Metric::StrokeWidth);
+        list.AddLine({center.x - arm, center.y - arm}, {center.x + arm, center.y + arm}, color, stroke);
+        list.AddLine({center.x - arm, center.y + arm}, {center.x + arm, center.y - arm}, color, stroke);
         if (state.clicked) {
             close(context);
         }

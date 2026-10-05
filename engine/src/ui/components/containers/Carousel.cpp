@@ -56,7 +56,8 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
     layers.SetCurrentChannel(&list, 0);
 
     const float goal = static_cast<float>(page - 1);
-    shown += (goal - shown) * std::min(1.0F, context.getDeltaSeconds() * kSlideSpeed);
+    const float duration = context.getMetric(Theme::Metric::TransitionDuration);
+    shown += (goal - shown) * (duration > 0.0F ? std::min(1.0F, context.getDeltaSeconds() * kSlideRate / duration) : 1.0F);
     if (std::fabs(goal - shown) < 0.001F) {
         shown = goal;
     }

@@ -29,10 +29,12 @@ class Theme final {
         Raised,
         Tooltip,
         Overlay,
+        Shadow,
         Hover,
         Pressed,
         Selection,
         Focus,
+        Caret,
         Border,
         BorderStrong,
         Scrollbar,
@@ -106,6 +108,20 @@ class Theme final {
         TransitionDuration,
         ToastLimit,
         ToneBarWidth,
+        PanelRadius,
+        ContentSpacing,
+        FocusGap,
+        DisabledOpacity,
+        TooltipDelay,
+        LongPressDuration,
+        ShadowSize,
+        ShadowOffset,
+        ChipHeight,
+        StrokeWidth,
+        RowPadding,
+        CheckRadius,
+        MenuPadding,
+        SplitterSize,
     };
 
     enum class Font : std::uint8_t {
@@ -183,7 +199,7 @@ class Theme final {
     using TextureLoader = std::function<graphics::Texture(std::string_view path, graphics::Texture::Options options)>;
 
     static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::InformationText) + 1;
-    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::ToneBarWidth) + 1;
+    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::SplitterSize) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
     static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::CellSelected) + 1;
 
@@ -192,6 +208,11 @@ class Theme final {
 
     // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles`, `surfaces` and `imageFilter`, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
     [[nodiscard]] static Theme fromJson(const core::Json& document, const Theme& base, const TextureLoader& loadTexture);
+
+    // Read the values of theme files and styles, where the context starts the message of an error, such as `The theme color "accent"`.
+    [[nodiscard]] static math::Color readColor(const core::Json& value, const std::string& context);
+    [[nodiscard]] static float readNumber(const core::Json& value, const std::string& context);
+    [[nodiscard]] static Image readImage(const core::Json& value, const std::string& context, const TextureLoader& loadTexture);
 
     [[nodiscard]] static std::optional<Color> colorFromName(std::string_view value) noexcept;
     [[nodiscard]] static std::optional<Metric> metricFromName(std::string_view value) noexcept;
@@ -253,10 +274,12 @@ class Theme final {
         {"raised", 0x2C3147FF, 0xFFFFFFFF},
         {"tooltip", 0x0F111AF2, 0x1B1E2BF2},
         {"overlay", 0x000000A0, 0x00000066},
+        {"shadow", 0x00000066, 0x1B1E2B29},
         {"hover", 0xFFFFFF14, 0x0000000F},
         {"pressed", 0xFFFFFF24, 0x0000001F},
         {"selection", 0x4C7DFF40, 0x4C7DFF33},
         {"focus", 0x7AA2FFFF, 0x3A66E0FF},
+        {"caret", 0x7AA2FFFF, 0x3A66E0FF},
         {"border", 0x3A4058FF, 0xD6D9E4FF},
         {"borderStrong", 0x525A7AFF, 0xB3B8CCFF},
         {"scrollbar", 0x3A4058FF, 0xC9CDDBFF},
@@ -329,6 +352,20 @@ class Theme final {
         {"transitionDuration", 0.15F},
         {"toastLimit", 3.0F},
         {"toneBarWidth", 6.0F},
+        {"panelRadius", 16.0F},
+        {"contentSpacing", 12.0F},
+        {"focusGap", 3.0F},
+        {"disabledOpacity", 0.5F},
+        {"tooltipDelay", 0.5F},
+        {"longPressDuration", 0.5F},
+        {"shadowSize", 24.0F},
+        {"shadowOffset", 6.0F},
+        {"chipHeight", 48.0F},
+        {"strokeWidth", 2.0F},
+        {"rowPadding", 16.0F},
+        {"checkRadius", 8.0F},
+        {"menuPadding", 8.0F},
+        {"splitterSize", 10.0F},
     }};
     static constexpr std::array<std::string_view, kFontCount> kFontNames{"body", "caption", "button", "heading", "title", "monospace"};
     static constexpr std::array<std::string_view, kSurfaceCount> kSurfaceNames{
@@ -382,11 +419,8 @@ class Theme final {
     static constexpr float kMinTileSize = 1.0F;
 
     template <typename Enum, typename Table, typename Projection> [[nodiscard]] static std::optional<Enum> fromName(const Table& names, std::string_view value, Projection projection) noexcept;
-    [[nodiscard]] static math::Color readColor(const core::Json& value, const std::string& context);
-    [[nodiscard]] static float readNumber(const core::Json& value, const std::string& context);
     [[nodiscard]] static math::Insets readInsets(const core::Json& value, const std::string& context);
     [[nodiscard]] static math::Rect readRect(const core::Json& value, const std::string& context);
-    [[nodiscard]] static Image readImage(const core::Json& value, const std::string& context, const TextureLoader& loadTexture);
     static void checkTiles(const Image& image, const std::string& context);
     [[nodiscard]] static const core::Json& readSection(const core::Json& document, const char* key);
 

@@ -51,7 +51,7 @@ float Tree::measureWidth(Context& context, const std::vector<ChoiceItem>& branch
     const float indent = context.getMetric(Theme::Metric::IconSize);
     float widest = 0.0F;
     for (const ChoiceItem& item : branch) {
-        widest = std::max(widest, indent * static_cast<float>(depth + 1) - ListRow::kPadding + ListRow::measure(context, item));
+        widest = std::max(widest, indent * static_cast<float>(depth + 1) - context.getMetric(Theme::Metric::RowPadding) + ListRow::measure(context, item));
         if (expanded.contains(item.id)) {
             widest = std::max(widest, measureWidth(context, item.children, depth + 1));
         }
@@ -109,7 +109,7 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
         if (!item.children.empty()) {
             Widgets::arrow(arrow.getCenter(), indent * 0.4F, Widgets::mirror(context, open ? ImGuiDir_Down : ImGuiDir_Right), context.getColor(Theme::Color::TextMuted));
         }
-        ListRow::drawContent(context, context.mirror(math::Rect::fromMinMax({left + indent - ListRow::kPadding, area.y}, area.getMax()), area), item);
+        ListRow::drawContent(context, context.mirror(math::Rect::fromMinMax({left + indent - context.getMetric(Theme::Metric::RowPadding), area.y}, area.getMax()), area), item);
         ImGui::EndDisabled();
         ImGui::PopID();
 

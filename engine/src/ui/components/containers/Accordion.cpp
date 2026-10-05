@@ -33,7 +33,7 @@ math::Vec2 Accordion::measureContent(Context& context, float availableWidth) {
     const float arrow = context.getMetric(Theme::Metric::IconSize);
     math::Vec2 size{0.0F, header * static_cast<float>(items.size())};
     for (std::size_t index = 0; index < items.size(); ++index) {
-        size.x = std::max(size.x, Typography::measure(context, Theme::Font::Button, context.getText(items[index].text)).x + arrow + ListRow::kPadding * 3.0F);
+        size.x = std::max(size.x, Typography::measure(context, Theme::Font::Button, context.getText(items[index].text)).x + arrow + context.getMetric(Theme::Metric::RowPadding) * 3.0F);
         Component* section = getSection(index);
         if (section != nullptr && expanded.contains(items[index].id)) {
             const math::Vec2 measured = section->measure(context, availableWidth);
@@ -62,8 +62,8 @@ void Accordion::render(Context& context, const math::Rect& bounds) {
         if (item.id == focused) {
             Widgets::focusItem(context);
         }
-        Widgets::arrow(context.mirror({row.x + ListRow::kPadding, row.y, arrow, row.height}, row).getCenter(), arrow * 0.4F, Widgets::mirror(context, open ? ImGuiDir_Down : ImGuiDir_Right), context.getColor(Theme::Color::TextMuted));
-        Typography::drawAligned(context, Theme::Font::Button, context.mirror(math::Rect::fromMinMax({row.x + ListRow::kPadding * 2.0F + arrow, row.y}, row.getMax()), row), context.getColor(Theme::Color::Text), context.getText(item.text), Alignment::Start);
+        Widgets::arrow(context.mirror({row.x + context.getMetric(Theme::Metric::RowPadding), row.y, arrow, row.height}, row).getCenter(), arrow * 0.4F, Widgets::mirror(context, open ? ImGuiDir_Down : ImGuiDir_Right), context.getColor(Theme::Color::TextMuted));
+        Typography::drawAligned(context, Theme::Font::Button, context.mirror(math::Rect::fromMinMax({row.x + context.getMetric(Theme::Metric::RowPadding) * 2.0F + arrow, row.y}, row.getMax()), row), context.getColor(Theme::Color::Text), context.getText(item.text), Alignment::Start);
         ImGui::EndDisabled();
         ImGui::PopID();
         list.AddLine({row.x, row.getBottom()}, {row.getRight(), row.getBottom()}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));

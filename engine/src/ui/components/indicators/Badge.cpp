@@ -1,5 +1,7 @@
 #include "ui/components/indicators/Badge.hpp"
 
+#include <algorithm>
+
 #include "haylen/math/Insets.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
@@ -14,10 +16,12 @@ void Badge::readProperties(PropertyReader& reader) {
     reader.read("solid", solid);
 }
 
+// A badge is never narrower than it is tall, so a short count sits in a circle.
 math::Vec2 Badge::measureContent(Context& context, float) {
     const math::Vec2 textSize = Typography::measure(context, Theme::Font::Caption, context.getText(text));
     const math::Insets image = Surfaces::getPadding(context, Theme::Surface::Badge);
-    return {textSize.x + context.getMetric(Theme::Metric::BadgePaddingX) * 2.0F + image.getHorizontal(), textSize.y + context.getMetric(Theme::Metric::BadgePaddingY) * 2.0F + image.getVertical()};
+    const float height = textSize.y + context.getMetric(Theme::Metric::BadgePaddingY) * 2.0F + image.getVertical();
+    return {std::max(height, textSize.x + context.getMetric(Theme::Metric::BadgePaddingX) * 2.0F + image.getHorizontal()), height};
 }
 
 void Badge::render(Context& context, const math::Rect& bounds) {

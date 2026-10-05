@@ -17,7 +17,7 @@ namespace haylen::ui {
 // A value between 0 and 1 drawn around a circle: a ring that fills clockwise, or a shade over a picture that shrinks as the value falls, like the cooldown of an ability.
 class CircularProgress final : public Component {
   public:
-    enum class Style : std::uint8_t {
+    enum class Variant : std::uint8_t {
         Ring,
         Cooldown,
     };
@@ -36,9 +36,9 @@ class CircularProgress final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    static constexpr std::array<std::pair<std::string_view, Style>, 2> kStyles{{
-        {"ring", Style::Ring},
-        {"cooldown", Style::Cooldown},
+    static constexpr std::array<std::pair<std::string_view, Variant>, 2> kVariants{{
+        {"ring", Variant::Ring},
+        {"cooldown", Variant::Cooldown},
     }};
     static constexpr int kSegments = 64;
 
@@ -48,7 +48,7 @@ class CircularProgress final : public Component {
     float value = 0.0F;
     float size = 0.0F;
     float thickness = 0.0F;
-    Style style = Style::Ring;
+    Variant variant = Variant::Ring;
     Widgets::Tone tone = Widgets::Tone::Accent;
     TextValue text;
     std::string image;

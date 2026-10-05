@@ -40,7 +40,7 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
         ImGui::OpenPopup("##picker");
     }
     Widgets::placePopup(context, bounds, 360.0F);
-    if (ImGui::BeginPopup("##picker")) {
+    if (Widgets::beginPopup(context, "##picker", ImGuiWindowFlags_None, context.getMetric(Theme::Metric::PanelPadding))) {
         std::array<float, 4> channels{value.r, value.g, value.b, value.a};
         const ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | (alpha ? ImGuiColorEditFlags_AlphaBar : ImGuiColorEditFlags_NoAlpha);
         ImGui::SetNextItemWidth(360.0F);

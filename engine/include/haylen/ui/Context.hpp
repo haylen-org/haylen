@@ -20,6 +20,7 @@
 #include "haylen/text/Direction.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Event.hpp"
+#include "haylen/ui/Style.hpp"
 #include "haylen/ui/TextValue.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "haylen/ui/ToastStack.hpp"
@@ -60,24 +61,39 @@ class Context final {
     // Returns the family of a UI font name, which `ui.addFont` registers and themes name, or null for a name the UI does not know.
     using FontSource = std::function<std::shared_ptr<text::FontFamily>(std::string_view name)>;
 
-    Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, ImageSource imageSource, FontSource fontSource, std::shared_ptr<text::RichTextRegistry> registry);
+    // Returns a registered theme by name, or null for a name the UI does not know.
+    using ThemeSource = std::function<const Theme*(std::string_view name)>;
 
+    // The sources a context reads images, fonts, themes and the textures of styles from.
+    struct Sources {
+        ImageSource images;
+        FontSource fonts;
+        ThemeSource themes;
+        Theme::TextureLoader textures;
+    };
+
+    Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, Sources sources, std::shared_ptr<text::RichTextRegistry> registry);
+
+    // The active theme, which every node reads from unless a node around it gives a theme or a style of its own.
     void setTheme(const Theme& value) noexcept {
-        theme = &value;
+        layers.front().theme = &value;
     }
-    [[nodiscard]] const Theme& getTheme() const noexcept {
-        return *theme;
+    [[nodiscard]] graphics::Texture::Filter getImageFilter() const noexcept {
+        return layers.front().theme->getImageFilter();
     }
-    [[nodiscard]] math::Color getColor(Theme::Color role) const noexcept {
-        return theme->getColor(role);
-    }
-    [[nodiscard]] float getMetric(Theme::Metric role) const noexcept {
-        return theme->getMetric(role);
-    }
+
+    // A node with a theme, named as registered, or a style pushes it around its measuring and drawing, so it and every node inside it read its values. A node that draws also sets the ImGui style of the parts ImGui draws, such as scrollbars.
+    void pushStyle(std::string_view themeName, const Style* style, bool drawing);
+    void popStyle();
+
+    [[nodiscard]] math::Color getColor(Theme::Color role) const noexcept;
+    [[nodiscard]] float getMetric(Theme::Metric role) const noexcept;
+    [[nodiscard]] const Theme::Image* getSurface(Theme::Surface role) const;
+    [[nodiscard]] const std::string& getFontName(Theme::Font role) const noexcept;
+    [[nodiscard]] float getFontSize(Theme::Font role) const noexcept;
+    [[nodiscard]] bool isFontBold(Theme::Font role) const noexcept;
+    [[nodiscard]] bool isFontItalic(Theme::Font role) const noexcept;
     [[nodiscard]] ImFont* getFont(Theme::Font role) const;
-    [[nodiscard]] float getFontSize(Theme::Font role) const noexcept {
-        return theme->getFont(role).size;
-    }
 
     // The size of the em square of a font role, for text that draws beside ImGui at the size of its widgets, such as rich text.
     [[nodiscard]] float getEmSize(Theme::Font role) const;
@@ -161,6 +177,16 @@ class Context final {
     [[nodiscard]] float alignHorizontally(Alignment alignment, float start, float available, float size) const noexcept;
 
   private:
+    // A theme or a style that a node pushed, of which the values of the style come first.
+    struct Layer {
+        const Theme* theme = nullptr;
+        const Style* style = nullptr;
+        bool imgui = false;
+    };
+
+    // Returns the first value the layers give, from the node being drawn out to the active theme.
+    template <typename Value, typename FromStyle, typename FromTheme> [[nodiscard]] Value resolve(const FromStyle& fromStyle, const FromTheme& fromTheme) const;
+
     struct Writing {
         text::Direction direction = text::Direction::LeftToRight;
         std::string language;
@@ -170,10 +196,11 @@ class Context final {
     FocusNavigator& focus;
     const localization::Catalog& catalog;
     const input::Input& input;
-    ImageSource images;
-    FontSource fonts;
+    Sources sources;
     std::shared_ptr<text::RichTextRegistry> textRegistry;
-    const Theme* theme = nullptr;
+
+    // The active theme at the bottom and the themes and styles the nodes being drawn push above it.
+    std::vector<Layer> layers{Layer{}};
     std::vector<Event>* events = nullptr;
     std::set<std::string, std::less<>> heldButtons;
     std::map<std::string, math::Vec2, std::less<>> sticks;

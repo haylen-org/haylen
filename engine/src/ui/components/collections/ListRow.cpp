@@ -14,8 +14,8 @@
 
 namespace haylen::ui {
 
-Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, bool selected) {
-    const float radius = context.getMetric(Theme::Metric::ControlRadius) * 0.5F;
+Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, bool selected, float rounding) {
+    const float radius = rounding < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) * 0.5F : rounding;
     const Widgets::Interaction state = Widgets::interact(context, bounds, radius, "##row");
     ImDrawList& list = *ImGui::GetWindowDrawList();
     if (selected) {
@@ -31,13 +31,13 @@ void ListRow::drawContent(Context& context, const math::Rect& bounds, const Choi
     if (!Widgets::isVisible(context, bounds)) {
         return;
     }
-    float x = bounds.x + kPadding;
+    float x = bounds.x + context.getMetric(Theme::Metric::RowPadding);
     if (!item.image.empty()) {
         const float icon = context.getMetric(Theme::Metric::IconSize);
         Surfaces::drawImage(context, context.getImage(item.image), context.mirror({x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon}, bounds));
-        x += icon + kPadding;
+        x += icon + context.getMetric(Theme::Metric::RowPadding);
     }
-    const math::Rect text = context.mirror(math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - kPadding, bounds.getBottom()}), bounds);
+    const math::Rect text = context.mirror(math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - context.getMetric(Theme::Metric::RowPadding), bounds.getBottom()}), bounds);
     const std::string caption = context.getText(item.caption);
     if (caption.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, text, context.getColor(Theme::Color::Text), context.getText(item.text), Alignment::Start);
@@ -51,9 +51,9 @@ void ListRow::drawContent(Context& context, const math::Rect& bounds, const Choi
 }
 
 float ListRow::measure(Context& context, const ChoiceItem& item) {
-    const float image = item.image.empty() ? 0.0F : context.getMetric(Theme::Metric::IconSize) + kPadding;
+    const float image = item.image.empty() ? 0.0F : context.getMetric(Theme::Metric::IconSize) + context.getMetric(Theme::Metric::RowPadding);
     const float text = std::max(Typography::measure(context, Theme::Font::Body, context.getText(item.text)).x, Typography::measure(context, Theme::Font::Caption, context.getText(item.caption)).x);
-    return image + text + kPadding * 2.0F;
+    return image + text + context.getMetric(Theme::Metric::RowPadding) * 2.0F;
 }
 
 } // namespace haylen::ui

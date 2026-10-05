@@ -375,7 +375,7 @@ TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
     EXPECT_EQ(getLastEvent().id, "saved");
     EXPECT_EQ(getLastEvent().name, "dismiss");
 
-    const float padding = getUi().getTheme().getMetric(Theme::Metric::PanelPadding);
+    const float padding = getUi().getTheme().getMetric(Theme::Metric::MenuPadding);
     const float item = getUi().getTheme().getMetric(Theme::Metric::ListRowHeight) * 0.75F;
     const math::Rect size = getBounds(*gui, "size");
     click(size.getCenter());

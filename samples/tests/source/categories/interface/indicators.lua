@@ -34,7 +34,7 @@ end
 
 function Indicators:ability(name)
     return ui.column{gap = 8, align = 'center',
-        ui.circularProgress{id = 'cooldown-' .. name, style = 'cooldown', image = 'interface/icons/' .. name .. '.png', size = 96, value = 0},
+        ui.circularProgress{id = 'cooldown-' .. name, variant = 'cooldown', image = 'interface/icons/' .. name .. '.png', size = 96, value = 0},
         ui.button{id = 'use-' .. name, text = 'Use', onClick = function()
             if self.left[name] <= 0 then
                 self.left[name] = Indicators.cooldowns[name]
@@ -74,7 +74,7 @@ function Indicators:columns()
                     ui.circularProgress{id = 'ring', text = '0%'},
                     ui.circularProgress{id = 'ring-big', size = 120, thickness = 16, tone = 'success'},
                     ui.circularProgress{value = 0.6, tone = 'danger', text = '3'},
-                    ui.circularProgress{id = 'plain', style = 'cooldown', size = 96, tone = 'warning'},
+                    ui.circularProgress{id = 'plain', variant = 'cooldown', size = 96, tone = 'warning'},
                 },
             }),
             layout.section('Cooldowns', {ui.row{gap = 32, self:ability('sword'), self:ability('potion'), self:ability('gem')}}),

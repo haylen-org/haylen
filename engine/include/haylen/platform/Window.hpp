@@ -35,6 +35,20 @@ class Window {
         NotAllowed,
     };
 
+    static constexpr std::array<std::pair<std::string_view, Cursor>, 11> kCursorNames{{
+        {"default", Cursor::Default},
+        {"arrow", Cursor::Arrow},
+        {"iBeam", Cursor::IBeam},
+        {"crosshair", Cursor::Crosshair},
+        {"pointingHand", Cursor::PointingHand},
+        {"resizeHorizontal", Cursor::ResizeHorizontal},
+        {"resizeVertical", Cursor::ResizeVertical},
+        {"resizeDiagonalDown", Cursor::ResizeDiagonalDown},
+        {"resizeDiagonalUp", Cursor::ResizeDiagonalUp},
+        {"resizeAll", Cursor::ResizeAll},
+        {"notAllowed", Cursor::NotAllowed},
+    }};
+
     // Where clicks pass through the window to what is behind it: nowhere, everywhere, or everywhere outside the regions that keep the mouse for the app.
     enum class Passthrough : std::uint8_t {
         Off,

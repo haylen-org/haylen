@@ -93,6 +93,11 @@ class Backend final {
     [[nodiscard]] bool isUsingKeyboard() const;
     void blockPointer(const math::Rect& area);
 
+    // Shows a cursor shape for this frame while the UI has the pointer, such as the cursor a node asks for, in place of the one ImGui chooses.
+    void setCursor(platform::Window::Cursor value) noexcept {
+        requestedCursor = value;
+    }
+
     // Marks the window being built as transparent to the pointer outside its items and blocked areas, which suits a window that hosts app GUIs.
     void setTransparentWindow();
 
@@ -195,7 +200,8 @@ class Backend final {
     std::optional<std::uint64_t> primaryTouch;
     std::optional<math::Vec2> pointerPosition;
     std::string clipboard;
-    ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
+    platform::Window::Cursor cursor = platform::Window::Cursor::Default;
+    std::optional<platform::Window::Cursor> requestedCursor;
     bool keyboardShown = false;
     bool frameActive = false;
 };

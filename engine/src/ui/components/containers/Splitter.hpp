@@ -29,7 +29,6 @@ class Splitter final : public Component {
 
   private:
     static constexpr float kFocusStep = 0.05F;
-    static constexpr float kHandle = 10.0F;
 
     float ratio = 0.5F;
     bool vertical = false;

@@ -78,7 +78,9 @@ void Dialog::render(Context& context, const math::Rect&) {
     const math::Rect frame{ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, width, height};
     setBounds(frame);
     drawBackdrop(context, display);
-    Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border));
+    const float radius = context.getMetric(Theme::Metric::PanelRadius);
+    Surfaces::drawShadow(context, frame, radius);
+    Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), radius);
     drawContent(context, frame.inset(padding));
 
     if (open && dismissible && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {

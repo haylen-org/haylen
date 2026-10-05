@@ -18,7 +18,7 @@ void Popover::render(Context& context, const math::Rect& bounds) {
         ImGui::OpenPopup("##popover");
     }
     Widgets::placePopup(context, bounds, contentWidth);
-    if (ImGui::BeginPopup("##popover", ImGuiWindowFlags_NoNavInputs)) {
+    if (Widgets::beginPopup(context, "##popover", ImGuiWindowFlags_NoNavInputs, context.getMetric(Theme::Metric::PanelPadding))) {
         if (!getChildren().empty()) {
             Component& content = *getChildren().front();
             const ImVec2 origin = ImGui::GetCursorScreenPos();

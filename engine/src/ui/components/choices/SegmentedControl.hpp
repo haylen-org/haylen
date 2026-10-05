@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include <imgui.h>
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -31,6 +34,7 @@ class SegmentedControl final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
+    [[nodiscard]] ImDrawFlags getCorners(const Context& context, std::size_t index) const noexcept;
     // Returns the index of the next item that can be picked in a direction, or the current one when there is none.
     [[nodiscard]] int findNext(int from, int direction, bool wrap) const;
     void select(Context& context, int index);

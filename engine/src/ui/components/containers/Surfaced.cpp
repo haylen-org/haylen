@@ -18,7 +18,7 @@ math::Insets Surfaced::getPadding(Context& context) const {
 void Surfaced::paint(Context& context, const math::Rect& bounds) {
     context.blockPointer(bounds);
     const std::optional<math::Color> border = bordered ? std::optional<math::Color>(context.getColor(Theme::Color::Border)) : std::nullopt;
-    Surfaces::draw(context, surface, bounds, context.getColor(fill), border);
+    Surfaces::draw(context, surface, bounds, context.getColor(fill), border, context.getMetric(Theme::Metric::PanelRadius));
 }
 
 } // namespace haylen::ui

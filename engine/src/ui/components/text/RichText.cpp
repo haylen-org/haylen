@@ -36,18 +36,19 @@ text::RichText& RichText::prepare(Context& context) {
     std::string markup = context.getText(text);
     std::shared_ptr<text::FontFamily> family = context.getFontFamily(font);
     const float size = context.getEmSize(font);
-    const Theme::FontStyle& style = context.getTheme().getFont(font);
+    const bool bold = context.isFontBold(font);
+    const bool italic = context.isFontItalic(font);
     const math::Color ink = context.getColor(color.value_or(Theme::Color::Text));
     const bool rightToLeft = context.isRightToLeft();
     const bool sided = textAlign == text::Alignment::Start || textAlign == text::Alignment::End;
     const text::Alignment align = sided ? ((textAlign == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right) : textAlign;
     const text::RichTextOptions* current = richText ? &richText->getOptions() : nullptr;
-    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == style.bold && current->italic == style.italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == revealSpeed;
+    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == bold && current->italic == italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == revealSpeed;
 
     if (!sameOptions) {
         Context* owner = &context;
         preparedFor = owner;
-        text::RichTextOptions options{.family = std::move(family), .size = size, .bold = style.bold, .italic = style.italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = revealSpeed};
+        text::RichTextOptions options{.family = std::move(family), .size = size, .bold = bold, .italic = italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = revealSpeed};
         options.fonts = [owner](std::string_view name) { return owner->getFontFamily(name); };
         options.images = [owner](std::string_view path) { return owner->getImage(path); };
         if (richText) {

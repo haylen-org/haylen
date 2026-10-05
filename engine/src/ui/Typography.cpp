@@ -21,12 +21,11 @@ float Typography::getLineHeight(Context& context, Theme::Font font) {
 
 // Text takes the em size that lines its letters up with the widgets of its role, since the theme sizes a font by its height from ascent to descent, and lines follow each other by the height of their fonts. Every paragraph reads in the direction of its first strong letter, while start and end line it up with the side of the UI they name.
 text::Style Typography::getStyle(Context& context, Theme::Font font, float wrapWidth, text::Alignment align) {
-    const Theme::FontStyle& role = context.getTheme().getFont(font);
     const bool rightToLeft = context.isRightToLeft();
     if (align == text::Alignment::Start || align == text::Alignment::End) {
         align = (align == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right;
     }
-    return {.size = context.getEmSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = role.bold, .italic = role.italic, .direction = text::Direction::Auto, .language = context.getLanguage()};
+    return {.size = context.getEmSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = context.isFontBold(font), .italic = context.isFontItalic(font), .direction = text::Direction::Auto, .language = context.getLanguage()};
 }
 
 std::shared_ptr<const text::Layout> Typography::layout(Context& context, Theme::Font font, std::string_view text, const text::Style& style) {

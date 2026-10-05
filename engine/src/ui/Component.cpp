@@ -66,7 +66,25 @@ void Component::readCommon(PropertyReader& reader) {
     reader.read("margin", common.margin);
     reader.readChoice<std::optional<text::Direction>>("direction", common.direction, kDirections);
     reader.read("language", common.language);
+    reader.read("theme", common.theme);
+    if (const core::Json* style = reader.take("style")) {
+        common.style = style->is_null() ? nullptr : std::make_shared<const Style>(Style::fromJson(*style, reader.getQualifiedName("style")));
+    }
+    if (reader.has("cursor")) {
+        platform::Window::Cursor cursor = platform::Window::Cursor::Default;
+        reader.readChoice<platform::Window::Cursor>("cursor", cursor, platform::Window::kCursorNames);
+        common.cursor = cursor;
+    }
     readFocus(reader);
+}
+
+// A node with a theme or a style measures and draws itself and its children with them.
+bool Component::pushStyle(Context& context, bool drawing) const {
+    if (common.theme.empty() && !common.style) {
+        return false;
+    }
+    context.pushStyle(common.theme, common.style.get(), drawing);
+    return true;
 }
 
 // A node that sets its direction or language measures and draws itself and its children in them.
@@ -127,7 +145,11 @@ math::Vec2 Component::measure(Context& context, float availableWidth) {
     const float inner = std::max(0.0F, availableWidth - margin.getHorizontal());
     const float offered = common.width.value_or(getBoundedWidth(inner));
     const bool writing = pushWriting(context);
+    const bool styled = pushStyle(context, false);
     const math::Vec2 content = measureContent(context, offered);
+    if (styled) {
+        context.popStyle();
+    }
     if (writing) {
         context.popWriting();
     }
@@ -174,10 +196,14 @@ void Component::draw(Context& context, const math::Rect& layout) {
         focusRequested = true;
     }
 
+    const bool styled = pushStyle(context, true);
     if (!common.enabled) {
         ImGui::BeginDisabled();
     }
     const bool writing = pushWriting(context);
+    if (common.cursor && isPointerOver(bounds)) {
+        context.getBackend().setCursor(*common.cursor);
+    }
     // The context carries the transform to the draws of the node that go around the ImGui vertices, such as rich text.
     const bool reshaping = transform->isReshaping();
     const int firstVertex = ImGui::GetWindowDrawList()->VtxBuffer.Size;
@@ -196,6 +222,9 @@ void Component::draw(Context& context, const math::Rect& layout) {
     drawTooltip(context, bounds);
     if (writing) {
         context.popWriting();
+    }
+    if (styled) {
+        context.popStyle();
     }
     focus.leave();
     ImGui::PopID();
@@ -246,8 +275,13 @@ std::optional<FocusDirection> Component::takeFocusDirection(Context& context) co
     return context.getFocus().takeDirection(drawId);
 }
 
+// The pointer is over a node inside the visible clip of the window being drawn, while no window above it takes the pointer.
+bool Component::isPointerOver(const math::Rect& bounds) {
+    return ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax())) && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+}
+
 void Component::drawTooltip(Context& context, const math::Rect& bounds) {
-    const bool hovered = !common.tooltip.isEmpty() && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && bounds.contains(math::Vec2{ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y});
+    const bool hovered = !common.tooltip.isEmpty() && isPointerOver(bounds);
     if (!hovered) {
         hoverStarted = -1.0;
         return;
@@ -255,7 +289,7 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
     if (hoverStarted < 0.0) {
         hoverStarted = context.getTime();
     }
-    if (context.getTime() - hoverStarted < kTooltipDelaySeconds) {
+    if (context.getTime() - hoverStarted < context.getMetric(Theme::Metric::TooltipDelay)) {
         return;
     }
 
@@ -268,7 +302,9 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
     if (ImGui::BeginTooltip()) {
         const ImVec2 position = ImGui::GetWindowPos();
         const ImVec2 size = ImGui::GetWindowSize();
-        Surfaces::draw(context, Theme::Surface::Tooltip, {position.x, position.y, size.x, size.y}, context.getColor(Theme::Color::Tooltip));
+        const math::Rect frame{position.x, position.y, size.x, size.y};
+        Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::ControlRadius));
+        Surfaces::draw(context, Theme::Surface::Tooltip, frame, context.getColor(Theme::Color::Tooltip));
         const std::string text = context.getText(common.tooltip);
         const math::Vec2 measured = Typography::measureParagraph(context, Theme::Font::Caption, text, context.getMetric(Theme::Metric::TooltipWidth));
         const ImVec2 cursor = ImGui::GetCursorScreenPos();

@@ -149,7 +149,8 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
 void Toast::drawFrame(Context& context, const Notice& notice, const math::Rect& frame, const std::string& message) {
     const Widgets::ToneColors colors = Widgets::getToneColors(notice.own ? tone : notice.tone);
     const float barWidth = context.getMetric(Theme::Metric::ToneBarWidth);
-    const float radius = context.getMetric(Theme::Metric::ControlRadius);
+    const float radius = context.getMetric(Theme::Metric::PanelRadius);
+    Surfaces::drawShadow(context, frame, radius);
     Surfaces::draw(context, Theme::Surface::Toast, frame, context.getColor(Theme::Color::Tooltip), std::nullopt, radius);
     const math::Rect bar = context.mirror({frame.x, frame.y, barWidth, frame.height}, frame);
     ImDrawList& list = *ImGui::GetWindowDrawList();

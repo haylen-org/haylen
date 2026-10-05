@@ -62,7 +62,7 @@ std::optional<math::Vec2> ContextMenu::findOpening(Context& context, const math:
     // A finger held still opens the menu once, and the control under it does not take the press as a tap.
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         pressHandled = false;
-    } else if (!pressHandled && over && io.MouseSource == ImGuiMouseSource_TouchScreen && io.MouseDownDuration[0] >= kLongPressSeconds && !ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+    } else if (!pressHandled && over && io.MouseSource == ImGuiMouseSource_TouchScreen && io.MouseDownDuration[0] >= context.getMetric(Theme::Metric::LongPressDuration) && !ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
         pressHandled = true;
         ImGui::ClearActiveID();
         return pointer;

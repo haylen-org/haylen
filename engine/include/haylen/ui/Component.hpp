@@ -17,12 +17,14 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/platform/Window.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Anchor.hpp"
 #include "haylen/ui/FocusDirection.hpp"
 #include "haylen/ui/FocusWrap.hpp"
 #include "haylen/ui/PropertyReader.hpp"
+#include "haylen/ui/Style.hpp"
 #include "haylen/ui/TextValue.hpp"
 #include "haylen/ui/Transform.hpp"
 
@@ -64,6 +66,13 @@ class Component {
         // The direction and language of the node and its children, which inherit those of the node around them when unset.
         std::optional<text::Direction> direction;
         std::string language;
+
+        // The registered theme and the style the node and its children read their colors, metrics, fonts and surfaces from, on top of the theme around them.
+        std::string theme;
+        std::shared_ptr<const Style> style;
+
+        // The shape of the mouse cursor while it is over the node.
+        std::optional<platform::Window::Cursor> cursor;
     };
 
     // The child limit of kinds that take any number of children.
@@ -181,7 +190,6 @@ class Component {
   private:
     friend class Gui;
 
-    static constexpr double kTooltipDelaySeconds = 0.5;
     static constexpr float kMinAspectRatio = 0.01F;
     static constexpr float kMaxAspectRatio = 100.0F;
     static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
@@ -215,6 +223,8 @@ class Component {
     void readCommon(PropertyReader& reader);
     void readFocus(PropertyReader& reader);
     [[nodiscard]] bool pushWriting(Context& context) const;
+    [[nodiscard]] bool pushStyle(Context& context, bool drawing) const;
+    [[nodiscard]] static bool isPointerOver(const math::Rect& bounds);
     void drawTooltip(Context& context, const math::Rect& bounds);
 
     // Scales the vertices the node drew since the first one around the center and multiplies their colors by the tint and the opacity.

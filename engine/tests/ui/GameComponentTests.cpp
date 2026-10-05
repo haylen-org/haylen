@@ -39,7 +39,7 @@ TEST_F(GameComponentTest, DrawsRingsAndCooldowns) {
     // clang-format off
     auto gui = mount(R"({"kind": "row", "children": [
         {"kind": "circularProgress", "id": "ring", "value": 0.25, "text": "25%", "tone": "success"},
-        {"kind": "circularProgress", "id": "cooldown", "value": 0.6, "style": "cooldown", "size": 96, "text": "3"}
+        {"kind": "circularProgress", "id": "cooldown", "value": 0.6, "variant": "cooldown", "size": 96, "text": "3"}
     ]})");
     // clang-format on
     frames(2);
@@ -47,7 +47,7 @@ TEST_F(GameComponentTest, DrawsRingsAndCooldowns) {
     EXPECT_EQ(getBounds(*gui, "ring").getSize(), math::Vec2(72.0F, 72.0F));
     EXPECT_EQ(getBounds(*gui, "cooldown").getSize(), math::Vec2(96.0F, 96.0F));
     EXPECT_THROW(gui->set("ring", {{"value", 2}}), std::invalid_argument);
-    EXPECT_THROW(gui->set("ring", {{"style", "bar"}}), std::invalid_argument);
+    EXPECT_THROW(gui->set("ring", {{"variant", "bar"}}), std::invalid_argument);
 }
 
 TEST_F(GameComponentTest, StepsNumbersAndOptions) {

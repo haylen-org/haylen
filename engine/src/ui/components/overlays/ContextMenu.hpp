@@ -31,8 +31,6 @@ class ContextMenu final : public Component {
     void drawingStopped(Context&) override;
 
   private:
-    static constexpr float kLongPressSeconds = 0.5F;
-
     [[nodiscard]] std::optional<math::Vec2> findOpening(Context& context, const math::Rect& bounds);
 
     std::vector<ChoiceItem> items;

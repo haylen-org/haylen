@@ -93,7 +93,6 @@ class TypeConverter final {
     static const NameTable<graphics2d::SceneTransition::Direction, 8> kDirections;
     static const NameTable<input::InputDevice, 3> kDevices;
     static const NameTable<input::TouchPhase, 5> kPhases;
-    static const NameTable<platform::Window::Cursor, 11> kCursors;
     static const NameTable<platform::Event::Type, 28> kEvents;
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
@@ -434,10 +433,10 @@ template <> struct EnumNames<core::ProcessMode> {
 
 template <> struct EnumNames<platform::Window::Cursor> {
     static std::optional<platform::Window::Cursor> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kCursors, name);
+        return TypeConverter::fromTable(platform::Window::kCursorNames, name);
     }
     static std::string_view name(platform::Window::Cursor value) {
-        return TypeConverter::toName(TypeConverter::kCursors, value);
+        return TypeConverter::toName(platform::Window::kCursorNames, value);
     }
 };
 

@@ -589,6 +589,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     feedGamepad(input, navigation);
 
     blockedPrevious = std::exchange(blocked, {});
+    requestedCursor.reset();
     frameTextures.clear();
     renderCalls.clear();
     renderedLists.clear();
@@ -701,10 +702,10 @@ void Backend::render(graphics2d::Renderer& renderer) {
         window.setKeyboardVisible(true);
     }
 
-    const ImGuiMouseCursor wanted = isUsingPointer() ? ImGui::GetMouseCursor() : ImGuiMouseCursor_Arrow;
+    const platform::Window::Cursor wanted = requestedCursor ? *requestedCursor : toCursor(isUsingPointer() ? ImGui::GetMouseCursor() : ImGuiMouseCursor_Arrow);
     if (wanted != cursor) {
         cursor = wanted;
-        window.setCursor(toCursor(wanted));
+        window.setCursor(wanted);
     }
 
     std::vector<const ImDrawList*> lists;
