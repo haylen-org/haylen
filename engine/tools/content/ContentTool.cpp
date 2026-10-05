@@ -248,7 +248,10 @@ void ContentTool::printDomain(const ReleaseInspector::Domain& domain, bool chunk
             places += (places.empty() ? "" : ", ") + std::to_string(shard);
         }
         output << std::format("  File \"{}\" holds {} bytes of {}, {}, in {} chunks stored in {} bytes{}.\n", file.path, file.size, getKindName(file.kind), getDeliveryName(file.delivery), file.chunks.size(), stored, places.empty() ? "" : " in shard " + places);
-        for (const ReleaseInspector::Chunk& chunk : chunks ? file.chunks : std::vector<ReleaseInspector::Chunk>{}) {
+        if (!chunks) {
+            continue;
+        }
+        for (const ReleaseInspector::Chunk& chunk : file.chunks) {
             output << std::format("    Chunk at {} holds {} bytes with the content ID \"{}\", stored in {} bytes with the stored ID \"{}\" in shard {}.\n", chunk.offset, chunk.plainSize, chunk.contentId.toHex(), chunk.encodedSize, chunk.storedId.toHex(), chunk.shard);
         }
     }

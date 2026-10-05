@@ -279,7 +279,7 @@ How each platform carries the package, and where the runtime opens it:
 
 Every runtime app, not only the player, runs the package named by the first command-line argument that is not an option instead of the bundled one, and `--dev` turns on the development mode described in the next section.
 
-To ship a Windows or Linux app, copy `app.json`, `source/` and `content/` into an `app` folder next to the executable, or zip them with `haylen.py package` and ship the zip as `app.zip`.
+A Lua app ships on Windows and Linux through the release build of `haylen.py run --config Release`, which links an executable of the app and places its protected release in `app/` next to it, as the [distribution guide](distribution.md#release-builds) describes. The player also runs a package folder in `app/` next to it, or a zip of it as `app.zip`, which development uses.
 
 Windows apps and the `haylen` player embed `engine/platform/windows/haylen.manifest`, the application manifest of the engine, which `haylen_add_app` adds to the sources of every Windows target. It selects version 6 of the Common Controls, where the task dialogs of [haylen.dialogs](lua-api/dialogs.md) live, and UTF-8 as the code page of the process, since the engine keeps every text and path in UTF-8. The SDK installs it with the other platform files. Linux apps load GIO for the theme and GTK 3 for the dialogs at run time where the system has them, so building needs neither.
 
@@ -292,7 +292,7 @@ build/macos-debug/bin/haylen/haylen --dev ~/apps/my-game
 build/macos-debug/bin/haylen/haylen my-game.zip
 ```
 
-`--dev` turns on development mode, which `haylen.py run` passes. When the package is a folder, the player then watches its `app.json`, `source/` and `content/`: a changed texture updates in place, other changed assets leave the cache so the next load reads them again, and a changed file under `source/` or a changed `app.json` restarts the app, even from the error screen. Without `--dev` the player runs the package like a shipped app. A package that fails to load keeps the window open and shows the error. `haylen.py engine --platform desktop` copies the player to `build/artifacts/desktop/<os>-<arch>/`, next to the content tool `haylen-content`, which builds the protected releases of apps as the [content guide](content.md#the-content-tool) describes.
+`--dev` turns on development mode, which `haylen.py run` passes. When the package is a folder, the player then watches its `app.json`, `source/` and `content/`: a changed texture updates in place, other changed assets leave the cache so the next load reads them again, and a changed file under `source/` or a changed `app.json` restarts the app, even from the error screen. Without `--dev` the player runs the package like a shipped app. A package that fails to load keeps the window open and shows the error. `haylen.py engine --platform desktop` builds the player in `build/engine/desktop-<config>/` and copies it to `build/artifacts/desktop/<os>-<arch>/`, next to the content tool `haylen-content`, which builds the protected releases of apps as the [content guide](content.md#the-content-tool) describes, and the SDK of the engine in `sdk/`, which links the release executables of Windows and Linux apps.
 
 ## Web builds
 

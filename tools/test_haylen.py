@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import json
 import os
 import plistlib
 import shutil
@@ -287,6 +288,47 @@ class ContentKeysTest(unittest.TestCase):
     def test_every_platform_with_a_project_has_a_content_profile(self):
         self.assertEqual(set(haylen.CONTENT_PROFILES), set(haylen.RUN_TARGETS) - {"web"})
         self.assertEqual({haylen.CONTENT_PROFILES[name] for name in haylen.APPLE_RUNS}, {"apple"})
+
+
+class ReleaseInspectionTest(unittest.TestCase):
+    def setUp(self):
+        self.app = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.app)
+        (self.app / "app.json").write_text(json.dumps({"name": "Game", "identifier": "com.example.game", "version": "1.0.0", "splash": {"logo": "images/logo.png"}}))
+        (self.app / "source").mkdir()
+        (self.app / "source" / "main.lua").write_text("print('the main module of the game')")
+        (self.app / "content" / "images").mkdir(parents=True)
+        (self.app / "content" / "images" / "hero.png").write_bytes(b"a hero image that only the package holds")
+        (self.app / "content" / "images" / "logo.png").write_bytes(b"the splash logo that platforms show")
+        self.info = haylen.App(self.app, "linux")
+        self.secrets = {'the content key "1234"': bytes(range(32))}
+
+    @staticmethod
+    def entry(path: str, data: bytes) -> tuple[str, int, object]:
+        return (path, len(data), lambda: data)
+
+    def problems(self, *entries: tuple[str, int, object]) -> list[str]:
+        return haylen.release_problems(self.info, list(entries), "app", self.secrets)
+
+    def test_a_protected_release_passes(self):
+        logo = (self.app / "content" / "images" / "logo.png").read_bytes()
+        self.assertEqual(self.problems(self.entry("app/app.hmanifest", b"manifest"), self.entry("app/content.hmanifest", b"manifest"), self.entry("app/" + "ab" * 32 + ".hpak", b"\x00" * 64), self.entry("game", b"code of the app"), self.entry("res/splash.png", logo)), [])
+
+    def test_raw_files_lua_text_indexes_and_symbols_fail(self):
+        hero = (self.app / "content" / "images" / "hero.png").read_bytes()
+        problems = self.problems(self.entry("app/app.hmanifest", b"manifest"), self.entry("app/source/main.lua", b"print('x')"), self.entry("assets/renamed.bin", hero), self.entry("app/haylen-package-index.json", b"[]"), self.entry("game.pdb", b"symbols of the game"))
+        self.assertIn('The release holds the Lua text "app/source/main.lua".', problems)
+        self.assertIn('The release holds "app/source/main.lua", while its folder "app" holds only manifests and shards.', problems)
+        self.assertIn('The release holds "assets/renamed.bin", which is the file "content/images/hero.png" of the package as it is.', problems)
+        self.assertIn('The release holds the index of a development package, "app/haylen-package-index.json".', problems)
+        self.assertIn('The release holds the symbols "game.pdb", which stay with the developer.', problems)
+
+    def test_keys_in_any_form_and_a_missing_release_fail(self):
+        key = bytes(range(32))
+        for form in (key, key.hex().encode(), key.hex().upper().encode(), haylen.base64.b64encode(key)):
+            problems = self.problems(self.entry("game", b"code " + form + b" code"))
+            self.assertIn('The release holds the content key "1234" of the app in "game".', problems)
+            self.assertIn('The release has no protected release in "app".', problems)
 
 
 if __name__ == "__main__":

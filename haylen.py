@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import contextlib
 import copy
 import dataclasses
@@ -92,6 +93,15 @@ KEYS_VARIABLE = "HAYLEN_KEYS_DIR"
 CONTENT_PROFILES = {"macos": "apple", "catalyst": "apple", "ios": "apple", "ios-simulator": "apple", "tvos": "apple", "tvos-simulator": "apple", "android": "android", "windows": "windows", "linux": "linux"}
 # A compaction of a publication tree keeps the current generation of every channel and the one before it.
 CONTENT_KEPT_GENERATIONS = 2
+# The source of the bootstrap that a release build compiles in, which the content tool writes from the key folder of the app.
+BOOTSTRAP_SOURCE = "HaylenBootstrap.cpp"
+# The files of a release folder besides its shards, and the suffix of the shards.
+RELEASE_MANIFESTS = ("app.hmanifest", "content.hmanifest")
+RELEASE_SHARD_SUFFIX = ".hpak"
+# Symbol files, which stay with the developer and never ship.
+SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map")
+# A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
+RELEASE_MATCH_MINIMUM = 16
 # The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and `sokol_app` draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
 APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "14.0"}
@@ -833,16 +843,30 @@ def desktop_artifact(name: str = "haylen") -> Path:
     return ARTIFACTS_DIR / "desktop" / f"{host_name()}-{host_arch()}" / executable_name(name)
 
 
+def desktop_sdk() -> Path:
+    """The SDK of this machine, which links the release executables of Windows and Linux apps."""
+    return desktop_artifact().parent / "sdk"
+
+
+def cmake_generator() -> list[str]:
+    """Ninja, or the default generator on Windows without Ninja."""
+    return ["-G", "Ninja"] if host_name() != "windows" or shutil.which("ninja") else []
+
+
 def build_desktop_artifacts(config: str, jobs: int) -> None:
-    """Builds the player and the content tool of this machine."""
-    for target in ("haylen", CONTENT_TOOL):
-        command_build(build_options(host_name(), config, target, jobs))
+    """Builds the player, the content tool and the SDK of this machine in one build tree of the engine, and installs the SDK next to them."""
+    directory = ENGINE_BUILDS_DIR / f"desktop-{config.lower()}"
+    command = ["cmake", "-S", ENGINE_DIR, "-B", directory, *cmake_generator(), f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_TOOLS=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+    if host_name() == "macos":
+        command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
+    run(command)
+    run(["cmake", "--build", directory, "--config", config, "--target", "haylen", CONTENT_TOOL, "haylen_sdk", "--parallel", str(jobs)])
     destination = desktop_artifact().parent
     shutil.rmtree(destination, ignore_errors=True)
     destination.mkdir(parents=True)
-    built = build_dir(host_name(), config) / "bin"
-    shutil.copy2(built / "haylen" / executable_name("haylen"), desktop_artifact())
-    shutil.copy2(built / executable_name(CONTENT_TOOL), desktop_artifact(CONTENT_TOOL))
+    shutil.copy2(directory / "bin" / "haylen" / executable_name("haylen"), desktop_artifact())
+    shutil.copy2(directory / "bin" / executable_name(CONTENT_TOOL), desktop_artifact(CONTENT_TOOL))
+    run(["cmake", "--install", directory, "--config", config, "--component", "haylen_sdk", "--prefix", desktop_sdk()])
 
 
 ARTIFACT_BUILDERS = {"apple": build_apple_artifacts, "android": build_android_artifacts, "web": build_web_artifacts, "desktop": build_desktop_artifacts}
@@ -1970,6 +1994,17 @@ class Requirement:
     snippet: str = ""
 
 
+RELEASE_ADVICE = "A release ships the package of the app only inside its protected release, which the Release configuration of \"run\" and \"prepare\" builds."
+
+
+def stop_on_release_problems(requirements: list[Requirement]) -> None:
+    """Stops a run whose release build holds what a release never may, before the app launches."""
+    problems = [requirement for requirement in requirements if requirement.advice == RELEASE_ADVICE]
+    report_requirements(problems)
+    if problems:
+        raise BuildError(f"The release build holds the {len(problems)} files above that a release never ships.")
+
+
 def report_requirements(requirements: list[Requirement]) -> None:
     """Prints what a built app lacks as warnings with the snippet to copy, which `run` shows before it launches the app, since the features that need them answer `unsupported` instead of stopping the app."""
     for requirement in requirements:
@@ -2809,23 +2844,74 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
 # Windows and Linux: the player named after the app next to its package, its native libraries and the files of `platform/windows` or `platform/linux` of the app.
 
 
+RELEASE_EXECUTABLE_PROJECT = """# Written by haylen.py for the release build of the app: the Lua player with the bootstrap of the app, linked against the SDK of the prebuilt engine, with hidden symbols and no debug information.
+cmake_minimum_required(VERSION 3.28)
+project(haylen_release LANGUAGES C CXX)
+find_package(haylen REQUIRED CONFIG)
+add_executable(haylen_release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
+target_link_libraries(haylen_release PRIVATE haylen::runtime)
+set_target_properties(haylen_release PROPERTIES OUTPUT_NAME "{name}" CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+if(WIN32)
+  set_target_properties(haylen_release PROPERTIES WIN32_EXECUTABLE ON)
+  target_sources(haylen_release PRIVATE "${{HAYLEN_ENGINE_DIR}}/platform/windows/haylen.manifest")
+else()
+  set_target_properties(haylen_release PROPERTIES BUILD_RPATH "$ORIGIN;$ORIGIN/lib")
+  target_link_options(haylen_release PRIVATE "LINKER:--enable-new-dtags" "LINKER:--strip-all")
+endif()
+"""
+
+
+def build_release_executable(app: App, args: argparse.Namespace) -> Path:
+    """Links the release executable of a Windows or Linux app, the Lua player with the bootstrap of the app, against the SDK of the desktop artifacts, so the app carries keys of its own and ships no symbols, and returns it."""
+    if not desktop_sdk().is_dir():
+        raise BuildError(f'The desktop artifacts hold no SDK. Build them again with "{TOOL} engine --platform desktop".')
+    project = app.build_folder / "release-executable"
+    write_bootstrap(app, CONTENT_PROFILES[args.platform], project / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
+    write_if_changed(project / "CMakeLists.txt", RELEASE_EXECUTABLE_PROJECT.format(bootstrap=BOOTSTRAP_SOURCE, name=app.slug))
+    build = project / "build"
+    terminal.step(f'Linking the release executable of `{shown_path(app.folder)}`')
+    run(["cmake", "-S", project, "-B", build, *cmake_generator(), "-DCMAKE_BUILD_TYPE=Release", f"-DCMAKE_PREFIX_PATH={desktop_sdk()}"])
+    run(["cmake", "--build", build, "--config", "Release", "--parallel", str(args.jobs)])
+    return build / executable_name(app.slug)
+
+
 def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
-    """Lays out the shipped folder of a Windows or Linux app: the files of `platform/<platform>` of the app as they are, the player named after the app with the package in an app folder next to it, and the native libraries next to it on Windows and in `lib` on Linux, which the `RUNPATH` of the player covers."""
+    """Lays out the shipped folder of a Windows or Linux app: the files of `platform/<platform>` of the app as they are, the executable named after the app with the package in an app folder next to it, and the native libraries next to it on Windows and in `lib` on Linux, which the `RUNPATH` of the executable covers. A release build links an executable of its own with the bootstrap of the app and ships the protected release, while a debug build ships the player with the package as it is."""
     require_host(args.platform)
     folder = app.build_folder / args.platform
+    executable = build_release_executable(app, args) if args.config == "Release" else desktop_artifact()
+    release = build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs) if args.config == "Release" else None
     terminal.step(f"Preparing the app folder `{shown_path(folder)}`")
     shutil.rmtree(folder, ignore_errors=True)
     own = app.folder / "platform" / args.platform
     if own.is_dir():
         shutil.copytree(own, folder, ignore=COPY_IGNORED)
     folder.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(desktop_artifact(), folder / executable_name(app.slug))
-    copy_package(app, folder / "app")
+    shutil.copy2(executable, folder / executable_name(app.slug))
+    if release:
+        shutil.copytree(release, folder / "app")
+    else:
+        copy_package(app, folder / "app")
     prepare_host_native(app, folder if args.platform == "windows" else folder / "lib", args.jobs)
     return folder
 
 
+def folder_entries(folder: Path) -> list[tuple[str, int, Callable[[], bytes]]]:
+    """Lists every file of a built app folder or bundle with its size and the function that reads it."""
+    return [(path.relative_to(folder).as_posix(), path.stat().st_size, path.read_bytes) for path in sorted(folder.rglob("*")) if path.is_file()]
+
+
+def check_desktop(app: App, folder: Path, args: argparse.Namespace) -> list[Requirement]:
+    """Checks the folder of the last Windows or Linux build, which a release build ships protected."""
+    if not folder.is_dir():
+        raise BuildError(f'No app of `{shown_path(app.folder)}` was built for "{args.platform}". Build it with "{TOOL} run {shown_path(app.folder)} --platform {args.platform} --config {args.config}".')
+    if args.config != "Release":
+        return []
+    return [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(folder), "app", read_secrets(app))]
+
+
 def run_desktop(app: App, folder: Path, args: argparse.Namespace) -> None:
+    stop_on_release_problems(check_desktop(app, folder, args))
     run([folder / executable_name(app.slug)], cwd=folder)
 
 
@@ -2851,8 +2937,8 @@ RUN_TARGETS = {
     "tvos-simulator": RunTarget("apple", "apple", "tvos", prepare_apple_run, run_apple, check_apple),
     "android": RunTarget("android", "android", "android", prepare_android_run, run_android, check_android),
     "web": RunTarget("web", "web", "web", prepare_web, run_web, check_web),
-    "windows": RunTarget(None, "desktop", "windows", prepare_desktop, run_desktop, None),
-    "linux": RunTarget(None, "desktop", "linux", prepare_desktop, run_desktop, None),
+    "windows": RunTarget(None, "desktop", "windows", prepare_desktop, run_desktop, check_desktop),
+    "linux": RunTarget(None, "desktop", "linux", prepare_desktop, run_desktop, check_desktop),
 }
 
 
@@ -2927,7 +3013,7 @@ def command_check(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
-    root = app.build_folder / "web" if args.platform == "web" else project_root(info, target.template)
+    root = app.build_folder / args.platform if target.template is None or args.platform == "web" else project_root(info, target.template)
     missing = target.check(info, root, args)
     report_requirements(missing)
     if missing:
@@ -3370,6 +3456,64 @@ def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
     return folder
 
 
+def write_bootstrap(app: App, profile: str, destination: Path, config: str, jobs: int) -> None:
+    """Writes the bootstrap of the release build of an app, which compiles in its identity and its sealed content keys, and keeps the file as it is when nothing changed."""
+    tool = content_tool(config, jobs)
+    run([tool, "bootstrap", "--keys", ensure_keys(app, tool), "--profile", profile, "--build", str(app.version_code), "--output", destination], echo=False)
+
+
+def read_secrets(app: App) -> dict[str, bytes]:
+    """Reads the content keys and the seed of the signing key of an app by their names, for the check that no release holds them in any form. Nothing prints them."""
+    folder = keys_folder(app.identifier)
+    if not (folder / "keys.json").is_file():
+        return {}
+    index = json.loads((folder / "keys.json").read_text())
+    secrets = {f'the content key "{identifier}"': (folder / f"content-{identifier}.key").read_bytes() for identifier in index["contentKeys"]}
+    secrets["the signing key"] = (folder / "signing.key").read_bytes()
+    return secrets
+
+
+def secret_forms(secret: bytes) -> list[bytes]:
+    """The forms in which a key could show in a file: its bytes, its hexadecimal text in either case and its Base64 text."""
+    return [secret, secret.hex().encode(), secret.hex().upper().encode(), base64.b64encode(secret), base64.urlsafe_b64encode(secret).rstrip(b"=")]
+
+
+def release_problems(app: App, entries: list[tuple[str, int, Callable[[], bytes]]], release: str, secrets: dict[str, bytes]) -> list[str]:
+    """Lists what a built release holds that it never may: Lua text, the index of a development package, a file of the package as it is, files in its release folder other than the manifests and shards, symbol files and a key of the app in any form. Each entry is a path inside the built app with its size and the function that reads it. The splash logo is the one file of the package that platforms show on their own."""
+    package: dict[tuple[int, str], str] = {}
+    for path in package_files(app.folder):
+        if path != app.splash_logo and path.stat().st_size >= RELEASE_MATCH_MINIMUM:
+            package[(path.stat().st_size, file_hash(path))] = path.relative_to(app.folder).as_posix()
+    sizes = {size for size, _ in package}
+    problems: list[str] = []
+    released = False
+    for path, size, read in entries:
+        name = path.rsplit("/", 1)[-1]
+        if path.startswith(f"{release}/"):
+            released = released or name == RELEASE_MANIFESTS[0]
+            if "/" in path[len(release) + 1 :] or (name not in RELEASE_MANIFESTS and not name.endswith(RELEASE_SHARD_SUFFIX)):
+                problems.append(f'The release holds "{path}", while its folder "{release}" holds only manifests and shards.')
+        if name.endswith(".lua"):
+            problems.append(f'The release holds the Lua text "{path}".')
+        if name == "haylen-package-index.json":
+            problems.append(f'The release holds the index of a development package, "{path}".')
+        if any(part.lower().endswith(SYMBOL_SUFFIXES) for part in path.split("/")):
+            problems.append(f'The release holds the symbols "{path}", which stay with the developer.')
+        if name.endswith(RELEASE_SHARD_SUFFIX):
+            continue
+        if size in sizes or secrets:
+            data = read()
+            match = package.get((size, hashlib.sha256(data).hexdigest()))
+            if match:
+                problems.append(f'The release holds "{path}", which is the file "{match}" of the package as it is.')
+            for owner, secret in secrets.items():
+                if any(form in data for form in secret_forms(secret)):
+                    problems.append(f'The release holds {owner} of the app in "{path}".')
+    if not released:
+        problems.append(f'The release has no protected release in "{release}".')
+    return problems
+
+
 def content_release(app: App, args: argparse.Namespace) -> Path:
     """Returns the release folder that a content command names with "--release", or else the last release of the app for its platform."""
     folder = Path(args.release).resolve() if args.release else release_folder(app, CONTENT_PROFILES[args.platform])
@@ -3600,6 +3744,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare = commands.add_parser("prepare", help='Write the folder "haylen" of the project of a platform, or the site or folder of the app, and nothing else.')
     add_app_argument(prepare)
     prepare.add_argument("--platform", required=True, choices=list(RUN_TARGETS), help="The platform whose project to prepare.")
+    prepare.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
     prepare.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
     add_jobs_option(prepare)
     prepare.set_defaults(handler=command_prepare)

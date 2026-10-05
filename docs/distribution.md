@@ -25,7 +25,7 @@ python3 haylen.py run ~/apps/my-game --platform web
 | `platform add <app> <template>` | Creates `platform/<template>` of an app from the template of a platform. |
 | `platform diff <app> --template` | Shows how `platform/<template>` of an app differs from the current template, without changing anything. |
 | `run <app> [--platform] [--device] [--config] [--engine-config]` | Runs an app, in the desktop player by default or built for a platform. |
-| `prepare <app> --platform [--engine-config]` | Writes the folder `haylen/` of the project of a platform and nothing else, or the site of the web or the folder of a Windows or Linux app. |
+| `prepare <app> --platform [--config] [--engine-config]` | Writes the folder `haylen/` of the project of a platform and nothing else, or the site of the web or the folder of a Windows or Linux app, with the package as it is or, with `--config Release`, with the protected release of the app. |
 | `xcodegen [app] [--platform] [--template]` | Writes `haylen/` of the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, or generates the project of the Apple template. |
 | `check <app> --platform [--config] [--coop]` | Checks the last build of an app against what the engine and its plugins need, and prints every missing requirement with the snippet that adds it. |
 | `android-key <app> [--release\|--debug] [--alias] [--password] [--dname] [--force]` | Creates the upload key of release builds, or a debug key, in `platform/android/keystore/` of an app, with its certificate and the properties that sign its builds. |
@@ -80,7 +80,7 @@ Before anything else, `run` compiles the shaders of the app whose sources change
 | `ios`, `tvos` | `xcodebuild` for the device, signed with the team in the `HAYLEN_APPLE_TEAM` environment variable. | `xcrun devicectl device install app` and `device process launch --console` on the device id given with `--device`. |
 | `android` | Gradle `:app:assembleDebug`, or `assembleRelease` with `--config Release`, into the build folder of the app. | `adb install -r` of the newest APK of the configuration, `adb shell am start` of its package and the log of the app process, on the device or emulator serial given with `--device`, which may be left out when only one is connected. |
 | `web` | Copies the files of the web project and the prebuilt runtime into the site and writes `app.zip` and `config.json` next to them. | Serves the site on `--port` (8000 by default) with the `--coep` and `--coop` policies, and opens it with `--open`. |
-| `windows`, `linux` | Copies the `platform/windows` or `platform/linux` folder of the app, the desktop player artifact next to the package and the native libraries of the app next to the player on Windows and into `lib/` on Linux. | Runs the player, named after the app, which plays the `app` folder next to it. |
+| `windows`, `linux` | Copies the `platform/windows` or `platform/linux` folder of the app, the desktop player artifact next to the package, or with `--config Release` an executable of the app next to its protected release, as [release builds](#release-builds) describe, and the native libraries of the app next to the executable on Windows and into `lib/` on Linux. | Runs the executable, named after the app, which plays the `app` folder next to it. |
 
 `--config` is the configuration of the platform project (`Debug` by default), and `--engine-config` the configuration of the engine artifacts it links (`Release` by default). `xcodebuild` and Gradle build with the jobs of `--jobs`. `run` streams the output of the app until it exits or Ctrl+C stops it. The engine logs to the standard output on desktops, to the log of the process on Android, which `adb logcat --pid` streams, and to the unified log on iOS, tvOS and Mac Catalyst, under the `dev.varn.engine` subsystem. On Mac Catalyst and the simulators `run` streams those lines next to the standard output and error of the process, with warnings and errors on stderr, and keeps streaming for a second after the app ends so its last lines arrive. The log of an app on a device shows in Console.app, while `run` shows the standard output and error of its process.
 
@@ -170,7 +170,7 @@ python3 haylen.py prepare ~/apps/my-game --platform ios-simulator
 python3 haylen.py prepare ~/apps/my-game --platform android
 ```
 
-Builds the engine artifacts of the platform when they are missing or stale and writes the folder `haylen/` of the project of the platform, and nothing else, which is enough to open the project in Xcode or Android Studio and build, run or archive it there. On the web it makes the site, and on Windows and Linux the folder of the app. The native libraries of an Apple project are the ones of the platform it names.
+Builds the engine artifacts of the platform when they are missing or stale and writes the folder `haylen/` of the project of the platform, and nothing else, which is enough to open the project in Xcode or Android Studio and build, run or archive it there. On the web it makes the site, and on Windows and Linux the folder of the app. The native libraries of an Apple project are the ones of the platform it names. `--config Release` writes the protected release and the bootstrap of the app, as [release builds](#release-builds) describe, which is what an archive for a store needs.
 
 ### xcodegen
 
@@ -240,9 +240,10 @@ build/artifacts/
   web/webgl2/                   The same files for WebGL2.
   desktop/<os>-<arch>/haylen    The player of this machine.
   desktop/<os>-<arch>/haylen-content  The content tool of this machine, which builds, verifies, inspects and publishes protected releases.
+  desktop/<os>-<arch>/sdk/      The SDK of the engine for this machine, which links the release executables of Windows and Linux apps.
 ```
 
-The intermediate build trees live in `build/engine/` for Apple and Android, and in the regular build trees of `haylen.py build` (`build/web-<config>`, `build/web-webgl2-<config>` and `build/<host>-<config>`) for the web and the desktop.
+The intermediate build trees live in `build/engine/` for Apple, Android and the desktop, and in the regular build trees of `haylen.py build` (`build/web-<config>` and `build/web-webgl2-<config>`) for the web.
 
 ### Haylen.xcframework
 
@@ -279,7 +280,7 @@ That `main` is also the place to register native platform bridge handlers with `
 
 ### Web and desktop
 
-The web artifacts are the `haylen` player built for WebGPU and for WebGL2, each next to `haylen-audio-worklet.js`, the AudioWorklet processor that the runtime loads from the folder of its script. It embeds no app: the page hands it the package at runtime, so the same `haylen.wasm` runs every app and only `app.zip` changes from one app to another. The desktop artifact is the `haylen` player of this machine, which Windows and Linux apps ship next to their package.
+The web artifacts are the `haylen` player built for WebGPU and for WebGL2, each next to `haylen-audio-worklet.js`, the AudioWorklet processor that the runtime loads from the folder of its script. It embeds no app: the page hands it the package at runtime, so the same `haylen.wasm` runs every app and only `app.zip` changes from one app to another. The desktop artifacts are the `haylen` player of this machine, which the debug builds of Windows and Linux apps ship next to their package, the content tool `haylen-content`, and the SDK of the engine for this machine in `sdk/`, which links the release executables of Windows and Linux apps. One build tree of the engine, `build/engine/desktop-<config>/`, builds all three.
 
 ## Templates
 
@@ -408,7 +409,32 @@ The files of `platform/web/` of the app, or of the template, go as they are into
 
 ### Windows and Linux
 
-The folder of a Windows or Linux app, `build/apps/<app>-<hash>/<platform>/`, starts from the files of `platform/windows/` or `platform/linux/` of the app, as they are, and takes the player named after the app, the package in `app/` and the native libraries.
+The folder of a Windows or Linux app, `build/apps/<app>-<hash>/<platform>/`, starts from the files of `platform/windows/` or `platform/linux/` of the app, as they are, and takes an executable named after the app, the package in `app/` and the native libraries. A debug build takes the player of the desktop artifacts and the package as it is. A release build links an executable of its own and ships the protected release of the app instead, as [release builds](#release-builds) describe:
+
+```text
+build/apps/my-game-1a2b3c4d/linux/
+  my-game                 The executable of the app: the Lua player with the bootstrap of the app, stripped of its symbols.
+  app/app.hmanifest       The signed manifest of the app domain.
+  app/content.hmanifest   The signed manifest of the content domain.
+  app/<id>.hpak           The shards of both domains.
+  lib/                    The native libraries of the app on Linux, which sit next to the executable on Windows.
+```
+
+## Release builds
+
+The Release configuration of `run` and `prepare` builds what an app ships: its package only as the protected release that the content tool builds into `build/apps/<app>-<hash>/release/<profile>/`, as the [content guide](content.md) describes, with the Lua modules as bytecode, and a binary that compiles in the bootstrap of the app, `HaylenBootstrap.cpp`, which the content tool writes from the key folder of the app and which seals its content keys, so no key sits in a file of the app. A release reuses the shards of the release before it and the build cache of the app, so a rebuild after a small change writes only the shards of what changed. The Debug configuration ships the package as it is, for development.
+
+```sh
+python3 haylen.py run ~/apps/my-game --platform linux --config Release
+python3 haylen.py prepare ~/apps/my-game --platform windows --config Release
+python3 haylen.py check ~/apps/my-game --platform linux --config Release
+```
+
+| Platform | Release build |
+| --- | --- |
+| Windows, Linux | Links the executable of the app from the SDK of the desktop artifacts, the Lua player with the bootstrap, with hidden symbols, stripped on Linux and without a PDB on Windows, in `build/apps/<app>-<hash>/release-executable/`, and places the release in `app/` next to it. |
+
+After a release build, `run` inspects the built app and stops before it launches when the app holds what a release never may, and `check --config Release` reports the same as missing requirements, so continuous integration fails on it: a `.lua` file, the `haylen-package-index.json` of a development package, a file of the package as it is under any name, other files in the release folder than its manifests and shards, symbol files such as `.pdb`, `.dSYM` or `.debug`, and any content key or the signing key of the app as bytes, as hexadecimal text in either case or as Base64 text. The splash logo is the one file of the package that an app shows outside its release, since the system shows it before the engine starts.
 
 ### check
 
@@ -419,6 +445,7 @@ The folder of a Windows or Linux app, `build/apps/<app>-<hash>/<platform>/`, sta
 | Apple | The `Info.plist` of the bundle, the frameworks that `otool -L` lists for the executable, the entitlements that `codesign` reports, the privacy manifest of the bundle and the classes of the executable. | The system frameworks of the engine and the scene manifest on iOS and tvOS, and for every plugin its class, its `frameworks`, its `infoPlist` keys, its `entitlements`, its `privacy` declarations and its resources. A value only has to exist, so a usage description may have other words, while items of arrays and booleans must match. |
 | Android | The merged manifest of the APK through `aapt2 dump xmltree`, and its native libraries. | `HaylenActivity`, the provider that loads plugins in an app with plugins, the native libraries of the app, and for every plugin the permissions, components and meta-data of the manifest of its module, and in a project of the developer the `files` it places there. A permission that the manifest of the app removes with `tools:node="remove"` is named with the file that removes it. |
 | Web | `config.json` of the site and the modules of the plugins. | Every plugin with a web part in `config.json`, and with `--coop same-origin`, every plugin whose web module registers screens, since that opener policy cuts popups off from the page. |
+| Windows, Linux | The folder of the app. | With `--config Release`, what a release never ships, as [release builds](#release-builds) describe. |
 
 ```text
 Warning: The plugin "native-demo" needs "NSCameraUsageDescription" in the "Info.plist" of the app, which the built app lacks.
