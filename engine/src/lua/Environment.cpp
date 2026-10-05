@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <format>
+#include <limits>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -248,14 +249,18 @@ void Environment::restrictLoading(lua_State* L) {
     lua_pop(L, 1);
 }
 
-int Environment::setUnprotectedMetatable(lua_State* L) {
-    if (luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL) {
-        return luaL_error(L, "The metatable of this value is protected and cannot be changed.");
-    }
+int Environment::callOriginal(lua_State* L) {
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_insert(L, 1);
     lua_call(L, lua_gettop(L) - 1, LUA_MULTRET);
     return lua_gettop(L);
+}
+
+int Environment::setUnprotectedMetatable(lua_State* L) {
+    if (luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL) {
+        return luaL_error(L, "The metatable of this value is protected and cannot be changed.");
+    }
+    return callOriginal(L);
 }
 
 // Native functions show no upvalues, which hold the method tables and state of engine types.
@@ -263,13 +268,55 @@ int Environment::accessScriptUpvalue(lua_State* L) {
     if (lua_iscfunction(L, 1) != 0) {
         return 0;
     }
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_insert(L, 1);
-    lua_call(L, lua_gettop(L) - 1, LUA_MULTRET);
-    return lua_gettop(L);
+    return callOriginal(L);
 }
 
-// The debug library would otherwise reach around the protected metatables of the engine, whose finalizers and native properties must never run on the wrong object.
+// The functions of the debug library that take a level count it from the script that calls them, so a level of the running thread goes on shifted by one, past the wrapper that calls them.
+bool Environment::shiftLevel(lua_State* L) {
+    const int index = lua_type(L, 1) == LUA_TTHREAD ? 2 : 1;
+    int isInteger = 0;
+    const lua_Integer level = lua_tointegerx(L, index, &isInteger);
+    if (isInteger == 0 || level < 0 || level >= std::numeric_limits<int>::max()) {
+        return false;
+    }
+    lua_State* target = index == 2 ? lua_tothread(L, 1) : L;
+    lua_Debug info{};
+    const bool native = lua_getstack(target, static_cast<int>(level), &info) != 0 && lua_getinfo(target, "S", &info) != 0 && std::string_view(info.what) == "C";
+    if (target == L) {
+        lua_pushinteger(L, level + 1);
+        lua_replace(L, index);
+    }
+    return native;
+}
+
+// The stack slots of a native function hold the state of the engine while it runs, so scripts read and change the locals of Lua functions only.
+int Environment::getScriptLocal(lua_State* L) {
+    if (shiftLevel(L)) {
+        luaL_pushfail(L);
+        return 1;
+    }
+    return callOriginal(L);
+}
+
+int Environment::setScriptLocal(lua_State* L) {
+    if (shiftLevel(L)) {
+        return luaL_error(L, "The locals of native functions cannot be changed.");
+    }
+    return callOriginal(L);
+}
+
+// The function of a native frame can be an internal function of the engine, which only runs with the arguments the engine gives it, so the information of a native frame leaves it out.
+int Environment::getScriptInfo(lua_State* L) {
+    const bool native = shiftLevel(L);
+    const int results = callOriginal(L);
+    if (native && lua_istable(L, -1)) {
+        lua_pushnil(L);
+        lua_setfield(L, -2, "func");
+    }
+    return results;
+}
+
+// The debug library would otherwise reach around the protected metatables of the engine, whose finalizers and native properties must never run on the wrong object, and into the state that native functions and engine values keep. Scripts make no userdata of their own, so the user values of every userdata stay out of reach.
 void Environment::restrictDebug(lua_State* L) {
     lua_getglobal(L, "debug");
     lua_getglobal(L, "getmetatable");
@@ -282,8 +329,15 @@ void Environment::restrictDebug(lua_State* L) {
         lua_pushcclosure(L, &accessScriptUpvalue, 1);
         lua_setfield(L, -2, name);
     }
-    lua_pushnil(L);
-    lua_setfield(L, -2, "getregistry");
+    for (const auto& [name, wrapper] : {std::pair<const char*, lua_CFunction>{"getlocal", &getScriptLocal}, {"setlocal", &setScriptLocal}, {"getinfo", &getScriptInfo}}) {
+        lua_getfield(L, -1, name);
+        lua_pushcclosure(L, wrapper, 1);
+        lua_setfield(L, -2, name);
+    }
+    for (const char* name : {"getregistry", "getuservalue", "setuservalue"}) {
+        lua_pushnil(L);
+        lua_setfield(L, -2, name);
+    }
     lua_pop(L, 1);
 }
 

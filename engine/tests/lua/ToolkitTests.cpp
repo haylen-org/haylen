@@ -208,6 +208,34 @@ TEST(EnvironmentTest, KeepsEngineMetatablesOutOfReach) {
     EXPECT_EQ(fixture.lua("return load('return 6')()"), "6");
 }
 
+// The stack slots and the functions of native frames hold the state of the engine while they run, and the user values of userdata hold what engine values keep, which scripts could otherwise overwrite.
+TEST(EnvironmentTest, KeepsNativeFramesAndUserValuesOutOfReach) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        local log = {}
+        table.sort({3, 1, 2}, function(a, b)
+            if #log == 0 then
+                log[1] = tostring(debug.getlocal(2, 1))
+                log[2] = select(2, pcall(debug.setlocal, 3, 1, 0))
+                log[3] = tostring(debug.getinfo(2, 'f').func)
+                log[4] = debug.getinfo(2, 'S').what
+            end
+            return a < b
+        end)
+        report = table.concat(log, ' | ')
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return report"), "nil | The locals of native functions cannot be changed. | nil | C");
+    EXPECT_EQ(fixture.lua("return type(debug.getuservalue) .. ' ' .. type(debug.setuservalue)"), "nil nil");
+
+    // Levels still count from the script that calls the debug library, which reads and changes the locals of Lua functions as before.
+    EXPECT_EQ(fixture.lua("local first = 5 local name, value = debug.getlocal(1, 1) return name .. ' ' .. value"), "first 5");
+    EXPECT_EQ(fixture.lua("local first = 1 debug.setlocal(1, 1, 9) return first"), "9");
+    EXPECT_EQ(fixture.lua("local function where() return debug.getinfo(2, 'S').what .. ' ' .. debug.getinfo(1, 'n').name end local result = where() return result"), "main where");
+    EXPECT_EQ(fixture.lua("return debug.getinfo(1, 'f').func ~= nil"), "true");
+}
+
 TEST(PromiseTest, SettlesFromNativeCodeOnAnyThread) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();

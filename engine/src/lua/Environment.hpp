@@ -22,7 +22,7 @@ namespace haylen::lua {
 // Prepares the Lua state of an engine for app scripts.
 class Environment final {
   public:
-    // Binds the Lua state to the engine and makes `require` load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that `app.json` lists from `plugins/<id>/source`. The failures of `async` tasks and `ffi` callbacks reach the error screen. App code loads chunks only as text, has no `string.dump`, and cannot reach the protected metatables of the engine or the upvalues of native functions through the debug library.
+    // Binds the Lua state to the engine and makes `require` load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that `app.json` lists from `plugins/<id>/source`. The failures of `async` tasks and `ffi` callbacks reach the error screen. App code loads chunks only as text, has no `string.dump`, and cannot reach the protected metatables of the engine, the upvalues, locals and internal functions of native functions or the user values of userdata through the debug library.
     static void install(core::Engine& engine, lua_State* L);
 
     // Throws `std::runtime_error`, naming both files, when a module of the app has the name of a plugin module, which `require` would never load.
@@ -56,9 +56,18 @@ class Environment final {
     static void wrapLoader(lua_State* L, const char* name, int modeIndex);
     static void restrictLoading(lua_State* L);
 
+    // Calls the original function of the debug library, held as the first upvalue, with the arguments of the call.
+    static int callOriginal(lua_State* L);
     static int setUnprotectedMetatable(lua_State* L);
+
     // Calls the original `getupvalue` or `setupvalue`, held as the upvalue, for Lua functions only.
     static int accessScriptUpvalue(lua_State* L);
+
+    // Shifts a level argument of the running thread past the wrapper, and returns whether the level names a native frame.
+    static bool shiftLevel(lua_State* L);
+    static int getScriptLocal(lua_State* L);
+    static int setScriptLocal(lua_State* L);
+    static int getScriptInfo(lua_State* L);
     static void restrictDebug(lua_State* L);
 };
 
