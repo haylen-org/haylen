@@ -23,6 +23,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/localization/Catalog.hpp"
+#include "haylen/lua/Runtime.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
@@ -77,6 +78,9 @@ void UiPlugin::stop(core::Engine& engine) {
     fontFamilies.clear();
 
     // No GUI is left to report events, and listeners holding Lua functions let go before the Lua state closes.
+    for (const Mounted& entry : guis) {
+        (void)entry.gui->detach();
+    }
     guis.clear();
     events.clear();
     context.reset();
@@ -123,17 +127,29 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
 
 void UiPlugin::update(core::Engine& engine, float) {
     // Handlers may mount or unmount GUIs, so the loop walks a copy and skips GUIs that are gone.
-    const std::vector<Mounted> snapshot = guis;
-    for (const Mounted& entry : snapshot) {
+    delivering.assign(guis.begin(), guis.end());
+    for (const Mounted& entry : delivering) {
         ui::Gui& gui = *entry.gui;
         for (const ui::Event& event : gui.takeEvents()) {
             if (!isMounted(gui)) {
                 break;
             }
-            events.emit(gui, event);
-            ui::UiLua::deliverEvent(engine.getLuaState(), gui, event);
+            deliver(engine, gui, event);
         }
     }
+    delivering.clear();
+}
+
+// Listeners hear an event before the handlers of its node.
+void UiPlugin::deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event) {
+    events.emit(gui, event);
+    ui::UiLua::deliverEvent(engine.getLuaState(), gui, event);
+}
+
+// An event delivered at once runs inside whatever changed the GUI, so a failing handler goes to the error screen instead of stopping that change halfway.
+void UiPlugin::deliverAtOnce(ui::Gui& gui, const ui::Event& event) {
+    core::Engine& engine = *owner;
+    lua::Runtime::runReporting(engine.getLuaState(), [&] { deliver(engine, gui, event); });
 }
 
 // Every view draws the GUIs of its scenes, a view that leaves through a transition into its own image before the frame ends, and the current view also the GUIs that belong to no scene, which ends the frame.
@@ -155,7 +171,7 @@ void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
 }
 
 // The GUIs a view draws in layer order: those of its scenes, and in the current view those of no scene too. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its GUIs in the current view.
-std::vector<const UiPlugin::Mounted*> UiPlugin::getGuis(core::Engine& engine, const core::SceneView& view) const {
+void UiPlugin::collectGuis(core::Engine& engine, const core::SceneView& view) {
     const std::vector<core::SceneView>& views = engine.getScenes().getViews();
     const auto current = std::ranges::find_if(views, &core::SceneView::current);
     // clang-format off
@@ -164,21 +180,20 @@ std::vector<const UiPlugin::Mounted*> UiPlugin::getGuis(core::Engine& engine, co
     };
     // clang-format on
 
-    std::vector<const Mounted*> drawn;
+    drawnGuis.clear();
     for (const Mounted& entry : guis) {
         if (!entry.scened) {
             if (view.current) {
-                drawn.push_back(&entry);
+                drawnGuis.push_back(&entry);
             }
             continue;
         }
         const std::shared_ptr<const core::Scene> scene = entry.scene.lock();
         if (scene && shows(view, scene.get()) && (view.current || current == views.end() || !shows(*current, scene.get()))) {
-            drawn.push_back(&entry);
+            drawnGuis.push_back(&entry);
         }
     }
-    std::ranges::sort(drawn, [](const Mounted* lhs, const Mounted* rhs) { return lhs->layer != rhs->layer ? lhs->layer < rhs->layer : lhs->order < rhs->order; });
-    return drawn;
+    std::ranges::sort(drawnGuis, [](const Mounted* lhs, const Mounted* rhs) { return lhs->layer != rhs->layer ? lhs->layer < rhs->layer : lhs->order < rhs->order; });
 }
 
 void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
@@ -194,11 +209,11 @@ void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
 }
 
 // Every GUI moves up together while the on-screen keyboard would cover the focused text field.
-void UiPlugin::drawGuis(const std::vector<const Mounted*>& drawn) {
+void UiPlugin::drawGuis() {
     ui::Backend& drawing = getBackend();
     const math::Rect display = drawing.getDisplayRect();
     const math::Vec2 lift{0.0F, -drawing.getKeyboardOffset()};
-    for (const Mounted* entry : drawn) {
+    for (const Mounted* entry : drawnGuis) {
         ImGui::PushID(entry->gui.get());
         entry->gui->draw(*context, (entry->gui->getPlacement() == ui::Placement::Safe ? drawing.getSafeRect() : display).translated(lift));
         ImGui::PopID();
@@ -210,7 +225,8 @@ void UiPlugin::drawGuis(const std::vector<const Mounted*>& drawn) {
 void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
     beginWindow("##haylen-leaving", ImGuiWindowFlags_NoInputs);
     focus.suspendTargets(true);
-    drawGuis(getGuis(engine, view));
+    collectGuis(engine, view);
+    drawGuis();
     focus.suspendTargets(false);
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
     ImGui::End();
@@ -221,7 +237,8 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
     ui::Backend& drawing = getBackend();
     beginWindow("##haylen-guis", ImGuiWindowFlags_NoNavInputs);
     drawing.setTransparentWindow();
-    drawGuis(getGuis(engine, view));
+    collectGuis(engine, view);
+    drawGuis();
 
     // The GUIs that no view shows, such as those of a covered scene, hear that they stopped drawing.
     for (const Mounted& entry : guis) {
@@ -350,6 +367,7 @@ void UiPlugin::mount(std::shared_ptr<ui::Gui> gui, int layer, const std::shared_
         throw std::invalid_argument("Only a GUI that is not mounted can be mounted.");
     }
     guis.push_back({.gui = gui, .scene = scene, .scened = scene != nullptr, .layer = layer, .order = nextOrder++});
+    gui->attach([this](ui::Gui& target, const ui::Event& event) { deliverAtOnce(target, event); });
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiMounted, gui);
 }
 
@@ -362,6 +380,9 @@ bool UiPlugin::unmount(const ui::Gui& gui) {
     const std::shared_ptr<ui::Gui> unmounted = found->gui;
     guis.erase(found);
     focus.forget(*unmounted);
+    for (const ui::Event& event : unmounted->detach()) {
+        deliverAtOnce(*unmounted, event);
+    }
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiUnmounted, unmounted);
     ui::UiLua::forgetGui(owner->getLuaState(), gui);
     return true;

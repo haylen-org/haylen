@@ -149,6 +149,7 @@ set(HAYLEN_TEST_SOURCES
   ui/FocusTests.cpp
   ui/GameComponentTests.cpp
   ui/MountLinkTests.cpp
+  ui/NodeEventTests.cpp
   ui/OverlayTests.cpp
   ui/PlayAreaTests.cpp
   ui/RichTextComponentTests.cpp

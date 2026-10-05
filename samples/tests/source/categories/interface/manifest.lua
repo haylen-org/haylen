@@ -26,5 +26,6 @@ return {
         {code = 'GUI-020', title = 'Layouts', description = 'Justify, alignItems, growing within size bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and the aspect ratio at any width.', module = 'layouts'},
         {code = 'GUI-023', title = 'Toast stacks', description = 'Toasts at every position of the safe area that stack without covering each other, a queue past the limit of a stack and a dialog whose backdrop fades with it.', module = 'toast-stacks'},
         {code = 'GUI-024', title = 'Theme overrides', description = 'Styles that replace colors, metrics, fonts and surfaces of one subtree, styles that nest, subtrees in other themes in every state and the cursor of each node.', module = 'theme-overrides'},
+        {code = 'GUI-025', title = 'Node events', description = 'The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log.', module = 'node-events'},
     },
 }

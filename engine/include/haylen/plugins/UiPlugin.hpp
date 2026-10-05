@@ -129,9 +129,11 @@ class UiPlugin final : public Plugin {
 
     // Returns the texture of a UI image with a filter, which loads in the background and is empty until it arrives.
     [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path, graphics::Texture::Filter filter);
-    [[nodiscard]] std::vector<const Mounted*> getGuis(core::Engine& engine, const core::SceneView& view) const;
+    void collectGuis(core::Engine& engine, const core::SceneView& view);
+    void deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event);
+    void deliverAtOnce(ui::Gui& gui, const ui::Event& event);
     void beginWindow(const char* name, ImGuiWindowFlags flags);
-    void drawGuis(const std::vector<const Mounted*>& drawn);
+    void drawGuis();
     void drawLeaving(core::Engine& engine, const core::SceneView& view);
     void drawCurrent(core::Engine& engine, const core::SceneView& view);
     void applyVirtualInput(core::Engine& engine);
@@ -150,6 +152,10 @@ class UiPlugin final : public Plugin {
     std::map<std::string, ui::Theme, std::less<>> themes;
     std::string themeName = "dark";
     std::vector<Mounted> guis;
+
+    // The GUIs whose events the update delivers and those a view draws, kept between frames so they allocate nothing.
+    std::vector<Mounted> delivering;
+    std::vector<const Mounted*> drawnGuis;
     std::vector<const ui::Gui*> shownGuis;
     std::uint64_t nextOrder = 0;
     std::array<std::map<std::string, ImageEntry, std::less<>>, 2> images;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -25,6 +26,9 @@ class Context;
 // A mounted tree of components. A node is an object with `kind`, an optional `id`, `children` and its properties, and ids are unique within the GUI. Events wait in a queue until the owner takes them.
 class Gui final {
   public:
+    // Hands over an event at once, for the unmount of nodes that leave, whose handlers end with them.
+    using Delivery = std::function<void(Gui&, const Event&)>;
+
     static constexpr std::size_t kMaxDepth = 64;
     static constexpr std::size_t kMaxNodes = 20000;
 
@@ -48,6 +52,13 @@ class Gui final {
     void replaceChildren(std::string_view id, const core::Json& trees);
 
     void command(Context& context, std::string_view id, std::string_view name, const core::Json& arguments);
+
+    // Makes the node report one of the events every kind reports, such as its presses, or stop reporting it.
+    void listen(std::string_view id, Component::Notice notice, bool value);
+
+    // The UI plugin attaches a GUI it mounts, whose nodes then report that they joined it the next time it draws, and detaches it when it unmounts, which returns the unmount events of its nodes for the plugin to deliver at once.
+    void attach(Delivery deliver);
+    [[nodiscard]] std::vector<Event> detach();
 
     void draw(Context& context, const math::Rect& area);
 
@@ -78,6 +89,10 @@ class Gui final {
     [[nodiscard]] static std::optional<std::size_t> findDepth(const Component& component, const Component& target, std::size_t depth);
     [[nodiscard]] static math::Rect place(const Context& context, const Component& component, math::Vec2 size, const math::Rect& area);
 
+    static void collectUnmounts(Component& component, std::vector<Event>& found);
+    void reportMounts(Component& component);
+    void deliver(const std::vector<Event>& found);
+
     [[nodiscard]] Built build(const core::Json& node, std::size_t depth, std::size_t& count) const;
     [[nodiscard]] Component& require(std::string_view id) const;
 
@@ -87,8 +102,12 @@ class Gui final {
     std::map<std::string, core::Json, std::less<>> properties;
     std::size_t nodeCount = 0;
     std::vector<Event> events;
+    Delivery delivery;
     Placement placement;
     bool visible = true;
+
+    // Whether nodes joined the attached GUI since it last drew, so they report it.
+    bool arrived = false;
     debug::TrackedObject tracked{counter};
 };
 

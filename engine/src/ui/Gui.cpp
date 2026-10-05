@@ -195,10 +195,64 @@ void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
         built.push_back(std::move(nested.component));
     }
 
-    component.children = std::move(built);
+    // The nodes that leave live until their unmount is reported, which runs handlers that may change the GUI, so it comes once the GUI is whole again.
+    const std::vector<std::unique_ptr<Component>> leaving = std::exchange(component.children, std::move(built));
     ids = std::move(remainingIds);
     properties = std::move(remainingProperties);
     nodeCount = count;
+    if (!delivery) {
+        return;
+    }
+    arrived = true;
+    std::vector<Event> unmounts;
+    for (const auto& child : leaving) {
+        collectUnmounts(*child, unmounts);
+    }
+    deliver(unmounts);
+}
+
+void Gui::listen(std::string_view id, Component::Notice notice, bool value) {
+    require(id).setListening(notice, value);
+}
+
+void Gui::attach(Delivery deliver) {
+    delivery = std::move(deliver);
+    arrived = true;
+}
+
+std::vector<Event> Gui::detach() {
+    std::vector<Event> unmounts;
+    collectUnmounts(*root, unmounts);
+    events.clear();
+    delivery = nullptr;
+    arrived = false;
+    return unmounts;
+}
+
+// A node reports its unmount only after it reported that it joined, and it reports joining again if its GUI mounts again.
+void Gui::collectUnmounts(Component& component, std::vector<Event>& found) {
+    if (std::exchange(component.mountReported, false) && component.isListening(Component::Notice::Unmount)) {
+        found.push_back({.id = component.getId(), .name = "unmount"});
+    }
+    for (const auto& child : component.getChildren()) {
+        collectUnmounts(*child, found);
+    }
+}
+
+void Gui::reportMounts(Component& component) {
+    if (!std::exchange(component.mountReported, true) && component.isListening(Component::Notice::Mount)) {
+        events.push_back({.id = component.getId(), .name = "mount"});
+    }
+    for (const auto& child : component.getChildren()) {
+        reportMounts(*child);
+    }
+}
+
+void Gui::deliver(const std::vector<Event>& found) {
+    const Delivery deliver = delivery;
+    for (const Event& event : found) {
+        deliver(*this, event);
+    }
 }
 
 void Gui::command(Context& context, std::string_view id, std::string_view name, const core::Json& arguments) {
@@ -210,6 +264,9 @@ void Gui::draw(Context& context, const math::Rect& area) {
     if (!visible) {
         skip(context);
         return;
+    }
+    if (std::exchange(arrived, false)) {
+        reportMounts(*root);
     }
     const EventScope scope(context, events);
     context.getFocus().beginGui(*this);
@@ -223,6 +280,9 @@ void Gui::draw(Context& context, const math::Rect& area) {
 }
 
 void Gui::skip(Context& context) {
+    if (std::exchange(arrived, false)) {
+        reportMounts(*root);
+    }
     const EventScope scope(context, events);
     root->noticeStoppedDrawing(context);
 }

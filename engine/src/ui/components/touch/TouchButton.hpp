@@ -28,6 +28,9 @@ class TouchButton final : public Component {
     [[nodiscard]] math::Vec2 measureContent(Context&, float) override;
     void render(Context& context, const math::Rect& bounds) override;
     void drawingStopped(Context& context) override;
+    [[nodiscard]] bool reportsPresses() const noexcept override {
+        return true;
+    }
 
   private:
     std::string action;

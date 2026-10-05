@@ -89,7 +89,7 @@ function SlotGrid:enter()
             layout.section('Inventory', {
                 ui.slotGrid{id = 'bag', columns = 4, slots = slots(self.bag, 'bag', SlotGrid.bagSize), onDrop = onDrop, onSelect = function(event)
                     self:set('status', {text = 'Selected "' .. event.item .. '".'})
-                end, onDrag = function(event)
+                end, onDragStart = function(event)
                     self:set('status', {text = 'Picked up "' .. event.item .. '".'})
                 end},
             }),

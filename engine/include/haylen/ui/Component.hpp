@@ -75,6 +75,21 @@ class Component {
         std::optional<platform::Window::Cursor> cursor;
     };
 
+    // The events every kind reports, each only for the nodes that listen to it, since telling them apart costs a check every frame.
+    enum class Notice : std::uint8_t {
+        Mount,
+        Unmount,
+        Show,
+        Hide,
+        Hover,
+        Press,
+        Release,
+        Drag,
+        Scroll,
+    };
+
+    static constexpr std::array<std::string_view, 9> kNoticeNames{"mount", "unmount", "show", "hide", "hover", "press", "release", "drag", "scroll"};
+
     // The child limit of kinds that take any number of children.
     static constexpr std::size_t kUnlimitedChildren = std::numeric_limits<std::size_t>::max();
 
@@ -85,6 +100,7 @@ class Component {
 
     // Returns where an extent of the given size starts when an alignment places it in the available span.
     [[nodiscard]] static float align(Alignment alignment, float start, float available, float size) noexcept;
+    [[nodiscard]] static std::optional<Notice> noticeFromName(std::string_view name) noexcept;
 
     [[nodiscard]] virtual std::string_view getKind() const noexcept = 0;
     [[nodiscard]] const std::string& getId() const noexcept {
@@ -146,6 +162,10 @@ class Component {
     [[nodiscard]] virtual bool usesFocusDirection(FocusDirection) const noexcept {
         return false;
     }
+    [[nodiscard]] bool isListening(Notice notice) const noexcept {
+        return (listening & toBit(notice)) != 0U;
+    }
+    void setListening(Notice notice, bool value) noexcept;
 
   protected:
     Component() = default;
@@ -170,6 +190,11 @@ class Component {
 
     // Runs in the first frame a component that was drawn is no longer drawn, because it or its GUI was hidden, so it lets go of what it held.
     virtual void drawingStopped(Context&) {}
+
+    // A kind that reports presses itself, such as a touch button that follows every finger, leaves out the press, release and drag every kind reports.
+    [[nodiscard]] virtual bool reportsPresses() const noexcept {
+        return false;
+    }
 
     // A floating component places itself while it renders and reports that place as the rectangle it was drawn in.
     void setBounds(const math::Rect& value) noexcept {
@@ -225,6 +250,15 @@ class Component {
     [[nodiscard]] bool pushWriting(Context& context) const;
     [[nodiscard]] bool pushStyle(Context& context, bool drawing) const;
     [[nodiscard]] static bool isPointerOver(const math::Rect& bounds);
+    [[nodiscard]] static constexpr std::uint16_t toBit(Notice notice) noexcept {
+        return static_cast<std::uint16_t>(1U << static_cast<unsigned>(notice));
+    }
+    [[nodiscard]] bool isListeningToPointer() const noexcept {
+        return (listening & (toBit(Notice::Hover) | toBit(Notice::Press) | toBit(Notice::Release) | toBit(Notice::Drag) | toBit(Notice::Scroll))) != 0U;
+    }
+    void reportPointer(Context& context, const math::Rect& bounds);
+    void reportPress(Context& context, bool over);
+    [[nodiscard]] static std::string getButtonName(int button);
     void drawTooltip(Context& context, const math::Rect& bounds);
 
     // Scales the vertices the node drew since the first one around the center and multiplies their colors by the tint and the opacity.
@@ -243,6 +277,14 @@ class Component {
     float measuredWidth = -1.0F;
     math::Vec2 measuredSize;
     double hoverStarted = -1.0;
+    std::uint16_t listening = 0;
+
+    // The mouse button that pressed the node while the node listens to presses, until it lets go.
+    std::optional<int> pressedButton;
+    bool hovered = false;
+
+    // Whether the node told that it joined its GUI, which it tells once.
+    bool mountReported = false;
     bool focusRequested = false;
 };
 

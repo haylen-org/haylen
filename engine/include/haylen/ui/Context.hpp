@@ -136,6 +136,9 @@ class Context final {
 
     // Converts a point in design coordinates, such as a touch position, to UI coordinates.
     [[nodiscard]] math::Vec2 toUi(math::Vec2 designPoint) const noexcept;
+    [[nodiscard]] math::Vec2 toDesign(math::Vec2 uiPoint) const noexcept {
+        return uiPoint + origin;
+    }
 
     void beginFrame(double now, float delta, math::Vec2 visibleOrigin) noexcept;
     [[nodiscard]] std::uint64_t getFrame() const noexcept {

@@ -973,7 +973,7 @@ Events are collected while the GUI draws and handed to the handlers once per fra
 | `tree`, `accordion` | `toggle` | `item` (item id), `expanded` (boolean) |
 | `richText` | `link` | `link` (payload of the link) |
 | `richText` | `linkHover` | `link` (payload of the link), `hovered` (boolean) |
-| `list` with `draggable`, `slotGrid` | `drag` | `item` (id of the row or slot picked up or dragged) |
+| `list` with `draggable`, `slotGrid` | `dragStart` | `item` (id of the row or slot picked up or dragged) |
 | `list` with `draggable`, `slotGrid` | `drop` | `item` (id of the row or slot dropped on), `source` (id of the node the item left), `sourceItem` (its row or slot id) |
 | `carousel` | `change` | `page` (number, from 1) |
 | `window` | `move` | `x`, `y` (numbers) |
@@ -981,9 +981,50 @@ Events are collected while the GUI draws and handed to the handlers once per fra
 | `splitter` | `resize` | `ratio` (number) |
 | `dialog` | `answer` | `button` (button id) |
 | `dialog`, `toast` | `dismiss` | none |
-| `touchButton` | `press`, `release` | none |
+| `touchButton` | `press`, `release` | none, for any finger, in place of the `press` and `release` of every kind |
 | every kind | `focus`, `blur` | none |
 | a node with `focusScope`, the GUI root | `cancel` | none |
+| every kind | `mount`, `unmount`, `show`, `hide`, `hover`, `press`, `release`, `drag`, `scroll` | as [the events of every kind](#the-events-of-every-kind) describes |
+
+### The events of every kind
+
+Every node reports these events, each only while the node has a handler for it, since watching them costs a check every frame. They reach the listeners of `ui.onEvent` for those nodes too, and a GUI mounted from C++ turns them on with `Gui::listen`.
+
+| Event | Values | When |
+| --- | --- | --- |
+| `mount` | none | The node joined a mounted GUI, when its GUI mounts or when `replaceChildren` adds it, reported in the update after the GUI next draws. |
+| `unmount` | none | The node left its GUI, because the GUI unmounted or `replaceChildren` removed the node. It runs at once, before `unmount` or `replaceChildren` returns, since the handlers of a node end with it, and a node reports it only after it reported `mount`. An error in the handler shows the error screen without stopping the change. |
+| `show` | none | The node draws again after a frame in which it did not, such as when it first draws, when it or a node around it becomes visible, when its tab or page shows or when its GUI or scene shows again. |
+| `hide` | none | The node stopped drawing, the opposite of `show`. A node that stops drawing while hovered or pressed first reports `hover` with `hovered = false` and `release` with `inside = false`. |
+| `hover` | `hovered` (boolean) | The pointer moved over the node or away from it. |
+| `press` | `x`, `y` (numbers), `button` (`'left'`, `'right'` or `'middle'`) | A mouse button or a finger pressed the node. |
+| `drag` | `x`, `y`, `deltaX`, `deltaY` (numbers), `button` | The pointer moved while the press that started on the node holds, wherever the pointer is. |
+| `release` | `x`, `y` (numbers), `button`, `inside` (boolean) | The press that started on the node let go, with `inside` telling whether the pointer was still over the node. |
+| `scroll` | `deltaX`, `deltaY` (numbers) | The mouse wheel or a trackpad scrolled over the node, in wheel steps, with positive `deltaY` for scrolling up. |
+
+Positions are in the design coordinates of screen canvases, like `gui:bounds`. Every node under the pointer that listens reports the pointer events, so a press on a button inside a card reaches both when both listen, and a disabled node reports none of them. The pointer events follow the visible part of the node and stop while a window, a dialog or a popup above it takes the pointer.
+
+```lua
+local math2d = require('haylen.math')
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.label{id = 'readout', text = 'Drag the card.'},
+    ui.card{id = 'card', width = 240, height = 160, anchor = 'center',
+        onPress = function(event) event.gui:set('readout', {text = 'Pressed with ' .. event.button .. '.'}) end,
+        onDrag = function(event)
+            local shape = event.gui:transform('card')
+            shape.offset = shape.offset + math2d.vec2(event.deltaX, event.deltaY)
+        end,
+        onRelease = function(event) event.gui:set('readout', {text = event.inside and 'Dropped on the card.' or 'Dropped outside.'}) end,
+        onHover = function(event) event.gui:set('card', {style = event.hovered and {colors = {raised = '#FF343B52'}} or {}}) end,
+        onScroll = function(event) print('Scrolled ' .. event.deltaY) end,
+        onShow = function() print('The card shows.') end,
+        onMount = function() print('The card joined the GUI.') end,
+        onUnmount = function() print('The card left the GUI.') end,
+    },
+})
+```
 
 ```lua
 local ui = require('haylen.ui')
@@ -2078,7 +2119,7 @@ ui.mount(ui.row{
 
 Rows of items, as tall as the theme `listRowHeight` metric, with an optional picture and caption. Pressing a row selects it and reports `select` with the item id as `item`. Pressing the selected row reports it again. The rows take the focus.
 
-A draggable list moves rows the way a [slot grid](#uislotgridproperties) moves slots: the pointer drags a row onto a row or a slot of any list or slot grid, and the keyboard, gamepads and remotes carry it with accept. It reports `drag` and `drop` like a slot grid, and accept carries rows instead of selecting them.
+A draggable list moves rows the way a [slot grid](#uislotgridproperties) moves slots: the pointer drags a row onto a row or a slot of any list or slot grid, and the keyboard, gamepads and remotes carry it with accept. It reports `dragStart` and `drop` like a slot grid, and accept carries rows instead of selecting them.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2163,7 +2204,7 @@ ui.mount(ui.table{
 
 ### ui.slotGrid(properties)
 
-A grid of square slots that hold pictures and counts, such as an inventory, a chest or a hotbar. A click or a tap selects a slot and reports `select` with the slot id as `item`. The pointer drags the item of a slot onto another slot or a row of any slot grid or draggable list, in the same GUI or another one, and the keyboard, gamepads and remotes carry it: accept picks the focused slot up, the focus moves, and accept drops it on another slot, while accept on the carried slot or `uiCancel` puts it back. Picking up reports `drag` with the slot id as `item`, and a drop reports `drop` on the node it lands on, with the slot or row it lands on as `item`, the id of the node the item left as `source` and its slot or row as `sourceItem`. The grid only reports moves, so the app moves its items and sets the new slots. Every slot takes the focus.
+A grid of square slots that hold pictures and counts, such as an inventory, a chest or a hotbar. A click or a tap selects a slot and reports `select` with the slot id as `item`. The pointer drags the item of a slot onto another slot or a row of any slot grid or draggable list, in the same GUI or another one, and the keyboard, gamepads and remotes carry it: accept picks the focused slot up, the focus moves, and accept drops it on another slot, while accept on the carried slot or `uiCancel` puts it back. Picking up reports `dragStart` with the slot id as `item`, and a drop reports `drop` on the node it lands on, with the slot or row it lands on as `item`, the id of the node the item left as `source` and its slot or row as `sourceItem`. The grid only reports moves, so the app moves its items and sets the new slots. Every slot takes the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

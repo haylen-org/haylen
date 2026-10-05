@@ -290,7 +290,7 @@ TEST_F(GameComponentTest, DragsAndCarriesItemsBetweenSlotsAndLists) {
     click(first);
     EXPECT_EQ(findLastEvent("select").value, (core::Json{{"item", "s1"}}));
     drag(first, second);
-    EXPECT_EQ(findLastEvent("drag").value, (core::Json{{"item", "s1"}}));
+    EXPECT_EQ(findLastEvent("dragStart").value, (core::Json{{"item", "s1"}}));
     EXPECT_EQ(findLastEvent("drop").value, (core::Json{{"item", "s2"}, {"source", "bag"}, {"sourceItem", "s1"}}));
     drag(getBounds(*gui, "chest").getCenter(), second);
     EXPECT_EQ(findLastEvent("drop").value, (core::Json{{"item", "s2"}, {"source", "chest"}, {"sourceItem", "gold"}}));

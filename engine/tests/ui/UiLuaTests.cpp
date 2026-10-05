@@ -347,6 +347,43 @@ TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     EXPECT_NE(fixture.lua("ui.addFont('pixel', 'fonts/none.ttf')").find("error: "), std::string::npos);
 }
 
+TEST_F(UiLuaTest, HandsTheEventsOfEveryKindToTheHandlersThatAnswerThem) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        heard = {}
+        function note(event) heard[#heard + 1] = event.id .. ':' .. event.name end
+        gui = ui.mount(ui.column{id = 'box',
+            ui.card{id = 'card', width = 300, height = 200, onMount = note, onUnmount = note, onShow = note, onPress = note, onRelease = note},
+            ui.label{id = 'plain', text = 'Plain'},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "card:mount card:show");
+
+    click("gui", "card");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "card:mount card:show card:press card:release");
+    fixture.runLua("gui:removeHandler('card', 'press') heard = {}");
+    click("gui", "card");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "card:release");
+
+    // The unmount handler of a node that leaves runs before the change returns, and the handlers of the nodes that arrive answer from the next draw.
+    fixture.runLua("heard = {} gui:replaceChildren('box', {ui.card{id = 'card', onMount = note, onUnmount = note}}) heard[#heard + 1] = 'returned'");
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "card:unmount returned card:mount");
+    fixture.runLua("heard = {} gui:unmount() heard[#heard + 1] = 'returned'");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "card:unmount returned");
+
+    // A failing unmount handler shows the error screen and still lets the GUI change.
+    fixture.runLua("broken = ui.mount(ui.column{id = 'box', ui.card{id = 'gone', onUnmount = function() error('unmount failed') end}})");
+    fixture.frames(2);
+    fixture.runLua("broken:replaceChildren('box', {ui.label{id = 'after', text = 'After'}})");
+    EXPECT_EQ(fixture.lua("return tostring(broken:has('after')) .. ' ' .. tostring(broken:has('gone'))"), "true false");
+    ASSERT_NE(getEngine().getError(), nullptr);
+    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("unmount failed"), std::string::npos);
+}
+
 TEST_F(UiLuaTest, StylesNodesWithStylesThemesAndCursors) {
     // clang-format off
     fixture.runLua(R"(

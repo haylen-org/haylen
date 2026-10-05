@@ -130,10 +130,10 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
 
     if (moved.dragged && dragging != slot.id) {
         dragging = slot.id;
-        context.emit(*this, "drag", {{"item", slot.id}});
+        context.emit(*this, "dragStart", {{"item", slot.id}});
     }
     if (moved.picked) {
-        context.emit(*this, "drag", {{"item", slot.id}});
+        context.emit(*this, "dragStart", {{"item", slot.id}});
     } else if (moved.dropped) {
         context.emit(*this, "drop", {{"item", slot.id}, {"source", moved.dropped->first}, {"sourceItem", moved.dropped->second}});
     } else if (state.clicked && !(draggable && activated)) {

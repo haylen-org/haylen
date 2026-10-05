@@ -67,10 +67,10 @@ void List::render(Context& context, const math::Rect& bounds) {
 
         if (moved.dragged && dragging != item.id) {
             dragging = item.id;
-            context.emit(*this, "drag", {{"item", item.id}});
+            context.emit(*this, "dragStart", {{"item", item.id}});
         }
         if (moved.picked) {
-            context.emit(*this, "drag", {{"item", item.id}});
+            context.emit(*this, "dragStart", {{"item", item.id}});
         } else if (moved.dropped) {
             context.emit(*this, "drop", {{"item", item.id}, {"source", moved.dropped->first}, {"sourceItem", moved.dropped->second}});
         } else if (state.clicked && !(draggable && activated)) {

@@ -7,7 +7,9 @@
 #include <utility>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
+#include "haylen/input/Controls.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
@@ -27,6 +29,18 @@ float Component::align(Alignment alignment, float start, float available, float 
     default:
         return start;
     }
+}
+
+std::optional<Component::Notice> Component::noticeFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kNoticeNames, name);
+    if (found == kNoticeNames.end()) {
+        return std::nullopt;
+    }
+    return static_cast<Notice>(found - kNoticeNames.begin());
+}
+
+void Component::setListening(Notice notice, bool value) noexcept {
+    listening = value ? listening | toBit(notice) : listening & static_cast<std::uint16_t>(~toBit(notice));
 }
 
 void Component::readCommon(PropertyReader& reader) {
@@ -190,6 +204,9 @@ void Component::draw(Context& context, const math::Rect& layout) {
     for (const std::string_view notice : focus.takeNotices(drawId)) {
         context.emit(*this, std::string(notice));
     }
+    if (appeared && isListening(Notice::Show)) {
+        context.emit(*this, "show");
+    }
 
     // Autofocus takes the focus when the node appears and the focus is elsewhere, such as when its GUI mounts or its dialog opens.
     if (common.autofocus && appeared && isFocusable() && !focus.hasFocusHere()) {
@@ -216,6 +233,10 @@ void Component::draw(Context& context, const math::Rect& layout) {
         reshape(firstVertex, *transform, bounds.getCenter());
     }
     drawDetachedChildren(context, bounds);
+    // A node that is disabled, itself or through a node around it, reports nothing of the pointer.
+    if (isListeningToPointer() && (ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled) == 0) {
+        reportPointer(context, bounds);
+    }
     if (!common.enabled) {
         ImGui::EndDisabled();
     }
@@ -280,9 +301,62 @@ bool Component::isPointerOver(const math::Rect& bounds) {
     return ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax())) && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 }
 
+// Every listening node under the pointer reports it, in the visible part of the node and while no window above takes the pointer.
+void Component::reportPointer(Context& context, const math::Rect& bounds) {
+    const bool over = isPointerOver(bounds);
+    if (over != hovered) {
+        hovered = over;
+        if (isListening(Notice::Hover)) {
+            context.emit(*this, "hover", {{"hovered", over}});
+        }
+    }
+    if (!reportsPresses()) {
+        reportPress(context, over);
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    if (over && isListening(Notice::Scroll) && (io.MouseWheel != 0.0F || io.MouseWheelH != 0.0F)) {
+        context.emit(*this, "scroll", {{"deltaX", io.MouseWheelH}, {"deltaY", io.MouseWheel}});
+    }
+}
+
+// A press that starts over the node follows its button wherever the pointer goes, until the button lets go.
+void Component::reportPress(Context& context, bool over) {
+    const ImGuiIO& io = ImGui::GetIO();
+    const math::Vec2 point = context.toDesign({io.MousePos.x, io.MousePos.y});
+    if (!pressedButton) {
+        for (int button = 0; button < static_cast<int>(input::Controls::kMouseButtonCount); ++button) {
+            if (!over || !ImGui::IsMouseClicked(button)) {
+                continue;
+            }
+            pressedButton = button;
+            if (isListening(Notice::Press)) {
+                context.emit(*this, "press", {{"x", point.x}, {"y", point.y}, {"button", getButtonName(button)}});
+            }
+            break;
+        }
+        return;
+    }
+
+    const int button = *pressedButton;
+    if (ImGui::IsMouseDown(button)) {
+        if (isListening(Notice::Drag) && (io.MouseDelta.x != 0.0F || io.MouseDelta.y != 0.0F)) {
+            context.emit(*this, "drag", {{"x", point.x}, {"y", point.y}, {"deltaX", io.MouseDelta.x}, {"deltaY", io.MouseDelta.y}, {"button", getButtonName(button)}});
+        }
+        return;
+    }
+    pressedButton.reset();
+    if (isListening(Notice::Release)) {
+        context.emit(*this, "release", {{"x", point.x}, {"y", point.y}, {"button", getButtonName(button)}, {"inside", over}});
+    }
+}
+
+std::string Component::getButtonName(int button) {
+    return std::string(input::Controls::mouseButtonName(static_cast<input::MouseButton>(button)));
+}
+
 void Component::drawTooltip(Context& context, const math::Rect& bounds) {
-    const bool hovered = !common.tooltip.isEmpty() && isPointerOver(bounds);
-    if (!hovered) {
+    if (common.tooltip.isEmpty() || !isPointerOver(bounds)) {
         hoverStarted = -1.0;
         return;
     }
@@ -326,9 +400,20 @@ void Component::command(Context&, std::string_view name, const core::Json& argum
     focusRequested = true;
 }
 
+// A node that stops drawing lets go of the pointer, so a hover or a press never stays on while it is hidden.
 void Component::noticeStoppedDrawing(Context& context) {
     if (drawnFrame != 0 && drawnFrame + 1 == context.getFrame()) {
         drawingStopped(context);
+        if (std::exchange(hovered, false) && isListening(Notice::Hover)) {
+            context.emit(*this, "hover", {{"hovered", false}});
+        }
+        if (const std::optional<int> button = std::exchange(pressedButton, std::nullopt); button && isListening(Notice::Release)) {
+            const math::Vec2 point = context.toDesign({ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y});
+            context.emit(*this, "release", {{"x", point.x}, {"y", point.y}, {"button", getButtonName(*button)}, {"inside", false}});
+        }
+        if (isListening(Notice::Hide)) {
+            context.emit(*this, "hide");
+        }
     }
     for (const auto& child : children) {
         child->noticeStoppedDrawing(context);

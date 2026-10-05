@@ -265,6 +265,25 @@ void UiLua::pruneHandlers(lua_State* L, int handlers, const Gui& gui) {
     }
 }
 
+// Makes the nodes of a table of handler tables by node id report the events every kind reports that their handlers answer, such as `press`.
+void UiLua::listenToHandlers(lua_State* L, Gui& gui, int handlers) {
+    lua_pushnil(L);
+    while (lua_next(L, handlers) != 0) {
+        listenToEvents(L, gui, lua::Stack::read<std::string_view>(L, -2), lua_gettop(L));
+        lua_pop(L, 1);
+    }
+}
+
+void UiLua::listenToEvents(lua_State* L, Gui& gui, std::string_view id, int events) {
+    lua_pushnil(L);
+    while (lua_next(L, events) != 0) {
+        if (const std::optional<Component::Notice> notice = Component::noticeFromName(lua::Stack::read<std::string_view>(L, -2))) {
+            gui.listen(id, *notice, true);
+        }
+        lua_pop(L, 1);
+    }
+}
+
 // Pushes the table listeners and handlers receive: the event values plus `id`, `name` and `gui`, which is `nil` for GUIs mounted from C++.
 void UiLua::pushEventTable(lua_State* L, const Gui& gui, const Event& event) {
     lua::JsonConverter::push(L, event.value.is_object() ? event.value : core::Json::object());
@@ -312,6 +331,7 @@ int UiLua::mount(lua_State* L) {
     std::size_t count = 0;
     const core::Json tree = convertNode(L, 1, handlers, 0, count);
     std::shared_ptr<Gui> created = getPlugin(L).createGui(tree, placement);
+    listenToHandlers(L, *created, handlers);
 
     // The GUI is registered before it mounts, so listeners of the mount event already receive its userdata.
     lua::Userdata::emplace<Gui>(L, created);
@@ -364,6 +384,7 @@ int UiLua::guiSet(lua_State* L) {
         storeHandler(L, handlers, id, lua::Stack::read<std::string>(L, -2), lua_gettop(L));
         lua_pop(L, 1);
     }
+    listenToEvents(L, self, id, collected);
     return 0;
 }
 
@@ -404,6 +425,7 @@ int UiLua::guiReplaceChildren(lua_State* L) {
         lua_insert(L, -2);
         lua_settable(L, handlers);
     }
+    listenToHandlers(L, self, collected);
     return 0;
 }
 
@@ -426,6 +448,9 @@ int UiLua::guiRemoveHandler(lua_State* L) {
     lua_pop(L, 1);
     lua_pushnil(L);
     lua_setfield(L, -2, event.c_str());
+    if (const std::optional<Component::Notice> notice = Component::noticeFromName(event)) {
+        self.listen(id, *notice, false);
+    }
     lua::Stack::push(L, found);
     return 1;
 }
