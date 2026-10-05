@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <functional>
 #include <limits>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,6 +21,8 @@
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
+#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Insets.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -1132,6 +1137,53 @@ TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"sound:change"}));
     EXPECT_TRUE(drawn(track));
     EXPECT_FALSE(drawn(fill));
+}
+
+// The track of a switch keeps its place and its size while the switch turns, and the fill of the on state covers the same groove in every frame of the animation instead of growing or shrinking across it.
+TEST_F(ComponentAssetTest, KeepsTheTrackOfASwitchStillWhileItTurns) {
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/wood.json"));
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "toggle", "id": "sound", "checked": true}]})");
+
+    // Every draw of a texture starts with a quad named after it, and the quads after it belong to the same draw.
+    // clang-format off
+    const auto drawFrame = [this] {
+        std::map<std::string, math::Rect, std::less<>> drawn;
+        graphics2d::Renderer& renderer = getEngine().getRenderer2D();
+        const std::uint64_t overlay = renderer.addCanvasOverlay([&drawn](graphics2d::Renderer& drawing) {
+            std::string current;
+            drawing.visitDrawn([&](const graphics2d::Renderer::Drawn& quad) {
+                current = quad.label.empty() ? current : std::string(quad.label);
+                const math::Rect bounds = math::Geometry::bounds(quad.corners);
+                const auto found = drawn.find(current);
+                drawn.insert_or_assign(current, found == drawn.end() ? bounds : found->second.merged(bounds));
+            });
+        });
+        fixture.frames(1);
+        renderer.removeCanvasOverlay(overlay);
+        return drawn;
+    };
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/fill.png"); }));
+    const auto steady = drawFrame();
+    ASSERT_TRUE(steady.contains("ui/panel.png"));
+    const math::Rect track = steady.at("ui/panel.png");
+    const math::Rect groove = steady.at("ui/fill.png");
+    EXPECT_EQ(groove, track.inset(math::Insets::uniform(4.0F)));
+
+    click(*gui, "sound");
+    int faded = 0;
+    for (int frame = 0; frame < 30; ++frame) {
+        const auto turning = drawFrame();
+        ASSERT_TRUE(turning.contains("ui/panel.png"));
+        EXPECT_EQ(turning.at("ui/panel.png"), track) << frame;
+        if (turning.contains("ui/fill.png")) {
+            EXPECT_EQ(turning.at("ui/fill.png"), groove) << frame;
+            ++faded;
+        }
+    }
+    EXPECT_GT(faded, 0);
+    EXPECT_FALSE(drawFrame().contains("ui/fill.png"));
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"sound:change"}));
 }
 
 TEST_F(ComponentAssetTest, PaintsTooltipsWithTheThemeSurface) {

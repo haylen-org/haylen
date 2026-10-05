@@ -1602,7 +1602,7 @@ end})
 
 ### ui.toggle(properties)
 
-A switch with a label, drawn with the theme `track`, `trackFill` and `knob` surfaces when the theme has them. It takes the properties of `checkbox`, reports `change` with `checked` and can take the focus.
+A switch with a label. Off, its track takes the theme `track` color with the `knob` at its start, and on, the `accent` color covers the track with the knob at its end. A change slides the knob across over the theme `transitionDuration` while the color of the on state fades in or out over the whole track, so the track itself never moves or changes its shape. The theme `track`, `trackFill` and `knob` surfaces draw it when the theme has them, with `trackFill` inside the padding of `track`. It takes the properties of `checkbox`, reports `change` with `checked` and can take the focus.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2523,6 +2523,8 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `borderStrong` | `#FF525A7A` | `#FFB3B8CC` | Strong borders, hovered fields and empty slider tracks. |
 | `scrollbar` | `#FF3A4058` | `#FFC9CDDB` | Scrollbar grab. |
 | `scrollbarHover` | `#FF525A7A` | `#FFA9AEC2` | Hovered scrollbar grab. |
+| `track` | `#FF3A4058` | `#FFCDD1DD` | Track of a switch that is off. |
+| `knob` | `#FFFFFFFF` | `#FFFFFFFF` | Knob of switches. |
 | `text` | `#FFE8EAF2` | `#FF1B1E2B` | Main text. |
 | `textMuted` | `#FFA3A8BF` | `#FF5C6380` | Captions, placeholders, help lines and inactive tabs. |
 | `textDisabled` | `#FF6A7090` | `#FFA3A8BF` | Text of disabled ImGui items. |
@@ -2588,6 +2590,8 @@ Both built-in themes share these metrics, in design units.
 | `slotSize` | `96` | Size of the slots of slot grids without a slot size. |
 | `windowTitleHeight` | `56` | Height of the title bar of windows. |
 | `pageIndicatorSize` | `14` | Size of the page dots of carousels. |
+| `toggleKnobInset` | `4` | Space between the knob of a switch and the edge of its track. |
+| `transitionDuration` | `0.15` | Seconds the transitions of the UI take, such as the knob of a switch. |
 
 ## Theme fonts
 

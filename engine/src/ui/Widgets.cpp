@@ -263,30 +263,33 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
         value = !value;
     }
 
-    // The knob slides toward its side a little every frame, and ImGui storage keeps where it was.
+    // The knob slides toward its side over the transition duration of the theme, and ImGui storage keeps where it was.
     float& position = *ImGui::GetStateStorage()->GetFloatRef(ImGui::GetItemID(), value ? 1.0F : 0.0F);
     const float target = value ? 1.0F : 0.0F;
-    const float step = context.getDeltaSeconds() * kToggleSpeed;
+    const float duration = context.getMetric(Theme::Metric::TransitionDuration);
+    const float step = duration > 0.0F ? context.getDeltaSeconds() / duration : 1.0F;
     position = position < target ? std::min(target, position + step) : std::max(target, position - step);
+    const float eased = position * position * (3.0F - 2.0F * position);
 
-    // A right-to-left UI mirrors the switch, which sits on the right and turns on toward the left.
+    // The track never moves or changes its shape: the on color fades in over the whole groove while the knob slides, and a right-to-left UI mirrors the switch, which then turns on toward the left.
     const float width = context.getMetric(Theme::Metric::ToggleWidth);
     const float height = context.getMetric(Theme::Metric::ToggleHeight);
     const math::Rect track = context.mirror({bounds.x, std::floor(bounds.getCenter().y - height * 0.5F), width, height}, bounds);
     const math::Color hover = context.getColor(Theme::Color::Hover);
-    const math::Color frame = context.getColor(Theme::Color::BorderStrong);
-    Surfaces::draw(context, Theme::Surface::Track, track, state.hovered ? mix(frame, hover) : frame, std::nullopt, height * 0.5F);
-
-    // The track keeps its frame in every state, and the fill grows inside its padding from the start as the knob slides on, like the fill of a slider.
-    if (position > 0.0F) {
+    const math::Color off = context.getColor(Theme::Color::Track);
+    Surfaces::draw(context, Theme::Surface::Track, track, state.hovered ? mix(off, hover) : off, std::nullopt, height * 0.5F);
+    if (eased > 0.0F) {
         const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
-        const math::Color fill = context.getColor(Theme::Color::Accent);
-        Surfaces::draw(context, Theme::Surface::TrackFill, context.mirror({groove.x, groove.y, groove.width * position, groove.height}, groove), state.hovered ? mix(fill, hover) : fill, std::nullopt, groove.height * 0.5F);
+        const math::Color on = context.getColor(Theme::Color::Accent);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * eased);
+        Surfaces::draw(context, Theme::Surface::TrackFill, groove, state.hovered ? mix(on, hover) : on, std::nullopt, groove.height * 0.5F);
+        ImGui::PopStyleVar();
     }
 
-    const float knob = height - 6.0F;
-    const math::Rect knobRect = context.mirror({track.x + 3.0F + (width - knob - 6.0F) * position, track.y + 3.0F, knob, knob}, track);
-    const math::Color knobColor = context.getColor(Theme::Color::OnAccent);
+    const float inset = std::min(context.getMetric(Theme::Metric::ToggleKnobInset), height * 0.5F);
+    const float knob = height - inset * 2.0F;
+    const math::Rect knobRect = context.mirror({track.x + inset + (width - knob - inset * 2.0F) * eased, track.y + inset, knob, knob}, track);
+    const math::Color knobColor = context.getColor(Theme::Color::Knob);
     Surfaces::draw(context, Theme::Surface::Knob, knobRect, state.held ? mix(knobColor, context.getColor(Theme::Color::Pressed)) : knobColor, std::nullopt, knob * 0.5F);
     if (!label.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + width + kContentSpacing, bounds.y, bounds.width - width - kContentSpacing, bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);

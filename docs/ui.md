@@ -351,7 +351,7 @@ A theme may leave out the hover or pressed surface of a button, and the normal s
 
 Without `colorize`, a surface image ignores the color the component would have used, so every tone of a progress bar and every state of a touch stick look alike. With `colorize = true`, one light image serves every color. Tiny Island draws the fill of every HUD bar from one light image, `track_fill.png`, and the tone of each `progress` node turns it green for health, orange for food and fuel and red when one runs low.
 
-The fill of toggles, sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar image keeps its frame visible around the fill. Tiny Island pads its groove by 5 units so the fill sits inside its outline. A toggle draws its `track` in every state, and its `trackFill` grows inside the groove from the start side as the `knob` slides on, so an empty groove means off and a full one means on.
+The fill of toggles, sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar image keeps its frame visible around the fill. Tiny Island pads its groove by 5 units so the fill sits inside its outline. A toggle draws its `track` in every state, and its `trackFill` fills the groove and fades in as the `knob` slides on, so the track never moves, an empty groove means off and a full one means on.
 
 ### The Tiny Island theme
 

@@ -124,7 +124,6 @@ class Widgets final {
     };
 
     static constexpr float kContentSpacing = 12.0F;
-    static constexpr float kToggleSpeed = 9.0F;
     static constexpr float kFocusGap = 3.0F;
 
     // Paints overlay on top of base the way a translucent layer would.
