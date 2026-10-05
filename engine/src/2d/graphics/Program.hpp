@@ -4,7 +4,7 @@
 
 namespace haylen::graphics2d {
 
-// The shader program that draws a command, composites a lit or post-processed canvas, draws a light into a light map, draws the surface of metaballs, recolors sprites by the parts of a mask, shrinks and blurs images for post-processing or draws sprites with an effect.
+// The shader program that draws a command, composites a lit or post-processed canvas, draws a light into a light map, draws the surface of metaballs, recolors sprites by the parts of a mask, shrinks and blurs images for post-processing, draws sprites with an effect or draws shapes with exact edges.
 enum class Program : std::uint8_t {
     Sprite,
     Text,
@@ -16,6 +16,7 @@ enum class Program : std::uint8_t {
     Recolor,
     Filter,
     Effect,
+    Shape,
 };
 
 } // namespace haylen::graphics2d

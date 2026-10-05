@@ -105,7 +105,7 @@ end
 function Poisson:draw(area)
     graphics2d.drawRect(kArea, '#FF141920')
     for _, point in ipairs(self.points) do
-        graphics2d.drawCircle(point.x, point.y, 4, '#FF80CBC4', nil, 6)
+        graphics2d.drawCircle(point.x, point.y, 4, '#FF80CBC4')
     end
     if self.mode == 'focus' then
         graphics2d.drawRing(self.focusPoint[1], self.focusPoint[2], self.spread, 2, '#66FFD54F', {layer = 1})

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "2d/graphics/FrameSubmitter.hpp"
+#include "2d/graphics/PolygonMesh.hpp"
 #include "2d/graphics/RendererState.hpp"
 #include "2d/graphics/TextPainter.hpp"
 #include "2d/lighting/ShadowMap.hpp"
@@ -302,7 +303,7 @@ template <typename SpriteAt, typename PartsAt> void Renderer::addBatch(const gra
         convert(0, count);
     }
     if (order.distortion > 0.0F) {
-        RendererState::scaleCoverage(std::span(state->instances).subspan(first, count * stride), order.distortion);
+        RendererState::scaleCoverage(std::span(state->instances).subspan(first, count * stride), program, order.distortion);
     }
     state->stats.sprites += count;
 }
@@ -582,58 +583,42 @@ void Renderer::drawPolyline(std::span<const math::Vec2> points, float thickness,
     }
 }
 
-void Renderer::drawCircle(math::Vec2 center, float radius, math::Color color, const DrawOrder& order, int segments) {
-    if (!state->accepts(order)) {
-        return;
+void Renderer::drawCircle(math::Vec2 center, float radius, math::Color color, const DrawOrder& order) {
+    if (radius > 0.0F) {
+        drawShape({.bounds = math::Rect::fromCenter(center, {radius * 2.0F, radius * 2.0F}), .radii = {radius, radius, radius, radius}, .color = color}, order);
     }
-
-    const int count = segments > 0 ? segments : std::clamp(static_cast<int>(radius * 0.5F), 16, 96);
-    std::vector<GpuVertex>& vertices = state->scratchVertices;
-    std::vector<std::uint32_t>& indices = state->scratchIndices;
-    vertices.clear();
-    indices.clear();
-
-    const std::uint32_t packed = color.toRgba8();
-    vertices.push_back({{center.x, center.y}, {0.5F, 0.5F}, packed});
-    for (int index = 0; index < count; ++index) {
-        const math::Vec2 point = center + math::Vec2::fromAngle(math::Math::kTau * static_cast<float>(index) / static_cast<float>(count), radius);
-        vertices.push_back({{point.x, point.y}, {0.5F, 0.5F}, packed});
-        indices.insert(indices.end(), {0U, static_cast<std::uint32_t>(index + 1), static_cast<std::uint32_t>((index + 1) % count + 1)});
-    }
-    state->addMesh(state->white, vertices, indices, order);
 }
 
-void Renderer::drawRing(math::Vec2 center, float radius, float thickness, math::Color color, const DrawOrder& order, int segments) {
-    drawArc(center, radius, thickness, 0.0F, math::Math::kTau, color, order, segments);
+void Renderer::drawRing(math::Vec2 center, float radius, float thickness, math::Color color, const DrawOrder& order) {
+    drawArc(center, radius, thickness, 0.0F, math::Math::kTau, color, order);
 }
 
-void Renderer::drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order, int segments) {
-    if (!state->accepts(order)) {
-        return;
-    }
-
-    const float sweep = endAngle - startAngle;
-    const int count = segments > 0 ? segments : std::clamp(static_cast<int>(radius * std::fabs(sweep) / math::Math::kTau * 0.5F), 8, 96);
-    const float inner = std::max(0.0F, radius - thickness * 0.5F);
+// The band of a ring is the border of the circle around its outer edge, inside a clear fill.
+void Renderer::drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order) {
     const float outer = radius + thickness * 0.5F;
-    const std::uint32_t packed = color.toRgba8();
-
-    std::vector<GpuVertex>& vertices = state->scratchVertices;
-    std::vector<std::uint32_t>& indices = state->scratchIndices;
-    vertices.clear();
-    indices.clear();
-    for (int index = 0; index <= count; ++index) {
-        const float angle = startAngle + sweep * static_cast<float>(index) / static_cast<float>(count);
-        const math::Vec2 innerPoint = center + math::Vec2::fromAngle(angle, inner);
-        const math::Vec2 outerPoint = center + math::Vec2::fromAngle(angle, outer);
-        vertices.push_back({{innerPoint.x, innerPoint.y}, {0.5F, 0.5F}, packed});
-        vertices.push_back({{outerPoint.x, outerPoint.y}, {0.5F, 0.5F}, packed});
-        if (index > 0) {
-            const auto base = static_cast<std::uint32_t>((index - 1) * 2);
-            indices.insert(indices.end(), {base, base + 1, base + 3, base, base + 3, base + 2});
-        }
+    if (!(thickness > 0.0F && outer > 0.0F)) {
+        return;
     }
-    state->addMesh(state->white, vertices, indices, order);
+    const Shape band{
+        .bounds = math::Rect::fromCenter(center, {outer * 2.0F, outer * 2.0F}),
+        .radii = {outer, outer, outer, outer},
+        .startAngle = std::min(startAngle, endAngle),
+        .sweep = std::fabs(endAngle - startAngle),
+        .color = math::Color::transparent(),
+        .borderWidth = thickness,
+        .borderColor = color,
+    };
+    drawShape(band, order);
+}
+
+void Renderer::drawShape(const Shape& shape, const DrawOrder& order) {
+    const bool measured = std::ranges::all_of(shape.radii, [](float radius) { return radius >= 0.0F; }) && shape.borderWidth >= 0.0F && shape.softness >= 0.0F;
+    if (!measured) {
+        throw std::invalid_argument("A shape needs corner radii, a border width and a softness of zero or more.");
+    }
+    if (shape.bounds.width > 0.0F && shape.bounds.height > 0.0F && state->accepts(order)) {
+        state->addShape(shape, order);
+    }
 }
 
 void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order) {
@@ -641,14 +626,9 @@ void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color
         return;
     }
 
-    const std::vector<std::uint32_t> indices = math::Geometry::triangulate(points);
-    const std::uint32_t packed = color.toRgba8();
-    std::vector<GpuVertex>& vertices = state->scratchVertices;
-    vertices.clear();
-    for (const math::Vec2 point : points) {
-        vertices.push_back({{point.x, point.y}, {0.5F, 0.5F}, packed});
-    }
-    state->addMesh(state->white, vertices, indices, order);
+    const std::vector<std::uint32_t> triangles = math::Geometry::triangulate(points);
+    PolygonMesh::build(points, triangles, color.toRgba8(), state->getPixelSize(), state->scratchVertices, state->scratchIndices);
+    state->addMesh(state->white, state->scratchVertices, state->scratchIndices, order);
 }
 
 std::uint64_t Renderer::addCanvasOverlay(CanvasOverlay overlay) {

@@ -21,15 +21,17 @@
 #include "shaders/light.glsl.h"
 #include "shaders/metaball.glsl.h"
 #include "shaders/recolor.glsl.h"
+#include "shaders/shape.glsl.h"
 #include "shaders/sprite.glsl.h"
 #include "shaders/sprite_lit.glsl.h"
 
 namespace haylen::graphics2d {
 
-// Every program reads its view projection from slot 0 and the lighting of lit passes from slot 7, which the shader library reserves, and the recolor program reads its texture where the sprite program does.
+// Every program reads its view projection from slot 0 and the lighting of lit passes from slot 7, which the shader library reserves, and the recolor, effect and shape programs read their texture where the sprite program does.
 static_assert(UB_sprite_haylen_vs_params == 0 && UB_sprite_lit_haylen_lit_params == 7);
 static_assert(VIEW_recolor_sprite_texture == VIEW_sprite_sprite_texture && SMP_recolor_sprite_sampler == SMP_sprite_sprite_sampler && UB_recolor_haylen_vs_params == UB_sprite_haylen_vs_params);
 static_assert(VIEW_effect_sprite_texture == VIEW_sprite_sprite_texture && SMP_effect_sprite_sampler == SMP_sprite_sprite_sampler && UB_effect_haylen_vs_params == UB_sprite_haylen_vs_params);
+static_assert(VIEW_shape_sprite_texture == VIEW_sprite_sprite_texture && SMP_shape_sprite_sampler == SMP_sprite_sprite_sampler && UB_shape_haylen_vs_params == UB_sprite_haylen_vs_params);
 
 const PostProcess FrameSubmitter::kNoPostProcess{};
 
@@ -56,7 +58,7 @@ FrameSubmitter::Matrix FrameSubmitter::projection(const math::Transform2D& view,
 }
 
 bool FrameSubmitter::isInstanced(const DrawItem& item) noexcept {
-    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect) && item.batch == nullptr;
+    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Shape) && item.batch == nullptr;
 }
 
 void FrameSubmitter::submit() {

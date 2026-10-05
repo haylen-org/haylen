@@ -156,7 +156,7 @@ function Breakables:draw(area)
         local vx, vy = self:aimAt(self.pointer.worldX, self.pointer.worldY)
         local points = self.world:predictPath(kLauncher[1], kLauncher[2], vx, vy, {steps = 120, radius = kBallRadius})
         for index = 1, #points, 3 do
-            graphics2d.drawCircle(points[index].x, points[index].y, 4, '#CCFFD54F', {layer = 4}, 8)
+            graphics2d.drawCircle(points[index].x, points[index].y, 4, '#CCFFD54F', {layer = 4})
         end
     end
 end

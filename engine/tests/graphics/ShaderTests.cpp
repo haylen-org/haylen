@@ -377,7 +377,7 @@ TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
     EXPECT_GE(stats.drawCalls, 15U);
     EXPECT_EQ(material.get("strength"), std::vector<float>{0.5F});
 
-    // Materials replace the sprite, text and mesh programs only.
+    // Materials replace the sprite, text, mesh and shape programs only.
     graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
     renderer.beginScreen();
     EXPECT_THROW(renderer.drawImageBlend({.from = texture, .to = texture}, {.material = material}), std::invalid_argument);

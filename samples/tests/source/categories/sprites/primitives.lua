@@ -1,4 +1,4 @@
--- Primitives: lines of several widths, open and closed polylines, filled and outlined rectangles, circles with their segment counts, rings, arcs that fill up, concave polygons and meshes with vertex colors and a texture.
+-- Primitives: lines of several widths, open and closed polylines, filled and outlined rectangles, circles of every size, rings, arcs that fill up, concave and regular polygons, meshes with vertex colors and a texture, and shapes: rounded rectangles with borders, a soft shadow, a turning capsule and a pill rounded on one side.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -8,12 +8,23 @@ local Test = require('harness.test')
 
 local Primitives = haylen.class('Primitives', SpriteTest)
 
-Primitives.names = {'drawLine', 'drawPolyline', 'drawRect', 'drawCircle', 'drawRing', 'drawArc', 'drawPolygon', 'drawMesh'}
+Primitives.names = {'drawLine', 'drawPolyline', 'drawRect', 'drawCircle', 'drawRing', 'drawArc', 'drawPolygon', 'drawMesh', 'drawShape'}
 
 Primitives.code = [[
 graphics2d.drawLine(x1, y1, x2, y2, 4, color)  graphics2d.drawPolyline(points, 3, color, true)  graphics2d.drawRectOutline(rect, 4, color)
-graphics2d.drawCircle(x, y, 40, color, nil, 6)  graphics2d.drawRing(x, y, 40, 8, color)  graphics2d.drawArc(x, y, 40, 10, start, start + m.tau * progress, color)
-graphics2d.drawPolygon(star, color)  graphics2d.drawMesh(nil, {{x = 0, y = 0, color = '#FFFF0000'}, ...}, {1, 2, 3})]]
+graphics2d.drawCircle(x, y, 40, color)  graphics2d.drawRing(x, y, 40, 8, color)  graphics2d.drawArc(x, y, 40, 10, start, start + m.tau * progress, color)
+graphics2d.drawPolygon(star, color)  graphics2d.drawMesh(nil, {{x = 0, y = 0, color = '#FFFF0000'}, ...}, {1, 2, 3})
+graphics2d.drawShape(rect, {radius = 14, color = color, borderWidth = 3, borderColor = border, softness = 0, rotation = 0})]]
+
+-- The points of a regular polygon around a center, with its first corner at the angle of the turn.
+function Primitives.regular(x, y, radius, sides, turn)
+    local points = {}
+    for index = 0, sides - 1 do
+        local angle = turn + index * m.tau / sides
+        points[index + 1] = {x + math.cos(angle) * radius, y + math.sin(angle) * radius}
+    end
+    return points
+end
 
 -- The points of a star around a center.
 function Primitives.star(x, y, outer, inner, turn)
@@ -59,8 +70,9 @@ function Primitives:cell(index, x, y, size)
         graphics2d.drawRectOutline({x - half * 0.3, y - half * 0.3, half * 1.3, half * 1.3}, 4, Test.warm, {layer = 1})
     elseif index == 4 then
         graphics2d.drawCircle(x - half * 0.5, y - 10, half * 0.55, Test.accent)
-        graphics2d.drawCircle(x + half * 0.55, y - 20, 28, Test.warm, nil, 6)
-        graphics2d.drawCircle(x + half * 0.3, y + 45, 22, Test.green, nil, 3)
+        graphics2d.drawCircle(x + half * 0.55, y - 20, 28, Test.warm)
+        graphics2d.drawCircle(x + half * 0.3, y + 45, 14 + math.sin(time * 2) * 6, Test.green)
+        graphics2d.drawCircle(x - half * 0.6, y + 50, 3, Test.ink)
     elseif index == 5 then
         for ring = 1, 4 do
             local radius = ring * 16 + math.sin(time * 2 + ring) * 4
@@ -76,7 +88,8 @@ function Primitives:cell(index, x, y, size)
     elseif index == 7 then
         graphics2d.drawPolygon(Primitives.star(x - 30, y - 20, half * 0.8, half * 0.35, time * 0.3), Test.warm)
         graphics2d.drawPolygon({{x + 10, y + 10}, {x + half, y + 10}, {x + half, y + 30}, {x + 34, y + 30}, {x + 34, y + half}, {x + 10, y + half}}, Test.accent)
-    else
+        graphics2d.drawPolygon(Primitives.regular(x + half * 0.55, y - half * 0.55, 24, 6, time * 0.5), Test.green)
+    elseif index == 8 then
         local reach = half * 0.8
         graphics2d.drawMesh(nil, {
             {x = x - reach * 1.2, y = y + reach * 0.4, color = '#FFFF4060'},
@@ -90,11 +103,17 @@ function Primitives:cell(index, x, y, size)
             {x = left + 80, y = top + 80, u = 1, v = 1},
             {x = left - math.sin(time * 2) * 20, y = top + 80, u = 0, v = 1},
         }, {1, 2, 3, 1, 3, 4})
+    else
+        local card = {x - half, y - half * 0.85, half * 2, half}
+        graphics2d.drawShape({card[1], card[2] + 8, card[3], card[4]}, {radius = 14, color = '#90000000', softness = 18})
+        graphics2d.drawShape(card, {radius = 14, color = Test.surface, borderWidth = 3, borderColor = Test.accent})
+        graphics2d.drawShape({x - half * 0.8, y + half * 0.45 - 10, half * 1.6, 20}, {radius = 10, rotation = math.sin(time) * 0.4, color = Test.warm})
+        graphics2d.drawShape({x - half, y + half * 0.8 - 14, half, 28}, {radius = {14, 0, 0, 14}, color = Test.green})
     end
 end
 
 function Primitives:draw(area)
-    local columns, rows = 4, 2
+    local columns, rows = 5, 2
     local width, height = area.width / columns, area.height / rows
     for index, name in ipairs(Primitives.names) do
         local column, row = (index - 1) % columns, (index - 1) // columns

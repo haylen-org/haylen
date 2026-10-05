@@ -5,11 +5,28 @@
 #include <cmath>
 
 #include "graphics/TextureResource.hpp"
+#include "haylen/math/Math.hpp"
 
 namespace haylen::graphics2d {
 
 std::uint16_t GpuInstance::unorm16(float value) noexcept {
     return static_cast<std::uint16_t>(std::clamp(value, 0.0F, 1.0F) * 65535.0F + 0.5F);
+}
+
+// Converts a distance of zero or more to the bits of a half float, rounding to the nearest and keeping it within the largest finite half.
+std::uint16_t GpuInstance::toHalf(float value) noexcept {
+    const float clamped = std::clamp(value, 0.0F, kLargestHalf);
+    if (clamped < kSmallestNormalHalf) {
+        return static_cast<std::uint16_t>(std::lround(clamped * kSubnormalHalfSteps));
+    }
+    const auto bits = std::bit_cast<std::uint32_t>(clamped);
+    const std::uint32_t rounded = bits + 0x0FFFU + ((bits >> 13U) & 1U);
+    return static_cast<std::uint16_t>((rounded - 0x38000000U) >> 13U);
+}
+
+std::uint32_t GpuInstance::scaleAlpha(std::uint32_t color, float amount) noexcept {
+    const float alpha = static_cast<float>(color >> 24U) * amount;
+    return (color & 0x00FFFFFFU) | (static_cast<std::uint32_t>(std::lround(std::clamp(alpha, 0.0F, 255.0F))) << 24U);
 }
 
 // The sprite shader reads bit 0 as a horizontal flip, bit 1 as a vertical flip and bit 2 as a diagonal flip.
@@ -79,6 +96,36 @@ GpuInstance GpuInstance::makeEffect(const SpriteEffect& effect, math::Vec2 sourc
         .widths = {effect.outlineWidth, effect.glowSize},
         .unused = {},
     });
+}
+
+GpuInstance GpuInstance::makeShape(const Shape& shape, float margin) noexcept {
+    static_assert(sizeof(ShapeRecord) == sizeof(GpuInstance));
+    const math::Vec2 center = shape.bounds.getCenter();
+    const math::Vec2 half = shape.bounds.getSize() * 0.5F;
+    const float shorter = std::min(half.x, half.y);
+    const auto share = [shorter](float value) { return unorm16(shorter > 0.0F ? value / shorter : 0.0F); };
+    const float start = std::fmod(shape.startAngle, math::Math::kTau);
+    return std::bit_cast<GpuInstance>(ShapeRecord{
+        .center = {center.x, center.y},
+        .halfSize = {half.x, half.y},
+        .rotation = shape.rotation,
+        .reach = {toHalf(shape.softness), toHalf(margin)},
+        .colors = {shape.color.toRgba8(), shape.borderColor.toRgba8()},
+        .form = {share(shape.borderWidth), unorm16(shape.sweep / math::Math::kTau), unorm16((start < 0.0F ? start + math::Math::kTau : start) / math::Math::kTau), 0},
+        .radii = {share(shape.radii[0]), share(shape.radii[1]), share(shape.radii[2]), share(shape.radii[3])},
+    });
+}
+
+void GpuInstance::fade(float amount) noexcept {
+    color = scaleAlpha(color, amount);
+}
+
+void GpuInstance::fadeShape(float amount) noexcept {
+    ShapeRecord record = std::bit_cast<ShapeRecord>(*this);
+    for (std::uint32_t& value : record.colors) {
+        value = scaleAlpha(value, amount);
+    }
+    *this = std::bit_cast<GpuInstance>(record);
 }
 
 std::array<math::Vec2, 4> GpuInstance::getCorners() const noexcept {

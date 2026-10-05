@@ -54,6 +54,25 @@ TEST_F(Graphics2DLuaTest, MeasuresTextWithFonts) {
     EXPECT_NE(lua("graphics2d.defaultFont():measure('Hello', {layer = 2})").find("Unknown option \"layer\""), std::string::npos);
 }
 
+// Shapes take one radius for every corner or four, a rotation, a sweep, a fill, a border and a softness, and draw as one quad each of one call.
+TEST_F(Graphics2DLuaTest, DrawsShapesWithTheirOptions) {
+    // clang-format off
+    const std::string body = R"(
+        graphics2d.beginScreen()
+        graphics2d.drawShape({10, 10, 120, 40}, {radius = 12, color = '#FF203040', borderWidth = 2, borderColor = '#FFFFFFFF', layer = 1})
+        graphics2d.drawShape({10, 60, 120, 40}, {radius = {20, 0, 20, 0}, rotation = 0.4, softness = 6, color = '#80000000'})
+        graphics2d.drawShape({10, 110, 60, 60}, {radius = 30, sweep = m.pi, color = '#FF00FF00'})
+        graphics2d.drawShape({0, 0, 8, 8})
+    )";
+    // clang-format on
+    EXPECT_EQ(render(body), "nil");
+    EXPECT_EQ(lua("local s = graphics2d.stats() return s.instances .. ' ' .. s.vertices .. ' ' .. s.drawCalls"), "4 0 1");
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {radius = {1, 2}})").find("The option \"radius\" of a shape takes one radius for every corner or four, from the top-left corner clockwise."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {radius = -1})").find("A shape needs corner radii, a border width and a softness of zero or more."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {radii = 1})").find("Unknown option \"radii\""), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {softness = 'soft'})").find("softness"), std::string::npos);
+}
+
 TEST_F(Graphics2DLuaTest, CreatesAndEditsSprites) {
     lua("sprite = graphics2d.newSprite(hero, {x = 10, y = 20, layer = 2, flipHorizontal = true, color = '#80FF0000', blend = 'additive'})");
     EXPECT_EQ(lua("return sprite.x .. ',' .. sprite.y .. ' ' .. sprite.layer .. ' ' .. tostring(sprite.flipHorizontal) .. ' ' .. tostring(sprite.flipVertical)"), "10.0,20.0 2 true false");
@@ -232,9 +251,10 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
         graphics2d.drawRect({0, 0, 10, 10}, '#FF0000')
         graphics2d.drawRectOutline({0, 0, 10, 10}, 2, {1, 1, 1, 1})
         graphics2d.drawLine(0, 0, 10, 10, 2, '#00FF00', {layer = 1})
-        graphics2d.drawCircle(50, 50, 10, '#0000FF', nil, 12)
+        graphics2d.drawCircle(50, 50, 10, '#0000FF')
         graphics2d.drawRing(50, 50, 10, 2, '#0000FF')
         graphics2d.drawArc(50, 50, 10, 2, 0, m.pi, '#FFFFFF')
+        graphics2d.drawShape({0, 0, 30, 10}, {radius = 5, color = '#FF0000', borderWidth = 1, borderColor = '#FFFFFF', layer = 2})
         graphics2d.drawPolygon({{0, 0}, {10, 0}, {5, 8}}, '#FFFFFF')
         graphics2d.drawPolyline({{0, 0}, {10, 0}, {5, 8}}, 1, '#FFFFFF', true)
         graphics2d.drawMesh(hero, {{x = 0, y = 0, u = 0, v = 0}, {x = 10, y = 0, u = 1, v = 0}, {x = 0, y = 10, u = 0, v = 1, color = '#FF0000'}}, {1, 2, 3})

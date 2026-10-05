@@ -84,7 +84,7 @@ function Crowd:draw(area)
     for _, agent in ipairs(self.agents) do
         local position = self.crowd:position(agent.id)
         local velocity = self.crowd:velocity(agent.id)
-        graphics2d.drawCircle(position.x, position.y, kRadius, agent.left and '#FF4DD0E1' or '#FFFFB74D', {layer = 1}, 12)
+        graphics2d.drawCircle(position.x, position.y, kRadius, agent.left and '#FF4DD0E1' or '#FFFFB74D', {layer = 1})
         graphics2d.drawLine(position.x, position.y, position.x + velocity.x * 0.1, position.y + velocity.y * 0.1, 2, '#AAFFFFFF', {layer = 2})
     end
 end

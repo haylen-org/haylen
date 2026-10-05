@@ -90,7 +90,7 @@ function Liquids:draw(area)
     if self.showParticles then
         self.buffer = self.water:positions(self.buffer)
         for index = 1, #self.buffer, 2 do
-            graphics2d.drawCircle(self.buffer[index], self.buffer[index + 1], kRadius, '#FFFFFFFF', {layer = 3}, 8)
+            graphics2d.drawCircle(self.buffer[index], self.buffer[index + 1], kRadius, '#FFFFFFFF', {layer = 3})
         end
     end
     self.grab:draw()

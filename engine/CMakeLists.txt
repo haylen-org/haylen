@@ -60,6 +60,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/NineSliceLua.cpp
   src/2d/graphics/Parallax.cpp
   src/2d/graphics/ParallaxLua.cpp
+  src/2d/graphics/PolygonMesh.cpp
   src/2d/graphics/Renderer.cpp
   src/2d/graphics/RendererState.cpp
   src/2d/graphics/RichTextLua.cpp
@@ -635,6 +636,8 @@ haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/text.glsl" MODULE text
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/text.glsl" MODULE text_lit DEFINES HAYLEN_TEXT HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/mesh.glsl" MODULE mesh DEFINES HAYLEN_MESH)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/mesh.glsl" MODULE mesh_lit DEFINES HAYLEN_MESH HAYLEN_LIT)
+haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/shape.glsl" MODULE shape DEFINES HAYLEN_SHAPE)
+haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/shape.glsl" MODULE shape_lit DEFINES HAYLEN_SHAPE HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/blend.glsl" MODULE blend)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/blend.glsl" MODULE blend_lit DEFINES HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/metaball.glsl" MODULE metaball)

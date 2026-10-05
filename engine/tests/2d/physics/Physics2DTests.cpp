@@ -474,7 +474,8 @@ TEST_F(PhysicsWorldTest, DrawsDebugShapes) {
     }));
     // clang-format on
     fixture.frames(1);
-    EXPECT_GT(fixture.engine().getRenderer2D().getStats().vertices, 0U);
+    const graphics2d::Renderer::Stats& stats = fixture.engine().getRenderer2D().getStats();
+    EXPECT_GT(stats.instances, stats.sprites);
 }
 
 TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {

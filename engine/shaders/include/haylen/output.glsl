@@ -1,4 +1,4 @@
-// Writes the result of a fragment shader. Lit canvases compile it with `HAYLEN_LIT`, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes `haylen_output_premultiply`, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
+// Writes the result of a fragment shader, which a shape fades by how much of the pixel it covers. Lit canvases compile it with `HAYLEN_LIT`, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes `haylen_output_premultiply`, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
 @block haylen_output
 in float haylen_output_premultiply;
 
@@ -21,6 +21,9 @@ layout(location=3) out vec4 frag_info;
 
 // Unshaded draws move their color into the emission, so the light map leaves them untouched, and the info image takes the data of a draw only where it covers more than half of the pixel.
 void haylen_output_surface(vec4 result, vec2 normal, float specular, float shininess) {
+#ifdef HAYLEN_SHAPE
+    result.a *= haylen_shape_cover().x;
+#endif
     float unshaded = haylen_surface.z;
     vec3 color = haylen_output_color(result);
     frag_color = vec4(color * (1.0 - unshaded), result.a);
@@ -36,6 +39,9 @@ void haylen_output(vec4 result) {
 out vec4 frag_color;
 
 void haylen_output(vec4 result) {
+#ifdef HAYLEN_SHAPE
+    result.a *= haylen_shape_cover().x;
+#endif
     frag_color = vec4(haylen_output_color(result), result.a);
 }
 #endif

@@ -32,6 +32,7 @@
 #include "haylen/2d/graphics/DrawOrder.hpp"
 #include "haylen/2d/graphics/ImageBlend.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
@@ -58,7 +59,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 10;
+    static constexpr std::size_t kProgramCount = 11;
 
     graphics::Device& device;
     core::JobSystem& jobs;
@@ -155,6 +156,9 @@ struct RendererState {
     // Returns how many pixels of its destination one unit of the open canvas covers, along the axis the view stretches the most.
     [[nodiscard]] float getPixelsPerUnit();
 
+    // Returns how many units of the open canvas one pixel of its destination spans, along the axis the view stretches the least.
+    [[nodiscard]] float getPixelSize();
+
     // Returns the pixels of the destination of the open canvas in its units, or nothing when its view turns or skews them.
     [[nodiscard]] std::optional<TextPainter::PixelGrid> getPixelGrid();
 
@@ -176,9 +180,12 @@ struct RendererState {
     DrawItem& addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY);
 
     // Scales the coverage of the instances or vertices a distortion draw recorded by its distortion, so their alpha adds up in the distortion map.
-    static void scaleCoverage(std::span<GpuInstance> data, float distortion) noexcept;
+    static void scaleCoverage(std::span<GpuInstance> data, Program program, float distortion) noexcept;
     static void scaleCoverage(std::span<GpuVertex> data, float distortion) noexcept;
     void addInstances(Program program, const DrawOrder& order, const graphics::Texture& texture, std::span<const GpuInstance> data, float standingY);
+
+    // Records a shape whose quad reaches a pixel of the destination past its edge, where the edge fades out, and half its softness further. A shape stands on the lowest point of its turned rectangle.
+    void addShape(const Shape& shape, const DrawOrder& order);
 
     // Meshes stand on their lowest vertex.
     void addMesh(const graphics::Texture& texture, std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, const DrawOrder& order);
@@ -223,6 +230,7 @@ struct RendererState {
     void describeLayout(sg_pipeline_desc& desc, Program program) const;
     static void describeRecolorLayout(sg_pipeline_desc& desc);
     static void describeEffectLayout(sg_pipeline_desc& desc);
+    static void describeShapeLayout(sg_pipeline_desc& desc);
     static void describeLightLayout(sg_pipeline_desc& desc);
     void describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const;
 };

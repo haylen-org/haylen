@@ -45,7 +45,7 @@ function World:draw()
     graphics2d.drawRing(600, -300, 320, 16, '#FF8AC0E0', {visibility = World.terrain})
     graphics2d.drawRect({-2400, 380, 4800, 90}, '#FFB09A70', {visibility = World.terrain})
     for _, rock in ipairs(self.rocks) do
-        graphics2d.drawCircle(rock.x, rock.y, rock.size, '#FF8A8A92', {layer = 2, visibility = World.details}, 7)
+        graphics2d.drawCircle(rock.x, rock.y, rock.size, '#FF8A8A92', {layer = 2, visibility = World.details})
     end
     for _, tree in ipairs(self.trees) do
         graphics2d.drawCircle(tree.x + 10, tree.y + 14, tree.size, '#50000000', {layer = 2, visibility = World.details})

@@ -90,7 +90,7 @@ TEST(RendererTest, DrawsPrimitivesMeshesTextAndNineSlices) {
         renderer.drawLine({5.0F, 5.0F}, {5.0F, 5.0F}, 2.0F, math::Color::white());
         renderer.drawPolyline(polygon, 1.0F, math::Color::white(), true);
         renderer.drawCircle({50.0F, 50.0F}, 20.0F, math::Color::white());
-        renderer.drawRing({50.0F, 50.0F}, 20.0F, 4.0F, math::Color::white(), {}, 12);
+        renderer.drawRing({50.0F, 50.0F}, 20.0F, 4.0F, math::Color::white());
         renderer.drawArc({50.0F, 50.0F}, 20.0F, 4.0F, 0.0F, 1.0F, math::Color::white());
         renderer.drawPolygon(polygon, math::Color::white());
         renderer.drawMesh({}, std::vector<graphics2d::MeshVertex>{{{0.0F, 0.0F}}, {{1.0F, 0.0F}}, {{0.0F, 1.0F}}}, std::vector<std::uint32_t>{0, 1, 2});
@@ -247,7 +247,7 @@ TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
     stale->sources = {"void main() {}"};
     const core::Json program = core::Json::parse(R"({"glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "attrs": [], "views": [], "samplers": [], "texture_sampler_pairs": [],
         "uniform_blocks": [{"slot": 0, "stage": "vertex", "size": 64, "glsl_uniforms": [{"type": "mat4", "array_count": 1, "glsl_name": "view_projection"}]}]}})");
-    for (const std::string_view name : {"sprite", "sprite_lit", "text", "text_lit", "mesh", "mesh_lit"}) {
+    for (const std::string_view name : graphics2d::Material::kPrograms) {
         stale->programs[std::string(name)] = program;
     }
     const graphics2d::Material material{graphics::Shader(stale)};

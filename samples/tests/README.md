@@ -66,7 +66,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-007` | Pooled bullets | A bullet hell whose projectiles come from an object pool and draw in one batch. |  |
 | `SPR-008` | Bouncing bunnies | From a few to many thousands of sprites with float buffers or one table each, with the frame rate. |  |
 | `SPR-009` | Render targets | An offscreen canvas drawn every frame and used as a texture in several ways. |  |
-| `SPR-010` | Primitives | Lines, polylines, rectangles, circles, rings, arcs, polygons and meshes. |  |
+| `SPR-010` | Primitives | Lines, polylines, rectangles, circles, rings, arcs, polygons, meshes and shapes with rounded corners, borders and soft edges. |  |
 | `SPR-011` | Text | Sizes, colors, outlines, shadows, alignment, wrapping, anchors, rotation and measuring. |  |
 | `SPR-012` | Vector images | SVG icons in many sizes, a swarm of hundreds that turn and an icon that grows, rasterized on worker threads into an atlas. |  |
 | `SPR-013` | Recoloring by parts | One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call. |  |

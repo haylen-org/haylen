@@ -244,7 +244,7 @@ function Raycasts:draw(area)
         self:drawShape(shape)
     end
     for _, point in ipairs(drawn.lidar or {}) do
-        graphics2d.drawCircle(point.x, point.y, 3, '#FF69F0AE', kRay, 6)
+        graphics2d.drawCircle(point.x, point.y, 3, '#FF69F0AE', kRay)
     end
     for _, shape in ipairs(drawn.picked or {}) do
         graphics2d.drawRectOutline(shape.bounds, 4, '#FFFFFFFF', kRay)

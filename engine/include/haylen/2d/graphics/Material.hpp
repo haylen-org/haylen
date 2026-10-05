@@ -20,7 +20,7 @@ struct MaterialResource;
 class Material final {
   public:
     // The programs a material shader holds, one per kind of draw and each also for lit canvases, which `haylen.py shaders` compiles from every source.
-    static const std::array<std::string_view, 6> kPrograms;
+    static const std::array<std::string_view, 8> kPrograms;
 
     Material() = default;
 

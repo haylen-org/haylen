@@ -349,9 +349,9 @@ scene.push({
 })
 ```
 
-### graphics2d.drawCircle(x, y, radius, color, order, segments)
+### graphics2d.drawCircle(x, y, radius, color, order)
 
-Fills a circle centered on `x`, `y`. The argument `segments` sets how many edges approximate it. When it is omitted or 0, the count follows the radius, between 16 and 96.
+Fills a circle centered on `x`, `y`. Circles, rings, arcs and [shapes](#graphics2ddrawshaperect-options) draw as one quad each, whose edge the shader covers exactly, so it fades over one pixel of the screen or of the render target at any radius, zoom and density, as the [rendering guide](../rendering.md#shapes-and-smooth-edges) explains. A radius of 0 or less draws nothing.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -361,14 +361,14 @@ scene.push({
     render = function(self)
         graphics2d.beginScreen()
         graphics2d.drawCircle(300, 300, 80, '#FF4080FF')
-        graphics2d.drawCircle(500, 300, 40, '#FFFFFFFF', nil, 6)
+        graphics2d.drawCircle(500, 300, 3, '#FFFFFFFF')
     end,
 })
 ```
 
-### graphics2d.drawRing(x, y, radius, thickness, color, order, segments)
+### graphics2d.drawRing(x, y, radius, thickness, color, order)
 
-Draws a circle outline `thickness` units wide whose middle line lies at `radius` from the center. The argument `segments` works like in `graphics2d.drawCircle`, with an automatic count between 8 and 96.
+Draws a circle outline `thickness` units wide whose middle line lies at `radius` from the center. A ring thicker than twice its radius fills the whole circle, and a thickness of 0 or less draws nothing.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -382,9 +382,9 @@ scene.push({
 })
 ```
 
-### graphics2d.drawArc(x, y, radius, thickness, startAngle, endAngle, color, order, segments)
+### graphics2d.drawArc(x, y, radius, thickness, startAngle, endAngle, color, order)
 
-Draws the part of a ring that goes from `startAngle` to `endAngle`, in radians. Angle 0 points right and angles grow clockwise. The argument `segments` works like in `graphics2d.drawRing`.
+Draws the part of a ring that goes from `startAngle` to `endAngle`, in radians, with square ends. Angle 0 points right and angles grow clockwise, and a span of a full turn or more draws the whole ring.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -402,9 +402,42 @@ scene.push({
 })
 ```
 
+### graphics2d.drawShape(rect, options)
+
+Draws a rectangle with rounded corners, turned around its center, which also draws pills, capsules, circles, rings and arcs, and fills it with a border along its edge in the same quad, so the fill and the border meet without a seam. The argument `rect` is the area of the shape before it turns, and `options` is optional and also takes the [draw order](#draw-order) keys:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `radius` | number or table | `0` | The radius of every corner, or four radii from the top-left corner clockwise. A radius past half the shorter side rounds the whole end, so a radius of half the height makes a pill. |
+| `rotation` | number | `0` | Turns the shape around the center of `rect`, in radians, clockwise. |
+| `startAngle` | number | `0` | Where the sector the sweep keeps starts, in radians clockwise from the x axis of the shape after its rotation. |
+| `sweep` | number | `mmath.tau` | Keeps the sector that starts at `startAngle` and turns clockwise by this angle, with straight sides from the center, such as the part of a ring that shows progress or a triangle cut from a rectangle around its corners. A full turn keeps the whole shape. |
+| `color` | Color | `'#FFFFFFFF'` | The fill. |
+| `borderWidth` | number | `0` | The width of the border, which runs inside the edge, at most half the shorter side. |
+| `borderColor` | Color | `'#00000000'` | The color of the border. A clear fill with a border draws an outline. |
+| `softness` | number | `0` | Widens the fade of the edge to this many units, centered on the edge, such as for a soft shadow. |
+
+The edge fades over one pixel of the destination, or over the softness when it is wider, and a shape thinner than a pixel covers only the share of the pixels it crosses. A negative radius, border width or softness raises `A shape needs corner radii, a border width and a softness of zero or more.`, a radius table of another length raises `The option "radius" of a shape takes one radius for every corner or four, from the top-left corner clockwise.`, and a shape without a positive width and height draws nothing. Shapes draw with the white texture through their own program, so neighbouring shapes merge into one draw call, and a [material](#material) shades them through its `shape` program, where `uv` goes from 0 to 1 across the rectangle of the shape.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawShape({200, 208, 320, 120}, {radius = 16, color = '#80000000', softness = 24})
+        graphics2d.drawShape({200, 200, 320, 120}, {radius = 16, color = '#FF232938', borderWidth = 3, borderColor = '#FF8FB0FF'})
+        graphics2d.drawShape({240, 360, 240, 32}, {radius = 16, rotation = math.sin(haylen.elapsed()) * 0.3, color = '#FFF2B23A'})
+        graphics2d.drawShape({600, 200, 120, 120}, {radius = 60, startAngle = -math.pi / 2, sweep = math.pi * 1.5, color = '#FF6FDCA0'})
+    end,
+})
+```
+
 ### graphics2d.drawPolygon(points, color, order)
 
-Fills a simple polygon, convex or concave, given as a list of points in either winding. Fewer than three points draw nothing.
+Fills a simple polygon, convex or concave, given as a list of points in either winding. The fill stops half a pixel of the destination inside the outline and a fringe fades it out to half a pixel outside, so its edges cover the pixels they cross like the edges of shapes. Fewer than three points draw nothing.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

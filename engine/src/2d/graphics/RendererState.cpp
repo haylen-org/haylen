@@ -28,6 +28,8 @@
 #include "shaders/metaball_lit.glsl.h"
 #include "shaders/recolor.glsl.h"
 #include "shaders/recolor_lit.glsl.h"
+#include "shaders/shape.glsl.h"
+#include "shaders/shape_lit.glsl.h"
 #include "shaders/sprite.glsl.h"
 #include "shaders/sprite_lit.glsl.h"
 #include "shaders/text.glsl.h"
@@ -35,8 +37,8 @@
 
 namespace haylen::graphics2d {
 
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc};
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc};
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
@@ -63,6 +65,13 @@ float RendererState::getPixelsPerUnit() {
     const math::Vec2 pixels = getPassRect(canvas).getSize() / canvas.viewSize;
     const math::Transform2D& view = canvas.view;
     return std::max(std::hypot(view.a, view.b) * pixels.x, std::hypot(view.c, view.d) * pixels.y);
+}
+
+float RendererState::getPixelSize() {
+    const Canvas& canvas = getCanvas();
+    const math::Vec2 pixels = getPassRect(canvas).getSize() / canvas.viewSize;
+    const math::Transform2D& view = canvas.view;
+    return 1.0F / std::min(std::hypot(view.a, view.b) * pixels.x, std::hypot(view.c, view.d) * pixels.y);
 }
 
 std::optional<TextPainter::PixelGrid> RendererState::getPixelGrid() {
@@ -254,7 +263,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         throw std::invalid_argument("A sprite with an effect does not take a material.");
     }
     const bool distorts = order.distortion > 0.0F;
-    if (distorts && program != Program::Sprite && program != Program::Mesh) {
+    if (distorts && program != Program::Sprite && program != Program::Mesh && program != Program::Shape) {
         throw std::invalid_argument("Only sprites, sprite batches, nine-slices, shapes and meshes draw as distortion.");
     }
     requireReadable(texture);
@@ -291,15 +300,27 @@ void RendererState::addInstances(Program program, const DrawOrder& order, const 
     item.count = static_cast<std::uint32_t>(data.size());
     instances.insert(instances.end(), data.begin(), data.end());
     if (item.distortion) {
-        scaleCoverage(std::span(instances).subspan(item.first), order.distortion);
+        scaleCoverage(std::span(instances).subspan(item.first), program, order.distortion);
     }
-    stats.sprites += program == Program::Recolor || program == Program::Effect ? data.size() / 2 : data.size();
+    if (program != Program::Shape) {
+        stats.sprites += program == Program::Recolor || program == Program::Effect ? data.size() / 2 : data.size();
+    }
 }
 
-void RendererState::scaleCoverage(std::span<GpuInstance> data, float distortion) noexcept {
+void RendererState::addShape(const Shape& shape, const DrawOrder& order) {
+    const GpuInstance packed = GpuInstance::makeShape(shape, getPixelSize() + shape.softness * 0.5F);
+    const math::Vec2 half = shape.bounds.getSize() * 0.5F;
+    const float lowest = shape.bounds.getCenter().y + std::fabs(std::sin(shape.rotation)) * half.x + std::fabs(std::cos(shape.rotation)) * half.y;
+    addInstances(Program::Shape, order, white, std::span(&packed, 1), lowest);
+}
+
+void RendererState::scaleCoverage(std::span<GpuInstance> data, Program program, float distortion) noexcept {
     for (GpuInstance& instance : data) {
-        const auto alpha = static_cast<float>(instance.color >> 24U) * distortion;
-        instance.color = (instance.color & 0x00FFFFFFU) | (static_cast<std::uint32_t>(std::lround(std::min(alpha, 255.0F))) << 24U);
+        if (program == Program::Shape) {
+            instance.fadeShape(distortion);
+        } else {
+            instance.fade(distortion);
+        }
     }
 }
 
@@ -402,6 +423,9 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
     case Program::Effect:
         describeEffectLayout(desc);
         return;
+    case Program::Shape:
+        describeShapeLayout(desc);
+        return;
     case Program::Sprite:
     case Program::Text:
         break;
@@ -469,6 +493,23 @@ void RendererState::describeEffectLayout(sg_pipeline_desc& desc) {
     desc.layout.attrs[ATTR_effect_effect_effect_amounts] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.layout.attrs[ATTR_effect_effect_effect_reach] = {.buffer_index = 2, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT2};
     desc.layout.attrs[ATTR_effect_effect_effect_widths] = {.buffer_index = 2, .offset = 24, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+}
+
+// A shape is one record of the instance stream with fields of its own, around the corner of the shared quad.
+void RendererState::describeShapeLayout(sg_pipeline_desc& desc) {
+    desc.layout.buffers[0].stride = 8;
+    desc.layout.buffers[1].stride = sizeof(GpuInstance);
+    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.attrs[ATTR_shape_shape_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_shape_shape_shape_center] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_shape_shape_shape_half_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_shape_shape_shape_rotation] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT};
+    desc.layout.attrs[ATTR_shape_shape_shape_reach] = {.buffer_index = 1, .offset = 20, .format = SG_VERTEXFORMAT_HALF2};
+    desc.layout.attrs[ATTR_shape_shape_shape_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_shape_shape_shape_border_color] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_shape_shape_shape_form] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_USHORT4N};
+    desc.layout.attrs[ATTR_shape_shape_shape_radii] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_USHORT4N};
     desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
 }
 
@@ -584,6 +625,8 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
         return lit ? "text_lit" : "text";
     case Program::Mesh:
         return lit ? "mesh_lit" : "mesh";
+    case Program::Shape:
+        return lit ? "shape_lit" : "shape";
     case Program::ImageBlend:
     case Program::Composite:
     case Program::Light:
@@ -593,7 +636,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::Effect:
         break;
     }
-    throw std::logic_error("Materials only replace the sprite, text and mesh programs.");
+    throw std::logic_error("Materials only replace the sprite, text, mesh and shape programs.");
 }
 
 const graphics::ShaderResource::Program& RendererState::getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target) {

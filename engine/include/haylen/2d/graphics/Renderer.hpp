@@ -18,6 +18,7 @@
 #include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/SpriteLayout.hpp"
@@ -164,9 +165,14 @@ class Renderer final {
     void drawRectOutline(const math::Rect& rect, float thickness, math::Color color, const DrawOrder& order = {});
     void drawLine(math::Vec2 from, math::Vec2 to, float thickness, math::Color color, const DrawOrder& order = {});
     void drawPolyline(std::span<const math::Vec2> points, float thickness, math::Color color, bool closed = false, const DrawOrder& order = {});
-    void drawCircle(math::Vec2 center, float radius, math::Color color, const DrawOrder& order = {}, int segments = 0);
-    void drawRing(math::Vec2 center, float radius, float thickness, math::Color color, const DrawOrder& order = {}, int segments = 0);
-    void drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order = {}, int segments = 0);
+
+    // Circles, rings, arcs and shapes draw as one quad each, whose edges the shader covers exactly, so they fade over one pixel of the destination at any size.
+    void drawCircle(math::Vec2 center, float radius, math::Color color, const DrawOrder& order = {});
+    void drawRing(math::Vec2 center, float radius, float thickness, math::Color color, const DrawOrder& order = {});
+    void drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order = {});
+    void drawShape(const Shape& shape, const DrawOrder& order = {});
+
+    // A polygon fills the triangles of its outline and fades its edge out over one pixel of the destination.
     void drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order = {});
 
     // Outlines every textured quad and text block the open canvas holds so far, in the color, and names each sprite after the path of its texture with the font, at a size in units of the destination: sprites, batches, nine-slice pieces, baked batches and glyphs drawn together.

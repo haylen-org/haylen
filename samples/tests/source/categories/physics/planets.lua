@@ -178,7 +178,7 @@ end
 
 function Planets:draw(area)
     for _, star in ipairs(self.stars) do
-        graphics2d.drawCircle(star[1], star[2], star[3], '#88FFFFFF', {layer = -2}, 6)
+        graphics2d.drawCircle(star[1], star[2], star[3], '#88FFFFFF', {layer = -2})
     end
     for _, planet in ipairs(self.planets) do
         local spec = planet.spec

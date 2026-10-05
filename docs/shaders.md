@@ -1,6 +1,6 @@
 # Shaders
 
-Apps shade their draws with their own fragment shaders, written in the annotated GLSL of [sokol-shdc](https://github.com/floooh/sokol-tools/blob/master/docs/sokol-shdc.md) under `content/shaders/`. The command `haylen.py shaders` compiles every source ahead of time into a `.shader` file for every backend the engine runs on, and the engine loads the file as a `Shader` and draws with it through a `Material`, which holds the values of its uniforms and textures. A material shades sprites, batches, nine-slices, rectangles, lines, shapes, meshes and text in every canvas, and runs over the whole image of a world or render target canvas as a post-processing pass.
+Apps shade their draws with their own fragment shaders, written in the annotated GLSL of [sokol-shdc](https://github.com/floooh/sokol-tools/blob/master/docs/sokol-shdc.md) under `content/shaders/`. The command `haylen.py shaders` compiles every source ahead of time into a `.shader` file for every backend the engine runs on, and the engine loads the file as a `Shader` and draws with it through a `Material`, which holds the values of its uniforms and textures. A material shades sprites, batches, nine-slices, rectangles, lines, circles, shapes, polygons, meshes and text in every canvas, and runs over the whole image of a world or render target canvas as a post-processing pass.
 
 ## A first shader
 
@@ -54,13 +54,14 @@ scene.push({
 
 The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`, and leaves the others, which the sources include, alone. It runs `sokol-shdc` from `.tools/` with `engine/shaders/include` as its working directory, which is how `@include haylen/material.glsl` finds the shader library, and writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or the shader library, and `--force` compiles them all. The app's own `@include` paths are relative to the folder of the source being compiled.
 
-Every source compiles six times, once for each kind of draw and once more of each for lit canvases:
+Every source compiles eight times, once for each kind of draw and once more of each for lit canvases:
 
 | Program | Defines | Draws |
 | --- | --- | --- |
 | `sprite`, `sprite_lit` | none, `HAYLEN_LIT` | Sprites, batches, nine-slices, rectangles, lines and post-processing. |
 | `text`, `text_lit` | `HAYLEN_TEXT`, `HAYLEN_TEXT HAYLEN_LIT` | Text. |
-| `mesh`, `mesh_lit` | `HAYLEN_MESH`, `HAYLEN_MESH HAYLEN_LIT` | Meshes, circles, rings, arcs and polygons. |
+| `mesh`, `mesh_lit` | `HAYLEN_MESH`, `HAYLEN_MESH HAYLEN_LIT` | Meshes and polygons. |
+| `shape`, `shape_lit` | `HAYLEN_SHAPE`, `HAYLEN_SHAPE HAYLEN_LIT` | Circles, rings, arcs and shapes, whose `uv` goes from 0 to 1 across the rectangle of the shape. |
 
 Each program compiles for Metal on macOS, iOS and the iOS simulator, HLSL 5 for Direct3D 11, GLSL 4.30 for desktop OpenGL, GLSL 3.00 ES for Android and WebGL2, and WGSL for WebGPU. A compile error stops the command with the file, the line and the program it happened in:
 
@@ -75,7 +76,7 @@ In development, `haylen.py run` keeps compiling the sources that change while th
 
 ## The shader library
 
-The file `haylen/material.glsl` holds what every material shares. It defines the vertex shader `haylen_vs`, which places sprites, glyphs and mesh vertices exactly like the engine's own programs, the block `haylen_vertex` with its body as the function `haylen_vertex_main()`, which a vertex shader with attributes of its own includes and calls, and the block `haylen_fragment`, which a fragment shader includes first:
+The file `haylen/material.glsl` holds what every material shares. It defines the vertex shader `haylen_vs`, which places sprites, glyphs, mesh vertices and shapes exactly like the engine's own programs, the block `haylen_vertex` with its body as the function `haylen_vertex_main()`, which a vertex shader with attributes of its own includes and calls, and the block `haylen_fragment`, which a fragment shader includes first:
 
 | Name | Kind | Meaning |
 | --- | --- | --- |
@@ -83,16 +84,16 @@ The file `haylen/material.glsl` holds what every material shares. It defines the
 | `color` | `in vec4` | Color of the draw, or of the mesh vertex. |
 | `sprite_texture`, `sprite_sampler` | texture and sampler at binding 0 | The texture of the draw, the image before the pass in post-processing, and the atlas of text. |
 | `haylen_texture(vec2 point)` | `vec4` | The texture of the draw at a point. |
-| `haylen_inside(vec2 point)` | `vec2` | The point moved inside the texels of the source rectangle of the draw, half a texel in from its sides, so filtering never reads the texels around the region of a sprite, such as its neighbours in an atlas. Meshes keep their point. |
-| `haylen_sprite(vec2 point)` | `vec4` | The texture color inside the source of the draw times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. |
+| `haylen_inside(vec2 point)` | `vec2` | The point moved inside the texels of the source rectangle of the draw, half a texel in from its sides, so filtering never reads the texels around the region of a sprite, such as its neighbours in an atlas. Meshes and shapes keep their point. |
+| `haylen_sprite(vec2 point)` | `vec4` | The texture color inside the source of the draw times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. A shape paints its border color over it in the band along its edge. |
 | `haylen_text(vec2 point)` | `vec4` | The glyph at a point with its fill and outline, which is how text draws. Its weight, outline and softness, with the smoothing of the edge on screen, stop a sixteenth of the field short of the border of the quad of the glyph and shrink together beyond it. |
 | `haylen_base(vec2 point)` | `vec4` | The function `haylen_text` in the text programs and `haylen_sprite` in the others, the color the draw has without the material. |
 | `haylen_world_normal(vec3 tangent)` | `vec2` | Turns a tangent-space normal with y pointing up the image into the world through the flips and rotation of the sprite. |
-| `haylen_output(vec4 color)` | function | Writes the result, a straight color, which it multiplies by its alpha for draws whose blend mode needs that, `multiply` and `screen`. In lit canvases it also writes the emission, surface and info images the light pass reads, with a flat normal. |
+| `haylen_output(vec4 color)` | function | Writes the result, a straight color, which it multiplies by its alpha for draws whose blend mode needs that, `multiply` and `screen`. A shape fades the alpha by how much of the pixel it covers, so its edge stays smooth whatever color the material writes. In lit canvases it also writes the emission, surface and info images the light pass reads, with a flat normal. |
 | `haylen_output_surface(vec4 color, vec2 normal, float specular, float shininess)` | function | Only with `HAYLEN_LIT`: writes the result with a world normal, a specular strength and a shininess divided by 255, for materials that light their own surface. |
 | `haylen_surface`, `haylen_info` | `vec4` uniforms | Only with `HAYLEN_LIT`: the lighting of the draw, which `haylen_output` applies. |
 
-A material reads its colors through `haylen_base`, so the same source shades sprites, meshes and text, and it rarely needs to tell the programs apart. Code that only makes sense in one of them checks the defines, such as `#ifdef HAYLEN_LIT`. Lit canvases light a material's draws like any other draw, with its `unshaded`, `emission`, `lightMask` and layer, and with a flat normal unless the material writes its own with `haylen_output_surface`. The library keeps names that start with `haylen_`, `uv`, `color` and the outputs `frag_color`, `frag_emission`, `frag_surface` and `frag_info`, and sokol-shdc rejects a uniform or texture that repeats a name of the program.
+A material reads its colors through `haylen_base`, so the same source shades sprites, meshes, shapes and text, and it rarely needs to tell the programs apart. Code that only makes sense in one of them checks the defines, such as `#ifdef HAYLEN_LIT`. Lit canvases light a material's draws like any other draw, with its `unshaded`, `emission`, `lightMask` and layer, and with a flat normal unless the material writes its own with `haylen_output_surface`. The library keeps names that start with `haylen_`, `uv`, `color` and the outputs `frag_color`, `frag_emission`, `frag_surface` and `frag_info`, and sokol-shdc rejects a uniform or texture that repeats a name of the program.
 
 The engine's own shaders in `engine/shaders` include the same library, so a material draws exactly where the engine's program would.
 

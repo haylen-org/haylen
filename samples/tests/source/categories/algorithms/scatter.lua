@@ -102,7 +102,7 @@ function Scatter:draw(area)
     end
     for _, point in ipairs(self.points) do
         local kind = kTypes[point.type]
-        graphics2d.drawCircle(point.x, point.y, kind.radius, kind.color, {layer = 2}, 8)
+        graphics2d.drawCircle(point.x, point.y, kind.radius, kind.color, {layer = 2})
     end
 end
 

@@ -204,14 +204,14 @@ TEST(RaycasterTest, DrawsRaysHitsAndNormalsForDebugging) {
 
     // The collected rays draw once, and a hit adds its dot and normal to a plain ray.
     fixture.frames(1);
-    const auto withCollected = fixture.engine().getRenderer2D().getStats().vertices;
+    const auto withCollected = fixture.engine().getRenderer2D().getStats().instances;
     EXPECT_EQ(rays.size(), 0U);
     fixture.frames(1);
-    const auto missOnly = fixture.engine().getRenderer2D().getStats().vertices;
+    const auto missOnly = fixture.engine().getRenderer2D().getStats().instances;
     mark = physics2d::RayDebugDraw::Hit{.point = {60.0F, 20.0F}, .normal = {-1.0F, 0.0F}};
     fixture.frames(1);
     EXPECT_GT(withCollected, missOnly);
-    EXPECT_GT(fixture.engine().getRenderer2D().getStats().vertices, missOnly);
+    EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, missOnly);
 }
 
 TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
@@ -300,7 +300,8 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
     // clang-format on
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_GT(fixture.engine().getRenderer2D().getStats().vertices, 0U);
+    const graphics2d::Renderer::Stats& stats = fixture.engine().getRenderer2D().getStats();
+    EXPECT_GT(stats.instances, stats.sprites);
 
     EXPECT_EQ(fixture.lua("camera.position = {200, 0} local picked = world:pick(camera, cx, cy) return #picked .. ' ' .. picked[1].body.data.name"), "1 post2");
     EXPECT_EQ(fixture.lua("return #world:pick(camera, cx, cy - 200) .. ' ' .. #world:pick(camera, cx, cy, {mask = 1})"), "0 0");

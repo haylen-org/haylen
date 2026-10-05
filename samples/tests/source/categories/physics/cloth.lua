@@ -144,7 +144,7 @@ function Cloth:draw(area)
         end
     end
     for index = 0, #self.nodes - 1 do
-        graphics2d.drawCircle(buffer[index * 3 + 1], buffer[index * 3 + 2], 4, '#FFFFD54F', {layer = 1}, 8)
+        graphics2d.drawCircle(buffer[index * 3 + 1], buffer[index * 3 + 2], 4, '#FFFFD54F', {layer = 1})
     end
     parts.drawAll(self.loads, {layer = 2})
     for _, tear in ipairs(self.tears) do

@@ -13,7 +13,7 @@ return {
         {code = 'SPR-007', title = 'Pooled bullets', description = 'A bullet hell whose projectiles come from an object pool and draw in one batch.', module = 'bullets'},
         {code = 'SPR-008', title = 'Bouncing bunnies', description = 'From a few to many thousands of sprites with float buffers or one table each, with the frame rate.', module = 'bouncing-bunnies'},
         {code = 'SPR-009', title = 'Render targets', description = 'An offscreen canvas drawn every frame and used as a texture in several ways.', module = 'render-targets'},
-        {code = 'SPR-010', title = 'Primitives', description = 'Lines, polylines, rectangles, circles, rings, arcs, polygons and meshes.', module = 'primitives'},
+        {code = 'SPR-010', title = 'Primitives', description = 'Lines, polylines, rectangles, circles, rings, arcs, polygons, meshes and shapes with rounded corners, borders and soft edges.', module = 'primitives'},
         {code = 'SPR-011', title = 'Text', description = 'Sizes, colors, outlines, shadows, alignment, wrapping, anchors, rotation and measuring.', module = 'text'},
         {code = 'SPR-012', title = 'Vector images', description = 'SVG icons in many sizes, a swarm of hundreds that turn and an icon that grows, rasterized on worker threads into an atlas.', module = 'vector-images'},
         {code = 'SPR-013', title = 'Recoloring by parts', description = 'One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call.', module = 'recolor'},
