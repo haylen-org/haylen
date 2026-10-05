@@ -761,7 +761,7 @@ end
 
 ### audio.outputAvailable()
 
-Returns `true` while the mix reaches an audio device. It returns `false` while the system refuses the device, such as on a computer without one, while another app holds the iOS audio session, or on a web page served over plain http, where browsers offer no `AudioWorklet`, and in the headless engine. The app runs all the same: voices, music, fades and positional audio go on in real time without sound, the log writes one warning with the reason when the output becomes unavailable, and the engine tries to open it again whenever the app becomes active or an interruption ends.
+Returns `true` while the mix reaches an audio device. It returns `false` while the system opens the device, which `audio.outputOpening()` tells, while it refuses the device, such as on a computer without one, while another app holds the iOS audio session, or on a web page served over plain http, where browsers offer no `AudioWorklet`, and in the headless engine. The app runs all the same: voices, music, fades and positional audio go on in real time without sound, the log writes one warning with the reason when the output becomes unavailable, and the engine tries to open it again whenever the app becomes active or an interruption ends.
 
 ```lua
 local audio = require('haylen.audio')
@@ -769,6 +769,21 @@ local audio = require('haylen.audio')
 if audio.hasDevice() and not audio.outputAvailable() then
     print('the sound is off until this device offers an audio output')
 end
+```
+
+### audio.outputOpening()
+
+Returns `true` while the system opens the audio device. The engine opens it on a thread of its own when the app starts and whenever it opens it again, and the app plays sound from the first frame after the device opened, so a device that takes long to answer never holds the frames back. A device that does not answer within 3 seconds of frames, such as the audio service of an iOS simulator that hangs, makes the log write one warning, and the app runs without sound until the system opens the device, which the log tells too. Browsers open the output of the page at once, so it is never opening there.
+
+```lua
+local audio = require('haylen.audio')
+local events = require('haylen.events')
+
+events.on('appActive', function()
+    if audio.outputOpening() then
+        print('the sound starts as soon as the device answers')
+    end
+end)
 ```
 
 The engine pauses the output while the app is suspended and resumes it afterwards, unless an interruption still holds it.

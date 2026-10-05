@@ -115,7 +115,7 @@ class Mixer final {
         bool processing = true;
     };
 
-    // Throws `std::invalid_argument` for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and `std::runtime_error` when the audio engine cannot start. A device that the system refuses leaves the output unavailable, and the log writes one warning with the reason.
+    // Throws `std::invalid_argument` for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and `std::runtime_error` when the audio engine cannot start. The device opens on a thread of its own and plays from the first update after it opened. A device that the system refuses, or that does not answer for a few seconds, leaves the output unavailable, and the log writes one warning.
     explicit Mixer(const Setup& setup);
     ~Mixer();
 
@@ -215,8 +215,11 @@ class Mixer final {
     [[nodiscard]] std::uint32_t getChannels() const noexcept;
     [[nodiscard]] bool hasDevice() const noexcept;
 
-    // Tells whether the mix reaches an audio device. It is `false` for a mixer without a device and while the system refuses the device, when voices, music and fades go on in real time without sound.
+    // Tells whether the mix reaches an audio device. It is `false` for a mixer without a device, while the system opens the device and while it refuses the device, when voices, music and fades go on in real time without sound.
     [[nodiscard]] bool isOutputAvailable() const noexcept;
+
+    // Tells whether the system is still opening the audio device, which happens on a thread of its own when the mixer starts and when an interruption ends, so a device that answers slowly or never never stalls the frames.
+    [[nodiscard]] bool isOutputOpening() const noexcept;
 
     // Mixes the next frames into interleaved samples, or silence while the output is stopped. Only a mixer without a device renders this way, which tests and offline tools use.
     void render(std::span<float> samples);

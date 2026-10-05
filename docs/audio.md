@@ -350,6 +350,8 @@ Without an output the mixer keeps time itself. Every frame it mixes the seconds 
 
 An interruption that ends while the system still refuses the audio ends all the same: the voices resume, the engine publishes `audioResumed`, the log warns once and the app goes on without an output. Whenever the app becomes active and whenever an interruption ends, the engine tries again to open the output, without warning again, so the sound comes back as soon as the system offers it.
 
+The system may also take long to open the device, or never answer, such as the iOS simulator while the audio service of the Mac hangs, where opening the device blocks inside AudioToolbox and the system ends an app that waits for it on its main thread. The engine therefore opens the device on a thread of its own, when the app starts and whenever it opens the output again, and the frames go on meanwhile without sound, as `audio.outputOpening()` tells. The app plays sound from the first frame after the device opened. A device that does not answer within 3 seconds of frames makes the log write one warning, and the log tells when the device answers at last. Browsers have no threads, and the output of the page opens at once. Tests simulate a device that refuses to open or never answers with the output backend that `HeadlessHost::setAudioOutput` gives the headless host, as the [testing guide](testing.md) describes.
+
 ```lua
 local audio = require('haylen.audio')
 local events = require('haylen.events')

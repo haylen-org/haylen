@@ -155,8 +155,14 @@ class HeadlessHost final : public Host {
         return "headless";
     }
     [[nodiscard]] graphics::DeviceSetup getGraphicsSetup() override;
+    // Without an output backend the mixer has no device and mixes only when a test asks it to.
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override {
-        return {.device = false};
+        return {.device = audioOutput != nullptr, .backend = audioOutput};
+    }
+
+    // Gives the mixers of the engines created afterwards a device that opens through the backend, which simulates an audio output that plays, refuses or never answers.
+    void setAudioOutput(const audio::OutputBackend* value) noexcept {
+        audioOutput = value;
     }
     [[nodiscard]] graphics::FrameTarget getFrameTarget() override;
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
@@ -359,6 +365,7 @@ class HeadlessHost final : public Host {
     std::vector<ScreenRequest> screenRequests;
     std::vector<std::uint64_t> cancelledScreens;
     std::unique_ptr<DevelopmentSession> developmentSession;
+    const audio::OutputBackend* audioOutput = nullptr;
     bool opensUrls = true;
 
     // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.

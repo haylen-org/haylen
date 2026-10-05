@@ -61,7 +61,7 @@ This file is binding for every change. It describes the project as it is and the
 
 ## Async and threading
 
-- The frame thread owns the GPU, the Lua state, scenes, UI, audio control and physics. It never blocks.
+- The frame thread owns the GPU, the Lua state, scenes, UI, audio control and physics. It never blocks, so the audio device opens on a thread of its own and the app runs without sound until the system answers.
 - Varn's event loop is advanced with `Runtime::poll()` once per frame. Promises resolve, coroutines resume, timers fire and socket and HTTP callbacks run inside that call, on the frame thread.
 - Long-running CPU work (image and audio decoding, map parsing, path finding, procedural generation, data-parallel updates) runs on Varn's `taskPool()` through `core::JobSystem`. Blocking I/O runs on `ioPool()`. Results return to the frame thread through the event loop and, for Lua, through a Varn `Promise` that a coroutine can `:await()`. Slow Lua APIs offer an asynchronous version that returns a promise.
 - Metal compiles a shader when its program is made, so the sources of the programs of the renderer and of every `.shader` file start compiling on the I/O pool as soon as they are known, and each program is made the first time a draw needs it.

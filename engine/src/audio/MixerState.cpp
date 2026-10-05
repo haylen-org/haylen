@@ -22,6 +22,7 @@ MixerState::Voice::~Voice() {
 }
 
 MixerState::~MixerState() {
+    output.stop();
     voices.clear();
     tails.clear();
     for (auto name = busOrder.rbegin(); name != busOrder.rend(); ++name) {

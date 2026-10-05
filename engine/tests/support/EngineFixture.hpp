@@ -24,10 +24,11 @@ namespace haylen::test {
 // A running engine on the headless host with an in-memory package.
 class EngineFixture final {
   public:
-    // A fixture in development plays its apps the way the player does with "--dev", so changes queued in the development session of the host reach them. With the address of a development server, the session connects to it and the package plays under an overlay that takes the files the server sends.
+    // A fixture in development plays its apps the way the player does with "--dev", so changes queued in the development session of the host reach them. With the address of a development server, the session connects to it and the package plays under an overlay that takes the files the server sends. An audio output gives the mixer a device that opens through that backend.
     struct Options {
         bool development = false;
         std::string developmentServer;
+        const audio::OutputBackend* audioOutput = nullptr;
     };
 
     explicit EngineFixture(std::map<std::string, std::string> files = {}, std::unique_ptr<core::Application> application = nullptr);

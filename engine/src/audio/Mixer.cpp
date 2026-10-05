@@ -62,7 +62,6 @@ Mixer::Mixer(const Setup& setup) {
     state = std::make_unique<MixerState>(setup);
 
     ma_engine_config config = ma_engine_config_init();
-    config.pDevice = state->output.get();
     config.noDevice = MA_TRUE;
     config.noAutoStart = MA_TRUE;
     config.channels = setup.channels;
@@ -503,7 +502,8 @@ bool Mixer::isInterrupted() const noexcept {
 }
 
 void Mixer::update(float deltaSeconds) {
-    // Device events go out first, so the listeners that pause or resume the mixer act before the voices refresh.
+    // A device that opened starts playing, and device events go out first, so the listeners that pause or resume the mixer act before the voices refresh.
+    state->output.update(deltaSeconds);
     for (const DeviceEvent event : state->output.takeEvents()) {
         deviceEventReceived.emit(event);
     }
@@ -526,6 +526,10 @@ bool Mixer::hasDevice() const noexcept {
 
 bool Mixer::isOutputAvailable() const noexcept {
     return state->output.isAvailable();
+}
+
+bool Mixer::isOutputOpening() const noexcept {
+    return state->output.isOpening();
 }
 
 void Mixer::render(std::span<float> samples) {

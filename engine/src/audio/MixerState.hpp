@@ -142,7 +142,7 @@ struct MixerState {
 
     void makeRoom();
 
-    // The output goes first, so the engine can mix into it, and is destroyed last, after the destructor stops the audio thread with the engine.
+    // The output stops reading the engine first thing in the destructor, before the voices, the buses and the engine go.
     Device output;
     ma_engine engine{};
     bool engineReady = false;

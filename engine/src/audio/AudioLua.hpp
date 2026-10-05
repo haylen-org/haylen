@@ -116,6 +116,7 @@ class AudioLua final {
     static int channels(lua_State* L);
     static int hasDevice(lua_State* L);
     static int outputAvailable(lua_State* L);
+    static int outputOpening(lua_State* L);
 
     static int soundChannels(lua_State* L);
     static int soundSampleRate(lua_State* L);
