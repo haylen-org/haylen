@@ -1127,6 +1127,12 @@ Module.haylen = Module.haylen || {};
         }
     };
 
+    // The bytes the browser still holds to send, which a socket that closed or was never kept has none of.
+    haylen.socketBufferedAmount = function (id) {
+        const socket = sockets.get(id);
+        return socket ? socket.bufferedAmount : 0;
+    };
+
     // A socket whose address the browser rejected was never kept, so there is nothing to close.
     haylen.closeSocket = function (id, code, reason) {
         const socket = sockets.get(id);

@@ -22,6 +22,7 @@ class BrowserWebSocket final : public WebSocketTransport {
     // Browsers answer the pings of a server on their own, but JavaScript has no way to send one.
     void ping(std::string payload) override;
     void close(int code, std::string reason) override;
+    [[nodiscard]] std::size_t getBufferedAmount() const noexcept override;
 
     // Hands an event of the page to the transport with the id, which ignores it once the transport is gone.
     static void deliver(int socket, Event event);

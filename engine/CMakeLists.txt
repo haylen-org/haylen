@@ -369,6 +369,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Transform2D.cpp
   src/math/WeightedChoice.cpp
   src/net/NetLua.cpp
+  src/net/SocketLink.cpp
   src/net/WebSocket.cpp
   src/platform/AppPlugin.cpp
   src/platform/AudioStream.cpp

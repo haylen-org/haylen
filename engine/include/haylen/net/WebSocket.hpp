@@ -42,10 +42,11 @@ class WebSocket final {
     // Returns the current time in seconds, which tests replace to drive the delays. Without one, the socket reads the steady clock.
     using Clock = std::function<double()>;
 
-    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009. The failure hint is a sentence that the message of every failure ends with, such as what the project of the app lacks for network access.
+    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009. An attempt that does not open within the connect timeout in seconds fails, on every platform. The failure hint is a sentence that the message of every failure ends with, such as what the project of the app lacks for network access.
     struct Options {
         std::vector<std::string> protocols;
         std::size_t maxMessageSize = 16U * 1024U * 1024U;
+        float connectTimeout = 10.0F;
         Reconnect reconnect;
         std::string failureHint;
         Clock clock;
@@ -92,6 +93,9 @@ class WebSocket final {
         return attempt;
     }
 
+    // The bytes of the messages sent on the current connection that still wait to be written to the network, which an app that sends a lot watches to send no faster than the connection carries.
+    [[nodiscard]] std::size_t getBufferedAmount() const noexcept;
+
     core::Signal<> opened;
     core::Signal<std::string_view, bool> received;
     core::Signal<std::string_view> failed;
@@ -113,17 +117,23 @@ class WebSocket final {
 
     static const Options& kDefaultOptions;
     static constexpr std::size_t kMaxPingPayload = 125;
+    static constexpr int kAbnormalClosure = 1006;
 
     [[nodiscard]] static double getSteadySeconds();
 
     void connect();
     [[nodiscard]] bool canReconnect() const noexcept;
     void scheduleReconnect();
+
+    // Ends the current attempt or connection with the code and reason it closed with, and reconnects or closes the socket. Returns whether the socket closed for good.
+    bool finishConnection(int code, std::string_view reason);
+    void checkConnectTimeout();
     [[nodiscard]] std::string describeFailure(const std::string& message) const;
 
     std::string url;
     std::vector<std::string> protocols;
     std::size_t maxMessageSize = 0;
+    float connectTimeout = 0.0F;
     Reconnect reconnect;
     std::string failureHint;
     Clock clock;
@@ -133,6 +143,7 @@ class WebSocket final {
     std::shared_ptr<Inbox> inbox;
     std::unique_ptr<WebSocketTransport> transport;
     double nextAttemptAt = 0.0;
+    double attemptStartedAt = 0.0;
     int attempt = 0;
     bool connected = false;
     bool closeRequested = false;

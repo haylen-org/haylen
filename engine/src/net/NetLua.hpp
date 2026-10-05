@@ -26,7 +26,7 @@ class NetLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 3> kSocketOptions{"protocols", "maxMessageSize", "reconnect"};
+    static constexpr std::array<std::string_view, 5> kSocketOptions{"protocols", "maxMessageSize", "connectTimeout", "reconnect", "owner"};
     static constexpr std::array<std::string_view, 5> kReconnectOptions{"initialDelay", "maxDelay", "multiplier", "jitter", "maxAttempts"};
     static constexpr std::array<std::string_view, 1> kListenerOptions{"owner"};
 
@@ -44,6 +44,7 @@ class NetLua final {
     static int getUrl(lua_State* L);
     static int getProtocol(lua_State* L);
     static int getAttempt(lua_State* L);
+    static int getBufferedAmount(lua_State* L);
     static int open(lua_State* L);
 };
 

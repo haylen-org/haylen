@@ -11,9 +11,11 @@
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/WebSocket.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -154,6 +156,72 @@ class SilentServer final {
     std::thread thread;
 };
 
+// Waits for the first message of a client and then sends it a few large binary messages before it reads anything more, while the client still sends, the way two sides that both stream do, and finally reports what the client sent.
+class FloodHandler final : public Poco::Net::HTTPRequestHandler {
+  public:
+    static constexpr int kMessages = 4;
+    static constexpr int kMessageSize = 8 * 1024 * 1024;
+
+    void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
+        Poco::Net::WebSocket socket(request, response);
+        socket.setMaxPayloadSize(kMessageSize);
+        Poco::Buffer<char> frame(0);
+        std::size_t received = 0;
+        // clang-format off
+        const auto receive = [&] {
+            int flags = 0;
+            frame.resize(0);
+            const int length = socket.receiveFrame(frame, flags);
+            received += static_cast<std::size_t>(std::max(length, 0));
+            return length > 0;
+        };
+        // clang-format on
+        if (!receive()) {
+            return;
+        }
+        const std::string flood(kMessageSize, 'f');
+        for (int message = 0; message < kMessages; ++message) {
+            socket.sendFrame(flood.data(), static_cast<int>(flood.size()), Poco::Net::WebSocket::FRAME_BINARY);
+        }
+        while (received < static_cast<std::size_t>(kMessages) * kMessageSize) {
+            if (!receive()) {
+                return;
+            }
+        }
+        const std::string done = "received " + std::to_string(received);
+        socket.sendFrame(done.data(), static_cast<int>(done.size()), Poco::Net::WebSocket::FRAME_TEXT);
+        (void)receive();
+    }
+};
+
+class FloodFactory final : public Poco::Net::HTTPRequestHandlerFactory {
+  public:
+    Poco::Net::HTTPRequestHandler* createRequestHandler(const Poco::Net::HTTPServerRequest&) override {
+        return new FloodHandler();
+    }
+};
+
+class FloodServer final {
+  public:
+    FloodServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new FloodFactory(), listener, new Poco::Net::HTTPServerParams()) {
+        server.start();
+    }
+    ~FloodServer() {
+        server.stopAll(true);
+    }
+
+    FloodServer(const FloodServer&) = delete;
+    FloodServer& operator=(const FloodServer&) = delete;
+
+    [[nodiscard]] std::string getUrl() const {
+        return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + "/flood";
+    }
+
+  private:
+    Poco::Net::ServerSocket listener;
+    Poco::Net::HTTPServer server;
+};
+
 class WebSocketTest : public ::testing::Test {
   protected:
     // Pumps until the condition holds, since the connection works on a thread of its own.
@@ -271,6 +339,75 @@ TEST_F(WebSocketTest, ReportsServerClosesAndFailures) {
     EXPECT_THROW(missing.close(1234), std::invalid_argument);
     EXPECT_THROW(missing.close(1000, std::string(124, 'x')), std::invalid_argument);
     EXPECT_EQ(WebSocket::stateName(WebSocket::State::Closing), "closing");
+}
+
+TEST_F(WebSocketTest, ExplainsWhyAConnectionFailed) {
+    const std::string url = refusedUrl();
+    WebSocket refused(url);
+    std::string failure;
+    refused.failed.connect([&failure](std::string_view message) { failure = message; });
+    ASSERT_TRUE(pumpUntil(refused, [&] { return refused.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(failure, "The WebSocket connection to \"" + url + "\" failed. The server refused the connection.");
+
+    WebSocket unknown("ws://no-such-host.invalid/lobby");
+    unknown.failed.connect([&failure](std::string_view message) { failure = message; });
+    ASSERT_TRUE(pumpUntil(unknown, [&] { return unknown.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(failure, "The WebSocket connection to \"ws://no-such-host.invalid/lobby\" failed. The host \"no-such-host.invalid\" was not found.");
+}
+
+TEST_F(WebSocketTest, TimesOutAttemptsThatNeverOpen) {
+    SilentServer server;
+    WebSocket socket(server.getUrl("ws"), {.connectTimeout = 0.3F});
+    std::string failure;
+    int closedCode = 0;
+    socket.failed.connect([&failure](std::string_view message) { failure = message; });
+    socket.closed.connect([&closedCode](int code, std::string_view) { closedCode = code; });
+    const auto started = std::chrono::steady_clock::now();
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+    EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds(3));
+    EXPECT_EQ(failure, "The WebSocket connection to \"" + server.getUrl("ws") + "\" did not open within 0.3 seconds.");
+    EXPECT_EQ(closedCode, 1006);
+    EXPECT_THROW(WebSocket(server.getUrl("ws"), {.connectTimeout = 0.0F}), std::invalid_argument);
+}
+
+TEST_F(WebSocketTest, CountsTheBytesThatWaitToBeWritten) {
+    const EchoServer server;
+    WebSocket socket(server.getUrl());
+    std::size_t echoed = 0;
+    socket.received.connect([&echoed](std::string_view data, bool) { echoed += data.size(); });
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
+    EXPECT_EQ(socket.getBufferedAmount(), 0U);
+
+    const std::string chunk(1024 * 1024, 'c');
+    for (int index = 0; index < 8; ++index) {
+        socket.send(chunk);
+    }
+    EXPECT_GT(socket.getBufferedAmount(), 0U);
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getBufferedAmount() == 0 && echoed == 8 * chunk.size(); }));
+}
+
+TEST_F(WebSocketTest, KeepsReadingWhileItWaitsToWrite) {
+    const FloodServer server;
+    WebSocket socket(server.getUrl(), {.maxMessageSize = FloodHandler::kMessageSize});
+    int floods = 0;
+    std::string report;
+    // clang-format off
+    socket.received.connect([&](std::string_view data, bool binary) {
+        if (binary) {
+            ++floods;
+        } else {
+            report = data;
+        }
+    });
+    // clang-format on
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
+    const std::vector<std::uint8_t> message(FloodHandler::kMessageSize, 'm');
+    for (int index = 0; index < FloodHandler::kMessages; ++index) {
+        socket.sendBinary(message);
+    }
+    ASSERT_TRUE(pumpUntil(socket, [&] { return !report.empty(); })) << "Both sides waited for the other to read.";
+    EXPECT_EQ(floods, FloodHandler::kMessages);
+    EXPECT_EQ(report, "received " + std::to_string(static_cast<std::size_t>(FloodHandler::kMessages) * FloodHandler::kMessageSize));
 }
 
 TEST_F(WebSocketTest, DisconnectListenersSeeTheStateThatFollows) {
@@ -395,6 +532,27 @@ TEST_F(NetLuaTest, EndsListenersWithTheirOwner) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #heard") != "0"; }));
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "free");
     EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + url + "'):on('open', function() end, {weak = true})").find("Unknown option \"weak\""), std::string::npos);
+}
+
+TEST_F(NetLuaTest, ClosesSocketsWithTheirOwnerAndReadsTheirOptions) {
+    const EchoServer server;
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        net = require('haylen.net')
+        local holder = {}
+        owned = net.connectWebSocket(')" + server.getUrl() + R"(', {owner = holder, connectTimeout = 5})
+        kept = net.connectWebSocket(')" + server.getUrl() + R"(')
+        release = function() holder = nil collectgarbage() collectgarbage() end
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state .. kept.state") == "openopen"; }));
+    EXPECT_EQ(fixture.lua("return owned.bufferedAmount"), "0");
+    fixture.runLua("release()");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state") == "closed"; }));
+    EXPECT_EQ(fixture.lua("return kept.state"), "open");
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {connectTimeout = 0})").find("A WebSocket needs a connect timeout above 0 seconds."), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {owner = 5})").find("An owner must be a table or a userdata, not number."), std::string::npos);
 }
 
 TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {

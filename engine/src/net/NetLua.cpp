@@ -16,6 +16,7 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
 #include "lua/Owners.hpp"
+#include "net/SocketLink.hpp"
 
 namespace haylen::net {
 
@@ -37,21 +38,31 @@ WebSocket::Reconnect NetLua::readReconnect(lua_State* L, int index) {
     return reconnect;
 }
 
-// Opens a WebSocket with `connectWebSocket(url, {protocols = {...}, maxMessageSize = bytes, reconnect = true or {...}})`. The socket keeps delivering events until it closes, even when the app no longer holds it.
+// Opens a WebSocket with `connectWebSocket(url, {protocols = {...}, maxMessageSize = bytes, connectTimeout = seconds, reconnect = true or {...}, owner = value})`. The socket keeps delivering events until it closes, even when the app no longer holds it, and a socket with an owner closes when the owner ends.
 int NetLua::connectWebSocket(lua_State* L) {
     std::string url = lua::Stack::read<std::string>(L, 1);
     WebSocket::Options options;
+    int owner = 0;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::checkFields(L, 2, {kSocketOptions});
         lua::Table::readField(L, 2, "protocols", options.protocols);
         lua::Table::readField(L, 2, "maxMessageSize", options.maxMessageSize);
+        lua::Table::readField(L, 2, "connectTimeout", options.connectTimeout);
         if (lua_getfield(L, 2, "reconnect") != LUA_TNIL) {
             options.reconnect = readReconnect(L, lua_gettop(L));
         }
         lua_pop(L, 1);
+        if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
+            lua::Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
     }
-    lua::Userdata::emplace<WebSocket>(L, lua::Runtime::getEngine(L).getPlugin<plugins::NetPlugin>().connectWebSocket(std::move(url), std::move(options)));
+    const std::shared_ptr<WebSocket> socket = lua::Runtime::getEngine(L).getPlugin<plugins::NetPlugin>().connectWebSocket(std::move(url), std::move(options));
+    if (owner != 0) {
+        lua::Owners::add(L, owner, std::make_shared<SocketLink>(socket));
+    }
+    lua::Userdata::emplace<WebSocket>(L, socket);
     return 1;
 }
 
@@ -201,6 +212,11 @@ int NetLua::getAttempt(lua_State* L) {
     return 1;
 }
 
+int NetLua::getBufferedAmount(lua_State* L) {
+    lua::Stack::push(L, check(L).getBufferedAmount());
+    return 1;
+}
+
 int NetLua::openSocketCount(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::NetPlugin>().getOpenSocketCount());
     return 1;
@@ -217,7 +233,7 @@ int NetLua::open(lua_State* L) {
 }
 
 void NetLua::install(lua_State* L) {
-    lua::ClassBuilder<WebSocket>(L).function("send", &lua::Binding::native<&send>).function("sendBinary", &lua::Binding::native<&sendBinary>).function("ping", &lua::Binding::native<&ping>).function("close", &lua::Binding::native<&close>).function("on", &lua::Binding::native<&on>).property("state", &getState).property("url", &getUrl).property("protocol", &getProtocol).property("attempt", &getAttempt).install();
+    lua::ClassBuilder<WebSocket>(L).function("send", &lua::Binding::native<&send>).function("sendBinary", &lua::Binding::native<&sendBinary>).function("ping", &lua::Binding::native<&ping>).function("close", &lua::Binding::native<&close>).function("on", &lua::Binding::native<&on>).property("state", &getState).property("url", &getUrl).property("protocol", &getProtocol).property("attempt", &getAttempt).property("bufferedAmount", &getBufferedAmount).install();
     lua::Binding::preload(L, "haylen.net", &open);
 }
 

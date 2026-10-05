@@ -13,6 +13,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -25,7 +26,7 @@
 
 namespace haylen::net {
 
-// Owns one connection on a thread of its own, which is the only thread that touches the socket, so TLS never sees two threads at once. Closing and destroying never wait for that thread: it keeps what it needs alive by itself, stops as soon as it can and reports nothing more. The thread sleeps until the socket or the app has something for it.
+// Owns one connection on a thread of its own, which is the only thread that touches the socket, so TLS never sees two threads at once. Closing and destroying never wait for that thread: it keeps what it needs alive by itself, stops as soon as it can and reports nothing more. The thread sleeps until the socket or the app has something for it, and it keeps reading while it waits for room to write, so a connection where both sides send large messages never stalls.
 class PocoWebSocket final : public WebSocketTransport {
   public:
     PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, Sink target);
@@ -37,15 +38,19 @@ class PocoWebSocket final : public WebSocketTransport {
     void send(std::string data, bool binary) override;
     void ping(std::string payload) override;
     void close(int code, std::string reason) override;
+    [[nodiscard]] std::size_t getBufferedAmount() const noexcept override;
 
   private:
+    // A frame to write. Messages of the app count in the bytes that wait to be written, and control frames do not.
     struct Outgoing {
         std::string data;
         int flags = 0;
+        bool counted = false;
     };
 
     // What the transport and its thread share. The thread holds it, so it never touches the transport, which the app may destroy at any time, and the mutex keeps the sink quiet once stopping is set.
     struct Connection {
+        std::string url;
         std::string host;
         std::uint16_t port = 0;
         std::string path;
@@ -58,6 +63,7 @@ class PocoWebSocket final : public WebSocketTransport {
         std::optional<std::pair<int, std::string>> closeRequest;
         bool wakePending = false;
         std::atomic<bool> stopping = false;
+        std::atomic<std::size_t> buffered = 0;
         Poco::Net::PollSet poller;
     };
 
@@ -106,16 +112,21 @@ class PocoWebSocket final : public WebSocketTransport {
     [[nodiscard]] static Workers& getWorkers();
 
     static void report(Connection& target, Event event);
-    static void fail(Connection& target, const std::string& message);
+
+    // Reports that the connection failed for the reason, a sentence, and that it closed.
+    static void fail(Connection& target, const std::string& reason);
     static void wake(Connection& target);
+
+    // Turns an error of the network libraries into the sentence that says what went wrong.
+    [[nodiscard]] static std::string describe(const Connection& target, const Poco::Exception& error);
 
     static void run(const std::shared_ptr<Connection>& target, Workers& workers);
     [[nodiscard]] static std::optional<Poco::Net::SocketAddress> resolve(Connection& target);
     [[nodiscard]] static bool enter(Connection& target, Workers& workers);
     static void connectAndServe(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address);
 
-    // Waits until the socket is ready for the mode, the app wakes the thread or the deadline passes, and returns whether the socket is ready.
-    static bool waitFor(Connection& target, const Poco::Net::Socket& socket, int mode, std::chrono::steady_clock::time_point deadline);
+    // Waits until the socket is ready for one of the modes, the app wakes the thread or the deadline passes, and returns the modes the socket is ready for, or 0.
+    static int waitFor(Connection& target, const Poco::Net::Socket& socket, int mode, std::chrono::steady_clock::time_point deadline);
 
     [[nodiscard]] static Poco::Net::StreamSocket createSocket(const Connection& target, Workers& workers, const Poco::Net::SocketAddress& address);
 
@@ -124,12 +135,15 @@ class PocoWebSocket final : public WebSocketTransport {
     [[nodiscard]] static bool connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline);
     [[nodiscard]] static bool completeHandshake(Connection& target, Poco::Net::SecureStreamSocket& socket, std::chrono::steady_clock::time_point deadline);
 
-    // Non-blocking sends can stop halfway through a frame, and Poco finishes it when the same frame is sent again.
-    static void write(Connection& target, Poco::Net::WebSocket& socket, std::string_view data, int flags);
-    static void writeClose(Connection& target, Poco::Net::WebSocket& socket, int code, std::string_view reason);
+    // Writes the frames of the queue until it is empty or the socket has no room, and returns whether it emptied. A non-blocking send can stop halfway through a frame, which stays first, and Poco finishes it when the same frame is sent again.
+    static bool flush(Connection& target, Poco::Net::WebSocket& socket, std::deque<Outgoing>& queue);
+
+    // Writes the whole queue, waiting for room, until the deadline, such as the last frames before the connection ends.
+    static void drain(Connection& target, Poco::Net::WebSocket& socket, std::deque<Outgoing>& queue, std::chrono::steady_clock::time_point deadline);
+    [[nodiscard]] static Outgoing makeClose(int code, std::string_view reason);
 
     // Ends the connection with status 1009 after the server sent a message larger than the maximum size.
-    static void refuseMessage(Connection& target, Poco::Net::WebSocket& socket, bool closing);
+    static void refuseMessage(Connection& target, Poco::Net::WebSocket& socket, std::deque<Outgoing>& queue, bool closing);
 
     // Writes queued frames and reads incoming ones until either side closes or the app abandons the connection.
     static void serve(Connection& target, Poco::Net::WebSocket& socket);

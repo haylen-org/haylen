@@ -10,7 +10,7 @@ local net = require('haylen.net')
 
 A socket connects in the background and reports what happens through events. The engine delivers the events of every socket at the start of each frame, in the order they arrived, before the app updates. The engine keeps a socket alive until it closes, so an app may keep only its listeners and let the socket object go. After the `close` event a socket drops its listeners and reports nothing more. When the app stops or restarts, the engine closes every open socket without reporting `close`.
 
-On native builds every socket runs on a thread of its own, which sleeps until the server or the app has something for it. Closing or releasing a socket never waits for that thread, even while it is still connecting, because the app restarts, quits or drops the last reference to it: the socket reports nothing more, and its thread ends the connection on its own and never touches the released socket. Opening the connection and the TLS handshake of a `wss://` address end at once when the socket is released, the upgrade request ends when the server answers or after 10 seconds, and looking up the host name has no time limit of its own. Opening the connection, the TLS handshake and the upgrade request each fail when the server leaves them without an answer for 10 seconds. When the process exits, it waits for connection threads that still use the network libraries, which is at most the 10 seconds of an upgrade request, and never for a thread that is looking up a host name. A socket answers server pings, sends its own with `socket:ping`, joins fragmented messages, refuses messages larger than `maxMessageSize` and checks the certificates of `wss://` servers against the trust store Varn finds, or the system root store on Windows. A missing trust store fails the connection with `No trust store was found to check the certificate of a "wss://" server: <searched places>.`. In the browser a socket is a WebSocket of the page, so the browser rules apply, such as a page served over HTTPS reaching only `wss://` addresses and the browser limiting the size of messages instead of `maxMessageSize`. The browser build reports the same events except `pong`, since browsers keep pong frames from the page and cannot send pings, and they reach the app on its next frame. Its `error` event carries `The WebSocket connection to "<url>" failed.`, or the message of the browser when it rejects the address, and its close codes come from the browser.
+On native builds every socket runs on a thread of its own, which sleeps until the server or the app has something for it. Closing or releasing a socket never waits for that thread, even while it is still connecting, because the app restarts, quits or drops the last reference to it: the socket reports nothing more, and its thread ends the connection on its own and never touches the released socket. Opening the connection and the TLS handshake of a `wss://` address end at once when the socket is released, the upgrade request ends when the server answers or after 10 seconds, and looking up the host name has no time limit of its own. Opening the connection, the TLS handshake and the upgrade request each fail when the server leaves them without an answer for 10 seconds, and on every platform an attempt that has not opened after `connectTimeout` seconds fails with `The WebSocket connection to "<url>" did not open within <seconds> seconds.`, which also covers browsers that wait minutes for a server that never answers. A native connection that fails reports `The WebSocket connection to "<url>" failed.` followed by the cause, such as `The server refused the connection.`, `The host "<host>" was not found.`, `The server reset the connection.` or the reason of the TLS handshake, and it keeps reading while it waits for room to send, so a connection where both sides send large messages never stalls. When the process exits, it waits for connection threads that still use the network libraries, which is at most the 10 seconds of an upgrade request, and never for a thread that is looking up a host name. A socket answers server pings, sends its own with `socket:ping`, joins fragmented messages, refuses messages larger than `maxMessageSize` and checks the certificates of `wss://` servers against the trust store Varn finds, or the system root store on Windows. A missing trust store fails the connection with `No trust store was found to check the certificate of a "wss://" server: <searched places>.`. In the browser a socket is a WebSocket of the page, so the browser rules apply, such as a page served over HTTPS reaching only `wss://` addresses and the browser limiting the size of messages instead of `maxMessageSize`. The browser build reports the same events except `pong`, since browsers keep pong frames from the page and cannot send pings, and they reach the app on its next frame. Its `error` event carries `The WebSocket connection to "<url>" failed.`, or the message of the browser when it rejects the address, and its close codes come from the browser.
 
 ```lua
 local net = require('haylen.net')
@@ -101,6 +101,8 @@ Starts connecting to `url` and returns a `haylen.WebSocket` in the `connecting` 
 | --- | --- | --- | --- |
 | `protocols` | list of strings | none | Subprotocols offered to the server in the `Sec-WebSocket-Protocol` header. The property `socket.protocol` tells which one the server picked. |
 | `maxMessageSize` | integer | `16777216` | Largest message in bytes the socket accepts from the server, from `1` to `2147483647`, which is 16 MiB by default. On native builds a larger message reports `error` with `The server sent a WebSocket message larger than the maximum of <size> bytes.` and ends the connection with code `1009`. In the browser the limits of the browser apply instead. |
+| `connectTimeout` | number | `10` | Seconds an attempt may take to open before it fails with code `1006`, on every platform. A socket that reconnects gives every attempt this time. |
+| `owner` | table or userdata | none | Closes the socket with code `1000` when the owner ends, such as a scene when it unloads, as [subscription scopes](../lifecycle.md#subscription-scopes) describe. |
 | `reconnect` | boolean or table | `false` | The value `true` turns [reconnection](#reconnection) on with the defaults below, and a table turns it on with the settings it changes. |
 
 | Reconnect key | Type | Default | Meaning |
@@ -111,7 +113,7 @@ Starts connecting to `url` and returns a `haylen.WebSocket` in the `connecting` 
 | `jitter` | number | `0.5` | Fraction between `0` and `1` that shortens each wait at random. |
 | `maxAttempts` | integer | `0` | Failed attempts in a row before the socket closes, where `0` never gives up. |
 
-An address that does not start with `ws://` or `wss://` raises `The WebSocket address "<url>" must start with "ws://" or "wss://".`, and a `maxMessageSize` of `0` or above `2147483647` raises `A WebSocket needs a maximum message size between 1 and 2147483647 bytes.`. Reconnect settings outside these ranges raise `WebSocket reconnection needs delays from zero up with the maximum at least the initial one, a multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.`.
+An address that does not start with `ws://` or `wss://` raises `The WebSocket address "<url>" must start with "ws://" or "wss://".`, a `maxMessageSize` of `0` or above `2147483647` raises `A WebSocket needs a maximum message size between 1 and 2147483647 bytes.`, a `connectTimeout` of `0` or less raises `A WebSocket needs a connect timeout above 0 seconds.`, and an `owner` that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`. Reconnect settings outside these ranges raise `WebSocket reconnection needs delays from zero up with the maximum at least the initial one, a multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.`.
 
 ```lua
 local net = require('haylen.net')
@@ -120,7 +122,13 @@ local chat = net.connectWebSocket('ws://127.0.0.1:8080/chat', {protocols = {'cha
 print(chat.state)
 
 local lobby = net.connectWebSocket('wss://game.example.com/lobby', {reconnect = true})
-local scores = net.connectWebSocket('wss://game.example.com/scores', {maxMessageSize = 64 * 1024})
+local scores = net.connectWebSocket('wss://game.example.com/scores', {maxMessageSize = 64 * 1024, connectTimeout = 5})
+
+-- The match socket belongs to the scene, so it closes when the scene unloads.
+local match = {}
+function match:load()
+    self.socket = net.connectWebSocket('wss://game.example.com/match', {owner = self})
+end
 ```
 
 ### net.openSocketCount()
@@ -285,6 +293,28 @@ local socket = net.connectWebSocket('wss://game.example.com/match', {reconnect =
 socket:on('reconnecting', function()
     print('attempt ' .. socket.attempt .. ' of 5')
 end)
+```
+
+### socket.bufferedAmount
+
+Read-only integer with the bytes of the messages sent on the current connection that still wait to be written to the network. An app that sends a lot, such as a stream of positions or a large upload in pieces, sends the next piece only while it stays low, so it never sends faster than the connection carries and never piles up memory. It is `0` without a connection, and in the browser it is the `bufferedAmount` of the WebSocket of the page.
+
+```lua
+local net = require('haylen.net')
+local scene = require('haylen.scene')
+
+-- Sends a recording in pieces of 64 KiB, at most 1 MiB ahead of the network.
+local socket = net.connectWebSocket('wss://game.example.com/replays')
+local recording = string.rep('frame', 400000)
+local offset = 1
+scene.push({
+    update = function(self, dt)
+        while socket.state == 'open' and offset <= #recording and socket.bufferedAmount < 1024 * 1024 do
+            socket:sendBinary(recording:sub(offset, offset + 65535))
+            offset = offset + 65536
+        end
+    end,
+})
 ```
 
 ### socket.protocol

@@ -22,6 +22,10 @@ EM_JS(void, haylen_js_socket_close, (int id, int code, const char* reason), {
     Module.haylen.closeSocket(id, code, UTF8ToString(reason));
 });
 
+EM_JS(double, haylen_js_socket_buffered, (int id), {
+    return Module.haylen.socketBufferedAmount(id);
+});
+
 EM_JS(void, haylen_js_socket_release, (int id), {
     Module.haylen.releaseSocket(id);
 });
@@ -58,6 +62,10 @@ void BrowserWebSocket::ping(std::string) {
 
 void BrowserWebSocket::close(int code, std::string reason) {
     haylen_js_socket_close(id, code, reason.c_str());
+}
+
+std::size_t BrowserWebSocket::getBufferedAmount() const noexcept {
+    return static_cast<std::size_t>(haylen_js_socket_buffered(id));
 }
 
 void BrowserWebSocket::deliver(int socket, Event event) {
