@@ -53,6 +53,7 @@ set(HAYLEN_TEST_SOURCES
   content/LuaCompilerTests.cpp
   content/ManifestTests.cpp
   content/RecordCacheTests.cpp
+  content/ReleaseAcceptanceTests.cpp
   content/ReleaseBuilderTests.cpp
   content/ReleaseInspectorTests.cpp
   content/ReleaseLuaTests.cpp
