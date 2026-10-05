@@ -32,9 +32,10 @@ function Scenery:draw()
     graphics2d.drawCircle(480, -300, 150, '#50FFF0C0', {layer = -9})
     graphics2d.drawCircle(480, -300, 96, '#FFFFFAE6', {layer = -9})
 
+    -- The clouds repeat every 1920 units and drift to the right, so copies start at the one that covers the left edge.
     local drift = self.time * Scenery.cloudSpeed % 1920
-    for copy = -1, 0 do
-        graphics2d.draw(self.clouds, -960 + drift + copy * 1920, -540, {width = 1920, height = 520, pivotX = 0, pivotY = 0, color = '#C0FFFFFF', layer = -8})
+    for x = area.x - (area.x + 960 - drift) % 1920, area:right(), 1920 do
+        graphics2d.draw(self.clouds, x, -540, {width = 1920, height = 520, pivotX = 0, pivotY = 0, color = '#C0FFFFFF', layer = -8})
     end
     local left, width = math.min(-960, area.x), math.max(1920, area.width)
     graphics2d.draw(self.mountains, left, -260, {width = width, height = 800, pivotX = 0, pivotY = 0, layer = -7})
