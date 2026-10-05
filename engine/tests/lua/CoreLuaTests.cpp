@@ -386,6 +386,13 @@ TEST(JobsLuaTest, RejectsFailuresAndMisuse) {
     EXPECT_NE(fixture.lua("jobs.setBudget(0)").find("positive number"), std::string::npos);
 }
 
+TEST(JobsLuaTest, CountsTheJobThatRuns) {
+    test::EngineFixture fixture;
+    fixture.runLua("jobs = require('haylen.jobs') counted = {} for index = 1, 2 do jobs.spawn(function() counted[index] = jobs.runningCount() end) end");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return counted[1] .. ' ' .. counted[2] .. ' ' .. jobs.runningCount()"), "2 1 0");
+}
+
 TEST(JobsLuaTest, StartsWithMoreArgumentsThanTheMinimumStack) {
     test::EngineFixture fixture;
     // clang-format off

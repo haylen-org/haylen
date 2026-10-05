@@ -26,8 +26,9 @@ class JobsPlugin final : public Plugin {
     [[nodiscard]] std::chrono::microseconds getBudget() const noexcept {
         return budget;
     }
+    // The job that runs left the line for its turn, and it counts too.
     [[nodiscard]] std::size_t getRunningCount() const noexcept {
-        return jobs.size();
+        return jobs.size() + (current != nullptr ? 1 : 0);
     }
 
     // Returns whether the job running on `L` has used up this frame's budget, and throws when `L` is not a running job.
