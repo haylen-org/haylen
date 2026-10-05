@@ -126,8 +126,8 @@ Layout comes from a small set of containers and a few common properties that eve
 | Container | Layout |
 | --- | --- |
 | `column` | Children from top to bottom. |
-| `row` | Children from left to right, or from right to left in a [right-to-left](#right-to-left-interfaces) interface. |
-| `grid` | Cells of equal width, `columns` per row, each row as tall as its tallest child. |
+| `row` | Children from left to right, or from right to left in a [right-to-left](#right-to-left-interfaces) interface, in lines that wrap with `wrap = true`. |
+| `grid` | Cells of equal width, `columns` per row or as many as fit at `minColumnWidth`, each row as tall as its tallest child. |
 | `stack` | Children on top of each other, the later ones above. |
 | `scroll` | One child in a vertically scrolling area. It measures as tall as its content, so it needs a `height` or `maxHeight` to scroll. |
 | `card`, `panel` | Columns on a themed surface that keep the pointer from reaching the app. |
@@ -136,10 +136,14 @@ Columns and rows share these properties.
 
 - The property `gap` is the space between children and defaults to the theme `itemSpacing` metric.
 - The property `padding` is one number for every side, `{vertical, horizontal}` or `{top, right, bottom, left}`.
-- The property `grow` on a child takes a share of the free space along the main axis. A growing child starts from nothing rather than from its content, so two children with `grow = 1` split the space the others leave in half, long content never pushes a row or a column past its bounds, and a `scroll` with `grow = 1` scrolls inside the room its parent leaves. A row measures its growing children at the width they get, so text that wraps there reports every line and the node below starts after it. A column or row that takes the size of its content still gives each growing child at least the room its content needs.
-- The property `justify` places the children along the main axis when none of them grows: `start`, `center`, `end` or `spaceBetween`.
-- The property `align` on a child places it across the other axis: `start`, `center`, `end` or `stretch`. In a grid it places the child inside its cell, and in a stack or at the root it applies in both directions. Rows center their children unless they say otherwise. Elsewhere labels, buttons, icons, images, badges, touch controls and the other small kinds default to `start`, the busy indicator defaults to `center` and every other kind stretches.
-- The properties `width`, `height`, `minWidth`, `maxWidth`, `minHeight` and `maxHeight` fix or bound the size. The value `'auto'` lets the content decide.
+- The property `grow` on a child takes a share of the free space along the main axis, within its minimum and maximum sizes, and a child that reaches one of them leaves the rest to the others. A growing child starts from nothing rather than from its content, so two children with `grow = 1` split the space the others leave in half, long content never pushes a row or a column past its bounds, and a `scroll` with `grow = 1` scrolls inside the room its parent leaves. A row measures its growing children at the width they get, so text that wraps there reports every line and the node below starts after it. A column or row that takes the size of its content still gives each growing child at least the room its content needs.
+- The property `justify` places the children along the main axis in the space growing children leave: `start`, `center`, `end`, `spaceBetween`, `spaceAround` or `spaceEvenly`.
+- The property `align` on a child places it across the other axis: `start`, `center`, `end` or `stretch`. In a grid it places the child inside its cell, and in a stack or at the root it applies in both directions. The property `alignItems` of a column, row, grid or stack gives the alignment of every child that sets none. Without either, rows center their children, labels, buttons, icons, images, badges, touch controls and the other small kinds use `start`, the busy indicator uses `center` and every other kind stretches.
+- The property `margin` keeps space around a node in the layout of its parent, on top of the `gap`, and `padding` keeps space inside a container.
+- The properties `width`, `height`, `minWidth`, `maxWidth`, `minHeight` and `maxHeight` fix or bound the size, also of a node that stretches or grows. The value `'auto'` lets the content decide.
+- The property `aspectRatio` keeps the width divided by the height of a node, such as `16 / 9` for a video frame.
+
+A row with `wrap = true` breaks its children into lines, as a row of tags or of shop items does, with `lineGap` between the lines, and a grid with `minColumnWidth` fits as many columns as the width allows, so both follow the size of the screen.
 
 A `spacer` takes room and draws nothing, so `ui.spacer{grow = 1}` pushes the nodes after it to the far end of a row or column.
 

@@ -1,11 +1,15 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
+#include <optional>
 #include <string_view>
+#include <utility>
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Component.hpp"
 
 namespace haylen::ui {
@@ -26,7 +30,15 @@ class Stack final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
+    static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
+        {"start", Alignment::Start},
+        {"center", Alignment::Center},
+        {"end", Alignment::End},
+        {"stretch", Alignment::Stretch},
+    }};
+
     math::Insets padding;
+    std::optional<Alignment> alignItems;
 };
 
 } // namespace haylen::ui

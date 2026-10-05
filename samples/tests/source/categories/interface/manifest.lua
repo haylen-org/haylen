@@ -23,5 +23,6 @@ return {
         {code = 'GUI-017', title = 'UI tweens', description = 'Node transforms that move, scale, fade and tint controls with native tweens.', module = 'tweens'},
         {code = 'GUI-018', title = 'Text input', description = 'The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform.', module = 'text-input'},
         {code = 'GUI-019', title = 'Touch controls', description = 'A touch stick and touch buttons that drive actions of the action map next to keys and gamepads.', module = 'touch-controls'},
+        {code = 'GUI-020', title = 'Layouts', description = 'Justify, alignItems, growing within size bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and the aspect ratio at any width.', module = 'layouts'},
     },
 }

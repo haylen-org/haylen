@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <ranges>
 #include <utility>
-#include <vector>
 
 #include <imgui.h>
 
@@ -37,7 +37,7 @@ math::Vec2 Carousel::measureContent(Context& context, float availableWidth) {
 }
 
 void Carousel::render(Context& context, const math::Rect& bounds) {
-    const std::size_t count = getLayoutChildren().size();
+    const auto count = static_cast<std::size_t>(std::ranges::distance(getLayoutChildren()));
     if (count == 0) {
         return;
     }
@@ -105,19 +105,20 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
 
 // Pages other than the current one draw while they slide in or out, and their controls stay out of navigation.
 void Carousel::drawPages(Context& context, const math::Rect& area) {
-    const std::vector<Component*> pages = getLayoutChildren();
     // The pages run from the right in a right-to-left UI, where a drag to the right moves forward.
     const float position = shown - (context.isRightToLeft() ? -dragged : dragged) / std::max(1.0F, area.width);
     ImGui::PushClipRect(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), true);
-    for (std::size_t index = 0; index < pages.size(); ++index) {
+    std::size_t index = 0;
+    for (Component* shownPage : getLayoutChildren()) {
         const float offset = static_cast<float>(index) - position;
+        ++index;
         if (std::fabs(offset) >= 1.0F) {
             continue;
         }
-        const bool current = static_cast<int>(index) == page - 1;
+        const bool current = static_cast<int>(index) == page;
         context.getFocus().suspendTargets(!current);
         const math::Rect placed = context.mirror({area.x + offset * area.width, area.y, area.width, area.height}, area);
-        pages[index]->draw(context, {std::floor(placed.x), area.y, area.width, area.height});
+        shownPage->draw(context, {std::floor(placed.x), area.y, area.width, area.height});
         context.getFocus().suspendTargets(false);
     }
     ImGui::PopClipRect();
@@ -157,7 +158,7 @@ int Carousel::drawIndicators(Context& context, const math::Rect& row, std::size_
         ImGui::PushID(static_cast<int>(index));
         const Widgets::Interaction state = Widgets::interact(context, dot.expanded(size * 0.5F), size, "##dot", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
-        const bool current = static_cast<int>(index) == page - 1;
+        const bool current = static_cast<int>(index) == page;
         ImGui::GetWindowDrawList()->AddCircleFilled(ImGuiConverter::toImVec2(dot.getCenter()), size * 0.5F, ImGuiConverter::toImU32(context.getColor(current ? Theme::Color::Accent : state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong)));
         if (state.clicked) {
             picked = static_cast<int>(index) + 1;

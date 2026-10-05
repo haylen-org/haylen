@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -41,6 +42,9 @@ class Component {
         float grow = 0.0F;
         std::optional<float> width;
         std::optional<float> height;
+
+        // The width divided by the height, which the node keeps whatever room its parent gives it.
+        std::optional<float> aspectRatio;
         float minWidth = 0.0F;
         float maxWidth = kUnbounded;
         float minHeight = 0.0F;
@@ -95,8 +99,15 @@ class Component {
     // Applies the given properties and leaves the others as they are.
     void apply(const core::Json& properties);
 
+    // Measures the node with its margin, which a parent places around it, so the size includes the margin.
     [[nodiscard]] math::Vec2 measure(Context& context, float availableWidth);
+
+    // Draws the node inside the rectangle its parent gives it, less its margin.
     void draw(Context& context, const math::Rect& layout);
+
+    // Keeps a length its parent offers along one axis, margin included, within the fixed size or the minimum and maximum sizes of the node.
+    [[nodiscard]] float clampWidth(float outer) const noexcept;
+    [[nodiscard]] float clampHeight(float outer) const noexcept;
 
     // The rectangle the component was last drawn in, in UI coordinates.
     [[nodiscard]] const math::Rect& getBounds() const noexcept {
@@ -156,8 +167,10 @@ class Component {
         drawnBounds = value;
     }
 
-    // The visible children the layout of the component places, which leaves out anchored and floating children.
-    [[nodiscard]] std::vector<Component*> getLayoutChildren() const;
+    // The visible children the layout of the component places, which leaves out anchored and floating children, as a view that allocates nothing.
+    [[nodiscard]] auto getLayoutChildren() const {
+        return children | std::views::filter(&Component::isPlaced) | std::views::transform(&Component::toPointer);
+    }
     [[nodiscard]] bool takeFocusRequest() noexcept {
         return std::exchange(focusRequested, false);
     }
@@ -169,6 +182,8 @@ class Component {
     friend class Gui;
 
     static constexpr double kTooltipDelaySeconds = 0.5;
+    static constexpr float kMinAspectRatio = 0.01F;
+    static constexpr float kMaxAspectRatio = 100.0F;
     static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
         {"start", Alignment::Start},
         {"center", Alignment::Center},
@@ -192,6 +207,9 @@ class Component {
         {"rightToLeft", text::Direction::RightToLeft},
     }};
 
+    [[nodiscard]] static math::Rect fitAspect(const math::Rect& area, float ratio) noexcept;
+    [[nodiscard]] static bool isPlaced(const std::unique_ptr<Component>& child) noexcept;
+    [[nodiscard]] static Component* toPointer(const std::unique_ptr<Component>& child) noexcept;
     [[nodiscard]] float getBoundedWidth(float width) const noexcept;
     [[nodiscard]] float getBoundedHeight(float height) const noexcept;
     void readCommon(PropertyReader& reader);

@@ -36,6 +36,11 @@ void Component::readCommon(PropertyReader& reader) {
     reader.read("grow", common.grow, 0.0F, 1000.0F);
     reader.readLength("width", common.width);
     reader.readLength("height", common.height);
+    if (reader.has("aspectRatio")) {
+        float ratio = 1.0F;
+        reader.read("aspectRatio", ratio, kMinAspectRatio, kMaxAspectRatio);
+        common.aspectRatio = ratio;
+    }
     reader.read("minWidth", common.minWidth, 0.0F);
     reader.read("maxWidth", common.maxWidth, 0.0F);
     reader.read("minHeight", common.minHeight, 0.0F);
@@ -99,6 +104,16 @@ float Component::getBoundedHeight(float height) const noexcept {
     return std::clamp(height, common.minHeight, std::max(common.minHeight, common.maxHeight));
 }
 
+float Component::clampWidth(float outer) const noexcept {
+    const float margin = common.margin.getHorizontal();
+    return common.width ? *common.width + margin : getBoundedWidth(outer - margin) + margin;
+}
+
+float Component::clampHeight(float outer) const noexcept {
+    const float margin = common.margin.getVertical();
+    return common.height ? *common.height + margin : getBoundedHeight(outer - margin) + margin;
+}
+
 math::Vec2 Component::measure(Context& context, float availableWidth) {
     if (!common.visible || isFloating()) {
         return {};
@@ -108,13 +123,27 @@ math::Vec2 Component::measure(Context& context, float availableWidth) {
     if (measuredFrame == context.getFrame() && measuredWidth == availableWidth) {
         return measuredSize;
     }
-    const float offered = common.width.value_or(getBoundedWidth(availableWidth));
+    const math::Insets& margin = common.margin;
+    const float inner = std::max(0.0F, availableWidth - margin.getHorizontal());
+    const float offered = common.width.value_or(getBoundedWidth(inner));
     const bool writing = pushWriting(context);
     const math::Vec2 content = measureContent(context, offered);
     if (writing) {
         context.popWriting();
     }
-    measuredSize = {common.width.value_or(getBoundedWidth(content.x)), common.height.value_or(getBoundedHeight(content.y))};
+    math::Vec2 size{common.width.value_or(getBoundedWidth(content.x)), common.height.value_or(getBoundedHeight(content.y))};
+
+    // A node with an aspect ratio takes its height from its width, its width from a fixed height, or the whole width it is offered when neither is fixed.
+    if (common.aspectRatio) {
+        const float ratio = *common.aspectRatio;
+        if (common.height && !common.width) {
+            size.x = getBoundedWidth(*common.height * ratio);
+        } else {
+            size.x = common.width.value_or(inner < CommonProperties::kUnbounded ? getBoundedWidth(inner) : size.x);
+            size.y = getBoundedHeight(size.x / ratio);
+        }
+    }
+    measuredSize = {size.x + margin.getHorizontal(), size.y + margin.getVertical()};
     measuredFrame = context.getFrame();
     measuredWidth = availableWidth;
     return measuredSize;
@@ -124,7 +153,10 @@ void Component::draw(Context& context, const math::Rect& layout) {
     if (!common.visible) {
         return;
     }
-    const math::Rect bounds = layout.translated(transform->offset);
+    math::Rect bounds = layout.inset(common.margin).translated(transform->offset);
+    if (common.aspectRatio) {
+        bounds = fitAspect(bounds, *common.aspectRatio);
+    }
     const bool appeared = drawnFrame == 0 || drawnFrame + 1 != context.getFrame();
     drawnBounds = bounds;
     drawnFrame = context.getFrame();
@@ -171,7 +203,7 @@ void Component::draw(Context& context, const math::Rect& layout) {
 
 math::Rect Component::getAnchoredBounds(Context& context) {
     const Backend& backend = context.getBackend();
-    const math::Rect area = (common.anchorArea == Anchor::Area::Safe ? backend.getSafeRect() : backend.getDisplayRect()).inset(common.margin);
+    const math::Rect area = common.anchorArea == Anchor::Area::Safe ? backend.getSafeRect() : backend.getDisplayRect();
     return common.anchor.value_or(Anchor{}).place(measure(context, area.width), area);
 }
 
@@ -267,14 +299,22 @@ void Component::noticeStoppedDrawing(Context& context) {
     }
 }
 
-std::vector<Component*> Component::getLayoutChildren() const {
-    std::vector<Component*> placed;
-    for (const auto& child : children) {
-        if (child->getCommon().visible && !child->getCommon().anchor && !child->isFloating()) {
-            placed.push_back(child.get());
-        }
+bool Component::isPlaced(const std::unique_ptr<Component>& child) noexcept {
+    return child->common.visible && !child->common.anchor && !child->isFloating();
+}
+
+Component* Component::toPointer(const std::unique_ptr<Component>& child) noexcept {
+    return child.get();
+}
+
+// A rectangle of another shape keeps the ratio by shrinking along its longer side around its center.
+math::Rect Component::fitAspect(const math::Rect& area, float ratio) noexcept {
+    if (area.height <= 0.0F || area.width / area.height > ratio) {
+        const float width = area.height * ratio;
+        return {std::floor(area.x + (area.width - width) * 0.5F), area.y, width, area.height};
     }
-    return placed;
+    const float height = area.width / ratio;
+    return {area.x, std::floor(area.y + (area.height - height) * 0.5F), area.width, height};
 }
 
 } // namespace haylen::ui

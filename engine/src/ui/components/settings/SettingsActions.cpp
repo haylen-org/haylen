@@ -1,7 +1,7 @@
 #include "ui/components/settings/SettingsActions.hpp"
 
 #include <algorithm>
-#include <vector>
+#include <ranges>
 
 #include "haylen/ui/Context.hpp"
 
@@ -20,11 +20,10 @@ math::Vec2 SettingsActions::measureContent(Context& context, float availableWidt
 void SettingsActions::render(Context& context, const math::Rect& bounds) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float x = bounds.getRight();
-    const std::vector<Component*> visible = getLayoutChildren();
-    for (auto child = visible.rbegin(); child != visible.rend(); ++child) {
-        const math::Vec2 size = (*child)->measure(context, bounds.width);
+    for (Component* child : getLayoutChildren() | std::views::reverse) {
+        const math::Vec2 size = child->measure(context, bounds.width);
         x -= size.x;
-        (*child)->draw(context, {x, bounds.getBottom() - size.y, size.x, size.y});
+        child->draw(context, {x, bounds.getBottom() - size.y, size.x, size.y});
         x -= spacing;
     }
 }

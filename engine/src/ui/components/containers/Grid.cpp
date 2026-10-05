@@ -2,51 +2,32 @@
 
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 #include "haylen/ui/Context.hpp"
 
 namespace haylen::ui {
 
 void Grid::readProperties(PropertyReader& reader) {
-    reader.read("columns", columns, 1, 64);
+    if (reader.has("columns")) {
+        reader.read("columns", columns, 1, kMaxColumns);
+        columnsSet = true;
+    }
+    reader.read("minColumnWidth", minColumnWidth, 0.0F, 10000.0F);
     if (reader.has("gap")) {
         float value = 0.0F;
         reader.read("gap", value, 0.0F, 10000.0F);
         gap = value;
     }
-    reader.read("padding", padding);
-}
-
-math::Vec2 Grid::measureContent(Context& context, float availableWidth) {
-    const Layout layout = measureRows(context, std::max(0.0F, availableWidth - padding.getHorizontal()));
-    float height = 0.0F;
-    for (const float row : layout.rows) {
-        height += row;
+    if (reader.has("rowGap")) {
+        float value = 0.0F;
+        reader.read("rowGap", value, 0.0F, 10000.0F);
+        rowGap = value;
     }
-    height += layout.rows.empty() ? 0.0F : getGap(context) * static_cast<float>(layout.rows.size() - 1);
-    const auto across = static_cast<float>(std::min<std::size_t>(static_cast<std::size_t>(columns), getLayoutChildren().size()));
-    const float width = across > 0.0F ? layout.widest * across + getGap(context) * (across - 1.0F) : 0.0F;
-    return {width + padding.getHorizontal(), height + padding.getVertical()};
-}
-
-// Cells fill every row from its start, the right in a right-to-left UI.
-void Grid::render(Context& context, const math::Rect& bounds) {
-    const math::Rect inner = bounds.inset(padding);
-    const Layout layout = measureRows(context, inner.width);
-    const std::vector<Component*> visible = getLayoutChildren();
-    float y = inner.y;
-    for (std::size_t index = 0; index < visible.size(); ++index) {
-        const std::size_t row = index / static_cast<std::size_t>(columns);
-        const std::size_t column = index % static_cast<std::size_t>(columns);
-        if (column == 0 && row > 0) {
-            y += layout.rows[row - 1] + getGap(context);
-        }
-        Component& child = *visible[index];
-        const math::Vec2 size = child.measure(context, layout.cell);
-        const math::Rect cell = context.mirror({inner.x + (layout.cell + getGap(context)) * static_cast<float>(column), y, layout.cell, layout.rows[row]}, inner);
-        const float width = child.getAlignment() == Alignment::Stretch ? layout.cell : std::min(size.x, layout.cell);
-        child.draw(context, {std::floor(context.alignHorizontally(child.getAlignment(), cell.x, layout.cell, width)), std::floor(y), width, layout.rows[row]});
+    reader.read("padding", padding);
+    if (reader.has("alignItems")) {
+        Alignment value = Alignment::Start;
+        reader.readChoice<Alignment>("alignItems", value, kAlignments);
+        alignItems = value;
     }
 }
 
@@ -54,22 +35,84 @@ float Grid::getGap(Context& context) const {
     return gap.value_or(context.getMetric(Theme::Metric::ItemSpacing));
 }
 
-// An unbounded width, such as the one of a horizontal scroll, stays unbounded for the cells, so every child measures at its natural width.
-Grid::Layout Grid::measureRows(Context& context, float width) {
-    Layout layout;
-    const auto count = static_cast<float>(columns);
-    layout.cell = width < CommonProperties::kUnbounded ? std::max(0.0F, (width - getGap(context) * (count - 1.0F)) / count) : width;
-    const std::vector<Component*> visible = getLayoutChildren();
-    for (std::size_t index = 0; index < visible.size(); ++index) {
-        const math::Vec2 size = visible[index]->measure(context, layout.cell);
-        const std::size_t row = index / static_cast<std::size_t>(columns);
-        if (row >= layout.rows.size()) {
-            layout.rows.push_back(0.0F);
-        }
-        layout.rows[row] = std::max(layout.rows[row], size.y);
-        layout.widest = std::max(layout.widest, size.x);
+float Grid::getRowGap(Context& context) const {
+    return rowGap.value_or(getGap(context));
+}
+
+Alignment Grid::getChildAlignment(const Component& child) const noexcept {
+    return child.getCommon().align.value_or(alignItems.value_or(child.getAlignment()));
+}
+
+// A minimum column width fits as many columns as cells of that width, at most `columns` when it is set, and an unbounded width keeps the column count.
+std::size_t Grid::countColumns(Context& context, float width) const {
+    if (minColumnWidth <= 0.0F || width >= CommonProperties::kUnbounded) {
+        return static_cast<std::size_t>(columns);
     }
-    return layout;
+    const float spacing = getGap(context);
+    const auto fitting = static_cast<int>(std::floor((width + spacing) / (minColumnWidth + spacing)));
+    return static_cast<std::size_t>(std::clamp(fitting, 1, columnsSet ? columns : kMaxColumns));
+}
+
+math::Vec2 Grid::measureContent(Context& context, float availableWidth) {
+    const float inner = std::max(0.0F, availableWidth - padding.getHorizontal());
+    const std::size_t count = countColumns(context, inner);
+    (void)measureRows(context, inner);
+    float height = 0.0F;
+    for (const float row : rows) {
+        height += row;
+    }
+    height += rows.empty() ? 0.0F : getRowGap(context) * static_cast<float>(rows.size() - 1);
+    const auto across = static_cast<float>(std::min<std::size_t>(count, static_cast<std::size_t>(std::ranges::distance(getLayoutChildren()))));
+    const float width = across > 0.0F ? widest * across + getGap(context) * (across - 1.0F) : 0.0F;
+    return {width + padding.getHorizontal(), height + padding.getVertical()};
+}
+
+// Cells fill every row from its start, the right in a right-to-left UI, and every child sits in its cell by its alignment in both directions.
+void Grid::render(Context& context, const math::Rect& bounds) {
+    const math::Rect inner = bounds.inset(padding);
+    const std::size_t count = countColumns(context, inner.width);
+    const float cell = measureRows(context, inner.width);
+    float y = inner.y;
+    std::size_t index = 0;
+    for (Component* child : getLayoutChildren()) {
+        const std::size_t row = index / count;
+        const std::size_t column = index % count;
+        if (column == 0 && row > 0) {
+            y += rows[row - 1] + getRowGap(context);
+        }
+        ++index;
+
+        const float height = rows[row];
+        const math::Rect area = context.mirror({inner.x + (cell + getGap(context)) * static_cast<float>(column), y, cell, height}, inner);
+        const Alignment alignment = getChildAlignment(*child);
+        if (alignment == Alignment::Stretch) {
+            child->draw(context, {std::floor(area.x), std::floor(area.y), std::min(child->clampWidth(cell), cell), std::min(child->clampHeight(height), height)});
+            continue;
+        }
+        const math::Vec2 size = math::Vec2::min(child->measure(context, cell), area.getSize());
+        child->draw(context, {std::floor(context.alignHorizontally(alignment, area.x, cell, size.x)), std::floor(align(alignment, area.y, height, size.y)), size.x, size.y});
+    }
+}
+
+// An unbounded width, such as the one of a horizontal scroll, stays unbounded for the cells, so every child measures at its natural width.
+float Grid::measureRows(Context& context, float width) {
+    const std::size_t count = countColumns(context, width);
+    const auto across = static_cast<float>(count);
+    const float cell = width < CommonProperties::kUnbounded ? std::max(0.0F, (width - getGap(context) * (across - 1.0F)) / across) : width;
+    rows.clear();
+    widest = 0.0F;
+    std::size_t index = 0;
+    for (Component* child : getLayoutChildren()) {
+        const math::Vec2 size = child->measure(context, cell);
+        const std::size_t row = index / count;
+        ++index;
+        if (row >= rows.size()) {
+            rows.push_back(0.0F);
+        }
+        rows[row] = std::max(rows[row], size.y);
+        widest = std::max(widest, size.x);
+    }
+    return cell;
 }
 
 } // namespace haylen::ui

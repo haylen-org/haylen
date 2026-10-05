@@ -144,6 +144,7 @@ set(HAYLEN_TEST_SOURCES
   ui/BackendTests.cpp
   ui/ComponentTests.cpp
   ui/GuiTests.cpp
+  ui/LayoutTests.cpp
   ui/FocusTests.cpp
   ui/GameComponentTests.cpp
   ui/MountLinkTests.cpp

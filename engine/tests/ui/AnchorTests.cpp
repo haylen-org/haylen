@@ -40,13 +40,13 @@ TEST_F(AnchorTest, AnchorsNodesToTheSafeAreaOrTheScreenOutsideTheLayout) {
     EXPECT_EQ(getBounds(*gui, "middle"), (math::Rect{100.0F + (1740.0F - 300.0F) / 2.0F, 50.0F + (990.0F - 100.0F) / 2.0F, 300.0F, 100.0F}));
     EXPECT_EQ(getBounds(*gui, "bar"), (math::Rect{120.0F, 1040.0F - 90.0F, 1700.0F, 90.0F}));
 
-    // A new safe area moves every anchored node with it, and the anchor `none` puts a node back in the layout.
+    // A new safe area moves every anchored node with it, and the anchor `none` puts a node back in the layout, where its margin keeps it away from the node above.
     getFixture().host().setSafeAreaInsets({.left = 0.0F, .top = 0.0F, .right = 0.0F, .bottom = 0.0F});
     frames(2);
     EXPECT_EQ(getBounds(*gui, "pause").getMin(), math::Vec2(1920.0F - 10.0F - 120.0F, 10.0F));
     gui->set("pause", {{"anchor", "none"}});
     frames();
-    EXPECT_EQ(getBounds(*gui, "pause").y, getBounds(*gui, "title").getBottom() + getUi().getTheme().getMetric(Theme::Metric::ItemSpacing));
+    EXPECT_EQ(getBounds(*gui, "pause").y, getBounds(*gui, "title").getBottom() + getUi().getTheme().getMetric(Theme::Metric::ItemSpacing) + 10.0F);
     EXPECT_THROW(gui->set("pause", {{"anchor", "corner"}}), std::invalid_argument);
     EXPECT_THROW(gui->set("pause", {{"anchorTo", "window"}}), std::invalid_argument);
 }

@@ -774,7 +774,8 @@ Every kind accepts these properties.
 | `align` | string | depends on the kind | One of `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, a grid inside its cell, and a stack or the GUI root in both directions. Without `align`, rows center their children. Everywhere else labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars and touch controls use `start`, the busy indicator uses `center`, and every other kind stretches. |
 | `anchor` | string | none | Takes the node out of the layout of its parent and places it against the safe area or the screen, as [Anchors](#anchors) describes. The value `'none'` puts it back in the layout. |
 | `anchorTo` | string | `'safe'` | Area an anchored node is placed in: `'safe'` or `'screen'`. |
-| `margin` | insets | `0` | Distance between an anchored node and the edges of its area. |
+| `margin` | insets | `0` | Space around the node: its parent places it that far from the nodes and edges around it, and an anchored node keeps that distance from the edges of its area. |
+| `aspectRatio` | number from 0.01 to 100 | none | The width divided by the height, which the node keeps. Its height follows its width, its width follows a fixed `height`, and without a fixed size it takes the whole width it is offered. A place of another shape shrinks around its center to the ratio. |
 | `focusable` | boolean | `true` | The value `false` keeps the controls of the node and of every node inside it out of keyboard, gamepad and remote navigation, and a click presses them without moving the focus there, which suits HUD buttons that share keys with gameplay. |
 | `autofocus` | boolean | `false` | Gives the node the focus when it appears, such as when its GUI mounts or its dialog opens, unless the focus is already on a control of the same GUI and window. |
 | `focusScope` | boolean | `false` | Keeps the focus inside the node while it is there, and makes the node hear `cancel`. |
@@ -997,13 +998,14 @@ ui.mount(ui.column{
 
 ### ui.column(properties)
 
-Lays out any number of children from top to bottom. Children with `grow` share the free height, and `justify` places the children when none of them grows. Each child sits across the width by its `align`.
+Lays out any number of children from top to bottom. Children with `grow` share the free height by their factors, each within its `minHeight` and `maxHeight`, and `justify` places the children in the height they leave. Each child sits across the width by its `align`, or by the `alignItems` of the column when it sets none, and a stretched child stays within its `minWidth` and `maxWidth`. The `margin` of a child keeps the space around it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `gap` | number from 0 to 10000 | theme `itemSpacing` | Space between children. |
 | `padding` | insets | `0` | Space between the edges and the children. |
-| `justify` | string | `'start'` | One of `'start'`, `'center'`, `'end'` or `'spaceBetween'`, which spreads the free space between the children. |
+| `justify` | string | `'start'` | Where the free space goes: `'start'`, `'center'` and `'end'` place the children together, `'spaceBetween'` puts it between them, `'spaceAround'` gives every child an equal share on both sides, and `'spaceEvenly'` makes every space, the ends included, equal. Children start at the nearest whole unit. |
+| `alignItems` | string | none | The `align` of every child that sets none: `'start'`, `'center'`, `'end'` or `'stretch'`. Without it each kind keeps its own default. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -1022,6 +1024,13 @@ ui.mount(ui.column{
 
 Lays out any number of children from left to right, or from right to left in a [right-to-left](#right-to-left-interfaces) node. It takes the properties of `column`. Children with `grow` share the width the others leave, so wide content never pushes the row past its bounds. Each child sits across the height by its `align`, which defaults to `center` in a row.
 
+A row with `wrap = true` breaks its children into lines that each take as many children as fit at their natural width, and a child wider than the row takes a line of its own. Every line is as tall as its tallest child, places its children by `justify`, and shares its free width among its children that grow.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `wrap` | boolean | `false` | Breaks the children into lines. |
+| `lineGap` | number from 0 to 10000 | `gap` | Space between lines. |
+
 ```lua
 local ui = require('haylen.ui')
 
@@ -1037,13 +1046,16 @@ ui.mount(ui.row{
 
 ### ui.grid(properties)
 
-Lays out any number of children in cells of equal width, filling each row before the next. Every row is as tall as its tallest child, and each child sits inside its cell by its `align`.
+Lays out any number of children in cells of equal width, filling each row before the next. Every row is as tall as its tallest child, and each child sits inside its cell by its `align` in both directions, or by the `alignItems` of the grid when it sets none. A stretched child fills its cell within its size bounds.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `columns` | integer from 1 to 64 | `2` | Number of cells per row. |
-| `gap` | number from 0 to 10000 | theme `itemSpacing` | Space between cells in both directions. |
+| `columns` | integer from 1 to 64 | `2` | Number of cells per row, and the most cells a row fits with `minColumnWidth`. |
+| `minColumnWidth` | number from 0 to 10000 | `0` | Above zero, every row fits as many cells as are at least this wide, so the columns follow the width of the grid. |
+| `gap` | number from 0 to 10000 | theme `itemSpacing` | Space between cells. |
+| `rowGap` | number from 0 to 10000 | `gap` | Space between rows. |
 | `padding` | insets | `0` | Space between the edges and the cells. |
+| `alignItems` | string | none | The `align` of every child that sets none. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -1057,11 +1069,12 @@ ui.mount(ui.grid{columns = 4, gap = 8, padding = 16, children = slots})
 
 ### ui.stack(properties)
 
-Draws any number of children on top of each other, the later ones above. Each child sits by its own `align` in both directions, and `stretch` fills the whole stack.
+Draws any number of children on top of each other, the later ones above. Each child sits by its own `align` in both directions, or by the `alignItems` of the stack when it sets none, and `stretch` fills the whole stack within the size bounds of the child.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `padding` | insets | `0` | Space between the edges and the children. |
+| `alignItems` | string | none | The `align` of every child that sets none. |
 
 ```lua
 local ui = require('haylen.ui')

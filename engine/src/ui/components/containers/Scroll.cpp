@@ -24,7 +24,7 @@ void Scroll::readProperties(PropertyReader& reader) {
 }
 
 math::Vec2 Scroll::measureContent(Context& context, float availableWidth) {
-    const std::vector<Component*> visible = getLayoutChildren();
+    auto visible = getLayoutChildren();
     if (visible.empty()) {
         return {};
     }
@@ -47,8 +47,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
     }
     if (ImGui::BeginChild("##scroll", ImGuiConverter::toImVec2(bounds.getSize()), ImGuiChildFlags_NavFlattened, flags)) {
         points.clear();
-        const std::vector<Component*> visible = getLayoutChildren();
-        if (!visible.empty()) {
+        if (auto visible = getLayoutChildren(); !visible.empty()) {
             Component& child = *visible.front();
             const ImVec2 origin = ImGui::GetCursorScreenPos();
             const ImVec2 available = ImGui::GetContentRegionAvail();

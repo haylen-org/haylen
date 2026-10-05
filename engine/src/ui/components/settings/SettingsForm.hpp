@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <string_view>
-#include <vector>
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -27,7 +26,7 @@ class SettingsForm final : public Component {
 
   private:
     // Section titles get extra space above them, except the first one.
-    [[nodiscard]] static float getSpacingBefore(Context& context, std::size_t index, const std::vector<Component*>& visible);
+    [[nodiscard]] static float getSpacingBefore(Context& context, const Component& child, bool first);
 };
 
 } // namespace haylen::ui

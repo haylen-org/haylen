@@ -424,6 +424,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-017` | UI tweens | Node transforms that move, scale, fade and tint controls with native tweens. |  |
 | `GUI-018` | Text input | The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform. |  |
 | `GUI-019` | Touch controls | A touch stick and touch buttons that drive actions of the action map next to keys and gamepads. |  |
+| `GUI-020` | Layouts | Justify, alignItems, growing within size bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and the aspect ratio at any width. |  |
 
 #### Orientation (ORI)
 
