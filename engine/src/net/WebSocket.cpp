@@ -13,27 +13,19 @@
 
 namespace haylen::net {
 
+// The transport adds its events to `events`, and the socket swaps them into `delivering`, which it keeps between pumps, so neither list allocates again once both have grown.
 struct WebSocket::Inbox {
     std::mutex mutex;
     std::vector<WebSocketTransport::Event> events;
+    std::vector<WebSocketTransport::Event> delivering;
 };
 
 const WebSocket::Options& WebSocket::kDefaultOptions = *new const Options();
 
+const std::array<std::pair<std::string_view, WebSocket::State>, 5> WebSocket::kStateNames{{{"connecting", State::Connecting}, {"open", State::Open}, {"closing", State::Closing}, {"closed", State::Closed}, {"reconnecting", State::Reconnecting}}};
+
 std::string_view WebSocket::stateName(State value) noexcept {
-    switch (value) {
-    case State::Connecting:
-        return "connecting";
-    case State::Open:
-        return "open";
-    case State::Closing:
-        return "closing";
-    case State::Closed:
-        return "closed";
-    case State::Reconnecting:
-        return "reconnecting";
-    }
-    return "closed";
+    return std::ranges::find(kStateNames, value, &std::pair<std::string_view, State>::second)->first;
 }
 
 float WebSocket::getBackoff(const Reconnect& settings, int number) noexcept {
@@ -52,11 +44,12 @@ WebSocket::WebSocket(std::string address, Options options) : url(std::move(addre
     if (maxMessageSize == 0 || !std::in_range<int>(maxMessageSize)) {
         throw std::invalid_argument("A WebSocket needs a maximum message size between 1 and 2147483647 bytes.");
     }
-    if (!(connectTimeout > 0.0F)) {
-        throw std::invalid_argument("A WebSocket needs a connect timeout above 0 seconds.");
+    if (!(connectTimeout > 0.0F && connectTimeout <= kMaxConnectTimeout)) {
+        throw std::invalid_argument("A WebSocket needs a connect timeout above 0 and at most 3600 seconds.");
     }
-    if (reconnect.initialDelay < 0.0F || reconnect.maxDelay < reconnect.initialDelay || reconnect.multiplier < 1.0F || reconnect.jitter < 0.0F || reconnect.jitter > 1.0F || reconnect.maxAttempts < 0) {
-        throw std::invalid_argument("WebSocket reconnection needs delays from zero up with the maximum at least the initial one, a multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.");
+    const bool finite = std::isfinite(reconnect.initialDelay) && std::isfinite(reconnect.maxDelay) && std::isfinite(reconnect.multiplier) && std::isfinite(reconnect.jitter);
+    if (!finite || reconnect.initialDelay < 0.0F || reconnect.maxDelay < reconnect.initialDelay || reconnect.multiplier < 1.0F || reconnect.jitter < 0.0F || reconnect.jitter > 1.0F || reconnect.maxAttempts < 0) {
+        throw std::invalid_argument("WebSocket reconnection needs finite delays from zero up with the maximum at least the initial one, a finite multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.");
     }
     connect();
 }
@@ -67,7 +60,7 @@ void WebSocket::connect() {
     state = State::Connecting;
     attemptStartedAt = clock();
     // clang-format off
-    transport = WebSocketTransport::open(url, protocols, maxMessageSize, [delivery = inbox](WebSocketTransport::Event event) {
+    transport = WebSocketTransport::open(url, protocols, maxMessageSize, connectTimeout, [delivery = inbox](WebSocketTransport::Event event) {
         const std::scoped_lock lock(delivery->mutex);
         delivery->events.push_back(std::move(event));
     });
@@ -140,19 +133,28 @@ void WebSocket::pump() {
         connect();
     }
 
-    std::vector<WebSocketTransport::Event> events;
+    // An attempt that ran out of time fails before what its transport reported meanwhile is delivered, so the failure names the timeout even when the transport gave up on the same deadline.
+    checkConnectTimeout();
+
+    std::vector<WebSocketTransport::Event>& events = inbox->delivering;
     {
         const std::scoped_lock lock(inbox->mutex);
         events.swap(inbox->events);
     }
 
-    for (const WebSocketTransport::Event& event : events) {
+    bool finished = false;
+    for (std::size_t index = 0; index < events.size() && !finished; ++index) {
+        const WebSocketTransport::Event& event = events[index];
         switch (event.kind) {
         case WebSocketTransport::Event::Kind::Opened:
+            // A socket that the app closed while it was connecting never opens, as in browsers, and its transport ends the connection.
+            if (closeRequested) {
+                break;
+            }
             protocol = event.text;
             attempt = 0;
             connected = true;
-            state = state == State::Closing ? State::Closing : State::Open;
+            state = State::Open;
             opened.emit();
             break;
         case WebSocketTransport::Event::Kind::Received:
@@ -165,13 +167,11 @@ void WebSocket::pump() {
             failed.emit(describeFailure(event.text));
             break;
         case WebSocketTransport::Event::Kind::Closed:
-            if (finishConnection(event.code, event.text)) {
-                return;
-            }
+            finished = finishConnection(event.code, event.text);
             break;
         }
     }
-    checkConnectTimeout();
+    events.clear();
 }
 
 // A transport reports nothing after closing, so the next attempt opens a fresh one, and the disconnect listeners already see the state that follows.

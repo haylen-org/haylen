@@ -24,8 +24,8 @@
 
 namespace haylen::net {
 
-std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, Sink sink) {
-    return std::make_unique<PocoWebSocket>(url, protocols, maxMessageSize, std::move(sink));
+std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, float connectTimeout, Sink sink) {
+    return std::make_unique<PocoWebSocket>(url, protocols, maxMessageSize, std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<float>(connectTimeout)), std::move(sink));
 }
 
 // OpenSSL starts before the workers finish constructing, so its cleanup at exit runs only after they finished.
@@ -102,10 +102,11 @@ PocoWebSocket::Workers& PocoWebSocket::getWorkers() {
 }
 
 // The address is parsed here, so the thread never needs the static state of Poco that parsing uses.
-PocoWebSocket::PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, Sink target) : connection(std::make_shared<Connection>()) {
+PocoWebSocket::PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, std::chrono::steady_clock::duration timeout, Sink target) : connection(std::make_shared<Connection>()) {
     connection->url = url;
     connection->protocols = std::move(protocols);
     connection->maxMessageSize = messageLimit;
+    connection->connectTimeout = timeout;
     connection->sink = std::move(target);
     try {
         const Poco::URI uri(url);
@@ -315,7 +316,7 @@ Poco::Net::StreamSocket PocoWebSocket::createSocket(const Connection& target, Wo
 }
 
 std::unique_ptr<Poco::Net::WebSocket> PocoWebSocket::open(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address, std::string& protocol) {
-    const auto deadline = std::chrono::steady_clock::now() + kConnectTimeout;
+    const auto deadline = std::chrono::steady_clock::now() + target.connectTimeout;
     Poco::Net::StreamSocket socket = createSocket(target, workers, address);
     if (!connectSocket(target, socket, address, deadline)) {
         return nullptr;
@@ -327,8 +328,12 @@ std::unique_ptr<Poco::Net::WebSocket> PocoWebSocket::open(Connection& target, Wo
         }
     }
 
-    // The upgrade request blocks, bounded by the timeouts of the socket, and the session sends it over the connected socket.
-    const Poco::Timespan timeout(kConnectTimeout);
+    // The upgrade request blocks, bounded by the timeouts of the socket to what is left of the attempt, and the session sends it over the connected socket.
+    const auto left = std::chrono::duration_cast<std::chrono::microseconds>(deadline - std::chrono::steady_clock::now());
+    if (left <= std::chrono::microseconds(0)) {
+        throw Poco::TimeoutException("The upgrade request to \"" + target.host + "\" timed out.");
+    }
+    const Poco::Timespan timeout(left);
     socket.setBlocking(true);
     socket.setSendTimeout(timeout);
     socket.setReceiveTimeout(timeout);

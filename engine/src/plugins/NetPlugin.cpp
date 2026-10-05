@@ -45,12 +45,13 @@ void NetPlugin::stop(core::Engine&) {
     events = nullptr;
 }
 
-// Sockets opened by a listener during the pump wait for the next frame.
+// Listeners run during the pump, so the sockets are pumped from a copy, and sockets they open wait for the next frame. The copy keeps its memory from frame to frame.
 void NetPlugin::beginFrame(core::Engine&, float) {
-    const std::vector<std::shared_ptr<net::WebSocket>> snapshot = sockets;
-    for (const std::shared_ptr<net::WebSocket>& socket : snapshot) {
+    pumping.assign(sockets.begin(), sockets.end());
+    for (const std::shared_ptr<net::WebSocket>& socket : pumping) {
         socket->pump();
     }
+    pumping.clear();
     std::erase_if(sockets, [](const std::shared_ptr<net::WebSocket>& socket) { return socket->getState() == net::WebSocket::State::Closed; });
 }
 

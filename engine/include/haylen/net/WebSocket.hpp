@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -7,6 +8,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Signal.hpp"
@@ -42,7 +44,7 @@ class WebSocket final {
     // Returns the current time in seconds, which tests replace to drive the delays. Without one, the socket reads the steady clock.
     using Clock = std::function<double()>;
 
-    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009. An attempt that does not open within the connect timeout in seconds fails, on every platform. The failure hint is a sentence that the message of every failure ends with, such as what the project of the app lacks for network access.
+    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009. An attempt that does not open within the connect timeout, above 0 and at most 3600 seconds, fails on every platform, and on native builds it also bounds the connection, the TLS handshake and the upgrade request. The failure hint is a sentence that the message of every failure ends with, such as what the project of the app lacks for network access.
     struct Options {
         std::vector<std::string> protocols;
         std::size_t maxMessageSize = 16U * 1024U * 1024U;
@@ -71,7 +73,7 @@ class WebSocket final {
     // Sends a ping frame with a payload of at most 125 bytes, which the server answers with a pong that `ponged` reports. Browsers cannot send ping frames, so the browser build throws `std::logic_error`.
     void ping(std::string_view payload = {});
 
-    // Starts the closing handshake, or ends a wait for the next attempt. The code is 1000 or between 3000 and 4999 and the reason fits in 123 bytes, as browsers require.
+    // Starts the closing handshake, or ends a wait for the next attempt. The code is 1000 or between 3000 and 4999 and the reason fits in 123 bytes, as browsers require. A socket closed while it connects never opens.
     void close(int code = 1000, std::string_view reason = {});
 
     // Delivers the events that arrived since the last call and starts the next attempt once its wait is over.
@@ -116,6 +118,8 @@ class WebSocket final {
     struct Inbox;
 
     static const Options& kDefaultOptions;
+    static const std::array<std::pair<std::string_view, State>, 5> kStateNames;
+    static constexpr float kMaxConnectTimeout = 3600.0F;
     static constexpr std::size_t kMaxPingPayload = 125;
     static constexpr int kAbnormalClosure = 1006;
 

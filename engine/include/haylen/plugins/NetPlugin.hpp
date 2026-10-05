@@ -38,6 +38,7 @@ class NetPlugin final : public Plugin {
     std::string requirement;
     core::EventBus* events = nullptr;
     std::vector<std::shared_ptr<net::WebSocket>> sockets;
+    std::vector<std::shared_ptr<net::WebSocket>> pumping;
 };
 
 } // namespace haylen::plugins

@@ -1,6 +1,7 @@
 #include "net/NetLua.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -88,13 +89,13 @@ int NetLua::ping(lua_State* L) {
 }
 
 int NetLua::close(lua_State* L) {
-    const auto code = static_cast<int>(luaL_optinteger(L, 2, 1000));
+    const int code = lua::Stack::read<std::optional<int>>(L, 2).value_or(1000);
     check(L).close(code, lua_isnoneornil(L, 3) ? std::string_view{} : lua::Stack::read<std::string_view>(L, 3));
     return 0;
 }
 
 // Listens with `on(event, function)` to `open`, `message` (`data`, `binary`), `pong` (`payload`), `disconnect` (`code`, `reason`), `reconnecting` (`attempt`, `delay`), `close` (`code`, `reason`) or `error` (`message`), and returns a connection.
-// A listener with an owner ends with it, like the listeners of events and signals.
+// A listener ends with its owner, like the listeners of events and signals, and without one it takes the default owner, which in development is the module that registers it at its top level.
 int NetLua::on(lua_State* L) {
     WebSocket& target = check(L);
     const std::string_view event = lua::Stack::read<std::string_view>(L, 2);
@@ -106,6 +107,9 @@ int NetLua::on(lua_State* L) {
         if (lua_getfield(L, 4, "owner") != LUA_TNIL) {
             owner = lua_gettop(L);
         }
+    }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
     }
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);

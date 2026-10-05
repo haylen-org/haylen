@@ -39,8 +39,8 @@ class WebSocketTransport {
     // The bytes of messages that were sent and still wait to be written to the network.
     [[nodiscard]] virtual std::size_t getBufferedAmount() const noexcept = 0;
 
-    // Opens the transport of the platform: Poco on native builds, which refuses messages larger than the maximum size, and the WebSocket of the page in the browser, which applies the limits of the browser.
-    [[nodiscard]] static std::unique_ptr<WebSocketTransport> open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, Sink sink);
+    // Opens the transport of the platform: Poco on native builds, which refuses messages larger than the maximum size and gives up on an attempt that has not opened within the connect timeout in seconds, and the WebSocket of the page in the browser, which applies the limits of the browser and leaves the timeout to the socket.
+    [[nodiscard]] static std::unique_ptr<WebSocketTransport> open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, float connectTimeout, Sink sink);
 };
 
 } // namespace haylen::net

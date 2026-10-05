@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -26,7 +27,10 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/net/WebSocket.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
+#include "platform/DevelopmentSession.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::net {
 
@@ -368,6 +372,31 @@ TEST_F(WebSocketTest, TimesOutAttemptsThatNeverOpen) {
     EXPECT_EQ(failure, "The WebSocket connection to \"" + server.getUrl("ws") + "\" did not open within 0.3 seconds.");
     EXPECT_EQ(closedCode, 1006);
     EXPECT_THROW(WebSocket(server.getUrl("ws"), {.connectTimeout = 0.0F}), std::invalid_argument);
+    EXPECT_THROW(WebSocket(server.getUrl("ws"), {.connectTimeout = std::numeric_limits<float>::infinity()}), std::invalid_argument);
+    EXPECT_THROW(WebSocket(server.getUrl("ws"), {.connectTimeout = 3601.0F}), std::invalid_argument);
+}
+
+TEST_F(WebSocketTest, GivesUpAnUpgradeRequestWithTheConnectTimeout) {
+    const SilentServer server;
+    WebSocket socket(server.getUrl("ws"), {.connectTimeout = 0.3F});
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+
+    // The thread of the attempt stops waiting for the answer to its upgrade request when the connect timeout runs out.
+    EXPECT_TRUE(waitUntil([&] { return server.hasHungUp(); }, std::chrono::seconds(3)));
+}
+
+TEST_F(WebSocketTest, ASocketClosedWhileConnectingNeverOpens) {
+    const EchoServer server;
+    WebSocket socket(server.getUrl());
+    bool opened = false;
+    int closedCode = 0;
+    socket.opened.connect([&opened] { opened = true; });
+    socket.closed.connect([&closedCode](int code, std::string_view) { closedCode = code; });
+    socket.close(4000, "changed my mind");
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+    EXPECT_FALSE(opened);
+    EXPECT_NE(closedCode, 0);
+    EXPECT_EQ(socket.getProtocol(), "");
 }
 
 TEST_F(WebSocketTest, CountsTheBytesThatWaitToBeWritten) {
@@ -491,6 +520,25 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option \"protocol\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('ftp://nowhere')").find("\"ws://\" or \"wss://\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):close(4294968296)").find("integer out of range"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {reconnect = {initialDelay = 0 / 0}})").find("finite delays"), std::string::npos);
+}
+
+TEST_F(NetLuaTest, ModuleReloadsEndTheListenersOfTheirTopLevel) {
+    const EchoServer server;
+    const std::string listener = "socket:on('message', function() heard = heard + 1 end) return {version = 1}";
+    test::EngineFixture fixture({{"source/main.lua", "heard = 0 socket = require('haylen.net').connectWebSocket('" + server.getUrl() + "') require('listener')"}, {"source/listener.lua", listener}}, nullptr, {.development = true});
+    fixture.frames(1);
+
+    fixture.package().setFile("source/listener.lua", test::TestFiles::bytes("-- Edited.\n" + listener));
+    const std::vector<std::string> paths{"source/listener.lua"};
+    fixture.host().getDevelopmentSession()->addChanges(paths);
+    fixture.frames(1);
+    ASSERT_FALSE(fixture.engine().isRestartRequested()) << "The module reloads in place.";
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return socket.state") == "open"; }));
+    fixture.runLua("socket:send('ping')");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return heard") != "0"; }));
+    EXPECT_EQ(fixture.lua("return heard"), "1") << "The listener of the first load ended with the reload.";
 }
 
 TEST_F(NetLuaTest, ReportsFailedConnectionsWithTheirAddress) {
@@ -551,7 +599,7 @@ TEST_F(NetLuaTest, ClosesSocketsWithTheirOwnerAndReadsTheirOptions) {
     fixture.runLua("release()");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state") == "closed"; }));
     EXPECT_EQ(fixture.lua("return kept.state"), "open");
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {connectTimeout = 0})").find("A WebSocket needs a connect timeout above 0 seconds."), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {connectTimeout = 0})").find("A WebSocket needs a connect timeout above 0 and at most 3600 seconds."), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {owner = 5})").find("An owner must be a table or a userdata, not number."), std::string::npos);
 }
 
@@ -580,6 +628,19 @@ TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #log") == "4"; }));
     EXPECT_EQ(fixture.lua("table.sort(log) return table.concat(log, ', ')"), "disconnect closed false true, dropped close 4001, limited close 1009, limited error true");
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+}
+
+TEST_F(NetPluginTest, PumpsSocketsWithoutAllocating) {
+    const EchoServer server;
+    test::EngineFixture fixture;
+    plugins::NetPlugin& plugin = fixture.engine().getPlugin<plugins::NetPlugin>();
+    const std::shared_ptr<WebSocket> socket = plugin.connectWebSocket(server.getUrl());
+    ASSERT_TRUE(fixture.frameUntil([&] { return socket->getState() == WebSocket::State::Open; }));
+    plugin.beginFrame(fixture.engine(), 0.0F);
+
+    const test::AllocationTracker tracker;
+    plugin.beginFrame(fixture.engine(), 0.0F);
+    EXPECT_EQ(tracker.getTotal(), 0U);
 }
 
 TEST_F(NetPluginTest, ClosesOpenSocketsWhenTheAppStops) {
@@ -710,6 +771,14 @@ TEST_F(WebSocketTest, ReconnectsAfterTheServerDropsAndStopsWhenClosed) {
     EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .multiplier = 0.5F}}), std::invalid_argument);
     EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .initialDelay = 5.0F, .maxDelay = 1.0F}}), std::invalid_argument);
     EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .jitter = 2.0F}}), std::invalid_argument);
+
+    // Delays that are not numbers would leave the socket waiting forever.
+    const float notANumber = std::numeric_limits<float>::quiet_NaN();
+    EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .initialDelay = notANumber}}), std::invalid_argument);
+    EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .maxDelay = notANumber}}), std::invalid_argument);
+    EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .multiplier = notANumber}}), std::invalid_argument);
+    EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .jitter = notANumber}}), std::invalid_argument);
+    EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .maxDelay = std::numeric_limits<float>::infinity()}}), std::invalid_argument);
 }
 
 TEST_F(NetPluginTest, PublishesConnectionEvents) {
