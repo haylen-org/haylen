@@ -1688,7 +1688,7 @@ Checklist:
 - [ ] Escala responsiva: modos de resolução de design (encaixar, expandir, preencher a largura, sem escala) e UI que acompanha a largura, revisados a fundo, com o redimensionamento da janela e do navegador.
 - [ ] Joystick virtual: modos fixo, flutuante (aparece onde se toca dentro de uma zona) e que segue o dedo, zona morta, vários joysticks e botões ao mesmo tempo, ligados a ações do action map, com imagens ou primitivas, e com testes.
 - [ ] Configuração para o mouse funcionar como toque (e o toque como mouse) no `app.json` e em tempo de execução.
-- [ ] Um rótulo com quebras de linha e `wrap = false` desenha a partir de uma caixa de uma linha, e o texto sai da caixa: manter as quebras, encurtar cada linha e centralizar o bloco, com teste.
+- [x] Um rótulo com quebras de linha e `wrap = false` desenha a partir de uma caixa de uma linha, e o texto sai da caixa: manter as quebras, encurtar cada linha e centralizar o bloco, com teste. Cada linha fica na sua linha com reticências, e o bloco fica no meio da altura, testado em `LabelTest`, que vê onde o texto desenha pelo `Renderer::visitDrawn`, também exposto ao Lua como `graphics2d.drawn()`.
 
 #### AL. Render, texto, shaders e web
 

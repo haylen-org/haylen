@@ -77,6 +77,7 @@ class Graphics2DLua final {
     static int popLayerOffset(lua_State* L);
 
     static int stats(lua_State* L);
+    static int drawn(lua_State* L);
     static int canvasBounds(lua_State* L);
     static int canvasUnitSize(lua_State* L);
     static int capturing(lua_State* L);

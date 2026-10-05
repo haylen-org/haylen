@@ -1198,6 +1198,26 @@ scene.push({
 })
 ```
 
+### graphics2d.drawn()
+
+Returns the textured quads and blocks of text that the open canvas holds so far, in the order they were drawn, as a list of tables with `x`, `y`, `width` and `height`, the bounds in the coordinates of the canvas, `text`, which is `true` for a block of text, and `label`, the path of the texture of a sprite on the first quad of each draw. Every sprite and every quad of a batch or a nine-slice is one entry, a baked batch is one entry, and every text draw is one block, while plain shapes such as rectangles and lines are left out. The bounds of a block of text reach a little past its letters, by the spread of the distance field of its glyphs. It suits checks and tools that need to know where things draw, such as the bounds the debug drawings outline. It needs an open canvas, and without one it raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local log = require('haylen.log')
+local scene = require('haylen.scene')
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawText(nil, 'Score 120', 40, 40, {size = 48})
+        for _, item in ipairs(graphics2d.drawn()) do
+            log.debug(string.format('%s at %.0f, %.0f', item.text and 'Text' or item.label, item.x, item.y))
+        end
+    end,
+})
+```
+
 ### graphics2d.lightTexture()
 
 Returns the 128 by 128 radial falloff `Texture` that `graphics2d.drawLight` uses when a light has no texture of its own. It is white with an alpha that fades from the center to the edge, which also suits glows and soft shadows.

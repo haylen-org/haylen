@@ -267,7 +267,7 @@ The method `Renderer::drawVector(image, sprite)`, `graphics2d.drawVector` in Lua
 
 ## Debug drawings
 
-The method `Renderer::addCanvasOverlay(overlay)` runs a function in every canvas just before it closes, with the clips and layer offsets of the canvas cleared, so it draws over what the canvas holds in its own coordinates, and `Renderer::getCanvasKind()` tells the kind of the canvas it runs in. The [debug drawings](lua-api/debug.md#drawings) of the engine draw through it: the shapes of physics worlds in world and render target canvases, and `Renderer::drawBounds(font, color, labelSize)`, which outlines every textured quad and text block the open canvas holds and names each sprite after the path of the texture the assets loaded it from.
+The method `Renderer::addCanvasOverlay(overlay)` runs a function in every canvas just before it closes, with the clips and layer offsets of the canvas cleared, so it draws over what the canvas holds in its own coordinates, and `Renderer::getCanvasKind()` tells the kind of the canvas it runs in. The method `Renderer::visitDrawn(visitor)` hands it every textured quad and block of text the canvas holds, which `Renderer::drawBounds` outlines for the debug drawings and Lua reads with `graphics2d.drawn()`. The [debug drawings](lua-api/debug.md#drawings) of the engine draw through it: the shapes of physics worlds in world and render target canvases, and `Renderer::drawBounds(font, color, labelSize)`, which outlines every textured quad and text block the open canvas holds and names each sprite after the path of the texture the assets loaded it from.
 
 ## Tiled maps
 

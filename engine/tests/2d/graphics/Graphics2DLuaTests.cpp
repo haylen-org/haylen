@@ -71,6 +71,22 @@ TEST_F(Graphics2DLuaTest, CreatesAndEditsSprites) {
     EXPECT_EQ(lua("return graphics2d.stats().sprites"), "1");
 }
 
+TEST_F(Graphics2DLuaTest, ListsTheTexturedQuadsAndTextOfTheOpenCanvas) {
+    // clang-format off
+    EXPECT_EQ(render(R"(
+        graphics2d.beginScreen()
+        graphics2d.drawRect({0, 0, 50, 50}, '#FFFFFFFF')
+        graphics2d.newSprite(hero, {x = 10, y = 20, width = 32, height = 16}):draw() -- The sprite turns around its center.
+        graphics2d.drawText(nil, 'Hi', 100, 200, {size = 40})
+        drawn = graphics2d.drawn()
+    )"), "nil");
+    // clang-format on
+    EXPECT_EQ(lua("return #drawn"), "2");
+    EXPECT_EQ(lua("local sprite = drawn[1] return sprite.x .. ' ' .. sprite.y .. ' ' .. sprite.width .. ' ' .. sprite.height .. ' ' .. tostring(sprite.text) .. ' ' .. tostring(sprite.label ~= nil)"), "-6.0 12.0 32.0 16.0 false true");
+    EXPECT_EQ(lua("local text = drawn[2] return tostring(text.text) .. ' ' .. tostring(text.x < 110 and text.y < 240 and text.width > 0 and text.height > 0) .. ' ' .. tostring(text.label)"), "true true nil");
+    EXPECT_NE(render("graphics2d.drawn()").find("No canvas is active"), std::string::npos);
+}
+
 TEST_F(Graphics2DLuaTest, DrawsBatchesAndStaticBatches) {
     lua("batch = graphics2d.newSpriteBatch(hero) batch:reserve(8)");
     EXPECT_EQ(lua("return batch:add({x = 1, y = 2}) .. batch:add({x = 3, y = 4, color = '#FFFFFF'}) .. batch:size()"), "122");

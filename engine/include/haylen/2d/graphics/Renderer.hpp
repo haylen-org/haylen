@@ -95,6 +95,15 @@ class Renderer final {
         float threshold = 0.5F;
     };
 
+    // A textured draw that a canvas holds: the corners of a sprite, of a piece of a nine-slice or of a baked batch, or the bounds of a block of text, with the label of the texture of the first quad of a draw.
+    struct Drawn {
+        std::array<math::Vec2, 4> corners{};
+        bool text = false;
+        std::string_view label;
+    };
+
+    using DrawnVisitor = std::function<void(const Drawn& drawn)>;
+
     struct Stats {
         std::size_t canvases = 0;
         std::size_t passes = 0;
@@ -162,6 +171,9 @@ class Renderer final {
 
     // Outlines every textured quad and text block the open canvas holds so far, in the color, and names each sprite after the path of its texture with the font, at a size in units of the destination: sprites, batches, nine-slice pieces, baked batches and glyphs drawn together.
     void drawBounds(text::Font& font, math::Color color, float labelSize);
+
+    // Calls the visitor with every textured quad and text block the open canvas holds so far, in canvas coordinates, the way `drawBounds` outlines them. The visitor may draw, and what it draws is not visited.
+    void visitDrawn(const DrawnVisitor& visitor) const;
 
     // Runs an overlay in every canvas just before it closes, with the clips and layer offsets of the canvas cleared, such as the debug drawings of the engine. Overlays never run while an overlay draws. The returned id removes the overlay.
     std::uint64_t addCanvasOverlay(CanvasOverlay overlay);

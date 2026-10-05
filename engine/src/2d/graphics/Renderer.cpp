@@ -667,11 +667,26 @@ void Renderer::finishCanvas() {
 }
 
 void Renderer::drawBounds(text::Font& font, math::Color color, float labelSize) {
-    const Canvas& canvas = state->getCanvas();
     const float unit = getCanvasUnitSize();
     const DrawOrder order{.layer = std::numeric_limits<int>::max() / 2, .unshaded = true};
-    const std::size_t end = state->items.size();
+    // clang-format off
+    visitDrawn([&](const Drawn& drawn) {
+        if (drawn.text) {
+            drawRectOutline(math::Geometry::bounds(drawn.corners), unit, color.withAlpha(color.a * 0.6F), order);
+            return;
+        }
+        drawPolyline(drawn.corners, unit, color, true, order);
+        if (!drawn.label.empty()) {
+            drawText(font, drawn.label, drawn.corners[0], {.size = labelSize * unit, .color = color, .shadowOffset = {unit, unit}, .shadowColor = math::Color::black()}, order);
+        }
+    });
+    // clang-format on
+}
 
+// A text draw is one block, and every quad of a sprite draw is a sprite of its own, named on its first quad or when it is the only one.
+void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
+    const Canvas& canvas = state->getCanvas();
+    const std::size_t end = state->items.size();
     for (std::size_t index = canvas.itemBegin; index < end; ++index) {
         const DrawItem item = state->items[index];
         const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor;
@@ -679,26 +694,23 @@ void Renderer::drawBounds(text::Font& font, math::Color color, float labelSize) 
             continue;
         }
         if (item.batch != nullptr) {
-            drawRectOutline(item.batch->bounds.translated(item.offset), unit, color, order);
+            const math::Rect bounds = item.batch->bounds.translated(item.offset);
+            visitor({.corners = {bounds.getMin(), math::Vec2{bounds.getRight(), bounds.y}, bounds.getMax(), math::Vec2{bounds.x, bounds.getBottom()}}});
             continue;
         }
 
-        // A text draw is one block, and every quad of a sprite draw is a sprite of its own.
         const std::size_t stride = item.program == Program::Recolor ? 2 : 1;
-        math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
-        for (std::size_t quad = item.first; quad < item.first + item.count; quad += stride) {
-            const std::array<math::Vec2, 4> corners = state->instances[quad].getCorners();
-            if (item.program == Program::Text) {
-                block = block.merged(math::Geometry::bounds(corners));
-                continue;
-            }
-            drawPolyline(corners, unit, color, true, order);
-            if (!item.texture->label.empty() && (quad == item.first || item.count == stride)) {
-                drawText(font, item.texture->label, corners[0], {.size = labelSize * unit, .color = color, .shadowOffset = {unit, unit}, .shadowColor = math::Color::black()}, order);
-            }
-        }
         if (item.program == Program::Text) {
-            drawRectOutline(block, unit, color.withAlpha(color.a * 0.6F), order);
+            math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
+            for (std::size_t quad = item.first; quad < item.first + item.count; ++quad) {
+                block = block.merged(math::Geometry::bounds(state->instances[quad].getCorners()));
+            }
+            visitor({.corners = {block.getMin(), math::Vec2{block.getRight(), block.y}, block.getMax(), math::Vec2{block.x, block.getBottom()}}, .text = true});
+            continue;
+        }
+        for (std::size_t quad = item.first; quad < item.first + item.count; quad += stride) {
+            const bool named = quad == item.first || item.count == stride;
+            visitor({.corners = state->instances[quad].getCorners(), .label = named ? std::string_view(item.texture->label) : std::string_view()});
         }
     }
 }

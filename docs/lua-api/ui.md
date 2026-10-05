@@ -1338,7 +1338,7 @@ Text in one of the theme fonts.
 | `font` | string | `'body'` | Font role: `'body'`, `'caption'`, `'button'`, `'heading'`, `'title'` or `'monospace'`. |
 | `color` | theme color | `'text'` | Color of the text. |
 | `textAlign` | string | `'start'` | One of `'start'`, `'center'` or `'end'` inside the label bounds, where start is the left of a left-to-right UI and the right of a right-to-left one. |
-| `wrap` | boolean | `true` | Wraps long text onto more lines. Without wrapping the text stays on one line and ends with an ellipsis when it does not fit. |
+| `wrap` | boolean | `true` | Wraps long text onto more lines. Without wrapping every line of the text, each one ended by a line break, stays on its own line and ends with an ellipsis when it does not fit, and the block of lines sits in the middle of the height of the label. |
 | `outline` | color | none | Draws an outline around the letters in this color. |
 | `outlineWidth` | number from 0 to 16 | `2` | Thickness of the outline. |
 
