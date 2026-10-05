@@ -98,6 +98,8 @@ class Theme final {
         SlotSize,
         WindowTitleHeight,
         PageIndicatorSize,
+        CellRadius,
+        RefreshDistance,
     };
 
     enum class Font : std::uint8_t {
@@ -148,6 +150,10 @@ class Theme final {
         Window,
         Slot,
         SlotHighlighted,
+        Cell,
+        CellHover,
+        CellPressed,
+        CellSelected,
     };
 
     // The font a role draws with, its size and the style of its face, where a font without a face for the style draws with its regular face.
@@ -171,9 +177,9 @@ class Theme final {
     using TextureLoader = std::function<graphics::Texture(std::string_view path, graphics::Texture::Options options)>;
 
     static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::InformationText) + 1;
-    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::PageIndicatorSize) + 1;
+    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::RefreshDistance) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
-    static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::SlotHighlighted) + 1;
+    static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::CellSelected) + 1;
 
     [[nodiscard]] static Theme dark();
     [[nodiscard]] static Theme light();
@@ -221,34 +227,36 @@ class Theme final {
     void applyTo(ImGuiStyle& style) const;
 
   private:
-    using Palette = std::array<std::uint32_t, kColorCount>;
+    // A color role with its name and its colors in the dark and light themes, as `0xRRGGBBAA`.
+    struct ColorRole {
+        std::string_view name;
+        std::uint32_t dark = 0;
+        std::uint32_t light = 0;
+    };
 
-    static constexpr std::array<std::string_view, kColorCount> kColorNames{
-        "window", "panel", "raised", "tooltip", "overlay", "hover", "pressed", "selection", "focus", "border", "borderStrong", "scrollbar", "scrollbarHover", "text", "textMuted", "textDisabled", "onTooltip", "accent", "accentHover", "accentStrong", "onAccent", "accentBackground", "accentText", "success", "onSuccess", "successBackground", "successText", "warning", "onWarning", "warningBackground", "warningText", "danger", "dangerHover", "dangerStrong", "onDanger", "dangerBackground", "dangerText", "information", "onInformation", "informationBackground", "informationText",
+    // A metric with its name and its value in the built-in themes, which suits the 1920 by 1080 design resolution the engine uses by default.
+    struct MetricRole {
+        std::string_view name;
+        float value = 0.0F;
     };
-    static constexpr std::array<std::string_view, kMetricCount> kMetricNames{
-        "controlHeight", "controlRadius", "controlPaddingX", "controlPaddingY", "itemSpacing", "panelPadding", "borderWidth", "focusWidth", "scrollbarSize", "iconSize", "choiceSize", "sliderTrackHeight", "sliderKnobSize", "toggleWidth", "toggleHeight", "progressHeight", "badgePaddingX", "badgePaddingY", "tabPaddingX", "listRowHeight", "dialogWidth", "toastWidth", "tooltipWidth", "settingsLabelWidth", "caretWidth", "circularProgressSize", "circularProgressThickness", "slotSize", "windowTitleHeight", "pageIndicatorSize",
-    };
+
+    static constexpr std::array<ColorRole, kColorCount> kColorRoles{{
+        {"window", 0x1B1E2BFF, 0xF4F5F9FF}, {"panel", 0x232739FF, 0xFFFFFFFF}, {"raised", 0x2C3147FF, 0xFFFFFFFF}, {"tooltip", 0x0F111AF2, 0x1B1E2BF2}, {"overlay", 0x000000A0, 0x00000066}, {"hover", 0xFFFFFF14, 0x0000000F}, {"pressed", 0xFFFFFF24, 0x0000001F}, {"selection", 0x4C7DFF40, 0x4C7DFF33}, {"focus", 0x7AA2FFFF, 0x3A66E0FF}, {"border", 0x3A4058FF, 0xD6D9E4FF}, {"borderStrong", 0x525A7AFF, 0xB3B8CCFF}, {"scrollbar", 0x3A4058FF, 0xC9CDDBFF}, {"scrollbarHover", 0x525A7AFF, 0xA9AEC2FF}, {"text", 0xE8EAF2FF, 0x1B1E2BFF}, {"textMuted", 0xA3A8BFFF, 0x5C6380FF}, {"textDisabled", 0x6A7090FF, 0xA3A8BFFF}, {"onTooltip", 0xE8EAF2FF, 0xF4F5F9FF}, {"accent", 0x4C7DFFFF, 0x3A66E0FF}, {"accentHover", 0x6690FFFF, 0x4C7DFFFF}, {"accentStrong", 0x3A66E0FF, 0x2C52C0FF}, {"onAccent", 0xFFFFFFFF, 0xFFFFFFFF}, {"accentBackground", 0x4C7DFF26, 0x3A66E01F}, {"accentText", 0x8FB0FFFF, 0x2C52C0FF}, {"success", 0x3DBE7AFF, 0x2E9E62FF}, {"onSuccess", 0xFFFFFFFF, 0xFFFFFFFF}, {"successBackground", 0x3DBE7A26, 0x2E9E621F}, {"successText", 0x6FDCA0FF, 0x1F7A49FF}, {"warning", 0xF2B23AFF, 0xD9941CFF}, {"onWarning", 0x1B1E2BFF, 0xFFFFFFFF}, {"warningBackground", 0xF2B23A26, 0xD9941C1F}, {"warningText", 0xF7CB70FF, 0x9A6508FF}, {"danger", 0xE5534BFF, 0xD0433BFF}, {"dangerHover", 0xEE6B64FF, 0xE5534BFF}, {"dangerStrong", 0xC8423BFF, 0xB0352EFF}, {"onDanger", 0xFFFFFFFF, 0xFFFFFFFF}, {"dangerBackground", 0xE5534B26, 0xD0433B1F}, {"dangerText", 0xFF8A84FF, 0xA8322BFF}, {"information", 0x3AA8E0FF, 0x2A8CC0FF}, {"onInformation", 0xFFFFFFFF, 0xFFFFFFFF}, {"informationBackground", 0x3AA8E026, 0x2A8CC01F}, {"informationText", 0x7FCBF2FF, 0x1D6A93FF},
+    }};
+    static constexpr std::array<MetricRole, kMetricCount> kMetricRoles{{
+        {"controlHeight", 64.0F}, {"controlRadius", 12.0F}, {"controlPaddingX", 24.0F}, {"controlPaddingY", 12.0F}, {"itemSpacing", 16.0F}, {"panelPadding", 28.0F}, {"borderWidth", 2.0F}, {"focusWidth", 3.0F}, {"scrollbarSize", 16.0F}, {"iconSize", 36.0F}, {"choiceSize", 36.0F}, {"sliderTrackHeight", 10.0F}, {"sliderKnobSize", 34.0F}, {"toggleWidth", 72.0F}, {"toggleHeight", 38.0F}, {"progressHeight", 22.0F}, {"badgePaddingX", 14.0F}, {"badgePaddingY", 4.0F}, {"tabPaddingX", 24.0F}, {"listRowHeight", 64.0F}, {"dialogWidth", 760.0F}, {"toastWidth", 560.0F}, {"tooltipWidth", 520.0F}, {"settingsLabelWidth", 420.0F}, {"caretWidth", 2.0F}, {"circularProgressSize", 72.0F}, {"circularProgressThickness", 8.0F}, {"slotSize", 96.0F}, {"windowTitleHeight", 56.0F}, {"pageIndicatorSize", 14.0F}, {"cellRadius", 12.0F}, {"refreshDistance", 120.0F},
+    }};
     static constexpr std::array<std::string_view, kFontCount> kFontNames{"body", "caption", "button", "heading", "title", "monospace"};
     static constexpr std::array<std::string_view, kSurfaceCount> kSurfaceNames{
-        "panel", "card", "dialog", "tooltip", "toast", "banner", "button", "buttonHover", "buttonPressed", "buttonPrimary", "buttonPrimaryHover", "buttonPrimaryPressed", "buttonDestructive", "buttonDestructiveHover", "buttonDestructivePressed", "field", "fieldFocused", "check", "checkChecked", "track", "trackFill", "knob", "tab", "tabSelected", "chip", "chipSelected", "badge", "stickBase", "stickKnob", "touchButton", "touchButtonPressed", "segment", "segmentSelected", "menu", "window", "slot", "slotHighlighted",
+        "panel", "card", "dialog", "tooltip", "toast", "banner", "button", "buttonHover", "buttonPressed", "buttonPrimary", "buttonPrimaryHover", "buttonPrimaryPressed", "buttonDestructive", "buttonDestructiveHover", "buttonDestructivePressed", "field", "fieldFocused", "check", "checkChecked", "track", "trackFill", "knob", "tab", "tabSelected", "chip", "chipSelected", "badge", "stickBase", "stickKnob", "touchButton", "touchButtonPressed", "segment", "segmentSelected", "menu", "window", "slot", "slotHighlighted", "cell", "cellHover", "cellPressed", "cellSelected",
     };
-    static constexpr Palette kDarkPalette{
-        0x1B1E2BFF, 0x232739FF, 0x2C3147FF, 0x0F111AF2, 0x000000A0, 0xFFFFFF14, 0xFFFFFF24, 0x4C7DFF40, 0x7AA2FFFF, 0x3A4058FF, 0x525A7AFF, 0x3A4058FF, 0x525A7AFF, 0xE8EAF2FF, 0xA3A8BFFF, 0x6A7090FF, 0xE8EAF2FF, 0x4C7DFFFF, 0x6690FFFF, 0x3A66E0FF, 0xFFFFFFFF, 0x4C7DFF26, 0x8FB0FFFF, 0x3DBE7AFF, 0xFFFFFFFF, 0x3DBE7A26, 0x6FDCA0FF, 0xF2B23AFF, 0x1B1E2BFF, 0xF2B23A26, 0xF7CB70FF, 0xE5534BFF, 0xEE6B64FF, 0xC8423BFF, 0xFFFFFFFF, 0xE5534B26, 0xFF8A84FF, 0x3AA8E0FF, 0xFFFFFFFF, 0x3AA8E026, 0x7FCBF2FF,
-    };
-    static constexpr Palette kLightPalette{
-        0xF4F5F9FF, 0xFFFFFFFF, 0xFFFFFFFF, 0x1B1E2BF2, 0x00000066, 0x0000000F, 0x0000001F, 0x4C7DFF33, 0x3A66E0FF, 0xD6D9E4FF, 0xB3B8CCFF, 0xC9CDDBFF, 0xA9AEC2FF, 0x1B1E2BFF, 0x5C6380FF, 0xA3A8BFFF, 0xF4F5F9FF, 0x3A66E0FF, 0x4C7DFFFF, 0x2C52C0FF, 0xFFFFFFFF, 0x3A66E01F, 0x2C52C0FF, 0x2E9E62FF, 0xFFFFFFFF, 0x2E9E621F, 0x1F7A49FF, 0xD9941CFF, 0xFFFFFFFF, 0xD9941C1F, 0x9A6508FF, 0xD0433BFF, 0xE5534BFF, 0xB0352EFF, 0xFFFFFFFF, 0xD0433B1F, 0xA8322BFF, 0x2A8CC0FF, 0xFFFFFFFF, 0x2A8CC01F, 0x1D6A93FF,
-    };
-
-    // Sizes suit the 1920 by 1080 design resolution the engine uses by default.
-    static constexpr std::array<float, kMetricCount> kMetrics{64.0F, 12.0F, 24.0F, 12.0F, 16.0F, 28.0F, 2.0F, 3.0F, 16.0F, 36.0F, 36.0F, 10.0F, 34.0F, 72.0F, 38.0F, 22.0F, 14.0F, 4.0F, 24.0F, 64.0F, 760.0F, 560.0F, 520.0F, 420.0F, 2.0F, 72.0F, 8.0F, 96.0F, 56.0F, 14.0F};
     static constexpr std::array<float, kFontCount> kFontSizes{30.0F, 24.0F, 30.0F, 38.0F, 56.0F, 26.0F};
 
     // The edges and the center of a nine-slice, the pieces a tiled image repeats, and the smallest size a copy of them may have.
     static constexpr std::array<std::size_t, 5> kTiledPieces{1, 3, 4, 5, 7};
     static constexpr float kMinTileSize = 1.0F;
 
-    template <typename Enum, std::size_t Count> [[nodiscard]] static std::optional<Enum> fromName(const std::array<std::string_view, Count>& names, std::string_view value) noexcept;
+    template <typename Enum, typename Table, typename Projection> [[nodiscard]] static std::optional<Enum> fromName(const Table& names, std::string_view value, Projection projection) noexcept;
     [[nodiscard]] static math::Color readColor(const core::Json& value, const std::string& context);
     [[nodiscard]] static float readNumber(const core::Json& value, const std::string& context);
     [[nodiscard]] static math::Insets readInsets(const core::Json& value, const std::string& context);

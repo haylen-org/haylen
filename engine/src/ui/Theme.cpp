@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -14,8 +15,8 @@
 
 namespace haylen::ui {
 
-template <typename Enum, std::size_t Count> std::optional<Enum> Theme::fromName(const std::array<std::string_view, Count>& names, std::string_view value) noexcept {
-    const auto found = std::ranges::find(names, value);
+template <typename Enum, typename Table, typename Projection> std::optional<Enum> Theme::fromName(const Table& names, std::string_view value, Projection projection) noexcept {
+    const auto found = std::ranges::find(names, value, projection);
     if (found == names.end()) {
         return std::nullopt;
     }
@@ -147,28 +148,30 @@ const core::Json& Theme::readSection(const core::Json& document, const char* key
 }
 
 std::optional<Theme::Color> Theme::colorFromName(std::string_view value) noexcept {
-    return fromName<Color>(kColorNames, value);
+    return fromName<Color>(kColorRoles, value, &ColorRole::name);
 }
 
 std::optional<Theme::Metric> Theme::metricFromName(std::string_view value) noexcept {
-    return fromName<Metric>(kMetricNames, value);
+    return fromName<Metric>(kMetricRoles, value, &MetricRole::name);
 }
 
 std::optional<Theme::Font> Theme::fontFromName(std::string_view value) noexcept {
-    return fromName<Font>(kFontNames, value);
+    return fromName<Font>(kFontNames, value, std::identity());
 }
 
 std::optional<Theme::Surface> Theme::surfaceFromName(std::string_view value) noexcept {
-    return fromName<Surface>(kSurfaceNames, value);
+    return fromName<Surface>(kSurfaceNames, value, std::identity());
 }
 
 Theme Theme::dark() {
     Theme theme;
     theme.name = "dark";
     for (std::size_t index = 0; index < kColorCount; ++index) {
-        theme.colors[index] = math::Color::fromHex(kDarkPalette[index]);
+        theme.colors[index] = math::Color::fromHex(kColorRoles[index].dark);
     }
-    theme.metrics = kMetrics;
+    for (std::size_t index = 0; index < kMetricCount; ++index) {
+        theme.metrics[index] = kMetricRoles[index].value;
+    }
     for (std::size_t index = 0; index < kFontCount; ++index) {
         theme.fonts[index].size = kFontSizes[index];
     }
@@ -179,7 +182,7 @@ Theme Theme::light() {
     Theme theme = dark();
     theme.name = "light";
     for (std::size_t index = 0; index < kColorCount; ++index) {
-        theme.colors[index] = math::Color::fromHex(kLightPalette[index]);
+        theme.colors[index] = math::Color::fromHex(kColorRoles[index].light);
     }
     return theme;
 }
