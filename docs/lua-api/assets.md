@@ -21,6 +21,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `bitmapFont` | `.fnt` | Bitmap Font from a BMFont file in its text or binary format, whose page images sit next to it. | The `filter` and `wrap` of its page textures. |
 | `gridFont` | None, so load an image with the type `'gridFont'` | Bitmap Font from an image of equal cells. | The options `characters`, `cellWidth` and `cellHeight`, which it needs, and `spacing`, `margin`, `advance`, `lineHeight` and `baseline`, like `graphics.newGridFont` from [`haylen.graphics`](graphics.md), plus the `filter` and `wrap` of its texture. |
 | `shader` | `.shader` | Shader from [`haylen.graphics`](graphics.md), compiled by `haylen.py shaders` as the [shader guide](../shaders.md) explains. | None. |
+| `vectorImage` | `.svg` | VectorImage from [`haylen.graphics`](graphics.md#vectorimage), an SVG document that draws sharp at any size. | None. |
 | `json` | `.json` | Plain Lua table, with objects as string keyed tables and arrays as sequences. | None. |
 | `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [`haylen.audio`](audio.md). | The option `stream` keeps the encoded file and decodes it while it plays (default `false`). |
 | `atlas` | None, so load it with the type `'atlas'` | A `SpriteAtlas` from [`haylen.animation2d`](animation2d.md). | The `filter` and `wrap` of its texture. |
@@ -96,6 +97,17 @@ local graphics2d = require('haylen.graphics2d')
 local shader = assets.shader('shaders/ripple.shader')
 local ripple = graphics2d.newMaterial(shader, {strength = 0.03})
 print(shader.name, #shader.uniforms)
+```
+
+### assets.vectorImage(path)
+
+Loads an `.svg` file synchronously and returns its [`VectorImage`](graphics.md#vectorimage), for [`graphics2d.drawVector`](graphics2d.md#graphics2ddrawvectorimage-x-y-options). A file that is not an SVG document with a size raises `The bytes are not an SVG document with a size. Give its root element a view box, or a width and a height.`
+
+```lua
+local assets = require('haylen.assets')
+
+local icon = assets.vectorImage('icons/heart.svg')
+print(icon.width, icon.height)
 ```
 
 ### assets.json(path)

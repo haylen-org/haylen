@@ -1,6 +1,7 @@
 #include "2d/graphics/RendererState.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <stdexcept>
 #include <string>
@@ -52,6 +53,14 @@ math::Rect RendererState::getPassRect(const Canvas& canvas) const {
     }
     const math::Rect& part = canvas.frame;
     return {destination.x + part.x * destination.width, destination.y + part.y * destination.height, part.width * destination.width, part.height * destination.height};
+}
+
+// The view takes canvas units to the units of the view size, which the pass stretches over its pixels.
+float RendererState::getPixelsPerUnit() {
+    const Canvas& canvas = getCanvas();
+    const math::Vec2 pixels = getPassRect(canvas).getSize() / canvas.viewSize;
+    const math::Transform2D& view = canvas.view;
+    return std::max(std::hypot(view.a, view.b) * pixels.x, std::hypot(view.c, view.d) * pixels.y);
 }
 
 std::optional<TextPainter::PixelGrid> RendererState::getPixelGrid() {

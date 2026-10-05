@@ -53,6 +53,11 @@ int AssetsLua::shader(lua_State* L) {
     return 1;
 }
 
+int AssetsLua::vectorImage(lua_State* L) {
+    lua::Stack::push(L, getAssets(L).vectorImage(lua::Stack::read<std::string_view>(L, 1)));
+    return 1;
+}
+
 int AssetsLua::json(lua_State* L) {
     lua::JsonConverter::push(L, getAssets(L).json(lua::Stack::read<std::string_view>(L, 1)));
     return 1;
@@ -222,7 +227,7 @@ int AssetsLua::uploadCount(lua_State* L) {
 
 int AssetsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"texture", &lua::Binding::native<&texture>}, {"font", &lua::Binding::native<&font>}, {"shader", &lua::Binding::native<&shader>}, {"json", &lua::Binding::native<&json>}, {"text", &lua::Binding::native<&text>}, {"bytes", &lua::Binding::native<&bytes>}, {"fileSize", &lua::Binding::native<&fileSize>}, {"exists", &lua::Binding::native<&exists>}, {"list", &lua::Binding::native<&list>}, {"typeForPath", &lua::Binding::native<&typeForPath>}, {"hasType", &hasType}, {"load", &lua::Binding::native<&load>}, {"loadAsync", &lua::Binding::native<&loadAsync>}, {"defineGroups", &lua::Binding::native<&defineGroups>}, {"defineGroup", &lua::Binding::native<&defineGroup>}, {"preload", &lua::Binding::native<&preload>}, {"unloadGroup", &lua::Binding::native<&unloadGroup>}, {"groupProgress", &lua::Binding::native<&groupProgress>}, {"groupLoaded", &lua::Binding::native<&groupLoaded>}, {"groups", &groups}, {"cachedCount", &cachedCount}, {"pendingCount", &pendingCount}, {"releaseUnused", &releaseUnused}, {"setUploadBudget", &lua::Binding::native<&setUploadBudget>}, {"uploadBudget", &uploadBudget}, {"uploadCount", &uploadCount}, {nullptr, nullptr},
+        {"texture", &lua::Binding::native<&texture>}, {"font", &lua::Binding::native<&font>}, {"shader", &lua::Binding::native<&shader>}, {"vectorImage", &lua::Binding::native<&vectorImage>}, {"json", &lua::Binding::native<&json>}, {"text", &lua::Binding::native<&text>}, {"bytes", &lua::Binding::native<&bytes>}, {"fileSize", &lua::Binding::native<&fileSize>}, {"exists", &lua::Binding::native<&exists>}, {"list", &lua::Binding::native<&list>}, {"typeForPath", &lua::Binding::native<&typeForPath>}, {"hasType", &hasType}, {"load", &lua::Binding::native<&load>}, {"loadAsync", &lua::Binding::native<&loadAsync>}, {"defineGroups", &lua::Binding::native<&defineGroups>}, {"defineGroup", &lua::Binding::native<&defineGroup>}, {"preload", &lua::Binding::native<&preload>}, {"unloadGroup", &lua::Binding::native<&unloadGroup>}, {"groupProgress", &lua::Binding::native<&groupProgress>}, {"groupLoaded", &lua::Binding::native<&groupLoaded>}, {"groups", &groups}, {"cachedCount", &cachedCount}, {"pendingCount", &pendingCount}, {"releaseUnused", &releaseUnused}, {"setUploadBudget", &lua::Binding::native<&setUploadBudget>}, {"uploadBudget", &uploadBudget}, {"uploadCount", &uploadCount}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

@@ -209,6 +209,29 @@ scene.push({
 })
 ```
 
+### graphics2d.drawVector(image, x, y, options)
+
+Draws a [`VectorImage`](graphics.md#vectorimage) with its pivot at `x`, `y`, at its own size unless the options give one. The engine rasterizes the image at the scale it covers on the screen, in steps a quarter of an octave apart, so it stays sharp at any size and zoom, and keeps the rasters in a vector atlas, so many images at many sizes batch into few draw calls. The first raster of an image is made at once, and every other one on worker threads while the nearest raster draws in its place, as the [rendering guide](../rendering.md#vector-images) explains. The argument `options` takes the keys of `graphics2d.draw` but `source` and `partColors`, and a `partMask` raises `A vector image draws without a part mask.`
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+local heart = assets.vectorImage('icons/heart.svg')
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        for index = 1, 8 do
+            local size = 16 * index
+            graphics2d.drawVector(heart, 40 + index * index * 12, 200, {width = size, height = size, color = '#FFFF8080', rotation = math.sin(haylen.elapsed()) * 0.2})
+        end
+    end,
+})
+```
+
 ### graphics2d.drawBatch(texture, sprites, order)
 
 Draws a list of sprite tables that share `texture` as one batch, without keeping them in a `SpriteBatch`. Each sprite table uses the keys described in [`SpriteBatch`](#spritebatch). The argument `order` is an optional draw order table. An empty list draws nothing. Use a `SpriteBatch` instead when most sprites stay the same from frame to frame.

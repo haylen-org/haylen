@@ -214,6 +214,7 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | Sokol | commit `2e75443` | Headers only. The runtime compiles the implementation for the chosen backend, with the patches in `engine/cmake/patches` that the [distribution guide](distribution.md#notes-on-dependencies) describes. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash, whose prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
+| NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images, and publishes no releases, so it is pinned to a commit of its default branch. |
 | msdfgen | v1.13 | Only its core, which builds the distance fields of font glyphs from their whole outlines. |
 | HarfBuzz | 14.5.0 | Old MIT license. The amalgamated source compiles as `haylen_harfbuzz` with `HB_MINI`, the OpenType shaper without the AAT and legacy shapers. |
 | SheenBidi | v3.0.0 | Apache 2.0. The Unicode Bidirectional Algorithm and script runs, compiled from its unity source as `haylen_sheenbidi`. |

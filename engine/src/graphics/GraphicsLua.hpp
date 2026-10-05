@@ -7,7 +7,7 @@ struct lua_State;
 
 namespace haylen::graphics {
 
-// Installs `haylen.graphics` with the `Texture`, `RenderTarget`, `Font`, `FontFamily` and `Shader` classes.
+// Installs `haylen.graphics` with the `Texture`, `RenderTarget`, `Font`, `FontFamily`, `Shader` and `VectorImage` classes.
 class GraphicsLua final {
   public:
     static void install(lua_State* L);
@@ -38,6 +38,11 @@ class GraphicsLua final {
     static int shaderName(lua_State* L);
     static int shaderUniforms(lua_State* L);
     static int shaderTextures(lua_State* L);
+
+    static int newVectorImage(lua_State* L);
+    static int vectorWidth(lua_State* L);
+    static int vectorHeight(lua_State* L);
+    static int rasterizeVector(lua_State* L);
 
     static int open(lua_State* L);
 };

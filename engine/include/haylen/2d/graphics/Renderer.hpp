@@ -21,6 +21,7 @@
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -120,6 +121,8 @@ class Renderer final {
     // Draws a baked batch shifted by an offset in world units, which lets parallax layers reuse one batch. A baked batch takes no part mask.
     void drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order = {}, math::Vec2 offset = {});
     void drawNineSlice(const NineSlice& slice, const math::Rect& area, math::Color color = math::Color::white(), const DrawOrder& order = {}, float borderScale = 1.0F);
+    // Draws a vector image in the place, size and look of the sprite, whose texture and source come from the raster of the image at the scale it covers on the screen, made on the task pool and kept in the vector atlas of the renderer. A sprite without a size takes the size of the image. A vector image draws without a part mask.
+    void drawVector(const graphics::VectorImage& image, const Sprite& sprite);
     // Draws plain text with a font alone or with a family and its fallbacks, turned and stretched by the style around the position, where its anchor lands.
     void drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});
     void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});

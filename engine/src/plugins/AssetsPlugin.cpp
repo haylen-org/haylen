@@ -23,6 +23,9 @@ AssetsPlugin::AssetsPlugin() {
     registerLuaPusher("shader", [](lua_State* L, const std::shared_ptr<void>& asset) {
         lua::Stack::push(L, graphics::Shader(std::static_pointer_cast<graphics::ShaderResource>(asset)));
     });
+    registerLuaPusher("vectorImage", [](lua_State* L, const std::shared_ptr<void>& asset) {
+        lua::Stack::push(L, graphics::VectorImage(std::static_pointer_cast<graphics::VectorImageResource>(asset)));
+    });
     registerLuaPusher("json", [](lua_State* L, const std::shared_ptr<void>& asset) {
         lua::JsonConverter::push(L, *std::static_pointer_cast<core::Json>(asset));
     });

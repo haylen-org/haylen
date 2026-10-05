@@ -279,6 +279,7 @@ void FrameSubmitter::append(const DrawItem& item) {
 
 // The splats of metaball fields follow the instances of the draws in the same buffer.
 void FrameSubmitter::upload() {
+    state.vectors.stage();
     state.stats.uploadedBytes += state.device.uploadTextures();
 
     const std::vector<GpuInstance>* source = &state.instances;

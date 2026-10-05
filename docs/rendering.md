@@ -133,6 +133,7 @@ After sorting, the renderer walks the draws of each canvas and merges neighbours
 | Draws | Program | Texture |
 | --- | --- | --- |
 | `graphics2d.draw`, `sprite:draw()`, `batch:draw()`, `graphics2d.drawNineSlice`, particle emitters | sprite | Their texture. |
+| `graphics2d.drawVector` | sprite | The page of the vector atlas that holds the raster. |
 | Sprites and batches with a `partMask` | recolor | Their texture, and the mask as a second texture. |
 | `graphics2d.drawRect`, `drawRectOutline`, `drawLine`, `drawPolyline` | sprite | The white texture. |
 | `graphics2d.drawCircle`, `drawRing`, `drawArc`, `drawPolygon` | mesh | The white texture. |
@@ -253,6 +254,17 @@ All pieces go into one draw item with the slice's texture, so frames that share 
 
 A sprite or a sprite batch whose draw order has a `partMask` draws with the recolor program. The base is a white or greyscale sprite, and the mask, a texture with the layout of the base, marks every part in red, green, blue or yellow, such as the hat, the shirt, the trousers and the boots of a character. Each sprite has `PartColors` (`haylen/2d/graphics/PartColors.hpp`) with a color for each mask color, and the program multiplies every part of the base by its color, which keeps the shading of the base. Yellow counts as red and green together, so it takes its own color and leaves the rest of each to its part, the alpha of the mask fades parts out at their soft edges, a part color mixes in by its alpha, so white or transparent keeps a part as it is, and the color and flash of the sprite apply over the result. Recolored sprites of one texture and mask share a draw call whatever their colors, since the colors travel in their instances and the GPU does all the per-pixel work. In lit canvases they light with a flat normal. A recolored draw takes no material, which raises `A draw with a part mask does not take a material.`, a baked batch takes no mask, which raises `A baked sprite batch draws without a part mask. Draw a sprite batch to recolor its sprites.`, and the [`haylen.graphics2d` reference](lua-api/graphics2d.md#recoloring-by-parts) shows the Lua API.
 
+## Vector images
+
+A `graphics::VectorImage` (`haylen/graphics/VectorImage.hpp`) is an SVG document that NanoSVG reads into curves: paths and basic shapes with their fills and strokes, line joins, caps and dashes, linear and radial gradients, transforms, groups, opacity and the view box. The color `currentColor` paints white, so the color of a draw tints what uses it, as icons that follow the color of their text expect. Clip paths, masks, `use`, style sheets and text are left out. The asset type `vectorImage` reads `.svg` files on the task pool, `VectorImage::rasterize(scale)` turns an image into straight RGBA pixels on any thread with the colors of its edges spread into the transparent pixels around them, and `graphics.newVectorImage(text)` reads a document from Lua.
+
+The method `Renderer::drawVector(image, sprite)`, `graphics2d.drawVector` in Lua, draws an image in the place, size and look of a sprite. It works out the scale the image covers on the screen, the size of the draw in pixels of its destination over the size of the image, and draws the raster of the step that covers that scale from the vector atlas of the renderer:
+
+- Scales come in steps a quarter of an octave apart, about 19 percent, so an image drawn at a size between two steps takes the larger raster and never blurs, and an image that grows or zooms takes a sharper raster as it reaches each step.
+- The first raster of an image is made at once on the frame thread, so the image shows from its first draw. Every other step is made on the task pool, and until it arrives the nearest step the atlas holds draws in its place.
+- Rasters live in pages of 1024 by 1024 pixels, one dynamic texture each, packed in shelves with a pixel between them, so the draws of many images at many sizes share a few textures and batch into few draw calls. A raster larger than a page takes a page of its own. Once the atlas holds eight pages, the page that drew longest ago starts over with a new texture, and its images make their rasters again when they draw.
+- A page whose rasters changed uploads once per frame, before the passes.
+
 ## Tiled maps
 
 The method `tiled::MapRenderer::draw(renderer, view, order)`, which Lua calls as `map:draw(camera, order)`, draws every visible layer in map order into the active canvas. The [Tiled guide](tiled.md) covers the supported features, and drawing works like this:
@@ -277,7 +289,7 @@ Sokol preallocates its resource pools, and the `Gpu` class of `engine/src/graphi
 
 | Pool | Size | Taken by |
 | --- | --- | --- |
-| Images (`kImagePoolSize`) | 4096 | Every texture, render target and font atlas, the renderer's white, light and metaball textures and shadow atlas, the targets of each canvas with lighting or post-processing, and the field of each metaball draw. |
+| Images (`kImagePoolSize`) | 4096 | Every texture, render target and font atlas, the renderer's white, light and metaball textures and shadow atlas, the pages of the vector atlas, the targets of each canvas with lighting or post-processing, and the field of each metaball draw. |
 | Views (`kViewPoolSize`) | 8192 | One per texture and two per render target, so the image pool always runs out first. |
 | Buffers (`kBufferPoolSize`) | 4096 | Every static batch, including each baked region run of a Tiled layer, plus the renderer's quad and its three streaming buffers. |
 | Shaders (`kShaderPoolSize`) | 512 | The renderer's fourteen programs, each made the first time a draw needs it, plus every program of a custom shader that a draw has used, up to six per shader: its sprite, text and mesh programs and their lit versions. |

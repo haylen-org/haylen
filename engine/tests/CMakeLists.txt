@@ -7,6 +7,7 @@ set(HAYLEN_TEST_SOURCES
   2d/graphics/RendererStateTests.cpp
   2d/graphics/RendererTests.cpp
   2d/graphics/TextPainterTests.cpp
+  2d/graphics/VectorAtlasTests.cpp
   2d/lighting/Lighting2DTests.cpp
   2d/navigation/CrowdTests.cpp
   2d/navigation/NavMeshTests.cpp
@@ -60,6 +61,7 @@ set(HAYLEN_TEST_SOURCES
   graphics/GraphicsLuaTests.cpp
   graphics/GraphicsTests.cpp
   graphics/ShaderTests.cpp
+  graphics/VectorImageTests.cpp
   input/GestureTests.cpp
   input/InputTests.cpp
   io/IoTests.cpp

@@ -24,6 +24,7 @@ class AssetsLua final {
     static int texture(lua_State* L);
     static int font(lua_State* L);
     static int shader(lua_State* L);
+    static int vectorImage(lua_State* L);
     static int json(lua_State* L);
     static int text(lua_State* L);
     static int bytes(lua_State* L);

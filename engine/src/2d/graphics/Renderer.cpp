@@ -128,6 +128,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::beginFrame(const graphics::Viewport& viewport, math::Color clearColor) {
+    ++state->frame;
     state->pixelRect = viewport.getPixelRect();
     state->visibleRect = viewport.getVisibleRect();
     state->clearColor = clearColor;
@@ -323,6 +324,32 @@ void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, mat
         quads.push_back(GpuInstance::make(resource, {.position = patch.area.getMin(), .size = patch.area.getSize(), .source = patch.source, .pivot = {}, .color = color}));
     }
     state->addInstances(Program::Sprite, order, slice.texture, quads, area.getBottom());
+}
+
+void Renderer::drawVector(const graphics::VectorImage& image, const Sprite& sprite) {
+    if (!image.isValid()) {
+        throw std::invalid_argument("Cannot draw a vector image without a document.");
+    }
+    if (sprite.order.partMask.isValid()) {
+        throw std::invalid_argument("A vector image draws without a part mask.");
+    }
+    if (!state->accepts(sprite.order)) {
+        return;
+    }
+
+    const math::Vec2 natural = image.getSize();
+    const math::Vec2 size = (sprite.size.isZero() ? natural : sprite.size) * sprite.scale;
+    const float scale = std::max(std::fabs(size.x) / natural.x, std::fabs(size.y) / natural.y) * state->getPixelsPerUnit();
+    if (!(scale > 0.0F && std::isfinite(scale))) {
+        return;
+    }
+    const VectorAtlas::Raster raster = state->vectors.find(image, scale, state->frame);
+    Sprite placed = sprite;
+    placed.texture = raster.texture;
+    placed.source = raster.source;
+    placed.size = size;
+    placed.scale = {1.0F, 1.0F};
+    draw(placed);
 }
 
 void Renderer::drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style, const DrawOrder& order) {

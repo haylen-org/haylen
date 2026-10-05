@@ -23,6 +23,7 @@
 #include "2d/graphics/Shade.hpp"
 #include "2d/graphics/StaticBatchResource.hpp"
 #include "2d/graphics/TextPainter.hpp"
+#include "2d/graphics/VectorAtlas.hpp"
 #include "2d/lighting/ShadowMap.hpp"
 #include "graphics/PassTarget.hpp"
 #include "graphics/ShaderResource.hpp"
@@ -120,21 +121,27 @@ struct RendererState {
     sg_buffer indexBuffer{};
     std::size_t indexCapacity = 0;
 
+    VectorAtlas vectors;
+
     math::Rect pixelRect{};
     math::Rect visibleRect{};
     math::Color clearColor = math::Color::black();
+    std::uint64_t frame = 0;
     std::uint32_t sequence = 0;
     int layerOffset = 0;
     bool canvasOpen = false;
     Renderer::Stats stats{};
 
-    RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem) {}
+    RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem), vectors(graphicsDevice, jobSystem) {}
 
     // Returns the open canvas, and throws when no canvas is active.
     [[nodiscard]] Canvas& getCanvas();
 
     // Returns the rectangle in pixels of its destination, the screen, a render target or a capture, that a canvas covers.
     [[nodiscard]] math::Rect getPassRect(const Canvas& canvas) const;
+
+    // Returns how many pixels of its destination one unit of the open canvas covers, along the axis the view stretches the most.
+    [[nodiscard]] float getPixelsPerUnit();
 
     // Returns the pixels of the destination of the open canvas in its units, or nothing when its view turns or skews them.
     [[nodiscard]] std::optional<TextPainter::PixelGrid> getPixelGrid();

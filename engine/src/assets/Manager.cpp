@@ -17,6 +17,7 @@
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
 
@@ -127,6 +128,18 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             graphics::ShaderPrecompiler::start(jobs, fresh.getResource()->getBackendSources());
             graphics::Shader(std::static_pointer_cast<graphics::ShaderResource>(asset)).replace(fresh);
         },
+    });
+    registerType({
+        .name = "vectorImage",
+        .extensions = {".svg"},
+        .normalize = [](const core::Json& options) {
+            core::JsonValidator::requireKnownKeys(options, {}, "vector image asset options");
+            return core::Json::object();
+        },
+        .decode = [](Request& request) -> std::shared_ptr<void> {
+            return graphics::VectorImage::parse(request.bytes).getResource();
+        },
+        .finalize = [](std::shared_ptr<void> decoded, const Request&) { return decoded; },
     });
     registerType({
         .name = "json",
@@ -348,6 +361,10 @@ void Manager::textureAsync(std::string_view path, std::function<void(graphics::T
 
 graphics::Shader Manager::shader(std::string_view path) {
     return graphics::Shader(std::static_pointer_cast<graphics::ShaderResource>(load("shader", path)));
+}
+
+graphics::VectorImage Manager::vectorImage(std::string_view path) {
+    return graphics::VectorImage(std::static_pointer_cast<graphics::VectorImageResource>(load("vectorImage", path)));
 }
 
 std::shared_ptr<text::Font> Manager::font(std::string_view path, text::TrueTypeFont::Options options) {

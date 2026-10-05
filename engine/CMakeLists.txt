@@ -69,6 +69,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/StaticBatchResource.cpp
   src/2d/graphics/StaticSpriteBatch.cpp
   src/2d/graphics/TextPainter.cpp
+  src/2d/graphics/VectorAtlas.cpp
   src/2d/lighting/LightFlicker.cpp
   src/2d/lighting/Light.cpp
   src/2d/lighting/LightLua.cpp
@@ -275,6 +276,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/ShaderResource.cpp
   src/graphics/Texture.cpp
   src/graphics/TextureResource.cpp
+  src/graphics/VectorImage.cpp
+  src/graphics/VectorImageResource.cpp
   src/graphics/Viewport.cpp
   src/input/ActionMap.cpp
   src/input/Controls.cpp
@@ -546,7 +549,7 @@ target_include_directories(haylen_engine
 
 target_link_libraries(haylen_engine
   PUBLIC nlohmann_json::nlohmann_json varn_core haylen_imgui
-  PRIVATE haylen_sokol_headers box2d::box2d Clipper2 msdfgen::msdfgen-core haylen_harfbuzz haylen_sheenbidi haylen_unibreak haylen_miniaudio haylen_stb haylen_fast_float haylen_monocypher libzip::zip ZLIB::ZLIB libzstd_static
+  PRIVATE haylen_sokol_headers box2d::box2d Clipper2 msdfgen::msdfgen-core haylen_harfbuzz haylen_sheenbidi haylen_unibreak haylen_miniaudio haylen_stb haylen_nanosvg haylen_fast_float haylen_monocypher libzip::zip ZLIB::ZLIB libzstd_static
 )
 
 if(WIN32)

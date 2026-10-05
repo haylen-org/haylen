@@ -84,6 +84,14 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
+# NanoSVG reads SVG documents into cubic curves and rasterizes them with anti-aliasing, which vector images rasterize their sizes with. It publishes no releases, so it is pinned to a commit of its default branch.
+CPMAddPackage(
+  NAME nanosvg
+  URL "https://github.com/memononen/nanosvg/archive/239e102ec2c691f2902e20ace2ed36ee4a35cfe6.tar.gz"
+  URL_HASH SHA256=2bc68bdb518d7800252042e5cad50a0ab321596f0cbf49ef2a752926329063d2
+  DOWNLOAD_ONLY YES
+)
+
 # The core of msdfgen builds the signed distance fields of font glyphs from their whole outlines, the cubic curves of OpenType CFF fonts included.
 CPMAddPackage(
   NAME msdfgen
@@ -218,6 +226,9 @@ endif()
 
 add_library(haylen_stb INTERFACE)
 target_include_directories(haylen_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
+
+add_library(haylen_nanosvg INTERFACE)
+target_include_directories(haylen_nanosvg SYSTEM INTERFACE "${nanosvg_SOURCE_DIR}/src")
 
 add_library(haylen_fast_float INTERFACE)
 target_include_directories(haylen_fast_float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")

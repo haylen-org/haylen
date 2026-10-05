@@ -34,6 +34,7 @@
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Shader.hpp"
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Controls.hpp"
 #include "haylen/input/InputDevice.hpp"
@@ -161,6 +162,11 @@ template <> struct Type<graphics::RenderTarget> {
 template <> struct Type<graphics::Shader> {
     static constexpr const char* name = "haylen.Shader";
     using Storage = graphics::Shader;
+};
+
+template <> struct Type<graphics::VectorImage> {
+    static constexpr const char* name = "haylen.VectorImage";
+    using Storage = graphics::VectorImage;
 };
 
 template <> struct Type<graphics2d::Material> {

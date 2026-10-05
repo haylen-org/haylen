@@ -1,6 +1,6 @@
 # haylen.graphics
 
-The module `haylen.graphics` creates the GPU resources that every kind of drawing shares, textures, render targets, bitmap fonts and font families, and names the GPU backend and its texture size limit. It also describes the `Texture`, `RenderTarget`, `Font`, `FontFamily` and `Shader` values the rest of the engine passes around. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md).
+The module `haylen.graphics` creates the GPU resources that every kind of drawing shares, textures, render targets, bitmap fonts, font families and vector images, and names the GPU backend and its texture size limit. It also describes the `Texture`, `RenderTarget`, `Font`, `FontFamily`, `Shader` and `VectorImage` values the rest of the engine passes around. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md).
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -110,6 +110,25 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 
 local digits = graphics.newGridFont(assets.texture('fonts/digits.png', {filter = 'nearest'}), {characters = '0123456789', cellWidth = 12, cellHeight = 16, baseline = 14})
+```
+
+### graphics.newVectorImage(text)
+
+Reads the text of an SVG document into a [`VectorImage`](#vectorimage), such as a document an app builds or downloads. Images of the package load with [`assets.vectorImage`](assets.md), which reads them on a worker thread and caches them. Text that is not an SVG document with a size raises `The bytes are not an SVG document with a size. Give its root element a view box, or a width and a height.`
+
+```lua
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local badge = graphics.newVectorImage([[<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/></svg>]])
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawVector(badge, 100, 100, {width = 48, height = 48, color = '#FF40C060'})
+    end,
+})
 ```
 
 ### graphics.whiteTexture()
@@ -451,4 +470,35 @@ for _, uniform in ipairs(shader.uniforms) do
     print(uniform.name, uniform.type, uniform.count)
 end
 print(table.concat(shader.textures, ', '))
+```
+
+## VectorImage
+
+A `VectorImage` is an SVG document read into curves, loaded with `assets.vectorImage(path)` or `assets.load(path)` from a `.svg` file, or made with [`graphics.newVectorImage`](#graphicsnewvectorimagetext). It draws sharp at any size with [`graphics2d.drawVector`](graphics2d.md#graphics2ddrawvectorimage-x-y-options) and rasterizes into a texture with `image:rasterize(scale)`. The engine reads paths and basic shapes with their fills and strokes, line joins, caps and dashes, linear and radial gradients, transforms, groups, opacity and the view box, and leaves out clip paths, masks, `use`, style sheets and text. The color `currentColor` paints white, so the color of a draw tints the parts that use it, the way icons follow the color of their text. Two images compare equal when they are the same image. A file that changes on disk loads anew the next time the app asks for it, and the images the app holds keep their document.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `width` | number | read | The width the document gives itself: its view box, its width, or the extent of what it draws. |
+| `height` | number | read | The height, likewise. |
+
+```lua
+local assets = require('haylen.assets')
+
+local star = assets.vectorImage('icons/star.svg')
+print(star.width, star.height, star == assets.load('icons/star.svg'))
+```
+
+### image:rasterize(scale, options)
+
+Rasterizes the whole image at `scale`, pixels per unit of the image, on a worker thread, and returns a promise of a `Texture` of `ceil(width * scale)` by `ceil(height * scale)` pixels, for draws that need a texture of the image, such as a material or a UI image. The table `options` takes `filter` and `wrap` like `graphics.newTexture`, with `filter = 'linear'` by default. A scale that is not positive, or whose raster is larger than [`graphics.maxTextureSize()`](#graphicsmaxtexturesize), raises `A vector image rasterizes at a positive scale whose raster fits the maximum texture size of the device.`
+
+```lua
+local assets = require('haylen.assets')
+local async = require('async')
+
+local gear = assets.vectorImage('icons/gear.svg')
+async.spawn(function()
+    local texture = gear:rasterize(4):await()
+    print(texture.width, texture.height)
+end)
 ```

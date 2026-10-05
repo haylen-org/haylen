@@ -213,6 +213,34 @@ int Graphics2DLua::draw(lua_State* L) {
     return 0;
 }
 
+// Draws a vector image with `drawVector(image, x, y[, options])`, at the size of the image unless the options give one, where the options take the keys of `draw` but `source` and `partColors`.
+int Graphics2DLua::drawVector(lua_State* L) {
+    const graphics::VectorImage& image = lua::Userdata::check<graphics::VectorImage>(L, 1);
+    Sprite sprite;
+    sprite.position = {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
+    if (!lua_isnoneornil(L, 4)) {
+        luaL_checktype(L, 4, LUA_TTABLE);
+        lua::Table::checkFields(L, 4, {kVectorFields, lua::TypeConverter::kDrawOrderFields});
+        lua::Table::readField(L, 4, "x", sprite.position.x);
+        lua::Table::readField(L, 4, "y", sprite.position.y);
+        lua::Table::readField(L, 4, "width", sprite.size.x);
+        lua::Table::readField(L, 4, "height", sprite.size.y);
+        lua::Table::readField(L, 4, "scaleX", sprite.scale.x);
+        lua::Table::readField(L, 4, "scaleY", sprite.scale.y);
+        lua::Table::readField(L, 4, "pivotX", sprite.pivot.x);
+        lua::Table::readField(L, 4, "pivotY", sprite.pivot.y);
+        lua::Table::readField(L, 4, "rotation", sprite.rotation);
+        lua::Table::readField(L, 4, "color", sprite.color);
+        lua::Table::readField(L, 4, "flash", sprite.flash);
+        lua::Table::readField(L, 4, "flipHorizontal", sprite.flip.horizontal);
+        lua::Table::readField(L, 4, "flipVertical", sprite.flip.vertical);
+        lua::Table::readField(L, 4, "flipDiagonal", sprite.flip.diagonal);
+        sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {kVectorFields});
+    }
+    getRenderer(L).drawVector(image, sprite);
+    return 0;
+}
+
 // Draws a list of sprite tables that share one texture as a single batch with `drawBatch(texture, {{x, y, width, height, ...}, ...}, order)`, or the sprites a float buffer holds with `drawBatch(texture, buffer, {fields = {'x', 'y', ...}, width = ..., ...}, order)`, where the table is the template of every sprite.
 int Graphics2DLua::drawBatch(lua_State* L) {
     const graphics::Texture texture = lua::Stack::read<graphics::Texture>(L, 1);
@@ -469,7 +497,7 @@ int Graphics2DLua::defaultFont(lua_State* L) {
 
 int Graphics2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newSprite", &lua::Binding::native<&newSprite>}, {"newSpriteBatch", &lua::Binding::native<&newSpriteBatch>}, {"newCamera", &newCamera}, {"newNineSlice", &lua::Binding::native<&newNineSlice>}, {"newParallax", &lua::Binding::native<&newParallax>}, {"blendCameras", &blendCameras}, {"beginWorld", &lua::Binding::native<&beginWorld>}, {"beginScreen", &lua::Binding::native<&beginScreen>}, {"beginTarget", &lua::Binding::native<&beginTarget>}, {"beginCapture", &lua::Binding::native<&beginCapture>}, {"endCapture", &lua::Binding::native<&endCapture>}, {"draw", &lua::Binding::native<&draw>}, {"drawBatch", &lua::Binding::native<&drawBatch>}, {"drawStatic", &lua::Binding::native<&drawStatic>}, {"drawRect", &lua::Binding::native<&drawRect>}, {"drawRectOutline", &lua::Binding::native<&drawRectOutline>}, {"drawLine", &lua::Binding::native<&drawLine>}, {"drawCircle", &lua::Binding::native<&drawCircle>}, {"drawRing", &lua::Binding::native<&drawRing>}, {"drawArc", &lua::Binding::native<&drawArc>}, {"drawPolygon", &lua::Binding::native<&drawPolygon>}, {"drawPolyline", &lua::Binding::native<&drawPolyline>}, {"drawMesh", &lua::Binding::native<&drawMesh>}, {"drawText", &lua::Binding::native<&drawText>}, {"measureText", &lua::Binding::native<&measureText>}, {"drawNineSlice", &lua::Binding::native<&drawNineSlice>}, {"drawLight", &lua::Binding::native<&drawLight>}, {"drawOccluder", &lua::Binding::native<&drawOccluder>}, {"drawMetaballs", &lua::Binding::native<&drawMetaballs>}, {"newMaterial", &lua::Binding::native<&MaterialLua::newMaterial>}, {"drawImageBlend", &lua::Binding::native<&drawImageBlend>}, {"pushClip", &lua::Binding::native<&pushClip>}, {"popClip", &lua::Binding::native<&popClip>}, {"pushLayerOffset", &lua::Binding::native<&pushLayerOffset>}, {"popLayerOffset", &lua::Binding::native<&popLayerOffset>}, {"stats", &stats}, {"canvasBounds", &canvasBounds}, {"canvasUnitSize", &lua::Binding::native<&canvasUnitSize>}, {"capturing", &capturing}, {"lightTexture", &lightTexture}, {"hdrLighting", &hdrLighting}, {"defaultFont", &defaultFont}, {"newRichText", &lua::Binding::native<&RichTextLua::newRichText>}, {"drawRichText", &lua::Binding::native<&RichTextLua::drawRichText>}, {"measureRichText", &lua::Binding::native<&RichTextLua::measureRichText>}, {"registerTextEffect", &lua::Binding::native<&RichTextLua::registerTextEffect>}, {"registerTextIcon", &lua::Binding::native<&RichTextLua::registerTextIcon>}, {"textEffectNames", &lua::Binding::native<&RichTextLua::textEffectNames>}, {nullptr, nullptr},
+        {"newSprite", &lua::Binding::native<&newSprite>}, {"newSpriteBatch", &lua::Binding::native<&newSpriteBatch>}, {"newCamera", &newCamera}, {"newNineSlice", &lua::Binding::native<&newNineSlice>}, {"newParallax", &lua::Binding::native<&newParallax>}, {"blendCameras", &blendCameras}, {"beginWorld", &lua::Binding::native<&beginWorld>}, {"beginScreen", &lua::Binding::native<&beginScreen>}, {"beginTarget", &lua::Binding::native<&beginTarget>}, {"beginCapture", &lua::Binding::native<&beginCapture>}, {"endCapture", &lua::Binding::native<&endCapture>}, {"draw", &lua::Binding::native<&draw>}, {"drawVector", &lua::Binding::native<&drawVector>}, {"drawBatch", &lua::Binding::native<&drawBatch>}, {"drawStatic", &lua::Binding::native<&drawStatic>}, {"drawRect", &lua::Binding::native<&drawRect>}, {"drawRectOutline", &lua::Binding::native<&drawRectOutline>}, {"drawLine", &lua::Binding::native<&drawLine>}, {"drawCircle", &lua::Binding::native<&drawCircle>}, {"drawRing", &lua::Binding::native<&drawRing>}, {"drawArc", &lua::Binding::native<&drawArc>}, {"drawPolygon", &lua::Binding::native<&drawPolygon>}, {"drawPolyline", &lua::Binding::native<&drawPolyline>}, {"drawMesh", &lua::Binding::native<&drawMesh>}, {"drawText", &lua::Binding::native<&drawText>}, {"measureText", &lua::Binding::native<&measureText>}, {"drawNineSlice", &lua::Binding::native<&drawNineSlice>}, {"drawLight", &lua::Binding::native<&drawLight>}, {"drawOccluder", &lua::Binding::native<&drawOccluder>}, {"drawMetaballs", &lua::Binding::native<&drawMetaballs>}, {"newMaterial", &lua::Binding::native<&MaterialLua::newMaterial>}, {"drawImageBlend", &lua::Binding::native<&drawImageBlend>}, {"pushClip", &lua::Binding::native<&pushClip>}, {"popClip", &lua::Binding::native<&popClip>}, {"pushLayerOffset", &lua::Binding::native<&pushLayerOffset>}, {"popLayerOffset", &lua::Binding::native<&popLayerOffset>}, {"stats", &stats}, {"canvasBounds", &canvasBounds}, {"canvasUnitSize", &lua::Binding::native<&canvasUnitSize>}, {"capturing", &capturing}, {"lightTexture", &lightTexture}, {"hdrLighting", &hdrLighting}, {"defaultFont", &defaultFont}, {"newRichText", &lua::Binding::native<&RichTextLua::newRichText>}, {"drawRichText", &lua::Binding::native<&RichTextLua::drawRichText>}, {"measureRichText", &lua::Binding::native<&RichTextLua::measureRichText>}, {"registerTextEffect", &lua::Binding::native<&RichTextLua::registerTextEffect>}, {"registerTextIcon", &lua::Binding::native<&RichTextLua::registerTextIcon>}, {"textEffectNames", &lua::Binding::native<&RichTextLua::textEffectNames>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

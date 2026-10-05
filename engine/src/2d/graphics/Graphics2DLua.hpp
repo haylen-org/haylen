@@ -27,6 +27,7 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 2> kScaleFields{"scaleX", "scaleY"};
     static constexpr std::array<std::string_view, 5> kMeshVertexFields{"x", "y", "u", "v", "color"};
     static constexpr std::array<std::string_view, 4> kNineSliceFields{"source", "borders", "pieces", "fill"};
+    static constexpr std::array<std::string_view, 14> kVectorFields{"x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
 
@@ -51,6 +52,7 @@ class Graphics2DLua final {
     static int endCapture(lua_State* L);
 
     static int draw(lua_State* L);
+    static int drawVector(lua_State* L);
     static int drawBatch(lua_State* L);
     static int drawStatic(lua_State* L);
     static int drawRect(lua_State* L);

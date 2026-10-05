@@ -13,6 +13,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/graphics/Shader.hpp"
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 
@@ -93,6 +94,7 @@ class Manager final {
 
     // Loads a `.shader` file that `haylen.py shaders` compiled, which reloads in place when the file changes.
     [[nodiscard]] graphics::Shader shader(std::string_view path);
+    [[nodiscard]] graphics::VectorImage vectorImage(std::string_view path);
     [[nodiscard]] core::Json json(std::string_view path);
     [[nodiscard]] std::string text(std::string_view path) const;
     [[nodiscard]] std::vector<std::uint8_t> bytes(std::string_view path) const;

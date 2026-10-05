@@ -7,9 +7,11 @@
 
 #include "graphics/FontLua.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Shader.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -17,6 +19,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "varn/async/Promise.h"
 
 namespace haylen::graphics {
 
@@ -157,9 +160,57 @@ int GraphicsLua::shaderTextures(lua_State* L) {
     return 1;
 }
 
+// Reads the text of an SVG document into a vector image with `newVectorImage(text)`.
+int GraphicsLua::newVectorImage(lua_State* L) {
+    const std::string_view text = lua::Stack::read<std::string_view>(L, 1);
+    lua::Stack::push(L, VectorImage::parse(std::span(reinterpret_cast<const std::uint8_t*>(text.data()), text.size())));
+    return 1;
+}
+
+int GraphicsLua::vectorWidth(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<VectorImage>(L, 1).getSize().x);
+    return 1;
+}
+
+int GraphicsLua::vectorHeight(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<VectorImage>(L, 1).getSize().y);
+    return 1;
+}
+
+// Rasterizes the image on the task pool with `image:rasterize(scale[, {filter, wrap}])`, and returns a promise of the texture of the raster, which samples with linear filtering unless the options say otherwise.
+int GraphicsLua::rasterizeVector(lua_State* L) {
+    const VectorImage image = lua::Userdata::check<VectorImage>(L, 1);
+    const auto scale = static_cast<float>(luaL_checknumber(L, 2));
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const auto [width, height] = VectorImage::getRasterSize(image.getSize(), scale);
+    if (!(scale > 0.0F && std::isfinite(scale)) || std::max(width, height) > engine.getGraphics().getMaxTextureSize()) {
+        throw std::invalid_argument("A vector image rasterizes at a positive scale whose raster fits the maximum texture size of the device.");
+    }
+    Texture::Options options{.filter = Texture::Filter::Linear};
+    if (!lua_isnoneornil(L, 3)) {
+        options = lua::TypeConverter::readTextureOptions(L, 3);
+        lua_getfield(L, 3, "filter");
+        options.filter = lua_isnil(L, -1) ? Texture::Filter::Linear : options.filter;
+        lua_pop(L, 1);
+    }
+
+    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    // clang-format off
+    engine.getJobs().run([image, scale] { return image.rasterize(scale); }, [promise, device = &engine.getGraphics(), options](core::JobSystem::Result<Image> result) {
+        if (!result.isOk()) {
+            promise->reject(result.error);
+            return;
+        }
+        promise->resolveCustom([texture = device->createTexture(*result.value, options)](lua_State* state) { lua::Stack::push(state, texture); });
+    });
+    // clang-format on
+    varn::async::Promise::push(L, promise);
+    return 1;
+}
+
 int GraphicsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"whiteTexture", &whiteTexture}, {"backendName", &backendName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
+        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"newVectorImage", &lua::Binding::native<&newVectorImage>}, {"whiteTexture", &whiteTexture}, {"backendName", &backendName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -169,6 +220,7 @@ void GraphicsLua::install(lua_State* L) {
     lua::ClassBuilder<Texture>(L).function("update", &lua::Binding::native<&updateTexture>).property("width", &textureWidth).property("height", &textureHeight).property("filter", &textureFilter).property("wrap", &textureWrap).meta("__eq", &lua::Userdata::equal<Texture>).install();
     lua::ClassBuilder<RenderTarget>(L).property("width", &targetWidth).property("height", &targetHeight).property("texture", &targetTexture).meta("__eq", &lua::Userdata::equal<RenderTarget>).install();
     lua::ClassBuilder<Shader>(L).property("name", &shaderName).property("uniforms", &shaderUniforms).property("textures", &shaderTextures).meta("__eq", &lua::Userdata::equal<Shader>).install();
+    lua::ClassBuilder<VectorImage>(L).property("width", &vectorWidth).property("height", &vectorHeight).function("rasterize", &lua::Binding::native<&rasterizeVector>).meta("__eq", &lua::Userdata::equal<VectorImage>).install();
     FontLua::install(L);
     lua::Binding::preload(L, "haylen.graphics", &open);
 }
