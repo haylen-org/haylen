@@ -459,7 +459,7 @@ The anchors of the interface against the safe area and the whole screen, drawing
 
 #### Development (DEV)
 
-Hot reload while the project runs in development, with "python3 haylen.py run samples/tests" or with "--platform web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.
+Hot reload while the project runs in development, with "python3 haylen.py run samples/tests" or with "--platform web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The error screen of every kind of code that runs for the app, and the return to the app from it, run in development and in apps that ship. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -469,6 +469,7 @@ Hot reload while the project runs in development, with "python3 haylen.py run sa
 | `DEV-004` | Hooks and kept values | The reloaded hook, a kept signal whose listener never doubles and the reloads the event bus reports. |  |
 | `DEV-005` | Resume after a fix | An error in an update that saving the fix resumes from, with the state of the test kept. |  |
 | `DEV-006` | Assets | JSON and the texts of a language that reload in place, with the asset events of each save. |  |
+| `DEV-007` | Errors and recovery | Errors of scene hooks, tasks, timers, tweens, signals, events, native events, platform answers, asset loads, sockets and buttons on the error screen with their stack, and the return to the app. |  |
 
 #### Files and storage (FIL)
 

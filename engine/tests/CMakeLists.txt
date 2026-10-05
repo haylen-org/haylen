@@ -69,6 +69,7 @@ set(HAYLEN_TEST_SOURCES
   core/ContainerTests.cpp
   core/CoreTests.cpp
   core/EngineTests.cpp
+  core/ErrorReportTests.cpp
   core/ErrorScreenTests.cpp
   core/RuntimeTests.cpp
   core/SceneManagerTests.cpp
