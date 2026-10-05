@@ -193,7 +193,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
     const math::Rect body = math::Rect::fromMinMax({frame.x + edge.left, inner.y}, {frame.getRight() - edge.right, std::max(inner.y, inner.getBottom() - (buttons.empty() ? 0.0F : height + spacing))});
     if (!body.isEmpty()) {
         ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(body.getMin()));
-        if (ImGui::BeginChild("##body", ImGuiConverter::toImVec2(body.getSize()), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar)) {
+        if (context.getBackend().beginChild("##body", body.getSize(), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar)) {
             drawBody(context, body, inner);
         }
         ImGui::EndChild();

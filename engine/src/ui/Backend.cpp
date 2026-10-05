@@ -234,6 +234,12 @@ void Backend::runRenderCall(const ImDrawList* list, const ImDrawCmd* command) {
     owner.rendering->popClip();
 }
 
+// Draws a child window at its place among the meshes of its parent, before the lists of ImGui reach it.
+void Backend::runChildCall(const ImDrawList* list, const ImDrawCmd* command) {
+    const ChildCall& call = *reinterpret_cast<const ChildCall*>(list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset);
+    call.owner->drawWindow(*call.window);
+}
+
 Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())) {
     imguiContext = ImGui::CreateContext();
     makeCurrent();
@@ -639,6 +645,14 @@ void Backend::addRenderCallback(std::function<void(graphics2d::Renderer& rendere
     ImGui::GetWindowDrawList()->AddCallback(&runRenderCall, &call, sizeof(call));
 }
 
+bool Backend::beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childFlags, ImGuiWindowFlags windowFlags) {
+    const bool visible = ImGui::BeginChild(id, {size.x, size.y}, childFlags, windowFlags);
+    const ImGuiWindow& child = *ImGui::GetCurrentWindow();
+    ChildCall call{.owner = this, .window = &child};
+    child.ParentWindow->DrawList->AddCallback(&runChildCall, &call, sizeof(call));
+    return visible;
+}
+
 ImTextureRef Backend::getTextureReference(const graphics::Texture& texture) {
     const ImTextureID id = kAppTextureBit | texture.getId();
     frameTextures.insert_or_assign(id, texture);
@@ -710,13 +724,7 @@ void Backend::render(graphics2d::Renderer& renderer) {
         window.setCursor(wanted);
     }
 
-    drawnLists.clear();
-    for (const ImDrawList* list : data.CmdLists) {
-        if (std::ranges::find(renderedLists, list) == renderedLists.end()) {
-            drawnLists.push_back(list);
-        }
-    }
-    drawLists(renderer, drawnLists);
+    drawLists(renderer, std::span<const ImDrawList* const>(data.CmdLists.Data, static_cast<std::size_t>(data.CmdLists.Size)));
 }
 
 void Backend::renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& root) {
@@ -729,7 +737,6 @@ void Backend::renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& ro
         }
     }
     drawLists(renderer, drawnLists);
-    renderedLists.insert(renderedLists.end(), drawnLists.begin(), drawnLists.end());
 }
 
 void Backend::collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists) {
@@ -755,39 +762,59 @@ void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawLi
     renderer.beginWorld(camera);
     rendering = &renderer;
     for (const ImDrawList* list : lists) {
-        for (const ImDrawCmd& command : list->CmdBuffer) {
-            if (command.UserCallback != nullptr) {
-                command.UserCallback(list, &command);
-                continue;
-            }
-
-            const ImTextureData* atlas = command.TexRef._TexData;
-            const graphics::Texture* texture = atlas != nullptr && atlas->TexID == ImTextureID_Invalid ? nullptr : findTexture(command.GetTexID());
-            const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
-            if (texture == nullptr || command.ElemCount == 0 || clip.isEmpty()) {
-                continue;
-            }
-
-            // Only the vertices this command uses are copied, so each mesh uploads exactly what it draws.
-            const std::span<const ImDrawIdx> used(list->IdxBuffer.Data + command.IdxOffset, command.ElemCount);
-            const auto [lowest, highest] = std::ranges::minmax(used);
-            const std::size_t first = command.VtxOffset + lowest;
-            meshVertices.clear();
-            for (std::size_t index = first; index <= command.VtxOffset + highest; ++index) {
-                const ImDrawVert& vertex = list->VtxBuffer[static_cast<int>(index)];
-                meshVertices.push_back({.position = {vertex.pos.x, vertex.pos.y}, .uv = {vertex.uv.x, vertex.uv.y}, .color = toColor(vertex.col)});
-            }
-            meshIndices.clear();
-            for (const ImDrawIdx index : used) {
-                meshIndices.push_back(static_cast<std::uint32_t>(index - lowest));
-            }
-
-            renderer.pushClip(clip);
-            renderer.drawMesh(*texture, meshVertices, meshIndices);
-            renderer.popClip();
-        }
+        drawList(*list);
     }
     rendering = nullptr;
+}
+
+void Backend::drawWindow(const ImGuiWindow& imguiWindow) {
+    if (!imguiWindow.Active || imguiWindow.Hidden) {
+        return;
+    }
+    drawList(*imguiWindow.DrawList);
+    for (const ImGuiWindow* child : imguiWindow.DC.ChildWindows) {
+        drawWindow(*child);
+    }
+}
+
+// A list draws once a frame, so a child window drawn inside its parent, or a window drawn before the frame ends, is left out when the lists of ImGui reach it.
+void Backend::drawList(const ImDrawList& list) {
+    if (std::ranges::find(renderedLists, &list) != renderedLists.end()) {
+        return;
+    }
+    renderedLists.push_back(&list);
+
+    for (const ImDrawCmd& command : list.CmdBuffer) {
+        if (command.UserCallback != nullptr) {
+            command.UserCallback(&list, &command);
+            continue;
+        }
+
+        const ImTextureData* atlas = command.TexRef._TexData;
+        const graphics::Texture* texture = atlas != nullptr && atlas->TexID == ImTextureID_Invalid ? nullptr : findTexture(command.GetTexID());
+        const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
+        if (texture == nullptr || command.ElemCount == 0 || clip.isEmpty()) {
+            continue;
+        }
+
+        // Only the vertices this command uses are copied, so each mesh uploads exactly what it draws.
+        const std::span<const ImDrawIdx> used(list.IdxBuffer.Data + command.IdxOffset, command.ElemCount);
+        const auto [lowest, highest] = std::ranges::minmax(used);
+        const std::size_t first = command.VtxOffset + lowest;
+        meshVertices.clear();
+        for (std::size_t index = first; index <= command.VtxOffset + highest; ++index) {
+            const ImDrawVert& vertex = list.VtxBuffer[static_cast<int>(index)];
+            meshVertices.push_back({.position = {vertex.pos.x, vertex.pos.y}, .uv = {vertex.uv.x, vertex.uv.y}, .color = toColor(vertex.col)});
+        }
+        meshIndices.clear();
+        for (const ImDrawIdx index : used) {
+            meshIndices.push_back(static_cast<std::uint32_t>(index - lowest));
+        }
+
+        rendering->pushClip(clip);
+        rendering->drawMesh(*texture, meshVertices, meshIndices);
+        rendering->popClip();
+    }
 }
 
 } // namespace haylen::ui

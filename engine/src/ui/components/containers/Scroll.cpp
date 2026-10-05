@@ -8,6 +8,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
 
@@ -56,7 +57,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
     if (horizontal) {
         flags |= ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
     }
-    if (ImGui::BeginChild("##scroll", ImGuiConverter::toImVec2(bounds.getSize()), ImGuiChildFlags_NavFlattened, flags)) {
+    if (context.getBackend().beginChild("##scroll", bounds.getSize(), ImGuiChildFlags_NavFlattened, flags)) {
         // The bar takes the pointer in its lane before the content does.
         if (overflowing) {
             const float view = horizontal ? bounds.width : bounds.height;

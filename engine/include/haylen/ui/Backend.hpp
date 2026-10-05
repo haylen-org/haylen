@@ -133,6 +133,9 @@ class Backend final {
     // Draws with the renderer at this point of the draw list of the window being built, clipped like the items around it, once the frame renders, in a canvas whose coordinates are UI coordinates.
     void addRenderCallback(std::function<void(graphics2d::Renderer& renderer)> draw);
 
+    // Begins a child window that draws at this point of the draw list of the window being built, so what that window draws after it, such as the nodes and GUIs above a scroll, covers it. The child ends with `ImGui::EndChild`.
+    bool beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childFlags, ImGuiWindowFlags windowFlags);
+
     // Adds a font under a name and returns its regular face. Fonts are sized when drawn, so one font serves every size, and a fallback draws the characters a face lacks with its em square as large as the em square of that face.
     ImFont* addFont(const std::string& name, FontFiles files);
 
@@ -174,6 +177,11 @@ class Backend final {
         std::size_t index = 0;
     };
 
+    struct ChildCall {
+        Backend* owner = nullptr;
+        const ImGuiWindow* window = nullptr;
+    };
+
     // App textures shown by the UI get identifiers with the top bit set, so they never collide with the atlas textures ImGui asks for.
     static constexpr ImTextureID kAppTextureBit = ImTextureID{1} << 63U;
     static constexpr float kBaseFontSize = 28.0F;
@@ -190,6 +198,7 @@ class Backend final {
     static void setClipboardText(ImGuiContext* context, const char* text);
     static void resetRenderState(const ImDrawList* list, const ImDrawCmd* command);
     static void runRenderCall(const ImDrawList* list, const ImDrawCmd* command);
+    static void runChildCall(const ImDrawList* list, const ImDrawCmd* command);
 
     ImFont* addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
     void handlePointer(const platform::Event& event, const graphics::Viewport& viewport);
@@ -201,6 +210,8 @@ class Backend final {
     void updateTextures(ImDrawData& data);
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
     void drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists);
+    void drawWindow(const ImGuiWindow& imguiWindow);
+    void drawList(const ImDrawList& list);
     [[nodiscard]] const graphics::Texture* findTexture(ImTextureID id) const;
 
     graphics::Device& device;

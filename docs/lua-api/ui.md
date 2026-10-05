@@ -1312,7 +1312,7 @@ ui.mount(ui.stack{
 
 ### ui.scroll(properties)
 
-Shows one child in an area that scrolls up and down or sideways. The mouse wheel, the scroll bar and, on touch screens, dragging the content scroll it, and a drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. The focus scrolls to the focused control. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll, and a horizontal scroll needs a `width`. While the child is longer than the area, the [scroll bar](#scroll-bars) takes a lane of its own beside it, and a horizontal scroll adds that lane to its height.
+Shows one child in an area that scrolls up and down or sideways. The mouse wheel, the scroll bar and, on touch screens, dragging the content scroll it, and a drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. The focus scrolls to the focused control. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll, and a horizontal scroll needs a `width`. While the child is longer than the area, the [scroll bar](#scroll-bars) takes a lane of its own beside it, and a horizontal scroll adds that lane to its height. The content draws at the place of the scroll in the tree, so the nodes after it, such as an anchored sheet, and the GUIs of higher layers cover it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

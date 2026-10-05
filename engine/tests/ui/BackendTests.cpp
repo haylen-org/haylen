@@ -202,6 +202,32 @@ TEST_F(BackendTest, ManagesFontsAndAppTextures) {
     EXPECT_GE(getEngine().getRenderer2D().getStats().drawCalls, 1U);
 }
 
+// A child window draws at its place among the items of its parent, so what the parent draws after it, such as the GUIs above a scroll, covers it.
+TEST_F(BackendTest, DrawsChildWindowsBetweenTheItemsAroundThem) {
+    std::vector<std::string> order;
+    const auto mark = [&](const char* name) { backend.addRenderCallback([&order, name](graphics2d::Renderer&) { order.emplace_back(name); }); };
+    // clang-format off
+    const auto build = [&] {
+        beginWindow("page", {0.0F, 0.0F});
+        mark("before");
+        if (backend.beginChild("##list", {200.0F, 100.0F}, ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
+            mark("list");
+            if (backend.beginChild("##row", {100.0F, 40.0F}, ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
+                mark("row");
+            }
+            ImGui::EndChild();
+            mark("list end");
+        }
+        ImGui::EndChild();
+        mark("after");
+        ImGui::End();
+    };
+    // clang-format on
+
+    frame(build);
+    EXPECT_EQ(order, (std::vector<std::string>{"before", "list", "row", "list end", "after"}));
+}
+
 // Every face of a font draws the characters it lacks from the fallbacks, whose em squares match the em square of the face, and a style the font has no face for draws with the regular face.
 TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
     ImFont* regular = backend.addFont("story", {.regular = readFont("default"), .bold = readFont("crimson_text_bold.ttf"), .fallbacks = {readFont("mplus_1p_regular.ttf"), readFont("noto_sans_symbols_2_regular.ttf")}});
