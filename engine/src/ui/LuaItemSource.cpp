@@ -45,7 +45,7 @@ void LuaItemSource::checkIds(const std::vector<std::string>& added, std::size_t 
 
 void LuaItemSource::assign(lua_State* L, int list) {
     const int table = lua_absindex(L, list);
-    const std::size_t count = lua_rawlen(L, table);
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, table));
     std::vector<std::string> nextIds(count);
     std::vector<std::uint16_t> nextTypes(count);
     for (std::size_t index = 0; index < count; ++index) {
@@ -66,7 +66,7 @@ void LuaItemSource::assign(lua_State* L, int list) {
 // The items of the list move up to make room, the way `table.insert` moves them.
 void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
     const int source = lua_absindex(L, added);
-    const std::size_t count = lua_rawlen(L, source);
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, source));
     std::vector<std::string> newIds(count);
     std::vector<std::uint16_t> newTypes(count);
     for (std::size_t offset = 0; offset < count; ++offset) {
