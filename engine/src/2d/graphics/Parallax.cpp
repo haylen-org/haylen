@@ -1,14 +1,11 @@
 #include "haylen/2d/graphics/Parallax.hpp"
 
-#include <algorithm>
 #include <cmath>
-#include <cstddef>
 #include <stdexcept>
-#include <vector>
 
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/2d/graphics/SpriteInstance.hpp"
+#include "haylen/2d/graphics/Sprite.hpp"
 
 namespace haylen::graphics2d {
 
@@ -46,15 +43,14 @@ void Parallax::draw(Renderer& renderer, const Camera& camera, const DrawOrder& o
     const int columns = repeatX ? static_cast<int>(std::ceil((visible.getRight() - left) / step.x)) : 1;
     const int rows = repeatY ? static_cast<int>(std::ceil((visible.getBottom() - top) / step.y)) : 1;
 
-    std::vector<SpriteInstance> copies;
-    copies.reserve(static_cast<std::size_t>(std::max(columns, 0)) * static_cast<std::size_t>(std::max(rows, 0)));
+    // Every copy is a sprite of its own, which the renderer merges into one draw call with its neighbours, so a frame allocates nothing for them.
+    Sprite copy{.texture = texture, .source = part, .size = drawn, .pivot = {}, .color = color, .order = order};
     for (int row = 0; row < rows; ++row) {
         for (int column = 0; column < columns; ++column) {
-            const math::Vec2 at{left + static_cast<float>(column) * step.x, top + static_cast<float>(row) * step.y};
-            copies.push_back({.position = at, .size = drawn, .source = part, .pivot = {}, .color = color});
+            copy.position = {left + static_cast<float>(column) * step.x, top + static_cast<float>(row) * step.y};
+            renderer.draw(copy);
         }
     }
-    renderer.drawBatch(texture, copies, order);
 }
 
 } // namespace haylen::graphics2d

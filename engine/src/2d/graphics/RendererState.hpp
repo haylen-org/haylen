@@ -7,7 +7,6 @@
 #include <optional>
 #include <span>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -34,6 +33,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/graphics/BlendMode.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
@@ -44,7 +44,6 @@ class JobSystem;
 }
 
 namespace haylen::graphics {
-class Device;
 struct TextureResource;
 } // namespace haylen::graphics
 
@@ -60,6 +59,9 @@ struct RendererState {
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
     static constexpr std::size_t kProgramCount = 11;
+
+    // The submissions numbered so far on the frame thread, where one engine runs at a time.
+    static std::uint64_t submissions;
 
     graphics::Device& device;
     core::JobSystem& jobs;
@@ -112,13 +114,21 @@ struct RendererState {
     std::vector<std::shared_ptr<graphics::TextureResource>> retained;
     std::vector<std::shared_ptr<StaticBatchResource>> retainedBatches;
     std::vector<std::shared_ptr<MaterialResource>> retainedMaterials;
-    std::unordered_set<const void*> retainedSet;
+
+    // The number of the submission the frame goes into, unique across every renderer of the process, which a resource the frame already keeps alive carries so it is kept once.
+    std::uint64_t epoch = ++submissions;
 
     // Reused by the draws that build their instances, vertices or nine-slice patches before recording them, so drawing allocates nothing once they have grown.
     std::vector<GpuInstance> scratchInstances;
     std::vector<GpuVertex> scratchVertices;
     std::vector<std::uint32_t> scratchIndices;
     std::vector<NineSlice::Patch> patches;
+
+    // Reused by the submission of every frame: the draw items of a canvas in their sorted order, the instance ranges of the commands in draw order, the shadowed lights with their canvases, and the canvases of a destination by their order.
+    std::vector<std::uint32_t> itemOrder;
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> placements;
+    std::vector<std::pair<LightDraw*, const Canvas*>> shadowCasts;
+    std::vector<const Canvas*> orderedCanvases;
 
     sg_buffer instanceBuffer{};
     std::size_t instanceCapacity = 0;
@@ -131,8 +141,12 @@ struct RendererState {
 
     VectorAtlas vectors;
 
-    // The canvas overlays by id, and whether they are drawing, which keeps them from running inside each other.
+    // Turns the layout of every text draw into instances, reusing its batches from draw to draw.
+    TextPainter painter;
+
+    // The canvas overlays by id, the copy of them that runs as a canvas closes, and whether they are drawing, which keeps them from running inside each other.
     std::vector<std::pair<std::uint64_t, Renderer::CanvasOverlay>> overlays;
+    std::vector<std::pair<std::uint64_t, Renderer::CanvasOverlay>> overlaySnapshot;
     std::uint64_t nextOverlay = 1;
     bool drawingOverlays = false;
 
@@ -145,7 +159,7 @@ struct RendererState {
     bool canvasOpen = false;
     Renderer::Stats stats{};
 
-    RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem), vectors(graphicsDevice, jobSystem) {}
+    RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem), white(graphicsDevice.getWhiteTexture()), vectors(graphicsDevice, jobSystem), painter(white) {}
 
     // Returns the open canvas, and throws when no canvas is active.
     [[nodiscard]] Canvas& getCanvas();
@@ -165,18 +179,19 @@ struct RendererState {
     // Tells whether a draw with the order shows in the open canvas, whose visibility mask may leave it out.
     [[nodiscard]] bool accepts(const DrawOrder& order);
 
-    // Keeps the texture alive until the frame is submitted.
+    // Keeps the texture or the baked batch alive until the frame is submitted.
     void retain(const graphics::Texture& texture);
+    void retain(const std::shared_ptr<StaticBatchResource>& batch);
 
     void openCanvas(Canvas next);
     void closeCanvas();
     void closeCapture();
     void resetFrame() noexcept;
 
-    // The standing y is the point a y-sorted canvas sorts the draw by.
     // Throws when a draw would sample the image its canvas draws into, which no backend can read and write in one pass.
     void requireReadable(const graphics::TextureResource* texture);
 
+    // The standing y is the point a y-sorted canvas sorts the draw by.
     DrawItem& addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY);
 
     // Scales the coverage of the instances or vertices a distortion draw recorded by its distortion, so their alpha adds up in the distortion map.

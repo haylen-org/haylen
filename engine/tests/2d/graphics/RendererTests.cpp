@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -14,6 +16,7 @@
 #include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
+#include "haylen/2d/graphics/Parallax.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/SpriteBatch.hpp"
 #include "haylen/2d/lighting/Light.hpp"
@@ -25,6 +28,8 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/text/Font.hpp"
+#include "support/AllocationTracker.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/FrameRenderer.hpp"
 
@@ -604,6 +609,81 @@ TEST(RendererTest, DrawsMetaballsFromManyPoints) {
     EXPECT_THROW(renderer.drawMetaballs(points, 4.0F, {.outlineWidth = -0.1F}), std::invalid_argument);
     EXPECT_THROW(renderer.drawMetaballs(points, 4.0F, {.outlineWidth = 0.6F}), std::invalid_argument);
     fixture.frames(1);
+}
+
+// Once its storage has grown, a frame that draws every kind of draw allocates no more than an empty frame, so the renderer, the text painter and the submission reuse what they hold.
+TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+    graphics::Device& device = engine.getGraphics();
+    const graphics::Texture texture = device.createTexture(graphics::Image(16, 16, math::Color::white()));
+    const graphics::RenderTarget target = device.createRenderTarget(64, 64);
+    const graphics::RenderTarget capture = device.createRenderTarget(96, 54);
+    const graphics2d::NineSlice stretched = graphics2d::NineSlice::fromBorders(texture, {}, math::Insets::uniform(4.0F));
+    graphics2d::NineSlice tiled = stretched;
+    tiled.fill = graphics2d::NineSlice::Fill::Tile;
+    graphics2d::SpriteBatch batch(texture);
+    for (int index = 0; index < 100; ++index) {
+        batch.add({.position = {static_cast<float>(index), 10.0F}, .size = {4.0F, 4.0F}});
+    }
+    const graphics2d::StaticSpriteBatch baked = batch.bake(engine.getRenderer2D());
+    const std::vector<math::Vec2> line{{0.0F, 0.0F}, {40.0F, 10.0F}, {80.0F, 0.0F}};
+    const std::vector<math::Vec2> points{{10.0F, 10.0F}, {20.0F, 12.0F}, {30.0F, 8.0F}};
+    const std::vector<graphics2d::MeshVertex> mesh{{{0.0F, 0.0F}}, {{10.0F, 0.0F}}, {{0.0F, 10.0F}}};
+    const std::vector<std::uint32_t> indices{0, 1, 2};
+    graphics2d::Parallax parallax;
+    parallax.texture = texture;
+    parallax.repeatX = true;
+    const lighting2d::Occluder wall{.points = {{-20.0F, 30.0F}, {20.0F, 30.0F}}, .closed = false};
+    graphics2d::Camera camera;
+    camera.flash(math::Color::white(), 100.0F);
+
+    // clang-format off
+    const auto measure = [&fixture](std::function<void(core::Engine&)> draw) {
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>(std::move(draw)));
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    const std::size_t empty = measure([](core::Engine&) {});
+    const std::size_t drawn = measure([&](core::Engine& current) {
+        graphics2d::Renderer& renderer = current.getRenderer2D();
+        renderer.beginCapture(capture);
+        renderer.beginScreen();
+        renderer.drawRect({0.0F, 0.0F, 10.0F, 10.0F}, math::Color::white());
+        renderer.endCapture();
+
+        renderer.beginTarget(target, camera, {.clear = math::Color::transparent()});
+        batch.draw(renderer);
+        renderer.drawStatic(baked, {}, {4.0F, 0.0F});
+
+        renderer.beginWorld(camera, {.sort = graphics2d::Renderer::SortMode::Y, .ambientLight = math::Color{0.2F, 0.2F, 0.3F, 1.0F}, .postProcess = graphics2d::PostProcess{.blur = 2.0F, .bloomStrength = 0.5F}});
+        renderer.draw({.texture = texture, .order = {.distortion = 0.5F}});
+        renderer.draw({.texture = capture.getTexture(), .partColors = {.red = math::Color::black()}, .order = {.partMask = texture}});
+        renderer.drawLight({.position = {0.0F, 0.0F}, .radius = 80.0F, .shadows = true});
+        renderer.drawOccluder(wall);
+        renderer.drawMetaballs(points, 4.0F);
+        parallax.draw(renderer, camera);
+
+        renderer.beginScreen();
+        renderer.pushClip({0.0F, 0.0F, 300.0F, 300.0F});
+        renderer.draw({.texture = target.getTexture(), .position = {50.0F, 50.0F}});
+        renderer.drawNineSlice(stretched, {0.0F, 0.0F, 100.0F, 40.0F});
+        renderer.drawNineSlice(tiled, {0.0F, 50.0F, 100.0F, 40.0F});
+        renderer.drawRectOutline({0.0F, 0.0F, 30.0F, 30.0F}, 2.0F, math::Color::white());
+        renderer.drawPolyline(line, 2.0F, math::Color::white());
+        renderer.drawCircle({60.0F, 60.0F}, 10.0F, math::Color::white());
+        renderer.drawArc({60.0F, 60.0F}, 20.0F, 4.0F, 0.0F, 2.0F, math::Color::white());
+        renderer.drawShape({.bounds = {100.0F, 100.0F, 80.0F, 30.0F}, .radii = {8.0F, 8.0F, 8.0F, 8.0F}, .borderWidth = 2.0F, .borderColor = math::Color::black()});
+        renderer.drawMesh(texture, mesh, indices);
+        renderer.drawText(*current.getDefaultFont(), "Every frame", {10.0F, 200.0F}, {.size = 24.0F, .outlineWidth = 2.0F, .shadowOffset = {2.0F, 2.0F}, .shadowColor = math::Color::black()});
+        renderer.popClip();
+    });
+    // clang-format on
+
+    EXPECT_EQ(engine.getError(), nullptr);
+    EXPECT_EQ(drawn, empty);
 }
 
 // A clip covers the pixels whose centers lie inside it, whatever the fractions of its edges, so content never shows one pixel past a scroll area nor loses one inside it.

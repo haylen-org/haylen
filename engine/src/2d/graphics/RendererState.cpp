@@ -37,6 +37,7 @@
 
 namespace haylen::graphics2d {
 
+std::uint64_t RendererState::submissions = 0;
 const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc};
 const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc};
 
@@ -98,8 +99,17 @@ bool RendererState::accepts(const DrawOrder& order) {
 }
 
 void RendererState::retain(const graphics::Texture& texture) {
-    if (retainedSet.insert(texture.getResource().get()).second) {
+    graphics::TextureResource& resource = *texture.getResource();
+    if (resource.retainEpoch != epoch) {
+        resource.retainEpoch = epoch;
         retained.push_back(texture.getResource());
+    }
+}
+
+void RendererState::retain(const std::shared_ptr<StaticBatchResource>& batch) {
+    if (batch->retainEpoch != epoch) {
+        batch->retainEpoch = epoch;
+        retainedBatches.push_back(batch);
     }
 }
 
@@ -174,7 +184,9 @@ void RendererState::resetFrame() noexcept {
     retained.clear();
     retainedBatches.clear();
     retainedMaterials.clear();
-    retainedSet.clear();
+    epoch = ++submissions;
+    placements.clear();
+    shadowCasts.clear();
     sequence = 0;
     layerOffset = 0;
     canvasOpen = false;
@@ -231,7 +243,8 @@ std::uint32_t RendererState::addMaterialShade(const Material& material) {
 // A new shade copies the values of its material, so later changes to the material leave the draws made so far alone.
 std::uint32_t RendererState::pushShade(Shade shade, const Material& material) {
     if (shade.material != nullptr) {
-        if (retainedSet.insert(shade.material).second) {
+        if (shade.material->retainEpoch != epoch) {
+            shade.material->retainEpoch = epoch;
             retainedMaterials.push_back(material.getResource());
         }
         shade.uniformBegin = static_cast<std::uint32_t>(uniformBytes.size());

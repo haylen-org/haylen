@@ -11,11 +11,12 @@
 
 namespace haylen::lighting2d {
 
+// Every frame draws its occluders again, so their points move into the world one by one, without a list of their own.
 void ShadowMap::appendSegments(const Occluder& occluder, std::vector<Segment>& segments) {
-    const std::vector<math::Vec2> points = occluder.getWorldPoints();
+    const std::vector<math::Vec2>& points = occluder.points;
     const std::size_t count = occluder.closed ? points.size() : points.size() - 1;
     for (std::size_t index = 0; index < count; ++index) {
-        segments.push_back({.from = points[index], .to = points[(index + 1) % points.size()], .mask = occluder.mask, .cull = occluder.cull});
+        segments.push_back({.from = occluder.toWorld(points[index]), .to = occluder.toWorld(points[(index + 1) % points.size()]), .mask = occluder.mask, .cull = occluder.cull});
     }
 }
 

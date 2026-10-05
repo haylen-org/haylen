@@ -8,10 +8,8 @@ namespace haylen::graphics2d {
 void MaterialResource::pack(std::vector<std::uint8_t>& bytes) const {
     using Type = graphics::Shader::UniformType;
     const std::vector<graphics::Shader::Block>& blocks = shader.getBlocks();
-    std::vector<std::size_t> starts;
-    starts.reserve(blocks.size());
+    const std::size_t first = bytes.size();
     for (const graphics::Shader::Block& block : blocks) {
-        starts.push_back(bytes.size());
         bytes.resize(bytes.size() + block.size, 0);
     }
 
@@ -21,8 +19,12 @@ void MaterialResource::pack(std::vector<std::uint8_t>& bytes) const {
             continue;
         }
 
-        // Integer uniforms hold 32-bit integers, and every other uniform 32-bit floats.
-        std::uint8_t* target = bytes.data() + starts[uniform.block] + uniform.offset;
+        // The blocks lie one after another, and integer uniforms hold 32-bit integers while every other uniform holds 32-bit floats.
+        std::size_t start = first;
+        for (std::size_t block = 0; block < uniform.block; ++block) {
+            start += blocks[block].size;
+        }
+        std::uint8_t* target = bytes.data() + start + uniform.offset;
         const bool integer = uniform.type == Type::Int || uniform.type == Type::IVec2 || uniform.type == Type::IVec3 || uniform.type == Type::IVec4;
         for (const float value : found->second) {
             if (integer) {

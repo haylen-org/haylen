@@ -29,6 +29,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Shader.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
@@ -338,6 +339,25 @@ TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
     EXPECT_THROW((void)graphics2d::Material{}.getShader(), std::logic_error);
     const std::string bare = R"({"format": "haylen-shader", "version": 1, "name": "bare", "blocks": [], "textures": [], "sources": [], "programs": {"sprite": {}}})";
     EXPECT_THROW(graphics2d::Material{graphics::Shader::parse(test::TestFiles::bytes(bare))}, std::invalid_argument);
+}
+
+// A value an app sets every frame, such as a time, and the copy every frame packs of it reuse their storage.
+TEST_F(MaterialTest, SetsAndPacksValuesEveryFrameWithoutAllocating) {
+    graphics2d::Material material(graphics::Shader::parse(tintShader()));
+    material.set("strength", 0.5F);
+    material.set("palette", std::vector<float>(12, 0.5F));
+    std::vector<std::uint8_t> bytes;
+    material.getResource()->pack(bytes);
+
+    const test::AllocationTracker tracker;
+    for (int frame = 1; frame <= 10; ++frame) {
+        material.set("strength", static_cast<float>(frame));
+        bytes.clear();
+        material.getResource()->pack(bytes);
+    }
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(floatAt(bytes, 16), 10.0F);
+    EXPECT_EQ(floatAt(bytes, 112), 0.5F);
 }
 
 TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include "2d/graphics/GpuInstance.hpp"
@@ -15,7 +17,7 @@
 
 namespace haylen::graphics2d {
 
-// Turns laid out text into the instances the renderer draws. Glyphs of distance field fonts go through the text program with their outline, weight, skew and softness, while bitmap glyphs, images and filled boxes go through the sprite program. Consecutive instances of one program and texture share a batch, and batches keep the drawing order, so backgrounds, glows and shadows lie under the glyphs.
+// Turns laid out text into the instances the renderer draws. Glyphs of distance field fonts go through the text program with their outline, weight, skew and softness, while bitmap glyphs, images and filled boxes go through the sprite program. Consecutive instances of one program and texture share a batch, and batches keep the drawing order, so backgrounds, glows and shadows lie under the glyphs. Every paint replaces the batches of the one before and reuses their storage, so painting text that was painted before allocates nothing.
 class TextPainter final {
   public:
     struct Batch {
@@ -41,9 +43,12 @@ class TextPainter final {
     // Paints rich text with the top-left of its block at the position, scaled from that corner and with every color multiplied by the tint.
     void paintRichText(const text::Layout& layout, math::Vec2 position, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
 
-    [[nodiscard]] const std::vector<Batch>& getBatches() const noexcept {
-        return batches;
+    [[nodiscard]] std::span<const Batch> getBatches() const noexcept {
+        return {batches.data(), batchCount};
     }
+
+    // Drops the batches and the textures they hold, such as the images of rich text, keeping their storage for the next paint.
+    void clear() noexcept;
 
   private:
     // The layers plain text draws, from the bottom up.
@@ -67,6 +72,7 @@ class TextPainter final {
 
     graphics::Texture white;
     std::vector<Batch> batches;
+    std::size_t batchCount = 0;
     math::Vec2 blockPosition{};
     math::Vec2 blockOrigin{};
     math::Vec2 blockScale{1.0F, 1.0F};

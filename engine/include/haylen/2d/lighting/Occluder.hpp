@@ -50,6 +50,7 @@ struct Occluder {
 
     // Returns the points in world coordinates, through the scale, the rotation and the position.
     [[nodiscard]] std::vector<math::Vec2> getWorldPoints() const;
+    [[nodiscard]] math::Vec2 toWorld(math::Vec2 point) const noexcept;
 
   private:
     static constexpr int kCurveSegments = 16;

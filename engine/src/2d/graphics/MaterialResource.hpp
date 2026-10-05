@@ -18,6 +18,9 @@ struct MaterialResource {
     std::map<std::string, graphics::Texture, std::less<>> textures;
     std::uint32_t revision = 0;
 
+    // The submission of the renderer that last kept the material alive until it ends.
+    std::uint64_t retainEpoch = 0;
+
     // Appends the uniform blocks of the shader one after another, each at its size, with the values that fit their uniforms and zeros elsewhere.
     void pack(std::vector<std::uint8_t>& bytes) const;
 

@@ -111,7 +111,6 @@ class FrameSubmitter final {
 
     RendererState& state;
     const graphics::FrameTarget& target;
-    std::vector<std::pair<std::uint32_t, std::uint32_t>> placements;
     std::size_t instanceCursor = 0;
     std::size_t splatBase = 0;
     std::size_t commandFloor = 0;

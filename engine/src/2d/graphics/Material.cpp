@@ -78,8 +78,13 @@ void Material::set(std::string_view name, std::span<const float> values) {
         throw std::invalid_argument(std::format("The uniform \"{}\" is {} \"{}\", which takes {} numbers, not {}.", name, uniform.count > 1 ? std::format("an array of {}", uniform.count) : std::string("a"), graphics::Shader::uniformTypeName(uniform.type), expected, values.size()));
     }
 
+    // A value set every frame, such as a time, reuses the storage of the last one.
     MaterialResource& state = getChecked();
-    state.values.insert_or_assign(std::string(name), std::vector<float>(values.begin(), values.end()));
+    if (const auto found = state.values.find(name); found != state.values.end()) {
+        found->second.assign(values.begin(), values.end());
+    } else {
+        state.values.emplace(std::string(name), std::vector<float>(values.begin(), values.end()));
+    }
     ++state.revision;
 }
 

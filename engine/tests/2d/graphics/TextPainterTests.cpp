@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -34,7 +35,8 @@ class TextPainterTest : public ::testing::Test {
     [[nodiscard]] std::vector<TextPainter::Batch> paint(text::RichText& richText) {
         TextPainter painter(fixture.engine().getGraphics().getWhiteTexture());
         painter.paintRichText(richText.getFrame(), {100.0F, 50.0F});
-        return painter.getBatches();
+        const std::span<const TextPainter::Batch> batches = painter.getBatches();
+        return {batches.begin(), batches.end()};
     }
 
     // Decodes a parameter byte the way the shaders read a signed one.

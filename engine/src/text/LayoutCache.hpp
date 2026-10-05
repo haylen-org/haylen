@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <list>
 #include <memory>
 #include <string>
@@ -16,10 +15,11 @@ namespace haylen::text {
 // Keeps the layouts of plain text a font or family made most recently, by text and by the fields of the style that change the layout, so labels and text drawn every frame shape once.
 class LayoutCache final {
   public:
-    using Builder = std::function<Layout()>;
+    // Returns the cached layout of the text in the style, or nothing, without allocating. A size, maximum width or line spacing that is not finite throws `std::invalid_argument`.
+    [[nodiscard]] std::shared_ptr<const Layout> find(std::string_view text, const Style& style);
 
-    // Returns the cached layout of the text in the style, or builds and caches it. A size, maximum width or line spacing that is not finite throws `std::invalid_argument`.
-    [[nodiscard]] std::shared_ptr<const Layout> get(std::string_view text, const Style& style, const Builder& build);
+    // Caches the layout of the text in the style and returns it.
+    std::shared_ptr<const Layout> store(std::string_view text, const Style& style, Layout layout);
 
   private:
     // The text and the language are views: a lookup views what it is given, and a cached key views the strings of its entry, which stays where the list built it.
@@ -49,6 +49,8 @@ class LayoutCache final {
     };
 
     static constexpr std::size_t kCapacity = 512;
+
+    [[nodiscard]] static Key makeKey(std::string_view text, const Style& style) noexcept;
 
     std::list<Entry> entries;
     std::unordered_map<Key, std::list<Entry>::iterator, KeyHash> index;

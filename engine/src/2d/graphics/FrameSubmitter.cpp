@@ -168,36 +168,32 @@ void FrameSubmitter::castShadows() {
         return;
     }
 
-    struct Job {
-        LightDraw* draw = nullptr;
-        const Canvas* canvas = nullptr;
-    };
-    std::vector<Job> jobs;
+    std::vector<std::pair<LightDraw*, const Canvas*>>& casts = state.shadowCasts;
     for (const Canvas& canvas : state.canvases) {
         for (std::size_t index = canvas.lightBegin; index < canvas.lightEnd; ++index) {
             LightDraw& draw = state.lights[index];
             if (draw.light.shadows) {
-                draw.shadowRow = static_cast<int>(jobs.size());
-                jobs.push_back({.draw = &draw, .canvas = &canvas});
+                draw.shadowRow = static_cast<int>(casts.size());
+                casts.emplace_back(&draw, &canvas);
             }
         }
     }
 
-    const std::size_t rows = std::max<std::size_t>(jobs.size(), 1);
+    const std::size_t rows = std::max<std::size_t>(casts.size(), 1);
     state.shadowTexels.assign(rows * lighting2d::ShadowMap::kResolution, lighting2d::ShadowMap::kClear);
     // clang-format off
-    state.jobs.parallelFor(0, jobs.size(), 1, [&](std::size_t begin, std::size_t end) {
+    state.jobs.parallelFor(0, casts.size(), 1, [&](std::size_t begin, std::size_t end) {
         for (std::size_t index = begin; index < end; ++index) {
-            const Job& job = jobs[index];
+            const auto& [draw, canvas] = casts[index];
             const std::span<float> row(state.shadowTexels.data() + index * lighting2d::ShadowMap::kResolution, lighting2d::ShadowMap::kResolution);
-            const std::span<const lighting2d::ShadowMap::Segment> segments(state.segments.data() + job.canvas->segmentBegin, job.canvas->segmentEnd - job.canvas->segmentBegin);
-            job.draw->axis = lighting2d::ShadowMap::cast(job.draw->light, segments, job.canvas->getWorldBounds(), row);
+            const std::span<const lighting2d::ShadowMap::Segment> segments(state.segments.data() + canvas->segmentBegin, canvas->segmentEnd - canvas->segmentBegin);
+            draw->axis = lighting2d::ShadowMap::cast(draw->light, segments, canvas->getWorldBounds(), row);
         }
     });
     // clang-format on
 
     writeShadowAtlas(static_cast<int>(rows));
-    state.stats.shadows = jobs.size();
+    state.stats.shadows = casts.size();
 }
 
 // The atlas grows to the next power of two of rows, and the light pass samples it with texel fetches.
@@ -234,7 +230,7 @@ void FrameSubmitter::writeShadowAtlas(int rows) {
 
 // Orders every canvas, groups compatible neighbours into commands and lays instance data out in draw order.
 void FrameSubmitter::buildCommands() {
-    std::vector<std::uint32_t> order;
+    std::vector<std::uint32_t>& order = state.itemOrder;
     std::uint32_t expected = 0;
     bool inOrder = true;
 
@@ -289,7 +285,7 @@ void FrameSubmitter::append(const DrawItem& item) {
         command.first = item.first;
     } else if (item.batch == nullptr) {
         command.first = static_cast<std::uint32_t>(instanceCursor);
-        placements.emplace_back(item.first, item.count);
+        state.placements.emplace_back(item.first, item.count);
         instanceCursor += item.count;
     }
 
@@ -317,7 +313,7 @@ void FrameSubmitter::upload() {
     if (!identity) {
         state.upload.resize(instanceCursor);
         std::size_t cursor = 0;
-        for (const auto& [first, count] : placements) {
+        for (const auto& [first, count] : state.placements) {
             std::copy_n(state.instances.begin() + static_cast<std::ptrdiff_t>(first), count, state.upload.begin() + static_cast<std::ptrdiff_t>(cursor));
             cursor += count;
         }
@@ -565,7 +561,8 @@ void FrameSubmitter::renderSwapchain() {
 
 // Draws the world and screen canvases of a destination, the screen or a capture, by their order and then in the order they began.
 void FrameSubmitter::drawCanvases(std::size_t capture, graphics::PassTarget pass) {
-    std::vector<const Canvas*> ordered;
+    std::vector<const Canvas*>& ordered = state.orderedCanvases;
+    ordered.clear();
     for (const Canvas& canvas : state.canvases) {
         if (canvas.kind != Canvas::Kind::Target && canvas.capture == capture) {
             ordered.push_back(&canvas);

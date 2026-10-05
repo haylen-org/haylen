@@ -30,6 +30,9 @@ struct TextureResource {
     // The path of a texture the assets loaded from the package, which debug drawings name it by.
     std::string label;
 
+    // The submission of the 2D renderer that last kept the texture alive until it ends, which keeps it once however many draws use it.
+    std::uint64_t retainEpoch = 0;
+
     // A dynamic texture changes in place, and keeps the pixels it received since the last upload until the device sends them.
     bool dynamic = false;
     std::vector<std::uint8_t> staged;

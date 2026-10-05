@@ -121,7 +121,6 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
     const sg_pixelformat_info hdr = sg_query_pixelformat(SG_PIXELFORMAT_RGBA16F);
     state->lightFormat = hdr.render && hdr.blend ? SG_PIXELFORMAT_RGBA16F : device.getState().offscreenFormat;
 
-    state->white = device.getWhiteTexture();
     state->light = device.createTexture(graphics::Image(RendererState::kLightTextureSize, RendererState::kLightTextureSize, radialFalloff(RendererState::kLightTextureSize)), {.filter = graphics::Texture::Filter::Linear});
     state->metaball = device.createTexture(graphics::Image(RendererState::kMetaballTextureSize, RendererState::kMetaballTextureSize, metaballKernel(RendererState::kMetaballTextureSize)), {.filter = graphics::Texture::Filter::Linear});
 }
@@ -332,9 +331,7 @@ void Renderer::drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order
     }
 
     state->retain(batch.getTexture());
-    if (state->retainedSet.insert(batch.getResource().get()).second) {
-        state->retainedBatches.push_back(batch.getResource());
-    }
+    state->retain(batch.getResource());
 
     DrawItem& item = state->addItem(Program::Sprite, order, batch.getTexture().getResource().get(), batch.getBounds().getBottom() + offset.y);
     item.batch = batch.getResource().get();
@@ -410,11 +407,12 @@ void Renderer::drawTextLayout(const text::Layout& layout, math::Vec2 position, c
     for (const text::Layout::Look& look : layout.looks) {
         look.font->sync();
     }
-    TextPainter painter(state->white);
+    TextPainter& painter = state->painter;
     painter.paintText(layout, position, style, style.pixelSnap ? state->getPixelGrid() : std::nullopt);
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y);
     }
+    painter.clear();
 }
 
 // Rich text draws the frame of this moment, with its effects and reveal, and uploads the glyphs its fonts added.
@@ -427,11 +425,12 @@ void Renderer::drawRichText(text::RichText& richText, math::Vec2 position, const
     for (const text::Layout::Look& look : frame.looks) {
         look.font->sync();
     }
-    TextPainter painter(state->white);
+    TextPainter& painter = state->painter;
     painter.paintRichText(frame, position, scale, tint);
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y + frame.size.y * scale.y);
     }
+    painter.clear();
 }
 
 void Renderer::drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order) {
@@ -663,7 +662,8 @@ void Renderer::finishCanvas() {
         drawRect(getCanvasBounds().expanded(1.0F), flash, {.layer = std::numeric_limits<int>::max() / 2 - 1, .unshaded = true});
     }
     if (state->canvasOpen && !state->overlays.empty() && !state->drawingOverlays) {
-        const std::vector<std::pair<std::uint64_t, CanvasOverlay>> overlays = state->overlays;
+        std::vector<std::pair<std::uint64_t, CanvasOverlay>>& overlays = state->overlaySnapshot;
+        overlays = state->overlays;
         state->clipStack.clear();
         state->layerOffsets.clear();
         state->layerOffset = 0;
@@ -673,10 +673,12 @@ void Renderer::finishCanvas() {
                 overlay(*this);
             }
         } catch (...) {
+            overlays.clear();
             state->drawingOverlays = false;
             state->closeCanvas();
             throw;
         }
+        overlays.clear();
         state->drawingOverlays = false;
     }
     state->closeCanvas();

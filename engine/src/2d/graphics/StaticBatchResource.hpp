@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 #include "graphics/ResourceGraveyard.hpp"
@@ -17,6 +18,9 @@ struct StaticBatchResource {
     graphics::Texture texture;
     math::Rect bounds{};
     std::weak_ptr<graphics::ResourceGraveyard> graveyard;
+
+    // The submission of the renderer that last kept the batch alive until it ends.
+    std::uint64_t retainEpoch = 0;
 
     StaticBatchResource() = default;
     StaticBatchResource(const StaticBatchResource&) = delete;

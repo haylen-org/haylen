@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 
 namespace haylen::text {
 
@@ -13,19 +14,26 @@ std::size_t LayoutCache::KeyHash::operator()(const Key& key) const noexcept {
     return hash;
 }
 
+LayoutCache::Key LayoutCache::makeKey(std::string_view text, const Style& style) noexcept {
+    return {.text = text, .size = style.size, .maxWidth = style.maxWidth, .lineSpacing = style.lineSpacing, .align = style.align, .direction = style.direction, .language = style.language, .bold = style.bold, .italic = style.italic};
+}
+
 // The most recently used layouts stay, and the one used longest ago makes room for a new one. Lengths must be finite, since a key holding NaN never equals itself and could never be found or evicted.
-std::shared_ptr<const Layout> LayoutCache::get(std::string_view text, const Style& style, const Builder& build) {
+std::shared_ptr<const Layout> LayoutCache::find(std::string_view text, const Style& style) {
     if (!std::isfinite(style.size) || !std::isfinite(style.maxWidth) || !std::isfinite(style.lineSpacing)) {
         throw std::invalid_argument("Text needs a finite size, maximum width and line spacing.");
     }
-    const Key key{.text = text, .size = style.size, .maxWidth = style.maxWidth, .lineSpacing = style.lineSpacing, .align = style.align, .direction = style.direction, .language = style.language, .bold = style.bold, .italic = style.italic};
-    if (const auto found = index.find(key); found != index.end()) {
-        entries.splice(entries.begin(), entries, found->second);
-        return found->second->layout;
+    const auto found = index.find(makeKey(text, style));
+    if (found == index.end()) {
+        return nullptr;
     }
+    entries.splice(entries.begin(), entries, found->second);
+    return found->second->layout;
+}
 
-    auto layout = std::make_shared<const Layout>(build());
-    Entry& entry = entries.emplace_front(std::string(text), style.language, key, layout);
+std::shared_ptr<const Layout> LayoutCache::store(std::string_view text, const Style& style, Layout built) {
+    auto layout = std::make_shared<const Layout>(std::move(built));
+    Entry& entry = entries.emplace_front(std::string(text), style.language, makeKey(text, style), layout);
     entry.key.text = entry.text;
     entry.key.language = entry.language;
     index.emplace(entry.key, entries.begin());

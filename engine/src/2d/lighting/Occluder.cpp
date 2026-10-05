@@ -129,9 +129,13 @@ std::vector<math::Vec2> Occluder::getWorldPoints() const {
     std::vector<math::Vec2> placed;
     placed.reserve(points.size());
     for (const math::Vec2 point : points) {
-        placed.push_back(position + (point * scale).rotated(rotation));
+        placed.push_back(toWorld(point));
     }
     return placed;
+}
+
+math::Vec2 Occluder::toWorld(math::Vec2 point) const noexcept {
+    return position + (point * scale).rotated(rotation);
 }
 
 } // namespace haylen::lighting2d

@@ -84,7 +84,10 @@ FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_
 }
 
 std::shared_ptr<const Layout> FontFamily::layout(std::string_view text, const Style& style) {
-    return layouts->get(text, style, [&] { return LayoutBuilder::layoutPlainText(text, style, this, nullptr); });
+    if (std::shared_ptr<const Layout> cached = layouts->find(text, style)) {
+        return cached;
+    }
+    return layouts->store(text, style, LayoutBuilder::layoutPlainText(text, style, this, nullptr));
 }
 
 math::Vec2 FontFamily::measure(std::string_view text, const Style& style) {

@@ -18,15 +18,30 @@ float TextPainter::PixelGrid::snapY(float y) const noexcept {
     return (std::round(y * scale.y + offset.y) - offset.y) / scale.y;
 }
 
-void TextPainter::add(Program program, const graphics::Texture& texture, const GpuInstance& instance) {
-    if (batches.empty() || batches.back().program != program || batches.back().texture != texture) {
-        batches.push_back({.program = program, .texture = texture});
+void TextPainter::clear() noexcept {
+    for (std::size_t index = 0; index < batchCount; ++index) {
+        batches[index].texture = {};
+        batches[index].instances.clear();
     }
-    batches.back().instances.push_back(instance);
+    batchCount = 0;
+}
+
+void TextPainter::add(Program program, const graphics::Texture& texture, const GpuInstance& instance) {
+    if (batchCount == 0 || batches[batchCount - 1].program != program || batches[batchCount - 1].texture != texture) {
+        if (batchCount == batches.size()) {
+            batches.emplace_back();
+        }
+        Batch& next = batches[batchCount++];
+        next.program = program;
+        next.texture = texture;
+        next.instances.clear();
+    }
+    batches[batchCount - 1].instances.push_back(instance);
 }
 
 // Plain text turns as one piece around the position, so every glyph turns around its baseline at a turned place. It draws in layers: shadows, the same glyphs moved by the offset on the screen in the shadow color with the blur as softness, where a bitmap shadow is the silhouette of its glyph, then the outlines of every glyph, and the fills over them, so no outline covers a neighbouring letter.
 void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, const std::optional<PixelGrid>& grid) {
+    clear();
     blockPosition = position;
     blockOrigin = layout.size * style.anchor;
     blockScale = style.scale;
@@ -113,6 +128,7 @@ SpriteInstance TextPainter::placeGlyph(const text::Layout::Glyph& glyph, math::V
 
 // Rich text draws in layers: backgrounds, glows, shadows, images, outlines, glyphs, and then the lines over the text.
 void TextPainter::paintRichText(const text::Layout& layout, math::Vec2 position, math::Vec2 scale, math::Color tint) {
+    clear();
     blockPosition = position;
     blockOrigin = {};
     blockScale = scale;
