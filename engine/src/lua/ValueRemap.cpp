@@ -90,15 +90,21 @@ bool ValueRemap::isInstanceOfPatched(int metatable) {
     return false;
 }
 
-// Values change in place while the traversal goes on, which Lua allows for existing keys, and keys change after it.
+// Values change in place while the traversal goes on, which Lua allows for existing keys, and keys change after it. A staging table that the new code made the metatable of a table gives way to its live table, like any other value.
 void ValueRemap::visitTable(int index) {
     luaL_checkstack(state, 8, "The Lua heap is too deep to remap.");
     if (lua_getmetatable(state, index) != 0) {
-        if (isInstanceOfPatched(lua_gettop(state))) {
+        const int metatable = lua_gettop(state);
+        if (pushReplacement(metatable)) {
+            lua_pushvalue(state, -1);
+            lua_setmetatable(state, index);
+            lua_replace(state, metatable);
+        }
+        if (isInstanceOfPatched(metatable)) {
             lua_pushvalue(state, index);
             lua_rawseti(state, found, ++foundCount);
         }
-        enqueue(lua_gettop(state));
+        enqueue(metatable);
         lua_pop(state, 1);
     }
 

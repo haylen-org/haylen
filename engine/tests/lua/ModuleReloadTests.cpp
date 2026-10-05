@@ -506,7 +506,7 @@ M.Thing = setmetatable({}, M.Base)
 M.Thing.__index = M.Thing
 return M
 )"}});
-    EXPECT_EQ(lua("return thing.describe()"), "base v2");
+    EXPECT_EQ(lua("return thing.describe() .. ' ' .. tostring(getmetatable(classes.Thing) == classes.Base)"), "base v2 true");
 }
 
 // Only Lua functions of the module file take the place of the functions the last load made, so native functions stay as they are everywhere.
