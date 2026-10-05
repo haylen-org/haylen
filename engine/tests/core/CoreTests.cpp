@@ -263,6 +263,15 @@ TEST(Utf8Test, ReplacesInvalidSequences) {
     EXPECT_EQ(core::Utf8::decode("\xED\xA0\x80"), std::u32string(1, core::Utf8::kReplacementCharacter));
 }
 
+TEST(Utf8Test, ValidatesWellFormedText) {
+    EXPECT_TRUE(core::Utf8::isValid(""));
+    EXPECT_TRUE(core::Utf8::isValid("aé€😀"));
+    EXPECT_TRUE(core::Utf8::isValid("\xEF\xBF\xBD")) << "An encoded replacement character is valid text.";
+    for (const std::string_view invalid : {"\xFF", "\xE2\x82", "a\x80", "\xC0\x80", "\xED\xA0\x80", "\xF4\x90\x80\x80", "\xEF\xBF"}) {
+        EXPECT_FALSE(core::Utf8::isValid(invalid));
+    }
+}
+
 TEST(Utf8Test, EncodesEveryLength) {
     std::string text;
     for (const char32_t codePoint : {U'a', U'é', U'€', U'\U0001F600', static_cast<char32_t>(0xD800), static_cast<char32_t>(0x110000)}) {

@@ -169,6 +169,7 @@ if(APPLE)
   set_property(TARGET Clipper2 PROPERTY INTERFACE_LINK_LIBRARIES "")
 endif()
 
+# Zstandard decompresses the layers of Tiled maps, and it compresses every chunk of protected content on its own, which keeps random access and decodes faster than the other codecs at a similar ratio.
 CPMAddPackage(
   NAME zstd
   URL "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz"
@@ -184,6 +185,15 @@ CPMAddPackage(
     "ZSTD_LEGACY_SUPPORT OFF"
     "ZSTD_MULTITHREAD_SUPPORT OFF"
   SYSTEM YES
+)
+
+# Monocypher gives protected content its authenticated encryption (XChaCha20-Poly1305), its hashes and key derivation (BLAKE2b) and its manifest signatures (Ed25519). It is an audited C library of two files without dependencies, so it builds the same on every target, the web included, and the release pinned here fixes a timing leak of its signatures.
+CPMAddPackage(
+  NAME monocypher
+  VERSION 4.0.3
+  URL "https://github.com/LoupVaillant/Monocypher/releases/download/4.0.3/monocypher-4.0.3.tar.gz"
+  URL_HASH SHA256=8cc9bc341a66249016db9bd70e9142d8d0aef9945973744b1ac05dbc55d8ee66
+  DOWNLOAD_ONLY YES
 )
 
 if(HAYLEN_BUILD_TESTS AND HAYLEN_DESKTOP)
@@ -224,6 +234,10 @@ target_compile_definitions(haylen_sheenbidi PRIVATE SB_CONFIG_UNITY)
 set(unibreak_dir "${libunibreak_SOURCE_DIR}/src")
 add_library(haylen_unibreak STATIC "${unibreak_dir}/unibreakbase.c" "${unibreak_dir}/unibreakdef.c" "${unibreak_dir}/linebreak.c" "${unibreak_dir}/linebreakdata.c" "${unibreak_dir}/linebreakdef.c" "${unibreak_dir}/eastasianwidthdef.c" "${unibreak_dir}/emojidef.c" "${unibreak_dir}/graphemebreak.c")
 target_include_directories(haylen_unibreak SYSTEM PUBLIC "${unibreak_dir}")
+
+# The optional file of Monocypher holds Ed25519 with SHA-512, the signature scheme of manifests.
+add_library(haylen_monocypher STATIC "${monocypher_SOURCE_DIR}/src/monocypher.c" "${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c")
+target_include_directories(haylen_monocypher SYSTEM PUBLIC "${monocypher_SOURCE_DIR}/src" "${monocypher_SOURCE_DIR}/src/optional")
 
 add_library(haylen_imgui STATIC
   "${imgui_SOURCE_DIR}/imgui.cpp"

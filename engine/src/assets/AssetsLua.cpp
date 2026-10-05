@@ -65,8 +65,14 @@ int AssetsLua::text(lua_State* L) {
 
 // Returns the raw file as a Lua string, byte for byte.
 int AssetsLua::bytes(lua_State* L) {
-    const std::vector<std::uint8_t> data = getAssets(L).bytes(lua::Stack::read<std::string_view>(L, 1));
+    const std::string_view path = lua::Stack::read<std::string_view>(L, 1);
+    const std::vector<std::uint8_t> data = lua_isnoneornil(L, 2) ? getAssets(L).bytes(path) : getAssets(L).bytes(path, lua::Stack::read<std::uint64_t>(L, 2), lua::Stack::read<std::size_t>(L, 3));
     lua_pushlstring(L, reinterpret_cast<const char*>(data.data()), data.size());
+    return 1;
+}
+
+int AssetsLua::fileSize(lua_State* L) {
+    lua::Stack::push(L, getAssets(L).getFileSize(lua::Stack::read<std::string_view>(L, 1)));
     return 1;
 }
 
@@ -216,7 +222,7 @@ int AssetsLua::uploadCount(lua_State* L) {
 
 int AssetsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"texture", &lua::Binding::native<&texture>}, {"font", &lua::Binding::native<&font>}, {"shader", &lua::Binding::native<&shader>}, {"json", &lua::Binding::native<&json>}, {"text", &lua::Binding::native<&text>}, {"bytes", &lua::Binding::native<&bytes>}, {"exists", &lua::Binding::native<&exists>}, {"list", &lua::Binding::native<&list>}, {"typeForPath", &lua::Binding::native<&typeForPath>}, {"hasType", &hasType}, {"load", &lua::Binding::native<&load>}, {"loadAsync", &lua::Binding::native<&loadAsync>}, {"defineGroups", &lua::Binding::native<&defineGroups>}, {"defineGroup", &lua::Binding::native<&defineGroup>}, {"preload", &lua::Binding::native<&preload>}, {"unloadGroup", &lua::Binding::native<&unloadGroup>}, {"groupProgress", &lua::Binding::native<&groupProgress>}, {"groupLoaded", &lua::Binding::native<&groupLoaded>}, {"groups", &groups}, {"cachedCount", &cachedCount}, {"pendingCount", &pendingCount}, {"releaseUnused", &releaseUnused}, {"setUploadBudget", &lua::Binding::native<&setUploadBudget>}, {"uploadBudget", &uploadBudget}, {"uploadCount", &uploadCount}, {nullptr, nullptr},
+        {"texture", &lua::Binding::native<&texture>}, {"font", &lua::Binding::native<&font>}, {"shader", &lua::Binding::native<&shader>}, {"json", &lua::Binding::native<&json>}, {"text", &lua::Binding::native<&text>}, {"bytes", &lua::Binding::native<&bytes>}, {"fileSize", &lua::Binding::native<&fileSize>}, {"exists", &lua::Binding::native<&exists>}, {"list", &lua::Binding::native<&list>}, {"typeForPath", &lua::Binding::native<&typeForPath>}, {"hasType", &hasType}, {"load", &lua::Binding::native<&load>}, {"loadAsync", &lua::Binding::native<&loadAsync>}, {"defineGroups", &lua::Binding::native<&defineGroups>}, {"defineGroup", &lua::Binding::native<&defineGroup>}, {"preload", &lua::Binding::native<&preload>}, {"unloadGroup", &lua::Binding::native<&unloadGroup>}, {"groupProgress", &lua::Binding::native<&groupProgress>}, {"groupLoaded", &lua::Binding::native<&groupLoaded>}, {"groups", &groups}, {"cachedCount", &cachedCount}, {"pendingCount", &pendingCount}, {"releaseUnused", &releaseUnused}, {"setUploadBudget", &lua::Binding::native<&setUploadBudget>}, {"uploadBudget", &uploadBudget}, {"uploadCount", &uploadCount}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

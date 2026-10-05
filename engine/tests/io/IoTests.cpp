@@ -1,14 +1,19 @@
 #include <gtest/gtest.h>
 #include <zip.h>
 
+#include <algorithm>
 #include <fstream>
 #include <iterator>
+#include <map>
+#include <memory>
 #include <stdexcept>
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
+#include "io/CompositePackage.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -110,6 +115,29 @@ TEST_P(PackageTest, ReadsFilesAndAssets) {
     EXPECT_THROW((void)package->read("../outside"), std::invalid_argument);
 }
 
+TEST_P(PackageTest, ReadsFilesInRanges) {
+    const std::unique_ptr<Package> package = makePackage();
+    EXPECT_EQ(package->getFileSize("source/main.lua"), 11U);
+    EXPECT_EQ(package->getAssetSize("maps/island.tmj"), 12U);
+    EXPECT_THROW((void)package->getFileSize("source/missing.lua"), std::runtime_error);
+    EXPECT_EQ(package->readRange("source/main.lua", 6, 4), test::TestFiles::bytes("'hi'"));
+    EXPECT_EQ(package->readRange("source/main.lua", 6, 100), test::TestFiles::bytes("'hi')"));
+    EXPECT_TRUE(package->readRange("source/main.lua", 50, 4).empty());
+    EXPECT_EQ(package->readAssetRange("maps/island.tmj", 2, 5), test::TestFiles::bytes("width"));
+
+    // A reader moves back and forth through its file.
+    const std::unique_ptr<PackageReader> reader = package->openReader("content/maps/island.tmj");
+    EXPECT_EQ(reader->getSize(), 12U);
+    std::vector<std::uint8_t> bytes(3);
+    reader->readExactly(9, bytes);
+    EXPECT_EQ(bytes, test::TestFiles::bytes(" 2}"));
+    reader->readExactly(1, bytes);
+    EXPECT_EQ(bytes, test::TestFiles::bytes("\"wi"));
+    EXPECT_EQ(reader->read(12, bytes), 0U);
+    EXPECT_THROW(reader->readExactly(11, bytes), std::runtime_error);
+    EXPECT_THROW((void)package->openReader("missing.lua"), std::runtime_error);
+}
+
 TEST_P(PackageTest, CarriesThePluginsOfTheApp) {
     const std::unique_ptr<Package> package = makePackage();
     EXPECT_EQ(core::AppConfig::fromPackage(*package).plugins.at("ads").at("testMode"), true);
@@ -144,12 +172,68 @@ TEST(PackageOpenTest, RejectsMissingAndInvalidPackages) {
     EXPECT_THROW((void)Package::openZip(test::TestFiles::bytes("not a zip"), "broken.zip"), std::runtime_error);
 }
 
+TEST(PackageOpenTest, OpensZipFilesWithoutReadingThemWhole) {
+    test::TemporaryDirectory directory;
+    const std::vector<std::uint8_t> large = test::TestFiles::randomBytes(8 * 1024 * 1024, 1);
+    int error = 0;
+    zip_t* archive = zip_open((directory.getPath() / "app.zip").string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
+    ASSERT_NE(archive, nullptr);
+    zip_file_add(archive, "content/large.bin", zip_source_buffer(archive, large.data(), large.size(), 0), 0);
+    const std::string small = "{}";
+    zip_file_add(archive, "content/small.json", zip_source_buffer(archive, small.data(), small.size(), 0), 0);
+    zip_close(archive);
+
+    std::unique_ptr<Package> package;
+    {
+        const test::AllocationTracker tracker;
+        package = Package::open(directory.getPath() / "app.zip");
+        EXPECT_EQ(package->readAssetText("small.json"), "{}");
+        EXPECT_LT(tracker.getLargest(), std::size_t{1} << 20) << "Opening an archive and reading a small entry never holds the whole archive.";
+    }
+
+    // A compressed entry reads ranges forward and backward.
+    const std::vector<std::uint8_t> late = package->readAssetRange("large.bin", 6 * 1024 * 1024, 1000);
+    const std::vector<std::uint8_t> early = package->readAssetRange("large.bin", 1000, 1000);
+    EXPECT_TRUE(std::equal(late.begin(), late.end(), large.begin() + 6 * 1024 * 1024));
+    EXPECT_TRUE(std::equal(early.begin(), early.end(), large.begin() + 1000));
+    EXPECT_EQ(package->readAsset("large.bin"), large);
+}
+
+TEST(CompositePackageTest, ShowsLaterLayersOverEarlierOnes) {
+    const auto base = std::make_shared<MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"content/a.txt", test::TestFiles::bytes("base a")}, {"content/b.txt", test::TestFiles::bytes("base b")}});
+    const auto patch = std::make_shared<MemoryPackage>("patch", std::map<std::string, std::vector<std::uint8_t>>{{"content/b.txt", test::TestFiles::bytes("patched b")}, {"content/c.txt", test::TestFiles::bytes("patch c")}});
+    const CompositePackage package("app", {base, patch});
+
+    EXPECT_EQ(package.getName(), "app");
+    EXPECT_EQ(package.readAssetText("a.txt"), "base a");
+    EXPECT_EQ(package.readAssetText("b.txt"), "patched b");
+    EXPECT_EQ(package.getAssetSize("b.txt"), 9U);
+    EXPECT_EQ(package.readAssetText("c.txt"), "patch c");
+    EXPECT_EQ(package.listAssets(""), (std::vector<std::string>{"a.txt", "b.txt", "c.txt"}));
+    EXPECT_FALSE(package.exists("content/d.txt"));
+    EXPECT_THROW((void)package.read("content/d.txt"), std::runtime_error);
+}
+
+TEST(PackageLuaTest, ReadsAssetsInRanges) {
+    test::EngineFixture fixture({{"content/levels/cave.bin", "0123456789"}});
+    EXPECT_EQ(fixture.lua("return require('haylen.assets').fileSize('levels/cave.bin')"), "10");
+    EXPECT_EQ(fixture.lua("return require('haylen.assets').bytes('levels/cave.bin', 3, 4)"), "3456");
+    EXPECT_EQ(fixture.lua("return require('haylen.assets').bytes('levels/cave.bin', 8, 100)"), "89");
+    EXPECT_EQ(fixture.lua("return #require('haylen.assets').bytes('levels/cave.bin', 20, 4)"), "0");
+    EXPECT_NE(fixture.lua("return require('haylen.assets').bytes('levels/cave.bin', -1, 4)").find("bad argument #2"), std::string::npos);
+    EXPECT_NE(fixture.lua("return require('haylen.assets').fileSize('levels/missing.bin')").find("was not found."), std::string::npos);
+}
+
 TEST(MemoryPackageTest, ReplacesAndRemovesFiles) {
     MemoryPackage package("editor");
     package.setFile("main.lua", test::TestFiles::bytes("a"));
     EXPECT_EQ(package.readText("main.lua"), "a");
+    const std::unique_ptr<PackageReader> reader = package.openReader("main.lua");
     package.setFile("./main.lua", test::TestFiles::bytes("b"));
     EXPECT_EQ(package.readText("main.lua"), "b");
+    std::vector<std::uint8_t> opened(1);
+    reader->readExactly(0, opened);
+    EXPECT_EQ(opened, test::TestFiles::bytes("a")) << "A reader keeps the bytes its file had when it opened.";
     EXPECT_TRUE(package.removeFile("main.lua"));
     EXPECT_FALSE(package.removeFile("main.lua"));
     EXPECT_FALSE(package.exists("main.lua"));

@@ -4,19 +4,21 @@
 #include <utility>
 
 #include "haylen/io/Path.hpp"
+#include "io/MemoryReader.hpp"
 
 namespace haylen::io {
 
 MemoryPackage::MemoryPackage(std::string packageName, std::map<std::string, std::vector<std::uint8_t>> contents) : name(std::move(packageName)) {
     for (auto& [path, bytes] : contents) {
-        files.insert_or_assign(Path::normalize(path), std::move(bytes));
+        files.insert_or_assign(Path::normalize(path), std::make_shared<const std::vector<std::uint8_t>>(std::move(bytes)));
     }
 }
 
 void MemoryPackage::setFile(std::string_view path, std::vector<std::uint8_t> bytes) {
     std::string entry = Path::normalize(path);
+    Bytes shared = std::make_shared<const std::vector<std::uint8_t>>(std::move(bytes));
     std::scoped_lock lock(mutex);
-    files.insert_or_assign(std::move(entry), std::move(bytes));
+    files.insert_or_assign(std::move(entry), std::move(shared));
 }
 
 bool MemoryPackage::removeFile(std::string_view path) {
@@ -31,7 +33,15 @@ bool MemoryPackage::exists(std::string_view path) const {
     return files.contains(entry);
 }
 
-std::vector<std::uint8_t> MemoryPackage::read(std::string_view path) const {
+std::uint64_t MemoryPackage::getFileSize(std::string_view path) const {
+    return find(path)->size();
+}
+
+std::unique_ptr<PackageReader> MemoryPackage::openReader(std::string_view path) const {
+    return std::make_unique<MemoryReader>(find(path));
+}
+
+MemoryPackage::Bytes MemoryPackage::find(std::string_view path) const {
     const std::string entry = Path::normalize(path);
     std::scoped_lock lock(mutex);
     const auto found = files.find(entry);

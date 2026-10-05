@@ -35,6 +35,15 @@ set(HAYLEN_TEST_SOURCES
   audio/OutputTests.cpp
   audio/PauseTests.cpp
   audio/SpatializationTests.cpp
+  content/CatalogTests.cpp
+  content/ChunkerTests.cpp
+  content/CompressionTests.cpp
+  content/ContentBuilderTests.cpp
+  content/CryptoTests.cpp
+  content/HostileInputTests.cpp
+  content/HpakPackageTests.cpp
+  content/ManifestTests.cpp
+  content/ShardTests.cpp
   core/ContainerTests.cpp
   core/CoreTests.cpp
   core/EngineTests.cpp
@@ -93,7 +102,11 @@ set(HAYLEN_TEST_SOURCES
   platform/WindowTests.cpp
   platform/WindowsPowerStatusTests.cpp
   storage/StorageTests.cpp
+  support/AllocationTracker.cpp
+  support/ContentParsers.cpp
+  support/CountingPackage.cpp
   support/EngineFixture.cpp
+  support/ReleaseFixture.cpp
   support/TemporaryDirectory.cpp
   support/TestFiles.cpp
   support/UiFixture.cpp
@@ -120,7 +133,7 @@ set(HAYLEN_TEST_SOURCES
 
 add_executable(haylen_tests ${HAYLEN_TEST_SOURCES})
 set_target_properties(haylen_tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-target_link_libraries(haylen_tests PRIVATE haylen::engine haylen::headless haylen_sokol_headers haylen_miniaudio haylen_stb libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
+target_link_libraries(haylen_tests PRIVATE haylen::engine haylen::headless haylen_sokol_headers haylen_miniaudio haylen_stb haylen_monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen_tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
 # The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, and the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use.
@@ -148,3 +161,13 @@ gtest_discover_tests(haylen_tests
   DISCOVERY_TIMEOUT 60
   PROPERTIES TIMEOUT 120
 )
+
+# The fuzzer of the content formats runs their parsers on the inputs libFuzzer generates.
+if(HAYLEN_BUILD_FUZZERS)
+  add_executable(haylen_content_fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
+  set_target_properties(haylen_content_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_include_directories(haylen_content_fuzzer PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
+  target_link_libraries(haylen_content_fuzzer PRIVATE haylen::engine haylen_stb haylen_monocypher)
+  target_link_options(haylen_content_fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen_content_fuzzer)
+endif()

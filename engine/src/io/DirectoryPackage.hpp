@@ -16,7 +16,8 @@ class DirectoryPackage final : public Package {
         return name;
     }
     [[nodiscard]] bool exists(std::string_view path) const override;
-    [[nodiscard]] std::vector<std::uint8_t> read(std::string_view path) const override;
+    [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override;
+    [[nodiscard]] std::unique_ptr<PackageReader> openReader(std::string_view path) const override;
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override;
     [[nodiscard]] std::optional<std::filesystem::path> getDirectory() const override {
         return root;

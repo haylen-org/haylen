@@ -199,6 +199,7 @@ python3 haylen.py clean
 | `HAYLEN_BUILD_FRAMEWORK` | off | Apple only, with `HAYLEN_BUILD_SDK`: merge the SDK and the player into the `libhaylen.a` of one `Haylen.xcframework` slice, installed by the `haylen_framework` component. |
 | `HAYLEN_ENABLE_COVERAGE` | off | Instrument the engine and tests with LLVM coverage. Requires Clang. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the engine targets, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
+| `HAYLEN_BUILD_FUZZERS` | off | Build `haylen_content_fuzzer`, the libFuzzer target of the parsers of the content formats, and instrument every target for it with AddressSanitizer. Requires a Clang that links libFuzzer, which Apple Clang does not ship. |
 
 The workspace `CMakeLists.txt` at the repository root adds `engine/` and turns the player, the tests and the benchmark on. Shaders in `engine/shaders` are compiled by `sokol-shdc` at build time for GLSL 4.30, GLSL 3.00 ES, HLSL 5, Metal for macOS, iOS and the simulator and WGSL, and the runtime picks the variant of the active backend. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every compile runs from `engine/shaders/include`, the shader library that app shaders include too.
 
@@ -222,7 +223,8 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | Dear ImGui | v1.92.9b | Compiled as `haylen_imgui` with the engine's ImGui configuration. |
 | miniaudio | 0.11.25 | Compiled as `haylen_miniaudio`. |
 | Box2D | v3.1.1 | |
-| zstd | v1.5.7 | Static library for compressed Tiled layers. |
+| zstd | v1.5.7 | Static library for compressed Tiled layers and for the chunks of protected content. |
+| Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), hashing and key derivation (BLAKE2b) and manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen_monocypher`. It is audited, has no dependencies and builds the same on every target, the web included, and this release fixes a timing leak of its signatures. |
 | GoogleTest | v1.18.0 | Only when desktop tests are built. |
 
 Every package is pinned by the URL of a release archive, or of a commit archive for projects without releases, together with its hash:

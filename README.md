@@ -78,7 +78,7 @@ scene.push({
 ## Documentation
 
 - [Lua API reference](docs/lua-api.md), the [Lua guide](docs/lua.md) and the [lifecycle](docs/lifecycle.md)
-- [Architecture](docs/architecture.md), [building the engine](docs/build.md), [distributing apps](docs/distribution.md) and [using the engine from C++](docs/embedding.md)
+- [Architecture](docs/architecture.md), [building the engine](docs/build.md), [distributing apps](docs/distribution.md), [protected content](docs/content.md) and [using the engine from C++](docs/embedding.md)
 - [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [Tiled maps](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop windows](docs/desktop.md)
 - [Plugins](docs/plugins.md), [native code](docs/native.md), the [platform bridge](docs/platform_bridge.md) and [testing](docs/testing.md)
 

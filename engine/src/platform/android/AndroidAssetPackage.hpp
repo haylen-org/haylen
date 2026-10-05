@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "haylen/io/Package.hpp"
+#include "platform/android/AndroidAssetReader.hpp"
 
 namespace haylen::platform {
 
@@ -19,20 +20,13 @@ class AndroidAssetPackage final : public io::Package {
         return root;
     }
     [[nodiscard]] bool exists(std::string_view path) const override;
-    [[nodiscard]] std::vector<std::uint8_t> read(std::string_view path) const override;
+    [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override;
+    [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override;
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override;
 
   private:
-    struct AssetCloser {
-        void operator()(AAsset* asset) const noexcept {
-            AAsset_close(asset);
-        }
-    };
-
-    using AssetHandle = std::unique_ptr<AAsset, AssetCloser>;
-
-    [[nodiscard]] AssetHandle openAsset(const std::string& path) const;
-    [[nodiscard]] static std::vector<std::uint8_t> readAll(AAsset& asset);
+    [[nodiscard]] AndroidAssetReader::Handle openAsset(const std::string& path) const;
+    [[nodiscard]] AndroidAssetReader::Handle requireAsset(std::string_view path) const;
 
     AAssetManager* assets;
     std::string root;

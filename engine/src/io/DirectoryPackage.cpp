@@ -1,10 +1,12 @@
 #include "io/DirectoryPackage.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 #include <system_error>
 #include <utility>
 
 #include "haylen/io/Path.hpp"
+#include "io/FileReader.hpp"
 
 namespace haylen::io {
 
@@ -15,8 +17,17 @@ bool DirectoryPackage::exists(std::string_view path) const {
     return std::filesystem::is_regular_file(root / Path::normalize(path), error);
 }
 
-std::vector<std::uint8_t> DirectoryPackage::read(std::string_view path) const {
-    return readFile(root / Path::normalize(path));
+std::uint64_t DirectoryPackage::getFileSize(std::string_view path) const {
+    const std::filesystem::path file = root / Path::normalize(path);
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(file, error)) {
+        throw std::runtime_error("The package file \"" + file.generic_string() + "\" was not found.");
+    }
+    return std::filesystem::file_size(file);
+}
+
+std::unique_ptr<PackageReader> DirectoryPackage::openReader(std::string_view path) const {
+    return std::make_unique<FileReader>(root / Path::normalize(path));
 }
 
 std::vector<std::string> DirectoryPackage::list(std::string_view directory) const {

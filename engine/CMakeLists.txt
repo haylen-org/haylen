@@ -21,6 +21,7 @@ option(HAYLEN_BUILD_BENCHMARKS "Build the engine benchmarks." ${PROJECT_IS_TOP_L
 option(HAYLEN_BUILD_SDK "Merge the engine into the SDK that cmake --install --component haylen_sdk installs for find_package(haylen)." OFF)
 option(HAYLEN_BUILD_FRAMEWORK "Merge the SDK and the player into the static library of one Haylen.xcframework slice. Apple platforms only." OFF)
 option(HAYLEN_ENABLE_COVERAGE "Instrument the engine and its tests for code coverage." OFF)
+option(HAYLEN_BUILD_FUZZERS "Build the fuzzer of the content formats with the tests, which needs a Clang that links libFuzzer." OFF)
 set(HAYLEN_RENDER_BACKEND "AUTO" CACHE STRING "Rendering backend: AUTO, METAL, D3D11, GLCORE, GLES3 or WGPU.")
 set_property(CACHE HAYLEN_RENDER_BACKEND PROPERTY STRINGS AUTO METAL D3D11 GLCORE GLES3 WGPU)
 set(HAYLEN_SANITIZERS "OFF" CACHE STRING "Sanitizers of desktop builds without MSVC: OFF, ADDRESS for AddressSanitizer and UndefinedBehaviorSanitizer, or THREAD for ThreadSanitizer.")
@@ -187,6 +188,34 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/Session.cpp
   src/audio/Sound.cpp
   src/audio/StreamSource.cpp
+  src/content/Compatibility.cpp
+  src/content/ContentBuilder.cpp
+  src/content/crypto/Aead.cpp
+  src/content/crypto/ContentKey.cpp
+  src/content/crypto/Digest.cpp
+  src/content/crypto/Hasher.cpp
+  src/content/crypto/KeyRing.cpp
+  src/content/crypto/SigningKey.cpp
+  src/content/crypto/VerifyingKey.cpp
+  src/content/Error.cpp
+  src/content/format/BinaryReader.cpp
+  src/content/format/BinaryWriter.cpp
+  src/content/format/Catalog.cpp
+  src/content/format/CatalogWriter.cpp
+  src/content/format/ChannelDescriptor.cpp
+  src/content/format/Chunker.cpp
+  src/content/format/ChunkRecord.cpp
+  src/content/format/Compression.cpp
+  src/content/format/Manifest.cpp
+  src/content/format/ShardHeader.cpp
+  src/content/format/ShardIndex.cpp
+  src/content/format/ShardReference.cpp
+  src/content/HpakFileReader.cpp
+  src/content/HpakPackage.cpp
+  src/content/ReleasePackage.cpp
+  src/content/ShardReader.cpp
+  src/content/ShardSet.cpp
+  src/content/ShardWriter.cpp
   src/core/AppConfig.cpp
   src/core/Application.cpp
   src/core/ClassLua.cpp
@@ -254,12 +283,18 @@ set(HAYLEN_ENGINE_SOURCES
   src/input/Input.cpp
   src/input/InputLua.cpp
   src/input/VirtualInput.cpp
+  src/io/CompositePackage.cpp
   src/io/DirectoryPackage.cpp
+  src/io/FileReader.cpp
   src/io/MemoryPackage.cpp
+  src/io/MemoryReader.cpp
   src/io/Package.cpp
+  src/io/PackageReader.cpp
   src/io/PackageWatcher.cpp
   src/io/Path.cpp
+  src/io/ZipArchive.cpp
   src/io/ZipPackage.cpp
+  src/io/ZipReader.cpp
   src/localization/Catalog.cpp
   src/localization/LocalizationLua.cpp
   src/lua/Application.cpp
@@ -510,7 +545,7 @@ target_include_directories(haylen_engine
 
 target_link_libraries(haylen_engine
   PUBLIC nlohmann_json::nlohmann_json varn_core haylen_imgui
-  PRIVATE haylen_sokol_headers box2d::box2d Clipper2 msdfgen::msdfgen-core haylen_harfbuzz haylen_sheenbidi haylen_unibreak haylen_miniaudio haylen_stb haylen_fast_float libzip::zip ZLIB::ZLIB libzstd_static
+  PRIVATE haylen_sokol_headers box2d::box2d Clipper2 msdfgen::msdfgen-core haylen_harfbuzz haylen_sheenbidi haylen_unibreak haylen_miniaudio haylen_stb haylen_fast_float haylen_monocypher libzip::zip ZLIB::ZLIB libzstd_static
 )
 
 if(WIN32)
@@ -632,7 +667,7 @@ if(APPLE)
 elseif(WIN32)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsTextInput.cpp)
 elseif(ANDROID)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebTextInput.cpp)
 else()

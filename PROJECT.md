@@ -1747,10 +1747,12 @@ Checklist:
 
 O documento do dono é a especificação completa e manda nas decisões. As fases seguem a seção 67 dele, cada uma num commit válido sozinho.
 
-- [ ] Formato e criptografia: IDs, chunking definido pelo conteúdo, compressão, criptografia autenticada com uma biblioteca portátil auditada, separação de chaves, nonces, IDs de chave e rotação, com testes.
-- [ ] Leitor e escritor do HPAK com shards imutáveis, índice criptografado, catálogo compacto e offsets de 64 bits.
-- [ ] API de pacote com leitura por faixas e streams, pacote HPAK e pacote composto (base mais patches).
-- [ ] Manifestos assinados do app e do conteúdo, catálogo criptografado e proteção contra rollback.
+- [x] Formato e criptografia: IDs, chunking definido pelo conteúdo, compressão, criptografia autenticada com uma biblioteca portátil auditada, separação de chaves, nonces, IDs de chave e rotação, com testes. Monocypher 4.0.3 dá o XChaCha20-Poly1305, o BLAKE2b e o Ed25519, o chunker é o `fastcdc-v1` (mínimo de 256 KiB, alvo de 1 MiB e máximo de 4 MiB) e a compressão é o Zstandard nível 12 por chunk, com os vetores de teste conferidos por uma implementação independente.
+- [x] Leitor e escritor do HPAK com shards imutáveis, índice criptografado, catálogo compacto e offsets de 64 bits.
+- [x] API de pacote com leitura por faixas e streams, pacote HPAK e pacote composto (base mais patches). O Lua lê faixas com `assets.bytes(path, offset, count)` e tamanhos com `assets.fileSize(path)`, e o zip fica no disco e lê cada entrada quando pedida.
+- [x] Manifestos assinados do app e do conteúdo, catálogo criptografado e proteção contra rollback.
+
+Decisões: um rollback é publicado como uma geração nova que aponta para o conteúdo anterior, e o app nunca aceita uma geração mais velha. Os IDs de chave derivam da própria chave, então nenhuma chave fica com o ID errado. Os shards têm alvo de 1 GiB, e um arquivo de até um dezesseis avos do alvo fica inteiro num shard só. O zip fica só para o desenvolvimento e para o editor da web, e o formato de release passa a ser o HPAK nas fases de deploy.
 - [ ] Ferramenta de conteúdo no host e integração com o `haylen.py` (empacotar, inspecionar, publicar), com cache de build e builds reproduzíveis.
 - [ ] Lua de release compilado para o bytecode do Varn com o carregador confiável, sem fonte em texto nos pacotes de release, com diagnósticos e símbolos privados.
 - [ ] Bootstrap de release específico do app e sistema de chaves (provedor de chave, sem chave em texto, sem chave global).

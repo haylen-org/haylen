@@ -122,7 +122,7 @@ for line in credits:gmatch('[^\n]+') do
 end
 ```
 
-### assets.bytes(path)
+### assets.bytes(path, offset, count)
 
 Reads a file and returns its raw bytes as a Lua string, without caching it. Lua strings hold any bytes, so the result is the same as `assets.text()`, and the name tells readers that the file is binary data, such as a custom level format.
 
@@ -132,6 +132,21 @@ local assets = require('haylen.assets')
 local level = assets.bytes('levels/cave.bin')
 local width, height = string.unpack('<I2I2', level)
 print(#level, width, height)
+```
+
+With an `offset` and a `count`, it reads only that range of the file: `count` bytes from the byte at `offset`, which starts at 0, or fewer when the file ends first, and an empty string from an offset at or past the end. Only the part of the file that holds the range is read, so files of any size, such as a large data set or a recording, are read in parts in bounded memory. A whole read of a file larger than one gibibyte raises `The package file "<file>" holds <size> bytes, more than a whole read allows. Read it in ranges instead.`, and such files are read in ranges. A negative offset or count raises the `bad argument` error of Lua.
+
+```lua
+local assets = require('haylen.assets')
+
+-- Reads a large file of fixed-size records one record at a time.
+local recordSize = 64
+local count = assets.fileSize('levels/history.bin') // recordSize
+for index = 0, count - 1 do
+    local record = assets.bytes('levels/history.bin', index * recordSize, recordSize)
+    local tick, x, y = string.unpack('<I4ff', record)
+    print(tick, x, y)
+end
 ```
 
 ## Loading in the background
@@ -200,6 +215,16 @@ local assets = require('haylen.assets')
 if assets.exists('maps/bonus.tmj') then
     print('the bonus level is included')
 end
+```
+
+### assets.fileSize(path)
+
+Returns the size of a file in bytes, without reading it. A missing file raises `The package file "<file>" was not found.`
+
+```lua
+local assets = require('haylen.assets')
+
+print(assets.fileSize('music/theme.ogg'))
 ```
 
 ### assets.list(folder)
@@ -566,6 +591,7 @@ end
 | Message | Cause |
 | --- | --- |
 | `The package file "<file>" was not found.` | The file does not exist in the package. |
+| `The package file "<file>" holds <size> bytes, more than a whole read allows. Read it in ranges instead.` | A whole read asks for a file larger than one gibibyte. |
 | `The path "<path>" must be relative.` | A path starts with a slash or a drive letter. |
 | `The path "<path>" must stay inside its root folder.` | A path uses `..` to leave the content folder. |
 | `An asset path cannot be empty.` | The path is empty. |

@@ -11,7 +11,8 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen_tests
 | `engine/tests/<module>/` | Tests of one engine module, such as `core/EngineTests.cpp` or `io/IoTests.cpp`. |
 | `engine/tests/2d/<module>/` | Tests of the 2D modules, like the engine's own `2d` folders: `animation`, `graphics` (the renderer, fonts, cameras and their Lua binding), `lighting`, `navigation`, `particles`, `physics`, `spatial` and `tiled`. |
 | `engine/tests/lua/` | Binding tests of the core, math, input and assets modules, and of the Lua runtime and the binding toolkit. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
-| `engine/tests/support/` | Shared helpers in `haylen::test`: `EngineFixture` with `DrawingScene` and the test data helpers, `TemporaryDirectory`, `TestApplication` and `VarnRuntime`. |
+| `engine/tests/support/` | Shared helpers in `haylen::test`: `EngineFixture` with `DrawingScene` and the test data helpers, `TemporaryDirectory`, `TestApplication`, `VarnRuntime`, and the helpers of the content tests, `ReleaseFixture`, `CountingPackage`, `AllocationTracker` and `ContentParsers`. |
+| `engine/tests/fuzz/` | The entry point of the fuzzer of the content formats, which the option `HAYLEN_BUILD_FUZZERS` builds. |
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
 | `engine/tests/native/` | The file `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native_test` next to `haylen_tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The native sample builds the same source for every platform. |
 | `engine/tests/CMakeLists.txt` | The `HAYLEN_TEST_SOURCES` list, which names every test file, and the `haylen_tests` target. |
@@ -68,7 +69,11 @@ The support folder provides the other shared helpers.
 | `RecordingScene(name, log, transparent, processMode)` | A scene that writes every hook it receives to a shared log as `name:hook`, counts its updates and renders, and loads at once, through a deferral the test completes or with a failure, preloading the asset groups it lists, in `support/RecordingScene.hpp`. |
 | `RecordingEffect(switchAt, exitAt)` | A transition effect with the given switch and exit points that records the progress and the images it draws, in `support/RecordingEffect.hpp`. |
 | `TemporaryDirectory` | A unique folder under the system temporary directory, removed afterwards, with `getPath()` and `write(relative, content)`, in `support/TemporaryDirectory.hpp`. |
-| `bytes(text)`, `pngImage(width, height, rgba)` | Test data: raw bytes and a solid PNG image, in `support/EngineFixture.hpp`. |
+| `bytes(text)`, `pngImage(width, height, rgba)`, `randomBytes(size, seed)` | Test data: raw bytes, a solid PNG image and bytes that look random but are the same for the same seed, in `support/TestFiles.hpp`. |
+| `ReleaseFixture` | Builds the protected release of an app package into a temporary folder with fixed test keys, the app domain from `app.json`, `source` and `plugins` and the content domain from `content`, opens it as one package with `open()`, and builds updates that reuse the chunks of the build before, in `support/ReleaseFixture.hpp`. |
+| `CountingPackage(inner)` | Passes a package through and counts the bytes its readers read and the largest single read, so a test shows which parts of a file an operation touches, in `support/CountingPackage.hpp`. |
+| `AllocationTracker` | Counts the allocations of the current thread while it lives, with the largest one and the total, through the global allocation functions that the test program replaces, so a test shows that an operation never allocates a whole file or package, in `support/AllocationTracker.hpp`. |
+| `ContentParsers::parse(input)` | Feeds bytes to a parser of the content formats that the first byte picks and lets only content errors through, for the hostile input tests and the fuzzer, in `support/ContentParsers.hpp`. |
 
 Data that only one test file needs is built by its fixture, such as the zip archives of the package tests and the WAV files of the audio tests.
 
@@ -161,6 +166,16 @@ One suite or test runs through CTest or through the executable.
 ctest --test-dir build/macos-debug -R SpatialLuaTest --output-on-failure
 build/macos-debug/bin/haylen_tests --gtest_filter='SpatialLuaTest.*'
 ```
+
+## Fuzzing
+
+```sh
+cmake -S . -B build/fuzz -G Ninja -DCMAKE_CXX_COMPILER=<llvm>/bin/clang++ -DCMAKE_C_COMPILER=<llvm>/bin/clang -DHAYLEN_BUILD_FUZZERS=ON -DHAYLEN_SOKOL_SHDC=<sokol-shdc>
+cmake --build build/fuzz --target haylen_content_fuzzer
+build/fuzz/bin/haylen_content_fuzzer -max_len=65536
+```
+
+The parsers of the content formats treat every file as hostile, and the fuzzer `haylen_content_fuzzer` feeds them the inputs libFuzzer generates: the first byte of an input picks the chunk record, the shard header, the shard index, the catalog, the manifest or the channel descriptor, and the parser may reject the rest only with a content error. The option `HAYLEN_BUILD_FUZZERS` instruments every target for libFuzzer and AddressSanitizer, and it needs a Clang that links libFuzzer, such as the LLVM of a package manager, since Apple Clang does not ship it. The hostile input tests in `engine/tests/content/HostileInputTests.cpp` drive the same parsers with random bytes and damaged copies of valid files in every test run.
 
 ## Coverage
 

@@ -27,6 +27,7 @@ class AssetsLua final {
     static int json(lua_State* L);
     static int text(lua_State* L);
     static int bytes(lua_State* L);
+    static int fileSize(lua_State* L);
     static int exists(lua_State* L);
     static int typeForPath(lua_State* L);
     static int hasType(lua_State* L);

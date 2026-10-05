@@ -96,6 +96,10 @@ class Manager final {
     [[nodiscard]] core::Json json(std::string_view path);
     [[nodiscard]] std::string text(std::string_view path) const;
     [[nodiscard]] std::vector<std::uint8_t> bytes(std::string_view path) const;
+
+    // Reads at most `size` bytes of a file at an offset, fewer when the file ends first, so files of any size are read in parts.
+    [[nodiscard]] std::vector<std::uint8_t> bytes(std::string_view path, std::uint64_t offset, std::size_t size) const;
+    [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const;
     [[nodiscard]] bool exists(std::string_view path) const;
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const;
 

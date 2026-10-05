@@ -361,6 +361,14 @@ std::vector<std::uint8_t> Manager::bytes(std::string_view path) const {
     return package.readAsset(path);
 }
 
+std::vector<std::uint8_t> Manager::bytes(std::string_view path, std::uint64_t offset, std::size_t size) const {
+    return package.readAssetRange(path, offset, size);
+}
+
+std::uint64_t Manager::getFileSize(std::string_view path) const {
+    return package.getAssetSize(path);
+}
+
 bool Manager::exists(std::string_view path) const {
     return package.assetExists(path);
 }

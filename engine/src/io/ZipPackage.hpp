@@ -2,34 +2,32 @@
 
 #include <zip.h>
 
-#include <mutex>
+#include <memory>
 #include <string>
 
 #include "haylen/io/Package.hpp"
+#include "io/ZipArchive.hpp"
 
 namespace haylen::io {
 
-// Package that reads a zip archive kept in memory.
+// Package that reads the entries of a zip archive.
 class ZipPackage final : public Package {
   public:
-    ZipPackage(zip_t* openArchive, std::vector<std::uint8_t> archiveBytes, std::string archiveName);
-    ~ZipPackage() override;
-
-    ZipPackage(const ZipPackage&) = delete;
-    ZipPackage& operator=(const ZipPackage&) = delete;
+    explicit ZipPackage(std::shared_ptr<ZipArchive> openArchive);
 
     [[nodiscard]] std::string_view getName() const noexcept override {
-        return name;
+        return archive->getName();
     }
     [[nodiscard]] bool exists(std::string_view path) const override;
-    [[nodiscard]] std::vector<std::uint8_t> read(std::string_view path) const override;
+    [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override;
+    [[nodiscard]] std::unique_ptr<PackageReader> openReader(std::string_view path) const override;
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override;
 
   private:
-    zip_t* archive;
-    std::vector<std::uint8_t> bytes;
-    std::string name;
-    mutable std::mutex mutex;
+    // Finds an entry while the caller holds the lock of the archive.
+    [[nodiscard]] zip_stat_t find(const std::string& entry) const;
+
+    std::shared_ptr<ZipArchive> archive;
 };
 
 } // namespace haylen::io
