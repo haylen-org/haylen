@@ -70,6 +70,15 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
         lua::Table::readField(L, post, "vignetteRadius", process.vignetteRadius);
         lua::Table::readField(L, post, "vignetteSoftness", process.vignetteSoftness);
         lua::Table::readField(L, post, "fade", process.fade);
+        lua::Table::readField(L, post, "distortion", process.distortion);
+        lua::Table::readField(L, post, "chromaticAberration", process.chromaticAberration);
+        lua::Table::readField(L, post, "pixelate", process.pixelate);
+        lua::Table::readField(L, post, "blur", process.blur);
+        lua::Table::readField(L, post, "bloomStrength", process.bloomStrength);
+        lua::Table::readField(L, post, "bloomThreshold", process.bloomThreshold);
+        lua::Table::readField(L, post, "bloomRadius", process.bloomRadius);
+        lua::Table::readField(L, post, "colorLut", process.colorLut);
+        lua::Table::readField(L, post, "colorLutStrength", process.colorLutStrength);
         lua::Table::readField(L, post, "materials", process.materials);
         options.postProcess = process;
     }
@@ -197,7 +206,7 @@ int Graphics2DLua::draw(lua_State* L) {
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
     sprite.position = {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
     if (!lua_isnoneornil(L, 4)) {
-        const SpriteInstance instance = lua::TypeConverter::readSpriteInstance(L, 4, sprite.texture, {.position = sprite.position}, {kScaleFields, lua::TypeConverter::kDrawOrderFields, SpriteBatchLua::kPartColorFields});
+        const SpriteInstance instance = lua::TypeConverter::readSpriteInstance(L, 4, sprite.texture, {.position = sprite.position}, {kScaleFields, lua::TypeConverter::kDrawOrderFields, SpriteBatchLua::kPartColorFields, kEffectFields});
         sprite.position = instance.position;
         sprite.source = instance.source;
         sprite.size = instance.size;
@@ -209,7 +218,8 @@ int Graphics2DLua::draw(lua_State* L) {
         lua::Table::readField(L, 4, "scaleX", sprite.scale.x);
         lua::Table::readField(L, 4, "scaleY", sprite.scale.y);
         lua::Table::readField(L, 4, "partColors", sprite.partColors);
-        sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {lua::TypeConverter::kSpriteInstanceFields, kScaleFields, SpriteBatchLua::kPartColorFields});
+        lua::Table::readField(L, 4, "effect", sprite.effect);
+        sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {lua::TypeConverter::kSpriteInstanceFields, kScaleFields, SpriteBatchLua::kPartColorFields, kEffectFields});
     }
     getRenderer(L).draw(sprite);
     return 0;

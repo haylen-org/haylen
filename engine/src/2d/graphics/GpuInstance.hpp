@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "haylen/2d/graphics/PartColors.hpp"
+#include "haylen/2d/graphics/SpriteEffect.hpp"
 #include "haylen/2d/graphics/SpriteFlip.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -41,10 +42,22 @@ struct GpuInstance {
     // Packs the part colors of a recolored sprite into the record that follows its own, which the recolor program reads at the same instance.
     [[nodiscard]] static GpuInstance makeParts(const PartColors& colors) noexcept;
 
+    // Packs the effect of a sprite into the record that follows its own, which the effect program reads at the same instance. The reach grows the quad of the sprite by the outline and the glow, as a share of its source of `sourceSize` pixels.
+    [[nodiscard]] static GpuInstance makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept;
+
     // Returns the corners of the quad on its canvas from the top-left one clockwise, where the vertex stage places them, without the skew of italic glyphs.
     [[nodiscard]] std::array<math::Vec2, 4> getCorners() const noexcept;
 
   private:
+    // The dissolve, outline and glow colors, the dissolve, its edge and the size of its noise, the reach of the quad and the outline and glow widths in pixels.
+    struct Effect {
+        std::uint32_t colors[3];
+        std::uint8_t amounts[4];
+        float reach[2];
+        float widths[2];
+        std::uint8_t unused[16];
+    };
+
     // The colors of the red, green, blue and yellow parts in the first bytes of a record.
     struct Parts {
         std::uint32_t colors[4];

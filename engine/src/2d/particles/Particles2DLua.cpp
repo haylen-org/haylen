@@ -157,6 +157,8 @@ void Particles2DLua::readKey(lua_State* L, std::string_view key, EmitterConfig& 
         lua::Table::readValue(L, key, order.unshaded);
     } else if (key == "lightMask") {
         lua::Table::readValue(L, key, order.lightMask);
+    } else if (key == "distortion") {
+        lua::Table::readValue(L, key, order.distortion);
     } else if (key == "subEmitters") {
         readSubEmitters(L, config.subEmitters);
     } else if (key == "light") {
@@ -503,6 +505,7 @@ void Particles2DLua::pushConfig(lua_State* L, const EmitterConfig& config) {
     setValue(L, "emission", order.emission);
     setValue(L, "unshaded", order.unshaded);
     setValue(L, "lightMask", order.lightMask);
+    setValue(L, "distortion", order.distortion);
 }
 
 void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {

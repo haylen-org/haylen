@@ -4,6 +4,7 @@
 #include <memory>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "haylen/lua/Reference.hpp"
@@ -320,6 +321,53 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     return math::EasingCurve(curve);
 }
 
+void Converter<graphics2d::SpriteEffect>::push(lua_State* L, const graphics2d::SpriteEffect& value) {
+    lua_createtable(L, 0, 8);
+    Stack::push(L, value.dissolve);
+    lua_setfield(L, -2, "dissolve");
+    Stack::push(L, value.dissolveEdge);
+    lua_setfield(L, -2, "dissolveEdge");
+    Stack::push(L, value.dissolveSize);
+    lua_setfield(L, -2, "dissolveSize");
+    Stack::push(L, value.dissolveColor);
+    lua_setfield(L, -2, "dissolveColor");
+    Stack::push(L, value.outlineWidth);
+    lua_setfield(L, -2, "outlineWidth");
+    Stack::push(L, value.outlineColor);
+    lua_setfield(L, -2, "outlineColor");
+    Stack::push(L, value.glowSize);
+    lua_setfield(L, -2, "glowSize");
+    Stack::push(L, value.glowColor);
+    lua_setfield(L, -2, "glowColor");
+}
+
+graphics2d::SpriteEffect Converter<graphics2d::SpriteEffect>::read(lua_State* L, int index) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    const int table = lua_absindex(L, index);
+    Table::checkFields(L, table, {TypeConverter::kSpriteEffectFields});
+    graphics2d::SpriteEffect effect;
+    Table::readField(L, table, "dissolve", effect.dissolve);
+    Table::readField(L, table, "dissolveEdge", effect.dissolveEdge);
+    Table::readField(L, table, "dissolveSize", effect.dissolveSize);
+    Table::readField(L, table, "dissolveColor", effect.dissolveColor);
+    Table::readField(L, table, "outlineWidth", effect.outlineWidth);
+    Table::readField(L, table, "outlineColor", effect.outlineColor);
+    Table::readField(L, table, "glowSize", effect.glowSize);
+    Table::readField(L, table, "glowColor", effect.glowColor);
+
+    // Properties of sprites read effects outside a protected call, so a problem becomes a Lua error here.
+    std::string problem;
+    try {
+        effect.validate();
+    } catch (const std::invalid_argument& error) {
+        problem = error.what();
+    }
+    if (!problem.empty()) {
+        luaL_error(L, "%s", problem.c_str());
+    }
+    return effect;
+}
+
 void Converter<math::FloatRange>::push(lua_State* L, math::FloatRange value) {
     lua_createtable(L, 2, 0);
     Stack::push(L, value.min);
@@ -381,6 +429,8 @@ graphics2d::DrawOrder TypeConverter::readDrawOrder(lua_State* L, int index, std:
             Table::readValue(L, key, order.lightMask);
         } else if (key == "unshaded") {
             Table::readValue(L, key, order.unshaded);
+        } else if (key == "distortion") {
+            Table::readValue(L, key, order.distortion);
         }
     });
     // clang-format on

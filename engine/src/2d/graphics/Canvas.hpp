@@ -6,6 +6,7 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
+#include "haylen/math/Color.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Transform2D.hpp"
@@ -34,6 +35,9 @@ struct Canvas {
     // The part of its destination the canvas covers, from (0, 0) at the top-left to (1, 1) at the bottom-right.
     math::Rect frame{0.0F, 0.0F, 1.0F, 1.0F};
 
+    // The flash of the camera of a world canvas, which covers the view as the canvas closes.
+    math::Color flash = math::Color::transparent();
+
     // The capture the canvas renders into, counted from 1, or 0 for the screen.
     std::size_t capture = 0;
 
@@ -43,6 +47,11 @@ struct Canvas {
     std::size_t itemEnd = 0;
     std::size_t sceneBegin = 0;
     std::size_t sceneEnd = 0;
+
+    // The commands of the distortion draws, which render into the distortion map of the canvas.
+    std::size_t distortBegin = 0;
+    std::size_t distortEnd = 0;
+    bool distorted = false;
     std::size_t lightBegin = 0;
     std::size_t lightEnd = 0;
     std::size_t segmentBegin = 0;
@@ -80,6 +89,17 @@ struct Canvas {
     }
     [[nodiscard]] bool hasPostMaterials() const noexcept {
         return options.postProcess && !options.postProcess->materials.empty();
+    }
+    [[nodiscard]] bool hasBloom() const noexcept {
+        return options.postProcess && options.postProcess->bloomStrength > 0.0F;
+    }
+    [[nodiscard]] bool hasBlur() const noexcept {
+        return options.postProcess && options.postProcess->blur > 0.0F;
+    }
+
+    // Bloom and blur work on the image of the first stage of the composite, which the second stage finishes.
+    [[nodiscard]] bool isStaged() const noexcept {
+        return hasBloom() || hasBlur();
     }
 };
 

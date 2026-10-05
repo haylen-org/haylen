@@ -25,6 +25,7 @@
 #include "haylen/2d/graphics/SceneTransition.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
 #include "haylen/2d/graphics/SpriteBatch.hpp"
+#include "haylen/2d/graphics/SpriteEffect.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
 #include "haylen/audio/Sound.hpp"
@@ -69,7 +70,8 @@ namespace haylen::lua {
 // Reads the option tables of engine types and holds the component and name tables their converters share.
 class TypeConverter final {
   public:
-    static constexpr std::array<std::string_view, 13> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded"};
+    static constexpr std::array<std::string_view, 14> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded", "distortion"};
+    static constexpr std::array<std::string_view, 8> kSpriteEffectFields{"dissolve", "dissolveEdge", "dissolveSize", "dissolveColor", "outlineWidth", "outlineColor", "glowSize", "glowColor"};
     static constexpr std::array<std::string_view, 18> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "direction", "language", "pixelSnap"};
     static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
     static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
@@ -292,6 +294,12 @@ template <> struct Converter<graphics2d::PartColors> {
 template <> struct Converter<math::EasingCurve> {
     static void push(lua_State* L, const math::EasingCurve& value);
     static math::EasingCurve read(lua_State* L, int index);
+};
+
+// Sprite effects accept a table with the keys `dissolve`, `dissolveEdge`, `dissolveSize`, `dissolveColor`, `outlineWidth`, `outlineColor`, `glowSize` and `glowColor`, the defaults where it has none, and push as a table with every key.
+template <> struct Converter<graphics2d::SpriteEffect> {
+    static void push(lua_State* L, const graphics2d::SpriteEffect& value);
+    static graphics2d::SpriteEffect read(lua_State* L, int index);
 };
 
 // Ranges accept one number for both ends or a `{min, max}` pair, and push as a `{min, max}` pair.

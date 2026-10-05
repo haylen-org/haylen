@@ -43,6 +43,13 @@ class FrameSubmitter final {
   private:
     using Matrix = std::array<float, 16>;
 
+    // The parts of the composite of a canvas: everything in one pass, the image before bloom and blur, or what comes after them.
+    enum class Stage : std::uint8_t {
+        Whole,
+        First,
+        Finish,
+    };
+
     // The composite of a lit canvas without post-processing grades nothing.
     static const PostProcess kNoPostProcess;
 
@@ -52,12 +59,13 @@ class FrameSubmitter final {
     [[nodiscard]] static bool isInstanced(const DrawItem& item) noexcept;
 
     void prepareTargets();
-    LitTargets& getLitTargets(std::size_t index, math::Vec2 size, bool lit, bool post);
+    LitTargets& getLitTargets(std::size_t index, math::Vec2 size, const Canvas& canvas);
     const graphics::RenderTarget& getField(std::size_t index, math::Vec2 size);
     void castShadows();
     void writeShadowAtlas(int rows);
     void buildCommands();
     void append(const DrawItem& item);
+    void appendCanvas(const std::vector<std::uint32_t>& order, bool distortion, std::uint32_t& expected, bool& inOrder);
     void upload();
     void writeBuffer(sg_buffer& buffer, std::size_t& capacity, const void* data, std::size_t count, std::size_t elementSize, bool indexBuffer);
 
@@ -77,7 +85,13 @@ class FrameSubmitter final {
     void beginOffscreenPass(const graphics::RenderTarget& renderTarget, math::Color clear);
     void beginLitPass(const LitTargets& targets, math::Color clear);
     void endPass();
-    void composite(const Canvas& canvas, graphics::PassTarget pass);
+    void composite(const Canvas& canvas, graphics::PassTarget pass, Stage stage);
+
+    // Draws the source into the target with the filter program, which shrinks it to half its size, keeping what passes the threshold when it is not negative, or blurs it along the step in texels of the source.
+    void filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step);
+
+    // Blurs the image of a stage at half its size over the radius in units of the canvas, into the first of the pair of targets.
+    void blurInto(const Canvas& canvas, const graphics::RenderTarget& image, const std::array<graphics::RenderTarget, 2>& pair, float threshold, float radius);
     void drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass);
 
     void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);

@@ -68,6 +68,19 @@ GpuInstance GpuInstance::makeParts(const PartColors& colors) noexcept {
     return std::bit_cast<GpuInstance>(Parts{.colors = {colors.red.toRgba8(), colors.green.toRgba8(), colors.blue.toRgba8(), colors.yellow.toRgba8()}, .unused = {}});
 }
 
+GpuInstance GpuInstance::makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept {
+    static_assert(sizeof(Effect) == sizeof(GpuInstance));
+    const float reach = std::max(effect.outlineWidth, effect.glowSize) + 1.0F;
+    const auto byte = [](float value) { return static_cast<std::uint8_t>(std::lround(std::clamp(value, 0.0F, 1.0F) * 255.0F)); };
+    return std::bit_cast<GpuInstance>(Effect{
+        .colors = {effect.dissolveColor.toRgba8(), effect.outlineColor.toRgba8(), effect.glowColor.toRgba8()},
+        .amounts = {byte(effect.dissolve), byte(effect.dissolveEdge), byte(effect.dissolveSize / SpriteEffect::kMaxReach), 0},
+        .reach = {reach / std::max(sourceSize.x, 1.0F), reach / std::max(sourceSize.y, 1.0F)},
+        .widths = {effect.outlineWidth, effect.glowSize},
+        .unused = {},
+    });
+}
+
 std::array<math::Vec2, 4> GpuInstance::getCorners() const noexcept {
     const float cosine = std::cos(rotation);
     const float sine = std::sin(rotation);

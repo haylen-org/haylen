@@ -58,7 +58,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 8;
+    static constexpr std::size_t kProgramCount = 10;
 
     graphics::Device& device;
     core::JobSystem& jobs;
@@ -174,6 +174,10 @@ struct RendererState {
     void requireReadable(const graphics::TextureResource* texture);
 
     DrawItem& addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY);
+
+    // Scales the coverage of the instances or vertices a distortion draw recorded by its distortion, so their alpha adds up in the distortion map.
+    static void scaleCoverage(std::span<GpuInstance> data, float distortion) noexcept;
+    static void scaleCoverage(std::span<GpuVertex> data, float distortion) noexcept;
     void addInstances(Program program, const DrawOrder& order, const graphics::Texture& texture, std::span<const GpuInstance> data, float standingY);
 
     // Meshes stand on their lowest vertex.
@@ -218,6 +222,7 @@ struct RendererState {
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
     void describeLayout(sg_pipeline_desc& desc, Program program) const;
     static void describeRecolorLayout(sg_pipeline_desc& desc);
+    static void describeEffectLayout(sg_pipeline_desc& desc);
     static void describeLightLayout(sg_pipeline_desc& desc);
     void describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const;
 };

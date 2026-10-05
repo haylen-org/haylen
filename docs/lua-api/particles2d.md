@@ -53,7 +53,7 @@ The file uses the keys of the emitter options below, except `seed` and `material
 | `subEmitters` | List of objects whose `effect` is the path of another effect file relative to this one, with `overrides`, an object of emitter keys applied on top of it, and the other keys of the options table. |
 | `shapeImage` | The path of an image relative to the effect file, or `{"path", "source", "alphaThreshold"}`, which the effect reads into an image shape while it loads. |
 | `shape`, `frameMode`, `directionMode`, `colorBlend`, `tintMode`, `boundsMode`, `particleOrder`, `blend` | Names, as in the options table. |
-| `rate`, `rateOverDistance`, `delay`, `duration`, `prewarm`, `frameRate`, `direction`, `spread`, `inheritVelocity`, `damping`, `stretch`, `rotationStep`, `shapeAngle`, `shapeThickness`, `pixelSnap`, `depth`, `sortOffset`, `emission` | Numbers. |
+| `rate`, `rateOverDistance`, `delay`, `duration`, `prewarm`, `frameRate`, `direction`, `spread`, `inheritVelocity`, `damping`, `stretch`, `rotationStep`, `shapeAngle`, `shapeThickness`, `pixelSnap`, `depth`, `sortOffset`, `emission`, `distortion` | Numbers. |
 | `maxParticles`, `layer`, `visibility`, `lightMask` | Integers. |
 | `loop`, `localSpace`, `alignToVelocity`, `colorFromImage`, `unshaded` | Booleans. |
 
@@ -318,6 +318,7 @@ Lights only draw in lit canvases, so the same emitter works in every canvas.
 | `layer`, `depth`, `sortOffset`, `visibility`, `blend` | | `0`, `0`, `0`, `1`, `'alpha'` | Draw order of the whole emitter, as in [`graphics2d.draw`](graphics2d.md#draw-order). |
 | `material` | Material | none | Shades the particles with a custom shader. Only Lua takes it, because materials are objects of the running app. |
 | `emission`, `unshaded`, `lightMask` | | `0`, `false`, `1` | How the particles take light in lit canvases, so fire, magic and neon glow at night. |
+| `distortion` | number | `0` | Above 0, the particles bend the image of their canvas instead of drawing colors, as the [distortion of `haylen.graphics2d`](graphics2d.md#distortion) explains, with their coverage times this strength, for heat haze and shock rings. Canvases without lighting or post-processing skip them. |
 
 Unknown keys raise `Unknown option "name".`, and an unknown name raises an error that contains `unknown value 'name'`. The configuration is validated and these errors are raised:
 

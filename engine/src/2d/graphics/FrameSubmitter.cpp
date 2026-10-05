@@ -17,6 +17,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "shaders/blend.glsl.h"
 #include "shaders/composite.glsl.h"
+#include "shaders/effect.glsl.h"
 #include "shaders/light.glsl.h"
 #include "shaders/metaball.glsl.h"
 #include "shaders/recolor.glsl.h"
@@ -28,6 +29,7 @@ namespace haylen::graphics2d {
 // Every program reads its view projection from slot 0 and the lighting of lit passes from slot 7, which the shader library reserves, and the recolor program reads its texture where the sprite program does.
 static_assert(UB_sprite_haylen_vs_params == 0 && UB_sprite_lit_haylen_lit_params == 7);
 static_assert(VIEW_recolor_sprite_texture == VIEW_sprite_sprite_texture && SMP_recolor_sprite_sampler == SMP_sprite_sprite_sampler && UB_recolor_haylen_vs_params == UB_sprite_haylen_vs_params);
+static_assert(VIEW_effect_sprite_texture == VIEW_sprite_sprite_texture && SMP_effect_sprite_sampler == SMP_sprite_sprite_sampler && UB_effect_haylen_vs_params == UB_sprite_haylen_vs_params);
 
 const PostProcess FrameSubmitter::kNoPostProcess{};
 
@@ -54,7 +56,7 @@ FrameSubmitter::Matrix FrameSubmitter::projection(const math::Transform2D& view,
 }
 
 bool FrameSubmitter::isInstanced(const DrawItem& item) noexcept {
-    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor) && item.batch == nullptr;
+    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect) && item.batch == nullptr;
 }
 
 void FrameSubmitter::submit() {
@@ -83,7 +85,7 @@ void FrameSubmitter::prepareTargets() {
         const math::Vec2 size = state.getPassRect(canvas).getSize();
         if (canvas.isComposited()) {
             canvas.litIndex = litCount++;
-            getLitTargets(canvas.litIndex, size, canvas.isLit(), canvas.hasPostMaterials());
+            getLitTargets(canvas.litIndex, size, canvas);
         }
         if (canvas.hasPostMaterials()) {
             canvas.postShade = state.shades.size();
@@ -102,7 +104,7 @@ void FrameSubmitter::prepareTargets() {
     state.fields.resize(fieldCount);
 }
 
-LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, bool lit, bool post) {
+LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, const Canvas& canvas) {
     const int width = std::max(1, static_cast<int>(std::lround(size.x)));
     const int height = std::max(1, static_cast<int>(std::lround(size.y)));
     if (state.litTargets.size() <= index) {
@@ -115,15 +117,29 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, bo
         targets = {};
         targets.scene = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
     }
-    if (lit && !targets.light.isValid()) {
+    if (canvas.isLit() && !targets.light.isValid()) {
         targets.emission = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.surface = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.info = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.light = state.device.getState().createRenderTarget(width, height, state.lightFormat, {.filter = graphics::Texture::Filter::Linear});
     }
-    if (post && !targets.post[0].isValid()) {
+    if ((canvas.hasPostMaterials() || canvas.isStaged()) && !targets.post[0].isValid()) {
         for (graphics::RenderTarget& image : targets.post) {
             image = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
+        }
+    }
+    if (canvas.distorted && !targets.distortion.isValid()) {
+        targets.distortion = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
+    }
+
+    // Bloom and blur work at half the size, which their filters read with linear filtering.
+    const int halfWidth = std::max(1, width / 2);
+    const int halfHeight = std::max(1, height / 2);
+    for (auto [used, pair] : {std::pair{canvas.hasBloom(), &targets.bloom}, std::pair{canvas.hasBlur(), &targets.blur}}) {
+        if (used && !(*pair)[0].isValid()) {
+            for (graphics::RenderTarget& image : *pair) {
+                image = state.device.createRenderTarget(halfWidth, halfHeight, {.filter = graphics::Texture::Filter::Linear});
+            }
         }
     }
     return targets;
@@ -232,19 +248,32 @@ void FrameSubmitter::buildCommands() {
         // clang-format on
 
         canvas.sceneBegin = state.commands.size();
-        commandFloor = canvas.sceneBegin;
-        for (const std::uint32_t index : order) {
-            const DrawItem& item = state.items[index];
-            if (isInstanced(item)) {
-                inOrder = inOrder && item.first == expected;
-                expected = item.first + item.count;
-            }
-            append(item);
-        }
+        appendCanvas(order, false, expected, inOrder);
         canvas.sceneEnd = state.commands.size();
+        canvas.distortBegin = canvas.sceneEnd;
+        if (canvas.distorted) {
+            appendCanvas(order, true, expected, inOrder);
+        }
+        canvas.distortEnd = state.commands.size();
     }
 
     identity = inOrder && expected == state.instances.size();
+}
+
+// The draws of the image of a canvas and its distortion draws become separate runs of commands, which never merge across.
+void FrameSubmitter::appendCanvas(const std::vector<std::uint32_t>& order, bool distortion, std::uint32_t& expected, bool& inOrder) {
+    commandFloor = state.commands.size();
+    for (const std::uint32_t index : order) {
+        const DrawItem& item = state.items[index];
+        if (item.distortion != distortion) {
+            continue;
+        }
+        if (isInstanced(item)) {
+            inOrder = inOrder && item.first == expected;
+            expected = item.first + item.count;
+        }
+        append(item);
+    }
 }
 
 void FrameSubmitter::append(const DrawItem& item) {
@@ -397,6 +426,11 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     const LitTargets& targets = state.litTargets[canvas.litIndex];
     const math::Rect full{0.0F, 0.0F, static_cast<float>(targets.scene.getWidth()), static_cast<float>(targets.scene.getHeight())};
     const math::Color clear = canvas.options.clear.value_or(canvas.kind == Canvas::Kind::Target ? math::Color::transparent() : state.clearColor).getPremultiplied();
+    if (canvas.distortEnd > canvas.distortBegin) {
+        beginOffscreenPass(targets.distortion, math::Color::transparent());
+        drawCommands(canvas, canvas.distortBegin, canvas.distortEnd, graphics::PassTarget::Offscreen, full);
+        endPass();
+    }
     if (canvas.isLit()) {
         beginLitPass(targets, clear);
         drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::LitScene, full);
@@ -461,17 +495,38 @@ const graphics::TextureResource& FrameSubmitter::getLightShape(const lighting2d:
     return light.texture.isValid() ? *light.texture.getResource() : *state.light.getResource();
 }
 
-// The composite writes into the first post target, and every material but the last draws the image before it into the other one, which leaves the input of the last material in `postImage`.
+// A staged canvas composites its first stage into the first post target, where bloom and blur read it, and finishes the image in the destination, or in the other post target when materials follow. The composite of a canvas with materials writes into a post target, and every material but the last draws the image before it into the other one, which leaves the input of the last material in `postImage`.
 void FrameSubmitter::renderPostChain(Canvas& canvas, const LitTargets& targets) {
-    if (!canvas.hasPostMaterials()) {
+    const bool staged = canvas.isStaged();
+    if (!staged && !canvas.hasPostMaterials()) {
         return;
     }
 
-    beginOffscreenPass(targets.post[0], math::Color::transparent());
-    composite(canvas, graphics::PassTarget::Offscreen);
-    endPass();
-
     std::size_t current = 0;
+    if (staged) {
+        const PostProcess& post = *canvas.options.postProcess;
+        beginOffscreenPass(targets.post[0], math::Color::transparent());
+        composite(canvas, graphics::PassTarget::Offscreen, Stage::First);
+        endPass();
+        if (canvas.hasBloom()) {
+            blurInto(canvas, targets.post[0], targets.bloom, post.bloomThreshold, post.bloomRadius);
+        }
+        if (canvas.hasBlur()) {
+            blurInto(canvas, targets.post[0], targets.blur, -1.0F, post.blur);
+        }
+        if (!canvas.hasPostMaterials()) {
+            return;
+        }
+        beginOffscreenPass(targets.post[1], math::Color::transparent());
+        composite(canvas, graphics::PassTarget::Offscreen, Stage::Finish);
+        endPass();
+        current = 1;
+    } else {
+        beginOffscreenPass(targets.post[0], math::Color::transparent());
+        composite(canvas, graphics::PassTarget::Offscreen, Stage::Whole);
+        endPass();
+    }
+
     const std::size_t count = canvas.options.postProcess->materials.size();
     for (std::size_t index = 0; index + 1 < count; ++index) {
         beginOffscreenPass(targets.post[1 - current], math::Color::transparent());
@@ -531,7 +586,7 @@ void FrameSubmitter::drawCanvases(std::size_t capture, graphics::PassTarget pass
 
 void FrameSubmitter::drawFinal(const Canvas& canvas, graphics::PassTarget pass) {
     if (!canvas.hasPostMaterials()) {
-        composite(canvas, pass);
+        composite(canvas, pass, canvas.isStaged() ? Stage::Finish : Stage::Whole);
         return;
     }
     const LitTargets& targets = state.litTargets[canvas.litIndex];
@@ -570,29 +625,70 @@ void FrameSubmitter::endPass() {
     passOpen = false;
 }
 
-void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass) {
+// The first stage reads the scene, the light, the emission and the distortion map, and the finish reads the image of the first stage, or its blur, and the bloom. The textures a stage leaves out bind the scene, which the shader never reads.
+void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, Stage stage) {
     const LitTargets& targets = state.litTargets[canvas.litIndex];
     const PostProcess& post = canvas.options.postProcess ? *canvas.options.postProcess : kNoPostProcess;
-    const bool lit = canvas.isLit();
+    const bool lit = canvas.isLit() && stage != Stage::Finish;
+    const bool distorts = canvas.distortEnd > canvas.distortBegin && stage != Stage::Finish;
+    const bool blooms = canvas.hasBloom() && stage != Stage::First;
+    const bool grades = post.colorLut.isValid() && stage != Stage::First;
+    const graphics::RenderTarget& image = stage != Stage::Finish ? targets.scene : (canvas.hasBlur() ? targets.blur[0] : targets.post[0]);
+    const auto viewOf = [](const graphics::RenderTarget& used) { return used.getTexture().getResource()->view; };
 
     sg_apply_pipeline(state.getPipeline(Program::Composite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
     sg_bindings bindings{};
-    bindings.views[VIEW_composite_scene_texture] = targets.scene.getTexture().getResource()->view;
-    bindings.views[VIEW_composite_light_texture] = (lit ? targets.light : targets.scene).getTexture().getResource()->view;
-    bindings.views[VIEW_composite_emission_texture] = (lit ? targets.emission : targets.scene).getTexture().getResource()->view;
+    bindings.views[VIEW_composite_scene_texture] = viewOf(image);
+    bindings.views[VIEW_composite_light_texture] = viewOf(lit ? targets.light : image);
+    bindings.views[VIEW_composite_emission_texture] = viewOf(lit ? targets.emission : image);
+    bindings.views[VIEW_composite_distortion_texture] = viewOf(distorts ? targets.distortion : image);
+    bindings.views[VIEW_composite_bloom_texture] = viewOf(blooms ? targets.bloom[0] : image);
+    bindings.views[VIEW_composite_lut_texture] = grades ? post.colorLut.getResource()->view : viewOf(image);
     bindings.samplers[SMP_composite_composite_sampler] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Linear});
     sg_apply_bindings(&bindings);
 
+    const float stageFlag = stage == Stage::Whole ? 0.0F : (stage == Stage::First ? 1.0F : 2.0F);
     const composite_composite_fs_params_t params{
         .tint = {post.tint.r, post.tint.g, post.tint.b, post.tint.a},
         .fade = {post.fade.r, post.fade.g, post.fade.b, post.fade.a},
-        .grading = {post.saturation, post.brightness, post.contrast, 0.0F},
-        .vignette = {post.vignetteStrength, post.vignetteRadius, post.vignetteSoftness, 0.0F},
-        .flags = {lit ? 1.0F : 0.0F, sg_query_features().origin_top_left ? 0.0F : 1.0F, 0.0F, 0.0F},
+        .grading = {post.saturation, post.brightness, post.contrast, grades ? post.colorLutStrength : 0.0F},
+        .vignette = {post.vignetteStrength, post.vignetteRadius, post.vignetteSoftness, blooms ? post.bloomStrength : 0.0F},
+        .flags = {lit ? 1.0F : 0.0F, sg_query_features().origin_top_left ? 0.0F : 1.0F, stageFlag, distorts ? 1.0F : 0.0F},
+        .view = {canvas.viewSize.x, canvas.viewSize.y, post.distortion, post.chromaticAberration},
+        .shape = {post.pixelate, grades ? post.colorLut.getSize().y : 0.0F, 0.0F, 0.0F},
     };
     sg_apply_uniforms(UB_composite_composite_fs_params, SG_RANGE(params));
     sg_draw(0, 3, 1);
     ++state.stats.drawCalls;
+}
+
+void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step) {
+    const math::Vec2 size = source.getSize();
+    beginOffscreenPass(destination, math::Color::transparent());
+    sg_apply_pipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
+    sg_bindings bindings{};
+    bindings.views[VIEW_composite_source_texture] = source.getTexture().getResource()->view;
+    bindings.samplers[SMP_composite_filter_sampler] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Linear});
+    sg_apply_bindings(&bindings);
+
+    const bool shrinks = step.isZero();
+    const composite_filter_fs_params_t params{
+        .settings = {shrinks ? 0.0F : 1.0F, threshold, sg_query_features().origin_top_left ? 0.0F : 1.0F, 0.0F},
+        .offset = {step.x / size.x, step.y / size.y, 0.5F / size.x, 0.5F / size.y},
+    };
+    sg_apply_uniforms(UB_composite_filter_fs_params, SG_RANGE(params));
+    sg_draw(0, 3, 1);
+    ++state.stats.drawCalls;
+    endPass();
+}
+
+// Nine taps of the blur span four steps on each side, so the steps of a radius are a quarter of it in texels of the half-size image.
+void FrameSubmitter::blurInto(const Canvas& canvas, const graphics::RenderTarget& image, const std::array<graphics::RenderTarget, 2>& pair, float threshold, float radius) {
+    filter(image, pair[0], threshold, {});
+    const float texelsPerUnit = pair[0].getSize().x / std::max(canvas.viewSize.x, 1.0F);
+    const float spacing = std::max(radius * texelsPerUnit * 0.25F, 0.5F);
+    filter(pair[0], pair[1], -1.0F, {spacing, 0.0F});
+    filter(pair[1], pair[0], -1.0F, {0.0F, spacing});
 }
 
 // A post-processing material draws the image as one sprite over the unit square, which covers the viewport of the pass.
@@ -687,9 +783,11 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             bindings.vertex_buffers[1] = command.batch != nullptr ? command.batch->buffer : state.instanceBuffer;
             bindings.vertex_buffer_offsets[1] = static_cast<int>(command.first * sizeof(GpuInstance));
         }
-        if (command.program == Program::Recolor) {
+        if (command.program == Program::Recolor || command.program == Program::Effect) {
             bindings.vertex_buffers[2] = state.instanceBuffer;
             bindings.vertex_buffer_offsets[2] = static_cast<int>((command.first + 1) * sizeof(GpuInstance));
+        }
+        if (command.program == Program::Recolor) {
             bindings.views[VIEW_recolor_part_mask] = shade.partMask->view;
         }
         if (shade.material != nullptr) {
@@ -706,7 +804,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
         if (command.program == Program::Mesh) {
             sg_draw(static_cast<int>(command.first), static_cast<int>(command.count), 1);
         } else {
-            sg_draw(0, 4, static_cast<int>(command.program == Program::Recolor ? command.count / 2 : command.count));
+            sg_draw(0, 4, static_cast<int>(command.program == Program::Recolor || command.program == Program::Effect ? command.count / 2 : command.count));
         }
         ++state.stats.drawCalls;
     }

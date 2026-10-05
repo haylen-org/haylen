@@ -631,6 +631,14 @@ TEST_F(ParticlesTest, LightsDrawOnlyInLitCanvases) {
     EXPECT_THROW(Emitter({.texture = texture(), .light = EmitterConfig::Light{.radius = 0.0F}}), std::invalid_argument);
 }
 
+// Distortion particles bend the image of composited canvases, and plain canvases skip them.
+TEST_F(ParticlesTest, DistortionParticlesBendOnlyCompositedCanvases) {
+    Emitter haze({.texture = texture(), .rate = 0.0F, .lifetime = {1.0F, 1.0F}, .order = {.distortion = 0.6F}});
+    haze.burst(5);
+    EXPECT_EQ(drawFrame({&haze}).sprites, 0U);
+    EXPECT_EQ(drawFrame({&haze}, math::Color::white()).sprites, 5U);
+}
+
 TEST_F(ParticlesTest, TrailsDrawRibbonsBehindParticlesAndPoints) {
     Emitter streaks({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {100.0F, 100.0F}, .trail = {.length = 4, .lifetime = 0.4F}});
     streaks.burst(2);
@@ -724,7 +732,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
             "tints": ["#FFFF0000", "#FF0000FF"], "tintMode": "cycle", "shape": "arc", "shapeSize": [30, 0], "shapeAngle": 0.5, "shapeArc": [0, 3.14], "shapeThickness": 4,
             "pixelSnap": 2, "particleOrder": "newestFirst", "trail": {"length": 6, "lifetime": 0.2, "widthStart": 4, "widthEnd": 0, "colors": ["#FFFFFFFF", "#00FFFFFF"], "texture": "../images/line.png"},
             "light": {"type": "point", "offset": [0, -10], "radius": 120, "color": "#FFFFB060", "intensity": 1.5, "flicker": {"speed": 8, "amount": 0.2}, "fade": "cycle"},
-            "particleLights": {"radius": 20, "intensity": 0.4, "max": 8}, "sortOffset": 3, "visibility": 2, "emission": 1, "unshaded": true, "lightMask": 3,
+            "particleLights": {"radius": 20, "intensity": 0.4, "max": 8}, "sortOffset": 3, "visibility": 2, "emission": 1, "unshaded": true, "lightMask": 3, "distortion": 0.25,
             "subEmitters": [{"effect": "sparks.particles", "trigger": "collision", "count": [1, 2], "probability": 0.5, "inheritVelocity": 0.2, "inheritColor": true, "overrides": {"localSpace": false, "texture": "../images/line.png"}}]
         })"},
         {"content/effects/outline.particles", R"({"texture": "../images/spark.png", "shape": "image", "shapeImage": {"path": "../images/spark.png", "source": [0, 0, 4, 4]}, "colorFromImage": true, "shapePoints": [[0, 0], [1, 1]]})"},
@@ -788,6 +796,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(config.particleLights->max, 8U);
     EXPECT_TRUE(config.order.unshaded);
     EXPECT_EQ(config.order.lightMask, 3);
+    EXPECT_FLOAT_EQ(config.order.distortion, 0.25F);
     ASSERT_EQ(config.subEmitters.size(), 1U);
     EXPECT_EQ(config.subEmitters.front().trigger, EmitterConfig::SubEmitter::Trigger::Collision);
     EXPECT_FALSE(config.subEmitters.front().config->localSpace);

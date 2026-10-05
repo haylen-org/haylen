@@ -156,7 +156,7 @@ scene.push({
 
 ## Post-processing
 
-The `materials` of a world or render target canvas's `postProcess` run after the composite and the other adjustments, in order. Each one draws the image of the step before over the whole canvas, as `sprite_texture` with `uv` from 0 at the top-left corner to 1 at the bottom-right one, and the last one draws into the destination of the canvas. The sprite program of the material runs these passes, so a post-processing shader reads the image with `haylen_texture(uv)` and writes it with `haylen_output`.
+The engine already offers bloom, blur, chromatic aberration, pixelation, distortion, a color lookup texture, the vignette and the other adjustments of `postProcess` without a shader, as the [rendering guide](rendering.md#post-processing) explains, and materials add the passes it lacks. The `materials` of a world or render target canvas's `postProcess` run after the composite and the other adjustments, in order. Each one draws the image of the step before over the whole canvas, as `sprite_texture` with `uv` from 0 at the top-left corner to 1 at the bottom-right one, and the last one draws into the destination of the canvas. The sprite program of the material runs these passes, so a post-processing shader reads the image with `haylen_texture(uv)` and writes it with `haylen_output`.
 
 ```glsl
 // The file `content/shaders/scanlines.glsl`.

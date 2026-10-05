@@ -53,6 +53,7 @@ Every draw that takes an `order` table, and every option table that lists `layer
 | `emission` | number | `0` | In lit canvases, how strongly the colors of the draw glow whatever the light. It must be zero or positive. |
 | `lightMask` | integer | `1` | In lit canvases, bits that the item masks of lights test, from 0 to 255. |
 | `unshaded` | boolean | `false` | In lit canvases, keeps the colors of the draw whatever the light. |
+| `distortion` | number | `0` | Above 0, the draw bends the image of its canvas instead of drawing colors, as [distortion](#distortion) explains. |
 
 Unlit canvases ignore the lighting keys, and [`haylen.lighting2d`](lighting2d.md#how-2d-lighting-works) explains how lit canvases use them. A draw copies the values of its material when it is made, so a material changed between two draws shades each draw with its own values.
 
@@ -113,7 +114,18 @@ Post-process options:
 | `vignetteRadius` | number | `0.6` | Distance from the center where the vignette starts, where 1 reaches the corners. |
 | `vignetteSoftness` | number | `0.5` | Width of the vignette falloff. |
 | `fade` | Color | `'#00000000'` | Mixes the result toward this color by its alpha, for fades to black or white. |
+| `distortion` | number | `24` | How far the [distortion draws](#distortion) move pixels, in units of the destination, where their coverage goes from nothing to full within 8 units. |
+| `chromaticAberration` | number | `0` | Splits red and blue apart toward the corners by this many units, like a cheap lens. |
+| `pixelate` | number | `0` | Draws the image in square blocks of this many units, where 0 keeps every pixel. |
+| `blur` | number | `0` | Blurs the whole image over this radius in units, such as the world behind a pause menu. |
+| `bloomStrength` | number | `0` | Adds the parts of the image brighter than the threshold, blurred, times this strength, so lights, fire and neon glow. |
+| `bloomThreshold` | number | `0.8` | The brightness, from 0 to 1 and above for floating-point light, that a color needs to bloom. |
+| `bloomRadius` | number | `12` | How far bloom spreads, in units. It must be positive. |
+| `colorLut` | Texture | none | Grades every color through a lookup texture of square cells side by side, one cell for each step of blue, with red across a cell and green down it, so it is as wide as its height squared, such as 256 by 16 pixels for 16 steps. |
+| `colorLutStrength` | number | `1` | How much of the lookup texture mixes in, from 0 to 1. |
 | `materials` | list of Material | empty | Custom shader passes that run after the other adjustments, in order, each over the image the step before made. The image is the texture of each pass, which covers the whole canvas. |
+
+Units are design units for world canvases and pixels for render target canvases. The composite applies the steps in this order: pixelate, distortion and chromatic aberration on the image of the canvas, then bloom, saturation, contrast, brightness and tint, the lookup texture, the vignette, the fade and the materials. Bloom and blur cost a pass of the image before them and three passes at half the size each, and the other adjustments cost nothing beyond the composite. Out of range values raise `Post-processing needs a distortion, chromatic aberration, pixelate, blur, bloom strength and bloom threshold of at least 0 and a positive bloom radius.`, `A color lookup texture is as wide as its height squared, such as 256 by 16 pixels.` and `The strength of a color lookup texture must be from 0 to 1.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -126,7 +138,7 @@ scene.push({
         graphics2d.beginWorld(camera, {
             sort = 'depth',
             ambientLight = '#FF404060',
-            postProcess = {saturation = 0.8, vignetteStrength = 0.4},
+            postProcess = {saturation = 0.8, vignetteStrength = 0.4, bloomStrength = 0.6, bloomThreshold = 0.7, chromaticAberration = 2},
         })
         graphics2d.drawRect({-200, -100, 400, 200}, '#FF3A7D44')
         graphics2d.drawLight({x = 0, y = 0, radius = 180, color = '#FFFFC080'})
@@ -191,8 +203,9 @@ Draws `texture` once with its pivot at `x`, `y`. The argument `options` is optio
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image horizontally or vertically. |
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner, which with `flipHorizontal` and `flipVertical` turns it by quarter turns, the way Tiled rotates tiles. |
 | `partColors` | table | white parts | The colors of the parts when the draw has a `partMask`, as [recoloring by parts](#recoloring-by-parts) explains. |
+| `effect` | table | none | Dissolves the sprite or draws an outline and a glow around it, as [sprite effects](#sprite-effects) explains. |
 | `x`, `y` | number | the arguments | Replace the position arguments. |
-| `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | | [Draw order](#draw-order). |
+| `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded`, `distortion` | | | [Draw order](#draw-order). |
 
 ```lua
 local assets = require('haylen.assets')
@@ -1222,7 +1235,7 @@ scene.push({
 
 ### graphics2d.drawn()
 
-Returns the textured quads and blocks of text that the open canvas holds so far, in the order they were drawn, as a list of tables with `x`, `y`, `width` and `height`, the bounds in the coordinates of the canvas, `text`, which is `true` for a block of text, and `label`, the path of the texture of a sprite on the first quad of each draw. Every sprite and every quad of a batch or a nine-slice is one entry, a baked batch is one entry, and every text draw is one block, while plain shapes such as rectangles and lines are left out. The bounds of a block of text reach a little past its letters, by the spread of the distance field of its glyphs. It suits checks and tools that need to know where things draw, such as the bounds the debug drawings outline. It needs an open canvas, and without one it raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`.
+Returns the textured quads and blocks of text that the open canvas holds so far, in the order they were drawn, as a list of tables with `x`, `y`, `width` and `height`, the bounds in the coordinates of the canvas, `text`, which is `true` for a block of text, and `label`, the path of the texture of a sprite on the first quad of each draw. Every sprite and every quad of a batch or a nine-slice is one entry, a baked batch is one entry, and every text draw is one block, while plain shapes such as rectangles and lines and the draws with a distortion are left out. The bounds of a block of text reach a little past its letters, by the spread of the distance field of its glyphs. It suits checks and tools that need to know where things draw, such as the bounds the debug drawings outline. It needs an open canvas, and without one it raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1326,7 +1339,9 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `material` | Material or nil | nil | Custom shader of the sprite. |
 | `partMask` | Texture or nil | nil | The mask that [recolors](#recoloring-by-parts) the parts of the sprite. |
 | `partColors` | table | white parts | The colors of the parts, as `{red = Color, green = Color, blue = Color, yellow = Color}` after the colors of the mask, each white when the table leaves it out. Reading it returns all four. |
+| `effect` | table | no effect | The [sprite effect](#sprite-effects), assigned as a table with any of its keys. Reading it returns every key. |
 | `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | nil, `0`, `32`, `0`, `1`, `false` | Lighting in lit canvases, as the [draw order](#draw-order) describes. |
+| `distortion` | number | `0` | Bends the image of the canvas instead of drawing colors, as [distortion](#distortion) explains. |
 
 Reading or writing any other key raises `The type "haylen.Sprite" has no member "name".` or `The type "haylen.Sprite" has no writable property "name".`
 
@@ -1576,6 +1591,72 @@ scene.push({
 })
 ```
 
+## Sprite effects
+
+The `effect` of a sprite dissolves it into noise with a colored edge and draws an outline and a glow around its visible pixels, all on the GPU, so sprites of one texture share a draw call whatever their effects. The quad of the sprite grows by the outline and the glow, which spill past its frame. The table takes these keys:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `dissolve` | number | `0` | How much of the sprite has dissolved, from 0 for none to 1 for all of it. The outline and the glow fade with it. |
+| `dissolveEdge` | number | `0.08` | The share of the noise along the dissolving border that takes the dissolve color, from 0 to 1. |
+| `dissolveSize` | number | `6` | The size of the cells of the noise in pixels of the texture, from 1, which dissolves pixel by pixel, to 64. |
+| `dissolveColor` | Color | `'#00000000'` | Color of the dissolving border, such as glowing embers. |
+| `outlineWidth` | number | `0` | Width of the outline in pixels of the texture, from 0 to 64. |
+| `outlineColor` | Color | `'#FFFFFFFF'` | Color of the outline. |
+| `glowSize` | number | `0` | How far the glow reaches in pixels of the texture, from 0 to 64. |
+| `glowColor` | Color | `'#FFFFFFFF'` | Color of the glow, whose alpha sets its strength. |
+
+The `color` and `flash` of the sprite apply to the sprite itself, before the outline and the glow. Values out of range raise `A sprite effect needs a dissolve and a dissolve edge from 0 to 1, a dissolve size from 1 to 64 and an outline width and a glow size from 0 to 64.`, an effect with a `partMask` raises `A sprite takes a part mask or an effect, not both.`, and one with a material raises `A sprite with an effect does not take a material.` Sprite batches and baked batches draw without effects.
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+local hero = graphics2d.newSprite(assets.texture('sprites/hero.png', {filter = 'linear'}), {x = -200, y = 0})
+local dissolve = 0
+
+scene.push({
+    update = function(self, dt)
+        dissolve = (dissolve + dt * 0.4) % 1
+        hero.effect = {dissolve = dissolve, dissolveColor = '#FFFF8020', dissolveEdge = 0.1}
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        hero:draw()
+        graphics2d.draw(hero.texture, 200, 0, {effect = {outlineWidth = 3, outlineColor = '#FFFFFFFF', glowSize = 16, glowColor = '#C040C0FF'}})
+    end,
+})
+```
+
+## Distortion
+
+A draw with a `distortion` above 0 bends the image of its canvas instead of drawing colors. Its coverage, the alpha of its texture times its color and the distortion, adds up in the distortion map of the canvas, and the composite moves every pixel down the slope of the map, by the `distortion` of the post-processing options where the coverage goes from nothing to full within 8 units. So a ring pushes the image outward at its outer edge and inward at its inner edge like a shock wave, a soft dot bends the image around its edge like a lens, and soft blobs that rise and fade shimmer like heat above a fire. Only world and render target canvases with lighting or post-processing have the map, and other canvases skip distortion draws, which only sprites, sprite batches, nine-slices, rectangles, lines, shapes and meshes make. Other draws raise `Only sprites, sprite batches, nine-slices, shapes and meshes draw as distortion.`, and `graphics2d.drawStatic` raises `A baked sprite batch draws without a distortion. Draw a sprite batch to distort with its sprites.` Particle emitters take the same `distortion` key.
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+local ring = assets.texture('effects/ring.png', {filter = 'linear'})
+local background = assets.texture('backgrounds/town.png', {filter = 'linear'})
+local time = 0
+
+scene.push({
+    update = function(self, dt)
+        time = (time + dt) % 1
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera, {postProcess = {distortion = 32}})
+        graphics2d.draw(background, 0, 0)
+        local size = 100 + time * 900
+        graphics2d.draw(ring, 0, 0, {width = size, height = size, color = {1, 1, 1, 1 - time}, distortion = 1})
+    end,
+})
+```
+
 ## Recoloring by parts
 
 A white or greyscale sprite drawn with a `partMask` takes a color for each part the mask marks, which keeps the shading of the sprite, so one set of images makes every outfit of a character. The mask has the layout of the texture of the sprite and paints each part in red, green, blue or yellow, such as the hat, the shirt, the trousers and the boots, and the `partColors` of the sprite, or of each sprite of a batch, name the color of each mask color. A part takes its color multiplied by the shading of the sprite and mixed in by the alpha of the color, so white or a transparent color keeps a part as it is, yellow counts as red and green together, the alpha of the mask fades parts at their soft edges, and the `color` and `flash` of the sprite apply over the result. The GPU does all the work per pixel, and sprites of one texture and mask share a draw call whatever their colors. The keys `partMask` and `partColors` work with `sprite:draw()`, `graphics2d.draw`, `batch:draw` and `graphics2d.drawBatch` with sprite tables, while a material raises `A draw with a part mask does not take a material.` and `graphics2d.drawStatic` raises `A baked sprite batch draws without a part mask. Draw a sprite batch to recolor its sprites.`
@@ -1745,7 +1826,7 @@ scene.push({
 
 ### camera:update(dt)
 
-Decays the trauma by `traumaDecay` per second, computes the shake of this frame and eases the drawn rotation with rotation smoothing. Call it once per frame.
+Decays the trauma by `traumaDecay` per second, computes the shake of this frame, fades the flash and eases the drawn rotation with rotation smoothing. Call it once per frame.
 
 ### camera:addTrauma(amount)
 
@@ -1840,6 +1921,36 @@ scene.push({
 ### camera:shakeOffset()
 
 Returns the shake offset of this frame as a `Vec2`, computed by `camera:update`. It is zero without trauma.
+
+### camera:flash(color, duration)
+
+Covers the view with `color`, whose alpha fades out over `duration` seconds as `camera:update` advances it, fast at first and slowly at the end, such as a white flash on a hit or a red one on damage. Every world canvas of the camera draws it over what it holds, unshaded, and a new flash replaces the one that is fading.
+
+### camera:flashColor()
+
+Returns the color the flash covers the view with now, transparent once it faded.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+
+scene.push({
+    update = function(self, dt)
+        if input.keyPressed('space') then
+            camera:flash('#C0FFFFFF', 0.3)
+            camera:addTrauma(0.5)
+        end
+        camera:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        graphics2d.drawRect({-200, -100, 400, 200}, '#FF3A7D44')
+    end,
+})
+```
 
 ### camera:renderPosition()
 

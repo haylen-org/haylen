@@ -95,7 +95,7 @@ class Camera final {
     // Follows the middle of the points and zooms until they fit inside the view with the padding in world units, within the zoom limits. The zoom eases like the position when position smoothing is on.
     void frame(std::span<const math::Vec2> points, float padding, float deltaSeconds, const math::Rect& screen);
 
-    // Advances the shake and the rotation smoothing.
+    // Advances the shake, the flash and the rotation smoothing.
     void update(float deltaSeconds) noexcept;
 
     void clampToLimits(const math::Rect& screen) noexcept;
@@ -124,6 +124,12 @@ class Camera final {
     [[nodiscard]] math::Vec2 getShakeOffset() const noexcept {
         return shakeOffset;
     }
+
+    // Covers the view with the color, whose alpha fades out over the duration in seconds, such as a white flash on a hit. Every world canvas of the camera draws it over what it holds, unshaded. A new flash replaces the one that is fading.
+    void flash(math::Color color, float duration) noexcept;
+
+    // Returns the color the flash covers the view with now, transparent once it faded.
+    [[nodiscard]] math::Color getFlash() const noexcept;
     [[nodiscard]] math::Vec2 getRenderPosition() const noexcept;
     [[nodiscard]] float getRenderRotation() const noexcept;
     [[nodiscard]] math::Rect getViewRect(const math::Rect& screen) const noexcept {
@@ -174,6 +180,9 @@ class Camera final {
     float time = 0.0F;
     math::Vec2 shakeOffset{};
     float shakeAngle = 0.0F;
+    math::Color flashColor = math::Color::transparent();
+    float flashLength = 0.0F;
+    float flashLeft = 0.0F;
 };
 
 } // namespace haylen::graphics2d

@@ -171,6 +171,7 @@ void Camera::update(float deltaSeconds) noexcept {
     smoothedRotation = rotationSmoothing ? lerpAngle(smoothedRotation, rotation, math::Math::dampFactor(rotationSmoothingSpeed, deltaSeconds)) : rotation;
 
     time += deltaSeconds;
+    flashLeft = std::max(0.0F, flashLeft - deltaSeconds);
     trauma = std::max(0.0F, trauma - traumaDecay * deltaSeconds);
     if (trauma <= 0.0F) {
         shakeDirection = {};
@@ -235,6 +236,21 @@ void Camera::addTrauma(float amount) noexcept {
 void Camera::shake(float amount, math::Vec2 direction) noexcept {
     trauma = math::Math::saturate(trauma + amount);
     shakeDirection = direction.getNormalized();
+}
+
+void Camera::flash(math::Color color, float duration) noexcept {
+    flashColor = color;
+    flashLength = std::max(duration, 0.0F);
+    flashLeft = flashLength;
+}
+
+// The flash fades fast at first and slowly at the end, which reads as a bright hit that settles.
+math::Color Camera::getFlash() const noexcept {
+    if (!(flashLeft > 0.0F)) {
+        return math::Color::transparent();
+    }
+    const float left = flashLeft / flashLength;
+    return flashColor.withAlpha(flashColor.a * left * left);
 }
 
 void Camera::setTrauma(float value) noexcept {

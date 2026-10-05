@@ -30,6 +30,9 @@ struct DrawItem {
     std::uint32_t first = 0;
     std::uint32_t count = 0;
 
+    // A distortion draw goes into the distortion map of its canvas instead of its image.
+    bool distortion = false;
+
     // Orders draws by layer, shifted by the layer offset in effect, and inside a layer by depth or by the y the draw stands on, moved by its sort offset, when the canvas sorts that way.
     [[nodiscard]] static std::uint64_t makeKey(const DrawOrder& order, int layerOffset, Renderer::SortMode mode, float standingY) noexcept;
 

@@ -25,6 +25,7 @@ class CameraLua final {
     static int snapTo(lua_State* L);
     static int zoomAt(lua_State* L);
     static int shake(lua_State* L);
+    static int flash(lua_State* L);
     static int visibleBounds(lua_State* L);
     static int viewTransform(lua_State* L);
     static int viewSize(lua_State* L);

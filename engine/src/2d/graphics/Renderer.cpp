@@ -68,10 +68,24 @@ void Renderer::validatePostProcess(const CanvasOptions& options) {
     if (!options.postProcess) {
         return;
     }
-    for (const Material& material : options.postProcess->materials) {
+    const PostProcess& post = *options.postProcess;
+    for (const Material& material : post.materials) {
         if (!material.isValid()) {
             throw std::invalid_argument("A post-processing material needs a shader.");
         }
+    }
+    const bool distances = post.distortion >= 0.0F && post.chromaticAberration >= 0.0F && post.pixelate >= 0.0F && post.blur >= 0.0F && post.bloomStrength >= 0.0F && post.bloomThreshold >= 0.0F && post.bloomRadius > 0.0F;
+    if (!distances || !std::isfinite(post.distortion + post.chromaticAberration + post.pixelate + post.blur + post.bloomStrength + post.bloomThreshold + post.bloomRadius)) {
+        throw std::invalid_argument("Post-processing needs a distortion, chromatic aberration, pixelate, blur, bloom strength and bloom threshold of at least 0 and a positive bloom radius.");
+    }
+    if (post.colorLut.isValid()) {
+        const math::Vec2 size = post.colorLut.getSize();
+        if (size.y < 2.0F || size.x != size.y * size.y) {
+            throw std::invalid_argument("A color lookup texture is as wide as its height squared, such as 256 by 16 pixels.");
+        }
+    }
+    if (!(post.colorLutStrength >= 0.0F && post.colorLutStrength <= 1.0F)) {
+        throw std::invalid_argument("The strength of a color lookup texture must be from 0 to 1.");
     }
 }
 
@@ -154,7 +168,7 @@ void Renderer::beginWorld(const Camera& camera, const CanvasOptions& options) {
 
     const math::Rect area = camera.getViewRect(state->visibleRect);
     finishCanvas();
-    state->openCanvas({.kind = Canvas::Kind::World, .options = options, .viewSize = area.getSize(), .view = camera.viewTransform(area.getSize()), .frame = Canvas::frameOf(area, state->visibleRect)});
+    state->openCanvas({.kind = Canvas::Kind::World, .options = options, .viewSize = area.getSize(), .view = camera.viewTransform(area.getSize()), .frame = Canvas::frameOf(area, state->visibleRect), .flash = camera.getFlash()});
 }
 
 void Renderer::beginScreen(const CanvasOptions& options) {
@@ -224,6 +238,15 @@ void Renderer::draw(const Sprite& sprite) {
         .flip = sprite.flip,
     };
     const GpuInstance gpu = GpuInstance::make(*sprite.texture.getResource(), instance);
+    if (sprite.effect.isActive()) {
+        if (sprite.order.partMask.isValid()) {
+            throw std::invalid_argument("A sprite takes a part mask or an effect, not both.");
+        }
+        sprite.effect.validate();
+        const std::array<GpuInstance, 2> affected{gpu, GpuInstance::makeEffect(sprite.effect, source.getSize())};
+        state->addInstances(Program::Effect, sprite.order, sprite.texture, affected, sprite.position.y);
+        return;
+    }
     if (!sprite.order.partMask.isValid()) {
         state->addInstances(Program::Sprite, sprite.order, sprite.texture, std::span(&gpu, 1), sprite.position.y);
         return;
@@ -278,6 +301,9 @@ template <typename SpriteAt, typename PartsAt> void Renderer::addBatch(const gra
     } else {
         convert(0, count);
     }
+    if (order.distortion > 0.0F) {
+        RendererState::scaleCoverage(std::span(state->instances).subspan(first, count * stride), order.distortion);
+    }
     state->stats.sprites += count;
 }
 
@@ -296,6 +322,9 @@ void Renderer::drawBatch(const graphics::Texture& texture, std::span<const float
 void Renderer::drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order, math::Vec2 offset) {
     if (order.partMask.isValid()) {
         throw std::invalid_argument("A baked sprite batch draws without a part mask. Draw a sprite batch to recolor its sprites.");
+    }
+    if (order.distortion > 0.0F) {
+        throw std::invalid_argument("A baked sprite batch draws without a distortion. Draw a sprite batch to distort with its sprites.");
     }
     if (!batch.isValid() || batch.size() == 0 || !state->accepts(order)) {
         return;
@@ -644,8 +673,15 @@ Renderer::CanvasKind Renderer::getCanvasKind() const {
     return CanvasKind::Target;
 }
 
-// The overlays run on a copy of their list, so one may add or remove overlays, and the canvas closes even when one of them fails.
+// The flash of the camera covers what the canvas holds, then the overlays run on a copy of their list, so one may add or remove overlays, and the canvas closes even when one of them fails.
 void Renderer::finishCanvas() {
+    if (state->canvasOpen && state->canvases.back().flash.a > 0.0F) {
+        const math::Color flash = state->canvases.back().flash;
+        state->canvases.back().flash = math::Color::transparent();
+        state->clipStack.clear();
+        state->layerOffset = 0;
+        drawRect(getCanvasBounds().expanded(1.0F), flash, {.layer = std::numeric_limits<int>::max() / 2 - 1, .unshaded = true});
+    }
     if (state->canvasOpen && !state->overlays.empty() && !state->drawingOverlays) {
         const std::vector<std::pair<std::uint64_t, CanvasOverlay>> overlays = state->overlays;
         state->clipStack.clear();
@@ -689,8 +725,8 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
     const std::size_t end = state->items.size();
     for (std::size_t index = canvas.itemBegin; index < end; ++index) {
         const DrawItem item = state->items[index];
-        const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor;
-        if ((!sprite && item.program != Program::Text) || item.texture == state->white.getResource().get()) {
+        const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor || item.program == Program::Effect;
+        if ((!sprite && item.program != Program::Text) || item.distortion || item.texture == state->white.getResource().get()) {
             continue;
         }
         if (item.batch != nullptr) {
@@ -699,7 +735,7 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
             continue;
         }
 
-        const std::size_t stride = item.program == Program::Recolor ? 2 : 1;
+        const std::size_t stride = item.program == Program::Recolor || item.program == Program::Effect ? 2 : 1;
         if (item.program == Program::Text) {
             math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
             for (std::size_t quad = item.first; quad < item.first + item.count; ++quad) {

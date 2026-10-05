@@ -76,7 +76,7 @@ TEST(Particles2DLuaTest, ReadsAndReturnsEveryOption) {
             shape = 'polyline', shapePoints = {{0, 0}, {10, 0}}, shapeAngle = 0.2, shapeArc = {0, 2}, shapeThickness = 3, pixelSnap = 2,
             particleOrder = 'newestFirst', trail = {length = 5, lifetime = 0.3, widthStart = 6, widthEnd = 1, colors = {'#FFFFFFFF'}},
             light = {type = 'point', offset = {0, -5}, radius = 50, color = '#FFFFA040', intensity = 2, flicker = {speed = 3, amount = 0.4}, fade = 'count'},
-            particleLights = {radius = 10, intensity = 0.3, max = 4}, sortOffset = 2, visibility = 4, emission = 0.5, unshaded = true, lightMask = 2,
+            particleLights = {radius = 10, intensity = 0.3, max = 4}, sortOffset = 2, visibility = 4, emission = 0.5, unshaded = true, lightMask = 2, distortion = 0.5,
             subEmitters = {{effect = spark.config, trigger = 'alive', count = {1, 2}, rate = 3, probability = 0.7, inheritVelocity = 0.1, inheritColor = true}},
         })
         config = full.config
@@ -86,7 +86,7 @@ TEST(Particles2DLuaTest, ReadsAndReturnsEveryOption) {
     EXPECT_EQ(fixture.lua("return config.turbulence.speed .. ' ' .. config.attractors[1].space .. ' ' .. config.collision.type .. ' ' .. config.collision.area.width .. ' ' .. config.bounds.width .. ' ' .. config.boundsMode"), "2.0 world bounds 20.0 200.0 wrap");
     EXPECT_EQ(fixture.lua("return config.endSizeScale[2] .. ' ' .. config.sizeCurve.curve .. ' ' .. config.sizeCurve.overshoot .. ' ' .. config.spinCurve.steps .. config.spinCurve.position .. ' ' .. config.aspect[2] .. ' ' .. tostring(config.alignToVelocity)"), "1.5 backOut 2.0 3start 3.0 true");
     EXPECT_EQ(fixture.lua("return config.colorBlend .. ' ' .. config.tintMode .. ' ' .. config.shape .. ' ' .. #config.shapePoints .. ' ' .. config.shapeThickness .. ' ' .. config.particleOrder .. ' ' .. config.trail.length"), "steps cycleTime polyline 2 3.0 newestFirst 5");
-    EXPECT_EQ(fixture.lua("return string.format('%.1f', config.light.flicker.amount) .. ' ' .. config.light.fade .. ' ' .. config.particleLights.max .. ' ' .. config.visibility .. ' ' .. tostring(config.unshaded) .. ' ' .. config.lightMask"), "0.4 count 4 4 true 2");
+    EXPECT_EQ(fixture.lua("return string.format('%.1f', config.light.flicker.amount) .. ' ' .. config.light.fade .. ' ' .. config.particleLights.max .. ' ' .. config.visibility .. ' ' .. tostring(config.unshaded) .. ' ' .. config.lightMask .. ' ' .. config.distortion"), "0.4 count 4 4 true 2 0.5");
     EXPECT_EQ(fixture.lua("local sub = config.subEmitters[1] return sub.trigger .. ' ' .. sub.count[2] .. ' ' .. tostring(sub.inheritColor) .. ' ' .. string.format('%.1f', sub.effect.lifetime[1])"), "alive 2 true 0.2");
 
     // A configuration goes back into a new emitter as it is, and `false` removes the optional parts.

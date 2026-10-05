@@ -19,6 +19,8 @@
 #include "shaders/blend.glsl.h"
 #include "shaders/blend_lit.glsl.h"
 #include "shaders/composite.glsl.h"
+#include "shaders/effect.glsl.h"
+#include "shaders/effect_lit.glsl.h"
 #include "shaders/light.glsl.h"
 #include "shaders/mesh.glsl.h"
 #include "shaders/mesh_lit.glsl.h"
@@ -33,8 +35,8 @@
 
 namespace haylen::graphics2d {
 
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc};
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc};
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
@@ -74,8 +76,13 @@ std::optional<TextPainter::PixelGrid> RendererState::getPixelGrid() {
     return TextPainter::PixelGrid{.scale = {view.a * pixels.x, view.d * pixels.y}, .offset = {view.tx * pixels.x + pass.x, view.ty * pixels.y + pass.y}};
 }
 
+// Distortion draws need the distortion map of a composited canvas, and other canvases skip them.
 bool RendererState::accepts(const DrawOrder& order) {
-    return (order.visibility & getCanvas().options.visibilityMask) != 0;
+    const Canvas& canvas = getCanvas();
+    if (order.distortion > 0.0F && !canvas.isComposited()) {
+        return false;
+    }
+    return (order.visibility & canvas.options.visibilityMask) != 0;
 }
 
 void RendererState::retain(const graphics::Texture& texture) {
@@ -243,6 +250,13 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
     if (order.material.isValid() && program == Program::Recolor) {
         throw std::invalid_argument("A draw with a part mask does not take a material.");
     }
+    if (order.material.isValid() && program == Program::Effect) {
+        throw std::invalid_argument("A sprite with an effect does not take a material.");
+    }
+    const bool distorts = order.distortion > 0.0F;
+    if (distorts && program != Program::Sprite && program != Program::Mesh) {
+        throw std::invalid_argument("Only sprites, sprite batches, nine-slices, shapes and meshes draw as distortion.");
+    }
     requireReadable(texture);
     if (program == Program::Recolor) {
         requireReadable(order.partMask.getResource().get());
@@ -254,15 +268,18 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         }
     }
 
+    // The coverage of distortion draws adds up in the distortion map, whatever their blend.
     DrawItem item{
         .key = DrawItem::makeKey(order, layerOffset, current.options.sort, standingY),
         .sequence = sequence++,
         .program = program,
-        .blend = order.blend,
+        .blend = distorts ? graphics::BlendMode::Type::Additive : order.blend,
         .clip = clipStack.empty() ? 0U : clipStack.back(),
         .shade = getShade(program, order),
         .texture = texture,
+        .distortion = distorts,
     };
+    current.distorted = current.distorted || distorts;
     items.push_back(item);
     return items.back();
 }
@@ -273,7 +290,24 @@ void RendererState::addInstances(Program program, const DrawOrder& order, const 
     item.first = static_cast<std::uint32_t>(instances.size());
     item.count = static_cast<std::uint32_t>(data.size());
     instances.insert(instances.end(), data.begin(), data.end());
-    stats.sprites += program == Program::Recolor ? data.size() / 2 : data.size();
+    if (item.distortion) {
+        scaleCoverage(std::span(instances).subspan(item.first), order.distortion);
+    }
+    stats.sprites += program == Program::Recolor || program == Program::Effect ? data.size() / 2 : data.size();
+}
+
+void RendererState::scaleCoverage(std::span<GpuInstance> data, float distortion) noexcept {
+    for (GpuInstance& instance : data) {
+        const auto alpha = static_cast<float>(instance.color >> 24U) * distortion;
+        instance.color = (instance.color & 0x00FFFFFFU) | (static_cast<std::uint32_t>(std::lround(std::min(alpha, 255.0F))) << 24U);
+    }
+}
+
+void RendererState::scaleCoverage(std::span<GpuVertex> data, float distortion) noexcept {
+    for (GpuVertex& vertex : data) {
+        const auto alpha = static_cast<float>(vertex.color >> 24U) * distortion;
+        vertex.color = (vertex.color & 0x00FFFFFFU) | (static_cast<std::uint32_t>(std::lround(std::min(alpha, 255.0F))) << 24U);
+    }
 }
 
 void RendererState::addMesh(const graphics::Texture& texture, std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, const DrawOrder& order) {
@@ -288,6 +322,9 @@ void RendererState::addMesh(const graphics::Texture& texture, std::span<const Gp
     item.first = static_cast<std::uint32_t>(indices.size());
     item.count = static_cast<std::uint32_t>(meshIndices.size());
     vertices.insert(vertices.end(), meshVertices.begin(), meshVertices.end());
+    if (item.distortion) {
+        scaleCoverage(std::span(vertices).subspan(base), order.distortion);
+    }
     for (const std::uint32_t index : meshIndices) {
         indices.push_back(base + index);
     }
@@ -357,9 +394,13 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
         describeLightLayout(desc);
         return;
     case Program::Composite:
+    case Program::Filter:
         return;
     case Program::Recolor:
         describeRecolorLayout(desc);
+        return;
+    case Program::Effect:
+        describeEffectLayout(desc);
         return;
     case Program::Sprite:
     case Program::Text:
@@ -402,6 +443,32 @@ void RendererState::describeRecolorLayout(sg_pipeline_desc& desc) {
     desc.layout.attrs[ATTR_recolor_recolor_instance_green] = {.buffer_index = 2, .offset = 4, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.layout.attrs[ATTR_recolor_recolor_instance_blue] = {.buffer_index = 2, .offset = 8, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.layout.attrs[ATTR_recolor_recolor_instance_yellow] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+}
+
+// A sprite with an effect takes two records of the instance stream, its sprite and then its effect, which two buffers read at the same instance.
+void RendererState::describeEffectLayout(sg_pipeline_desc& desc) {
+    constexpr int kStride = 2 * static_cast<int>(sizeof(GpuInstance));
+    desc.layout.buffers[0].stride = 8;
+    desc.layout.buffers[1].stride = kStride;
+    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.buffers[2].stride = kStride;
+    desc.layout.buffers[2].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.attrs[ATTR_effect_effect_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_effect_effect_instance_position] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_effect_effect_instance_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_effect_effect_instance_uv] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_USHORT4N};
+    desc.layout.attrs[ATTR_effect_effect_instance_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_effect_effect_instance_flash] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_effect_effect_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
+    desc.layout.attrs[ATTR_effect_effect_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_effect_effect_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_effect_effect_effect_dissolve_color] = {.buffer_index = 2, .offset = 0, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_effect_effect_effect_outline_color] = {.buffer_index = 2, .offset = 4, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_effect_effect_effect_glow_color] = {.buffer_index = 2, .offset = 8, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_effect_effect_effect_amounts] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_effect_effect_effect_reach] = {.buffer_index = 2, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_effect_effect_effect_widths] = {.buffer_index = 2, .offset = 24, .format = SG_VERTEXFORMAT_FLOAT2};
     desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
 }
 
@@ -522,6 +589,8 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::Light:
     case Program::Metaball:
     case Program::Recolor:
+    case Program::Filter:
+    case Program::Effect:
         break;
     }
     throw std::logic_error("Materials only replace the sprite, text and mesh programs.");
