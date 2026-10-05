@@ -28,6 +28,7 @@
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/input/GestureRecognizer.hpp"
 #include "haylen/input/Input.hpp"
+#include "haylen/input/PointerEmulation.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/math/Insets.hpp"
@@ -61,6 +62,7 @@ struct EngineState {
     input::GestureRecognizer gestures;
     input::ActionMap actions;
     input::VirtualInput virtualInput;
+    input::PointerEmulation pointerEmulation;
     FrameClock clock;
     FrameQueue frameQueue;
     EventBus events;

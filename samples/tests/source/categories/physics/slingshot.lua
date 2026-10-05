@@ -38,7 +38,7 @@ function Slingshot:enter()
         play = true,
         actions = Slingshot.actions,
         overlay = {
-            ui.touchStick{action = 'aim', radius = 110, floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
+            ui.touchStick{action = 'aim', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
             ui.touchButton{action = 'launch', text = 'Launch', size = 150, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
         },
     }

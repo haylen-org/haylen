@@ -88,7 +88,7 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
 }
 
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "debug", "autoload", "native", "plugins"}, "\"app.json\"");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "debug", "autoload", "native", "plugins"}, "\"app.json\"");
 
     AppConfig config;
     readValue(document, "name", config.name);
@@ -207,6 +207,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
         }
     }
 
+    if (document.contains("input")) {
+        const Json& inputJson = document.at("input");
+        JsonValidator::requireKnownKeys(inputJson, {"mouseAsTouch", "touchAsMouse"}, "the \"input\" section of \"app.json\"");
+        readValue(inputJson, "mouseAsTouch", config.input.mouseAsTouch);
+        readValue(inputJson, "touchAsMouse", config.input.touchAsMouse);
+    }
+
     if (document.contains("debug")) {
         const Json& debugJson = document.at("debug");
         JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "safeArea", "showSafeArea"}, "the \"debug\" section of \"app.json\"");
@@ -264,7 +271,7 @@ Json AppConfig::toJson() const {
         windowJson["position"] = window.position->toJson();
     }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
     };
 }
 

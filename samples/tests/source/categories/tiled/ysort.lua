@@ -25,7 +25,7 @@ function YSort:enter()
         },
         view = {bounds.width + 64, bounds.height + 64},
         play = true,
-        overlay = {ui.touchStick{action = 'move', radius = 110, floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300}},
+        overlay = {ui.touchStick{action = 'move', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300}},
     }
     self.sorting = true
     self.position = {bounds.width / 2, bounds.height / 2}

@@ -202,6 +202,29 @@ TEST_F(InputLuaTest, ReadsSingleTouchesAndDeviceSettings) {
     EXPECT_EQ(lua("local s = input.gestureSettings() return s.longPressDuration .. ' ' .. s.tapMaxMovement .. ' ' .. tostring(s.mouse)"), "0.75 24.0 false");
 }
 
+TEST_F(InputLuaTest, TurnsTheMouseIntoAFingerAndAFingerIntoTheMouse) {
+    core::Engine& engine = fixture.engine();
+    EXPECT_EQ(lua("return tostring(input.mouseAsTouch()) .. ' ' .. tostring(input.touchAsMouse())"), "false false");
+
+    lua("input.setMouseAsTouch(true)");
+    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 200.0F}));
+    EXPECT_EQ(lua("local t = input.touches()[1] return #input.touches() .. ' ' .. t.x .. ' ' .. t.phase .. ' ' .. input.lastDevice() .. ' ' .. tostring(input.mouseDown('left'))"), "1 100.0 began touch false");
+    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, {100.0F, 200.0F}));
+    EXPECT_EQ(lua("return input.touches()[1].phase"), "ended");
+    fixture.frames(1);
+
+    lua("input.setMouseAsTouch(false) input.setTouchAsMouse(true)");
+    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
+    EXPECT_EQ(lua("local x, y = input.mousePosition() return tostring(input.mousePressed('left')) .. ' ' .. x .. ',' .. y .. ' ' .. #input.touches() .. ' ' .. input.lastDevice()"), "true 300.0,150.0 1 touch");
+    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchEnded, {300.0F, 150.0F}));
+    EXPECT_EQ(lua("return tostring(input.mouseReleased('left'))"), "true");
+}
+
+TEST(InputLuaAppTest, TakesThePointerDevicesFromTheAppSettings) {
+    test::EngineFixture fixture({{"app.json", R"({"input": {"mouseAsTouch": true, "touchAsMouse": true}})"}});
+    EXPECT_EQ(fixture.lua("local input = require('haylen.input') return tostring(input.mouseAsTouch()) .. ' ' .. tostring(input.touchAsMouse())"), "true true");
+}
+
 TEST_F(InputLuaTest, DefinesActionsOneByOne) {
     lua("input.defineAction({name = 'jump', type = 'button', bindings = {'key:space'}})");
     lua("input.defineAction({name = 'move', type = 'vector', left = {'key:a'}, right = {'key:d'}, bindings = {}})");

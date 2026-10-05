@@ -43,6 +43,8 @@ local worldX, worldY = camera:screenToWorld(input.mousePosition())
 
 `input.touches()` returns the fingers on the screen, including fingers that lifted in this frame. Each touch has an `id` that stays the same while the finger is down, its position `x` and `y`, where it landed in `startX` and `startY`, its movement since the last frame in `dx` and `dy`, how long it has been down in `duration` and its `phase`: `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. Fingers in the `'ended'` or `'cancelled'` phase leave the list on the next frame.
 
+An app chooses to treat one device as the other. With `input.setMouseAsTouch(true)` or `"input": {"mouseAsTouch": true}` in `app.json`, the left mouse button becomes a finger for the whole engine, so touch controls, gestures and touch code run on a desktop as on a phone. With `input.setTouchAsMouse(true)` or `"touchAsMouse": true`, the first finger down also drives the mouse, so code that reads `input.mousePressed` and `input.mousePosition` runs on a touch screen while the touches keep working.
+
 ### Gestures
 
 `input.gestures()` returns the gestures recognized in this frame: `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` and `'pinch'`, each with a position, the movement of a swipe and the scale of a pinch. While no finger is down, the left mouse button acts as a finger, so gestures also work with a mouse on desktop. `input.setGestureSettings` changes the thresholds, such as `longPressDuration` or `swipeMinDistance`, and `mouse = false` turns the mouse off as a finger.

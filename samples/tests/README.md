@@ -272,13 +272,13 @@ The keyboard, the mouse, touches, gestures, gamepads, the action map, remapping,
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
 | `INP-001` | Keyboard | Keys held, pressed and released, modifiers, key events with repeats and the text typed with the layout of the platform. |  |
-| `INP-002` | Mouse | Buttons, the wheel, the movement of a frame, cursor shapes, a hidden cursor and a captured mouse. | tvos |
-| `INP-003` | Touch | Up to ten fingers drawn with their id, phase, trail and time on the screen. | tvos |
+| `INP-002` | Mouse | Buttons, the wheel, the movement of a frame, cursor shapes, a hidden cursor, a captured mouse and a finger acting as the mouse. | tvos |
+| `INP-003` | Touch | Up to ten fingers drawn with their id, phase, trail and time on the screen, and the mouse acting as a finger. | tvos |
 | `INP-004` | Gestures | Taps, double taps, long presses, swipes and pinches with their thresholds. | tvos |
 | `INP-005` | Gamepads | Four live controllers with sticks, triggers and buttons, their connections and the dead zone. |  |
 | `INP-006` | Action map | Button, axis and vector actions bound to keys, mouse, gamepads and touch controls, and the last device used. |  |
 | `INP-007` | Remapping | Rebinding the controls with key captures, kept in the preferences for the next launch. |  |
-| `INP-008` | Touch controls | A touch stick and touch buttons that drive virtual inputs of the action map. |  |
+| `INP-008` | Touch controls | A touch stick in its fixed, floating and following modes and touch buttons that drive virtual inputs of the action map. |  |
 | `INP-009` | Character | A small platformer hero that every device moves at the same time, with prompts for the last device. |  |
 
 #### Physics (PHY)
@@ -423,7 +423,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-016` | Focus navigation | Directional and explicit neighbours, focus scopes, wrapping and going back with keys, gamepads and TV remotes. |  |
 | `GUI-017` | UI tweens | Node transforms that move, scale, fade and tint controls with native tweens. |  |
 | `GUI-018` | Text input | The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform. |  |
-| `GUI-019` | Touch controls | A touch stick and touch buttons that drive actions of the action map next to keys and gamepads. |  |
+| `GUI-019` | Touch controls | Two touch sticks at once, one that follows the finger drawn with images and one fixed drawn with circles, and touch buttons that drive actions of the action map next to keys and gamepads. |  |
 | `GUI-020` | Layouts | Justify, alignItems, growing within size bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and the aspect ratio at any width. |  |
 | `GUI-023` | Toast stacks | Toasts at every position of the safe area that stack without covering each other, a queue past the limit of a stack and a dialog whose backdrop fades with it. |  |
 | `GUI-024` | Theme overrides | Styles that replace colors, metrics, fonts and surfaces of one subtree, styles that nest, subtrees in other themes in every state and the cursor of each node. |  |

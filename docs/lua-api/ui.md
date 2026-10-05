@@ -2439,14 +2439,14 @@ On-screen controls drive the virtual buttons and sticks of the action layer, whi
 
 ### ui.touchStick(properties)
 
-A virtual analog stick that sets the virtual stick `action` to a vector of length 0 to 1 while a finger drags it, drawn with the theme `stickBase` and `stickKnob` surfaces when the theme has them. It reports no events.
+A virtual analog stick that sets the virtual stick `action` to a vector of length 0 to 1 while a finger drags it, drawn with the `stickBase` and `stickKnob` surfaces of its theme or [style](#styles) when they have images, and with circles in the theme colors otherwise. Several sticks work at once, each with its own finger. It reports only [the events of every kind](#the-events-of-every-kind).
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `action` | string | required | Name of the virtual stick it drives. |
 | `radius` | number from 8 to 2048 | `110` | Radius of the stick ring. |
 | `deadZone` | number from 0 to 0.95 | `0.15` | Share of the radius near the center that counts as zero. |
-| `floating` | boolean | `false` | Centers the stick where the finger lands instead of at the center of the control. |
+| `mode` | string | `'fixed'` | Where the ring sits: `'fixed'` keeps it at the center of the control, `'floating'` centers it where the finger lands inside the control, and `'following'` also moves it after a finger that leaves the ring, so the finger always sits on its rim, inside the control. Without a finger the ring rests at the center of the control. |
 | `touchOnly` | boolean | `false` | Shows the stick only while the last input came from a touch screen. |
 
 A missing or empty action raises `The property "action" of a "touchStick" names the virtual stick to drive and cannot be empty.`.
@@ -2459,7 +2459,7 @@ local ui = require('haylen.ui')
 input.loadActions({actions = {
     {name = 'move', type = 'vector', bindings = {'virtualStick:move', 'stick:left'}},
 }})
-ui.mount(ui.touchStick{action = 'move', radius = 140, floating = true, touchOnly = true, align = 'end'}, {placement = 'screen'})
+ui.mount(ui.touchStick{action = 'move', radius = 140, mode = 'floating', touchOnly = true, align = 'end'}, {placement = 'screen'})
 
 scene.push({
     update = function(self, dt)

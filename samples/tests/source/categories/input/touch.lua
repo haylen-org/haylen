@@ -18,13 +18,20 @@ function Touch:enter()
     self.events = 0
     self.most = 0
     self:frame({
-        hint = 'Put up to ten fingers on the screen. The mouse does not make touches, so this test needs a touch screen.',
+        hint = 'Put up to ten fingers on the screen, or turn on the mouse as a finger to touch the stage with the left button.',
+        focus = 'mouseAsTouch',
         controls = {
+            ui.toggle{id = 'mouseAsTouch', text = 'The mouse acts as a finger', checked = input.mouseAsTouch(), onChange = function(event) input.setMouseAsTouch(event.checked) end},
             ui.button{id = 'clear', text = 'Clear the trails', onClick = function() self.trails = {} end},
             ui.sectionTitle{text = 'Reading touches'},
             ui.label{font = 'monospace', text = 'for _, touch in ipairs(input.touches()) do\n  touch.id, touch.phase\n  touch.x, touch.y\n  touch.startX, touch.startY\n  touch.dx, touch.dy\n  touch.duration\nend'},
         },
     })
+end
+
+function Touch:exit()
+    Touch.super.exit(self)
+    input.setMouseAsTouch(false)
 end
 
 function Touch:event(event)

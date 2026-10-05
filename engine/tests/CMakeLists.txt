@@ -84,6 +84,7 @@ set(HAYLEN_TEST_SOURCES
   graphics/VectorImageTests.cpp
   input/GestureTests.cpp
   input/InputTests.cpp
+  input/PointerEmulationTests.cpp
   io/IoTests.cpp
   localization/LocalizationTests.cpp
   lua/AssetsLuaTests.cpp

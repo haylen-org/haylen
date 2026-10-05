@@ -27,7 +27,7 @@ function ThemeOverrides:enter()
     self:frame{
         hint = 'The radius slider and the accent control restyle the first group at once, while the buttons around it keep the theme. Hover the cursor buttons with a mouse to see their shapes.',
         focus = 'radius',
-        content = {self:columns()},
+        content = {ui.scroll{grow = 1, height = 0, self:columns()}},
     }
     self:apply()
 end
@@ -44,7 +44,7 @@ function ThemeOverrides:columns()
     return layout.columns{
         ui.column{grow = 1, gap = 24,
             layout.section('A style on a row', {
-                ui.slider{id = 'radius', value = self.radius, min = 0, max = 40, step = 2, showValue = true, onChange = function(event)
+                ui.slider{id = 'radius', value = self.radius, min = 0, max = 40, step = 2, showValue = true, decimals = 0, onChange = function(event)
                     self.radius = event.value
                     self:apply()
                 end},

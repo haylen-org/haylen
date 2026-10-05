@@ -36,7 +36,7 @@ function Claw:enter()
         pointer = false,
         actions = Claw.actions,
         overlay = {
-            ui.touchStick{action = 'move', radius = 110, floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
+            ui.touchStick{action = 'move', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
             ui.touchButton{action = 'grip', text = 'Grab', size = 150, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
         },
     }

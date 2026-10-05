@@ -70,6 +70,10 @@ class InputLua final {
     static int setGamepadDeadzone(lua_State* L);
     static int gamepadDeadzone(lua_State* L);
     static int lastDevice(lua_State* L);
+    static int setMouseAsTouch(lua_State* L);
+    static int mouseAsTouch(lua_State* L);
+    static int setTouchAsMouse(lua_State* L);
+    static int touchAsMouse(lua_State* L);
     static int loadActions(lua_State* L);
     static int saveActions(lua_State* L);
     static int actionNames(lua_State* L);

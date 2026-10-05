@@ -66,7 +66,7 @@ function Positional:enter()
         hint = 'Walk with the arrows, WASD, a stick or the directional pad, with the touch stick, or click where to go.',
         play = true,
         controls = controls,
-        overlay = {ui.touchStick{id = 'stick', action = 'walk', floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300}},
+        overlay = {ui.touchStick{id = 'stick', action = 'walk', mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300}},
     })
     self:loadActions({actions = {Positional.walk}})
 end

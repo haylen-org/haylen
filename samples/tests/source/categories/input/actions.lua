@@ -51,7 +51,7 @@ function Actions:enter()
             ui.label{font = 'monospace', text = "input.down('jump')\ninput.pressed('dash')\ninput.value('throttle')\ninput.vector('move')\ninput.lastDevice()"},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', floating = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 260, height = 260},
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 260, height = 260},
             ui.row{anchor = 'bottom', margin = {0, 0, 110, 0}, gap = 32,
                 ui.touchButton{id = 'jump', action = 'jump', text = 'Jump'},
                 ui.touchButton{id = 'dash', action = 'dash', text = 'Dash'},

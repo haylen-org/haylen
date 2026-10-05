@@ -60,6 +60,7 @@ namespace haylen::input {
 class ActionMap;
 class GestureRecognizer;
 class Input;
+class PointerEmulation;
 class VirtualInput;
 } // namespace haylen::input
 
@@ -131,6 +132,7 @@ class Engine final {
     [[nodiscard]] input::GestureRecognizer& getGestures() noexcept;
     [[nodiscard]] input::ActionMap& getActions() noexcept;
     [[nodiscard]] input::VirtualInput& getVirtualInput() noexcept;
+    [[nodiscard]] input::PointerEmulation& getPointerEmulation() noexcept;
     [[nodiscard]] SceneManager& getScenes() noexcept;
     [[nodiscard]] assets::Manager& getAssets() noexcept;
     [[nodiscard]] platform::Bridge& getPlatform() noexcept;
@@ -226,6 +228,7 @@ class Engine final {
     void leaveErrorScreen();
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);
+    void dispatchEvent(const platform::Event& event);
     void render(const std::vector<plugins::Plugin*>& all);
     void renderScenes(const std::vector<plugins::Plugin*>& all);
     void setAppState(AppState value);

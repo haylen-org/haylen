@@ -39,7 +39,7 @@ function Character:enter()
             ui.label{font = 'monospace', text = "local x = input.vector('move')\ninput.pressed('jump')\ninput.released('jump')\ninput.pressed('dash')\ninput.lastDevice()"},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
             ui.row{anchor = 'bottomRight', margin = {0, 540, 110, 0}, gap = 32,
                 ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', touchOnly = true},
                 ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', touchOnly = true},

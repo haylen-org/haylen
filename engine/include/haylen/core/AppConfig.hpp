@@ -55,6 +55,12 @@ struct AppConfig {
         bool muteOnFocusLoss = false;
     };
 
+    // Whether the mouse acts as a finger, so an app made for touch screens runs with a mouse, and whether a finger acts as the mouse, so an app that reads the mouse runs on a touch screen. Both change at run time through `input::PointerEmulation`.
+    struct Input {
+        bool mouseAsTouch = false;
+        bool touchAsMouse = false;
+    };
+
     // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, the safe area to simulate instead of the one of the device, and whether the safe area shows over the app.
     struct Debug {
         debug::StatsDisplay::Mode stats = debug::StatsDisplay::Mode::Off;
@@ -79,6 +85,7 @@ struct AppConfig {
 
     // How the app shares sound with the system and other apps, from the `audio` object with `iosSession` and `mixWithOthers`.
     audio::Session audioSession{};
+    Input input{};
     Debug debug{};
 
     // Lua modules that load before the first scene and live for the whole app.

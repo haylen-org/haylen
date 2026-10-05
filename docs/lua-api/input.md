@@ -628,6 +628,58 @@ scene.push({
 })
 ```
 
+### input.setMouseAsTouch(enabled)
+
+Makes the mouse act as a finger, so an app made for touch screens runs with a mouse. The left button becomes a touch with an id that no real finger has, which begins, moves while the button is held and ends, and `input.lastDevice()` reports `'touch'`, so controls with `touchOnly` show. Moves without a button disappear, as touch screens have no hover, while the right and middle buttons and the wheel stay mouse input. The UI, gestures, touch controls and the app all see the finger. The `app.json` key `input.mouseAsTouch` sets it at start, and a desktop build that tests touch controls is the usual use.
+
+```lua
+local input = require('haylen.input')
+
+input.setMouseAsTouch(true)
+print(input.mouseAsTouch())
+```
+
+### input.mouseAsTouch()
+
+Returns `true` while the mouse acts as a finger.
+
+```lua
+local input = require('haylen.input')
+
+if input.mouseAsTouch() then
+    print('The mouse is a finger.')
+end
+```
+
+### input.setTouchAsMouse(enabled)
+
+Makes a finger act as the mouse as well, so an app that reads the mouse runs on a touch screen. The first finger down drives the left button and the mouse position until it lifts, and the next finger down takes over from then. The touches still arrive as touches, so touch controls and gestures keep working, and `input.lastDevice()` stays `'touch'`. The `app.json` key `input.touchAsMouse` sets it at start.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+input.setTouchAsMouse(true)
+scene.push({
+    update = function(self, dt)
+        if input.mousePressed('left') then
+            local x, y = input.mousePosition()
+            print('Pressed at ' .. x .. ', ' .. y)
+        end
+    end,
+})
+```
+
+### input.touchAsMouse()
+
+Returns `true` while a finger acts as the mouse.
+
+```lua
+local input = require('haylen.input')
+
+print(input.touchAsMouse())
+```
+
 ## Action map
 
 The action map gives names to gameplay actions and binds each one to any number of keys, mouse buttons, gamepad controls and virtual controls. Actions update once per frame in the order they were defined.

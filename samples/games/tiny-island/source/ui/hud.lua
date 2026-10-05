@@ -22,7 +22,7 @@ local function touchControls(class)
         id = 'touch',
         align = 'stretch',
         visible = preferences.get('touch'),
-        ui.touchStick{action = 'move', radius = 140, floating = true, touchOnly = true, width = 760, height = 420, align = 'end'},
+        ui.touchStick{action = 'move', radius = 140, mode = 'floating', touchOnly = true, width = 760, height = 420, align = 'end'},
         ui.spacer{grow = 1},
         ui.column{
             gap = 20,

@@ -24,7 +24,7 @@ function Virtual:enter()
         hint = 'Drag the stick and press the buttons with fingers, or with the mouse when no finger is down. The keys and gamepads drive the same actions.',
         play = true,
         controls = {
-            ui.toggle{id = 'floating', text = 'Floating stick', checked = true, onChange = function(event) self:set('stick', {floating = event.checked}) end},
+            ui.formField{label = 'Stick mode', ui.segmentedControl{id = 'mode', selected = 'floating', items = {{id = 'fixed', text = 'Fixed'}, {id = 'floating', text = 'Floating'}, {id = 'following', text = 'Following'}}, onChange = function(event) self:set('stick', {mode = event.value}) end}},
             ui.formField{label = 'Stick radius', ui.slider{id = 'radius', min = 60, max = 200, step = 5, value = 110, showValue = true, decimals = 0, onChange = function(event) self:set('stick', {radius = event.value}) end}},
             ui.formField{label = 'Stick dead zone', ui.slider{id = 'deadZone', min = 0, max = 0.6, step = 0.05, value = 0.15, showValue = true, onChange = function(event) self:set('stick', {deadZone = event.value}) end}},
             ui.formField{label = 'Button size', ui.slider{id = 'size', min = 80, max = 200, step = 5, value = 130, showValue = true, decimals = 0, onChange = function(event)
@@ -40,7 +40,7 @@ function Virtual:enter()
             ui.label{font = 'monospace', text = "ui.touchStick{action = 'move'}\nui.touchButton{action = 'jump'}\n-- The action map binds\n-- `virtualStick:move`\n-- `virtual:jump` and `virtual:dash`."},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', floating = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 420, height = 420},
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 420, height = 420},
             ui.row{anchor = 'bottomRight', margin = {0, 540, 110, 0}, gap = 32,
                 ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', size = 130, onPress = logged('Dash press', Test.warm), onRelease = logged('Dash release', Test.red)},
                 ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', size = 130, onPress = logged('Jump press', Test.warm), onRelease = logged('Jump release', Test.red)},

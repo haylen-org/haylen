@@ -620,6 +620,49 @@ TEST_F(ComponentTest, DrivesVirtualControlsWithSeveralFingers) {
     EXPECT_FALSE(controls.isButtonDown("attack"));
 }
 
+TEST_F(ComponentTest, PlacesTheRingOfAStickByItsMode) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "row", "padding": 40, "gap": 100, "children": [
+        {"kind": "touchStick", "id": "fixed", "action": "walk", "radius": 50, "deadZone": 0, "width": 400, "height": 400},
+        {"kind": "touchStick", "id": "floating", "action": "aim", "mode": "floating", "radius": 50, "deadZone": 0, "width": 400, "height": 400},
+        {"kind": "touchStick", "id": "following", "action": "look", "mode": "following", "radius": 50, "deadZone": 0, "width": 400, "height": 400}
+    ]})");
+    // clang-format on
+    input::VirtualInput& controls = getEngine().getVirtualInput();
+    const math::Vec2 start{100.0F, 200.0F};
+
+    // Three fingers land at the same spot of each area and move by the same amount, so each mode shows in the vector it reports.
+    for (const auto& [finger, id] : {std::pair{1U, "fixed"}, std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
+        touch(platform::Event::Type::TouchBegan, finger, getBounds(*gui, id).getMin() + start);
+    }
+    frames(2);
+    EXPECT_NEAR(controls.getStick("walk").x, -1.0F, 0.01F);
+    EXPECT_EQ(controls.getStick("aim"), math::Vec2());
+    EXPECT_EQ(controls.getStick("look"), math::Vec2());
+
+    // A finger far past the ring pulls a following ring after it, so moving back reads from the new center.
+    for (const auto& [finger, id] : {std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
+        touch(platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + math::Vec2{150.0F, 0.0F});
+    }
+    frames(2);
+    EXPECT_NEAR(controls.getStick("aim").x, 1.0F, 0.01F);
+    EXPECT_NEAR(controls.getStick("look").x, 1.0F, 0.01F);
+    for (const auto& [finger, id] : {std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
+        touch(platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + math::Vec2{100.0F, 0.0F});
+    }
+    frames(2);
+    EXPECT_NEAR(controls.getStick("aim").x, 1.0F, 0.01F);
+    EXPECT_NEAR(controls.getStick("look").x, 0.0F, 0.01F);
+
+    // A following ring stays inside the area of its stick.
+    touch(platform::Event::Type::TouchMoved, 3, getBounds(*gui, "following").getMin() + math::Vec2{900.0F, 200.0F});
+    frames(2);
+    touch(platform::Event::Type::TouchMoved, 3, getBounds(*gui, "following").getMin() + math::Vec2{400.0F, 200.0F});
+    frames(2);
+    EXPECT_NEAR(controls.getStick("look").x, 0.0F, 0.01F);
+    EXPECT_THROW(gui->set("fixed", {{"mode", "drifting"}}), std::invalid_argument);
+}
+
 TEST_F(ComponentTest, TouchControlsLetGoWhenTheyStopDrawing) {
     // clang-format off
     auto gui = mount(R"({"kind": "row", "padding": 40, "gap": 400, "children": [

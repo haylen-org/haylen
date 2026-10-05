@@ -400,7 +400,7 @@ Four-number insets such as `slice` and `padding` run clockwise from the top: top
 The kinds `touchStick` and `touchButton` put on-screen controls in a GUI and drive the virtual sticks and buttons that the [action map](input.md#the-action-map) reads. A stick with `action = 'move'` feeds every action bound to `virtualStick:move`, and a button with `action = 'attack'` feeds every action bound to `virtual:attack`, so gameplay code reads `input.vector('move')` and `input.pressed('attack')` the same way for keyboards, gamepads and touch.
 
 - Every control follows its own finger, so a stick and several buttons work at the same time. The mouse drives them when no finger is down.
-- A stick reports a vector of length 0 to 1 with its `deadZone` removed. A `floating` stick centers where the finger lands inside its area, so give it a generous `width` and `height`.
+- A stick reports a vector of length 0 to 1 with its `deadZone` removed. A stick with `mode = 'floating'` centers where the finger lands inside its area, and one with `mode = 'following'` also moves after a finger that leaves its ring, so give them a generous `width` and `height`. The default `'fixed'` stick stays in place.
 - Setting `touchOnly = true` shows a control only while the last input came from a touch screen, as `input.lastDevice()` reports it. Keyboard and gamepad players never see them.
 - Controls keep the pointer from reaching the app behind them.
 - A control that stops drawing, because it, its parent or its GUI was hidden or removed, releases what it held. Values reach the actions at the start of the next frame.
@@ -413,7 +413,7 @@ ui.row{
     id = 'touch',
     align = 'stretch',
     visible = preferences.get('touch'),
-    ui.touchStick{action = 'move', radius = 140, floating = true, touchOnly = true, width = 760, height = 420, align = 'end'},
+    ui.touchStick{action = 'move', radius = 140, mode = 'floating', touchOnly = true, width = 760, height = 420, align = 'end'},
     ui.spacer{grow = 1},
     ui.column{
         gap = 20,
@@ -428,7 +428,15 @@ ui.row{
 }
 ```
 
-The theme surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed` give the controls their art. Without them they draw as translucent circles in the theme colors.
+The theme surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed` give the controls their art, and a `style` gives it to one control. Without them they draw as translucent circles in the theme colors.
+
+```lua
+local art = {
+    stickBase = {image = 'ui/stick_base.png', filter = 'linear'},
+    stickKnob = {image = 'ui/stick_knob.png', filter = 'linear'},
+}
+ui.touchStick{action = 'move', mode = 'following', radius = 130, width = 600, height = 420, style = {surfaces = art}}
+```
 
 ## Immediate mode UI with haylen.imgui
 

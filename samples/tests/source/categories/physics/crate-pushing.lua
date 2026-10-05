@@ -44,7 +44,7 @@ function CratePushing:enter()
         pointer = false,
         actions = CratePushing.actions,
         overlay = {
-            ui.touchStick{action = 'move', radius = 110, floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
+            ui.touchStick{action = 'move', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
         },
     }
     self.damping = 4

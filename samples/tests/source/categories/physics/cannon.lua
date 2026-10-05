@@ -38,7 +38,7 @@ function Cannon:enter()
         pointer = false,
         actions = Cannon.actions,
         overlay = {
-            ui.touchStick{action = 'adjust', radius = 110, floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
+            ui.touchStick{action = 'adjust', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
             ui.touchButton{action = 'fire', text = 'Fire', size = 150, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
         },
     }

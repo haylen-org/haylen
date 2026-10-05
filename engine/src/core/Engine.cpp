@@ -69,6 +69,8 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     const std::span<const std::uint8_t> font = EmbeddedFiles::getDefaultFont();
     current.defaultFont = std::make_shared<text::TrueTypeFont>(*current.graphics, std::vector<std::uint8_t>(font.begin(), font.end()));
     current.safeAreaSimulation = current.config.debug.safeArea;
+    current.pointerEmulation.setMouseAsTouch(current.config.input.mouseAsTouch);
+    current.pointerEmulation.setTouchAsMouse(current.config.input.touchAsMouse);
     current.reservedInsets = host.getReservedInsets();
     current.viewport.update(host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
     current.fullscreen = host.isFullscreen();
@@ -387,7 +389,14 @@ void Engine::renderScenes(const std::vector<plugins::Plugin*>& all) {
     }
 }
 
+// The mouse and the fingers reach the app as the device the app asked for, which may turn one event into several.
 void Engine::handleEvent(const platform::Event& event) {
+    for (const platform::Event& converted : state->pointerEmulation.convert(event)) {
+        dispatchEvent(converted);
+    }
+}
+
+void Engine::dispatchEvent(const platform::Event& event) {
     EngineState& current = *state;
     current.input.handleEvent(event, current.viewport);
 
@@ -859,6 +868,10 @@ input::ActionMap& Engine::getActions() noexcept {
 
 input::VirtualInput& Engine::getVirtualInput() noexcept {
     return state->virtualInput;
+}
+
+input::PointerEmulation& Engine::getPointerEmulation() noexcept {
+    return state->pointerEmulation;
 }
 
 SceneManager& Engine::getScenes() noexcept {

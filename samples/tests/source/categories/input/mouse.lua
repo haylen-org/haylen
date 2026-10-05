@@ -26,10 +26,11 @@ function Mouse:enter()
     self.journal = Journal(40)
     self.cursor = 'default'
     self:frame({
-        hint = 'Hover a zone to change the cursor, click, scroll and move the mouse.',
+        hint = 'Hover a zone to change the cursor, click, scroll and move the mouse. On a touch screen, turn on the finger as the mouse to drive the buttons with the first finger down.',
         focus = 'visible',
         controls = {
             ui.toggle{id = 'visible', text = 'Show the cursor', checked = true, onChange = function(event) window.setCursorVisible(event.checked) end},
+            ui.toggle{id = 'touchAsMouse', text = 'A finger acts as the mouse', checked = input.touchAsMouse(), onChange = function(event) input.setTouchAsMouse(event.checked) end},
             ui.toggle{id = 'locked', text = 'Capture the mouse', onChange = function(event) self:capture(event.checked) end},
             ui.label{text = 'A captured mouse stays hidden over this toggle and reports only its movement, which moves the white crosshair. A click releases it.', color = 'textMuted', font = 'caption'},
             ui.button{id = 'reset', text = 'Reset the wheel totals', onClick = function() self.scrollX, self.scrollY = 0, 0 end},
@@ -41,6 +42,7 @@ end
 
 function Mouse:exit()
     Mouse.super.exit(self)
+    input.setTouchAsMouse(false)
     window.setCursor('default')
     window.setCursorVisible(true)
     window.setMouseLocked(false)

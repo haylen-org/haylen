@@ -303,6 +303,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/input/GestureRecognizer.cpp
   src/input/Input.cpp
   src/input/InputLua.cpp
+  src/input/PointerEmulation.cpp
   src/input/VirtualInput.cpp
   src/io/CompositePackage.cpp
   src/io/DirectoryPackage.cpp

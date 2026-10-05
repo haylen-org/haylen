@@ -36,7 +36,7 @@ function GrapplingHook:enter()
         play = true,
         actions = GrapplingHook.actions,
         overlay = {
-            ui.touchStick{action = 'move', radius = 110, floating = true, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
+            ui.touchStick{action = 'move', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
             ui.touchButton{action = 'hook', text = 'Hook', size = 140, touchOnly = true, anchor = 'bottomRight', margin = {0, 700, 110, 0}},
             ui.touchButton{action = 'jump', text = 'Jump', size = 140, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
         },
