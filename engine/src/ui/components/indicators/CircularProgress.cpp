@@ -71,7 +71,7 @@ void CircularProgress::drawRing(Context& context, math::Vec2 center, float radiu
 void CircularProgress::drawCooldown(Context& context, const math::Rect& bounds, math::Vec2 center, float radius) const {
     const math::Rect square{center.x - radius, center.y - radius, radius * 2.0F, radius * 2.0F};
     if (!image.empty()) {
-        Surfaces::drawImage(context, context.getImage(image), square);
+        Surfaces::drawImage(context, context.getImage(image, square.getSize()), square);
     } else {
         Surfaces::draw(context, Theme::Surface::Badge, bounds, context.getColor(Widgets::getToneColors(tone).background), std::nullopt, radius);
     }

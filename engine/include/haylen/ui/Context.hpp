@@ -72,8 +72,11 @@ class Context final {
         CollectionCell* previousCell;
     };
 
-    // Returns the texture of a UI image path, or an empty texture while it is still loading.
-    using ImageSource = std::function<graphics::Texture(std::string_view path)>;
+    // Returns the texture of a UI image path drawn at a scale, in pixels per unit of its natural size, which image files ignore and SVG documents rasterize for, or an empty texture while it is still loading.
+    using ImageSource = std::function<graphics::Texture(std::string_view path, float scale)>;
+
+    // Returns the natural size of a UI image path, the pixels of an image file or the size an SVG document gives itself, or zero while it is still loading.
+    using ImageSizeSource = std::function<math::Vec2(std::string_view path)>;
 
     // Returns the family of a UI font name, which `ui.addFont` registers and themes name, or null for a name the UI does not know.
     using FontSource = std::function<std::shared_ptr<text::FontFamily>(std::string_view name)>;
@@ -84,6 +87,7 @@ class Context final {
     // The sources a context reads images, fonts, themes and the textures of styles from.
     struct Sources {
         ImageSource images;
+        ImageSizeSource imageSizes;
         FontSource fonts;
         ThemeSource themes;
         Theme::TextureLoader textures;
@@ -116,7 +120,14 @@ class Context final {
     [[nodiscard]] float getEmSize(Theme::Font role) const;
 
     [[nodiscard]] std::string getText(const TextValue& value) const;
-    [[nodiscard]] graphics::Texture getImage(std::string_view path) const;
+    // Returns the texture that draws a picture over `size` UI units at the density of the screen, or an empty texture while it loads.
+    [[nodiscard]] graphics::Texture getImage(std::string_view path, math::Vec2 size) const;
+
+    // Returns the texture of a picture at a scale in pixels per unit of its natural size, for draws that size it themselves, such as rich text.
+    [[nodiscard]] graphics::Texture getImageAtScale(std::string_view path, float scale) const;
+
+    // The natural size of a picture in UI units, zero while it loads.
+    [[nodiscard]] math::Vec2 getImageSize(std::string_view path) const;
 
     // Returns the family of a theme font role, or of a UI font name, which throws for a name the UI does not know.
     [[nodiscard]] std::shared_ptr<text::FontFamily> getFontFamily(Theme::Font role) const;

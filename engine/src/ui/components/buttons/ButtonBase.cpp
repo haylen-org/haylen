@@ -17,7 +17,8 @@ math::Vec2 ButtonBase::measureContent(Context& context, float) {
 }
 
 bool ButtonBase::drawButton(Context& context, const math::Rect& bounds, bool checked) {
-    const graphics::Texture iconTexture = icon.empty() ? graphics::Texture{} : context.getImage(icon);
+    const float iconSize = context.getMetric(Theme::Metric::IconSize);
+    const graphics::Texture iconTexture = icon.empty() ? graphics::Texture{} : context.getImage(icon, {iconSize, iconSize});
     const bool clicked = Widgets::button(context, bounds, context.getText(text), icon.empty() ? nullptr : &iconTexture, variant, checked);
     if (takeFocusRequest()) {
         Widgets::focusItem(context);

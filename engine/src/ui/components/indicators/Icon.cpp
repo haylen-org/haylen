@@ -21,7 +21,7 @@ math::Vec2 Icon::measureContent(Context& context, float) {
 void Icon::render(Context& context, const math::Rect& bounds) {
     const float side = std::min(bounds.width, bounds.height);
     const math::Rect square{bounds.getCenter().x - side * 0.5F, bounds.getCenter().y - side * 0.5F, side, side};
-    Surfaces::drawImage(context, context.getImage(image), square, color ? context.getColor(*color) : math::Color::white());
+    Surfaces::drawImage(context, context.getImage(image, square.getSize()), square, color ? context.getColor(*color) : math::Color::white());
 }
 
 } // namespace haylen::ui

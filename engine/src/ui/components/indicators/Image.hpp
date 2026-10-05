@@ -46,6 +46,7 @@ class Image final : public Component {
     Fit fit = Fit::Contain;
     float scale = 1.0F;
     math::Color tint = math::Color::white();
+    float radius = 0.0F;
 };
 
 } // namespace haylen::ui

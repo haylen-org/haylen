@@ -1121,7 +1121,7 @@ TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
 }
 
 TEST_F(ComponentAssetTest, LoadsImagesWithTheFilterOfTheTheme) {
-    const auto loaded = [&] { return getUi().getContext().getImage("ui/icon.png"); };
+    const auto loaded = [&] { return getUi().getContext().getImage("ui/icon.png", {16.0F, 16.0F}); };
     ASSERT_TRUE(fixture.frameUntil([&] { return loaded().isValid(); }));
     EXPECT_EQ(loaded().getOptions().filter, graphics::Texture::Filter::Nearest);
 

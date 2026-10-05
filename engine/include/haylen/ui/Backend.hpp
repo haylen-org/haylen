@@ -95,6 +95,11 @@ class Backend final {
         return pointsPerUnit;
     }
 
+    // The framebuffer pixels one UI unit covers in the current frame, which pictures rasterize for.
+    [[nodiscard]] math::Vec2 getDensity() const noexcept {
+        return density;
+    }
+
     // Converts between design coordinates and UI coordinates, whose origin is the top left of the visible area.
     [[nodiscard]] math::Vec2 toUi(math::Vec2 designPoint) const noexcept {
         return (designPoint - origin) / scale;
@@ -217,6 +222,7 @@ class Backend final {
     math::Vec2 origin;
     float scale = 1.0F;
     float pointsPerUnit = 1.0F;
+    math::Vec2 density{1.0F, 1.0F};
     math::Rect safeRect;
     std::vector<math::Rect> blocked;
     std::vector<math::Rect> blockedPrevious;

@@ -490,7 +490,7 @@ print(star.width, star.height, star == assets.load('icons/star.svg'))
 
 ### image:rasterize(scale, options)
 
-Rasterizes the whole image at `scale`, pixels per unit of the image, on a worker thread, and returns a promise of a `Texture` of `ceil(width * scale)` by `ceil(height * scale)` pixels, for draws that need a texture of the image, such as a material or a UI image. The table `options` takes `filter` and `wrap` like `graphics.newTexture`, with `filter = 'linear'` by default. A scale that is not positive, or whose raster is larger than [`graphics.maxTextureSize()`](#graphicsmaxtexturesize), raises `A vector image rasterizes at a positive scale whose raster fits the maximum texture size of the device.`
+Rasterizes the whole image at `scale`, pixels per unit of the image, on a worker thread, and returns a promise of a `Texture` of `ceil(width * scale)` by `ceil(height * scale)` pixels, for draws that need a texture of the image, such as a material or a sprite batch. The UI draws `.svg` files itself, as its [image values](ui.md#value-types) describe. The table `options` takes `filter` and `wrap` like `graphics.newTexture`, with `filter = 'linear'` by default. A scale that is not positive, or whose raster is larger than [`graphics.maxTextureSize()`](#graphicsmaxtexturesize), raises `A vector image rasterizes at a positive scale whose raster fits the maximum texture size of the device.`
 
 ```lua
 local assets = require('haylen.assets')

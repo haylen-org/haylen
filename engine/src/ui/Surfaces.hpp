@@ -31,10 +31,10 @@ class Surfaces final {
     // Returns how far the frame of a surface reaches into its bounds: the padding of its image, or the border of its flat colors.
     [[nodiscard]] static math::Insets getFrame(Context& context, Theme::Surface role);
     static void drawNineSlice(Context& context, const Theme::Image& image, const math::Rect& bounds, math::Color fill);
-    static void drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint = math::Color::white(), math::Rect source = {});
+    static void drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint = math::Color::white(), math::Rect source = {}, float radius = 0.0F);
 
   private:
-    static void drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, ImU32 color);
+    static void drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, ImU32 color, float radius);
 };
 
 } // namespace haylen::ui

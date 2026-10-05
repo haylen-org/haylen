@@ -148,8 +148,8 @@ void SlotGrid::drawContent(Context& context, const Slot& slot, const math::Rect&
     Surfaces::draw(context, surface, area, context.getColor(chosen ? Theme::Color::Selection : hovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(chosen ? Theme::Color::Accent : Theme::Color::Border), context.getMetric(Theme::Metric::ControlRadius));
     const bool leaving = dragging == slot.id || (context.getFocus().getCarried() && context.getFocus().getCarried()->source == getId() && context.getFocus().getCarried()->item == slot.id);
     if (!slot.image.empty()) {
-        const float inset = area.width * 0.12F;
-        Surfaces::drawImage(context, context.getImage(slot.image), area.expanded(-inset), math::Color::white().withAlpha(leaving ? 0.35F : 1.0F));
+        const math::Rect picture = area.expanded(-area.width * 0.12F);
+        Surfaces::drawImage(context, context.getImage(slot.image, picture.getSize()), picture, math::Color::white().withAlpha(leaving ? 0.35F : 1.0F));
     }
     if (const std::string count = context.getText(slot.count); !count.empty()) {
         const float line = Typography::getLineHeight(context, Theme::Font::Caption);

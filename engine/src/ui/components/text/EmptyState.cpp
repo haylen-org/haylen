@@ -32,7 +32,7 @@ void EmptyState::render(Context& context, const math::Rect& bounds) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float y = bounds.y;
     if (!image.empty()) {
-        Surfaces::drawImage(context, context.getImage(image), {std::floor(bounds.getCenter().x - imageSize * 0.5F), y, imageSize, imageSize});
+        Surfaces::drawImage(context, context.getImage(image, {imageSize, imageSize}), {std::floor(bounds.getCenter().x - imageSize * 0.5F), y, imageSize, imageSize});
         y += imageSize + spacing;
     }
     const std::string titleText = context.getText(title);

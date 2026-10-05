@@ -543,6 +543,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Gui.cpp
   src/ui/ImGuiConverter.cpp
   src/ui/ImGuiLua.cpp
+  src/ui/ImageLibrary.cpp
   src/ui/LuaItemSource.cpp
   src/ui/LuaPageSource.cpp
   src/ui/MountLink.cpp

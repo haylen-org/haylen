@@ -33,6 +33,7 @@
 #include "haylen/text/TrueTypeFont.hpp"
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImGuiLua.hpp"
+#include "ui/ImageLibrary.hpp"
 #include "ui/UiLua.hpp"
 #include "ui/components/BuiltInComponents.hpp"
 
@@ -52,11 +53,13 @@ void UiPlugin::start(core::Engine& engine) {
     safeAreaVisible = engine.getConfig().debug.showSafeArea;
     scaling = engine.getConfig().uiScaling;
     // clang-format off
+    images = std::make_unique<ui::ImageLibrary>(engine.getAssets(), engine.getGraphics(), engine.getJobs());
     ui::Context::Sources sources{
-        .images = [this](std::string_view path) { return requestImage(*owner, path, getTheme().getImageFilter()); },
+        .images = [this](std::string_view path, float scale) { return images->getTexture(path, getTheme().getImageFilter(), scale); },
+        .imageSizes = [this](std::string_view path) { return images->getSize(path, getTheme().getImageFilter()); },
         .fonts = [this](std::string_view name) { return getFontFamily(*owner, name); },
         .themes = [this](std::string_view name) { return findTheme(name); },
-        .textures = [this](std::string_view path, graphics::Texture::Options options) { return requestImage(*owner, path, options.filter); },
+        .textures = [this](std::string_view path, graphics::Texture::Options options) { return images->getTexture(path, options.filter, 1.0F); },
     };
     context = std::make_unique<ui::Context>(*backend, focus, engine.getPlugin<LocalizationPlugin>().getCatalog(), engine.getInput(), std::move(sources), engine.getPlugin<TextPlugin>().getRegistry());
     // clang-format on
@@ -74,11 +77,8 @@ void UiPlugin::stop(core::Engine& engine) {
     engine.getInput().setPointerCaptured(false);
     engine.getActions().setCapture({});
 
-    // Pending image loads finish into a cache that no longer exists, so they are told to drop their result.
-    alive = std::make_shared<bool>(true);
-    for (auto& loaded : images) {
-        loaded.clear();
-    }
+    // Pending image loads finish into a library that no longer exists, so they drop their result.
+    images.reset();
     fontPaths.clear();
     themeFiles.clear();
     fontFamilies.clear();
@@ -129,6 +129,7 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
         getTheme().applyTo(ImGui::GetStyle(), styledPoints);
     }
     context->beginFrame(elapsed, delta);
+    images->beginFrame();
 
     // Text reads in the current language, and an automatic direction takes the one that language declares.
     const localization::Catalog& catalog = engine.getPlugin<LocalizationPlugin>().getCatalog();
@@ -589,29 +590,6 @@ bool UiPlugin::isUsingPointer() const {
 
 bool UiPlugin::isUsingKeyboard() const {
     return backend && backend->isUsingKeyboard();
-}
-
-// Images load in the background with a filter, and a component draws nothing in their place until they arrive. Each filter keeps its own textures, so a theme with another image filter loads the pictures again with it.
-graphics::Texture UiPlugin::requestImage(core::Engine& engine, std::string_view path, graphics::Texture::Filter filter) {
-    std::map<std::string, ImageEntry, std::less<>>& loaded = images[static_cast<std::size_t>(filter)];
-    if (const auto found = loaded.find(path); found != loaded.end()) {
-        if (!found->second.error.empty()) {
-            throw std::runtime_error("The UI image \"" + std::string(path) + "\" could not be loaded. " + found->second.error);
-        }
-        return found->second.texture;
-    }
-    loaded.emplace(std::string(path), ImageEntry{});
-    // clang-format off
-    engine.getAssets().textureAsync(path, [this, weakAlive = std::weak_ptr<bool>(alive), key = std::string(path), filter](graphics::Texture texture, std::string error) {
-        if (weakAlive.expired()) {
-            return;
-        }
-        ImageEntry& entry = images[static_cast<std::size_t>(filter)][key];
-        entry.texture = std::move(texture);
-        entry.error = std::move(error);
-    }, {.filter = filter, .wrap = graphics::Texture::Wrap::Clamp});
-    // clang-format on
-    return {};
 }
 
 void UiPlugin::installLua(core::Engine&, lua_State* L) {

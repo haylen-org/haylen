@@ -24,7 +24,7 @@ DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& compo
         const float side = std::min(bounds.width, bounds.height);
         const ImVec2 origin = ImGui::GetCursorScreenPos();
         if (!image.empty()) {
-            Surfaces::drawImage(context, context.getImage(image), {origin.x, origin.y, side, side});
+            Surfaces::drawImage(context, context.getImage(image, {side, side}), {origin.x, origin.y, side, side});
         }
         ImGui::Dummy({side, side});
         ImGui::EndDragDropSource();
@@ -67,7 +67,7 @@ void DragAndDrop::drawCarried(Context& context, ImGuiID item, const math::Rect& 
         return;
     }
     const float side = std::min(bounds.width, bounds.height) * 0.6F;
-    Surfaces::drawImage(context, context.getImage(carried->image), {bounds.getRight() - side * 0.75F, bounds.y - side * 0.25F, side, side}, math::Color::white().withAlpha(0.85F));
+    Surfaces::drawImage(context, context.getImage(carried->image, {side, side}), {bounds.getRight() - side * 0.75F, bounds.y - side * 0.25F, side, side}, math::Color::white().withAlpha(0.85F));
 }
 
 void DragAndDrop::dropCarriedFrom(Context& context, const Component& component) {

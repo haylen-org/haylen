@@ -53,7 +53,7 @@ void TouchButton::render(Context& context, const math::Rect& bounds) {
     const math::Rect content = circle.translated({0.0F, pressed ? 2.0F : 0.0F});
     if (!image.empty()) {
         const float icon = radius;
-        Surfaces::drawImage(context, context.getImage(image), {content.getCenter().x - icon * 0.5F, content.getCenter().y - icon * 0.5F, icon, icon});
+        Surfaces::drawImage(context, context.getImage(image, {icon, icon}), {content.getCenter().x - icon * 0.5F, content.getCenter().y - icon * 0.5F, icon, icon});
     }
     if (const std::string shown = context.getText(text); !shown.empty()) {
         Typography::drawAligned(context, Theme::Font::Button, content, context.getColor(Theme::Color::OnAccent), shown, Alignment::Center);

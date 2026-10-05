@@ -919,7 +919,7 @@ Lua has no separate empty list, so an empty table converts to an empty JSON obje
 | theme color | The name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. |
 | length | A non-negative number, or `'auto'` to let the content decide. |
 | insets | One number for every side, `{vertical, horizontal}`, or `{top, right, bottom, left}`. Every value is non-negative. |
-| image | A texture path relative to the package `content/` folder. Images load in the background, and a component draws nothing in their place until they arrive. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
+| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, and toolbar and icon buttons tint them like their text. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
 | tone | `'neutral'`, `'accent'`, `'success'`, `'warning'`, `'danger'` or `'information'`. |
 | variant | One of `'default'`, `'primary'`, `'destructive'`, `'toolbar'`, `'icon'` or `'link'`, described under [button](#uibuttonproperties). |
 | items | A list of [items](#items). |
@@ -2247,15 +2247,16 @@ A small square picture, such as an item or resource icon, optionally tinted with
 ```lua
 local ui = require('haylen.ui')
 
+-- An SVG icon drawn with currentColor takes the color of the icon, sharp at any size.
 ui.mount(ui.row{
     ui.icon{image = 'ui/coin.png'},
-    ui.icon{image = 'ui/heart.png', size = 48, color = 'danger'},
+    ui.icon{image = 'icons/heart.svg', size = 48, color = 'danger'},
 })
 ```
 
 ### ui.image(properties)
 
-A picture that measures as large as its texture times `scale` and fits into the bounds it gets.
+A picture that measures as large as its natural size, the pixels of an image file or the size of an SVG document, times `scale`, and fits into the bounds it gets.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2263,13 +2264,14 @@ A picture that measures as large as its texture times `scale` and fits into the 
 | `fit` | string | `'contain'` | The value `'contain'` shows the whole picture inside the bounds, `'cover'` fills the bounds and crops what spills over, and `'fill'` stretches the picture to the bounds. |
 | `scale` | number from 0 to 64 | `1` | Measured size relative to the texture. |
 | `tint` | color | `'#FFFFFFFF'` | Color multiplied with the picture. |
+| `radius` | number from 0 to 4096 | `0` | Rounds the corners of the picture by this radius, at most half its shorter side, such as a photo on a card. |
 
 ```lua
 local ui = require('haylen.ui')
 
 ui.mount(ui.column{
-    ui.image{image = 'ui/logo.png', scale = 2},
-    ui.image{image = 'ui/banner.png', fit = 'cover', height = 200, align = 'stretch', tint = '#C0FFFFFF'},
+    ui.image{image = 'ui/logo.svg', scale = 4},
+    ui.image{image = 'ui/banner.png', fit = 'cover', height = 200, align = 'stretch', tint = '#C0FFFFFF', radius = 16},
 })
 ```
 

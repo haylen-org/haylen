@@ -13,12 +13,16 @@
 
 namespace haylen::ui {
 
-void Surfaces::drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, ImU32 color) {
+void Surfaces::drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, ImU32 color, float radius) {
     if (destination.width <= 0.0F || destination.height <= 0.0F || source.width <= 0.0F || source.height <= 0.0F) {
         return;
     }
     const ImVec2 uvMin{source.x / textureSize.x, source.y / textureSize.y};
     const ImVec2 uvMax{source.getRight() / textureSize.x, source.getBottom() / textureSize.y};
+    if (radius > 0.0F) {
+        list.AddImageRounded(texture, ImGuiConverter::toImVec2(destination.getMin()), ImGuiConverter::toImVec2(destination.getMax()), uvMin, uvMax, color, std::min(radius, std::min(destination.width, destination.height) * 0.5F));
+        return;
+    }
     list.AddImage(texture, ImGuiConverter::toImVec2(destination.getMin()), ImGuiConverter::toImVec2(destination.getMax()), uvMin, uvMax, color);
 }
 
@@ -103,12 +107,12 @@ math::Insets Surfaces::getFrame(Context& context, Theme::Surface role) {
     return image != nullptr ? image->padding : math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth));
 }
 
-void Surfaces::drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint, math::Rect source) {
+void Surfaces::drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint, math::Rect source, float radius) {
     if (!texture.isValid()) {
         return;
     }
     const math::Rect area = source.isEmpty() ? math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y} : source;
-    drawPiece(*ImGui::GetWindowDrawList(), context.getTextureReference(texture), bounds, area, texture.getSize(), ImGuiConverter::toImU32(tint));
+    drawPiece(*ImGui::GetWindowDrawList(), context.getTextureReference(texture), bounds, area, texture.getSize(), ImGuiConverter::toImU32(tint), radius);
 }
 
 } // namespace haylen::ui

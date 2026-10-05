@@ -19,8 +19,8 @@ void ImageButton::readProperties(PropertyReader& reader) {
 }
 
 math::Vec2 ImageButton::measureContent(Context& context, float) {
-    const graphics::Texture texture = context.getImage(image);
-    return texture.isValid() ? texture.getSize() * scale : math::Vec2{context.getMetric(Theme::Metric::ControlHeight), context.getMetric(Theme::Metric::ControlHeight)};
+    const math::Vec2 natural = context.getImageSize(image);
+    return natural.x > 0.0F && natural.y > 0.0F ? natural * scale : math::Vec2{context.getMetric(Theme::Metric::ControlHeight), context.getMetric(Theme::Metric::ControlHeight)};
 }
 
 void ImageButton::render(Context& context, const math::Rect& bounds) {
@@ -33,7 +33,7 @@ void ImageButton::render(Context& context, const math::Rect& bounds) {
     const math::Color shade = dimmed ? math::Color{tint.r * 0.9F, tint.g * 0.9F, tint.b * 0.9F, tint.a} : tint;
     const float pressed = state.held && pressedImage.empty() ? 2.0F : 0.0F;
     const math::Rect area = bounds.translated({0.0F, pressed});
-    Surfaces::drawImage(context, context.getImage(path), area, shade);
+    Surfaces::drawImage(context, context.getImage(path, area.getSize()), area, shade);
     if (const std::string shown = context.getText(text); !shown.empty()) {
         Typography::drawAligned(context, Theme::Font::Button, area, context.getColor(Theme::Color::OnAccent), shown, Alignment::Center);
     }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -11,7 +10,6 @@
 #include <vector>
 
 #include "haylen/core/Signal.hpp"
-#include "haylen/graphics/Texture.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/text/FontFamily.hpp"
@@ -30,6 +28,10 @@ namespace haylen::core {
 class Scene;
 struct SceneView;
 } // namespace haylen::core
+
+namespace haylen::ui {
+class ImageLibrary;
+}
 
 namespace haylen::plugins {
 
@@ -135,13 +137,6 @@ class UiPlugin final : public Plugin {
         std::uint64_t order = 0;
     };
 
-    struct ImageEntry {
-        graphics::Texture texture;
-        std::string error;
-    };
-
-    // Returns the texture of a UI image with a filter, which loads in the background and is empty until it arrives.
-    [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path, graphics::Texture::Filter filter);
     void collectGuis(core::Engine& engine, const core::SceneView& view);
     void deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event);
     void deliverAtOnce(ui::Gui& gui, const ui::Event& event);
@@ -173,13 +168,12 @@ class UiPlugin final : public Plugin {
     std::vector<const ui::Gui*> shownGuis;
     std::vector<std::shared_ptr<ui::Gui>> preparing;
     std::uint64_t nextOrder = 0;
-    std::array<std::map<std::string, ImageEntry, std::less<>>, 2> images;
+    std::unique_ptr<ui::ImageLibrary> images;
     std::map<std::string, std::string, std::less<>> fontPaths;
 
     // The base of every theme file that `loadTheme` read, by its asset path.
     std::map<std::string, std::string, std::less<>> themeFiles;
     std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fontFamilies;
-    std::shared_ptr<bool> alive = std::make_shared<bool>(true);
     std::set<std::string, std::less<>> heldButtons;
     std::set<std::string, std::less<>> sticks;
     double elapsed = 0.0;

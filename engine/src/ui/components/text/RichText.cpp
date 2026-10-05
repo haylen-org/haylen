@@ -50,7 +50,7 @@ text::RichText& RichText::refreshText(Context& context) {
         preparedFor = owner;
         text::RichTextOptions options{.family = std::move(family), .size = size, .bold = bold, .italic = italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = revealSpeed};
         options.fonts = [owner](std::string_view name) { return owner->getFontFamily(name); };
-        options.images = [owner](std::string_view path) { return owner->getImage(path); };
+        options.images = [owner](std::string_view path) { return owner->getImageAtScale(path, 1.0F); };
         if (richText) {
             richText->setOptions(std::move(options));
         } else {

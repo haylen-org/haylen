@@ -26,7 +26,7 @@ void Avatar::render(Context& context, const math::Rect& bounds) {
     const float side = std::min(bounds.width, bounds.height);
     const math::Rect circle{bounds.getCenter().x - side * 0.5F, bounds.getCenter().y - side * 0.5F, side, side};
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    const graphics::Texture texture = image.empty() ? graphics::Texture{} : context.getImage(image);
+    const graphics::Texture texture = image.empty() ? graphics::Texture{} : context.getImage(image, circle.getSize());
     if (texture.isValid()) {
         list.AddImageRounded(context.getTextureReference(texture), ImGuiConverter::toImVec2(circle.getMin()), ImGuiConverter::toImVec2(circle.getMax()), {0.0F, 0.0F}, {1.0F, 1.0F}, ImGuiConverter::toImU32(math::Color::white()), side * 0.5F);
         return;

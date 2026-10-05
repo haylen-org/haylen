@@ -154,6 +154,7 @@ set(HAYLEN_TEST_SOURCES
   ui/CollectionTests.cpp
   ui/ComponentTests.cpp
   ui/GuiTests.cpp
+  ui/ImageLibraryTests.cpp
   ui/LabelTests.cpp
   ui/LayoutTests.cpp
   ui/FocusTests.cpp

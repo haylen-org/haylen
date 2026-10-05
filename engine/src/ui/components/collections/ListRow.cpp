@@ -34,7 +34,7 @@ void ListRow::drawContent(Context& context, const math::Rect& bounds, const Choi
     float x = bounds.x + context.getMetric(Theme::Metric::RowPadding);
     if (!item.image.empty()) {
         const float icon = context.getMetric(Theme::Metric::IconSize);
-        Surfaces::drawImage(context, context.getImage(item.image), context.mirror({x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon}, bounds));
+        Surfaces::drawImage(context, context.getImage(item.image, {icon, icon}), context.mirror({x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon}, bounds));
         x += icon + context.getMetric(Theme::Metric::RowPadding);
     }
     const math::Rect text = context.mirror(math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - context.getMetric(Theme::Metric::RowPadding), bounds.getBottom()}), bounds);
