@@ -190,6 +190,18 @@ Particle emitters from Lua tables, effect files and composite effects: weather, 
 | `PRT-034` | Effect library | Every effect of "content/particles/library" by category from its "catalog.json", one-shot effects fired again on a press and by themselves, looping effects at the cursor, and the scale, rate, speed, lifetime, spread, gravity and damping of every emitter on sliders, with a night canvas for the lights. |  |
 | `PRT-035` | Effect library check | Every effect file of the library loaded on the worker threads, its emitters created and run, and the file and the error of any effect that fails, which fails the test. |  |
 
+#### Screen and sprite effects (EFX)
+
+Camera shake and flashes, distortion, dissolving sprites, outlines and glows, and the post-processing chain of world canvases. The tests are in `source/categories/effects/`, and they draw the landscape of `source/categories/effects/scenery.lua` from the images of the camera and sprite tests.
+
+| Code | Test | What it shows | Unsupported on |
+| --- | --- | --- | --- |
+| `EFX-001` | Shake and flash | Hits on three robots that add camera trauma, whose shake decays with "traumaDecay", flash the view with "camera:flash" and flash the struck robot with the "flash" of its draw, next to a directional recoil. |  |
+| `EFX-002` | Heat haze and shock rings | Draws with a "distortion" in a canvas with post-processing: heat haze over a campfire, shock rings from the cursor, a rippling shield and a glass bubble that follows the cursor, with the bend distance on a slider. |  |
+| `EFX-003` | Dissolve | Sprites that dissolve into noise with a colored edge and come back, with the duration, the edge width, the noise cell size and the edge color on controls. |  |
+| `EFX-004` | Outline and glow | A selection outline on the sprite nearest the cursor and pulsing glows around the sprites picked with a press, by day and by night, with widths, sizes and colors on controls. |  |
+| `EFX-005` | Post-processing chain | Bloom, vignette, saturation, contrast, brightness, color grading through lookup textures made in Lua, chromatic aberration, pixelation and blur over a scene with fire and a torch at the cursor, with presets and the whole chain on a switch. |  |
+
 #### Scenes and transitions (SCN)
 
 The scene stack with every transition effect, custom effects, loading with progress and errors, every hook, transparent overlays and the game pause. The tests are in `source/categories/scenes/`.

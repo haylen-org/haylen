@@ -6,7 +6,7 @@ local catalog = {}
 catalog.platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web', 'headless'}
 
 catalog.sections = {
-    {title = 'Graphics', folders = {'sprites', 'camera', 'text', 'lighting', 'nine-slice', 'particles', 'scenes', 'shaders'}},
+    {title = 'Graphics', folders = {'sprites', 'camera', 'text', 'lighting', 'nine-slice', 'particles', 'effects', 'scenes', 'shaders'}},
     {title = 'Gameplay', folders = {'algorithms', 'audio', 'events', 'input', 'physics', 'tiled', 'tween'}},
     {title = 'Interface', folders = {'interface', 'orientation', 'safe-area'}},
     {title = 'System', folders = {'development', 'files', 'localization', 'native', 'network', 'platform', 'plugins', 'preferences', 'varn'}},
