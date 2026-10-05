@@ -70,7 +70,11 @@ float UtilityLua::callInput(Scripted& self, lua_Integer input) {
     lua_remove(L, -2);
     lua_pushvalue(L, 2);
     lua_call(L, 1, 1);
-    const auto value = static_cast<float>(luaL_checknumber(L, -1));
+    int isNumber = 0;
+    const auto value = static_cast<float>(lua_tonumberx(L, -1, &isNumber));
+    if (isNumber == 0) {
+        luaL_error(L, "A utility input must return a number, not %s.", luaL_typename(L, -1));
+    }
     lua_pop(L, 1);
     return value;
 }

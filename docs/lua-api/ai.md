@@ -222,7 +222,7 @@ A behavior tree is built from a description of nodes and ticked once per update.
 
 ### Node descriptions
 
-The node functions return plain description tables that `ai.newBehaviorTree` reads.
+The node functions return plain description tables that `ai.newBehaviorTree` reads. A description holds its `kind` and, depending on the kind, `children`, `count`, `seconds` or the leaf function `fn`, and any other key, such as a misspelled `second`, raises `Unknown option "<key>".`
 
 | Function | Meaning |
 | --- | --- |
@@ -257,7 +257,7 @@ print(brain.kind) -- selector
 
 ### ai.newBehaviorTree(root, blackboard)
 
-Creates a `BehaviorTree` from a node description and an optional blackboard table, which defaults to a new table. A malformed description raises an error such as `Unknown behavior tree node "<kind>".` or `A parallel node needs between one success and as many successes as it has children.` The same description may appear in several places of a tree, but a description that contains itself raises `A behavior tree description contains itself.`
+Creates a `BehaviorTree` from a node description and an optional blackboard table, which defaults to a new table. A malformed description raises an error such as `Unknown behavior tree node "<kind>". The kind of a node is "sequence", "selector", "parallel", "inverter", "succeeder", "failer", "repeater", "retry", "cooldown", "timeout", "wait", "condition" or "action".`, `Unknown option "<key>".`, `A behavior tree leaf needs a function in "fn", not <type>.` or `A parallel node needs between one success and as many successes as it has children.` The same description may appear in several places of a tree, but a description that contains itself raises `A behavior tree description contains itself.`
 
 ```lua
 local ai = require('haylen.ai')
@@ -282,7 +282,7 @@ require('haylen.scene').push({
 
 ### tree:tick(dt), tree:reset()
 
-The method `tick` advances the tree time by `dt`, ticks the root and returns its status. A leaf that ticks its own tree raises `The behavior tree is already ticking.` The method `reset` forgets the running children, counters and timers, keeping the blackboard.
+The method `tick` advances the tree time by `dt`, ticks the root and returns its status. A leaf that ticks its own tree raises `The behavior tree is already ticking.` The method `reset` forgets the running children, counters and timers, keeping the blackboard. A leaf that resets its own tree raises `The behavior tree cannot reset while it ticks. Call "reset" after "tick" returns.` A tick that raises an error leaves the tree ready for the next tick.
 
 ```lua
 local ai = require('haylen.ai')
@@ -326,7 +326,7 @@ Creates a selector from a list of options. Unknown keys raise `Unknown option "<
 | Consideration key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `name` | string | `''` | Label for debugging. |
-| `input` | function | required | Called with the context and returns a number. |
+| `input` | function | required | Called with the context and returns a number. Any other result raises `A utility input must return a number, not <type>.` |
 | `minimum`, `maximum` | number | `0`, `1` | Range of the input that maps to 0 and 1. |
 | `curve` | table | linear | Response curve `{shape, slope, exponent, shift, offset}`. |
 
@@ -382,7 +382,7 @@ An `InfluenceMap` is a grid of influence over the world, such as the threat of e
 
 ### ai.newInfluenceMap(options)
 
-Creates a map from `{columns, rows, cellSize = 32, x = 0, y = 0}`. A side below 1 or a cell size that is not positive raises `An influence map needs at least one cell on each side and a positive cell size.`
+Creates a map from `{columns, rows, cellSize = 32, x = 0, y = 0}`. A side below 1 or a cell size that is not finite and above 0 raises `An influence map needs at least one cell on each side and a finite cell size above 0.`
 
 ```lua
 local ai = require('haylen.ai')
@@ -445,7 +445,7 @@ tension:scale(0.5)
 
 ### map:get(column, row), map:set(column, row, value), map:sample(x, y), map:values()
 
-The methods `get` and `set` read and write one cell and raise `The cell is outside the influence map.` outside it. The method `sample` returns the value at a world position, interpolated between cell centers, and 0 outside the map or for a NaN position. The method `values` returns every value row by row.
+The methods `get` and `set` read and write one cell and raise `The cell (<column>, <row>) is outside the influence map, whose columns go from 0 to <last column> and rows from 0 to <last row>.` outside it. The method `sample` returns the value at a world position, interpolated between cell centers, and 0 outside the map or for a NaN position. The method `values` returns every value row by row.
 
 ```lua
 local ai = require('haylen.ai')

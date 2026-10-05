@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 #include <numbers>
 #include <stdexcept>
 
@@ -13,8 +14,8 @@ namespace haylen::ai {
 const std::array<std::pair<std::string_view, InfluenceMap::Falloff>, 3> InfluenceMap::kFalloffNames{{{"constant", Falloff::Constant}, {"linear", Falloff::Linear}, {"quadratic", Falloff::Quadratic}}};
 
 InfluenceMap::InfluenceMap(int columns, int rows, float size, math::Vec2 corner) : width(columns), height(rows), cellSize(size), origin(corner) {
-    if (columns < 1 || rows < 1 || size <= 0.0F) {
-        throw std::invalid_argument("An influence map needs at least one cell on each side and a positive cell size.");
+    if (columns < 1 || rows < 1 || !std::isfinite(size) || size <= 0.0F) {
+        throw std::invalid_argument("An influence map needs at least one cell on each side and a finite cell size above 0.");
     }
     values.assign(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), 0.0F);
 }
@@ -28,17 +29,19 @@ std::string_view InfluenceMap::falloffName(Falloff value) noexcept {
     return std::ranges::find(kFalloffNames, value, &std::pair<std::string_view, Falloff>::second)->first;
 }
 
-float InfluenceMap::get(int column, int row) const {
+void InfluenceMap::checkCell(int column, int row) const {
     if (column < 0 || row < 0 || column >= width || row >= height) {
-        throw std::out_of_range("The cell is outside the influence map.");
+        throw std::out_of_range(std::format("The cell ({}, {}) is outside the influence map, whose columns go from 0 to {} and rows from 0 to {}.", column, row, width - 1, height - 1));
     }
+}
+
+float InfluenceMap::get(int column, int row) const {
+    checkCell(column, row);
     return values[indexOf(column, row)];
 }
 
 void InfluenceMap::set(int column, int row, float value) {
-    if (column < 0 || row < 0 || column >= width || row >= height) {
-        throw std::out_of_range("The cell is outside the influence map.");
-    }
+    checkCell(column, row);
     values[indexOf(column, row)] = value;
 }
 

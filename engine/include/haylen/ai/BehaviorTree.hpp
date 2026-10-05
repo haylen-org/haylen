@@ -81,9 +81,9 @@ class BehaviorTree final {
     // Throws `std::invalid_argument` for decorators without exactly one child, leaves without a function or a parallel node whose success count does not fit its children.
     explicit BehaviorTree(Node root);
 
-    // Advances the tree time and ticks the root, which returns to its first child after it finishes.
+    // Advances the tree time and ticks the root, which returns to its first child after it finishes. Throws `std::logic_error` when a leaf ticks the tree it runs in.
     Status tick(float deltaSeconds);
-    // Forgets the running children, counters and timers, keeping the blackboard.
+    // Forgets the running children, counters and timers, keeping the blackboard. Throws `std::logic_error` when a leaf resets the tree it runs in.
     void reset();
 
     [[nodiscard]] Blackboard& getBlackboard() noexcept {
@@ -126,6 +126,7 @@ class BehaviorTree final {
     Blackboard blackboard;
     Status status = Status::Success;
     float time = 0.0F;
+    bool ticking = false;
 };
 
 } // namespace haylen::ai

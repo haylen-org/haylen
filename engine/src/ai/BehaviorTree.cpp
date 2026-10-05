@@ -104,12 +104,28 @@ std::uint32_t BehaviorTree::compile(Node node) {
 }
 
 BehaviorTree::Status BehaviorTree::tick(float deltaSeconds) {
+    if (ticking) {
+        throw std::logic_error("The behavior tree is already ticking.");
+    }
+
+    // A leaf that fails ends the tick all the same, so the tree ticks again afterwards.
+    struct TickScope {
+        bool& active;
+        ~TickScope() {
+            active = false;
+        }
+    } scope{ticking};
+    ticking = true;
     time += deltaSeconds;
     status = run(0, deltaSeconds);
     return status;
 }
 
+// The nodes that run during a tick hold their progress, so a reset waits until the tick returned.
 void BehaviorTree::reset() {
+    if (ticking) {
+        throw std::logic_error("The behavior tree cannot reset while it ticks. Call \"reset\" after \"tick\" returns.");
+    }
     for (std::uint32_t index = 0; index < nodes.size(); ++index) {
         resetNode(index);
         nodes[index].readyAt = 0.0F;

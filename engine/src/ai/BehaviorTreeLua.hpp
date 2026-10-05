@@ -4,6 +4,8 @@
 
 #include <array>
 #include <optional>
+#include <span>
+#include <string>
 #include <string_view>
 
 #include "haylen/ai/BehaviorTree.hpp"
@@ -17,7 +19,6 @@ class BehaviorTreeLua final {
     struct Scripted {
         std::optional<BehaviorTree> tree;
         lua_State* caller = nullptr;
-        bool ticking = false;
     };
 
     static void install(lua_State* L);
@@ -28,6 +29,18 @@ class BehaviorTreeLua final {
   private:
     // The kind names of descriptions, in the order of `BehaviorTree::Kind`.
     static constexpr std::array<std::string_view, 13> kKinds{"sequence", "selector", "parallel", "inverter", "succeeder", "failer", "repeater", "retry", "cooldown", "timeout", "wait", "condition", "action"};
+
+    // The keys that descriptions of each group of kinds hold.
+    static constexpr std::array<std::string_view, 2> kCompositeFields{"kind", "children"};
+    static constexpr std::array<std::string_view, 3> kCountedFields{"kind", "children", "count"};
+    static constexpr std::array<std::string_view, 3> kTimedFields{"kind", "children", "seconds"};
+    static constexpr std::array<std::string_view, 2> kWaitFields{"kind", "seconds"};
+    static constexpr std::array<std::string_view, 2> kLeafFields{"kind", "fn"};
+
+    [[nodiscard]] static std::span<const std::string_view> getFields(BehaviorTree::Kind kind) noexcept;
+
+    // Lists the kind names for error messages, such as `"sequence", "selector" or "action"`.
+    [[nodiscard]] static std::string listKinds();
 
     // Reads the description at `index`, keeping its leaf functions in the leaves list at `leavesIndex` and the descriptions being read in the set at `pathIndex`, which rejects a description that contains itself.
     [[nodiscard]] static BehaviorTree::Node readNode(lua_State* L, int index, int leavesIndex, int pathIndex, Scripted& self);

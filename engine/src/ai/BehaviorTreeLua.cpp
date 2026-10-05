@@ -7,6 +7,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/Userdata.hpp"
 
@@ -138,6 +139,39 @@ BehaviorTree::Status BehaviorTreeLua::callLeaf(Scripted& self, lua_Integer leaf,
     return status;
 }
 
+std::span<const std::string_view> BehaviorTreeLua::getFields(BehaviorTree::Kind kind) noexcept {
+    switch (kind) {
+    case BehaviorTree::Kind::Parallel:
+    case BehaviorTree::Kind::Repeater:
+    case BehaviorTree::Kind::Retry:
+        return kCountedFields;
+    case BehaviorTree::Kind::Cooldown:
+    case BehaviorTree::Kind::Timeout:
+        return kTimedFields;
+    case BehaviorTree::Kind::Wait:
+        return kWaitFields;
+    case BehaviorTree::Kind::Condition:
+    case BehaviorTree::Kind::Action:
+        return kLeafFields;
+    case BehaviorTree::Kind::Sequence:
+    case BehaviorTree::Kind::Selector:
+    case BehaviorTree::Kind::Inverter:
+    case BehaviorTree::Kind::Succeeder:
+    case BehaviorTree::Kind::Failer:
+        break;
+    }
+    return kCompositeFields;
+}
+
+std::string BehaviorTreeLua::listKinds() {
+    std::string list;
+    for (std::size_t index = 0; index < kKinds.size(); ++index) {
+        list += index == 0 ? "" : (index + 1 == kKinds.size() ? " or " : ", ");
+        list += "\"" + std::string(kKinds[index]) + "\"";
+    }
+    return list;
+}
+
 BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leavesIndex, int pathIndex, Scripted& self) {
     luaL_checktype(L, index, LUA_TTABLE);
     luaL_checkstack(L, 4, "behavior tree too deep");
@@ -149,18 +183,16 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
     lua_pop(L, 1);
 
     lua_getfield(L, description, "kind");
-    const auto found = std::find(kKinds.begin(), kKinds.end(), lua::Stack::read<std::string_view>(L, -1));
+    const auto found = lua_type(L, -1) == LUA_TSTRING ? std::find(kKinds.begin(), kKinds.end(), lua::Stack::read<std::string_view>(L, -1)) : kKinds.end();
     if (found == kKinds.end()) {
-        luaL_error(L, "Unknown behavior tree node \"%s\".", lua_tostring(L, -1));
+        luaL_error(L, "Unknown behavior tree node \"%s\". The kind of a node is %s.", luaL_tolstring(L, -1, nullptr), listKinds().c_str());
     }
     lua_pop(L, 1);
 
     BehaviorTree::Node node{.kind = static_cast<BehaviorTree::Kind>(found - kKinds.begin())};
-    lua_getfield(L, description, "count");
-    node.count = static_cast<int>(luaL_optinteger(L, -1, 0));
-    lua_getfield(L, description, "seconds");
-    node.seconds = static_cast<float>(luaL_optnumber(L, -1, 0.0));
-    lua_pop(L, 2);
+    lua::Table::checkFields(L, description, {getFields(node.kind)});
+    lua::Table::readField(L, description, "count", node.count);
+    lua::Table::readField(L, description, "seconds", node.seconds);
 
     // The description stays in the path while its children are read, so a child that leads back to it is caught instead of recursing forever.
     if (lua_getfield(L, description, "children") == LUA_TTABLE) {
@@ -181,8 +213,9 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
 
     if (node.kind == BehaviorTree::Kind::Condition || node.kind == BehaviorTree::Kind::Action) {
         const lua_Integer leaf = luaL_len(L, leavesIndex) + 1;
-        lua_getfield(L, description, "fn");
-        luaL_checktype(L, -1, LUA_TFUNCTION);
+        if (lua_getfield(L, description, "fn") != LUA_TFUNCTION) {
+            luaL_error(L, "A behavior tree leaf needs a function in \"fn\", not %s.", luaL_typename(L, -1));
+        }
         lua_rawseti(L, leavesIndex, leaf);
         Scripted* owner = &self;
         if (node.kind == BehaviorTree::Kind::Condition) {
@@ -216,23 +249,19 @@ int BehaviorTreeLua::newTree(lua_State* L) {
     return 1;
 }
 
+// A leaf that ticks its tree again fails, and the outer tick keeps calling its leaves on its own thread.
 int BehaviorTreeLua::tick(lua_State* L) {
     Scripted& self = lua::Userdata::check<Scripted>(L, 1);
     const auto deltaSeconds = lua::Stack::read<float>(L, 2);
-    if (self.ticking) {
-        return luaL_error(L, "The behavior tree is already ticking.");
-    }
     lua_settop(L, 1);
 
-    struct TickScope {
+    struct CallerScope {
         Scripted& owner;
-        ~TickScope() {
-            owner.ticking = false;
-            owner.caller = nullptr;
+        lua_State* outer;
+        ~CallerScope() {
+            owner.caller = outer;
         }
-    } scope{self};
-    self.ticking = true;
-    self.caller = L;
+    } scope{self, std::exchange(self.caller, L)};
     lua::Stack::push(L, BehaviorTree::statusName(self.tree->tick(deltaSeconds)));
     return 1;
 }

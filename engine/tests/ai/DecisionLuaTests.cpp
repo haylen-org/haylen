@@ -66,6 +66,24 @@ TEST_F(DecisionLuaTest, TicksBehaviorTreesWithLuaLeaves) {
     EXPECT_NE(lua("local tree tree = ai.newBehaviorTree(ai.action(function() tree:tick(0) end)) tree:tick(0)").find("already ticking"), std::string::npos);
 }
 
+TEST_F(DecisionLuaTest, RefusesToResetATreeWhileItTicks) {
+    EXPECT_NE(lua("local tree tree = ai.newBehaviorTree(ai.parallel({ai.action(function() tree:reset() return 'running' end), ai.action(function() return 'running' end)}, 1)) tree:tick(0)").find("The behavior tree cannot reset while it ticks. Call \"reset\" after \"tick\" returns."), std::string::npos);
+
+    // A tick that failed leaves the tree ready for the next one.
+    EXPECT_EQ(lua("local calls, tree = 0 tree = ai.newBehaviorTree(ai.action(function() calls = calls + 1 if calls == 1 then tree:reset() end end)) local ticked = pcall(tree.tick, tree, 0) return tostring(ticked) .. ' ' .. tree:tick(0)"), "false success");
+}
+
+TEST_F(DecisionLuaTest, RejectsDescriptionsWithKeysTheirKindDoesNotHave) {
+    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'wait', second = 2})").find("Unknown option \"second\"."), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'action', fn = function() end, count = 2})").find("Unknown option \"count\"."), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'sequence', children = {}, seconds = 1})").find("Unknown option \"seconds\"."), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'wait', seconds = 'long'})").find("The option \"seconds\""), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'loop'})").find("Unknown behavior tree node \"loop\". The kind of a node is \"sequence\", \"selector\", \"parallel\", \"inverter\", \"succeeder\", \"failer\", \"repeater\", \"retry\", \"cooldown\", \"timeout\", \"wait\", \"condition\" or \"action\"."), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree({})").find("Unknown behavior tree node \"nil\"."), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'condition'})").find("A behavior tree leaf needs a function in \"fn\", not nil."), std::string::npos);
+    EXPECT_EQ(lua("return ai.newBehaviorTree({kind = 'wait', seconds = 1}):tick(1)"), "success");
+}
+
 TEST_F(DecisionLuaTest, ReadsDeepTreesAndRejectsDescriptionsThatContainThemselves) {
     EXPECT_EQ(lua("local node = ai.action(function() return 'success' end) for level = 1, 40 do node = ai.sequence({node}) end local tree = ai.newBehaviorTree(node) return tree:tick(0) .. ' ' .. tree.nodeCount"), "success 41");
     // A description may appear twice in a tree as long as it does not contain itself.
@@ -98,6 +116,7 @@ TEST_F(DecisionLuaTest, ChoosesByUtility) {
     EXPECT_EQ(lua("bot.health = 100 bot.distance = 200 return tostring(brain:choose(bot))"), "nil");
     EXPECT_NE(lua("brain:score('sleep', bot)").find("unknown option"), std::string::npos);
     EXPECT_NE(lua("ai.newUtilitySelector({{name = 'x', considerations = {{input = function() return 0 end, curve = {shape = 'wave'}}}}})").find("unknown value 'wave'"), std::string::npos);
+    EXPECT_NE(lua("ai.newUtilitySelector({{name = 'x', considerations = {{input = function() return 'high' end}}}}):choose({})").find("A utility input must return a number, not string."), std::string::npos);
 }
 
 TEST_F(DecisionLuaTest, InputsScoreTheirOwnSelectorAgain) {
@@ -135,8 +154,11 @@ TEST_F(DecisionLuaTest, SpreadsInfluence) {
     EXPECT_EQ(lua("threat:stamp(105, 5, 1, 20, 'constant') return threat:get(0, 0)"), "4.0");
     EXPECT_EQ(lua("local x, y, value = threat:findHighest(150, 50, math.huge) return x .. ' ' .. y .. ' ' .. value .. ' ' .. threat:sample(0 / 0, 55) .. ' ' .. tostring(threat:findHighest(0 / 0, 0, 10))"), "105.0 5.0 4.0 0.0 nil");
     EXPECT_NE(lua("threat:stamp(0, 0, 1, 10, 'spiky')").find("unknown value 'spiky'"), std::string::npos);
-    EXPECT_NE(lua("threat:get(20, 0)").find("outside the influence map"), std::string::npos);
+    EXPECT_NE(lua("threat:get(20, 0)").find("The cell (20, 0) is outside the influence map, whose columns go from 0 to 19 and rows from 0 to 9."), std::string::npos);
+    EXPECT_NE(lua("threat:set(-1, 3, 1)").find("The cell (-1, 3) is outside"), std::string::npos);
     EXPECT_NE(lua("ai.newInfluenceMap({columns = 0, rows = 1})").find("at least one cell"), std::string::npos);
+    EXPECT_NE(lua("ai.newInfluenceMap({columns = 1, rows = 1, cellSize = 0 / 0})").find("An influence map needs at least one cell on each side and a finite cell size above 0."), std::string::npos);
+    EXPECT_NE(lua("ai.newInfluenceMap({columns = 1, rows = 1, cellSize = math.huge})").find("finite cell size above 0"), std::string::npos);
 }
 
 } // namespace haylen

@@ -28,7 +28,7 @@ class InfluenceMap final {
         float value = 0.0F;
     };
 
-    // Throws `std::invalid_argument` for a side below 1 or a cell size that is not positive.
+    // Throws `std::invalid_argument` for a side below 1 or a cell size that is not finite and above 0.
     InfluenceMap(int columns, int rows, float size, math::Vec2 corner = {});
 
     [[nodiscard]] static std::optional<Falloff> falloffFromName(std::string_view name) noexcept;
@@ -83,6 +83,9 @@ class InfluenceMap final {
         int lastColumn = 0;
         int lastRow = 0;
     };
+
+    // Throws `std::out_of_range` with the valid columns and rows when the cell is outside the map.
+    void checkCell(int column, int row) const;
 
     // Returns the cells around a circle, clamped to the map.
     [[nodiscard]] Range rangeAround(math::Vec2 center, float radius) const noexcept;
