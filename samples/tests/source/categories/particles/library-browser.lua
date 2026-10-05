@@ -220,12 +220,12 @@ function LibraryBrowser:update(dt)
 end
 
 -- A grid behind the effects shows how distortion effects bend the image.
-function LibraryBrowser.drawGrid()
-    for x = -960, 960, 80 do
-        graphics2d.drawLine(x, -540, x, 540, 2, '#30FFFFFF', {layer = -9})
+function LibraryBrowser.drawGrid(area)
+    for x = area.x - area.x % 80, area:right(), 80 do
+        graphics2d.drawLine(x, area.y, x, area:bottom(), 2, '#30FFFFFF', {layer = -9})
     end
-    for y = -540, 540, 80 do
-        graphics2d.drawLine(-960, y, 960, y, 2, '#30FFFFFF', {layer = -9})
+    for y = area.y - area.y % 80, area:bottom(), 80 do
+        graphics2d.drawLine(area.x, y, area:right(), y, 2, '#30FFFFFF', {layer = -9})
     end
 end
 
@@ -239,11 +239,12 @@ function LibraryBrowser:render()
 end
 
 function LibraryBrowser:draw(area)
+    local bounds = graphics2d.canvasBounds()
     ParticleTest.backdrop({0.05, 0.06, 0.11}, {0.1, 0.11, 0.2})
-    LibraryBrowser.drawGrid()
+    LibraryBrowser.drawGrid(bounds)
     if self.floor then
         local y = self.system.y + self.floor * self.system.scale
-        graphics2d.drawRect({-960, y, 1920, 540 - y}, '#FF2A2F45', {layer = -8})
+        graphics2d.drawRect({bounds.x, y, bounds.width, bounds:bottom() - y}, '#FF2A2F45', {layer = -8})
     end
     graphics2d.drawCircle(LibraryBrowser.counter[1], LibraryBrowser.counter[2], 26, '#FFFFD84A', {layer = 1})
     ParticleTest.label('Counter', LibraryBrowser.counter[1], LibraryBrowser.counter[2] + 36)
