@@ -1,9 +1,7 @@
 #include "ui/components/containers/Divider.hpp"
 
-#include <imgui.h>
-
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
+#include "ui/Widgets.hpp"
 
 namespace haylen::ui {
 
@@ -19,9 +17,9 @@ math::Vec2 Divider::measureContent(Context& context, float) {
 
 void Divider::render(Context& context, const math::Rect& bounds) {
     const math::Vec2 center = bounds.getCenter();
-    const ImVec2 from = vertical ? ImVec2{center.x, bounds.y} : ImVec2{bounds.x, center.y};
-    const ImVec2 to = vertical ? ImVec2{center.x, bounds.getBottom()} : ImVec2{bounds.getRight(), center.y};
-    ImGui::GetWindowDrawList()->AddLine(from, to, ImGuiConverter::toImU32(context.getColor(color.value_or(Theme::Color::Border))), context.getMetric(Theme::Metric::BorderWidth));
+    const math::Vec2 from = vertical ? math::Vec2{center.x, bounds.y} : math::Vec2{bounds.x, center.y};
+    const math::Vec2 to = vertical ? math::Vec2{center.x, bounds.getBottom()} : math::Vec2{bounds.getRight(), center.y};
+    Widgets::line(context, from, to, context.getMetric(Theme::Metric::BorderWidth), context.getColor(color.value_or(Theme::Color::Border)));
 }
 
 } // namespace haylen::ui

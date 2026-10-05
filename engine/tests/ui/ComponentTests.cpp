@@ -1142,15 +1142,14 @@ TEST_F(ComponentAssetTest, PressesImageButtons) {
 TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {
     mount(R"({"kind": "carousel", "height": 300, "arrows": true, "indicators": false, "children": [{"kind": "image", "image": "ui/icon.png", "fit": "cover"}, {"kind": "label", "text": "Two"}]})");
 
-    // The arrows draw with the font atlas and the page with its image, so the last command of each kind tells which is on top.
+    // The arrows draw as shapes from callbacks of the draw list and the page as a mesh of its image, so the last command of each kind tells which is on top.
     // clang-format off
-    const auto last = [this](bool atlas) {
+    const auto last = [this](bool shapes) {
         getUi().getBackend().makeCurrent();
-        const ImTextureID font = ImGui::GetIO().Fonts->TexRef.GetTexID();
         const ImVector<ImDrawCmd>& commands = ImGui::FindWindowByName("##haylen-guis")->DrawList->CmdBuffer;
         int found = -1;
         for (int index = 0; index < commands.Size; ++index) {
-            found = commands[index].ElemCount > 0 && (commands[index].GetTexID() == font) == atlas ? index : found;
+            found = (shapes ? commands[index].UserCallback != nullptr : commands[index].ElemCount > 0) ? index : found;
         }
         return found;
     };

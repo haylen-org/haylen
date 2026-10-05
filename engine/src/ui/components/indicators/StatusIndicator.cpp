@@ -2,10 +2,8 @@
 
 #include <algorithm>
 
-#include <imgui.h>
-
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
+#include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
 
@@ -25,7 +23,7 @@ math::Vec2 StatusIndicator::measureContent(Context& context, float) {
 void StatusIndicator::render(Context& context, const math::Rect& bounds) {
     const float dot = getDotSize(context);
     const math::Rect marker = context.mirror({bounds.x, bounds.getCenter().y - dot * 0.5F, dot, dot}, bounds);
-    ImGui::GetWindowDrawList()->AddCircleFilled(ImGuiConverter::toImVec2(marker.getCenter()), dot * 0.5F, ImGuiConverter::toImU32(context.getColor(Widgets::getToneColors(tone).fill)));
+    Surfaces::fill(context, marker, context.getColor(Widgets::getToneColors(tone).fill), dot * 0.5F);
     Typography::drawAligned(context, Theme::Font::Caption, context.mirror({bounds.x + dot * 2.0F, bounds.y, bounds.width - dot * 2.0F, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), context.getText(text), Alignment::Start);
 }
 

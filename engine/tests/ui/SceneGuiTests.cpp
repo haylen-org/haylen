@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 
@@ -28,11 +29,15 @@ class SceneGuiTest : public ::testing::Test, public test::UiFixture {
         frames(2);
     }
 
-    // The number of vertices a window of the UI drew this frame, or nothing when it did not draw.
-    [[nodiscard]] int getVertices(const char* name) {
+    // Whether a window of the UI drew this frame, with ImGui meshes or with the shapes and text of its callbacks.
+    [[nodiscard]] bool hasDrawn(const char* name) {
         getUi().getBackend().makeCurrent();
         const ImGuiWindow* window = ImGui::FindWindowByName(name);
-        return window != nullptr && window->Active ? window->DrawList->VtxBuffer.Size : 0;
+        // clang-format off
+        return window != nullptr && window->Active && std::ranges::any_of(window->DrawList->CmdBuffer, [](const ImDrawCmd& command) {
+            return command.ElemCount > 0 || command.UserCallback != nullptr;
+        });
+        // clang-format on
     }
 
     void push(float switchProgress, float exitProgress) {
@@ -48,14 +53,14 @@ class SceneGuiTest : public ::testing::Test, public test::UiFixture {
 } // namespace
 
 TEST_F(SceneGuiTest, LeavesWithItsSceneThroughAnEffectThatShowsBothScenes) {
-    ASSERT_GT(getVertices("##haylen-guis"), 0);
+    ASSERT_TRUE(hasDrawn("##haylen-guis"));
 
     // The menu leaves into the outgoing image with its GUI, and the image of the scene that arrives never shows the GUI of the menu.
     push(0.0F, 1.0F);
     frames(10);
     ASSERT_TRUE(getEngine().getScenes().isTransitioning());
-    EXPECT_GT(getVertices("##haylen-leaving"), 0);
-    EXPECT_EQ(getVertices("##haylen-guis"), 0);
+    EXPECT_TRUE(hasDrawn("##haylen-leaving"));
+    EXPECT_FALSE(hasDrawn("##haylen-guis"));
 
     // The GUI takes no input while it leaves.
     clearEvents();
@@ -64,8 +69,8 @@ TEST_F(SceneGuiTest, LeavesWithItsSceneThroughAnEffectThatShowsBothScenes) {
 
     frames(60);
     ASSERT_FALSE(getEngine().getScenes().isTransitioning());
-    EXPECT_EQ(getVertices("##haylen-leaving"), 0);
-    EXPECT_EQ(getVertices("##haylen-guis"), 0);
+    EXPECT_FALSE(hasDrawn("##haylen-leaving"));
+    EXPECT_FALSE(hasDrawn("##haylen-guis"));
     EXPECT_TRUE(getUi().isMounted(*gui));
 }
 
@@ -73,7 +78,7 @@ TEST_F(SceneGuiTest, HidesTheGuiOfACoveredSceneUntilItShowsAgain) {
     push(0.5F, 0.5F);
     frames(70);
     ASSERT_FALSE(getEngine().getScenes().isTransitioning());
-    EXPECT_EQ(getVertices("##haylen-guis"), 0);
+    EXPECT_FALSE(hasDrawn("##haylen-guis"));
     clearEvents();
     click(*gui, "play");
     EXPECT_TRUE(getEventNames().empty());
@@ -82,7 +87,7 @@ TEST_F(SceneGuiTest, HidesTheGuiOfACoveredSceneUntilItShowsAgain) {
     getEngine().getScenes().pop({.duration = 1.0F, .effect = effect});
     frames(40);
     ASSERT_TRUE(getEngine().getScenes().isTransitioning());
-    EXPECT_GT(getVertices("##haylen-guis"), 0);
+    EXPECT_TRUE(hasDrawn("##haylen-guis"));
     frames(30);
     click(*gui, "play");
     EXPECT_EQ(findLastEvent("click").id, "play");
@@ -123,8 +128,8 @@ TEST_F(SceneGuiTest, DrawsAGuiWithoutASceneAboveEveryView) {
     getUi().mount(hud);
     push(0.0F, 1.0F);
     frames(10);
-    EXPECT_GT(getVertices("##haylen-guis"), 0);
-    EXPECT_GT(getVertices("##haylen-leaving"), 0);
+    EXPECT_TRUE(hasDrawn("##haylen-guis"));
+    EXPECT_TRUE(hasDrawn("##haylen-leaving"));
 }
 
 TEST_F(SceneGuiTest, BindsAGuiToTheSceneThatOwnsItInLua) {
@@ -139,11 +144,11 @@ TEST_F(SceneGuiTest, BindsAGuiToTheSceneThatOwnsItInLua) {
     )");
     // clang-format on
     frames(3);
-    EXPECT_GT(getVertices("##haylen-guis"), 0);
+    EXPECT_TRUE(hasDrawn("##haylen-guis"));
     getFixture().runLua("require('haylen.scene').push({})");
     frames(3);
     EXPECT_EQ(getFixture().lua("return tostring(menuScene.gui.mounted)"), "true");
-    EXPECT_EQ(getVertices("##haylen-guis"), 0);
+    EXPECT_FALSE(hasDrawn("##haylen-guis"));
 }
 
 } // namespace haylen::ui

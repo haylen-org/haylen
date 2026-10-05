@@ -107,7 +107,7 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
             pressedDirection.reset();
         }
         if (!item.children.empty()) {
-            Widgets::arrow(arrow.getCenter(), indent * 0.4F, Widgets::mirror(context, open ? ImGuiDir_Down : ImGuiDir_Right), context.getColor(Theme::Color::TextMuted));
+            Widgets::arrow(context, arrow.getCenter(), indent * 0.4F, Widgets::mirror(context, open ? ImGuiDir_Down : ImGuiDir_Right), context.getColor(Theme::Color::TextMuted));
         }
         ListRow::drawContent(context, context.mirror(math::Rect::fromMinMax({left + indent - context.getMetric(Theme::Metric::RowPadding), area.y}, area.getMax()), area), item);
         ImGui::EndDisabled();

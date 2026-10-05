@@ -1,13 +1,11 @@
 #include "ui/components/indicators/CircularProgress.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numbers>
 
-#include <imgui.h>
-
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 
@@ -51,11 +49,12 @@ void CircularProgress::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+// The track and the fill are bands along the edge of the circle, the fill cut to the share of the value.
 void CircularProgress::drawRing(Context& context, math::Vec2 center, float radius) const {
     const float width = thickness > 0.0F ? thickness : context.getMetric(Theme::Metric::CircularProgressThickness);
-    const float middle = std::max(0.0F, radius - width * 0.5F);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.AddCircle(ImGuiConverter::toImVec2(center), middle, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), kSegments, width);
+    const math::Rect circle = math::Rect::fromCenter(center, {radius * 2.0F, radius * 2.0F});
+    const std::array<float, 4> round{radius, radius, radius, radius};
+    Surfaces::drawShape(context, {.bounds = circle, .radii = round, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Border)});
     if (value <= 0.0F) {
         return;
     }
@@ -63,9 +62,7 @@ void CircularProgress::drawRing(Context& context, math::Vec2 center, float radiu
     // The fill starts at the top and runs clockwise, which is the direction screen angles grow in.
     constexpr float kTop = -std::numbers::pi_v<float> * 0.5F;
     const Widgets::Tone fillTone = tone == Widgets::Tone::Neutral ? Widgets::Tone::Accent : tone;
-    list.PathClear();
-    list.PathArcTo(ImGuiConverter::toImVec2(center), middle, kTop, kTop + std::numbers::pi_v<float> * 2.0F * value, kSegments);
-    list.PathStroke(ImGuiConverter::toImU32(context.getColor(Widgets::getToneColors(fillTone).fill)), width);
+    Surfaces::drawShape(context, {.bounds = circle, .radii = round, .startAngle = kTop, .sweep = std::numbers::pi_v<float> * 2.0F * value, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Widgets::getToneColors(fillTone).fill)});
 }
 
 void CircularProgress::drawCooldown(Context& context, const math::Rect& bounds, math::Vec2 center, float radius) const {
@@ -79,18 +76,10 @@ void CircularProgress::drawCooldown(Context& context, const math::Rect& bounds, 
         return;
     }
 
-    // The shade covers the part of the circle still waiting and uncovers the picture clockwise from the top as the value falls.
+    // The shade covers the sector of the circle still waiting and uncovers the picture clockwise from the top as the value falls.
     constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0F;
     const float start = -std::numbers::pi_v<float> * 0.5F + kTwoPi * (1.0F - value);
-    const int steps = std::max(2, static_cast<int>(std::ceil(static_cast<float>(kSegments) * value)));
-    const ImU32 shade = ImGuiConverter::toImU32(context.getColor(Theme::Color::Overlay));
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    const ImVec2 middle = ImGuiConverter::toImVec2(center);
-    for (int step = 0; step < steps; ++step) {
-        const float from = start + kTwoPi * value * static_cast<float>(step) / static_cast<float>(steps);
-        const float to = start + kTwoPi * value * static_cast<float>(step + 1) / static_cast<float>(steps);
-        list.AddTriangleFilled(middle, {center.x + std::cos(from) * radius, center.y + std::sin(from) * radius}, {center.x + std::cos(to) * radius, center.y + std::sin(to) * radius}, shade);
-    }
+    Surfaces::drawShape(context, {.bounds = square, .radii = {radius, radius, radius, radius}, .startAngle = start, .sweep = kTwoPi * value, .color = context.getColor(Theme::Color::Overlay)});
 }
 
 } // namespace haylen::ui

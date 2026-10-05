@@ -464,6 +464,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-028` | Scroll bars | Every component that scrolls side by side, each with its scroll bar in a lane of its own a gap of at least four points away from its content, in the design and physical scales. |  |
 | `GUI-029` | SVG pictures | SVG documents as icons, buttons, list rows, avatars and images that stay sharp at every size and UI scale, buttons that tint their icons and pictures with rounded corners. |  |
 | `GUI-030` | Shared focus | A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll. |  |
+| `GUI-031` | Smooth curves | Every curved component and shape in the design and physical scales, next to the pixels of their edges magnified, which fade over one pixel of the screen at every scale. |  |
 
 #### Orientation (ORI)
 

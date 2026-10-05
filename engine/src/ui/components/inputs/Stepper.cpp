@@ -5,9 +5,9 @@
 #include <utility>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -68,9 +68,9 @@ void Stepper::render(Context& context, const math::Rect& bounds) {
         const bool possible = canStep(direction);
         const Widgets::Interaction arrow = Widgets::interact(context, area, radius, "##arrow", ImGuiButtonFlags_NoNavFocus);
         if (arrow.hovered && possible) {
-            ImGui::GetWindowDrawList()->AddRectFilled(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), ImGuiConverter::toImU32(context.getColor(arrow.held ? Theme::Color::Pressed : Theme::Color::Hover)), radius);
+            Surfaces::fill(context, area, context.getColor(arrow.held ? Theme::Color::Pressed : Theme::Color::Hover), radius);
         }
-        Widgets::arrow(area.getCenter(), side * 0.28F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(possible ? Theme::Color::TextMuted : Theme::Color::TextDisabled));
+        Widgets::arrow(context, area.getCenter(), side * 0.28F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(possible ? Theme::Color::TextMuted : Theme::Color::TextDisabled));
         ImGui::PopID();
         if (arrow.clicked) {
             stepped = direction;

@@ -155,7 +155,7 @@ void Toast::drawFrame(Context& context, const Notice& notice, const math::Rect& 
     const math::Rect bar = context.mirror({frame.x, frame.y, barWidth, frame.height}, frame);
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushClipRect(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), true);
-    list.AddRectFilled(ImGuiConverter::toImVec2(frame.getMin()), ImGuiConverter::toImVec2(frame.getMax()), ImGuiConverter::toImU32(context.getColor(colors.fill)), radius);
+    Surfaces::fill(context, frame, context.getColor(colors.fill), radius);
     list.PopClipRect();
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);

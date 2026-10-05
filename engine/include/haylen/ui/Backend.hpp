@@ -15,6 +15,7 @@
 #include <imgui.h>
 
 #include "haylen/2d/graphics/MeshVertex.hpp"
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/math/Color.hpp"
@@ -133,6 +134,14 @@ class Backend final {
     // Draws with the renderer at this point of the draw list of the window being built, clipped like the items around it, once the frame renders, in a canvas whose coordinates are UI coordinates.
     void addRenderCallback(std::function<void(graphics2d::Renderer& renderer)> draw);
 
+    // Draws a shape in UI coordinates the same way, where the shapes drawn one after another in a window share one command of its draw list, and the frame keeps them in storage that frames reuse.
+    void addShape(const graphics2d::Shape& shape);
+
+    // The shapes the frame drew so far, in UI coordinates and in the order they were drawn, such as for checks of where a component draws.
+    [[nodiscard]] std::span<const graphics2d::Shape> getShapes() const noexcept {
+        return shapes;
+    }
+
     // Begins a child window that draws at this point of the draw list of the window being built, so what that window draws after it, such as the nodes and GUIs above a scroll, covers it. The child ends with `ImGui::EndChild`.
     bool beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childFlags, ImGuiWindowFlags windowFlags);
 
@@ -182,6 +191,13 @@ class Backend final {
         const ImGuiWindow* window = nullptr;
     };
 
+    // The shapes a callback command draws, a run of the shapes of the frame.
+    struct ShapeRun {
+        Backend* owner = nullptr;
+        std::size_t first = 0;
+        std::size_t count = 0;
+    };
+
     // App textures shown by the UI get identifiers with the top bit set, so they never collide with the atlas textures ImGui asks for.
     static constexpr ImTextureID kAppTextureBit = ImTextureID{1} << 63U;
     static constexpr float kBaseFontSize = 28.0F;
@@ -202,6 +218,7 @@ class Backend final {
     static void resetRenderState(const ImDrawList* list, const ImDrawCmd* command);
     static void runRenderCall(const ImDrawList* list, const ImDrawCmd* command);
     static void runChildCall(const ImDrawList* list, const ImDrawCmd* command);
+    static void runShapes(const ImDrawList* list, const ImDrawCmd* command);
 
     ImFont* addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
     void handlePointer(const platform::Event& event, const graphics::Viewport& viewport);
@@ -227,6 +244,7 @@ class Backend final {
     std::unordered_map<ImTextureID, graphics::Texture> atlasTextures;
     std::unordered_map<ImTextureID, graphics::Texture> frameTextures;
     std::vector<std::function<void(graphics2d::Renderer&)>> renderCalls;
+    std::vector<graphics2d::Shape> shapes;
     std::vector<const ImDrawList*> renderedLists;
     std::vector<const ImDrawList*> drawnLists;
     std::vector<graphics2d::MeshVertex> meshVertices;

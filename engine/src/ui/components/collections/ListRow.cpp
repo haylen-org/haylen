@@ -4,10 +4,7 @@
 #include <cmath>
 #include <string>
 
-#include <imgui.h>
-
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/components/ChoiceItem.hpp"
@@ -17,11 +14,10 @@ namespace haylen::ui {
 Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, bool selected, float rounding) {
     const float radius = rounding < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) * 0.5F : rounding;
     const Widgets::Interaction state = Widgets::interact(context, bounds, radius, "##row");
-    ImDrawList& list = *ImGui::GetWindowDrawList();
     if (selected) {
-        list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Selection)), radius);
+        Surfaces::fill(context, bounds, context.getColor(Theme::Color::Selection), radius);
     } else if (state.hovered) {
-        list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Hover)), radius);
+        Surfaces::fill(context, bounds, context.getColor(Theme::Color::Hover), radius);
     }
     return state;
 }

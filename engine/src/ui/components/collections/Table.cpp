@@ -10,7 +10,6 @@
 
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
 #include "ui/components/collections/ListRow.hpp"
@@ -45,7 +44,7 @@ void Table::render(Context& context, const math::Rect& bounds) {
         Typography::drawAligned(context, Theme::Font::Caption, cell, context.getColor(Theme::Color::TextMuted), context.getText(columns[column].text), columns[column].align);
         x += widths[column];
     }
-    ImGui::GetWindowDrawList()->AddLine({bounds.x, bounds.y + header}, {bounds.getRight(), bounds.y + header}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));
+    Widgets::line(context, {bounds.x, bounds.y + header}, {bounds.getRight(), bounds.y + header}, context.getMetric(Theme::Metric::BorderWidth), context.getColor(Theme::Color::Border));
 
     for (std::size_t index = 0; index < rows.size(); ++index) {
         const Row& entry = rows[index];

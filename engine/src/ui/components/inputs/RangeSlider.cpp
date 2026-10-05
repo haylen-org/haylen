@@ -155,7 +155,9 @@ void RangeSlider::drawKnob(Context& context, const math::Rect& bounds, float x, 
     const math::Color fill = context.getColor(Theme::Color::OnAccent);
     Surfaces::draw(context, Theme::Surface::Knob, area, pressed ? math::Color{fill.r * 0.85F, fill.g * 0.85F, fill.b * 0.85F, fill.a} : fill, context.getColor(Theme::Color::Accent), knob * 0.5F);
     if (active) {
-        ImGui::GetWindowDrawList()->AddCircle(ImGuiConverter::toImVec2(area.getCenter()), knob * 0.5F + 4.0F, ImGuiConverter::toImU32(context.getColor(Theme::Color::Focus)), 32, context.getMetric(Theme::Metric::FocusWidth));
+        const float width = context.getMetric(Theme::Metric::FocusWidth);
+        const float outer = knob * 0.5F + 4.0F + width * 0.5F;
+        Surfaces::outline(context, math::Rect::fromCenter(area.getCenter(), {outer * 2.0F, outer * 2.0F}), context.getColor(Theme::Color::Focus), outer, width);
     }
 }
 

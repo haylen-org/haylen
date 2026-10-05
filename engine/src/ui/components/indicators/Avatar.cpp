@@ -8,6 +8,7 @@
 #include "haylen/core/Utf8.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 
 namespace haylen::ui {
@@ -31,7 +32,7 @@ void Avatar::render(Context& context, const math::Rect& bounds) {
         list.AddImageRounded(context.getTextureReference(texture), ImGuiConverter::toImVec2(circle.getMin()), ImGuiConverter::toImVec2(circle.getMax()), {0.0F, 0.0F}, {1.0F, 1.0F}, ImGuiConverter::toImU32(math::Color::white()), side * 0.5F);
         return;
     }
-    list.AddCircleFilled(ImGuiConverter::toImVec2(circle.getCenter()), side * 0.5F, ImGuiConverter::toImU32(context.getColor(Theme::Color::AccentBackground)));
+    Surfaces::fill(context, circle, context.getColor(Theme::Color::AccentBackground), side * 0.5F);
     Typography::drawAligned(context, Theme::Font::Button, circle, context.getColor(Theme::Color::AccentText), getInitials(context.getText(name)), Alignment::Center);
 }
 

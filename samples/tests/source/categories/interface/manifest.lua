@@ -34,5 +34,6 @@ return {
         {code = 'GUI-028', title = 'Scroll bars', description = 'Every component that scrolls side by side, each with its scroll bar in a lane of its own a gap of at least four points away from its content, in the design and physical scales.', module = 'scroll-bars'},
         {code = 'GUI-029', title = 'SVG pictures', description = 'SVG documents as icons, buttons, list rows, avatars and images that stay sharp at every size and UI scale, buttons that tint their icons and pictures with rounded corners.', module = 'svg-pictures'},
         {code = 'GUI-030', title = 'Shared focus', description = 'A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll.', module = 'shared-focus'},
+        {code = 'GUI-031', title = 'Smooth curves', description = 'Every curved component and shape in the design and physical scales, next to the pixels of their edges magnified, which fade over one pixel of the screen at every scale.', module = 'smooth-curves'},
     },
 }

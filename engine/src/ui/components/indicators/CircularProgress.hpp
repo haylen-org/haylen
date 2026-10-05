@@ -40,7 +40,6 @@ class CircularProgress final : public Component {
         {"ring", Variant::Ring},
         {"cooldown", Variant::Cooldown},
     }};
-    static constexpr int kSegments = 64;
 
     void drawRing(Context& context, math::Vec2 center, float radius) const;
     void drawCooldown(Context& context, const math::Rect& bounds, math::Vec2 center, float radius) const;

@@ -10,7 +10,6 @@
 
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {
@@ -62,7 +61,7 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
     }
     const math::Vec2 center = handle.getCenter();
     const math::Color color = context.getColor(state.held ? Theme::Color::Accent : Theme::Color::BorderStrong);
-    ImGui::GetWindowDrawList()->AddLine(vertical ? ImVec2{handle.x, center.y} : ImVec2{center.x, handle.y}, vertical ? ImVec2{handle.getRight(), center.y} : ImVec2{center.x, handle.getBottom()}, ImGuiConverter::toImU32(color), context.getMetric(Theme::Metric::BorderWidth));
+    Widgets::line(context, vertical ? math::Vec2{handle.x, center.y} : math::Vec2{center.x, handle.y}, vertical ? math::Vec2{handle.getRight(), center.y} : math::Vec2{center.x, handle.getBottom()}, context.getMetric(Theme::Metric::BorderWidth), color);
 
     auto visible = getLayoutChildren();
     const auto second = std::ranges::next(visible.begin(), 1, visible.end());

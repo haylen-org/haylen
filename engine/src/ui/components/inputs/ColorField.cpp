@@ -32,9 +32,8 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingY);
     const math::Rect swatch = context.mirror({bounds.x + padding, bounds.y + padding, bounds.height - padding * 2.0F, bounds.height - padding * 2.0F}, bounds);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.AddRectFilled(ImGuiConverter::toImVec2(swatch.getMin()), ImGuiConverter::toImVec2(swatch.getMax()), ImGuiConverter::toImU32(value), context.getMetric(Theme::Metric::ControlRadius) * 0.5F);
-    list.AddRect(ImGuiConverter::toImVec2(swatch.getMin()), ImGuiConverter::toImVec2(swatch.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::BorderStrong)), context.getMetric(Theme::Metric::ControlRadius) * 0.5F);
+    const float radius = context.getMetric(Theme::Metric::ControlRadius) * 0.5F;
+    Surfaces::drawShape(context, {.bounds = swatch, .radii = {radius, radius, radius, radius}, .color = value, .borderWidth = 1.0F, .borderColor = context.getColor(Theme::Color::BorderStrong)});
     Typography::drawAligned(context, Theme::Font::Monospace, context.mirror(math::Rect::fromMinMax({bounds.x + bounds.height, bounds.y}, {bounds.getRight() - padding, bounds.getBottom()}), bounds), context.getColor(Theme::Color::Text), value.toHex(), Alignment::Start);
 
     if (state.clicked) {

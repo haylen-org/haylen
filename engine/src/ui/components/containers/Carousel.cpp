@@ -11,6 +11,7 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/Surfaces.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {
@@ -140,8 +141,8 @@ int Carousel::drawArrows(Context& context, const math::Rect& area, std::size_t c
         const Widgets::Interaction state = Widgets::interact(context, button, radius, "##arrow", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
         const math::Color fill = context.getColor(Theme::Color::Overlay);
-        ImGui::GetWindowDrawList()->AddCircleFilled(ImGuiConverter::toImVec2(button.getCenter()), radius, ImGuiConverter::toImU32(state.hovered ? fill.withAlpha(std::min(1.0F, fill.a + 0.2F)) : fill));
-        Widgets::arrow(button.getCenter(), radius * 0.7F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(Theme::Color::OnAccent));
+        Surfaces::fill(context, button, state.hovered ? fill.withAlpha(std::min(1.0F, fill.a + 0.2F)) : fill, radius);
+        Widgets::arrow(context, button.getCenter(), radius * 0.7F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(Theme::Color::OnAccent));
         if (state.clicked) {
             moved = direction;
         }
@@ -160,7 +161,7 @@ int Carousel::drawIndicators(Context& context, const math::Rect& row, std::size_
         const Widgets::Interaction state = Widgets::interact(context, dot.expanded(size * 0.5F), size, "##dot", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
         const bool current = static_cast<int>(index) == page;
-        ImGui::GetWindowDrawList()->AddCircleFilled(ImGuiConverter::toImVec2(dot.getCenter()), size * 0.5F, ImGuiConverter::toImU32(context.getColor(current ? Theme::Color::Accent : state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong)));
+        Surfaces::fill(context, dot, context.getColor(current ? Theme::Color::Accent : state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong), size * 0.5F);
         if (state.clicked) {
             picked = static_cast<int>(index) + 1;
         }

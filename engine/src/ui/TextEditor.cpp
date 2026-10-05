@@ -236,8 +236,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         const std::size_t first = toPosition(std::min(state->GetSelectionStart(), state->GetSelectionEnd()));
         const std::size_t last = toPosition(std::max(state->GetSelectionStart(), state->GetSelectionEnd()));
         for (const math::Rect& box : field.getSelection(first, last)) {
-            const math::Rect placed = box.translated(origin);
-            list.AddRectFilled(ImGuiConverter::toImVec2(placed.getMin()), ImGuiConverter::toImVec2(placed.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Selection)));
+            Surfaces::fill(context, box.translated(origin), context.getColor(Theme::Color::Selection), 0.0F);
         }
     }
 
@@ -258,11 +257,11 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         const bool shown = !ImGui::GetIO().ConfigInputTextCursorBlink || state->CursorAnim <= 0.0F || std::fmod(state->CursorAnim, 1.20F) <= 0.80F;
         if (shown) {
             const float width = context.getMetric(Theme::Metric::CaretWidth);
-            list.AddRectFilled({caret.x - width * 0.5F, caret.y}, {caret.x + width * 0.5F, caret.getBottom()}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Text)));
+            Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Text), 0.0F);
         }
         session.setCaret({caret.x, caret.y, 1.0F, caret.height});
         if (!password) {
-            drawComposition(session, id, field, origin);
+            drawComposition(context, session, id, field, origin);
         }
     }
     list.PopClipRect();
@@ -275,16 +274,15 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     return {.changed = value != before, .submitted = submitted};
 }
 
-void TextEditor::drawComposition(const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin) {
+void TextEditor::drawComposition(Context& context, const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin) {
     const std::optional<std::pair<int, int>> composition = session.getComposition(id);
     if (!composition) {
         return;
     }
     const float thickness = std::max(1.0F, ImGui::GetFontSize() / 14.0F);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
     for (const math::Rect& box : field.getSelection(static_cast<std::size_t>(composition->first), static_cast<std::size_t>(composition->second))) {
         const math::Rect placed = box.translated(origin);
-        list.AddLine({placed.x, placed.getBottom() - 1.0F}, {placed.getRight(), placed.getBottom() - 1.0F}, ImGui::GetColorU32(ImGuiCol_Text), thickness);
+        Widgets::line(context, {placed.x, placed.getBottom() - 1.0F}, {placed.getRight(), placed.getBottom() - 1.0F}, thickness, context.getColor(Theme::Color::Text));
     }
 }
 

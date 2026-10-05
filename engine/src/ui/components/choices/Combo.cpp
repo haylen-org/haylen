@@ -46,7 +46,7 @@ void Combo::render(Context& context, const math::Rect& bounds) {
     const math::Rect inner = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Field));
     Typography::drawAligned(context, Theme::Font::Body, context.mirror({inner.x + padding, inner.y, inner.width - padding * 2.0F - chevron, inner.height}, inner), context.getColor(empty ? Theme::Color::TextMuted : Theme::Color::Text), shown, Alignment::Start);
     const math::Vec2 center = context.mirror({inner.getRight() - padding - chevron, inner.y, chevron, inner.height}, inner).getCenter();
-    Widgets::arrow(center, chevron * 0.5F, ImGuiDir_Down, context.getColor(Theme::Color::TextMuted));
+    Widgets::arrow(context, center, chevron * 0.5F, ImGuiDir_Down, context.getColor(Theme::Color::TextMuted));
 
     if (state.clicked) {
         ImGui::OpenPopup("##list");

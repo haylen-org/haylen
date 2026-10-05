@@ -5,9 +5,9 @@
 #include <optional>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -68,11 +68,11 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
         if (chosen) {
             Surfaces::draw(context, Theme::Surface::SegmentSelected, segment, context.getColor(Theme::Color::Accent), std::nullopt, radius, corners);
         } else if (state.hovered) {
-            ImGui::GetWindowDrawList()->AddRectFilled(ImGuiConverter::toImVec2(segment.getMin()), ImGuiConverter::toImVec2(segment.getMax()), ImGuiConverter::toImU32(context.getColor(state.held ? Theme::Color::Pressed : Theme::Color::Hover)), radius, corners);
+            Surfaces::fill(context, segment, context.getColor(state.held ? Theme::Color::Pressed : Theme::Color::Hover), radius, corners);
         }
         if (index > 0 && !chosen && static_cast<int>(index) != current + 1) {
             const float edge = context.isRightToLeft() ? segment.getRight() : segment.x;
-            ImGui::GetWindowDrawList()->AddLine({edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));
+            Widgets::line(context, {edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, context.getMetric(Theme::Metric::BorderWidth), context.getColor(Theme::Color::Border));
         }
         Typography::drawAligned(context, Theme::Font::Button, segment, context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text), context.getText(item.text), Alignment::Center);
         ImGui::EndDisabled();

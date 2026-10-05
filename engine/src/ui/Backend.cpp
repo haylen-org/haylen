@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cfloat>
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 
@@ -238,6 +239,22 @@ void Backend::runRenderCall(const ImDrawList* list, const ImDrawCmd* command) {
 void Backend::runChildCall(const ImDrawList* list, const ImDrawCmd* command) {
     const ChildCall& call = *reinterpret_cast<const ChildCall*>(list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset);
     call.owner->drawWindow(*call.window);
+}
+
+// Draws a run of shapes at its place among the meshes, inside the clip of its command.
+void Backend::runShapes(const ImDrawList* list, const ImDrawCmd* command) {
+    ShapeRun run;
+    std::memcpy(&run, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(run));
+    Backend& owner = *run.owner;
+    const math::Rect clip = math::Rect::fromMinMax({command->ClipRect.x, command->ClipRect.y}, {command->ClipRect.z, command->ClipRect.w});
+    if (clip.isEmpty()) {
+        return;
+    }
+    owner.rendering->pushClip(clip);
+    for (std::size_t index = run.first; index < run.first + run.count; ++index) {
+        owner.rendering->drawShape(owner.shapes[index]);
+    }
+    owner.rendering->popClip();
 }
 
 Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())) {
@@ -606,6 +623,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     requestedCursor.reset();
     frameTextures.clear();
     renderCalls.clear();
+    shapes.clear();
     renderedLists.clear();
     ImGui::NewFrame();
     if (pixels > 0.0F) {
@@ -660,6 +678,28 @@ bool Backend::beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childF
     ChildCall call{.owner = this, .window = &child};
     child.ParentWindow->DrawList->AddCallback(&runChildCall, &call, sizeof(call));
     return visible;
+}
+
+// A shape that follows the run of the last callback command of the draw list, with nothing drawn and no clip changed since, joins that run.
+void Backend::addShape(const graphics2d::Shape& shape) {
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    shapes.push_back(shape);
+    if (list.CmdBuffer.Size >= 2) {
+        const ImDrawCmd& current = list.CmdBuffer.back();
+        const ImDrawCmd& previous = list.CmdBuffer[list.CmdBuffer.Size - 2];
+        const bool sameClip = previous.ClipRect.x == current.ClipRect.x && previous.ClipRect.y == current.ClipRect.y && previous.ClipRect.z == current.ClipRect.z && previous.ClipRect.w == current.ClipRect.w;
+        if (current.ElemCount == 0 && previous.UserCallback == &runShapes && sameClip) {
+            ShapeRun run;
+            std::memcpy(&run, list._CallbacksDataBuf.Data + previous.UserCallbackDataOffset, sizeof(run));
+            if (run.first + run.count == shapes.size() - 1) {
+                ++run.count;
+                std::memcpy(list._CallbacksDataBuf.Data + previous.UserCallbackDataOffset, &run, sizeof(run));
+                return;
+            }
+        }
+    }
+    ShapeRun run{.owner = this, .first = shapes.size() - 1, .count = 1};
+    list.AddCallback(&runShapes, &run, sizeof(run));
 }
 
 ImTextureRef Backend::getTextureReference(const graphics::Texture& texture) {
@@ -761,7 +801,7 @@ void Backend::collectLists(const ImGuiWindow& window, std::vector<const ImDrawLi
 // A command whose texture never reached the GPU, such as an atlas that the frame creates and a window drawn before the frame ends uses, draws nothing.
 void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists) {
     const bool empty = std::ranges::all_of(lists, [](const ImDrawList* list) { return list->VtxBuffer.Size == 0; });
-    if (empty && renderCalls.empty()) {
+    if (empty && renderCalls.empty() && shapes.empty()) {
         return;
     }
     // The canvas maps UI coordinates to the visible area at the scale of the UI, so the meshes of ImGui and the draws of the components keep their UI coordinates.

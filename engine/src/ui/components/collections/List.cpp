@@ -6,7 +6,7 @@
 #include <imgui_internal.h>
 
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
+#include "ui/Surfaces.hpp"
 #include "ui/Widgets.hpp"
 #include "ui/components/ChoiceItem.hpp"
 #include "ui/components/DragAndDrop.hpp"
@@ -59,7 +59,7 @@ void List::render(Context& context, const math::Rect& bounds) {
         ListRow::drawContent(context, area, item);
         const DragAndDrop::Result moved = draggable ? DragAndDrop::handle(context, *this, item.id, item.image, area) : DragAndDrop::Result{};
         if (moved.hovering) {
-            ImGui::GetWindowDrawList()->AddRect(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Accent)), context.getMetric(Theme::Metric::ControlRadius) * 0.5F, context.getMetric(Theme::Metric::FocusWidth));
+            Surfaces::outline(context, area, context.getColor(Theme::Color::Accent), context.getMetric(Theme::Metric::ControlRadius) * 0.5F, context.getMetric(Theme::Metric::FocusWidth));
         }
         DragAndDrop::drawCarried(context, row, area);
         ImGui::EndDisabled();

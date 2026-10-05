@@ -54,46 +54,71 @@ void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const 
     list.PopTexture();
 }
 
-// A border runs inside the bounds, so it never reaches past them: ImGui strokes a rectangle half a unit inside its corners, and the line moves in by the rest of half its width.
+// The border runs inside the edge of the surface, so it never reaches past its bounds and follows its corners exactly.
 void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border, float radius, ImDrawFlags corners) {
     if (const Theme::Image* image = context.getSurface(role)) {
         drawNineSlice(context, *image, bounds, fill);
         return;
     }
     const float rounding = std::min(radius < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) : radius, std::min(bounds.width, bounds.height) * 0.5F);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    if (fill.a > 0.0F) {
-        list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(fill), rounding, corners);
-    }
     const float width = context.getMetric(Theme::Metric::BorderWidth);
-    if (border && border->a > 0.0F && width > 0.0F) {
-        const float inset = std::max(0.0F, width * 0.5F - 0.5F);
-        const math::Rect line = bounds.inset(math::Insets::uniform(inset));
-        list.AddRect(ImGuiConverter::toImVec2(line.getMin()), ImGuiConverter::toImVec2(line.getMax()), ImGuiConverter::toImU32(*border), getInnerRadius(rounding, inset), width, corners);
+    const bool bordered = border && border->a > 0.0F && width > 0.0F;
+    if (fill.a <= 0.0F && !bordered) {
+        return;
     }
+    drawShape(context, {.bounds = bounds, .radii = getRadii(rounding, corners), .color = fill, .borderWidth = bordered ? width : 0.0F, .borderColor = bordered ? *border : math::Color::transparent()});
+}
+
+// A shape rounds each corner by at most half its shorter side, so the radius needs no limit here.
+void Surfaces::fill(Context& context, const math::Rect& bounds, math::Color color, float radius, ImDrawFlags corners) {
+    if (color.a > 0.0F) {
+        drawShape(context, {.bounds = bounds, .radii = getRadii(radius, corners), .color = color});
+    }
+}
+
+void Surfaces::outline(Context& context, const math::Rect& bounds, math::Color color, float radius, float width) {
+    if (color.a > 0.0F && width > 0.0F) {
+        drawShape(context, {.bounds = bounds, .radii = getRadii(radius, ImDrawFlags_RoundCornersAll), .color = math::Color::transparent(), .borderWidth = width, .borderColor = color});
+    }
+}
+
+void Surfaces::drawShape(Context& context, graphics2d::Shape shape) {
+    const Context::Reshape reshape = context.getReshape();
+    const float scale = std::min(reshape.scale.x, reshape.scale.y);
+    const math::Color tint = reshape.color.withAlpha(reshape.color.a * ImGui::GetStyle().Alpha);
+    shape.bounds = math::Rect::fromMinMax(shape.bounds.getMin() * reshape.scale + reshape.offset, shape.bounds.getMax() * reshape.scale + reshape.offset);
+    for (float& radius : shape.radii) {
+        radius *= scale;
+    }
+    shape.borderWidth *= scale;
+    shape.softness *= scale;
+    shape.color = shape.color * tint;
+    shape.borderColor = shape.borderColor * tint;
+    context.getBackend().addShape(shape);
+}
+
+std::array<float, 4> Surfaces::getRadii(float radius, ImDrawFlags corners) noexcept {
+    const auto rounded = [radius, corners](ImDrawFlags corner) { return (corners & corner) != 0 ? radius : 0.0F; };
+    return {rounded(ImDrawFlags_RoundCornersTopLeft), rounded(ImDrawFlags_RoundCornersTopRight), rounded(ImDrawFlags_RoundCornersBottomRight), rounded(ImDrawFlags_RoundCornersBottomLeft)};
 }
 
 float Surfaces::getInnerRadius(float radius, float inset) noexcept {
     return std::max(0.0F, radius - inset);
 }
 
-// Layers of growing rounded rectangles in the shadow color, each one fainter, make a soft shadow below the surface.
+// The shadow is the surface moved down by the offset and grown by half the size of the shadow, with an edge that fades over the whole size, so it is as dark as its color along the edge of the surface and clears the size away from it.
 void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radius) {
     const float size = context.getMetric(Theme::Metric::ShadowSize);
     const math::Color color = context.getColor(Theme::Color::Shadow);
     if (size <= 0.0F || color.a <= 0.0F) {
         return;
     }
-    constexpr int kLayers = 8;
-    const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset)});
+    const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset)}).expanded(size * 0.5F);
+    const float rounding = radius + size * 0.5F;
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    const math::Rect reach = cast.expanded(size);
+    const math::Rect reach = cast.expanded(size * 0.5F);
     list.PushClipRect(ImGuiConverter::toImVec2(reach.getMin()), ImGuiConverter::toImVec2(reach.getMax()), false);
-    for (int layer = 0; layer < kLayers; ++layer) {
-        const float spread = size * static_cast<float>(kLayers - layer) / static_cast<float>(kLayers);
-        const math::Rect area = cast.expanded(spread);
-        list.AddRectFilled(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), ImGuiConverter::toImU32(color.withAlpha(color.a / static_cast<float>(kLayers))), radius + spread);
-    }
+    drawShape(context, {.bounds = cast, .radii = {rounding, rounding, rounding, rounding}, .color = color, .softness = size});
     list.PopClipRect();
 }
 

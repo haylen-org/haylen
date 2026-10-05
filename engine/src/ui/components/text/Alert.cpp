@@ -7,6 +7,7 @@
 
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
 
@@ -35,13 +36,13 @@ math::Vec2 Alert::measureContent(Context& context, float availableWidth) {
 void Alert::render(Context& context, const math::Rect& bounds) {
     const Widgets::ToneColors colors = Widgets::getToneColors(tone);
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(context.getColor(colors.background)), radius);
+    Surfaces::fill(context, bounds, context.getColor(colors.background), radius);
     // The bar of the tone marks the side the UI starts, clipped from the whole shape so it follows its rounded corners.
     const float barWidth = context.getMetric(Theme::Metric::ToneBarWidth);
     const math::Rect bar = context.mirror({bounds.x, bounds.y, barWidth, bounds.height}, bounds);
+    ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushClipRect(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), true);
-    list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(context.getColor(colors.fill)), radius);
+    Surfaces::fill(context, bounds, context.getColor(colors.fill), radius);
     list.PopClipRect();
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);

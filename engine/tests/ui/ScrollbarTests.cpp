@@ -110,27 +110,38 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
         click(point * getUi().getBackend().getScale());
     }
 
-    // The box of the vertices ImGui drew in a color inside an area in the last frame.
-    [[nodiscard]] static std::optional<math::Rect> findDrawn(std::uint32_t color, const math::Rect& area) {
+    // The box of the vertices ImGui drew and the shapes the UI drew in a color inside an area in the last frame.
+    [[nodiscard]] std::optional<math::Rect> findDrawn(std::uint32_t color, const math::Rect& area) {
         math::Vec2 low{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
         math::Vec2 high{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
         bool found = false;
         const math::Rect reach = area.expanded(1.0F);
+        // clang-format off
+        const auto add = [&](math::Vec2 from, math::Vec2 to) {
+            low = math::Vec2::min(low, from);
+            high = math::Vec2::max(high, to);
+            found = true;
+        };
+        // clang-format on
         for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
             for (const ImDrawVert& vertex : list->VtxBuffer) {
                 const math::Vec2 point{vertex.pos.x, vertex.pos.y};
-                if ((vertex.col & 0x00FFFFFFU) != color || (vertex.col >> 24U) == 0 || !reach.contains(point)) {
-                    continue;
+                if ((vertex.col & 0x00FFFFFFU) == color && (vertex.col >> 24U) != 0 && reach.contains(point)) {
+                    add(point, point);
                 }
-                low = {std::min(low.x, point.x), std::min(low.y, point.y)};
-                high = {std::max(high.x, point.x), std::max(high.y, point.y)};
-                found = true;
+            }
+        }
+        for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+            const std::uint32_t packed = shape.color.toRgba8();
+            const math::Rect inside = shape.bounds.intersection(reach);
+            if ((packed & 0x00FFFFFFU) == color && (packed >> 24U) != 0 && inside.width > 0.0F && inside.height > 0.0F) {
+                add(inside.getMin(), inside.getMax());
             }
         }
         return found ? std::optional(math::Rect::fromMinMax(low, high)) : std::nullopt;
     }
 
-    [[nodiscard]] static math::Rect findBar(const math::Rect& area) {
+    [[nodiscard]] math::Rect findBar(const math::Rect& area) {
         const std::optional<math::Rect> bar = findDrawn(kBarColor, area);
         if (!bar) {
             throw std::logic_error("No scroll bar was drawn in the area.");

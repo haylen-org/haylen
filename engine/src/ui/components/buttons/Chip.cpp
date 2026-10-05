@@ -2,10 +2,7 @@
 
 #include <algorithm>
 
-#include <imgui.h>
-
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -46,12 +43,7 @@ void Chip::render(Context& context, const math::Rect& bounds) {
         const math::Rect cross = context.mirror({bounds.getRight() - remove, bounds.y, remove, bounds.height}, bounds);
         const Widgets::Interaction removal = Widgets::interact(context, cross, cross.height * 0.5F, "##remove");
         const math::Vec2 center = cross.getCenter() - math::Vec2{context.isRightToLeft() ? -remove * 0.25F : remove * 0.25F, 0.0F};
-        const float arm = remove * 0.18F;
-        ImDrawList& list = *ImGui::GetWindowDrawList();
-        const ImU32 color = ImGuiConverter::toImU32(context.getColor(removal.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
-        const float stroke = context.getMetric(Theme::Metric::StrokeWidth);
-        list.AddLine({center.x - arm, center.y - arm}, {center.x + arm, center.y + arm}, color, stroke);
-        list.AddLine({center.x - arm, center.y + arm}, {center.x + arm, center.y - arm}, color, stroke);
+        Widgets::cross(context, center, remove * 0.18F, context.getMetric(Theme::Metric::StrokeWidth), context.getColor(removal.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
         if (removal.clicked) {
             context.emit(*this, "remove");
         }

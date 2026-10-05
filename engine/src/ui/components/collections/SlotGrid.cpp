@@ -10,7 +10,6 @@
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -122,7 +121,7 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
 
     const DragAndDrop::Result moved = draggable ? DragAndDrop::handle(context, *this, slot.id, slot.image, area) : DragAndDrop::Result{};
     if (moved.hovering) {
-        ImGui::GetWindowDrawList()->AddRect(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Accent)), radius, context.getMetric(Theme::Metric::FocusWidth));
+        Surfaces::outline(context, area, context.getColor(Theme::Color::Accent), radius, context.getMetric(Theme::Metric::FocusWidth));
     }
     DragAndDrop::drawCarried(context, item, area);
     ImGui::EndDisabled();

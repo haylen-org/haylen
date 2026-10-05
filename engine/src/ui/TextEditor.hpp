@@ -74,7 +74,7 @@ class TextEditor final {
     static void follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, bool rightToLeft, bool multiline);
 
     // Underlines the text the input method composes in the focused field.
-    static void drawComposition(const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin);
+    static void drawComposition(Context& context, const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin);
     static void limit(std::string& value, int maxLength);
 };
 

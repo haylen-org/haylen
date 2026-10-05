@@ -1238,7 +1238,7 @@ void Collection::drawRefresh(Context& context) {
     const float reached = refreshing ? 1.0F : std::min(1.0F, static_cast<float>(pull) / std::max(1.0F, distance));
     const float radius = context.getMetric(Theme::Metric::ControlHeight) * 0.3F;
     const math::Vec2 center{viewport.getCenter().x, viewport.y + distance * 0.5F * reached};
-    ImGui::GetWindowDrawList()->AddCircleFilled(ImGuiConverter::toImVec2(center), radius * 1.6F, ImGuiConverter::toImU32(context.getColor(Theme::Color::Raised)));
+    Surfaces::fill(context, math::Rect::fromCenter(center, {radius * 3.2F, radius * 3.2F}), context.getColor(Theme::Color::Raised), radius * 1.6F);
     const math::Color accent = context.getColor(Theme::Color::Accent);
     Widgets::spinner(context, center, radius, accent.withAlpha(accent.a * reached));
 }

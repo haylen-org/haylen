@@ -106,8 +106,17 @@ class Widgets final {
     static void progress(Context& context, const math::Rect& bounds, float value, Tone tone);
     static void spinner(Context& context, math::Vec2 center, float radius, math::Color color);
 
+    // Draws the check mark of a check box inside a box of the size, with square ends and a sharp corner.
+    static void checkMark(Context& context, math::Vec2 origin, float size, math::Color color);
+
+    // Draws a straight stroke with square ends, such as the handle of a magnifying glass.
+    static void line(Context& context, math::Vec2 from, math::Vec2 to, float width, math::Color color);
+
+    // Draws a cross of two strokes through a point, each reaching the arm away from it along both axes, such as the close button of a chip or a window.
+    static void cross(Context& context, math::Vec2 center, float arm, float width, math::Color color);
+
     // Draws a filled triangle pointing in a direction, sized in design units and centered on a point.
-    static void arrow(math::Vec2 center, float size, ImGuiDir direction, math::Color color);
+    static void arrow(Context& context, math::Vec2 center, float size, ImGuiDir direction, math::Color color);
 
     // Returns the direction an arrow points in the direction of the UI, which swaps left and right in a right-to-left UI, so an arrow that means forward points the way the UI reads.
     [[nodiscard]] static ImGuiDir mirror(const Context& context, ImGuiDir direction) noexcept;

@@ -9,6 +9,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "support/EngineFixture.hpp"
@@ -17,7 +18,7 @@ namespace haylen::ui {
 
 namespace {
 
-// What the GUIs drew in the last frame: the box around every vertex and the strongest value of two color channels.
+// What the GUIs drew in the last frame: the box around every vertex and shape and the strongest value of two color channels.
 struct Drawn {
     math::Rect box;
     std::uint32_t alpha = 0;
@@ -32,12 +33,22 @@ class UiTransformTest : public ::testing::Test {
         math::Vec2 lowest{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
         math::Vec2 highest{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
         Drawn drawn;
+        // clang-format off
+        const auto add = [&](math::Vec2 low, math::Vec2 high, std::uint32_t color) {
+            lowest = math::Vec2::min(lowest, low);
+            highest = math::Vec2::max(highest, high);
+            drawn.alpha = std::max(drawn.alpha, (color >> IM_COL32_A_SHIFT) & 0xFFU);
+            drawn.green = std::max(drawn.green, (color >> IM_COL32_G_SHIFT) & 0xFFU);
+        };
+        // clang-format on
         for (const ImDrawList* list : data.CmdLists) {
             for (const ImDrawVert& vertex : list->VtxBuffer) {
-                lowest = {std::min(lowest.x, vertex.pos.x), std::min(lowest.y, vertex.pos.y)};
-                highest = {std::max(highest.x, vertex.pos.x), std::max(highest.y, vertex.pos.y)};
-                drawn.alpha = std::max(drawn.alpha, (vertex.col >> IM_COL32_A_SHIFT) & 0xFFU);
-                drawn.green = std::max(drawn.green, (vertex.col >> IM_COL32_G_SHIFT) & 0xFFU);
+                add({vertex.pos.x, vertex.pos.y}, {vertex.pos.x, vertex.pos.y}, vertex.col);
+            }
+        }
+        for (const graphics2d::Shape& shape : plugin.getBackend().getShapes()) {
+            for (const math::Color color : {shape.color, shape.borderColor}) {
+                add(shape.bounds.getMin(), shape.bounds.getMax(), color.toRgba8());
             }
         }
         drawn.box = math::Rect::fromMinMax(lowest, highest);

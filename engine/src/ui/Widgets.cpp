@@ -101,7 +101,7 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
 
     // The line runs a gap away from the edge of the control, and it may reach past the clip of a scrolled area so an item at the edge still shows it whole.
     const float width = context.getMetric(Theme::Metric::FocusWidth);
-    const float distance = context.getMetric(Theme::Metric::FocusGap) + width * 0.5F;
+    const float distance = context.getMetric(Theme::Metric::FocusGap) + width;
     ImRect ring = ImGuiConverter::toImRect(bounds);
     ring.ClipWith(window->ClipRect);
     ring.Expand(distance);
@@ -109,7 +109,8 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
     if (clipped) {
         window->DrawList->PushClipRect(ring.Min, ring.Max);
     }
-    window->DrawList->AddRect(ring.Min, ring.Max, ImGuiConverter::toImU32(context.getColor(Theme::Color::Focus)), radius + distance, width);
+    const float rounding = radius + distance;
+    Surfaces::drawShape(context, {.bounds = math::Rect::fromMinMax({ring.Min.x, ring.Min.y}, {ring.Max.x, ring.Max.y}), .radii = {rounding, rounding, rounding, rounding}, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Focus)});
     if (clipped) {
         window->DrawList->PopClipRect();
     }
@@ -148,7 +149,7 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
         if (state.hovered) {
             const float y = std::floor(bounds.y + (bounds.height + Typography::getLineHeight(context, Theme::Font::Button)) * 0.5F);
             const math::Rect line = context.mirror({bounds.x, y, std::min(Typography::measure(context, Theme::Font::Button, label).x, bounds.width), 0.0F}, bounds);
-            ImGui::GetWindowDrawList()->AddLine({line.x, y}, {line.getRight(), y}, ImGuiConverter::toImU32(color), 1.0F);
+            Widgets::line(context, {line.x, y}, {line.getRight(), y}, 1.0F, color);
         }
         return state.clicked;
     }
@@ -181,7 +182,7 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
         Surfaces::draw(context, surfaces.normal, bounds, fill, border);
     }
     if (checked && textured != nullptr) {
-        ImGui::GetWindowDrawList()->AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Selection)), context.getMetric(Theme::Metric::ControlRadius));
+        Surfaces::fill(context, bounds, context.getColor(Theme::Color::Selection), context.getMetric(Theme::Metric::ControlRadius));
     }
 
     // The label and icon sit together in the middle of the space the surface leaves free, the icon on the side the UI starts.
@@ -222,7 +223,7 @@ bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, 
     Surfaces::draw(context, role, box, fill, context.getColor(value ? Theme::Color::Accent : Theme::Color::BorderStrong), context.getMetric(Theme::Metric::CheckRadius));
     if (value && context.getSurface(role) == nullptr) {
         const float padding = size * 0.22F;
-        ImGui::RenderCheckMark(ImGui::GetWindowDrawList(), {box.x + padding, box.y + padding}, ImGuiConverter::toImU32(context.getColor(Theme::Color::OnAccent)), size - padding * 2.0F);
+        checkMark(context, {box.x + padding, box.y + padding}, size - padding * 2.0F, context.getColor(Theme::Color::OnAccent));
     }
     if (!label.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + size + context.getMetric(Theme::Metric::ContentSpacing), bounds.y, bounds.width - size - context.getMetric(Theme::Metric::ContentSpacing), bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
@@ -234,18 +235,16 @@ bool Widgets::radio(Context& context, const math::Rect& bounds, bool selected, s
     const Interaction state = interact(context, bounds, context.getMetric(Theme::Metric::ControlRadius), idLabel);
     const float size = context.getMetric(Theme::Metric::ChoiceSize);
     const math::Rect circle = context.mirror({bounds.x, bounds.getCenter().y - size * 0.5F, size, size}, bounds);
-    const ImVec2 center = ImGuiConverter::toImVec2(circle.getCenter());
     math::Color fill = context.getColor(Theme::Color::Raised);
     if (state.hovered) {
         fill = mix(fill, context.getColor(Theme::Color::Hover));
     }
-    ImDrawList& list = *ImGui::GetWindowDrawList();
     // The ring runs inside the circle of the mark, so it never reaches past its size.
-    const float ring = context.getMetric(Theme::Metric::BorderWidth);
-    list.AddCircleFilled(center, size * 0.5F, ImGuiConverter::toImU32(fill));
-    list.AddCircle(center, std::max(0.0F, size * 0.5F - ring * 0.5F), ImGuiConverter::toImU32(context.getColor(selected ? Theme::Color::Accent : Theme::Color::BorderStrong)), 0, ring);
+    const float half = size * 0.5F;
+    Surfaces::drawShape(context, {.bounds = circle, .radii = {half, half, half, half}, .color = fill, .borderWidth = context.getMetric(Theme::Metric::BorderWidth), .borderColor = context.getColor(selected ? Theme::Color::Accent : Theme::Color::BorderStrong)});
     if (selected) {
-        list.AddCircleFilled(center, size * 0.25F, ImGuiConverter::toImU32(context.getColor(Theme::Color::Accent)));
+        const float dot = size * 0.25F;
+        Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(circle.getCenter(), {dot * 2.0F, dot * 2.0F}), .radii = {dot, dot, dot, dot}, .color = context.getColor(Theme::Color::Accent)});
     }
     if (!label.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + size + context.getMetric(Theme::Metric::ContentSpacing), bounds.y, bounds.width - size - context.getMetric(Theme::Metric::ContentSpacing), bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
@@ -277,14 +276,19 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const float height = context.getMetric(Theme::Metric::ToggleHeight);
     const math::Rect track = context.mirror({bounds.x, std::floor(bounds.getCenter().y - height * 0.5F), width, height}, bounds);
     const math::Color hover = context.getColor(Theme::Color::Hover);
-    const math::Color off = context.getColor(Theme::Color::Track);
-    Surfaces::draw(context, Theme::Surface::Track, track, state.hovered ? mix(off, hover) : off, std::nullopt, height * 0.5F);
-    if (eased > 0.0F) {
-        const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
-        const math::Color on = context.getColor(Theme::Color::Accent);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * eased);
-        Surfaces::draw(context, Theme::Surface::TrackFill, groove, state.hovered ? mix(on, hover) : on, std::nullopt, groove.height * 0.5F);
-        ImGui::PopStyleVar();
+    const math::Color off = state.hovered ? mix(context.getColor(Theme::Color::Track), hover) : context.getColor(Theme::Color::Track);
+    const math::Color on = state.hovered ? mix(context.getColor(Theme::Color::Accent), hover) : context.getColor(Theme::Color::Accent);
+    if (context.getSurface(Theme::Surface::Track) == nullptr && context.getSurface(Theme::Surface::TrackFill) == nullptr) {
+        // Flat colors fade the on color into the track itself, so the edge of the track never shows a rim of its own color around a fill on top of it.
+        Surfaces::draw(context, Theme::Surface::Track, track, mix(off, on.withAlpha(on.a * eased)), std::nullopt, height * 0.5F);
+    } else {
+        Surfaces::draw(context, Theme::Surface::Track, track, off, std::nullopt, height * 0.5F);
+        if (eased > 0.0F) {
+            const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * eased);
+            Surfaces::draw(context, Theme::Surface::TrackFill, groove, on, std::nullopt, groove.height * 0.5F);
+            ImGui::PopStyleVar();
+        }
     }
 
     const float inset = std::min(context.getMetric(Theme::Metric::ToggleKnobInset), height * 0.5F);
@@ -373,13 +377,42 @@ void Widgets::progress(Context& context, const math::Rect& bounds, float value, 
     Surfaces::draw(context, Theme::Surface::TrackFill, filled, context.getColor(getToneColors(tone == Tone::Neutral ? Tone::Accent : tone).fill), std::nullopt, groove.height * 0.5F);
 }
 
+// The stroke is a band along the edge of a circle that reaches half its width past the radius, cut to three quarters of a turn.
 void Widgets::spinner(Context& context, math::Vec2 center, float radius, math::Color color) {
     constexpr float kArc = std::numbers::pi_v<float> * 1.5F;
     const auto start = static_cast<float>(std::fmod(context.getTime() * 6.0, 2.0 * std::numbers::pi));
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.PathClear();
-    list.PathArcTo(ImGuiConverter::toImVec2(center), radius, start, start + kArc, 32);
-    list.PathStroke(ImGuiConverter::toImU32(color), std::max(2.0F, radius * 0.2F));
+    const float stroke = std::max(2.0F, radius * 0.2F);
+    const float outer = radius + stroke * 0.5F;
+    Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(center, {outer * 2.0F, outer * 2.0F}), .radii = {outer, outer, outer, outer}, .startAngle = start, .sweep = kArc, .color = math::Color::transparent(), .borderWidth = stroke, .borderColor = color});
+}
+
+// The mark is the corner of a rectangle turned by an eighth of a turn, whose border along two sides forms the two strokes, with the quarter of the rectangle around that corner kept. The short stroke runs a third of the size up and to the left of the corner and the long one twice as far up and to the right, the way ImGui draws its check mark.
+void Widgets::checkMark(Context& context, math::Vec2 origin, float size, math::Color color) {
+    constexpr float kTurn = std::numbers::pi_v<float> * 0.25F;
+    const float stroke = std::max(size / 5.0F, 1.0F);
+    const float side = size - stroke * 0.5F;
+    const float third = side / 3.0F;
+    const math::Vec2 corner{origin.x + stroke * 0.25F + third, origin.y + stroke * 0.25F + side - third * 0.5F};
+    const float shortArm = third * std::numbers::sqrt2_v<float>;
+    const float longArm = shortArm * 2.0F;
+    const math::Vec2 reach{(shortArm - longArm) * std::cos(kTurn), (shortArm + longArm) * std::sin(kTurn)};
+    const math::Vec2 extent{(shortArm + stroke * 0.5F) * 2.0F, (longArm + stroke * 0.5F) * 2.0F};
+    Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(corner - reach, extent), .rotation = kTurn, .sweep = std::numbers::pi_v<float> * 0.5F, .color = math::Color::transparent(), .borderWidth = stroke, .borderColor = color});
+}
+
+// A line runs half a unit right and down of its points, along the middle of the units it starts on, the way ImGui places its lines, so a line between whole units covers whole units.
+void Widgets::line(Context& context, math::Vec2 from, math::Vec2 to, float width, math::Color color) {
+    const math::Vec2 delta = to - from;
+    if (delta.isZero()) {
+        return;
+    }
+    const math::Vec2 middle = (from + to) * 0.5F + math::Vec2{0.5F, 0.5F};
+    Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(middle, {delta.getLength(), width}), .rotation = delta.getAngle(), .color = color});
+}
+
+void Widgets::cross(Context& context, math::Vec2 center, float arm, float width, math::Color color) {
+    line(context, {center.x - arm, center.y - arm}, {center.x + arm, center.y + arm}, width, color);
+    line(context, {center.x - arm, center.y + arm}, {center.x + arm, center.y - arm}, width, color);
 }
 
 ImGuiDir Widgets::mirror(const Context& context, ImGuiDir direction) noexcept {
@@ -393,14 +426,13 @@ int Widgets::getStep(const Context& context, FocusDirection direction) noexcept 
     return (direction == FocusDirection::Right) != context.isRightToLeft() ? 1 : -1;
 }
 
-void Widgets::arrow(math::Vec2 center, float size, ImGuiDir direction, math::Color color) {
-    const float half = size * 0.5F;
-    const bool vertical = direction == ImGuiDir_Up || direction == ImGuiDir_Down;
-    const float sign = direction == ImGuiDir_Down || direction == ImGuiDir_Right ? 1.0F : -1.0F;
-    const ImVec2 tip = vertical ? ImVec2{center.x, center.y + half * sign} : ImVec2{center.x + half * sign, center.y};
-    const ImVec2 first = vertical ? ImVec2{center.x - half, center.y - half * sign} : ImVec2{center.x - half * sign, center.y - half};
-    const ImVec2 second = vertical ? ImVec2{center.x + half, center.y - half * sign} : ImVec2{center.x - half * sign, center.y + half};
-    ImGui::GetWindowDrawList()->AddTriangleFilled(first, second, tip, ImGuiConverter::toImU32(color));
+// The triangle is the part of a rectangle around its tip that the sector reaching the two far corners keeps, so the far side of the rectangle is its base.
+void Widgets::arrow(Context& context, math::Vec2 center, float size, ImGuiDir direction, math::Color color) {
+    constexpr float kPi = std::numbers::pi_v<float>;
+    const float pointing = direction == ImGuiDir_Down ? kPi * 0.5F : direction == ImGuiDir_Up ? -kPi * 0.5F : direction == ImGuiDir_Left ? kPi : 0.0F;
+    const math::Vec2 tip = center + math::Vec2::fromAngle(pointing, size * 0.5F);
+    const float spread = std::atan2(size * 0.5F, size);
+    Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(tip, {size * 2.0F, size}), .rotation = pointing + kPi, .startAngle = -spread, .sweep = spread * 2.0F, .color = color});
 }
 
 } // namespace haylen::ui

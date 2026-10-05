@@ -172,6 +172,7 @@ set(HAYLEN_TEST_SOURCES
   ui/ScrollbarTests.cpp
   ui/ScrollerTests.cpp
   ui/SizeCacheTests.cpp
+  ui/SmoothEdgeTests.cpp
   ui/TextInputTests.cpp
   ui/StyleTests.cpp
   ui/ThemeTests.cpp
