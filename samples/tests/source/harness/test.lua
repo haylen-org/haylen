@@ -27,7 +27,7 @@ Test.green = '#FF6FDCA0'
 Test.red = '#FFFF8A84'
 Test.violet = '#FFC9A0FF'
 
--- The stage camera shows stage-local coordinates, where 0, 0 is the top-left corner of the play area wherever the layout puts it, unless the frame names a `view` to fit. A test keeps `entry`, `camera`, `view`, `document`, `stage`, `area` and `statusTime` on itself for the harness, so its own fields and methods take other names, and `log`, `status`, `set`, `cancel`, `spawn` and `listen` stay the methods of the harness and of scenes.
+-- The stage camera shows stage-local coordinates, where 0, 0 is the top-left corner of the play area wherever the layout puts it, unless the frame names a `view` to fit. A test keeps `entry`, `camera`, `view`, `document`, `stage`, `area` and `statusTime` on itself for the harness, so its own fields and methods take other names, and `log`, `status`, `set`, `cancel`, `spawn` and `listen` stay the methods of the harness and of scenes, as do the scene hooks such as `load`, `pause`, `resume` and `event`, which the scene system calls.
 function Test:init(entry)
     self.entry = entry
     self.statusTime = Test.statusInterval

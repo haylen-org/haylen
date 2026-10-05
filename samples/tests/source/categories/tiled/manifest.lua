@@ -16,5 +16,6 @@ return {
         {code = 'TLD-010', title = 'Y sorting', description = 'A character walking behind and in front of trees, fences and lamps sorted by their feet.', module = 'ysort'},
         {code = 'TLD-011', title = 'Ray casts', description = 'Rays against the cells of a tile layer and the shapes of an object layer, without physics.', module = 'raycasts'},
         {code = 'TLD-012', title = 'Worlds', description = 'A world file that places listed maps and maps found by a file name pattern.', module = 'worlds'},
+        {code = 'TLD-013', title = 'Digging the collision', description = 'Walls dug and built with tile changes while balls bounce, with the merged collision loops traced again around each change.', module = 'digging'},
     },
 }
