@@ -124,7 +124,7 @@ deleteSave()
 
 ### storage.list(directory)
 
-Returns a sorted sequence with the paths of every file inside `directory` and its subfolders. Paths are relative to the storage folder, not to `directory`, so they can be passed straight to the other functions. Leave `directory` out to list every file of the app. A missing folder returns an empty table. Files with the `.tmp` extension are left out, because writes use them as temporary files.
+Returns a sorted sequence with the paths of every file inside `directory` and its subfolders. Paths are relative to the storage folder, not to `directory`, so they can be passed straight to the other functions. Leave `directory` out to list every file of the app. A missing folder returns an empty table. Files with the `.tmp` extension are left out, because writes use them as temporary files. A folder that cannot be read raises `The storage folder "<directory>" could not be listed, and the file system reported "<reason>".`, or `The user storage could not be listed, ...` without a `directory`, instead of returning part of the files.
 
 ```lua
 local storage = require('haylen.storage')

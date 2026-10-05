@@ -92,6 +92,34 @@ TEST(UserStorageTest, FailedWritesLeaveNoTemporaryFileAndNameTheRelativePath) {
     EXPECT_EQ(storage.readText("slot/inside.txt"), "kept");
 }
 
+#if !defined(_WIN32)
+TEST(UserStorageTest, RefusesToListAFolderPartly) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    storage.writeText("saves/slot1.json", "{}");
+    storage.writeText("saves/locked/slot2.json", "{}");
+    const std::filesystem::path locked = directory.getPath() / "saves" / "locked";
+    std::filesystem::permissions(locked, std::filesystem::perms::none);
+
+    // A user who reads every folder, such as the superuser, cannot meet the problem.
+    std::error_code denied;
+    const std::filesystem::directory_iterator probe(locked, denied);
+    if (!denied) {
+        std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
+        GTEST_SKIP() << "The user reads folders without permission.";
+    }
+
+    std::string message;
+    try {
+        (void)storage.list("saves");
+    } catch (const std::runtime_error& error) {
+        message = error.what();
+    }
+    std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
+    EXPECT_TRUE(message.starts_with("The storage folder \"saves\" could not be listed, and the file system reported")) << message;
+}
+#endif
+
 TEST(SaveSlotsTest, WritesReadsListsAndRemovesSlots) {
     const test::TemporaryDirectory directory;
     UserStorage storage(directory.getPath());

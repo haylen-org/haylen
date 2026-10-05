@@ -108,13 +108,16 @@ std::vector<std::string> UserStorage::list(std::string_view directory) const {
         return files;
     }
 
-    for (auto iterator = std::filesystem::recursive_directory_iterator(start, error); iterator != std::filesystem::recursive_directory_iterator(); iterator.increment(error)) {
-        if (error) {
-            break;
+    // A folder that cannot be read fails the listing, so no caller mistakes a part of the files for all of them.
+    for (auto iterator = std::filesystem::recursive_directory_iterator(start, error); !error && iterator != std::filesystem::recursive_directory_iterator(); iterator.increment(error)) {
+        std::error_code status;
+        if (iterator->is_regular_file(status) && iterator->path().extension() != ".tmp") {
+            files.push_back(iterator->path().lexically_relative(root).generic_string());
         }
-        if (iterator->is_regular_file(error) && iterator->path().extension() != ".tmp") {
-            files.push_back(std::filesystem::relative(iterator->path(), root, error).generic_string());
-        }
+    }
+    if (error) {
+        const std::string folder = relative.empty() ? std::string("The user storage") : "The storage folder \"" + relative + "\"";
+        throw std::runtime_error(folder + " could not be listed, and the file system reported \"" + error.message() + "\".");
     }
     std::sort(files.begin(), files.end());
     return files;
