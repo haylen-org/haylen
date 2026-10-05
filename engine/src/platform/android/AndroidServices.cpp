@@ -116,6 +116,10 @@ void Services::lockOrientation(Orientation value) {
     JavaBridge::lockOrientation(static_cast<int>(value));
 }
 
+std::optional<Fold> Services::getFold() {
+    return AndroidActivity::getFold();
+}
+
 TextInput& Services::getTextInput() {
     static AndroidTextInput& input = *new AndroidTextInput();
     return input;
@@ -262,6 +266,16 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeUrlOpened(JNIEnv*, j
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclass, jboolean dark) {
     haylen::platform::SokolHost::getSystemState().setTheme(dark == JNI_TRUE ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {
+    using haylen::platform::Fold;
+    if (present != JNI_TRUE) {
+        haylen::platform::AndroidActivity::setFold(std::nullopt);
+        return;
+    }
+    const haylen::math::Rect bounds = haylen::math::Rect::fromMinMax({static_cast<float>(left), static_cast<float>(top)}, {static_cast<float>(right), static_cast<float>(bottom)});
+    haylen::platform::AndroidActivity::setFold(Fold{.bounds = bounds, .axis = vertical == JNI_TRUE ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = halfOpened == JNI_TRUE ? Fold::State::HalfOpened : Fold::State::Flat, .separating = separating == JNI_TRUE, .occluding = occluding == JNI_TRUE});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jclass, jboolean present, jint level, jint scale, jint status) {

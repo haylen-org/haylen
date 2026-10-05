@@ -38,6 +38,7 @@ class SokolHost final : public Host {
     void requestQuit() override;
     [[nodiscard]] Orientation getOrientation() const override;
     void lockOrientation(Orientation value) override;
+    [[nodiscard]] std::optional<Fold> getFold() const override;
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;

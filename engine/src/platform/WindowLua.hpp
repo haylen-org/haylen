@@ -1,13 +1,18 @@
 #pragma once
 
 #include "haylen/math/Polygon.hpp"
+#include "haylen/math/Rect.hpp"
 #include "haylen/platform/Monitor.hpp"
 
 struct lua_State;
 
+namespace haylen::graphics {
+class Viewport;
+}
+
 namespace haylen::platform {
 
-// Installs `haylen.window`, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, clipboard and back button, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and mouse passthrough.
+// Installs `haylen.window`, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, the fold of foldable devices, clipboard and back button, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and mouse passthrough.
 class WindowLua final {
   public:
     static void install(lua_State* L);
@@ -16,6 +21,7 @@ class WindowLua final {
     [[nodiscard]] static bool isRect(lua_State* L, int index);
     [[nodiscard]] static math::Polygon::Outline readRegion(lua_State* L, int index);
     static void pushMonitor(lua_State* L, const Monitor& monitor);
+    [[nodiscard]] static math::Rect toDesign(const graphics::Viewport& viewport, const math::Rect& pixels);
 
     static int framebufferSize(lua_State* L);
     static int dpiScale(lua_State* L);
@@ -30,6 +36,11 @@ class WindowLua final {
     static int setKeyboardVisible(lua_State* L);
     static int orientation(lua_State* L);
     static int lockOrientation(lua_State* L);
+    static int fold(lua_State* L);
+    static int posture(lua_State* L);
+    static int segments(lua_State* L);
+    static int foldSimulation(lua_State* L);
+    static int setFoldSimulation(lua_State* L);
     static int clipboard(lua_State* L);
     static int setClipboard(lua_State* L);
     static int hasPointerDevice(lua_State* L);

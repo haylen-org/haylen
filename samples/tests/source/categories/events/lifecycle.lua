@@ -26,7 +26,7 @@ local kEvents = {
     'sceneLoading', 'sceneLoaded', 'sceneLoadFailed', 'sceneEntered', 'sceneExited', 'sceneUnloaded', 'scenePaused', 'sceneResumed',
     'sceneExitTransitionStarted', 'sceneEnterTransitionFinished', 'sceneCoverStarted', 'sceneCoverFinished',
     'sceneHoldStarted', 'sceneHoldFinished', 'sceneRevealStarted', 'sceneRevealFinished', 'autoloadStarted', 'autoloadStopped',
-    'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowMonitorsChanged',
+    'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowMonitorsChanged',
     'guiMounted', 'guiUnmounted', 'gamepadConnected', 'gamepadDisconnected', 'audioInterrupted', 'audioResumed', 'audioRouteChanged',
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'systemThemeChanged', 'batteryChanged', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
     'assetLoaded', 'assetUnloaded', 'assetReloaded', 'objectCreated', 'objectDestroyed',

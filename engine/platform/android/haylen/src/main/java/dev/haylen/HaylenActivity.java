@@ -60,6 +60,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private HaylenOverlayLayer overlays;
     private HaylenEditText editor;
     private HaylenNetwork network;
+    private HaylenFold fold;
     private OnBackPressedCallback backCallback;
 
     @Override
@@ -80,6 +81,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(getResources().getConfiguration()));
         battery.register();
+        fold = new HaylenFold(this);
+        fold.register();
 
         // The views over the app share the layout of its surface, above it.
         FrameLayout content = findViewById(contentViewId);
@@ -197,6 +200,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenDialogs.activityDestroyed();
         splash.dismiss();
         battery.unregister();
+        fold.unregister();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         if (network != null) {
             network.unregister();

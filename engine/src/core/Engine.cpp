@@ -69,6 +69,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     const std::span<const std::uint8_t> font = EmbeddedFiles::getDefaultFont();
     current.defaultFont = std::make_shared<text::TrueTypeFont>(*current.graphics, std::vector<std::uint8_t>(font.begin(), font.end()));
     current.safeAreaSimulation = current.config.debug.safeArea;
+    current.foldSimulation = current.config.debug.fold;
     current.pointerEmulation.setMouseAsTouch(current.config.input.mouseAsTouch);
     current.pointerEmulation.setTouchAsMouse(current.config.input.touchAsMouse);
     current.reservedInsets = host.getReservedInsets();
@@ -77,6 +78,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.windowPosition = host.getFrame().getPosition();
     current.orientation = host.getOrientation();
     current.safeRect = current.viewport.getSafeRect();
+    current.fold = getFold();
     plugins::BuiltInPlugins::registerAll(current.plugins, host);
 }
 
@@ -307,6 +309,11 @@ void Engine::publishDeviceChanges() {
     if (safe != current.safeRect) {
         current.safeRect = safe;
         current.events.emit(LifecycleEvent::kWindowSafeAreaChanged, {{"x", JsonNumber::fromFloat(safe.x)}, {"y", JsonNumber::fromFloat(safe.y)}, {"width", JsonNumber::fromFloat(safe.width)}, {"height", JsonNumber::fromFloat(safe.height)}});
+    }
+
+    if (std::optional<platform::Fold> fold = getFold(); fold != current.fold) {
+        current.fold = fold;
+        current.events.emit(LifecycleEvent::kWindowFoldChanged, describeFold(fold));
     }
 
     // Gamepads count from one in the event, as haylen.input counts them.
@@ -685,6 +692,47 @@ void Engine::setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> v
 
 const std::optional<platform::SafeAreaSimulation>& Engine::getSafeAreaSimulation() const noexcept {
     return state->safeAreaSimulation;
+}
+
+std::optional<platform::Fold> Engine::getFold() const {
+    const EngineState& current = *state;
+    if (current.foldSimulation) {
+        return current.foldSimulation->getFold(current.host.getFramebufferSize(), current.host.getDpiScale());
+    }
+    return current.host.getFold();
+}
+
+void Engine::setFoldSimulation(std::optional<platform::FoldSimulation> value) {
+    state->foldSimulation = std::move(value);
+}
+
+const std::optional<platform::FoldSimulation>& Engine::getFoldSimulation() const noexcept {
+    return state->foldSimulation;
+}
+
+// The fold reaches the app in design units, like the safe area, with the posture and the segments of the window on each side of it.
+Json Engine::describeFold(const std::optional<platform::Fold>& fold) const {
+    const math::Vec2 size = state->host.getFramebufferSize();
+    const std::vector<math::Rect> segments = fold ? fold->getSegments(size) : std::vector<math::Rect>{{0.0F, 0.0F, size.x, size.y}};
+    Json description{{"posture", platform::Fold::postureName(fold ? fold->getPosture() : platform::Fold::Posture::Flat)}, {"segments", Json::array()}};
+    for (const math::Rect& segment : segments) {
+        description["segments"].push_back(toDesignJson(segment));
+    }
+    if (fold) {
+        Json area = toDesignJson(fold->bounds);
+        area["axis"] = platform::Fold::axisName(fold->axis);
+        area["state"] = platform::Fold::stateName(fold->state);
+        area["separating"] = fold->separating;
+        area["occluding"] = fold->occluding;
+        description["fold"] = std::move(area);
+    }
+    return description;
+}
+
+Json Engine::toDesignJson(const math::Rect& pixels) const {
+    const graphics::Viewport& viewport = state->viewport;
+    const math::Rect area = math::Rect::fromMinMax(viewport.toDesign(pixels.getMin()), viewport.toDesign(pixels.getMax()));
+    return {{"x", JsonNumber::fromFloat(area.x)}, {"y", JsonNumber::fromFloat(area.y)}, {"width", JsonNumber::fromFloat(area.width)}, {"height", JsonNumber::fromFloat(area.height)}};
 }
 
 // The screen edges that native views reserve widen the safe area of the device, or the simulated one, edge by edge.

@@ -61,6 +61,17 @@ EM_JS(void, haylen_js_safe_area, (float* insets), {
     }
 });
 
+EM_JS(int, haylen_js_fold, (float* values), {
+    const fold = Module.haylen.fold();
+    if (!fold) {
+        return 0;
+    }
+    for (let index = 0; index < 8; ++index) {
+        HEAPF32[(values >> 2) + index] = fold[index];
+    }
+    return 1;
+});
+
 EM_JS(void, haylen_js_persist, (), {
     Module.haylen.persist();
 });
@@ -206,6 +217,15 @@ Orientation Services::getOrientation() {
 // Browsers lock the screen orientation only where the Screen Orientation API allows it, which usually means a fullscreen page on a phone.
 void Services::lockOrientation(Orientation value) {
     haylen_js_lock_orientation(static_cast<int>(value));
+}
+
+// The page reads the segments of the viewport, which a browser splits at the fold of the device, and the posture of the device.
+std::optional<Fold> Services::getFold() {
+    std::array<float, 8> values{};
+    if (haylen_js_fold(values.data()) == 0) {
+        return std::nullopt;
+    }
+    return Fold{.bounds = math::Rect::fromMinMax({values[0], values[1]}, {values[2], values[3]}), .axis = values[4] != 0.0F ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = values[5] != 0.0F ? Fold::State::HalfOpened : Fold::State::Flat, .separating = values[6] != 0.0F, .occluding = values[7] != 0.0F};
 }
 
 TextInput& Services::getTextInput() {

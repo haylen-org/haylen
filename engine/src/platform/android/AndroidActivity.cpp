@@ -6,6 +6,7 @@ namespace haylen::platform {
 
 std::mutex& AndroidActivity::mutex = *new std::mutex();
 math::Insets AndroidActivity::safeAreaInsets{};
+std::optional<Fold> AndroidActivity::fold;
 std::atomic<bool> AndroidActivity::framePresented = false;
 std::atomic<bool> AndroidActivity::television = false;
 std::atomic<float> AndroidActivity::density = 1.0F;
@@ -23,6 +24,16 @@ void AndroidActivity::setSafeAreaInsets(const math::Insets& value) {
 math::Insets AndroidActivity::getSafeAreaInsets() {
     const std::scoped_lock lock(mutex);
     return safeAreaInsets;
+}
+
+void AndroidActivity::setFold(std::optional<Fold> value) {
+    const std::scoped_lock lock(mutex);
+    fold = value;
+}
+
+std::optional<Fold> AndroidActivity::getFold() {
+    const std::scoped_lock lock(mutex);
+    return fold;
 }
 
 void AndroidActivity::setDensity(float value) noexcept {

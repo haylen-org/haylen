@@ -103,7 +103,7 @@ print(haylen.lifecycle().pauseOnFocusLoss, haylen.halted())
 
 Low memory warnings publish `appLowMemory` after the engine has dropped every asset that nothing holds anymore, which is the moment to unload preload groups and caches the app can rebuild. A request to close the window publishes `appQuitRequested`, which also comes from Quit in the menu of a Mac app, Command+Q and the Dock, as the [desktop guide](desktop.md#menus-and-quitting) describes, and `haylen.quit()` ends the app.
 
-The device and its screen publish their changes too. `keyboardShown` and `keyboardHidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](text-input.md) explains. `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `systemThemeChanged` and `batteryChanged` follow the light or dark colors of the system and the battery, once per change, as [haylen.system](lua-api/system.md#events) describes. `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](lua-api/window.md) describes. `windowSafeAreaChanged` follows the safe area of [haylen.viewport](lua-api/viewport.md#viewportsaferect), which is the safe area of the device widened, edge by edge, by the edges that native views of plugins reserve, such as a banner at the bottom, so UI anchored to the safe area moves out of their way on its own. On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` the monitors and their work areas, as the [desktop guide](desktop.md) describes.
+The device and its screen publish their changes too. `keyboardShown` and `keyboardHidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](text-input.md) explains. `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `systemThemeChanged` and `batteryChanged` follow the light or dark colors of the system and the battery, once per change, as [haylen.system](lua-api/system.md#events) describes. `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](lua-api/window.md) describes, and `windowFoldChanged` follows the fold of foldable and dual-screen devices, its posture and the segments of the window on each side of it, as [folds and dual screens](lua-api/window.md#folds-and-dual-screens) describes. `windowSafeAreaChanged` follows the safe area of [haylen.viewport](lua-api/viewport.md#viewportsaferect), which is the safe area of the device widened, edge by edge, by the edges that native views of plugins reserve, such as a banner at the bottom, so UI anchored to the safe area moves out of their way on its own. On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` the monitors and their work areas, as the [desktop guide](desktop.md) describes.
 
 ```lua
 local events = require('haylen.events')
@@ -139,6 +139,99 @@ events.on('appActive', function()
     print('back in the game')
 end)
 ```
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The window gaining and losing the keyboard focus. |
+| `appBackground` | The window minimized into the taskbar, and the app comes back when it is restored. |
+| `appLowMemory` | Never, because the engine follows no memory notification of Windows. |
+| `appQuitRequested` | The close button of the window and Alt+F4. |
+| `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
+| `windowOrientationChanged`, `windowFoldChanged` | Never, because a window of a desktop counts as landscape and Windows offers desktop apps no API for the fold of a device. |
+| `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
+| `windowMoved`, `windowMonitorsChanged` | The moves of the window and the changes of the displays, their settings and the work area, through the messages of the window. |
+| `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Windows. |
+| `networkOnline`, `networkOffline` | Never, because the engine follows no network state on Windows, and `haylen.networkState()` stays `'unknown'`. |
+| `audioInterrupted`, `audioResumed` | Never, because Windows does not interrupt the audio of apps. |
+| `audioRouteChanged` | A change of the default output device of WASAPI. |
+| `systemThemeChanged`, `batteryChanged` | The app theme of the personalization settings and the power status of the system, as [haylen.system](lua-api/system.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | XInput. |
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the app switcher, Control Center, the Notification Center, a phone call or Siri, and the interruptions of the audio session. |
+| `appBackground` | The scene in the background, such as after Home, another app or the lock of the device. |
+| `appLowMemory` | The memory warnings of UIKit. |
+| `appQuitRequested` | Never, because iOS apps never quit on request: the system ends them in the background. |
+| `windowResized` | The view of the app, such as a rotation or a new size of an iPad window. |
+| `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
+| `windowFullscreenChanged` | Never, because the app always fills its window. |
+| `windowOrientationChanged` | The interface orientation of the scene. |
+| `windowFoldChanged` | Never, because no iPhone or iPad folds. |
+| `windowSafeAreaChanged` | The safe area insets of the view, such as a rotation that moves the notch or the Dynamic Island, and the native views of plugins. |
+| `windowMoved`, `windowMonitorsChanged` | Never, because the window has no desktop. |
+| `keyboardShown`, `keyboardHidden` | The keyboard notifications of UIKit while a text field edits. |
+| `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
+| `audioInterrupted`, `audioResumed` | The interruptions of the audio session, such as a phone call, an alarm or Siri. |
+| `audioRouteChanged` | The route changes of the audio session, such as headphones unplugged. |
+| `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the battery of the device, as [haylen.system](lua-api/system.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | GameController. |
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the Control Center of the TV, and the interruptions of the audio session. |
+| `appBackground` | The scene in the background, such as after the TV button or another app. |
+| `appLowMemory` | The memory warnings of UIKit. |
+| `appQuitRequested` | Never, because tvOS apps never quit on request. |
+| `windowResized` | The view of the app. |
+| `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
+| `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the app always fills the TV in landscape. |
+| `windowSafeAreaChanged` | The safe area insets of the view, the overscan margins of the TV, and the native views of plugins. |
+| `windowMoved`, `windowMonitorsChanged` | Never, because the window has no desktop. |
+| `keyboardShown`, `keyboardHidden` | Never, because the keyboard of tvOS is a screen of the system over the app, which covers no part of it. |
+| `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
+| `audioInterrupted`, `audioResumed` | The interruptions of the audio session. |
+| `audioRouteChanged` | The route changes of the audio session. |
+| `systemThemeChanged`, `batteryChanged` | The trait collection of the app, and never `batteryChanged`, since a TV runs on mains power. |
+| `gamepadConnected`, `gamepadDisconnected` | GameController, the Siri Remote included. |
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as when another app comes to the front. |
+| `appBackground` | The scene in the background, such as a minimized window. |
+| `appLowMemory` | The memory warnings of UIKit. |
+| `appQuitRequested` | Never, because Mac Catalyst ends the app on Quit and Command+Q without asking it, and the engine then stops the app through its [lifecycle](#start-frames-and-stop). |
+| `windowResized` | The window, resized by the player. |
+| `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
+| `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the engine runs the window as the iPad window it is, which counts as landscape. |
+| `windowSafeAreaChanged` | The safe area insets of the view and the native views of plugins. |
+| `windowMoved`, `windowMonitorsChanged` | Never, because UIKit places Mac Catalyst windows on the desktop without telling apps where. |
+| `keyboardShown`, `keyboardHidden` | Never, because a Mac has no keyboard on the screen. |
+| `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
+| `audioInterrupted`, `audioResumed` | The interruptions of the audio session, which the Mac rarely sends. |
+| `audioRouteChanged` | The route changes of the audio session. |
+| `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the power sources of the Mac, as [haylen.system](lua-api/system.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | GameController. |
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The window of the activity gaining and losing the focus, such as under a dialog, a message, the notification shade or a permission prompt, and the audio focus taken by another app. |
+| `appBackground` | The activity paused, in the background and under every activity over the app, such as a document picker or a screen of a plugin. |
+| `appLowMemory` | The trim memory callbacks of the activity, at every level but the one that only says the interface is hidden. |
+| `appQuitRequested` | Never from the system, because back on the root screen and the recent apps close the activity, which stops the app through the [lifecycle](#start-frames-and-stop). |
+| `windowResized` | The surface of the activity, such as a rotation, the split screen or a foldable that folds. |
+| `windowFocusGained`, `windowFocusLost` | The window of the activity gaining and losing the focus. |
+| `windowFullscreenChanged` | Never, because the app always fills its window. |
+| `windowOrientationChanged` | The configuration of the activity. |
+| `windowFoldChanged` | Jetpack WindowManager, on foldable and dual-screen devices, as [folds and dual screens](lua-api/window.md#folds-and-dual-screens) describes. |
+| `windowSafeAreaChanged` | The insets of the cutout and of the system bars that stay visible, and the native views of plugins. |
+| `windowMoved`, `windowMonitorsChanged` | Never, because the window has no desktop. |
+| `keyboardShown`, `keyboardHidden` | The insets of the input method while a text field edits. |
+| `networkOnline`, `networkOffline` | The connectivity manager, with the permission `ACCESS_NETWORK_STATE`. |
+| `audioInterrupted`, `audioResumed` | The audio focus, which another app takes for a call, an alarm or its own sound. |
+| `audioRouteChanged` | The AAudio stream that the system moves to another output. |
+| `systemThemeChanged`, `batteryChanged` | The night mode of the configuration and the battery broadcast, as [haylen.system](lua-api/system.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | The input devices of GameActivity, the remote of an Android TV included. |
 
 ## Assets, connections and objects
 

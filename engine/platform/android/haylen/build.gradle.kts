@@ -42,6 +42,7 @@ dependencies {
     api("androidx.activity:activity:1.13.0")
     api("androidx.core:core:1.19.1")
     implementation("androidx.core:core-splashscreen:1.2.0")
+    implementation("androidx.window:window-java:1.5.1")
 }
 
 // Only the HTTP transport of the Varn Android library runs inside a Haylen app, because the engine links Varn into the player library itself.

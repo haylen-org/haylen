@@ -4,8 +4,10 @@
 
 #include <atomic>
 #include <mutex>
+#include <optional>
 
 #include "haylen/math/Insets.hpp"
+#include "haylen/platform/Fold.hpp"
 #include "haylen/platform/Orientation.hpp"
 
 namespace haylen::platform {
@@ -25,6 +27,10 @@ class AndroidActivity final {
     static void setOrientation(Orientation value) noexcept;
     [[nodiscard]] static Orientation getOrientation() noexcept;
 
+    // The fold of a foldable device across the window, which Jetpack WindowManager reports on the UI thread whenever the layout of the window changes.
+    static void setFold(std::optional<Fold> value);
+    [[nodiscard]] static std::optional<Fold> getFold();
+
     // A TV has no touch screen, so the player drives the app with a remote or a gamepad.
     static void setTelevision(bool value) noexcept;
     [[nodiscard]] static bool isTelevision() noexcept;
@@ -39,6 +45,7 @@ class AndroidActivity final {
   private:
     static std::mutex& mutex;
     static math::Insets safeAreaInsets;
+    static std::optional<Fold> fold;
     static std::atomic<bool> framePresented;
     static std::atomic<bool> television;
     static std::atomic<float> density;

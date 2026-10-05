@@ -119,6 +119,11 @@ Orientation Services::getOrientation() {
 
 void Services::lockOrientation(Orientation) {}
 
+// Linux desktops report no folds or hinges to windows.
+std::optional<Fold> Services::getFold() {
+    return std::nullopt;
+}
+
 // Linux types through the key and character events of X11, so its text input keeps the defaults.
 TextInput& Services::getTextInput() {
     static TextInput& input = *new TextInput();

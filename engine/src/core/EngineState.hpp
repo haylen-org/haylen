@@ -94,6 +94,8 @@ struct EngineState {
     math::Rect safeRect;
     math::Insets reservedInsets;
     std::optional<platform::SafeAreaSimulation> safeAreaSimulation;
+    std::optional<platform::FoldSimulation> foldSimulation;
+    std::optional<platform::Fold> fold;
     bool backLeavesApp = true;
     math::Rect keyboardFrame;
     Engine::NetworkState network = Engine::NetworkState::Unknown;

@@ -117,6 +117,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidGlesVersionTests.cpp
   platform/DevelopmentConnectionTests.cpp
   platform/DialogsTests.cpp
+  platform/FoldTests.cpp
   platform/HeadlessPlayerTests.cpp
   platform/LinuxFilePatternTests.cpp
   platform/LinuxSystemReaderTests.cpp

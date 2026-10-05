@@ -109,6 +109,10 @@ void SokolHost::lockOrientation(Orientation value) {
     Services::lockOrientation(value);
 }
 
+std::optional<Fold> SokolHost::getFold() const {
+    return Services::getFold();
+}
+
 TextInput& SokolHost::getTextInput() noexcept {
     return Services::getTextInput();
 }

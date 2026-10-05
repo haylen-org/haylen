@@ -233,6 +233,11 @@ class Engine final {
     void setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value);
     [[nodiscard]] const std::optional<platform::SafeAreaSimulation>& getSafeAreaSimulation() const noexcept;
 
+    // The fold of a foldable or dual-screen device across the window in framebuffer pixels, the simulated one while a simulation replaces the fold that the device reports, or none. The debug.fold option of app.json sets the simulation at start, and the windowFoldChanged event announces every change of the fold or of the posture.
+    [[nodiscard]] std::optional<platform::Fold> getFold() const;
+    void setFoldSimulation(std::optional<platform::FoldSimulation> value);
+    [[nodiscard]] const std::optional<platform::FoldSimulation>& getFoldSimulation() const noexcept;
+
     // The screen edges that native views of plugins reserve, such as a banner ad, as the largest reservation on each edge in framebuffer pixels. The safe area of the viewport grows on each edge to cover them, so UI anchored to the safe area moves out of their way. The engine takes them at the start of every frame.
     [[nodiscard]] const math::Insets& getReservedInsets() const noexcept;
 
@@ -262,6 +267,10 @@ class Engine final {
     void leaveErrorScreen();
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);
+    [[nodiscard]] Json describeFold(const std::optional<platform::Fold>& fold) const;
+
+    // A rectangle of framebuffer pixels as the table of design units that events carry.
+    [[nodiscard]] Json toDesignJson(const math::Rect& pixels) const;
     void dispatchEvent(const platform::Event& event);
     void render(const std::vector<plugins::Plugin*>& all);
     void renderScenes(const std::vector<plugins::Plugin*>& all);

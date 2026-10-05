@@ -80,6 +80,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `debug.stats` | string | `'off'` | Debug statistics the app starts with: `'off'`, `'compact'` or `'full'`, see [`haylen.debug`](debug.md). |
 | `debug.objectEvents` | boolean | `false` | Whether every counted object publishes `objectCreated` and `objectDestroyed`, see [`haylen.debug`](debug.md#object-counts-and-events). |
 | `debug.safeArea` | string or table | absent | The safe area simulated instead of the one of the device, present only when `app.json` sets it, see [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue). |
+| `debug.fold` | string or table | absent | The fold simulated instead of the one of the device, present only when `app.json` sets it, see [`window.setFoldSimulation`](window.md#windowsetfoldsimulationvalue). |
 | `debug.showSafeArea` | boolean | `false` | Whether the debug view of the safe area shows from the start, see [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible). |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
 | `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for `haylen.py`, see the [native code guide](../native.md#packaging-libraries-with-an-app). |

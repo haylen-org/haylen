@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -16,6 +17,7 @@
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/DialogRequest.hpp"
+#include "haylen/platform/Fold.hpp"
 #include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
@@ -87,6 +89,9 @@ class Services final {
     // Returns `Landscape` or `Portrait`. Desktop windows always count as landscape.
     [[nodiscard]] static Orientation getOrientation();
     static void lockOrientation(Orientation value);
+
+    // Returns the fold of a foldable or dual-screen device across the window, as `Window::getFold` describes.
+    [[nodiscard]] static std::optional<Fold> getFold();
 
     // Returns the text input of the platform, which lives as long as the process.
     [[nodiscard]] static TextInput& getTextInput();

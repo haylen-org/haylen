@@ -14,6 +14,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/platform/FoldSimulation.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
@@ -77,6 +78,7 @@ struct AppConfig {
         std::vector<std::string> drawings;
         bool objectEvents = false;
         std::optional<platform::SafeAreaSimulation> safeArea;
+        std::optional<platform::FoldSimulation> fold;
         bool showSafeArea = false;
         Reload reload = Reload::Module;
     };

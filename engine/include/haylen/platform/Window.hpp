@@ -12,6 +12,7 @@
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/platform/Fold.hpp"
 #include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/TextInput.hpp"
@@ -82,6 +83,9 @@ class Window {
 
     // Keeps the screen in the given orientations where the platform lets an app choose, and does nothing elsewhere.
     virtual void lockOrientation(Orientation value) = 0;
+
+    // The fold of a foldable or dual-screen device across the window where the platform reports one, which Android does through Jetpack WindowManager and browsers through the Viewport Segments and Device Posture APIs, and none elsewhere.
+    [[nodiscard]] virtual std::optional<Fold> getFold() const = 0;
 
     [[nodiscard]] virtual TextInput& getTextInput() noexcept = 0;
 

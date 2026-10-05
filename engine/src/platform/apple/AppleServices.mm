@@ -193,6 +193,11 @@ void Services::lockOrientation([[maybe_unused]] Orientation value) {
 #endif
 }
 
+// Apple devices have no folds, and iPadOS reports none for the windows of an iPad.
+std::optional<Fold> Services::getFold() {
+    return std::nullopt;
+}
+
 TextInput& Services::getTextInput() {
     static AppleTextInput& input = *new AppleTextInput();
     return input;

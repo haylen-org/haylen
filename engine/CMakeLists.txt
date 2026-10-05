@@ -398,6 +398,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/NativeViews.cpp
   src/platform/PlatformLua.cpp
   src/platform/PluginStreams.cpp
+  src/platform/Fold.cpp
+  src/platform/FoldSimulation.cpp
   src/platform/SafeAreaSimulation.cpp
   src/platform/ScreenRelay.cpp
   src/platform/Screens.cpp

@@ -245,7 +245,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("debug")) {
         const Json& debugJson = document.at("debug");
-        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "safeArea", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "safeArea", "fold", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
         std::string stats;
         readValue(debugJson, "stats", stats);
         if (!stats.empty()) {
@@ -265,6 +265,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
                 config.debug.safeArea = platform::SafeAreaSimulation::fromJson(debugJson.at("safeArea"));
             } catch (const std::invalid_argument& error) {
                 throw std::invalid_argument(std::string("The \"debug.safeArea\" in \"app.json\" is invalid. ") + error.what());
+            }
+        }
+        if (debugJson.contains("fold")) {
+            try {
+                config.debug.fold = platform::FoldSimulation::fromJson(debugJson.at("fold"));
+            } catch (const std::invalid_argument& error) {
+                throw std::invalid_argument(std::string("The \"debug.fold\" in \"app.json\" is invalid. ") + error.what());
             }
         }
         readValue(debugJson, "showSafeArea", config.debug.showSafeArea);
@@ -303,6 +310,9 @@ Json AppConfig::toJson() const {
     Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
+    }
+    if (debug.fold) {
+        debugJson["fold"] = debug.fold->toJson();
     }
     Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}};
     if (window.position) {

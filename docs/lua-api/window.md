@@ -1,6 +1,6 @@
 # haylen.window
 
-The module `haylen.window` controls the native window, or the canvas on the web, that the app runs in: its size, fullscreen state, title, mouse cursor, on-screen keyboard, screen orientation and clipboard, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and the clicks that pass through it. The initial window settings come from the `window` section of `app.json`. Use this module for options menus, text entry, mouse capture and apps that live on the desktop. Drawing sizes are in design units, so layout code normally uses `haylen.viewport` instead of the window size.
+The module `haylen.window` controls the native window, or the canvas on the web, that the app runs in: its size, fullscreen state, title, mouse cursor, on-screen keyboard, screen orientation, the fold of foldable and dual-screen devices and clipboard, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and the clicks that pass through it. The initial window settings come from the `window` section of `app.json`. Use this module for options menus, text entry, mouse capture and apps that live on the desktop. Drawing sizes are in design units, so layout code normally uses `haylen.viewport` instead of the window size.
 
 ```lua
 local window = require('haylen.window')
@@ -263,6 +263,90 @@ end
 
 scene.push(setmetatable({}, Shop))
 ```
+
+## Folds and dual screens
+
+Foldable phones and tablets fold the screen along a line, and dual-screen devices join two screens with a hinge. The window reports that fold, the posture the device is held in and the segments of the window on each side of the fold, so an app can lay its content out around it, such as a map on one side and its controls on the other, or a game on the top half and its buttons on the bottom half of a tabletop. Positions are in design units, like [`viewport.safeRect`](viewport.md#viewportsaferect), and the `windowFoldChanged` event of [`haylen.events`](events.md#engine-events) announces every change, such as when the device folds, unfolds or turns, or the window moves across the hinge.
+
+| Platform | Where the fold comes from |
+| --- | --- |
+| Android | Jetpack WindowManager, whose `FoldingFeature` reports the bounds, the orientation, the state, whether it separates the window and whether a hinge occludes it, on foldable phones and tablets and on dual-screen devices. |
+| Web | The Viewport Segments API, which splits the viewport into segments at the fold, and the Device Posture API, which tells whether the device is folded, in browsers that offer them, such as Chrome on foldable Android devices. The fold is the gap between the first two segments, so a browser that reports a posture without segments reports no fold. |
+| iOS, iPadOS, Mac Catalyst, tvOS, macOS, Windows, Linux | None, because no Apple device folds and the desktops offer apps no API for the fold or the hinge of a device. The posture is always `'flat'` and the window is one segment, unless a [simulation](#windowsetfoldsimulationvalue) replaces the fold. |
+
+### window.fold()
+
+Returns the fold across the window as a table, or `nil` when no fold crosses it. The field `bounds` is the area of the fold as a `Rect` in design units, which has no width or no height for a seamless fold and covers the hinge of a dual-screen device. The field `axis` is `'vertical'` for a fold from the top to the bottom of the window and `'horizontal'` for one from side to side, and `state` is `'flat'` or `'halfOpened'`. The field `separating` tells whether the fold splits the window into two segments that content should not cross, which a half opened fold and a hinge do, and `occluding` tells whether a hinge hides what lies under its bounds.
+
+```lua
+local window = require('haylen.window')
+
+local fold = window.fold()
+if fold and fold.occluding then
+    print('keep the buttons out of', fold.bounds)
+end
+```
+
+### window.posture()
+
+Returns how the device is held: `'tabletop'` with a horizontal fold half opened, `'book'` with a vertical fold half opened, and `'flat'` with a fold opened flat or without a fold.
+
+```lua
+local window = require('haylen.window')
+
+if window.posture() == 'tabletop' then
+    print('the game goes on the top half and the buttons on the bottom half')
+end
+```
+
+### window.segments()
+
+Returns the areas of the window on each side of a separating fold as a list of two `Rect` values in design units, the left or top one first and without the bounds of the fold, or a list with the whole window when the fold does not separate it or there is none.
+
+```lua
+local events = require('haylen.events')
+local window = require('haylen.window')
+
+local function layOut()
+    local segments = window.segments()
+    local map, controls = segments[1], segments[2] or segments[1]
+    print('map in', map, 'controls in', controls)
+end
+
+layOut()
+events.on('windowFoldChanged', layOut)
+```
+
+### window.foldSimulation()
+
+Returns the simulated fold as a preset name or a table with `axis`, `state` and `hinge`, or `nil` while the device reports its own.
+
+```lua
+local window = require('haylen.window')
+
+print(window.foldSimulation())
+```
+
+### window.setFoldSimulation(value)
+
+Replaces the fold the device reports, to test a layout for foldable and dual-screen devices on any screen. The simulated fold lies across the middle of the window. The argument `value` is a preset name, or a table with the `axis`, `'vertical'` by default, the `state`, `'flat'` by default, and the width of the `hinge` in window points, 0 by default, where a half opened fold and a hinge wider than 0 separate the window and a hinge hides what lies under it. The value `nil` goes back to the fold of the device. The `debug.fold` option of `app.json` sets it at start. A name that is no preset raises an error such as `There is no simulated fold named "laptop". Use "book", "tabletop", "flat" or "dualScreen".`, and a table with another key or value raises an error that names it.
+
+| Preset | Fold |
+| --- | --- |
+| `'book'` | A vertical seamless fold half opened. |
+| `'tabletop'` | A horizontal seamless fold half opened. |
+| `'flat'` | A vertical seamless fold opened flat, which does not separate the window. |
+| `'dualScreen'` | A vertical hinge of 34 points between two screens, which separates the window and hides what lies under it. |
+
+```lua
+local window = require('haylen.window')
+
+window.setFoldSimulation('tabletop')
+window.setFoldSimulation({axis = 'horizontal', hinge = 24})
+window.setFoldSimulation(nil)
+```
+
+C++ code reads the fold in framebuffer pixels with `core::Engine::getFold()`, a `platform::Fold` from `haylen/platform/Fold.hpp` whose `getPosture()` and `getSegments(size)` give the posture and the segments, and simulates one with `Engine::setFoldSimulation` and a `platform::FoldSimulation`. The platform reports its own through `platform::Window::getFold()`.
 
 ## Desktop windows
 

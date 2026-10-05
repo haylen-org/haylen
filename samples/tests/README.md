@@ -40,7 +40,7 @@ A manifest returns the `prefix`, the `title` and the `description` of its catego
 
 Some settings that `app.json` gives the whole project change at run time, so the tests that need other values set them on entry and restore them on exit:
 
-- The orientation tests unlock the orientation with `window.lockOrientation('any')` and lock it to landscape again.
+- The orientation tests unlock the orientation with `window.lockOrientation('any')` and lock it to landscape again, and the fold test restores the fold simulation it found.
 - The design resolution test changes the design size and the scaling with `viewport.setDesignSize` and `viewport.setScaling` and restores 1920 by 1080 with `expand`.
 - The safe area tests simulate the safe areas of devices with `viewport.setSafeAreaSimulation` and restore the simulation they found.
 - The window, lifecycle and preferences tests restore the fullscreen mode, the lifecycle options, the bus volumes, the language and the theme they change.
@@ -468,7 +468,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 
 #### Orientation (ORI)
 
-The orientation of the screen with its events and its lock, a layout that adapts to the shape of the screen, and the scaling of the design resolution. The tests are in `source/categories/orientation/`.
+The orientation of the screen with its events and its lock, a layout that adapts to the shape of the screen, the scaling of the design resolution, and folds and dual screens. The tests are in `source/categories/orientation/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -476,6 +476,7 @@ The orientation of the screen with its events and its lock, a layout that adapts
 | `ORI-002` | Locking the orientation | Locking the screen in portrait, in landscape or letting it turn, and where each platform allows it. |  |
 | `ORI-003` | Adaptive layout | A screen that stacks its parts in portrait and places them side by side in landscape. |  |
 | `ORI-004` | Design resolution and scaling | How "fit", "fill", "stretch", "expand", "pixelPerfect", "fitWidth" and "none" map the design resolution onto screens of every shape. |  |
+| `ORI-005` | Folds and dual screens | A map and its instruments laid out around the fold of a book, a tabletop, a fold opened flat and the hinge of a dual-screen device, simulated or reported by the device. |  |
 
 #### Safe area (SAF)
 

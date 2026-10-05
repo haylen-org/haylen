@@ -94,6 +94,14 @@ class HeadlessHost final : public Host {
     void lockOrientation(Orientation value) override {
         orientationLock = value;
     }
+
+    // The headless screen has no fold until a test gives it one, as a foldable device reports it.
+    [[nodiscard]] std::optional<Fold> getFold() const override {
+        return fold;
+    }
+    void setFold(std::optional<Fold> value) noexcept {
+        fold = value;
+    }
     [[nodiscard]] HeadlessTextInput& getTextInput() noexcept override {
         return textInput;
     }
@@ -349,6 +357,7 @@ class HeadlessHost final : public Host {
     math::Vec2 framebufferSize;
     float dpiScale = 1.0F;
     math::Insets safeAreaInsets{};
+    std::optional<Fold> fold;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
     std::vector<PlatformCall> platformCalls;
     std::vector<std::uint64_t> cancelledCalls;

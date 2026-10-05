@@ -2,6 +2,8 @@
 
 #include <lua.hpp>
 
+#include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,6 +16,8 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/platform/Fold.hpp"
+#include "haylen/platform/FoldSimulation.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
 
@@ -66,6 +70,10 @@ void WindowLua::pushMonitor(lua_State* L, const Monitor& monitor) {
     lua_setfield(L, -2, "scale");
     lua::Stack::push(L, monitor.primary);
     lua_setfield(L, -2, "primary");
+}
+
+math::Rect WindowLua::toDesign(const graphics::Viewport& viewport, const math::Rect& pixels) {
+    return math::Rect::fromMinMax(viewport.toDesign(pixels.getMin()), viewport.toDesign(pixels.getMax()));
 }
 
 int WindowLua::framebufferSize(lua_State* L) {
@@ -132,6 +140,70 @@ int WindowLua::orientation(lua_State* L) {
 
 int WindowLua::lockOrientation(lua_State* L) {
     lua::Runtime::getEngine(L).getWindow().lockOrientation(lua::Stack::read<Orientation>(L, 1));
+    return 0;
+}
+
+// Returns the fold across the window as a table with its `bounds` in design units, its `axis`, its `state` and whether it is `separating` and `occluding`, or `nil` without one.
+int WindowLua::fold(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const std::optional<Fold> value = engine.getFold();
+    if (!value) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_createtable(L, 0, 5);
+    lua::Stack::push(L, toDesign(engine.getViewport(), value->bounds));
+    lua_setfield(L, -2, "bounds");
+    lua::Stack::push(L, Fold::axisName(value->axis));
+    lua_setfield(L, -2, "axis");
+    lua::Stack::push(L, Fold::stateName(value->state));
+    lua_setfield(L, -2, "state");
+    lua::Stack::push(L, value->separating);
+    lua_setfield(L, -2, "separating");
+    lua::Stack::push(L, value->occluding);
+    lua_setfield(L, -2, "occluding");
+    return 1;
+}
+
+int WindowLua::posture(lua_State* L) {
+    const std::optional<Fold> value = lua::Runtime::getEngine(L).getFold();
+    lua::Stack::push(L, Fold::postureName(value ? value->getPosture() : Fold::Posture::Flat));
+    return 1;
+}
+
+// Returns the areas of the window on each side of a separating fold as `Rect` values in design units, the left or top one first, or the whole window as the only one.
+int WindowLua::segments(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const math::Vec2 size = engine.getWindow().getFramebufferSize();
+    const std::optional<Fold> value = engine.getFold();
+    const std::vector<math::Rect> areas = value ? value->getSegments(size) : std::vector<math::Rect>{{0.0F, 0.0F, size.x, size.y}};
+    lua_createtable(L, static_cast<int>(areas.size()), 0);
+    for (std::size_t index = 0; index < areas.size(); ++index) {
+        lua::Stack::push(L, toDesign(engine.getViewport(), areas[index]));
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    return 1;
+}
+
+// Returns the simulated fold as a preset name or a table of its axis, state and hinge, or `nil` while the device reports its own.
+int WindowLua::foldSimulation(lua_State* L) {
+    const std::optional<FoldSimulation>& simulation = lua::Runtime::getEngine(L).getFoldSimulation();
+    if (!simulation) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua::JsonConverter::push(L, simulation->toJson());
+    return 1;
+}
+
+// Simulates a fold by preset name or by a table of its axis, state and hinge with `setFoldSimulation(value)`, and `nil` goes back to the fold of the device.
+int WindowLua::setFoldSimulation(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    if (lua_isnoneornil(L, 1)) {
+        engine.setFoldSimulation(std::nullopt);
+        return 0;
+    }
+    engine.setFoldSimulation(FoldSimulation::fromJson(lua::JsonConverter::read(L, 1)));
     return 0;
 }
 
@@ -294,7 +366,7 @@ int WindowLua::currentMonitor(lua_State* L) {
 
 int WindowLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"framebufferSize", &framebufferSize}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"setKeyboardVisible", &lua::Binding::native<&setKeyboardVisible>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {"monitors", &lua::Binding::native<&monitors>}, {"currentMonitor", &lua::Binding::native<&currentMonitor>}, {nullptr, nullptr},
+        {"framebufferSize", &framebufferSize}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"setKeyboardVisible", &lua::Binding::native<&setKeyboardVisible>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"fold", &lua::Binding::native<&fold>}, {"posture", &lua::Binding::native<&posture>}, {"segments", &lua::Binding::native<&segments>}, {"foldSimulation", &lua::Binding::native<&foldSimulation>}, {"setFoldSimulation", &lua::Binding::native<&setFoldSimulation>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {"monitors", &lua::Binding::native<&monitors>}, {"currentMonitor", &lua::Binding::native<&currentMonitor>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

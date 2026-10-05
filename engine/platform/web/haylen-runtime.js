@@ -1000,6 +1000,23 @@ Module.haylen = Module.haylen || {};
         return covered.map((inset) => Math.max(0, inset || 0) * scale);
     };
 
+    // Reads the segments of the viewport, which a browser on a foldable or dual-screen device splits at the fold, and the posture of the device, and returns the fold across the canvas in framebuffer pixels as `[left, top, right, bottom, vertical, halfOpened, separating, occluding]`, or `null` while the viewport has one segment.
+    haylen.fold = function () {
+        const segments = window.viewport && window.viewport.segments;
+        if (!segments || segments.length < 2) {
+            return null;
+        }
+        const [first, second] = segments;
+        const vertical = second.left >= first.right;
+        const box = Module.canvas.getBoundingClientRect();
+        const scale = box.width > 0 ? Module.canvas.width / box.width : 0;
+        const gap = vertical ? [first.right, box.top, second.left, box.bottom] : [box.left, first.bottom, box.right, second.top];
+        const bounds = [(gap[0] - box.left) * scale, (gap[1] - box.top) * scale, (gap[2] - box.left) * scale, (gap[3] - box.top) * scale];
+        const folded = navigator.devicePosture !== undefined && navigator.devicePosture.type === "folded";
+        const occluding = vertical ? gap[2] > gap[0] : gap[3] > gap[1];
+        return [...bounds, vertical ? 1 : 0, folded ? 1 : 0, 1, occluding ? 1 : 0];
+    };
+
     haylen.persist = function () {
         FS.syncfs(false, (error) => {
             if (error) {

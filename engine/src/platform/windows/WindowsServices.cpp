@@ -165,6 +165,11 @@ Orientation Services::getOrientation() {
 
 void Services::lockOrientation(Orientation) {}
 
+// Windows offers desktop apps no API for the fold or the hinge of a device.
+std::optional<Fold> Services::getFold() {
+    return std::nullopt;
+}
+
 TextInput& Services::getTextInput() {
     static WindowsTextInput& input = *new WindowsTextInput();
     return input;
