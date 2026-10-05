@@ -323,7 +323,7 @@ The cost of a world grows with what is awake and touching:
 
 ### Debug and Release builds
 
-The desktop player that `python3 haylen.py run` builds is a Debug build by default, without optimizations, where physics runs several times slower than in the Release engine that apps built for platforms link: a pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build and 2.1 in Release, and a fluid of 1800 particles 0.86 and 0.24. Measure physics with `python3 haylen.py bench --suite physics`, or run an app in the Release player with `python3 haylen.py run <app> --config Release`, as the [build guide](build.md#bench) describes.
+A Debug build of the engine, without optimizations, runs physics several times slower than the Release engine that the desktop player of `python3 haylen.py run` and the apps built for platforms use: a pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build and 2.1 in Release, and a fluid of 1800 particles 0.86 and 0.24. So the player runs a Debug engine only with `--engine-config Debug`, to debug the engine itself. Measure physics with `python3 haylen.py bench --suite physics`, as the [build guide](build.md#bench) describes.
 
 ### The physics benchmark
 

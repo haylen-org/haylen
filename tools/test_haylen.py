@@ -214,6 +214,20 @@ class AppArgumentTest(unittest.TestCase):
         with self.assertRaisesRegex(haylen.BuildError, "does not exist"):
             haylen.resolve_app("games/tiny-island")
 
+    def test_the_player_of_this_machine_builds_with_the_engine_configuration(self):
+        (self.scratch / "game").mkdir()
+        (self.scratch / "game" / "app.json").write_text('{"name": "Game", "identifier": "com.example.game", "version": "1.0.0"}')
+        builds = []
+
+        def stop(options):
+            builds.append(options)
+            raise haylen.BuildError("Stop after the build.")
+
+        for arguments, config in ((["run", "game"], "Release"), (["run", "game", "--config", "Release"], "Release"), (["run", "game", "--engine-config", "Debug"], "Debug")):
+            with mock.patch.object(haylen, "compile_app_shaders"), mock.patch.object(haylen, "command_build", side_effect=stop), self.assertRaises(haylen.BuildError):
+                haylen.command_run(haylen.build_parser().parse_args(arguments))
+            self.assertEqual(builds[-1].config, config)
+
 
 class ConsumerArgumentTest(unittest.TestCase):
     def test_the_consumer_check_builds_the_listed_ways_or_every_way(self):

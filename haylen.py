@@ -3050,7 +3050,7 @@ def command_run(args: argparse.Namespace) -> None:
     if args.platform is None:
         # The player of this machine runs the package folder in development mode, which reloads edited files, while changed shaders compile again in the background.
         info = App(app, host_name())
-        build = build_options(host_name(), args.config, "haylen", args.jobs)
+        build = build_options(host_name(), args.engine_config, "haylen", args.jobs)
         command_build(build)
         # The native libraries of the app wait in a folder of their own, which the player searches first.
         native = info.build_folder / "native" / "development"
@@ -3848,8 +3848,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_app_argument(run_app)
     run_app.add_argument("--platform", choices=list(RUN_TARGETS), help="Build the project of the app for a platform. Without it the desktop player runs the app folder in development mode.")
     run_app.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
-    run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the player or of the platform project.")
-    run_app.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the platform project uses.")
+    run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project of a platform builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
+    run_app.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the engine: of the player that runs the app on this machine, or of the artifacts the project of a platform uses. "Release" by default, and "Debug" only to debug the engine itself, because it runs many times slower.')
     add_jobs_option(run_app)
     add_web_server_options(run_app, 8000)
     run_app.set_defaults(handler=command_run)
