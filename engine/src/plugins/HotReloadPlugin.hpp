@@ -68,6 +68,7 @@ class HotReloadPlugin final : public Plugin {
         std::vector<std::string> files;
         std::vector<std::string> modules;
         std::string restart;
+        bool retry = false;
     };
 
     [[nodiscard]] Batch classify(core::Engine& engine, const std::vector<std::string>& changed) const;

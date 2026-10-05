@@ -514,11 +514,35 @@ return Level
 }
 
 TEST_F(ModuleReloadTest, RestartsAfterAFixedLifecycleError) {
-    start({{"source/level.lua", "return {enter = function() error('enter failed') end}"}, {"source/main.lua", "require('haylen.scene').push(require('level'))"}});
+    start({{"source/level.lua", "return {enter = function() error('enter failed') end}"}, {"source/main.lua", "require('haylen.scene').push((require('level')))"}});
+    fixture->frames(2);
+    ASSERT_NE(fixture->engine().getError(), nullptr);
+    EXPECT_NE(error().find("enter failed"), std::string::npos);
+    EXPECT_FALSE(fixture->engine().isErrorResumable());
+    edit({{"source/level.lua", "return {enter = function() end}"}});
+    EXPECT_TRUE(restarted());
+}
+
+TEST_F(ModuleReloadTest, ResumesOnceAModuleWhoseFirstLoadFailedIsFixed) {
+    start({{"source/late.lua", "return {value ="}, {"source/main.lua", "require('haylen.scene').push({update = function() value = require('late').value end})"}});
+    fixture->frames(2);
+    ASSERT_NE(fixture->engine().getError(), nullptr);
+    EXPECT_EQ(fixture->engine().getError()->getFile(), "source/late.lua");
+    EXPECT_TRUE(fixture->engine().isErrorResumable());
+
+    edit({{"source/late.lua", "return {value = 'fixed'}"}});
+    EXPECT_EQ(fixture->engine().getError(), nullptr);
+    fixture->frames(1);
+    EXPECT_EQ(lua("return value"), "fixed");
+    EXPECT_FALSE(restarted());
+}
+
+TEST_F(ModuleReloadTest, RestartsOnceAModuleWhoseFirstLoadFailedInALifecycleStepIsFixed) {
+    start({{"source/late.lua", "return {value ="}, {"source/main.lua", "require('haylen.scene').push({enter = function() require('late') end})"}});
     fixture->frames(2);
     ASSERT_NE(fixture->engine().getError(), nullptr);
     EXPECT_FALSE(fixture->engine().isErrorResumable());
-    edit({{"source/level.lua", "return {enter = function() end}"}});
+    edit({{"source/late.lua", "return {value = 'fixed'}"}});
     EXPECT_TRUE(restarted());
 }
 

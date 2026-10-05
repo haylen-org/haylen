@@ -67,7 +67,7 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
     }
 }
 
-// A Lua file that no module loaded yet changes nothing, because the next `require` reads it. A batch restarts the app for `app.json`, `source/main.lua` and plugin manifests, for any loaded module in the mode `restart`, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
+// A Lua file that no module loaded yet changes nothing, because the next `require` reads it, except while an error shows, since the file may hold the module whose first load failed: the batch then resumes the app, so the code that failed requires it again. A batch restarts the app for `app.json`, `source/main.lua` and plugin manifests, for any loaded module in the mode `restart`, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
 HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std::vector<std::string>& changed) const {
     Batch batch;
     for (const std::string& path : changed) {
@@ -94,12 +94,14 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
         }
         if (loaded) {
             batch.modules.push_back(path);
+        } else if (engine.getError() != nullptr) {
+            batch.retry = true;
         } else {
             core::Log::info("The file \"{}\" changed, and no module of the app loaded it yet, so the next \"require\" reads it.", path);
         }
     }
 
-    const bool relevant = !batch.assets.empty() || !batch.modules.empty();
+    const bool relevant = !batch.assets.empty() || !batch.modules.empty() || batch.retry;
     if (relevant && engine.getError() != nullptr && !engine.isErrorResumable()) {
         batch.restart = "The app stopped in a step of its lifecycle, so the change restarts it.";
     } else if (batch.modules.size() > kRestartModules) {
@@ -120,7 +122,7 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
         finish(report);
         return;
     }
-    if (batch.assets.empty() && batch.modules.empty()) {
+    if (batch.assets.empty() && batch.modules.empty() && !batch.retry) {
         return;
     }
 
@@ -141,7 +143,7 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
         }
         core::Log::info("Reloaded {} in {:.0f} ms.", list, report.milliseconds);
     }
-    if (applied && (!report.modules.empty() || !report.assets.empty()) && engine.clearError()) {
+    if (applied && (!report.modules.empty() || !report.assets.empty() || batch.retry) && engine.clearError()) {
         report.resumed = true;
         core::Log::info("The app resumed after the reload.");
     }
