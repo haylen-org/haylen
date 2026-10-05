@@ -80,6 +80,8 @@ Every tween and timeline takes an optional options table, and unknown keys raise
 | `onComplete` | function | `nil` | Called when the tween reaches its end in the direction it plays. |
 | `onKill` | function | `nil` | Called once when the tween leaves the engine: when it is killed, or when it completes with `autoKill`. |
 
+A tween lets go of its callbacks once it leaves the engine, so a callback that refers to the tween handle, such as `local t; t = tween.to(box, 1, {x = 5}, {onComplete = function() print(t.time) end})`, never keeps it alive.
+
 Tweens that animate values also take these options, and timelines take `onStep`.
 
 | Key | Type | Default | Meaning |

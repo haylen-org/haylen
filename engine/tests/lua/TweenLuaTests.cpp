@@ -290,6 +290,27 @@ TEST(TweenLuaTest, TiesTweensToTargetsOwnersAndTags) {
     EXPECT_EQ(fixture.lua("return tostring(first.alive) .. ' ' .. tostring(second.alive) .. ' ' .. tween.size()"), "false false 0");
 }
 
+TEST(TweenLuaTest, EndedTweensLetGoOfCallbacksThatReferToThem) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        tween = require('haylen.tween')
+        tracker = setmetatable({}, {__mode = 'k'})
+        do
+            local completed
+            completed = tween.to({x = 0}, 0.1, {x = 1}, {onComplete = function() finished = completed.completed end})
+            local killed
+            killed = tween.to({x = 0}, 10, {x = 1}, {onUpdate = function() killed:kill() end, onKill = function() stopped = killed.alive end})
+            tracker[completed] = true
+            tracker[killed] = true
+        end
+    )");
+    // clang-format on
+    fixture.frames(10);
+    fixture.runLua("collectgarbage() collectgarbage()");
+    EXPECT_EQ(fixture.lua("return tostring(finished) .. ' ' .. tostring(stopped) .. ' ' .. tostring(next(tracker))"), "true false nil");
+}
+
 TEST(TweenLuaTest, RunsByProcessModeAndTime) {
     test::EngineFixture fixture;
     // clang-format off

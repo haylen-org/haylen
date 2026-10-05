@@ -4,7 +4,9 @@
 #include <cmath>
 #include <exception>
 #include <limits>
+#include <memory>
 #include <stdexcept>
+#include <utility>
 
 #include "haylen/core/Timeline.hpp"
 
@@ -43,6 +45,13 @@ void Tween::setTag(std::string value) {
         throw std::logic_error("The tag of a tween is fixed once it plays.");
     }
     tag = std::move(value);
+}
+
+Tween::Callbacks& Tween::getCallbacks() {
+    if (!callbacks) {
+        callbacks = std::make_shared<Callbacks>();
+    }
+    return *callbacks;
 }
 
 ProcessMode Tween::resolveProcessMode() const {
@@ -105,7 +114,7 @@ void Tween::yieldTo(const PropertyTween&) {}
 void Tween::discard() noexcept {
     killed = true;
     manager = nullptr;
-    callbacks = {};
+    callbacks.reset();
     finished.clear();
 }
 
@@ -113,6 +122,7 @@ void Tween::render(float totalTime, bool silent) {
     if (killed) {
         return;
     }
+    const std::shared_ptr<const Callbacks> events = callbacks;
     const bool first = !rendered;
     if (first) {
         rendered = true;
@@ -132,8 +142,8 @@ void Tween::render(float totalTime, bool silent) {
 
     if (!started && forward && !silent) {
         started = true;
-        if (callbacks.start) {
-            callbacks.start();
+        if (events && events->start) {
+            events->start();
         }
         if (killed) {
             return;
@@ -151,8 +161,8 @@ void Tween::render(float totalTime, bool silent) {
             return;
         }
         const int direction = forward ? 1 : -1;
-        for (int loop = left.loop + direction; loop != entered.loop + direction && !silent && callbacks.loop; loop += direction) {
-            callbacks.loop(loop);
+        for (int loop = left.loop + direction; loop != entered.loop + direction && !silent && events && events->loop; loop += direction) {
+            events->loop(loop);
             if (killed) {
                 return;
             }
@@ -174,8 +184,8 @@ void Tween::render(float totalTime, bool silent) {
         return;
     }
     atStart = !forward && target <= 0.0F;
-    if (!silent && callbacks.update) {
-        callbacks.update(getRenderedProgress());
+    if (!silent && events && events->update) {
+        events->update(getRenderedProgress());
         if (killed) {
             return;
         }
@@ -188,8 +198,8 @@ void Tween::render(float totalTime, bool silent) {
     if (!arrived) {
         return;
     }
-    if (!silent && callbacks.complete) {
-        callbacks.complete();
+    if (!silent && events && events->complete) {
+        events->complete();
         if (killed) {
             return;
         }
@@ -291,11 +301,12 @@ void Tween::end(bool justCompleted) {
         parent->remove(*this);
     }
 
-    // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the `kill` callback fails.
+    // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the `kill` callback fails. A killed tween never calls anything again, so it lets go of its callbacks and listeners.
+    const std::shared_ptr<const Callbacks> events = std::exchange(callbacks, nullptr);
     std::exception_ptr failure;
     try {
-        if (callbacks.kill) {
-            callbacks.kill();
+        if (events && events->kill) {
+            events->kill();
         }
     } catch (...) {
         failure = std::current_exception();
@@ -303,6 +314,7 @@ void Tween::end(bool justCompleted) {
     if (!justCompleted) {
         finished.emit(false);
     }
+    finished.clear();
     if (failure) {
         std::rethrow_exception(failure);
     }

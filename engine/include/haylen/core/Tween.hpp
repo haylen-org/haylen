@@ -112,12 +112,11 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
         return tag;
     }
 
+    // A tween lets go of its callbacks once it is killed, so what they hold, such as a function that refers back to the tween, goes with it.
     void setCallbacks(Callbacks value) {
-        callbacks = std::move(value);
+        callbacks = std::make_shared<Callbacks>(std::move(value));
     }
-    [[nodiscard]] Callbacks& getCallbacks() noexcept {
-        return callbacks;
-    }
+    [[nodiscard]] Callbacks& getCallbacks();
 
     // Plays forward from the current time.
     void play();
@@ -246,7 +245,8 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
 
     void end(bool justCompleted);
 
-    Callbacks callbacks;
+    // Callers hold the callbacks while they run them, so a callback that kills the tween keeps running while the tween lets go of them.
+    std::shared_ptr<Callbacks> callbacks;
     std::function<ProcessMode()> parentMode;
     std::string tag;
     TweenManager* manager = nullptr;

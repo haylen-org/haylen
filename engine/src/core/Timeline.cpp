@@ -224,13 +224,13 @@ void Timeline::renderLoop(float loopTime, float previous, int, bool silent) {
         }
     }
 
-    const Callbacks& events = getCallbacks();
-    if (!forward || silent || !events.step) {
+    const std::shared_ptr<const Callbacks> events = callbacks;
+    if (!forward || silent || !events || !events->step) {
         return;
     }
     for (std::size_t step = 0; step < stepEnds.size() && isAlive(); ++step) {
         if (previous < stepEnds[step] && stepEnds[step] <= loopTime) {
-            events.step(static_cast<int>(step));
+            events->step(static_cast<int>(step));
         }
     }
 }
