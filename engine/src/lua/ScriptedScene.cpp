@@ -7,6 +7,7 @@
 
 #include "core/SceneLua.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/FrameClock.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -20,8 +21,8 @@ namespace haylen::lua {
 
 ScriptedScene::ScriptedScene(lua_State* L, int index) : table(L, index) {}
 
-void ScriptedScene::pushScenes(lua_State* L) {
-    if (lua_getfield(L, LUA_REGISTRYINDEX, kScenes) == LUA_TTABLE) {
+void ScriptedScene::pushWeakKeyed(lua_State* L, const char* name) {
+    if (lua_getfield(L, LUA_REGISTRYINDEX, name) == LUA_TTABLE) {
         return;
     }
     lua_pop(L, 1);
@@ -31,7 +32,7 @@ void ScriptedScene::pushScenes(lua_State* L) {
     lua_setfield(L, -2, "__mode");
     lua_setmetatable(L, -2);
     lua_pushvalue(L, -1);
-    lua_setfield(L, LUA_REGISTRYINDEX, kScenes);
+    lua_setfield(L, LUA_REGISTRYINDEX, name);
 }
 
 int ScriptedScene::collectHandle(lua_State* L) {
@@ -43,7 +44,7 @@ int ScriptedScene::collectHandle(lua_State* L) {
 
 std::shared_ptr<ScriptedScene> ScriptedScene::find(lua_State* L, int index) {
     const int key = lua_absindex(L, index);
-    pushScenes(L);
+    pushWeakKeyed(L, kScenes);
     lua_pushvalue(L, key);
     std::shared_ptr<ScriptedScene> scene;
     if (lua_rawget(L, -2) == LUA_TUSERDATA) {
@@ -55,7 +56,7 @@ std::shared_ptr<ScriptedScene> ScriptedScene::find(lua_State* L, int index) {
 
 bool ScriptedScene::wasScene(lua_State* L, int index) {
     const int key = lua_absindex(L, index);
-    pushScenes(L);
+    pushWeakKeyed(L, kScenes);
     lua_pushvalue(L, key);
     const bool known = lua_rawget(L, -2) == LUA_TUSERDATA;
     lua_pop(L, 2);
@@ -70,7 +71,7 @@ std::shared_ptr<ScriptedScene> ScriptedScene::get(lua_State* L, int index) {
     }
 
     auto created = std::make_shared<ScriptedScene>(L, key);
-    pushScenes(L);
+    pushWeakKeyed(L, kScenes);
     lua_pushvalue(L, key);
     if (Userdata::newMetatable(L, kHandleType)) {
         lua_pushcfunction(L, &collectHandle);
@@ -254,18 +255,59 @@ core::ProcessMode ScriptedScene::resolveOwnerMode(lua_State* L, int owner) {
     return readProcessMode(L, index);
 }
 
+// Every timer and tween of an owner shares the mode of the owner, which the owner gives once per frame however much it owns, and which each holder keeps alive while the owner is weakly kept.
+std::shared_ptr<ScriptedScene::OwnerMode> ScriptedScene::findOwnerMode(lua_State* L, int owner) {
+    const int key = lua_absindex(L, owner);
+    pushWeakKeyed(L, kOwnerModes);
+    lua_pushvalue(L, key);
+    if (lua_rawget(L, -2) == LUA_TUSERDATA) {
+        std::shared_ptr<OwnerMode> found = *static_cast<std::shared_ptr<OwnerMode>*>(lua_touserdata(L, -1));
+        lua_pop(L, 2);
+        return found;
+    }
+    lua_pop(L, 1);
+
+    auto created = std::make_shared<OwnerMode>(L, key);
+    if (Userdata::newMetatable(L, kOwnerModeType)) {
+        lua_pushcfunction(L, &collectOwnerMode);
+        lua_setfield(L, -2, "__gc");
+    }
+    lua_pop(L, 1);
+    new (lua_newuserdatauv(L, sizeof(std::shared_ptr<OwnerMode>), 0)) std::shared_ptr<OwnerMode>(created);
+    luaL_setmetatable(L, kOwnerModeType);
+    lua_pushvalue(L, key);
+    lua_insert(L, -2);
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+    return created;
+}
+
+int ScriptedScene::collectOwnerMode(lua_State* L) {
+    static_cast<std::shared_ptr<OwnerMode>*>(lua_touserdata(L, 1))->~shared_ptr();
+    lua_pushnil(L);
+    lua_setmetatable(L, 1);
+    return 0;
+}
+
 std::function<core::ProcessMode()> ScriptedScene::followOwnerMode(lua_State* L, int owner) {
-    auto reference = std::make_shared<WeakReference>(L, owner);
+    std::shared_ptr<OwnerMode> shared = findOwnerMode(L, owner);
     lua_State* main = Runtime::getMainThread(L);
+    const core::FrameClock& clock = Runtime::getEngine(L).getClock();
     // clang-format off
-    return [reference, main] {
+    return [shared = std::move(shared), main, &clock] {
+        OwnerMode& cached = *shared;
+        if (cached.frame == clock.getFrameIndex()) {
+            return cached.mode;
+        }
         core::ProcessMode mode = core::ProcessMode::Inherit;
         Runtime::protectedRun(main, [&](lua_State* thread) {
-            if (reference->push(thread)) {
+            if (cached.owner.push(thread)) {
                 mode = resolveOwnerMode(thread, -1);
                 lua_pop(thread, 1);
             }
         });
+        cached.frame = clock.getFrameIndex();
+        cached.mode = mode;
         return mode;
     };
     // clang-format on

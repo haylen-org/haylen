@@ -277,6 +277,27 @@ TEST(CoreLuaTest, TimersAndTweensFollowTheModeOfTheirOwner) {
     EXPECT_EQ(fixture.lua("return counts.scene .. ' ' .. tostring(box.v == moved)"), "5 true");
 }
 
+// An owner gives its mode once per frame to everything it owns, however much that is.
+TEST(CoreLuaTest, OwnersGiveTheirModeOncePerFrame) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        timer = require('haylen.timer')
+        tween = require('haylen.tween')
+        reads = 0
+        owner = setmetatable({}, {__index = function(_, key) if key == 'processMode' then reads = reads + 1 end end})
+        for index = 1, 20 do
+            timer.every(0.01, function() end, {owner = owner})
+            tween.to({x = 0}, 100, {x = 1}, {owner = owner})
+        end
+    )");
+    // clang-format on
+    fixture.frames(1);
+    fixture.runLua("reads = 0");
+    fixture.frames(3);
+    EXPECT_EQ(fixture.lua("return reads"), "3");
+}
+
 TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     // clang-format off
     test::EngineFixture fixture({

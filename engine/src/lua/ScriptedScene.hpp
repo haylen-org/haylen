@@ -1,13 +1,16 @@
 #pragma once
 
 #include <any>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <string>
 
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/core/Scene.hpp"
 #include "haylen/lua/Reference.hpp"
+#include "lua/WeakReference.hpp"
 
 namespace haylen::lua {
 
@@ -51,19 +54,31 @@ class ScriptedScene final : public core::Scene {
 
     void pushTable(lua_State* L) const;
 
-    // Returns a function that resolves the mode of the owner at index on every call, so a timer or tween follows its owner when the mode changes. It returns `Inherit` once the owner is gone, and it must be destroyed while the Lua state is open.
+    // Returns a function that resolves the mode of the owner at index once per frame, so a timer or tween follows its owner when the mode changes. It returns `Inherit` once the owner is gone, and it must be destroyed while the Lua state is open.
     [[nodiscard]] static std::function<core::ProcessMode()> followOwnerMode(lua_State* L, int owner);
 
     // Reads a `processMode` field of the table at index, or `Inherit` when it has none.
     [[nodiscard]] static core::ProcessMode readProcessMode(lua_State* L, int index);
 
   private:
-    // Maps scene tables to their scenes with weak keys, so the map holds neither.
-    static constexpr const char* kScenes = "haylen.scenes";
-    static constexpr const char* kHandleType = "haylen.SceneHandle";
+    struct OwnerMode {
+        OwnerMode(lua_State* L, int index) : owner(L, index) {}
 
-    static void pushScenes(lua_State* L);
+        WeakReference owner;
+        std::uint64_t frame = std::numeric_limits<std::uint64_t>::max();
+        core::ProcessMode mode = core::ProcessMode::Inherit;
+    };
+
+    // Maps scene tables to their scenes, and owners to the modes they give, with weak keys, so the maps hold neither.
+    static constexpr const char* kScenes = "haylen.scenes";
+    static constexpr const char* kOwnerModes = "haylen.ownerModes";
+    static constexpr const char* kHandleType = "haylen.SceneHandle";
+    static constexpr const char* kOwnerModeType = "haylen.OwnerMode";
+
+    static void pushWeakKeyed(lua_State* L, const char* name);
     static int collectHandle(lua_State* L);
+    [[nodiscard]] static std::shared_ptr<OwnerMode> findOwnerMode(lua_State* L, int owner);
+    static int collectOwnerMode(lua_State* L);
 
     // Returns the mode that something owned by the value at index inherits: the resolved mode of the scene on the stack whose table it is, the `processMode` field of any other table, such as an autoload, or `Inherit`.
     [[nodiscard]] static core::ProcessMode resolveOwnerMode(lua_State* L, int owner);
