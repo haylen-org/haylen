@@ -10,5 +10,6 @@ return {
         {code = 'NSL-004', title = 'UI theme surfaces', description = 'Panels, buttons, sliders and progress bars drawn with nine-slice theme surfaces, colorized by each component.', module = 'theme-surfaces'},
         {code = 'NSL-005', title = 'Resizable panel', description = 'A panel dragged and resized by its edges and corners with the mouse, a finger or a gamepad.', module = 'resizable'},
         {code = 'NSL-006', title = 'Slices of trimmed atlas frames', description = 'A nine-slice of an atlas on a frame the packer trimmed, which must read the same pixels as the frame.', module = 'trimmed-slices'},
+        {code = 'NSL-007', title = 'Edge cases', description = 'Frames that draw at fractional places and scales with linear filtering, tile off their grid, shrink below their borders and come from a sheet of twice the resolution.', module = 'edge-cases'},
     },
 }

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="star_glow" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#FFF6B0"/>
+      <stop offset="1" stop-color="#F2A516"/>
+    </radialGradient>
+  </defs>
+  <polygon points="32,5 39.6,23.2 59,24.6 44.2,37.2 48.8,56.4 32,46 15.2,56.4 19.8,37.2 5,24.6 24.4,23.2" fill="url(#star_glow)" stroke="#8A5200" stroke-width="3" stroke-linejoin="round"/>
+</svg>

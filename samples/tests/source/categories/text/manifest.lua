@@ -16,5 +16,6 @@ return {
         {code = 'TXT-010', title = 'Effects and typewriter', description = 'The built-in effects with their attributes, and a dialogue revealed like a typewriter with pauses and speed changes.', module = 'typewriter'},
         {code = 'TXT-011', title = 'Custom effects', description = 'Text effects and inline icons registered from Lua.', module = 'custom-effects'},
         {code = 'TXT-012', title = 'Measuring text', description = 'Text sizes, glyph quads, ascent, baseline and line height, glyph metrics, shaped advances with kerning, and rich text layouts.', module = 'measuring'},
+        {code = 'TXT-013', title = 'Outlines and small text', description = 'Outlines that reach the letters beside them at every size, and small text that moves at its exact place or snapped to whole pixels.', module = 'outlines-small-text'},
     },
 }

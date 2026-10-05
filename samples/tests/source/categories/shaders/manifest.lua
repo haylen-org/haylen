@@ -10,5 +10,6 @@ return {
         {code = 'SHD-004', title = 'Post-processing chain', description = 'The built-in vignette followed by custom blur, color grading and tube screen passes over a canvas.', module = 'post-processing'},
         {code = 'SHD-005', title = 'Shaders on text', description = 'Rainbow, dissolve and flash materials on text drawn from its distance field.', module = 'text-shader'},
         {code = 'SHD-006', title = 'Hot reload', description = 'How a desktop run of the player recompiles and reloads a shader while the app keeps running.', module = 'hot-reload'},
+        {code = 'SHD-007', title = 'Shader load time', description = 'Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the backend of the platform.', module = 'load-time'},
     },
 }

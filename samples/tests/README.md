@@ -68,6 +68,8 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-009` | Render targets | An offscreen canvas drawn every frame and used as a texture in several ways. |  |
 | `SPR-010` | Primitives | Lines, polylines, rectangles, circles, rings, arcs, polygons and meshes. |  |
 | `SPR-011` | Text | Sizes, colors, outlines, shadows, alignment, wrapping, anchors, rotation and measuring. |  |
+| `SPR-012` | Vector images | SVG icons in many sizes, a swarm of hundreds that turn and an icon that grows, rasterized on worker threads into an atlas. |  |
+| `SPR-013` | Recoloring by parts | One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call. |  |
 
 #### Camera (CAM)
 
@@ -108,6 +110,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 | `TXT-010` | Effects and typewriter | The built-in effects with their attributes, and a dialogue revealed like a typewriter with pauses and speed changes. |  |
 | `TXT-011` | Custom effects | Text effects and inline icons registered from Lua. |  |
 | `TXT-012` | Measuring text | Text sizes, glyph quads, ascent, baseline and line height, glyph metrics, shaped advances with kerning, and rich text layouts. |  |
+| `TXT-013` | Outlines and small text | Outlines that reach the letters beside them at every size, and small text that moves at its exact place or snapped to whole pixels. |  |
 
 #### Lighting (LIT)
 
@@ -143,6 +146,7 @@ Frames cut into nine regions that stretch or tile, from borders or pieces, scale
 | `NSL-004` | UI theme surfaces | Panels, buttons, sliders and progress bars drawn with nine-slice theme surfaces, colorized by each component. |  |
 | `NSL-005` | Resizable panel | A panel dragged and resized by its edges and corners with the mouse, a finger or a gamepad. |  |
 | `NSL-006` | Slices of trimmed atlas frames | A nine-slice of an atlas on a frame the packer trimmed, which must read the same pixels as the frame. |  |
+| `NSL-007` | Edge cases | Frames that draw at fractional places and scales with linear filtering, tile off their grid, shrink below their borders and come from a sheet of twice the resolution. |  |
 
 #### Particles (PRT)
 
@@ -194,6 +198,7 @@ Custom fragment shaders compiled into ".shader" files: materials on sprites and 
 | `SHD-004` | Post-processing chain | The built-in vignette followed by custom blur, color grading and tube screen passes over a canvas. |  |
 | `SHD-005` | Shaders on text | Rainbow, dissolve and flash materials on text drawn from its distance field. |  |
 | `SHD-006` | Hot reload | How a desktop run of the player recompiles and reloads a shader while the app keeps running. |  |
+| `SHD-007` | Shader load time | Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the backend of the platform. |  |
 
 ### Gameplay
 
@@ -299,6 +304,7 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 | `PHY-015` | Ray and shape casts | Closest and all hits, filters, piercing, bounces, fans, shape casts, batches and picking. |  |
 | `PHY-016` | Collision filtering | Categories, masks and groups that decide which bodies collide. |  |
 | `PHY-017` | Stress test | Hundreds of bodies with the body count and the time of every step. |  |
+| `PHY-018` | Debug drawings | The drawings of the debug module switched on and off: physics shapes and joints, sprite bounds with names, a drawer of the test and the overlay. |  |
 
 #### Tiled (TLD)
 

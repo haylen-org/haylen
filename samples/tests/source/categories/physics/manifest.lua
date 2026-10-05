@@ -21,5 +21,6 @@ return {
         {code = 'PHY-015', title = 'Ray and shape casts', description = 'Closest and all hits, filters, piercing, bounces, fans, shape casts, batches and picking.', module = 'raycasts'},
         {code = 'PHY-016', title = 'Collision filtering', description = 'Categories, masks and groups that decide which bodies collide.', module = 'filtering'},
         {code = 'PHY-017', title = 'Stress test', description = 'Hundreds of bodies with the body count and the time of every step.', module = 'stress'},
+        {code = 'PHY-018', title = 'Debug drawings', description = 'The drawings of the debug module switched on and off: physics shapes and joints, sprite bounds with names, a drawer of the test and the overlay.', module = 'debug-drawings'},
     },
 }
