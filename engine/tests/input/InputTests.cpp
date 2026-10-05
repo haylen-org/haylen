@@ -594,4 +594,22 @@ TEST(ViewportTest, FillStretchAndPixelPerfect) {
     EXPECT_FALSE(graphics::Viewport::scalingPolicyFromName("zoom").has_value());
 }
 
+TEST(ViewportTest, FitsTheWidthOrScalesNothing) {
+    // A tall screen shows the whole design width and more height above and below the design area.
+    graphics::Viewport viewport;
+    viewport.update(math::Vec2(1080.0F, 2400.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::FitWidth);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 0.0F, 1080.0F, 2400.0F}));
+    const math::Rect visible = viewport.getVisibleRect();
+    EXPECT_EQ(visible.x, 0.0F);
+    EXPECT_EQ(visible.width, 1920.0F);
+    EXPECT_NEAR(visible.height, 4266.67F, 0.01F);
+    EXPECT_NEAR(visible.getCenter().y, 540.0F, 0.01F);
+
+    // Without scaling a design unit is a point, so the visible area follows the window from the top left.
+    viewport.update(math::Vec2(2560.0F, 1600.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::None, {}, 2.0F);
+    EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{0.0F, 0.0F, 1280.0F, 800.0F}));
+    EXPECT_EQ(viewport.getPixelsPerUnit(), math::Vec2(2.0F, 2.0F));
+    EXPECT_EQ(graphics::Viewport::scalingPolicyName(graphics::Viewport::ScalingPolicy::FitWidth), "fitWidth");
+}
+
 } // namespace haylen::input

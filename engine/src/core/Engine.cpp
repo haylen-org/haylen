@@ -72,7 +72,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.pointerEmulation.setMouseAsTouch(current.config.input.mouseAsTouch);
     current.pointerEmulation.setTouchAsMouse(current.config.input.touchAsMouse);
     current.reservedInsets = host.getReservedInsets();
-    current.viewport.update(host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
+    current.viewport.update(host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets(), host.getDpiScale());
     current.fullscreen = host.isFullscreen();
     current.windowPosition = host.getFrame().getPosition();
     current.orientation = host.getOrientation();
@@ -668,7 +668,7 @@ void Engine::remapViewport() {
     EngineState& current = *state;
     const graphics::Viewport previous = current.viewport;
     current.reservedInsets = current.host.getReservedInsets();
-    current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
+    current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets(), current.host.getDpiScale());
     if (current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getVisibleRect() != previous.getVisibleRect()) {
         current.input.followViewport(previous, current.viewport);
     }

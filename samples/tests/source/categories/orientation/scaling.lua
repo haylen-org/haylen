@@ -9,7 +9,7 @@ local Test = require('harness.test')
 
 local Scaling = haylen.class('Scaling', Test)
 
-Scaling.policies = {{id = 'fit', text = 'Fit'}, {id = 'fill', text = 'Fill'}, {id = 'stretch', text = 'Stretch'}, {id = 'expand', text = 'Expand'}, {id = 'pixelPerfect', text = 'Pixel perfect'}}
+Scaling.policies = {{id = 'fit', text = 'Fit'}, {id = 'fill', text = 'Fill'}, {id = 'stretch', text = 'Stretch'}, {id = 'expand', text = 'Expand'}, {id = 'pixelPerfect', text = 'Pixel perfect'}, {id = 'fitWidth', text = 'Fit width'}, {id = 'none', text = 'None'}}
 Scaling.screens = {
     {id = 'phone-portrait', text = 'Phone in portrait', width = 1170, height = 2532},
     {id = 'phone-landscape', text = 'Phone in landscape', width = 2532, height = 1170},
@@ -65,14 +65,20 @@ function Scaling:map(width, height)
     if policy == 'stretch' then
         return ratioX, ratioY, 0, 0, designWidth, designHeight
     end
+    if policy == 'none' then
+        local points = window.dpiScale()
+        return points, points, 0, 0, width / points, height / points
+    end
     local scale = math.min(ratioX, ratioY)
-    if policy == 'fill' then
+    if policy == 'fitWidth' then
+        scale = ratioX
+    elseif policy == 'fill' then
         scale = math.max(ratioX, ratioY)
     elseif policy == 'pixelPerfect' then
         scale = scale >= 1 and math.floor(scale) or 1 / math.ceil(math.max(designWidth / width, designHeight / height))
     end
     local offsetX, offsetY = (width - designWidth * scale) / 2, (height - designHeight * scale) / 2
-    if policy == 'fill' or policy == 'expand' then
+    if policy == 'fill' or policy == 'expand' or policy == 'fitWidth' then
         return scale, scale, offsetX, offsetY, width / scale, height / scale
     end
     return scale, scale, offsetX, offsetY, designWidth, designHeight

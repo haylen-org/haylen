@@ -5,12 +5,14 @@
 
 namespace haylen::graphics {
 
-const std::array<std::pair<std::string_view, Viewport::ScalingPolicy>, 5> Viewport::kPolicyNames = {{
+const std::array<std::pair<std::string_view, Viewport::ScalingPolicy>, 7> Viewport::kPolicyNames = {{
     {"fit", ScalingPolicy::Fit},
     {"fill", ScalingPolicy::Fill},
     {"stretch", ScalingPolicy::Stretch},
     {"expand", ScalingPolicy::Expand},
     {"pixelPerfect", ScalingPolicy::PixelPerfect},
+    {"fitWidth", ScalingPolicy::FitWidth},
+    {"none", ScalingPolicy::None},
 }};
 
 std::optional<Viewport::ScalingPolicy> Viewport::scalingPolicyFromName(std::string_view name) noexcept {
@@ -26,7 +28,7 @@ math::Rect Viewport::centered(math::Vec2 container, math::Vec2 size) noexcept {
     return {(container.x - size.x) * 0.5F, (container.y - size.y) * 0.5F, size.x, size.y};
 }
 
-void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy scaling, const math::Insets& safeInsetsPixels) noexcept {
+void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy scaling, const math::Insets& safeInsetsPixels, float pixelsPerPoint) noexcept {
     framebufferSize = {std::max(1.0F, framebuffer.x), std::max(1.0F, framebuffer.y)};
     designSize = {std::max(1.0F, design.x), std::max(1.0F, design.y)};
     policy = scaling;
@@ -66,6 +68,14 @@ void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy s
         visibleRect = centered(designSize, framebufferSize / scale);
         break;
     }
+    case ScalingPolicy::FitWidth:
+        pixelRect = fullFramebuffer;
+        visibleRect = centered(designSize, framebufferSize / ratio.x);
+        break;
+    case ScalingPolicy::None:
+        pixelRect = fullFramebuffer;
+        visibleRect = {0.0F, 0.0F, framebufferSize.x / std::max(pixelsPerPoint, 0.01F), framebufferSize.y / std::max(pixelsPerPoint, 0.01F)};
+        break;
     }
 
     const math::Rect safePixels = fullFramebuffer.inset(safeInsetsPixels).intersection(pixelRect);

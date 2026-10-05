@@ -138,7 +138,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         if (!scalingText.empty()) {
             const auto policy = graphics::Viewport::scalingPolicyFromName(scalingText);
             if (!policy) {
-                throw std::invalid_argument("The \"design.scaling\" value \"" + scalingText + "\" in \"app.json\" is unknown. It is \"fit\", \"fill\", \"stretch\", \"expand\" or \"pixelPerfect\".");
+                throw std::invalid_argument("The \"design.scaling\" value \"" + scalingText + "\" in \"app.json\" is unknown. It is \"fit\", \"fill\", \"stretch\", \"expand\", \"pixelPerfect\", \"fitWidth\" or \"none\".");
             }
             config.scaling = *policy;
         }

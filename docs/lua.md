@@ -50,7 +50,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `window.mousePassthrough` | boolean | `false` | Lets every click pass through the window to what is behind it, until the app gives regions that keep the mouse. |
 | `window.position` | string or object | centered | Where the desktop window opens: `"center"`, a point `{"x": 40, "y": 60}` in desktop points, or an anchored placement such as `{"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}`, described in the [desktop guide](desktop.md#placing-the-window). |
 | `design.width`, `design.height` | number | `1920`, `1080` | Design resolution, the coordinate space the app draws and receives input in. |
-| `design.scaling` | string | `"expand"` | One of `"fit"`, `"fill"`, `"stretch"`, `"expand"` or `"pixelPerfect"`, described in [`haylen.viewport`](lua-api/viewport.md). |
+| `design.scaling` | string | `"expand"` | One of `"fit"`, `"fill"`, `"stretch"`, `"expand"`, `"pixelPerfect"`, `"fitWidth"` or `"none"`, described in [`haylen.viewport`](lua-api/viewport.md). |
 | `orientation` | string | `"landscape"` | `"landscape"`, `"portrait"` or `"any"`. |
 | `fixedRate` | number | `60` | Fixed updates per second. The function `haylen.fixedStep()` returns the matching step length in seconds. |
 | `maxFrameTime` | number | `0.25` | Longest frame time in seconds that the clock accepts, so a stall never causes a burst of fixed steps. |

@@ -25,13 +25,18 @@ class Viewport final {
         Expand,
         // Like `Fit`, but only with integer scale factors, or integer divisors on framebuffers smaller than the design area.
         PixelPerfect,
+        // Fits the design width to the screen, and extends or crops the visible area above and below the centered design area.
+        FitWidth,
+        // Scales nothing: a design unit is a point of the screen, and the visible area starts at the top left of the design area and grows with the window.
+        None,
     };
 
     // Resolves the names `fit`, `fill`, `stretch`, `expand` and `pixelPerfect`.
     [[nodiscard]] static std::optional<ScalingPolicy> scalingPolicyFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view scalingPolicyName(ScalingPolicy value) noexcept;
 
-    void update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy scaling, const math::Insets& safeInsetsPixels = {}) noexcept;
+    // Maps the design area onto a framebuffer, where a point of the screen covers the given pixels, which only `None` reads.
+    void update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy scaling, const math::Insets& safeInsetsPixels = {}, float pixelsPerPoint = 1.0F) noexcept;
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept {
         return framebufferSize;
@@ -63,7 +68,7 @@ class Viewport final {
     [[nodiscard]] math::Vec2 toFramebuffer(math::Vec2 designPoint) const noexcept;
 
   private:
-    static const std::array<std::pair<std::string_view, ScalingPolicy>, 5> kPolicyNames;
+    static const std::array<std::pair<std::string_view, ScalingPolicy>, 7> kPolicyNames;
 
     [[nodiscard]] static math::Rect centered(math::Vec2 container, math::Vec2 size) noexcept;
 

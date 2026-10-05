@@ -16,6 +16,8 @@ The design size and the scaling policy come from the `design` section of `app.js
 | `'fill'` | Fills the screen and crops the design area. The visible rectangle is smaller than the design area. |
 | `'stretch'` | Fills the screen with non-uniform scaling. |
 | `'expand'` | Keeps the design area whole and centered and extends the visible area to fill the screen. The visible rectangle can start at negative coordinates and exceed the design size. |
+| `'fitWidth'` | Fits the design width to the width of the screen and extends or crops the visible area above and below the centered design area, so a layout that follows the width, such as a scrolling menu or a portrait app, always fills the screen from side to side. |
+| `'none'` | Scales nothing: a design unit is a point of the screen, as [`window.dpiScale()`](window.md) counts pixels per point, and the visible area starts at the top left of the design area and grows and shrinks with the window, which suits tools and apps whose layout follows the window. |
 | `'pixelPerfect'` | Like `fit`, but only with integer scale factors, so every design unit covers the same whole number of pixels. A framebuffer smaller than the design area shrinks it by the smallest integer divisor that fits, such as a half or a third, so the whole design area stays visible and every pixel covers the same whole number of design units. |
 
 ## Functions
@@ -135,7 +137,7 @@ print('design center lands on pixel', x, y)
 
 ### viewport.scaling()
 
-Returns the name of the active scaling policy, one of `'fit'`, `'fill'`, `'stretch'`, `'expand'` or `'pixelPerfect'`.
+Returns the name of the active scaling policy, one of `'fit'`, `'fill'`, `'stretch'`, `'expand'`, `'pixelPerfect'`, `'fitWidth'` or `'none'`.
 
 ```lua
 local viewport = require('haylen.viewport')
