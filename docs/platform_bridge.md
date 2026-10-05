@@ -118,7 +118,7 @@ A handler that throws, a checked exception included, fails its call through `rep
 
 `HaylenCoroutines` in `engine/platform/android/haylen-coroutines/src/main/kotlin/dev/haylen/HaylenCoroutines.kt` registers Kotlin handlers written as suspending functions. It launches each call in a coroutine of a scope on `Dispatchers.Main.immediate`, answers with the return value, fails the call with what the function throws, and cancels the coroutine from `onCancel`. It lives in the `dev.haylen:haylen-coroutines` library, which depends on `kotlinx-coroutines-android` as an API, so only apps and plugins that depend on that library get coroutines. The [reference](lua-api/platform.md#android-handlers) has examples in Java and Kotlin.
 
-[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name, and apps register theirs once, in `Application.onCreate` of the application class that the `<application>` of the manifest of their [Android project](distribution.md#the-android-project) names, before the first activity starts. The Google sign-in of Tiny Island is a local plugin, `samples/games/tiny-island/plugins/google-sign-in`, whose `GoogleSignInPlugin` answers `google-sign-in.signIn` with Credential Manager: it builds a `GetGoogleIdOption` with the web client id of the game's Google Cloud project from the `clientId` parameter of the plugin, calls `getCredentialAsync` on the activity's main executor and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `app.json` to set. R8 keeps the classes the engine reaches by name through the module's `consumer-rules.pro`, so handlers need no rules of their own.
+[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name, and apps register theirs once, in `Application.onCreate` of the application class that the `<application>` of the manifest of their [Android project](distribution.md#the-android-project) names, before the first activity starts. The Android template gives that class, `App` in `app/src/main/kotlin/dev/haylen/app/App.kt`, so every project made from it has the place where its handlers register and its native code sends events, as `source/main.mm` of the Apple template and `app.js` of the web template have. The Google sign-in of Tiny Island is a local plugin, `samples/games/tiny-island/plugins/google-sign-in`, whose `GoogleSignInPlugin` answers `google-sign-in.signIn` with Credential Manager: it builds a `GetGoogleIdOption` with the web client id of the game's Google Cloud project from the `clientId` parameter of the plugin, calls `getCredentialAsync` on the activity's main executor and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `app.json` to set. R8 keeps the classes the engine reaches by name through the module's `consumer-rules.pro`, so handlers need no rules of their own.
 
 ## Apple platforms
 
@@ -243,10 +243,10 @@ This example adds `accessibility.reducedMotion`, which tells the app whether the
 
 ### Android
 
-`app/src/main/java/com/example/myapp/MotionPlugin.java`:
+`app/src/main/java/dev/haylen/app/MotionPlugin.java` in the [Android project](distribution.md#the-android-project) of the app:
 
 ```java
-package com.example.myapp;
+package dev.haylen.app;
 
 import android.content.ContentResolver;
 import android.database.ContentObserver;
@@ -276,32 +276,19 @@ final class MotionPlugin {
 }
 ```
 
-`app/src/main/java/com/example/myapp/MyAppApplication.java`:
+The application class of the Android template, `app/src/main/kotlin/dev/haylen/app/App.kt`, which the `<application>` of the manifest names, registers it:
 
-```java
-package com.example.myapp;
+```kotlin
+package dev.haylen.app
 
-import android.app.Application;
+import android.app.Application
 
-public final class MyAppApplication extends Application {
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        MotionPlugin.register(getContentResolver());
+class App : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        MotionPlugin.register(contentResolver)
     }
 }
-```
-
-The `<application>` of `app/src/main/AndroidManifest.xml` in the [Android project](distribution.md#the-android-project) of the app names the application class:
-
-```xml
-<application
-    android:name="com.example.myapp.MyAppApplication"
-    android:banner="@drawable/banner"
-    android:enableOnBackInvokedCallback="true"
-    android:icon="@mipmap/ic_launcher"
-    android:label="${haylenAppName}"
-    android:theme="@style/Theme.Haylen.Splash">
 ```
 
 The handler reads a setting and touches no view, so it runs on the background thread of the bridge. The observer and `Collections.singletonMap` work from API 27, the engine's minimum, and the event reaches the app even when the player changes the setting while the app is in the background.

@@ -310,7 +310,7 @@ templates/platform/apple/
   project.yml                     XcodeGen spec, which includes haylen/project.yml and gives each target its template from it.
   App.xcodeproj                   The project generated from project.yml with the haylen/ folder of an app without plugins or native libraries, always committed next to it.
   App.xcconfig                    Includes haylen/Haylen.xcconfig, and the settings after the include win.
-  source/main.mm                  Calls haylen_main.
+  source/main.mm                  Calls haylen_main, after the native bridge handlers of the app register.
   source/HaylenBridgeAsync.swift  Registers Swift handlers of the bridge and of plugin contexts written as async functions with Codable parameters and results, and sends events with Encodable payloads.
   source/HaylenBridging.h         Makes HaylenBridge.h, HaylenPlugin.h and HaylenNotificationPlugin.h visible to the Swift files of the app and its plugins.
   ios/                            Info.plist, LaunchScreen.storyboard and Assets.xcassets with the app icon.
@@ -334,6 +334,7 @@ templates/platform/android/
   gradle/wrapper/             Gradle 9.8.0 for Android Studio.
   app/build.gradle.kts        The app module, which depends on dev.haylen:haylen, which brings GameActivity, AppCompat, the activity library and core, and on the plugin modules, applies the Gradle plugins of the plugins and has no C++.
   app/src/main/AndroidManifest.xml
+  app/src/main/kotlin/dev/haylen/app/App.kt  The application class, where the native bridge handlers of the app register before the first activity starts.
   app/src/main/res/           Adaptive launcher icon with its monochrome layer and Android TV banner.
 ```
 
@@ -348,7 +349,7 @@ templates/platform/web/
   index.html        The canvas and the splash with the logo, the progress bar and the status line.
   loader.css        Styles of the page and the splash.
   loader.js         Checks the browser, picks the backend, downloads with progress, loads the plugins and starts the runtime.
-  app.js            Page code of the app, empty in the template.
+  app.js            Page code of the app, where its bridge handlers register, empty in the template.
   haylen-logo.svg   The Haylen symbol, which haylen.py copies as the splash logo of an app that names none.
 ```
 

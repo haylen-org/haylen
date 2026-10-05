@@ -14,6 +14,7 @@
 
     <!-- Back reaches `HaylenActivity` through its `OnBackPressedCallback`, which Android 13 and later call through the back callbacks of the window that `enableOnBackInvokedCallback` turns on, so the system plays its predictive back animation when back leaves the app. -->
     <application
+        android:name=".App"
         android:banner="@drawable/banner"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
