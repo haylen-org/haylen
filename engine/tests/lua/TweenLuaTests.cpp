@@ -156,6 +156,11 @@ TEST(TweenLuaTest, AwaitsCompletionAndKills) {
     fixture.runLua("late = nil async.spawn(function() late = kept:wait():await() end) kept:kill()");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(kept.completed) .. ' ' .. tostring(late)"), "true false");
+
+    // A tween that its own `onComplete` kills still completed for the code that waits on it.
+    fixture.runLua("local ending ending = tween.to(box, 0.1, {x = 2}, {onComplete = function() ending:kill() end}) ended = nil async.spawn(function() ended = ending:wait():await() end)");
+    fixture.frames(2, 0.25);
+    EXPECT_EQ(fixture.lua("return tostring(ended)"), "true");
 }
 
 TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {

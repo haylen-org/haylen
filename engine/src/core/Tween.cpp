@@ -198,14 +198,19 @@ void Tween::render(float totalTime, bool silent) {
     if (!arrived) {
         return;
     }
+
+    // Waiters hear of the completion before the `complete` callback runs, so a callback that kills the tween never turns its completion into a kill.
+    finished.emit(true);
+    if (killed) {
+        return;
+    }
     if (!silent && events && events->complete) {
         events->complete();
         if (killed) {
             return;
         }
     }
-    finished.emit(true);
-    if (autoKill && parent == nullptr && !killed) {
+    if (autoKill && parent == nullptr) {
         end(true);
     }
 }
