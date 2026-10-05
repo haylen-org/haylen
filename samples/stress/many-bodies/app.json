@@ -1,0 +1,20 @@
+{
+    "name": "Many Bodies",
+    "identifier": "dev.haylen.samples.manybodies",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Many Bodies",
+        "width": 1600,
+        "height": 900,
+        "resizable": true,
+        "highDpi": true
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "maxFrameTime": 0.05,
+    "clearColor": "#FF2B2142"
+}
