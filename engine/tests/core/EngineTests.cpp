@@ -26,6 +26,7 @@
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/Plugin.hpp"
+#include "haylen/storage/UserStorage.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
@@ -479,6 +480,18 @@ TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
     EXPECT_EQ(ticks, 2);
     engine.handleEvent({.type = platform::Event::Type::Resumed});
     EXPECT_FALSE(engine.isHalted());
+}
+
+// The storage and the preferences become durable for an app that the platform may end in the background, also when a listener of the event failed.
+TEST(EngineTest, MakesSavedDataDurableInTheBackgroundEvenWhenAListenerFails) {
+    test::EngineFixture fixture;
+    fixture.runLua("require('haylen.events').on('appBackground', function() require('haylen.preferences').set('progress', 3) error('the save broke') end)");
+    const int persisted = fixture.host().getPersistCount();
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    EXPECT_EQ(fixture.host().getPersistCount(), persisted + 2);
+    EXPECT_NE(fixture.engine().getStorage().readText("preferences.json").find("\"progress\": 3"), std::string::npos);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("the save broke"), std::string_view::npos);
 }
 
 TEST(EngineTest, PausesTheGame) {

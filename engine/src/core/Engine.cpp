@@ -496,7 +496,12 @@ void Engine::dispatchEvent(const platform::Event& event) {
         default:
             break;
         }
+    } catch (const std::exception& exception) {
+        reportError(exception);
+    }
 
+    // The plugins hear the event also when a listener of the engine event failed, so a plugin that keeps data, such as the preferences, still saves it when the app goes to the background.
+    try {
         for (std::size_t index = 0, plugins = current.plugins.size(); index < plugins; ++index) {
             current.plugins[index].event(*this, event);
         }
@@ -559,9 +564,13 @@ void Engine::setAppState(AppState value) {
         current.events.emit(LifecycleEvent::kAppInactive);
         break;
     case AppState::Background:
-        current.events.emit(LifecycleEvent::kAppBackground);
-
-        // The platform may end an app in the background without warning, so what the app just saved becomes durable now.
+        // The platform may end an app in the background without warning, so what the app just saved becomes durable now, also when a listener of the event failed.
+        try {
+            current.events.emit(LifecycleEvent::kAppBackground);
+        } catch (...) {
+            current.storage->flush();
+            throw;
+        }
         current.storage->flush();
         break;
     }
