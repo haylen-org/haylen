@@ -768,7 +768,7 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    // Keeps a block of wasm memory of at least `size` bytes for the pushes of a stream.
+    // Keeps a block of wasm memory of at least `size` bytes for the pushes of a stream. A new block may grow the memory, which detaches the views taken before, so callers read `Module.HEAPU8` or `Module.HEAPF32` only after it.
     const reserveMemory = (stream, size) => {
         if (stream.size < size) {
             Module._free(stream.memory);
@@ -795,8 +795,9 @@ Module.haylen = Module.haylen || {};
                 stream.context.clearRect(0, 0, width, height);
                 stream.context.drawImage(source, 0, 0, width, height);
                 const pixels = stream.context.getImageData(0, 0, width, height).data;
-                Module.HEAPU8.set(pixels, reserveMemory(stream, pixels.length));
-                return checked(Module._haylen_web_push_video_frame(stream.handle, stream.memory, width, height, timestamp === undefined ? sourceTime(source) : timestamp)) === 1;
+                const memory = reserveMemory(stream, pixels.length);
+                Module.HEAPU8.set(pixels, memory);
+                return checked(Module._haylen_web_push_video_frame(stream.handle, memory, width, height, timestamp === undefined ? sourceTime(source) : timestamp)) === 1;
             },
         };
     };
