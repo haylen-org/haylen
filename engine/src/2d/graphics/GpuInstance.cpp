@@ -1,6 +1,7 @@
 #include "2d/graphics/GpuInstance.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 
 #include "graphics/TextureResource.hpp"
@@ -60,6 +61,11 @@ GpuInstance GpuInstance::makeGlyph(const graphics::TextureResource& texture, con
     packed.parameters[2] = signedByte(text.skew, kSkewScale);
     packed.parameters[3] = unsignedByte(text.softness * fit);
     return packed;
+}
+
+GpuInstance GpuInstance::makeParts(const PartColors& colors) noexcept {
+    static_assert(sizeof(Parts) == sizeof(GpuInstance));
+    return std::bit_cast<GpuInstance>(Parts{.colors = {colors.red.toRgba8(), colors.green.toRgba8(), colors.blue.toRgba8(), colors.yellow.toRgba8()}, .unused = {}});
 }
 
 } // namespace haylen::graphics2d

@@ -23,6 +23,8 @@
 #include "shaders/mesh_lit.glsl.h"
 #include "shaders/metaball.glsl.h"
 #include "shaders/metaball_lit.glsl.h"
+#include "shaders/recolor.glsl.h"
+#include "shaders/recolor_lit.glsl.h"
 #include "shaders/sprite.glsl.h"
 #include "shaders/sprite_lit.glsl.h"
 #include "shaders/text.glsl.h"
@@ -30,8 +32,8 @@
 
 namespace haylen::graphics2d {
 
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc};
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc};
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
@@ -150,7 +152,7 @@ void RendererState::resetFrame() noexcept {
     canvasOpen = false;
 }
 
-std::uint32_t RendererState::getShade(const DrawOrder& order) {
+std::uint32_t RendererState::getShade(Program program, const DrawOrder& order) {
     if (!(order.specular >= 0.0F && order.emission >= 0.0F)) {
         throw std::invalid_argument("A draw needs a specular strength and an emission of zero or more.");
     }
@@ -164,6 +166,9 @@ std::uint32_t RendererState::getShade(const DrawOrder& order) {
         shade.material = &material;
         shade.revision = material.revision;
         shade.version = material.shader.getVersion();
+    }
+    if (program == Program::Recolor) {
+        shade.partMask = order.partMask.getResource().get();
     }
     // Unlit canvases ignore the lighting of draws, so it never splits their commands.
     if (getCanvas().isLit()) {
@@ -180,6 +185,9 @@ std::uint32_t RendererState::getShade(const DrawOrder& order) {
     }
     if (shade.normalMap != nullptr) {
         retain(order.normalMap);
+    }
+    if (shade.partMask != nullptr) {
+        retain(order.partMask);
     }
     return pushShade(shade, order.material);
 }
@@ -223,7 +231,13 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
     if (order.material.isValid() && (program == Program::ImageBlend || program == Program::Metaball)) {
         throw std::invalid_argument("Image blends and metaballs do not take a material.");
     }
+    if (order.material.isValid() && program == Program::Recolor) {
+        throw std::invalid_argument("A draw with a part mask does not take a material.");
+    }
     requireReadable(texture);
+    if (program == Program::Recolor) {
+        requireReadable(order.partMask.getResource().get());
+    }
     if (order.material.isValid() && current.destination != nullptr) {
         const MaterialResource& material = *order.material.getResource();
         for (const graphics::Shader::TextureSlot& slot : material.shader.getTextures()) {
@@ -237,7 +251,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         .program = program,
         .blend = order.blend,
         .clip = clipStack.empty() ? 0U : clipStack.back(),
-        .shade = getShade(order),
+        .shade = getShade(program, order),
         .texture = texture,
     };
     items.push_back(item);
@@ -250,7 +264,7 @@ void RendererState::addInstances(Program program, const DrawOrder& order, const 
     item.first = static_cast<std::uint32_t>(instances.size());
     item.count = static_cast<std::uint32_t>(data.size());
     instances.insert(instances.end(), data.begin(), data.end());
-    stats.sprites += data.size();
+    stats.sprites += program == Program::Recolor ? data.size() / 2 : data.size();
 }
 
 void RendererState::addMesh(const graphics::Texture& texture, std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, const DrawOrder& order) {
@@ -333,6 +347,9 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
         return;
     case Program::Composite:
         return;
+    case Program::Recolor:
+        describeRecolorLayout(desc);
+        return;
     case Program::Sprite:
     case Program::Text:
         break;
@@ -350,6 +367,30 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
     desc.layout.attrs[ATTR_sprite_sprite_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
     desc.layout.attrs[ATTR_sprite_sprite_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.layout.attrs[ATTR_sprite_sprite_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+}
+
+// A recolored sprite takes two records of the instance stream, its sprite and then its part colors, which two buffers read at the same instance.
+void RendererState::describeRecolorLayout(sg_pipeline_desc& desc) {
+    constexpr int kStride = 2 * static_cast<int>(sizeof(GpuInstance));
+    desc.layout.buffers[0].stride = 8;
+    desc.layout.buffers[1].stride = kStride;
+    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.buffers[2].stride = kStride;
+    desc.layout.buffers[2].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.attrs[ATTR_recolor_recolor_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_position] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_uv] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_USHORT4N};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_flash] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_red] = {.buffer_index = 2, .offset = 0, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_green] = {.buffer_index = 2, .offset = 4, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_blue] = {.buffer_index = 2, .offset = 8, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_recolor_recolor_instance_yellow] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
 }
 
@@ -456,6 +497,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::Composite:
     case Program::Light:
     case Program::Metaball:
+    case Program::Recolor:
         break;
     }
     throw std::logic_error("Materials only replace the sprite, text and mesh programs.");

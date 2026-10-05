@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <string_view>
 
+#include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/SpriteLayout.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -22,13 +23,19 @@ class SpriteBatchLua final {
     // The key of a sprite table that lists the fields a float buffer holds, as `drawBatch` reads it.
     static constexpr std::array<std::string_view, 1> kLayoutFields{"fields"};
 
+    // The key of a sprite table with the part colors that recolor the sprite in a draw with a part mask.
+    static constexpr std::array<std::string_view, 1> kPartColorFields{"partColors"};
+
     static void install(lua_State* L);
 
     // Reads a list of field names at index, such as `{'x', 'y', 'rotation'}`, into a layout over the template sprite.
     [[nodiscard]] static SpriteLayout readLayout(lua_State* L, int index, const SpriteInstance& sprite = {});
 
   private:
-    static void pushSpriteInstance(lua_State* L, const SpriteInstance& sprite);
+    static void pushSpriteInstance(lua_State* L, const SpriteInstance& sprite, const PartColors& colors);
+
+    // Gives the sprite at an index of the batch the part colors of a sprite table that has them.
+    static void readPartColors(lua_State* L, int table, SpriteBatch& batch, std::size_t index);
     [[nodiscard]] static std::size_t checkIndex(lua_State* L, int index, const SpriteBatch& batch);
     [[nodiscard]] static std::size_t checkFirst(lua_State* L, int index);
 

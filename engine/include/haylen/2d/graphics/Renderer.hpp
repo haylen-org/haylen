@@ -13,6 +13,7 @@
 #include "haylen/2d/graphics/ImageBlend.hpp"
 #include "haylen/2d/graphics/MeshVertex.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
+#include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
@@ -110,12 +111,13 @@ class Renderer final {
     void beginCapture(const graphics::RenderTarget& target, math::Color clear = math::Color::transparent());
     void endCapture();
 
+    // A sprite or a batch whose order has a part mask recolors its parts with the part colors of each sprite, where a batch gives white to the sprites past the end of its part colors.
     void draw(const Sprite& sprite);
-    void drawBatch(const graphics::Texture& texture, std::span<const SpriteInstance> sprites, const DrawOrder& order = {});
+    void drawBatch(const graphics::Texture& texture, std::span<const SpriteInstance> sprites, const DrawOrder& order = {}, std::span<const PartColors> partColors = {});
 
     // Draws the sprites a buffer of floats holds, each one the template of the layout with the fields the values give it, without a sprite list in between.
     void drawBatch(const graphics::Texture& texture, std::span<const float> values, const SpriteLayout& layout, const DrawOrder& order = {});
-    // Draws a baked batch shifted by an offset in world units, which lets parallax layers reuse one batch.
+    // Draws a baked batch shifted by an offset in world units, which lets parallax layers reuse one batch. A baked batch takes no part mask.
     void drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order = {}, math::Vec2 offset = {});
     void drawNineSlice(const NineSlice& slice, const math::Rect& area, math::Color color = math::Color::white(), const DrawOrder& order = {}, float borderScale = 1.0F);
     // Draws plain text with a font alone or with a family and its fallbacks, turned and stretched by the style around the position, where its anchor lands.
@@ -181,8 +183,8 @@ class Renderer final {
 
     void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order);
 
-    // Adds `count` sprites of one texture, where `spriteAt` returns the sprite at an index from any worker thread.
-    template <typename SpriteAt> void addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt);
+    // Adds `count` sprites of one texture, where `spriteAt` returns the sprite at an index from any worker thread, and `partsAt` its part colors when the order recolors them.
+    template <typename SpriteAt, typename PartsAt> void addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt);
 
     std::unique_ptr<RendererState> state;
 };

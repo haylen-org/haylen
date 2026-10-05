@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "haylen/2d/graphics/DrawOrder.hpp"
+#include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/SpriteLayout.hpp"
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
@@ -14,7 +15,7 @@ namespace haylen::graphics2d {
 
 class Renderer;
 
-// Many sprites that share one texture and are drawn with a single batch. Scripts keep the data in C++ and change only what moves.
+// Many sprites that share one texture and are drawn with a single batch. Scripts keep the data in C++ and change only what moves. Every sprite has part colors, white until set, which recolor it when the batch draws with a part mask, and a batch keeps room for them only once one is set.
 class SpriteBatch final {
   public:
     explicit SpriteBatch(graphics::Texture image);
@@ -28,6 +29,9 @@ class SpriteBatch final {
 
     // Sets the number of sprites, filling new ones with the sprite.
     void resize(std::size_t count, const SpriteInstance& sprite = {});
+
+    void setPartColors(std::size_t index, const PartColors& colors);
+    [[nodiscard]] PartColors getPartColors(std::size_t index) const;
 
     // Copies the fields of the layout from the values into the sprites from the one at `first` on, for as many sprites as both hold, which moves every sprite of a large batch in one call. Throws `std::out_of_range` when `first` is past the end.
     void writeFields(std::span<const float> values, const SpriteLayout& layout, std::size_t first = 0);
@@ -51,6 +55,7 @@ class SpriteBatch final {
   private:
     graphics::Texture texture;
     std::vector<SpriteInstance> sprites;
+    std::vector<PartColors> partColors;
 };
 
 } // namespace haylen::graphics2d

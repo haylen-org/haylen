@@ -46,6 +46,7 @@ Every draw that takes an `order` table, and every option table that lists `layer
 | `visibility` | integer | `1` | Bits of the draw. A canvas whose `visibilityMask` shares no bit with them skips the draw. |
 | `blend` | string | `'alpha'` | Blend mode of the draw. |
 | `material` | Material | none | A [custom shader material](#material) that shades the pixels of the draw. Sprites, batches, static batches, nine-slices, rectangles, lines, shapes, meshes and text take materials, while image blends and metaballs raise `Image blends and metaballs do not take a material.` |
+| `partMask` | Texture | none | Recolors sprites and sprite batches by parts, as [recoloring by parts](#recoloring-by-parts) explains. Other draws ignore it. |
 | `normalMap` | Texture | none | In lit canvases, the normal map of a sprite, with the layout of its texture. |
 | `specular` | number | `0` | In lit canvases, the strength of the highlights of a normal-mapped sprite, scaled by the alpha of its normal map. It must be zero or positive. |
 | `shininess` | number | `32` | In lit canvases, how tight the highlights of a normal-mapped sprite are, from 1 to 255. |
@@ -189,6 +190,7 @@ Draws `texture` once with its pivot at `x`, `y`. The argument `options` is optio
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha, for hit flashes. |
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image horizontally or vertically. |
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner, which with `flipHorizontal` and `flipVertical` turns it by quarter turns, the way Tiled rotates tiles. |
+| `partColors` | table | white parts | The colors of the parts when the draw has a `partMask`, as [recoloring by parts](#recoloring-by-parts) explains. |
 | `x`, `y` | number | the arguments | Replace the position arguments. |
 | `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | | [Draw order](#draw-order). |
 
@@ -1257,6 +1259,8 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
 | `layer`, `depth`, `sortOffset`, `visibility`, `blend` | | `0`, `0`, `0`, `1`, `'alpha'` | [Draw order](#draw-order). |
 | `material` | Material or nil | nil | Custom shader of the sprite. |
+| `partMask` | Texture or nil | nil | The mask that [recolors](#recoloring-by-parts) the parts of the sprite. |
+| `partColors` | table | white parts | The colors of the parts, as `{red = Color, green = Color, blue = Color, yellow = Color}` after the colors of the mask, each white when the table leaves it out. Reading it returns all four. |
 | `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | nil, `0`, `32`, `0`, `1`, `false` | Lighting in lit canvases, as the [draw order](#draw-order) describes. |
 
 Reading or writing any other key raises `The type "haylen.Sprite" has no member "name".` or `The type "haylen.Sprite" has no writable property "name".`
@@ -1298,6 +1302,7 @@ A `SpriteBatch` holds many sprites that share one texture. Indices count from 1.
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image. |
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
+| `partColors` | table | white parts | The colors of the parts of the sprite when the batch draws with a `partMask`, as [recoloring by parts](#recoloring-by-parts) explains. A batch keeps room for part colors only once a sprite has some. |
 
 ### Sprite fields
 
@@ -1502,6 +1507,36 @@ scene.push({
     render = function(self)
         graphics2d.beginScreen()
         graphics2d.drawStatic(baked)
+    end,
+})
+```
+
+## Recoloring by parts
+
+A white or greyscale sprite drawn with a `partMask` takes a color for each part the mask marks, which keeps the shading of the sprite, so one set of images makes every outfit of a character. The mask has the layout of the texture of the sprite and paints each part in red, green, blue or yellow, such as the hat, the shirt, the trousers and the boots, and the `partColors` of the sprite, or of each sprite of a batch, name the color of each mask color. A part takes its color multiplied by the shading of the sprite and mixed in by the alpha of the color, so white or a transparent color keeps a part as it is, yellow counts as red and green together, the alpha of the mask fades parts at their soft edges, and the `color` and `flash` of the sprite apply over the result. The GPU does all the work per pixel, and sprites of one texture and mask share a draw call whatever their colors. The keys `partMask` and `partColors` work with `sprite:draw()`, `graphics2d.draw`, `batch:draw` and `graphics2d.drawBatch` with sprite tables, while a material raises `A draw with a part mask does not take a material.` and `graphics2d.drawStatic` raises `A baked sprite batch draws without a part mask. Draw a sprite batch to recolor its sprites.`
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local base = assets.texture('characters/villager.png', {filter = 'linear'})
+local mask = assets.texture('characters/villager_mask.png', {filter = 'linear'})
+local crowd = graphics2d.newSpriteBatch(base)
+local outfits = {
+    {red = '#FFC0392B', green = '#FF2E86C1', blue = '#FF1E8449', yellow = '#FF6E2C00'},
+    {red = '#FFF4D03F', green = '#FF8E44AD', blue = '#FF34495E', yellow = '#FF784212'},
+}
+for index = 1, 40 do
+    crowd:add({x = 60 + (index % 10) * 90, y = 120 + (index // 10) * 140, partColors = outfits[index % #outfits + 1]})
+end
+local hero = graphics2d.newSprite(base, {x = 960, y = 700, partMask = mask, partColors = {red = '#FFFFFFFF', green = '#FF000000'}})
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        crowd:draw({partMask = mask})
+        hero:draw()
     end,
 })
 ```

@@ -35,8 +35,8 @@ SpriteLayout SpriteBatchLua::readLayout(lua_State* L, int index, const SpriteIns
     return SpriteLayout(lua::Stack::read<std::vector<SpriteLayout::Field>>(L, index), sprite);
 }
 
-void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& sprite) {
-    lua_createtable(L, 0, 13);
+void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& sprite, const PartColors& colors) {
+    lua_createtable(L, 0, 14);
     lua::Stack::push(L, sprite.position.x);
     lua_setfield(L, -2, "x");
     lua::Stack::push(L, sprite.position.y);
@@ -63,6 +63,15 @@ void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& spri
     lua_setfield(L, -2, "flipVertical");
     lua::Stack::push(L, sprite.flip.diagonal);
     lua_setfield(L, -2, "flipDiagonal");
+    lua::Stack::push(L, colors);
+    lua_setfield(L, -2, "partColors");
+}
+
+void SpriteBatchLua::readPartColors(lua_State* L, int table, SpriteBatch& batch, std::size_t index) {
+    if (lua_getfield(L, table, "partColors") != LUA_TNIL) {
+        batch.setPartColors(index, lua::Stack::read<PartColors>(L, -1));
+    }
+    lua_pop(L, 1);
 }
 
 std::size_t SpriteBatchLua::checkIndex(lua_State* L, int index, const SpriteBatch& batch) {
@@ -79,20 +88,24 @@ std::size_t SpriteBatchLua::checkFirst(lua_State* L, int index) {
 
 int SpriteBatchLua::add(lua_State* L) {
     SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
-    lua::Stack::push(L, batch.add(lua::TypeConverter::readSpriteInstance(L, 2, batch.getTexture())) + 1);
+    const std::size_t index = batch.add(lua::TypeConverter::readSpriteInstance(L, 2, batch.getTexture(), {}, {kPartColorFields}));
+    readPartColors(L, 2, batch, index);
+    lua::Stack::push(L, index + 1);
     return 1;
 }
 
 int SpriteBatchLua::set(lua_State* L) {
     SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
     const std::size_t index = checkIndex(L, 2, batch);
-    batch.set(index, lua::TypeConverter::readSpriteInstance(L, 3, batch.getTexture(), batch.get(index)));
+    batch.set(index, lua::TypeConverter::readSpriteInstance(L, 3, batch.getTexture(), batch.get(index), {kPartColorFields}));
+    readPartColors(L, 3, batch, index);
     return 0;
 }
 
 int SpriteBatchLua::get(lua_State* L) {
     const SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
-    pushSpriteInstance(L, batch.get(checkIndex(L, 2, batch)));
+    const std::size_t index = checkIndex(L, 2, batch);
+    pushSpriteInstance(L, batch.get(index), batch.getPartColors(index));
     return 1;
 }
 

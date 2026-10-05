@@ -75,7 +75,7 @@ In development, `haylen.py run` keeps compiling the sources that change while th
 
 ## The shader library
 
-The file `haylen/material.glsl` holds what every material shares. It defines the vertex shader `haylen_vs`, which places sprites, glyphs and mesh vertices exactly like the engine's own programs, and the block `haylen_fragment`, which a fragment shader includes first:
+The file `haylen/material.glsl` holds what every material shares. It defines the vertex shader `haylen_vs`, which places sprites, glyphs and mesh vertices exactly like the engine's own programs, the block `haylen_vertex` with its body as the function `haylen_vertex_main()`, which a vertex shader with attributes of its own includes and calls, and the block `haylen_fragment`, which a fragment shader includes first:
 
 | Name | Kind | Meaning |
 | --- | --- | --- |

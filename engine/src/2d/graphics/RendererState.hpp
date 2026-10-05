@@ -55,7 +55,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 7;
+    static constexpr std::size_t kProgramCount = 8;
 
     graphics::Device& device;
     core::JobSystem& jobs;
@@ -195,9 +195,10 @@ struct RendererState {
     [[nodiscard]] static const char* materialProgramName(Program program, graphics::PassTarget target);
 
     // Returns the index of the shade of a draw, reusing the last shade when the draw shades the same way.
-    [[nodiscard]] std::uint32_t getShade(const DrawOrder& order);
+    [[nodiscard]] std::uint32_t getShade(Program program, const DrawOrder& order);
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
     void describeLayout(sg_pipeline_desc& desc, Program program) const;
+    static void describeRecolorLayout(sg_pipeline_desc& desc);
     void describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const;
 };
 

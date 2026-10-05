@@ -1,7 +1,8 @@
 // The Haylen shader library for 2D draws. A material is a fragment shader that includes this file, declares its program with the `haylen_vs` vertex stage and writes its color with `haylen_output`. The engine compiles every material for sprites, text and meshes, and for lit canvases, through the `HAYLEN_TEXT`, `HAYLEN_MESH` and `HAYLEN_LIT` defines.
 @include haylen/output.glsl
 
-@vs haylen_vs
+// The vertex stage of every 2D program, which programs with attributes of their own include and call from their `main`.
+@block haylen_vertex
 layout(binding=0) uniform haylen_vs_params {
     mat4 view_projection;
     // 1 when the blend mode of the draw expects colors premultiplied by their alpha, as `multiply` and `screen` do.
@@ -38,7 +39,8 @@ float haylen_signed_byte(float value) {
     return step < 128.0 ? step : step - 256.0;
 }
 
-void main() {
+// Places the corner of the quad of an instance, or the vertex of a mesh, and hands the fragment stage what it reads.
+void haylen_vertex_main() {
     haylen_output_premultiply = haylen_premultiply;
 #ifdef HAYLEN_MESH
     gl_Position = view_projection * vec4(position, 0.0, 1.0);
@@ -83,6 +85,14 @@ void main() {
     haylen_flash = instance_flash;
     haylen_transform = vec2(angle, flags);
 #endif
+}
+@end
+
+@vs haylen_vs
+@include_block haylen_vertex
+
+void main() {
+    haylen_vertex_main();
 }
 @end
 

@@ -20,6 +20,9 @@ struct Shade {
     std::uint32_t uniformBegin = 0;
     std::uint32_t textureBegin = 0;
 
+    // The part mask of recolored draws.
+    graphics::TextureResource* partMask = nullptr;
+
     graphics::TextureResource* normalMap = nullptr;
     float specular = 0.0F;
     float shininess = 0.0F;
@@ -30,7 +33,7 @@ struct Shade {
 
     // Tells whether draws of both shades can share a command, which takes the same material values and the same lighting.
     [[nodiscard]] bool matches(const Shade& other) const noexcept {
-        return material == other.material && revision == other.revision && version == other.version && normalMap == other.normalMap && specular == other.specular && shininess == other.shininess && emission == other.emission && lightMask == other.lightMask && layer == other.layer && unshaded == other.unshaded;
+        return material == other.material && revision == other.revision && version == other.version && partMask == other.partMask && normalMap == other.normalMap && specular == other.specular && shininess == other.shininess && emission == other.emission && lightMask == other.lightMask && layer == other.layer && unshaded == other.unshaded;
     }
 };
 

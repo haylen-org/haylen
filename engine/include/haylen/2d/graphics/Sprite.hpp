@@ -1,6 +1,7 @@
 #pragma once
 
 #include "haylen/2d/graphics/DrawOrder.hpp"
+#include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/SpriteFlip.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
@@ -9,7 +10,7 @@
 
 namespace haylen::graphics2d {
 
-// Immediate sprite draw. An empty size draws the source rectangle at its pixel size multiplied by the scale.
+// Immediate sprite draw. An empty size draws the source rectangle at its pixel size multiplied by the scale. The part colors recolor the sprite where the part mask of its order marks its parts.
 struct Sprite {
     graphics::Texture texture;
     math::Rect source{};
@@ -21,6 +22,7 @@ struct Sprite {
     math::Color color = math::Color::white();
     math::Color flash = math::Color::transparent();
     SpriteFlip flip{};
+    PartColors partColors{};
     DrawOrder order{};
 };
 

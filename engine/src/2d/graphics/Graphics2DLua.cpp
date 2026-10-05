@@ -195,7 +195,7 @@ int Graphics2DLua::draw(lua_State* L) {
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
     sprite.position = {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
     if (!lua_isnoneornil(L, 4)) {
-        const SpriteInstance instance = lua::TypeConverter::readSpriteInstance(L, 4, sprite.texture, {.position = sprite.position}, {kScaleFields, lua::TypeConverter::kDrawOrderFields});
+        const SpriteInstance instance = lua::TypeConverter::readSpriteInstance(L, 4, sprite.texture, {.position = sprite.position}, {kScaleFields, lua::TypeConverter::kDrawOrderFields, SpriteBatchLua::kPartColorFields});
         sprite.position = instance.position;
         sprite.source = instance.source;
         sprite.size = instance.size;
@@ -206,7 +206,8 @@ int Graphics2DLua::draw(lua_State* L) {
         sprite.flip = instance.flip;
         lua::Table::readField(L, 4, "scaleX", sprite.scale.x);
         lua::Table::readField(L, 4, "scaleY", sprite.scale.y);
-        sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {lua::TypeConverter::kSpriteInstanceFields, kScaleFields});
+        lua::Table::readField(L, 4, "partColors", sprite.partColors);
+        sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {lua::TypeConverter::kSpriteInstanceFields, kScaleFields, SpriteBatchLua::kPartColorFields});
     }
     getRenderer(L).draw(sprite);
     return 0;
@@ -227,12 +228,17 @@ int Graphics2DLua::drawBatch(lua_State* L) {
     }
     luaL_checktype(L, 2, LUA_TTABLE);
     std::vector<SpriteInstance> sprites(static_cast<std::size_t>(luaL_len(L, 2)));
+    std::vector<PartColors> partColors;
     for (std::size_t index = 0; index < sprites.size(); ++index) {
         lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
-        sprites[index] = lua::TypeConverter::readSpriteInstance(L, -1, texture);
-        lua_pop(L, 1);
+        sprites[index] = lua::TypeConverter::readSpriteInstance(L, -1, texture, {}, {SpriteBatchLua::kPartColorFields});
+        if (lua_getfield(L, -1, "partColors") != LUA_TNIL) {
+            partColors.resize(sprites.size());
+            partColors[index] = lua::Stack::read<PartColors>(L, -1);
+        }
+        lua_pop(L, 2);
     }
-    getRenderer(L).drawBatch(texture, sprites, lua::TypeConverter::readDrawOrder(L, 3));
+    getRenderer(L).drawBatch(texture, sprites, lua::TypeConverter::readDrawOrder(L, 3), partColors);
     return 0;
 }
 

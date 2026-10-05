@@ -12,6 +12,8 @@ class SpriteLua final {
   private:
     static int getMaterial(lua_State* L);
     static int setMaterial(lua_State* L);
+    static int getPartMask(lua_State* L);
+    static int setPartMask(lua_State* L);
     static int getNormalMap(lua_State* L);
     static int setNormalMap(lua_State* L);
     static int draw(lua_State* L);

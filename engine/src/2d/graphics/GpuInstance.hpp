@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/SpriteFlip.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 
@@ -35,7 +36,16 @@ struct GpuInstance {
     // Packs a glyph, whose pivot lies on its baseline so the skew leans it around the baseline.
     [[nodiscard]] static GpuInstance makeGlyph(const graphics::TextureResource& texture, const SpriteInstance& glyph, const TextParameters& text) noexcept;
 
+    // Packs the part colors of a recolored sprite into the record that follows its own, which the recolor program reads at the same instance.
+    [[nodiscard]] static GpuInstance makeParts(const PartColors& colors) noexcept;
+
   private:
+    // The colors of the red, green, blue and yellow parts in the first bytes of a record.
+    struct Parts {
+        std::uint32_t colors[4];
+        std::uint8_t unused[32];
+    };
+
     // The outline and the softness reach half the distance field, and the weight and the skew are signed bytes, so zeroed parameters leave a quad untouched.
     static constexpr float kUnsignedRange = 0.5F;
     static constexpr float kWeightScale = 256.0F;

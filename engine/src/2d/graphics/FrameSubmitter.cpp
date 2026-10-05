@@ -19,13 +19,15 @@
 #include "shaders/composite.glsl.h"
 #include "shaders/light.glsl.h"
 #include "shaders/metaball.glsl.h"
+#include "shaders/recolor.glsl.h"
 #include "shaders/sprite.glsl.h"
 #include "shaders/sprite_lit.glsl.h"
 
 namespace haylen::graphics2d {
 
-// Every program reads its view projection from slot 0 and the lighting of lit passes from slot 7, which the shader library reserves.
+// Every program reads its view projection from slot 0 and the lighting of lit passes from slot 7, which the shader library reserves, and the recolor program reads its texture where the sprite program does.
 static_assert(UB_sprite_haylen_vs_params == 0 && UB_sprite_lit_haylen_lit_params == 7);
+static_assert(VIEW_recolor_sprite_texture == VIEW_sprite_sprite_texture && SMP_recolor_sprite_sampler == SMP_sprite_sprite_sampler && UB_recolor_haylen_vs_params == UB_sprite_haylen_vs_params);
 
 const PostProcess FrameSubmitter::kNoPostProcess{};
 
@@ -52,7 +54,7 @@ FrameSubmitter::Matrix FrameSubmitter::projection(const math::Transform2D& view,
 }
 
 bool FrameSubmitter::isInstanced(const DrawItem& item) noexcept {
-    return (item.program == Program::Sprite || item.program == Program::Text) && item.batch == nullptr;
+    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor) && item.batch == nullptr;
 }
 
 void FrameSubmitter::submit() {
@@ -689,6 +691,11 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             bindings.vertex_buffers[1] = command.batch != nullptr ? command.batch->buffer : state.instanceBuffer;
             bindings.vertex_buffer_offsets[1] = static_cast<int>(command.first * sizeof(GpuInstance));
         }
+        if (command.program == Program::Recolor) {
+            bindings.vertex_buffers[2] = state.instanceBuffer;
+            bindings.vertex_buffer_offsets[2] = static_cast<int>((command.first + 1) * sizeof(GpuInstance));
+            bindings.views[VIEW_recolor_part_mask] = shade.partMask->view;
+        }
         if (shade.material != nullptr) {
             bindMaterial(bindings, shade, *command.texture, pass, command.program);
         } else {
@@ -703,7 +710,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
         if (command.program == Program::Mesh) {
             sg_draw(static_cast<int>(command.first), static_cast<int>(command.count), 1);
         } else {
-            sg_draw(0, 4, static_cast<int>(command.count));
+            sg_draw(0, 4, static_cast<int>(command.program == Program::Recolor ? command.count / 2 : command.count));
         }
         ++state.stats.drawCalls;
     }

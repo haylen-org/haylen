@@ -19,6 +19,9 @@ struct DrawOrder {
     graphics::BlendMode::Type blend = graphics::BlendMode::Type::Alpha;
     Material material;
 
+    // Recolors sprites and sprite batches by parts: the mask shares the layout of the draw's texture and marks each part in red, green, blue or yellow, which take the part colors of each sprite. A recolored draw takes no material.
+    graphics::Texture partMask;
+
     // How the draw takes light in a lit canvas. The normal map shares the layout of the draw's texture and lights sprites by the angle light reaches them at, the specular strength, scaled by the alpha of the normal map, and the shininess shape the highlights of normal-mapped sprites, the emission makes the colors glow whatever the light, lights reach the draw when its light mask shares a bit with their item mask, and unshaded draws keep their own colors.
     graphics::Texture normalMap;
     float specular = 0.0F;

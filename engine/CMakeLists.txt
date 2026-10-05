@@ -582,6 +582,8 @@ haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/blend.glsl" MODULE ble
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/blend.glsl" MODULE blend_lit DEFINES HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/metaball.glsl" MODULE metaball)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/metaball.glsl" MODULE metaball_lit DEFINES HAYLEN_LIT)
+haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/recolor.glsl" MODULE recolor)
+haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/recolor.glsl" MODULE recolor_lit DEFINES HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/composite.glsl" MODULE composite)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/light.glsl" MODULE light)
 haylen_embed_file(haylen_engine "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" getDefaultFont)

@@ -20,6 +20,7 @@
 #include "haylen/2d/graphics/Material.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/Parallax.hpp"
+#include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/SceneTransition.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
@@ -66,7 +67,7 @@ namespace haylen::lua {
 // Reads the option tables of engine types and holds the component and name tables their converters share.
 class TypeConverter final {
   public:
-    static constexpr std::array<std::string_view, 12> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded"};
+    static constexpr std::array<std::string_view, 13> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded"};
     static constexpr std::array<std::string_view, 18> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "direction", "language", "pixelSnap"};
     static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
     static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
@@ -97,6 +98,7 @@ class TypeConverter final {
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
     static const NameTable<core::ProcessMode, 5> kProcessModes;
     static constexpr std::array<std::string_view, 8> kEasingFields{"curve", "overshoot", "amplitude", "period", "steps", "position", "cubicBezier", "points"};
+    static constexpr std::array<std::string_view, 4> kPartColorFields{"red", "green", "blue", "yellow"};
 
     template <typename T, std::size_t Size> [[nodiscard]] static std::optional<T> fromTable(const NameTable<T, Size>& names, std::string_view name) {
         const auto found = std::ranges::find(names, name, &std::pair<std::string_view, T>::first);
@@ -269,6 +271,12 @@ template <> struct Converter<math::Segment> {
 template <> struct Converter<math::Insets> {
     static void push(lua_State* L, const math::Insets& value);
     static math::Insets read(lua_State* L, int index);
+};
+
+// Part colors accept a table with any of the colors `red`, `green`, `blue` and `yellow`, white where it has none, and push as a table with the four colors.
+template <> struct Converter<graphics2d::PartColors> {
+    static void push(lua_State* L, const graphics2d::PartColors& value);
+    static graphics2d::PartColors read(lua_State* L, int index);
 };
 
 // Easing curves accept a curve name such as `quadOut`, a function of the progress that returns the eased progress, or a table: `{curve = 'backOut', overshoot = 3}`, `{curve = 'elasticOut', amplitude = 1.5, period = 0.4}`, `{steps = 4, position = 'end'}`, `{cubicBezier = {x1, y1, x2, y2}}` or `{points = {{x, y}, ...}}`, where `points` can also be plain numbers spread evenly from 0 to 1.

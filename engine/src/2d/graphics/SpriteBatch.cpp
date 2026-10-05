@@ -16,6 +16,9 @@ SpriteBatch::SpriteBatch(graphics::Texture image) : texture(std::move(image)) {
 
 std::size_t SpriteBatch::add(const SpriteInstance& sprite) {
     sprites.push_back(sprite);
+    if (!partColors.empty()) {
+        partColors.emplace_back();
+    }
     return sprites.size() - 1;
 }
 
@@ -32,10 +35,14 @@ void SpriteBatch::remove(std::size_t index) {
         throw std::out_of_range("Sprite batch index is out of range.");
     }
     sprites.erase(sprites.begin() + static_cast<std::ptrdiff_t>(index));
+    if (!partColors.empty()) {
+        partColors.erase(partColors.begin() + static_cast<std::ptrdiff_t>(index));
+    }
 }
 
 void SpriteBatch::clear() noexcept {
     sprites.clear();
+    partColors.clear();
 }
 
 void SpriteBatch::reserve(std::size_t count) {
@@ -44,6 +51,24 @@ void SpriteBatch::reserve(std::size_t count) {
 
 void SpriteBatch::resize(std::size_t count, const SpriteInstance& sprite) {
     sprites.resize(count, sprite);
+    if (!partColors.empty()) {
+        partColors.resize(count);
+    }
+}
+
+void SpriteBatch::setPartColors(std::size_t index, const PartColors& colors) {
+    if (index >= sprites.size()) {
+        throw std::out_of_range("Sprite batch index is out of range.");
+    }
+    partColors.resize(sprites.size());
+    partColors[index] = colors;
+}
+
+PartColors SpriteBatch::getPartColors(std::size_t index) const {
+    if (index >= sprites.size()) {
+        throw std::out_of_range("Sprite batch index is out of range.");
+    }
+    return partColors.empty() ? PartColors{} : partColors[index];
 }
 
 void SpriteBatch::writeFields(std::span<const float> values, const SpriteLayout& layout, std::size_t first) {
@@ -67,7 +92,7 @@ void SpriteBatch::readFields(std::span<float> values, const SpriteLayout& layout
 }
 
 void SpriteBatch::draw(Renderer& renderer, const DrawOrder& order) const {
-    renderer.drawBatch(texture, sprites, order);
+    renderer.drawBatch(texture, sprites, order, partColors);
 }
 
 StaticSpriteBatch SpriteBatch::bake(Renderer& renderer) const {

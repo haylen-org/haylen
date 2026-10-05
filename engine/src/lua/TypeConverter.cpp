@@ -179,6 +179,30 @@ math::Insets Converter<math::Insets>::read(lua_State* L, int index) {
     return {TypeConverter::numberComponent(L, table, "left", 1), TypeConverter::numberComponent(L, table, "top", 2), TypeConverter::numberComponent(L, table, "right", 3), TypeConverter::numberComponent(L, table, "bottom", 4)};
 }
 
+void Converter<graphics2d::PartColors>::push(lua_State* L, const graphics2d::PartColors& value) {
+    lua_createtable(L, 0, 4);
+    Stack::push(L, value.red);
+    lua_setfield(L, -2, "red");
+    Stack::push(L, value.green);
+    lua_setfield(L, -2, "green");
+    Stack::push(L, value.blue);
+    lua_setfield(L, -2, "blue");
+    Stack::push(L, value.yellow);
+    lua_setfield(L, -2, "yellow");
+}
+
+graphics2d::PartColors Converter<graphics2d::PartColors>::read(lua_State* L, int index) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    const int table = lua_absindex(L, index);
+    Table::checkFields(L, table, {TypeConverter::kPartColorFields});
+    graphics2d::PartColors colors;
+    Table::readField(L, table, "red", colors.red);
+    Table::readField(L, table, "green", colors.green);
+    Table::readField(L, table, "blue", colors.blue);
+    Table::readField(L, table, "yellow", colors.yellow);
+    return colors;
+}
+
 math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     if (lua_type(L, index) == LUA_TSTRING) {
         return math::EasingCurve(Stack::read<math::Easing::Type>(L, index));
@@ -280,6 +304,7 @@ graphics2d::DrawOrder TypeConverter::readDrawOrder(lua_State* L, int index, std:
     Table::readField(L, table, "visibility", order.visibility);
     Table::readField(L, table, "blend", order.blend);
     Table::readField(L, table, "material", order.material);
+    Table::readField(L, table, "partMask", order.partMask);
     Table::readField(L, table, "normalMap", order.normalMap);
     Table::readField(L, table, "specular", order.specular);
     Table::readField(L, table, "shininess", order.shininess);
