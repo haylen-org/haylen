@@ -316,6 +316,31 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
     EXPECT_NE(fixture.lua("scene.spawn(3, function() end)").find("An owner must be a table or a userdata"), std::string::npos);
 }
 
+// The task lets go of its coroutine when it ends its own scene, and the module that the task then requires collects garbage on the main thread while the coroutine still runs.
+TEST(SceneLuaTest, ATaskThatEndsItsSceneKeepsRunningThroughACollection) {
+    test::EngineFixture fixture({{"source/collector.lua", "collectgarbage() collectgarbage() return {}"}});
+    // clang-format off
+    fixture.runLua(R"(
+        haylen = require('haylen')
+        scene = require('haylen.scene')
+        async = require('async')
+        log = {}
+        scene.push({enter = function(self)
+            scene.spawn(self, function()
+                scene.clear()
+                haylen.autoload('collector')
+                log[#log + 1] = 'collected'
+                async.sleep(1):await()
+                log[#log + 1] = 'resumed'
+            end)
+        end})
+    )");
+    // clang-format on
+    fixture.frames(3);
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' ' .. scene.size()"), "collected 0");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 TEST(SceneLuaTest, AFailingCloseOfACancelledTaskShowsTheError) {
     {
         test::EngineFixture fixture;

@@ -2,12 +2,14 @@
 
 #include <exception>
 #include <new>
+#include <stdexcept>
 #include <utility>
 
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/Owners.hpp"
+#include "lua/StackScope.hpp"
 #include "varn/async/Promise.h"
 
 namespace haylen::lua {
@@ -27,9 +29,15 @@ std::shared_ptr<Task> Task::start(lua_State* L, int function, int arguments, int
     return task;
 }
 
+// The coroutine also stays on the stack of the caller until its first run returns, so a collection while the task cancels itself, which lets go of its reference, never takes the running coroutine.
 void Task::run(lua_State* L, int function, int arguments) {
     const int first = lua_absindex(L, function);
+    const StackScope scope(L);
     thread = lua_newthread(L);
+    if (lua_checkstack(L, arguments + 2) == 0 || lua_checkstack(thread, arguments + 2) == 0) {
+        throw std::runtime_error("A task cannot start with that many arguments.");
+    }
+    lua_pushvalue(L, -1);
     threadReference = luaL_ref(L, LUA_REGISTRYINDEX);
 
     // The body holds the task, so the task lives for as long as its coroutine may still run.
@@ -42,7 +50,6 @@ void Task::run(lua_State* L, int function, int arguments) {
     luaL_setmetatable(thread, kHolderType);
     lua_pushcclosure(thread, &body, 1);
 
-    luaL_checkstack(L, arguments + 1, "too many arguments for a task");
     for (int index = 0; index <= arguments; ++index) {
         lua_pushvalue(L, first + index);
     }
