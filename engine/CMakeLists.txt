@@ -832,6 +832,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   set_target_properties(haylen-ui-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-ui-benchmark)
 
+  # The particle benchmark times the simulation and the drawing of emitters on the CPU, inside an engine on the headless host.
+  add_executable(haylen-particle-benchmark bench/ParticleBenchmark.cpp)
+  target_include_directories(haylen-particle-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-particle-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-particle-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-particle-benchmark)
+
   # The Lua benchmark runs the bunnymark package in bench/lua-benchmark on the headless host, which times what Lua costs to update and draw many sprites through tables and through float buffers.
   add_executable(haylen-lua-benchmark bench/LuaBenchmark.cpp)
   target_include_directories(haylen-lua-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
