@@ -5,10 +5,14 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "content/Error.hpp"
 #include "content/ReleasePackage.hpp"
+#include "content/format/BinaryReader.hpp"
+#include "content/format/BinaryWriter.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChannelDescriptor.hpp"
 #include "content/format/ChunkRecord.hpp"
@@ -97,6 +101,30 @@ TEST_F(HostileInputTest, ParsersRejectDamagedFiles) {
             test::ContentParsers::parse(damaged);
         }
     }
+}
+
+TEST(BinaryReaderTest, NeverMovesPastItsBytes) {
+    const std::vector<std::uint8_t> bytes = {2, 0, 'a', 'b', 0};
+    BinaryReader reader(bytes, Error::Code::CorruptIndex, "test structure");
+    try {
+        reader.skip(bytes.size() + 1);
+        FAIL() << "A skip past the end must fail.";
+    } catch (const Error& error) {
+        EXPECT_EQ(error.getCode(), Error::Code::CorruptIndex);
+        EXPECT_EQ(std::string(error.what()), "The test structure ends before its fields do.");
+    }
+    EXPECT_EQ(reader.getPosition(), 0U);
+    EXPECT_EQ(reader.readString(2), "ab");
+    EXPECT_THROW(reader.requireEnd(), Error);
+    reader.skipZeros(1);
+    reader.requireEnd();
+}
+
+TEST(BinaryWriterTest, RefusesStringsLongerThanTheirLengthField) {
+    BinaryWriter writer;
+    EXPECT_THROW(writer.writeString(std::string(65536, 'a')), std::length_error);
+    writer.writeString(std::string(65535, 'a'));
+    EXPECT_EQ(writer.getBytes().size(), 65537U);
 }
 
 } // namespace haylen::content

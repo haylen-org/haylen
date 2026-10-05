@@ -10,6 +10,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -262,6 +263,23 @@ TEST_F(HpakPackageTest, RefusesChunksOfAnotherSizeThanTheCatalogNames) {
     EXPECT_EQ(package.getFileSize("content/data.bin"), 2 * plain.size());
     expectCode(Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", plain.size() + 500, 100); });
     expectCode(Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", 0, 100); });
+}
+
+TEST_F(HpakPackageTest, NamesAMissingFileByItsPathInThePackage) {
+    // clang-format off
+    const HpakPackage package("app.hmanifest", std::make_shared<const Catalog>(Catalog::parse(CatalogWriter().write(), 0)), std::make_shared<const ShardSet>(std::vector<ShardReference>{}, release.getKeys(), [](const ShardReference&) {
+        return std::unique_ptr<io::PackageReader>();
+    }));
+    // clang-format on
+    const std::string message = "The package file \"app.hmanifest/content/missing.png\" was not found.";
+    for (const std::function<void()>& action : std::vector<std::function<void()>>{[&] { (void)package.getFileSize("content/missing.png"); }, [&] { (void)package.openReader("./content/missing.png"); }, [&] { (void)package.isLuaBytecode("content/missing.png"); }}) {
+        try {
+            action();
+            ADD_FAILURE() << "A missing file must fail.";
+        } catch (const std::runtime_error& error) {
+            EXPECT_EQ(std::string(error.what()), message);
+        }
+    }
 }
 
 TEST_F(HpakPackageTest, ReadsFromManyThreadsAtOnce) {

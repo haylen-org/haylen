@@ -77,8 +77,10 @@ TEST_F(ContentToolTest, BuildsInspectsAndPublishesReleases) {
 
     ASSERT_EQ(run({"verify", getPath("second"), "--keys", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("3 files"), std::string::npos) << output.str();
-    ASSERT_EQ(run({"inspect", getPath("second"), "--keys", getPath("keys"), "--chunks"}), 0) << errors.str();
+    ASSERT_EQ(run({"inspect", getPath("second"), "--keys", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("File \"content/data/config.json\" holds 12 bytes of data, required"), std::string::npos) << output.str();
+    EXPECT_EQ(output.str().find("Chunk at 0"), std::string::npos) << "Only \"--chunks\" lists the chunks.";
+    ASSERT_EQ(run({"inspect", getPath("second"), "--keys", getPath("keys"), "--chunks"}), 0) << errors.str();
     EXPECT_NE(output.str().find("File \"source/main.lua\" holds"), std::string::npos) << output.str();
     EXPECT_NE(output.str().find("bytes of Lua bytecode, required"), std::string::npos) << output.str();
     EXPECT_NE(output.str().find("Its Lua bytecode has the ABI \"lua-"), std::string::npos) << output.str();
@@ -89,6 +91,8 @@ TEST_F(ContentToolTest, BuildsInspectsAndPublishesReleases) {
     ASSERT_EQ(run({"publish", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--channel", "stable", "--output", getPath("tree")}), 0) << errors.str();
     EXPECT_NE(output.str().find("Published generation 1 of the channel \"stable\""), std::string::npos) << output.str();
     ASSERT_EQ(run({"compact", getPath("tree"), "--keys", getPath("keys"), "--keep", "1"}), 0) << errors.str();
+    ASSERT_EQ(run({"compact", getPath("tree"), "--keys", getPath("keys")}), 0) << errors.str();
+    EXPECT_NE(output.str().find("within its last 2 generations"), std::string::npos) << output.str();
     ASSERT_EQ(run({"bootstrap", "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--output", getPath("bootstrap/HaylenBootstrap.cpp")}), 0) << errors.str();
     std::ifstream bootstrap(work.getPath() / "bootstrap" / "HaylenBootstrap.cpp");
     EXPECT_NE(std::string(std::istreambuf_iterator<char>(bootstrap), std::istreambuf_iterator<char>()).find("haylen::content::Bootstrap::install"), std::string::npos);
@@ -110,12 +114,28 @@ TEST_F(ContentToolTest, ExplainsWhatACommandLacks) {
     EXPECT_NE(errors.str().find("needs the option \"--keys\""), std::string::npos) << errors.str();
     EXPECT_EQ(run({"keys", "show", getPath("keys"), "--surprise", "1"}), 1);
     EXPECT_NE(errors.str().find("takes no option \"--surprise\""), std::string::npos) << errors.str();
+    EXPECT_EQ(run({"keys"}), 1);
+    EXPECT_EQ(errors.str(), "Error: The command needs the action, \"create\", \"rotate\" or \"show\".\n");
+    EXPECT_EQ(run({"keys", "remove", getPath("keys")}), 1);
+    EXPECT_EQ(errors.str(), "Error: The keys command takes \"create\", \"rotate\" or \"show\", not \"remove\".\n");
+    EXPECT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "dev.haylen.tests", "--identifier", "dev.haylen.other"}), 1);
+    EXPECT_EQ(errors.str(), "Error: The option \"--identifier\" is given twice.\n");
+    EXPECT_FALSE(std::filesystem::exists(getPath("keys")));
 
     ASSERT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "dev.haylen.other"}), 0) << errors.str();
+    EXPECT_EQ(run({"keys", "show", getPath("keys"), "extra"}), 1);
+    EXPECT_EQ(errors.str(), "Error: The command takes no argument \"extra\".\n");
+    EXPECT_EQ(run({"keys", "show", getPath("keys"), "--chunks"}), 1);
+    EXPECT_EQ(errors.str(), "Error: The command takes no option \"--chunks\", or it needs a value.\n");
+    EXPECT_EQ(run({"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--output", getPath("release")}), 1);
+    EXPECT_EQ(errors.str(), "Error: The command needs the option \"--build\".\n");
     EXPECT_EQ(run({"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--output", getPath("release")}), 1);
     EXPECT_NE(errors.str().find("cannot build with the keys of \"dev.haylen.other\""), std::string::npos) << errors.str();
     EXPECT_EQ(run({"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "seven", "--output", getPath("release")}), 1);
     EXPECT_NE(errors.str().find("takes a whole number"), std::string::npos) << errors.str();
+    EXPECT_EQ(run({"publish", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--channel", "stable", "--output", getPath("tree")}), 1);
+    EXPECT_EQ(errors.str(), "Error: The app cannot publish with the keys of \"dev.haylen.other\".\n");
+    EXPECT_FALSE(std::filesystem::exists(getPath("tree")));
 }
 
 } // namespace haylen::content

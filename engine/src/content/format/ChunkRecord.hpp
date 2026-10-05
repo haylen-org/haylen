@@ -48,7 +48,7 @@ class ChunkRecord final {
 
     [[nodiscard]] Header serialize() const;
 
-    // Authenticates and decrypts the ciphertext in place, then decodes it into the plain chunk, resized to the plain size, and checks its content ID. Throws `ChunkAuthenticationFailed` or `ChunkHashMismatch`, never leaves unverified bytes in the output, and wipes the earlier chunk of the output before it resizes, so none of it stays in memory the output frees or keeps spare.
+    // Authenticates and decrypts the ciphertext in place, then decodes it into the plain chunk, resized to the plain size, and checks its content ID. Throws `ChunkAuthenticationFailed`, `CorruptChunk` when the encoded bytes do not decode to the plain size, or `ChunkHashMismatch`, never leaves unverified bytes in the output, and wipes the earlier chunk of the output before it resizes, so none of it stays in memory the output frees or keeps spare.
     void open(const ContentKey& key, std::span<std::uint8_t> ciphertext, std::vector<std::uint8_t>& plain) const;
 
     [[nodiscard]] std::uint64_t getRecordSize() const noexcept {

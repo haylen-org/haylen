@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include "content/ChannelPublisher.hpp"
+#include "content/Error.hpp"
 #include "content/format/ChannelDescriptor.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/ReleaseFixture.hpp"
@@ -55,6 +57,16 @@ class ChannelPublisherTest : public ::testing::Test {
         const std::vector<std::uint8_t> bytes = readTree().at("channels/stable.hchannel");
         const VerifyingKey trusted = signingKey->getVerifyingKey();
         return ChannelDescriptor::read(bytes, std::span(&trusted, 1));
+    }
+
+    static void expectError(Error::Code code, const std::string& message, const std::function<void()>& action) {
+        try {
+            action();
+            ADD_FAILURE() << "The action must fail with \"" << message << "\"";
+        } catch (const Error& error) {
+            EXPECT_EQ(error.getCode(), code);
+            EXPECT_EQ(std::string(error.what()), message);
+        }
     }
 
     test::ReleaseFixture fixture;
@@ -113,6 +125,50 @@ TEST_F(ChannelPublisherTest, LeavesTheChannelAsItWasWhenAPublishFails) {
     EXPECT_EQ(after.manifest, before.manifest);
 }
 
+TEST_F(ChannelPublisherTest, VerifiesThePacksItKeepsBeforeTheChannelMoves) {
+    const ChannelPublisher::Publication first = publish("3");
+    ASSERT_EQ(first.newPacks.size(), 1U);
+    const ShardReference kept = first.newPacks.front();
+    const std::filesystem::path keptFile = tree.getPath() / ChannelPublisher::getPackPath(kept);
+
+    // The next generation keeps the pack of the large file, so a damaged copy of it in the tree stops the publish.
+    const auto middle = static_cast<std::streamoff>(kept.fileSize / 2);
+    std::fstream stream(keptFile, std::ios::binary | std::ios::in | std::ios::out);
+    stream.seekg(middle);
+    const auto damaged = static_cast<char>(stream.get() ^ 0x01);
+    stream.seekp(middle);
+    stream.put(damaged);
+    stream.close();
+    expectError(Error::Code::CorruptHeader, "The pack \"" + kept.getFileName() + "\" of the tree is not the file its manifest signs.", [&] { (void)publish("4"); });
+    EXPECT_EQ(readChannel().generation, 1U);
+
+    // A publish that failed after it placed its new pack and manifest accepts them the next time, since they hold the same bytes, and a kept pack that is gone stops it as well.
+    std::filesystem::remove(keptFile);
+    expectError(Error::Code::MissingShard, "The tree has no pack \"" + kept.getFileName() + "\", which its manifest names.", [&] { (void)publish("4"); });
+    EXPECT_EQ(readChannel().generation, 1U);
+}
+
+TEST_F(ChannelPublisherTest, RefusesTreesWhosePointersAndManifestsDisagree) {
+    const ChannelPublisher::Publication first = publish("3");
+    const ChannelPublisher::Publication second = publish("4");
+    const std::filesystem::path channels = tree.getPath() / ChannelPublisher::kChannelsFolder;
+    const std::filesystem::path current = tree.getPath() / ChannelPublisher::getManifestPath(second.manifest);
+
+    std::filesystem::copy_file(channels / "stable.hchannel", channels / "beta.hchannel");
+    expectError(Error::Code::CorruptManifest, "The pointer of the channel \"beta\" names the channel \"stable\".", [&] { (void)publisher.publish(io::MemoryPackage("source", makeFiles("5")), tree.getPath(), {.profile = "desktop", .appBuild = 7, .channel = "beta"}); });
+
+    const std::filesystem::path saved = tree.getPath() / "saved.hmanifest";
+    std::filesystem::rename(current, saved);
+    std::filesystem::copy_file(tree.getPath() / ChannelPublisher::getManifestPath(first.manifest), current);
+    expectError(Error::Code::CorruptManifest, "The file of the manifest \"" + second.manifest.toHex() + "\" holds another manifest.", [&] { (void)publish("5"); });
+
+    std::filesystem::remove(current);
+    expectError(Error::Code::MissingManifest, "The tree has no manifest \"" + second.manifest.toHex() + "\", which a channel names.", [&] { (void)publish("5"); });
+
+    std::filesystem::rename(saved, current);
+    EXPECT_EQ(publish("5").generation, 3U);
+}
+
 TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
     (void)publish("3");
     (void)publish("4");
@@ -120,10 +176,16 @@ TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
     EXPECT_THROW((void)publisher.compact(tree.getPath(), 0), std::invalid_argument);
     const test::TemporaryDirectory empty;
     EXPECT_THROW((void)publisher.compact(empty.getPath(), 1), std::invalid_argument) << "A folder without channels is no publication tree.";
+    std::filesystem::create_directories(empty.getPath() / ChannelPublisher::kChannelsFolder);
+    const ChannelPublisher::Compaction nothing = publisher.compact(empty.getPath(), 1);
+    EXPECT_EQ(nothing.manifests + nothing.packs + nothing.bytes, 0U) << "A tree that has published nothing yet has nothing to remove.";
 
+    // Files of the channels folder that are no channel pointers stay as they are.
+    std::ofstream(tree.getPath() / ChannelPublisher::kChannelsFolder / "notes.txt") << "notes";
     const ChannelPublisher::Compaction compaction = publisher.compact(tree.getPath(), 1);
     EXPECT_EQ(compaction.manifests, 2U);
     EXPECT_EQ(compaction.packs, 1U) << "The pack of the second generation goes, while the first one still holds the large file of the last one.";
+    EXPECT_TRUE(std::filesystem::exists(tree.getPath() / ChannelPublisher::kChannelsFolder / "notes.txt"));
 
     // The current generation still verifies, and a new publish builds on it.
     std::set<std::string> left;

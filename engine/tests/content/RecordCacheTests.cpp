@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "content/RecordCache.hpp"
@@ -62,6 +64,18 @@ TEST_F(RecordCacheTest, IgnoresEntriesThatDoNotVerify) {
     std::vector<std::uint8_t> found;
     EXPECT_FALSE(cache.find(otherKey, record.contentId, found).has_value()) << "Another key never finds the records of this one.";
 
+    // An entry that holds the record of another chunk, or bytes after its record, never serves.
+    const std::vector<std::uint8_t> otherPlain = test::TestFiles::bytes("Another chunk of another asset.");
+    std::vector<std::uint8_t> otherCiphertext;
+    const ChunkRecord::Header otherHeader = ChunkRecord::seal(key, otherPlain, ChunkRecord::identifyContent(otherPlain), otherCiphertext).serialize();
+    std::ofstream(findEntry(), std::ios::binary | std::ios::trunc).write(reinterpret_cast<const char*>(otherHeader.data()), static_cast<std::streamsize>(otherHeader.size())).write(reinterpret_cast<const char*>(otherCiphertext.data()), static_cast<std::streamsize>(otherCiphertext.size()));
+    EXPECT_FALSE(cache.find(key, record.contentId, found).has_value());
+    cache.store(key, record, ciphertext);
+    std::ofstream(findEntry(), std::ios::binary | std::ios::app).put('x');
+    EXPECT_FALSE(cache.find(key, record.contentId, found).has_value());
+    cache.store(key, record, ciphertext);
+    ASSERT_TRUE(cache.find(key, record.contentId, found).has_value());
+
     std::fstream stream(findEntry(), std::ios::binary | std::ios::in | std::ios::out);
     stream.seekp(static_cast<std::streamoff>(ChunkRecord::kHeaderSize + 2));
     stream.put('x');
@@ -70,6 +84,21 @@ TEST_F(RecordCacheTest, IgnoresEntriesThatDoNotVerify) {
 
     std::filesystem::resize_file(findEntry(), 10);
     EXPECT_FALSE(cache.find(key, record.contentId, found).has_value());
+}
+
+TEST_F(RecordCacheTest, ReportsAnEntryItCannotWrite) {
+    // A folder under the name the entry grows in leaves no room for it, and the store stops with the name of the entry.
+    cache.store(key, record, ciphertext);
+    std::filesystem::path partial = findEntry();
+    std::filesystem::remove(partial);
+    partial += ".partial";
+    std::filesystem::create_directories(partial);
+    try {
+        cache.store(key, record, ciphertext);
+        FAIL() << "An entry that cannot be written must stop the store.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string(error.what()), "The build cache entry \"" + partial.generic_string() + "\" could not be written.");
+    }
 }
 
 } // namespace haylen::content

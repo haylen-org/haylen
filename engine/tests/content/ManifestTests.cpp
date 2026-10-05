@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "content/Compatibility.hpp"
@@ -21,6 +23,12 @@ namespace haylen::content {
 
 class ManifestTest : public ::testing::Test {
   protected:
+    // The offsets of fields of the manifest format, where the string of the profile starts with its length.
+    static constexpr std::size_t kEnvelopeSizeOffset = 12;
+    static constexpr std::size_t kDomainOffset = 16;
+    static constexpr std::size_t kShardVersionOffset = 18;
+    static constexpr std::size_t kProfileOffset = 176;
+
     ManifestTest() : signingKey(test::ReleaseFixture::makeKey(101)), trusted{signingKey.getVerifyingKey()} {
         keyId = keys.add(test::ReleaseFixture::makeKey(1));
     }
@@ -61,6 +69,35 @@ class ManifestTest : public ::testing::Test {
             ADD_FAILURE() << "The action must fail.";
         } catch (const Error& error) {
             EXPECT_EQ(error.getCode(), code) << error.what();
+        }
+    }
+
+    static void writeNumber(std::vector<std::uint8_t>& bytes, std::size_t offset, std::uint64_t value, std::size_t size) {
+        for (std::size_t index = 0; index < size; ++index) {
+            bytes[offset + index] = static_cast<std::uint8_t>(value >> (8 * index));
+        }
+    }
+
+    // Changes the envelope of a valid manifest and signs it again with the trusted key, so only the rules of the envelope itself can reject it.
+    void expectEnvelopeRejected(Error::Code code, const std::string& message, const std::function<void(std::vector<std::uint8_t>&)>& change) const {
+        const std::vector<std::uint8_t> manifest = write();
+        std::size_t size = 0;
+        for (std::size_t index = 0; index < sizeof(std::uint32_t); ++index) {
+            size |= std::size_t{manifest[kEnvelopeSizeOffset + index]} << (8 * index);
+        }
+        std::vector<std::uint8_t> changed(manifest.begin(), manifest.begin() + static_cast<std::ptrdiff_t>(size));
+        change(changed);
+        writeNumber(changed, kEnvelopeSizeOffset, changed.size(), sizeof(std::uint32_t));
+
+        const VerifyingKey::Signature signature = signingKey.sign(changed);
+        changed.insert(changed.end(), signature.begin(), signature.end());
+        changed.insert(changed.end(), manifest.begin() + static_cast<std::ptrdiff_t>(size + VerifyingKey::kSignatureSize), manifest.end());
+        try {
+            (void)Manifest::read(std::move(changed), trusted);
+            ADD_FAILURE() << "The envelope must be rejected with \"" << message << "\"";
+        } catch (const Error& error) {
+            EXPECT_EQ(error.getCode(), code);
+            EXPECT_EQ(std::string(error.what()), message);
         }
     }
 
@@ -158,6 +195,7 @@ TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
     for (const std::string& path : {"app.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
         expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, path); });
     }
+    EXPECT_FALSE(Manifest::isLuaModule("content/script.lua")) << "Only the source folders of the app and its plugins hold modules.";
 
     Manifest::Envelope content = makeEnvelope(Manifest::Domain::Content);
     content.luaAbi = LuaCompiler::getAbi();
@@ -208,6 +246,20 @@ TEST_F(ManifestTest, RejectsInvalidEnvelopes) {
     envelope = makeEnvelope();
     envelope.luaAbi = "Lua 5.5";
     EXPECT_THROW((void)write(envelope, makeCatalog("content/a.png")), std::invalid_argument);
+}
+
+TEST_F(ManifestTest, KeepsTheRulesOfASignedEnvelope) {
+    // A trusted signature tells who wrote an envelope, never that its fields are valid. The test envelope ends with the count of its shards, its one shard of 72 bytes and the catalog fields of 80 bytes, which start with the size of the catalog.
+    const auto catalogSizeOffset = [](const std::vector<std::uint8_t>& envelope) { return envelope.size() - 80; };
+    const auto shardCountOffset = [&catalogSizeOffset](const std::vector<std::uint8_t>& envelope) { return catalogSizeOffset(envelope) - 72 - 8; };
+    expectEnvelopeRejected(Error::Code::CorruptManifest, "The manifest envelope names a domain this app does not know.", [](std::vector<std::uint8_t>& envelope) { envelope[kDomainOffset] = 2; });
+    expectEnvelopeRejected(Error::Code::UnsupportedVersion, "The manifest uses shard or catalog versions this app does not read.", [](std::vector<std::uint8_t>& envelope) { envelope[kShardVersionOffset] = 2; });
+    expectEnvelopeRejected(Error::Code::CorruptManifest, "The manifest envelope holds a string longer than its format allows.", [](std::vector<std::uint8_t>& envelope) { envelope[kProfileOffset] = static_cast<std::uint8_t>(Manifest::kMaximumNameLength + 1); });
+    expectEnvelopeRejected(Error::Code::CorruptManifest, "The manifest envelope holds a profile, a channel, a Lua ABI or a build range that is not valid.", [](std::vector<std::uint8_t>& envelope) { envelope[kProfileOffset + 2] = 'D'; });
+    expectEnvelopeRejected(Error::Code::CorruptManifest, "The manifest envelope lists more shards than it holds.", [&](std::vector<std::uint8_t>& envelope) { writeNumber(envelope, shardCountOffset(envelope), 3, sizeof(std::uint64_t)); });
+    expectEnvelopeRejected(Error::Code::CorruptManifest, "The manifest envelope ends before its fields do.", [&](std::vector<std::uint8_t>& envelope) { writeNumber(envelope, shardCountOffset(envelope), 2, sizeof(std::uint64_t)); });
+    expectEnvelopeRejected(Error::Code::CorruptManifest, "The manifest envelope has bytes after its last field.", [](std::vector<std::uint8_t>& envelope) { envelope.push_back(0); });
+    expectEnvelopeRejected(Error::Code::CorruptManifest, "The manifest envelope declares a catalog larger than the limit.", [&](std::vector<std::uint8_t>& envelope) { writeNumber(envelope, catalogSizeOffset(envelope), Manifest::kMaximumCatalogSize + 1, sizeof(std::uint64_t)); });
 }
 
 TEST_F(ManifestTest, NeverAcceptsAnOlderGeneration) {

@@ -3,6 +3,7 @@
 #include <string>
 
 #include "core/EmbeddedFiles.hpp"
+#include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -126,11 +127,27 @@ TEST_F(AssetsLuaTest, SettlesPreloadsOfAGroupThatUnloads) {
 
 TEST_F(AssetsLuaTest, ExplainsInvalidOptionsAndGroups) {
     EXPECT_NE(lua("return assets.texture('images/hero.png', {filter = 3})").find("The texture filter must be \"nearest\" or \"linear\", not 3."), std::string::npos);
+    EXPECT_NE(lua("return assets.texture('images/hero.png', {wrap = 'diagonal'})").find("The texture wrap must be \"clamp\", \"repeat\" or \"mirror\", not \"diagonal\"."), std::string::npos);
     EXPECT_NE(lua("return assets.font('fonts/ui.ttf', {bakeSize = 'large'})").find("The font option \"bakeSize\" must be a number, not \"large\"."), std::string::npos);
     EXPECT_NE(lua("assets.defineGroups({})").find("The asset group manifest needs \"groups\", which maps each group name to its list of entries."), std::string::npos);
     EXPECT_NE(lua("assets.defineGroup('level', 'images/')").find("The asset group \"level\" must be a list of entries."), std::string::npos);
     EXPECT_NE(lua("assets.defineGroup('level', {{type = 'texture'}})").find("The asset group \"level\" has the entry {\"type\":\"texture\"}, which is not a path or an object with a \"path\" string, an optional \"type\" string and optional \"options\"."), std::string::npos);
     EXPECT_EQ(lua("assets.defineGroup('level', {}) return #assets.groups()"), "1");
+}
+
+TEST_F(AssetsLuaTest, SetsTheUploadBudgetAndCountsWaitingUploads) {
+    EXPECT_EQ(lua("return assets.uploadBudget()"), "0.004");
+    lua("assets.setUploadBudget(0.008)");
+    EXPECT_EQ(lua("return assets.uploadBudget()"), "0.008");
+    EXPECT_NE(lua("assets.setUploadBudget(-1)").find("The upload budget cannot be negative."), std::string::npos);
+    EXPECT_EQ(lua("return assets.uploadBudget()"), "0.008");
+
+    // An app in the background keeps its decoded assets waiting for the frame thread until it comes back.
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    lua("pending = assets.loadAsync('images/hero.png')");
+    ASSERT_TRUE(waitFor("assets.uploadCount() == 1"));
+    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    ASSERT_TRUE(waitFor("assets.uploadCount() == 0 and assets.pendingCount() == 0"));
 }
 
 TEST_F(AssetsLuaTest, ReportsFailingProgressCallbacks) {

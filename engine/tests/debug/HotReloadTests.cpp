@@ -104,6 +104,7 @@ TEST_F(PackageWatcherTest, IgnoresHiddenBackupAndNonLuaSourceFiles) {
     EXPECT_TRUE(io::PackageWatcher::isWatched("app.json"));
     EXPECT_TRUE(io::PackageWatcher::isWatched("plugins/ads/plugin.json"));
     EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/ads/android/build.gradle.kts"));
+    EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/README.md"));
     EXPECT_FALSE(io::PackageWatcher::isWatched("platform/web/index.html"));
     EXPECT_FALSE(io::PackageWatcher::isWatched("source/.level.lua.swp"));
 }
@@ -113,7 +114,7 @@ TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
     directory.write("content/level.json", "{}");
     io::PackageWatcher watcher(directory.getPath());
 
-    // A file that grows while the scan looks at it is still being written, so the scan leaves it for later.
+    // A file that grows while the scan looks at it is still being written, so the scan leaves it for later, whether it changes or is new.
     std::atomic<bool> writing = true;
     // clang-format off
     std::thread writer([&directory, &writing] {
@@ -121,6 +122,7 @@ TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
         while (writing) {
             content.push_back(' ');
             directory.write("content/level.json", content + "}");
+            directory.write("content/added.json", content + "}");
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
@@ -130,7 +132,7 @@ TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
     writing = false;
     writer.join();
     EXPECT_TRUE(busy.empty());
-    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/level.json"}));
+    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/added.json", "content/level.json"}));
     EXPECT_TRUE(watcher.scan().empty());
 }
 

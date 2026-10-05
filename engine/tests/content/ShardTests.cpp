@@ -2,16 +2,21 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <map>
 #include <memory>
+#include <span>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "content/Error.hpp"
 #include "content/ShardReader.hpp"
 #include "content/ShardWriter.hpp"
+#include "content/crypto/Aead.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/format/Catalog.hpp"
 #include "content/format/ChunkRecord.hpp"
@@ -210,6 +215,34 @@ TEST_F(ShardTest, ChecksTheContentIdOfDecodedChunks) {
     }
 }
 
+TEST_F(ShardTest, ChecksTheSizeOfDecodedChunks) {
+    // A record whose header declares one byte more than its compressed bytes decode to authenticates, since the key sealed it so, but nothing of it reaches the caller.
+    const std::vector<std::uint8_t> plain = test::TestFiles::bytes(std::string(10000, 'x'));
+    std::vector<std::uint8_t> ciphertext;
+    const ChunkRecord sealed = ChunkRecord::seal(*getKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+    ASSERT_EQ(sealed.codec, Compression::Codec::Zstd);
+
+    // The header without its tag is the additional data of the encryption.
+    const Aead::Key subkey = getKey()->getSubkey(ContentKey::Purpose::Chunk);
+    const std::size_t additionalSize = ChunkRecord::kHeaderSize - Aead::kTagSize;
+    const ChunkRecord::Header sealedHeader = sealed.serialize();
+    std::vector<std::uint8_t> encoded(ciphertext.size());
+    ASSERT_TRUE(Aead::open(subkey, sealed.nonce, std::span(sealedHeader).first(additionalSize), sealed.tag, ciphertext, encoded));
+
+    ChunkRecord forged = sealed;
+    forged.plainSize += 1;
+    const ChunkRecord::Header forgedHeader = forged.serialize();
+    forged.tag = Aead::seal(subkey, forged.nonce, std::span(forgedHeader).first(additionalSize), encoded, ciphertext);
+    std::vector<std::uint8_t> opened = test::TestFiles::bytes("an earlier chunk");
+    try {
+        forged.open(*getKey(), ciphertext, opened);
+        FAIL() << "A chunk of another size than its record declares must be rejected.";
+    } catch (const Error& error) {
+        EXPECT_EQ(error.getCode(), Error::Code::CorruptChunk) << error.what();
+        EXPECT_TRUE(opened.empty());
+    }
+}
+
 TEST_F(ShardTest, WritesAndReadsShards) {
     const std::vector<std::vector<std::uint8_t>> chunks = makeChunks();
     const ShardReference reference = writeShard(directory.getPath(), chunks, getKey());
@@ -244,6 +277,28 @@ TEST_F(ShardTest, WritesTheSameBytesForTheSameChunks) {
     EXPECT_NE(writeShard(directory.getPath() / "third", changed, getKey()).shardId, first.shardId);
 }
 
+TEST_F(ShardTest, LeavesNoFileOfAShardItDidNotFinish) {
+    const std::filesystem::path stopped = directory.getPath() / "stopped";
+    {
+        ShardWriter writer(stopped, getKey());
+        const std::vector<std::uint8_t> chunk = test::TestFiles::bytes("A chunk of a build that stopped.");
+        std::vector<std::uint8_t> ciphertext;
+        writer.add(ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext), ciphertext);
+        EXPECT_FALSE(std::filesystem::is_empty(stopped));
+    }
+    EXPECT_TRUE(std::filesystem::is_empty(stopped)) << "A build that stops leaves no half shard behind.";
+
+    // A folder under the name a shard grows in leaves no room for it.
+    const std::filesystem::path partial = directory.getPath() / "blocked" / "shard.hpak.partial";
+    std::filesystem::create_directories(partial);
+    try {
+        const ShardWriter writer(directory.getPath() / "blocked", getKey());
+        FAIL() << "A shard file that cannot be created must stop the writer.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string(error.what()), "The shard file \"" + partial.generic_string() + "\" could not be created.");
+    }
+}
+
 TEST_F(ShardTest, RejectsEveryChangeToTheHeaderAndTheIndex) {
     const ShardReference reference = writeShard(directory.getPath(), makeChunks(), getKey());
     const std::vector<std::uint8_t> file = readFile(directory.getPath() / reference.getFileName());
@@ -269,6 +324,7 @@ TEST_F(ShardTest, RejectsEveryChangeToTheHeaderAndTheIndex) {
 
 TEST_F(ShardTest, RejectsIndexesThatPlaceRecordsBadly) {
     const std::uint64_t data = ShardHeader::kSize;
+    EXPECT_THROW((void)ShardIndex({makeEntry(1, data), makeEntry(1, data + 228)}), std::invalid_argument) << "No index is ever written with one chunk twice.";
     expectRejectedWith(makeShard(ShardIndex({makeEntry(1, data), makeEntry(2, data + 140)}).serialize(), 2, 600), Error::Code::InvalidOffset);
     expectRejectedWith(makeShard(ShardIndex({makeEntry(1, data), makeEntry(2, data + 400)}).serialize(), 2, 400), Error::Code::InvalidOffset);
     expectRejectedWith(makeShard(ShardIndex({makeEntry(1, 10)}).serialize(), 1, 400), Error::Code::InvalidOffset);

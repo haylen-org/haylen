@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "content/Error.hpp"
+#include "content/LuaCompiler.hpp"
 #include "content/ReleaseInspector.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/io/MemoryPackage.hpp"
@@ -120,6 +121,30 @@ TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
 
     std::filesystem::remove(release.getFolder() / shard.getFileName());
     expectCode(Error::Code::MissingShard, [&] { (void)inspector.verify(release.getFolder()); });
+
+    // Each manifest must be the one of its domain.
+    std::filesystem::copy_file(release.getFolder() / ReleasePackage::kAppManifestFile, release.getFolder() / ReleasePackage::kContentManifestFile, std::filesystem::copy_options::overwrite_existing);
+    expectCode(Error::Code::CorruptManifest, [&] { (void)inspector.inspect(release.getFolder()); });
+    std::filesystem::remove(release.getFolder() / ReleasePackage::kAppManifestFile);
+    try {
+        (void)inspector.inspect(release.getFolder());
+        FAIL() << "A folder without its manifests is no release.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string(error.what()), "The release folder \"" + release.getFolder().generic_string() + "\" has no \"app.hmanifest\".");
+    }
+}
+
+TEST_F(ReleaseInspectorTest, CountsAShardThatBothDomainsNameOnce) {
+    // Content files with the bytes and the order of the files of the app domain seal into the same records, so both domains write one shard file.
+    const std::string config = R"({"name": "Release Test", "identifier": "dev.haylen.tests"})";
+    const std::vector<std::uint8_t> module = LuaCompiler::compile("loaded = true", "source/main.lua");
+    release.build({{"app.json", config}, {"source/main.lua", "loaded = true"}, {"content/a.json", config}, {"content/b.bin", std::string(module.begin(), module.end())}});
+    const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
+    ASSERT_EQ(report.app.envelope.shards, report.content.envelope.shards);
+
+    const ReleaseInspector::Verification verification = makeInspector().verify(release.getFolder());
+    EXPECT_EQ(verification.shards, 1U);
+    EXPECT_EQ(verification.files, 4U);
 }
 
 } // namespace haylen::content

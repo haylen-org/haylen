@@ -201,6 +201,27 @@ TEST_F(ReleaseBuilderTest, StopsOnADamagedEarlierRelease) {
     }
 }
 
+TEST_F(ReleaseBuilderTest, RefusesEarlierReleasesItCannotReuse) {
+    const Files small{{"app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "dev.haylen.tests"})")}, {"source/main.lua", test::TestFiles::bytes("loaded = true")}};
+    try {
+        (void)build(io::MemoryPackage("source", small), "first", "missing");
+        FAIL() << "An earlier release without manifests must stop the build.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string(error.what()), "The manifest \"" + (directory.getPath() / "missing" / ReleasePackage::kAppManifestFile).generic_string() + "\" could not be read.");
+    }
+
+    // The release of another app shares no file with this one, even when the same keys sign both.
+    Files other = small;
+    other["app.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "dev.haylen.other"})");
+    const ReleaseBuilder::Result foreign = build(io::MemoryPackage("source", other), "other");
+    try {
+        (void)build(io::MemoryPackage("source", small), "second", "other");
+        FAIL() << "The release of another app must stop the build.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The earlier manifest \"" + foreign.app.manifest.toHex() + "\" belongs to another app or domain, so the build cannot reuse it.");
+    }
+}
+
 TEST_F(ReleaseBuilderTest, StopsWhenAFileChangesWhileItBuilds) {
     const ChangingPackage source(makeFiles());
     try {

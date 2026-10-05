@@ -1,11 +1,14 @@
 #include <gtest/gtest.h>
 
+#include <exception>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <stdexcept>
 #include <string>
 
 #include "content/KeyStore.hpp"
+#include "haylen/core/Json.hpp"
 #include "support/TemporaryDirectory.hpp"
 
 namespace haylen::content {
@@ -14,6 +17,19 @@ class KeyStoreTest : public ::testing::Test {
   protected:
     [[nodiscard]] std::filesystem::path getFolder() const {
         return directory.getPath() / "keys" / "dev.haylen.tests";
+    }
+
+    static void expectError(const std::string& message, const std::function<void()>& action) {
+        try {
+            action();
+            ADD_FAILURE() << "The action must fail with \"" << message << "\"";
+        } catch (const std::exception& error) {
+            EXPECT_EQ(std::string(error.what()), message);
+        }
+    }
+
+    void writeIndex(const core::Json& index) const {
+        std::ofstream(getFolder() / KeyStore::kIndexFile, std::ios::trunc) << index.dump();
     }
 
     test::TemporaryDirectory directory;
@@ -40,6 +56,8 @@ TEST_F(KeyStoreTest, CreatesKeysThatOnlyTheirOwnerReads) {
 
     const KeyStore other = KeyStore::create(directory.getPath() / "other", "dev.haylen.tests");
     EXPECT_NE(other.getActiveKeyId(), created.getActiveKeyId()) << "Every key folder holds keys of its own.";
+    expectError("The keys of an app need the identifier of the app.", [&] { (void)KeyStore::create(directory.getPath() / "unnamed", ""); });
+    EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "unnamed"));
 }
 
 TEST_F(KeyStoreTest, RotatesContentKeysAndKeepsTheEarlierOnes) {
@@ -59,6 +77,24 @@ TEST_F(KeyStoreTest, RefusesDamagedKeyFolders) {
     const KeyStore store = KeyStore::create(getFolder(), "dev.haylen.tests");
     const std::filesystem::path contentKey = getFolder() / ("content-" + store.getActiveKeyId().toHex() + ".key");
     EXPECT_THROW((void)KeyStore::open(directory.getPath() / "missing"), std::runtime_error);
+
+    // An index that is no JSON, that names a content key by anything but its ID or that names another signing key than the folder holds is never used.
+    std::ifstream stream(getFolder() / KeyStore::kIndexFile);
+    const core::Json valid = core::Json::parse(stream);
+    stream.close();
+    const std::string index = (getFolder() / KeyStore::kIndexFile).generic_string();
+    std::ofstream(getFolder() / KeyStore::kIndexFile, std::ios::trunc) << "keys";
+    expectError("The file \"" + index + "\" is not the JSON index of a key folder.", [&] { (void)KeyStore::open(getFolder()); });
+    core::Json changed = valid;
+    changed["contentKeys"] = core::Json::array({"abc"});
+    writeIndex(changed);
+    expectError("The file \"" + index + "\" lists a content key ID that is not 64 hexadecimal digits.", [&] { (void)KeyStore::open(getFolder()); });
+    changed = valid;
+    changed["signingKey"] = store.getActiveKeyId().toHex();
+    writeIndex(changed);
+    expectError("The file \"" + (getFolder() / KeyStore::kSigningKeyFile).generic_string() + "\" holds another signing key than \"keys.json\" names.", [&] { (void)KeyStore::open(getFolder()); });
+    writeIndex(valid);
+    EXPECT_EQ(KeyStore::open(getFolder()).getContentKeyIds(), store.getContentKeyIds());
 
     // A key file that holds another key than its name says is never used.
     std::filesystem::copy_file(getFolder() / KeyStore::kSigningKeyFile, contentKey, std::filesystem::copy_options::overwrite_existing);

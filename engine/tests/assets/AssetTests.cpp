@@ -282,6 +282,12 @@ TEST_F(AssetsManagerTest, PreloadsAndUnloadsGroups) {
     assets.preload("broken", {}, [&](std::vector<std::string> failures) { brokenErrors = failures; });
     ASSERT_TRUE(fixture.frameUntil([&] { return brokenErrors.size() == 2; }));
 
+    // A group that loaded completes every later preload with the failures of its load.
+    std::vector<std::string> repeatedErrors;
+    assets.preload("broken", {}, [&](std::vector<std::string> failures) { repeatedErrors = failures; });
+    ASSERT_TRUE(fixture.frameUntil([&] { return !repeatedErrors.empty(); }));
+    EXPECT_EQ(repeatedErrors, brokenErrors);
+
     bool emptyDone = false;
     assets.preload("empty", {}, [&](std::vector<std::string>) { emptyDone = true; });
     ASSERT_TRUE(fixture.frameUntil([&] { return emptyDone; }));
@@ -332,6 +338,16 @@ TEST_F(AssetsManagerTest, UnloadingDuringALoadDropsItsResults) {
     EXPECT_EQ(failures, (std::vector<std::string>{"The asset group \"menu\" was unloaded before it finished loading."}));
     EXPECT_FALSE(assets.isGroupLoaded("menu"));
 
+    // An empty group completes on the next frame, and unloading it before then keeps it unloaded.
+    assets.defineGroup("empty", {});
+    std::vector<std::string> emptyFailures;
+    assets.preload("empty", {}, [&](std::vector<std::string> errors) { emptyFailures = errors; });
+    assets.unloadGroup("empty");
+    ASSERT_TRUE(fixture.frameUntil([&] { return !emptyFailures.empty(); }));
+    fixture.frames(1);
+    EXPECT_EQ(emptyFailures, (std::vector<std::string>{"The asset group \"empty\" was unloaded before it finished loading."}));
+    EXPECT_FALSE(assets.isGroupLoaded("empty"));
+
     bool completed = false;
     assets.preload("menu", {}, [&](std::vector<std::string>) { completed = true; });
     assets.cancelAll();
@@ -355,7 +371,7 @@ TEST_F(AssetsManagerTest, ReloadsFilesWhosePathsHoldAnyCharacter) {
 }
 
 TEST_F(AssetsManagerTest, RegistersCustomTypes) {
-    test::EngineFixture fixture({{"content/levels/one.level", "3"}});
+    test::EngineFixture fixture({{"content/levels/one.level", "3"}, {"content/levels/one.fragile", "3"}});
     assets::Manager& assets = fixture.engine().getAssets();
     // clang-format off
     assets.registerType({
@@ -371,6 +387,22 @@ TEST_F(AssetsManagerTest, RegistersCustomTypes) {
     EXPECT_EQ(assets.getTypeForPath("levels/one.level"), "level");
     EXPECT_EQ(*std::static_pointer_cast<int>(assets.load("level", "levels/one.level")), 3);
     EXPECT_THROW(assets.registerType({.name = "broken"}), std::invalid_argument);
+
+    // A type whose resources fail to build on the frame thread hands the failure to the load that waits for it, which then no longer counts as pending.
+    // clang-format off
+    assets.registerType({
+        .name = "fragile",
+        .extensions = {".fragile"},
+        .normalize = [](const core::Json& options) { return options; },
+        .decode = [](assets::Manager::Request&) -> std::shared_ptr<void> { return std::make_shared<int>(0); },
+        .finalize = [](std::shared_ptr<void>, const assets::Manager::Request&) -> std::shared_ptr<void> { throw std::runtime_error("The fragile asset could not be built."); },
+    });
+    // clang-format on
+    std::string failure;
+    assets.loadAsync("fragile", "levels/one.fragile", [&failure](std::shared_ptr<void> asset, std::string error) { failure = asset ? "loaded" : error; });
+    ASSERT_TRUE(fixture.frameUntil([&] { return !failure.empty(); }));
+    EXPECT_EQ(failure, "The fragile asset could not be built.");
+    EXPECT_EQ(assets.getPendingCount(), 0U);
 }
 
 } // namespace haylen::assets

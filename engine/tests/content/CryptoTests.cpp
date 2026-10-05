@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -17,6 +18,7 @@
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/Manifest.hpp"
 #include "support/ReleaseFixture.hpp"
+#include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::content {
@@ -54,6 +56,25 @@ TEST_F(CryptoTest, HashesWithBlake2b) {
     EXPECT_EQ(Digest::of(test::TestFiles::bytes("abc")).toHex(), "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319");
     EXPECT_TRUE(Digest().isZero());
     EXPECT_FALSE(Digest::of({}).isZero());
+}
+
+TEST_F(CryptoTest, ReadsDigestsFromTheirTextAndFiles) {
+    const Digest digest = Digest::of(test::TestFiles::bytes("abc"));
+    EXPECT_EQ(Digest::fromHex(digest.toHex()), digest);
+    EXPECT_FALSE(Digest::fromHex(digest.toHex().substr(2)).has_value()) << "A digest has exactly 64 digits.";
+    std::string letter = digest.toHex();
+    letter[10] = 'g';
+    EXPECT_FALSE(Digest::fromHex(letter).has_value());
+
+    const test::TemporaryDirectory directory;
+    directory.write("chunk.bin", "abc");
+    EXPECT_EQ(Digest::ofFile(directory.getPath() / "chunk.bin"), digest);
+    try {
+        (void)Digest::ofFile(directory.getPath() / "missing.bin");
+        FAIL() << "A missing file has no digest.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string(error.what()), "The file \"" + (directory.getPath() / "missing.bin").generic_string() + "\" could not be read.");
+    }
 }
 
 TEST_F(CryptoTest, IdentifiesChunksAndApps) {

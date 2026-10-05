@@ -178,6 +178,15 @@ TEST_P(PackageTest, ListsFilesRecursively) {
     EXPECT_THROW((void)package->listAssets("maps/../.."), std::invalid_argument);
 }
 
+TEST_P(PackageTest, NamesItsFolderOnlyWhenItReadsAFolder) {
+    const std::unique_ptr<Package> package = makePackage();
+    if (GetParam() == "directory") {
+        EXPECT_EQ(package->getDirectory(), std::filesystem::canonical(directory.getPath()));
+        return;
+    }
+    EXPECT_FALSE(package->getDirectory().has_value());
+}
+
 TEST(PackageLuaTest, ListingAssetsNeverLeavesTheContentFolder) {
     test::EngineFixture fixture({{"content/maps/island.tmj", "{}"}});
     EXPECT_NE(fixture.lua("return require('haylen.assets').list('..')").find("The path \"..\" must stay inside its root folder."), std::string::npos);
@@ -190,6 +199,63 @@ TEST(PackageOpenTest, RejectsMissingAndInvalidPackages) {
     EXPECT_THROW((void)Package::openDirectory(directory.getPath() / "missing"), std::runtime_error);
     EXPECT_THROW((void)Package::open(directory.getPath() / "missing.zip"), std::runtime_error);
     EXPECT_THROW((void)Package::openZip(test::TestFiles::bytes("not a zip"), "broken.zip"), std::runtime_error);
+
+    directory.write("broken.zip", "not a zip");
+    try {
+        (void)Package::open(directory.getPath() / "broken.zip");
+        ADD_FAILURE() << "A file that is no zip archive must be rejected.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_TRUE(std::string(error.what()).starts_with("The package archive \"broken.zip\" is not a valid zip file, and the zip reader reported \"")) << error.what();
+    }
+}
+
+TEST(PackageOpenTest, ReportsDamagedZipEntries) {
+    test::TemporaryDirectory directory;
+    const std::filesystem::path file = directory.getPath() / "app.zip";
+    const std::string level(64 * 1024, 'a');
+    int error = 0;
+    zip_t* archive = zip_open(file.string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
+    ASSERT_NE(archive, nullptr);
+    const zip_int64_t entry = zip_file_add(archive, "content/level.txt", zip_source_buffer(archive, level.data(), level.size(), 0), 0);
+    zip_set_file_compression(archive, static_cast<zip_uint64_t>(entry), ZIP_CM_DEFLATE, 0);
+    zip_close(archive);
+
+    // The compressed bytes of the only entry follow its local header of 30 bytes, its name and its extra field, and a first byte with every bit set starts a deflate block of a type that does not exist.
+    std::ifstream stream(file, std::ios::binary);
+    std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+    ASSERT_EQ(bytes[8], ZIP_CM_DEFLATE);
+    const std::size_t nameLength = std::size_t{bytes[26]} | std::size_t{bytes[27]} << 8;
+    const std::size_t extraLength = std::size_t{bytes[28]} | std::size_t{bytes[29]} << 8;
+    bytes[30 + nameLength + extraLength] = 0xFF;
+    const std::unique_ptr<Package> package = Package::openZip(std::move(bytes), "broken.zip");
+
+    // Reading from the start and skipping forward to a later offset both stop at the damage instead of returning bytes the entry does not hold.
+    const std::string message = "The package file \"broken.zip/content/level.txt\" could not be read.";
+    for (const std::uint64_t offset : {std::uint64_t{0}, std::uint64_t{1000}}) {
+        try {
+            (void)package->readRange("content/level.txt", offset, 100);
+            ADD_FAILURE() << "A damaged entry must fail at " << offset << ".";
+        } catch (const std::runtime_error& failure) {
+            EXPECT_EQ(std::string(failure.what()), message);
+        }
+    }
+}
+
+TEST(PackageOpenTest, ReportsAFolderFileThatShrinksWhileItIsRead) {
+    test::TemporaryDirectory directory;
+    directory.write("content/level.bin", std::string(1000, 'a'));
+    const std::unique_ptr<Package> package = Package::open(directory.getPath());
+    const std::unique_ptr<PackageReader> reader = package->openReader("content/level.bin");
+
+    // A reader keeps the size its file had when it opened, so a file that loses bytes fails the read instead of handing out less.
+    std::filesystem::resize_file(directory.getPath() / "content" / "level.bin", 10);
+    std::vector<std::uint8_t> bytes(100);
+    try {
+        (void)reader->read(0, bytes);
+        ADD_FAILURE() << "A file that shrank must fail the read.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string(error.what()), "The package file \"" + std::string(package->getName()) + "/content/level.bin\" could not be read.");
+    }
 }
 
 TEST(PackageOpenTest, OpensZipFilesWithoutReadingThemWhole) {
@@ -268,6 +334,27 @@ TEST(PackageOpenTest, RefusesToListAFolderPartly) {
     EXPECT_TRUE(message.starts_with("The package folder \"" + std::string(package->getName()) + "/content\" could not be listed")) << message;
     EXPECT_EQ(message.find(directory.getPath().generic_string()), std::string::npos) << "The message names the folder inside the package.";
 }
+
+TEST(PackageOpenTest, ReportsAFolderFileItCannotOpen) {
+    test::TemporaryDirectory directory;
+    directory.write("content/secret.json", "{}");
+    const std::filesystem::path locked = directory.getPath() / "content" / "secret.json";
+    std::filesystem::permissions(locked, std::filesystem::perms::none);
+    if (std::ifstream(locked).is_open()) {
+        std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
+        GTEST_SKIP() << "The user reads files without permission.";
+    }
+
+    const std::unique_ptr<Package> package = Package::open(directory.getPath());
+    std::string message;
+    try {
+        (void)package->readAsset("secret.json");
+    } catch (const std::runtime_error& error) {
+        message = error.what();
+    }
+    std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
+    EXPECT_EQ(message, "The package file \"" + std::string(package->getName()) + "/content/secret.json\" could not be opened.");
+}
 #endif
 
 TEST(CompositePackageTest, ShowsLaterLayersOverEarlierOnes) {
@@ -312,11 +399,13 @@ TEST(MemoryPackageTest, ReplacesAndRemovesFiles) {
 
 TEST(OverlayPackageTest, ReadsReplacedFilesOverTheBaseAndHidesRemovedOnes) {
     const auto base = std::make_shared<MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"source/a.lua", test::TestFiles::bytes("a")}, {"source/b.lua", test::TestFiles::bytes("b")}, {"content/c.json", test::TestFiles::bytes("{}")}});
+    EXPECT_THROW((void)OverlayPackage(nullptr), std::invalid_argument);
     OverlayPackage overlay(base);
     overlay.setFile("source/a.lua", test::TestFiles::bytes("edited"));
     EXPECT_TRUE(overlay.removeFile("source/b.lua"));
     EXPECT_FALSE(overlay.removeFile("source/missing.lua"));
     overlay.setFile("./source//d.lua", test::TestFiles::bytes("added"));
+    overlay.setFile("content/e.json", test::TestFiles::bytes("[]"));
 
     EXPECT_EQ(overlay.readText("source/a.lua"), "edited");
     EXPECT_EQ(overlay.getFileSize("source/a.lua"), 6U);
@@ -325,9 +414,15 @@ TEST(OverlayPackageTest, ReadsReplacedFilesOverTheBaseAndHidesRemovedOnes) {
     EXPECT_EQ(overlay.readText("source/d.lua"), "added");
     EXPECT_EQ(overlay.readAssetText("c.json"), "{}");
     EXPECT_EQ(overlay.list("source"), (std::vector<std::string>{"source/a.lua", "source/d.lua"}));
+    EXPECT_EQ(overlay.list("content"), (std::vector<std::string>{"content/c.json", "content/e.json"}));
     EXPECT_EQ(overlay.getName(), "base");
     EXPECT_FALSE(overlay.isLuaBytecode("source/a.lua"));
     EXPECT_EQ(base->readText("source/a.lua"), "a");
+
+    // An overlay names the folder of the package it covers, when that package reads a folder.
+    EXPECT_FALSE(overlay.getDirectory().has_value());
+    const test::TemporaryDirectory folder;
+    EXPECT_EQ(OverlayPackage(Package::openDirectory(folder.getPath())).getDirectory(), std::filesystem::canonical(folder.getPath()));
 
     overlay.setFile("source/b.lua", test::TestFiles::bytes("back"));
     EXPECT_EQ(overlay.readText("source/b.lua"), "back");
