@@ -15,6 +15,9 @@ namespace haylen::physics2d {
 // Installs the `Body` class of `haylen.physics2d`. The data of a body lives in the state table of its world, keyed by the body id.
 class BodyLua final {
   public:
+    // A drop of a body or a mover through one-way platforms lasts this many seconds unless the call names its time.
+    static constexpr float kDropSeconds = 0.2F;
+
     static void install(lua_State* L);
 
   private:
@@ -43,6 +46,16 @@ class BodyLua final {
     static int getAngularVelocity(lua_State* L);
     static int setAngularVelocity(lua_State* L);
     static int getMass(lua_State* L);
+    static int setMass(lua_State* L);
+    static int getCenterOfMass(lua_State* L);
+    static int setCenterOfMass(lua_State* L);
+    static int getInertia(lua_State* L);
+    static int setInertia(lua_State* L);
+    static int getWorldCenter(lua_State* L);
+    static int isSleepEnabled(lua_State* L);
+    static int setSleepEnabled(lua_State* L);
+    static int getSleepThreshold(lua_State* L);
+    static int setSleepThreshold(lua_State* L);
     static int isAwake(lua_State* L);
     static int setAwake(lua_State* L);
     static int isEnabled(lua_State* L);
@@ -65,6 +78,12 @@ class BodyLua final {
     static int applyTorque(lua_State* L);
     static int applyAngularImpulse(lua_State* L);
     static int setTransform(lua_State* L);
+    static int moveTo(lua_State* L);
+    static int velocityAt(lua_State* L);
+    static int resetMass(lua_State* L);
+    static int dropThrough(lua_State* L);
+    static int contacts(lua_State* L);
+    static int renderTransform(lua_State* L);
     static int addBox(lua_State* L);
     static int addCircle(lua_State* L);
     static int addCapsule(lua_State* L);

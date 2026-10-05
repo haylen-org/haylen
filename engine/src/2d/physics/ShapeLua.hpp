@@ -18,14 +18,14 @@ class ShapeLua final {
     // Reads the `category`, `mask` and `group` fields of the table at `index` over the given filter.
     [[nodiscard]] static CollisionFilter readFilter(lua_State* L, int index, CollisionFilter filter);
 
-    // Reads `{density, friction, restitution, category, mask, group, sensor, offsetX, offsetY, rotation, tangentSpeed, oneWay}`, where `nil` gives the defaults.
+    // Reads `{density, friction, restitution, rollingResistance, category, mask, group, sensor, offsetX, offsetY, rotation, tangentSpeed, oneWay, contactEvents, hitEvents, sensorEvents}`, where `nil` gives the defaults.
     [[nodiscard]] static Shape::Options readOptions(lua_State* L, int index);
 
     // Pushes an outline as `{points = {Vec2, ...}, closed = boolean}`.
     static void pushOutline(lua_State* L, const Shape::Outline& outline);
 
   private:
-    static constexpr std::array<std::string_view, 12> kOptionFields{"density", "friction", "restitution", "category", "mask", "group", "sensor", "offsetX", "offsetY", "rotation", "tangentSpeed", "oneWay"};
+    static constexpr std::array<std::string_view, 16> kOptionFields{"density", "friction", "restitution", "rollingResistance", "category", "mask", "group", "sensor", "offsetX", "offsetY", "rotation", "tangentSpeed", "oneWay", "contactEvents", "hitEvents", "sensorEvents"};
 
     [[nodiscard]] static Shape& check(lua_State* L);
 
@@ -48,6 +48,21 @@ class ShapeLua final {
     static int setTangentSpeed(lua_State* L);
     static int getOneWay(lua_State* L);
     static int setOneWay(lua_State* L);
+    static int getFriction(lua_State* L);
+    static int setFriction(lua_State* L);
+    static int getRestitution(lua_State* L);
+    static int setRestitution(lua_State* L);
+    static int getDensity(lua_State* L);
+    static int setDensity(lua_State* L);
+    static int getRollingResistance(lua_State* L);
+    static int setRollingResistance(lua_State* L);
+    static int hasContactEvents(lua_State* L);
+    static int setContactEvents(lua_State* L);
+    static int hasHitEvents(lua_State* L);
+    static int setHitEvents(lua_State* L);
+    static int hasSensorEvents(lua_State* L);
+    static int setSensorEvents(lua_State* L);
+    static int overlaps(lua_State* L);
     static int destroy(lua_State* L);
     static int equal(lua_State* L);
 };

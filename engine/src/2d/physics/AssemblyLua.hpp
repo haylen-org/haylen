@@ -7,18 +7,17 @@ struct lua_State;
 
 namespace haylen::physics2d {
 
-// Installs the `Rope`, `Ragdoll` and `Vehicle` classes of `haylen.physics2d`, which build groups of bodies and joints in a world.
+// Installs the `Rope` and `Ragdoll` classes of `haylen.physics2d`, which build groups of bodies and joints in a world.
 class AssemblyLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets `newRope`, `newBridge`, `newRagdoll` and `newVehicle` on the module table at the top of the stack.
+    // Sets `newRope`, `newBridge` and `newRagdoll` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 16> kRopeFields{"from", "to", "segments", "thickness", "density", "friction", "linearDamping", "angularDamping", "planks", "pinStart", "pinEnd", "startBody", "endBody", "category", "mask", "group"};
-    static constexpr std::array<std::string_view, 9> kRagdollFields{"x", "y", "height", "density", "friction", "jointFriction", "group", "vx", "vy"};
-    static constexpr std::array<std::string_view, 16> kVehicleFields{"x", "y", "chassisWidth", "chassisHeight", "wheelRadius", "rearWheel", "frontWheel", "density", "wheelDensity", "wheelFriction", "suspensionHertz", "suspensionDamping", "suspensionTravel", "maxMotorTorque", "drive", "group"};
+    static constexpr std::array<std::string_view, 17> kRopeFields{"from", "to", "segments", "thickness", "density", "friction", "linearDamping", "angularDamping", "planks", "pinStart", "pinEnd", "limitLength", "startBody", "endBody", "category", "mask", "group"};
+    static constexpr std::array<std::string_view, 11> kRagdollFields{"x", "y", "height", "density", "friction", "stiffness", "category", "mask", "group", "vx", "vy"};
 
     static void pushWorld(lua_State* L);
     static int createRope(lua_State* L, bool bridge);
@@ -39,17 +38,7 @@ class AssemblyLua final {
     static int ragdollJoints(lua_State* L);
     static int ragdollDestroy(lua_State* L);
     static int ragdollValid(lua_State* L);
-
-    static int newVehicle(lua_State* L);
-    static int vehicleChassis(lua_State* L);
-    static int vehicleRearWheel(lua_State* L);
-    static int vehicleFrontWheel(lua_State* L);
-    static int vehicleJoints(lua_State* L);
-    static int vehicleGetMotorSpeed(lua_State* L);
-    static int vehicleSetMotorSpeed(lua_State* L);
-    static int vehicleDrive(lua_State* L);
-    static int vehicleDestroy(lua_State* L);
-    static int vehicleValid(lua_State* L);
+    static int ragdollMass(lua_State* L);
 };
 
 } // namespace haylen::physics2d

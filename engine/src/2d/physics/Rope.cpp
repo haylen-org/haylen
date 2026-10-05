@@ -58,10 +58,17 @@ void Rope::build(World& world, const Options& options) {
         if (holder) {
             joints.push_back(world.createJoint(Joint::Type::Revolute, *holder, segment, {.anchorA = point}));
         }
+        return holder.value_or(segment);
     };
     // clang-format on
-    attach(options.startBody, options.pinStart, options.start, bodies.front());
-    attach(options.endBody, options.pinEnd, options.end, bodies.back());
+    const Body first = attach(options.startBody, options.pinStart, options.start, bodies.front());
+    const Body last = attach(options.endBody, options.pinEnd, options.end, bodies.back());
+
+    // A spring without stiffness leaves the joint slack below its length, and the limit stops it at the length of the rope.
+    if (options.limitLength && first != last) {
+        const float length = span.getLength();
+        joints.push_back(world.createJoint(Joint::Type::Distance, first, last, {.anchorA = options.start, .anchorB = options.end, .enableLimit = true, .upper = length, .enableSpring = true, .length = length}));
+    }
 }
 
 Rope Rope::createBridge(World& world, Options options) {

@@ -4,6 +4,7 @@
 #include <zstd.h>
 
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -19,6 +20,7 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
+#include "haylen/math/Geometry.hpp"
 #include "haylen/math/Math.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
@@ -723,25 +725,69 @@ TEST_F(MapRendererTest, BuildsCollisionBodies) {
     tiled::MapRenderer map(*data);
     physics2d::World world({.gravity = {}});
 
+    // Each tile layer that collides keeps a body, empty or not, and the object layer adds one more.
     const std::vector<physics2d::Body> bodies = map.buildCollision(world);
-    ASSERT_EQ(bodies.size(), 2U);
-    // Solid cells merge into one box per run, which gives two single cells on the first row and a single cell and a pair on the last row.
-    EXPECT_EQ(bodies[0].getShapes().size(), 4U);
-    EXPECT_FALSE(world.queryPoint({24.0F, 8.0F}).empty());
-    EXPECT_FALSE(world.queryPoint({4.0F, 44.0F}).empty());
-    EXPECT_FALSE(world.queryPoint({56.0F, 40.0F}).empty());
-    EXPECT_TRUE(world.queryPoint({20.0F, 40.0F}).empty());
+    ASSERT_EQ(bodies.size(), 5U);
+    EXPECT_TRUE(bodies[1].getShapes().empty());
+
+    // Solid cells that touch merge into one chain loop, which gives two single cells on the first row and a single cell and a pair on the last row.
+    const std::vector<physics2d::Shape::Outline> outlines = bodies[0].getOutlines();
+    ASSERT_EQ(outlines.size(), 4U);
+    for (const physics2d::Shape::Outline& outline : outlines) {
+        EXPECT_TRUE(outline.closed);
+        EXPECT_EQ(outline.points.size(), 4U);
+        EXPECT_GT(math::Geometry::signedArea(outline.points), 0.0F);
+    }
+    EXPECT_NEAR(world.raycast({24.0F, -10.0F}, {24.0F, 30.0F})->point.y, 0.0F, 0.01F);
+    EXPECT_NEAR(world.raycast({70.0F, 40.0F}, {30.0F, 40.0F})->point.x, 64.0F, 0.01F);
+    EXPECT_FALSE(world.raycast({20.0F, 40.0F}, {28.0F, 40.0F}).has_value());
 
     const std::vector<physics2d::Shape> zone = world.queryPoint({-4.0F, 4.0F});
     ASSERT_EQ(zone.size(), 1U);
     EXPECT_TRUE(zone.front().isSensor());
-    EXPECT_GE(bodies[1].getShapes().size(), 5U);
+    EXPECT_GE(bodies[3].getShapes().size(), 5U);
+}
+
+TEST_F(MapRendererTest, TracesTileCollisionAgainAfterSetTile) {
+    // A tileset of a slope and a one-way ledge joins the terrain tiles.
+    core::Json document = orthogonalMap();
+    document["tilesets"].push_back(core::Json::parse(R"({"firstgid": 200, "name": "shapes", "tilewidth": 16, "tileheight": 16, "tilecount": 2, "columns": 0, "tiles": [
+        {"id": 0, "image": "props/rock.png", "imagewidth": 16, "imageheight": 16, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "polygon": [{"x": 0, "y": 16}, {"x": 16, "y": 0}, {"x": 16, "y": 16}]}]}},
+        {"id": 1, "image": "props/rock.png", "imagewidth": 16, "imageheight": 16, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "width": 16, "height": 4, "properties": [{"name": "oneWay", "type": "bool", "value": true}]}]}}
+    ]})"));
+    tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
+    physics2d::World world({.gravity = {}});
+    const physics2d::Body ground = map.buildCollision(world).front();
+    ASSERT_EQ(ground.getOutlines().size(), 4U);
+
+    // Filling the gap of the last row joins its cells into one loop, and clearing a cell of the first row takes its loop away.
+    map.setTile("ground", 1, 2, 5);
+    EXPECT_EQ(ground.getOutlines().size(), 3U);
+    map.setTile("ground", 1, 0, 0);
+    EXPECT_EQ(ground.getOutlines().size(), 2U);
+    EXPECT_FALSE(world.raycast({24.0F, -10.0F}, {24.0F, 15.0F}).has_value());
+
+    // A slope that stands on the last row merges into its loop, and a one-way ledge stays a shape of its own.
+    map.setTile("ground", 1, 1, 200);
+    EXPECT_EQ(ground.getOutlines().size(), 2U);
+    EXPECT_NEAR(world.raycast({31.0F, 2.0F}, {31.0F, 40.0F})->point.y, 17.0F, 0.01F);
+    map.setTile("ground", 0, 0, 201);
+    const std::vector<physics2d::Shape> ledge = world.queryPoint({8.0F, 2.0F});
+    ASSERT_EQ(ledge.size(), 1U);
+    EXPECT_NEAR(ledge.front().getOneWay().value_or(math::Vec2{}).y, -1.0F, 1e-4F);
+
+    // Once the world is gone the map still changes its tiles.
+    std::optional<physics2d::World> gone(std::in_place);
+    (void)map.buildCollision(*gone);
+    gone.reset();
+    map.setTile("ground", 0, 0, 0);
+    EXPECT_EQ(map.getTile("ground", 0, 0), 0U);
 }
 
 TEST_F(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
-    const tiled::MapRenderer map(tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader()));
+    tiled::MapRenderer map(tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader()));
     physics2d::World world({.gravity = {}});
-    ASSERT_EQ(map.buildCollision(world).size(), 2U);
+    ASSERT_EQ(map.buildCollision(world).size(), 5U);
 
     // The solid tile in the second column of the first row hangs from the skewed corner of the cell below it.
     EXPECT_FALSE(world.queryPoint({26.0F, 18.0F}).empty());
@@ -754,7 +800,7 @@ TEST_F(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
 
     core::Json upright = orthogonalMap();
     upright["layers"][4]["objects"] = core::Json::parse(R"([{"id": 1, "type": "collision", "x": 100, "y": 0, "width": 10, "height": 40, "capsule": true}, {"id": 2, "type": "collision", "x": 200, "y": 0, "width": 12, "height": 12, "capsule": true}])");
-    const tiled::MapRenderer straight(tiled::Map::parse(upright, "maps/upright.tmj", reader()));
+    tiled::MapRenderer straight(tiled::Map::parse(upright, "maps/upright.tmj", reader()));
     physics2d::World other({.gravity = {}});
     (void)straight.buildCollision(other);
     EXPECT_FALSE(other.queryPoint({105.0F, 1.0F}).empty());
@@ -769,10 +815,10 @@ TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFil
     core::Json document = orthogonalMap();
     document["layers"][4]["objects"] = core::Json::parse(R"([{"id": 1, "type": "collision", "x": 16, "y": 48, "width": 16, "height": 32, "gid": 100}])");
     document["layers"][4]["properties"] = core::Json::parse(R"([{"name": "category", "type": "int", "value": 4}, {"name": "mask", "type": "int", "value": 6}])");
-    const tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
+    tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
     physics2d::World world({.gravity = {}});
     const std::vector<physics2d::Body> bodies = map.buildCollision(world);
-    ASSERT_EQ(bodies.size(), 2U);
+    ASSERT_EQ(bodies.size(), 5U);
 
     const physics2d::CollisionFilter probe{.category = 2};
     const std::vector<physics2d::Shape> tree = world.queryPoint({10.0F, 24.0F}, probe);
@@ -784,7 +830,7 @@ TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFil
 
     // Collision bits are integers of at least 0, which a negative mask is not.
     document["layers"][4]["properties"][1]["value"] = -1;
-    const tiled::MapRenderer negative(tiled::Map::parse(document, "maps/island.tmj", reader()));
+    tiled::MapRenderer negative(tiled::Map::parse(document, "maps/island.tmj", reader()));
     physics2d::World other({.gravity = {}});
     try {
         (void)negative.buildCollision(other);
@@ -900,7 +946,7 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
 
     fixture.runLua("map:setTile('ground', 0, 0, 3) map:setLayerVisible('decor', false) map:update(0.1)");
     EXPECT_EQ(fixture.lua("return map:tile('ground', 0, 0) .. ' ' .. tostring(map:layer('decor').visible)"), "3 false");
-    EXPECT_EQ(fixture.lua("local world = physics2d.newWorld({gravity = {0, 0}}) local bodies = map:buildCollision(world) return #bodies .. ' ' .. bodies[1].type .. ' ' .. tostring(bodies[1].world == world)"), "2 static true");
+    EXPECT_EQ(fixture.lua("local world = physics2d.newWorld({gravity = {0, 0}}) local bodies = map:buildCollision(world) return #bodies .. ' ' .. bodies[1].type .. ' ' .. tostring(bodies[1].world == world)"), "5 static true");
     EXPECT_EQ(fixture.lua("local w = assets.load('maps/world/level.world') return #w .. ' ' .. w[1].path .. ' ' .. w[3].x .. ' ' .. w[3].width"), "3 maps/island.tmj 64.0 64.0");
 
     EXPECT_NE(fixture.lua("map:layer('missing')").find("The map has no layer named \"missing\"."), std::string::npos);

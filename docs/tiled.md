@@ -111,19 +111,24 @@ Map properties are on `map.properties`, and the map class is `map.type`. Tiny Is
 
 ## Collision
 
-The method `map:buildCollision(world)` creates static bodies in a [`haylen.physics2d`](lua-api/physics2d.md) world for the collision shapes of the map and returns them, one body per layer that has shapes.
+The method `map:buildCollision(world)` creates static bodies in a [`haylen.physics2d`](lua-api/physics2d.md) world for the collision of the map and returns them in map order: one body for each tile layer whose `collision` property is not `false`, even when the layer has no shapes yet, and one for each object layer with collision objects.
 
-- Tile layers add the collision shapes that tiles have in the tileset collision editor, placed and flipped with each tile. A tile layer with a `collision` property set to `false` adds nothing. On orthogonal maps, tiles whose collision is one rectangle covering the whole cell merge into one box per horizontal run of cells.
+- Tile layers add the collision shapes that tiles have in the tileset collision editor, placed and flipped with each tile. A tile layer with a `collision` property set to `false` adds nothing and gets no body.
+- On orthogonal maps the solid closed shapes of touching tiles merge into chain loops around each solid region, solid from the outside, with loops around the holes inside it. A floor of square tiles, a wall and the slope that leads up to it become one outline, so bodies slide along them without catching on the joints between tiles, which separate shapes per tile cause even when their edges line up exactly. A region whose outline has only three corners, such as a lone triangle, stays a polygon. Isometric, staggered, hexagonal and oblique maps keep one shape for each tile shape.
+- Sensors, polylines and shapes whose `oneWay` property is `true` stay separate shapes and never merge.
 - Object layers whose class is `collision` add every object. Other object layers add only the objects whose class is `collision`. Points and text add nothing, polylines become one segment per line, ellipses and capsules become polygons, and tile objects cover their image where it draws, placed by the tileset object alignment.
-- Objects and tile shapes with a `sensor` property set to `true` become sensors.
+- Objects and tile shapes with a `sensor` property set to `true` become sensors, and those with a `oneWay` property set to `true` become one-way platforms that only block bodies from above, which characters jump through from below and drop through with `body:dropThrough()` or `mover:dropThrough()`.
 - The layer properties `category` and `mask` set the collision filter of the layer's shapes. Both are integers of at least 0, the category defaults to 1 and the mask to every bit.
 - Layer visibility does not matter, so a hidden collision layer still collides.
+
+The method `map:setTile` keeps the collision in step with the map: it traces the regions around the cell it changes again, on every body that `buildCollision` made for that layer, so digging, building and breaking tiles change the collision at once. A body whose world is gone is forgotten. Chain loops have no inside, so a point query inside a solid region of a tile layer finds nothing, and a ray cast hits its outline only from outside. A game that asks what fills a cell reads the tile with `map:tile` instead.
 
 ```lua
 local physics2d = require('haylen.physics2d')
 
-local world = physics2d.newWorld({gravity = {0, 0}, pixelsPerMeter = 64})
+local world = physics2d.newWorld({gravity = {0, 980}, pixelsPerMeter = 64})
 local walls = map:buildCollision(world)
+map:setTile('ground', 12, 9, 0)
 ```
 
 ## Spawning objects
@@ -235,4 +240,4 @@ Regenerating overwrites the four files, including any edit made to them in Tiled
 
 ## From C++
 
-The runtime is plain C++ under `haylen/2d/tiled/`, in the `haylen::tiled` namespace. The class `tiled::Map` (`Map.hpp`) holds the parsed data, with one header per model type such as `Layer`, `Object`, `Tileset`, `Tile`, `WangSet` and `Properties`, and `tiled::World` (`World.hpp`) reads `.world` files. The class `tiled::MapRenderer` (`MapRenderer.hpp`), the class behind the Lua `MapRenderer`, draws a map through a `graphics2d::Renderer`, visits objects with `forEachObject` and builds collision into a `physics2d::World`, and `tiled::ObjectFactories` (`ObjectFactories.hpp`) registers one factory per object class and spawns them, like `map:spawn` does in Lua.
+The runtime is plain C++ under `haylen/2d/tiled/`, in the `haylen::tiled` namespace. The class `tiled::Map` (`Map.hpp`) holds the parsed data, with one header per model type such as `Layer`, `Object`, `Tileset`, `Tile`, `WangSet` and `Properties`, and `tiled::World` (`World.hpp`) reads `.world` files. The class `tiled::MapRenderer` (`MapRenderer.hpp`), the class behind the Lua `MapRenderer`, draws a map through a `graphics2d::Renderer`, visits objects with `forEachObject` and builds collision into a `physics2d::World`, `tiled::TileCollision` (`TileCollision.hpp`) keeps the collision of one tile layer on one body, merging the solid shapes of touching cells into chain loops and tracing the regions around a changed cell again, and `tiled::ObjectFactories` (`ObjectFactories.hpp`) registers one factory per object class and spawns them, like `map:spawn` does in Lua.

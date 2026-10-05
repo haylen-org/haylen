@@ -298,18 +298,23 @@ int WorldRaycastLua::raycastBatch(lua_State* L) {
     return 0;
 }
 
-// Lists the shapes under a screen point with `pick(camera, x, y[, filter])`, where the point is in design coordinates like pointer positions and the filter takes `category` and `mask`.
+// Lists the shapes under a screen point with `pick(camera, x, y[, {radius, category, mask}])`, nearest first, where the point and the radius are in design coordinates like pointer positions, so a finger finds thin bodies near it.
 int WorldRaycastLua::pick(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const spatial2d::ScreenPicker picker(lua::Userdata::check<graphics2d::Camera>(L, 2), lua::Runtime::getEngine(L).getViewport().getVisibleRect());
-    const math::Vec2 point = picker.toWorld({lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)});
+    const math::Vec2 screen{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};
+    const math::Vec2 point = picker.toWorld(screen);
     CollisionFilter filter;
+    float radius = 0.0F;
     if (!lua_isnoneornil(L, 5)) {
         luaL_checktype(L, 5, LUA_TTABLE);
         lua::Table::checkFields(L, 5, {kPickFields});
         filter = ShapeLua::readFilter(L, 5, {});
+        lua::Table::readField(L, 5, "radius", radius);
     }
-    Physics2DLua::pushList(L, 1, world.queryPoint(point, filter));
+    luaL_argcheck(L, radius >= 0.0F, 5, "the radius must be zero or more");
+    const float reach = radius > 0.0F ? math::Vec2::distance(point, picker.toWorld(screen + math::Vec2{radius, 0.0F})) : 0.0F;
+    Physics2DLua::pushList(L, 1, world.pick(point, reach, filter));
     return 1;
 }
 

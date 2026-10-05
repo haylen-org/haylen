@@ -37,13 +37,20 @@ b2QueryFilter Box2DConverter::toQueryFilter(const CollisionFilter& filter) noexc
     return {.categoryBits = filter.category, .maskBits = filter.mask};
 }
 
+bool Box2DConverter::collides(const CollisionFilter& filter, b2Filter shape) noexcept {
+    if (filter.group != 0 && filter.group == shape.groupIndex) {
+        return filter.group > 0;
+    }
+    return (filter.mask & shape.categoryBits) != 0 && (filter.category & shape.maskBits) != 0;
+}
+
 bool Box2DConverter::isFiniteAndNotNegative(float value) noexcept {
     return std::isfinite(value) && value >= 0.0F;
 }
 
 void Box2DConverter::checkShapeOptions(const Shape::Options& options) {
-    if (!isFiniteAndNotNegative(options.density) || !isFiniteAndNotNegative(options.friction) || !isFiniteAndNotNegative(options.restitution)) {
-        throw std::invalid_argument("A physics shape needs a finite density, friction and restitution of zero or more.");
+    if (!isFiniteAndNotNegative(options.density) || !isFiniteAndNotNegative(options.friction) || !isFiniteAndNotNegative(options.restitution) || !isFiniteAndNotNegative(options.rollingResistance)) {
+        throw std::invalid_argument("A physics shape needs a finite density, friction, restitution and rolling resistance of zero or more.");
     }
     if (options.oneWay && options.oneWay->isZero()) {
         throw std::invalid_argument("A one-way direction cannot be zero.");
@@ -55,6 +62,7 @@ b2SurfaceMaterial Box2DConverter::toSurfaceMaterial(const Shape::Options& option
     b2SurfaceMaterial material = b2DefaultSurfaceMaterial();
     material.friction = options.friction;
     material.restitution = options.restitution;
+    material.rollingResistance = options.rollingResistance;
     return material;
 }
 
@@ -64,15 +72,29 @@ b2ShapeDef Box2DConverter::toShapeDef(const Shape::Options& options) {
     def.density = options.density;
     def.filter = toFilter(options.filter);
     def.isSensor = options.sensor;
-    def.enableSensorEvents = true;
-    def.enableContactEvents = true;
-    def.enableHitEvents = true;
+    def.enableSensorEvents = options.sensorEvents;
+    def.enableContactEvents = options.contactEvents;
+    def.enableHitEvents = options.hitEvents;
     return def;
 }
 
 float Box2DConverter::toDamping(float value) {
     if (!isFiniteAndNotNegative(value)) {
         throw std::invalid_argument("A physics body needs a finite damping of zero or more.");
+    }
+    return value;
+}
+
+float Box2DConverter::toSpeed(float value, float scale) {
+    if (!isFiniteAndNotNegative(value)) {
+        throw std::invalid_argument("A physics speed needs to be finite and zero or more.");
+    }
+    return value / scale;
+}
+
+float Box2DConverter::toPositive(float value, const char* message) {
+    if (!std::isfinite(value) || value <= 0.0F) {
+        throw std::invalid_argument(message);
     }
     return value;
 }

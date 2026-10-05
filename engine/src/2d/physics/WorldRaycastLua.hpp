@@ -35,15 +35,17 @@ class WorldRaycastLua final {
     static int setDebuggingRays(lua_State* L);
     static int debugDrawRays(lua_State* L);
 
+    // Pushes a hit as `{shape, body, x, y, normalX, normalY, fraction, distance}` with the handles of the world at `worldIndex`.
+    static void pushHit(lua_State* L, int worldIndex, const RaycastHit& hit);
+
   private:
     static constexpr std::array<std::string_view, 4> kFilterFields{"category", "mask", "group", "accept"};
     static constexpr std::array<std::string_view, 1> kLimitFields{"limit"};
-    static constexpr std::array<std::string_view, 2> kPickFields{"category", "mask"};
+    static constexpr std::array<std::string_view, 3> kPickFields{"category", "mask", "radius"};
 
     // Reads the filter at `index`, whose `accept` function, when given, receives each candidate hit table of the world at index 1.
     [[nodiscard]] static Raycaster::Filter readFilter(lua_State* L, int index, bool withLimit = false);
     [[nodiscard]] static std::size_t readLimit(lua_State* L, int index);
-    static void pushHit(lua_State* L, int worldIndex, const RaycastHit& hit);
     static void pushResult(lua_State* L, const std::optional<RaycastHit>& hit);
 
     // Records a cast of the world at index 1 for `debugDrawRays` when `debugRays` is on.

@@ -34,17 +34,21 @@ class Shape final {
         bool closed = false;
     };
 
-    // A tangent speed turns the surface into a conveyor. A one-way direction makes the shape a platform that only blocks bodies on the side the direction points to.
+    // A tangent speed turns the surface into a conveyor, and rolling resistance slows round shapes that roll on others. A one-way direction makes the shape a platform that only blocks bodies on the side the direction points to. The event switches decide whether the shape reports contact begins and ends, hits and the sensors it enters.
     struct Options {
         float density = 1.0F;
         float friction = 0.6F;
         float restitution = 0.0F;
+        float rollingResistance = 0.0F;
         CollisionFilter filter{};
         bool sensor = false;
         math::Vec2 offset{};
         float rotation = 0.0F;
         float tangentSpeed = 0.0F;
         std::optional<math::Vec2> oneWay;
+        bool contactEvents = true;
+        bool hitEvents = true;
+        bool sensorEvents = true;
     };
 
     Shape() = default;
@@ -75,7 +79,29 @@ class Shape final {
 
     // Returns the bounds Box2D tracks for the shape, which include its small collision margin.
     [[nodiscard]] math::Rect getBounds() const;
+
+    // Destroys the shape, or the whole chain when the shape is one of its segments.
     void destroy();
+
+    // Throws `std::invalid_argument` for a value that is negative or not finite. A new density updates the mass of the body.
+    [[nodiscard]] float getFriction() const;
+    void setFriction(float value);
+    [[nodiscard]] float getRestitution() const;
+    void setRestitution(float value);
+    [[nodiscard]] float getDensity() const;
+    void setDensity(float value);
+    [[nodiscard]] float getRollingResistance() const;
+    void setRollingResistance(float value);
+
+    [[nodiscard]] bool hasContactEvents() const;
+    void setContactEvents(bool value);
+    [[nodiscard]] bool hasHitEvents() const;
+    void setHitEvents(bool value);
+    [[nodiscard]] bool hasSensorEvents() const;
+    void setSensorEvents(bool value);
+
+    // Returns the shapes inside a sensor now, which stays right through teleports and destroyed visitors where counting events would not. Throws `std::logic_error` for a shape that is not a sensor.
+    [[nodiscard]] std::vector<Shape> getOverlaps() const;
 
     // Moves touching bodies along the surface at this speed in world units per second, clockwise around the shape as seen on screen, so a positive speed carries bodies on top of a platform to the right.
     [[nodiscard]] float getTangentSpeed() const;
@@ -101,6 +127,7 @@ class Shape final {
 
     [[nodiscard]] std::uint64_t checkedId() const;
     [[nodiscard]] std::vector<math::Vec2> readPoints(bool inWorld) const;
+    [[nodiscard]] static float checkMaterial(float value);
 
     World* world = nullptr;
     std::uint32_t worldHandle = 0;

@@ -10,7 +10,6 @@
 #include "2d/physics/ShapeLua.hpp"
 #include "haylen/2d/physics/Ragdoll.hpp"
 #include "haylen/2d/physics/Rope.hpp"
-#include "haylen/2d/physics/Vehicle.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -27,20 +26,6 @@ template <> struct Type<physics2d::ScriptedHandle<physics2d::Rope>> {
 template <> struct Type<physics2d::ScriptedHandle<physics2d::Ragdoll>> {
     static constexpr const char* name = "haylen.Ragdoll";
     using Storage = physics2d::ScriptedHandle<physics2d::Ragdoll>;
-};
-
-template <> struct Type<physics2d::ScriptedHandle<physics2d::Vehicle>> {
-    static constexpr const char* name = "haylen.Vehicle";
-    using Storage = physics2d::ScriptedHandle<physics2d::Vehicle>;
-};
-
-template <> struct EnumNames<physics2d::Vehicle::Drive> {
-    static std::optional<physics2d::Vehicle::Drive> fromName(std::string_view name) {
-        return physics2d::Vehicle::driveFromName(name);
-    }
-    static std::string_view name(physics2d::Vehicle::Drive value) {
-        return physics2d::Vehicle::driveName(value);
-    }
 };
 
 } // namespace haylen::lua
@@ -68,6 +53,7 @@ int AssemblyLua::createRope(lua_State* L, bool bridge) {
     lua::Table::readField(L, 2, "planks", options.planks);
     lua::Table::readField(L, 2, "pinStart", options.pinStart);
     lua::Table::readField(L, 2, "pinEnd", options.pinEnd);
+    lua::Table::readField(L, 2, "limitLength", options.limitLength);
     options.filter = ShapeLua::readFilter(L, 2, {});
     if (lua_getfield(L, 2, "startBody") != LUA_TNIL) {
         options.startBody = lua::Userdata::check<ScriptedHandle<Body>>(L, -1).handle;
@@ -140,7 +126,7 @@ int AssemblyLua::ropeSegmentLength(lua_State* L) {
     return 1;
 }
 
-// Builds a ragdoll with `newRagdoll(world, {x, y, height, density, friction, jointFriction, group, vx, vy})`.
+// Builds a ragdoll with `newRagdoll(world, {x, y, height, density, friction, stiffness, category, mask, group, vx, vy})`.
 int AssemblyLua::newRagdoll(lua_State* L) {
     World& world = lua::Userdata::check<World>(L, 1);
     Ragdoll::Options options;
@@ -152,8 +138,8 @@ int AssemblyLua::newRagdoll(lua_State* L) {
         lua::Table::readField(L, 2, "height", options.height);
         lua::Table::readField(L, 2, "density", options.density);
         lua::Table::readField(L, 2, "friction", options.friction);
-        lua::Table::readField(L, 2, "jointFriction", options.jointFriction);
-        lua::Table::readField(L, 2, "group", options.group);
+        lua::Table::readField(L, 2, "stiffness", options.stiffness);
+        options.filter = ShapeLua::readFilter(L, 2, options.filter);
         lua::Table::readField(L, 2, "vx", options.velocity.x);
         lua::Table::readField(L, 2, "vy", options.velocity.y);
     }
@@ -203,96 +189,22 @@ int AssemblyLua::ragdollValid(lua_State* L) {
     return 1;
 }
 
-// Builds a car with `newVehicle(world, {x, y, chassisWidth, chassisHeight, wheelRadius, rearWheel, frontWheel, density, wheelDensity, wheelFriction, suspensionHertz, suspensionDamping, suspensionTravel, maxMotorTorque, drive, group})`.
-int AssemblyLua::newVehicle(lua_State* L) {
-    World& world = lua::Userdata::check<World>(L, 1);
-    Vehicle::Options options;
-    if (!lua_isnoneornil(L, 2)) {
-        luaL_checktype(L, 2, LUA_TTABLE);
-        lua::Table::checkFields(L, 2, {kVehicleFields});
-        lua::Table::readField(L, 2, "x", options.position.x);
-        lua::Table::readField(L, 2, "y", options.position.y);
-        lua::Table::readField(L, 2, "chassisWidth", options.chassisSize.x);
-        lua::Table::readField(L, 2, "chassisHeight", options.chassisSize.y);
-        lua::Table::readField(L, 2, "wheelRadius", options.wheelRadius);
-        lua::Table::readField(L, 2, "rearWheel", options.rearWheel);
-        lua::Table::readField(L, 2, "frontWheel", options.frontWheel);
-        lua::Table::readField(L, 2, "density", options.density);
-        lua::Table::readField(L, 2, "wheelDensity", options.wheelDensity);
-        lua::Table::readField(L, 2, "wheelFriction", options.wheelFriction);
-        lua::Table::readField(L, 2, "suspensionHertz", options.suspensionHertz);
-        lua::Table::readField(L, 2, "suspensionDamping", options.suspensionDamping);
-        lua::Table::readField(L, 2, "suspensionTravel", options.suspensionTravel);
-        lua::Table::readField(L, 2, "maxMotorTorque", options.maxMotorTorque);
-        lua::Table::readField(L, 2, "drive", options.drive);
-        lua::Table::readField(L, 2, "group", options.group);
-    }
-    Physics2DLua::push(L, 1, Vehicle::create(world, options));
-    return 1;
-}
-
-int AssemblyLua::vehicleChassis(lua_State* L) {
-    const Vehicle& vehicle = lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle;
-    pushWorld(L);
-    Physics2DLua::push(L, -1, vehicle.getChassis());
-    return 1;
-}
-
-int AssemblyLua::vehicleRearWheel(lua_State* L) {
-    const Vehicle& vehicle = lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle;
-    pushWorld(L);
-    Physics2DLua::push(L, -1, vehicle.getRearWheel());
-    return 1;
-}
-
-int AssemblyLua::vehicleFrontWheel(lua_State* L) {
-    const Vehicle& vehicle = lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle;
-    pushWorld(L);
-    Physics2DLua::push(L, -1, vehicle.getFrontWheel());
-    return 1;
-}
-
-int AssemblyLua::vehicleJoints(lua_State* L) {
-    const Vehicle& vehicle = lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle;
-    pushWorld(L);
-    Physics2DLua::pushList(L, -1, std::vector<Joint>(vehicle.getJoints().begin(), vehicle.getJoints().end()));
-    return 1;
-}
-
-int AssemblyLua::vehicleGetMotorSpeed(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle.getMotorSpeed());
-    return 1;
-}
-
-int AssemblyLua::vehicleSetMotorSpeed(lua_State* L) {
-    lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle.setMotorSpeed(lua::Stack::read<float>(L, 3));
-    return 0;
-}
-
-int AssemblyLua::vehicleDrive(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle.getDrive());
-    return 1;
-}
-
-int AssemblyLua::vehicleDestroy(lua_State* L) {
-    lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle.destroy();
-    return 0;
-}
-
-int AssemblyLua::vehicleValid(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<ScriptedHandle<Vehicle>>(L, 1).handle.isValid());
+int AssemblyLua::ragdollMass(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<ScriptedHandle<Ragdoll>>(L, 1).handle.getMass());
     return 1;
 }
 
 void AssemblyLua::install(lua_State* L) {
     lua::ClassBuilder<ScriptedHandle<Rope>>(L).function("bodies", &lua::Binding::native<&ropeBodies>).function("joints", &lua::Binding::native<&ropeJoints>).function("segments", &lua::Binding::native<&ropeSegments>).function("points", &lua::Binding::native<&ropePoints>).function("destroy", &lua::Binding::native<&ropeDestroy>).property("valid", &ropeValid).property("segmentLength", &ropeSegmentLength).install();
-    lua::ClassBuilder<ScriptedHandle<Ragdoll>>(L).function("body", &lua::Binding::native<&ragdollBody>).function("bodies", &lua::Binding::native<&ragdollBodies>).function("joints", &lua::Binding::native<&ragdollJoints>).function("destroy", &lua::Binding::native<&ragdollDestroy>).property("valid", &ragdollValid).install();
-    lua::ClassBuilder<ScriptedHandle<Vehicle>>(L).function("joints", &lua::Binding::native<&vehicleJoints>).function("destroy", &lua::Binding::native<&vehicleDestroy>).property("chassis", &lua::Binding::native<&vehicleChassis>).property("rearWheel", &lua::Binding::native<&vehicleRearWheel>).property("frontWheel", &lua::Binding::native<&vehicleFrontWheel>).property("motorSpeed", &lua::Binding::native<&vehicleGetMotorSpeed>, &lua::Binding::native<&vehicleSetMotorSpeed>).property("drive", &lua::Binding::native<&vehicleDrive>).property("valid", &vehicleValid).install();
+    lua::ClassBuilder<ScriptedHandle<Ragdoll>>(L).function("body", &lua::Binding::native<&ragdollBody>).function("bodies", &lua::Binding::native<&ragdollBodies>).function("joints", &lua::Binding::native<&ragdollJoints>).function("destroy", &lua::Binding::native<&ragdollDestroy>).property("valid", &ragdollValid).property("mass", &lua::Binding::native<&ragdollMass>).install();
 }
 
 void AssemblyLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newRope", &lua::Binding::native<&newRope>}, {"newBridge", &lua::Binding::native<&newBridge>}, {"newRagdoll", &lua::Binding::native<&newRagdoll>}, {"newVehicle", &lua::Binding::native<&newVehicle>}, {nullptr, nullptr},
+        {"newRope", &lua::Binding::native<&newRope>},
+        {"newBridge", &lua::Binding::native<&newBridge>},
+        {"newRagdoll", &lua::Binding::native<&newRagdoll>},
+        {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }

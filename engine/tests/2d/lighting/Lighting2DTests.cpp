@@ -283,7 +283,7 @@ TEST(OccluderTest, PlacesPointsAndBuildsFromBodiesAndMaps) {
     const std::vector<lighting2d::Occluder> outline = lighting2d::Occluder::fromBody(world, ground);
     ASSERT_EQ(outline.size(), 1U);
     EXPECT_FALSE(outline[0].closed);
-    EXPECT_EQ(outline[0].points.size(), chain.size() - 2);
+    EXPECT_EQ(outline[0].points.size(), chain.size());
     const std::vector<lighting2d::Occluder> loop = lighting2d::Occluder::fromBody(world, pit);
     ASSERT_EQ(loop.size(), 1U);
     EXPECT_TRUE(loop[0].closed);

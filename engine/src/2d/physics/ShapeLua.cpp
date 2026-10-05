@@ -34,12 +34,16 @@ Shape::Options ShapeLua::readOptions(lua_State* L, int index) {
     lua::Table::readField(L, index, "density", options.density);
     lua::Table::readField(L, index, "friction", options.friction);
     lua::Table::readField(L, index, "restitution", options.restitution);
+    lua::Table::readField(L, index, "rollingResistance", options.rollingResistance);
     lua::Table::readField(L, index, "sensor", options.sensor);
     lua::Table::readField(L, index, "offsetX", options.offset.x);
     lua::Table::readField(L, index, "offsetY", options.offset.y);
     lua::Table::readField(L, index, "rotation", options.rotation);
     lua::Table::readField(L, index, "tangentSpeed", options.tangentSpeed);
     lua::Table::readField(L, index, "oneWay", options.oneWay);
+    lua::Table::readField(L, index, "contactEvents", options.contactEvents);
+    lua::Table::readField(L, index, "hitEvents", options.hitEvents);
+    lua::Table::readField(L, index, "sensorEvents", options.sensorEvents);
     options.filter = readFilter(L, index, {});
     return options;
 }
@@ -166,6 +170,83 @@ int ShapeLua::setOneWay(lua_State* L) {
     return 0;
 }
 
+int ShapeLua::getFriction(lua_State* L) {
+    lua::Stack::push(L, check(L).getFriction());
+    return 1;
+}
+
+int ShapeLua::setFriction(lua_State* L) {
+    check(L).setFriction(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+int ShapeLua::getRestitution(lua_State* L) {
+    lua::Stack::push(L, check(L).getRestitution());
+    return 1;
+}
+
+int ShapeLua::setRestitution(lua_State* L) {
+    check(L).setRestitution(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+int ShapeLua::getDensity(lua_State* L) {
+    lua::Stack::push(L, check(L).getDensity());
+    return 1;
+}
+
+int ShapeLua::setDensity(lua_State* L) {
+    check(L).setDensity(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+int ShapeLua::getRollingResistance(lua_State* L) {
+    lua::Stack::push(L, check(L).getRollingResistance());
+    return 1;
+}
+
+int ShapeLua::setRollingResistance(lua_State* L) {
+    check(L).setRollingResistance(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+int ShapeLua::hasContactEvents(lua_State* L) {
+    lua::Stack::push(L, check(L).hasContactEvents());
+    return 1;
+}
+
+int ShapeLua::setContactEvents(lua_State* L) {
+    check(L).setContactEvents(lua::Stack::read<bool>(L, 3));
+    return 0;
+}
+
+int ShapeLua::hasHitEvents(lua_State* L) {
+    lua::Stack::push(L, check(L).hasHitEvents());
+    return 1;
+}
+
+int ShapeLua::setHitEvents(lua_State* L) {
+    check(L).setHitEvents(lua::Stack::read<bool>(L, 3));
+    return 0;
+}
+
+int ShapeLua::hasSensorEvents(lua_State* L) {
+    lua::Stack::push(L, check(L).hasSensorEvents());
+    return 1;
+}
+
+int ShapeLua::setSensorEvents(lua_State* L) {
+    check(L).setSensorEvents(lua::Stack::read<bool>(L, 3));
+    return 0;
+}
+
+int ShapeLua::overlaps(lua_State* L) {
+    const std::vector<Shape> found = check(L).getOverlaps();
+    lua_getiuservalue(L, 1, 1);
+    Physics2DLua::pushList(L, -1, found);
+    return 1;
+}
+
 int ShapeLua::destroy(lua_State* L) {
     lua::Userdata::check<ScriptedHandle<Shape>>(L, 1).handle.destroy();
     return 0;
@@ -177,7 +258,7 @@ int ShapeLua::equal(lua_State* L) {
 }
 
 void ShapeLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedHandle<Shape>>(L).function("destroy", &lua::Binding::native<&destroy>).function("outline", &lua::Binding::native<&outline>).property("valid", &isValid).property("kind", &lua::Binding::native<&getKind>).property("points", &lua::Binding::native<&getPoints>).property("worldPoints", &lua::Binding::native<&getWorldPoints>).property("radius", &lua::Binding::native<&getRadius>).property("body", &lua::Binding::native<&getBody>).property("sensor", &lua::Binding::native<&isSensor>).property("bounds", &lua::Binding::native<&getBounds>).property("category", &lua::Binding::native<&getCategory>, &lua::Binding::native<&setCategory>).property("mask", &lua::Binding::native<&getMask>, &lua::Binding::native<&setMask>).property("group", &lua::Binding::native<&getGroup>, &lua::Binding::native<&setGroup>).property("tangentSpeed", &lua::Binding::native<&getTangentSpeed>, &lua::Binding::native<&setTangentSpeed>).property("oneWay", &lua::Binding::native<&getOneWay>, &lua::Binding::native<&setOneWay>).meta("__eq", &equal).install();
+    lua::ClassBuilder<ScriptedHandle<Shape>>(L).function("destroy", &lua::Binding::native<&destroy>).function("outline", &lua::Binding::native<&outline>).function("overlaps", &lua::Binding::native<&overlaps>).property("friction", &lua::Binding::native<&getFriction>, &lua::Binding::native<&setFriction>).property("restitution", &lua::Binding::native<&getRestitution>, &lua::Binding::native<&setRestitution>).property("density", &lua::Binding::native<&getDensity>, &lua::Binding::native<&setDensity>).property("rollingResistance", &lua::Binding::native<&getRollingResistance>, &lua::Binding::native<&setRollingResistance>).property("contactEvents", &lua::Binding::native<&hasContactEvents>, &lua::Binding::native<&setContactEvents>).property("hitEvents", &lua::Binding::native<&hasHitEvents>, &lua::Binding::native<&setHitEvents>).property("sensorEvents", &lua::Binding::native<&hasSensorEvents>, &lua::Binding::native<&setSensorEvents>).property("valid", &isValid).property("kind", &lua::Binding::native<&getKind>).property("points", &lua::Binding::native<&getPoints>).property("worldPoints", &lua::Binding::native<&getWorldPoints>).property("radius", &lua::Binding::native<&getRadius>).property("body", &lua::Binding::native<&getBody>).property("sensor", &lua::Binding::native<&isSensor>).property("bounds", &lua::Binding::native<&getBounds>).property("category", &lua::Binding::native<&getCategory>, &lua::Binding::native<&setCategory>).property("mask", &lua::Binding::native<&getMask>, &lua::Binding::native<&setMask>).property("group", &lua::Binding::native<&getGroup>, &lua::Binding::native<&setGroup>).property("tangentSpeed", &lua::Binding::native<&getTangentSpeed>, &lua::Binding::native<&setTangentSpeed>).property("oneWay", &lua::Binding::native<&getOneWay>, &lua::Binding::native<&setOneWay>).meta("__eq", &equal).install();
 }
 
 } // namespace haylen::physics2d

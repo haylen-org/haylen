@@ -109,9 +109,16 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/physics/Explosion.cpp
   src/2d/physics/Fluid.cpp
   src/2d/physics/FluidLua.cpp
+  src/2d/physics/ForceField.cpp
+  src/2d/physics/ForceFieldLua.cpp
   src/2d/physics/Fracture.cpp
+  src/2d/physics/Grabber.cpp
+  src/2d/physics/GrabberLua.cpp
   src/2d/physics/Joint.cpp
   src/2d/physics/JointLua.cpp
+  src/2d/physics/Mover.cpp
+  src/2d/physics/MoverLua.cpp
+  src/2d/physics/PathPredictor.cpp
   src/2d/physics/Physics2DLua.cpp
   src/2d/physics/Ragdoll.cpp
   src/2d/physics/RayBatch.cpp
@@ -120,8 +127,11 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/physics/Rope.cpp
   src/2d/physics/Shape.cpp
   src/2d/physics/ShapeLua.cpp
+  src/2d/physics/StepTasks.cpp
   src/2d/physics/Terrain.cpp
+  src/2d/physics/TopDownVehicle.cpp
   src/2d/physics/Vehicle.cpp
+  src/2d/physics/VehicleLua.cpp
   src/2d/physics/World.cpp
   src/2d/physics/WorldLua.cpp
   src/2d/physics/WorldRaycastLua.cpp
@@ -161,6 +171,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/Object.cpp
   src/2d/tiled/ObjectFactories.cpp
   src/2d/tiled/Properties.cpp
+  src/2d/tiled/TileCollision.cpp
   src/2d/tiled/TiledLua.cpp
   src/2d/tiled/Tileset.cpp
   src/2d/tiled/World.cpp
@@ -776,6 +787,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-algorithm-benchmark PRIVATE haylen::engine haylen::headless)
   set_target_properties(haylen-algorithm-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-algorithm-benchmark)
+
+  # The physics benchmark times the steps, fluids, queries, transform sync, debug drawing and Lua events of physics worlds on the CPU, inside an engine on the headless host.
+  add_executable(haylen-physics-benchmark bench/PhysicsBenchmark.cpp)
+  target_include_directories(haylen-physics-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-physics-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-physics-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-physics-benchmark)
 
   # The Lua benchmark runs the bunnymark package in bench/lua-benchmark on the headless host, which times what Lua costs to update and draw many sprites through tables and through float buffers.
   add_executable(haylen-lua-benchmark bench/LuaBenchmark.cpp)

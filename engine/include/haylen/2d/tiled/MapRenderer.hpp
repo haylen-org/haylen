@@ -22,6 +22,7 @@
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/2d/tiled/Object.hpp"
 #include "haylen/2d/tiled/Tile.hpp"
+#include "haylen/2d/tiled/TileCollision.hpp"
 #include "haylen/2d/tiled/Tileset.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
@@ -79,8 +80,8 @@ class MapRenderer final {
     // Visits the objects of the named object layer, or of every object layer when the name is empty, in map order. The position is the object origin in world coordinates, including the offsets of its layer and groups.
     void forEachObject(std::string_view layer, const ObjectVisitor& visit) const;
 
-    // Creates one static body per collision source. Tile layers use the collision shapes of their tiles unless their `collision` property is `false`, and object layers or objects whose class is `collision` become shapes, with tile objects covering their image. Objects whose `sensor` property is `true` become sensors.
-    std::vector<physics2d::Body> buildCollision(physics2d::World& world) const;
+    // Creates one static body for each tile layer whose `collision` property is not `false` and for each object layer with collision objects, in map order. Tile layers take the collision shapes of their tiles, and on orthogonal maps the solid closed shapes of touching tiles merge into chain loops around each solid region, which `setTile` traces again around the cells it changes. Object layers or objects whose class is `collision` become shapes, with tile objects covering their image. Objects whose `sensor` property is `true` become sensors, and objects whose `oneWay` property is `true` become platforms that only block bodies from above.
+    std::vector<physics2d::Body> buildCollision(physics2d::World& world);
 
   private:
     struct AnimatedTile {
@@ -139,7 +140,9 @@ class MapRenderer final {
     [[nodiscard]] static math::Vec2 flipInTile(math::Vec2 point, math::Vec2 tileSize, std::uint32_t gid) noexcept;
 
     // Adds the outline of one Tiled object to a body, as segments for polylines and as a polygon for closed shapes.
-    static void addOutline(physics2d::Body& body, const Object& object, std::span<const math::Vec2> points, const physics2d::Shape::Options& options);
+    static std::vector<physics2d::Shape> addOutline(physics2d::Body& body, const Object& object, std::span<const math::Vec2> points, const physics2d::Shape::Options& options);
+    // Reads the `sensor` and `oneWay` properties of a collision object.
+    [[nodiscard]] static physics2d::Shape::Options shapeOptions(const Object& object, const physics2d::CollisionFilter& filter);
 
     // Reads the `category` and `mask` properties of a layer, which hold collision bits as integers of at least 0.
     [[nodiscard]] static physics2d::CollisionFilter layerFilter(const Layer& layer);
@@ -151,6 +154,8 @@ class MapRenderer final {
     // Bottom-left corner where a cell places its tile image.
     [[nodiscard]] math::Vec2 cellAnchor(int column, int row) const noexcept;
     [[nodiscard]] graphics2d::SpriteInstance tileInstance(const Tileset& tileset, std::uint32_t localId, std::uint32_t gid, math::Vec2 anchor) const;
+    // Places the collision shapes of the tile in a cell: the solid closed shapes of orthogonal maps as outlines that merge, and the others as shapes of the body.
+    [[nodiscard]] TileCollision::Cell collisionCell(physics2d::Body& body, int column, int row, std::uint32_t gid, math::Vec2 origin, const physics2d::CollisionFilter& filter) const;
 
     // Visits the cells of a tile layer in the order the map renders them, calling `visit` with each cell and gid.
     template <typename Visit> void forEachCell(const Layer& layer, Visit&& visit) const;
@@ -172,6 +177,7 @@ class MapRenderer final {
     std::shared_ptr<text::Font> font;
     std::map<std::pair<std::uint32_t, bool>, LayerCache> caches;
     std::map<std::uint32_t, std::vector<std::size_t>> objectOrders;
+    std::vector<TileCollision> collisions;
     float time = 0.0F;
 };
 

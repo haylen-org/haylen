@@ -214,7 +214,7 @@ Returns the global tile id at a cell of the tile layer `layer`, with its flip fl
 
 ### map:setTile(layer, column, row, gid)
 
-Replaces the tile at a cell. The argument `gid` is a global tile id, optionally with flip flags added, and 0 empties the cell. A gid that no tileset holds raises an error such as `The tile "5000" belongs to no tileset of the map.`, and a cell outside the layer raises `The cell is outside the tile layer.` or, on infinite maps, `The cell is outside every chunk of the infinite tile layer.`
+Replaces the tile at a cell. The argument `gid` is a global tile id, optionally with flip flags added, and 0 empties the cell. The collision that [`map:buildCollision`](#mapbuildcollisionworld) built for the layer follows the cell. A gid that no tileset holds raises an error such as `The tile "5000" belongs to no tileset of the map.`, and a cell outside the layer raises `The cell is outside the tile layer.` or, on infinite maps, `The cell is outside every chunk of the infinite tile layer.`
 
 The flip flags are the module constants described in [Flip flags](#flip-flags). Combine them with `|`.
 
@@ -465,12 +465,15 @@ end
 
 ### map:buildCollision(world)
 
-Creates static bodies in the [`haylen.physics2d`](physics2d.md) world `world` for the collision shapes of the map and returns them. Each layer that has shapes becomes one body, and layer visibility does not matter.
+Creates static bodies in the [`haylen.physics2d`](physics2d.md) world `world` for the collision of the map and returns them, in map order: one body for each tile layer whose `collision` property is not `false`, even when the layer has no collision shapes yet, so the tiles that `map:setTile` places later collide on it, and one body for each object layer with collision objects. Layer visibility does not matter.
 
-- Tile layers add the collision shapes of their tiles, placed and flipped with each tile, unless the layer has a `collision` property set to `false`. On orthogonal maps, tiles whose collision is one rectangle covering the whole cell merge into one box per horizontal run of cells.
+- Tile layers add the collision shapes of their tiles, placed and flipped with each tile. A tile layer with a `collision` property set to `false` adds nothing and gets no body.
+- On orthogonal maps the solid closed shapes of touching tiles merge into chain loops around each solid region, solid from the outside, with loops around the holes inside it, so bodies slide along floors, walls and slopes without catching on the joints between tiles. A region whose outline has only three corners, such as a lone triangle, stays a polygon. Sensors, polylines and shapes whose `oneWay` property is `true` stay separate shapes of the body. Isometric, staggered, hexagonal and oblique maps keep one shape for each tile shape.
 - Object layers whose class is `collision` add every object, and other object layers add the objects whose class is `collision`. Points and text objects add nothing, polylines become segments, ellipses and capsules become polygons, and tile objects cover their image where it draws, placed by the object alignment of their tileset.
-- Objects and tile shapes with a `sensor` property set to `true` become sensors.
+- Objects and tile shapes with a `sensor` property set to `true` become sensors, and those with a `oneWay` property set to `true` become [one-way platforms](physics2d.md#one-way-platforms) that only block bodies from above, on tile layers and object layers alike.
 - The layer properties `category` and `mask` set the collision filter of the layer's shapes as integers of at least 0. The category defaults to 1 and the mask to every bit. Other values raise `The collision property "name" of the Tiled layer "layer" needs an integer of at least 0.`
+
+The method `map:setTile` traces the regions around the cell it changes again on every body that `buildCollision` made for that layer, in every world the map built collision in, and forgets the bodies whose world is gone. Because chain loops have no inside, point queries such as `world:queryPoint` find nothing inside a solid region of a tile layer, ray casts hit its outline only from outside, and shape casts hit its outline from both sides.
 
 ```lua
 local assets = require('haylen.assets')
@@ -482,6 +485,9 @@ local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local world = physics2d.newWorld({gravity = {0, 0}})
 local walls = map:buildCollision(world)
 print(#walls .. ' collision bodies')
+
+-- Digging a cell out of the ground layer traces the collision around it again.
+map:setTile('ground', 4, 7, 0)
 
 scene.push({
     fixedUpdate = function(self, step)

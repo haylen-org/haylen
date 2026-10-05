@@ -16,16 +16,24 @@ set(HAYLEN_TEST_SOURCES
   2d/navigation/PathfindingTests.cpp
   2d/particles/Particles2DTests.cpp
   2d/physics/AssemblyTests.cpp
+  2d/physics/BodyMotionTests.cpp
   2d/physics/DestructionTests.cpp
+  2d/physics/FluidTests.cpp
+  2d/physics/ForceFieldTests.cpp
+  2d/physics/JointRuntimeTests.cpp
+  2d/physics/MoverTests.cpp
   2d/physics/Physics2DTests.cpp
   2d/physics/PhysicsFeaturesLuaTests.cpp
   2d/physics/RaycasterTests.cpp
+  2d/physics/VehicleTests.cpp
+  2d/physics/WorldTuningTests.cpp
   2d/procedural/Procedural2DLuaTests.cpp
   2d/procedural/Procedural2DTests.cpp
   2d/procedural/TilingTests.cpp
   2d/spatial/GridAlgorithmTests.cpp
   2d/spatial/Spatial2DTests.cpp
   2d/tiled/MapQueryTests.cpp
+  2d/tiled/TileCollisionTests.cpp
   2d/tiled/TiledTests.cpp
   ai/DecisionLuaTests.cpp
   ai/DecisionTests.cpp

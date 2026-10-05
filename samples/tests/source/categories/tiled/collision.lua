@@ -82,7 +82,7 @@ function Collision:update(dt)
     for _, ball in ipairs(self.balls) do
         wet = wet + (ball.data.wet > 0 and 1 or 0)
     end
-    self:status(string.format('Bodies from the map %d, one per layer with shapes, balls %d, in a sensor %d', #self.walls, #self.balls, wet))
+    self:status(string.format('Bodies from the map %d, one per tile layer that collides and per object layer with collision, balls %d, in a sensor %d', #self.walls, #self.balls, wet))
 end
 
 function Collision:fixedUpdate(step)

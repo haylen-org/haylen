@@ -3,6 +3,7 @@
 #include <box2d/box2d.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <stdexcept>
 
@@ -183,9 +184,93 @@ void Shape::destroy() {
         return;
     }
     if (b2Shape_GetType(shape) == b2_chainSegmentShape) {
-        throw std::logic_error("Chain segments are destroyed together with their body.");
+        b2DestroyChain(b2Shape_GetParentChain(shape));
+        return;
     }
     b2DestroyShape(shape, true);
+}
+
+float Shape::checkMaterial(float value) {
+    if (!std::isfinite(value) || value < 0.0F) {
+        throw std::invalid_argument("A physics shape needs a finite density, friction, restitution and rolling resistance of zero or more.");
+    }
+    return value;
+}
+
+float Shape::getFriction() const {
+    return b2Shape_GetFriction(b2LoadShapeId(checkedId()));
+}
+
+void Shape::setFriction(float value) {
+    b2Shape_SetFriction(b2LoadShapeId(checkedId()), checkMaterial(value));
+}
+
+float Shape::getRestitution() const {
+    return b2Shape_GetRestitution(b2LoadShapeId(checkedId()));
+}
+
+void Shape::setRestitution(float value) {
+    b2Shape_SetRestitution(b2LoadShapeId(checkedId()), checkMaterial(value));
+}
+
+float Shape::getDensity() const {
+    return b2Shape_GetDensity(b2LoadShapeId(checkedId()));
+}
+
+void Shape::setDensity(float value) {
+    b2Shape_SetDensity(b2LoadShapeId(checkedId()), checkMaterial(value), true);
+}
+
+float Shape::getRollingResistance() const {
+    return b2Shape_GetSurfaceMaterial(b2LoadShapeId(checkedId())).rollingResistance;
+}
+
+void Shape::setRollingResistance(float value) {
+    const b2ShapeId shape = b2LoadShapeId(checkedId());
+    b2SurfaceMaterial material = b2Shape_GetSurfaceMaterial(shape);
+    material.rollingResistance = checkMaterial(value);
+    b2Shape_SetSurfaceMaterial(shape, material);
+}
+
+bool Shape::hasContactEvents() const {
+    return b2Shape_AreContactEventsEnabled(b2LoadShapeId(checkedId()));
+}
+
+void Shape::setContactEvents(bool value) {
+    b2Shape_EnableContactEvents(b2LoadShapeId(checkedId()), value);
+}
+
+bool Shape::hasHitEvents() const {
+    return b2Shape_AreHitEventsEnabled(b2LoadShapeId(checkedId()));
+}
+
+void Shape::setHitEvents(bool value) {
+    b2Shape_EnableHitEvents(b2LoadShapeId(checkedId()), value);
+}
+
+bool Shape::hasSensorEvents() const {
+    return b2Shape_AreSensorEventsEnabled(b2LoadShapeId(checkedId()));
+}
+
+void Shape::setSensorEvents(bool value) {
+    b2Shape_EnableSensorEvents(b2LoadShapeId(checkedId()), value);
+}
+
+std::vector<Shape> Shape::getOverlaps() const {
+    const b2ShapeId shape = b2LoadShapeId(checkedId());
+    if (!b2Shape_IsSensor(shape)) {
+        throw std::logic_error("Only sensor shapes have overlaps.");
+    }
+    std::vector<b2ShapeId> ids(static_cast<std::size_t>(b2Shape_GetSensorCapacity(shape)));
+    ids.resize(static_cast<std::size_t>(b2Shape_GetSensorOverlaps(shape, ids.data(), static_cast<int>(ids.size()))));
+    std::vector<Shape> overlaps;
+    overlaps.reserve(ids.size());
+    for (const b2ShapeId overlap : ids) {
+        if (b2Shape_IsValid(overlap)) {
+            overlaps.emplace_back(world, b2StoreShapeId(overlap));
+        }
+    }
+    return overlaps;
 }
 
 // Box2D moves bodies along the right perpendicular of the contact normal, which runs counter-clockwise on screen in the downward y of the engine, so the sign flips.
@@ -202,7 +287,7 @@ void Shape::setTangentSpeed(float value) {
 
 std::optional<math::Vec2> Shape::getOneWay() const {
     const auto found = world->oneWayShapes.find(checkedId());
-    return found == world->oneWayShapes.end() ? std::nullopt : std::optional<math::Vec2>(found->second);
+    return found == world->oneWayShapes.end() ? std::nullopt : std::optional<math::Vec2>(found->second.direction);
 }
 
 void Shape::setOneWay(std::optional<math::Vec2> value) {
@@ -211,7 +296,7 @@ void Shape::setOneWay(std::optional<math::Vec2> value) {
         throw std::invalid_argument("A one-way direction cannot be zero.");
     }
     if (value) {
-        world->oneWayShapes[id] = value->getNormalized();
+        world->oneWayShapes[id] = {.direction = value->getNormalized()};
     } else {
         world->oneWayShapes.erase(id);
     }

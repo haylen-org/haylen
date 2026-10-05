@@ -194,7 +194,7 @@ TEST_F(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
     const std::vector<math::Vec2> outline{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}};
     const std::vector<physics2d::Shape> chain = body.addChain(outline, true);
     EXPECT_EQ(chain.size(), 4U);
-    EXPECT_THROW(physics2d::Shape(chain.front()).destroy(), std::logic_error);
+    EXPECT_EQ(body.addChain(std::vector<math::Vec2>{{0.0F, 200.0F}, {100.0F, 200.0F}}, false).size(), 1U);
 
     physics2d::Shape capsule = body.addCapsule({0.0F, 0.0F}, {0.0F, 50.0F}, 10.0F);
     physics2d::Shape segment = body.addSegment({0.0F, 0.0F}, {50.0F, 0.0F});
@@ -209,7 +209,8 @@ TEST_F(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
     EXPECT_THROW(body.addCapsule({}, {1.0F, 0.0F}, 0.0F), std::invalid_argument);
     EXPECT_THROW(body.addPolygon(std::vector<math::Vec2>{{0.0F, 0.0F}, {1.0F, 0.0F}}), std::invalid_argument);
     EXPECT_THROW(body.addPolygon(std::vector<math::Vec2>{{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}), std::invalid_argument);
-    EXPECT_THROW(body.addChain(std::vector<math::Vec2>{{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}, false), std::invalid_argument);
+    EXPECT_THROW(body.addChain(std::vector<math::Vec2>{{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}, true), std::invalid_argument);
+    EXPECT_THROW(body.addChain(std::vector<math::Vec2>{{0.0F, 0.0F}}, false), std::invalid_argument);
     EXPECT_THROW(physics2d::World({.pixelsPerMeter = 0.0F}), std::invalid_argument);
 }
 
@@ -346,7 +347,7 @@ TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     expectInWorld({50.0F, 0.0F}, segment.getOutline().points[1]);
     EXPECT_EQ(body.getOutlines().size(), 4U);
 
-    // Chains join their segments into one outline, where an open chain leaves out the ghost points at its ends.
+    // Chains join their segments into one outline, closed for a loop and from the first to the last point for an open chain.
     physics2d::Body ground = world.createBody({.type = physics2d::Body::Type::Static});
     const std::vector<physics2d::Shape> loop = ground.addChain(std::vector<math::Vec2>{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, true);
     (void)ground.addChain(std::vector<math::Vec2>{{0.0F, 200.0F}, {50.0F, 200.0F}, {100.0F, 210.0F}, {150.0F, 200.0F}, {200.0F, 200.0F}}, false);
@@ -358,7 +359,7 @@ TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     const physics2d::Shape::Outline& open = outlines[0].closed ? outlines[1] : outlines[0];
     EXPECT_EQ(closed.points, std::vector<math::Vec2>({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}));
     EXPECT_FALSE(open.closed);
-    EXPECT_EQ(open.points, std::vector<math::Vec2>({{50.0F, 200.0F}, {100.0F, 210.0F}, {150.0F, 200.0F}}));
+    EXPECT_EQ(open.points, std::vector<math::Vec2>({{0.0F, 200.0F}, {50.0F, 200.0F}, {100.0F, 210.0F}, {150.0F, 200.0F}, {200.0F, 200.0F}}));
 
     EXPECT_EQ(physics2d::Shape::kindName(physics2d::Shape::Kind::ChainSegment), "chainSegment");
     EXPECT_EQ(physics2d::Shape::kindFromName("capsule"), physics2d::Shape::Kind::Capsule);
@@ -394,8 +395,8 @@ TEST_F(PhysicsWorldTest, ConnectsBodiesWithJoints) {
     EXPECT_NEAR(joints[2].getMotorSpeed(), 64.0F, 1e-3F);
     EXPECT_FLOAT_EQ(joints[4].getMotorSpeed(), 1.0F);
     EXPECT_NEAR(joints[5].getTarget().x, 50.0F, 1e-3F);
-    EXPECT_THROW(joints[0].setMotorSpeed(1.0F), std::logic_error);
-    EXPECT_THROW((void)joints[0].getMotorSpeed(), std::logic_error);
+    EXPECT_THROW(joints[3].setMotorSpeed(1.0F), std::logic_error);
+    EXPECT_THROW((void)joints[3].getMotorSpeed(), std::logic_error);
     EXPECT_THROW(joints[0].setTarget({}), std::logic_error);
     EXPECT_THROW((void)joints[1].getTarget(), std::logic_error);
 
@@ -530,7 +531,7 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
     // clang-format on
     EXPECT_EQ(fixture.lua("joint.motorSpeed = 2 mouse.target = {610, 10} return tostring(joint.valid) .. ' ' .. #bob:shapes() .. ' ' .. joint.motorSpeed .. ' ' .. math.floor(mouse.target.x + 0.5)"), "true 3 2.0 610");
     EXPECT_NE(fixture.lua("return joint.target").find("Only mouse joints have a target."), std::string::npos);
-    EXPECT_NE(fixture.lua("mouse.motorSpeed = 1").find("Only revolute, prismatic and wheel joints have a motor speed."), std::string::npos);
+    EXPECT_NE(fixture.lua("mouse.motorSpeed = 1").find("Only revolute, prismatic, wheel and distance joints have a motor speed."), std::string::npos);
     EXPECT_EQ(fixture.lua("local s = bob:shapes()[1] s.mask = 1 s.category = 4 s.group = -3 return s.mask .. ' ' .. s.category .. ' ' .. s.group .. ' ' .. tostring(s.body == bob) .. ' ' .. tostring(s == s) .. ' ' .. tostring(s.bounds.width > 0)"), "1 4 -3 true true true");
     EXPECT_EQ(fixture.lua("local s = bob:addCircle(2, {group = 5}) return s.group .. ' ' .. hinge:shapes()[1].group"), "5 0");
     EXPECT_EQ(fixture.lua("local s = bob:shapes()[2] s:destroy() return tostring(s.valid) .. ' ' .. #bob:shapes()"), "false 3");
@@ -551,7 +552,7 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
     EXPECT_NE(fixture.lua("physics2d.newWorld({pixelsPerMeter = 0})").find("positive pixels per meter"), std::string::npos);
     EXPECT_NE(fixture.lua("world.onHit = 5").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("bob:addBox(0, 10)").find("positive size"), std::string::npos);
-    EXPECT_NE(fixture.lua("bob:addBox(10, 10, {density = -1})").find("A physics shape needs a finite density, friction and restitution of zero or more."), std::string::npos);
+    EXPECT_NE(fixture.lua("bob:addBox(10, 10, {density = -1})").find("A physics shape needs a finite density, friction, restitution and rolling resistance of zero or more."), std::string::npos);
     EXPECT_NE(fixture.lua("bob:addSegment(0, 0, 0, 0)").find("A physics segment needs ends more than 0.005 meters apart."), std::string::npos);
     EXPECT_NE(fixture.lua("bob.linearDamping = -1").find("A physics body needs a finite damping of zero or more."), std::string::npos);
     EXPECT_NE(fixture.lua("world:createJoint('distance', hinge, bob)").find("A distance joint needs a length of at least 0.005 meters."), std::string::npos);

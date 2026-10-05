@@ -34,7 +34,7 @@ An app is a package: a folder or a zip file with `app.json`, its Lua modules und
 
 - **2D rendering.** Batched sprites, sprite batches, shapes, meshes, nine-slices, cameras with smoothing and shake, parallax layers, render targets, custom shaders and materials, lit canvases with normal maps, post-processing and y-sorted draw order.
 - **Animation and effects.** Frame animations, tweens of fields and engine properties with timelines, particle emitters and effect files, and 2D lights with shadows and occluders.
-- **Physics.** Rigid bodies, shapes, joints, contacts, sensors and every kind of ray and shape cast, with ready-made ropes, bridges, ragdolls, vehicles, one-way platforms, conveyors, explosions, destructible terrain and fluids.
+- **Physics.** Rigid bodies, shapes, joints, contacts, sensors and every kind of ray and shape cast, stepped on several threads and drawn smoothly between fixed steps, with ready-made ropes, bridges, ragdolls, side and top-down vehicles, character movers, grabbers, force fields, one-way platforms, conveyors, explosions, destructible terrain and fluids.
 - **Tiled maps.** Maps and worlds in every orientation, animated tiles, parallax, collision, object spawning and ray casts against tiles and objects.
 - **World and gameplay.** Path finding on grids, waypoint graphs and navigation meshes, steering and crowds, spatial queries, procedural generation, state machines, behavior trees and utility selectors.
 - **UI and themes.** Themed menus, HUDs, dialogs, lists and touch controls with focus navigation that works with every device, layouts that follow the safe area, mirroring for right-to-left languages, and debug panels for tools.
@@ -79,7 +79,7 @@ scene.push({
 
 - [Lua API reference](docs/lua-api.md), the [Lua guide](docs/lua.md) and the [lifecycle](docs/lifecycle.md)
 - [Architecture](docs/architecture.md), [building the engine](docs/build.md), [distributing apps](docs/distribution.md), [protected content](docs/content.md) and [using the engine from C++](docs/embedding.md)
-- [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [Tiled maps](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop windows](docs/desktop.md)
+- [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [physics](docs/physics.md), [Tiled maps](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop windows](docs/desktop.md)
 - [Plugins](docs/plugins.md), [native code](docs/native.md), the [platform bridge](docs/platform_bridge.md) and [testing](docs/testing.md)
 
 ## License

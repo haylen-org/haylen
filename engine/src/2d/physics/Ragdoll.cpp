@@ -1,6 +1,7 @@
 #include "haylen/2d/physics/Ragdoll.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 #include "haylen/2d/physics/World.hpp"
@@ -51,8 +52,8 @@ std::string_view Ragdoll::partName(Part value) noexcept {
 }
 
 Ragdoll Ragdoll::create(World& world, const Options& options) {
-    if (options.height <= 0.0F || options.group >= 0) {
-        throw std::invalid_argument("A ragdoll needs a positive height and a negative collision group.");
+    if (options.height <= 0.0F || options.filter.group >= 0 || !(options.stiffness >= 0.0F && options.stiffness <= 1.0F)) {
+        throw std::invalid_argument("A ragdoll needs a positive height, a negative collision group and a stiffness from 0 to 1.");
     }
 
     // A ragdoll that fails halfway, such as on a bad material, leaves no bodies behind.
@@ -68,7 +69,7 @@ Ragdoll Ragdoll::create(World& world, const Options& options) {
 
 void Ragdoll::build(World& world, const Options& options) {
     const float scale = options.height;
-    const Shape::Options shape{.density = options.density, .friction = options.friction, .filter = {.group = options.group}};
+    const Shape::Options shape{.density = options.density, .friction = options.friction, .filter = options.filter};
     for (std::size_t part = 0; part < kPartCount; ++part) {
         const Bone& bone = kBones[part];
         const float middle = (bone.top + bone.bottom) * 0.5F;
@@ -82,14 +83,34 @@ void Ragdoll::build(World& world, const Options& options) {
         }
     }
 
+    // Each joint resists bending with the torque that holds the limb below it out against standard gravity, times the stiffness, as a motor that aims at no motion.
     for (const Link& link : kLinks) {
-        Joint::Options joint{.anchorA = options.position + math::Vec2{0.0F, link.at * scale}, .enableLimit = true, .lower = link.lower, .upper = link.upper};
-        if (options.jointFriction > 0.0F) {
-            joint.enableMotor = true;
-            joint.maxMotorTorque = options.jointFriction;
-        }
+        float mass = 0.0F;
+        const float reach = measureLimb(link.child, link.at, mass) * scale;
+        const float torque = options.stiffness * mass * kStandardGravity * world.getPixelsPerMeter() * reach;
+        const Joint::Options joint{.anchorA = options.position + math::Vec2{0.0F, link.at * scale}, .enableLimit = true, .lower = link.lower, .upper = link.upper, .enableMotor = torque > 0.0F, .maxMotorTorque = torque};
         joints.push_back(world.createJoint(Joint::Type::Revolute, getBody(link.parent), getBody(link.child), joint));
     }
+}
+
+float Ragdoll::measureLimb(Part part, float at, float& mass) const {
+    const Bone& bone = kBones[static_cast<std::size_t>(part)];
+    mass += getBody(part).getMass();
+    float reach = std::max(std::abs(bone.top - at), std::abs(bone.bottom - at)) + bone.radius;
+    for (const Link& link : kLinks) {
+        if (link.parent == part) {
+            reach = std::max(reach, measureLimb(link.child, at, mass));
+        }
+    }
+    return reach;
+}
+
+float Ragdoll::getMass() const {
+    float mass = 0.0F;
+    for (const Body& body : bodies) {
+        mass += body.isValid() ? body.getMass() : 0.0F;
+    }
+    return mass;
 }
 
 bool Ragdoll::isValid() const noexcept {

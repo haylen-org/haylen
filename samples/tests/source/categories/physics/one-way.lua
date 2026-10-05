@@ -1,4 +1,4 @@
--- One-way platforms: a character jumps up through them and lands on them, drops down through them, and rides one that moves.
+-- One-way platforms: a character jumps up through them and lands on them, drops down through them with `body:dropThrough`, and rides one that moves.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -43,7 +43,7 @@ end
 function OneWay:build()
     self.world = physics2d.newWorld({gravity = {0, 2200}})
     self.platforms, self.statics = {}, {}
-    self.time, self.dropping = 0, 0
+    self.time = 0
 
     local ground = self.world:createBody({type = 'static', x = 0, y = 410})
     parts.box(ground, 1600, 40, {category = kSolid})
@@ -59,7 +59,7 @@ function OneWay:build()
     self.lift = self:platform('kinematic', 60, -250, 220)
 
     self.hero = self.world:createBody({x = -600, y = 330, fixedRotation = true, sleepEnabled = false})
-    self.heroShape = parts.capsule(self.hero, 0, -22, 0, 22, 20, {friction = 0, category = kHero})
+    parts.capsule(self.hero, 0, -22, 0, 22, 20, {friction = 0, category = kHero})
     parts.paint(self.hero, '#FF4DD0E1')
 end
 
@@ -106,18 +106,12 @@ function OneWay:update(dt)
     local grounded = self:grounded()
     if input.pressed('jump') and grounded then
         if moveY > 0.5 then
-            self.dropping = kDropTime
-            self.heroShape.mask = kSolid
+            self.hero:dropThrough(kDropTime)
         else
             velocity.y = -kJumpSpeed
         end
     end
     self.hero.velocity = {moveX * kSpeed, velocity.y}
-
-    self.dropping = math.max(0, self.dropping - dt)
-    if self.dropping == 0 and self.heroShape.mask == kSolid then
-        self.heroShape.mask = -1
-    end
     self:status(string.format('%s, velocity %.0f, %.0f', grounded and 'Grounded' or 'In the air', velocity.x, velocity.y))
 end
 

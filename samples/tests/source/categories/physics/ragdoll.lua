@@ -1,4 +1,4 @@
--- Ragdolls from `physics2d.newRagdoll`: eleven capsules with the joint limits of a body, tumbling down stairs and thrown around.
+-- Ragdolls from `physics2d.newRagdoll`: eleven capsules with the joint limits of a body, tumbling down stairs, dragged by any limb over the steps with a grabber and thrown around.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -14,7 +14,6 @@ local Ragdoll = haylen.class('Ragdoll', PhysicsTest)
 
 local kMaxDolls = 8
 local kHeight = 240
-local kParts = 11
 local kSteps, kStepWidth, kStepHeight = 6, 100, 70
 local kStairLeft, kStairTop, kGround = -800, -40, 390
 local kColors = {'#FFFFCC80', '#FF80DEEA', '#FFCE93D8', '#FFA5D6A7'}
@@ -30,25 +29,25 @@ local kBones = {
 
 function Ragdoll:enter()
     self:frame{
-        hint = 'Drag a limb to throw a ragdoll. The figures draw as bones between the centers of their parts, and the outlines show the capsules themselves. R or the X button starts over.',
+        hint = 'Drag a limb to pull a ragdoll up or down the stairs or to throw it. The figures draw as bones between the centers of their parts, and the outlines show the capsules themselves. R or the X button starts over.',
         controls = {
             ui.button{id = 'drop', text = 'Drop a ragdoll', onClick = function() self:drop() end},
             ui.button{id = 'push', text = 'Push them all', onClick = function() self:push() end},
-            ui.label{text = 'Joint friction of new ragdolls', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'stiffness', value = 20, min = 0, max = 200, showValue = true, decimals = 0, onChange = function(event) self.stiffness = event.value end},
+            ui.label{text = 'Stiffness of new ragdolls', font = 'caption', color = 'textMuted'},
+            ui.slider{id = 'stiffness', value = 0.2, min = 0, max = 1, showValue = true, decimals = 2, onChange = function(event) self.stiffness = event.value end},
             ui.checkbox{id = 'outlines', text = 'Show the capsules', onChange = function(event) self.outlines = event.checked end},
             ui.button{id = 'reset', text = 'Start over', onClick = function() self:build() end},
         },
         focus = 'drop',
     }
     self.random = m.random(21)
-    self.stiffness = 20
+    self.stiffness = 0.2
     self:build()
 end
 
 function Ragdoll:build()
     self.world = physics2d.newWorld()
-    self.grab = Grab(self.world, {strength = kParts})
+    self.grab = Grab(self.world)
     self.dolls, self.groups = {}, 0
 
     local ground = self.world:createBody({type = 'static', x = 0, y = 410})
@@ -76,7 +75,7 @@ function Ragdoll:drop(x, y)
         x = x or self.random:range(kStairLeft + 40, kStairLeft + kStepWidth * 3),
         y = y or -330,
         height = kHeight,
-        jointFriction = self.stiffness,
+        stiffness = self.stiffness,
         group = -self.groups,
         vx = self.random:range(200, 320),
     })

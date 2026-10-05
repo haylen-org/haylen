@@ -3,6 +3,7 @@
 #include <box2d/box2d.h>
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 #include "2d/physics/Box2DConverter.hpp"
@@ -75,6 +76,22 @@ void Body::setTransform(math::Vec2 position, float rotation) {
     b2Body_SetTransform(b2LoadBodyId(checkedId()), Box2DConverter::toMeters(position, world->getPixelsPerMeter()), b2MakeRot(rotation));
 }
 
+void Body::moveTo(math::Vec2 position, float rotation, float seconds) {
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    if (!std::isfinite(seconds) || seconds <= 0.0F) {
+        throw std::invalid_argument("A physics body moves to a target over a positive time.");
+    }
+
+    // The velocities move the center of mass to where the target puts it, and a target the body already holds stops it.
+    const b2Transform current = b2Body_GetTransform(body);
+    const b2Transform target{Box2DConverter::toMeters(position, world->getPixelsPerMeter()), b2MakeRot(rotation)};
+    const b2Vec2 center = b2Body_GetLocalCenterOfMass(body);
+    b2Body_SetLinearVelocity(body, b2MulSV(1.0F / seconds, b2Sub(b2TransformPoint(target, center), b2TransformPoint(current, center))));
+    if (!b2Body_IsFixedRotation(body)) {
+        b2Body_SetAngularVelocity(body, b2RelativeAngle(target.q, current.q) / seconds);
+    }
+}
+
 math::Vec2 Body::getVelocity() const {
     return Box2DConverter::toPixels(b2Body_GetLinearVelocity(b2LoadBodyId(checkedId())), world->getPixelsPerMeter());
 }
@@ -91,8 +108,63 @@ void Body::setAngularVelocity(float value) {
     b2Body_SetAngularVelocity(b2LoadBodyId(checkedId()), value);
 }
 
+math::Vec2 Body::getVelocityAt(math::Vec2 point) const {
+    const float scale = world->getPixelsPerMeter();
+    return Box2DConverter::toPixels(b2Body_GetWorldPointVelocity(b2LoadBodyId(checkedId()), Box2DConverter::toMeters(point, scale)), scale);
+}
+
+Body::MassData Body::getMassData() const {
+    const b2MassData data = b2Body_GetMassData(b2LoadBodyId(checkedId()));
+    const float scale = world->getPixelsPerMeter();
+    return {.mass = data.mass, .center = Box2DConverter::toPixels(data.center, scale), .inertia = data.rotationalInertia * scale * scale};
+}
+
+void Body::setMassData(const MassData& value) {
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    if (!std::isfinite(value.mass) || value.mass < 0.0F || !std::isfinite(value.inertia) || value.inertia < 0.0F || !std::isfinite(value.center.x) || !std::isfinite(value.center.y)) {
+        throw std::invalid_argument("A physics body needs a finite mass, center of mass and inertia of zero or more.");
+    }
+    const float scale = world->getPixelsPerMeter();
+    b2Body_SetMassData(body, {.mass = value.mass, .center = Box2DConverter::toMeters(value.center, scale), .rotationalInertia = value.inertia / (scale * scale)});
+}
+
+void Body::resetMassData() {
+    b2Body_ApplyMassFromShapes(b2LoadBodyId(checkedId()));
+}
+
 float Body::getMass() const {
     return b2Body_GetMass(b2LoadBodyId(checkedId()));
+}
+
+void Body::setMass(float value) {
+    MassData data = getMassData();
+    data.inertia = data.mass > 0.0F ? data.inertia * value / data.mass : data.inertia;
+    data.mass = value;
+    setMassData(data);
+}
+
+math::Vec2 Body::getCenterOfMass() const {
+    return getMassData().center;
+}
+
+void Body::setCenterOfMass(math::Vec2 value) {
+    MassData data = getMassData();
+    data.center = value;
+    setMassData(data);
+}
+
+float Body::getInertia() const {
+    return getMassData().inertia;
+}
+
+void Body::setInertia(float value) {
+    MassData data = getMassData();
+    data.inertia = value;
+    setMassData(data);
+}
+
+math::Vec2 Body::getWorldCenter() const {
+    return Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(b2LoadBodyId(checkedId())), world->getPixelsPerMeter());
 }
 
 void Body::applyForce(math::Vec2 force, std::optional<math::Vec2> point) {
@@ -163,6 +235,31 @@ bool Body::isBullet() const {
 
 void Body::setBullet(bool value) {
     b2Body_SetBullet(b2LoadBodyId(checkedId()), value);
+}
+
+bool Body::isSleepEnabled() const {
+    return b2Body_IsSleepEnabled(b2LoadBodyId(checkedId()));
+}
+
+void Body::setSleepEnabled(bool value) {
+    b2Body_EnableSleep(b2LoadBodyId(checkedId()), value);
+}
+
+float Body::getSleepThreshold() const {
+    return b2Body_GetSleepThreshold(b2LoadBodyId(checkedId())) * world->getPixelsPerMeter();
+}
+
+void Body::setSleepThreshold(float value) {
+    b2Body_SetSleepThreshold(b2LoadBodyId(checkedId()), Box2DConverter::toSpeed(value, world->getPixelsPerMeter()));
+}
+
+void Body::dropThrough(float seconds) {
+    const std::uint64_t checked = checkedId();
+    if (!std::isfinite(seconds) || seconds < 0.0F) {
+        throw std::invalid_argument("A physics body drops through one-way platforms for a finite time of zero or more.");
+    }
+    world->droppingBodies[checked] = seconds;
+    b2Body_SetAwake(b2LoadBodyId(checked), true);
 }
 
 bool Body::isAwake() const {
@@ -260,11 +357,17 @@ std::vector<Shape> Body::addPolygon(std::span<const math::Vec2> points, const Sh
 }
 
 std::vector<Shape> Body::addChain(std::span<const math::Vec2> points, bool loop, const Shape::Options& options) {
-    if (points.size() < 4) {
-        throw std::invalid_argument("A physics chain needs at least four points.");
+    if (points.size() < (loop ? 4U : 2U)) {
+        throw std::invalid_argument("A physics chain needs at least four points for a loop and two for an open chain.");
     }
 
-    const std::vector<b2Vec2> local = Box2DConverter::toLocalPoints(points, options, world->getPixelsPerMeter());
+    // Box2D keeps the first and last points of an open chain to smooth the contacts at its ends, so the world adds points that continue the first and last segments, and every segment listed collides.
+    std::vector<math::Vec2> listed(points.begin(), points.end());
+    if (!loop) {
+        listed.insert(listed.begin(), points[0] * 2.0F - points[1]);
+        listed.push_back(points[points.size() - 1] * 2.0F - points[points.size() - 2]);
+    }
+    const std::vector<b2Vec2> local = Box2DConverter::toLocalPoints(listed, options, world->getPixelsPerMeter());
     const b2SurfaceMaterial material = Box2DConverter::toSurfaceMaterial(options);
 
     b2ChainDef def = b2DefaultChainDef();
@@ -274,13 +377,15 @@ std::vector<Shape> Body::addChain(std::span<const math::Vec2> points, bool loop,
     def.materialCount = 1;
     def.filter = Box2DConverter::toFilter(options.filter);
     def.isLoop = loop;
-    def.enableSensorEvents = true;
+    def.enableSensorEvents = options.sensorEvents;
     const b2ChainId chain = b2CreateChain(b2LoadBodyId(checkedId()), &def);
 
     std::vector<b2ShapeId> segments(static_cast<std::size_t>(b2Chain_GetSegmentCount(chain)));
     b2Chain_GetSegments(chain, segments.data(), static_cast<int>(segments.size()));
     std::vector<Shape> shapes;
     for (const b2ShapeId segment : segments) {
+        b2Shape_EnableContactEvents(segment, options.contactEvents);
+        b2Shape_EnableHitEvents(segment, options.hitEvents);
         shapes.push_back(finishShape(b2StoreShapeId(segment), options));
     }
     return shapes;
@@ -295,6 +400,35 @@ std::vector<Shape> Body::getShapes() const {
         result.emplace_back(world, b2StoreShapeId(shape));
     }
     return result;
+}
+
+std::vector<Body::Contact> Body::getContacts() const {
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    std::vector<b2ContactData> data(static_cast<std::size_t>(b2Body_GetContactCapacity(body)));
+    data.resize(static_cast<std::size_t>(b2Body_GetContactData(body, data.data(), static_cast<int>(data.size()))));
+
+    const float scale = world->getPixelsPerMeter();
+    std::vector<Contact> contacts;
+    for (const b2ContactData& contact : data) {
+        if (contact.manifold.pointCount == 0) {
+            continue;
+        }
+        // The manifold normal points from the first shape to the second, and the contact reads from the shape of this body.
+        const bool first = B2_ID_EQUALS(b2Shape_GetBody(contact.shapeIdA), body);
+        float impulse = 0.0F;
+        for (int index = 0; index < contact.manifold.pointCount; ++index) {
+            impulse += contact.manifold.points[index].totalNormalImpulse;
+        }
+        const math::Vec2 normal{contact.manifold.normal.x, contact.manifold.normal.y};
+        contacts.push_back({
+            .shape = {world, b2StoreShapeId(first ? contact.shapeIdA : contact.shapeIdB)},
+            .other = {world, b2StoreShapeId(first ? contact.shapeIdB : contact.shapeIdA)},
+            .point = Box2DConverter::toPixels(contact.manifold.points[0].point, scale),
+            .normal = first ? normal : -normal,
+            .impulse = impulse * scale,
+        });
+    }
+    return contacts;
 }
 
 std::vector<Shape::Outline> Body::getOutlines() const {
@@ -349,6 +483,7 @@ Shape Body::finishShape(std::uint64_t shapeId, const Shape::Options& options) {
 void Body::destroy() {
     if (isValid()) {
         b2DestroyBody(b2LoadBodyId(id));
+        world->forgetBody(id);
         world->countObjects();
     }
 }

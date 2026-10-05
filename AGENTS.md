@@ -176,7 +176,8 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - Every JNI call from C++ into Java checks for a pending exception, which is described to logcat, cleared and logged as an engine error that names the method.
 - All gameplay input goes through the action map, and UI input goes through focus navigation that works with every device. The game and the UI share the devices through the play area of a UI document: while the play area has the focus, the directions, accept and menu reach the action map, while a control has it, the UI captures every navigation key, button and stick, and a press stays with the side that took it until it is released.
 - UI positions itself in the engine-provided safe area.
-- Physics goes through the Haylen Box2D wrapper, whose handles detect a destroyed world.
+- Physics goes through the Haylen Box2D wrapper, whose handles detect a destroyed world. A world runs the tasks of each Box2D step on `core::JobSystem` once enough of its bodies are awake, and the helpers that act on a world every step, such as vehicles, force fields and fluids, run in C++ through its step hooks, never as a Lua call per body.
+- Every common physics problem, such as tunneling, ghost collisions at tile joints, slopes, moving platforms and stretching joints, has an engine option or helper that solves it, explained in `docs/physics.md`, and a test of the test project shows the problem and the solution side by side.
 - Protected content goes through `haylen::content`: immutable HPAK shards of chunks that are compressed and encrypted one by one, signed manifests and encrypted catalogs, as `docs/content.md` describes. Its cryptography comes from Monocypher alone, and nothing in the repository implements a cryptographic primitive. Every parser of a binary format treats its bytes as hostile, checks every offset, size and count before it uses them, and has hostile input tests and an entry for the fuzzer that `HAYLEN_BUILD_FUZZERS` builds.
 - Tiled runtime code targets current Tiled JSON files and does not read obsolete formats.
 
@@ -268,6 +269,6 @@ These rules apply to every text the project writes: code comments, documentation
 
 - Every change updates the docs it affects in the same change.
 - Every Lua module has a reference page in `docs/lua-api/<module>.md` with the complete API, the options, defaults and error messages, and a runnable example of every capability, indexed by `docs/lua-api.md`.
-- The guides in `docs/` explain the architecture, the lifecycle, the build, distribution, embedding, testing and each system in depth. `docs/testing.md` describes the test support, `docs/distribution.md` the commands, templates and platform support, and `docs/architecture.md` the libraries, source layout, plugins, frame and threads.
+- The guides in `docs/` explain the architecture, the lifecycle, the build, distribution, embedding, testing and each system in depth. `docs/testing.md` describes the test support, `docs/distribution.md` the commands, templates and platform support, `docs/architecture.md` the libraries, source layout, plugins, frame and threads, and `docs/physics.md` the physics system, its common problems and its performance.
 - Markdown prose is never hard-wrapped. One paragraph is one line.
 - The main `README.md` is presentation and quick start only.

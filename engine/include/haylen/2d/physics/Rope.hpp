@@ -15,7 +15,7 @@ class World;
 // A chain of segments from start to end joined by revolute joints, such as a rope, a chain or a rope bridge. Each end can hang from a body or be pinned in place. The handles stay valid until the bodies are destroyed, by `destroy` or otherwise.
 class Rope final {
   public:
-    // Segments are capsules, or boxes with `planks` set. An end with a body hangs from it at the end point, and a pinned end without a body hangs from a static anchor that the rope creates and destroys.
+    // Segments are capsules, or boxes with `planks` set. An end with a body hangs from it at the end point, and a pinned end without a body hangs from a static anchor that the rope creates and destroys. With `limitLength`, a slack distance joint between the two ends keeps the rope from stretching past its length under heavy loads.
     struct Options {
         math::Vec2 start{};
         math::Vec2 end{};
@@ -28,6 +28,7 @@ class Rope final {
         bool planks = false;
         bool pinStart = false;
         bool pinEnd = false;
+        bool limitLength = true;
         std::optional<Body> startBody;
         std::optional<Body> endBody;
         CollisionFilter filter{};

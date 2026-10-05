@@ -71,7 +71,7 @@ template <> struct EnumNames<physics2d::Joint::Type> {
 
 namespace haylen::physics2d {
 
-// Installs `haylen.physics2d` with the `PhysicsWorld`, `Body`, `Shape` and `Joint` classes, and the ropes, ragdolls, vehicles, terrains, explosions, fractures and fluids built on them.
+// Installs `haylen.physics2d` with the `PhysicsWorld`, `Body`, `Shape` and `Joint` classes, and the ropes, ragdolls, vehicles, movers, grabbers, force fields, terrains, explosions, fractures and fluids built on them.
 class Physics2DLua final {
   public:
     static void install(lua_State* L);
@@ -94,7 +94,10 @@ class Physics2DLua final {
     }
 
   private:
-    static constexpr std::array<std::string_view, 3> kWorldFields{"gravity", "pixelsPerMeter", "subSteps"};
+    static constexpr std::array<std::string_view, 13> kWorldFields{"gravity", "pixelsPerMeter", "subSteps", "threads", "continuous", "sleepEnabled", "interpolate", "contactHertz", "contactDampingRatio", "contactPushSpeed", "maxSpeed", "restitutionThreshold", "hitThreshold"};
+
+    // Worlds step on at most this many threads unless their options ask for more, because the solver gains little from more workers and slow cores hold it back.
+    static constexpr int kDefaultThreads = 4;
 
     static int newWorld(lua_State* L);
     static int open(lua_State* L);

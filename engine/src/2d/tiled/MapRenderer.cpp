@@ -59,17 +59,26 @@ math::Vec2 MapRenderer::flipInTile(math::Vec2 point, math::Vec2 tileSize, std::u
     return result;
 }
 
-void MapRenderer::addOutline(physics2d::Body& body, const Object& object, std::span<const math::Vec2> points, const physics2d::Shape::Options& options) {
+std::vector<physics2d::Shape> MapRenderer::addOutline(physics2d::Body& body, const Object& object, std::span<const math::Vec2> points, const physics2d::Shape::Options& options) {
     if (points.empty()) {
-        return;
+        return {};
     }
     if (object.shape != Object::Shape::Polyline) {
-        body.addPolygon(points, options);
-        return;
+        return body.addPolygon(points, options);
     }
+    std::vector<physics2d::Shape> shapes;
     for (std::size_t index = 1; index < points.size(); ++index) {
-        body.addSegment(points[index - 1], points[index], options);
+        shapes.push_back(body.addSegment(points[index - 1], points[index], options));
     }
+    return shapes;
+}
+
+physics2d::Shape::Options MapRenderer::shapeOptions(const Object& object, const physics2d::CollisionFilter& filter) {
+    physics2d::Shape::Options options{.filter = filter, .sensor = object.properties.getBool("sensor", false)};
+    if (object.properties.getBool("oneWay", false)) {
+        options.oneWay = math::Vec2{0.0F, -1.0F};
+    }
+    return options;
 }
 
 physics2d::CollisionFilter MapRenderer::layerFilter(const Layer& layer) {
@@ -91,7 +100,7 @@ std::uint64_t MapRenderer::readCollisionBits(const Layer& layer, std::string_vie
 }
 
 bool MapRenderer::isFullCell(const Object& object, math::Vec2 tileSize) noexcept {
-    return object.shape == Object::Shape::Rectangle && object.rotation == 0.0F && object.position == math::Vec2{} && object.size == tileSize && !object.properties.getBool("sensor", false);
+    return object.shape == Object::Shape::Rectangle && object.rotation == 0.0F && object.position == math::Vec2{} && object.size == tileSize;
 }
 
 graphics2d::DrawOrder MapRenderer::groundOrder(const graphics2d::DrawOrder& order, float ground, float standing) noexcept {
@@ -194,6 +203,17 @@ void MapRenderer::setTile(std::string_view layer, int column, int row, std::uint
         if (const auto cache = caches.find({found->id, rows}); cache != caches.end() && cache->second.baked) {
             cache->second.stale.insert(regionOf(column, row, cellAnchor(column, row).y + cache->second.offset.y, rows));
         }
+    }
+
+    // The collision built from the layer follows the cell, and collision whose body went with its world is forgotten.
+    std::erase_if(collisions, [](const TileCollision& collision) { return !collision.getBody().isValid(); });
+    for (TileCollision& collision : collisions) {
+        if (collision.getLayerId() != found->id) {
+            continue;
+        }
+        physics2d::Body body = collision.getBody();
+        collision.setCell(column, row, collisionCell(body, column, row, gid, collision.getOrigin(), collision.getFilter()));
+        collision.update();
     }
 }
 
@@ -487,7 +507,47 @@ void MapRenderer::forEachObject(std::string_view layer, const ObjectVisitor& vis
     MapQuery(map).forEachObject(layer, [&](const Object& object, math::Vec2 offset) { visit(object, map.objectToWorld(object.position) + offset); });
 }
 
-std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world) const {
+TileCollision::Cell MapRenderer::collisionCell(physics2d::Body& body, int column, int row, std::uint32_t gid, math::Vec2 origin, const physics2d::CollisionFilter& filter) const {
+    TileCollision::Cell cell;
+    const Map::TilesetReference* reference = map.findTileset(gid);
+    if (reference == nullptr) {
+        return cell;
+    }
+    const Tileset& tileset = *reference->tileset;
+    const std::uint32_t localId = Map::tileId(gid) - reference->firstGid;
+    const Tile* tile = tileset.findTile(localId);
+    if (tile == nullptr || tile->collision.empty()) {
+        return cell;
+    }
+
+    const graphics2d::SpriteInstance placed = tileInstance(tileset, localId, gid, cellAnchor(column, row) + origin);
+    const math::Vec2 topLeft = placed.position - placed.size * 0.5F;
+    const math::Vec2 imageSize = drawSize(tileset, tileset.getSource(localId), map.tileSize);
+    const bool merging = map.orientation == Map::Orientation::Orthogonal;
+    const MapQuery query(map);
+    std::vector<math::Vec2> points;
+    for (const Object& object : tile->collision) {
+        const physics2d::Shape::Options options = shapeOptions(object, filter);
+        const bool solid = merging && object.shape != Object::Shape::Polyline && !options.sensor && !options.oneWay;
+        if (solid && placed.size == map.tileSize && isFullCell(object, map.tileSize)) {
+            cell.full = true;
+            continue;
+        }
+        query.traceOutline(object, points);
+        for (math::Vec2& point : points) {
+            point = topLeft + flipInTile(point, imageSize, gid);
+        }
+        if (solid && points.size() >= 3) {
+            cell.outlines.push_back(points);
+            continue;
+        }
+        const std::vector<physics2d::Shape> shapes = addOutline(body, object, points, options);
+        cell.shapes.insert(cell.shapes.end(), shapes.begin(), shapes.end());
+    }
+    return cell;
+}
+
+std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world) {
     std::vector<physics2d::Body> bodies;
     const MapQuery query(map);
     std::vector<math::Vec2> points;
@@ -516,7 +576,7 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
             for (const Object& object : layer.objects) {
                 if (wholeLayer || object.type == "collision") {
                     query.getOutline(object, origin, points);
-                    addOutline(body, object, points, {.filter = filter, .sensor = object.properties.getBool("sensor", false)});
+                    (void)addOutline(body, object, points, shapeOptions(object, filter));
                 }
             }
             finish(body);
@@ -526,53 +586,14 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
             return;
         }
 
-        // Tiles whose whole cell is solid merge into row-wide boxes, which keeps large blocked areas cheap.
+        // A tile layer keeps its body even without shapes, so the tiles that `setTile` places later collide on it.
         const physics2d::CollisionFilter filter = layerFilter(layer);
-        physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static});
-        std::map<int, std::vector<int>> fullCells;
-        forEachCell(layer, [&](int column, int row, std::uint32_t gid) {
-            const Map::TilesetReference* reference = map.findTileset(gid);
-            if (reference == nullptr) {
-                return;
-            }
-            const Tileset& tileset = *reference->tileset;
-            const std::uint32_t localId = Map::tileId(gid) - reference->firstGid;
-            const Tile* tile = tileset.findTile(localId);
-            if (tile == nullptr || tile->collision.empty()) {
-                return;
-            }
-
-            const graphics2d::SpriteInstance placed = tileInstance(tileset, localId, gid, cellAnchor(column, row) + origin);
-            const math::Vec2 topLeft = placed.position - placed.size * 0.5F;
-            const math::Vec2 imageSize = drawSize(tileset, tileset.getSource(localId), map.tileSize);
-            for (const Object& object : tile->collision) {
-                if (map.orientation == Map::Orientation::Orthogonal && placed.size == map.tileSize && isFullCell(object, map.tileSize)) {
-                    fullCells[row].push_back(column);
-                    continue;
-                }
-                query.traceOutline(object, points);
-                for (math::Vec2& point : points) {
-                    point = topLeft + flipInTile(point, imageSize, gid);
-                }
-                addOutline(body, object, points, {.filter = filter, .sensor = object.properties.getBool("sensor", false)});
-            }
-        });
-
-        for (auto& [row, columns] : fullCells) {
-            std::sort(columns.begin(), columns.end());
-            std::size_t start = 0;
-            for (std::size_t index = 1; index <= columns.size(); ++index) {
-                if (index < columns.size() && columns[index] == columns[index - 1] + 1) {
-                    continue;
-                }
-                const math::Vec2 corner = map.cellToWorld(columns[start], row) + origin;
-                const float cells = static_cast<float>(columns[index - 1] - columns[start] + 1);
-                const math::Vec2 size{cells * map.tileSize.x, map.tileSize.y};
-                body.addBox(size, {.filter = filter, .offset = corner + size * 0.5F});
-                start = index;
-            }
-        }
-        finish(body);
+        TileCollision collision(world.createBody({.type = physics2d::Body::Type::Static}), layer.id, origin, map.tileSize, filter);
+        physics2d::Body body = collision.getBody();
+        forEachCell(layer, [&](int column, int row, std::uint32_t gid) { collision.setCell(column, row, collisionCell(body, column, row, gid, origin, filter)); });
+        collision.update();
+        bodies.push_back(body);
+        collisions.push_back(std::move(collision));
     };
     // clang-format on
 
