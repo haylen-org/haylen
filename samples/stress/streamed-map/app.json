@@ -1,0 +1,19 @@
+{
+    "name": "Streamed Map",
+    "identifier": "dev.haylen.samples.streamedmap",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Streamed Map",
+        "width": 1600,
+        "height": 900,
+        "resizable": true,
+        "highDpi": true
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "clearColor": "#FF14202E"
+}
