@@ -608,6 +608,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **One-shots** com volume, pitch, variação aleatória de pitch (`pitchVariation`, com semente para testes), pan, fade, início deslocado, loop e limite de vozes com roubo da voz mais antiga.
 - [x] **Música** em streaming com loop, crossfade, pausa e retomada.
 - [x] **Cursor das vozes**: `audio.setCursor(voice, seconds)` move qualquer voz, como quem arrasta a barra de progresso de uma música, e `audio.playMusic` aceita `startAt`, com o teste `AUD-001` do projeto de testes.
+- [ ] Teclas de mídia (tocar, pausar, próxima, anterior e volume) e os controles de "tocando agora" do sistema e da tela de bloqueio.
 - [x] **Áudio posicional 2D** com ouvinte e atenuação.
 - [~] **Ciclo de vida**: pausa ao suspender o app e retoma depois.
 
@@ -671,6 +672,12 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 - [x] **Ordem de desenho do scroll**: o conteúdo de um scroll e o corpo de um diálogo desenham no lugar do nó na árvore, pelo `Backend::beginChild`, então os nós que vêm depois, como uma folha ancorada, e as GUIs de camadas acima cobrem o que rola.
 - [x] **Filho do scroll**: o filho estica pelo outro eixo dentro dos limites de tamanho dele, como `maxWidth` e `maxHeight`, ou fica no `align` que ele pede, então um formulário com largura máxima mantém essa largura numa tela larga.
 - [x] **Foco compartilhado entre GUIs**: as GUIs montadas com `sharedFocus = true` formam um espaço de navegação só, então teclado, gamepad e controle remoto vão das páginas de um app para a barra de abas ou do player montada numa GUI própria e voltam, enquanto diálogos, menus e escopos de foco seguram o foco, com o teste `GUI-030` do projeto de testes.
+- [x] **Imagens SVG na UI**: a imagem de qualquer componente pode ser um SVG, rasterizado para os pixels que ocupa, em passos de um quarto de oitava, em threads de trabalho e com um orçamento de memória, os botões tingem o ícone com `iconColor` e as imagens arredondam os cantos com `radius`, com o teste `GUI-029` do projeto de testes.
+- [ ] Botões com o ícone acima do texto, para barras de abas no celular, e com o conteúdo alinhado ao início, para uma barra de busca.
+- [ ] Componente de UI que mostra um render target, uma textura ou uma `VectorImage` feita em tempo de execução, como a miniatura de uma rota numa linha de lista, e os limites de uma célula de `collection` para desenhar nela.
+- [ ] Lista arrastável que recicla as linhas, `collection` que reordena por arrasto e escolha de uma linha arrastável pelo teclado e pelo controle remoto, que hoje pegam a linha em vez de escolhê-la.
+- [ ] Abrir um `contextMenu` a partir de uma parte de uma célula de `collection`, que não tem id de nó.
+- [ ] Comando que rola um `ui.scroll` até um deslocamento ou até um nó.
 
 ### 8.14 Plataforma
 
@@ -1755,7 +1762,7 @@ Checklist:
 
 - [ ] Arte própria gerada com o Codex para tudo o que tem imagem: sprites, tiles, UI, ícones, fundos e efeitos, num estilo visual único e polido, em alta definição, com os assets nos samples.
 - [~] Tiny Island refeito com arte própria: guerreiro, arqueiro, lanceiro e mago jogáveis, inimigos variados, ovelhas que dão comida, ataques com efeitos, fogueira de partículas igual no menu e no jogo, e tudo o que existe hoje. Conferido na web (WebGPU e WebGL2), no emulador Android e no player headless. No simulador de iOS e no de tvOS o app aborta ao abrir o dispositivo de áudio, porque o serviço de áudio do host não responde, e falta conferir quando ele voltar.
-- [ ] Categoria de samples de apps com cinco apps (delivery de comida, marketplace, transporte por app, loja online e streaming de música), com dados falsos, navegação de ida e volta, listas, busca, carrinho ou fila, mapas onde fizer sentido, cores e características de cada tipo, sem citar nomes.
+- [ ] Categoria de samples de apps com cinco apps (delivery de comida, marketplace, transporte por app, loja online e streaming de música), com dados falsos, navegação de ida e volta, listas, busca, carrinho ou fila, mapas onde fizer sentido, cores e características de cada tipo, sem citar nomes. Os cinco apps estão escritos e conferidos no player headless e no player do desktop com imagens provisórias fora do repositório, e entram no repositório quando as imagens do Codex existirem.
 - [ ] Mais samples de casos reais que testem a capacidade da engine (muitos sprites, muitos corpos, mapas grandes, muita UI).
 
 #### AR. Pesquisa de recursos e problemas comuns
