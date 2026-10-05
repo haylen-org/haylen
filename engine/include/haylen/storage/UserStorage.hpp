@@ -32,6 +32,9 @@ class UserStorage final {
   private:
     [[nodiscard]] std::filesystem::path resolve(std::string_view path) const;
 
+    // Writes the bytes to the temporary sibling and moves it over the file, and returns whether every step succeeded.
+    [[nodiscard]] bool replace(const std::filesystem::path& file, const std::filesystem::path& temporary, std::span<const std::uint8_t> bytes);
+
     std::filesystem::path root;
     std::function<void()> persist;
     std::atomic<std::uint64_t> writeCount = 0;

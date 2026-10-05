@@ -170,7 +170,7 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `appStarted` | After `source/main.lua` ran, before the first frame. | None. |
 | `appActive` | The app came back to the foreground with focus. | None. |
 | `appInactive` | The app is still visible, but the window lost the focus, the system interrupted it, such as with a phone call or another app taking the audio focus on Android, or native UI of a plugin covers it, as `haylen.appCovered()` tells. | None. |
-| `appBackground` | The app went to the background. The engine makes the files of `haylen.storage` durable right after the listeners run. | None. |
+| `appBackground` | The app went to the background. The engine makes the files of `haylen.storage` durable and saves the unsaved changes of `haylen.preferences` right after the listeners run. | None. |
 | `appLowMemory` | The platform is short of memory, after the engine dropped released assets. | None. |
 | `appQuitRequested` | The player asked to close the window, or to quit the app through its menu, Command+Q or the Dock on macOS. | None. |
 | `appStopping` | The app is about to stop, before the scenes leave and the autoloads stop. | None. |

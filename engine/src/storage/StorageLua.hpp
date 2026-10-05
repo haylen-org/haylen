@@ -23,6 +23,9 @@ class StorageLua final {
 
     [[nodiscard]] static UserStorage& getUserStorage(lua_State* L);
     [[nodiscard]] static SaveSlots& getSaveSlots(lua_State* L);
+
+    // Converts the Lua value at index to JSON that user storage can write, raising at once for what JSON text cannot hold.
+    [[nodiscard]] static core::Json readStorable(lua_State* L, int index);
     static void pushInfo(lua_State* L, const SaveSlots::Info& info);
     [[nodiscard]] static Pusher pushJson(core::Json value);
     [[nodiscard]] static Pusher pushInfos(std::vector<SaveSlots::Info> infos);

@@ -18,6 +18,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/UserStorage.hpp"
+#include "storage/StoredJson.hpp"
 
 namespace haylen::storage {
 
@@ -27,6 +28,12 @@ UserStorage& StorageLua::getUserStorage(lua_State* L) {
 
 SaveSlots& StorageLua::getSaveSlots(lua_State* L) {
     return lua::Runtime::getEngine(L).getPlugin<plugins::StoragePlugin>().getSaveSlots();
+}
+
+core::Json StorageLua::readStorable(lua_State* L, int index) {
+    core::Json value = lua::JsonConverter::read(L, index);
+    StoredJson::validate(value);
+    return value;
 }
 
 void StorageLua::pushInfo(lua_State* L, const SaveSlots::Info& info) {
@@ -55,7 +62,8 @@ int StorageLua::readJson(lua_State* L) {
 }
 
 int StorageLua::writeJson(lua_State* L) {
-    getUserStorage(L).writeText(lua::Stack::read<std::string_view>(L, 1), lua::JsonConverter::read(L, 2).dump(2));
+    const std::string_view path = lua::Stack::read<std::string_view>(L, 1);
+    getUserStorage(L).writeText(path, readStorable(L, 2).dump(2));
     return 0;
 }
 
@@ -207,7 +215,7 @@ int StorageLua::readJsonAsync(lua_State* L) {
 int StorageLua::writeJsonAsync(lua_State* L) {
     UserStorage& storage = getUserStorage(L);
     // clang-format off
-    return queue(L, false, [&storage, path = lua::Stack::read<std::string>(L, 1), value = lua::JsonConverter::read(L, 2)] {
+    return queue(L, false, [&storage, path = lua::Stack::read<std::string>(L, 1), value = readStorable(L, 2)] {
         storage.writeText(path, value.dump(2));
         return Pusher([](lua_State* state) { lua_pushboolean(state, 1); });
     });
@@ -235,9 +243,9 @@ int StorageLua::listAsync(lua_State* L) {
 
 int StorageLua::writeSlotAsync(lua_State* L) {
     SaveSlots& slots = getSaveSlots(L);
-    core::Json summary = lua_isnoneornil(L, 3) ? core::Json::object() : lua::JsonConverter::read(L, 3);
+    core::Json summary = lua_isnoneornil(L, 3) ? core::Json::object() : readStorable(L, 3);
     // clang-format off
-    return queue(L, true, [&slots, slot = lua::Stack::read<std::string>(L, 1), data = lua::JsonConverter::read(L, 2), summary = std::move(summary)] {
+    return queue(L, true, [&slots, slot = lua::Stack::read<std::string>(L, 1), data = readStorable(L, 2), summary = std::move(summary)] {
         slots.write(slot, data, summary);
         return Pusher([](lua_State* state) { lua_pushboolean(state, 1); });
     });

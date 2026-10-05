@@ -10,9 +10,9 @@ local preferences = require('haylen.preferences')
 
 Preferences are one JSON object kept in `preferences.json` in the private user storage of the app. Keys are dotted paths into nested tables, so `preferences.set('audio.volume.music', 0.5)` stores `{audio = {volume = {music = 0.5}}}` and `preferences.get('audio.volume')` returns the table `{music = 0.5}`. A key with an empty part, such as `'audio..music'` or `'.audio'`, raises `The preference key "<key>" must be a dotted path without empty parts.`.
 
-Values are converted to JSON the same way as the data of the save slots of [`haylen.storage`](storage.md): booleans, numbers, strings and tables of them are kept, and sequences become lists.
+Values are converted to JSON the same way as the data of the save slots of [`haylen.storage`](storage.md): booleans, finite numbers, UTF-8 strings and tables of them are kept, and sequences become lists. A key or a string that is not valid UTF-8 and a number that is not finite, such as `0 / 0` or `math.huge`, raise at once, so the preferences never hold a value that could not be saved.
 
-The engine loads the preferences when it starts. A damaged file is logged as a warning, the app starts with empty preferences and the next save replaces the file. Changes stay in memory until `preferences.save()`, and the engine also saves unsaved changes when the app is suspended and when it stops.
+The engine loads the preferences when it starts. A damaged file is logged as a warning, the app starts with empty preferences and the next save replaces the file. Changes stay in memory until `preferences.save()`, and the engine also saves unsaved changes when it stops and when the app is suspended, after the listeners of the `appBackground` event of [`haylen.events`](events.md) have run, so what they change is saved too.
 
 ## Functions
 
@@ -30,7 +30,7 @@ print(difficulty, volumes.music)
 
 ### preferences.set(key, value)
 
-Stores a value under the key and marks the preferences as changed. Missing tables along the path are created. Storing `nil` removes the key the same way `preferences.remove()` does, so `preferences.has()` reports `false` and `preferences.get()` returns the default again. A path that passes through a stored value that is not a table raises `The preference key "<key>" passes through "<part>", which holds a value instead of a group.`.
+Stores a value under the key and marks the preferences as changed. Missing tables along the path are created. Storing `nil` removes the key the same way `preferences.remove()` does, so `preferences.has()` reports `false` and `preferences.get()` returns the default again. A path that passes through a stored value that is not a table raises `The preference key "<key>" passes through "<part>", which holds a value instead of a group.`. A key or a string that is not valid UTF-8 raises `A key that is not valid UTF-8 cannot be converted to JSON.` or `A string that is not valid UTF-8 cannot be converted to JSON.`, and a number that is not finite raises `A number that is not finite cannot be converted to JSON.`, leaving the preferences as they were.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -88,7 +88,7 @@ preferences.save()
 
 ### preferences.load()
 
-Replaces the preferences in memory with the stored file, discarding unsaved changes, or empties them when no file exists yet. A file that is not a JSON object empties the preferences and raises `The preferences file "preferences.json" is damaged.`.
+Replaces the preferences in memory with the stored file, discarding unsaved changes, or empties them when no file exists yet. A file that is not a JSON object empties the preferences and raises `The preferences file "preferences.json" is damaged.`. A file that cannot be read raises `The storage file "preferences.json" could not be read.` and keeps the preferences in memory, unsaved changes included.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -135,8 +135,8 @@ Stores the engine preferences under these keys. It does not save them to storage
 
 | Key | Value |
 | --- | --- |
-| `audio.volume.<bus>` | The volume of every audio bus, such as `audio.volume.music`. |
-| `audio.muted.<bus>` | Whether every audio bus is muted. |
+| `audio.volume` | A table with the volume of every audio bus under the name of the bus, such as `preferences.get('audio.volume.music')` or `preferences.get('audio.volume')['voice.lines']` for a bus whose name holds a dot. Buses the app has not created keep the volume stored for them. |
+| `audio.muted` | A table with whether every audio bus is muted, under the name of the bus. |
 | `window.fullscreen` | Whether the window is fullscreen. |
 | `input.actions` | The action map, in the format of `input.saveActions()`. |
 
@@ -154,7 +154,7 @@ preferences.save()
 
 ### preferences.apply()
 
-Applies the engine preferences that are stored under the keys of `preferences.capture()`. Missing keys leave the current state alone, buses the app has not created yet are skipped, and a stored action map replaces the current one or raises the errors of `input.loadActions()` when it is invalid. A stored value of the wrong type raises `The preference "<key>" has a value of the wrong type.`. Call it at startup after creating custom buses and loading the default action map, so stored choices override the defaults.
+Applies the engine preferences that are stored under the keys of `preferences.capture()`. Missing keys leave the current state alone, buses the app has not created yet are skipped, and a stored action map replaces the current one or raises the errors of `input.loadActions()` when it is invalid. A stored value of the wrong type raises `The preference "<key>" has a value of the wrong type.`, and a bus value of the wrong type in `audio.volume` or `audio.muted` raises `The preference "<key>" has a value of the wrong type for the bus "<bus>".`. Call it at startup after creating custom buses and loading the default action map, so stored choices override the defaults.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -202,5 +202,9 @@ scene.push({
 | `The preference key "<key>" must be a dotted path without empty parts.` | The key is empty or has an empty part. |
 | `The preference key "<key>" passes through "<part>", which holds a value instead of a group.` | The function `preferences.set()` would have to replace a stored value with a group. |
 | `The preferences file "preferences.json" is damaged.` | The function `preferences.load()` found a file that is not a JSON object. |
-| `The preference "<key>" has a value of the wrong type.` | The function `preferences.apply()` found an engine key with a value of another type. |
+| `The preference "<key>" has a value of the wrong type.` | The function `preferences.apply()` or `preferences.capture()` found an engine key with a value of another type. |
+| `The preference "<key>" has a value of the wrong type for the bus "<bus>".` | The function `preferences.apply()` found a bus in `audio.volume` or `audio.muted` with a value of another type. |
 | `A <type> cannot be converted to JSON.` | The function `preferences.set()` or `preferences.get()` received a function, userdata or thread. |
+| `A string that is not valid UTF-8 cannot be converted to JSON.` | The function `preferences.set()` received a string that is not valid UTF-8. |
+| `A key that is not valid UTF-8 cannot be converted to JSON.` | The function `preferences.set()` received a key, or a table with a key, that is not valid UTF-8. |
+| `A number that is not finite cannot be converted to JSON.` | The function `preferences.set()` received NaN or an infinity. |

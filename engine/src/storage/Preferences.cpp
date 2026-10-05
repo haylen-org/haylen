@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "haylen/storage/UserStorage.hpp"
+#include "storage/StoredJson.hpp"
 
 namespace haylen::storage {
 
@@ -27,13 +28,14 @@ std::vector<std::string> Preferences::splitKey(std::string_view key) {
 }
 
 void Preferences::load() {
-    dirty = false;
     if (!userStorage.exists(path)) {
         values = core::Json::object();
+        dirty = false;
         return;
     }
 
     core::Json stored = core::Json::parse(userStorage.readText(path), nullptr, false);
+    dirty = false;
     if (stored.is_discarded() || !stored.is_object()) {
         values = core::Json::object();
         throw std::runtime_error("The preferences file \"" + path + "\" is damaged.");
@@ -78,6 +80,8 @@ void Preferences::set(std::string_view key, core::Json value) {
     }
 
     const std::vector<std::string> parts = splitKey(key);
+    StoredJson::validateKey(key);
+    StoredJson::validate(value);
     core::Json* node = &values;
     for (std::size_t index = 0; index + 1 < parts.size(); ++index) {
         core::Json& child = (*node)[parts[index]];

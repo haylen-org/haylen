@@ -97,7 +97,7 @@ audio.setBusVolume('music', 0.5)
 audio.setBusVolume('master', 0, 1.5)
 ```
 
-The module [`haylen.preferences`](lua-api/preferences.md) saves bus volumes and mute states with `preferences.capture()` under the keys `audio.volume.<bus>` and `audio.muted.<bus>`, and restores them with `preferences.apply()`. Create custom buses before calling `preferences.apply()`, because buses that do not exist yet are skipped.
+The module [`haylen.preferences`](lua-api/preferences.md) saves bus volumes and mute states with `preferences.capture()` in the groups `audio.volume` and `audio.muted`, under the name of each bus, such as `audio.volume.music`, and restores them with `preferences.apply()`. A bus whose name holds a dot keeps its own entry in the group too. Create custom buses before calling `preferences.apply()`, because buses that do not exist yet are skipped.
 
 ## Music
 

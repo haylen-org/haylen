@@ -10,6 +10,7 @@
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
 #include "storage/PreferencesLua.hpp"
 #include "storage/StorageLua.hpp"
@@ -26,13 +27,27 @@ void StoragePlugin::saveQuietly(storage::Preferences& target) noexcept {
     }
 }
 
+bool StoragePlugin::hasStoredType(const core::Json& value, core::Json::value_t type) noexcept {
+    return value.is_null() || value.type() == type || (type == core::Json::value_t::number_float && value.is_number());
+}
+
 core::Json StoragePlugin::getStoredPreference(const storage::Preferences& source, const std::string& key, core::Json::value_t type) {
     core::Json value = source.get(key);
-    const bool numeric = type == core::Json::value_t::number_float && value.is_number();
-    if (!value.is_null() && !numeric && value.type() != type) {
+    if (!hasStoredType(value, type)) {
         throw std::invalid_argument("The preference \"" + key + "\" has a value of the wrong type.");
     }
     return value;
+}
+
+core::Json StoragePlugin::getStoredBusPreference(const core::Json& group, const std::string& key, const std::string& bus, core::Json::value_t type) {
+    const auto found = group.find(bus);
+    if (found == group.end()) {
+        return nullptr;
+    }
+    if (!hasStoredType(*found, type)) {
+        throw std::invalid_argument("The preference \"" + key + "\" has a value of the wrong type for the bus \"" + bus + "\".");
+    }
+    return *found;
 }
 
 void StoragePlugin::start(core::Engine& engine) {
@@ -44,22 +59,24 @@ void StoragePlugin::start(core::Engine& engine) {
     } catch (const std::exception& error) {
         core::Log::warning("{} The app starts with default preferences, and the next save replaces the file.", error.what());
     }
-
-    // clang-format off
-    appStateConnection = engine.appStateChanged.connect([this](core::Engine::AppState value) {
-        if (value == core::Engine::AppState::Background && preferences) {
-            saveQuietly(*preferences);
-        }
-    });
-    // clang-format on
 }
 
+// The engine handles the suspension before its plugins, so the listeners of `appBackground` have run, and what they changed is saved with the rest.
+void StoragePlugin::event(core::Engine&, const platform::Event& event) {
+    if (event.type == platform::Event::Type::Suspended && preferences) {
+        saveQuietly(*preferences);
+    }
+}
+
+// The preferences are saved even when a waiting operation failed, whose error reaches the engine afterwards.
 void StoragePlugin::stop(core::Engine&) {
-    appStateConnection.disconnect();
-    runOperations(*operations);
+    const std::exception_ptr failure = runOperations(*operations);
     jobs = nullptr;
     if (preferences) {
         saveQuietly(*preferences);
+    }
+    if (failure) {
+        std::rethrow_exception(failure);
     }
 }
 
@@ -74,11 +91,18 @@ void StoragePlugin::queueOperation(std::function<void()> operation) {
         schedule = !std::exchange(operations->scheduled, true);
     }
     if (schedule) {
-        jobs->postIo([queue = operations] { runOperations(*queue); });
+        // clang-format off
+        jobs->postIo([queue = operations] {
+            if (const std::exception_ptr failure = runOperations(*queue)) {
+                std::rethrow_exception(failure);
+            }
+        });
+        // clang-format on
     }
 }
 
-void StoragePlugin::runOperations(Operations& queue) {
+std::exception_ptr StoragePlugin::runOperations(Operations& queue) {
+    std::exception_ptr failure;
     std::unique_lock lock(queue.mutex);
     queue.idle.wait(lock, [&queue] { return !queue.running; });
     queue.running = true;
@@ -86,12 +110,19 @@ void StoragePlugin::runOperations(Operations& queue) {
         std::function<void()> operation = std::move(queue.waiting.front());
         queue.waiting.pop_front();
         lock.unlock();
-        operation();
+        try {
+            operation();
+        } catch (...) {
+            if (!failure) {
+                failure = std::current_exception();
+            }
+        }
         lock.lock();
     }
     queue.running = false;
     queue.scheduled = false;
     queue.idle.notify_all();
+    return failure;
 }
 
 void StoragePlugin::installLua(core::Engine&, lua_State* L) {
@@ -113,13 +144,18 @@ storage::Preferences& StoragePlugin::getPreferences() {
     return *preferences;
 }
 
+// Bus names may hold dots, so every bus is a key of one group instead of a part of a dotted path, and buses the app has not created keep what the group stored for them.
 void StoragePlugin::captureEnginePreferences(core::Engine& engine) {
     storage::Preferences& values = getPreferences();
     audio::Mixer& mixer = engine.getAudio();
+    core::Json volumes = getStoredPreference(values, "audio.volume", core::Json::value_t::object);
+    core::Json muted = getStoredPreference(values, "audio.muted", core::Json::value_t::object);
     for (const std::string& bus : mixer.getBuses()) {
-        values.set("audio.volume." + bus, core::JsonNumber::fromFloat(mixer.getBusVolume(bus)));
-        values.set("audio.muted." + bus, mixer.isBusMuted(bus));
+        volumes[bus] = core::JsonNumber::fromFloat(mixer.getBusVolume(bus));
+        muted[bus] = mixer.isBusMuted(bus);
     }
+    values.set("audio.volume", std::move(volumes));
+    values.set("audio.muted", std::move(muted));
     values.set("window.fullscreen", engine.getWindow().isFullscreen());
     values.set("input.actions", engine.getActions().save());
 }
@@ -127,14 +163,16 @@ void StoragePlugin::captureEnginePreferences(core::Engine& engine) {
 void StoragePlugin::applyEnginePreferences(core::Engine& engine) {
     const storage::Preferences& values = getPreferences();
     audio::Mixer& mixer = engine.getAudio();
+    const core::Json volumes = getStoredPreference(values, "audio.volume", core::Json::value_t::object);
+    const core::Json muted = getStoredPreference(values, "audio.muted", core::Json::value_t::object);
     for (const std::string& bus : mixer.getBuses()) {
-        const core::Json volume = getStoredPreference(values, "audio.volume." + bus, core::Json::value_t::number_float);
+        const core::Json volume = getStoredBusPreference(volumes, "audio.volume", bus, core::Json::value_t::number_float);
         if (!volume.is_null()) {
             mixer.setBusVolume(bus, volume.get<float>());
         }
-        const core::Json muted = getStoredPreference(values, "audio.muted." + bus, core::Json::value_t::boolean);
-        if (!muted.is_null()) {
-            mixer.setBusMuted(bus, muted.get<bool>());
+        const core::Json mute = getStoredBusPreference(muted, "audio.muted", bus, core::Json::value_t::boolean);
+        if (!mute.is_null()) {
+            mixer.setBusMuted(bus, mute.get<bool>());
         }
     }
 

@@ -58,7 +58,7 @@ end
 
 ### storage.writeText(path, text)
 
-Writes `text` to a file, replacing any previous content and creating missing folders. The data goes to a temporary sibling file first and then replaces the target, so a crash never leaves a half-written file behind.
+Writes `text` to a file, replacing any previous content and creating missing folders. The data goes to a temporary sibling file first and then replaces the target, so a crash never leaves a half-written file behind. A write that fails, such as over a folder or inside a path that names a file, raises `The storage file "<path>" could not be written.` and leaves the previous content and no temporary file behind.
 
 ```lua
 local storage = require('haylen.storage')
@@ -82,7 +82,7 @@ print('day', progress.day)
 
 ### storage.writeJson(path, value)
 
-Converts `value` to JSON and writes it with two-space indentation, with the same atomic write as `storage.writeText`. Sequences become arrays, other tables become objects, and an empty table becomes an empty object. Numeric keys of non-sequence tables become strings. Functions, userdata such as `Vec2`, threads and cyclic tables cannot be converted and raise errors such as `A function cannot be converted to JSON.` or `A userdata cannot be converted to JSON.`
+Converts `value` to JSON and writes it with two-space indentation, with the same atomic write as `storage.writeText`. Sequences become arrays, other tables become objects, and an empty table becomes an empty object. Numeric keys of non-sequence tables become strings. Functions, userdata such as `Vec2`, threads and cyclic tables cannot be converted and raise errors such as `A function cannot be converted to JSON.` or `A userdata cannot be converted to JSON.`, and so do strings and keys that are not valid UTF-8 and numbers that are not finite, such as `0 / 0` or `math.huge`, which JSON text cannot hold.
 
 ```lua
 local storage = require('haylen.storage')
@@ -218,11 +218,11 @@ end)
 
 Save slots hold the progress of the app, with a small summary of each slot for a load menu. Each slot is a JSON file at `saves/<slot>.json` among the other files of the app, so `storage.list('saves')` lists them too. A slot holds the app data, a summary table for load menus and the time it was saved. Slot names use 1 to 64 letters, digits, dashes or underscores, such as `'slot-1'` or `'auto_save'`, and other names raise `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.`. Every write and remove reaches the disk at once, including the browser storage of web builds.
 
-Data and summaries are converted to JSON. Booleans, numbers, strings and tables of them are kept. A table whose keys are exactly 1 to its length becomes a list, and any other table becomes an object whose keys come back as strings, so `{[1] = 'a', [3] = 'c'}` reads back as `{['1'] = 'a', ['3'] = 'c'}`. An empty table reads back as an empty table. Functions, userdata and threads raise an error, and so do tables nested deeper than 128 levels, which includes tables that contain themselves.
+Data and summaries are converted to JSON. Booleans, finite numbers, UTF-8 strings and tables of them are kept. A table whose keys are exactly 1 to its length becomes a list, and any other table becomes an object whose keys come back as strings, so `{[1] = 'a', [3] = 'c'}` reads back as `{['1'] = 'a', ['3'] = 'c'}`. An empty table reads back as an empty table. Functions, userdata and threads raise an error, and so do tables nested deeper than 128 levels, which includes tables that contain themselves, strings and keys that are not valid UTF-8 and numbers that are not finite, such as NaN or infinity.
 
 ### storage.writeSlot(slot, data, summary)
 
-Writes `data` to the slot with the current time, replacing what the slot held. The optional `summary` is a small table shown by load menus, such as the level or the play time, and defaults to an empty table. A summary that is not a table with string keys raises `A save summary must be a JSON object.`.
+Writes `data` to the slot with the current time, replacing what the slot held. The optional `summary` is a small table shown by load menus, such as the level or the play time, and defaults to an empty table. A summary that is not a table, or that is a list, raises `A save summary must be a JSON object.`. Numeric keys of a summary that is not a list come back as strings, like those of the data.
 
 ```lua
 local storage = require('haylen.storage')
@@ -310,7 +310,7 @@ scene.push({
 
 ### storage.writeSlotAsync(slot, data, summary), storage.removeSlotAsync(slot)
 
-Return promises for what `storage.writeSlot` and `storage.removeSlot` do. The data and summary are converted when the function is called, the file is written or removed on the I/O pool, and the promise settles once the change is durable, including the browser storage of web builds. The function `storage.writeSlotAsync` resolves with `true`, and `storage.removeSlotAsync` with whether the slot existed. A value that cannot become JSON raises at once, and a bad slot name or a summary that is not a table with string keys rejects the promise.
+Return promises for what `storage.writeSlot` and `storage.removeSlot` do. The data and summary are converted when the function is called, the file is written or removed on the I/O pool, and the promise settles once the change is durable, including the browser storage of web builds. The function `storage.writeSlotAsync` resolves with `true`, and `storage.removeSlotAsync` with whether the slot existed. A value that cannot become JSON raises at once, and a bad slot name or a summary that is not a table, or that is a list, rejects the promise.
 
 ```lua
 local async = require('async')
@@ -366,7 +366,10 @@ scene.push({
 | Message | Cause |
 | --- | --- |
 | `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.` | The slot name is empty, too long or has other characters. |
-| `A save summary must be a JSON object.` | The summary is not a table with string keys. |
+| `A save summary must be a JSON object.` | The summary is not a table, or it is a list. |
 | `The save slot "<slot>" is damaged.` | The slot file is not valid JSON, misses its data, summary or time, or holds a summary that is not an object or a time that is not an integer. |
 | `A <type> cannot be converted to JSON.` | The data or summary holds a function, userdata or thread. |
+| `A string that is not valid UTF-8 cannot be converted to JSON.` | The data or summary holds a string that is not valid UTF-8. |
+| `A key that is not valid UTF-8 cannot be converted to JSON.` | The data or summary holds a table with a key that is not valid UTF-8. |
+| `A number that is not finite cannot be converted to JSON.` | The data or summary holds NaN or an infinity. |
 | `Value is nested too deeply to convert to JSON.` | The data or summary nests tables deeper than 128 levels or contains itself. |

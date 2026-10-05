@@ -1,13 +1,18 @@
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/Preferences.hpp"
@@ -61,6 +66,26 @@ TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
     }
     EXPECT_EQ(error, "The storage file \"save.json\" could not be written.");
     EXPECT_EQ(storage.readText("save.json"), "good");
+}
+
+TEST(UserStorageTest, FailedWritesLeaveNoTemporaryFileAndNameTheRelativePath) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    storage.writeText("slot/inside.txt", "kept");
+    storage.writeText("notes.txt", "kept");
+
+    // A folder with files cannot be replaced by a file, and a file cannot hold a folder.
+    for (const std::string& path : {std::string("slot"), std::string("notes.txt/deeper")}) {
+        std::string error;
+        try {
+            storage.writeText(path, "lost");
+        } catch (const std::runtime_error& failure) {
+            error = failure.what();
+        }
+        EXPECT_EQ(error, "The storage file \"" + path + "\" could not be written.");
+    }
+    EXPECT_EQ(std::distance(std::filesystem::directory_iterator(directory.getPath()), std::filesystem::directory_iterator()), 2) << "No temporary file stays next to the folder.";
+    EXPECT_EQ(storage.readText("slot/inside.txt"), "kept");
 }
 
 TEST(SaveSlotsTest, WritesReadsListsAndRemovesSlots) {
@@ -165,6 +190,41 @@ TEST(PreferencesTest, StoresDottedKeysAndPersists) {
     EXPECT_EQ(reloaded.getValues(), core::Json::object());
 }
 
+TEST(PreferencesTest, RefusesValuesThatJsonCannotHold) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    Preferences preferences(storage);
+    EXPECT_THROW(preferences.set("name", std::string("\xFF")), std::invalid_argument);
+    EXPECT_THROW(preferences.set("\xFF", 1), std::invalid_argument);
+    EXPECT_THROW(preferences.set("list", core::Json::array({1.0, std::numeric_limits<double>::infinity()})), std::invalid_argument);
+    EXPECT_THROW(preferences.set("group", core::Json{{"\xFF", 1}}), std::invalid_argument);
+    EXPECT_FALSE(preferences.isDirty());
+
+    preferences.set("volume", 0.5);
+    preferences.save();
+    EXPECT_EQ(storage.readText("preferences.json"), "{\n  \"volume\": 0.5\n}");
+}
+
+TEST(PreferencesTest, KeepsUnsavedChangesWhenTheFileCannotBeRead) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    storage.writeText("preferences.json", "{}");
+    Preferences preferences(storage);
+    preferences.set("volume", 0.5);
+
+    // A file without read permission fails to read, except on platforms or for users that read it anyway.
+    const std::filesystem::path file = directory.getPath() / "preferences.json";
+    std::filesystem::permissions(file, std::filesystem::perms::none);
+    if (std::ifstream(file).is_open()) {
+        std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
+        GTEST_SKIP() << "This platform reads files without read permission.";
+    }
+    EXPECT_THROW(preferences.load(), std::runtime_error);
+    std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
+    EXPECT_TRUE(preferences.isDirty());
+    EXPECT_EQ(preferences.get("volume"), 0.5);
+}
+
 TEST(StorageLuaTest, ReadsAndWritesUserFiles) {
     test::EngineFixture fixture;
     fixture.runLua("storage = require('haylen.storage')");
@@ -265,6 +325,54 @@ TEST(StorageLuaTest, SavesSlotsPreferencesAndEngineState) {
     EXPECT_NE(fixture.lua("preferences.load()").find("The preferences file \"preferences.json\" is damaged."), std::string::npos);
 }
 
+TEST(StorageLuaTest, SavesWhatTheListenersOfTheBackgroundChange) {
+    test::EngineFixture fixture;
+    fixture.runLua("local preferences = require('haylen.preferences') require('haylen.events').on('appBackground', function() preferences.set('session.screen', 'map') end)");
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    ASSERT_TRUE(fixture.engine().getStorage().exists("preferences.json"));
+    EXPECT_NE(fixture.engine().getStorage().readText("preferences.json").find("\"screen\": \"map\""), std::string::npos);
+}
+
+TEST(StorageLuaTest, RefusesValuesThatJsonCannotHold) {
+    test::EngineFixture fixture;
+    fixture.runLua("storage = require('haylen.storage') preferences = require('haylen.preferences') invalid = string.char(255)");
+    EXPECT_EQ(fixture.lua("preferences.set('name', invalid)"), "error: test:1: A string that is not valid UTF-8 cannot be converted to JSON.");
+    EXPECT_EQ(fixture.lua("preferences.set('ratio', 0 / 0)"), "error: test:1: A number that is not finite cannot be converted to JSON.");
+    EXPECT_EQ(fixture.lua("preferences.set('volume', 0.5) preferences.save() return tostring(preferences.has('ratio')) .. ' ' .. preferences.get('volume')"), "false 0.5");
+    EXPECT_NE(fixture.engine().getStorage().readText("preferences.json").find("\"volume\": 0.5"), std::string::npos);
+
+    EXPECT_EQ(fixture.lua("storage.writeJson('bad.json', {name = invalid})"), "error: test:1: A string that is not valid UTF-8 cannot be converted to JSON.");
+    EXPECT_EQ(fixture.lua("storage.writeJson('bad.json', {[invalid] = true})"), "error: test:1: A key that is not valid UTF-8 cannot be converted to JSON.");
+    EXPECT_EQ(fixture.lua("storage.writeJsonAsync('bad.json', {math.huge})"), "error: test:1: A number that is not finite cannot be converted to JSON.");
+    EXPECT_EQ(fixture.lua("storage.writeSlot('slot', {x = 0 / 0})"), "error: test:1: A number that is not finite cannot be converted to JSON.");
+    EXPECT_EQ(fixture.lua("storage.writeSlotAsync('slot', {}, {title = invalid})"), "error: test:1: A string that is not valid UTF-8 cannot be converted to JSON.");
+    EXPECT_FALSE(fixture.engine().getStorage().exists("bad.json"));
+    EXPECT_FALSE(fixture.engine().getStorage().exists("saves/slot.json"));
+}
+
+TEST(StorageLuaTest, KeepsBusesWhoseNamesHoldDotsApart) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        preferences = require('haylen.preferences')
+        audio = require('haylen.audio')
+        audio.createBus('voice')
+        audio.createBus('voice.lines')
+        audio.setBusVolume('voice', 0.5)
+        audio.setBusVolume('voice.lines', 0.25)
+        audio.setBusMuted('voice.lines', true)
+        preferences.capture()
+        audio.setBusVolume('voice', 1)
+        audio.setBusVolume('voice.lines', 1)
+        audio.setBusMuted('voice.lines', false)
+        preferences.apply()
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return audio.busVolume('voice') .. ' ' .. audio.busVolume('voice.lines') .. ' ' .. tostring(audio.busMuted('voice.lines'))"), "0.5 0.25 true");
+    EXPECT_EQ(fixture.lua("return preferences.get('audio.volume')['voice.lines']"), "0.25");
+    EXPECT_NE(fixture.lua("preferences.set('audio.muted', {voice = 'yes'}) preferences.apply()").find("The preference \"audio.muted\" has a value of the wrong type for the bus \"voice\"."), std::string::npos);
+}
+
 TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
     test::EngineFixture fixture;
     const int persisted = fixture.host().getPersistCount();
@@ -313,6 +421,20 @@ TEST(StorageLuaTest, FinishesQueuedOperationsWhenTheAppStops) {
     plugin.stop(fixture.engine());
     EXPECT_EQ(plugin.getSaveSlots().list().size(), 50U);
     EXPECT_EQ(plugin.getSaveSlots().read("slot-50"), (core::Json{{"index", 50}}));
+}
+
+TEST(StoragePluginTest, KeepsRunningOperationsAfterOneFails) {
+    test::EngineFixture fixture;
+    plugins::StoragePlugin& plugin = fixture.engine().getPlugin<plugins::StoragePlugin>();
+    std::atomic<bool> ran = false;
+    plugin.queueOperation([] { throw std::runtime_error("The operation failed on purpose."); });
+    plugin.queueOperation([&ran] { ran = true; });
+    ASSERT_TRUE(fixture.frameUntil([&] { return ran && fixture.engine().getError() != nullptr; }));
+    EXPECT_NE(fixture.engine().getError()->getMessage().find("The operation failed on purpose."), std::string::npos);
+
+    std::atomic<bool> later = false;
+    plugin.queueOperation([&later] { later = true; });
+    EXPECT_TRUE(fixture.frameUntil([&] { return later.load(); }));
 }
 
 TEST(StoragePluginTest, RequiresAStartedEngine) {

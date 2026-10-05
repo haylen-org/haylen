@@ -441,6 +441,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/storage/PreferencesLua.cpp
   src/storage/SaveSlots.cpp
   src/storage/StorageLua.cpp
+  src/storage/StoredJson.cpp
   src/storage/UserStorage.cpp
   src/text/BidiParagraph.cpp
   src/text/BitmapFont.cpp

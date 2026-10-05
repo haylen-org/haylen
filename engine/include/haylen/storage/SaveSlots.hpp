@@ -27,6 +27,7 @@ class SaveSlots final {
 
     explicit SaveSlots(UserStorage& storage, std::string folder = "saves", Clock now = {});
 
+    // Throws `std::invalid_argument` for a bad slot name, a summary that is not an object, and a string or key that is not valid UTF-8 or a number that is not finite, which JSON cannot hold.
     void write(std::string_view slot, const core::Json& data, const core::Json& summary = core::Json::object());
     [[nodiscard]] std::optional<core::Json> read(std::string_view slot) const;
     [[nodiscard]] std::optional<Info> getInfo(std::string_view slot) const;

@@ -52,27 +52,39 @@ std::string UserStorage::readText(std::string_view path) const {
     return std::string(bytes.begin(), bytes.end());
 }
 
+// A failed write leaves the previous file and no temporary file behind, and its error names the relative path rather than the folder of the user.
 void UserStorage::write(std::string_view path, std::span<const std::uint8_t> bytes) {
     const std::filesystem::path file = resolve(path);
-    std::filesystem::create_directories(file.parent_path());
 
     // The data goes to a sibling file first so a crash mid-write never leaves a truncated save behind, and each write has a sibling of its own, so writes of the same file on two threads never mix.
     std::filesystem::path temporary = file;
     temporary += "." + std::to_string(++writeCount) + ".tmp";
+    if (!replace(file, temporary, bytes)) {
+        std::error_code ignored;
+        std::filesystem::remove(temporary, ignored);
+        throw std::runtime_error("The storage file \"" + std::string(path) + "\" could not be written.");
+    }
+}
+
+bool UserStorage::replace(const std::filesystem::path& file, const std::filesystem::path& temporary, std::span<const std::uint8_t> bytes) {
+    std::error_code error;
+    std::filesystem::create_directories(file.parent_path(), error);
+    if (error) {
+        return false;
+    }
     std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
     stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
 
     // Closing flushes the last buffered bytes, so only a stream that also closed cleanly may replace the file.
     stream.close();
     if (!stream) {
-        std::error_code ignored;
-        std::filesystem::remove(temporary, ignored);
-        throw std::runtime_error("The storage file \"" + std::string(path) + "\" could not be written.");
+        return false;
     }
 
     // Windows refuses to replace or remove a file that another thread is replacing or reading, so those steps wait for each other.
     const std::scoped_lock lock(mutex);
-    std::filesystem::rename(temporary, file);
+    std::filesystem::rename(temporary, file, error);
+    return !error;
 }
 
 void UserStorage::writeText(std::string_view path, std::string_view text) {

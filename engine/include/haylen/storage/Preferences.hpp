@@ -15,12 +15,13 @@ class Preferences final {
   public:
     explicit Preferences(UserStorage& storage, std::string file = "preferences.json");
 
-    // Replaces the values in memory with the stored file, or with nothing when there is no file yet.
+    // Replaces the values in memory with the stored file, or with nothing when there is no file yet. A file that cannot be read throws and keeps the values in memory.
     void load();
     void save();
 
     [[nodiscard]] bool has(std::string_view key) const;
     [[nodiscard]] core::Json get(std::string_view key, const core::Json& defaultValue = nullptr) const;
+    // Throws `std::invalid_argument` for a key or a string that is not valid UTF-8 and for a number that is not finite, which JSON cannot hold.
     void set(std::string_view key, core::Json value);
     bool remove(std::string_view key);
     void clear();

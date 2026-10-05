@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "haylen/storage/UserStorage.hpp"
+#include "storage/StoredJson.hpp"
 
 namespace haylen::storage {
 
@@ -32,6 +33,8 @@ void SaveSlots::write(std::string_view slot, const core::Json& data, const core:
     if (!summary.is_object()) {
         throw std::invalid_argument("A save summary must be a JSON object.");
     }
+    StoredJson::validate(data);
+    StoredJson::validate(summary);
     const core::Json saved{{"savedAt", clock()}, {"summary", summary}, {"data", data}};
     userStorage.writeText(pathOf(slot), saved.dump());
 }
@@ -42,7 +45,17 @@ std::optional<core::Json> SaveSlots::document(std::string_view slot) const {
         return std::nullopt;
     }
 
-    core::Json saved = core::Json::parse(userStorage.readText(path), nullptr, false);
+    // Another thread may remove the slot after the check, which leaves it absent, while a slot that is still there failed to read.
+    std::string text;
+    try {
+        text = userStorage.readText(path);
+    } catch (const std::runtime_error&) {
+        if (userStorage.exists(path)) {
+            throw;
+        }
+        return std::nullopt;
+    }
+    core::Json saved = core::Json::parse(text, nullptr, false);
     const bool valid = saved.is_object() && saved.contains("data") && saved.contains("summary") && saved.at("summary").is_object() && saved.contains("savedAt") && saved.at("savedAt").is_number_integer();
     if (!valid) {
         throw std::runtime_error("The save slot \"" + std::string(slot) + "\" is damaged.");
