@@ -31,6 +31,7 @@ TEST_F(AudioStreamTest, PlaysAsAVoiceResampledAndSilentWhereSamplesAreMissing) {
     mixer.update(1.0F / 60.0F);
     EXPECT_TRUE(mixer.isActive(voice)) << "A stream never ends by itself.";
     EXPECT_GT(mixer.getCursor(voice), 0.0F);
+    EXPECT_THROW(mixer.setCursor(voice, 0.0F), std::invalid_argument);
 
     stream->push(std::vector<float>(toFrames(0.1F) / 2, 0.25F));
     EXPECT_NEAR(settledPeak(1024), 0.25F, 0.01F);

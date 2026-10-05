@@ -1,4 +1,4 @@
--- Music: two streamed tracks that crossfade over the chosen time, looping or played once, a volume that `playMusic` changes on the track already playing, the pause and resume of the music through its voice and a graph of the fades as the calls asked for them.
+-- Music: two streamed tracks that crossfade over the chosen time, looping or played once and started partway, a volume that `playMusic` changes on the track already playing, the pause, resume and cursor of the music through its voice and a graph of the fades as the calls asked for them.
 local audio = require('haylen.audio')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -12,10 +12,10 @@ local Music = haylen.class('Music', AudioTest)
 
 local kHistory = 14
 local kColors = {calm = Test.accent, lively = Test.warm}
-local kCode = "local music = audio.playMusic(track, {fade = 2, loop = true, volume = 0.8})\naudio.pause(music)\naudio.resume(music)\naudio.stopMusic(2)\naudio.music() == track"
+local kCode = "local music = audio.playMusic(track, {fade = 2, loop = true, volume = 0.8, startAt = 0})\naudio.pause(music)\naudio.resume(music)\naudio.setCursor(music, audio.cursor(music) + 10)\naudio.stopMusic(2)\naudio.music() == track"
 
 function Music:enter()
-    self.fade, self.loop, self.volume = 2, true, 0.8
+    self.fade, self.loop, self.volume, self.startAt = 2, true, 0.8, 0
     self.clock = 0
     self.segments = {}
     self.pauses = {}
@@ -27,11 +27,16 @@ function Music:enter()
             ui.button{id = 'lively', text = 'Play the ' .. sounds.tracks[2].text:lower(), variant = 'primary', onClick = function() self:play(sounds.tracks[2]) end},
             ui.formField{label = 'Crossfade and stop seconds', ui.slider{id = 'fade', min = 0, max = 5, step = 0.25, value = self.fade, showValue = true, onChange = function(event) self.fade = event.value end}},
             ui.toggle{id = 'loop', text = 'Loop the next track', checked = true, onChange = function(event) self.loop = event.checked end},
+            ui.formField{label = 'Start the next track at seconds', ui.slider{id = 'startAt', min = 0, max = 20, step = 1, value = self.startAt, showValue = true, onChange = function(event) self.startAt = event.value end}},
             ui.formField{label = 'Track volume', ui.slider{id = 'volume', min = 0, max = 1, step = 0.05, value = self.volume, showValue = true, onChange = function(event) self:setVolume(event.value) end}},
             ui.row{gap = 12,
                 ui.button{id = 'pause', text = 'Pause', onClick = function() self:pause() end},
                 ui.button{id = 'resume', text = 'Resume', onClick = function() self:resume() end},
                 ui.button{id = 'stop', text = 'Stop', variant = 'destructive', onClick = function() self:stop() end},
+            },
+            ui.row{gap = 12,
+                ui.button{id = 'rewind', text = 'Back 10 seconds', onClick = function() self:seek(-10) end},
+                ui.button{id = 'forward', text = 'Forward 10 seconds', onClick = function() self:seek(10) end},
             },
             ui.label{text = 'Asking for the track that already plays keeps it going on the same voice and only changes its volume, which the volume slider uses. Pause and Resume hold only the music, through the voice that "playMusic" returns.', color = 'textMuted', font = 'caption'},
             ui.label{text = kCode, font = 'monospace'},
@@ -68,7 +73,7 @@ end
 
 function Music:play(track)
     local current = self:current()
-    self.voice = audio.playMusic(sounds.track(track.path), {fade = self.fade, loop = self.loop, volume = self.volume})
+    self.voice = audio.playMusic(sounds.track(track.path), {fade = self.fade, loop = self.loop, volume = self.volume, startAt = self.startAt})
     if current and current.track == track then
         return
     end
@@ -100,6 +105,13 @@ function Music:resume()
     end
 end
 
+-- Moves the music through its voice, which keeps playing from the new place, or waits there while it is paused.
+function Music:seek(seconds)
+    if self:current() then
+        audio.setCursor(self.voice, audio.cursor(self.voice) + seconds)
+    end
+end
+
 function Music:stop()
     audio.stopMusic(self.fade)
     self:endCurrent(self.fade)
@@ -123,7 +135,8 @@ function Music:update(dt)
         end
     end
     local paused = self.voice ~= nil and audio.paused(self.voice)
-    self:status(string.format('The call "audio.music()" returns %s, %s, voices %d, music bus volume %.2f', name, paused and 'paused' or 'not paused', audio.voiceCount(), audio.busVolume('music')))
+    local cursor = self.voice and audio.active(self.voice) and audio.cursor(self.voice) or 0
+    self:status(string.format('The call "audio.music()" returns %s, %s at %.1f seconds, voices %d, music bus volume %.2f', name, paused and 'paused' or 'not paused', cursor, audio.voiceCount(), audio.busVolume('music')))
 end
 
 -- The volume the calls asked for at a time: the fade in, the level set last and the fade out.

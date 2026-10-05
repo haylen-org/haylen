@@ -47,7 +47,7 @@ local crackle = audio.play(assets.load('audio/ambient/fire_loop.ogg'), {bus = 'a
 audio.stop(crackle, 0.5)
 ```
 
-The options are `bus`, `volume`, `pitch`, `pitchVariation`, `pan`, `loop`, `fadeIn`, `startAt`, the world position `x` and `y`, the `processMode` that decides whether the voice plays while the game is paused, and the `effects` that process it. After it starts, a voice is controlled by id with `audio.stop(voice, fadeOut)`, `audio.pause`, `audio.resume`, `audio.setVolume`, `audio.setPitch`, `audio.setPan`, `audio.setPosition`, `audio.addEffect` and `audio.removeEffect`, and read with `audio.active`, `audio.paused`, `audio.cursor`, `audio.pitch`, `audio.processMode` and `audio.effects`.
+The options are `bus`, `volume`, `pitch`, `pitchVariation`, `pan`, `loop`, `fadeIn`, `startAt`, the world position `x` and `y`, the `processMode` that decides whether the voice plays while the game is paused, and the `effects` that process it. After it starts, a voice is controlled by id with `audio.stop(voice, fadeOut)`, `audio.pause`, `audio.resume`, `audio.setCursor`, `audio.setVolume`, `audio.setPitch`, `audio.setPan`, `audio.setPosition`, `audio.addEffect` and `audio.removeEffect`, and read with `audio.active`, `audio.paused`, `audio.cursor`, `audio.pitch`, `audio.processMode` and `audio.effects`.
 
 - A voice id stays safe after the voice ends. Calls with the id of a finished voice do nothing, and `audio.active` returns `false`, so an app never has to check a voice before stopping it.
 - A paused voice keeps its cursor and still counts as active, while a stopped voice stops counting as active at once, even while it fades out.

@@ -281,6 +281,34 @@ TEST_F(MixerTest, ControlsMusicThroughItsVoice) {
     EXPECT_EQ(mixer.getMusic(), second);
 }
 
+// A player moves through a track with the cursor of its voice, which stays within the sound, and a music track starts where the app asks.
+TEST_F(MixerTest, MovesTheCursorOfAVoice) {
+    const Mixer::VoiceId voice = mixer.play(makeTone(toFrames(1.0F)));
+    mixer.setCursor(voice, 0.5F);
+    peak(toFrames(0.1F));
+    EXPECT_NEAR(mixer.getCursor(voice), 0.6F, 0.02F);
+    mixer.setCursor(voice, -2.0F);
+    peak(toFrames(0.1F));
+    EXPECT_NEAR(mixer.getCursor(voice), 0.1F, 0.02F);
+    mixer.setCursor(voice, 5.0F);
+    peak(toFrames(0.1F));
+    mixer.update(1.0F / 60.0F);
+    EXPECT_FALSE(mixer.isActive(voice)) << "A cursor past the end ends the sound.";
+    mixer.setCursor(voice, 0.0F);
+    EXPECT_THROW(mixer.setCursor(voice, std::numeric_limits<float>::quiet_NaN()), std::invalid_argument);
+
+    const Mixer::VoiceId music = mixer.playMusic(makeTone(toFrames(2.0F)), {.fade = 0.0F, .startAt = 1.5F});
+    peak(toFrames(0.1F));
+    EXPECT_NEAR(mixer.getCursor(music), 1.6F, 0.02F);
+    mixer.setPaused(music, true);
+    mixer.setCursor(music, 0.5F);
+    peak(toFrames(0.1F));
+    EXPECT_NEAR(mixer.getCursor(music), 0.5F, 0.02F);
+    mixer.setPaused(music, false);
+    peak(toFrames(0.1F));
+    EXPECT_NEAR(mixer.getCursor(music), 0.6F, 0.02F);
+}
+
 TEST_F(MixerTest, FailedPlaysLeaveEveryVoicePlaying) {
     const Sound track = makeTone(toFrames(1.0F));
     const Mixer::VoiceId music = mixer.playMusic(track, {.fade = 0.0F});
@@ -414,7 +442,7 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return audio.active(voice)"), "false");
 
-    fixture.runLua("music = audio.playMusic(theme, {volume = 0.8, fade = 0, loop = false, bus = 'music'}) audio.pause(music)");
+    fixture.runLua("music = audio.playMusic(theme, {volume = 0.8, fade = 0, loop = false, bus = 'music', startAt = 0.01}) audio.setCursor(music, 0.02) audio.pause(music)");
     EXPECT_EQ(fixture.lua("return tostring(audio.music() == theme) .. ' ' .. tostring(audio.paused(music)) .. ' ' .. tostring(audio.playMusic(theme) == music)"), "true true true");
     fixture.runLua("audio.stopMusic(0)");
     fixture.frames(1);
@@ -431,6 +459,7 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     EXPECT_NE(fixture.lua("audio.play(hit, {bus = 'missing'})").find("The audio bus \"missing\" does not exist."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play(hit, {pitch = 0})").find("Audio needs a finite pitch above 0."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.setVolume(1, 0 / 0)").find("Audio needs a finite volume."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.setCursor(1, 0 / 0)").find("Audio needs a finite cursor."), std::string::npos);
     EXPECT_NE(fixture.lua("return hit.loudness").find("Sound\" has no member \"loudness\""), std::string::npos);
 }
 

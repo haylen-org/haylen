@@ -255,6 +255,20 @@ float Mixer::getCursor(VoiceId id) const {
     return seconds;
 }
 
+void Mixer::setCursor(VoiceId id, float seconds) {
+    requireFinite(seconds, "cursor");
+    MixerState::Voice* voice = state->findVoice(id);
+    if (voice == nullptr) {
+        return;
+    }
+    if (voice->stream) {
+        throw std::invalid_argument("The voice of a live audio stream has no cursor to move.");
+    }
+    float length = 0.0F;
+    ma_sound_get_length_in_seconds(&voice->handle, &length);
+    ma_sound_seek_to_second(&voice->handle, std::max(0.0F, length > 0.0F ? std::min(seconds, length) : seconds));
+}
+
 void Mixer::stopAll(float fadeOutSeconds) {
     for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {
         stop(voice->id, fadeOutSeconds);
@@ -318,7 +332,7 @@ Mixer::VoiceId Mixer::playMusic(const Sound& sound, const MusicOptions& options)
     }
 
     // The next track starts before the current one fades out, so a track that cannot play leaves the current one playing.
-    const VoiceId track = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade});
+    const VoiceId track = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade, .startAt = options.startAt});
     stop(state->musicVoice, options.fade);
     state->musicVoice = track;
     state->findVoice(track)->music = true;

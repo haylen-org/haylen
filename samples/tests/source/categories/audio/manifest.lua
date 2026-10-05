@@ -4,7 +4,7 @@ return {
     title = 'Audio',
     description = 'Music, effects, buses, filters, positional sound, interruptions and many voices with sounds synthesized for these tests.',
     tests = {
-        {code = 'AUD-001', title = 'Music', description = 'Two streamed tracks with crossfades of any length, looping or played once, paused and resumed.', module = 'music'},
+        {code = 'AUD-001', title = 'Music', description = 'Two streamed tracks with crossfades of any length, looping or played once, started partway, paused, resumed and moved through with the cursor of their voice.', module = 'music'},
         {code = 'AUD-002', title = 'One-shot effects', description = 'Volume, pitch, pitch variation, pan, fades and a limit of voices per sound.', module = 'one-shots'},
         {code = 'AUD-003', title = 'Buses', description = 'The bus tree with volumes, mutes and process modes, and what the game pause stops.', module = 'buses'},
         {code = 'AUD-004', title = 'Effects', description = 'Every filter, the delay and the reverb on a bus or on a voice, with tweened parameters.', module = 'effects'},

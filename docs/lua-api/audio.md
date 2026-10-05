@@ -289,6 +289,18 @@ local speech = audio.play(assets.load('voice/line_01.ogg'))
 print(audio.cursor(speech))
 ```
 
+### audio.setCursor(voice, seconds)
+
+Moves the playback of a voice to a time in seconds, such as when a player drags the progress bar of a track. The time stays between 0 and the length of the sound, and a voice that does not loop ends once its cursor reaches the end. A paused voice keeps the new cursor and plays from it when it resumes, and the id of a finished voice does nothing. A time that is not finite raises `Audio needs a finite cursor.`, and the voice of a live audio stream, which plays its samples as they arrive, raises `The voice of a live audio stream has no cursor to move.`.
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+
+local track = audio.playMusic(assets.load('music/album_03.ogg', 'sound', {stream = true}), {loop = false})
+audio.setCursor(track, 95)
+```
+
 ### audio.stopAll(fadeOut)
 
 Stops every voice, including music, fading them out over `fadeOut` seconds when given. The fade defaults to 0.
@@ -460,7 +472,7 @@ One music track plays at a time on its own voice. When the voice limit is reache
 
 ### audio.playMusic(sound, options)
 
-Starts a music track, crossfades from the previous one and returns the voice id of the track. The voice works with every voice function, so `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track. When the requested track is already playing or paused, it keeps its voice, which the call returns, and only its volume changes. A paused track that the next track replaces stops without sounding again, and the next track plays. A track that cannot play, such as one for an unknown bus, raises the errors of [`audio.play`](#audioplaysound-options) and leaves the current track playing. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
+Starts a music track, crossfades from the previous one and returns the voice id of the track. The voice works with every voice function, so `audio.pause` and `audio.resume` pause the music alone, `audio.setCursor` moves through the track, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track. When the requested track is already playing or paused, it keeps its voice, which the call returns, and only its volume changes. A paused track that the next track replaces stops without sounding again, and the next track plays. A track that cannot play, such as one for an unknown bus, raises the errors of [`audio.play`](#audioplaysound-options) and leaves the current track playing. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -468,6 +480,7 @@ Starts a music track, crossfades from the previous one and returns the voice id 
 | `volume` | number | `1` | Volume of the track. |
 | `fade` | number | `1` | Seconds of the crossfade, used to fade the old track out and the new one in. |
 | `loop` | boolean | `true` | Repeats the track. |
+| `startAt` | number | `0` | Seconds into the track where it starts, such as where the player left a song. |
 
 ```lua
 local assets = require('haylen.assets')
@@ -892,7 +905,9 @@ end)
 | `Audio needs a finite pitch above 0.` | The function `audio.play()` or `audio.setPitch()` received a pitch of 0 or less or one that is not finite. |
 | `Audio needs a finite pan.` | The function `audio.play()` or `audio.setPan()` received a pan that is not finite. |
 | `Audio needs a finite fade-in.` | The function `audio.play()` received a `fadeIn` that is not finite. |
-| `Audio needs a finite start time.` | The function `audio.play()` received a `startAt` that is not finite. |
+| `Audio needs a finite start time.` | The function `audio.play()` or `audio.playMusic()` received a `startAt` that is not finite. |
+| `Audio needs a finite cursor.` | The function `audio.setCursor()` received a time that is not finite. |
+| `The voice of a live audio stream has no cursor to move.` | The function `audio.setCursor()` received the voice of an audio stream. |
 | `Audio needs a finite position.` | The function `audio.play()`, `audio.setPosition()` or `audio.setListener()` received a coordinate that is not finite. |
 | `Audio needs a finite bus volume.` | The function `audio.setBusVolume()` received a volume that is not finite. |
 | `Audio needs a finite spatialization setting.` | The function `audio.setSpatialization()` received a field that is not finite. |

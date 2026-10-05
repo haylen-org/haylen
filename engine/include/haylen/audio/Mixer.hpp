@@ -77,6 +77,7 @@ class Mixer final {
         float volume = 1.0F;
         float fade = 1.0F;
         bool loop = true;
+        float startAt = 0.0F;
     };
 
     // How positional voices fade, pan and shift in pitch with their place relative to the listener. The fade models are those of OpenAL between the minimum and the maximum distance: linear reaches silence at the maximum distance with a rolloff of 1, inverse and exponential keep fading more slowly and stop at the maximum distance. A voice pans by its horizontal offset over the pan distance, and a Doppler factor above 0 shifts the pitch of voices that move toward or away from the listener, with the speed of sound in world units per second.
@@ -144,6 +145,9 @@ class Mixer final {
     // Returns `true` while the voice plays or is paused. A voice that was stopped is over at once, even while it fades out.
     [[nodiscard]] bool isActive(VoiceId voice) const;
     [[nodiscard]] float getCursor(VoiceId voice) const;
+
+    // Moves the playback of a voice to a time in seconds, kept between 0 and the length of its sound, such as when a player drags the progress of a track. Throws `std::invalid_argument` for a time that is not finite and for a voice of a live stream, which plays its samples as they arrive.
+    void setCursor(VoiceId voice, float seconds);
     void stopAll(float fadeOutSeconds = 0.0F);
     [[nodiscard]] std::size_t getVoiceCount() const noexcept;
 
@@ -159,7 +163,7 @@ class Mixer final {
     void removeBusEffect(std::string_view bus, const Effect& effect);
     [[nodiscard]] std::vector<std::shared_ptr<Effect>> getBusEffects(std::string_view bus) const;
 
-    // Plays one music track at a time, crossfading from the previous track over the fade time, and returns the voice of the track, which pauses, stops and takes volume and effects like any voice. Asking for the track that is already playing keeps its voice, paused or not, and only changes its volume. A track that cannot play throws and leaves the current track playing.
+    // Plays one music track at a time from its start time, crossfading from the previous track over the fade time, and returns the voice of the track, which pauses, stops, moves its cursor and takes volume and effects like any voice. Asking for the track that is already playing keeps its voice, paused or not, and only changes its volume. A track that cannot play throws and leaves the current track playing.
     VoiceId playMusic(const Sound& sound, const MusicOptions& options = kDefaultMusicOptions);
     void stopMusic(float fadeOutSeconds = 1.0F);
 

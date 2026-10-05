@@ -53,7 +53,7 @@ class AudioLua final {
     [[nodiscard]] static Mixer::PlayOptions readPlayOptions(lua_State* L, int index, std::span<const std::string_view> fields);
 
   private:
-    static constexpr std::array<std::string_view, 4> kMusicFields{"bus", "volume", "fade", "loop"};
+    static constexpr std::array<std::string_view, 5> kMusicFields{"bus", "volume", "fade", "loop", "startAt"};
     static constexpr std::array<std::string_view, 4> kSoundFields{"stream", "format", "sampleRate", "channels"};
     static constexpr std::array<std::string_view, 7> kSpatializationFields{"model", "minDistance", "maxDistance", "rolloff", "panDistance", "doppler", "speedOfSound"};
 
@@ -83,6 +83,7 @@ class AudioLua final {
     static int processMode(lua_State* L);
     static int active(lua_State* L);
     static int cursor(lua_State* L);
+    static int setCursor(lua_State* L);
     static int stopAll(lua_State* L);
     static int voiceCount(lua_State* L);
     static int pauseAll(lua_State* L);
