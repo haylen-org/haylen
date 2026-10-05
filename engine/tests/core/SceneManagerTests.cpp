@@ -646,6 +646,31 @@ TEST(SceneManagerTest, QueuesChangesInRequestOrder) {
     EXPECT_EQ(scenes.getTop(), first.get());
 }
 
+TEST(SceneManagerTest, ChangesThatCannotStartFailWithoutHoldingTheQueue) {
+    std::vector<std::string> log;
+    test::EngineFixture fixture;
+    SceneManager& scenes = fixture.engine().getScenes();
+    auto menu = std::make_shared<test::RecordingScene>("menu", log);
+    auto game = std::make_shared<test::RecordingScene>("game", log);
+    std::optional<SceneManager::Result> rejected;
+    scenes.push(menu);
+    scenes.push(menu, {.completion = [&](const SceneManager::Result& result) { rejected = result; }});
+    scenes.push(game);
+    fixture.frames(1);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_STREQ(fixture.engine().getError()->what(), "The scene is already on the stack.");
+    ASSERT_TRUE(rejected.has_value());
+    EXPECT_EQ(rejected->outcome, SceneManager::Outcome::Failed);
+    EXPECT_STREQ(rejected->error->what(), "The scene is already on the stack.");
+
+    // Once the app recovers, the change queued behind the rejected one runs.
+    fixture.engine().recover();
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(scenes.getTop(), game.get());
+    EXPECT_FALSE(scenes.isTransitioning());
+}
+
 TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     std::vector<std::string> log;
     test::EngineFixture fixture;

@@ -421,11 +421,11 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
     change->from = getTopShared();
     const std::shared_ptr<Scene>& scene = change->scene;
     if (scene && (find(*scene) || std::ranges::find(leaving, scene) != leaving.end())) {
-        throw std::invalid_argument("The scene is already on the stack.");
+        reject(change, "The scene is already on the stack.");
     }
     if (const auto taken = std::ranges::find(preloaded, scene); scene && taken != preloaded.end()) {
         if (change->options.params.has_value()) {
-            throw std::invalid_argument("A preloaded scene keeps the \"params\" of its preload.");
+            reject(change, "A preloaded scene keeps the \"params\" of its preload.");
         }
         preloaded.erase(taken);
     }
@@ -710,6 +710,16 @@ void SceneManager::finish(const std::shared_ptr<Change>& change) {
     if (change->options.completion) {
         change->options.completion(change->failure ? Result{.outcome = Outcome::Failed, .error = change->failure} : Result{});
     }
+}
+
+// A change that cannot start ends before it changed anything, so the changes queued behind it still run once the error that it raises is fixed.
+void SceneManager::reject(const std::shared_ptr<Change>& change, const std::string& message) {
+    takeNext();
+    const lua::Error error(message);
+    if (change->options.completion) {
+        change->options.completion({.outcome = Outcome::Failed, .error = error});
+    }
+    throw error;
 }
 
 void SceneManager::takeNext() noexcept {
