@@ -2,6 +2,7 @@
 #include <lua.hpp>
 
 #include <algorithm>
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -14,6 +15,7 @@
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
@@ -463,6 +465,39 @@ TEST(BindingTest, ChecksBoundTypesAndMembers) {
     EXPECT_NE(fixture.lua("point.x = 'text'").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("return point.length(42)").find("error: "), std::string::npos);
     EXPECT_EQ(fixture.lua("return point:length() > 0"), "true");
+}
+
+// A reader takes the keys of its own list in one pass, leaves the keys of the other readers of the table alone and rejects any other key.
+TEST(TableTest, ReadsTheKeysAnOptionTableHoldsInOnePass) {
+    test::EngineFixture fixture;
+    lua_State* L = fixture.lua();
+    // clang-format off
+    constexpr lua_CFunction read = [](lua_State* state) -> int {
+        static constexpr std::array<std::string_view, 3> kOwn{"speed", "name", "visible"};
+        static constexpr std::array<std::string_view, 1> kOther{"layer"};
+        float speed = 1.0F;
+        std::string name = "none";
+        bool visible = true;
+        Table::readFields(state, 1, kOwn, {kOther}, [state, &speed, &name, &visible](std::string_view key) {
+            if (key == "speed") {
+                Table::readValue(state, key, speed);
+            } else if (key == "name") {
+                Table::readValue(state, key, name);
+            } else if (key == "visible") {
+                Table::readValue(state, key, visible);
+            }
+        });
+        lua_pushfstring(state, "%f %s %s", static_cast<double>(speed), name.c_str(), visible ? "true" : "false");
+        return 1;
+    };
+    // clang-format on
+    lua_register(L, "readOptions", read);
+
+    EXPECT_EQ(fixture.lua("return readOptions({speed = 2.5, visible = false, layer = 3})"), "2.5 none false");
+    EXPECT_EQ(fixture.lua("return readOptions({name = 'fast', speed = '4'})"), "4.0 fast true");
+    EXPECT_NE(fixture.lua("return readOptions({sped = 2})").find("Unknown option \"sped\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("return readOptions({2})").find("Option tables only accept string keys."), std::string::npos);
+    EXPECT_NE(fixture.lua("return readOptions({speed = 'fast'})").find("The option \"speed\" of \"readOptions\" is invalid: number expected, got string."), std::string::npos);
 }
 
 TEST(BindingTest, RefusesAModuleNameThatIsTaken) {

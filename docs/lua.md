@@ -446,24 +446,27 @@ scene.push({
 })
 ```
 
-The command `python3 haylen.py bench --suite lua` runs a Lua bunnymark, `engine/bench/lua-benchmark`, on the headless host: every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in four ways. The mode `tables` keeps one table for each sprite and draws the list with `graphics2d.drawBatch(texture, sprites)`. The mode `buffer` keeps the positions in a float buffer written one value at a time with `buffer[index]` and draws the buffer. The mode `bulk` keeps the positions in a plain Lua array, copies it into the buffer with one `buffer:set(1, positions)` and draws the buffer. The mode `batch` does the same update and moves a sprite batch with `batch:writeFields`. These are the average CPU milliseconds of one frame on an Apple M5 Pro in Release, where the draw column is the recording of the draw call, including the conversion of the sprites on worker threads, and the frame column covers the whole frame of the engine.
+The command `python3 haylen.py bench --suite lua` runs a Lua bunnymark, `engine/bench/lua-benchmark`, on the headless host: every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in five ways. The mode `tables` keeps one table for each sprite and draws the list with `graphics2d.drawBatch(texture, sprites)`. The mode `calls` keeps the same tables and draws each one with its own `graphics2d.draw(texture, x, y, sprite)`. The mode `buffer` keeps the positions in a float buffer written one value at a time with `buffer[index]` and draws the buffer. The mode `bulk` keeps the positions in a plain Lua array, copies it into the buffer with one `buffer:set(1, positions)` and draws the buffer. The mode `batch` does the same update and moves a sprite batch with `batch:writeFields`. These are the average CPU milliseconds of one frame on an Apple M5 Pro in Release, where the draw column is the recording of the draw calls, including the conversion of the sprites on worker threads, and the frame column covers the whole frame of the engine.
 
 | Sprites | Mode | Update | Draw | Frame |
 | --- | --- | --- | --- | --- |
-| 10,000 | `tables` | 0.56 | 3.14 | 3.77 |
-| 10,000 | `buffer` | 1.94 | 0.16 | 2.16 |
-| 10,000 | `bulk` | 0.65 | 0.15 | 0.84 |
-| 10,000 | `batch` | 0.64 | 0.15 | 0.83 |
-| 100,000 | `tables` | 5.31 | 30.55 | 35.94 |
-| 100,000 | `buffer` | 18.32 | 1.32 | 19.73 |
-| 100,000 | `bulk` | 5.96 | 1.23 | 7.27 |
-| 100,000 | `batch` | 6.01 | 1.27 | 7.36 |
-| 1,000,000 | `tables` | 52.38 | 294.37 | 346.83 |
-| 1,000,000 | `buffer` | 187.29 | 11.35 | 198.72 |
-| 1,000,000 | `bulk` | 60.42 | 11.71 | 72.21 |
-| 1,000,000 | `batch` | 59.87 | 11.69 | 71.63 |
+| 10,000 | `tables` | 0.38 | 0.85 | 1.25 |
+| 10,000 | `calls` | 0.39 | 2.35 | 2.84 |
+| 10,000 | `buffer` | 1.36 | 0.09 | 1.47 |
+| 10,000 | `bulk` | 0.42 | 0.08 | 0.50 |
+| 10,000 | `batch` | 0.42 | 0.08 | 0.52 |
+| 100,000 | `tables` | 3.62 | 8.84 | 12.51 |
+| 100,000 | `calls` | 3.75 | 23.80 | 28.25 |
+| 100,000 | `buffer` | 13.59 | 1.25 | 14.90 |
+| 100,000 | `bulk` | 4.20 | 1.29 | 5.53 |
+| 100,000 | `batch` | 4.21 | 1.30 | 5.56 |
+| 1,000,000 | `tables` | 37.14 | 86.32 | 123.53 |
+| 1,000,000 | `calls` | 36.68 | 238.05 | 281.34 |
+| 1,000,000 | `buffer` | 134.54 | 8.13 | 142.74 |
+| 1,000,000 | `bulk` | 41.44 | 8.19 | 49.71 |
+| 1,000,000 | `batch` | 41.01 | 10.85 | 51.92 |
 
-Plain Lua arithmetic on tables is the fastest way to update, but reading a table for every sprite makes the draw call about 25 times slower than reading a buffer. Every `buffer[index]` access is a call into the engine of about 30 nanoseconds, against a few nanoseconds for an array, so a loop that touches every value through the buffer spends three times longer updating. Doing the math in plain Lua arrays and handing them over with one `buffer:set` combines both strengths: a frame of 100,000 moving sprites costs about 7 milliseconds, five times less than with tables. Keep `buffer[index]` for values that C++ fills, such as the transforms `world:readTransforms` writes, where Lua reads only a few of them.
+Plain Lua arithmetic on tables is the fastest way to update, but reading a table for every sprite makes the draw call about ten times slower than reading a buffer, and a `graphics2d.draw` call for every sprite costs about a quarter of a microsecond, almost three times the cost of the same tables in one `drawBatch`. The engine reads an option table in one pass over the keys it holds, so a table costs in proportion to its keys and not to the options a function knows: pass only the keys that differ from the defaults. Every `buffer[index]` access is a call into the engine of about 25 nanoseconds, against a few nanoseconds for an array, so a loop that touches every value through the buffer spends three times longer updating. Doing the math in plain Lua arrays and handing them over with one `buffer:set` combines both strengths: a frame of 100,000 moving sprites costs about 5.5 milliseconds, less than half of what tables cost. Keep `buffer[index]` for values that C++ fills, such as the transforms `world:readTransforms` writes, where Lua reads only a few of them.
 
 ## Extending the engine from C++
 
@@ -476,7 +479,7 @@ A C++ project can add its own Lua modules, backed by its own plugin, while the a
 | `Type.hpp` | The `Type<T>` trait that binds a C++ type as userdata. |
 | `Converter.hpp` | The `Converter<T>` trait with the conversions of scalars, strings, optionals, vectors and bound types. |
 | `EnumNames.hpp` | The `EnumNames<T>` trait for enums passed as strings. Every engine enum has one table of its names, which its specialization and the file parsers share, usually owned by its class, such as `Texture::filterFromName` and `Texture::filterName`. |
-| `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors. |
+| `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors, and `Table::readFields` with `Table::readValue`, which read an option table in one pass over the keys it holds, for options read on every draw. |
 | `Binding.hpp` | `Binding::preload`, which adds a module to the Varn runtime of the engine, `Binding::newModule` and the `Binding::native`, `Binding::function` and `Binding::method` wrappers. |
 | `ClassBuilder.hpp` | `ClassBuilder` for metatables with methods and properties. |
 | `Runtime.hpp` | `Runtime::getEngine(L)` to reach the engine from a binding, `Runtime::getMainThread` for callbacks that outlive their coroutine, `Runtime::protectedCall`, `Runtime::protectedRun`, `Runtime::runChunk`, `Runtime::runReporting`, `Runtime::reportError` and `Runtime::captureError`. |

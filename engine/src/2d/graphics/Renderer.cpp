@@ -127,7 +127,7 @@ Renderer::~Renderer() {
         sg_destroy_image(state->shadowImage);
     }
 
-    for (sg_buffer buffer : {state->quad, state->screen, state->instanceBuffer, state->vertexBuffer, state->indexBuffer}) {
+    for (sg_buffer buffer : {state->quad, state->screen, state->instanceBuffer, state->vertexBuffer, state->indexBuffer, state->lightBuffer}) {
         if (buffer.id != SG_INVALID_ID) {
             sg_destroy_buffer(buffer);
         }
@@ -412,8 +412,8 @@ void Renderer::drawMesh(const graphics::Texture& texture, std::span<const MeshVe
     // Render targets of backends that start at the bottom row are flipped, like sprites flip them, so meshes sample them upright.
     const graphics::Texture& used = texture.isValid() ? texture : state->white;
     const bool flipped = used.getResource()->flipped;
-    std::vector<GpuVertex> packed;
-    packed.reserve(vertices.size());
+    std::vector<GpuVertex>& packed = state->scratchVertices;
+    packed.clear();
     for (const MeshVertex& vertex : vertices) {
         packed.push_back({{vertex.position.x, vertex.position.y}, {vertex.uv.x, flipped ? 1.0F - vertex.uv.y : vertex.uv.y}, vertex.color.toRgba8()});
     }
@@ -537,8 +537,8 @@ void Renderer::drawPolyline(std::span<const math::Vec2> points, float thickness,
     }
 
     const graphics::TextureResource& white = *state->white.getResource();
-    std::vector<GpuInstance> segments;
-    segments.reserve(points.size());
+    std::vector<GpuInstance>& segments = state->scratchInstances;
+    segments.clear();
     const std::size_t count = closed && points.size() > 2 ? points.size() : points.size() - 1;
     for (std::size_t index = 0; index < count; ++index) {
         const math::Vec2 from = points[index];
@@ -559,10 +559,10 @@ void Renderer::drawCircle(math::Vec2 center, float radius, math::Color color, co
     }
 
     const int count = segments > 0 ? segments : std::clamp(static_cast<int>(radius * 0.5F), 16, 96);
-    std::vector<GpuVertex> vertices;
-    std::vector<std::uint32_t> indices;
-    vertices.reserve(static_cast<std::size_t>(count + 1));
-    indices.reserve(static_cast<std::size_t>(count * 3));
+    std::vector<GpuVertex>& vertices = state->scratchVertices;
+    std::vector<std::uint32_t>& indices = state->scratchIndices;
+    vertices.clear();
+    indices.clear();
 
     const std::uint32_t packed = color.toRgba8();
     vertices.push_back({{center.x, center.y}, {0.5F, 0.5F}, packed});
@@ -589,10 +589,10 @@ void Renderer::drawArc(math::Vec2 center, float radius, float thickness, float s
     const float outer = radius + thickness * 0.5F;
     const std::uint32_t packed = color.toRgba8();
 
-    std::vector<GpuVertex> vertices;
-    std::vector<std::uint32_t> indices;
-    vertices.reserve(static_cast<std::size_t>((count + 1) * 2));
-    indices.reserve(static_cast<std::size_t>(count * 6));
+    std::vector<GpuVertex>& vertices = state->scratchVertices;
+    std::vector<std::uint32_t>& indices = state->scratchIndices;
+    vertices.clear();
+    indices.clear();
     for (int index = 0; index <= count; ++index) {
         const float angle = startAngle + sweep * static_cast<float>(index) / static_cast<float>(count);
         const math::Vec2 innerPoint = center + math::Vec2::fromAngle(angle, inner);
@@ -614,8 +614,8 @@ void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color
 
     const std::vector<std::uint32_t> indices = math::Geometry::triangulate(points);
     const std::uint32_t packed = color.toRgba8();
-    std::vector<GpuVertex> vertices;
-    vertices.reserve(points.size());
+    std::vector<GpuVertex>& vertices = state->scratchVertices;
+    vertices.clear();
     for (const math::Vec2 point : points) {
         vertices.push_back({{point.x, point.y}, {0.5F, 0.5F}, packed});
     }

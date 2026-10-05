@@ -51,6 +51,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/FrameSubmitter.cpp
   src/2d/graphics/GpuInstance.cpp
   src/2d/graphics/Graphics2DLua.cpp
+  src/2d/graphics/LightInstance.cpp
   src/2d/graphics/Material.cpp
   src/2d/graphics/MaterialLua.cpp
   src/2d/graphics/MaterialResource.cpp

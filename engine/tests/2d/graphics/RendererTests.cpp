@@ -519,6 +519,37 @@ TEST(RendererTest, LightsShadowsAndShadesLitCanvases) {
     EXPECT_TRUE(fixture.engine().getRenderer2D().isHdrLighting());
 }
 
+// Neighbouring lights of one blend mode and shape draw as the instances of one call, so a canvas of hundreds of lights costs a few calls, and lights of other kinds keep their order.
+TEST(RendererTest, DrawsNeighbouringLightsAlikeInOneCall) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(8, 8, math::Color::white()));
+    using Light = lighting2d::Light;
+    // clang-format off
+    const auto drawCalls = [&](const std::vector<Light>& lights) {
+        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+            graphics2d::Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color::black()});
+            renderer.draw({.texture = texture});
+            for (const Light& light : lights) {
+                renderer.drawLight(light);
+            }
+        }).drawCalls;
+    };
+    // clang-format on
+
+    const Light point{.position = {4.0F, 4.0F}, .radius = 32.0F};
+    const Light subtract{.radius = 16.0F, .blend = Light::Blend::Subtract};
+    const Light shaped{.radius = 24.0F, .texture = texture};
+    const std::size_t one = drawCalls({point});
+    std::vector<Light> lights(300, point);
+    EXPECT_EQ(drawCalls(lights), one);
+
+    lights.insert(lights.begin() + 100, 2, subtract);
+    lights.insert(lights.end(), 3, shaped);
+    EXPECT_EQ(drawCalls(lights), one + 3U);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 TEST(RendererTest, RejectsLightingMisuse) {
     test::EngineFixture fixture;
     graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();

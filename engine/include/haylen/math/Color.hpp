@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -68,10 +69,17 @@ struct Color {
     }
 
     // Packs the color as RGBA8 bytes in memory order, the layout of UBYTE4N vertex attributes.
-    [[nodiscard]] std::uint32_t toRgba8() const noexcept;
+    [[nodiscard]] constexpr std::uint32_t toRgba8() const noexcept {
+        return toByte(r) | (toByte(g) << 8U) | (toByte(b) << 16U) | (toByte(a) << 24U);
+    }
 
     // Formats the color as `#AARRGGBB`, which `parse` reads back.
     [[nodiscard]] std::string toHex() const;
+
+  private:
+    [[nodiscard]] static constexpr std::uint32_t toByte(float component) noexcept {
+        return static_cast<std::uint32_t>(std::clamp(component, 0.0F, 1.0F) * 255.0F + 0.5F);
+    }
 };
 
 } // namespace haylen::math

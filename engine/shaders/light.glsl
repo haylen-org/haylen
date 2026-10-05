@@ -1,43 +1,67 @@
+// Draws the lights of a lit canvas as instances of one quad, each with its values as attributes that stay the same across its quad.
 @vs light_vs
 layout(binding=0) uniform light_vs_params {
     mat4 view_projection;
-    // Area: xy is the center of the quad and zw its half size, turned by the rotation in x of the placement.
-    vec4 area;
-    vec4 placement;
 };
 
 in vec2 corner;
+// Area: xy is the center of the quad and zw its half size, turned by the rotation in w of the origin.
+in vec4 instance_area;
+in vec4 instance_color;
+in vec4 instance_shape;
+in vec4 instance_cone;
+in vec4 instance_origin;
+in vec4 instance_range;
+in vec4 instance_shadow_color;
+in vec4 instance_shadow_map;
+in vec4 instance_shadow_axis;
 out vec2 world;
 out vec2 shape_uv;
+flat out vec4 color;
+flat out vec4 shape;
+flat out vec4 cone;
+flat out vec4 origin;
+flat out vec4 range;
+flat out vec4 shadow_color;
+flat out vec4 shadow_map;
+flat out vec4 shadow_axis;
 
 void main() {
-    vec2 local = (corner * 2.0 - 1.0) * area.zw;
-    float sine = sin(placement.x);
-    float cosine = cos(placement.x);
-    world = area.xy + vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
+    vec2 local = (corner * 2.0 - 1.0) * instance_area.zw;
+    float sine = sin(instance_origin.w);
+    float cosine = cos(instance_origin.w);
+    world = instance_area.xy + vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
     shape_uv = corner;
+    color = instance_color;
+    shape = instance_shape;
+    cone = instance_cone;
+    origin = instance_origin;
+    range = instance_range;
+    shadow_color = instance_shadow_color;
+    shadow_map = instance_shadow_map;
+    shadow_axis = instance_shadow_axis;
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
 }
 @end
 
 @fs light_fs
-layout(binding=1) uniform light_fs_params {
-    // Color: rgb is the light color times its intensity and a the blend mode, 0 to add, 1 to subtract and 2 to mix.
-    vec4 color;
-    // Shape: x is the kind, 0 for point, 1 for spot and 2 for directional lights, y the radius, z the height and w the shadow row, or -1 without shadows.
-    vec4 shape;
-    // Cone: xy is the direction and zw the cosines of half the inner and half the outer angle.
-    vec4 cone;
-    // Origin: xy is the light position and z the item mask.
-    vec4 origin;
-    // Range: xy is the lowest and highest layer, z the number of shadow samples and w the texels between them.
-    vec4 range;
-    vec4 shadow_color;
-    // Shadow map: x is its width in texels and y the depth bias.
-    vec4 shadow_map;
-    // Shadow axis of directional lights: x and y place the first texel and the span across the light, z and w the start and span of depths along it.
-    vec4 shadow_axis;
-};
+in vec2 world;
+in vec2 shape_uv;
+// Color: rgb is the light color times its intensity and a the blend mode, 0 to add, 1 to subtract and 2 to mix.
+flat in vec4 color;
+// Shape: x is the kind, 0 for point, 1 for spot and 2 for directional lights, y the radius, z the height and w the shadow row, or -1 without shadows.
+flat in vec4 shape;
+// Cone: xy is the direction and zw the cosines of half the inner and half the outer angle.
+flat in vec4 cone;
+// Origin: xy is the light position and z the item mask.
+flat in vec4 origin;
+// Range: xy is the lowest and highest layer, z the number of shadow samples and w the texels between them.
+flat in vec4 range;
+flat in vec4 shadow_color;
+// Shadow map: x is its width in texels and y the depth bias.
+flat in vec4 shadow_map;
+// Shadow axis of directional lights: x and y place the first texel and the span across the light, z and w the start and span of depths along it.
+flat in vec4 shadow_axis;
 layout(binding=0) uniform texture2D shape_texture;
 layout(binding=1) uniform texture2D surface_texture;
 layout(binding=2) uniform texture2D info_texture;
@@ -48,8 +72,6 @@ layout(binding=2) uniform sampler shadow_sampler;
 @image_sample_type shadow_texture unfilterable_float
 @sampler_type shadow_sampler nonfiltering
 
-in vec2 world;
-in vec2 shape_uv;
 out vec4 frag_color;
 
 const float PI = 3.14159265;

@@ -99,13 +99,4 @@ Color Color::lerpHsv(const Color& from, const Color& to, float t) noexcept {
     return fromHsv(start.hue + hueDelta * t, start.saturation + (end.saturation - start.saturation) * t, start.value + (end.value - start.value) * t, start.alpha + (end.alpha - start.alpha) * t);
 }
 
-std::uint32_t Color::toRgba8() const noexcept {
-    // clang-format off
-    const auto channel = [](float component) {
-        return static_cast<std::uint32_t>(std::clamp(component, 0.0F, 1.0F) * 255.0F + 0.5F);
-    };
-    // clang-format on
-    return channel(r) | (channel(g) << 8U) | (channel(b) << 16U) | (channel(a) << 24U);
-}
-
 } // namespace haylen::math

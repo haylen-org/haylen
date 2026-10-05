@@ -315,6 +315,16 @@ void FrameSubmitter::upload() {
     writeBuffer(state.vertexBuffer, state.vertexCapacity, state.vertices.data(), state.vertices.size(), sizeof(GpuVertex), false);
     writeBuffer(state.indexBuffer, state.indexCapacity, state.uploadIndices.data(), state.uploadIndices.size(), sizeof(std::uint32_t), true);
 
+    // Every light takes the slot of its index, so the canvases draw their own ranges of the buffer.
+    state.lightInstances.resize(state.lights.size());
+    for (const Canvas& canvas : state.canvases) {
+        const math::Rect bounds = canvas.getWorldBounds();
+        for (std::size_t index = canvas.lightBegin; index < canvas.lightEnd; ++index) {
+            state.lightInstances[index] = LightInstance::make(state.lights[index], bounds);
+        }
+    }
+    writeBuffer(state.lightBuffer, state.lightCapacity, state.lightInstances.data(), state.lightInstances.size(), sizeof(LightInstance), false);
+
     state.stats.instances = source->size();
     state.stats.vertices = state.vertices.size();
     state.stats.indices = state.uploadIndices.size();
@@ -409,21 +419,28 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     }
 }
 
+// Neighbouring lights that share a blend mode and a shape draw as the instances of one call, in the order the app drew them.
 void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& targets) {
     beginOffscreenPass(targets.light, *canvas.options.ambientLight);
     const Matrix matrix = projection(canvas.view, canvas.viewSize);
-    const math::Rect bounds = canvas.getWorldBounds();
+    light_light_vs_params_t vertex{};
+    std::copy(matrix.begin(), matrix.end(), vertex.view_projection);
     const sg_sampler nearest = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Nearest});
 
-    for (std::size_t index = canvas.lightBegin; index < canvas.lightEnd; ++index) {
-        const LightDraw& draw = state.lights[index];
-        const lighting2d::Light& light = draw.light;
-        const bool directional = light.type == lighting2d::Light::Type::Directional;
-        sg_apply_pipeline(state.getPipeline(Program::Light, static_cast<std::uint8_t>(light.blend), graphics::PassTarget::LightMap));
+    std::size_t first = canvas.lightBegin;
+    while (first < canvas.lightEnd) {
+        const lighting2d::Light& light = state.lights[first].light;
+        const graphics::TextureResource& shape = getLightShape(light);
+        std::size_t end = first + 1;
+        while (end < canvas.lightEnd && state.lights[end].light.blend == light.blend && &getLightShape(state.lights[end].light) == &shape) {
+            ++end;
+        }
 
-        const graphics::TextureResource& shape = light.texture.isValid() ? *light.texture.getResource() : *state.light.getResource();
+        sg_apply_pipeline(state.getPipeline(Program::Light, static_cast<std::uint8_t>(light.blend), graphics::PassTarget::LightMap));
         sg_bindings bindings{};
         bindings.vertex_buffers[0] = state.quad;
+        bindings.vertex_buffers[1] = state.lightBuffer;
+        bindings.vertex_buffer_offsets[1] = static_cast<int>(first * sizeof(LightInstance));
         bindings.views[VIEW_light_shape_texture] = shape.view;
         bindings.views[VIEW_light_surface_texture] = targets.surface.getTexture().getResource()->view;
         bindings.views[VIEW_light_info_texture] = targets.info.getTexture().getResource()->view;
@@ -432,38 +449,16 @@ void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& target
         bindings.samplers[SMP_light_surface_sampler] = nearest;
         bindings.samplers[SMP_light_shadow_sampler] = nearest;
         sg_apply_bindings(&bindings);
-
-        // Directional lights cover the view of the canvas, and the others a quad of their reach turned with them.
-        light_light_vs_params_t vertex{};
-        std::copy(matrix.begin(), matrix.end(), vertex.view_projection);
-        const math::Vec2 center = directional ? bounds.getCenter() : light.position;
-        const math::Vec2 half = directional ? bounds.getSize() * 0.5F : light.scale * light.radius;
-        vertex.area[0] = center.x;
-        vertex.area[1] = center.y;
-        vertex.area[2] = half.x;
-        vertex.area[3] = half.y;
-        vertex.placement[0] = directional ? 0.0F : light.rotation;
         sg_apply_uniforms(UB_light_light_vs_params, SG_RANGE(vertex));
-
-        const math::Vec2 direction = math::Vec2::fromAngle(light.rotation);
-        const float energy = light.intensity * light.color.a;
-        const float outer = std::cos(light.outerAngle * 0.5F);
-        const int samples = light.shadowFilter == lighting2d::Light::ShadowFilter::Pcf13 ? 13 : (light.shadowFilter == lighting2d::Light::ShadowFilter::Pcf5 ? 5 : 1);
-        const light_light_fs_params_t fragment{
-            .color = {light.color.r * energy, light.color.g * energy, light.color.b * energy, static_cast<float>(light.blend)},
-            .shape = {static_cast<float>(light.type), lighting2d::ShadowMap::getRange(light), light.height, static_cast<float>(draw.shadowRow)},
-            .cone = {direction.x, direction.y, std::max(std::cos(light.innerAngle * 0.5F), outer + lighting2d::Light::kConeEdge), outer},
-            .origin = {light.position.x, light.position.y, static_cast<float>(light.itemMask), 0.0F},
-            .range = {static_cast<float>(std::clamp(light.layerMin, lighting2d::Light::kLowestLayer, lighting2d::Light::kHighestLayer)), static_cast<float>(std::clamp(light.layerMax, lighting2d::Light::kLowestLayer, lighting2d::Light::kHighestLayer)), static_cast<float>(samples), 1.0F + light.shadowSmoothness},
-            .shadow_color = {light.shadowColor.r, light.shadowColor.g, light.shadowColor.b, light.shadowColor.a},
-            .shadow_map = {static_cast<float>(lighting2d::ShadowMap::kResolution), lighting2d::ShadowMap::getBias(light, draw.axis), 0.0F, 0.0F},
-            .shadow_axis = {draw.axis.acrossStart, draw.axis.acrossSpan, draw.axis.alongStart, draw.axis.alongSpan},
-        };
-        sg_apply_uniforms(UB_light_light_fs_params, SG_RANGE(fragment));
-        sg_draw(0, 4, 1);
+        sg_draw(0, 4, static_cast<int>(end - first));
         ++state.stats.drawCalls;
+        first = end;
     }
     endPass();
+}
+
+const graphics::TextureResource& FrameSubmitter::getLightShape(const lighting2d::Light& light) const {
+    return light.texture.isValid() ? *light.texture.getResource() : *state.light.getResource();
 }
 
 // The composite writes into the first post target, and every material but the last draws the image before it into the other one, which leaves the input of the last material in `postImage`.

@@ -12,6 +12,7 @@
 #include "2d/graphics/Program.hpp"
 #include "graphics/PassTarget.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
+#include "haylen/2d/lighting/Light.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/math/Color.hpp"
@@ -64,6 +65,7 @@ class FrameSubmitter final {
     void renderFields(const Canvas& canvas);
     void renderCanvasOffscreen(Canvas& canvas);
     void renderLights(const Canvas& canvas, const LitTargets& targets);
+    [[nodiscard]] const graphics::TextureResource& getLightShape(const lighting2d::Light& light) const;
     void renderPostChain(Canvas& canvas, const LitTargets& targets);
     void renderCapture(std::size_t index);
     void renderSwapchain();

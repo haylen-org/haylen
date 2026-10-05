@@ -108,6 +108,7 @@ This file is binding for every change. It describes the project as it is and the
 
 - Each context keeps its Lua binding class next to it, such as `engine/src/2d/physics/Physics2DLua.cpp`, built with the public toolkit in `engine/include/haylen/lua/` (`Binding`, `ClassBuilder`, `Userdata`, `Stack`, `Converter`, `EnumNames`, `Table`, `Promise`, `Reference`, `TypeConverter` and `Runtime`). Projects that extend the engine use the same toolkit.
 - Options are passed as tables whose unknown keys raise `Unknown option "<key>".`, and enums are passed as their string names.
+- Option tables read on every draw or for every item go through `Table::readFields`, which reads the keys a table holds in one pass with `Table::readValue`, instead of one `Table::readField` per known option.
 - Error messages are complete sentences that start with a capital letter and end with a period, and they say what was wrong and what is expected, such as `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`. The only exceptions are the short reasons of `luaL_argerror` and `luaL_typeerror`, which Lua wraps into its own `bad argument` sentence.
 - Userdata keep their Lua callbacks in their user value, so a callback that refers back to its owner never keeps it alive. C++ code that keeps a Lua value alive uses `lua::Reference` and releases it in `stop`.
 - Hot paths offer fast Lua access: number fields next to vector properties, native properties that tweens animate in C++, float buffers shared with C++ and bulk APIs that move many objects in one call.

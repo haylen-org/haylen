@@ -1,5 +1,6 @@
 -- A bunnymark for Lua: sprites fall, bounce off the edges of the screen and draw every frame. Each phase keeps them in a different way and logs the average CPU milliseconds of the process spent updating them, drawing them and on the whole frame. CPU time stays steady when other programs load the machine, while wall time does not.
 --   `tables`  One Lua table for each sprite, drawn with `graphics2d.drawBatch(texture, tables)`.
+--   `calls`   The same tables, each drawn with its own `graphics2d.draw(texture, x, y, options)` call.
 --   `buffer`  Positions in a `FloatBuffer` written one value at a time, drawn with `graphics2d.drawBatch(texture, buffer, layout)`.
 --   `bulk`    Positions in a plain Lua array copied into the `FloatBuffer` with one `buffer:set` call, drawn the same way.
 --   `batch`   The bulk update feeding a persistent `SpriteBatch` through `batch:writeFields`.
@@ -12,7 +13,7 @@ local scene = require('haylen.scene')
 
 local width, height, size, gravity, step = 1920, 1080, 4, 980, 1 / 60
 local counts = {10000, 100000, 1000000}
-local modes = {'tables', 'buffer', 'bulk', 'batch'}
+local modes = {'tables', 'calls', 'buffer', 'bulk', 'batch'}
 local measured = {[10000] = 120, [100000] = 30, [1000000] = 6}
 local warmup = 3
 local texture = graphics.whiteTexture()
@@ -35,7 +36,7 @@ local function setup(phase)
         state.vy[index] = random() * 400 - 200
     end
 
-    if phase.mode == 'tables' then
+    if phase.mode == 'tables' or phase.mode == 'calls' then
         state.sprites = {}
         for index = 1, phase.count do
             state.sprites[index] = {x = random() * width, y = random() * height, width = size, height = size}
@@ -100,12 +101,21 @@ function updates.bulk(state)
     state.buffer:set(1, positions)
 end
 
+updates.calls = updates.tables
 updates.batch = updates.bulk
 
 local draws = {}
 
 function draws.tables(state)
     graphics2d.drawBatch(texture, state.sprites)
+end
+
+function draws.calls(state)
+    local sprites = state.sprites
+    for index = 1, state.count do
+        local sprite = sprites[index]
+        graphics2d.draw(texture, sprite.x, sprite.y, sprite)
+    end
 end
 
 function draws.buffer(state)

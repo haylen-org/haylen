@@ -347,12 +347,14 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
         desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLES;
         return;
     case Program::ImageBlend:
-    case Program::Light:
     case Program::Metaball:
         // Each of these draws one quad whose corner is the only attribute.
         desc.layout.buffers[0].stride = 8;
         desc.layout.attrs[0] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
         desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+        return;
+    case Program::Light:
+        describeLightLayout(desc);
         return;
     case Program::Composite:
         return;
@@ -400,6 +402,19 @@ void RendererState::describeRecolorLayout(sg_pipeline_desc& desc) {
     desc.layout.attrs[ATTR_recolor_recolor_instance_green] = {.buffer_index = 2, .offset = 4, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.layout.attrs[ATTR_recolor_recolor_instance_blue] = {.buffer_index = 2, .offset = 8, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.layout.attrs[ATTR_recolor_recolor_instance_yellow] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+}
+
+void RendererState::describeLightLayout(sg_pipeline_desc& desc) {
+    static_assert(sizeof(LightInstance) == 144);
+    desc.layout.buffers[0].stride = 8;
+    desc.layout.buffers[1].stride = sizeof(LightInstance);
+    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.attrs[ATTR_light_light_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    const std::array<int, 9> attributes{ATTR_light_light_instance_area, ATTR_light_light_instance_color, ATTR_light_light_instance_shape, ATTR_light_light_instance_cone, ATTR_light_light_instance_origin, ATTR_light_light_instance_range, ATTR_light_light_instance_shadow_color, ATTR_light_light_instance_shadow_map, ATTR_light_light_instance_shadow_axis};
+    for (std::size_t index = 0; index < attributes.size(); ++index) {
+        desc.layout.attrs[attributes[index]] = {.buffer_index = 1, .offset = static_cast<int>(index * 16), .format = SG_VERTEXFORMAT_FLOAT4};
+    }
     desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
 }
 

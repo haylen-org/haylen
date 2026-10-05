@@ -18,6 +18,7 @@
 #include "2d/graphics/GpuInstance.hpp"
 #include "2d/graphics/GpuVertex.hpp"
 #include "2d/graphics/LightDraw.hpp"
+#include "2d/graphics/LightInstance.hpp"
 #include "2d/graphics/LitTargets.hpp"
 #include "2d/graphics/MetaballDraw.hpp"
 #include "2d/graphics/Program.hpp"
@@ -102,6 +103,7 @@ struct RendererState {
     std::vector<std::uint8_t> uniformBytes;
     std::vector<graphics::TextureResource*> shadeTextures;
     std::vector<LightDraw> lights;
+    std::vector<LightInstance> lightInstances;
     std::vector<lighting2d::ShadowMap::Segment> segments;
     std::vector<MetaballDraw> metaballs;
     std::vector<LitTargets> litTargets;
@@ -111,8 +113,10 @@ struct RendererState {
     std::vector<std::shared_ptr<MaterialResource>> retainedMaterials;
     std::unordered_set<const void*> retainedSet;
 
-    // Reused by the draws that build their instances or nine-slice patches before recording them, so drawing allocates nothing once they have grown.
+    // Reused by the draws that build their instances, vertices or nine-slice patches before recording them, so drawing allocates nothing once they have grown.
     std::vector<GpuInstance> scratchInstances;
+    std::vector<GpuVertex> scratchVertices;
+    std::vector<std::uint32_t> scratchIndices;
     std::vector<NineSlice::Patch> patches;
 
     sg_buffer instanceBuffer{};
@@ -121,6 +125,8 @@ struct RendererState {
     std::size_t vertexCapacity = 0;
     sg_buffer indexBuffer{};
     std::size_t indexCapacity = 0;
+    sg_buffer lightBuffer{};
+    std::size_t lightCapacity = 0;
 
     VectorAtlas vectors;
 
@@ -212,6 +218,7 @@ struct RendererState {
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
     void describeLayout(sg_pipeline_desc& desc, Program program) const;
     static void describeRecolorLayout(sg_pipeline_desc& desc);
+    static void describeLightLayout(sg_pipeline_desc& desc);
     void describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const;
 };
 

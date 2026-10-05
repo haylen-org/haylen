@@ -115,8 +115,6 @@ class TypeConverter final {
     static void pushComponent(lua_State* L, int table, const char* name, lua_Integer position);
     [[nodiscard]] static float numberComponent(lua_State* L, int table, const char* name, lua_Integer position, std::optional<float> fallback = std::nullopt);
     [[nodiscard]] static math::Vec2 pointComponent(lua_State* L, int table, const char* name, lua_Integer position);
-
-    static void checkWithExtras(lua_State* L, int table, Table::FieldNames own, std::initializer_list<Table::FieldNames> extraFields);
 };
 
 template <> struct Type<math::Vec2> {

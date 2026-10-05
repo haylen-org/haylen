@@ -73,12 +73,6 @@ math::Vec2 TypeConverter::pointComponent(lua_State* L, int table, const char* na
     return value;
 }
 
-void TypeConverter::checkWithExtras(lua_State* L, int table, Table::FieldNames own, std::initializer_list<Table::FieldNames> extraFields) {
-    std::vector<Table::FieldNames> allowed{own};
-    allowed.insert(allowed.end(), extraFields.begin(), extraFields.end());
-    Table::checkFields(L, table, allowed);
-}
-
 math::Vec2 Converter<math::Vec2>::read(lua_State* L, int index) {
     if (const math::Vec2* value = Userdata::test<math::Vec2>(L, index)) {
         return *value;
@@ -296,21 +290,37 @@ graphics2d::DrawOrder TypeConverter::readDrawOrder(lua_State* L, int index, std:
         return order;
     }
     luaL_checktype(L, index, LUA_TTABLE);
-    const int table = lua_absindex(L, index);
-    checkWithExtras(L, table, kDrawOrderFields, extraFields);
-    Table::readField(L, table, "layer", order.layer);
-    Table::readField(L, table, "depth", order.depth);
-    Table::readField(L, table, "sortOffset", order.sortOffset);
-    Table::readField(L, table, "visibility", order.visibility);
-    Table::readField(L, table, "blend", order.blend);
-    Table::readField(L, table, "material", order.material);
-    Table::readField(L, table, "partMask", order.partMask);
-    Table::readField(L, table, "normalMap", order.normalMap);
-    Table::readField(L, table, "specular", order.specular);
-    Table::readField(L, table, "shininess", order.shininess);
-    Table::readField(L, table, "emission", order.emission);
-    Table::readField(L, table, "lightMask", order.lightMask);
-    Table::readField(L, table, "unshaded", order.unshaded);
+    // clang-format off
+    Table::readFields(L, index, kDrawOrderFields, extraFields, [L, &order](std::string_view key) {
+        if (key == "layer") {
+            Table::readValue(L, key, order.layer);
+        } else if (key == "depth") {
+            Table::readValue(L, key, order.depth);
+        } else if (key == "sortOffset") {
+            Table::readValue(L, key, order.sortOffset);
+        } else if (key == "visibility") {
+            Table::readValue(L, key, order.visibility);
+        } else if (key == "blend") {
+            Table::readValue(L, key, order.blend);
+        } else if (key == "material") {
+            Table::readValue(L, key, order.material);
+        } else if (key == "partMask") {
+            Table::readValue(L, key, order.partMask);
+        } else if (key == "normalMap") {
+            Table::readValue(L, key, order.normalMap);
+        } else if (key == "specular") {
+            Table::readValue(L, key, order.specular);
+        } else if (key == "shininess") {
+            Table::readValue(L, key, order.shininess);
+        } else if (key == "emission") {
+            Table::readValue(L, key, order.emission);
+        } else if (key == "lightMask") {
+            Table::readValue(L, key, order.lightMask);
+        } else if (key == "unshaded") {
+            Table::readValue(L, key, order.unshaded);
+        }
+    });
+    // clang-format on
     return order;
 }
 
@@ -320,26 +330,47 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
         return style;
     }
     luaL_checktype(L, index, LUA_TTABLE);
-    const int table = lua_absindex(L, index);
-    checkWithExtras(L, table, kTextStyleFields, extraFields);
-    Table::readField(L, table, "size", style.size);
-    Table::readField(L, table, "color", style.color);
-    Table::readField(L, table, "outlineWidth", style.outlineWidth);
-    Table::readField(L, table, "outlineColor", style.outlineColor);
-    Table::readField(L, table, "shadowOffset", style.shadowOffset);
-    Table::readField(L, table, "shadowColor", style.shadowColor);
-    Table::readField(L, table, "shadowBlur", style.shadowBlur);
-    Table::readField(L, table, "align", style.align);
-    Table::readField(L, table, "maxWidth", style.maxWidth);
-    Table::readField(L, table, "lineSpacing", style.lineSpacing);
-    Table::readField(L, table, "anchor", style.anchor);
-    Table::readField(L, table, "rotation", style.rotation);
-    Table::readField(L, table, "scale", style.scale);
-    Table::readField(L, table, "bold", style.bold);
-    Table::readField(L, table, "italic", style.italic);
-    Table::readField(L, table, "direction", style.direction);
-    Table::readField(L, table, "language", style.language);
-    Table::readField(L, table, "pixelSnap", style.pixelSnap);
+    // clang-format off
+    Table::readFields(L, index, kTextStyleFields, extraFields, [L, &style](std::string_view key) {
+        if (key == "size") {
+            Table::readValue(L, key, style.size);
+        } else if (key == "color") {
+            Table::readValue(L, key, style.color);
+        } else if (key == "outlineWidth") {
+            Table::readValue(L, key, style.outlineWidth);
+        } else if (key == "outlineColor") {
+            Table::readValue(L, key, style.outlineColor);
+        } else if (key == "shadowOffset") {
+            Table::readValue(L, key, style.shadowOffset);
+        } else if (key == "shadowColor") {
+            Table::readValue(L, key, style.shadowColor);
+        } else if (key == "shadowBlur") {
+            Table::readValue(L, key, style.shadowBlur);
+        } else if (key == "align") {
+            Table::readValue(L, key, style.align);
+        } else if (key == "maxWidth") {
+            Table::readValue(L, key, style.maxWidth);
+        } else if (key == "lineSpacing") {
+            Table::readValue(L, key, style.lineSpacing);
+        } else if (key == "anchor") {
+            Table::readValue(L, key, style.anchor);
+        } else if (key == "rotation") {
+            Table::readValue(L, key, style.rotation);
+        } else if (key == "scale") {
+            Table::readValue(L, key, style.scale);
+        } else if (key == "bold") {
+            Table::readValue(L, key, style.bold);
+        } else if (key == "italic") {
+            Table::readValue(L, key, style.italic);
+        } else if (key == "direction") {
+            Table::readValue(L, key, style.direction);
+        } else if (key == "language") {
+            Table::readValue(L, key, style.language);
+        } else if (key == "pixelSnap") {
+            Table::readValue(L, key, style.pixelSnap);
+        }
+    });
+    // clang-format on
     return style;
 }
 
@@ -349,31 +380,51 @@ graphics::Texture::Options TypeConverter::readTextureOptions(lua_State* L, int i
         return options;
     }
     luaL_checktype(L, index, LUA_TTABLE);
-    const int table = lua_absindex(L, index);
-    checkWithExtras(L, table, kTextureOptionFields, extraFields);
-    Table::readField(L, table, "filter", options.filter);
-    Table::readField(L, table, "wrap", options.wrap);
+    // clang-format off
+    Table::readFields(L, index, kTextureOptionFields, extraFields, [L, &options](std::string_view key) {
+        if (key == "filter") {
+            Table::readValue(L, key, options.filter);
+        } else if (key == "wrap") {
+            Table::readValue(L, key, options.wrap);
+        }
+    });
+    // clang-format on
     return options;
 }
 
 graphics2d::SpriteInstance TypeConverter::readSpriteInstance(lua_State* L, int index, const graphics::Texture& texture, graphics2d::SpriteInstance base, std::initializer_list<Table::FieldNames> extraFields) {
     luaL_checktype(L, index, LUA_TTABLE);
-    const int table = lua_absindex(L, index);
-    checkWithExtras(L, table, kSpriteInstanceFields, extraFields);
-    Table::readField(L, table, "x", base.position.x);
-    Table::readField(L, table, "y", base.position.y);
-    Table::readField(L, table, "width", base.size.x);
-    Table::readField(L, table, "height", base.size.y);
-    Table::readField(L, table, "source", base.source);
-    Table::readField(L, table, "pivotX", base.pivot.x);
-    Table::readField(L, table, "pivotY", base.pivot.y);
-    Table::readField(L, table, "rotation", base.rotation);
-    Table::readField(L, table, "color", base.color);
-    Table::readField(L, table, "flash", base.flash);
-
-    Table::readField(L, table, "flipHorizontal", base.flip.horizontal);
-    Table::readField(L, table, "flipVertical", base.flip.vertical);
-    Table::readField(L, table, "flipDiagonal", base.flip.diagonal);
+    // clang-format off
+    Table::readFields(L, index, kSpriteInstanceFields, extraFields, [L, &base](std::string_view key) {
+        if (key == "x") {
+            Table::readValue(L, key, base.position.x);
+        } else if (key == "y") {
+            Table::readValue(L, key, base.position.y);
+        } else if (key == "width") {
+            Table::readValue(L, key, base.size.x);
+        } else if (key == "height") {
+            Table::readValue(L, key, base.size.y);
+        } else if (key == "source") {
+            Table::readValue(L, key, base.source);
+        } else if (key == "pivotX") {
+            Table::readValue(L, key, base.pivot.x);
+        } else if (key == "pivotY") {
+            Table::readValue(L, key, base.pivot.y);
+        } else if (key == "rotation") {
+            Table::readValue(L, key, base.rotation);
+        } else if (key == "color") {
+            Table::readValue(L, key, base.color);
+        } else if (key == "flash") {
+            Table::readValue(L, key, base.flash);
+        } else if (key == "flipHorizontal") {
+            Table::readValue(L, key, base.flip.horizontal);
+        } else if (key == "flipVertical") {
+            Table::readValue(L, key, base.flip.vertical);
+        } else if (key == "flipDiagonal") {
+            Table::readValue(L, key, base.flip.diagonal);
+        }
+    });
+    // clang-format on
 
     if (base.size.isZero()) {
         base.size = base.source.isEmpty() ? texture.getSize() : base.source.getSize();
