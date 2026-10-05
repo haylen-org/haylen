@@ -288,6 +288,19 @@ TEST_F(ShapingTest, RevealsInReadingOrder) {
 }
 
 // Plain layouts are cached by text and by the style fields that change them, so the same text in another color lays out once.
+// The kerning of the font pulls pairs such as "AV" together, and an emoji sequence joined by zero-width joiners stays one character whatever glyphs the font has for it.
+TEST_F(ShapingTest, KernsPairsAndKeepsEmojiSequencesWhole) {
+    const std::shared_ptr<Font> fira = load("fira_sans_regular.otf");
+    const Style style{.size = 48.0F};
+    const float pair = fira->layout("AV", style)->size.x;
+    EXPECT_LT(pair, fira->layout("A", style)->size.x + fira->layout("V", style)->size.x - 1.0F);
+
+    const Layout& coder = lay("a\U0001F469\u200D\U0001F4BBb");
+    ASSERT_EQ(coder.characters.size(), 3U);
+    EXPECT_EQ(coder.characters[1].begin, 1U);
+    EXPECT_EQ(coder.characters[1].end, 4U);
+}
+
 TEST_F(ShapingTest, CachesLayoutsByTextAndStyle) {
     const std::shared_ptr<const Layout> first = family->layout("مرحبا world", {.size = 24.0F});
     EXPECT_EQ(family->layout("مرحبا world", {.size = 24.0F, .color = math::Color::black(), .rotation = 1.0F}), first);

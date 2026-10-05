@@ -67,7 +67,7 @@ namespace haylen::lua {
 class TypeConverter final {
   public:
     static constexpr std::array<std::string_view, 12> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded"};
-    static constexpr std::array<std::string_view, 17> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "direction", "language"};
+    static constexpr std::array<std::string_view, 18> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "direction", "language", "pixelSnap"};
     static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
     static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 

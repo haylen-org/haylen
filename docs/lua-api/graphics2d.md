@@ -430,7 +430,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | --- | --- | --- | --- |
 | `size` | number | `32` | Font size in canvas units, the height of the em square of a TrueType font. |
 | `color` | Color | `'#FFFFFFFF'` | Text color. |
-| `outlineWidth` | number | `0` | Outline width in canvas units. 0 draws no outline. Outlines, blurs and glows reach at most the distance field spread of the font, and bitmap fonts have none. |
+| `outlineWidth` | number | `0` | Outline width in canvas units. 0 draws no outline. Every outline of the text draws under every fill, so an outline never covers the letters beside it. Outlines, blurs and glows reach at most the distance field spread of the font, less the smoothing of small text, and bitmap fonts have none. |
 | `outlineColor` | Color | `'#FF000000'` | Outline color. |
 | `shadowOffset` | Vec2 | `{0, 0}` | Offset of the drop shadow. |
 | `shadowColor` | Color | `'#00000000'` | Shadow color. The shadow is drawn only when its alpha is above 0. The shadow of a bitmap font is the silhouette of its glyphs. |
@@ -444,6 +444,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. The value `{0.5, 0.5}` centers the text. |
 | `rotation` | number | `0` | Rotation in radians. |
 | `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |
+| `pixelSnap` | boolean | `false` | Moves the block so its left edge lands on a whole pixel of the destination and puts the baseline of every line on a whole pixel row, which keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
 | `layer`, `depth`, `blend` | | | Draw order. |
 
 ```lua

@@ -314,6 +314,7 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
     Table::readField(L, table, "italic", style.italic);
     Table::readField(L, table, "direction", style.direction);
     Table::readField(L, table, "language", style.language);
+    Table::readField(L, table, "pixelSnap", style.pixelSnap);
     return style;
 }
 

@@ -85,7 +85,7 @@ The file `haylen/material.glsl` holds what every material shares. It defines the
 | `haylen_texture(vec2 point)` | `vec4` | The texture of the draw at a point. |
 | `haylen_inside(vec2 point)` | `vec2` | The point moved inside the texels of the source rectangle of the draw, half a texel in from its sides, so filtering never reads the texels around the region of a sprite, such as its neighbours in an atlas. Meshes keep their point. |
 | `haylen_sprite(vec2 point)` | `vec4` | The texture color inside the source of the draw times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. |
-| `haylen_text(vec2 point)` | `vec4` | The glyph at a point with its fill and outline, which is how text draws. |
+| `haylen_text(vec2 point)` | `vec4` | The glyph at a point with its fill and outline, which is how text draws. Its weight, outline and softness, with the smoothing of the edge on screen, stop a sixteenth of the field short of the border of the quad of the glyph and shrink together beyond it. |
 | `haylen_base(vec2 point)` | `vec4` | The function `haylen_text` in the text programs and `haylen_sprite` in the others, the color the draw has without the material. |
 | `haylen_world_normal(vec3 tangent)` | `vec2` | Turns a tangent-space normal with y pointing up the image into the world through the flips and rotation of the sprite. |
 | `haylen_output(vec4 color)` | function | Writes the result, a straight color, which it multiplies by its alpha for draws whose blend mode needs that, `multiply` and `screen`. In lit canvases it also writes the emission, surface and info images the light pass reads, with a flat normal. |

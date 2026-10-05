@@ -50,7 +50,7 @@ GpuInstance GpuInstance::make(const graphics::TextureResource& texture, const Sp
     };
 }
 
-// The outline, a positive weight and the softness together must end inside the distance field, or the whole quad of the glyph would fill, so they shrink together when they reach too far.
+// The outline, a positive weight and the softness shrink together into the reach their bytes hold, and the text shader shrinks them again to what the field of the glyph reaches at its size on screen.
 GpuInstance GpuInstance::makeGlyph(const graphics::TextureResource& texture, const SpriteInstance& glyph, const TextParameters& text) noexcept {
     const float reach = std::max(text.weight, 0.0F) + text.outline + text.softness;
     const float fit = reach > kMaximumReach ? kMaximumReach / reach : 1.0F;

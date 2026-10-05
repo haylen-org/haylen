@@ -49,6 +49,7 @@ TEST_F(Graphics2DLuaTest, MeasuresTextWithFonts) {
     EXPECT_EQ(lua("local w, h = graphics2d.measureText(nil, 'Hello', {size = 32}) local sw, sh = graphics2d.measureText(nil, 'Hello', {size = 32, scale = {2, 3}}) return tostring(sw == 2 * w and sh == 3 * h)"), "true");
     EXPECT_EQ(lua("local font = graphics2d.defaultFont() local w, h = font:measure('Hello', {size = 32}) local sw, sh = font:measure('Hello', {size = 32, scale = {2, 3}}) return tostring(sw == 2 * w and sh == 3 * h)"), "true");
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {size = 32, scale = {2, 0.5}, layer = 1})"), "nil");
+    EXPECT_EQ(render("local camera = graphics2d.newCamera() camera.zoom = {1.5, 1.5} graphics2d.beginWorld(camera) graphics2d.drawText(nil, 'Small', 0.3, 0.6, {size = 9, pixelSnap = true})"), "nil");
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {scale = 'wide'})").find("The option \"scale\" of \"drawText\""), std::string::npos);
     EXPECT_NE(lua("graphics2d.defaultFont():measure('Hello', {layer = 2})").find("Unknown option \"layer\""), std::string::npos);
 }

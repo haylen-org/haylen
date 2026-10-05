@@ -121,13 +121,18 @@ vec4 haylen_sprite(vec2 point) {
     return shaded;
 }
 
-// A glyph of a text atlas, which stores a signed distance field whose edge is 0.5, filled with the draw color and outlined with the flash color. The weight moves the edge outward, which makes the glyph bolder, and the softness widens the edge into a blur for soft shadows and glows. The fill covers the outline in premultiplied colors, so each coverage counts once, and the result returns to straight colors.
+// A glyph of a text atlas, which stores a signed distance field whose edge is 0.5, filled with the draw color and outlined with the flash color. The weight moves the edge outward, which makes the glyph bolder, and the softness widens the edge into a blur for soft shadows and glows. With the smoothing of the edge on screen they shrink together to stop a sixteenth of the field short of 0, which the border of the quad of the glyph reaches, so a glyph never shows its quad at any size. The fill covers the outline in premultiplied colors, so each coverage counts once, and the result returns to straight colors.
 vec4 haylen_text(vec2 point) {
     float distance = haylen_texture(haylen_inside(point)).r;
-    float edge = 0.5 - haylen_text_style.y;
-    float smoothing = max(fwidth(distance) * 0.7, 0.0001) + haylen_text_style.z;
-    float fill = smoothstep(edge - smoothing, edge + smoothing, distance);
-    float border = smoothstep(edge - haylen_text_style.x - smoothing, edge - haylen_text_style.x + smoothing, distance);
+    float smoothing = max(fwidth(distance) * 0.7, 0.0001);
+    float reach = max(haylen_text_style.y, 0.0) + haylen_text_style.x + haylen_text_style.z;
+    float room = max(0.4375 - smoothing, 0.0);
+    float fit = reach > room ? room / reach : 1.0;
+    float edge = 0.5 - haylen_text_style.y * (haylen_text_style.y > 0.0 ? fit : 1.0);
+    float outline = haylen_text_style.x * fit;
+    float spread = smoothing + haylen_text_style.z * fit;
+    float fill = smoothstep(edge - spread, edge + spread, distance);
+    float border = smoothstep(edge - outline - spread, edge - outline + spread, distance);
     vec4 inner = vec4(color.rgb * color.a, color.a) * fill;
     vec4 outer = vec4(haylen_flash.rgb * haylen_flash.a, haylen_flash.a) * border;
     vec4 glyph = inner + outer * (1.0 - inner.a);

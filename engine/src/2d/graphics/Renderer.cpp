@@ -349,7 +349,7 @@ void Renderer::drawTextLayout(const text::Layout& layout, math::Vec2 position, c
         look.font->sync();
     }
     TextPainter painter(state->white);
-    painter.paintText(layout, position, style);
+    painter.paintText(layout, position, style, style.pixelSnap ? state->getPixelGrid() : std::nullopt);
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y);
     }

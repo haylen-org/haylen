@@ -52,25 +52,62 @@ TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
     const std::vector<TextPainter::Batch> batches = paint(styled);
     ASSERT_EQ(batches.size(), 1U);
     EXPECT_EQ(batches[0].program, Program::Text);
-    ASSERT_EQ(batches[0].instances.size(), 3U);
+    ASSERT_EQ(batches[0].instances.size(), 4U);
 
-    const GpuInstance& bold = batches[0].instances[0];
+    const GpuInstance& bold = batches[0].instances[1];
     const text::Font& font = *styled.getLayout().looks[0].font;
     EXPECT_NEAR(static_cast<float>(signedByte(bold.parameters[1])) / 256.0F, font.toDistance(32.0F * 0.03F, 32.0F), 1.0F / 256.0F);
     EXPECT_EQ(bold.parameters[2], 0U);
     EXPECT_EQ(bold.parameters[0], 0U);
 
     // Italics lean around the baseline, where their pivot sits.
-    const GpuInstance& italic = batches[0].instances[1];
+    const GpuInstance& italic = batches[0].instances[2];
     EXPECT_EQ(signedByte(italic.parameters[2]), static_cast<int>(std::lround(0.2F * 127.0F)));
     EXPECT_EQ(italic.parameters[1], 0U);
     const text::Layout::Glyph& leaning = styled.getLayout().glyphs[1];
     EXPECT_FLOAT_EQ(italic.position[1], 50.0F + leaning.baseline);
     EXPECT_NEAR(italic.position[1] - italic.pivot[1] * italic.size[1], 50.0F + leaning.position.y, 0.001F);
 
-    const GpuInstance& outlined = batches[0].instances[2];
-    EXPECT_NEAR(static_cast<float>(outlined.parameters[0]) / 255.0F * 0.5F, font.toDistance(2.0F, 32.0F), 0.5F / 255.0F);
-    EXPECT_EQ(outlined.flash, math::Color::fromHex(0xFF0000FFU).toRgba8());
+    // The outline is a glyph of its own under every fill, and the fill over it has none.
+    const GpuInstance& outline = batches[0].instances[0];
+    const GpuInstance& outlined = batches[0].instances[3];
+    EXPECT_NEAR(static_cast<float>(outline.parameters[0]) / 255.0F * 0.5F, font.toDistance(2.0F, 32.0F), 0.5F / 255.0F);
+    EXPECT_EQ(outline.flash, math::Color::fromHex(0xFF0000FFU).toRgba8());
+    EXPECT_EQ(outline.color >> 24U, 0U);
+    EXPECT_EQ(outlined.parameters[0], 0U);
+    EXPECT_EQ(outlined.flash, 0U);
+    EXPECT_FLOAT_EQ(outline.position[0], outlined.position[0]);
+}
+
+// An outline that reaches past the side of its glyph would cover the letter next to it if it drew with its own fill, so every outline draws first.
+TEST_F(TextPainterTest, DrawsEveryOutlineUnderEveryFill) {
+    text::Font& font = *fixture.engine().getDefaultFont();
+    const text::Style style{.size = 48.0F, .color = math::Color::white(), .outlineWidth = 4.0F, .outlineColor = math::Color::black()};
+    TextPainter painter(fixture.engine().getGraphics().getWhiteTexture());
+    painter.paintText(*font.layout("WAVE", style), {}, style);
+    ASSERT_EQ(painter.getBatches().size(), 1U);
+    const std::vector<GpuInstance>& instances = painter.getBatches()[0].instances;
+    ASSERT_EQ(instances.size(), 8U);
+    for (std::size_t index = 0; index < 4; ++index) {
+        const GpuInstance& outline = instances[index];
+        const GpuInstance& fill = instances[index + 4];
+        EXPECT_GT(outline.parameters[0], 0U);
+        EXPECT_EQ(outline.color >> 24U, 0U);
+        EXPECT_EQ(outline.flash, math::Color::black().toRgba8());
+        EXPECT_EQ(fill.parameters[0], 0U);
+        EXPECT_EQ(fill.color, math::Color::white().toRgba8());
+        EXPECT_EQ(fill.flash, 0U);
+        EXPECT_FLOAT_EQ(outline.position[0], fill.position[0]);
+    }
+
+    text::RichText rich = make("[outline=4 color=black]WAVE[/outline]", {.size = 48.0F});
+    const std::vector<TextPainter::Batch> batches = paint(rich);
+    ASSERT_EQ(batches.size(), 1U);
+    ASSERT_EQ(batches[0].instances.size(), 8U);
+    for (std::size_t index = 0; index < 4; ++index) {
+        EXPECT_GT(batches[0].instances[index].parameters[0], 0U);
+        EXPECT_EQ(batches[0].instances[index + 4].parameters[0], 0U);
+    }
 }
 
 TEST_F(TextPainterTest, ScalesAndTintsRichTextFromItsCorner) {
@@ -165,6 +202,35 @@ TEST_F(TextPainterTest, StretchesPlainTextByTheScaleOfItsStyle) {
         EXPECT_FLOAT_EQ(after[index].position[0] - 10.0F, (before[index].position[0] - 10.0F) * 2.0F);
         EXPECT_FLOAT_EQ(after[index].position[1] - 20.0F, (before[index].position[1] - 20.0F) * 3.0F);
     }
+}
+
+// On a display with two pixels a unit, snapped text moves as one block to the nearest pixel column and puts every baseline on the nearest pixel row.
+TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
+    text::Font& font = *fixture.engine().getDefaultFont();
+    const text::Style style{.size = 11.0F, .lineSpacing = 1.13F, .pixelSnap = true};
+    const std::shared_ptr<const text::Layout> layout = font.layout("Snap\nGrid", style);
+    const TextPainter::PixelGrid grid{.scale = {2.0F, 2.0F}};
+    TextPainter snapped(fixture.engine().getGraphics().getWhiteTexture());
+    snapped.paintText(*layout, {10.3F, 20.6F}, style, grid);
+    TextPainter loose(fixture.engine().getGraphics().getWhiteTexture());
+    loose.paintText(*layout, {10.3F, 20.6F}, style);
+
+    const std::vector<GpuInstance>& after = snapped.getBatches()[0].instances;
+    const std::vector<GpuInstance>& before = loose.getBatches()[0].instances;
+    ASSERT_EQ(after.size(), layout->glyphs.size());
+    for (std::size_t index = 0; index < after.size(); ++index) {
+        EXPECT_NEAR(after[index].position[0] - before[index].position[0], 0.2F, 0.0001F);
+        EXPECT_FLOAT_EQ(after[index].position[1] * 2.0F, std::round(before[index].position[1] * 2.0F));
+    }
+
+    // Turned text keeps its place, since no pixel row runs along its baselines.
+    const text::Style turned{.size = 11.0F, .rotation = 0.5F, .pixelSnap = true};
+    TextPainter rotated(fixture.engine().getGraphics().getWhiteTexture());
+    rotated.paintText(*layout, {10.3F, 20.6F}, turned, grid);
+    TextPainter free(fixture.engine().getGraphics().getWhiteTexture());
+    free.paintText(*layout, {10.3F, 20.6F}, turned);
+    EXPECT_FLOAT_EQ(rotated.getBatches()[0].instances[0].position[0], free.getBatches()[0].instances[0].position[0]);
+    EXPECT_FLOAT_EQ(rotated.getBatches()[0].instances[0].position[1], free.getBatches()[0].instances[0].position[1]);
 }
 
 } // namespace haylen::graphics2d

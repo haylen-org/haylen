@@ -55,18 +55,6 @@ bool FrameSubmitter::isInstanced(const DrawItem& item) noexcept {
     return (item.program == Program::Sprite || item.program == Program::Text) && item.batch == nullptr;
 }
 
-math::Rect FrameSubmitter::getPassRect(const Canvas& canvas) const {
-    math::Rect destination = state.pixelRect;
-    if (canvas.kind == Canvas::Kind::Target) {
-        destination = {0.0F, 0.0F, canvas.target.getSize().x, canvas.target.getSize().y};
-    } else if (canvas.capture != 0) {
-        const math::Vec2 size = state.captures[canvas.capture - 1].target.getSize();
-        destination = {0.0F, 0.0F, size.x, size.y};
-    }
-    const math::Rect& frame = canvas.frame;
-    return {destination.x + frame.x * destination.width, destination.y + frame.y * destination.height, frame.width * destination.width, frame.height * destination.height};
-}
-
 void FrameSubmitter::submit() {
     prepareTargets();
     castShadows();
@@ -90,7 +78,7 @@ void FrameSubmitter::prepareTargets() {
     std::size_t litCount = 0;
     std::size_t fieldCount = 0;
     for (Canvas& canvas : state.canvases) {
-        const math::Vec2 size = getPassRect(canvas).getSize();
+        const math::Vec2 size = state.getPassRect(canvas).getSize();
         if (canvas.isComposited()) {
             canvas.litIndex = litCount++;
             getLitTargets(canvas.litIndex, size, canvas.isLit(), canvas.hasPostMaterials());
@@ -384,7 +372,7 @@ void FrameSubmitter::renderFields(const Canvas& canvas) {
 void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     if (!canvas.isComposited()) {
         if (canvas.kind == Canvas::Kind::Target) {
-            const math::Rect rect = getPassRect(canvas);
+            const math::Rect rect = state.getPassRect(canvas);
             beginOffscreenPass(canvas.target, canvas.options.clear.value_or(math::Color::transparent()).getPremultiplied());
             sg_apply_viewportf(rect.x, rect.y, rect.width, rect.height, true);
             drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::Offscreen, rect);
@@ -410,7 +398,7 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
 
     // A render target canvas takes its finished image the way a world canvas reaches the screen.
     if (canvas.kind == Canvas::Kind::Target) {
-        const math::Rect rect = getPassRect(canvas);
+        const math::Rect rect = state.getPassRect(canvas);
         beginOffscreenPass(canvas.target, clear);
         sg_apply_viewportf(rect.x, rect.y, rect.width, rect.height, true);
         drawFinal(canvas, graphics::PassTarget::Offscreen);
@@ -531,7 +519,7 @@ void FrameSubmitter::drawCanvases(std::size_t capture, graphics::PassTarget pass
     std::stable_sort(ordered.begin(), ordered.end(), [](const Canvas* lhs, const Canvas* rhs) { return lhs->options.order < rhs->options.order; });
 
     for (const Canvas* canvas : ordered) {
-        const math::Rect rect = getPassRect(*canvas);
+        const math::Rect rect = state.getPassRect(*canvas);
         sg_apply_viewportf(rect.x, rect.y, rect.width, rect.height, true);
         if (canvas->isComposited()) {
             // The clip of an earlier canvas stays applied until something sets another one.

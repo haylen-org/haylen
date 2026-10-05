@@ -24,6 +24,29 @@ Canvas& RendererState::getCanvas() {
     return canvases.back();
 }
 
+math::Rect RendererState::getPassRect(const Canvas& canvas) const {
+    math::Rect destination = pixelRect;
+    if (canvas.kind == Canvas::Kind::Target) {
+        destination = {0.0F, 0.0F, canvas.target.getSize().x, canvas.target.getSize().y};
+    } else if (canvas.capture != 0) {
+        const math::Vec2 size = captures[canvas.capture - 1].target.getSize();
+        destination = {0.0F, 0.0F, size.x, size.y};
+    }
+    const math::Rect& part = canvas.frame;
+    return {destination.x + part.x * destination.width, destination.y + part.y * destination.height, part.width * destination.width, part.height * destination.height};
+}
+
+std::optional<TextPainter::PixelGrid> RendererState::getPixelGrid() {
+    const Canvas& canvas = getCanvas();
+    const math::Transform2D& view = canvas.view;
+    if (view.b != 0.0F || view.c != 0.0F) {
+        return std::nullopt;
+    }
+    const math::Rect pass = getPassRect(canvas);
+    const math::Vec2 pixels = pass.getSize() / canvas.viewSize;
+    return TextPainter::PixelGrid{.scale = {view.a * pixels.x, view.d * pixels.y}, .offset = {view.tx * pixels.x + pass.x, view.ty * pixels.y + pass.y}};
+}
+
 bool RendererState::accepts(const DrawOrder& order) {
     return (order.visibility & getCanvas().options.visibilityMask) != 0;
 }

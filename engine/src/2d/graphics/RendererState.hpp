@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <unordered_map>
 #include <unordered_set>
@@ -21,6 +22,7 @@
 #include "2d/graphics/Program.hpp"
 #include "2d/graphics/Shade.hpp"
 #include "2d/graphics/StaticBatchResource.hpp"
+#include "2d/graphics/TextPainter.hpp"
 #include "2d/lighting/ShadowMap.hpp"
 #include "graphics/PassTarget.hpp"
 #include "graphics/ShaderResource.hpp"
@@ -128,6 +130,12 @@ struct RendererState {
 
     // Returns the open canvas, and throws when no canvas is active.
     [[nodiscard]] Canvas& getCanvas();
+
+    // Returns the rectangle in pixels of its destination, the screen, a render target or a capture, that a canvas covers.
+    [[nodiscard]] math::Rect getPassRect(const Canvas& canvas) const;
+
+    // Returns the pixels of the destination of the open canvas in its units, or nothing when its view turns or skews them.
+    [[nodiscard]] std::optional<TextPainter::PixelGrid> getPixelGrid();
 
     // Tells whether a draw with the order shows in the open canvas, whose visibility mask may leave it out.
     [[nodiscard]] bool accepts(const DrawOrder& order);

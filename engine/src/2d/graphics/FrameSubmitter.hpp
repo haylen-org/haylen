@@ -50,9 +50,6 @@ class FrameSubmitter final {
     [[nodiscard]] static Matrix projection(const math::Transform2D& view, math::Vec2 viewSize) noexcept;
     [[nodiscard]] static bool isInstanced(const DrawItem& item) noexcept;
 
-    // Returns the pixels of its destination that a canvas covers: the screen, a capture target or its own render target.
-    [[nodiscard]] math::Rect getPassRect(const Canvas& canvas) const;
-
     void prepareTargets();
     LitTargets& getLitTargets(std::size_t index, math::Vec2 size, bool lit, bool post);
     const graphics::RenderTarget& getField(std::size_t index, math::Vec2 size);
