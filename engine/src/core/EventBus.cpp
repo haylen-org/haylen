@@ -29,10 +29,13 @@ bool EventBus::State::deliver(Listeners* listeners, Event event) {
     return event.isConsumed();
 }
 
-Connection EventBus::subscribe(std::unique_ptr<Listeners>& listeners, Handler handler, Options options) {
+void EventBus::requireHandler(const Handler& handler) {
     if (!handler) {
         throw std::invalid_argument("An event listener needs a function.");
     }
+}
+
+Connection EventBus::subscribe(std::unique_ptr<Listeners>& listeners, Handler handler, Options options) {
     if (!listeners) {
         listeners = std::make_unique<Listeners>();
     }
@@ -57,7 +60,9 @@ Connection EventBus::on(std::string_view name, Handler handler) {
     return on(name, std::move(handler), Options{});
 }
 
+// A rejected listener leaves no event behind, so the topics list only events that had listeners.
 Connection EventBus::on(std::string_view name, Handler handler, Options options) {
+    requireHandler(handler);
     auto found = state->named.find(name);
     if (found == state->named.end()) {
         found = state->named.emplace(std::string(name), nullptr).first;

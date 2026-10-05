@@ -100,6 +100,7 @@ class EventBus final {
         return on<T>(std::move(handler), Options{});
     }
     template <typename T> Connection on(Handler handler, Options options) {
+        requireHandler(handler);
         return subscribe(state->typed[std::type_index(typeid(T))], std::move(handler), std::move(options));
     }
 
@@ -164,6 +165,7 @@ class EventBus final {
 
     static const Json& kNull;
 
+    static void requireHandler(const Handler& handler);
     static Connection subscribe(std::unique_ptr<Listeners>& listeners, Handler handler, Options options);
 
     FrameQueue& queue;

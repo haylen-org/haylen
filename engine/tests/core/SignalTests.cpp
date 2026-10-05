@@ -402,6 +402,12 @@ TEST(EventBusTest, OwnersClearAndStatistics) {
     EXPECT_EQ(calls, 21);
     EXPECT_FALSE(kept.isConnected());
     EXPECT_THROW((void)bus.on("tick", {}), std::invalid_argument);
+
+    // A rejected listener leaves no event behind in the statistics.
+    EXPECT_THROW((void)bus.on("never", {}), std::invalid_argument);
+    EXPECT_THROW((void)bus.on<int>({}), std::invalid_argument);
+    ASSERT_EQ(bus.getTopics().size(), 1U);
+    EXPECT_EQ(bus.getTopics()[0].name, "tick");
 }
 
 } // namespace haylen::core
