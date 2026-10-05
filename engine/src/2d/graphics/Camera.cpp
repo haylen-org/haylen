@@ -266,8 +266,10 @@ float Camera::getRenderRotation() const noexcept {
     return ignoreRotation ? 0.0F : getViewRotation() + shakeAngle;
 }
 
+// A snapped view keeps its center on a whole view pixel too, so a view of an odd size does not put the world half a pixel off.
 math::Transform2D Camera::viewTransform(math::Vec2 viewSize) const noexcept {
-    const math::Vec2 pivot = anchor == Anchor::Center ? viewSize * 0.5F : math::Vec2{};
+    const math::Vec2 middle = viewSize * 0.5F;
+    const math::Vec2 pivot = anchor != Anchor::Center ? math::Vec2{} : (pixelSnap ? math::Vec2::floor(middle) : middle);
     return math::Transform2D::translation(pivot) * math::Transform2D::scaling(zoom) * math::Transform2D::rotation(-getRenderRotation()) * math::Transform2D::translation(-getRenderPosition());
 }
 

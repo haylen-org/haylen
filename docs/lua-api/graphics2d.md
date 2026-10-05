@@ -1789,7 +1789,7 @@ The methods measure the view with the screen, the visible design area of `viewpo
 | `maxShakeAngle` | number | `0.05` | Shake rotation in radians at full trauma. |
 | `shakeFrequency` | number | `25` | How fast the shake noise moves. Lower values sway, higher values rattle. |
 | `traumaDecay` | number | `1.5` | Trauma lost per second. |
-| `pixelSnap` | boolean | `false` | Rounds the drawn position to whole view pixels at the current zoom, which keeps pixel art from shimmering. |
+| `pixelSnap` | boolean | `false` | Rounds the drawn position to whole view pixels at the current zoom, and the center of a view of an odd size down to a whole view pixel, which keeps pixel art from shimmering. |
 | `viewSize` | Vec2 | visible design size | Read only. The size of the viewport, or of the visible design area without one, at zoom 1. |
 
 A render target canvas measures the view with the target instead, so for a camera used with `graphics2d.beginTarget` the methods describe the screen view unless the camera has a viewport.

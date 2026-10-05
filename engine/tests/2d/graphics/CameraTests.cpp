@@ -253,6 +253,19 @@ TEST_F(CameraTest, ShakesWithTraumaFrequencyAndDirection) {
     EXPECT_TRUE(camera.getShakeOffset().isZero());
 }
 
+// A snapped view of an odd size keeps the world on whole view pixels, where its exact center would put everything half a pixel off.
+TEST_F(CameraTest, SnapsTheCenterOfAViewOfAnOddSize) {
+    graphics2d::Camera camera;
+    camera.position = {10.0F, 20.0F};
+    const math::Rect odd{0.0F, 0.0F, 321.0F, 181.0F};
+    EXPECT_EQ(camera.worldToScreen({10.0F, 20.0F}, odd), math::Vec2(160.5F, 90.5F));
+
+    camera.pixelSnap = true;
+    const math::Vec2 point = camera.worldToScreen({13.0F, 27.0F}, odd);
+    EXPECT_EQ(point, math::Vec2(163.0F, 97.0F));
+    EXPECT_EQ(camera.screenToWorld(point, odd), math::Vec2(13.0F, 27.0F));
+}
+
 TEST_F(CameraTest, BlendsBetweenTwoViews) {
     graphics2d::Camera from;
     from.viewport = math::Rect{100.0F, 100.0F, 300.0F, 300.0F};
