@@ -1,7 +1,6 @@
 #include "haylen/plugins/PluginRegistry.hpp"
 
 #include <stdexcept>
-#include <string>
 
 namespace haylen::plugins {
 
@@ -30,8 +29,9 @@ void PluginRegistry::clear() noexcept {
     }
 }
 
-void PluginRegistry::throwMissing(std::string_view type) {
-    throw std::logic_error("The plugin \"" + std::string(type) + "\" is not registered.");
+// A missing plugin has no instance that could name it, and the names of C++ types differ by compiler, so the message names neither.
+void PluginRegistry::throwMissing() {
+    throw std::logic_error("The engine has no plugin of the requested type. Add it with \"Engine::addPlugin\" before code asks for it.");
 }
 
 } // namespace haylen::plugins

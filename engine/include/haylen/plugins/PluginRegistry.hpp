@@ -32,7 +32,7 @@ class PluginRegistry final {
     template <typename T> [[nodiscard]] T& get() const {
         T* plugin = find<T>();
         if (plugin == nullptr) {
-            throwMissing(typeid(T).name());
+            throwMissing();
         }
         return *plugin;
     }
@@ -53,7 +53,7 @@ class PluginRegistry final {
         std::unique_ptr<Plugin> plugin;
     };
 
-    [[noreturn]] static void throwMissing(std::string_view type);
+    [[noreturn]] static void throwMissing();
 
     std::vector<Entry> entries;
 };

@@ -238,7 +238,12 @@ TEST(PluginRegistryTest, FindsPluginsByTypeAndName) {
 
     registry.clear();
     EXPECT_EQ(registry.find<CountingPlugin>(), nullptr);
-    EXPECT_THROW((void)registry.get<CountingPlugin>(), std::logic_error);
+    try {
+        (void)registry.get<CountingPlugin>();
+        FAIL() << "The registry has no plugin left.";
+    } catch (const std::logic_error& error) {
+        EXPECT_STREQ(error.what(), "The engine has no plugin of the requested type. Add it with \"Engine::addPlugin\" before code asks for it.");
+    }
 }
 
 TEST(EngineTest, DrivesPluginsScenesAndTimers) {
