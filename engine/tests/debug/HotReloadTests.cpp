@@ -22,6 +22,7 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/io/PackageWatcher.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/platform/Event.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "plugins/HotReloadPlugin.hpp"
@@ -329,6 +330,23 @@ TEST_F(HotReloadPluginTest, IgnoresTheFilesOfEditors) {
     touch(directory.getPath() / "hot/content/tile.png", 5);
     EXPECT_TRUE(watched.runUntil([&tile] { return tile.getWidth() == 5; }));
     EXPECT_FALSE(watched.get().isRestartRequested());
+}
+
+TEST_F(HotReloadPluginTest, ScansWhileTheAppIsHalted) {
+    const test::TemporaryDirectory directory;
+    directory.write("hot/app.json", R"({"name": "Hot", "lifecycle": {"pauseOnFocusLoss": true}})");
+    directory.write("hot/source/main.lua", "");
+    directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
+    WatchedEngine watched(directory.getPath() / "hot");
+    core::Engine& engine = watched.get();
+    const graphics::Texture tile = engine.getAssets().texture("tile.png");
+
+    // The editor takes the focus, which halts an app that pauses on focus loss, and the files it saves still reach the app.
+    engine.handleEvent({.type = platform::Event::Type::FocusLost});
+    ASSERT_TRUE(engine.isHalted());
+    directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(4, 4, 0xFFFFFFFFU)));
+    touch(directory.getPath() / "hot/content/tile.png", 5);
+    EXPECT_TRUE(watched.runUntil([&tile] { return tile.getWidth() == 4; }));
 }
 
 TEST_F(HotReloadPluginTest, StaysIdleForShippedApps) {

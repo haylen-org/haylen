@@ -8,8 +8,7 @@ bool ModuleSnapshot::isMergeable(lua_State* L, int index) {
     if (lua_type(L, index) != LUA_TTABLE) {
         return false;
     }
-    const int table = lua_absindex(L, index);
-    if (lua_getmetatable(L, table) == 0) {
+    if (lua_getmetatable(L, index) == 0) {
         return true;
     }
     const bool marked = isJsonMarker(L, lua_gettop(L));
@@ -17,6 +16,14 @@ bool ModuleSnapshot::isMergeable(lua_State* L, int index) {
     if (marked) {
         return true;
     }
+    return isPrototype(L, index);
+}
+
+bool ModuleSnapshot::isPrototype(lua_State* L, int index) {
+    if (lua_type(L, index) != LUA_TTABLE) {
+        return false;
+    }
+    const int table = lua_absindex(L, index);
     lua_pushliteral(L, "__index");
     lua_rawget(L, table);
     const bool prototype = lua_rawequal(L, -1, table) != 0;

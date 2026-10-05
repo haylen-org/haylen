@@ -5,9 +5,11 @@
 #include <functional>
 #include <new>
 #include <set>
+#include <utility>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/ModuleClosures.hpp"
@@ -18,10 +20,10 @@ namespace haylen::lua {
 
 void ModuleGraph::install(lua_State* L) {
     lua_pushlightuserdata(L, this);
-    lua_pushcclosure(L, &require, 1);
+    lua_pushcclosure(L, &Binding::native<&require>, 1);
     lua_setglobal(L, "require");
     if (Userdata::newMetatable(L, kLoadType)) {
-        lua_pushcfunction(L, &closeLoad);
+        lua_pushcfunction(L, &Binding::native<&closeLoad>);
         lua_setfield(L, -2, "__close");
     }
     lua_pop(L, 1);
@@ -88,20 +90,74 @@ std::string_view ModuleGraph::getLoading() const noexcept {
 }
 
 void ModuleGraph::beginLoad(lua_State* L, const std::string& path, int owner) {
-    loading.push_back({.path = path, .owner = Reference(L, owner)});
     Owners::swapDefault(L, owner);
+    loading.push_back({.path = path, .previous = Reference(L, -1)});
     lua_pop(L, 1);
 }
 
-// The owner of the module that loads below the one that ended takes registrations again, so nested requires keep their own owners.
-void ModuleGraph::endLoad(lua_State* L) {
+// The owner that the run replaced takes registrations again, so nested requires and the code that runs under an owner of its own keep their owners.
+void ModuleGraph::endLoad(lua_State* L, bool succeeded) {
+    const Loading run = std::move(loading.back());
     loading.pop_back();
-    if (loading.empty()) {
-        lua_pushnil(L);
-    } else {
-        loading.back().owner.push(L);
+    if (!succeeded) {
+        dropKept(L, run.path, run.kept);
     }
+    run.previous.push(L);
     Owners::swapDefault(L, -1);
+    lua_pop(L, 2);
+}
+
+// What `create` registers without an owner belongs to an owner of the kept value, which the store holds as long as the value, and a `create` that fails ends what it registered.
+void ModuleGraph::pushKept(lua_State* L, const std::string& key, int create) {
+    const int function = lua_absindex(L, create);
+    const std::string path = loading.back().path;
+    pushModuleTable(L, "kept", path);
+    const int values = lua_gettop(L);
+    if (lua_getfield(L, values, key.c_str()) != LUA_TNIL) {
+        lua_remove(L, values);
+        return;
+    }
+    lua_pop(L, 1);
+
+    lua_newtable(L);
+    const int owner = lua_gettop(L);
+    lua_pushvalue(L, function);
+    try {
+        const Owners::DefaultScope scope(L, owner);
+        Runtime::protectedCall(L, 0, 1);
+    } catch (const Error&) {
+        Owners::release(L, owner);
+        throw;
+    }
+    lua_pushvalue(L, -1);
+    lua_setfield(L, values, key.c_str());
+    pushModuleTable(L, "keptOwners", path);
+    lua_pushvalue(L, owner);
+    lua_setfield(L, -2, key.c_str());
+    lua_pop(L, 1);
+
+    // The function may have required modules, whose runs ended before it returned.
+    loading.back().kept.push_back(key);
+    lua_replace(L, values);
+    lua_settop(L, values);
+}
+
+// A run that failed changes nothing, so the values it kept first go away and what their `create` registered ends with them.
+void ModuleGraph::dropKept(lua_State* L, std::string_view path, const std::vector<std::string>& keys) {
+    if (keys.empty()) {
+        return;
+    }
+    pushModuleTable(L, "kept", path);
+    pushModuleTable(L, "keptOwners", path);
+    for (const std::string& key : keys) {
+        lua_getfield(L, -1, key.c_str());
+        Owners::release(L, lua_gettop(L));
+        lua_pop(L, 1);
+        lua_pushnil(L);
+        lua_setfield(L, -2, key.c_str());
+        lua_pushnil(L);
+        lua_setfield(L, -3, key.c_str());
+    }
     lua_pop(L, 2);
 }
 
@@ -155,8 +211,8 @@ void ModuleGraph::pushSnapshot(lua_State* L, std::string_view path) {
     lua_remove(L, -2);
 }
 
-void ModuleGraph::pushKept(lua_State* L, std::string_view path) {
-    pushSection(L, "kept");
+void ModuleGraph::pushModuleTable(lua_State* L, const char* section, std::string_view path) {
+    pushSection(L, section);
     lua_pushlstring(L, path.data(), path.size());
     if (lua_rawget(L, -2) != LUA_TTABLE) {
         lua_pop(L, 1);
@@ -222,11 +278,11 @@ int ModuleGraph::require(lua_State* L) {
     return 2;
 }
 
-// Asks every searcher of `package.searchers` in order and raises the message of `require` when none finds the module.
+// Asks every searcher of `package.searchers` in order and raises an error that lists what each searcher reported when none finds the module.
 void ModuleGraph::findLoader(lua_State* L, const char* name) {
     lua_getfield(L, 2, "package");
     if (lua_type(L, -1) != LUA_TTABLE || lua_getfield(L, -1, "searchers") != LUA_TTABLE) {
-        luaL_error(L, "'package.searchers' must be a table");
+        luaL_error(L, "The field \"package.searchers\" must be a table.");
     }
     const int searchers = lua_gettop(L);
     luaL_Buffer message;
@@ -237,7 +293,7 @@ void ModuleGraph::findLoader(lua_State* L, const char* name) {
             lua_pop(L, 1);
             luaL_buffsub(&message, 2);
             luaL_pushresult(&message);
-            luaL_error(L, "module '%s' not found:%s", name, lua_tostring(L, -1));
+            luaL_error(L, "The module \"%s\" was not found.%s", name, lua_tostring(L, -1));
         }
         lua_pushstring(L, name);
         lua_call(L, 1, 2);
@@ -272,8 +328,9 @@ void ModuleGraph::recordRequire(lua_State* L, const std::string& name) {
     }
 }
 
-// Runs the top level of a module for the first time with a fresh owner and an environment that writes through to the globals while it records what the module writes, so its globals have a snapshot too. The load closes like a to-be-closed variable, so a module that fails leaves no record, no registrations and no recording environment behind.
+// Runs the top level of a module for the first time with a fresh owner and an environment that writes through to the globals while it records what the module writes, so its globals have a snapshot too. The load closes like a to-be-closed variable, so a module that fails leaves no record, no registrations and no recording environment behind, and `package.loaded` takes the module only once the graph recorded it. The text is read before the module runs, so a save while its top level runs reaches the next reload.
 int ModuleGraph::load(lua_State* L, const std::string& name, const std::string& path) {
+    std::string source = Runtime::getEngine(L).getPackage().readText(path);
     const bool first = !modules.contains(path);
     Module& module = modules[path];
     module.path = path;
@@ -313,26 +370,26 @@ int ModuleGraph::load(lua_State* L, const std::string& name, const std::string& 
     lua_pushvalue(L, 1);
     lua_pushvalue(L, 4);
     lua_call(L, 2, 1);
-    if (!lua_isnil(L, -1)) {
-        lua_setfield(L, 2, name.c_str());
-    } else {
+    if (lua_isnil(L, -1)) {
         lua_pop(L, 1);
-    }
-    if (lua_getfield(L, 2, name.c_str()) == LUA_TNIL) {
-        lua_pushboolean(L, 1);
-        lua_copy(L, -1, -2);
-        lua_setfield(L, 2, name.c_str());
+        if (lua_getfield(L, 2, name.c_str()) == LUA_TNIL) {
+            lua_pop(L, 1);
+            lua_pushboolean(L, 1);
+        }
     }
     const int result = lua_gettop(L);
-    finishLoad(L, path, result, written);
+    finishLoad(L, path, std::move(source), result, written);
     static_cast<Load*>(lua_touserdata(L, closing))->finished = true;
     lua_closeslot(L, closing);
+
+    lua_pushvalue(L, result);
+    lua_setfield(L, 2, name.c_str());
     lua_pushvalue(L, result);
     lua_pushvalue(L, 4);
     return 2;
 }
 
-void ModuleGraph::finishLoad(lua_State* L, const std::string& path, int result, int written) {
+void ModuleGraph::finishLoad(lua_State* L, const std::string& path, std::string source, int result, int written) {
     pushOwner(L, path);
     Owners::pushFunctions(L, -1);
     lua_remove(L, -2);
@@ -345,7 +402,7 @@ void ModuleGraph::finishLoad(lua_State* L, const std::string& path, int result, 
     ModuleSnapshot::push(L, result, upvalues, written, lua_gettop(L), path);
     setSnapshot(L, path, -1);
     lua_pop(L, 4);
-    modules.at(path).source = Runtime::getEngine(L).getPackage().readText(path);
+    modules.at(path).source = std::move(source);
 }
 
 void ModuleGraph::setEnvironment(lua_State* L, int chunk) {
@@ -383,7 +440,7 @@ int ModuleGraph::closeLoad(lua_State* L) {
     lua_pushglobaltable(L);
     setEnvironment(L, -2);
     lua_pop(L, 1);
-    graph.endLoad(L);
+    graph.endLoad(L, load.finished);
     if (load.finished) {
         return 0;
     }

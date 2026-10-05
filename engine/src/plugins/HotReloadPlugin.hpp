@@ -1,7 +1,9 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -9,6 +11,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Signal.hpp"
+#include "haylen/lua/Error.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "lua/ModuleGraph.hpp"
 
@@ -21,7 +24,7 @@ namespace haylen::plugins {
 // Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, and a change that cannot apply in place restarts the app: `app.json`, `source/main.lua`, a plugin manifest, a removed module, a module that cannot merge and any module in the mode `restart`. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The plugin installs `haylen.hotReload` in every app, and the module graph only in development, so apps that ship load their modules exactly as before.
 class HotReloadPlugin final : public Plugin {
   public:
-    static constexpr float kScanSeconds = 0.5F;
+    static constexpr std::chrono::milliseconds kScanInterval{500};
 
     // A batch that touches more loaded modules than this, such as a switch of branches, restarts the app instead.
     static constexpr std::size_t kRestartModules = 32;
@@ -75,15 +78,17 @@ class HotReloadPlugin final : public Plugin {
     void apply(core::Engine& engine, const std::vector<std::string>& changed);
     void reloadAssets(core::Engine& engine, const std::vector<std::string>& assets, Report& report) const;
 
-    // Reloads the modules in dependency order and returns whether all of them applied, or leaves a restart reason in the report.
+    // Reloads the modules in dependency order and returns whether all of them and their hooks applied, or leaves a restart reason in the report.
     [[nodiscard]] bool reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report);
-    void callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const;
+
+    // Calls the `reloaded` hooks and returns the error of the first one that failed.
+    [[nodiscard]] std::optional<lua::Error> callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const;
     void finish(const Report& report);
 
     platform::DevelopmentSession* session;
     std::unique_ptr<lua::ModuleGraph> graph;
     core::AppConfig::Debug::Reload mode = core::AppConfig::Debug::Reload::Module;
-    float elapsed = 0.0F;
+    std::chrono::steady_clock::time_point lastScan;
 };
 
 } // namespace haylen::plugins

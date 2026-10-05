@@ -36,7 +36,7 @@ class ModuleReloader final {
         std::string reason;
     };
 
-    ModuleReloader(lua_State* state, ModuleGraph& modules, const io::Package& source);
+    ModuleReloader(lua_State* L, ModuleGraph& modules, const io::Package& source);
 
     // Reloads the loaded module of the file. A batch reloads its modules in the order of `ModuleGraph::order`, so a module runs after the modules it requires.
     [[nodiscard]] Result reload(const std::string& path);
@@ -45,6 +45,8 @@ class ModuleReloader final {
     void finish();
 
   private:
+    static constexpr const char* kDepthMessage = "The tables of a module are nested too deeply to reload.";
+
     [[nodiscard]] static std::string_view getKind(lua_State* L, int index) noexcept;
 
     // Leaves the value that the field keeps on the stack, from the value of the last load at `base`, the live value and the value of the new load.
@@ -61,7 +63,7 @@ class ModuleReloader final {
     [[nodiscard]] bool isClaimed(int index, bool byModule);
     [[nodiscard]] bool isOfModule(int function);
 
-    lua_State* L;
+    lua_State* state;
     ModuleGraph& graph;
     const io::Package& package;
     Reference replacements;

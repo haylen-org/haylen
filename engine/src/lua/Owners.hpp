@@ -39,6 +39,20 @@ class Owners final {
         lua_Integer key = 0;
     };
 
+    // Makes the owner at index the owner of what registers without an owner while the scope lives, or no owner with an index of 0, and restores the previous one. The code under it calls Lua through protected calls, so a failure leaves the Lua state as the scope expects it.
+    class DefaultScope final {
+      public:
+        DefaultScope(lua_State* L, int owner);
+        ~DefaultScope();
+
+        DefaultScope(const DefaultScope&) = delete;
+        DefaultScope& operator=(const DefaultScope&) = delete;
+
+      private:
+        lua_State* state;
+        Reference previous;
+    };
+
     // Raises a Lua error unless the value at index can own things, which tables and userdata can.
     static void checkOwner(lua_State* L, int index);
 

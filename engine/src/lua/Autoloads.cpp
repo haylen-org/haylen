@@ -14,6 +14,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Event.hpp"
 #include "input/InputLua.hpp"
+#include "lua/Owners.hpp"
 #include "lua/ScriptedScene.hpp"
 
 namespace haylen::lua {
@@ -94,8 +95,11 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     entries.push_back({.name = name, .module = module, .table = Reference(main, -1)});
     lua_pop(main, 1);
 
-    const Entry& added = entries.back();
-    call(added, "start");
+    // What `start` registers without an owner lives as long as the autoload, so the reload of a module whose top level adds the autoload, which keeps it and never starts it again, ends none of it.
+    {
+        const Owners::DefaultScope unowned(main, 0);
+        call(entries.back(), "start");
+    }
     Runtime::getEngine(main).getEvents().emit(core::LifecycleEvent::kAutoloadStarted, {{"name", name}});
 }
 

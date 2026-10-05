@@ -8,7 +8,6 @@
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
-#include "haylen/core/FrameClock.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/Log.hpp"
@@ -21,6 +20,7 @@
 #include "lua/Autoloads.hpp"
 #include "lua/HotReloadLua.hpp"
 #include "lua/ModuleReloader.hpp"
+#include "lua/ModuleSnapshot.hpp"
 #include "lua/ScriptedScene.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "plugins/CorePlugin.hpp"
@@ -47,16 +47,16 @@ void HotReloadPlugin::installLua(core::Engine&, lua_State* L) {
     }
 }
 
-// Frames never wait for a scan, and the next scan starts once the interval passed and the last one finished.
+// Frames never wait for a scan, and the next scan starts once the interval passed and the last one finished. The interval counts real time, because no time passes for a halted app, such as one that pauses while the editor has the focus.
 void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
     if (session == nullptr) {
         return;
     }
     session->pump();
-    elapsed += static_cast<float>(engine.getClock().getUnscaledDelta());
-    if (elapsed >= kScanSeconds) {
+    const auto now = std::chrono::steady_clock::now();
+    if (now - lastScan >= kScanInterval) {
         if (const std::shared_ptr<platform::DevelopmentSession::Scan> scan = session->beginScan()) {
-            elapsed = 0.0F;
+            lastScan = now;
             engine.getJobs().postIo([scan] { scan->run(); });
         }
     }
@@ -164,14 +164,21 @@ void HotReloadPlugin::reloadAssets(core::Engine& engine, const std::vector<std::
     }
 }
 
-// A module that fails leaves the app as it was, and its error replaces the one the reload was meant to fix, so the error screen shows the latest one. The modules that reloaded before it keep their new code.
+// A module that fails, or whose file cannot be read, changes nothing, while the other modules of the batch still reload. Once the reload finished what it started, the first error of a module or of a hook replaces the one the reload was meant to fix, so the error screen shows the latest one.
 bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report) {
     lua_State* L = engine.getLuaState();
     const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Reload);
+    const int top = lua_gettop(L);
     lua::ModuleReloader reloader(L, *graph, engine.getPackage());
     std::optional<lua::Error> failure;
     for (const std::string& path : graph->order(paths)) {
-        lua::ModuleReloader::Result result = reloader.reload(path);
+        lua::ModuleReloader::Result result;
+        try {
+            result = reloader.reload(path);
+        } catch (const std::exception& exception) {
+            lua_settop(L, top);
+            result = {.status = lua::ModuleReloader::Status::Failed, .error = lua::Error(exception.what())};
+        }
         if (result.status == lua::ModuleReloader::Status::Restart) {
             core::Log::info("{} The app restarts.", result.reason);
             report.restarted = true;
@@ -179,19 +186,20 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
             engine.requestRestart();
             return false;
         }
-        if (result.status == lua::ModuleReloader::Status::Failed) {
+        if (result.status == lua::ModuleReloader::Status::Failed && !failure) {
             failure = std::move(result.error);
-            break;
         }
         if (result.status == lua::ModuleReloader::Status::Patched) {
             report.modules.push_back(path);
         }
     }
 
-    const int top = lua_gettop(L);
     reloader.finish();
     if (!report.modules.empty()) {
-        callHooks(engine, report.modules, top + 1);
+        std::optional<lua::Error> hookFailure = callHooks(engine, report.modules, top + 1);
+        if (!failure) {
+            failure = std::move(hookFailure);
+        }
         for (const std::string& path : report.modules) {
             engine.getEvents().post(std::string(core::LifecycleEvent::kModuleReloaded), {{"module", graph->find(path)->names.front()}, {"path", path}});
         }
@@ -205,8 +213,8 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
     return true;
 }
 
-// Every table hears `reloaded` once, in this order: the reloaded modules and the modules that require them, the autoloads, the scenes from the bottom of the stack to the top, and the instances of the patched tables. Each call is protected like a scene hook.
-void HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const {
+// Every table hears `reloaded` once, in this order: the reloaded modules and the modules that require them, the autoloads, the scenes from the bottom of the stack to the top, and the instances of the patched tables. A module that returns a prototype, such as a class of `haylen.class`, defines the hook of its instances, so it is no module hook. Each call is protected like a scene hook.
+std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const {
     lua_State* L = engine.getLuaState();
     const int top = lua_gettop(L);
     lua_createtable(L, 0, 2);
@@ -223,6 +231,7 @@ void HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::str
     const lua::Reference info(L, -1);
 
     std::unordered_set<const void*> called;
+    std::optional<lua::Error> failure;
     // clang-format off
     const auto call = [&](int index) {
         if (!lua_istable(L, index) || !called.insert(lua_topointer(L, index)).second) {
@@ -241,8 +250,10 @@ void HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::str
                 info.push(state);
                 lua_call(state, 2, 0);
             });
-        } catch (const std::exception& exception) {
-            engine.reportError(exception);
+        } catch (const lua::Error& error) {
+            if (!failure) {
+                failure = error;
+            }
         }
     };
     // clang-format on
@@ -253,7 +264,9 @@ void HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::str
     lua_getfield(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
     for (const std::string& path : modules) {
         lua_getfield(L, -1, graph->find(path)->names.front().c_str());
-        call(lua_gettop(L));
+        if (!lua::ModuleSnapshot::isPrototype(L, -1)) {
+            call(lua_gettop(L));
+        }
         lua_pop(L, 1);
     }
     lua_pop(L, 1);
@@ -279,6 +292,7 @@ void HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::str
         lua_pop(L, 1);
     }
     lua_settop(L, top);
+    return failure;
 }
 
 void HotReloadPlugin::finish(const Report& report) {

@@ -15,7 +15,7 @@ class ValueRemap final {
   private:
     static constexpr int kMaxSuperDepth = 32;
 
-    ValueRemap(lua_State* state, int replacementsIndex, int classesIndex, int workIndex, int foundIndex) noexcept : L(state), replacements(replacementsIndex), classes(classesIndex), work(workIndex), found(foundIndex) {}
+    ValueRemap(lua_State* L, int replacementsIndex, int classesIndex, int workIndex, int foundIndex) noexcept : state(L), replacements(replacementsIndex), classes(classesIndex), work(workIndex), found(foundIndex) {}
 
     void enqueue(int index);
 
@@ -28,7 +28,7 @@ class ValueRemap final {
     void visitUserdata(int index);
     void visitThread(int index);
 
-    lua_State* L;
+    lua_State* state;
     int replacements;
     int classes;
     int work;

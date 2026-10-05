@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <lua.hpp>
+
 #include <algorithm>
 #include <cstdint>
 #include <map>
@@ -11,6 +13,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/io/MemoryPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -621,6 +624,119 @@ TEST_F(ModuleReloadTest, AddsTheSameAutoloadAgain) {
     EXPECT_NE(lua("require('haylen').autoload('music', 'setup')").find("An autoload named \"music\" already exists."), std::string::npos);
 }
 
+TEST_F(ModuleReloadTest, KeepsWhatAnAutoloadStartedWhenTheModuleThatAddedItReloads) {
+    start({{"source/music.lua", "return {start = function(self) require('haylen.events').on('ping', function() self.heard = (self.heard or 0) + 1 end) end}"},
+        {"source/setup.lua", "require('haylen').autoload('music', 'music') return {}"},
+        {"source/main.lua", "events = require('haylen.events') require('setup') music = require('music')"}});
+    edit({{"source/setup.lua", "require('haylen').autoload('music', 'music') return {edited = true}"}});
+    fixture->runLua("events.emit('ping')");
+    EXPECT_EQ(lua("return music.heard"), "1");
+}
+
+TEST_F(ModuleReloadTest, KeepsWhatTheCreateOfAKeptValueRegistered) {
+    const std::string radio = R"(
+local events = require('haylen.events')
+return require('haylen.hotReload').keep('radio', function()
+    local radio = {heard = 0}
+    events.on('ping', function() radio.heard = radio.heard + 1 end)
+    return radio
+end)
+)";
+    start({{"source/radio.lua", radio}, {"source/main.lua", "events = require('haylen.events') radio = require('radio')"}});
+    edit({{"source/radio.lua", radio + "-- Edited.\n"}});
+    fixture->runLua("events.emit('ping')");
+    EXPECT_EQ(lua("return radio.heard"), "1");
+}
+
+TEST_F(ModuleReloadTest, DropsTheValuesThatAFailedLoadKept) {
+    const std::string radio = R"(
+local events = require('haylen.events')
+local radio = require('haylen.hotReload').keep('radio', function()
+    created = (created or 0) + 1
+    events.on('ping', function() heard = (heard or 0) + 1 end)
+    return {}
+end)
+)";
+    start({{"source/radio.lua", radio + "error('broken on purpose')"}, {"source/main.lua", "events = require('haylen.events') pcall(require, 'radio')"}});
+    fixture->runLua("events.emit('ping')");
+    EXPECT_EQ(lua("return tostring(heard)"), "nil");
+
+    fixture->package().setFile("source/radio.lua", test::TestFiles::bytes(radio + "return radio"));
+    fixture->runLua("require('radio') events.emit('ping')");
+    EXPECT_EQ(lua("return created .. ' ' .. heard"), "2 1");
+}
+
+TEST_F(ModuleReloadTest, ShowsErrorsOfReloadedHooksUntilAFixReloads) {
+    start({{"source/hooked.lua", "return {reloaded = function() error('hook failed') end}"}, {"source/main.lua", "require('hooked')"}});
+    edit({{"source/hooked.lua", "return {reloaded = function() error('hook failed') end, version = 2}"}});
+    EXPECT_NE(error().find("hook failed"), std::string::npos);
+    EXPECT_TRUE(fixture->engine().isErrorResumable());
+
+    edit({{"source/hooked.lua", "return {reloaded = function() end, version = 3}"}});
+    EXPECT_EQ(error(), "");
+}
+
+TEST_F(ModuleReloadTest, CallsTheReloadedHookOfAClassOnItsInstancesOnly) {
+    const std::string level = R"(
+local haylen = require('haylen')
+local Level = haylen.class('Level')
+function Level:reloaded() calls = (calls or '') .. (self == Level and 'class ' or 'instance ') end
+return Level
+)";
+    start({{"source/level.lua", level}, {"source/main.lua", "level = require('level')()"}});
+    edit({{"source/level.lua", level + "-- Edited.\n"}});
+    EXPECT_EQ(lua("return calls"), "instance ");
+    EXPECT_EQ(error(), "");
+}
+
+TEST_F(ModuleReloadTest, ReloadsTheOtherModulesOfASaveWithAFailedModule) {
+    start({{"source/a.lua", "return {version = 1}"}, {"source/b.lua", "return {version = 1}"}, {"source/main.lua", "a = require('a') b = require('b')"}});
+    edit({{"source/a.lua", "return {version ="}, {"source/b.lua", "return {version = 2}"}});
+    EXPECT_NE(error().find("source/a.lua"), std::string::npos);
+    EXPECT_EQ(lua("return a.version .. ' ' .. b.version"), "1 2");
+
+    edit({{"source/a.lua", "return {version = 2}"}});
+    EXPECT_EQ(error(), "");
+    EXPECT_EQ(lua("return a.version .. ' ' .. b.version"), "2 2");
+}
+
+TEST_F(ModuleReloadTest, MergesDeeplyNestedTables) {
+    const std::string nested = "local root = {} local level = root for depth = 1, 30 do level.next = {depth = depth} level = level.next end level.leaf = ";
+    start({{"source/deep.lua", nested + "1 return root"}, {"source/main.lua", "deep = require('deep')"}});
+    edit({{"source/deep.lua", nested + "2 return root"}});
+    EXPECT_EQ(error(), "");
+    EXPECT_EQ(lua("local level = deep for depth = 1, 30 do level = level.next end return level.leaf"), "2");
+}
+
+TEST_F(ModuleReloadTest, ReloadsASaveMadeWhileTheModuleFirstLoads) {
+    start({{"source/slow.lua", "save() return {version = 1}"}});
+    lua_State* L = fixture->lua();
+    lua_pushlightuserdata(L, &fixture->package());
+    lua_pushcclosure(L, [](lua_State* state) {
+        static_cast<io::MemoryPackage*>(lua_touserdata(state, lua_upvalueindex(1)))->setFile("source/slow.lua", test::TestFiles::bytes("save() return {version = 2}"));
+        return 0;
+    }, 1);
+    lua_setglobal(L, "save");
+    fixture->runLua("slow = require('slow')");
+
+    const std::vector<std::string> changed{"source/slow.lua"};
+    fixture->host().getDevelopmentSession()->addChanges(changed);
+    fixture->frames(1);
+    EXPECT_EQ(lua("return slow.version"), "2");
+}
+
+TEST_F(ModuleReloadTest, ReportsModulesThatCannotLoad) {
+    start({{"source/main.lua", R"(
+table.insert(package.searchers, 1, function(name)
+    if name == 'ghost' then
+        return function() return {} end, 'source/ghost.lua'
+    end
+end)
+)"}});
+    EXPECT_NE(lua("require('missing')").find("The module \"missing\" was not found."), std::string::npos);
+    EXPECT_EQ(lua("local ok, message = pcall(require, 'ghost') return tostring(ok) .. ' ' .. message .. ' ' .. tostring(package.loaded.ghost)"), "false The package file \"test/source/ghost.lua\" was not found. nil");
+}
+
 TEST_F(HotReloadLuaTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
     start({{"source/main.lua", "hotReload = require('haylen.hotReload')"}});
     EXPECT_EQ(lua("return hotReload.active()"), "true");
@@ -628,6 +744,7 @@ TEST_F(HotReloadLuaTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
     EXPECT_EQ(lua("return select(2, pcall(hotReload.keep, 'a', function() return 1 end))"), "The function \"keep\" works only while a module loads.");
     EXPECT_EQ(lua("return select(2, pcall(hotReload.restartOnChange))"), "The function \"restartOnChange\" works only while a module loads.");
     EXPECT_NE(lua("hotReload.keep({}, function() end)").find("bad argument #1 to 'keep' (string expected, got table)"), std::string::npos);
+    EXPECT_NE(lua("hotReload.keep(1, function() end)").find("bad argument #1 to 'keep' (string expected, got number)"), std::string::npos);
 
     fixture.reset();
     test::EngineFixture shipped({{"source/main.lua", "hotReload = require('haylen.hotReload')"}});

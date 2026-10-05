@@ -12,6 +12,9 @@ class ModuleSnapshot final {
     // Tells whether a reload merges the fields of the table at index into the live table: a table without a metatable, a table that Varn marked as a JSON array or object, such as a decoded array, or a prototype whose `__index` is the table itself, such as a class of `haylen.class`. Any other table, such as an instance of a class, is an object whose identity a reload keeps.
     [[nodiscard]] static bool isMergeable(lua_State* L, int index);
 
+    // Tells whether the value at index is a prototype, a table whose `__index` is the table itself, such as a class of `haylen.class`, whose methods belong to its instances.
+    [[nodiscard]] static bool isPrototype(lua_State* L, int index);
+
     // Pushes the snapshot `{value, upvalues, globals}` of the module value and the tables of captured values by name and of written globals at the indices. Every table it copies that no module claimed yet becomes a table of the module at `path` in the weak table at `creators`, so a later reload tells the tables of the module from the tables of other modules.
     static void push(lua_State* L, int value, int upvalues, int globals, int creators, std::string_view path);
 

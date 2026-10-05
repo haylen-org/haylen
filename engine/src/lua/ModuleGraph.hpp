@@ -12,7 +12,7 @@
 
 namespace haylen::lua {
 
-// The Lua modules of an app in development: the names and the source text each package module loaded with, which modules require which, and, in a table of the registry, the owner of what each module registered while it ran its top level, the values it kept with `hotReload.keep` and the snapshot of what it produced. It replaces `require` with a version that records all of this, which only development uses, so the modules of apps that ship load exactly as before.
+// The Lua modules of an app in development: the names and the source text each package module loaded with, which modules require which, and, in a table of the registry, the owner of what each module registered while it ran its top level, the values it kept with `hotReload.keep` together with the owners of what their `create` registered, and the snapshot of what it produced. It replaces `require` with a version that records all of this, which only development uses, so the modules of apps that ship load exactly as before.
 class ModuleGraph final {
   public:
     struct Module {
@@ -40,20 +40,22 @@ class ModuleGraph final {
     // The path of the module that runs its top level now, or an empty text.
     [[nodiscard]] std::string_view getLoading() const noexcept;
 
-    // Starts and ends a run of the top level of a module, during which registrations without an owner belong to the owner at index and `hotReload.keep` reads the kept values of the module. Runs nest like requires do.
+    // Starts and ends a run of the top level of a module, during which registrations without an owner belong to the owner at index and `hotReload.keep` reads the kept values of the module. Runs nest like requires do, and a run that failed drops the values it kept first.
     void beginLoad(lua_State* L, const std::string& path, int owner);
-    void endLoad(lua_State* L);
+    void endLoad(lua_State* L, bool succeeded);
 
-    // Push the owner, the snapshot and the kept values of a module, or `nil`.
+    // Pushes the value that the module that runs its top level kept under the key, or calls the function at index `create` the first time and keeps its result. What the function registers without an owner belongs to the kept value, so it outlives the reloads of the module.
+    void pushKept(lua_State* L, const std::string& key, int create);
+
+    // Push the owner and the snapshot of a module, or `nil`.
     static void pushOwner(lua_State* L, std::string_view path);
     static void pushSnapshot(lua_State* L, std::string_view path);
-    static void pushKept(lua_State* L, std::string_view path);
 
     // Set the owner and the snapshot of a module from the values at the indices.
     static void setOwner(lua_State* L, std::string_view path, int index);
     static void setSnapshot(lua_State* L, std::string_view path, int index);
 
-    // Pushes the table of the registry that holds the owners, snapshots and kept values, which a walk of the heap leaves alone.
+    // Pushes the table of the registry that holds the owners, snapshots, kept values and their owners, which a walk of the heap leaves alone.
     static void pushStore(lua_State* L);
 
     // Pushes the weak table that maps every table a module produced when it loaded to the path of that module.
@@ -72,12 +74,18 @@ class ModuleGraph final {
         bool finished = false;
     };
 
+    // A run of the top level of a module, with the owner that registrations without an owner took before it and the keys of the values it kept first.
     struct Loading {
         std::string path;
-        Reference owner;
+        Reference previous;
+        std::vector<std::string> kept;
     };
 
     static void pushSection(lua_State* L, const char* name);
+
+    // Pushes the table of the module at `path` in the section, which the first use creates.
+    static void pushModuleTable(lua_State* L, const char* section, std::string_view path);
+    static void dropKept(lua_State* L, std::string_view path, const std::vector<std::string>& keys);
     static int require(lua_State* L);
     static int recordGlobal(lua_State* L);
     static int closeLoad(lua_State* L);
@@ -86,7 +94,7 @@ class ModuleGraph final {
     static void findLoader(lua_State* L, const char* name);
     void recordRequire(lua_State* L, const std::string& name);
     int load(lua_State* L, const std::string& name, const std::string& path);
-    void finishLoad(lua_State* L, const std::string& path, int result, int written);
+    void finishLoad(lua_State* L, const std::string& path, std::string source, int result, int written);
 
     std::map<std::string, Module, std::less<>> modules;
     std::map<std::string, std::string, std::less<>> pathsByName;

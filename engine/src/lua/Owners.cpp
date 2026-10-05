@@ -66,6 +66,23 @@ void Owners::swapDefault(lua_State* L, int index) {
     lua_setfield(L, LUA_REGISTRYINDEX, kDefault);
 }
 
+Owners::DefaultScope::DefaultScope(lua_State* L, int owner) : state(L) {
+    if (owner == 0) {
+        lua_pushnil(L);
+    } else {
+        lua_pushvalue(L, owner);
+    }
+    swapDefault(L, -1);
+    previous = Reference(L, -1);
+    lua_pop(L, 2);
+}
+
+Owners::DefaultScope::~DefaultScope() {
+    previous.push(state);
+    swapDefault(state, -1);
+    lua_pop(state, 2);
+}
+
 void Owners::pushFunctions(lua_State* L, int owner) {
     const int ownerIndex = lua_absindex(L, owner);
     pushWeakTable(L, kScopes, "k");

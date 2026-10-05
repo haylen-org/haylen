@@ -48,25 +48,25 @@ void ValueRemap::run(lua_State* L, int replacements, int skipped, int classes) {
 }
 
 void ValueRemap::enqueue(int index) {
-    const int type = lua_type(L, index);
+    const int type = lua_type(state, index);
     if (type != LUA_TTABLE && type != LUA_TFUNCTION && type != LUA_TUSERDATA && type != LUA_TTHREAD) {
         return;
     }
-    if (!seen.insert(lua_topointer(L, index)).second) {
+    if (!seen.insert(lua_topointer(state, index)).second) {
         return;
     }
-    lua_pushvalue(L, index);
-    lua_rawseti(L, work, ++pending);
+    lua_pushvalue(state, index);
+    lua_rawseti(state, work, ++pending);
 }
 
 bool ValueRemap::pushReplacement(int index) {
-    const int type = lua_type(L, index);
+    const int type = lua_type(state, index);
     if (type != LUA_TTABLE && type != LUA_TFUNCTION) {
         return false;
     }
-    lua_pushvalue(L, index);
-    if (lua_rawget(L, replacements) == LUA_TNIL) {
-        lua_pop(L, 1);
+    lua_pushvalue(state, index);
+    if (lua_rawget(state, replacements) == LUA_TNIL) {
+        lua_pop(state, 1);
         return false;
     }
     return true;
@@ -74,143 +74,143 @@ bool ValueRemap::pushReplacement(int index) {
 
 // A metatable that is a patched table, or a class that inherits from one, makes the table an instance whose `reloaded` hook runs.
 bool ValueRemap::isInstanceOfPatched(int metatable) {
-    lua_pushvalue(L, metatable);
-    for (int depth = 0; depth < kMaxSuperDepth && lua_type(L, -1) == LUA_TTABLE; ++depth) {
-        lua_pushvalue(L, -1);
-        if (lua_rawget(L, classes) != LUA_TNIL) {
-            lua_pop(L, 2);
+    lua_pushvalue(state, metatable);
+    for (int depth = 0; depth < kMaxSuperDepth && lua_type(state, -1) == LUA_TTABLE; ++depth) {
+        lua_pushvalue(state, -1);
+        if (lua_rawget(state, classes) != LUA_TNIL) {
+            lua_pop(state, 2);
             return true;
         }
-        lua_pop(L, 1);
-        lua_pushliteral(L, "super");
-        lua_rawget(L, -2);
-        lua_remove(L, -2);
+        lua_pop(state, 1);
+        lua_pushliteral(state, "super");
+        lua_rawget(state, -2);
+        lua_remove(state, -2);
     }
-    lua_pop(L, 1);
+    lua_pop(state, 1);
     return false;
 }
 
 // Values change in place while the traversal goes on, which Lua allows for existing keys, and keys change after it.
 void ValueRemap::visitTable(int index) {
-    luaL_checkstack(L, 8, "The Lua heap is too deep to remap.");
-    if (lua_getmetatable(L, index) != 0) {
-        if (isInstanceOfPatched(lua_gettop(L))) {
-            lua_pushvalue(L, index);
-            lua_rawseti(L, found, ++foundCount);
+    luaL_checkstack(state, 8, "The Lua heap is too deep to remap.");
+    if (lua_getmetatable(state, index) != 0) {
+        if (isInstanceOfPatched(lua_gettop(state))) {
+            lua_pushvalue(state, index);
+            lua_rawseti(state, found, ++foundCount);
         }
-        enqueue(lua_gettop(L));
-        lua_pop(L, 1);
+        enqueue(lua_gettop(state));
+        lua_pop(state, 1);
     }
 
-    lua_newtable(L);
-    const int renamed = lua_gettop(L);
+    lua_newtable(state);
+    const int renamed = lua_gettop(state);
     int renamedCount = 0;
-    lua_pushnil(L);
-    while (lua_next(L, index) != 0) {
-        const int value = lua_gettop(L);
+    lua_pushnil(state);
+    while (lua_next(state, index) != 0) {
+        const int value = lua_gettop(state);
         if (pushReplacement(value)) {
-            lua_pushvalue(L, value - 1);
-            lua_pushvalue(L, -2);
-            lua_rawset(L, index);
-            enqueue(lua_gettop(L));
-            lua_pop(L, 1);
+            lua_pushvalue(state, value - 1);
+            lua_pushvalue(state, -2);
+            lua_rawset(state, index);
+            enqueue(lua_gettop(state));
+            lua_pop(state, 1);
         } else {
             enqueue(value);
         }
         if (pushReplacement(value - 1)) {
-            lua_pop(L, 1);
-            lua_pushvalue(L, value - 1);
-            lua_rawseti(L, renamed, ++renamedCount);
+            lua_pop(state, 1);
+            lua_pushvalue(state, value - 1);
+            lua_rawseti(state, renamed, ++renamedCount);
         }
         enqueue(value - 1);
-        lua_pop(L, 1);
+        lua_pop(state, 1);
     }
 
     for (int position = 1; position <= renamedCount; ++position) {
-        lua_rawgeti(L, renamed, position);
-        const int key = lua_gettop(L);
+        lua_rawgeti(state, renamed, position);
+        const int key = lua_gettop(state);
         (void)pushReplacement(key);
         enqueue(key + 1);
-        lua_pushvalue(L, key);
-        lua_rawget(L, index);
-        lua_pushvalue(L, key);
-        lua_pushnil(L);
-        lua_rawset(L, index);
+        lua_pushvalue(state, key);
+        lua_rawget(state, index);
+        lua_pushvalue(state, key);
+        lua_pushnil(state);
+        lua_rawset(state, index);
 
         // A table that already holds the new key keeps its value there.
-        lua_pushvalue(L, key + 1);
-        if (lua_rawget(L, index) == LUA_TNIL) {
-            lua_pop(L, 1);
-            lua_rawset(L, index);
+        lua_pushvalue(state, key + 1);
+        if (lua_rawget(state, index) == LUA_TNIL) {
+            lua_pop(state, 1);
+            lua_rawset(state, index);
         }
-        lua_settop(L, key - 1);
+        lua_settop(state, key - 1);
     }
-    lua_pop(L, 1);
+    lua_pop(state, 1);
 }
 
 void ValueRemap::visitFunction(int index) {
-    luaL_checkstack(L, 4, "The Lua heap is too deep to remap.");
-    for (int upvalue = 1; lua_getupvalue(L, index, upvalue) != nullptr; ++upvalue) {
-        if (pushReplacement(lua_gettop(L))) {
-            lua_pushvalue(L, -1);
-            lua_setupvalue(L, index, upvalue);
-            lua_remove(L, -2);
+    luaL_checkstack(state, 4, "The Lua heap is too deep to remap.");
+    for (int upvalue = 1; lua_getupvalue(state, index, upvalue) != nullptr; ++upvalue) {
+        if (pushReplacement(lua_gettop(state))) {
+            lua_pushvalue(state, -1);
+            lua_setupvalue(state, index, upvalue);
+            lua_remove(state, -2);
         }
-        enqueue(lua_gettop(L));
-        lua_pop(L, 1);
+        enqueue(lua_gettop(state));
+        lua_pop(state, 1);
     }
 }
 
 void ValueRemap::visitUserdata(int index) {
-    luaL_checkstack(L, 4, "The Lua heap is too deep to remap.");
-    if (lua_getmetatable(L, index) != 0) {
-        enqueue(lua_gettop(L));
-        lua_pop(L, 1);
+    luaL_checkstack(state, 4, "The Lua heap is too deep to remap.");
+    if (lua_getmetatable(state, index) != 0) {
+        enqueue(lua_gettop(state));
+        lua_pop(state, 1);
     }
-    for (int slot = 1; lua_getiuservalue(L, index, slot) != LUA_TNONE; ++slot) {
-        if (pushReplacement(lua_gettop(L))) {
-            lua_pushvalue(L, -1);
-            lua_setiuservalue(L, index, slot);
-            lua_remove(L, -2);
+    for (int slot = 1; lua_getiuservalue(state, index, slot) != LUA_TNONE; ++slot) {
+        if (pushReplacement(lua_gettop(state))) {
+            lua_pushvalue(state, -1);
+            lua_setiuservalue(state, index, slot);
+            lua_remove(state, -2);
         }
-        enqueue(lua_gettop(L));
-        lua_pop(L, 1);
+        enqueue(lua_gettop(state));
+        lua_pop(state, 1);
     }
-    lua_pop(L, 1);
+    lua_pop(state, 1);
 }
 
 // The functions that a coroutine runs keep their old bodies, while the locals of every level and the values on its stack take the replacements. A coroutine that failed keeps its stack as it was.
 void ValueRemap::visitThread(int index) {
-    lua_State* thread = lua_tothread(L, index);
-    if (thread == L || lua_status(thread) > LUA_YIELD || lua_checkstack(thread, 4) == 0) {
+    lua_State* thread = lua_tothread(state, index);
+    if (thread == state || lua_status(thread) > LUA_YIELD || lua_checkstack(thread, 4) == 0) {
         return;
     }
-    luaL_checkstack(L, 4, "The Lua heap is too deep to remap.");
+    luaL_checkstack(state, 4, "The Lua heap is too deep to remap.");
     lua_Debug level{};
     for (int depth = 0; lua_getstack(thread, depth, &level) != 0; ++depth) {
         if (lua_getinfo(thread, "f", &level) != 0) {
-            lua_xmove(thread, L, 1);
-            enqueue(lua_gettop(L));
-            lua_pop(L, 1);
+            lua_xmove(thread, state, 1);
+            enqueue(lua_gettop(state));
+            lua_pop(state, 1);
         }
         for (int local = 1; lua_getlocal(thread, &level, local) != nullptr; ++local) {
-            lua_xmove(thread, L, 1);
-            if (pushReplacement(lua_gettop(L))) {
-                lua_pushvalue(L, -1);
-                lua_xmove(L, thread, 1);
+            lua_xmove(thread, state, 1);
+            if (pushReplacement(lua_gettop(state))) {
+                lua_pushvalue(state, -1);
+                lua_xmove(state, thread, 1);
                 lua_setlocal(thread, &level, local);
-                lua_remove(L, -2);
+                lua_remove(state, -2);
             }
-            enqueue(lua_gettop(L));
-            lua_pop(L, 1);
+            enqueue(lua_gettop(state));
+            lua_pop(state, 1);
         }
     }
     const int top = lua_gettop(thread);
     for (int slot = 1; slot <= top; ++slot) {
         lua_pushvalue(thread, slot);
-        lua_xmove(thread, L, 1);
-        enqueue(lua_gettop(L));
-        lua_pop(L, 1);
+        lua_xmove(thread, state, 1);
+        enqueue(lua_gettop(state));
+        lua_pop(state, 1);
     }
 }
 
