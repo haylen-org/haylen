@@ -82,6 +82,9 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
             ownerIndex = lua_gettop(L);
         }
     }
+    if (ownerIndex == 0) {
+        ownerIndex = lua::Owners::pushDefault(L);
+    }
     if (ownerIndex != 0) {
         settings.owner = lua::Owners::getLifetime(L, ownerIndex);
     }

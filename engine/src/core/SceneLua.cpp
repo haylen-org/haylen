@@ -378,6 +378,7 @@ int SceneLua::spawn(lua_State* L) {
     // clang-format off
     lua::Task::start(L, 2, 0, 1, [main](const std::optional<lua::Error>& error) {
         if (error) {
+            const Engine::PhaseScope scope(lua::Runtime::getEngine(main), Engine::Phase::Lifecycle);
             lua::Runtime::reportError(main, *error);
         }
     });

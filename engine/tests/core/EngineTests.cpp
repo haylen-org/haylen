@@ -166,6 +166,15 @@ TEST(AppConfigTest, ReadsEveryField) {
         EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"orientation", orientation}}).toJson().at("orientation"), orientation);
     }
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::object()).window.title, "Haylen App");
+    for (const char* reload : {"module", "restart"}) {
+        EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"debug", {{"reload", reload}}}}).toJson().at("debug").at("reload"), reload);
+    }
+    try {
+        (void)core::AppConfig::fromJson(core::Json{{"debug", {{"reload", "always"}}}});
+        ADD_FAILURE() << "An unknown reload mode must be refused.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The \"debug.reload\" option must be \"module\" or \"restart\".");
+    }
 }
 
 TEST(AppConfigTest, RejectsInvalidValues) {

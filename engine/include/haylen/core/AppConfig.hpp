@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/audio/Session.hpp"
@@ -62,13 +65,20 @@ struct AppConfig {
         bool touchAsMouse = false;
     };
 
-    // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, the safe area to simulate instead of the one of the device, and whether the safe area shows over the app.
+    // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, the safe area to simulate instead of the one of the device, whether the safe area shows over the app, and how a changed Lua module applies while the app runs in development.
     struct Debug {
+        // A changed module reloads in place with the state of the app, or restarts the app. Changes that cannot apply in place restart it either way.
+        enum class Reload : std::uint8_t {
+            Module,
+            Restart,
+        };
+
         debug::StatsDisplay::Mode stats = debug::StatsDisplay::Mode::Off;
         std::vector<std::string> drawings;
         bool objectEvents = false;
         std::optional<platform::SafeAreaSimulation> safeArea;
         bool showSafeArea = false;
+        Reload reload = Reload::Module;
     };
 
     std::string name = "Haylen App";
@@ -108,7 +118,12 @@ struct AppConfig {
     [[nodiscard]] static AppConfig fromPackage(const io::Package& package);
     [[nodiscard]] Json toJson() const;
 
+    [[nodiscard]] static std::optional<Debug::Reload> reloadFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view reloadName(Debug::Reload value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Debug::Reload>, 2> kReloadNames;
+
     template <typename T> static void readValue(const Json& object, const char* key, T& target);
     static void requirePositive(double value, const char* key);
     static void readPlugins(const Json& section, AppConfig& config);

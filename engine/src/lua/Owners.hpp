@@ -42,6 +42,15 @@ class Owners final {
     // Raises a Lua error unless the value at index can own things, which tables and userdata can.
     static void checkOwner(lua_State* L, int index);
 
+    // Pushes the owner that a registration without an `owner` option belongs to and returns its index, or returns 0 and pushes nothing when it belongs to none. In development, what a module registers while it runs its top level belongs to the owner of the module, so a reload of the module ends it.
+    static int pushDefault(lua_State* L);
+
+    // Makes the table at index the owner of what registers without an owner from now on, or ends that with `nil`, and pushes the previous one.
+    static void swapDefault(lua_State* L, int index);
+
+    // Pushes the table of the functions that the owner at index holds for its listeners, or `nil` when it holds none.
+    static void pushFunctions(lua_State* L, int owner);
+
     // Returns a pointer that expires as soon as the owner at index is collected. Listeners take it as their owner, so they count as stale from the collection until they are removed.
     [[nodiscard]] static std::weak_ptr<const void> getLifetime(lua_State* L, int owner);
 
@@ -62,6 +71,7 @@ class Owners final {
     static constexpr const char* kFunctions = "haylen.ownedFunctions";
     static constexpr const char* kFunctionScopes = "haylen.ownedFunctionScopes";
     static constexpr const char* kScopeType = "haylen.OwnerScope";
+    static constexpr const char* kDefault = "haylen.defaultOwner";
 
     struct Scope {
         core::ConnectionScope connections;

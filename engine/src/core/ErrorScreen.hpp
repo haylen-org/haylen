@@ -40,10 +40,14 @@ class ErrorScreen final {
 
     static constexpr std::string_view kTitle = "The app stopped with an error";
 
-    ErrorScreen(Engine& owner, lua::Error failure);
+    // A resumable error came from code that runs again, so fixing it in development resumes the app.
+    ErrorScreen(Engine& owner, lua::Error failure, bool resumable);
 
     [[nodiscard]] const lua::Error& getError() const noexcept {
         return error;
+    }
+    [[nodiscard]] bool isResumable() const noexcept {
+        return canResume;
     }
 
     // The lines around the error line when the error points into a file of the app package, with tabs expanded to spaces.
@@ -125,7 +129,7 @@ class ErrorScreen final {
     [[nodiscard]] std::string buildReport() const;
     [[nodiscard]] bool isTouchDevice() const;
     [[nodiscard]] bool isGamepadDriven() const;
-    [[nodiscard]] bool isReloadWatching() const;
+    [[nodiscard]] bool isInDevelopment() const;
 
     // Design units per point, from the pixel density of the window and the scale of the viewport.
     [[nodiscard]] float getUnit() const;
@@ -160,6 +164,7 @@ class ErrorScreen final {
     math::Rect restartButton{};
     math::Rect backButton{};
     Action focused;
+    bool canResume = true;
     bool copied = false;
 };
 

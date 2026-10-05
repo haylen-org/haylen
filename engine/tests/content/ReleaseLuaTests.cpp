@@ -79,7 +79,7 @@ TEST_F(ReleaseLuaTest, ReportsErrorsWithTheModuleTheLineAndTheLocals) {
     EXPECT_EQ(error->getFile(), "source/scenes/menu.lua");
     EXPECT_EQ(error->getLine(), 4);
     EXPECT_NE(error->getMessage().find("(local 'value')"), std::string::npos) << error->getMessage();
-    EXPECT_TRUE(core::ErrorScreen(*engine, *error).getExcerpt().empty()) << "A release keeps no source text to show.";
+    EXPECT_TRUE(core::ErrorScreen(*engine, *error, true).getExcerpt().empty()) << "A release keeps no source text to show.";
 }
 
 TEST_F(ReleaseLuaTest, LoadsBytecodeOnlyFromAnAuthenticatedRelease) {

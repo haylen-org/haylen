@@ -116,6 +116,7 @@ int Environment::reportFailure(lua_State* L) {
     if (lua_istable(L, 3)) {
         frames = readFrames(L, 3);
     }
+    const core::Engine::PhaseScope scope(Runtime::getEngine(L), core::Engine::Phase::Lifecycle);
     Runtime::reportError(L, Error(Runtime::describeValue(L, 1), std::move(frames)));
     return 0;
 }

@@ -101,6 +101,10 @@ struct EngineState {
     std::unique_ptr<ErrorScreen> errorScreen;
     bool recoverable = false;
     bool recovering = false;
+    Engine::Phase phase = Engine::Phase::Frame;
+
+    // Whether an error left a lifecycle scope since the frame began, which makes the error the engine reports next a lifecycle error.
+    bool lifecycleFailed = false;
     Engine::AppState appState = Engine::AppState::Active;
 
     // An app in the foreground is active only while its window has the focus, no interruption of the system, such as a phone call, holds it and no native UI of a plugin covers it.

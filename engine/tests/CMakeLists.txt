@@ -95,6 +95,7 @@ set(HAYLEN_TEST_SOURCES
   lua/GeometryLuaTests.cpp
   lua/InputLuaTests.cpp
   lua/MathLuaTests.cpp
+  lua/ModuleReloadTests.cpp
   lua/SceneLuaTests.cpp
   lua/ToolkitTests.cpp
   lua/TweenLuaTests.cpp

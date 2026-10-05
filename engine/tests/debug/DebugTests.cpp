@@ -256,7 +256,6 @@ TEST(DebugPluginTest, ProfilesFromLua) {
     EXPECT_EQ(fixture.lua("debugging.setToggleKey('f5') return debugging.toggleKey()"), "f5");
     EXPECT_EQ(fixture.lua("debugging.setToggleKey(nil) debugging.setStatsMode('off') return debugging.statsMode() .. ' ' .. tostring(debugging.toggleKey())"), "off nil");
     EXPECT_NE(fixture.lua("debugging.setStatsMode('verbose')").find("unknown value 'verbose'"), std::string::npos);
-    EXPECT_EQ(fixture.lua("return tostring(debugging.hotReloadWatching())"), "false");
     EXPECT_NE(fixture.lua("debugging.setToggleKey('nope')").find("error: "), std::string::npos);
     EXPECT_EQ(fixture.lua("require('haylen.log').warning('from lua') local lines = debugging.recentLog(1) return #lines .. ' ' .. lines[1].level .. ' ' .. tostring(lines[1].text:find('from lua') ~= nil)"), "1 warning true");
     EXPECT_NE(fixture.lua("debugging.recentLog(-1)").find("expected a non-negative integer"), std::string::npos);

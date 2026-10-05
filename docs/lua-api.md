@@ -63,6 +63,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [`haylen.native`](lua-api/native.md) | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. |
 | [`haylen.net`](lua-api/net.md) | WebSocket connections with reconnection and pings. |
 | [`haylen.debug`](lua-api/debug.md) | The debug statistics, object counts, monitors, the frame profiler and the recent log. |
+| [`haylen.hotReload`](lua-api/hotReload.md) | Whether the app runs in development, how changed modules reload in place, values a module keeps across its reloads and the `reloaded` hook. |
 
 ## Varn modules
 

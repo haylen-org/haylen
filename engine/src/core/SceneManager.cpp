@@ -246,6 +246,7 @@ void SceneManager::startLoad(const std::shared_ptr<Scene>& scene, std::any param
 
     // A hook that throws fails the load like a failed deferral, and the load settles at once when the hook finished it.
     try {
+        const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
         scene->load(engine, *load);
     } catch (const lua::Error& error) {
         load->fail(error);
@@ -510,12 +511,14 @@ bool SceneManager::waitForLoad(const std::shared_ptr<Change>& change, float delt
 void SceneManager::showLoadingView(const std::shared_ptr<Change>& change) {
     change->viewShown = true;
     change->shown = 0.0F;
+    const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     change->options.loading->enter(engine);
 }
 
 void SceneManager::hideLoadingView(Change& change) {
     change.viewShown = false;
     change.fading = false;
+    const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     change.options.loading->exit(engine);
 }
 
@@ -729,6 +732,7 @@ void SceneManager::reportFailure(const Change& change, bool currentKept) {
         Log::error("A scene could not load: {}", error.what());
         return;
     }
+    const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     engine.reportError(error);
 }
 
@@ -737,6 +741,7 @@ void SceneManager::enterScene(const std::shared_ptr<Scene>& scene) {
     const std::shared_ptr<SceneLoad> load = std::exchange(scene->loading, {});
     stack.push_back(scene);
     scene->state = Scene::State::Entering;
+    const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     scene->enter(engine, load->getParams());
     if (scene->state == Scene::State::Entering) {
         publish(LifecycleEvent::kSceneEntered, *scene);
@@ -745,6 +750,7 @@ void SceneManager::enterScene(const std::shared_ptr<Scene>& scene) {
 
 void SceneManager::exitScene(const std::shared_ptr<Scene>& scene) {
     scene->state = Scene::State::Exiting;
+    const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     scene->exit(engine);
     scene->state = Scene::State::Exited;
     publish(LifecycleEvent::kSceneExited, *scene);
@@ -757,6 +763,7 @@ void SceneManager::unloadScene(const std::shared_ptr<Scene>& scene) {
     }
     std::exception_ptr failure;
     try {
+        const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
         scene->unload(engine);
     } catch (...) {
         failure = std::current_exception();
@@ -791,6 +798,7 @@ void SceneManager::retire(const std::shared_ptr<Scene>& scene) {
 
 void SceneManager::coverScene(const std::shared_ptr<Scene>& scene) {
     scene->state = Scene::State::Covered;
+    const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     scene->pause(engine);
     if (scene->state == Scene::State::Covered) {
         publish(LifecycleEvent::kScenePaused, *scene);
@@ -799,6 +807,7 @@ void SceneManager::coverScene(const std::shared_ptr<Scene>& scene) {
 
 void SceneManager::uncoverScene(const std::shared_ptr<Scene>& scene) {
     scene->state = Scene::State::Entering;
+    const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
     scene->resume(engine);
     if (scene->state == Scene::State::Entering) {
         publish(LifecycleEvent::kSceneResumed, *scene);

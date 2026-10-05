@@ -12,6 +12,17 @@
 
 namespace haylen::core {
 
+const std::array<std::pair<std::string_view, AppConfig::Debug::Reload>, 2> AppConfig::kReloadNames{{{"module", Debug::Reload::Module}, {"restart", Debug::Reload::Restart}}};
+
+std::optional<AppConfig::Debug::Reload> AppConfig::reloadFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kReloadNames, name, &std::pair<std::string_view, Debug::Reload>::first);
+    return found != kReloadNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view AppConfig::reloadName(Debug::Reload value) noexcept {
+    return std::ranges::find(kReloadNames, value, &std::pair<std::string_view, Debug::Reload>::second)->first;
+}
+
 template <typename T> void AppConfig::readValue(const Json& object, const char* key, T& target) {
     if (!object.contains(key)) {
         return;
@@ -234,7 +245,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("debug")) {
         const Json& debugJson = document.at("debug");
-        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "safeArea", "showSafeArea"}, "the \"debug\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "safeArea", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
         std::string stats;
         readValue(debugJson, "stats", stats);
         if (!stats.empty()) {
@@ -257,6 +268,15 @@ AppConfig AppConfig::fromJson(const Json& document) {
             }
         }
         readValue(debugJson, "showSafeArea", config.debug.showSafeArea);
+        if (debugJson.contains("reload")) {
+            std::string reload;
+            readValue(debugJson, "reload", reload);
+            const auto mode = reloadFromName(reload);
+            if (!mode) {
+                throw std::invalid_argument("The \"debug.reload\" option must be \"module\" or \"restart\".");
+            }
+            config.debug.reload = *mode;
+        }
     }
 
     readValue(document, "autoload", config.autoloads);
@@ -280,7 +300,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 }
 
 Json AppConfig::toJson() const {
-    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"showSafeArea", debug.showSafeArea}};
+    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }

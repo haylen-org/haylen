@@ -127,6 +127,7 @@ void Engine::start() {
     applyWindowOptions();
 
     // A plugin or an application that fails to start shows the error screen instead of taking the process down.
+    const PhaseScope scope(*this, Phase::Lifecycle);
     try {
         lua::Environment::install(*this, getLuaState());
         for (plugins::Plugin* plugin : current.plugins.getAll()) {
@@ -163,6 +164,7 @@ void Engine::stop() {
         return;
     }
     current.started = false;
+    const PhaseScope scope(*this, Phase::Lifecycle);
 
     // Stopping runs app code that may fail like any other, and every part still stops so nothing holds Lua references once the Lua state closes.
     // clang-format off
@@ -213,6 +215,7 @@ void Engine::frame(double frameSeconds) {
     const std::vector<plugins::Plugin*> all = current.plugins.getAll();
     debug::Profiler& profiler = current.profiler;
     profiler.beginFrame();
+    current.lifecycleFailed = false;
 
     try {
         if (current.recovering) {
@@ -731,14 +734,31 @@ bool Engine::isBackCaptured() const {
     return !current.backLeavesApp || (current.errorScreen && current.recoverable) || std::ranges::any_of(all, [](const plugins::Plugin* plugin) { return plugin->isCapturingBack(); });
 }
 
+Engine::PhaseScope::PhaseScope(Engine& owner, Phase value) noexcept : engine(owner), previous(owner.state->phase), exceptions(std::uncaught_exceptions()) {
+    owner.state->phase = value;
+}
+
+Engine::PhaseScope::~PhaseScope() {
+    EngineState& current = *engine.state;
+    if (current.phase == Phase::Lifecycle && std::uncaught_exceptions() > exceptions) {
+        current.lifecycleFailed = true;
+    }
+    current.phase = previous;
+}
+
+Engine::Phase Engine::getPhase() const noexcept {
+    return state->phase;
+}
+
 void Engine::reportError(const std::exception& exception) {
     EngineState& current = *state;
+    const bool lifecycle = current.phase == Phase::Lifecycle || std::exchange(current.lifecycleFailed, false);
     if (current.errorScreen) {
         return;
     }
 
     const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
-    current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()));
+    current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()), !lifecycle);
     Log::error("{}", current.errorScreen->getReport());
     const Json report = current.errorScreen->getError().toJson();
     current.host.reportError(report);
@@ -753,6 +773,20 @@ void Engine::reportError(const std::string& message) {
 
 const lua::Error* Engine::getError() const noexcept {
     return state->errorScreen ? &state->errorScreen->getError() : nullptr;
+}
+
+bool Engine::isErrorResumable() const noexcept {
+    return state->errorScreen && state->errorScreen->isResumable();
+}
+
+bool Engine::clearError() noexcept {
+    EngineState& current = *state;
+    if (!current.errorScreen || !current.errorScreen->isResumable()) {
+        return false;
+    }
+    current.errorScreen.reset();
+    current.recovering = false;
+    return true;
 }
 
 void Engine::setRecoverable(bool value) noexcept {

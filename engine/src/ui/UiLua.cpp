@@ -350,6 +350,9 @@ int UiLua::mount(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
+    }
 
     lua_newtable(L);
     const int handlers = lua_gettop(L);

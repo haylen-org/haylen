@@ -102,6 +102,28 @@ class Engine final {
         Offline,
     };
 
+    // Where the code that may fail runs, which decides whether a fixed error can resume the app. Frame code, such as updates, renders, events, timers, tweens and listeners, runs again in the next frame, and a reload in development changed nothing when it failed, so both can resume. A lifecycle step, such as the start of the app, a scene hook that loads, enters, exits, unloads, pauses or resumes, the start or stop of an autoload, or a task that cannot come back, stopped half way, so only a restart starts it cleanly.
+    enum class Phase : std::uint8_t {
+        Frame,
+        Lifecycle,
+        Reload,
+    };
+
+    // Sets the phase for its lifetime and restores the previous one. An error that leaves a lifecycle scope counts as a lifecycle error wherever the engine reports it.
+    class PhaseScope final {
+      public:
+        PhaseScope(Engine& owner, Phase value) noexcept;
+        ~PhaseScope();
+
+        PhaseScope(const PhaseScope&) = delete;
+        PhaseScope& operator=(const PhaseScope&) = delete;
+
+      private:
+        Engine& engine;
+        Phase previous;
+        int exceptions;
+    };
+
     Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppConfig config, std::unique_ptr<Application> application);
     ~Engine();
 
@@ -163,6 +185,14 @@ class Engine final {
 
     // Returns the error that stopped the app, or null while it runs.
     [[nodiscard]] const lua::Error* getError() const noexcept;
+
+    // Whether the error that stopped the app came from code that runs again, so fixing it in development resumes the app instead of restarting it.
+    [[nodiscard]] bool isErrorResumable() const noexcept;
+
+    // Leaves the error screen at once when its error can resume, so the next frame updates and renders the app again with its state, and returns whether it did. Hot reload calls it once a reload fixed the code.
+    bool clearError() noexcept;
+
+    [[nodiscard]] Phase getPhase() const noexcept;
 
     // Lets the error screen offer to go back to the app instead of only restarting it, for apps that can return to a safe screen, such as a menu.
     void setRecoverable(bool value) noexcept;

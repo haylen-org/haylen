@@ -77,6 +77,9 @@ class LifecycleEvent final {
     static constexpr std::string_view kAssetLoaded = "assetLoaded";
     static constexpr std::string_view kAssetUnloaded = "assetUnloaded";
     static constexpr std::string_view kAssetReloaded = "assetReloaded";
+    static constexpr std::string_view kAssetChanged = "assetChanged";
+
+    static constexpr std::string_view kModuleReloaded = "moduleReloaded";
 
     static constexpr std::string_view kObjectCreated = "objectCreated";
     static constexpr std::string_view kObjectDestroyed = "objectDestroyed";

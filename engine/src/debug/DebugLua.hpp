@@ -38,7 +38,6 @@ class DebugLua final {
     static int addDrawer(lua_State* L);
     static int setObjectEvents(lua_State* L);
     static int objectEvents(lua_State* L);
-    static int hotReloadWatching(lua_State* L);
     static int stats(lua_State* L);
     static int addMonitor(lua_State* L);
     static int removeMonitor(lua_State* L);

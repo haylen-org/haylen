@@ -34,6 +34,14 @@ std::string Autoloads::getName(std::string_view module) {
     return name;
 }
 
+void Autoloads::pushList(lua_State* L) const {
+    lua_createtable(L, static_cast<int>(entries.size()), 0);
+    for (std::size_t index = 0; index < entries.size(); ++index) {
+        entries[index].table.push(L);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
+
 void Autoloads::pushTable(lua_State* L) {
     if (lua_getfield(L, LUA_REGISTRYINDEX, kTable) == LUA_TTABLE) {
         return;
@@ -48,7 +56,11 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     if (name.empty()) {
         throw std::invalid_argument("An autoload needs a name.");
     }
+    // Adding the same module under the same name again keeps the autoload, so a module that adds one at its top level can run again when it reloads.
     for (const Entry& entry : entries) {
+        if (entry.name == name && entry.module == module) {
+            return;
+        }
         if (entry.name == name) {
             throw std::invalid_argument("An autoload named \"" + name + "\" already exists.");
         }
@@ -56,6 +68,7 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
 
     // The module loads on the main thread in a protected call, so a failure shows the stack of the module that failed.
     lua_State* main = Runtime::getMainThread(L);
+    const core::Engine::PhaseScope scope(Runtime::getEngine(main), core::Engine::Phase::Lifecycle);
     lua_getglobal(main, "require");
     lua_pushstring(main, module.c_str());
     Runtime::protectedCall(main, 1, 1);
@@ -78,7 +91,7 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     lua_pushvalue(main, -2);
     lua_setfield(main, -2, name.c_str());
     lua_pop(main, 1);
-    entries.push_back({.name = name, .table = Reference(main, -1)});
+    entries.push_back({.name = name, .module = module, .table = Reference(main, -1)});
     lua_pop(main, 1);
 
     const Entry& added = entries.back();
@@ -155,6 +168,7 @@ void Autoloads::renderUi() {
 
 // Every autoload stops even when an earlier one fails, and the first failure is raised again at the end.
 void Autoloads::stop(core::Engine& engine) {
+    const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Lifecycle);
     std::vector<Entry> stopping = std::exchange(entries, {});
     std::exception_ptr failure;
     // clang-format off

@@ -310,18 +310,6 @@ timer.every(2, function()
 end)
 ```
 
-### debug.hotReloadWatching()
-
-Returns `true` while hot reload watches the package folder of an app in development, which is the case when the `haylen` player runs a package folder named on its command line. Then changed scripts and `app.json` restart the app, and changed assets reload in place. Zip packages and shipped apps return `false`.
-
-```lua
-local debug = require('haylen.debug')
-
-if debug.hotReloadWatching() then
-    print('save a file to see the change')
-end
-```
-
 ### debug.frame()
 
 Returns the measurements of the last finished frame as a table. Before the first frame every number is `0` and `scopes` is empty.

@@ -99,11 +99,11 @@ void TweenLua::pushHandle(lua_State* L, const std::shared_ptr<Tween>& tween) {
 
 int TweenLua::readOwner(lua_State* L, int options) {
     if (options == 0) {
-        return 0;
+        return lua::Owners::pushDefault(L);
     }
     if (lua_getfield(L, options, "owner") == LUA_TNIL) {
         lua_pop(L, 1);
-        return 0;
+        return lua::Owners::pushDefault(L);
     }
     lua::Owners::checkOwner(L, -1);
     return lua_gettop(L);

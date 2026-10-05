@@ -18,7 +18,7 @@
 
 namespace haylen::core {
 
-ErrorScreen::ErrorScreen(Engine& owner, lua::Error failure) : engine(owner), error(std::move(failure)), focused(owner.isRecoverable() ? Action::Back : Action::Restart) {
+ErrorScreen::ErrorScreen(Engine& owner, lua::Error failure, bool resumable) : engine(owner), error(std::move(failure)), focused(owner.isRecoverable() ? Action::Back : Action::Restart), canResume(resumable) {
     excerpt = readExcerpt();
     report = buildReport();
 }
@@ -119,7 +119,7 @@ bool ErrorScreen::isGamepadDriven() const {
     return engine.getInput().getLastDevice() == input::InputDevice::Gamepad || !engine.getWindow().hasPointerDevice();
 }
 
-bool ErrorScreen::isReloadWatching() const {
+bool ErrorScreen::isInDevelopment() const {
     const auto* hotReload = engine.getPlugins().find<plugins::HotReloadPlugin>();
     return hotReload != nullptr && hotReload->isActive();
 }
@@ -462,9 +462,9 @@ float ErrorScreen::drawFooter(graphics2d::Renderer& renderer, text::Font& font, 
     backButton = engine.isRecoverable() ? drawAction(renderer, font, {restartButton.getRight() + gap, buttonsTop}, Action::Back, "Esc", "Back to the app", unit) : math::Rect{};
 
     float top = buttonsTop - gap;
-    if (isReloadWatching()) {
+    if (isInDevelopment()) {
         const text::Style hint{.size = kSmallSize * unit, .color = kMutedColor};
-        const std::string_view text = "Saving a file of the app reloads it.";
+        const std::string_view text = canResume ? "Save a fix to resume the app." : "Saving a file of the app restarts it.";
         top -= font.measure(text, hint).y;
         renderer.drawText(font, text, {area.x, top}, hint);
         top -= gap * 0.6F;

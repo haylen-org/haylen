@@ -385,7 +385,7 @@ haylen.setLifecycle({pauseOnFocusLoss = false, muteOnFocusLoss = false})
 
 Loads `module` as an autoload, calls its `start` and returns its table. An autoload lives for the whole app, gets the callbacks the [lifecycle guide](../lifecycle.md#autoloads) lists and is kept in `haylen.autoloads` under `name`. With one argument, the name is the last part of the module in camel case, so `haylen.autoload('state.player-data')` names it `playerData`. Autoloads listed in the `autoload` field of `app.json` load before `source/main.lua` runs.
 
-The module must return a table, a name can only be taken once and a table can only be one autoload, otherwise the call raises `The autoload module "<module>" must return a table.`, `An autoload named "<name>" already exists.` or `The module "<module>" is already the autoload "<name>".`
+Adding the same module under the same name again returns the autoload that exists, so a module that adds an autoload at its top level runs again unchanged when it [reloads](hotReload.md). The module must return a table, a name can only be taken once for one module and a table can only be one autoload, otherwise the call raises `The autoload module "<module>" must return a table.`, `An autoload named "<name>" already exists.` or `The module "<module>" is already the autoload "<name>".`
 
 ```lua
 -- The file `source/systems/music.lua`.

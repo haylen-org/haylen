@@ -325,8 +325,13 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/Binding.cpp
   src/lua/Environment.cpp
   src/lua/Error.cpp
+  src/lua/HotReloadLua.cpp
   src/lua/JobsLua.cpp
   src/lua/JsonConverter.cpp
+  src/lua/ModuleClosures.cpp
+  src/lua/ModuleGraph.cpp
+  src/lua/ModuleReloader.cpp
+  src/lua/ModuleSnapshot.cpp
   src/lua/NativeProperty.cpp
   src/lua/Owners.cpp
   src/lua/Promise.cpp
@@ -339,6 +344,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/Task.cpp
   src/lua/TypeConverter.cpp
   src/lua/Userdata.cpp
+  src/lua/ValueRemap.cpp
   src/lua/WeakReference.cpp
   src/math/ChoiceLua.cpp
   src/math/Color.cpp

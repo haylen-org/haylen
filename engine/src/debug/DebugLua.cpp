@@ -22,7 +22,6 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "lua/Owners.hpp"
-#include "plugins/HotReloadPlugin.hpp"
 
 namespace haylen::lua {
 
@@ -109,6 +108,9 @@ int DebugLua::addDrawer(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
+    }
 
     auto function = std::make_shared<lua::Owners::Function>(L, 2, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -134,11 +136,6 @@ int DebugLua::setObjectEvents(lua_State* L) {
 
 int DebugLua::objectEvents(lua_State* L) {
     lua::Stack::push(L, getPlugin(L).hasObjectEvents());
-    return 1;
-}
-
-int DebugLua::hotReloadWatching(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::HotReloadPlugin>().isActive());
     return 1;
 }
 
@@ -287,6 +284,9 @@ int DebugLua::addMonitor(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
+    }
 
     auto function = std::make_shared<lua::Owners::Function>(L, 2, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
@@ -408,7 +408,7 @@ int DebugLua::recentLog(lua_State* L) {
 
 int DebugLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"hotReloadWatching", &lua::Binding::native<&hotReloadWatching>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
+        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

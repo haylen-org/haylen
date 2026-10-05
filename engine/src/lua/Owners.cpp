@@ -51,6 +51,35 @@ int Owners::collectScope(lua_State* L) {
     return 0;
 }
 
+int Owners::pushDefault(lua_State* L) {
+    if (lua_getfield(L, LUA_REGISTRYINDEX, kDefault) != LUA_TTABLE) {
+        lua_pop(L, 1);
+        return 0;
+    }
+    return lua_gettop(L);
+}
+
+void Owners::swapDefault(lua_State* L, int index) {
+    const int value = lua_absindex(L, index);
+    lua_getfield(L, LUA_REGISTRYINDEX, kDefault);
+    lua_pushvalue(L, value);
+    lua_setfield(L, LUA_REGISTRYINDEX, kDefault);
+}
+
+void Owners::pushFunctions(lua_State* L, int owner) {
+    const int ownerIndex = lua_absindex(L, owner);
+    pushWeakTable(L, kScopes, "k");
+    lua_pushvalue(L, ownerIndex);
+    if (lua_rawget(L, -2) != LUA_TUSERDATA) {
+        lua_pop(L, 2);
+        lua_pushnil(L);
+        return;
+    }
+    lua_getiuservalue(L, -1, 1);
+    lua_replace(L, -3);
+    lua_pop(L, 1);
+}
+
 Owners::Scope& Owners::pushScope(lua_State* L, int owner) {
     const int ownerIndex = lua_absindex(L, owner);
     pushWeakTable(L, kScopes, "k");

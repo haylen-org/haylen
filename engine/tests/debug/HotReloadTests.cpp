@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <lua.hpp>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -19,6 +21,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/PackageWatcher.hpp"
+#include "haylen/lua/Application.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "plugins/HotReloadPlugin.hpp"
@@ -153,10 +156,12 @@ TEST_F(AssetReloadTest, UpdatesTexturesInPlaceAndDropsOtherAssets) {
 // Scans run on the I/O pool, so a watched engine runs frames until what a scan found reached it.
 class WatchedEngine final {
   public:
-    explicit WatchedEngine(const std::filesystem::path& folder) : host(folder.parent_path() / "data") {
+    explicit WatchedEngine(const std::filesystem::path& folder, std::unique_ptr<core::Application> application = std::make_unique<test::TestApplication>(nullptr)) : host(folder.parent_path() / "data") {
         host.enableDevelopment(folder);
         const std::shared_ptr<io::Package> package = io::Package::openDirectory(folder);
-        engine = std::make_unique<core::Engine>(host, package, core::AppConfig::fromPackage(*package), std::make_unique<test::TestApplication>(nullptr));
+        core::AppConfig config = core::AppConfig::fromPackage(*package);
+        application->configure(config);
+        engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
         engine->start();
     }
 
@@ -225,19 +230,31 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     core::Log::removeListener(listener);
 }
 
-TEST_F(HotReloadPluginTest, RestartsWhenTheLuaOfAPluginChanges) {
+TEST_F(HotReloadPluginTest, ReloadsTheLuaOfAPluginInPlace) {
     const test::TemporaryDirectory directory;
     directory.write("hot/app.json", R"({"name": "Hot", "plugins": {"ads": {}}})");
-    directory.write("hot/source/main.lua", "");
+    directory.write("hot/source/main.lua", "ads = require('ads')");
     directory.write("hot/plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})");
-    directory.write("hot/plugins/ads/source/init.lua", "return {}");
-    WatchedEngine watched(directory.getPath() / "hot");
+    directory.write("hot/plugins/ads/source/init.lua", "return {show = function() return 'v1' end}");
+    WatchedEngine watched(directory.getPath() / "hot", std::make_unique<lua::Application>());
+    lua_State* L = watched.get().getLuaState();
+    // clang-format off
+    const auto shows = [L] {
+        lua_getglobal(L, "ads");
+        lua_getfield(L, -1, "show");
+        lua_call(L, 0, 1);
+        std::string result = lua_tostring(L, -1);
+        lua_pop(L, 2);
+        return result;
+    };
+    // clang-format on
 
-    // The native part of a plugin is no Lua, so only the edited module of the plugin restarts the app.
+    // The native part of a plugin is no Lua, so only the edited module of the plugin changes, in place.
     directory.write("hot/plugins/ads/android/build.gradle.kts", "plugins {}");
-    directory.write("hot/plugins/ads/source/init.lua", "return {edited = true}");
+    directory.write("hot/plugins/ads/source/init.lua", "return {show = function() return 'v2' end}");
     touch(directory.getPath() / "hot/plugins/ads/source/init.lua", 5);
-    EXPECT_TRUE(watched.runUntil([&watched] { return watched.get().isRestartRequested(); }));
+    EXPECT_TRUE(watched.runUntil([&shows] { return shows() == "v2"; }));
+    EXPECT_FALSE(watched.get().isRestartRequested());
 }
 
 TEST_F(HotReloadPluginTest, IgnoresTheFilesOfEditors) {
