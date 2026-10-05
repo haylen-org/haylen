@@ -322,6 +322,17 @@ void Particles2DLua::readCurve(lua_State* L, std::string_view key, math::EasingC
     }
 }
 
+// The speed and spin curves take `false` to keep the speed or the spin as it is.
+void Particles2DLua::readCurve(lua_State* L, std::string_view key, std::optional<math::EasingCurve>& curve) {
+    if (lua_isboolean(L, -1) && lua_toboolean(L, -1) == 0) {
+        curve.reset();
+        return;
+    }
+    math::EasingCurve read;
+    readCurve(L, key, read);
+    curve = std::move(read);
+}
+
 // Bursts are a list of `{time = seconds, count = particles or {min, max}, cycles, interval, probability}`.
 void Particles2DLua::readBursts(lua_State* L, std::vector<EmitterConfig::Burst>& bursts) {
     luaL_checktype(L, -1, LUA_TTABLE);
@@ -530,7 +541,9 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
     setValue(L, "maxParticles", config.maxParticles);
     setValue(L, "lifetime", config.lifetime);
     setValue(L, "speed", config.speed);
-    setValue(L, "speedCurve", config.speedCurve);
+    if (config.speedCurve) {
+        setValue(L, "speedCurve", *config.speedCurve);
+    }
     setValue(L, "direction", config.direction);
     setValue(L, "directionMode", config.directionMode);
     setValue(L, "spread", config.spread);
@@ -590,7 +603,9 @@ void Particles2DLua::pushLook(lua_State* L, const EmitterConfig& config) {
     setValue(L, "rotationStep", config.rotationStep);
     setValue(L, "alignToVelocity", config.alignToVelocity);
     setValue(L, "spin", config.spin);
-    setValue(L, "spinCurve", config.spinCurve);
+    if (config.spinCurve) {
+        setValue(L, "spinCurve", *config.spinCurve);
+    }
     setValue(L, "colors", config.colors);
     setValue(L, "colorTimes", config.colorTimes);
     setValue(L, "colorBlend", config.colorBlend);

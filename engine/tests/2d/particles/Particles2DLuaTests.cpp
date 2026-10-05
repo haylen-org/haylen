@@ -91,7 +91,7 @@ TEST(Particles2DLuaTest, ReadsAndReturnsEveryOption) {
 
     // A configuration goes back into a new emitter as it is, and `false` removes the optional parts.
     EXPECT_EQ(fixture.lua("local copy = particles2d.newEmitter(config) copy:update(0.5) return copy.config.light.radius .. ' ' .. #copy.config.subEmitters"), "50.0 1");
-    EXPECT_EQ(fixture.lua("full:configure({light = false, particleLights = false, bounds = false, endSizeScale = false}) local c = full.config return tostring(c.light) .. ' ' .. tostring(c.particleLights) .. ' ' .. tostring(c.bounds) .. ' ' .. tostring(c.endSizeScale)"), "nil nil nil nil");
+    EXPECT_EQ(fixture.lua("full:configure({light = false, particleLights = false, bounds = false, endSizeScale = false, speedCurve = false, spinCurve = false}) local c = full.config return tostring(c.light) .. ' ' .. tostring(c.particleLights) .. ' ' .. tostring(c.bounds) .. ' ' .. tostring(c.endSizeScale) .. ' ' .. tostring(c.speedCurve) .. ' ' .. tostring(c.spinCurve)"), "nil nil nil nil nil nil");
 
     EXPECT_NE(fixture.lua("full:configure({sizeCurve = function(t) return t end})").find("takes a curve name or a table, not a function"), std::string::npos);
     EXPECT_NE(fixture.lua("full:configure({turbulence = {strenght = 1}})").find("Unknown option \"strenght\""), std::string::npos);

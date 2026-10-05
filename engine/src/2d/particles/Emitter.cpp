@@ -533,7 +533,7 @@ void Emitter::trigger(std::size_t subEmitter, std::size_t index) {
     }
     const std::size_t count = pick(sub.count);
     const math::Vec2 at = getOrigin() + particles.positions[index];
-    const math::Vec2 inherited = particles.velocities[index] * sub.inheritVelocity;
+    const math::Vec2 inherited = getVelocity(index) * sub.inheritVelocity;
     const math::Color tint = sub.inheritColor ? particleColor(index) : math::Color::white();
     Emitter& child = *children[subEmitter];
     child.spawn(count, at, at, inherited, tint);
@@ -626,8 +626,8 @@ void Emitter::simulate(float deltaSeconds, std::size_t begin, std::size_t end) n
 
         const float life = std::min(particles.ages[index] / particles.lifetimes[index], 1.0F);
         motion = (motion + acceleration * deltaSeconds) * damping;
-        point += motion * ((config.speedCurve.isLinear() ? 1.0F : config.speedCurve.apply(life)) * deltaSeconds);
-        particles.rotations[index] += particles.spins[index] * (config.spinCurve.isLinear() ? 1.0F : config.spinCurve.apply(life)) * deltaSeconds;
+        point += motion * (easeDown(config.speedCurve, life) * deltaSeconds);
+        particles.rotations[index] += particles.spins[index] * (easeDown(config.spinCurve, life) * deltaSeconds);
 
         if (collision.type == EmitterConfig::Collision::Type::Floor) {
             const float floor = center.y + collision.y * scale;
@@ -928,18 +928,19 @@ graphics2d::SpriteInstance Emitter::spriteAt(std::size_t index) const noexcept {
     const float life = std::min(particles.ages[index] / particles.lifetimes[index], 1.0F);
     const float eased = config.sizeCurve.isLinear() ? life : config.sizeCurve.apply(life);
     const float size = particles.startSizes[index] + (particles.endSizes[index] - particles.startSizes[index]) * eased;
-    const math::Vec2 motion = particles.velocities[index];
+    const math::Vec2 heading = particles.velocities[index];
 
+    // Particles keep facing their heading while the speed curve slows them, and stretch with the speed they have.
     float angle = particles.rotations[index];
-    if (config.alignToVelocity && !motion.isZero()) {
-        angle += motion.getAngle();
+    if (config.alignToVelocity && !heading.isZero()) {
+        angle += heading.getAngle();
     }
     if (config.rotationStep > 0.0F) {
         angle = std::round(angle / config.rotationStep) * config.rotationStep;
     }
     float width = particles.aspects.empty() ? size : size * particles.aspects[index];
     if (config.stretch > 0.0F) {
-        width += motion.getLength() * config.stretch;
+        width += heading.getLength() * std::fabs(easeDown(config.speedCurve, life)) * config.stretch;
     }
     math::Vec2 at = getOrigin() + particles.positions[index];
     if (config.pixelSnap > 0.0F) {
@@ -952,7 +953,16 @@ Emitter::Particle Emitter::getParticle(std::size_t index) const {
     if (index >= getCount()) {
         throw std::out_of_range("The particle emitter has no live particle at that index.");
     }
-    return {.position = getOrigin() + particles.positions[index], .velocity = particles.velocities[index], .age = particles.ages[index], .lifetime = particles.lifetimes[index], .sprite = spriteAt(index)};
+    return {.position = getOrigin() + particles.positions[index], .velocity = getVelocity(index), .age = particles.ages[index], .lifetime = particles.lifetimes[index], .sprite = spriteAt(index)};
+}
+
+// The velocity a particle moves with, which the speed curve scales.
+math::Vec2 Emitter::getVelocity(std::size_t index) const noexcept {
+    return particles.velocities[index] * easeDown(config.speedCurve, std::min(particles.ages[index] / particles.lifetimes[index], 1.0F));
+}
+
+float Emitter::easeDown(const std::optional<math::EasingCurve>& curve, float life) noexcept {
+    return curve ? 1.0F - curve->apply(life) : 1.0F;
 }
 
 void Emitter::draw(graphics2d::Renderer& renderer) const {

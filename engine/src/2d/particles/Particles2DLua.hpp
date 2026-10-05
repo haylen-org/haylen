@@ -2,6 +2,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -58,6 +59,7 @@ class Particles2DLua final {
     static void readParticleLights(lua_State* L, EmitterConfig& config);
     static void readTrail(lua_State* L, EmitterConfig::ParticleTrail& trail);
     static void readCurve(lua_State* L, std::string_view key, math::EasingCurve& curve);
+    static void readCurve(lua_State* L, std::string_view key, std::optional<math::EasingCurve>& curve);
     [[nodiscard]] static Trail::Options readTrailOptions(lua_State* L, int index, Trail::Options options);
 
     template <typename T> static void setValue(lua_State* L, const char* name, const T& value);

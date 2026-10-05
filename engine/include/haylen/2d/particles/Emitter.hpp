@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include "haylen/debug/TrackedCount.hpp"
 #include "haylen/debug/TrackedObject.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/EasingCurve.hpp"
 #include "haylen/math/FloatRange.hpp"
 #include "haylen/math/Noise2D.hpp"
 #include "haylen/math/Random.hpp"
@@ -193,6 +195,9 @@ class Emitter final {
     [[nodiscard]] math::Color particleColor(std::size_t index) const noexcept;
     [[nodiscard]] math::Rect frameAt(std::size_t index, float life) const noexcept;
     [[nodiscard]] graphics2d::SpriteInstance spriteAt(std::size_t index) const noexcept;
+    [[nodiscard]] math::Vec2 getVelocity(std::size_t index) const noexcept;
+    [[nodiscard]] static float easeDown(const std::optional<math::EasingCurve>& curve, float life) noexcept;
+
     // The emitter position in the space of the particles, which is the origin for local space emitters.
     [[nodiscard]] math::Vec2 getCenter() const noexcept;
 

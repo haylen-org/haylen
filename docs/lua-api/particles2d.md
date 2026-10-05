@@ -225,7 +225,7 @@ The function `particles2d.newEmitter`, its overrides table and `emitter:configur
 | --- | --- | --- | --- |
 | `lifetime` | range | `1` | Seconds each particle lives. |
 | `speed` | range | `{50, 100}` | Initial speed in units per second. |
-| `speedCurve` | curve | `'linear'` | Scales the speed across the lifetime, such as `'expoOut'` for a puff that stops abruptly. |
+| `speedCurve` | curve | none | Eases the speed from its full value at birth to 0 at the end of the life, as `sizeCurve` eases the size, such as `'expoOut'` for a puff that stops abruptly or `'quadIn'` for dust that slows down late. The particle keeps facing its motion, `stretch` follows the speed it has, and `false` removes the curve. |
 | `direction` | number | `-1.5708` | Emission angle in radians. The default points up, `0` points right and `1.5708` down. |
 | `directionMode` | string | `'fixed'` | The value `'fixed'` uses `direction`, `'outward'` sends particles away from the center of the spawn area, `'inward'` toward it and `'tangent'` along it, each with `spread` around that angle. |
 | `spread` | number | `0.5` | Width of the emission cone in radians, centered on the direction. The value `6.2832` emits in every direction. |
@@ -259,7 +259,7 @@ The function `particles2d.newEmitter`, its overrides table and `emitter:configur
 | `rotationStep` | number | `0` | Snaps every drawn rotation to multiples of this angle, such as `1.5708` for pixel art that only turns by quarter turns. |
 | `alignToVelocity` | boolean | `false` | Adds the angle of the motion to the rotation, so textures that point right follow their motion. A vertical texture takes a `rotation` of `-1.5708`. |
 | `spin` | range | `0` | Rotation speed in radians per second. |
-| `spinCurve` | curve | `'linear'` | Scales the spin across the lifetime. |
+| `spinCurve` | curve | none | Eases the spin from its full value at birth to 0 at the end of the life, such as `'quadOut'` for a coin that spins down, and `false` removes it. |
 | `colors` | table | `{'#FFFFFFFF'}` | Colors over the lifetime, spread evenly or at `colorTimes`, multiplied with the texture. |
 | `colorTimes` | table | none | One time from 0 to 1 for each color, in growing order, which places the color stops, such as `{0, 0.1, 0.8, 1}` for a quick fade in and a late fade out. |
 | `colorBlend` | string | `'smooth'` | The colors blend into each other with `'smooth'` and hold until the next stop with `'steps'`, which keeps pixel art inside its palette. |
@@ -499,7 +499,7 @@ print(count) -- 400
 
 ### emitter:particle(index)
 
-Returns the live particle at `index`, from 1 to `count` in the order the particles were born, as a table with `x` and `y` in world coordinates, the velocity `vx` and `vy`, `age` and `lifetime` in seconds, and the sprite it draws as this frame: `width`, `height`, `rotation`, `color` and `source`. An index outside the particles raises an argument error.
+Returns the live particle at `index`, from 1 to `count` in the order the particles were born, as a table with `x` and `y` in world coordinates, the velocity `vx` and `vy` it moves with, which the `speedCurve` scales, `age` and `lifetime` in seconds, and the sprite it draws as this frame: `width`, `height`, `rotation`, `color` and `source`. An index outside the particles raises an argument error.
 
 ```lua
 local graphics = require('haylen.graphics')

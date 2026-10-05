@@ -221,7 +221,9 @@ struct EmitterConfig {
 
     math::FloatRange lifetime{1.0F, 1.0F};
     math::FloatRange speed{50.0F, 100.0F};
-    math::EasingCurve speedCurve{math::Easing::Type::Linear};
+
+    // Eases the speed from its full value at birth to 0 at the end of the life, as `sizeCurve` eases the size, and `spinCurve` does the same for the spin. Without a curve both stay as they are.
+    std::optional<math::EasingCurve> speedCurve;
     float direction = -1.5707964F;
     DirectionMode directionMode = DirectionMode::Fixed;
     float spread = 0.5F;
@@ -246,7 +248,7 @@ struct EmitterConfig {
     float rotationStep = 0.0F;
     bool alignToVelocity = false;
     math::FloatRange spin{};
-    math::EasingCurve spinCurve{math::Easing::Type::Linear};
+    std::optional<math::EasingCurve> spinCurve;
 
     std::vector<math::Color> colors{math::Color::white()};
     std::vector<float> colorTimes;

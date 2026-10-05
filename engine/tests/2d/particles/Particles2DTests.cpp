@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -269,18 +270,40 @@ TEST_F(ParticlesTest, SizesSpeedsAndSpinsFollowTheirCurves) {
         EXPECT_FLOAT_EQ(constant.getParticle(index).sprite.size.x, sizes[index]);
     }
 
-    // Speed and spin curves scale the motion and the turning across the life, so a step curve stops both at half the life.
-    Emitter stopping({.texture = texture(), .rate = 0.0F, .lifetime = {2.0F, 2.0F}, .speed = {100.0F, 100.0F}, .speedCurve = math::EasingCurve::points({{0.0F, 1.0F}, {0.5F, 1.0F}, {0.5001F, 0.0F}, {1.0F, 0.0F}}), .direction = 0.0F, .spread = 0.0F, .spin = {2.0F, 2.0F}, .spinCurve = math::EasingCurve::points({{0.0F, 1.0F}, {0.5F, 1.0F}, {0.5001F, 0.0F}, {1.0F, 0.0F}})});
+    // Speed and spin curves ease the speed and the spin down to nothing, so a step curve stops both at half the life.
+    const math::EasingCurve halfway = math::EasingCurve::points({{0.0F, 0.0F}, {0.5F, 0.0F}, {0.5001F, 1.0F}, {1.0F, 1.0F}});
+    Emitter stopping({.texture = texture(), .rate = 0.0F, .lifetime = {2.0F, 2.0F}, .speed = {100.0F, 100.0F}, .speedCurve = halfway, .direction = 0.0F, .spread = 0.0F, .stretch = 0.5F, .spin = {2.0F, 2.0F}, .spinCurve = halfway});
     stopping.burst(1);
-    for (int step = 0; step < 10; ++step) {
+    for (int step = 0; step < 11; ++step) {
         stopping.update(0.1F);
     }
-    const float x = stopping.getParticle(0).position.x;
-    const float turned = stopping.getParticle(0).sprite.rotation;
+    const Emitter::Particle stopped = stopping.getParticle(0);
     stopping.update(0.5F);
-    EXPECT_NEAR(x, 100.0F, 1.0F);
-    EXPECT_FLOAT_EQ(stopping.getParticle(0).position.x, x);
-    EXPECT_FLOAT_EQ(stopping.getParticle(0).sprite.rotation, turned);
+    EXPECT_NEAR(stopped.position.x, 100.0F, 1.0F);
+    EXPECT_FLOAT_EQ(stopped.velocity.x, 0.0F);
+    EXPECT_FLOAT_EQ(stopped.sprite.size.x, 16.0F);
+    EXPECT_FLOAT_EQ(stopping.getParticle(0).position.x, stopped.position.x);
+    EXPECT_FLOAT_EQ(stopping.getParticle(0).sprite.rotation, stopped.sprite.rotation);
+
+    // A curve that eases out stops the particle early, and one that eases in keeps it going until late.
+    // clang-format off
+    const auto travel = [&](math::Easing::Type type) {
+        Emitter puff({.texture = texture(), .rate = 0.0F, .lifetime = {2.0F, 2.0F}, .speed = {100.0F, 100.0F}, .speedCurve = math::EasingCurve(type), .direction = 0.0F, .spread = 0.0F});
+        puff.burst(1);
+        puff.update(0.1F);
+        const float early = puff.getParticle(0).position.x;
+        for (int step = 0; step < 18; ++step) {
+            puff.update(0.1F);
+        }
+        return std::pair{early, puff.getParticle(0).position.x};
+    };
+    // clang-format on
+    const auto [abruptEarly, abruptEnd] = travel(math::Easing::Type::ExpoOut);
+    const auto [lateEarly, lateEnd] = travel(math::Easing::Type::QuadIn);
+    EXPECT_GT(abruptEarly, 6.0F);
+    EXPECT_LT(abruptEnd, 40.0F);
+    EXPECT_GT(lateEarly, 9.5F);
+    EXPECT_GT(lateEnd, 120.0F);
 }
 
 TEST_F(ParticlesTest, ParticlesTurnStretchAndSnap) {
@@ -775,7 +798,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(config.bursts.front().count.min, 2U);
     EXPECT_FLOAT_EQ(config.bursts.front().probability, 0.5F);
     EXPECT_FLOAT_EQ(config.delay, 0.25F);
-    EXPECT_EQ(config.speedCurve.getType(), math::Easing::Type::QuadOut);
+    EXPECT_EQ(config.speedCurve->getType(), math::Easing::Type::QuadOut);
     EXPECT_EQ(config.directionMode, EmitterConfig::DirectionMode::Outward);
     EXPECT_FLOAT_EQ(config.turbulence.strength, 30.0F);
     EXPECT_EQ(config.attractors.front().space, EmitterConfig::Attractor::Space::World);
@@ -783,7 +806,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_FLOAT_EQ(config.collision.lifeLoss, 0.1F);
     EXPECT_EQ(config.boundsMode, EmitterConfig::BoundsMode::Wrap);
     EXPECT_EQ(config.sizeCurve.getKind(), math::EasingCurve::Kind::Parametric);
-    EXPECT_EQ(config.spinCurve.getKind(), math::EasingCurve::Kind::Steps);
+    EXPECT_EQ(config.spinCurve->getKind(), math::EasingCurve::Kind::Steps);
     EXPECT_EQ(config.colorBlend, EmitterConfig::ColorBlend::Steps);
     EXPECT_EQ(config.tintMode, EmitterConfig::TintMode::Cycle);
     EXPECT_EQ(config.shape, EmitterConfig::Shape::Arc);
