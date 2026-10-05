@@ -25,7 +25,7 @@ The class `graphics::Device` (`engine/src/graphics/Device.cpp`) owns the Sokol g
 | Web, `web-webgl2` platform | WebGL2 | `'gles3'` |
 | Engine tests | Sokol dummy backend | `'dummy'` |
 
-The [build guide](build.md#build-options) explains how a build picks its backend. The engine patches the dummy backend to report the texture limits of desktop GPUs, 16384 pixels for 2D textures, so headless runs load full-size art like the real backends. The shaders in `engine/shaders` are compiled by `sokol-shdc` for every backend: `sprite.glsl` holds the sprite program, `text.glsl` the text program, `mesh.glsl` the mesh program, `blend.glsl` the image blend patterns of the scene transitions, `metaball.glsl` the surface of metaballs, `light.glsl` the light pass and `composite.glsl` the lighting and post-processing composite. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every program shares the shader library in `engine/shaders/include/haylen`, which the custom shaders of apps include too, as the [shader guide](shaders.md) explains. Backends whose render targets start at the bottom row are corrected automatically, so render target textures sample upright everywhere.
+The [build guide](build.md#build-options) explains how a build picks its backend. The engine patches the dummy backend to report the texture limits of desktop GPUs, 16384 pixels for 2D textures, so headless runs load full-size art like the real backends. The shaders in `engine/shaders` are compiled by `sokol-shdc` for every backend: `sprite.glsl` holds the sprite program, `text.glsl` the text program, `mesh.glsl` the mesh program, `blend.glsl` the image blend patterns of the scene transitions, `metaball.glsl` the surface of metaballs, `light.glsl` the light pass and `composite.glsl` the lighting and post-processing composite. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every program shares the shader library in `engine/shaders/include/haylen`, which the custom shaders of apps include too, as the [shader guide](shaders.md) explains. The renderer makes each program the first time a draw needs it, and on Metal it starts compiling the sources of all of them on the I/O pool when it starts, as [shader load time](shaders.md#load-time) explains. Backends whose render targets start at the bottom row are corrected automatically, so render target textures sample upright everywhere.
 
 ## Canvases
 
@@ -203,7 +203,7 @@ Every lit canvas owns its targets, created before the first pass of the frame an
 
 ## Custom shaders
 
-Materials shade draws with the shaders apps write, as the [shader guide](shaders.md) explains. A draw with a material in its `DrawOrder` keeps a copy of the values the material had, and neighbouring draws that share a material and its values still merge into one draw call. The pipelines of a material live with its shader, one per program, blend mode and kind of target, created the first time a draw needs them and released when the shader reloads or goes away.
+Materials shade draws with the shaders apps write, as the [shader guide](shaders.md) explains. A draw with a material in its `DrawOrder` keeps a copy of the values the material had, and neighbouring draws that share a material and its values still merge into one draw call. The pipelines of a material live with its shader, one per program, blend mode and kind of target, created the first time a draw needs them and released when the shader reloads or goes away. On Metal the sources of every program of a shader start compiling on the I/O pool as soon as its file is read, so the first draws wait only for what is left of the compile, as [shader load time](shaders.md#load-time) measures.
 
 ## Metaballs
 
@@ -275,7 +275,7 @@ Sokol preallocates its resource pools, and the `Gpu` class of `engine/src/graphi
 | Images (`kImagePoolSize`) | 4096 | Every texture, render target and font atlas, the renderer's white, light and metaball textures and shadow atlas, the targets of each canvas with lighting or post-processing, and the field of each metaball draw. |
 | Views (`kViewPoolSize`) | 8192 | One per texture and two per render target, so the image pool always runs out first. |
 | Buffers (`kBufferPoolSize`) | 4096 | Every static batch, including each baked region run of a Tiled layer, plus the renderer's quad and its three streaming buffers. |
-| Shaders (`kShaderPoolSize`) | 512 | The renderer's twelve programs, plus every program of a custom shader that a draw has used, up to six per shader: its sprite, text and mesh programs and their lit versions. |
+| Shaders (`kShaderPoolSize`) | 512 | The renderer's twelve programs, each made the first time a draw needs it, plus every program of a custom shader that a draw has used, up to six per shader: its sprite, text and mesh programs and their lit versions. |
 | Pipelines (`kPipelinePoolSize`) | 2048 | One for each program, blend mode and kind of target that the renderer has drawn with, for its own programs and for the programs of every custom shader. |
 
 Creating an object in a full pool throws, which in Lua raises an error that shows the error screen unless the app catches it:

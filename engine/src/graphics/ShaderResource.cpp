@@ -281,6 +281,32 @@ void ShaderResource::validate() const {
     }
 }
 
+std::vector<std::string> ShaderResource::getBackendSources() const {
+    const sg_backend backend = sg_query_backend();
+    if (backend == SG_BACKEND_VULKAN) {
+        return {};
+    }
+    const std::string slang(slangOf(backend));
+    std::vector<std::size_t> used;
+    for (const auto& [program, languages] : programs.items()) {
+        if (!languages.contains(slang)) {
+            continue;
+        }
+        for (const char* stage : {"vertex", "fragment"}) {
+            const auto index = languages.at(slang).at(stage).at("source").get<std::size_t>();
+            if (std::ranges::find(used, index) == used.end()) {
+                used.push_back(index);
+            }
+        }
+    }
+    std::vector<std::string> stages;
+    stages.reserve(used.size());
+    for (const std::size_t index : used) {
+        stages.push_back(sources[index]);
+    }
+    return stages;
+}
+
 const ShaderResource::Program& ShaderResource::getProgram(std::string_view program) {
     const std::string key(program);
     if (const auto found = compiled.find(key); found != compiled.end()) {

@@ -3,19 +3,35 @@
 #include <algorithm>
 #include <format>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "2d/graphics/MaterialResource.hpp"
 #include "graphics/DeviceState.hpp"
 #include "graphics/Gpu.hpp"
+#include "graphics/ShaderPrecompiler.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "shaders/blend.glsl.h"
+#include "shaders/blend_lit.glsl.h"
+#include "shaders/composite.glsl.h"
+#include "shaders/light.glsl.h"
 #include "shaders/mesh.glsl.h"
+#include "shaders/mesh_lit.glsl.h"
+#include "shaders/metaball.glsl.h"
+#include "shaders/metaball_lit.glsl.h"
 #include "shaders/sprite.glsl.h"
 #include "shaders/sprite_lit.glsl.h"
+#include "shaders/text.glsl.h"
+#include "shaders/text_lit.glsl.h"
 
 namespace haylen::graphics2d {
+
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc};
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
@@ -387,6 +403,29 @@ void RendererState::describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, 
     }
 }
 
+void RendererState::precompilePrograms() {
+    std::vector<std::string> sources;
+    for (const std::array<Description, kProgramCount>* table : {&kPrograms, &kLitPrograms}) {
+        for (const Description description : *table) {
+            if (description != nullptr) {
+                const sg_shader_desc& desc = *graphics::Gpu::selectShader(description);
+                sources.emplace_back(desc.vertex_func.source);
+                sources.emplace_back(desc.fragment_func.source);
+            }
+        }
+    }
+    graphics::ShaderPrecompiler::start(jobs, std::move(sources));
+}
+
+sg_shader RendererState::getShader(Program program, bool lit) {
+    const auto index = static_cast<std::size_t>(program);
+    sg_shader& shader = lit ? litShaders[index] : shaders[index];
+    if (shader.id == SG_INVALID_ID) {
+        shader = graphics::Gpu::makeShader(*graphics::Gpu::selectShader(lit ? kLitPrograms[index] : kPrograms[index]));
+    }
+    return shader;
+}
+
 sg_pipeline RendererState::getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target) {
     const std::uint32_t key = pipelineKey(program, blend, target);
     if (const auto found = pipelines.find(key); found != pipelines.end()) {
@@ -396,8 +435,7 @@ sg_pipeline RendererState::getPipeline(Program program, std::uint8_t blend, grap
     sg_pipeline_desc desc{};
     describeLayout(desc, program);
     describeTargets(desc, blend, target);
-    const auto index = static_cast<std::size_t>(program);
-    desc.shader = target == graphics::PassTarget::LitScene ? litShaders[index] : shaders[index];
+    desc.shader = getShader(program, target == graphics::PassTarget::LitScene);
     desc.label = "haylen-pipeline";
 
     const sg_pipeline created = graphics::Gpu::makePipeline(desc);
@@ -450,7 +488,8 @@ sg_pipeline RendererState::getMaterialPipeline(MaterialResource& material, Progr
     describeLayout(desc, program);
     describeTargets(desc, blend, target);
     desc.shader = getMaterialProgram(material, program, target).shader;
-    desc.label = "haylen-material-pipeline";
+    const std::string label = std::format("{}/{}", shader.name, materialProgramName(program, target));
+    desc.label = label.c_str();
 
     const sg_pipeline created = graphics::Gpu::makePipeline(desc);
     shader.pipelines.emplace(key, created);

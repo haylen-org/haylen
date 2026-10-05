@@ -25,18 +25,6 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Layout.hpp"
 #include "haylen/text/RichText.hpp"
-#include "shaders/blend.glsl.h"
-#include "shaders/blend_lit.glsl.h"
-#include "shaders/composite.glsl.h"
-#include "shaders/light.glsl.h"
-#include "shaders/mesh.glsl.h"
-#include "shaders/mesh_lit.glsl.h"
-#include "shaders/metaball.glsl.h"
-#include "shaders/metaball_lit.glsl.h"
-#include "shaders/sprite.glsl.h"
-#include "shaders/sprite_lit.glsl.h"
-#include "shaders/text.glsl.h"
-#include "shaders/text_lit.glsl.h"
 
 namespace haylen::graphics2d {
 
@@ -105,20 +93,7 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
     screenDesc.label = "haylen-screen";
     state->screen = graphics::Gpu::makeBuffer(screenDesc);
 
-    const auto make = [](const sg_shader_desc* (*description)(sg_backend)) { return graphics::Gpu::makeShader(*graphics::Gpu::selectShader(description)); };
-    const auto at = [](Program program) { return static_cast<std::size_t>(program); };
-    state->shaders[at(Program::Sprite)] = make(sprite_sprite_shader_desc);
-    state->shaders[at(Program::Text)] = make(text_text_shader_desc);
-    state->shaders[at(Program::Mesh)] = make(mesh_mesh_shader_desc);
-    state->shaders[at(Program::ImageBlend)] = make(blend_blend_shader_desc);
-    state->shaders[at(Program::Composite)] = make(composite_composite_shader_desc);
-    state->shaders[at(Program::Light)] = make(light_light_shader_desc);
-    state->shaders[at(Program::Metaball)] = make(metaball_metaball_shader_desc);
-    state->litShaders[at(Program::Sprite)] = make(sprite_lit_sprite_shader_desc);
-    state->litShaders[at(Program::Text)] = make(text_lit_text_shader_desc);
-    state->litShaders[at(Program::Mesh)] = make(mesh_lit_mesh_shader_desc);
-    state->litShaders[at(Program::ImageBlend)] = make(blend_lit_blend_shader_desc);
-    state->litShaders[at(Program::Metaball)] = make(metaball_lit_metaball_shader_desc);
+    state->precompilePrograms();
 
     // Light maps hold light in floating point where the backend renders and blends it, so lights can brighten the scene beyond its unlit colors.
     const sg_pixelformat_info hdr = sg_query_pixelformat(SG_PIXELFORMAT_RGBA16F);
@@ -133,11 +108,12 @@ Renderer::~Renderer() {
     for (const auto& [key, pipeline] : state->pipelines) {
         sg_destroy_pipeline(pipeline);
     }
-    for (const sg_shader shader : state->shaders) {
-        sg_destroy_shader(shader);
-    }
-    for (const sg_shader shader : state->litShaders) {
-        sg_destroy_shader(shader);
+    for (const std::array<sg_shader, RendererState::kProgramCount>* made : {&state->shaders, &state->litShaders}) {
+        for (const sg_shader shader : *made) {
+            if (shader.id != SG_INVALID_ID) {
+                sg_destroy_shader(shader);
+            }
+        }
     }
     if (state->shadowImage.id != SG_INVALID_ID) {
         sg_destroy_view(state->shadowView);

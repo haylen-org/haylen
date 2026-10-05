@@ -2,12 +2,14 @@
 
 #include <Poco/Process.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -218,6 +220,49 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 0}}), malformed + "The uniform \"tint\" has no elements.");
     EXPECT_EQ(parseError({{"/blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
     EXPECT_EQ(parseError({{"/textures/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
+}
+
+// The sources of every program for the backend of the device, which the Metal backend compiles ahead on the I/O pool, each once, since the programs of a file share stages.
+TEST_F(ShaderTest, ListsTheSourcesOfTheActiveBackendOnce) {
+    test::EngineFixture fixture;
+    const core::Json document = core::Json::parse(tintShader().begin(), tintShader().end());
+    const std::vector<std::string> sources = graphics::Shader::parse(tintShader()).getResource()->getBackendSources();
+    ASSERT_FALSE(sources.empty());
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        EXPECT_EQ(std::count(sources.begin(), sources.end(), sources[index]), 1) << index;
+    }
+    for (const auto& [program, languages] : document.at("programs").items()) {
+        for (const char* stage : {"vertex", "fragment"}) {
+            const std::string& source = document.at("sources").at(languages.at("glsl430").at(stage).at("source").get<std::size_t>()).get_ref<const std::string&>();
+            EXPECT_NE(std::find(sources.begin(), sources.end(), source), sources.end()) << program << " " << stage;
+        }
+    }
+}
+
+// The renderer makes each of its programs the first time a draw needs it, so starting an engine compiles no shader and a frame of sprites compiles only the sprite program.
+TEST_F(ShaderTest, MakesTheProgramsOfTheRendererWhenDrawsFirstNeedThem) {
+    test::EngineFixture fixture;
+    // clang-format off
+    const auto shaders = [&fixture] {
+        for (const graphics::Device::Pool& pool : fixture.engine().getGraphics().getPools()) {
+            if (pool.name == "shaders") {
+                return pool.used;
+            }
+        }
+        return -1;
+    };
+    // clang-format on
+    EXPECT_EQ(shaders(), 0);
+
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+    // clang-format off
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&texture](core::Engine& engine) {
+        engine.getRenderer2D().beginScreen();
+        engine.getRenderer2D().draw({.texture = texture});
+    }));
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(shaders(), 1);
 }
 
 TEST_F(ShaderTest, ReportsAFullShaderPool) {

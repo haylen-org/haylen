@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include "sokol_gfx.h"
 
 namespace haylen::graphics {
@@ -22,6 +24,9 @@ class Gpu final {
 
     // Selects the generated shader description for the active backend. The dummy backend used by tests compiles no shaders, so any description serves.
     [[nodiscard]] static const sg_shader_desc* selectShader(const sg_shader_desc* (*description)(sg_backend));
+
+  private:
+    [[nodiscard]] static double millisecondsSince(std::chrono::steady_clock::time_point start) noexcept;
 };
 
 } // namespace haylen::graphics

@@ -50,6 +50,9 @@ struct ShaderResource {
     // Checks the reflection and the program of every backend against each other and against the binding limits of the GPU, so a malformed file fails when it is read. Throws `std::invalid_argument`.
     void validate() const;
 
+    // Returns the sources of the stages of every program for the active backend, each once, which `ShaderPrecompiler` compiles ahead of the programs. A backend without custom shaders has none.
+    [[nodiscard]] std::vector<std::string> getBackendSources() const;
+
     // Hands the GPU programs and pipelines to the graveyard, so the next draws create them again.
     void release() noexcept;
 

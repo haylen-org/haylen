@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "graphics/ShaderPrecompiler.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/EventBus.hpp"
@@ -115,12 +116,16 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             core::JsonValidator::requireKnownKeys(options, {}, "shader asset options");
             return core::Json::object();
         },
-        .decode = [](Request& request) -> std::shared_ptr<void> {
-            return graphics::Shader::parse(request.bytes).getResource();
+        .decode = [this](Request& request) -> std::shared_ptr<void> {
+            const graphics::Shader shader = graphics::Shader::parse(request.bytes);
+            graphics::ShaderPrecompiler::start(jobs, shader.getResource()->getBackendSources());
+            return shader.getResource();
         },
         .finalize = [](std::shared_ptr<void> decoded, const Request&) { return decoded; },
-        .reload = [](const std::shared_ptr<void>& asset, Request& request) {
-            graphics::Shader(std::static_pointer_cast<graphics::ShaderResource>(asset)).replace(graphics::Shader::parse(request.bytes));
+        .reload = [this](const std::shared_ptr<void>& asset, Request& request) {
+            const graphics::Shader fresh = graphics::Shader::parse(request.bytes);
+            graphics::ShaderPrecompiler::start(jobs, fresh.getResource()->getBackendSources());
+            graphics::Shader(std::static_pointer_cast<graphics::ShaderResource>(asset)).replace(fresh);
         },
     });
     registerType({

@@ -1,9 +1,16 @@
 #include "graphics/Gpu.hpp"
 
+#include <chrono>
 #include <format>
 #include <stdexcept>
 
+#include "haylen/core/Log.hpp"
+
 namespace haylen::graphics {
+
+double Gpu::millisecondsSince(std::chrono::steady_clock::time_point start) noexcept {
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+}
 
 sg_image Gpu::makeImage(const sg_image_desc& desc) {
     const sg_image image = sg_make_image(&desc);
@@ -29,7 +36,9 @@ sg_buffer Gpu::makeBuffer(const sg_buffer_desc& desc) {
     return buffer;
 }
 
+// Backends compile shader sources when the program is made, which the debug log times.
 sg_shader Gpu::makeShader(const sg_shader_desc& desc) {
+    const auto started = std::chrono::steady_clock::now();
     const sg_shader shader = sg_make_shader(&desc);
     if (shader.id == SG_INVALID_ID) {
         throw std::runtime_error(std::format("The graphics device has no room for another shader. At most {} shader programs can exist at once.", kShaderPoolSize));
@@ -38,10 +47,12 @@ sg_shader Gpu::makeShader(const sg_shader_desc& desc) {
         sg_destroy_shader(shader);
         throw std::runtime_error(std::format("The graphics device could not create the shader \"{}\".", desc.label));
     }
+    core::Log::debug("The graphics device made the shader \"{}\" in {:.2f} ms.", desc.label, millisecondsSince(started));
     return shader;
 }
 
 sg_pipeline Gpu::makePipeline(const sg_pipeline_desc& desc) {
+    const auto started = std::chrono::steady_clock::now();
     const sg_pipeline pipeline = sg_make_pipeline(&desc);
     if (pipeline.id == SG_INVALID_ID) {
         throw std::runtime_error(std::format("The graphics device has no room for another pipeline. At most {} pipelines can exist at once.", kPipelinePoolSize));
@@ -50,6 +61,7 @@ sg_pipeline Gpu::makePipeline(const sg_pipeline_desc& desc) {
         sg_destroy_pipeline(pipeline);
         throw std::runtime_error(std::format("The graphics device could not create the pipeline \"{}\".", desc.label));
     }
+    core::Log::debug("The graphics device made the pipeline \"{}\" in {:.2f} ms.", desc.label, millisecondsSince(started));
     return pipeline;
 }
 

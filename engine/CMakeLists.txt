@@ -510,12 +510,12 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Widgets.cpp
 )
 
-# The graphics device names its GPU through Metal on Apple platforms and through the backend the build chose elsewhere.
+# The graphics device names its GPU and compiles shader sources ahead of their programs through Metal on Apple platforms, and names its GPU through the backend the build chose elsewhere.
 if(APPLE)
-  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.mm)
-  set_source_files_properties(src/graphics/GpuAdapter.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.mm src/graphics/ShaderPrecompiler.mm)
+  set_source_files_properties(src/graphics/GpuAdapter.mm src/graphics/ShaderPrecompiler.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 else()
-  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.cpp)
+  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.cpp src/graphics/ShaderPrecompiler.cpp)
   set_source_files_properties(src/graphics/GpuAdapter.cpp PROPERTIES COMPILE_DEFINITIONS SOKOL_${HAYLEN_BACKEND})
 endif()
 
@@ -558,7 +558,7 @@ endif()
 # Native libraries load through the dynamic linker, which Linux keeps in its own library.
 target_link_libraries(haylen_engine PRIVATE ${CMAKE_DL_LIBS})
 
-# The name of the GPU comes from Metal through Objective-C on Apple platforms and from the OpenGL library where the build renders with OpenGL.
+# The name of the GPU and the shaders compiled ahead come from Metal through Objective-C on Apple platforms, and the name comes from the OpenGL library where the build renders with OpenGL.
 if(APPLE)
   target_link_libraries(haylen_engine PRIVATE "-framework Foundation")
 elseif(HAYLEN_BACKEND STREQUAL "GLES3" AND ANDROID)

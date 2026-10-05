@@ -210,9 +210,21 @@ A `.shader` file is JSON that `haylen.py shaders` writes and nothing else edits:
 | `sources` | The source of every stage of every program for every language, each text once. |
 | `programs` | For each of the six programs and each language, the entry points, the source of each stage and the bindings of its attributes, uniform blocks, textures and samplers, as the shader description of Sokol names them. |
 
-The engine reads the file on a worker thread, and on the frame thread creates the GPU program of the active backend the first time a draw uses it, and the pipelines for each blend mode and kind of target.
+The engine reads the file on a worker thread, and on the frame thread creates the GPU program of the active backend the first time a draw uses it, and the pipelines for each blend mode and kind of target. On Metal, reading the file also starts compiling the sources of the active backend of every program on the I/O pool, as [load time](#load-time) explains.
 
 Reading the file also checks it, so a damaged or hand-edited file fails at once instead of when a draw uses it. Every attribute, uniform block, block member, texture, sampler and texture sampler pair must fit the binding slots of the GPU, every stage must name a source of the file, every pair must name a texture and a sampler its program declares, the names of stages, texture types, sample types, sampler types and attribute types must be ones `sokol-shdc` writes, the GLSL members of a block must fill it exactly, every uniform of `blocks` must fit inside its block, and every program must read each block with the size `blocks` gives it. A file that breaks a rule raises `The shader file is malformed: ` followed by the problem, such as `The texture slot 40 is out of range.` or `The uniform "tint" does not fit in the block "params".`, from `assets.shader` or from the hot reload, which keeps the last good shader. A GPU program the backend rejects raises `The graphics device could not create the shader "<name>/<program>".` when a draw first uses it.
+
+## Load time
+
+A shader costs time three times: reading its `.shader` file, compiling the program of the active backend, and making a pipeline for each blend mode and kind of target it draws with. Reading a file of the shader samples took about 2 ms in a Release build, 7 ms for the first one, on a worker thread when the shader loads asynchronously. The debug log names every program and pipeline with the milliseconds it took, such as `The graphics device made the shader "ripple/sprite" in 0.10 ms.`, once `log.setLevel('debug')` shows debug lines. These are the costs measured with the seven materials of the shader samples on an Apple M5 Pro:
+
+| Backend | Compiling a program the first time | Compiling it again | Making a pipeline |
+| --- | --- | --- | --- |
+| Metal (macOS, iOS, tvOS) | 220 ms, 110 ms per stage, which the system keeps in its compiler cache across runs | 0.1 ms | 5 to 8 ms the first time, 43 ms for the very first pipeline of the process |
+| WebGPU (Chrome) | Under 0.1 ms on the frame thread, since the browser compiles in its GPU process | Under 0.1 ms | Under 0.6 ms |
+| WebGL2 (Chrome on Metal) | 15 to 60 ms, compiled and linked on the frame thread when the program is made | The same | None, since WebGL2 links the program with its state |
+
+Metal compiles the source of a program when the program is made, and seven programs made one after another wait 2.3 seconds in all. The engine therefore starts compiling every source of the active backend on the I/O pool as soon as a `.shader` file is read, on whatever thread reads it, and the renderer does the same for its own programs when it starts and makes each one the first time a draw needs it. The system compiles the requests side by side and keeps each result, and a program made while its sources still compile waits only for what is left: making the seven programs right after their files were read takes 315 ms, and the compile overlaps whatever the app does until its first draw, such as the rest of its loading. A scene that loads its shaders in its `load` hook, with `assets.load`, `assets.loadAsync` or a [preload group](lua-api/assets.md), lets them compile while it loads and its transition plays. On WebGL2 a program compiles when the first draw needs it, 15 to 60 ms each in Chrome, 224 ms for the 13 shaders of the test project, so a scene with many materials draws them once while it loads, such as behind its transition, to compile them before it shows.
 
 ## C++
 

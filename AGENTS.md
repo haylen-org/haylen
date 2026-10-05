@@ -61,6 +61,7 @@ This file is binding for every change. It describes the project as it is and the
 - The frame thread owns the GPU, the Lua state, scenes, UI, audio control and physics. It never blocks.
 - Varn's event loop is advanced with `Runtime::poll()` once per frame. Promises resolve, coroutines resume, timers fire and socket and HTTP callbacks run inside that call, on the frame thread.
 - Long-running CPU work (image and audio decoding, map parsing, path finding, procedural generation, data-parallel updates) runs on Varn's `taskPool()` through `core::JobSystem`. Blocking I/O runs on `ioPool()`. Results return to the frame thread through the event loop and, for Lua, through a Varn `Promise` that a coroutine can `:await()`. Slow Lua APIs offer an asynchronous version that returns a promise.
+- Metal compiles a shader when its program is made, so the sources of the programs of the renderer and of every `.shader` file start compiling on the I/O pool as soon as they are known, and each program is made the first time a draw needs it.
 - Lua code never runs on worker threads. Long Lua computations run as `haylen.jobs` coroutines that share a time budget each frame.
 - Never iterate a container while the loop body can run Lua or a user callback. Snapshot first, then iterate the snapshot.
 - A job posted to a pool or to the loop never lets an exception escape. The job system hands failures to the frame thread, where they become engine errors.

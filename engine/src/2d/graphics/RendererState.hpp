@@ -67,6 +67,8 @@ struct RendererState {
 
     // Two instances that cover the unit square, the second with its rows flipped for render targets that start at the bottom, which post-processing materials draw with.
     sg_buffer screen{};
+
+    // The programs of the renderer, made the first time a draw needs them.
     std::array<sg_shader, kProgramCount> shaders{};
     std::array<sg_shader, kProgramCount> litShaders{};
     std::unordered_map<std::uint32_t, sg_pipeline> pipelines;
@@ -177,7 +179,17 @@ struct RendererState {
     // Grows a streaming buffer to hold at least the needed number of elements.
     void ensureBuffer(sg_buffer& buffer, std::size_t& capacity, std::size_t needed, std::size_t elementSize, bool isIndexBuffer);
 
+    // Starts compiling the sources of every program of the renderer in the background, so the first draws that make them do not wait for a cold compiler.
+    void precompilePrograms();
+
   private:
+    using Description = const sg_shader_desc* (*)(sg_backend);
+
+    // The generated description of each program, and of its version for lit canvases where the program draws into them.
+    static const std::array<Description, kProgramCount> kPrograms;
+    static const std::array<Description, kProgramCount> kLitPrograms;
+
+    [[nodiscard]] sg_shader getShader(Program program, bool lit);
     [[nodiscard]] static std::uint32_t pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept;
     [[nodiscard]] static sg_blend_state lightBlend(std::uint8_t blend) noexcept;
     [[nodiscard]] static const char* materialProgramName(Program program, graphics::PassTarget target);

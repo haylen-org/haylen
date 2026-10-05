@@ -87,7 +87,7 @@ scene.push({
 
 ### assets.shader(path)
 
-Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. A file that is not a compiled shader raises `The shader file is malformed: ` followed by the problem, or `The shader file is malformed, and the JSON reader reported "<reason>".` when it is not valid JSON. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
+Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. On Metal the programs of the shader start compiling on worker threads as soon as the file is read, and a scene that loads its shaders with `assets.loadAsync` or a preload group in its `load` hook gives them the time of its loading, as [shader load time](../shaders.md#load-time) explains. A file that is not a compiled shader raises `The shader file is malformed: ` followed by the problem, or `The shader file is malformed, and the JSON reader reported "<reason>".` when it is not valid JSON. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
 
 ```lua
 local assets = require('haylen.assets')
