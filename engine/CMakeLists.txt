@@ -868,6 +868,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-lua-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
   set_target_properties(haylen-lua-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-lua-benchmark)
+
+  # The core benchmark times the frame loop, events, owners, timers, tweens, jobs and asset loading on the headless host.
+  add_executable(haylen-core-benchmark bench/CoreBenchmark.cpp)
+  target_include_directories(haylen-core-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-core-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-core-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-core-benchmark)
 endif()
 
 if((HAYLEN_BUILD_TOOLS OR HAYLEN_BUILD_TESTS) AND HAYLEN_DESKTOP)

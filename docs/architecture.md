@@ -161,7 +161,7 @@ Platform services such as sign-in or purchases go through `platform::Bridge` wit
 
 A halted app, which the lifecycle options decide by the app state, skips steps 6 and 7 and advances the clock by zero, and an app in the background or under an opaque screen of a plugin also skips rendering, like a covered app once it drew its covered frame, as the [lifecycle guide](lifecycle.md) explains. The game pause of `Engine::setPaused` gates scenes, autoloads, timers and tweens by their `ProcessMode` inside those steps.
 
-Platform events arrive between frames through `Engine::handleEvent`. Input converts positions to design coordinates, lifecycle events update the app state and emit the engine signals (`appStateChanged`, `resized`, `quitRequested` and `lowMemory`) and the matching events on the `EventBus`, and then every plugin and the top scene receive the event.
+Platform events arrive between frames through `Engine::handleEvent`. Input converts positions to design coordinates, lifecycle events update the app state and emit the engine signals (`appStateChanged`, `resized`, `quitRequested` and `lowMemory`) and the matching events on the `EventBus`, and then every plugin and the top scene receive the event, also when a listener of the engine event failed, so a plugin that keeps data, such as the preferences, still saves it when the app goes to the background.
 
 An exception thrown by app code during an update, a render, the submission or an event goes to `Engine::reportError`. The engine keeps the first error as a `lua::Error`, logs its plain-text report, hands its JSON report to the host and to the error handlers of native libraries, emits `errorRaised` and queues the `appError` event. From then on it skips the fixed steps, the updates, scene events and the render hooks of scenes and plugins, and it draws the error screen instead. Varn's event loop, the bridge, `beginFrame` and `endFrame` keep running, so the hot reload plugin and the web page can restart the app. The engine records where every error came from through `Engine::PhaseScope`: the start of the app, scene hooks that load, enter, exit, unload, pause or resume, autoloads that start or stop and tasks that failed run in the phase `Lifecycle`, and an error that leaves such a scope counts as a lifecycle error wherever the engine reports it, while frame code and reloads run in `Frame` and `Reload`. `Engine::clearError` leaves the error screen of an error that is not of the lifecycle at once, which hot reload calls once a reload fixed the code. `Engine::recover`, which the error screen of an app that `Engine::setRecoverable` made recoverable calls, leaves the error screen at the start of the next frame: the engine publishes `appRecovered` with the error before the updates, and the app runs on. When a hook asks for a restart with `Engine::requestRestart`, the runtime replaces the engine after the frame, when no engine code is on the stack.
 
@@ -189,11 +189,36 @@ An exception that escapes posted work never escapes the job. The job system hand
 
 Lua has a single state, so Lua code never runs on worker threads. Slow engine operations return a Varn promise that a coroutine awaits, and long Lua computations run as `haylen.jobs` coroutines that share a time budget each frame. Native bridge handlers, native dialogs and opened urls may answer from any thread, and each WebSocket connection runs on a thread of its own in native builds, which the frame thread never waits for. Both hand their results to thread-safe queues that the frame thread drains at the start of the next frame. Video streams take frames from any thread into a slot of the newest frame, which the frame thread swaps out under a lock, and audio streams take samples from any thread into a ring that the thread that mixes reads without a lock. Log listeners receive lines on whatever thread wrote them.
 
-Code on the frame thread never iterates a container while the loop body can run Lua or a user callback. It copies the container first, the way `Engine::frame` copies the plugin list and `UiPlugin` copies its mounted GUIs.
+Code on the frame thread never iterates a container while the loop body can run Lua or a user callback. It copies the container first, into storage it reuses, the way `UiPlugin` copies its mounted GUIs, or it reaches the elements by index up to the count they had before the loop, the way `Engine::frame` reaches the plugins, whose registry only grows while the app runs.
 
 Static objects of the engine are created with `new` and never destroyed, such as the log listeners, the object counters and their registry, the default options and empty values that methods hand out, the runtime of `SokolRuntime` and the platform state behind the bridge, native calls and text input. A process can end with an `exit()` on a thread other than the frame thread, as the iOS simulator does on a background queue when its render server dies, and `exit()` runs the destructors of static objects on that thread while the frame thread still logs, counts objects and plays the app. The workers of the native WebSocket connections are the one exception: they stop their connections at exit and wait for them, so the static state of Poco and OpenSSL outlives every connection thread.
 
 The web build is single-threaded like Varn. The poll of the event loop runs the pool jobs posted since the last frame, and `JobSystem::parallelFor` runs the whole range on the frame thread. The page therefore needs neither `SharedArrayBuffer` nor cross-origin isolation headers.
+
+## What the base costs
+
+The frame loop reuses its storage, so a steady frame with scenes, timers and tweens allocates nothing in C++, which `EngineTest.SteadyFramesAllocateNothing` checks, and only scripts allocate, through the allocator of Lua. The command `haylen bench --suite core` builds `haylen-core-benchmark` in Release and times the base of the engine on the headless host. These are the average milliseconds of each measurement on an Apple M5 Pro, the middle of three runs, with the machine loaded by other work, so they are a ceiling.
+
+| Measurement | Milliseconds |
+| --- | --- |
+| A frame of an app at rest | 0.034 |
+| A frame of an app with a Lua scene that updates | 0.039 |
+| 1000 emits of an event to 100 C++ listeners | 0.42 |
+| 1000 emits of an event from Lua to 100 Lua listeners | 4.1 |
+| 1000 emits of an event from C++ to 100 Lua listeners | 5.3 |
+| 1000 emits of a signal to 100 Lua listeners | 4.1 |
+| 1000 owners, each with a listener, a timer and a tween, created and ended | 9.3 |
+| An update of 10000 timers that wait | 0.040 |
+| An update of 10000 timers that fire every frame | 0.58 |
+| An update of 10000 tweens of native values | 0.33 |
+| A frame with 1000 tweens of Lua tables | 0.16 |
+| A frame with 1000 tweens of Lua tables that a scene owns | 0.20 |
+| 1000 jobs from the frame thread to a worker and back | 5.4 |
+| `parallelFor` over a million values | 0.080 |
+| 1000 JSON assets loaded in the background, with the frames that wait for them | 12.2 |
+| 1000 JSON assets loaded on the frame thread | 3.9 |
+
+Due timers fire from a heap, so an update of 10000 timers that fire every frame costs 0.58 milliseconds where a search of every timer for each one cost 186. An owner gives its process mode once per frame to everything it owns, so the 1000 tweens of a scene cost 0.20 milliseconds a frame where asking the owner for each tween cost about 0.6.
 
 ## Resource ownership
 
