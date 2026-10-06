@@ -42,7 +42,7 @@ class CircularProgress final : public Component {
     }};
 
     void drawRing(Context& context, math::Vec2 center, float radius) const;
-    void drawCooldown(Context& context, const math::Rect& bounds, math::Vec2 center, float radius) const;
+    void drawCooldown(Context& context, math::Vec2 center, float radius) const;
 
     float value = 0.0F;
     float size = 0.0F;

@@ -32,7 +32,7 @@ void CircularProgress::render(Context& context, const math::Rect& bounds) {
     if (variant == Variant::Ring) {
         drawRing(context, center, radius);
     } else {
-        drawCooldown(context, bounds, center, radius);
+        drawCooldown(context, center, radius);
     }
 
     const std::string shown = context.getText(text);
@@ -65,12 +65,12 @@ void CircularProgress::drawRing(Context& context, math::Vec2 center, float radiu
     Surfaces::drawShape(context, {.bounds = circle, .radii = round, .startAngle = kTop, .sweep = std::numbers::pi_v<float> * 2.0F * value, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Widgets::getToneColors(fillTone).fill)});
 }
 
-void CircularProgress::drawCooldown(Context& context, const math::Rect& bounds, math::Vec2 center, float radius) const {
+void CircularProgress::drawCooldown(Context& context, math::Vec2 center, float radius) const {
     const math::Rect square{center.x - radius, center.y - radius, radius * 2.0F, radius * 2.0F};
     if (!image.empty()) {
         Surfaces::drawImage(context, context.getImage(image, square.getSize()), square);
     } else {
-        Surfaces::draw(context, Theme::Surface::Badge, bounds, context.getColor(Widgets::getToneColors(tone).background), std::nullopt, radius);
+        Surfaces::draw(context, Theme::Surface::Badge, square, context.getColor(Widgets::getToneColors(tone).background), std::nullopt, radius);
     }
     if (value <= 0.0F) {
         return;

@@ -103,6 +103,17 @@ TEST_F(SmoothEdgeTest, CentersTheSeparatorsOfASegmentedControlOnTheirEdges) {
     EXPECT_FLOAT_EQ(separator->bounds.getCenter().x, std::floor(chosen->bounds.x + chosen->bounds.width * 2.0F));
 }
 
+// A cooldown wider than its dial draws its backdrop as the circle of the dial, never as a pill across its whole width.
+TEST_F(SmoothEdgeTest, DrawsTheBackdropOfACooldownAsItsDial) {
+    auto gui = mount(R"({"kind": "column", "align": "start", "children": [{"kind": "circularProgress", "id": "cooldown", "variant": "cooldown", "value": 0.5, "size": 96, "width": 200}]})");
+    frames(2);
+    const math::Color backdrop = getColor(Theme::Color::AccentBackground);
+    const std::optional<graphics2d::Shape> dial = findShape([&backdrop](const graphics2d::Shape& shape) { return shape.color == backdrop; });
+    ASSERT_TRUE(dial.has_value());
+    EXPECT_EQ(dial->bounds.width, dial->bounds.height);
+    EXPECT_EQ(dial->bounds.getCenter(), getBounds(*gui, "cooldown").getCenter());
+}
+
 // Every curved control draws through shapes whose edges the shader covers exactly, so a frame of them uploads no vertices of ImGui at all.
 TEST_F(SmoothEdgeTest, DrawsTheCurvesOfControlsAsShapes) {
     // clang-format off
