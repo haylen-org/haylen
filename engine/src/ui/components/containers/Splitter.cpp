@@ -59,9 +59,10 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
         ratio = std::clamp(ratio + (backward ? -kFocusStep : kFocusStep), 0.05F, 0.95F);
         context.emit(*this, "resize", {{"ratio", core::JsonNumber::fromFloat(ratio)}});
     }
-    const math::Vec2 center = handle.getCenter();
+    const float thickness = context.getMetric(Theme::Metric::BorderWidth);
+    const math::Vec2 start = handle.getCenter() - math::Vec2{thickness * 0.5F, thickness * 0.5F};
     const math::Color color = context.getColor(state.held ? Theme::Color::Accent : Theme::Color::BorderStrong);
-    Widgets::line(context, vertical ? math::Vec2{handle.x, center.y} : math::Vec2{center.x, handle.y}, vertical ? math::Vec2{handle.getRight(), center.y} : math::Vec2{center.x, handle.getBottom()}, context.getMetric(Theme::Metric::BorderWidth), color);
+    Widgets::line(context, vertical ? math::Vec2{handle.x, start.y} : math::Vec2{start.x, handle.y}, vertical ? math::Vec2{handle.getRight(), start.y} : math::Vec2{start.x, handle.getBottom()}, thickness, color);
 
     auto visible = getLayoutChildren();
     const auto second = std::ranges::next(visible.begin(), 1, visible.end());

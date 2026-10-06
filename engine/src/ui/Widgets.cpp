@@ -402,14 +402,16 @@ void Widgets::checkMark(Context& context, math::Vec2 origin, float size, math::C
     Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(corner - reach, extent), .rotation = kTurn, .sweep = std::numbers::pi_v<float> * 0.5F, .color = math::Color::transparent(), .borderWidth = stroke, .borderColor = color});
 }
 
-// A line runs half a unit right and down of its points, along the middle of the units it starts on, the way ImGui places its lines, so a line between whole units covers whole units.
+// A line covers its width to the right of and below its points, from one point to the other, so a horizontal or vertical line on whole units covers whole units and a line along the top or left edge of an area stays inside it.
 void Widgets::line(Context& context, math::Vec2 from, math::Vec2 to, float width, math::Color color) {
     const math::Vec2 delta = to - from;
-    if (delta.isZero()) {
+    const float length = delta.getLength();
+    if (length <= 0.0F) {
         return;
     }
-    const math::Vec2 middle = (from + to) * 0.5F + math::Vec2{0.5F, 0.5F};
-    Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(middle, {delta.getLength(), width}), .rotation = delta.getAngle(), .color = color});
+    const math::Vec2 side = math::Vec2{std::fabs(delta.y), std::fabs(delta.x)} * (width * 0.5F / length);
+    const math::Vec2 middle = (from + to) * 0.5F + side;
+    Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(middle, {length, width}), .rotation = delta.getAngle(), .color = color});
 }
 
 void Widgets::cross(Context& context, math::Vec2 center, float arm, float width, math::Color color) {

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <span>
@@ -65,6 +66,41 @@ TEST_F(SmoothEdgeTest, ClipsTheFocusRingOfAScaledControlAroundItsShape) {
         }
     }
     EXPECT_TRUE(clippedAround);
+}
+
+// A divider draws its line inside its bounds, on whole units.
+TEST_F(SmoothEdgeTest, DrawsDividersInsideTheirBounds) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "label", "text": "Above"}, {"kind": "divider", "id": "rule"}, {"kind": "label", "text": "Below"}]})");
+    frames(2);
+    const math::Color border = getColor(Theme::Color::Border);
+    const std::optional<graphics2d::Shape> line = findShape([&border](const graphics2d::Shape& shape) { return shape.color == border; });
+    ASSERT_TRUE(line.has_value());
+    const math::Rect bounds = getBounds(*gui, "rule");
+    EXPECT_TRUE(bounds.contains(line->bounds)) << line->bounds.x << " " << line->bounds.y << " " << line->bounds.width << " " << line->bounds.height;
+    EXPECT_EQ(line->bounds.height, getMetric(Theme::Metric::BorderWidth));
+}
+
+// The line of a splitter runs through the middle of the gap between its panes.
+TEST_F(SmoothEdgeTest, CentersTheLineOfASplitterBetweenItsPanes) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "splitter", "height": 100, "children": [{"kind": "label", "id": "left", "text": "Left"}, {"kind": "label", "id": "right", "text": "Right"}]}]})");
+    frames(2);
+    const math::Color strong = getColor(Theme::Color::BorderStrong);
+    const std::optional<graphics2d::Shape> line = findShape([&strong](const graphics2d::Shape& shape) { return shape.color == strong; });
+    ASSERT_TRUE(line.has_value());
+    const math::Rect left = getBounds(*gui, "left");
+    EXPECT_FLOAT_EQ(line->bounds.getCenter().x, (left.getRight() + getBounds(*gui, "right").x) * 0.5F);
+}
+
+// The separators of a segmented control stand centered on the edges between its segments.
+TEST_F(SmoothEdgeTest, CentersTheSeparatorsOfASegmentedControlOnTheirEdges) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "segmentedControl", "id": "view", "width": 600, "items": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}, {"id": "c", "text": "C"}], "selected": "a"}]})");
+    frames(2);
+    const math::Color accent = getColor(Theme::Color::Accent);
+    const math::Color border = getColor(Theme::Color::Border);
+    const std::optional<graphics2d::Shape> chosen = findShape([&accent](const graphics2d::Shape& shape) { return shape.color == accent; });
+    const std::optional<graphics2d::Shape> separator = findShape([&border](const graphics2d::Shape& shape) { return shape.color == border; });
+    ASSERT_TRUE(chosen.has_value() && separator.has_value());
+    EXPECT_FLOAT_EQ(separator->bounds.getCenter().x, std::floor(chosen->bounds.x + chosen->bounds.width * 2.0F));
 }
 
 // Every curved control draws through shapes whose edges the shader covers exactly, so a frame of them uploads no vertices of ImGui at all.

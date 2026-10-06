@@ -71,8 +71,9 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
             Surfaces::fill(context, segment, context.getColor(state.held ? Theme::Color::Pressed : Theme::Color::Hover), radius, corners);
         }
         if (index > 0 && !chosen && static_cast<int>(index) != current + 1) {
-            const float edge = context.isRightToLeft() ? segment.getRight() : segment.x;
-            Widgets::line(context, {edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, context.getMetric(Theme::Metric::BorderWidth), context.getColor(Theme::Color::Border));
+            const float thickness = context.getMetric(Theme::Metric::BorderWidth);
+            const float edge = (context.isRightToLeft() ? segment.getRight() : segment.x) - thickness * 0.5F;
+            Widgets::line(context, {edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, thickness, context.getColor(Theme::Color::Border));
         }
         Typography::drawAligned(context, Theme::Font::Button, segment, context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text), context.getText(item.text), Alignment::Center);
         ImGui::EndDisabled();

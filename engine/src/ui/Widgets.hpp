@@ -109,7 +109,7 @@ class Widgets final {
     // Draws the check mark of a check box inside a box of the size, with square ends and a sharp corner.
     static void checkMark(Context& context, math::Vec2 origin, float size, math::Color color);
 
-    // Draws a straight stroke with square ends, such as the handle of a magnifying glass.
+    // Draws a straight stroke with square ends, such as the handle of a magnifying glass, which covers its width to the right of and below its points.
     static void line(Context& context, math::Vec2 from, math::Vec2 to, float width, math::Color color);
 
     // Draws a cross of two strokes through a point, each reaching the arm away from it along both axes, such as the close button of a chip or a window.
