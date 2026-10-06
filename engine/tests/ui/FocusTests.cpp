@@ -151,6 +151,19 @@ TEST_F(FocusTest, MovesBetweenGuisThatShareTheFocus) {
     EXPECT_TRUE(isFocused(*bar, "pause"));
 }
 
+// A GUI that went away with the focus is never read again, since the focus keeps with each node whether its GUI shares the focus.
+TEST_F(FocusTest, ForgetsAGuiThatWentAwayWithTheFocus) {
+    auto first = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "a", "text": "A", "autofocus": true}]})");
+    ASSERT_TRUE(isFocused(*first, "a"));
+    getUi().unmount(*first);
+    first.reset();
+
+    auto second = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "b", "text": "B", "autofocus": true}]})");
+    frames();
+    EXPECT_TRUE(isFocused(*second, "b"));
+    EXPECT_EQ(getUi().getFocus().getFocusedGui(), second.get());
+}
+
 TEST_F(FocusTest, SendsCancelToTheTopmostGuiWithoutFocus) {
     mount(R"({"kind": "column", "id": "hud", "children": [{"kind": "label", "text": "HUD"}]})");
     mount(R"({"kind": "column", "id": "pause", "children": [{"kind": "label", "text": "Paused"}]})", Placement::Screen, 1);

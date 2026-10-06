@@ -354,6 +354,21 @@ void FocusNavigator::focus(ImGuiID item, const math::Rect& bounds) {
 
 void FocusNavigator::forget(const Gui& gui) {
     std::erase_if(parked, [&gui](const auto& entry) { return entry.first == &gui; });
+    if (focusedGui == &gui) {
+        focusedGui = nullptr;
+    }
+    for (Frame* frame : {&drawn, &building}) {
+        for (Node& node : frame->nodes) {
+            if (node.gui == &gui) {
+                node.gui = nullptr;
+            }
+        }
+        for (GuiEntry& entry : frame->guis) {
+            if (entry.gui == &gui) {
+                entry.gui = nullptr;
+            }
+        }
+    }
 }
 
 void FocusNavigator::clear() {
@@ -480,8 +495,11 @@ bool FocusNavigator::isInside(const Target& target, std::optional<std::size_t> s
     return false;
 }
 
-// A GUI is a navigation space of its own, and GUIs that share the focus form one together.
+// A GUI is a navigation space of its own, and GUIs that share the focus form one together, while the nodes of an unmounted GUI belong to no space.
 bool FocusNavigator::isSameSpace(const Gui* first, const Gui* second) noexcept {
+    if (first == nullptr || second == nullptr) {
+        return false;
+    }
     return first == second || (first->hasSharedFocus() && second->hasSharedFocus());
 }
 

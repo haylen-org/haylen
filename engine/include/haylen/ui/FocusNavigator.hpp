@@ -111,7 +111,7 @@ class FocusNavigator final {
     void focus(ImGuiID item, const math::Rect& bounds);
     void clear();
 
-    // Drops the control a GUI keeps for when it draws again, once the GUI is unmounted.
+    // Drops the control a GUI keeps for when it draws again, once the GUI is unmounted, and lets go of the GUI in the frames drawn so far, which may outlive it.
     void forget(const Gui& gui);
 
     // Whether the component being drawn and every node around it can take the focus.
