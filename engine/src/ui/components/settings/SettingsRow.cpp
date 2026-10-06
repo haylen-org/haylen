@@ -14,18 +14,20 @@ void SettingsRow::readProperties(PropertyReader& reader) {
     reader.read("caption", caption);
 }
 
+// The label column takes at most half the row, so a row as wide as it measures is at least twice its label column and keeps the label as it measured it, with the control after the gap.
 math::Vec2 SettingsRow::measureContent(Context& context, float availableWidth) {
     const float labelWidth = std::min(context.getMetric(Theme::Metric::SettingsLabelWidth), availableWidth * 0.5F);
+    const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     math::Vec2 text = Typography::measureParagraph(context, Theme::Font::Body, context.getText(label), labelWidth);
     if (const std::string captionText = context.getText(caption); !captionText.empty()) {
         text.y += Typography::measureParagraph(context, Theme::Font::Caption, captionText, labelWidth).y;
     }
     math::Vec2 control;
     if (!getChildren().empty()) {
-        control = getChildren().front()->measure(context, std::max(0.0F, availableWidth - labelWidth));
+        control = getChildren().front()->measure(context, std::max(0.0F, availableWidth - labelWidth - spacing));
     }
     const float padding = context.getMetric(Theme::Metric::ControlPaddingY);
-    return {labelWidth + control.x, std::max({text.y, control.y, context.getMetric(Theme::Metric::ListRowHeight)}) + padding * 2.0F};
+    return {std::max(labelWidth * 2.0F, labelWidth + spacing + control.x), std::max({text.y, control.y, context.getMetric(Theme::Metric::ListRowHeight)}) + padding * 2.0F};
 }
 
 void SettingsRow::render(Context& context, const math::Rect& bounds) {

@@ -7,6 +7,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
 
 namespace haylen::ui {
@@ -235,6 +236,19 @@ TEST_F(LayoutTest, ScrollsSidewaysWithEveryWheelAndKeepsItFromTheAreaAround) {
     frames(2);
     EXPECT_LT(getBounds(*gui, "covers").x, sideways);
     EXPECT_EQ(getBounds(*gui, "strip").y, top);
+}
+
+// A settings row placed at the width it measures keeps its label column whole and gives its control the width it asked for after the gap.
+TEST_F(LayoutTest, PlacesASettingsRowAtTheWidthItMeasures) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "align": "start", "children": [
+        {"kind": "settingsRow", "id": "volume", "label": "Volume", "children": [{"kind": "slider", "id": "level", "value": 0.5, "width": 600}]},
+        {"kind": "settingsRow", "id": "music", "label": "Music", "children": [{"kind": "button", "text": "On"}]}
+    ]})");
+    // clang-format on
+    frames(2);
+    EXPECT_EQ(getBounds(*gui, "level").width, 600.0F);
+    EXPECT_GE(getBounds(*gui, "music").width, getUi().getTheme().getMetric(Theme::Metric::SettingsLabelWidth) * 2.0F);
 }
 
 } // namespace haylen::ui
