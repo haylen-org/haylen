@@ -235,16 +235,23 @@ void Component::draw(Context& context, const math::Rect& layout) {
     if (common.cursor && isPointerOver(bounds)) {
         context.getBackend().setCursor(*common.cursor);
     }
-    // The context carries the transform to the draws of the node that go around the ImGui vertices, such as rich text.
+    // The context carries the transform to the draws of the node that go around the ImGui vertices, such as rich text. The vertices the node draws in its window and in the child windows it begins, such as scroll areas, take the transform once it drew them, while popups, tooltips and the other windows of their own keep their look.
     const bool reshaping = transform->isReshaping();
-    const int firstVertex = ImGui::GetWindowDrawList()->VtxBuffer.Size;
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const int firstVertex = window->DrawList->VtxBuffer.Size;
+    const int firstWindow = GImGui->WindowsActiveCount;
     if (reshaping) {
         context.pushReshape(*transform, bounds.getCenter());
     }
     render(context, bounds);
     if (reshaping) {
         context.popReshape();
-        reshape(firstVertex, *transform, bounds.getCenter());
+        reshape(*window->DrawList, firstVertex, *transform, bounds.getCenter(), false);
+        for (ImGuiWindow* child : GImGui->Windows) {
+            if (child != window && child->RootWindow == window->RootWindow && child->BeginOrderWithinContext >= firstWindow && child->LastFrameActive == GImGui->FrameCount) {
+                reshape(*child->DrawList, 0, *transform, bounds.getCenter(), true);
+            }
+        }
     }
     drawDetachedChildren(context, bounds);
     // A node that is disabled, itself or through a node around it, reports nothing of the pointer.
@@ -271,8 +278,7 @@ math::Rect Component::getAnchoredBounds(Context& context) {
     return common.anchor.value_or(Anchor{}).place(measure(context, area.width), area);
 }
 
-void Component::reshape(int firstVertex, const Transform& shape, math::Vec2 center) {
-    ImDrawList& list = *ImGui::GetWindowDrawList();
+void Component::reshape(ImDrawList& list, int firstVertex, const Transform& shape, math::Vec2 center, bool clips) {
     const std::array<std::pair<unsigned, float>, 4> channels{{
         {IM_COL32_R_SHIFT, shape.tint.r},
         {IM_COL32_G_SHIFT, shape.tint.g},
@@ -289,6 +295,14 @@ void Component::reshape(int firstVertex, const Transform& shape, math::Vec2 cent
             color |= static_cast<ImU32>(std::lround(value)) << shift;
         }
         vertex.col = color;
+    }
+    if (!clips) {
+        return;
+    }
+    for (ImDrawCmd& command : list.CmdBuffer) {
+        const ImVec2 first{center.x + (command.ClipRect.x - center.x) * shape.scale.x, center.y + (command.ClipRect.y - center.y) * shape.scale.y};
+        const ImVec2 second{center.x + (command.ClipRect.z - center.x) * shape.scale.x, center.y + (command.ClipRect.w - center.y) * shape.scale.y};
+        command.ClipRect = {std::min(first.x, second.x), std::min(first.y, second.y), std::max(first.x, second.x), std::max(first.y, second.y)};
     }
 }
 
@@ -388,6 +402,7 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {spacing.x + std::max(padding.left, padding.right), spacing.y + std::max(padding.top, padding.bottom)});
     if (ImGui::BeginTooltip()) {
+        context.pushPlainReshape();
         const ImVec2 position = ImGui::GetWindowPos();
         const ImVec2 size = ImGui::GetWindowSize();
         const math::Rect frame{position.x, position.y, size.x, size.y};
@@ -398,6 +413,7 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
         Typography::drawParagraph(context, Theme::Font::Caption, {cursor.x, cursor.y, measured.x, measured.y}, context.getColor(Theme::Color::OnTooltip), text, Alignment::Start);
         ImGui::Dummy(ImGuiConverter::toImVec2(measured));
+        context.popReshape();
         ImGui::EndTooltip();
     }
     ImGui::PopStyleVar(2);

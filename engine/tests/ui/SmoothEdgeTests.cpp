@@ -6,11 +6,15 @@
 #include <optional>
 #include <span>
 
+#include <imgui.h>
+
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Component.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
 
@@ -41,6 +45,27 @@ class SmoothEdgeTest : public ::testing::Test, public test::UiFixture {
 };
 
 } // namespace
+
+// The ring of a focused control that a transform scales stays inside the clip around it, which scales with it, where the edge of the screen cuts the ring.
+TEST_F(SmoothEdgeTest, ClipsTheFocusRingOfAScaledControlAroundItsShape) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "corner", "text": "Corner", "autofocus": true}]})");
+    gui->find("corner")->getTransform()->scale = {1.5F, 1.5F};
+    key(input::Key::Down);
+    frames(2);
+
+    const math::Color focus = getColor(Theme::Color::Focus);
+    const std::optional<graphics2d::Shape> ring = findShape([&focus](const graphics2d::Shape& shape) { return shape.borderColor == focus; });
+    ASSERT_TRUE(ring.has_value());
+    getUi().getBackend().makeCurrent();
+    bool clippedAround = false;
+    for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+        for (const ImDrawCmd& command : list->CmdBuffer) {
+            const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
+            clippedAround = clippedAround || (command.UserCallback != nullptr && clip.contains(ring->bounds));
+        }
+    }
+    EXPECT_TRUE(clippedAround);
+}
 
 // Every curved control draws through shapes whose edges the shader covers exactly, so a frame of them uploads no vertices of ImGui at all.
 TEST_F(SmoothEdgeTest, DrawsTheCurvesOfControlsAsShapes) {

@@ -211,6 +211,10 @@ void Context::popReshape() {
     reshapes.pop_back();
 }
 
+void Context::pushPlainReshape() {
+    reshapes.emplace_back();
+}
+
 Context::Reshape Context::getReshape() const noexcept {
     return reshapes.empty() ? Reshape{} : reshapes.back();
 }

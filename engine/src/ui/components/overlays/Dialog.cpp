@@ -76,6 +76,7 @@ void Dialog::render(Context& context, const math::Rect&) {
         return;
     }
 
+    context.pushPlainReshape();
     const math::Rect frame{ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, width, height};
     setBounds(frame);
     drawBackdrop(context, display);
@@ -88,6 +89,7 @@ void Dialog::render(Context& context, const math::Rect&) {
         open = false;
         context.emit(*this, "dismiss");
     }
+    context.popReshape();
     ImGui::EndPopup();
     ImGui::PopStyleVar();
 }

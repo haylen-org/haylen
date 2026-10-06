@@ -668,7 +668,7 @@ Returns the transform of the node with the id, a `haylen.UiTransform` that moves
 | `opacity` | number | `1` | Multiplies the alpha of what the node draws, from `0` to `1`. |
 | `tint` | Color | white | Multiplies the colors of what the node draws. |
 
-Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach what the node draws in its GUI, while popups, tooltips and the content of scroll areas, which draw in windows of their own, keep their look. The four properties are native properties, so [`haylen.tween`](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replaceChildren` releases its transform: reading it raises `This "haylen.UiTransform" was already released.`, a tween on it stops, and `transform` returns the transform of the new node.
+Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach everything the node draws in its GUI, the content of the scroll areas inside it with its pictures, shapes and text alike, while popups, tooltips, dialogs, toasts and windows, which float in windows of their own, keep their look whatever the transforms around them. The four properties are native properties, so [`haylen.tween`](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replaceChildren` releases its transform: reading it raises `This "haylen.UiTransform" was already released.`, a tween on it stops, and `transform` returns the transform of the new node.
 
 ```lua
 local math2d = require('haylen.math')

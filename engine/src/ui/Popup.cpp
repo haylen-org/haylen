@@ -39,6 +39,7 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
     if (!open) {
         return std::nullopt;
     }
+    context.pushPlainReshape();
 
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
     const math::Rect frame{window.Pos.x, window.Pos.y, window.Size.x, window.Size.y};
@@ -68,6 +69,7 @@ void Popup::end(Context& context) {
     }
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(box.getMin()));
     ImGui::Dummy(ImGuiConverter::toImVec2(box.getSize()));
+    context.popReshape();
     ImGui::EndPopup();
 }
 

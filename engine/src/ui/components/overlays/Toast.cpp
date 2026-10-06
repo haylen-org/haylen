@@ -138,7 +138,9 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * notice.appear);
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
     if (ImGui::Begin(name.data(), nullptr, flags)) {
+        context.pushPlainReshape();
         drawFrame(context, notice, frame, message);
+        context.popReshape();
     }
     ImGui::End();
     ImGui::PopStyleVar();

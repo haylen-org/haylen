@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <span>
 
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
@@ -15,7 +14,6 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Gui.hpp"
-#include "haylen/ui/Theme.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::ui {
@@ -91,28 +89,18 @@ TEST_F(UiTransformTest, MovesScalesFadesAndTintsANode) {
     EXPECT_EQ(after.green, 0U);
 }
 
-// The clip around the shadow of a scaled window grows with it, so the soft edge of the shadow is never cut.
-TEST_F(UiTransformTest, ClipsTheShadowOfAScaledNodeAroundItsScaledShape) {
-    test::EngineFixture fixture;
+// A node fades, tints and scales what the scroll areas inside it draw in their own windows like the rest of what it draws.
+TEST_F(UiTransformTest, ReshapesWhatTheScrollAreasInsideTheNodeDraw) {
+    test::EngineFixture fixture({{"content/icons/square.svg", R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#3366FF"/></svg>)"}});
     plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
-    const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "column", "children": [{"kind": "window", "id": "map", "title": "Map", "x": 400, "y": 300, "width": 400, "height": 300}]})"), Placement::Screen);
+    const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "column", "id": "panel", "children": [{"kind": "scroll", "height": 200, "children": [{"kind": "image", "id": "icon", "image": "icons/square.svg", "width": 64, "height": 64}]}]})"), Placement::Screen);
     plugin.mount(gui, 0);
-    gui->find("map")->getTransform()->scale = {1.5F, 1.5F};
-    fixture.frames(2);
+    fixture.frames(1);
+    ASSERT_TRUE(fixture.frameUntil([&] { return getDrawn(plugin).alpha == 255U; }));
 
-    const math::Color shadow = plugin.getTheme().getColor(Theme::Color::Shadow);
-    const std::span<const graphics2d::Shape> shapes = plugin.getBackend().getShapes();
-    const auto cast = std::ranges::find_if(shapes, [&shadow](const graphics2d::Shape& shape) { return shape.color == shadow && shape.softness > 0.0F; });
-    ASSERT_NE(cast, shapes.end());
-    plugin.getBackend().makeCurrent();
-    bool clippedAround = false;
-    for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
-        for (const ImDrawCmd& command : list->CmdBuffer) {
-            const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
-            clippedAround = clippedAround || (command.UserCallback != nullptr && clip.contains(cast->bounds) && clip.width < 1000.0F);
-        }
-    }
-    EXPECT_TRUE(clippedAround);
+    gui->find("panel")->getTransform()->opacity = 0.5F;
+    fixture.frames(1);
+    EXPECT_EQ(getDrawn(plugin).alpha, 128U);
 }
 
 TEST_F(UiTransformTest, TweensNodesNativelyFromLua) {

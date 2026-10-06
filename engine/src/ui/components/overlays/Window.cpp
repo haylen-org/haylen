@@ -87,6 +87,7 @@ void Window::render(Context& context, const math::Rect&) {
     const bool shown = ImGui::Begin(std::format("##window{}", static_cast<const void*>(this)).c_str(), nullptr, flags);
     ImGui::PopStyleVar(2);
     if (shown) {
+        context.pushPlainReshape();
         const math::Rect frame{placed.x, placed.y, size.x, size.y};
         Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::PanelRadius));
         Surfaces::draw(context, Theme::Surface::Window, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), context.getMetric(Theme::Metric::PanelRadius));
@@ -95,6 +96,7 @@ void Window::render(Context& context, const math::Rect&) {
         if (open && closable && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
             close(context);
         }
+        context.popReshape();
     }
     ImGui::End();
 }

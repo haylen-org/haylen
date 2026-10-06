@@ -1201,11 +1201,12 @@ void Collection::drawFaded(Context& context, CollectionCell& cell, const math::R
     }
     Transform faded;
     faded.opacity = cell.opacity;
-    const int firstVertex = ImGui::GetWindowDrawList()->VtxBuffer.Size;
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    const int firstVertex = list.VtxBuffer.Size;
     context.pushReshape(faded, rect.getCenter());
     cell.root->draw(context, rect);
     context.popReshape();
-    Component::reshape(firstVertex, faded, rect.getCenter());
+    Component::reshape(list, firstVertex, faded, rect.getCenter(), false);
 }
 
 // The cells of removed items draw where they were while they fade out, disabled, so they take neither input nor the focus.

@@ -280,8 +280,8 @@ class Component {
     [[nodiscard]] static std::string getButtonName(int button);
     void drawTooltip(Context& context, const math::Rect& bounds);
 
-    // Scales the vertices the node drew since the first one around the center and multiplies their colors by the tint and the opacity.
-    static void reshape(int firstVertex, const Transform& shape, math::Vec2 center);
+    // Scales the vertices drawn into the list since the first one around the center and multiplies their colors by the tint and the opacity, and scales the clip rectangles of its commands too for the list of a child window, which the node drew whole.
+    static void reshape(ImDrawList& list, int firstVertex, const Transform& shape, math::Vec2 center, bool clips);
     void drawDetachedChildren(Context& context, const math::Rect& bounds);
     void noticeStoppedDrawing(Context& context);
 

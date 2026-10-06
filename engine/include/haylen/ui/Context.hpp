@@ -195,6 +195,9 @@ class Context final {
     // Nodes whose transform scales, fades or tints them push it around their drawing.
     void pushReshape(const Transform& shape, math::Vec2 center);
     void popReshape();
+
+    // Starts a window of its own, a popup, a tooltip, a dialog, a toast or a window, which keeps its look whatever the transforms of the nodes around it, until `popReshape`.
+    void pushPlainReshape();
     [[nodiscard]] Reshape getReshape() const noexcept;
 
     // The direction and language of the whole UI, which nodes change for themselves and their children by pushing their own around their measuring and drawing. The direction is left to right or right to left, and the language is a BCP 47 tag or empty.
