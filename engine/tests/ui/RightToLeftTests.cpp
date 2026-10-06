@@ -132,4 +132,22 @@ TEST_F(RightToLeftTest, MirrorsLayoutsInARightToLeftUi) {
     EXPECT_LT(ui.getBounds(*island, "first").x, ui.getBounds(*island, "second").x);
 }
 
+// The actions of a settings form line up to the end edge, which is the left one in a right-to-left UI, so the last action stands leftmost.
+TEST_F(RightToLeftTest, LinesUpSettingsActionsToTheLeftEdge) {
+    auto gui = ui.mount(R"({"kind": "column", "direction": "rightToLeft", "padding": 20, "children": [{"kind": "settingsActions", "id": "actions", "children": [{"kind": "button", "id": "cancel", "text": "Cancel"}, {"kind": "button", "id": "save", "text": "Save"}]}]})");
+    ui.frames(2);
+    const math::Rect actions = ui.getBounds(*gui, "actions");
+    EXPECT_FLOAT_EQ(ui.getBounds(*gui, "save").x, actions.x);
+    EXPECT_GT(ui.getBounds(*gui, "cancel").x, ui.getBounds(*gui, "save").getRight());
+}
+
+// The options of a horizontal radio group run from the right in a right-to-left UI, so a click near the right end picks the first option.
+TEST_F(RightToLeftTest, RunsHorizontalRadioOptionsFromTheRight) {
+    auto gui = ui.mount(R"({"kind": "column", "direction": "rightToLeft", "padding": 20, "children": [{"kind": "radioGroup", "id": "speed", "horizontal": true, "align": "stretch", "items": [{"id": "slow", "text": "Slow"}, {"id": "fast", "text": "Fast"}], "selected": "fast"}]})");
+    ui.frames(2);
+    const math::Rect group = ui.getBounds(*gui, "speed");
+    ui.click({group.getRight() - 10.0F, group.getCenter().y});
+    EXPECT_EQ(ui.findLastEvent("change").value, (core::Json{{"value", "slow"}}));
+}
+
 } // namespace haylen::ui

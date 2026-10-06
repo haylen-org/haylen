@@ -39,7 +39,7 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
     for (const ChoiceItem& item : items) {
         const std::string text = context.getText(item.text);
         const math::Vec2 size = Widgets::measureChoice(context, text);
-        const math::Rect option{cursor.x, cursor.y, horizontal ? size.x : bounds.width, size.y};
+        const math::Rect option = context.mirror({cursor.x, cursor.y, horizontal ? size.x : bounds.width, size.y}, bounds);
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);
         const bool picked = Widgets::radio(context, option, item.id == selected, text, "##option");

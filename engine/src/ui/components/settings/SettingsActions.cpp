@@ -17,13 +17,14 @@ math::Vec2 SettingsActions::measureContent(Context& context, float availableWidt
     return {std::max(0.0F, size.x - spacing), size.y + spacing};
 }
 
+// The buttons line up to the end edge, which is the left one in a right-to-left UI.
 void SettingsActions::render(Context& context, const math::Rect& bounds) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float x = bounds.getRight();
     for (Component* child : getLayoutChildren() | std::views::reverse) {
         const math::Vec2 size = child->measure(context, bounds.width);
         x -= size.x;
-        child->draw(context, {x, bounds.getBottom() - size.y, size.x, size.y});
+        child->draw(context, context.mirror({x, bounds.getBottom() - size.y, size.x, size.y}, bounds));
         x -= spacing;
     }
 }
