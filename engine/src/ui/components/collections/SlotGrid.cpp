@@ -152,7 +152,7 @@ void SlotGrid::drawContent(Context& context, const Slot& slot, const math::Rect&
     }
     if (const std::string_view count = context.getText(slot.count); !count.empty()) {
         const float line = Typography::getLineHeight(context, Theme::Font::Caption);
-        Typography::drawParagraph(context, Theme::Font::Caption, {area.x, area.getBottom() - line - 4.0F, area.width - 8.0F, line}, context.getColor(Theme::Color::Text), count, Alignment::End, context.getColor(Theme::Color::Window), 2.0F);
+        Typography::drawParagraph(context, Theme::Font::Caption, context.mirror({area.x, area.getBottom() - line - 4.0F, area.width - 8.0F, line}, area), context.getColor(Theme::Color::Text), count, Alignment::End, context.getColor(Theme::Color::Window), 2.0F);
     }
 }
 

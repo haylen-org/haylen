@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "support/UiFixture.hpp"
 #include "ui/TextFieldLayout.hpp"
 
@@ -148,6 +150,19 @@ TEST_F(RightToLeftTest, RunsHorizontalRadioOptionsFromTheRight) {
     const math::Rect group = ui.getBounds(*gui, "speed");
     ui.click({group.getRight() - 10.0F, group.getCenter().y});
     EXPECT_EQ(ui.findLastEvent("change").value, (core::Json{{"value", "slow"}}));
+}
+
+// The count of a slot stands in its bottom corner on the end side, which is the left one in a right-to-left UI, as far from the edge as on the right in a left-to-right one.
+TEST_F(RightToLeftTest, PutsTheCountOfASlotInTheLeftCorner) {
+    auto gui = ui.mount(R"({"kind": "column", "direction": "rightToLeft", "padding": 20, "children": [{"kind": "slotGrid", "id": "bag", "align": "start", "columns": 1, "slotSize": 100, "slots": [{"id": "potion", "count": 3}]}]})");
+    ui.frames(2);
+    Backend& backend = ui.getUi().getBackend();
+    const std::span<const Backend::Text> texts = backend.getTexts();
+    const auto count = std::ranges::find_if(texts, [&backend](const Backend::Text& drawn) { return backend.getContent(drawn) == "3"; });
+    ASSERT_NE(count, texts.end());
+    const math::Rect bag = ui.getBounds(*gui, "bag");
+    EXPECT_GT(count->origin.x, bag.x);
+    EXPECT_FLOAT_EQ(count->origin.x + count->style.maxWidth, bag.getRight());
 }
 
 } // namespace haylen::ui
