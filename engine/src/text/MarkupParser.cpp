@@ -1,6 +1,7 @@
 #include "text/MarkupParser.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -16,11 +17,23 @@ namespace haylen::text {
 
 MarkupParser::MarkupParser(std::string_view source) : markup(source) {}
 
+// Lines end where paragraphs do, at every paragraph separator, with the carriage return of CRLF belonging to its line feed.
 std::pair<std::size_t, std::size_t> MarkupParser::locate(std::size_t offset) const {
-    const std::string_view before = markup.substr(0, offset);
-    const std::size_t lineStart = before.rfind('\n');
-    const auto line = static_cast<std::size_t>(std::count(before.begin(), before.end(), '\n')) + 1;
-    return {line, core::Utf8::countCodePoints(before.substr(lineStart == std::string_view::npos ? 0 : lineStart + 1)) + 1};
+    const std::u32string before = core::Utf8::decode(markup.substr(0, offset));
+    std::size_t line = 1;
+    std::size_t column = 1;
+    for (std::size_t index = 0; index < before.size(); ++index) {
+        if (before[index] == U'\r' && index + 1 < before.size() && before[index + 1] == U'\n') {
+            continue;
+        }
+        if (Segmenter::isParagraphSeparator(before[index])) {
+            ++line;
+            column = 1;
+        } else {
+            ++column;
+        }
+    }
+    return {line, column};
 }
 
 void MarkupParser::fail(std::size_t offset, const std::string& problem) const {
@@ -97,7 +110,7 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
 float MarkupParser::number(const Tag& tag, std::string_view text, std::string_view what) const {
     float value = 0.0F;
     const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), value);
-    if (error != std::errc{} || end != text.data() + text.size() || text.empty()) {
+    if (error != std::errc{} || end != text.data() + text.size() || text.empty() || !std::isfinite(value)) {
         fail(tag.offset, "The value \"" + std::string(text) + "\" is not a number for the " + std::string(what) + " of \"[" + tag.name + "]\".");
     }
     return value;
@@ -283,6 +296,9 @@ void MarkupParser::handleTag(const Tag& tag) {
     if (tag.name == "lb" || tag.name == "rb") {
         requireNoValue(tag);
         checkAttributes(tag, {});
+        if (insideTableRows()) {
+            fail(tag.offset, "Text inside a \"[table]\" must be inside a \"[cell]\".");
+        }
         appendText(tag.name == "lb" ? U"[" : U"]");
         return;
     }
@@ -473,15 +489,15 @@ void MarkupParser::openTable(const Tag& tag) {
     }
     checkAttributes(tag, {});
     const float columns = number(tag, requireValue(tag), "column count");
-    if (columns < 1.0F || columns != static_cast<float>(static_cast<std::size_t>(columns))) {
-        fail(tag.offset, "A \"[table]\" needs a whole number of columns of at least 1.");
+    if (columns < 1.0F || columns > static_cast<float>(kMaxTableColumns) || columns != std::floor(columns)) {
+        fail(tag.offset, "A \"[table]\" needs a whole number of columns from 1 to " + std::to_string(kMaxTableColumns) + ".");
     }
 
     discardOrFinishParagraph();
     pushTag(tag, TagKind::Table);
     table = document.tables.size();
     document.tables.push_back({.columns = static_cast<std::size_t>(columns)});
-    container().push_back({.kind = RichTextDocument::Paragraph::Kind::Table, .direction = currentBlock().direction, .table = *table});
+    container().push_back({.kind = RichTextDocument::Paragraph::Kind::Table, .direction = currentBlock().direction, .indent = currentBlock().indent, .table = *table});
     skipNewline = true;
 }
 

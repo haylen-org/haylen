@@ -241,6 +241,21 @@ TEST_F(RichTextLayoutTest, RunsEffectsDeterministically) {
     EXPECT_THROW(registry()->registerEffect("b", [](Effect::Glyph&, const Effect::Parameters&) {}), std::invalid_argument);
 }
 
+// The attributes of an effect take only finite numbers, so an infinite or undefined amplitude is reported like any other value that is no number.
+TEST_F(RichTextLayoutTest, RefusesEffectNumbersThatAreNotFinite) {
+    const Effect::Parameters parameters("wave", {{"amp", "inf"}, {"freq", "nan"}, {"speed", "2"}});
+    EXPECT_THROW((void)parameters.getNumber("amp", 1.0F), std::invalid_argument);
+    EXPECT_THROW((void)parameters.getNumber("freq", 1.0F), std::invalid_argument);
+    EXPECT_FLOAT_EQ(parameters.getNumber("speed", 1.0F), 2.0F);
+}
+
+// A table stands at the indent of the block around it, like the paragraphs and rules there.
+TEST_F(RichTextLayoutTest, IndentsTablesWithTheirBlock) {
+    RichText plain = make("[table=1][cell]x[/cell][/table]");
+    RichText indented = make("[p indent=2][table=1][cell]x[/cell][/table][/p]");
+    EXPECT_GT(glyphOf(indented.getLayout(), U'x').position.x, glyphOf(plain.getLayout(), U'x').position.x);
+}
+
 TEST_F(RichTextLayoutTest, RevealsLikeATypewriter) {
     RichText typed = make("ab[pause=1]cd [speed=2]ef[/speed]", {.revealSpeed = 10.0F});
     EXPECT_EQ(typed.getVisibleCharacters(), 0U);

@@ -90,6 +90,7 @@ class MarkupParser final {
     }};
     static constexpr std::array<std::string_view, 33> kTags{"b", "i", "u", "s", "code", "color", "bgcolor", "font", "size", "outline", "shadow", "glow", "alpha", "url", "hint", "speed", "pause", "br", "lb", "rb", "img", "icon", "hr", "p", "center", "left", "right", "fill", "ul", "ol", "table", "cell", "dropcap"};
     static constexpr std::string_view kBullet = "\xE2\x80\xA2";
+    static constexpr std::size_t kMaxTableColumns = 64;
 
     [[nodiscard]] static std::u32string listMarker(RichTextDocument::ListKind kind, std::size_t number);
     [[nodiscard]] static std::u32string romanNumeral(std::size_t number, bool upper);

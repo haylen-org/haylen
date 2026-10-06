@@ -202,4 +202,34 @@ TEST_F(RichTextMarkupTest, ReportsMalformedMarkupWithItsPlace) {
     EXPECT_EQ(errorOf("[]"), "Rich text markup at line 1, column 1: The markup \"[]\" has no tag name.");
 }
 
+// Markup numbers are finite, so an infinite or undefined size, alpha, pause or column count is reported instead of reaching the layout.
+TEST_F(RichTextMarkupTest, RefusesNumbersThatAreNotFinite) {
+    EXPECT_EQ(errorOf("[size=inf]x[/size]"), "Rich text markup at line 1, column 1: The value \"inf\" is not a number for the size of \"[size]\".");
+    EXPECT_EQ(errorOf("[alpha=nan]x[/alpha]"), "Rich text markup at line 1, column 1: The value \"nan\" is not a number for the alpha of \"[alpha]\".");
+    EXPECT_EQ(errorOf("[pause=nan]"), "Rich text markup at line 1, column 1: The value \"nan\" is not a number for the seconds of \"[pause]\".");
+    EXPECT_EQ(errorOf("[table=inf][/table]"), "Rich text markup at line 1, column 1: The value \"inf\" is not a number for the column count of \"[table]\".");
+    EXPECT_EQ(errorOf("[table=1e20][/table]"), "Rich text markup at line 1, column 1: A \"[table]\" needs a whole number of columns from 1 to 64.");
+    EXPECT_EQ(errorOf("[table=65][/table]"), "Rich text markup at line 1, column 1: A \"[table]\" needs a whole number of columns from 1 to 64.");
+}
+
+// A bracket between a table and its first cell is text outside a cell.
+TEST_F(RichTextMarkupTest, RefusesBracketsOutsideTheCellsOfATable) {
+    EXPECT_EQ(errorOf("[table=1][lb][cell]x[/cell][/table]"), "Rich text markup at line 1, column 10: Text inside a \"[table]\" must be inside a \"[cell]\".");
+}
+
+// Errors count lines at every paragraph separator the parser ends paragraphs at, with CRLF as one line end.
+TEST_F(RichTextMarkupTest, PlacesErrorsAfterEveryKindOfLineEnd) {
+    EXPECT_EQ(errorOf("a\r[/b]"), "Rich text markup at line 2, column 1: The tag \"[/b]\" closes nothing.");
+    EXPECT_EQ(errorOf("a\r\n[/b]"), "Rich text markup at line 2, column 1: The tag \"[/b]\" closes nothing.");
+    EXPECT_EQ(errorOf("a\u2029b [/b]"), "Rich text markup at line 2, column 3: The tag \"[/b]\" closes nothing.");
+}
+
+// The parsed table keeps the indent of its block.
+TEST_F(RichTextMarkupTest, GivesTablesTheIndentOfTheirBlock) {
+    const RichTextDocument document = RichText::parse("[p indent=2][table=1][cell]x[/cell][/table][/p]");
+    const auto table = std::ranges::find(document.paragraphs, RichTextDocument::Paragraph::Kind::Table, &RichTextDocument::Paragraph::kind);
+    ASSERT_NE(table, document.paragraphs.end());
+    EXPECT_FLOAT_EQ(table->indent, 2.0F);
+}
+
 } // namespace haylen::text

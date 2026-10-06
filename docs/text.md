@@ -104,7 +104,7 @@ Markup is text with tags in square brackets. Inline tags open with `[name]` or `
 | `[center]`, `[left]`, `[right]`, `[fill]` | Paragraph blocks with an alignment. Fill stretches the spaces of every wrapped line to both edges. |
 | `[ul bullet=*]`, `[ol type=1]` | Lists, where every paragraph inside is an item with a bullet or a number, counted as `1`, `a`, `A`, `i` or `I`. Lists nest and indent one level each. |
 | `[hr width=50% height=2 color=c]` | A horizontal rule, centered unless its block aligns it. |
-| `[table=3]` with `[cell bg=c border=c padding=4]` | A table of cells read row by row. Columns take the width their content wants and shrink proportionally to the room of their widest word when the table is too wide. |
+| `[table=3]` with `[cell bg=c border=c padding=4]` | A table of 1 to 64 columns whose cells read row by row. Columns take the width their content wants and shrink proportionally to the room of their widest word when the table is too wide. |
 | `[dropcap size=64 font=name color=c margin=4]W[/dropcap]` | A large first letter that the lines beside it flow around, three times the base size unless sized. It must start its paragraph. |
 
 Block tags end the paragraph before them, and a newline right after an opening block tag or right before a closing one belongs to the markup, so blocks read naturally on lines of their own. Empty lines inside a list take no number.

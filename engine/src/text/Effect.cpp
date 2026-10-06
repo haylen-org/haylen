@@ -17,7 +17,7 @@ Effect::Parameters::Parameters(std::string effectName, std::map<std::string, std
     for (const auto& [key, text] : values) {
         float value = 0.0F;
         const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), value);
-        if (error == std::errc{} && end == text.data() + text.size() && !text.empty()) {
+        if (error == std::errc{} && end == text.data() + text.size() && !text.empty() && std::isfinite(value)) {
             numbers.emplace(key, value);
         }
         if (const std::optional<math::Color> color = MarkupParser::parseColor(text)) {
