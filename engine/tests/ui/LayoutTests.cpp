@@ -251,4 +251,11 @@ TEST_F(LayoutTest, PlacesASettingsRowAtTheWidthItMeasures) {
     EXPECT_GE(getBounds(*gui, "music").width, getUi().getTheme().getMetric(Theme::Metric::SettingsLabelWidth) * 2.0F);
 }
 
+// An empty state with a message alone is as tall as its message, without the line of an empty title.
+TEST_F(LayoutTest, LeavesTheEmptyPartsOfAnEmptyStateOut) {
+    auto gui = mount(R"({"kind": "column", "align": "start", "children": [{"kind": "emptyState", "id": "alone", "message": "Nothing here"}, {"kind": "label", "id": "same", "text": "Nothing here"}]})");
+    frames(2);
+    EXPECT_EQ(getBounds(*gui, "alone").height, getBounds(*gui, "same").height);
+}
+
 } // namespace haylen::ui

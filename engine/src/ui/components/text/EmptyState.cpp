@@ -17,29 +17,45 @@ void EmptyState::readProperties(PropertyReader& reader) {
     reader.read("imageSize", imageSize, 0.0F, 4096.0F);
 }
 
+// The picture, the title and the message stack in that order, and a part that is empty takes no room and no gap.
 math::Vec2 EmptyState::measureContent(Context& context, float availableWidth) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
-    math::Vec2 size;
-    if (!image.empty()) {
-        size = {imageSize, imageSize + spacing};
+    const std::string titleText = context.getText(title);
+    const std::string messageText = context.getText(message);
+    math::Vec2 size = image.empty() ? math::Vec2{} : math::Vec2{imageSize, imageSize};
+    float gap = image.empty() ? 0.0F : spacing;
+    if (!titleText.empty()) {
+        const math::Vec2 measured = Typography::measureParagraph(context, Theme::Font::Heading, titleText, availableWidth);
+        size = {std::max(size.x, measured.x), size.y + gap + measured.y};
+        gap = spacing * 0.5F;
     }
-    const math::Vec2 titleSize = Typography::measureParagraph(context, Theme::Font::Heading, context.getText(title), availableWidth);
-    const math::Vec2 messageSize = Typography::measureParagraph(context, Theme::Font::Body, context.getText(message), availableWidth);
-    return {std::max({size.x, titleSize.x, messageSize.x}), size.y + titleSize.y + spacing * 0.5F + messageSize.y};
+    if (!messageText.empty()) {
+        const math::Vec2 measured = Typography::measureParagraph(context, Theme::Font::Body, messageText, availableWidth);
+        size = {std::max(size.x, measured.x), size.y + gap + measured.y};
+    }
+    return size;
 }
 
 void EmptyState::render(Context& context, const math::Rect& bounds) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float y = bounds.y;
+    float gap = 0.0F;
     if (!image.empty()) {
         Surfaces::drawImage(context, context.getImage(image, {imageSize, imageSize}), {std::floor(bounds.getCenter().x - imageSize * 0.5F), y, imageSize, imageSize});
-        y += imageSize + spacing;
+        y += imageSize;
+        gap = spacing;
     }
-    const std::string titleText = context.getText(title);
-    const float titleHeight = Typography::measureParagraph(context, Theme::Font::Heading, titleText, bounds.width).y;
-    Typography::drawParagraph(context, Theme::Font::Heading, {bounds.x, y, bounds.width, titleHeight}, context.getColor(Theme::Color::Text), titleText, Alignment::Center);
-    y += titleHeight + spacing * 0.5F;
-    Typography::drawParagraph(context, Theme::Font::Body, {bounds.x, y, bounds.width, bounds.getBottom() - y}, context.getColor(Theme::Color::TextMuted), context.getText(message), Alignment::Center);
+    if (const std::string titleText = context.getText(title); !titleText.empty()) {
+        y += gap;
+        const float titleHeight = Typography::measureParagraph(context, Theme::Font::Heading, titleText, bounds.width).y;
+        Typography::drawParagraph(context, Theme::Font::Heading, {bounds.x, y, bounds.width, titleHeight}, context.getColor(Theme::Color::Text), titleText, Alignment::Center);
+        y += titleHeight;
+        gap = spacing * 0.5F;
+    }
+    if (const std::string messageText = context.getText(message); !messageText.empty()) {
+        y += gap;
+        Typography::drawParagraph(context, Theme::Font::Body, {bounds.x, y, bounds.width, bounds.getBottom() - y}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Center);
+    }
 }
 
 } // namespace haylen::ui
