@@ -361,6 +361,7 @@ void Theme::applyTo(ImGuiStyle& style, float pointsPerUnit) const {
     palette[ImGuiCol_TableBorderLight] = ImGuiConverter::toImVec4(getColor(Color::Border));
     palette[ImGuiCol_TableRowBgAlt] = ImGuiConverter::toImVec4(getColor(Color::Hover));
     palette[ImGuiCol_TextSelectedBg] = ImGuiConverter::toImVec4(getColor(Color::Selection));
+    palette[ImGuiCol_InputTextCursor] = ImGuiConverter::toImVec4(getColor(Color::Caret));
     palette[ImGuiCol_NavCursor] = ImGuiConverter::toImVec4(getColor(Color::Focus));
     palette[ImGuiCol_ModalWindowDimBg] = ImGuiConverter::toImVec4(getColor(Color::Overlay));
 }

@@ -257,7 +257,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         const bool shown = !ImGui::GetIO().ConfigInputTextCursorBlink || state->CursorAnim <= 0.0F || std::fmod(state->CursorAnim, 1.20F) <= 0.80F;
         if (shown) {
             const float width = context.getMetric(Theme::Metric::CaretWidth);
-            Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Text), 0.0F);
+            Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Caret), 0.0F);
         }
         session.setCaret({caret.x, caret.y, 1.0F, caret.height});
         if (!password) {

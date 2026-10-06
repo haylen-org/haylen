@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <memory>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -8,6 +10,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/graphics/Viewport.hpp"
@@ -284,6 +287,16 @@ TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
     send({.type = platform::Event::Type::KeyboardChanged});
     fixture.frames(60);
     EXPECT_EQ(gui->find("name")->getBounds(), resting);
+}
+
+// The caret of a focused field takes the theme color for it, which a style changes like any other color.
+TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
+    auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name"}]})");
+    focus(*gui, "name");
+    const math::Rect field = gui->find("name")->getBounds();
+    const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
+    const auto caret = std::ranges::find_if(shapes, [&field](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU) && field.contains(shape.bounds.getCenter()); });
+    EXPECT_NE(caret, shapes.end());
 }
 
 // An anchored bar moves up with every other GUI, so its field rises above the keyboard and the lift settles there instead of growing every frame.
