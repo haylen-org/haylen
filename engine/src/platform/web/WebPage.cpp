@@ -271,7 +271,7 @@ core::Json WebPage::getFrameStatistics(core::Engine& engine) {
         scopes.push_back({{"name", sample.name}, {"milliseconds", sample.milliseconds}, {"calls", sample.calls}, {"depth", sample.depth}});
     }
     return {
-        {"fps", average > 0.0 ? 1000.0 / average : 0.0}, {"frameMilliseconds", profiler.getLastFrameMilliseconds()}, {"averageMilliseconds", average}, {"drawCalls", render.drawCalls}, {"sprites", render.sprites}, {"vertices", render.vertices}, {"textureSwitches", render.textureSwitches}, {"uploadedBytes", render.uploadedBytes}, {"assets", engine.getAssets().getCachedCount()}, {"voices", engine.getAudio().getVoiceCount()}, {"scopes", std::move(scopes)},
+        {"fps", profiler.getFramesPerSecond()}, {"frameMilliseconds", profiler.getLastFrameMilliseconds()}, {"averageMilliseconds", average}, {"drawCalls", render.drawCalls}, {"sprites", render.sprites}, {"vertices", render.vertices}, {"textureSwitches", render.textureSwitches}, {"uploadedBytes", render.uploadedBytes}, {"assets", engine.getAssets().getCachedCount()}, {"voices", engine.getAudio().getVoiceCount()}, {"scopes", std::move(scopes)},
     };
 }
 

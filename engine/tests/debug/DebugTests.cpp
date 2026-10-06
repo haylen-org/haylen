@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -7,6 +8,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -18,6 +20,7 @@
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::debug {
@@ -106,6 +109,42 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
     EXPECT_THROW(profiler.endScope(), std::logic_error);
     EXPECT_THROW(profiler.endFrame(), std::logic_error);
     EXPECT_THROW(Profiler(0), std::invalid_argument);
+}
+
+// The frame rate counts the time between the starts of the frames, which holds the wait for the display that the work of a frame leaves out, and reading it allocates nothing.
+TEST(ProfilerTest, MeasuresTheFrameRateFromTheStartsOfTheFrames) {
+    double now = 0.0;
+    Profiler profiler(8, [&now] { return now; });
+    profiler.beginFrame();
+    EXPECT_EQ(profiler.getFramesPerSecond(), 0.0);
+    for (int frame = 0; frame < 20; ++frame) {
+        now += 0.002;
+        profiler.endFrame();
+        now += 0.0146667;
+        profiler.beginFrame();
+    }
+    now += 0.002;
+    profiler.endFrame();
+
+    const test::AllocationTracker tracker;
+    const double rate = profiler.getFramesPerSecond();
+    const double work = profiler.getAverageFrameMilliseconds();
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_NEAR(rate, 60.0, 0.01);
+    EXPECT_NEAR(work, 2.0, 1e-4);
+}
+
+// A script closes only the scopes it opened, so closing one too many leaves the scope of the engine around it open.
+TEST(ProfilerTest, KeepsTheScopesOfTheEngineFromScripts) {
+    Profiler profiler;
+    profiler.beginFrame();
+    profiler.beginScope("update");
+    profiler.beginScriptScope("enemies");
+    profiler.endScriptScope();
+    EXPECT_THROW(profiler.endScriptScope(), std::logic_error);
+    EXPECT_EQ(profiler.getDepth(), 1U);
+    profiler.endScope();
+    profiler.endFrame();
 }
 
 TEST(LogTest, FansLinesOutToListeners) {
@@ -263,10 +302,13 @@ TEST(DebugPluginTest, ProfilesFromLua) {
     EXPECT_NE(fixture.lua("debugging.endScope()").find("closed without being opened"), std::string::npos);
     EXPECT_NE(fixture.lua("debugging.profile('bad', function() error('inside') end)").find("inside"), std::string::npos);
 
-    // An app that closes more scopes than it opened ends a scope of the engine early, and the frame goes on.
-    fixture.runLua("local scene = require('haylen.scene') scene.clear() scene.push({update = function() debugging.endScope() debugging.profile('work', debugging.endScope) end})");
-    fixture.frames(2);
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    // An app that closes more scopes than it opened gets the error, while the scope of the engine it runs in stays open.
+    fixture.runLua("local scene = require('haylen.scene') scene.clear() scene.push({update = function() debugging.endScope() end})");
+    fixture.frames(1);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("A profiler scope was closed without being opened."), std::string::npos);
+    const std::vector<ProfileSample>& scopes = fixture.engine().getProfiler().getLastFrame();
+    EXPECT_NE(std::ranges::find(scopes, std::string_view("update"), &ProfileSample::name), scopes.end());
 }
 
 } // namespace haylen::debug

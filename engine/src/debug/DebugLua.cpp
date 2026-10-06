@@ -354,7 +354,7 @@ int DebugLua::frame(lua_State* L) {
     lua_setfield(L, -2, "milliseconds");
     lua::Stack::push(L, average);
     lua_setfield(L, -2, "average");
-    lua::Stack::push(L, average > 0.0 ? 1000.0 / average : 0.0);
+    lua::Stack::push(L, profiler.getFramesPerSecond());
     lua_setfield(L, -2, "fps");
 
     const std::vector<ProfileSample>& samples = profiler.getLastFrame();
@@ -382,12 +382,12 @@ int DebugLua::frameHistory(lua_State* L) {
 }
 
 int DebugLua::beginScope(lua_State* L) {
-    lua::Runtime::getEngine(L).getProfiler().beginScope(lua::Stack::read<std::string_view>(L, 1));
+    lua::Runtime::getEngine(L).getProfiler().beginScriptScope(lua::Stack::read<std::string_view>(L, 1));
     return 0;
 }
 
 int DebugLua::endScope(lua_State* L) {
-    lua::Runtime::getEngine(L).getProfiler().endScope();
+    lua::Runtime::getEngine(L).getProfiler().endScriptScope();
     return 0;
 }
 

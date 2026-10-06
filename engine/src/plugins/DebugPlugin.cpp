@@ -225,8 +225,7 @@ void DebugPlugin::renderOverlay(core::Engine& engine) {
         return;
     }
     const debug::Profiler& profiler = engine.getProfiler();
-    const double average = profiler.getAverageFrameMilliseconds();
-    debug::StatsDisplay::drawCompact(engine, {.fps = average > 0.0 ? 1000.0 / average : 0.0, .milliseconds = profiler.getLastFrameMilliseconds(), .drawCalls = lastRendering.drawCalls, .vertices = lastRendering.vertices, .instances = lastRendering.instances});
+    debug::StatsDisplay::drawCompact(engine, {.fps = profiler.getFramesPerSecond(), .milliseconds = profiler.getLastFrameMilliseconds(), .drawCalls = lastRendering.drawCalls, .vertices = lastRendering.vertices, .instances = lastRendering.instances});
 }
 
 // The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy and skips the ones removed meanwhile.

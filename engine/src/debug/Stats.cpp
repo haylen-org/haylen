@@ -36,7 +36,7 @@ Stats::Frame Stats::measureFrames(core::Engine& engine) {
     std::ranges::sort(times, std::greater<>());
     const std::size_t slowest = std::max<std::size_t>(1, times.size() / 100);
     measured.average = std::accumulate(times.begin(), times.end(), 0.0) / static_cast<double>(times.size());
-    measured.fps = measured.average > 0.0 ? 1000.0 / measured.average : 0.0;
+    measured.fps = profiler.getFramesPerSecond();
     measured.minimum = times.back();
     measured.maximum = times.front();
     measured.onePercentLow = std::accumulate(times.begin(), times.begin() + static_cast<std::ptrdiff_t>(slowest), 0.0) / static_cast<double>(slowest);

@@ -9,7 +9,7 @@
 
 namespace haylen::debug {
 
-Profiler::Profiler(std::size_t historySize, Clock source) : clock(source ? std::move(source) : Clock(&getSteadySeconds)), history(historySize, 0.0F) {
+Profiler::Profiler(std::size_t historySize, Clock source) : clock(source ? std::move(source) : Clock(&getSteadySeconds)), history(historySize, 0.0F), intervals(historySize, 0.0F) {
     if (historySize == 0) {
         throw std::invalid_argument("A profiler needs room for at least one frame.");
     }
@@ -22,7 +22,14 @@ double Profiler::getSteadySeconds() {
 void Profiler::beginFrame() {
     current.clear();
     open.clear();
-    frameStart = clock();
+    const double now = clock();
+    if (begun) {
+        intervals[nextInterval] = static_cast<float>((now - frameStart) * 1000.0);
+        nextInterval = (nextInterval + 1) % intervals.size();
+        intervalCount = std::min(intervalCount + 1, intervals.size());
+    }
+    begun = true;
+    frameStart = now;
     inFrame = true;
 }
 
@@ -59,6 +66,18 @@ void Profiler::beginScope(std::string_view name) {
     open.push_back({.sample = index, .start = clock()});
 }
 
+void Profiler::beginScriptScope(std::string_view name) {
+    beginScope(name);
+    open.back().script = true;
+}
+
+void Profiler::endScriptScope() {
+    if (open.empty() || !open.back().script) {
+        throw std::logic_error("A profiler scope was closed without being opened.");
+    }
+    endScope();
+}
+
 void Profiler::endScope() {
     if (open.empty()) {
         throw std::logic_error("A profiler scope was closed without being opened.");
@@ -74,12 +93,17 @@ void Profiler::endScopesTo(std::size_t depth) noexcept {
     }
 }
 
+// The ring of the history fills from its start, so its first entries are the recorded ones in some order, which a sum ignores.
 double Profiler::getAverageFrameMilliseconds() const noexcept {
     if (recorded == 0) {
         return 0.0;
     }
-    const std::vector<float> frames = getFrameHistory();
-    return std::accumulate(frames.begin(), frames.end(), 0.0) / static_cast<double>(frames.size());
+    return std::accumulate(history.begin(), history.begin() + static_cast<std::ptrdiff_t>(recorded), 0.0) / static_cast<double>(recorded);
+}
+
+double Profiler::getFramesPerSecond() const noexcept {
+    const double total = std::accumulate(intervals.begin(), intervals.begin() + static_cast<std::ptrdiff_t>(intervalCount), 0.0);
+    return total > 0.0 ? 1000.0 * static_cast<double>(intervalCount) / total : 0.0;
 }
 
 std::vector<float> Profiler::getFrameHistory() const {
