@@ -83,6 +83,19 @@ TEST_F(ImageLibraryTest, RastersSvgDocumentsForThePixelsTheyCover) {
     EXPECT_EQ(raster({96.0F, 48.0F}), small);
 }
 
+// A transform that scales a picture rasterizes it for the pixels it covers once scaled, so it stays sharp while it grows.
+TEST_F(ImageLibraryTest, RastersPicturesForTheScaleOfTheirTransforms) {
+    // clang-format off
+    const auto scaled = [&] {
+        getContext().pushReshape({.scale = {3.0F, 3.0F}}, {});
+        const graphics::Texture texture = getContext().getImage("icons/badge.svg", {96.0F, 48.0F});
+        getContext().popReshape();
+        return texture;
+    };
+    // clang-format on
+    ASSERT_TRUE(getFixture().frameUntil([&] { return scaled().getSize().x >= std::floor(toPixels({288.0F, 144.0F}).x); }));
+}
+
 TEST_F(ImageLibraryTest, DrawsSvgPicturesInEveryComponentThatShowsOne) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "children": [

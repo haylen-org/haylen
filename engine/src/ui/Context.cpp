@@ -1,6 +1,7 @@
 #include "haylen/ui/Context.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -117,13 +118,16 @@ std::string Context::getText(const TextValue& value) const {
     return value.key.empty() ? value.literal : catalog.getText(value.key, value.arguments);
 }
 
+// A picture rasterizes for the pixels it covers on the screen, which the transforms of the nodes around it scale too.
 graphics::Texture Context::getImage(std::string_view path, math::Vec2 size) const {
     const math::Vec2 natural = getImageSize(path);
     if (natural.x <= 0.0F || natural.y <= 0.0F) {
         return {};
     }
     const math::Vec2 density = backend.getDensity();
-    return getImageAtScale(path, std::max(size.x * density.x / natural.x, size.y * density.y / natural.y));
+    const math::Vec2 scale = getReshape().scale;
+    const math::Vec2 shown{size.x * std::fabs(scale.x), size.y * std::fabs(scale.y)};
+    return getImageAtScale(path, std::max(shown.x * density.x / natural.x, shown.y * density.y / natural.y));
 }
 
 graphics::Texture Context::getImageAtScale(std::string_view path, float scale) const {
