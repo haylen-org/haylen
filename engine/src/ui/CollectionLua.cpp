@@ -209,8 +209,8 @@ std::size_t CollectionLua::readTarget(lua_State* L, int index, const Collection&
 }
 
 void CollectionLua::checkUnbound(lua_State* L, const Collection& collection) {
-    if (collection.isBinding()) {
-        luaL_error(L, "The collection \"%s\" cannot change its items while it binds cells.", collection.getId().c_str());
+    if (collection.isBusy()) {
+        luaL_error(L, "The collection \"%s\" cannot change its items while it binds cells or loads them.", collection.getId().c_str());
     }
 }
 

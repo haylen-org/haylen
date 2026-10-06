@@ -144,9 +144,9 @@ class Collection final : public Component {
     // Returns the cell that shows an item, or null while the item has none.
     [[nodiscard]] CollectionCell* findCell(std::size_t index) const noexcept;
 
-    // Whether the collection binds cells right now, while its items must not change.
-    [[nodiscard]] bool isBinding() const noexcept {
-        return binding;
+    // Whether the collection binds cells or asks its source for the items it shows right now, such as while a page loader runs, when the app must not change or replace its items.
+    [[nodiscard]] bool isBusy() const noexcept {
+        return binding || requesting;
     }
 
   protected:
@@ -184,7 +184,7 @@ class Collection final : public Component {
         std::size_t last = 0;
     };
 
-    class BindingScope;
+    class FlagScope;
 
     static constexpr int kMaxLanes = 64;
     static constexpr int kMaxPool = 256;
@@ -327,6 +327,7 @@ class Collection final : public Component {
     std::vector<std::shared_ptr<CollectionCell>> waiting;
     std::vector<std::shared_ptr<CollectionCell>> binderQueue;
     bool binding = false;
+    bool requesting = false;
 
     // Cells of removed items that fade out where they were, and the ids of inserted items that fade in.
     std::vector<std::shared_ptr<CollectionCell>> leaving;

@@ -291,7 +291,14 @@ TEST_F(CollectionLuaTest, ReportsSelectionsWithTheItem) {
 TEST_F(CollectionLuaTest, RefusesToChangeItsItemsWhileItBindsCells) {
     mountRows(100);
     fixture.runLua("list:setBinder('row', function() list:insert(1, {{id = 'x'}}) end) list.scrollOffset = 3000");
-    EXPECT_NE(waitForError().find("The collection \"list\" cannot change its items while it binds cells."), std::string::npos);
+    EXPECT_NE(waitForError().find("The collection \"list\" cannot change its items while it binds cells or loads them."), std::string::npos);
+}
+
+// A page loader runs while the collection asks its source for items, so replacing the source from the loader is refused instead of freeing the source that runs it.
+TEST_F(CollectionLuaTest, RefusesToReplaceItsItemsFromAPageLoader) {
+    mountRows(10);
+    fixture.runLua("list:setPages({count = 50, load = function(first, count) list:setItems({}) return {} end})");
+    EXPECT_NE(waitForError().find("The collection \"list\" cannot change its items while it binds cells or loads them."), std::string::npos);
 }
 
 TEST_F(CollectionLuaTest, RefusesToReplaceNodesWhileItBindsCells) {

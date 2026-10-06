@@ -797,7 +797,7 @@ Errors raised:
 - `The collection "<id>" has no item with the id "<item>".` and `The index <index> is outside the items of the collection "<id>", which holds <count>.`
 - `The collection "<id>" has no type named "<type>".` for `setBinder`.
 - `The collection "<id>" pages its items, so it changes them with "setPages".` for `insert`, `remove`, `move`, `replace` and `reload` of a paged collection, and `The collection "<id>" has no list of items. Give it one with "setItems".` for them before `setItems`.
-- `The collection "<id>" cannot change its items while it binds cells.` for a change of the items from a binder or a page loader, and `The GUI cannot replace nodes or unmount while its collections bind cells.` for `replaceChildren` and `unmount`, which stop the app from inside a binder.
+- `The collection "<id>" cannot change its items while it binds cells or loads them.` for a change of the items from a binder or a page loader, and `The GUI cannot replace nodes or unmount while its collections bind cells.` for `replaceChildren` and `unmount`, which stop the app from inside a binder.
 - `Unknown option "<key>".`, `The option "align" must be "nearest", "start", "center" or "end".`, `The option "count" is required.`, `The option "count" must be at least 0.`, `The option "pageSize" must be at least 1.`, the same for `maxPages`, and `The option "load" must be a function.`
 - `The page loader of the collection "<id>" must return a list of items or a promise of one.`, `The page loader of the collection "<id>" returned <count> items for a page of <length>.` and `The page loader of the collection "<id>" failed.` followed by the reason of a rejected promise, which stop the app like an error inside a binder.
 

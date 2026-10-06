@@ -28,21 +28,21 @@
 
 namespace haylen::ui {
 
-// Marks the collection as binding while it lives, also when a binder fails.
-class Collection::BindingScope final {
+// Raises a flag of the collection while it lives, such as while it binds cells or loads items, also when a binder or a loader fails.
+class Collection::FlagScope final {
   public:
-    explicit BindingScope(bool& flag) noexcept : binding(flag) {
-        binding = true;
+    explicit FlagScope(bool& raised) noexcept : flag(raised) {
+        flag = true;
     }
-    ~BindingScope() {
-        binding = false;
+    ~FlagScope() {
+        flag = false;
     }
 
-    BindingScope(const BindingScope&) = delete;
-    BindingScope& operator=(const BindingScope&) = delete;
+    FlagScope(const FlagScope&) = delete;
+    FlagScope& operator=(const FlagScope&) = delete;
 
   private:
-    bool& binding;
+    bool& flag;
 };
 
 Collection::Collection() : layout(std::make_unique<LinearLayout>()), sizes(std::make_unique<SizeCache>()), scroller(std::make_unique<Scroller>()), scrollbar(std::make_unique<Scrollbar>()) {}
@@ -173,8 +173,8 @@ void Collection::readTypes(std::size_t first, std::size_t count, std::vector<std
 }
 
 void Collection::setSource(std::shared_ptr<CollectionSource> value) {
-    if (binding) {
-        throw std::logic_error("The collection \"" + getId() + "\" cannot change its items while it binds cells.");
+    if (isBusy()) {
+        throw std::logic_error("The collection \"" + getId() + "\" cannot change its items while it binds cells or loads them.");
     }
     std::vector<std::string_view> before;
     if (source) {
@@ -199,7 +199,7 @@ void Collection::setSource(std::shared_ptr<CollectionSource> value) {
 void Collection::applyChange(const CollectionSource::Change& change) {
     using Kind = CollectionSource::Change::Kind;
     if (binding) {
-        throw std::logic_error("The collection \"" + getId() + "\" cannot change its items while it binds cells.");
+        throw std::logic_error("The collection \"" + getId() + "\" cannot change its items while it binds cells or loads them.");
     }
     holdView();
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
@@ -750,10 +750,13 @@ void Collection::prepare(Context& context) {
     ensureArranged();
     scroller->update(context.getDeltaSeconds());
 
-    // Pages may arrive at once, which changes the items before the window binds.
+    // Pages may arrive at once, which changes the items before the window binds, while the app may not replace the source that loads them.
     const float ahead = prefetch * getMainLength();
     if (const std::optional<Range> window = findWindow(ahead)) {
-        source->request(window->first, window->last - window->first + 1);
+        {
+            const FlagScope scope(requesting);
+            source->request(window->first, window->last - window->first + 1);
+        }
         ensureArranged();
     }
     const std::optional<Range> window = findWindow(ahead);
@@ -763,7 +766,7 @@ void Collection::prepare(Context& context) {
     const std::optional<std::size_t> sticky = findSticky();
     releaseOutside(*window, sticky);
     {
-        const BindingScope scope(binding);
+        const FlagScope scope(binding);
         bindRange(window->first, window->last, true);
         if (sticky) {
             bindRange(*sticky, *sticky, true);
