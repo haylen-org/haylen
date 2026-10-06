@@ -37,7 +37,7 @@ platform::TextInput::Options TextEntry::getInputOptions(platform::TextInput::Key
 }
 
 void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart, float reserveEnd, Scrollbar* scrollbar) {
-    const std::string hint = context.getText(placeholder);
+    const std::string_view hint = context.getText(placeholder);
     const TextEditor::Result result = TextEditor::draw(context, bounds, value, {.placeholder = hint, .input = getInputOptions(keyboard), .focus = takeFocusRequest(), .reserveStart = reserveStart, .reserveEnd = reserveEnd, .scrollbar = scrollbar});
     if (result.changed) {
         context.emit(*this, "change", {{"value", value}});

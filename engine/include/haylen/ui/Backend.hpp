@@ -15,13 +15,16 @@
 #include <imgui.h>
 
 #include "haylen/2d/graphics/MeshVertex.hpp"
+#include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
+#include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/text/Style.hpp"
 
 struct ImGuiWindow;
 
@@ -42,6 +45,11 @@ class Renderer;
 namespace haylen::input {
 class Input;
 }
+
+namespace haylen::text {
+class FontFamily;
+class RichText;
+} // namespace haylen::text
 
 namespace haylen::ui {
 
@@ -134,12 +142,38 @@ class Backend final {
     // Draws with the renderer at this point of the draw list of the window being built, clipped like the items around it, once the frame renders, in a canvas whose coordinates are UI coordinates.
     void addRenderCallback(std::function<void(graphics2d::Renderer& renderer)> draw);
 
-    // Draws a shape in UI coordinates the same way, where the shapes drawn one after another in a window share one command of its draw list, and the frame keeps them in storage that frames reuse.
+    // Draws a shape in UI coordinates the same way. The shapes, texts, rich texts and nine-slices drawn one after another in a window share one command of its draw list, and the frame keeps them in storage that frames reuse.
     void addShape(const graphics2d::Shape& shape);
+
+    // Draws a text in UI coordinates the same way, with its top left corner at the position.
+    void addText(std::shared_ptr<text::FontFamily> family, std::string_view content, math::Vec2 position, const text::Style& style);
+
+    // Draws a rich text in UI coordinates the same way, at a scale and tinted by a color.
+    void addRichText(std::shared_ptr<text::RichText> richText, math::Vec2 position, math::Vec2 textScale, math::Color tint);
+
+    // Draws a nine-slice over an area in UI coordinates the same way, laid out with its border scale and then mapped by a scale and an offset, such as those of the nodes around it.
+    void addNineSlice(const graphics2d::NineSlice& slice, const math::Rect& area, float borderScale, math::Vec2 areaScale, math::Vec2 offset, math::Color color);
 
     // The shapes the frame drew so far, in UI coordinates and in the order they were drawn, such as for checks of where a component draws.
     [[nodiscard]] std::span<const graphics2d::Shape> getShapes() const noexcept {
         return shapes;
+    }
+
+    // A text the frame drew, whose characters `getContent` returns.
+    struct Text {
+        std::shared_ptr<text::FontFamily> family;
+        std::size_t begin = 0;
+        std::size_t length = 0;
+        math::Vec2 origin;
+        text::Style style;
+    };
+
+    // The texts the frame drew so far, in UI coordinates and in the order they were drawn.
+    [[nodiscard]] std::span<const Text> getTexts() const noexcept {
+        return texts;
+    }
+    [[nodiscard]] std::string_view getContent(const Text& drawn) const noexcept {
+        return std::string_view(characters).substr(drawn.begin, drawn.length);
     }
 
     // Begins a child window that draws at this point of the draw list of the window being built, so what that window draws after it, such as the nodes and GUIs above a scroll, covers it. The child ends with `ImGui::EndChild`.
@@ -195,8 +229,29 @@ class Backend final {
         const ImGuiWindow* window = nullptr;
     };
 
-    // The shapes a callback command draws, a run of the shapes of the frame.
-    struct ShapeRun {
+    // A draw of the frame that a run of a callback command draws, one of its shapes, texts, rich texts or nine-slices.
+    struct Draw {
+        enum class Kind : std::uint8_t { Shape, Text, RichText, Sprites };
+
+        Kind kind = Kind::Shape;
+        std::size_t index = 0;
+    };
+
+    struct RichTextDraw {
+        std::shared_ptr<text::RichText> richText;
+        math::Vec2 origin;
+        math::Vec2 scale;
+        math::Color tint;
+    };
+
+    struct SpriteDraw {
+        graphics::Texture texture;
+        std::size_t first = 0;
+        std::size_t count = 0;
+    };
+
+    // The draws a callback command draws, a run of the draws of the frame.
+    struct DrawRun {
         Backend* owner = nullptr;
         std::size_t first = 0;
         std::size_t count = 0;
@@ -222,7 +277,7 @@ class Backend final {
     static void resetRenderState(const ImDrawList* list, const ImDrawCmd* command);
     static void runRenderCall(const ImDrawList* list, const ImDrawCmd* command);
     static void runChildCall(const ImDrawList* list, const ImDrawCmd* command);
-    static void runShapes(const ImDrawList* list, const ImDrawCmd* command);
+    static void runDraws(const ImDrawList* list, const ImDrawCmd* command);
 
     ImFont* addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
     void handlePointer(const platform::Event& event, const graphics::Viewport& viewport);
@@ -235,6 +290,8 @@ class Backend final {
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
     void drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists);
     void drawWindow(const ImGuiWindow& imguiWindow);
+    void addDraw(Draw::Kind kind, std::size_t index);
+    void runDraw(const Draw& draw);
     void drawList(const ImDrawList& list);
     [[nodiscard]] const graphics::Texture* findTexture(ImTextureID id) const;
 
@@ -246,9 +303,17 @@ class Backend final {
     std::vector<std::vector<std::uint8_t>> fontData;
     std::map<std::string, Typeface, std::less<>> fonts;
     std::unordered_map<ImTextureID, graphics::Texture> atlasTextures;
-    std::unordered_map<ImTextureID, graphics::Texture> frameTextures;
+    // The app textures the frame shows, few enough to find by a walk, in storage that frames reuse.
+    std::vector<graphics::Texture> frameTextures;
     std::vector<std::function<void(graphics2d::Renderer&)>> renderCalls;
+    std::vector<Draw> draws;
     std::vector<graphics2d::Shape> shapes;
+    std::vector<Text> texts;
+    std::string characters;
+    std::vector<RichTextDraw> richTexts;
+    std::vector<SpriteDraw> spriteDraws;
+    std::vector<graphics2d::SpriteInstance> sprites;
+    std::vector<graphics2d::NineSlice::Patch> patches;
     std::vector<const ImDrawList*> renderedLists;
     std::vector<const ImDrawList*> drawnLists;
     std::vector<graphics2d::MeshVertex> meshVertices;

@@ -34,7 +34,8 @@ class Typography final {
 
     // Draws one line centered vertically in the bounds, shortened with an ellipsis when it does not fit.
     static void drawAligned(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal);
-    [[nodiscard]] static std::string elide(Context& context, Theme::Font font, std::string_view text, float width);
+    // Returns the text when it fits in the width, or else the longest start of it that fits with an ellipsis, which the context keeps until the next frame.
+    [[nodiscard]] static std::string_view elide(Context& context, Theme::Font font, std::string_view text, float width);
 
     [[nodiscard]] static math::Vec2 measureParagraph(Context& context, Theme::Font font, std::string_view text, float width);
 

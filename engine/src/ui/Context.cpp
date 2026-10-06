@@ -114,8 +114,22 @@ float Context::getEmSize(Theme::Font role) const {
     return backend.getEmSize(getFontName(role), getFontSize(role));
 }
 
-std::string Context::getText(const TextValue& value) const {
-    return value.key.empty() ? value.literal : catalog.getText(value.key, value.arguments);
+std::string_view Context::getText(const TextValue& value) {
+    if (value.key.empty()) {
+        return value.literal;
+    }
+    std::string& translated = getFrameText();
+    translated = catalog.getText(value.key, value.arguments);
+    return translated;
+}
+
+std::string& Context::getFrameText() {
+    if (frameTextCount == frameTexts.size()) {
+        frameTexts.emplace_back();
+    }
+    std::string& text = frameTexts[frameTextCount++];
+    text.clear();
+    return text;
 }
 
 // A picture rasterizes for the pixels it covers on the screen, which the transforms of the nodes around it scale too.
@@ -176,6 +190,7 @@ void Context::setStick(std::string_view name, math::Vec2 value) {
 
 void Context::beginFrame(double now, float delta) noexcept {
     ++frame;
+    frameTextCount = 0;
     heldButtons.clear();
     sticks.clear();
     reshapes.clear();

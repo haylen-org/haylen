@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <map>
 #include <memory>
@@ -126,7 +128,12 @@ class Context final {
     // The size of the em square of a font role, for text that draws beside ImGui at the size of its widgets, such as rich text.
     [[nodiscard]] float getEmSize(Theme::Font role) const;
 
-    [[nodiscard]] std::string getText(const TextValue& value) const;
+    // Returns the text a value shows: its literal, or its key translated into the current language, which the context keeps until the next frame begins.
+    [[nodiscard]] std::string_view getText(const TextValue& value);
+
+    // Returns empty storage for a text that stays valid until the next frame begins, such as a translation, the bullets of a password or a shortened line, from slots that frames reuse.
+    [[nodiscard]] std::string& getFrameText();
+
     // Returns the texture that draws a picture over `size` UI units at the density of the screen, or an empty texture while it loads.
     [[nodiscard]] graphics::Texture getImage(std::string_view path, math::Vec2 size) const;
 
@@ -248,6 +255,10 @@ class Context final {
     std::map<std::string, math::Vec2, std::less<>> sticks;
     std::vector<Reshape> reshapes;
     ToastStack toasts;
+
+    // The texts the frame keeps, in slots that frames reuse and that never move while the frame draws.
+    std::deque<std::string> frameTexts;
+    std::size_t frameTextCount = 0;
 
     // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
     std::vector<Writing> writings{Writing{}};

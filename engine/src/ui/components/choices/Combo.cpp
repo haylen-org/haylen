@@ -40,7 +40,7 @@ void Combo::render(Context& context, const math::Rect& bounds) {
 
     const int index = ChoiceItem::indexOf(items, selected);
     const bool empty = index < 0;
-    const std::string shown = empty ? context.getText(placeholder) : context.getText(items[static_cast<std::size_t>(index)].text);
+    const std::string_view shown = empty ? context.getText(placeholder) : context.getText(items[static_cast<std::size_t>(index)].text);
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX) * 0.5F;
     const float chevron = bounds.height * 0.5F;
     const math::Rect inner = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Field));

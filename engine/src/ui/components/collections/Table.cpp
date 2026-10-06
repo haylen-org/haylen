@@ -35,14 +35,15 @@ math::Vec2 Table::measureContent(Context& context, float availableWidth) {
 void Table::render(Context& context, const math::Rect& bounds) {
     const float height = context.getMetric(Theme::Metric::ListRowHeight);
     const float header = height * 0.75F;
-    const std::vector<float> widths = getColumnWidths(bounds.width);
+    const float flexible = getFlexibleWidth(bounds.width);
 
     // Columns run from the right in a right-to-left UI.
     float x = bounds.x;
     for (std::size_t column = 0; column < columns.size(); ++column) {
-        const math::Rect cell = context.mirror({x + context.getMetric(Theme::Metric::RowPadding), bounds.y, widths[column] - context.getMetric(Theme::Metric::RowPadding) * 2.0F, header}, bounds);
+        const float width = columns[column].width.value_or(flexible);
+        const math::Rect cell = context.mirror({x + context.getMetric(Theme::Metric::RowPadding), bounds.y, width - context.getMetric(Theme::Metric::RowPadding) * 2.0F, header}, bounds);
         Typography::drawAligned(context, Theme::Font::Caption, cell, context.getColor(Theme::Color::TextMuted), context.getText(columns[column].text), columns[column].align);
-        x += widths[column];
+        x += width;
     }
     Widgets::line(context, {bounds.x, bounds.y + header}, {bounds.getRight(), bounds.y + header}, context.getMetric(Theme::Metric::BorderWidth), context.getColor(Theme::Color::Border));
 
@@ -57,9 +58,10 @@ void Table::render(Context& context, const math::Rect& bounds) {
         const std::size_t shown = Widgets::isVisible(context, area) ? std::min(columns.size(), entry.cells.size()) : 0;
         x = bounds.x;
         for (std::size_t column = 0; column < shown; ++column) {
-            const math::Rect cell = context.mirror({x + context.getMetric(Theme::Metric::RowPadding), area.y, widths[column] - context.getMetric(Theme::Metric::RowPadding) * 2.0F, height}, area);
+            const float width = columns[column].width.value_or(flexible);
+            const math::Rect cell = context.mirror({x + context.getMetric(Theme::Metric::RowPadding), area.y, width - context.getMetric(Theme::Metric::RowPadding) * 2.0F, height}, area);
             Typography::drawAligned(context, Theme::Font::Body, cell, context.getColor(Theme::Color::Text), context.getText(entry.cells[column]), columns[column].align);
-            x += widths[column];
+            x += width;
         }
         if (state.clicked) {
             selected = entry.id;
@@ -143,7 +145,7 @@ float Table::measureWidth(Context& context) const {
     return fixed + widest * static_cast<float>(shared);
 }
 
-std::vector<float> Table::getColumnWidths(float total) const {
+float Table::getFlexibleWidth(float total) const {
     float fixed = 0.0F;
     std::size_t flexible = 0;
     for (const Column& column : columns) {
@@ -153,12 +155,7 @@ std::vector<float> Table::getColumnWidths(float total) const {
             ++flexible;
         }
     }
-    const float share = flexible > 0 ? std::max(0.0F, total - fixed) / static_cast<float>(flexible) : 0.0F;
-    std::vector<float> widths;
-    for (const Column& column : columns) {
-        widths.push_back(column.width.value_or(share));
-    }
-    return widths;
+    return flexible > 0 ? std::max(0.0F, total - fixed) / static_cast<float>(flexible) : 0.0F;
 }
 
 } // namespace haylen::ui

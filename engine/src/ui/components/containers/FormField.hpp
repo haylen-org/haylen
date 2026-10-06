@@ -26,7 +26,7 @@ class FormField final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    [[nodiscard]] std::string getNoteText(Context& context) const;
+    [[nodiscard]] std::string_view getNoteText(Context& context) const;
 
     TextValue label;
     TextValue help;

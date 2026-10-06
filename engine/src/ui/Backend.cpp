@@ -16,6 +16,8 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/text/FontFamily.hpp"
+#include "haylen/text/RichText.hpp"
 #include "haylen/ui/NavigationInput.hpp"
 #include "ui/TextSession.hpp"
 
@@ -241,9 +243,9 @@ void Backend::runChildCall(const ImDrawList* list, const ImDrawCmd* command) {
     call.owner->drawWindow(*call.window);
 }
 
-// Draws a run of shapes at its place among the meshes, inside the clip of its command.
-void Backend::runShapes(const ImDrawList* list, const ImDrawCmd* command) {
-    ShapeRun run;
+// Draws a run of shapes, texts and nine-slices at its place among the meshes, inside the clip of its command.
+void Backend::runDraws(const ImDrawList* list, const ImDrawCmd* command) {
+    DrawRun run;
     std::memcpy(&run, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(run));
     Backend& owner = *run.owner;
     const math::Rect clip = math::Rect::fromMinMax({command->ClipRect.x, command->ClipRect.y}, {command->ClipRect.z, command->ClipRect.w});
@@ -252,9 +254,32 @@ void Backend::runShapes(const ImDrawList* list, const ImDrawCmd* command) {
     }
     owner.rendering->pushClip(clip);
     for (std::size_t index = run.first; index < run.first + run.count; ++index) {
-        owner.rendering->drawShape(owner.shapes[index]);
+        owner.runDraw(owner.draws[index]);
     }
     owner.rendering->popClip();
+}
+
+void Backend::runDraw(const Draw& draw) {
+    switch (draw.kind) {
+    case Draw::Kind::Shape:
+        rendering->drawShape(shapes[draw.index]);
+        return;
+    case Draw::Kind::Text: {
+        const Text& drawn = texts[draw.index];
+        rendering->drawText(*drawn.family, getContent(drawn), drawn.origin, drawn.style);
+        return;
+    }
+    case Draw::Kind::RichText: {
+        const RichTextDraw& drawn = richTexts[draw.index];
+        rendering->drawRichText(*drawn.richText, drawn.origin, {}, drawn.scale, drawn.tint);
+        return;
+    }
+    case Draw::Kind::Sprites: {
+        const SpriteDraw& drawn = spriteDraws[draw.index];
+        rendering->drawBatch(drawn.texture, std::span(sprites).subspan(drawn.first, drawn.count));
+        return;
+    }
+    }
 }
 
 Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())) {
@@ -634,7 +659,13 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     requestedCursor.reset();
     frameTextures.clear();
     renderCalls.clear();
+    draws.clear();
     shapes.clear();
+    texts.clear();
+    characters.clear();
+    richTexts.clear();
+    spriteDraws.clear();
+    sprites.clear();
     renderedLists.clear();
     ImGui::NewFrame();
     if (pixels > 0.0F) {
@@ -691,38 +722,71 @@ bool Backend::beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childF
     return visible;
 }
 
-// A shape that follows the run of the last callback command of the draw list, with nothing drawn and no clip changed since, joins that run.
 void Backend::addShape(const graphics2d::Shape& shape) {
-    ImDrawList& list = *ImGui::GetWindowDrawList();
     shapes.push_back(shape);
+    addDraw(Draw::Kind::Shape, shapes.size() - 1);
+}
+
+void Backend::addText(std::shared_ptr<text::FontFamily> family, std::string_view content, math::Vec2 position, const text::Style& style) {
+    texts.push_back({.family = std::move(family), .begin = characters.size(), .length = content.size(), .origin = position, .style = style});
+    characters.append(content);
+    addDraw(Draw::Kind::Text, texts.size() - 1);
+}
+
+void Backend::addRichText(std::shared_ptr<text::RichText> richText, math::Vec2 position, math::Vec2 textScale, math::Color tint) {
+    richTexts.push_back({.richText = std::move(richText), .origin = position, .scale = textScale, .tint = tint});
+    addDraw(Draw::Kind::RichText, richTexts.size() - 1);
+}
+
+void Backend::addNineSlice(const graphics2d::NineSlice& slice, const math::Rect& area, float borderScale, math::Vec2 areaScale, math::Vec2 offset, math::Color color) {
+    patches.clear();
+    slice.layout(area, borderScale, patches);
+    const std::size_t first = sprites.size();
+    for (const graphics2d::NineSlice::Patch& patch : patches) {
+        sprites.push_back({.position = patch.area.getMin() * areaScale + offset, .size = patch.area.getSize() * areaScale, .source = patch.source, .pivot = {}, .color = color});
+    }
+    spriteDraws.push_back({.texture = slice.texture, .first = first, .count = patches.size()});
+    addDraw(Draw::Kind::Sprites, spriteDraws.size() - 1);
+}
+
+// A draw that follows the run of the last callback command of the draw list, with nothing drawn and neither the clip nor the texture changed since, joins that run, so a command still tells which texture it shows, such as the image of a nine-slice.
+void Backend::addDraw(Draw::Kind kind, std::size_t index) {
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    draws.push_back({.kind = kind, .index = index});
     if (list.CmdBuffer.Size >= 2) {
         const ImDrawCmd& current = list.CmdBuffer.back();
         const ImDrawCmd& previous = list.CmdBuffer[list.CmdBuffer.Size - 2];
         const bool sameClip = previous.ClipRect.x == current.ClipRect.x && previous.ClipRect.y == current.ClipRect.y && previous.ClipRect.z == current.ClipRect.z && previous.ClipRect.w == current.ClipRect.w;
-        if (current.ElemCount == 0 && previous.UserCallback == &runShapes && sameClip) {
-            ShapeRun run;
+        const bool sameTexture = previous.TexRef == current.TexRef;
+        if (current.ElemCount == 0 && previous.UserCallback == &runDraws && sameClip && sameTexture) {
+            DrawRun run;
             std::memcpy(&run, list._CallbacksDataBuf.Data + previous.UserCallbackDataOffset, sizeof(run));
-            if (run.first + run.count == shapes.size() - 1) {
+            if (run.first + run.count == draws.size() - 1) {
                 ++run.count;
                 std::memcpy(list._CallbacksDataBuf.Data + previous.UserCallbackDataOffset, &run, sizeof(run));
                 return;
             }
         }
     }
-    ShapeRun run{.owner = this, .first = shapes.size() - 1, .count = 1};
-    list.AddCallback(&runShapes, &run, sizeof(run));
+    DrawRun run{.owner = this, .first = draws.size() - 1, .count = 1};
+    list.AddCallback(&runDraws, &run, sizeof(run));
 }
 
 ImTextureRef Backend::getTextureReference(const graphics::Texture& texture) {
     const ImTextureID id = kAppTextureBit | texture.getId();
-    frameTextures.insert_or_assign(id, texture);
+    if (std::ranges::none_of(frameTextures, [&texture](const graphics::Texture& shown) { return shown.getId() == texture.getId(); })) {
+        frameTextures.push_back(texture);
+    }
     return ImTextureRef(id);
 }
 
 const graphics::Texture* Backend::findTexture(ImTextureID id) const {
-    const auto& textures = (id & kAppTextureBit) != 0 ? frameTextures : atlasTextures;
-    const auto found = textures.find(id);
-    return found != textures.end() ? &found->second : nullptr;
+    if ((id & kAppTextureBit) != 0) {
+        const auto shown = std::ranges::find_if(frameTextures, [id](const graphics::Texture& texture) { return (kAppTextureBit | texture.getId()) == id; });
+        return shown != frameTextures.end() ? &*shown : nullptr;
+    }
+    const auto found = atlasTextures.find(id);
+    return found != atlasTextures.end() ? &found->second : nullptr;
 }
 
 void Backend::updateTextures(ImDrawData& data) {
@@ -812,7 +876,7 @@ void Backend::collectLists(const ImGuiWindow& window, std::vector<const ImDrawLi
 // A command whose texture never reached the GPU, such as an atlas that the frame creates and a window drawn before the frame ends uses, draws nothing.
 void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists) {
     const bool empty = std::ranges::all_of(lists, [](const ImDrawList* list) { return list->VtxBuffer.Size == 0; });
-    if (empty && renderCalls.empty() && shapes.empty()) {
+    if (empty && renderCalls.empty() && draws.empty()) {
         return;
     }
     // The canvas maps UI coordinates to the visible area at the scale of the UI, so the meshes of ImGui and the draws of the components keep their UI coordinates.

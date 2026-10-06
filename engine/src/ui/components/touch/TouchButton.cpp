@@ -55,7 +55,7 @@ void TouchButton::render(Context& context, const math::Rect& bounds) {
         const float icon = radius;
         Surfaces::drawImage(context, context.getImage(image, {icon, icon}), {content.getCenter().x - icon * 0.5F, content.getCenter().y - icon * 0.5F, icon, icon});
     }
-    if (const std::string shown = context.getText(text); !shown.empty()) {
+    if (const std::string_view shown = context.getText(text); !shown.empty()) {
         Typography::drawAligned(context, Theme::Font::Button, content, context.getColor(Theme::Color::OnAccent), shown, Alignment::Center);
     }
 }

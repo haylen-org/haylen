@@ -7,7 +7,6 @@
 
 #include <imgui.h>
 
-#include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Utf8.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -58,22 +57,19 @@ void Typography::drawLayout(Context& context, Theme::Font font, std::string_view
     painted.outlineColor = style.outlineColor * faded;
     painted.scale = shape.scale;
     const math::Vec2 origin = math::Vec2{std::floor(position.x), std::floor(position.y)} * shape.scale + shape.offset;
-    // clang-format off
-    context.getBackend().addRenderCallback([family = context.getFontFamily(font), content = std::string(text), painted, origin](graphics2d::Renderer& renderer) {
-        renderer.drawText(*family, content, origin, painted);
-    });
-    // clang-format on
+    context.getBackend().addText(context.getFontFamily(font), text, origin, painted);
 }
 
 // The longest run of whole characters in reading order that fits with the ellipsis stays, and since shaping may change the width where the text is cut, the run shortens until the result fits.
-std::string Typography::elide(Context& context, Theme::Font font, std::string_view text, float width) {
+std::string_view Typography::elide(Context& context, Theme::Font font, std::string_view text, float width) {
     const text::Style style = getStyle(context, font);
     const std::shared_ptr<const text::Layout> full = layout(context, font, text, style);
     if (full->size.x <= width) {
-        return std::string(text);
+        return text;
     }
 
     const float ellipsis = layout(context, font, kEllipsis, style)->size.x;
+    std::string& shortened = context.getFrameText();
     std::size_t kept = 0;
     float used = 0.0F;
     while (kept < full->characters.size() && used + full->characters[kept].box.width + ellipsis <= width) {
@@ -82,7 +78,8 @@ std::string Typography::elide(Context& context, Theme::Font font, std::string_vi
     }
     while (true) {
         const std::size_t cut = kept < full->characters.size() ? full->characters[kept].begin : core::Utf8::countCodePoints(text);
-        std::string shortened = std::string(text.substr(0, core::Utf8::getOffset(text, cut))) + std::string(kEllipsis);
+        shortened.assign(text.substr(0, core::Utf8::getOffset(text, cut)));
+        shortened += kEllipsis;
         if (kept == 0 || layout(context, font, shortened, style)->size.x <= width) {
             return shortened;
         }
@@ -106,7 +103,7 @@ void Typography::drawParagraph(Context& context, Theme::Font font, const math::R
 }
 
 void Typography::drawAligned(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal) {
-    const std::string shown = elide(context, font, text, bounds.width);
+    const std::string_view shown = elide(context, font, text, bounds.width);
     text::Style style = getStyle(context, font);
     style.color = color;
     const math::Vec2 size = layout(context, font, shown, style)->size;

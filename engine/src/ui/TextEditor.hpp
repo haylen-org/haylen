@@ -10,6 +10,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/TextInput.hpp"
+#include "haylen/text/Layout.hpp"
 #include "haylen/text/Style.hpp"
 #include "ui/TextFieldLayout.hpp"
 
@@ -40,9 +41,9 @@ class TextEditor final {
 
     static Result draw(Context& context, const math::Rect& bounds, std::string& value, const Options& options);
 
-    // Lays out the text a field shows, where a password shows one bullet per character.
-    [[nodiscard]] static TextFieldLayout layOut(Context& context, std::string_view value, const text::Style& style, bool password);
-    [[nodiscard]] static std::string getShown(std::string_view value, bool password);
+    // Writes the text a password shows, one bullet per character, into `bullets` and returns it.
+    [[nodiscard]] static std::string_view writeBullets(std::string_view value, std::string& bullets);
+    [[nodiscard]] static TextFieldLayout layOut(Context& context, std::string_view shown, const text::Style& style);
 
   private:
     // The caret and the anchor of the selection are where they stood before this frame, in bytes, or -1 when the field was not focused.
@@ -68,14 +69,15 @@ class TextEditor final {
     static void placeCaret(ImGuiInputTextCallbackData& data, const Editing& editing);
 
     // Returns the top-left of the text block in the area, aligned where its direction starts and moved by the scroll.
-    [[nodiscard]] static math::Vec2 getOrigin(const TextFieldLayout& field, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline);
+    [[nodiscard]] static math::Vec2 getOrigin(const text::Layout& laid, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline);
 
     // Moves the scroll so the caret stays inside the area, without leaving room at an end the text does not fill.
     static void follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, bool rightToLeft, bool multiline);
 
     // Underlines the text the input method composes in the focused field.
     static void drawComposition(Context& context, const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin);
-    static void limit(std::string& value, int maxLength);
+    // Shortens a value to its most characters and tells whether it was longer.
+    static bool limit(std::string& value, int maxLength);
 };
 
 } // namespace haylen::ui

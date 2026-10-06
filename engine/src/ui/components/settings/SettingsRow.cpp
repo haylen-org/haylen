@@ -19,7 +19,7 @@ math::Vec2 SettingsRow::measureContent(Context& context, float availableWidth) {
     const float labelWidth = std::min(context.getMetric(Theme::Metric::SettingsLabelWidth), availableWidth * 0.5F);
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     math::Vec2 text = Typography::measureParagraph(context, Theme::Font::Body, context.getText(label), labelWidth);
-    if (const std::string captionText = context.getText(caption); !captionText.empty()) {
+    if (const std::string_view captionText = context.getText(caption); !captionText.empty()) {
         text.y += Typography::measureParagraph(context, Theme::Font::Caption, captionText, labelWidth).y;
     }
     math::Vec2 control;
@@ -35,8 +35,8 @@ void SettingsRow::render(Context& context, const math::Rect& bounds) {
     const math::Rect inner = bounds.inset({0.0F, padding, 0.0F, padding});
     const float labelWidth = std::min(context.getMetric(Theme::Metric::SettingsLabelWidth), bounds.width * 0.5F);
 
-    const std::string labelText = context.getText(label);
-    const std::string captionText = context.getText(caption);
+    const std::string_view labelText = context.getText(label);
+    const std::string_view captionText = context.getText(caption);
     const float labelHeight = Typography::measureParagraph(context, Theme::Font::Body, labelText, labelWidth).y;
     const float captionHeight = captionText.empty() ? 0.0F : Typography::measureParagraph(context, Theme::Font::Caption, captionText, labelWidth).y;
     const float top = std::floor(inner.getCenter().y - (labelHeight + captionHeight) * 0.5F);

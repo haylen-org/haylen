@@ -6,7 +6,6 @@
 
 #include <imgui.h>
 
-#include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Style.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -33,7 +32,7 @@ void RichText::readProperties(PropertyReader& reader) {
 
 // The theme gives the family, size, style and color and the node its language and the side start and end name, so a change of them lays the text out again, which starts its reveal over. Paragraphs read in the direction of their first strong letter unless their markup sets one. The text takes the em size of the widgets of its role, so it lines up with labels in the same font. Fonts and images resolve through the context the options were made with.
 text::RichText& RichText::refreshText(Context& context) {
-    std::string markup = context.getText(text);
+    const std::string_view markup = context.getText(text);
     std::shared_ptr<text::FontFamily> family = context.getFontFamily(font);
     const float size = context.getEmSize(font);
     const bool bold = context.isFontBold(font);
@@ -54,12 +53,12 @@ text::RichText& RichText::refreshText(Context& context) {
         if (richText) {
             richText->setOptions(std::move(options));
         } else {
-            richText = std::make_shared<text::RichText>(markup, std::move(options), context.getTextRegistry());
+            richText = std::make_shared<text::RichText>(std::string(markup), std::move(options), context.getTextRegistry());
         }
         changed = true;
     }
     if (markup != richText->getMarkup()) {
-        richText->setMarkup(std::move(markup));
+        richText->setMarkup(std::string(markup));
         hoveredLink.reset();
     }
     linked = !richText->getDocument().links.empty();
@@ -98,11 +97,7 @@ void RichText::render(Context& context, const math::Rect& bounds) {
 
     // The transforms of the nodes around it scale and color the text the way they reshape the vertices of ImGui.
     const Context::Reshape shape = context.getReshape();
-    // clang-format off
-    context.getBackend().addRenderCallback([shown = richText, origin, shape](graphics2d::Renderer& renderer) {
-        renderer.drawRichText(*shown, origin * shape.scale + shape.offset, {}, shape.scale, shape.color);
-    });
-    // clang-format on
+    context.getBackend().addRichText(richText, origin * shape.scale + shape.offset, shape.scale, shape.color);
 }
 
 // Every piece of a wrapped link reacts to the pointer, and only its first piece takes the focus, so the focus stops once per link.

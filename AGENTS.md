@@ -10,7 +10,7 @@ This file is binding for every change. It describes the project as it is and the
 - Replace or refactor code that no longer fits instead of carrying it forward, whatever the size of the change. There are no aliases for old names and no checks for how something used to work.
 - Only change what makes sense to change. Do not add code, tests, comments or files just to show work, and do not guard against situations that cannot happen.
 - Every change is finished only when it is implemented, exported to Lua, tested and documented.
-- Performance matters everywhere. Hot paths avoid allocations and per-item calls across the Lua boundary, and heavy work leaves the frame thread.
+- Performance matters everywhere. Hot paths avoid allocations and per-item calls across the Lua boundary, and heavy work leaves the frame thread. A frame that draws what the frame before it drew allocates nothing in the renderer, the text system or the UI, and the engine tests check it with `test::AllocationTracker`.
 - The engine holds general capabilities. The mechanics of a particular game belong in apps and samples, never in the engine.
 - Code, comments and repository documentation are written in English. `PROJECT.md` is the exception and is written in Portuguese for the project owner.
 - Never mention other engines or their tools anywhere in the repository: not in code, comments, docs, test names, commit messages or the project plan, and not even as a comparison or an inspiration. Describe what Haylen does in its own terms.

@@ -35,7 +35,7 @@ void CircularProgress::render(Context& context, const math::Rect& bounds) {
         drawCooldown(context, center, radius);
     }
 
-    const std::string shown = context.getText(text);
+    const std::string_view shown = context.getText(text);
     if (shown.empty()) {
         return;
     }

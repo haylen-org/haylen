@@ -30,20 +30,24 @@ math::Vec2 Label::measureContent(Context& context, float availableWidth) {
 
 // Without wrapping every line of the text keeps its own line and ends with an ellipsis when it does not fit, and the block of lines sits in the middle of the height.
 void Label::render(Context& context, const math::Rect& bounds) {
-    const std::string full = context.getText(text);
+    const std::string_view full = context.getText(text);
     if (wrap) {
         Typography::drawParagraph(context, font, bounds, context.getColor(color.value_or(Theme::Color::Text)), full, textAlign, outline, outlineWidth);
         return;
     }
-    std::string shown;
-    std::size_t start = 0;
-    while (start <= full.size()) {
-        const std::size_t end = std::min(full.find('\n', start), full.size());
-        shown += Typography::elide(context, font, std::string_view(full).substr(start, end - start), bounds.width);
-        if (end < full.size()) {
-            shown += '\n';
+    std::string_view shown = full;
+    if (Typography::measure(context, font, full).x > bounds.width) {
+        std::string& lines = context.getFrameText();
+        std::size_t start = 0;
+        while (start <= full.size()) {
+            const std::size_t end = std::min(full.find('\n', start), full.size());
+            lines += Typography::elide(context, font, full.substr(start, end - start), bounds.width);
+            if (end < full.size()) {
+                lines += '\n';
+            }
+            start = end + 1;
         }
-        start = end + 1;
+        shown = lines;
     }
     const float height = Typography::measureParagraph(context, font, shown, -1.0F).y;
     const math::Rect block{bounds.x, std::floor(bounds.y + (bounds.height - height) * 0.5F), bounds.width, height};

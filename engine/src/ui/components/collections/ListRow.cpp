@@ -34,7 +34,7 @@ void ListRow::drawContent(Context& context, const math::Rect& bounds, const Choi
         x += icon + context.getMetric(Theme::Metric::RowPadding);
     }
     const math::Rect text = context.mirror(math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - context.getMetric(Theme::Metric::RowPadding), bounds.getBottom()}), bounds);
-    const std::string caption = context.getText(item.caption);
+    const std::string_view caption = context.getText(item.caption);
     if (caption.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, text, context.getColor(Theme::Color::Text), context.getText(item.text), Alignment::Start);
         return;

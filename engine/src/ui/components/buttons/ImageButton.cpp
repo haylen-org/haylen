@@ -34,7 +34,7 @@ void ImageButton::render(Context& context, const math::Rect& bounds) {
     const float pressed = state.held && pressedImage.empty() ? 2.0F : 0.0F;
     const math::Rect area = bounds.translated({0.0F, pressed});
     Surfaces::drawImage(context, context.getImage(path, area.getSize()), area, shade);
-    if (const std::string shown = context.getText(text); !shown.empty()) {
+    if (const std::string_view shown = context.getText(text); !shown.empty()) {
         Typography::drawAligned(context, Theme::Font::Button, area, context.getColor(Theme::Color::OnAccent), shown, Alignment::Center);
     }
     if (state.clicked) {

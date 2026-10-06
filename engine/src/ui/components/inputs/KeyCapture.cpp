@@ -116,7 +116,7 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
 
     Surfaces::draw(context, capturing ? Theme::Surface::FieldFocused : Theme::Surface::Field, bounds, context.getColor(state.hovered && !capturing ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(capturing ? Theme::Color::Focus : Theme::Color::Border));
     const math::Rect inner = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Field));
-    std::string shown = capturing ? context.getText(prompt) : (value.empty() ? context.getText(placeholder) : describe(value));
+    std::string shown = capturing ? std::string(context.getText(prompt)) : (value.empty() ? std::string(context.getText(placeholder)) : describe(value));
     if (capturing && shown.empty()) {
         shown = "\xE2\x80\xA6";
     }

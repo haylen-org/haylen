@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <optional>
+#include <string>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -21,24 +23,20 @@
 
 namespace haylen::ui {
 
-std::string TextEditor::getShown(std::string_view value, bool password) {
-    if (!password) {
-        return std::string(value);
-    }
-    std::string bullets;
+std::string_view TextEditor::writeBullets(std::string_view value, std::string& bullets) {
+    bullets.clear();
     for (std::size_t index = core::Utf8::countCodePoints(value); index > 0; --index) {
         bullets += kBullet;
     }
     return bullets;
 }
 
-TextFieldLayout TextEditor::layOut(Context& context, std::string_view value, const text::Style& style, bool password) {
-    const std::string shown = getShown(value, password);
+TextFieldLayout TextEditor::layOut(Context& context, std::string_view shown, const text::Style& style) {
     return {Typography::layout(context, Theme::Font::Body, shown, style), core::Utf8::decode(shown)};
 }
 
-math::Vec2 TextEditor::getOrigin(const TextFieldLayout& field, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline) {
-    const math::Vec2 size = field.getLayout().size;
+math::Vec2 TextEditor::getOrigin(const text::Layout& laid, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline) {
+    const math::Vec2 size = laid.size;
     const float x = rightToLeft ? area.getRight() - size.x : area.x;
     const float y = multiline ? area.y : area.y + (area.height - size.y) * 0.5F;
     return {x + scroll.x, y - scroll.y};
@@ -91,8 +89,9 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
 
     // Only a press, a drag or an arrow key lays the text out, so a focused field that nobody touches costs nothing.
     const std::string_view buffer(data.Buf, static_cast<std::size_t>(data.BufTextLen));
-    const TextFieldLayout field = layOut(*editing.context, buffer, editing.style, editing.password);
-    const math::Vec2 origin = getOrigin(field, editing.area, editing.scroll, editing.rightToLeft, editing.multiline);
+    std::string bullets;
+    const TextFieldLayout field = layOut(*editing.context, editing.password ? writeBullets(buffer, bullets) : buffer, editing.style);
+    const math::Vec2 origin = getOrigin(field.getLayout(), editing.area, editing.scroll, editing.rightToLeft, editing.multiline);
     // clang-format off
     const auto toBytes = [buffer](std::size_t position) {
         return static_cast<int>(core::Utf8::getOffset(buffer, position));
@@ -180,7 +179,6 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         ImGui::SetKeyboardFocusHere();
     }
 
-    const std::string before = value;
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackAlways | ImGuiInputTextFlags_CallbackEdit;
     if (password) {
         flags |= ImGuiInputTextFlags_Password;
@@ -192,6 +190,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         ImGui::SetNextItemWidth(inner.width);
         submitted = ImGui::InputText("##field", &value, flags | ImGuiInputTextFlags_EnterReturnsTrue, &callback, &editing);
     }
+    const bool edited = ImGui::IsItemEdited();
 
     // A submit, cancel or dismiss of the platform ends the editing, and only a submit reports the text.
     if (const std::optional<platform::TextInput::Action> action = session.takeAction(id)) {
@@ -201,19 +200,21 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     ImGui::PopStyleVar(3);
     ImGui::PopStyleColor(6);
     ImGui::PopFont();
-    limit(value, options.input.maxLength);
+    const bool shortened = limit(value, options.input.maxLength);
 
-    // The field draws its text, selection and caret from the shaped layout, scrolled so the caret stays in view.
-    const TextFieldLayout field = layOut(context, value, style, password);
+    // The field draws its text from the shaped layout, scrolled so the caret stays in view, and a focused field also its selection and caret from the code points of the text.
+    const std::string_view shown = password ? writeBullets(value, context.getFrameText()) : std::string_view(value);
+    const std::shared_ptr<const text::Layout> laid = Typography::layout(context, Theme::Font::Body, shown, style);
     const ImGuiInputTextState* state = ImGui::GetActiveID() == id ? ImGui::GetInputTextState(id) : nullptr;
+    const std::optional<TextFieldLayout> field = state != nullptr ? std::optional<TextFieldLayout>(std::in_place, laid, core::Utf8::decode(shown)) : std::nullopt;
     const auto toPosition = [&value](int bytes) { return core::Utf8::countCodePoints(std::string_view(value).substr(0, static_cast<std::size_t>(std::clamp(bytes, 0, static_cast<int>(value.size()))))); };
-    const float overflow = std::max(0.0F, field.getLayout().size.y - area.height);
+    const float overflow = std::max(0.0F, laid->size.y - area.height);
     math::Vec2 scroll = editing.scroll;
     if (multiline && ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()))) {
         scroll.y = std::clamp(scroll.y - ImGui::GetIO().MouseWheel * fontSize * 3.0F, 0.0F, overflow);
     }
     if (state != nullptr) {
-        follow(scroll, field, field.getCaret(toPosition(state->GetCursorPos())).translated(getOrigin(field, area, scroll, rightToLeft, multiline)), area, rightToLeft, multiline);
+        follow(scroll, *field, field->getCaret(toPosition(state->GetCursorPos())).translated(getOrigin(*laid, area, scroll, rightToLeft, multiline)), area, rightToLeft, multiline);
     } else if (!multiline) {
         scroll = {};
     }
@@ -228,14 +229,14 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     if (multiline) {
         storage.SetBool(overflowed, overflow > 0.0F);
     }
-    const math::Vec2 origin = getOrigin(field, area, scroll, rightToLeft, multiline);
+    const math::Vec2 origin = getOrigin(*laid, area, scroll, rightToLeft, multiline);
 
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushClipRect(ImGuiConverter::toImVec2(inner.getMin()), ImGuiConverter::toImVec2(inner.getMax()), true);
     if (state != nullptr && state->HasSelection()) {
         const std::size_t first = toPosition(std::min(state->GetSelectionStart(), state->GetSelectionEnd()));
         const std::size_t last = toPosition(std::max(state->GetSelectionStart(), state->GetSelectionEnd()));
-        for (const math::Rect& box : field.getSelection(first, last)) {
+        for (const math::Rect& box : field->getSelection(first, last)) {
             Surfaces::fill(context, box.translated(origin), context.getColor(Theme::Color::Selection), 0.0F);
         }
     }
@@ -248,20 +249,20 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         Typography::drawLayout(context, Theme::Font::Body, options.placeholder, ink, {rightToLeft ? area.getRight() - size.x : area.x, multiline ? area.y : area.y + (area.height - size.y) * 0.5F});
     } else {
         ink.color = context.getColor(Theme::Color::Text);
-        Typography::drawLayout(context, Theme::Font::Body, getShown(value, password), ink, origin);
+        Typography::drawLayout(context, Theme::Font::Body, shown, ink, origin);
     }
 
     // The caret blinks like the one of ImGui, and the platform shows its input method at it.
     if (state != nullptr) {
-        const math::Rect caret = field.getCaret(toPosition(state->GetCursorPos())).translated(origin);
-        const bool shown = !ImGui::GetIO().ConfigInputTextCursorBlink || state->CursorAnim <= 0.0F || std::fmod(state->CursorAnim, 1.20F) <= 0.80F;
-        if (shown) {
+        const math::Rect caret = field->getCaret(toPosition(state->GetCursorPos())).translated(origin);
+        const bool lit = !ImGui::GetIO().ConfigInputTextCursorBlink || state->CursorAnim <= 0.0F || std::fmod(state->CursorAnim, 1.20F) <= 0.80F;
+        if (lit) {
             const float width = context.getMetric(Theme::Metric::CaretWidth);
             Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Caret), 0.0F);
         }
         session.setCaret({caret.x, caret.y, 1.0F, caret.height});
         if (!password) {
-            drawComposition(context, session, id, field, origin);
+            drawComposition(context, session, id, *field, origin);
         }
     }
     list.PopClipRect();
@@ -271,7 +272,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
 
     context.getFocus().addTarget(id, bounds);
     Widgets::drawFocusRing(context, bounds, id, context.getMetric(Theme::Metric::ControlRadius));
-    return {.changed = value != before, .submitted = submitted};
+    return {.changed = edited || shortened, .submitted = submitted};
 }
 
 void TextEditor::drawComposition(Context& context, const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin) {
@@ -287,10 +288,16 @@ void TextEditor::drawComposition(Context& context, const TextSession& session, I
 }
 
 // A length limit counts code points and never cuts a character in half.
-void TextEditor::limit(std::string& value, int maxLength) {
-    if (maxLength > 0) {
-        value.resize(core::Utf8::getOffset(value, static_cast<std::size_t>(maxLength)));
+bool TextEditor::limit(std::string& value, int maxLength) {
+    if (maxLength <= 0) {
+        return false;
     }
+    const std::size_t end = core::Utf8::getOffset(value, static_cast<std::size_t>(maxLength));
+    if (end >= value.size()) {
+        return false;
+    }
+    value.resize(end);
+    return true;
 }
 
 } // namespace haylen::ui

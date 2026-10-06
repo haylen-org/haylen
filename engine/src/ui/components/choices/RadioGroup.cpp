@@ -37,7 +37,7 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
     const std::string focused = takeFocusRequest() ? getFocusTarget() : std::string();
     math::Vec2 cursor = bounds.getMin();
     for (const ChoiceItem& item : items) {
-        const std::string text = context.getText(item.text);
+        const std::string_view text = context.getText(item.text);
         const math::Vec2 size = Widgets::measureChoice(context, text);
         const math::Rect option = context.mirror({cursor.x, cursor.y, horizontal ? size.x : bounds.width, size.y}, bounds);
         ImGui::PushID(item.id.c_str());

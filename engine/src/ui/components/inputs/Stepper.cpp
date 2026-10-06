@@ -100,7 +100,7 @@ std::string Stepper::getShownText(Context& context) const {
     if (items.empty()) {
         return Typography::formatNumber(value, decimals);
     }
-    return context.getText(items[static_cast<std::size_t>(ChoiceItem::indexOf(items, selected))].text);
+    return std::string(context.getText(items[static_cast<std::size_t>(ChoiceItem::indexOf(items, selected))].text));
 }
 
 bool Stepper::canStep(int direction) const {

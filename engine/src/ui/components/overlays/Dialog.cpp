@@ -165,10 +165,10 @@ float Dialog::getBodyHeight(Context& context, float width) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     float height = 0.0F;
     const auto add = [&](float part) { height += part + (height > 0.0F ? spacing : 0.0F); };
-    if (const std::string titleText = context.getText(title); !titleText.empty()) {
+    if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
         add(Typography::measureParagraph(context, Theme::Font::Heading, titleText, width).y);
     }
-    if (const std::string messageText = context.getText(message); !messageText.empty()) {
+    if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         add(Typography::measureParagraph(context, Theme::Font::Body, messageText, width).y);
     }
     for (Component* child : getLayoutChildren()) {
@@ -204,7 +204,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
     // Buttons line up at the bottom end, the right or the left of a right-to-left UI, and the last one, usually the main answer, starts with the navigation focus.
     float x = inner.getRight();
     for (auto button = buttons.rbegin(); button != buttons.rend(); ++button) {
-        const std::string text = context.getText(button->text);
+        const std::string_view text = context.getText(button->text);
         const math::Vec2 size = Widgets::measureButton(context, text, false, button->variant);
         x -= size.x;
         ImGui::PushID(button->id.c_str());
@@ -238,12 +238,12 @@ void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect
     ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
     const ImVec2 start = ImGui::GetCursorScreenPos();
     float y = start.y;
-    if (const std::string titleText = context.getText(title); !titleText.empty()) {
+    if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
         const float height = Typography::measureParagraph(context, Theme::Font::Heading, titleText, column.width).y;
         Typography::drawParagraph(context, Theme::Font::Heading, {column.x, y, column.width, height}, context.getColor(Theme::Color::Text), titleText, Alignment::Start);
         y += height + spacing;
     }
-    if (const std::string messageText = context.getText(message); !messageText.empty()) {
+    if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         const float height = Typography::measureParagraph(context, Theme::Font::Body, messageText, column.width).y;
         Typography::drawParagraph(context, Theme::Font::Body, {column.x, y, column.width, height}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Start);
         y += height + spacing;

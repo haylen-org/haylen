@@ -408,7 +408,7 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
         const math::Rect frame{position.x, position.y, size.x, size.y};
         Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::ControlRadius));
         Surfaces::draw(context, Theme::Surface::Tooltip, frame, context.getColor(Theme::Color::Tooltip));
-        const std::string text = context.getText(common.tooltip);
+        const std::string_view text = context.getText(common.tooltip);
         const math::Vec2 measured = Typography::measureParagraph(context, Theme::Font::Caption, text, context.getMetric(Theme::Metric::TooltipWidth));
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
         Typography::drawParagraph(context, Theme::Font::Caption, {cursor.x, cursor.y, measured.x, measured.y}, context.getColor(Theme::Color::OnTooltip), text, Alignment::Start);

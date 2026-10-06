@@ -94,7 +94,7 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     const float width = std::max(0.0F, std::min(context.getMetric(Theme::Metric::ToastWidth), safe.width - margin * 2.0F));
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
     const float bar = context.getMetric(Theme::Metric::ToneBarWidth);
-    const std::string message = context.getText(notice.own ? text : notice.text);
+    const std::string_view message = context.getText(notice.own ? text : notice.text);
     const float height = Typography::measureParagraph(context, Theme::Font::Body, message, width - padding * 2.0F - bar).y + context.getMetric(Theme::Metric::ControlPaddingY) * 2.0F;
 
     // A notice that comes in takes its whole place at once, and one that leaves gives its place back as it fades.
@@ -150,7 +150,7 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
 }
 
 // The bar of the tone fills the start side of the frame, clipped to its width, so it follows the rounded corners of the frame.
-void Toast::drawFrame(Context& context, const Notice& notice, const math::Rect& frame, const std::string& message) {
+void Toast::drawFrame(Context& context, const Notice& notice, const math::Rect& frame, std::string_view message) {
     const Widgets::ToneColors colors = Widgets::getToneColors(notice.own ? tone : notice.tone);
     const float barWidth = context.getMetric(Theme::Metric::ToneBarWidth);
     const float radius = context.getMetric(Theme::Metric::PanelRadius);

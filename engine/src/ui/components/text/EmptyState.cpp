@@ -20,8 +20,8 @@ void EmptyState::readProperties(PropertyReader& reader) {
 // The picture, the title and the message stack in that order, and a part that is empty takes no room and no gap.
 math::Vec2 EmptyState::measureContent(Context& context, float availableWidth) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
-    const std::string titleText = context.getText(title);
-    const std::string messageText = context.getText(message);
+    const std::string_view titleText = context.getText(title);
+    const std::string_view messageText = context.getText(message);
     math::Vec2 size = image.empty() ? math::Vec2{} : math::Vec2{imageSize, imageSize};
     float gap = image.empty() ? 0.0F : spacing;
     if (!titleText.empty()) {
@@ -45,14 +45,14 @@ void EmptyState::render(Context& context, const math::Rect& bounds) {
         y += imageSize;
         gap = spacing;
     }
-    if (const std::string titleText = context.getText(title); !titleText.empty()) {
+    if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
         y += gap;
         const float titleHeight = Typography::measureParagraph(context, Theme::Font::Heading, titleText, bounds.width).y;
         Typography::drawParagraph(context, Theme::Font::Heading, {bounds.x, y, bounds.width, titleHeight}, context.getColor(Theme::Color::Text), titleText, Alignment::Center);
         y += titleHeight;
         gap = spacing * 0.5F;
     }
-    if (const std::string messageText = context.getText(message); !messageText.empty()) {
+    if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         y += gap;
         Typography::drawParagraph(context, Theme::Font::Body, {bounds.x, y, bounds.width, bounds.getBottom() - y}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Center);
     }

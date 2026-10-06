@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -26,6 +27,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 #include "ui/Typography.hpp"
@@ -1156,6 +1158,50 @@ TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return last(false) >= 0; }));
     EXPECT_GT(last(true), last(false));
+}
+
+// Once a GUI has drawn, its frames allocate nothing more than frames without it: the texts, rich texts, shapes and nine-slices of the frame live in storage that frames reuse, and literal texts reach the draws without copies.
+TEST_F(ComponentAssetTest, DrawsFramesWithoutAllocating) {
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/wood.json"));
+    // clang-format off
+    const auto measure = [this] {
+        frames(5);
+        const test::AllocationTracker tracker;
+        frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure();
+
+    // clang-format off
+    auto gui = mount(R"({"kind": "scroll", "height": 1000, "children": [{"kind": "column", "padding": 20, "children": [
+        {"kind": "pageHeader", "id": "header", "title": "Settings of the whole app", "caption": "Everything that the app lets you change"},
+        {"kind": "label", "text": "A label whose text is longer than a short string", "wrap": false},
+        {"kind": "label", "text": "A label that wraps its text over the lines it needs to show it all"},
+        {"kind": "row", "children": [{"kind": "button", "text": "Accept everything"}, {"kind": "chip", "text": "Filter chip"}, {"kind": "badge", "text": "12"}, {"kind": "image", "image": "ui/icon.png"}]},
+        {"kind": "panel", "children": [{"kind": "slider", "value": 0.4}, {"kind": "rangeSlider", "low": 0.2, "high": 0.6}, {"kind": "progress", "value": 0.3, "text": "Downloading the new levels"}]},
+        {"kind": "toggle", "text": "Music and sound effects", "checked": true}, {"kind": "checkbox", "text": "Show the hints of every level", "checked": true},
+        {"kind": "textField", "value": "Typed text in the field", "placeholder": "Name"}, {"kind": "secretField", "value": "A secret phrase"},
+        {"kind": "numberField", "value": 42}, {"kind": "stepper", "value": 3},
+        {"kind": "combo", "items": [{"id": "a", "text": "Alpha channel"}, {"id": "b", "text": "Beta"}], "selected": "a"},
+        {"kind": "segmentedControl", "items": [{"id": "a", "text": "Alpha"}, {"id": "b", "text": "Beta"}, {"id": "c", "text": "Gamma"}], "selected": "a"},
+        {"kind": "radioGroup", "items": [{"id": "a", "text": "Alpha channel only"}, {"id": "b", "text": "Beta"}], "selected": "a"},
+        {"kind": "circularProgress", "value": 0.6, "text": "60%"},
+        {"kind": "tabs", "items": [{"id": "a", "text": "General settings"}, {"id": "b", "text": "Audio"}], "selected": "a", "children": [{"kind": "label", "text": "Tab one"}, {"kind": "label", "text": "Tab two"}]},
+        {"kind": "list", "items": [{"id": "a", "text": "First row of the list"}, {"id": "b", "text": "Second row of the list"}]},
+        {"kind": "card", "children": [{"kind": "richText", "text": "Some [b]bold[/b] and [color=#ff0000]red[/color] text inside a card"}]},
+        {"kind": "settingsRow", "label": "Volume of the music", "caption": "Applies to every scene", "children": [{"kind": "slider", "value": 0.5}]},
+        {"kind": "alert", "title": "Heads up", "message": "Something needs your attention right now"},
+        {"kind": "table", "columns": [{"text": "Name of the player"}, {"text": "Score"}], "rows": [{"id": "one", "cells": ["Player number one", "120"]}]},
+        {"kind": "tree", "items": [{"id": "root", "text": "Root of the tree", "children": [{"id": "leaf", "text": "Leaf"}]}]},
+        {"kind": "emptyState", "title": "Nothing here yet", "message": "Add something to see it here"},
+        {"kind": "divider"}, {"kind": "statusIndicator", "text": "Online and ready", "tone": "success"}, {"kind": "avatar", "name": "Ana Lima"}
+    ]}]})");
+    // clang-format on
+    frames(30);
+    EXPECT_EQ(getEngine().getError(), nullptr);
+    EXPECT_GT(getBounds(*gui, "header").height, 0.0F);
+    EXPECT_EQ(measure(), empty);
 }
 
 TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {

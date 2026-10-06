@@ -23,10 +23,10 @@ math::Vec2 Alert::measureContent(Context& context, float availableWidth) {
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
     const float width = std::max(0.0F, availableWidth - padding * 2.0F - context.getMetric(Theme::Metric::ToneBarWidth));
     math::Vec2 size;
-    if (const std::string titleText = context.getText(title); !titleText.empty()) {
+    if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
         size = Typography::measureParagraph(context, Theme::Font::Button, titleText, width);
     }
-    if (const std::string messageText = context.getText(message); !messageText.empty()) {
+    if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         const math::Vec2 body = Typography::measureParagraph(context, Theme::Font::Body, messageText, width);
         size = {std::max(size.x, body.x), size.y + body.y};
     }
@@ -48,7 +48,7 @@ void Alert::render(Context& context, const math::Rect& bounds) {
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
     const math::Rect inner = context.mirror(math::Rect::fromMinMax({bounds.x + barWidth + padding, bounds.y + context.getMetric(Theme::Metric::ControlPaddingY)}, {bounds.getRight() - padding, bounds.getBottom()}), bounds);
     float y = inner.y;
-    if (const std::string titleText = context.getText(title); !titleText.empty()) {
+    if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
         const float height = Typography::measureParagraph(context, Theme::Font::Button, titleText, inner.width).y;
         Typography::drawParagraph(context, Theme::Font::Button, {inner.x, y, inner.width, height}, context.getColor(colors.text), titleText, Alignment::Start);
         y += height;

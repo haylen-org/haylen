@@ -24,7 +24,7 @@ math::Vec2 FormField::measureContent(Context& context, float availableWidth) {
         const math::Vec2 control = getChildren().front()->measure(context, availableWidth);
         size = {control.x, size.y + control.y};
     }
-    if (const std::string note = getNoteText(context); !note.empty()) {
+    if (const std::string_view note = getNoteText(context); !note.empty()) {
         size.y += spacing + Typography::measureParagraph(context, Theme::Font::Caption, note, availableWidth).y;
     }
     return size;
@@ -34,7 +34,7 @@ void FormField::render(Context& context, const math::Rect& bounds) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing) * 0.5F;
     float y = bounds.y;
     if (!label.isEmpty()) {
-        const std::string labelText = context.getText(label) + (required ? " *" : "");
+        const std::string labelText = std::string(context.getText(label)) + (required ? " *" : "");
         Typography::drawAligned(context, Theme::Font::Caption, {bounds.x, y, bounds.width, Typography::getLineHeight(context, Theme::Font::Caption)}, context.getColor(Theme::Color::TextMuted), labelText, Alignment::Start);
         y += Typography::getLineHeight(context, Theme::Font::Caption) + spacing;
     }
@@ -45,13 +45,13 @@ void FormField::render(Context& context, const math::Rect& bounds) {
         control.draw(context, {context.alignHorizontally(Alignment::Start, bounds.x, bounds.width, width), y, width, size.y});
         y += size.y + spacing;
     }
-    if (const std::string note = getNoteText(context); !note.empty()) {
+    if (const std::string_view note = getNoteText(context); !note.empty()) {
         const math::Vec2 size = Typography::measureParagraph(context, Theme::Font::Caption, note, bounds.width);
         Typography::drawParagraph(context, Theme::Font::Caption, {bounds.x, y, bounds.width, size.y}, context.getColor(error.isEmpty() ? Theme::Color::TextMuted : Theme::Color::DangerText), note, Alignment::Start);
     }
 }
 
-std::string FormField::getNoteText(Context& context) const {
+std::string_view FormField::getNoteText(Context& context) const {
     return context.getText(error.isEmpty() ? help : error);
 }
 

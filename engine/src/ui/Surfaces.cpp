@@ -1,12 +1,7 @@
 #include "ui/Surfaces.hpp"
 
 #include <algorithm>
-#include <utility>
-#include <vector>
 
-#include "haylen/2d/graphics/NineSlice.hpp"
-#include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
@@ -32,25 +27,14 @@ void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const 
         return;
     }
 
-    std::vector<graphics2d::NineSlice::Patch> patches;
-    image.slice.layout(bounds, image.scale, patches);
     const Context::Reshape shape = context.getReshape();
     const math::Color tinted = (image.colorize ? image.tint * fill : image.tint) * shape.color;
     const math::Color color = tinted.withAlpha(tinted.a * ImGui::GetStyle().Alpha);
-    std::vector<graphics2d::SpriteInstance> sprites;
-    sprites.reserve(patches.size());
-    for (const graphics2d::NineSlice::Patch& patch : patches) {
-        sprites.push_back({.position = patch.area.getMin() * shape.scale + shape.offset, .size = patch.area.getSize() * shape.scale, .source = patch.source, .pivot = {}, .color = color});
-    }
 
-    // The command of the callback carries the texture of the frame, so the draw list of the window tells which image it shows where, like its other commands.
+    // The command of the draw carries the texture of the frame, so the draw list of the window tells which image it shows where, like its other commands.
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushTexture(context.getTextureReference(image.slice.texture));
-    // clang-format off
-    context.getBackend().addRenderCallback([texture = image.slice.texture, sprites = std::move(sprites)](graphics2d::Renderer& renderer) {
-        renderer.drawBatch(texture, sprites);
-    });
-    // clang-format on
+    context.getBackend().addNineSlice(image.slice, bounds, image.scale, shape.scale, shape.offset, color);
     list.PopTexture();
 }
 

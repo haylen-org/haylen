@@ -47,7 +47,7 @@ class Toast final : public Component {
 
     // Draws one notice and returns whether it is gone.
     [[nodiscard]] bool drawNotice(Context& context, Notice& notice);
-    void drawFrame(Context& context, const Notice& notice, const math::Rect& frame, const std::string& message);
+    void drawFrame(Context& context, const Notice& notice, const math::Rect& frame, std::string_view message);
     void restart();
 
     bool open = false;

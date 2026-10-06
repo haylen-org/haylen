@@ -21,7 +21,7 @@ math::Vec2 Progress::measureContent(Context& context, float availableWidth) {
 
 void Progress::render(Context& context, const math::Rect& bounds) {
     Widgets::progress(context, bounds, value, tone);
-    if (const std::string shown = context.getText(text); !shown.empty()) {
+    if (const std::string_view shown = context.getText(text); !shown.empty()) {
         Typography::drawParagraph(context, Theme::Font::Caption, {bounds.x, bounds.getCenter().y - Typography::getLineHeight(context, Theme::Font::Caption) * 0.5F, bounds.width, Typography::getLineHeight(context, Theme::Font::Caption)}, context.getColor(Theme::Color::Text), shown, Alignment::Center, context.getColor(Theme::Color::Window), 1.0F);
     }
 }
