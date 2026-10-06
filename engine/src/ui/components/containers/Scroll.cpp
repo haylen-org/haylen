@@ -91,10 +91,17 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             }
         }
 
+        // A horizontal area that can scroll takes both wheels while the pointer is over it, so the vertical wheel scrolls it sideways too and never also scrolls an area around it.
         const ImGuiIO& io = ImGui::GetIO();
         const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
-        if (horizontal && hovered && io.MouseWheel != 0.0F) {
-            ImGui::SetScrollX(ImGui::GetScrollX() - io.MouseWheel * context.getMetric(Theme::Metric::ControlHeight));
+        if (horizontal && hovered && ImGui::GetScrollMaxX() > 0.0F) {
+            const ImGuiID wheel = ImGui::GetID("##wheel");
+            ImGui::SetKeyOwner(ImGuiKey_MouseWheelX, wheel);
+            ImGui::SetKeyOwner(ImGuiKey_MouseWheelY, wheel);
+            const float turned = io.MouseWheel + io.MouseWheelH;
+            if (turned != 0.0F) {
+                ImGui::SetScrollX(ImGui::GetScrollX() - turned * context.getMetric(Theme::Metric::ControlHeight));
+            }
         }
         followFinger();
         const bool touched = (hovered && (io.MouseWheel != 0.0F || io.MouseWheelH != 0.0F || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;

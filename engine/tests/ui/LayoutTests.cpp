@@ -213,4 +213,28 @@ TEST_F(LayoutTest, KeepsTheAspectRatio) {
     EXPECT_THROW(gui->set("high", {{"aspectRatio", 0}}), std::invalid_argument);
 }
 
+// A horizontal scroll turns the sideways wheel and the vertical one into sideways scrolling, and keeps the wheel from the vertical scroll around it, so one turn moves one area.
+TEST_F(LayoutTest, ScrollsSidewaysWithEveryWheelAndKeepsItFromTheAreaAround) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "height": 400, "children": [{"kind": "column", "children": [
+        {"kind": "scroll", "id": "strip", "axis": "horizontal", "scrollbar": false, "width": 300, "height": 200, "children": [{"kind": "row", "id": "covers", "children": [{"kind": "spacer", "width": 1200, "height": 100}]}]},
+        {"kind": "spacer", "height": 1000}
+    ]}]})");
+    // clang-format on
+    const math::Vec2 inside = getBounds(*gui, "strip").getCenter();
+    pointer(platform::Event::Type::MouseMove, inside);
+    frames(2);
+    const float start = getBounds(*gui, "covers").x;
+    const float top = getBounds(*gui, "strip").y;
+
+    wheel(inside, 0.0F, -1.0F);
+    frames(2);
+    const float sideways = getBounds(*gui, "covers").x;
+    EXPECT_LT(sideways, start);
+    wheel(inside, -1.0F);
+    frames(2);
+    EXPECT_LT(getBounds(*gui, "covers").x, sideways);
+    EXPECT_EQ(getBounds(*gui, "strip").y, top);
+}
+
 } // namespace haylen::ui
