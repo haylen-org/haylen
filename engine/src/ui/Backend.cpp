@@ -494,10 +494,13 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     case platform::Event::Type::TouchEnded:
     case platform::Event::Type::TouchCancelled:
         for (const platform::TouchPoint& touch : touches) {
+            // The release happens where the finger lifted, and the pointer leaves with the finger in the next frame, so nothing stays hovered.
             if (primaryTouch == touch.id && touch.changed) {
                 io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
                 place(touch.position);
                 io.AddMouseButtonEvent(0, false);
+                io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+                pointerPosition.reset();
                 primaryTouch.reset();
             }
         }

@@ -105,6 +105,18 @@ TEST_F(NodeEventTest, ReportsWhenNodesJoinShowHideAndLeave) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"last:mount"}));
 }
 
+// A finger that lifts takes the pointer with it, so the button it tapped clicks once and stops being hovered.
+TEST_F(NodeEventTest, EndsTheHoverWhenAFingerLifts) {
+    auto gui = mountListening(R"({"kind": "column", "children": [{"kind": "button", "id": "tapped", "text": "Tap"}]})", {{"tapped", {Notice::Hover}}});
+    const math::Vec2 center = getBounds(*gui, "tapped").getCenter();
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames(2);
+    touch(platform::Event::Type::TouchEnded, 1, center);
+    frames(3);
+    EXPECT_EQ(countEvents("tapped:click"), 1);
+    EXPECT_EQ(findLastEvent("hover").value, (core::Json{{"hovered", false}}));
+}
+
 TEST_F(NodeEventTest, ReportsThePointerOverANode) {
     const std::vector<Notice> pointing{Notice::Hover, Notice::Press, Notice::Drag, Notice::Release, Notice::Scroll};
     auto gui = mountListening(R"({"kind": "column", "children": [{"kind": "card", "id": "card", "width": 300, "height": 200, "children": [{"kind": "button", "id": "inner", "text": "Inner"}]}, {"kind": "label", "id": "away", "text": "Away"}]})", {{"card", pointing}, {"inner", {Notice::Press}}});
