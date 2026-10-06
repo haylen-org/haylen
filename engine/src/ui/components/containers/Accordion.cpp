@@ -46,7 +46,9 @@ void Accordion::render(Context& context, const math::Rect& bounds) {
     const float header = context.getMetric(Theme::Metric::ControlHeight);
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     const float arrow = context.getMetric(Theme::Metric::IconSize);
-    const std::string focused = takeFocusRequest() && !items.empty() ? items.front().id : std::string();
+    // The focus goes to the first item that can open.
+    const auto first = std::ranges::find_if(items, [](const ChoiceItem& item) { return item.enabled; });
+    const std::string focused = takeFocusRequest() && first != items.end() ? first->id : std::string();
     float y = bounds.y;
     for (std::size_t index = 0; index < items.size(); ++index) {
         const ChoiceItem& item = items[index];

@@ -253,6 +253,14 @@ TEST_F(GameComponentTest, OpensAccordionSections) {
     EXPECT_EQ(count("toggle"), 4U);
 }
 
+// The keyboard focus of an accordion goes to the first item that can open, so a disabled first item never swallows the keys.
+TEST_F(GameComponentTest, FocusesTheFirstAccordionItemThatCanOpen) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "accordion", "id": "faq", "width": 600, "items": [{"id": "a", "text": "First", "enabled": false}, {"id": "b", "text": "Second"}], "children": [{"kind": "label", "text": "Answer one"}, {"kind": "label", "text": "Answer two"}]}]})");
+    focus(*gui, "faq");
+    key(input::Key::Enter);
+    EXPECT_EQ(findLastEvent("toggle").value, (core::Json{{"item", "b"}, {"expanded", true}}));
+}
+
 TEST_F(GameComponentTest, TurnsCarouselPages) {
     auto gui = mount(R"({"kind": "carousel", "id": "pages", "width": 800, "height": 400, "children": [{"kind": "label", "id": "p1", "text": "One"}, {"kind": "label", "id": "p2", "text": "Two"}, {"kind": "label", "id": "p3", "text": "Three"}]})");
     const math::Rect pages = getBounds(*gui, "pages");
@@ -415,6 +423,15 @@ TEST_F(GameComponentTest, PicksComboItemsWithTheKeyboard) {
     frames();
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "large"}}));
     EXPECT_TRUE(isFocused(*gui, "size"));
+}
+
+// A radio group whose selected option is disabled gives the focus to the first option that can be picked.
+TEST_F(GameComponentTest, FocusesARadioOptionThatCanBePicked) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "radioGroup", "id": "speed", "items": [{"id": "slow", "text": "Slow", "enabled": false}, {"id": "fast", "text": "Fast"}], "selected": "slow"}]})");
+    focus(*gui, "speed");
+    key(input::Key::Enter);
+    frames();
+    EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "fast"}}));
 }
 
 } // namespace haylen::ui

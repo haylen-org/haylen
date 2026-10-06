@@ -57,7 +57,7 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
 }
 
 std::string RadioGroup::getFocusTarget() const {
-    if (ChoiceItem::indexOf(items, selected) >= 0) {
+    if (const int index = ChoiceItem::indexOf(items, selected); index >= 0 && items[static_cast<std::size_t>(index)].enabled) {
         return selected;
     }
     const auto enabled = std::ranges::find_if(items, [](const ChoiceItem& item) { return item.enabled; });
