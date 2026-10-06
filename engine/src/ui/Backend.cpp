@@ -302,6 +302,14 @@ float Backend::getKeyboardOffset() const noexcept {
     return textSession->getKeyboardOffset();
 }
 
+math::Rect Backend::getLiftedDisplayRect() const noexcept {
+    return getDisplayRect().translated({0.0F, -getKeyboardOffset()});
+}
+
+math::Rect Backend::getLiftedSafeRect() const noexcept {
+    return safeRect.translated({0.0F, -getKeyboardOffset()});
+}
+
 // ImGui only parses a font when it first draws with it, so broken data is caught here while the caller can still hear about it.
 float Backend::getEmRatio(const std::string& name, std::span<const std::uint8_t> data) {
     stbtt_fontinfo info;

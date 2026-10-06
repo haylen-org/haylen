@@ -76,9 +76,10 @@ void Window::render(Context& context, const math::Rect&) {
     const math::Vec2 centered = context.getBackend().getSafeRect().getCenter() - size * 0.5F;
     const math::Vec2 start = position.value_or(math::Vec2{requestedX.value_or(centered.x), requestedY.value_or(centered.y)});
     position = math::Vec2{std::clamp(start.x, display.x, std::max(display.x, display.getRight() - size.x)), std::clamp(start.y, display.y, std::max(display.y, display.getBottom() - header))};
-    setBounds({position->x, position->y, size.x, size.y});
+    const math::Vec2 placed = *position - math::Vec2{0.0F, context.getBackend().getKeyboardOffset()};
+    setBounds({placed.x, placed.y, size.x, size.y});
 
-    ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(*position));
+    ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(placed));
     ImGui::SetNextWindowSize(ImGuiConverter::toImVec2(size));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
@@ -86,7 +87,7 @@ void Window::render(Context& context, const math::Rect&) {
     const bool shown = ImGui::Begin(std::format("##window{}", static_cast<const void*>(this)).c_str(), nullptr, flags);
     ImGui::PopStyleVar(2);
     if (shown) {
-        const math::Rect frame{position->x, position->y, size.x, size.y};
+        const math::Rect frame{placed.x, placed.y, size.x, size.y};
         Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::PanelRadius));
         Surfaces::draw(context, Theme::Surface::Window, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), context.getMetric(Theme::Metric::PanelRadius));
         drawTitle(context, {frame.x, frame.y, frame.width, header});

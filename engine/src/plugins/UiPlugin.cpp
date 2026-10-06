@@ -240,11 +240,9 @@ void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
 // Every GUI moves up together while the on-screen keyboard would cover the focused text field.
 void UiPlugin::drawGuis() {
     ui::Backend& drawing = getBackend();
-    const math::Rect display = drawing.getDisplayRect();
-    const math::Vec2 lift{0.0F, -drawing.getKeyboardOffset()};
     for (const Mounted* entry : drawnGuis) {
         ImGui::PushID(entry->gui.get());
-        entry->gui->draw(*context, (entry->gui->getPlacement() == ui::Placement::Safe ? drawing.getSafeRect() : display).translated(lift));
+        entry->gui->draw(*context, entry->gui->getPlacement() == ui::Placement::Safe ? drawing.getLiftedSafeRect() : drawing.getLiftedDisplayRect());
         ImGui::PopID();
         shownGuis.push_back(entry->gui.get());
     }

@@ -55,7 +55,7 @@ void Dialog::render(Context& context, const math::Rect&) {
     }
 
     // A dialog keeps a margin inside the display, and its content scrolls when it is taller than that.
-    const math::Rect display = context.getBackend().getDisplayRect();
+    const math::Rect display = context.getBackend().getLiftedDisplayRect();
     const float margin = context.getMetric(Theme::Metric::PanelPadding);
     const math::Insets padding = getContentPadding(context);
     const float width = std::min(context.getMetric(Theme::Metric::DialogWidth), display.width - margin * 2.0F);

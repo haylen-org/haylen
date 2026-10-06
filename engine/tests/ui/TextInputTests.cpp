@@ -286,4 +286,24 @@ TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
     EXPECT_EQ(gui->find("name")->getBounds(), resting);
 }
 
+// An anchored bar moves up with every other GUI, so its field rises above the keyboard and the lift settles there instead of growing every frame.
+TEST_F(TextInputTest, LiftsAnchoredFieldsWithTheRestOfTheInterface) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "row", "anchor": "stretchBottom", "height": 80, "children": [{"kind": "textField", "id": "message", "grow": 1}]}]})");
+    const math::Rect resting = gui->find("message")->getBounds();
+    focus(*gui, "message");
+
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    fixture.frames(60);
+    const math::Rect lifted = gui->find("message")->getBounds();
+    const float offset = getUi().getBackend().getKeyboardOffset();
+    EXPECT_LE(lifted.getBottom(), 540.0F);
+    EXPECT_GE(lifted.getBottom(), 500.0F);
+    fixture.frames(60);
+    EXPECT_EQ(getUi().getBackend().getKeyboardOffset(), offset);
+
+    send({.type = platform::Event::Type::KeyboardChanged});
+    fixture.frames(60);
+    EXPECT_EQ(gui->find("message")->getBounds(), resting);
+}
+
 } // namespace haylen::ui

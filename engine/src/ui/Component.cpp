@@ -267,7 +267,7 @@ void Component::draw(Context& context, const math::Rect& layout) {
 
 math::Rect Component::getAnchoredBounds(Context& context) {
     const Backend& backend = context.getBackend();
-    const math::Rect area = common.anchorArea == Anchor::Area::Safe ? backend.getSafeRect() : backend.getDisplayRect();
+    const math::Rect area = common.anchorArea == Anchor::Area::Safe ? backend.getLiftedSafeRect() : backend.getLiftedDisplayRect();
     return common.anchor.value_or(Anchor{}).place(measure(context, area.width), area);
 }
 

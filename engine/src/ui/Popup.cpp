@@ -17,7 +17,7 @@ namespace haylen::ui {
 std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGuiWindowFlags flags, float padding, math::Vec2 content, const math::Rect& anchor, float minimumWidth) {
     // A popup is as tall as its content up to the room on its side of the anchor, inside the margins ImGui keeps around popups, and the content of a taller one scrolls, which is known before the popup opens, so its size never changes back and forth.
     const bool rightToLeft = context.isRightToLeft();
-    const math::Rect display = context.getBackend().getDisplayRect();
+    const math::Rect display = context.getBackend().getLiftedDisplayRect();
     const float margin = ImGui::GetStyle().DisplaySafeAreaPadding.y;
     const float needed = content.y + padding * 2.0F;
     const float roomBelow = display.getBottom() - margin - anchor.getBottom() - kAnchorGap;

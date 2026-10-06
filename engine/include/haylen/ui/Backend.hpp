@@ -168,6 +168,10 @@ class Backend final {
     // How far up the UI moves so the focused text field stays above the on-screen keyboard, in UI units.
     [[nodiscard]] float getKeyboardOffset() const noexcept;
 
+    // The display and safe areas moved up by the keyboard offset, where every GUI places what it draws, its anchored nodes, dialogs, windows, toasts and popups alike, so the whole UI moves together and a focused field always moves with it.
+    [[nodiscard]] math::Rect getLiftedDisplayRect() const noexcept;
+    [[nodiscard]] math::Rect getLiftedSafeRect() const noexcept;
+
   private:
     struct Recovery;
 

@@ -12,7 +12,7 @@ math::Vec2 SafeArea::measureContent(Context& context, float availableWidth) {
 
 void SafeArea::render(Context& context, const math::Rect& bounds) {
     if (auto visible = getLayoutChildren(); !visible.empty()) {
-        visible.front()->draw(context, bounds.intersection(context.getBackend().getSafeRect()));
+        visible.front()->draw(context, bounds.intersection(context.getBackend().getLiftedSafeRect()));
     }
 }
 

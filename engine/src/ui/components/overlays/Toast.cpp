@@ -87,7 +87,7 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     if (notice.since < 0.0) {
         notice.since = context.getTime();
     }
-    const math::Rect safe = context.getBackend().getSafeRect();
+    const math::Rect safe = context.getBackend().getLiftedSafeRect();
     const float margin = context.getMetric(Theme::Metric::PanelPadding);
     const float width = std::max(0.0F, std::min(context.getMetric(Theme::Metric::ToastWidth), safe.width - margin * 2.0F));
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
