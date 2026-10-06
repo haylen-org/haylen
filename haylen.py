@@ -3561,7 +3561,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     # Ninja places the bundle in `bin/<target>`, while the Xcode generator places it in `bin`.
     settings = APPLE_RUNS[args.platform]
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
-    launch_apple(next((directory / "bin").glob(f"**/{target}.app")), args, simulator)
+    launch_apple(next((directory / "bin").glob(f"**/{target}.app")), args, simulator, [])
 
 
 def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
@@ -3584,7 +3584,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     copy_into(built / f"lib{target}.so", root / GENERATED_FOLDER / "jniLibs" / abi)
     apk = build_android(app, root, args)
     report_requirements(check_android(app, root, args))
-    launch_android(apk, args, device)
+    launch_android(apk, args, device, [])
 
 
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) -> None:

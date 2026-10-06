@@ -282,6 +282,45 @@ class LauncherTest(unittest.TestCase):
         self.assertIn("exit /b %errorlevel%", script)
 
 
+class RunCppTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.scratch)
+
+    def test_cpp_apps_launch_on_apple_platforms_with_an_empty_command_line(self):
+        (self.scratch / "ios-simulator-debug" / "bin" / "Debug-iphonesimulator" / "game.app").mkdir(parents=True)
+        args = haylen.build_parser().parse_args(["run-cpp", "project", "--platform", "ios-simulator"])
+        simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
+        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
+            haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
+        self.assertEqual(launch.call_args.args[2:], (simulator, []))
+
+    def test_cpp_apps_launch_on_android_with_an_empty_command_line(self):
+        built = self.scratch / "android-arm64-v8a-debug" / "bin" / "game"
+        built.mkdir(parents=True)
+        (built / "package.txt").write_text(str(self.scratch / "package"))
+        args = haylen.build_parser().parse_args(["run-cpp", "project", "--platform", "android"])
+        patches = [
+            mock.patch.object(haylen, "android_device", return_value="emulator-5554"),
+            mock.patch.object(haylen, "capture", return_value="arm64-v8a"),
+            mock.patch.object(haylen, "run"),
+            mock.patch.object(haylen, "ensure_shdc", return_value="shdc"),
+            mock.patch.object(haylen, "android_options", return_value=[]),
+            mock.patch.object(haylen, "App"),
+            mock.patch.object(haylen, "ensure_artifacts"),
+            mock.patch.object(haylen, "project_root", return_value=self.scratch / "root"),
+            mock.patch.object(haylen, "prepare_android"),
+            mock.patch.object(haylen, "copy_into"),
+            mock.patch.object(haylen, "build_android", return_value=self.scratch / "game.apk"),
+            mock.patch.object(haylen, "check_android", return_value=[]),
+            mock.patch.object(haylen, "launch_android", autospec=True),
+        ]
+        with contextlib.ExitStack() as stack:
+            mocks = [stack.enter_context(patch) for patch in patches]
+            haylen.run_cpp_android(self.scratch / "project", "game", self.scratch, args)
+        self.assertEqual(mocks[-1].call_args.args[2:], ("emulator-5554", []))
+
+
 class ConsumerArgumentTest(unittest.TestCase):
     def test_the_consumer_check_builds_the_listed_ways_or_every_way(self):
         parser = haylen.build_parser()
