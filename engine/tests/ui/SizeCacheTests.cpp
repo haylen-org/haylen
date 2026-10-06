@@ -159,4 +159,41 @@ TEST_F(SizeCacheTest, GivesFixedTypesTheirLengthWithoutMeasuring) {
     EXPECT_FLOAT_EQ(static_cast<float>(sizes.getTotal()), 300.0F);
 }
 
+// Estimates that start again, such as when the theme changes the height of rows, learn from the items measured after that, and an item that was measured before counts once.
+TEST_F(SizeCacheTest, LearnsAgainAfterTheEstimatesStartOver) {
+    sizes.setEstimates(std::vector<float>{0.0F}, kFallback);
+    sizes.assign(std::vector<std::uint16_t>(3, 0));
+    arrange();
+    sizes.measure(0, 50.0F);
+    sizes.setEstimates(std::vector<float>{0.0F}, kFallback);
+    arrange();
+    sizes.measure(0, 60.0F);
+    EXPECT_FLOAT_EQ(sizes.getEstimate(0), 60.0F);
+    arrange();
+    EXPECT_TRUE(std::isfinite(sizes.getTotal()));
+    EXPECT_DOUBLE_EQ(sizes.getTotal(), 180.0);
+}
+
+// An item that leaves the collection or changes its type stops teaching the estimate of its type.
+TEST_F(SizeCacheTest, ForgetsTheLengthsOfItemsThatLeave) {
+    sizes.setEstimates(std::vector<float>{0.0F, 0.0F}, kFallback);
+    sizes.assign(std::vector<std::uint16_t>{0, 0, 0});
+    arrange();
+    sizes.measure(0, 20.0F);
+    sizes.measure(1, 100.0F);
+    sizes.measure(2, 100.0F);
+    EXPECT_FLOAT_EQ(sizes.getEstimate(0), 220.0F / 3.0F);
+
+    sizes.erase(1, 1);
+    sizes.setType(1, 1);
+    sizes.measure(1, 40.0F);
+    EXPECT_FLOAT_EQ(sizes.getEstimate(0), 20.0F);
+    EXPECT_FLOAT_EQ(sizes.getEstimate(1), 40.0F);
+
+    sizes.remap(std::vector<std::size_t>{SizeCache::kNew, 1}, std::vector<std::uint16_t>{0, 1});
+    sizes.measure(0, 80.0F);
+    EXPECT_FLOAT_EQ(sizes.getEstimate(0), 80.0F);
+    EXPECT_FLOAT_EQ(sizes.getEstimate(1), 40.0F);
+}
+
 } // namespace haylen::ui

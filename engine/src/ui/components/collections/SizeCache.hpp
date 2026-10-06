@@ -20,7 +20,7 @@ class SizeCache final {
     // The index `remap` receives for an item that is new.
     static constexpr std::size_t kNew = std::numeric_limits<std::size_t>::max();
 
-    // Sets the estimate each type declares, where zero learns it from the measured items of the type, starting from `fallback`, which items without a type take too. Learning starts again.
+    // Sets the estimate each type declares, where zero learns it from the mean of the measured items of the type, starting from `fallback`, which items without a type take too. Learning starts again, and an item that leaves or changes its type stops counting.
     void setEstimates(std::span<const float> declared, float fallback);
 
     // Gives the items of a type a length that needs no measuring, or makes them measured again with nothing.
@@ -80,10 +80,12 @@ class SizeCache final {
         Measured,
     };
 
+    // An item counts in the estimate of its type from its first measured length until it leaves the collection, changes its type or the estimates start again.
     struct Item {
         float length = 0.0F;
         std::uint16_t type = kNoType;
         State state = State::Unmeasured;
+        bool counted = false;
     };
 
     struct Estimate {
@@ -101,6 +103,8 @@ class SizeCache final {
     void build();
     void add(std::size_t line, double delta) noexcept;
     void learn(Item& item, float length);
+    void forget(const Item& item) noexcept;
+    void relearn(Estimate& estimate) noexcept;
 
     std::vector<Item> items;
     std::vector<Estimate> estimates;

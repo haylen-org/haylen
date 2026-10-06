@@ -15,6 +15,9 @@ void SizeCache::setEstimates(std::span<const float> declared, float fallbackLeng
         estimates[type].declared = declared[type];
         estimates[type].learned = fallbackLength;
     }
+    for (Item& item : items) {
+        item.counted = false;
+    }
     arranged = false;
 }
 
@@ -26,6 +29,9 @@ void SizeCache::setFixedLength(std::uint16_t type, std::optional<float> value) {
 }
 
 void SizeCache::assign(std::span<const std::uint16_t> types) {
+    for (const Item& item : items) {
+        forget(item);
+    }
     items.assign(types.size(), Item{});
     for (std::size_t index = 0; index < types.size(); ++index) {
         items[index].type = types[index];
@@ -43,6 +49,9 @@ void SizeCache::insert(std::size_t index, std::span<const std::uint16_t> types) 
 }
 
 void SizeCache::erase(std::size_t index, std::size_t count) {
+    for (std::size_t offset = 0; offset < count; ++offset) {
+        forget(items[index + offset]);
+    }
     const auto first = items.begin() + static_cast<std::ptrdiff_t>(index);
     items.erase(first, first + static_cast<std::ptrdiff_t>(count));
     arranged = false;
@@ -59,14 +68,21 @@ void SizeCache::move(std::size_t from, std::size_t to) {
     arranged = false;
 }
 
+// The items that leave or change their type stop counting in the estimates.
 void SizeCache::remap(std::span<const std::size_t> previous, std::span<const std::uint16_t> types) {
+    std::vector<bool> kept(items.size(), false);
     std::vector<Item> next(previous.size());
     for (std::size_t index = 0; index < previous.size(); ++index) {
-        if (previous[index] != kNew) {
+        if (previous[index] != kNew && items[previous[index]].type == types[index]) {
             next[index] = items[previous[index]];
+            kept[previous[index]] = true;
+        } else {
+            next[index] = Item{.type = types[index]};
         }
-        if (next[index].type != types[index]) {
-            next[index] = Item{.length = 0.0F, .type = types[index], .state = State::Unmeasured};
+    }
+    for (std::size_t index = 0; index < items.size(); ++index) {
+        if (!kept[index]) {
+            forget(items[index]);
         }
     }
     items = std::move(next);
@@ -75,7 +91,8 @@ void SizeCache::remap(std::span<const std::size_t> previous, std::span<const std
 
 void SizeCache::setType(std::size_t index, std::uint16_t type) {
     if (items[index].type != type) {
-        items[index] = Item{.length = 0.0F, .type = type, .state = State::Unmeasured};
+        forget(items[index]);
+        items[index] = Item{.type = type};
         arranged = false;
     }
 }
@@ -89,17 +106,35 @@ void SizeCache::learn(Item& item, float length) {
     if (estimate.declared > 0.0F || estimate.fixed) {
         return;
     }
-    if (item.state == State::Unmeasured) {
+    if (item.counted) {
+        estimate.sum += length - item.length;
+    } else {
         estimate.sum += length;
         ++estimate.count;
-    } else {
-        estimate.sum += length - item.length;
+        item.counted = true;
+    }
+    relearn(estimate);
+}
+
+void SizeCache::relearn(Estimate& estimate) noexcept {
+    if (estimate.count == 0) {
+        return;
     }
     const auto mean = static_cast<float>(estimate.sum / static_cast<double>(estimate.count));
     if (std::fabs(mean - estimate.learned) >= kLearningStep) {
         estimate.learned = mean;
         arranged = false;
     }
+}
+
+void SizeCache::forget(const Item& item) noexcept {
+    if (!item.counted) {
+        return;
+    }
+    Estimate& estimate = estimates[item.type];
+    estimate.sum -= item.length;
+    --estimate.count;
+    relearn(estimate);
 }
 
 bool SizeCache::measure(std::size_t index, float length) {
