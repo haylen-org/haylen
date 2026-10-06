@@ -1,12 +1,16 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/Input.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/UiFixture.hpp"
@@ -271,6 +275,34 @@ TEST_F(GameComponentTest, TurnsCarouselPages) {
     gui->set("pages", {{"interval", 0.25}, {"loop", true}, {"page", 3}});
     frames(20);
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"page", 1}}));
+}
+
+// The dot of the page that shows lights up, the first one on the first page.
+TEST_F(GameComponentTest, LightsTheDotOfTheShownPage) {
+    auto gui = mount(R"({"kind": "carousel", "id": "pages", "width": 800, "height": 400, "children": [{"kind": "label", "text": "One"}, {"kind": "label", "text": "Two"}, {"kind": "label", "text": "Three"}]})");
+    const float size = getMetric(Theme::Metric::PageIndicatorSize);
+    const math::Color accent = getUi().getTheme().getColor(Theme::Color::Accent);
+    // clang-format off
+    const auto litDot = [&]() -> std::optional<std::size_t> {
+        std::vector<std::pair<float, bool>> dots;
+        for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+            if (shape.bounds.width == size && shape.bounds.height == size) {
+                dots.emplace_back(shape.bounds.x, shape.color == accent);
+            }
+        }
+        std::ranges::sort(dots);
+        const auto lit = std::ranges::find_if(dots, [](const auto& dot) { return dot.second; });
+        if (dots.size() != 3 || lit == dots.end()) {
+            return std::nullopt;
+        }
+        return static_cast<std::size_t>(lit - dots.begin());
+    };
+    // clang-format on
+    frames(2);
+    EXPECT_EQ(litDot(), 0U);
+    gui->set("pages", {{"page", 3}});
+    frames(2);
+    EXPECT_EQ(litDot(), 2U);
 }
 
 TEST_F(GameComponentTest, DragsAndCarriesItemsBetweenSlotsAndLists) {

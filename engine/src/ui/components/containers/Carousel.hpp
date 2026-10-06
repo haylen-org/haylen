@@ -1,5 +1,7 @@
 #pragma once
 
+#include <imgui.h>
+
 #include <cstddef>
 #include <string_view>
 
@@ -53,6 +55,9 @@ class Carousel final : public Component {
     float shown = 0.0F;
     float waited = 0.0F;
     float dragged = 0.0F;
+
+    // The layers of the arrows and the pages, which keep their storage from frame to frame.
+    ImDrawListSplitter layers;
 };
 
 } // namespace haylen::ui

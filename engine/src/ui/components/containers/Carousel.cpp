@@ -47,7 +47,6 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
 
     // The arrows come before the pages, so they win the pointer over the content under them, and they paint on a layer above the pages.
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    ImDrawListSplitter layers;
     layers.Split(&list, 2);
     layers.SetCurrentChannel(&list, 1);
     int target = page;
@@ -160,7 +159,7 @@ int Carousel::drawIndicators(Context& context, const math::Rect& row, std::size_
         ImGui::PushID(static_cast<int>(index));
         const Widgets::Interaction state = Widgets::interact(context, dot.expanded(size * 0.5F), size, "##dot", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
-        const bool current = static_cast<int>(index) == page;
+        const bool current = static_cast<int>(index) + 1 == page;
         Surfaces::fill(context, dot, context.getColor(current ? Theme::Color::Accent : state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong), size * 0.5F);
         if (state.clicked) {
             picked = static_cast<int>(index) + 1;
