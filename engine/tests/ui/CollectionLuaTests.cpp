@@ -294,6 +294,16 @@ TEST_F(CollectionLuaTest, RefusesToChangeItsItemsWhileItBindsCells) {
     EXPECT_NE(waitForError().find("The collection \"list\" cannot change its items while it binds cells or loads them."), std::string::npos);
 }
 
+// A page that arrives keeps every page the view needs, even when the view needs more pages than the collection keeps, so no page loads again while nothing scrolls.
+TEST_F(CollectionLuaTest, KeepsThePagesInViewWhenMoreShowThanItKeeps) {
+    mountRows(10);
+    fixture.runLua("loads = 0 list:setPages({count = 200, pageSize = 5, maxPages = 1, load = function(first, count) loads = loads + 1 local page = {} for i = 1, count do page[i] = {id = 'p' .. (first + i - 1), title = 'Page'} end return page end})");
+    fixture.frames(10);
+    const std::string settled = fixture.lua("return loads");
+    fixture.frames(30);
+    EXPECT_EQ(fixture.lua("return loads"), settled);
+}
+
 // A page loader runs while the collection asks its source for items, so replacing the source from the loader is refused instead of freeing the source that runs it.
 TEST_F(CollectionLuaTest, RefusesToReplaceItsItemsFromAPageLoader) {
     mountRows(10);

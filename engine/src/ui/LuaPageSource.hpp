@@ -70,7 +70,7 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
     [[nodiscard]] std::size_t getPageLength(std::size_t page) const noexcept;
     [[nodiscard]] const Page* findLoaded(std::size_t index) const;
     void load(std::size_t page);
-    void dropFarthest(std::size_t firstPage, std::size_t lastPage);
+    void dropFarthest();
     void drop(std::size_t page);
 
     lua_State* state;
@@ -79,6 +79,10 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
     Options options;
     std::map<std::size_t, Page> pages;
     std::uint64_t nextTicket = 1;
+
+    // The pages the view asked for last, which stay while the farthest ones go.
+    std::size_t neededFirst = 0;
+    std::size_t neededLast = 0;
 };
 
 } // namespace haylen::ui

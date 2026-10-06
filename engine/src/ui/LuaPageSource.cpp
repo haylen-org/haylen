@@ -68,14 +68,14 @@ void LuaPageSource::request(std::size_t first, std::size_t count) {
     if (count == 0 || first >= options.count) {
         return;
     }
-    const std::size_t firstPage = first / options.pageSize;
-    const std::size_t lastPage = (std::min(first + count, options.count) - 1) / options.pageSize;
-    for (std::size_t page = firstPage; page <= lastPage; ++page) {
+    neededFirst = first / options.pageSize;
+    neededLast = (std::min(first + count, options.count) - 1) / options.pageSize;
+    for (std::size_t page = neededFirst; page <= neededLast; ++page) {
         if (!pages.contains(page)) {
             load(page);
         }
     }
-    dropFarthest(firstPage, lastPage);
+    dropFarthest();
 }
 
 // The loader returns the list of the page, which stores at once, or a promise of it, which a task awaits before it stores the list.
@@ -177,7 +177,7 @@ void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, 
     CollectionLua::setPage(L, gui, collection, page, table);
     found->second = std::move(loaded);
     changed.emit({.kind = Change::Kind::Changed, .index = first, .count = length});
-    dropFarthest(page, page);
+    dropFarthest();
 }
 
 void LuaPageSource::drop(std::size_t page) {
@@ -190,9 +190,9 @@ void LuaPageSource::drop(std::size_t page) {
     }
 }
 
-// The pages of the range a view needs stay, and the others go from the farthest one while more than `maxPages` are kept.
-void LuaPageSource::dropFarthest(std::size_t firstPage, std::size_t lastPage) {
-    const auto distance = [&](std::size_t page) { return page < firstPage ? firstPage - page : page > lastPage ? page - lastPage : 0; };
+// The pages of the range the view needs stay, also when a page that arrives later is stored, and the others go from the farthest one while more than `maxPages` are kept.
+void LuaPageSource::dropFarthest() {
+    const auto distance = [this](std::size_t page) { return page < neededFirst ? neededFirst - page : page > neededLast ? page - neededLast : 0; };
     while (pages.size() > options.maxPages) {
         const auto farthest = std::ranges::max_element(pages, {}, [&](const auto& entry) { return distance(entry.first); });
         if (distance(farthest->first) == 0) {
