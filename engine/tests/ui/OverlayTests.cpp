@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include <imgui.h>
@@ -125,6 +127,17 @@ TEST_F(OverlayTest, FadesADialogAndItsBackdropInAndOutTogether) {
     EXPECT_LT(*closing, getUi().getTheme().getColor(Theme::Color::Overlay).a);
     frames(getTransitionFrames());
     EXPECT_FALSE(getBackdropAlpha().has_value());
+}
+
+// Opening a toast again replaces its notice, and only the end of the notice that shows reports that the toast was dismissed.
+TEST_F(OverlayTest, DismissesAToastOnceWhenItWasOpenedAgain) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "toast", "id": "saved", "text": "Saved", "duration": 1, "open": true}]})");
+    frames(10);
+    gui->set("saved", {{"open", true}});
+    frames(30);
+    EXPECT_EQ(std::ranges::count(getEventNames(), std::string("saved:dismiss")), 0);
+    frames(90);
+    EXPECT_EQ(std::ranges::count(getEventNames(), std::string("saved:dismiss")), 1);
 }
 
 } // namespace haylen::ui

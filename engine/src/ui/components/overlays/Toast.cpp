@@ -63,11 +63,13 @@ math::Vec2 Toast::measureContent(Context&, float) {
     return {};
 }
 
+// The own notice that a new `open` replaced leaves without a word, and the end of the own notice that shows reports `dismiss`.
 void Toast::render(Context& context, const math::Rect&) {
     std::size_t index = 0;
     while (index < notices.size()) {
         if (drawNotice(context, notices[index])) {
-            if (notices[index].own) {
+            const bool replaced = std::ranges::any_of(notices, [](const Notice& other) { return other.own && !other.leaving; });
+            if (notices[index].own && !replaced) {
                 open = false;
                 context.emit(*this, "dismiss");
             }
