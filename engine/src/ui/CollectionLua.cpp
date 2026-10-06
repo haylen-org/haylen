@@ -84,14 +84,18 @@ void CollectionLua::pushPage(lua_State* L, const Gui& gui, const Collection& col
     }
 }
 
+// A page that arrives once the GUI was forgotten, such as the answer of a promise after an unmount, stores nothing, so the values of the GUI never come back.
 void CollectionLua::setPage(lua_State* L, const Gui& gui, const Collection& collection, std::size_t page, int list) {
     const int stored = list == 0 ? 0 : lua_absindex(L, list);
     const lua::StackScope scope(L);
-    pushValue(L, gui, collection, "pages");
-    if (!lua_istable(L, -1)) {
+    if (!pushEntry(L, gui, collection, false)) {
+        return;
+    }
+    if (lua_getfield(L, -1, "pages") != LUA_TTABLE) {
         lua_pop(L, 1);
         lua_newtable(L);
-        setValue(L, gui, collection, "pages", -1);
+        lua_pushvalue(L, -1);
+        lua_setfield(L, -3, "pages");
     }
     if (stored == 0) {
         lua_pushnil(L);

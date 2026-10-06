@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <lua.hpp>
+
 #include <string>
 #include <string_view>
 
@@ -243,6 +245,39 @@ TEST_F(CollectionLuaTest, ShowsPlaceholdersUntilAPromiseResolves) {
     EXPECT_EQ(fixture.lua("return pages:cellOf(1).type"), "wait");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("local cell = pages:cellOf(1) return cell and cell.type") == "entry"; }));
     EXPECT_EQ(fixture.lua("return pages:cellOf(1).item .. ' ' .. pages:indexOf('e2')"), "e1 2");
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
+// A page that arrives after its GUI was unmounted leaves nothing behind, so the values the GUI kept in Lua never come back for it.
+TEST_F(CollectionLuaTest, DropsPagesThatArriveAfterTheGuiWasUnmounted) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        jobs = require('haylen.jobs')
+        gui = ui.mount(ui.column{ui.collection{id = 'pages', height = 600, types = {entry = {template = ui.label{part = 'title', bind = {text = 'title'}, height = 60}}}}})
+        pages = gui:collection('pages')
+        pages:setPages({count = 10, pageSize = 10, load = function(first, count)
+            return jobs.spawn(function()
+                while not released do jobs.checkpoint() end
+                local page = {}
+                for i = 1, count do page[i] = {id = 'e' .. i, type = 'entry', title = 'Entry'} end
+                done = true
+                return page
+            end)
+        end})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    fixture.runLua("gui:unmount() released = true");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return done") == "true"; }));
+    fixture.frames(2);
+
+    lua_State* L = fixture.lua();
+    const int top = lua_gettop(L);
+    lua_getfield(L, LUA_REGISTRYINDEX, "haylen.ui.collections");
+    lua_pushnil(L);
+    EXPECT_EQ(lua_next(L, -2), 0) << "The registry still holds the values of a GUI.";
+    lua_settop(L, top);
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
