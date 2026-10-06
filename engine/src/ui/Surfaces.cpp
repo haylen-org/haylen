@@ -86,7 +86,7 @@ void Surfaces::drawShape(Context& context, graphics2d::Shape shape) {
     const Context::Reshape reshape = context.getReshape();
     const float scale = std::min(reshape.scale.x, reshape.scale.y);
     const math::Color tint = reshape.color.withAlpha(reshape.color.a * ImGui::GetStyle().Alpha);
-    shape.bounds = math::Rect::fromMinMax(shape.bounds.getMin() * reshape.scale + reshape.offset, shape.bounds.getMax() * reshape.scale + reshape.offset);
+    shape.bounds = reshape.apply(shape.bounds);
     for (float& radius : shape.radii) {
         radius *= scale;
     }
@@ -116,7 +116,7 @@ void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radi
     const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset)}).expanded(size * 0.5F);
     const float rounding = radius + size * 0.5F;
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    const math::Rect reach = cast.expanded(size * 0.5F);
+    const math::Rect reach = context.getReshape().apply(cast.expanded(size * 0.5F));
     list.PushClipRect(ImGuiConverter::toImVec2(reach.getMin()), ImGuiConverter::toImVec2(reach.getMax()), false);
     drawShape(context, {.bounds = cast, .radii = {rounding, rounding, rounding, rounding}, .color = color, .softness = size});
     list.PopClipRect();

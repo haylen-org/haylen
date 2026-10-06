@@ -87,10 +87,8 @@ Widgets::Interaction Widgets::interact(Context& context, const math::Rect& bound
 }
 
 bool Widgets::isVisible(const Context& context, const math::Rect& bounds) {
-    const Context::Reshape shape = context.getReshape();
-    const math::Vec2 first = bounds.getMin() * shape.scale + shape.offset;
-    const math::Vec2 second = bounds.getMax() * shape.scale + shape.offset;
-    return ImGui::IsRectVisible(ImGuiConverter::toImVec2(math::Vec2::min(first, second)), ImGuiConverter::toImVec2(math::Vec2::max(first, second)));
+    const math::Rect shown = context.getReshape().apply(bounds);
+    return ImGui::IsRectVisible(ImGuiConverter::toImVec2(shown.getMin()), ImGuiConverter::toImVec2(shown.getMax()));
 }
 
 void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID id, float radius) {
@@ -98,19 +96,23 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
         return;
     }
     ImGuiWindow* window = GImGui->CurrentWindow;
+    const Context::Reshape shape = context.getReshape();
+    if (shape.scale.x == 0.0F || shape.scale.y == 0.0F) {
+        return;
+    }
 
-    // The line runs a gap away from the edge of the control, and it may reach past the clip of a scrolled area so an item at the edge still shows it whole.
+    // The line runs a gap away from the edge of the control, and it may reach past the clip of a scrolled area so an item at the edge still shows it whole. The ring lies in the units of the control, which the transforms around it move onto the screen, where the clip of the window lies.
     const float width = context.getMetric(Theme::Metric::FocusWidth);
     const float distance = context.getMetric(Theme::Metric::FocusGap) + width;
-    ImRect ring = ImGuiConverter::toImRect(bounds);
-    ring.ClipWith(window->ClipRect);
-    ring.Expand(distance);
-    const bool clipped = !window->ClipRect.Contains(ring);
+    const math::Rect clip = Context::Reshape{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale}.apply(ImGuiConverter::toRect(window->ClipRect));
+    const math::Rect ring = bounds.intersection(clip).expanded(distance);
+    const bool clipped = !clip.contains(ring);
     if (clipped) {
-        window->DrawList->PushClipRect(ring.Min, ring.Max);
+        const math::Rect shown = shape.apply(ring);
+        window->DrawList->PushClipRect(ImGuiConverter::toImVec2(shown.getMin()), ImGuiConverter::toImVec2(shown.getMax()));
     }
     const float rounding = radius + distance;
-    Surfaces::drawShape(context, {.bounds = math::Rect::fromMinMax({ring.Min.x, ring.Min.y}, {ring.Max.x, ring.Max.y}), .radii = {rounding, rounding, rounding, rounding}, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Focus)});
+    Surfaces::drawShape(context, {.bounds = ring, .radii = {rounding, rounding, rounding, rounding}, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Focus)});
     if (clipped) {
         window->DrawList->PopClipRect();
     }

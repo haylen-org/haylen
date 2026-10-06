@@ -14,6 +14,10 @@ ImRect ImGuiConverter::toImRect(const math::Rect& rect) noexcept {
     return {rect.x, rect.y, rect.getRight(), rect.getBottom()};
 }
 
+math::Rect ImGuiConverter::toRect(const ImRect& rect) noexcept {
+    return math::Rect::fromMinMax({rect.Min.x, rect.Min.y}, {rect.Max.x, rect.Max.y});
+}
+
 ImU32 ImGuiConverter::toImU32(math::Color color) noexcept {
     return ImGui::GetColorU32(toImVec4(color));
 }

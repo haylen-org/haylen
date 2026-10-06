@@ -55,6 +55,13 @@ class Context final {
         math::Vec2 scale{1.0F, 1.0F};
         math::Vec2 offset{};
         math::Color color = math::Color::white();
+
+        // Returns where a rectangle of the node lands on the screen.
+        [[nodiscard]] math::Rect apply(const math::Rect& rect) const noexcept {
+            const math::Vec2 first = rect.getMin() * scale + offset;
+            const math::Vec2 second = rect.getMax() * scale + offset;
+            return math::Rect::fromMinMax(math::Vec2::min(first, second), math::Vec2::max(first, second));
+        }
     };
 
     // Turns the events of the components of a collection cell into events of the collection while the cell draws.
