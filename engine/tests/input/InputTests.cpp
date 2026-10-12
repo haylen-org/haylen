@@ -143,13 +143,16 @@ TEST_F(InputTest, MouseIsReportedInDesignCoordinates) {
     input.handleEvent(move, viewport);
     EXPECT_EQ(input.getMousePosition(), math::Vec2(960.0F, 540.0F));
     EXPECT_EQ(input.getMouseFramebufferPosition(), math::Vec2(480.0F, 270.0F));
-    EXPECT_EQ(input.getMouseDelta(), math::Vec2(960.0F, 540.0F));
+    EXPECT_EQ(input.getMouseDelta(), math::Vec2{}) << "The pointer arrives without moving.";
     EXPECT_TRUE(input.isMouseInside());
 
+    move.position = math::Vec2(485.0F, 270.0F);
+    input.handleEvent(move, viewport);
+    EXPECT_EQ(input.getMouseDelta(), math::Vec2(10.0F, 0.0F));
     move.position = math::Vec2(490.0F, 270.0F);
     move.delta = math::Vec2(5.0F, 0.0F);
     input.handleEvent(move, viewport);
-    EXPECT_EQ(input.getMouseDelta(), math::Vec2(970.0F, 540.0F));
+    EXPECT_EQ(input.getMouseDelta(), math::Vec2(20.0F, 0.0F));
 
     platform::Event scroll;
     scroll.type = platform::Event::Type::MouseScroll;
@@ -308,6 +311,12 @@ TEST_F(InputTest, LastDeviceFollowsPressesInsteadOfHeldControls) {
     EXPECT_EQ(input.getLastDevice(), InputDevice::Gamepad);
 
     input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::A, true), viewport);
+    EXPECT_EQ(input.getLastDevice(), InputDevice::Gamepad);
+
+    // The on-screen keyboard types for the device in hand.
+    platform::Event onScreen = makeKeyEvent(platform::Event::Type::KeyDown, Key::Backspace);
+    onScreen.typedOnScreen = true;
+    input.handleEvent(onScreen, viewport);
     EXPECT_EQ(input.getLastDevice(), InputDevice::Gamepad);
 
     input.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, 1, math::Vec2(10.0F, 10.0F)), viewport);
@@ -514,6 +523,28 @@ TEST_F(ActionMapTest, BlockedInputHoldsEveryControlUntilItIsReleased) {
     actions.update(input, virtualInput, false);
     EXPECT_EQ(read(&ActionMap::isPressed), "111111");
     EXPECT_EQ(actions.getVector("stick"), math::Vec2(1.0F, 0.0F));
+}
+
+TEST_F(ActionMapTest, GivesAKeyPressedAgainWithinAFrameToTheSideThatHoldsItNow) {
+    ActionMap actions;
+    actions.define({.name = "back", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("key:escape")}});
+    Input input;
+    VirtualInput virtualInput;
+    const graphics::Viewport viewport = makeIdentityViewport();
+    ActionMap::Capture capture;
+    capture.keys.set(static_cast<std::size_t>(Key::Escape));
+    actions.setCapture(capture);
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::Escape), viewport);
+    actions.update(input, virtualInput, false);
+    EXPECT_FALSE(actions.isDown("back"));
+
+    // The UI lets go, and the key goes up and down again within one frame.
+    actions.setCapture({});
+    input.endFrame();
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyUp, Key::Escape), viewport);
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::Escape), viewport);
+    actions.update(input, virtualInput, false);
+    EXPECT_TRUE(actions.isPressed("back"));
 }
 
 TEST_F(ActionMapTest, RejectsInvalidDocuments) {

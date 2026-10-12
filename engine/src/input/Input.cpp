@@ -35,7 +35,7 @@ void Input::handleEvent(const platform::Event& event, const graphics::Viewport& 
             keysPressed.set(keyIndex(event.key));
         }
         modifiers = event.modifiers;
-        if (!event.repeat) {
+        if (!event.repeat && !event.typedOnScreen) {
             lastDevice = InputDevice::KeyboardMouse;
         }
         break;
@@ -63,10 +63,15 @@ void Input::handleEvent(const platform::Event& event, const graphics::Viewport& 
         mousePosition = viewport.toDesign(event.position);
         break;
     case platform::Event::Type::MouseMove: {
+        // A move without a delta of its own counts from the last position only while the pointer stayed inside, so a pointer that comes back elsewhere does not jump.
         const math::Vec2 previous = mousePosition;
         mouseFramebufferPosition = event.position;
         mousePosition = viewport.toDesign(event.position);
-        mouseDelta += event.delta.isZero() ? mousePosition - previous : event.delta / viewport.getPixelsPerUnit();
+        if (!event.delta.isZero()) {
+            mouseDelta += event.delta / viewport.getPixelsPerUnit();
+        } else if (mouseInside) {
+            mouseDelta += mousePosition - previous;
+        }
         mouseInside = true;
         break;
     }

@@ -26,7 +26,10 @@ class PointerEmulation final {
     }
     void setTouchAsMouse(bool value) noexcept;
 
-    // Returns the events that take the place of a platform event, in order: the event itself when nothing changes it, the finger the left mouse button becomes, or the mouse events a finger drives followed by the touch event.
+    // Forgets the press of the mouse or the finger that the emulation follows, for when the engine releases everything held, such as when the window loses the focus.
+    void releaseAll() noexcept;
+
+    // Returns the events that take the place of a platform event, in order: the event itself when nothing changes it, the finger the left mouse button becomes, or the mouse events a finger drives followed by the touch event. A press keeps the device it started as until it ends.
     [[nodiscard]] std::span<const platform::Event> convert(const platform::Event& event);
 
   private:
@@ -34,7 +37,7 @@ class PointerEmulation final {
     [[nodiscard]] std::span<const platform::Event> convertTouch(const platform::Event& event);
     void addMouse(platform::Event::Type type, math::Vec2 position);
 
-    std::array<platform::Event, 3> converted{};
+    std::array<platform::Event, 4> converted{};
     std::size_t count = 0;
     bool mouseAsTouch = false;
     bool touchAsMouse = false;

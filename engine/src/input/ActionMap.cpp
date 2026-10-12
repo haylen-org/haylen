@@ -383,12 +383,12 @@ void ActionMap::update(const Input& input, const VirtualInput& virtualInput, boo
     }
 }
 
-// A press that starts while the UI captures its key or button stays captured until the key or button is up again, so the actions never see it, not even once the UI lets go.
+// A press that starts while the UI captures its key or button stays captured until the key or button is up again, so the actions never see it, not even once the UI lets go. Every new press decides again, also one that follows a release within the same frame.
 void ActionMap::holdCaptured(const Input& input) noexcept {
     for (std::size_t code = 0; code < Controls::kKeyCount; ++code) {
         const auto key = static_cast<Key>(code);
-        if (input.isKeyPressed(key) && (capture.keyboard || capture.keys.test(code))) {
-            capturedKeys.set(code);
+        if (input.isKeyPressed(key)) {
+            capturedKeys.set(code, capture.keyboard || capture.keys.test(code));
         } else if (!input.isKeyDown(key)) {
             capturedKeys.reset(code);
         }
@@ -396,8 +396,8 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
     for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
         for (std::size_t code = 0; code < Controls::kGamepadButtonCount; ++code) {
             const auto button = static_cast<GamepadButton>(code);
-            if (input.isGamepadPressed(index, button) && capture.buttons.test(code)) {
-                capturedButtons[index].set(code);
+            if (input.isGamepadPressed(index, button)) {
+                capturedButtons[index].set(code, capture.buttons.test(code));
             } else if (!input.isGamepadDown(index, button)) {
                 capturedButtons[index].reset(code);
             }

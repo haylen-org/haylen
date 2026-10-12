@@ -73,7 +73,7 @@ TEST_F(PointerEmulationTest, LetsTheFirstFingerDriveTheMouse) {
     const std::span<const platform::Event> moved = emulation.convert(makeTouch(Type::TouchMoved, 1, {15.0F, 25.0F}));
     ASSERT_EQ(getTypes(moved), (std::vector{Type::MouseMove, Type::TouchMoved}));
     EXPECT_EQ(moved[0].position, math::Vec2(15.0F, 25.0F));
-    EXPECT_EQ(getTypes(emulation.convert(makeTouch(Type::TouchCancelled, 1, {15.0F, 25.0F}))), (std::vector{Type::MouseMove, Type::MouseUp, Type::TouchCancelled}));
+    EXPECT_EQ(getTypes(emulation.convert(makeTouch(Type::TouchCancelled, 1, {15.0F, 25.0F}))), (std::vector{Type::MouseMove, Type::MouseUp, Type::MouseLeave, Type::TouchCancelled}));
 
     // The next finger down takes the mouse over.
     EXPECT_EQ(getTypes(emulation.convert(makeTouch(Type::TouchEnded, 2, {310.0F, 20.0F}))), (std::vector{Type::TouchEnded}));

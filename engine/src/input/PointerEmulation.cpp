@@ -6,21 +6,25 @@ namespace haylen::input {
 
 void PointerEmulation::setMouseAsTouch(bool value) noexcept {
     mouseAsTouch = value;
-    mouseFingerDown = false;
 }
 
 void PointerEmulation::setTouchAsMouse(bool value) noexcept {
     touchAsMouse = value;
+}
+
+void PointerEmulation::releaseAll() noexcept {
+    mouseFingerDown = false;
     mouseFinger.reset();
 }
 
+// A press keeps the device it started as until it ends, also when the app changes the emulation meanwhile, so nothing stays held.
 std::span<const platform::Event> PointerEmulation::convert(const platform::Event& event) {
     count = 0;
     switch (event.type) {
     case platform::Event::Type::MouseDown:
     case platform::Event::Type::MouseUp:
     case platform::Event::Type::MouseMove:
-        if (mouseAsTouch) {
+        if (mouseAsTouch || mouseFingerDown) {
             return convertMouse(event);
         }
         break;
@@ -28,7 +32,7 @@ std::span<const platform::Event> PointerEmulation::convert(const platform::Event
     case platform::Event::Type::TouchMoved:
     case platform::Event::Type::TouchEnded:
     case platform::Event::Type::TouchCancelled:
-        if (touchAsMouse) {
+        if (touchAsMouse || mouseFinger) {
             return convertTouch(event);
         }
         break;
@@ -38,7 +42,7 @@ std::span<const platform::Event> PointerEmulation::convert(const platform::Event
     return {&event, 1};
 }
 
-// The left button and the moves while it is held become one finger, the moves without a button vanish as touch screens have no hover, and the other buttons stay mouse buttons.
+// The left button and the moves while it is held become one finger, the moves without a button vanish as touch screens have no hover, and the other buttons stay mouse buttons. A release whose press came before the emulation stays a mouse release.
 std::span<const platform::Event> PointerEmulation::convertMouse(const platform::Event& event) {
     if (event.type != platform::Event::Type::MouseMove && event.mouseButton != MouseButton::Left) {
         return {&event, 1};
@@ -48,7 +52,7 @@ std::span<const platform::Event> PointerEmulation::convertMouse(const platform::
         type = platform::Event::Type::TouchBegan;
         mouseFingerDown = true;
     } else if (!mouseFingerDown) {
-        return {};
+        return event.type == platform::Event::Type::MouseUp ? std::span<const platform::Event>{&event, 1} : std::span<const platform::Event>{};
     } else if (event.type == platform::Event::Type::MouseUp) {
         type = platform::Event::Type::TouchEnded;
         mouseFingerDown = false;
@@ -63,11 +67,11 @@ std::span<const platform::Event> PointerEmulation::convertMouse(const platform::
     return {converted.data(), count};
 }
 
-// The first finger down drives the mouse until it lifts, and its mouse events come before the touch event, so the touch screen stays the last device the app used.
+// The first finger down drives the mouse until it lifts, and its mouse events come before the touch event, so the touch screen stays the last device the app used. The mouse leaves when the finger lifts, as a touch screen has no hover, so the next finger to land moves the mouse there without a jump.
 std::span<const platform::Event> PointerEmulation::convertTouch(const platform::Event& event) {
     const std::span<const platform::TouchPoint> points(event.touches.data(), event.touchCount);
     const auto changed = [](const platform::TouchPoint& point) { return point.changed; };
-    if (!mouseFinger && event.type == platform::Event::Type::TouchBegan) {
+    if (!mouseFinger && touchAsMouse && event.type == platform::Event::Type::TouchBegan) {
         if (const auto first = std::ranges::find_if(points, changed); first != points.end()) {
             mouseFinger = first->id;
             addMouse(platform::Event::Type::MouseMove, first->position);
@@ -79,6 +83,7 @@ std::span<const platform::Event> PointerEmulation::convertTouch(const platform::
             addMouse(platform::Event::Type::MouseMove, finger->position);
             if (event.type != platform::Event::Type::TouchMoved) {
                 addMouse(platform::Event::Type::MouseUp, finger->position);
+                addMouse(platform::Event::Type::MouseLeave, finger->position);
                 mouseFinger.reset();
             }
         }

@@ -52,6 +52,8 @@ struct Event {
     Type type = Type::KeyDown;
     input::Key key = input::Key::Unknown;
     bool repeat = false;
+    // Whether the plain on-screen keyboard typed the key, which the player works with the device in hand, so the key never makes the keyboard the last device used.
+    bool typedOnScreen = false;
     input::KeyModifiers modifiers{};
     char32_t character = 0;
     input::MouseButton mouseButton = input::MouseButton::Left;

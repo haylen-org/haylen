@@ -579,6 +579,7 @@ void Engine::setAppState(AppState value) {
 void Engine::releaseHeldInput() {
     EngineState& current = *state;
     current.input.releaseAll();
+    current.pointerEmulation.releaseAll();
     current.gestures.cancel();
     current.virtualInput.clear();
 }

@@ -347,12 +347,14 @@ int InputLua::editText(lua_State* L) {
     }
     state.text = lua::Stack::read<std::string>(L, -1);
     lua_pop(L, 1);
+    // A selection with one end given is a caret there, and one with no end given is a caret at the end of the text.
     const auto length = static_cast<int>(core::Utf8::countCodePoints(state.text));
-    state.selectionStart = length;
-    state.selectionEnd = length;
-    lua::Table::readField(L, 1, "selectionStart", state.selectionStart);
-    state.selectionEnd = std::max(state.selectionEnd, state.selectionStart);
-    lua::Table::readField(L, 1, "selectionEnd", state.selectionEnd);
+    std::optional<int> start;
+    std::optional<int> end;
+    lua::Table::readField(L, 1, "selectionStart", start);
+    lua::Table::readField(L, 1, "selectionEnd", end);
+    state.selectionStart = start.value_or(end.value_or(length));
+    state.selectionEnd = end.value_or(state.selectionStart);
     if (state.selectionStart < 0 || state.selectionEnd < state.selectionStart || state.selectionEnd > length) {
         return luaL_error(L, "The selection of a text field must run from 0 to the length of its text, with \"selectionStart\" not past \"selectionEnd\".");
     }

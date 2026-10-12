@@ -48,7 +48,7 @@ std::vector<Event> KeyboardTranslator::translate(const Event& event) {
         } else if (character == U'\t') {
             press(events, input::Key::Tab);
         } else {
-            events.push_back({.type = Event::Type::Character, .character = character});
+            events.push_back({.type = Event::Type::Character, .typedOnScreen = true, .character = character});
         }
     }
     committed = std::move(text);
@@ -56,8 +56,8 @@ std::vector<Event> KeyboardTranslator::translate(const Event& event) {
 }
 
 void KeyboardTranslator::press(std::vector<Event>& events, input::Key key) {
-    events.push_back({.type = Event::Type::KeyDown, .key = key});
-    events.push_back({.type = Event::Type::KeyUp, .key = key});
+    events.push_back({.type = Event::Type::KeyDown, .key = key, .typedOnScreen = true});
+    events.push_back({.type = Event::Type::KeyUp, .key = key, .typedOnScreen = true});
 }
 
 } // namespace haylen::platform

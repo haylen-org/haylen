@@ -124,6 +124,9 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
     EXPECT_EQ(describe(edit("hi their\n")), enter);
     EXPECT_EQ(describe(Event{.type = Event::Type::TextAction, .textAction = TextInput::Action::Submit}), enter);
     EXPECT_EQ(describe(Event{.type = Event::Type::TextAction, .textAction = TextInput::Action::Dismissed}), "");
+    for (const Event& typed : keyboard.translate(edit("hi their!"))) {
+        EXPECT_TRUE(typed.typedOnScreen);
+    }
 
     keyboard.reset();
     EXPECT_EQ(describe(edit("new")), "new");

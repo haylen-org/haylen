@@ -58,11 +58,14 @@ TEST_F(InputLuaTest, ReadsMouseInDesignCoordinates) {
     fixture.host().resize({960.0F, 540.0F});
     fixture.frames(1);
 
+    // The pointer arrives without moving, and moves from there.
+    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseMove, {60.0F, 30.0F}));
+    EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "0.0,0.0");
     engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseMove, {100.0F, 50.0F}));
     engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 50.0F}, MouseButton::Right));
     engine.handleEvent({.type = platform::Event::Type::MouseScroll, .scroll = {0.0F, -2.0F}});
     EXPECT_EQ(lua("local x, y = input.mousePosition() return x .. ',' .. y"), "200.0,100.0");
-    EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "200.0,100.0");
+    EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "80.0,40.0");
     EXPECT_EQ(lua("local x, y = input.mouseScroll() return x .. ',' .. y"), "0.0,-2.0");
     EXPECT_EQ(lua("return input.mouseDown('right') and input.mousePressed('right') and not input.mouseDown()"), "true");
     EXPECT_EQ(lua("return input.mouseInside()"), "true");
@@ -227,7 +230,54 @@ TEST_F(InputLuaTest, TurnsTheMouseIntoAFingerAndAFingerIntoTheMouse) {
     engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
     EXPECT_EQ(lua("local x, y = input.mousePosition() return tostring(input.mousePressed('left')) .. ' ' .. x .. ',' .. y .. ' ' .. #input.touches() .. ' ' .. input.lastDevice()"), "true 300.0,150.0 1 touch");
     engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchEnded, {300.0F, 150.0F}));
-    EXPECT_EQ(lua("return tostring(input.mouseReleased('left'))"), "true");
+    EXPECT_EQ(lua("return tostring(input.mouseReleased('left')) .. ' ' .. tostring(input.mouseInside())"), "true false");
+    fixture.frames(1);
+
+    // A finger that lands elsewhere takes the mouse there without a jump.
+    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {800.0F, 500.0F}));
+    EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "0.0,0.0");
+    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchMoved, {810.0F, 500.0F}));
+    EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "10.0,0.0");
+}
+
+TEST_F(InputLuaTest, KeepsAPressOnTheDeviceItStartedAs) {
+    core::Engine& engine = fixture.engine();
+    lua("input.setTouchAsMouse(true)");
+    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
+    fixture.frames(1);
+    lua("input.setTouchAsMouse(false)");
+    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchEnded, {300.0F, 150.0F}));
+    EXPECT_EQ(lua("return tostring(input.mouseDown('left')) .. ' ' .. tostring(input.mouseReleased('left'))"), "false true");
+    fixture.frames(1);
+
+    lua("input.setMouseAsTouch(true)");
+    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 200.0F}));
+    fixture.frames(1);
+    lua("input.setMouseAsTouch(false)");
+    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, {100.0F, 200.0F}));
+    EXPECT_EQ(lua("return input.touches()[1].phase .. ' ' .. tostring(input.mouseReleased('left'))"), "ended false");
+    fixture.frames(1);
+
+    // A release whose press came before the emulation stays a release of the mouse.
+    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 200.0F}));
+    lua("input.setMouseAsTouch(true)");
+    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, {100.0F, 200.0F}));
+    EXPECT_EQ(lua("return tostring(input.mouseDown('left')) .. ' ' .. #input.touches()"), "false 0");
+}
+
+TEST_F(InputLuaTest, ForgetsTheEmulatedPressWhenTheWindowLosesTheFocus) {
+    core::Engine& engine = fixture.engine();
+    lua("input.setTouchAsMouse(true)");
+    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
+    engine.handleEvent({.type = platform::Event::Type::FocusLost});
+    engine.handleEvent({.type = platform::Event::Type::FocusGained});
+    fixture.frames(1);
+
+    // The finger the platform never ended no longer holds the mouse, so the next finger drives it.
+    platform::Event next = makeTouchEvent(platform::Event::Type::TouchBegan, {500.0F, 150.0F});
+    next.touches[0].id = 8;
+    engine.handleEvent(next);
+    EXPECT_EQ(lua("local x = input.mousePosition() return tostring(input.mousePressed('left')) .. ' ' .. x"), "true 500.0");
 }
 
 TEST(InputLuaAppTest, TakesThePointerDevicesFromTheAppSettings) {
@@ -261,6 +311,16 @@ TEST_F(InputLuaTest, EditsATextFieldTheAppDrawsWithTheNativeTextInput) {
     lua("input.editText({text = '', x = 100, y = 200, width = 400, height = 60})");
     ASSERT_EQ(published.size(), 2U);
     EXPECT_GT(published[1].revision, published[0].revision);
+
+    // One end of the selection makes a caret there.
+    lua("input.editText({text = 'abc', selectionStart = 1, x = 100, y = 200, width = 400, height = 60})");
+    ASSERT_EQ(published.size(), 3U);
+    EXPECT_EQ(published[2].selectionStart, 1);
+    EXPECT_EQ(published[2].selectionEnd, 1);
+    lua("input.editText({text = 'abc', selectionEnd = 2, x = 100, y = 200, width = 400, height = 60})");
+    ASSERT_EQ(published.size(), 4U);
+    EXPECT_EQ(published[3].selectionStart, 2);
+    EXPECT_EQ(published[3].selectionEnd, 2);
 
     lua("input.finishText()");
     EXPECT_FALSE(fixture.host().getTextInput().isEditing());

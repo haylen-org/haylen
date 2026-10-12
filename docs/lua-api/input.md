@@ -231,7 +231,7 @@ scene.push({
 
 ### input.mouseDelta()
 
-Returns how far the mouse moved in this frame, in design units, as two numbers. It keeps reporting movement while the mouse is locked with `window.setMouseLocked()`.
+Returns how far the mouse moved in this frame, in design units, as two numbers. It keeps reporting movement while the mouse is locked with `window.setMouseLocked()`. A pointer that comes into the window, or a finger that lands while it drives the mouse, arrives without moving, so the mouse never jumps from where it left.
 
 ```lua
 local input = require('haylen.input')
@@ -274,7 +274,7 @@ scene.push({
 
 ### input.mouseInside()
 
-Returns `true` while the mouse is inside the window.
+Returns `true` while the mouse is inside the window. A finger that drives the mouse with `input.setTouchAsMouse()` takes it out of the window when it lifts, as a touch screen has no hover.
 
 ```lua
 local input = require('haylen.input')
@@ -633,7 +633,7 @@ print(input.scrollSpeed()) -- 1
 
 ### input.lastDevice()
 
-Returns the kind of device the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboardMouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Only the press counts, so key repeats and a gamepad button or stick that stays held never take over from a device the player used afterwards. Use it to show the matching button prompts or on-screen controls.
+Returns the kind of device the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboardMouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Only the press counts, so key repeats and a gamepad button or stick that stays held never take over from a device the player used afterwards, and neither do the keys of the plain on-screen keyboard that `window.setKeyboardVisible()` opens, which the player types with the device in hand. Use it to show the matching button prompts or on-screen controls.
 
 ```lua
 local input = require('haylen.input')
@@ -650,7 +650,7 @@ scene.push({
 
 ### input.setMouseAsTouch(enabled)
 
-Makes the mouse act as a finger, so an app made for touch screens runs with a mouse. The left button becomes a touch with an id that no real finger has, which begins, moves while the button is held and ends, and `input.lastDevice()` reports `'touch'`, so controls with `touchOnly` show. Moves without a button disappear, as touch screens have no hover, while the right and middle buttons and the wheel stay mouse input. The UI, gestures, touch controls and the app all see the finger. The `app.json` key `input.mouseAsTouch` sets it at start, and a desktop build that tests touch controls is the usual use.
+Makes the mouse act as a finger, so an app made for touch screens runs with a mouse. The left button becomes a touch with an id that no real finger has, which begins, moves while the button is held and ends, and `input.lastDevice()` reports `'touch'`, so controls with `touchOnly` show. Moves without a button disappear, as touch screens have no hover, while the right and middle buttons and the wheel stay mouse input. The UI, gestures, touch controls and the app all see the finger. A press keeps the device it started as until it ends, so turning the emulation on or off while the button is held never leaves a finger or a button down. The `app.json` key `input.mouseAsTouch` sets it at start, and a desktop build that tests touch controls is the usual use.
 
 ```lua
 local input = require('haylen.input')
@@ -673,7 +673,7 @@ end
 
 ### input.setTouchAsMouse(enabled)
 
-Makes a finger act as the mouse as well, so an app that reads the mouse runs on a touch screen. The first finger down drives the left button and the mouse position until it lifts, and the next finger down takes over from then. The touches still arrive as touches, so touch controls and gestures keep working, and `input.lastDevice()` stays `'touch'`. The `app.json` key `input.touchAsMouse` sets it at start.
+Makes a finger act as the mouse as well, so an app that reads the mouse runs on a touch screen. The first finger down drives the left button and the mouse position until it lifts, the mouse leaves the window with it, and the next finger down takes over from then. A finger that drives the mouse keeps driving it until it lifts, also when the emulation turns off meanwhile. The touches still arrive as touches, so touch controls and gestures keep working, and `input.lastDevice()` stays `'touch'`. The `app.json` key `input.touchAsMouse` sets it at start.
 
 ```lua
 local input = require('haylen.input')
@@ -711,7 +711,7 @@ Starts editing the text field of the app, or follows it when it changes or moves
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `text` | string | required | The text of the field. |
-| `selectionStart`, `selectionEnd` | integer | the end of the text | The selection in code points, the caret when both are equal. |
+| `selectionStart`, `selectionEnd` | integer | the other end, or the end of the text | The selection in code points, the caret when both are equal. A field with one end given has the caret there. |
 | `x`, `y`, `width`, `height` | number | `0` | The place of the field in design coordinates, where the platform shows its input method windows and which it keeps above the on-screen keyboard. |
 | `keyboard` | string | `'text'` | `'text'`, `'multiline'`, `'number'`, `'decimal'`, `'phone'`, `'email'`, `'url'`, `'search'` or `'password'`. |
 | `returnKey` | string | `'default'` | `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'`. |
