@@ -1,4 +1,4 @@
-# The desktop entry of the app. The tool haylen.py completes it into haylen/app.desktop with the name, the description, the executable, the icon and the window class from app.json, and a key given here wins.
+# The desktop entry of the app. The tool `haylen.py` completes it into `haylen/app.desktop` with the name, the description, the executable, the icon and the window class from `app.json`, and a key given here wins.
 [Desktop Entry]
 Type=Application
 Terminal=false

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The AppStream metainfo of the app, which software centers show. The tool haylen.py completes it into haylen/app.metainfo.xml with the identifier, the name, the summary, the description, the developer, the desktop entry and the release from app.json, and an element given here wins. -->
+<!-- The AppStream metainfo of the app, which software centers show. The tool `haylen.py` completes it into `haylen/app.metainfo.xml` with the identifier, the name, the summary, the description, the developer, the desktop entry and the website from `app.json`, and an element given here wins. -->
 <component type="desktop-application">
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>LicenseRef-proprietary</project_license>

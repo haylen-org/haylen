@@ -517,7 +517,7 @@ The files of `platform/web/` of the app, or of the template, go as they are into
 | `HaylenApp.h` | On Windows, the values of `app.json` as strings of the resource script and the version as four numbers, which `resources/app.rc` includes. |
 | `app.desktop`, `app.metainfo.xml` | On Linux, the desktop entry and the AppStream metainfo of the project completed with the values of `app.json`, as [linux](#linux) describes. |
 
-The executable is named after the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts. `run` configures the project with the configuration of `--config` in `cmake/<platform>-<config>/` of the build folder of the app, builds it and installs it again into `installed/<platform>/` of the build folder, which is the app as it ships:
+The executable is named after the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts. The command `run` configures the project with the configuration of `--config` in `cmake/<platform>-<config>/` of the build folder of the app, builds it and installs it again into `installed/<platform>/` of the build folder, which is the app as it ships:
 
 ```text
 build/apps/my-game-1a2b3c4d/installed/windows/
