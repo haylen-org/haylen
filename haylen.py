@@ -22,6 +22,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tarfile
 import tempfile
 import textwrap
 import threading
@@ -79,6 +80,17 @@ GRADLE_VERSION = "9.8.0"
 # XcodeGen generates the Apple projects from their `project.yml`. The hash is the one of the `xcodegen.zip` asset of the release.
 XCODEGEN_VERSION = "2.46.0"
 XCODEGEN_SHA256 = "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+# The AppImage generator of CPack packs a Linux app with appimagetool, starts it with the AppImage runtime and points the libraries it bundles at the image with patchelf. The hashes are the ones of the release assets of each architecture.
+APPIMAGETOOL_VERSION = "1.9.1"
+APPIMAGE_RUNTIME_VERSION = "20251108"
+PATCHELF_VERSION = "0.19.2"
+APPIMAGE_TOOLS_SHA256 = {
+    "x86_64": {"appimagetool": "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0", "runtime": "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d", "patchelf": "2abdc34fbe949c995a1baa4ec310896a085588a45a99cd0d726851bdfac2a4bb"},
+    "aarch64": {"appimagetool": "f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158", "runtime": "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444", "patchelf": "ba6850c1a6f4cbdb050e1cc22fa5239159ad31c43606846e49c408d335f594ff"},
+}
+# The installer generator of CPack makes the Windows installer with Inno Setup. The hash is the one of the x64 installer of the release.
+INNO_SETUP_VERSION = "7.1.0"
+INNO_SETUP_SHA256 = "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f"
 ANDROID_NDK_VERSION = "30.0.16248370"
 EMSDK_VERSION = "6.0.10"
 # The miniaudio library plays through AAudio from Android 8.1 on, and the engine builds it without OpenSL ES, like the `minSdk` of the Android library and template.
@@ -952,6 +964,11 @@ class App:
             raise BuildError(f'The "orientation" of `{where}` must be "landscape", "portrait" or "any".')
         if not re.fullmatch(r"\d+(\.\d+){0,2}", self.version):
             raise BuildError(f'The "version" of `{where}` must be one to three numbers separated by dots, such as "1.2.0".')
+        # The publisher of the app follows its name until it gives its own, as the engine reads it.
+        self.description: str = document.get("description", self.name)
+        self.company: str = document.get("company", self.name)
+        self.copyright: str = document.get("copyright", f"Copyright \u00a9 {self.company}")
+        self.website: str = document.get("website", "")
 
         # A transparent window clears to transparent, and an app without a taskbar button also leaves out its Dock icon on macOS.
         window = document.get("window", {})
@@ -981,8 +998,12 @@ class App:
             self.native.append(plugin.native)
 
     @property
-    def slug(self) -> str:
-        return self.folder.name
+    def executable(self) -> str:
+        """The name of the executable and the packages of desktop apps: the app folder in lowercase dash-case, which every package format accepts."""
+        name = re.sub(r"[^a-z0-9]+", "-", self.folder.name.lower()).strip("-")
+        if not name:
+            raise BuildError(f'The app folder name "{self.folder.name}" gives no executable name. Rename the folder with letters or digits.')
+        return name
 
     @property
     def build_folder(self) -> Path:
@@ -2281,12 +2302,15 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
     write_if_changed(generated / "project.yml", header + json.dumps(document, indent=4) + "\n")
 
 
-# The bootstrap of the debug builds of an Apple project, which read the package as it is, and which stops a release build of a project that holds no protected release.
-DEVELOPMENT_BOOTSTRAP = """// Written by haylen.py for the debug builds of the app, which read its package as it is. A release build needs the protected release and the bootstrap of the app, which "haylen.py prepare" writes with "--config Release".
-#if !DEBUG
-#error "The project holds the development package of the app, which release builds never ship. Prepare it with \"haylen prepare\" and the app folder with \"--config Release\"."
-#endif
-"""
+def development_bootstrap(release: str) -> str:
+    """The bootstrap of the debug builds of a project, which read the package as it is, and which stops a build of the project where the condition of the preprocessor marks a release, since the project holds no protected release."""
+    return "\n".join([
+        '// Written by haylen.py for the debug builds of the app, which read its package as it is. A release build needs the protected release and the bootstrap of the app, which "haylen.py prepare" writes with "--config Release".',
+        f"#if {release}",
+        '#error "The project holds the development package of the app, which release builds never ship. Prepare it with \\"haylen prepare\\" and the app folder with \\"--config Release\\"."',
+        "#endif",
+        "",
+    ])
 
 
 def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_config: str, jobs: int) -> None:
@@ -2306,7 +2330,7 @@ def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_c
         write_bootstrap(app, CONTENT_PROFILES[run_platform], generated / BOOTSTRAP_SOURCE, engine_config, jobs)
     else:
         copy_package(app, generated / "app")
-        write_if_changed(generated / BOOTSTRAP_SOURCE, DEVELOPMENT_BOOTSTRAP)
+        write_if_changed(generated / BOOTSTRAP_SOURCE, development_bootstrap("!DEBUG"))
     write_apple_splash(app, generated)
     write_apple_xcconfig(app, generated, prepare_apple_native(app, generated, run_platform, jobs))
     write_apple_plists(app, root, generated)
@@ -3061,59 +3085,364 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
         stop.set()
 
 
-# Windows and Linux: the player named after the app next to its package, its native libraries and the files of `platform/windows` or `platform/linux` of the app.
+# Windows and Linux: the CMake project of `platform/windows` or `platform/linux` includes `haylen/haylen.cmake`, which brings the SDK of the desktop artifacts, the package, the native libraries and the values of `app.json`, and haylen.py builds it in place and installs the app into the build folder of the app.
+
+# Where the installed app keeps its executable, its package and its native libraries: next to each other on Windows, and in `lib/<executable>` on Linux, where `bin/<executable>` links to the executable.
+DESKTOP_LAYOUTS = {"windows": ("", "{executable}.exe"), "linux": ("lib/{executable}", "bin/{executable}")}
+# The class of the window of a Linux app is the identifier of `app.json`, which desktops match with the desktop entry of the same name.
+DESKTOP_ENTRY_KEYS = ("Name", "Comment", "Exec", "Icon", "StartupWMClass")
+APPSTREAM_ELEMENTS = ("id", "name", "summary", "description", "developer", "launchable", "url")
+# The engine needs the Common Controls of version 6 for the message dialogs of Windows and UTF-8 as the code page of the process, which the application manifest of the executable selects.
+WINDOWS_MANIFEST_NEEDS = {
+    "the Common Controls of version 6, which the message dialogs of Haylen need": ("Microsoft.Windows.Common-Controls", '<dependency>\n  <dependentAssembly>\n    <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>\n  </dependentAssembly>\n</dependency>'),
+    "UTF-8 as the code page of the process, which the text of Haylen needs": ("<activeCodePage", '<activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>'),
+}
+WINDOWS_MANIFEST_RESOURCE = 24
 
 
-RELEASE_EXECUTABLE_PROJECT = """# Written by haylen.py for the release build of the app: the Lua player with the bootstrap of the app, linked against the SDK of the prebuilt engine, with hidden symbols and no debug information.
-cmake_minimum_required(VERSION 3.28)
-project(haylen_release LANGUAGES C CXX)
-find_package(haylen REQUIRED CONFIG)
-add_executable(haylen_release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
-target_link_libraries(haylen_release PRIVATE haylen::runtime)
-set_target_properties(haylen_release PROPERTIES OUTPUT_NAME "{name}" CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
-if(WIN32)
-  set_target_properties(haylen_release PROPERTIES WIN32_EXECUTABLE ON)
-  target_sources(haylen_release PRIVATE "${{HAYLEN_ENGINE_DIR}}/platform/windows/haylen.manifest")
-else()
-  set_target_properties(haylen_release PROPERTIES BUILD_RPATH "$ORIGIN;$ORIGIN/lib")
-  target_link_options(haylen_release PRIVATE "LINKER:--enable-new-dtags" "LINKER:--strip-all")
-endif()
-"""
+def cmake_text(value: str) -> str:
+    """Writes a value as a bracket argument of CMake, which keeps every character as it is."""
+    level = 0
+    while f"]{'=' * level}]" in value:
+        level += 1
+    return f"[{'=' * level}[{value}]{'=' * level}]"
 
 
-def build_release_executable(app: App, args: argparse.Namespace) -> Path:
-    """Links the release executable of a Windows or Linux app, the Lua player with the bootstrap of the app, against the SDK of the desktop artifacts, so the app carries keys of its own and ships no symbols, and returns it."""
-    if not desktop_sdk().is_dir():
-        raise BuildError(f'The desktop artifacts hold no SDK. Build them again with "{TOOL} engine --platform desktop".')
-    project = app.build_folder / "release-executable"
-    write_bootstrap(app, CONTENT_PROFILES[args.platform], project / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
-    write_if_changed(project / "CMakeLists.txt", RELEASE_EXECUTABLE_PROJECT.format(bootstrap=BOOTSTRAP_SOURCE, name=app.slug))
-    build = project / "build"
-    terminal.step(f'Linking the release executable of `{shown_path(app.folder)}`')
-    run(["cmake", "-S", project, "-B", build, *cmake_generator(), "-DCMAKE_BUILD_TYPE=Release", f"-DCMAKE_PREFIX_PATH={desktop_sdk()}"])
-    run(["cmake", "--build", build, "--config", "Release", "--parallel", str(args.jobs)])
-    return build / executable_name(app.slug)
+def desktop_cmake(platform: str, engine_config: str, values: dict[str, str]) -> str:
+    """Writes `haylen/haylen.cmake`: the values of `app.json`, the SDK of the desktop artifacts, and `haylen_app`, which makes a target the executable of the app, with the Lua player of the engine and the bootstrap of the app."""
+    lines = [
+        "# Written by haylen.py from app.json, the native libraries of the app and the engine artifacts. The file CMakeLists.txt of the project includes it before its targets.",
+        *(f"set({name} {cmake_text(value)})" for name, value in values.items()),
+        'set(HAYLEN_PACKAGE_DIR "${CMAKE_CURRENT_LIST_DIR}/app")',
+        'set(HAYLEN_NATIVE_DIR "${CMAKE_CURRENT_LIST_DIR}/native")',
+        f"find_package(haylen REQUIRED CONFIG PATHS {cmake_text(desktop_sdk().as_posix())} NO_DEFAULT_PATH)",
+        "",
+        "# Makes a target the executable of the app, the Lua player of the engine with the bootstrap of the app. The executable of the build tree plays the package and loads the native libraries next to it, as the installed app does.",
+        "function(haylen_app target)",
+        '  target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/src/platform/sokol/LuaPlayer.cpp" "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/HaylenBootstrap.cpp")',
+        "  target_link_libraries(${target} PRIVATE haylen::runtime)",
+        '  set_target_properties(${target} PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")',
+        '  set(package "${CMAKE_BINARY_DIR}/bin/app")',
+        '  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")',
+    ]
+    if platform == "windows":
+        runtime = "MultiThreadedDebugDLL" if engine_config == "Debug" else "MultiThreadedDLL"
+        lines += [
+            f"  # The engine links the C runtime of its {engine_config} build, so every configuration of the app does too.",
+            f"  set_target_properties(${{target}} PROPERTIES MSVC_RUNTIME_LIBRARY {runtime})",
+            "  # Windows links folders as junctions, which need no privileges.",
+            '  if(NOT EXISTS "${package}" AND CMAKE_HOST_WIN32)',
+            '    file(TO_NATIVE_PATH "${package}" link)',
+            '    file(TO_NATIVE_PATH "${HAYLEN_PACKAGE_DIR}" original)',
+            '    execute_process(COMMAND cmd.exe /c mklink /J "${link}" "${original}" OUTPUT_QUIET COMMAND_ERROR_IS_FATAL ANY)',
+            '  elseif(NOT EXISTS "${package}")',
+            '    file(CREATE_LINK "${HAYLEN_PACKAGE_DIR}" "${package}" SYMBOLIC)',
+            "  endif()",
+            '  add_custom_target(${target}_native ALL COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin" VERBATIM)',
+        ]
+    else:
+        lines += [
+            '  set_target_properties(${target} PROPERTIES BUILD_RPATH "$ORIGIN;$ORIGIN/lib" INSTALL_RPATH "$ORIGIN;$ORIGIN/lib")',
+            '  target_link_options(${target} PRIVATE "LINKER:--enable-new-dtags" "$<$<CONFIG:Release>:LINKER:--strip-all>")',
+            '  if(NOT EXISTS "${package}")',
+            '    file(CREATE_LINK "${HAYLEN_PACKAGE_DIR}" "${package}" SYMBOLIC)',
+            '    file(CREATE_LINK "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin/lib" SYMBOLIC)',
+            "  endif()",
+        ]
+    return "\n".join([*lines, "endfunction()", ""])
+
+
+def rc_text(value: str) -> str:
+    """Writes a value as a string of a resource script, where a quote doubles and a backslash starts an escape."""
+    return '"' + value.replace("\\", "\\\\").replace('"', '""').replace("\n", "\\n") + '"'
+
+
+def write_windows_resources(app: App, generated: Path) -> None:
+    """Writes `HaylenApp.h`, which gives the resource script of the project the name, the version, the company and the copyright of `app.json` for the version resource of the executable."""
+    numbers = [*app.version.split("."), "0", "0", "0"][:4]
+    strings = {"NAME": app.name, "DESCRIPTION": app.description, "COMPANY": app.company, "COPYRIGHT": app.copyright, "EXECUTABLE": f"{app.executable}.exe", "VERSION": app.version}
+    lines = [
+        "// Written by haylen.py from app.json. The resource script of the project includes it.",
+        *(f"#define HAYLEN_APP_{name} {rc_text(value)}" for name, value in strings.items()),
+        f"#define HAYLEN_APP_VERSION_NUMBERS {', '.join(numbers)}",
+        "",
+    ]
+    write_if_changed(generated / "HaylenApp.h", "\n".join(lines))
+
+
+def desktop_entry_text(value: str) -> str:
+    """Escapes a value of a desktop entry, whose strings take backslash escapes."""
+    return value.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r")
+
+
+def complete_desktop_entry(text: str, generated: dict[str, str], where: str, warnings: list[str]) -> str:
+    """Completes the `[Desktop Entry]` group of a desktop entry of the developer with the generated keys it lacks, where the keys of the developer win and one that differs stays with a warning."""
+    lines = text.splitlines()
+    group = next((index for index, line in enumerate(lines) if line.strip() == "[Desktop Entry]"), None)
+    if group is None:
+        raise BuildError(f'The desktop entry `{where}` has no "[Desktop Entry]" group. Restore it from the template.')
+    end = next((index for index in range(group + 1, len(lines)) if lines[index].startswith("[")), len(lines))
+    while end > group + 1 and not lines[end - 1].strip():
+        end -= 1
+    own = {line.split("=", 1)[0].strip(): line.split("=", 1)[1].strip() for line in lines[group + 1 : end] if "=" in line and not line.lstrip().startswith("#")}
+    added = []
+    for key, value in generated.items():
+        if key not in own:
+            added.append(f"{key}={desktop_entry_text(value)}")
+        elif own[key] != desktop_entry_text(value):
+            warnings.append(f'The key "{key}" of `{where}` keeps its value "{own[key]}", while "app.json" gives "{desktop_entry_text(value)}".')
+    return "\n".join(["# Written by haylen.py from app.json and the desktop entry of the project.", *lines[:end], *added, *lines[end:]]) + "\n"
+
+
+def complete_metainfo(text: str, generated: list[xml.etree.ElementTree.Element], where: str, warnings: list[str]) -> str:
+    """Completes the AppStream metainfo of the developer with the generated elements of `component` it lacks, where an element of the developer wins and one whose text differs stays with a warning."""
+    try:
+        component = xml.etree.ElementTree.fromstring(text)
+    except xml.etree.ElementTree.ParseError as error:
+        raise BuildError(f"The AppStream metainfo `{where}` is not valid XML: {error}.") from error
+    if component.tag != "component":
+        raise BuildError(f'The AppStream metainfo `{where}` must hold one "component" element. Restore it from the template.')
+    added = 0
+    for element in generated:
+        own = component.find(element.tag)
+        if own is None:
+            component.insert(added, element)
+            added += 1
+        elif own.text is not None and element.text is not None and own.text.strip() != element.text.strip():
+            warnings.append(f'The element "{element.tag}" of `{where}` keeps its value "{own.text.strip()}", while "app.json" gives "{element.text.strip()}".')
+    xml.etree.ElementTree.indent(component, "  ")
+    header = "<!-- Written by haylen.py from app.json and the AppStream metainfo of the project. -->"
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n{header}\n{xml.etree.ElementTree.tostring(component, encoding="unicode")}\n'
+
+
+def appstream_elements(app: App) -> list[xml.etree.ElementTree.Element]:
+    """The elements of the AppStream metainfo that come from `app.json`, in the order the specification lists them. The developer id is the identifier of the app without its last part, the domain of its publisher."""
+    def element(tag: str, text: str | None = None, **attributes: str) -> xml.etree.ElementTree.Element:
+        created = xml.etree.ElementTree.Element(tag, attributes)
+        created.text = text
+        return created
+
+    description = element("description")
+    description.append(element("p", app.description))
+    developer = element("developer", id=app.identifier.rsplit(".", 1)[0])
+    developer.append(element("name", app.company))
+    elements = [element("id", app.identifier), element("name", app.name), element("summary", app.description), description, developer, element("launchable", f"{app.identifier}.desktop", type="desktop-id")]
+    if app.website:
+        elements.append(element("url", app.website, type="homepage"))
+    return elements
+
+
+def write_linux_entries(app: App, root: Path, generated: Path) -> None:
+    """Writes `app.desktop` and `app.metainfo.xml`, the desktop entry and the AppStream metainfo of the project completed with the name, the description, the executable, the icon, the window class, the publisher and the website of `app.json`."""
+    warnings: list[str] = []
+    entry = root / "resources" / "app.desktop"
+    metainfo = root / "resources" / "app.metainfo.xml"
+    for path in (entry, metainfo):
+        if not path.is_file():
+            raise BuildError(f'The Linux project `{shown_path(root)}` has no `{shown_path(path)}`, which haylen.py completes with the values of "app.json". Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} --template linux" shows.')
+    keys = {"Name": app.name, "Comment": app.description, "Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
+    write_if_changed(generated / "app.desktop", complete_desktop_entry(entry.read_text(), keys, shown_path(entry), warnings))
+    write_if_changed(generated / "app.metainfo.xml", complete_metainfo(metainfo.read_text(), appstream_elements(app), shown_path(metainfo), warnings))
+    for warning in warnings:
+        terminal.warning(warning)
 
 
 def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
-    """Lays out the shipped folder of a Windows or Linux app: the files of `platform/<platform>` of the app as they are, the executable named after the app with the package in an app folder next to it, and the native libraries next to it on Windows and in `lib` on Linux, which the `RUNPATH` of the executable covers. A release build links an executable of its own with the bootstrap of the app and ships the protected release, while a debug build ships the player with the package as it is."""
+    """Writes the folder `haylen/` of a Windows or Linux project: `haylen.cmake`, the package as it is with the development bootstrap or the protected release with the bootstrap of the app, the native libraries of this machine, and the version resource of Windows or the completed desktop entry and AppStream metainfo of Linux."""
     require_host(args.platform)
-    folder = app.build_folder / args.platform
-    executable = build_release_executable(app, args) if args.config == "Release" else desktop_artifact()
-    release = build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs) if args.config == "Release" else None
-    terminal.step(f"Preparing the app folder `{shown_path(folder)}`")
-    shutil.rmtree(folder, ignore_errors=True)
-    own = app.folder / "platform" / args.platform
-    if own.is_dir():
-        shutil.copytree(own, folder, ignore=COPY_IGNORED)
-    folder.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(executable, folder / executable_name(app.slug))
-    if release:
-        shutil.copytree(release, folder / "app")
+    root = project_root(app, args.platform)
+    generated = root / GENERATED_FOLDER
+    terminal.step(f"Preparing the {args.platform.capitalize()} project `{shown_path(root)}`")
+    for name in ("app", "native"):
+        shutil.rmtree(generated / name, ignore_errors=True)
+    if args.config == "Release":
+        shutil.copytree(build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs), generated / "app")
+        write_bootstrap(app, CONTENT_PROFILES[args.platform], generated / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
     else:
-        copy_package(app, folder / "app")
-    prepare_host_native(app, folder if args.platform == "windows" else folder / "lib", args.jobs)
-    return folder
+        copy_package(app, generated / "app")
+        write_if_changed(generated / BOOTSTRAP_SOURCE, development_bootstrap("defined(NDEBUG)"))
+    (generated / "native").mkdir(parents=True)
+    prepare_host_native(app, generated / "native", args.jobs)
+
+    values = {"HAYLEN_APP_NAME": app.name, "HAYLEN_APP_IDENTIFIER": app.identifier, "HAYLEN_APP_VERSION": app.version, "HAYLEN_APP_DESCRIPTION": app.description, "HAYLEN_APP_COMPANY": app.company, "HAYLEN_APP_COPYRIGHT": app.copyright, "HAYLEN_APP_WEBSITE": app.website, "HAYLEN_APP_EXECUTABLE": app.executable}
+    if args.platform == "windows":
+        write_windows_resources(app, generated)
+    else:
+        write_linux_entries(app, root, generated)
+        values |= {"HAYLEN_DESKTOP_ENTRY": (generated / "app.desktop").as_posix(), "HAYLEN_METAINFO": (generated / "app.metainfo.xml").as_posix()}
+    write_if_changed(generated / "haylen.cmake", desktop_cmake(args.platform, args.engine_config, values))
+    return root
+
+
+def desktop_folder(app: App, platform: str) -> Path:
+    """The folder that the last Windows or Linux build of an app installs into, which is the app as it ships."""
+    return app.build_folder / platform
+
+
+def build_desktop(app: App, root: Path, args: argparse.Namespace) -> Path:
+    """Builds a Windows or Linux project with CMake into the build folder of the app, outside the project, installs the app into its own folder there and returns the folder of the build."""
+    build = app.build_folder / "cmake" / f"{args.platform}-{args.config.lower()}"
+    terminal.step(f'Building the {args.platform.capitalize()} project `{shown_path(root)}` in the "{args.config}" configuration')
+    run(["cmake", "-S", root, "-B", build, *cmake_generator(), f"-DCMAKE_BUILD_TYPE={args.config}"])
+    run(["cmake", "--build", build, "--config", args.config, "--parallel", str(args.jobs)])
+    folder = desktop_folder(app, args.platform)
+    shutil.rmtree(folder, ignore_errors=True)
+    run(["cmake", "--install", build, "--config", args.config, "--prefix", folder])
+    return build
+
+
+def windows_resources(data: bytes, kind: int) -> list[bytes]:
+    """Reads the resources of one type from a Windows executable: the data of every name and language under the type in the resource directory of the PE file, or nothing when the file has none."""
+    if data[:2] != b"MZ":
+        return []
+    header = int.from_bytes(data[0x3C:0x40], "little")
+    if data[header : header + 4] != b"PE\0\0":
+        return []
+    sections, optional_size = int.from_bytes(data[header + 6 : header + 8], "little"), int.from_bytes(data[header + 20 : header + 22], "little")
+    optional = header + 24
+    directories = optional + (112 if int.from_bytes(data[optional : optional + 2], "little") == 0x20B else 96)
+    root_rva = int.from_bytes(data[directories + 16 : directories + 20], "little")
+    table = optional + optional_size
+    mapped = []
+    for index in range(sections):
+        entry = table + index * 40
+        size, address, raw_size, raw = (int.from_bytes(data[entry + offset : entry + offset + 4], "little") for offset in (8, 12, 16, 20))
+        mapped.append((address, max(size, raw_size), raw))
+
+    def offset(rva: int) -> int:
+        return next(raw + rva - address for address, size, raw in mapped if address <= rva < address + size)
+
+    def entries(directory: int) -> list[tuple[int, int]]:
+        count = int.from_bytes(data[directory + 12 : directory + 14], "little") + int.from_bytes(data[directory + 14 : directory + 16], "little")
+        return [(int.from_bytes(data[directory + 16 + index * 8 : directory + 20 + index * 8], "little"), int.from_bytes(data[directory + 20 + index * 8 : directory + 24 + index * 8], "little")) for index in range(count)]
+
+    if not root_rva:
+        return []
+    root = offset(root_rva)
+    found = []
+    for name, child in entries(root):
+        if name != kind or not child & 0x80000000:
+            continue
+        for _, language_table in entries(root + (child & 0x7FFFFFFF)):
+            for _, leaf in entries(root + (language_table & 0x7FFFFFFF)):
+                rva, size = int.from_bytes(data[root + leaf : root + leaf + 4], "little"), int.from_bytes(data[root + leaf + 4 : root + leaf + 8], "little")
+                found.append(data[offset(rva) : offset(rva) + size])
+    return found
+
+
+def check_desktop(app: App, root: Path, args: argparse.Namespace) -> list[Requirement]:
+    """Checks the folder of the last Windows or Linux build: the executable, the package and the native libraries where the engine finds them, the application manifest of Windows, the desktop entry of Linux and, in the Release configuration, what a release never ships."""
+    folder = desktop_folder(app, args.platform)
+    if not folder.is_dir():
+        raise BuildError(f'No app of `{shown_path(app.folder)}` was built for "{args.platform}". Build it with "{TOOL} run {shown_path(app.folder)} --platform {args.platform} --config {args.config}".')
+    place, executable = (part.format(executable=app.executable) for part in DESKTOP_LAYOUTS[args.platform])
+    home = folder / place
+    project = f'`{shown_path(root / "CMakeLists.txt")}`'
+    missing: list[Requirement] = []
+    if not (folder / executable).is_file():
+        missing.append(Requirement(f'Haylen needs the executable "{executable}" in the built app, which it lacks.', f'Keep "haylen_app", the "OUTPUT_NAME" of "HAYLEN_APP_EXECUTABLE" and the install of the executable in {project}.'))
+    if args.config != "Release" and not (home / "app" / "app.json").is_file():
+        missing.append(Requirement(f'Haylen needs the package of the app in "{(Path(place) / "app").as_posix()}" of the built app, which it lacks.', f'Keep the install of "HAYLEN_PACKAGE_DIR" in {project}.'))
+    native = root / GENERATED_FOLDER / "native"
+    libraries = home / ("lib" if args.platform == "linux" else "")
+    for library in sorted(native.iterdir()) if native.is_dir() else []:
+        if not (libraries / library.name).exists():
+            missing.append(Requirement(f'The app needs the native library "{library.name}" next to its executable, which the built app lacks.', f'Keep the install of "HAYLEN_NATIVE_DIR" in {project}.'))
+
+    if args.platform == "windows" and (folder / executable).is_file():
+        manifests = windows_resources((folder / executable).read_bytes(), WINDOWS_MANIFEST_RESOURCE)
+        manifest = b"".join(manifests).decode("utf-8", "replace")
+        for need, (marker, snippet) in WINDOWS_MANIFEST_NEEDS.items():
+            if marker not in manifest:
+                missing.append(Requirement(f"The application manifest of the built executable lacks {need}.", f'Add to `{shown_path(root / "resources" / "app.manifest")}`:', snippet))
+    if args.platform == "linux" and not (folder / "share" / "applications" / f"{app.identifier}.desktop").is_file():
+        missing.append(Requirement(f'Haylen needs the desktop entry "share/applications/{app.identifier}.desktop" in the built app, which it lacks, since Linux desktops find the name and the icon of the window of the app by the identifier.', f'Keep the install of "HAYLEN_DESKTOP_ENTRY" with the name of "HAYLEN_APP_IDENTIFIER" in {project}.'))
+    if args.config == "Release":
+        missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(folder), (Path(place) / "app").as_posix(), read_secrets(app))]
+    return missing
+
+
+def run_desktop(app: App, root: Path, args: argparse.Namespace) -> None:
+    """Builds and installs a Windows or Linux app, checks it and runs its executable, which connects to the development server in the Debug configuration."""
+    build_desktop(app, root, args)
+    requirements = check_desktop(app, root, args)
+    stop_on_release_problems(requirements)
+    report_requirements(requirements)
+    executable = desktop_folder(app, args.platform) / DESKTOP_LAYOUTS[args.platform][1].format(executable=app.executable)
+    with device_development(app, root / GENERATED_FOLDER / "app", args) as arguments:
+        run([executable, *arguments], cwd=executable.parent)
+
+
+def ensure_appimage_tools() -> dict[str, Path]:
+    """Returns the pinned appimagetool, AppImage runtime and patchelf that the AppImage generator of CPack runs, with appimagetool unpacked from its own AppImage, so it runs without FUSE."""
+    arch = {"x64": "x86_64", "arm64": "aarch64"}[host_arch()]
+    folder = TOOLS_DIR / f"appimage-{APPIMAGETOOL_VERSION}"
+    tools = {"appimagetool": folder / "appimagetool" / "AppRun", "runtime": folder / f"runtime-{APPIMAGE_RUNTIME_VERSION}-{arch}", "patchelf": folder / "bin" / "patchelf"}
+    if all(path.exists() for path in tools.values()):
+        return tools
+
+    require_host("linux")
+    hashes = APPIMAGE_TOOLS_SHA256[arch]
+    shutil.rmtree(folder, ignore_errors=True)
+    image = folder / f"appimagetool-{arch}.AppImage"
+    download(f"https://github.com/AppImage/appimagetool/releases/download/{APPIMAGETOOL_VERSION}/appimagetool-{arch}.AppImage", image, hashes["appimagetool"])
+    image.chmod(0o755)
+    capture([image, "--appimage-extract"], cwd=folder)
+    (folder / "squashfs-root").rename(folder / "appimagetool")
+    image.unlink()
+    download(f"https://github.com/AppImage/type2-runtime/releases/download/{APPIMAGE_RUNTIME_VERSION}/runtime-{arch}", tools["runtime"], hashes["runtime"])
+    archive = folder / "patchelf.tar.gz"
+    download(f"https://github.com/NixOS/patchelf/releases/download/{PATCHELF_VERSION}/patchelf-{PATCHELF_VERSION}-{arch}.tar.gz", archive, hashes["patchelf"])
+    with tarfile.open(archive) as package:
+        package.extract("./bin/patchelf", folder, filter="data")
+    archive.unlink()
+    return tools
+
+
+def ensure_inno_setup() -> Path:
+    """Returns the compiler of the pinned Inno Setup, which its installer puts into `.tools` in portable mode, without an uninstaller or entries in the registry."""
+    target = TOOLS_DIR / f"inno-setup-{INNO_SETUP_VERSION}" / "ISCC.exe"
+    if target.exists():
+        return target
+
+    require_host("windows")
+    installer = TOOLS_DIR / f"innosetup-{INNO_SETUP_VERSION}-x64.exe"
+    download(f"https://github.com/jrsoftware/issrc/releases/download/is-{INNO_SETUP_VERSION.replace('.', '_')}/innosetup-{INNO_SETUP_VERSION}-x64.exe", installer, INNO_SETUP_SHA256)
+    run([installer, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/PORTABLE=1", f"/DIR={target.parent}"])
+    installer.unlink()
+    return target
+
+
+def command_dist(args: argparse.Namespace) -> None:
+    """Builds the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the `.deb` and the AppImage of Linux, which the CPack configuration of the project describes."""
+    app = resolve_app(args.app)
+    compile_app_shaders(app)
+    args.config = "Release"
+    info = App(app, RUN_TARGETS[args.platform].plugins)
+    ensure_artifacts("desktop", args.engine_config, args.jobs)
+    root = prepare_desktop(info, args)
+    build = build_desktop(info, root, args)
+    requirements = check_desktop(info, root, args)
+    stop_on_release_problems(requirements)
+    report_requirements(requirements)
+
+    tools = []
+    if args.platform == "windows":
+        tools = [f"-DCPACK_INNOSETUP_EXECUTABLE={ensure_inno_setup()}"]
+    else:
+        appimage = ensure_appimage_tools()
+        tools = [f"-DCPACK_APPIMAGE_TOOL_EXECUTABLE={appimage['appimagetool']}", f"-DCPACK_APPIMAGE_PATCHELF_EXECUTABLE={appimage['patchelf']}", f"-DCPACK_APPIMAGE_RUNTIME_FILE={appimage['runtime']}"]
+    staging = info.build_folder / "packages" / args.platform
+    shutil.rmtree(staging, ignore_errors=True)
+    terminal.step(f"Packaging `{shown_path(app)}` for {args.platform.capitalize()} with CPack")
+    run(["cpack", "--config", build / "CPackConfig.cmake", "-C", "Release", "-B", staging, *tools])
+
+    output = Path(args.output).expanduser().resolve() if args.output else app / "dist"
+    output.mkdir(parents=True, exist_ok=True)
+    packages = [path for path in staging.iterdir() if path.is_file() and path.suffix in {".exe", ".deb", ".AppImage"}]
+    for package in packages:
+        shutil.copy2(package, output / package.name)
+        terminal.success(f"Packaged `{shown_path(output / package.name)}`.")
 
 
 def folder_entries(folder: Path) -> list[tuple[str, int, Callable[[], bytes]]]:
@@ -3121,25 +3450,11 @@ def folder_entries(folder: Path) -> list[tuple[str, int, Callable[[], bytes]]]:
     return [(path.relative_to(folder).as_posix(), path.stat().st_size, path.read_bytes) for path in sorted(folder.rglob("*")) if path.is_file()]
 
 
-def check_desktop(app: App, folder: Path, args: argparse.Namespace) -> list[Requirement]:
-    """Checks the folder of the last Windows or Linux build, which a release build ships protected."""
-    if not folder.is_dir():
-        raise BuildError(f'No app of `{shown_path(app.folder)}` was built for "{args.platform}". Build it with "{TOOL} run {shown_path(app.folder)} --platform {args.platform} --config {args.config}".')
-    if args.config != "Release":
-        return []
-    return [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(folder), "app", read_secrets(app))]
-
-
-def run_desktop(app: App, folder: Path, args: argparse.Namespace) -> None:
-    stop_on_release_problems(check_desktop(app, folder, args))
-    run([folder / executable_name(app.slug)], cwd=folder)
-
-
 @dataclasses.dataclass(frozen=True)
 class RunTarget:
-    """A platform that `haylen.py run` builds for: the platform template of its project, if any, the engine artifacts it needs, the plugin platform whose parameters it checks, the function that prepares its project or folder, the one that builds and launches it and the one that checks what the built app lacks."""
+    """A platform that `haylen.py run` builds for: the platform template of its project, the engine artifacts it needs, the plugin platform whose parameters it checks, the function that prepares its project or site, the one that builds and launches it and the one that checks what the built app lacks."""
 
-    template: str | None
+    template: str
     artifacts: str
     plugins: str
     prepare: Callable[[App, argparse.Namespace], Path]
@@ -3157,8 +3472,8 @@ RUN_TARGETS = {
     "tvos-simulator": RunTarget("apple", "apple", "tvos", prepare_apple_run, run_apple, check_apple),
     "android": RunTarget("android", "android", "android", prepare_android_run, run_android, check_android),
     "web": RunTarget("web", "web", "web", prepare_web, run_web, check_web),
-    "windows": RunTarget(None, "desktop", "windows", prepare_desktop, run_desktop, check_desktop),
-    "linux": RunTarget(None, "desktop", "linux", prepare_desktop, run_desktop, check_desktop),
+    "windows": RunTarget("windows", "desktop", "windows", prepare_desktop, run_desktop, check_desktop),
+    "linux": RunTarget("linux", "desktop", "linux", prepare_desktop, run_desktop, check_desktop),
 }
 
 
@@ -3233,7 +3548,7 @@ def command_check(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
-    root = app.build_folder / args.platform if target.template is None or args.platform == "web" else project_root(info, target.template)
+    root = app.build_folder / "web" if args.platform == "web" else project_root(info, target.template)
     missing = target.check(info, root, args)
     report_requirements(missing)
     if missing:
@@ -4315,6 +4630,14 @@ def build_parser() -> argparse.ArgumentParser:
     for action in (content_build, content_verify, content_inspect, content_diff, content_publish, content_compact, content_keys):
         action.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the content tool of the desktop artifacts.")
         add_jobs_option(action)
+
+    dist = commands.add_parser("dist", help='Build the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the ".deb" and the AppImage of Linux.')
+    add_app_argument(dist)
+    dist.add_argument("--platform", required=True, choices=["windows", "linux"], help="The platform whose packages to build, which is this machine.")
+    dist.add_argument("-o", "--output", help='Folder of the packages, "dist" in the app folder by default.')
+    dist.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
+    add_jobs_option(dist)
+    dist.set_defaults(handler=command_dist)
 
     package = commands.add_parser("package", help='Zip the "app.json", "source" and "content" of an app.')
     add_app_argument(package)

@@ -148,6 +148,15 @@ A strip above the taskbar puts these together:
 | Web | The canvas is the window, and the page gives it no desktop. A transparent app has a transparent canvas, and the page of the template drops its own background, so whatever holds the page, such as an editor that embeds it in a frame, shows through. The other options keep their values without effect, `window.frame()` returns the canvas and `window.monitors()` returns the canvas as the only monitor. |
 | iOS, iPadOS, tvOS, Android | Apps fill the screen, so desktop options do not apply. The setters keep their values without effect, `window.frame()` returns the screen in points and `window.monitors()` returns the screen as the only monitor. |
 
+## Shipping a desktop app
+
+The player runs any app during development, and the project of each platform ships it: the macOS target of the Apple template, and the CMake projects of the Windows and Linux templates, which `haylen.py` builds and installs with `haylen run <app> --platform windows` or `--platform linux`, as the [distribution guide](distribution.md#windows-and-linux) describes.
+
+- The executable takes the name, the version, the description, the company and the copyright of `app.json`, which the version resource shows on Windows and the desktop entry and the AppStream metainfo show on Linux.
+- On Windows the window and its taskbar button take the first icon of the executable, the icon of the project in `resources/app.ico`. On Linux the class of the window is the identifier of `app.json`, which names the desktop entry and the icons the project installs, so the desktop shows them for the window.
+- The command `haylen dist <app> --platform windows` makes the installer of the app with Inno Setup, and `--platform linux` makes a `.deb` and an AppImage, as [dist](distribution.md#dist) describes.
+- Windows builds sign the executable, the installer and the uninstaller with the certificate that the environment names, which continuous integration takes from the secrets `WINDOWS_CERTIFICATE` and `WINDOWS_CERTIFICATE_PWD`, as [signing](distribution.md#signing) describes. Without a certificate the app stays unsigned and the build says so.
+
 ## C++
 
 C++ apps reach the same options through `platform::Window`, which `core::Engine::getWindow()` returns: `setDecorated`, `setAlwaysOnTop`, `setShowInTaskbar`, `setFocusable`, `getFrame` and `setFrame`, `setMousePassthrough` with regions in framebuffer pixels, `startDrag`, `getMonitors` and `getCurrentMonitor`, and `canBeTransparent`, `isTransparent` and `setTransparent`. The class `platform::WindowPlacement` reads and resolves the positions of `app.json`, and `core::AppConfig::Window` holds the options of `app.json`.

@@ -1,0 +1,38 @@
+// The resources of the executable: the icon that Windows shows for the app and its window, the version that the properties of the file show and the application manifest. The values of `app.json` come from `haylen/HaylenApp.h`, which `haylen.py` writes.
+#pragma code_page(65001)
+#include <windows.h>
+
+#include "../haylen/HaylenApp.h"
+
+1 ICON "app.ico"
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "app.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION HAYLEN_APP_VERSION_NUMBERS
+PRODUCTVERSION HAYLEN_APP_VERSION_NUMBERS
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", HAYLEN_APP_COMPANY
+            VALUE "FileDescription", HAYLEN_APP_NAME
+            VALUE "FileVersion", HAYLEN_APP_VERSION
+            VALUE "InternalName", HAYLEN_APP_EXECUTABLE
+            VALUE "LegalCopyright", HAYLEN_APP_COPYRIGHT
+            VALUE "OriginalFilename", HAYLEN_APP_EXECUTABLE
+            VALUE "ProductName", HAYLEN_APP_NAME
+            VALUE "ProductVersion", HAYLEN_APP_VERSION
+            VALUE "Comments", HAYLEN_APP_DESCRIPTION
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

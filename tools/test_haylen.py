@@ -372,6 +372,144 @@ class AndroidKeyTest(unittest.TestCase):
         self.assertEqual(lines[1:], ["storeFile=release.jks", "storePassword=pa=ss\\u2713", "keyAlias=upload", "keyPassword=pa=ss\\u2713"])
 
 
+class DesktopProjectTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.app = self.scratch / "Sky Garden"
+        self.app.mkdir()
+        (self.app / "app.json").write_text(json.dumps({"name": "Sky Garden", "identifier": "com.example.skygarden", "version": "1.2"}))
+
+    def test_the_publisher_follows_the_name_and_the_executable_follows_the_folder(self):
+        info = haylen.App(self.app, "linux")
+        self.assertEqual((info.description, info.company, info.copyright, info.website), ("Sky Garden", "Sky Garden", "Copyright \u00a9 Sky Garden", ""))
+        self.assertEqual(info.executable, "sky-garden")
+        (self.app / "app.json").write_text(json.dumps({"name": "Sky Garden", "identifier": "com.example.skygarden", "version": "1.2", "company": "Harbor Games", "website": "https://harbor.example"}))
+        info = haylen.App(self.app, "linux")
+        self.assertEqual((info.company, info.copyright, info.website), ("Harbor Games", "Copyright \u00a9 Harbor Games", "https://harbor.example"))
+
+    def test_new_apps_get_a_project_of_every_platform_template(self):
+        self.assertTrue({"apple", "android", "web", "windows", "linux"} <= set(haylen.platform_templates()))
+        self.assertEqual({name: target.template for name, target in haylen.RUN_TARGETS.items() if name in ("windows", "linux")}, {"windows": "windows", "linux": "linux"})
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            haylen.command_new(haylen.build_parser().parse_args(["new", str(self.scratch / "fresh")]))
+        for template in haylen.platform_templates():
+            self.assertEqual(sorted(haylen.project_files(self.scratch / "fresh" / "platform" / template)), sorted(haylen.project_files(haylen.PLATFORM_TEMPLATES_DIR / template)))
+
+    def test_values_reach_cmake_and_resource_scripts_as_they_are(self):
+        self.assertEqual(haylen.cmake_text("Sky Garden"), "[[Sky Garden]]")
+        self.assertEqual(haylen.cmake_text('A "quoted" ${name}; with ]] inside'), '[=[A "quoted" ${name}; with ]] inside]=]')
+        self.assertEqual(haylen.rc_text('The "Garden" \\ Sky'), '"The ""Garden"" \\\\ Sky"')
+        cmake = haylen.desktop_cmake("windows", "Release", {"HAYLEN_APP_NAME": "Sky Garden"})
+        self.assertIn("set(HAYLEN_APP_NAME [[Sky Garden]])", cmake)
+        self.assertIn("MSVC_RUNTIME_LIBRARY MultiThreadedDLL", cmake)
+        self.assertIn("MSVC_RUNTIME_LIBRARY MultiThreadedDebugDLL", haylen.desktop_cmake("windows", "Debug", {}))
+        self.assertIn('INSTALL_RPATH "$ORIGIN;$ORIGIN/lib"', haylen.desktop_cmake("linux", "Release", {}))
+
+    def test_the_version_resource_takes_the_values_of_app_json(self):
+        generated = self.scratch / "generated"
+        haylen.write_windows_resources(haylen.App(self.app, "windows"), generated)
+        header = (generated / "HaylenApp.h").read_text()
+        self.assertIn('#define HAYLEN_APP_EXECUTABLE "sky-garden.exe"', header)
+        self.assertIn('#define HAYLEN_APP_COPYRIGHT "Copyright \u00a9 Sky Garden"', header)
+        self.assertIn("#define HAYLEN_APP_VERSION_NUMBERS 1, 2, 0, 0", header)
+
+    def test_development_builds_stop_a_release_of_the_development_package(self):
+        self.assertIn("#if defined(NDEBUG)\n#error", haylen.development_bootstrap("defined(NDEBUG)"))
+        self.assertIn("#if !DEBUG\n#error", haylen.development_bootstrap("!DEBUG"))
+
+    def test_the_desktop_entry_of_the_developer_wins_and_gains_what_it_lacks(self):
+        warnings: list[str] = []
+        own = "# A comment.\n[Desktop Entry]\nType=Application\nName=Garden\n\n[Desktop Action New]\nName=New\n"
+        completed = haylen.complete_desktop_entry(own, {"Name": "Sky Garden", "Comment": "Tab\tand\nline", "Exec": "sky-garden"}, "app.desktop", warnings)
+        self.assertEqual(completed, "# Written by haylen.py from app.json and the desktop entry of the project.\n# A comment.\n[Desktop Entry]\nType=Application\nName=Garden\nComment=Tab\\tand\\nline\nExec=sky-garden\n\n[Desktop Action New]\nName=New\n")
+        self.assertEqual(warnings, ['The key "Name" of `app.desktop` keeps its value "Garden", while "app.json" gives "Sky Garden".'])
+        with self.assertRaisesRegex(haylen.BuildError, 'has no "\\[Desktop Entry\\]" group'):
+            haylen.complete_desktop_entry("[Desktop Action New]\n", {}, "app.desktop", [])
+
+    def test_the_metainfo_of_the_developer_wins_and_gains_the_elements_of_app_json(self):
+        info = haylen.App(self.app, "linux")
+        warnings: list[str] = []
+        own = '<?xml version="1.0"?>\n<component type="desktop-application"><name>Garden</name><project_license>MIT</project_license></component>'
+        completed = haylen.complete_metainfo(own, haylen.appstream_elements(info), "app.metainfo.xml", warnings)
+        component = haylen.xml.etree.ElementTree.fromstring(completed.split("\n", 2)[2])
+        self.assertEqual([child.tag for child in component][:5], ["id", "summary", "description", "developer", "launchable"])
+        self.assertEqual(component.findtext("name"), "Garden")
+        self.assertEqual(component.find("developer").get("id"), "com.example")
+        self.assertIsNone(component.find("url"))
+        self.assertEqual(component.find("launchable").text, "com.example.skygarden.desktop")
+        self.assertEqual(warnings, ['The element "name" of `app.metainfo.xml` keeps its value "Garden", while "app.json" gives "Sky Garden".'])
+        with self.assertRaisesRegex(haylen.BuildError, "is not valid XML"):
+            haylen.complete_metainfo("<component>", [], "app.metainfo.xml", [])
+
+    @staticmethod
+    def executable(manifest: bytes) -> bytes:
+        """Builds the smallest PE file whose resource section holds one application manifest."""
+        resources = bytearray(0x58)
+        resources[14:16] = (1).to_bytes(2, "little")
+        resources[16:24] = (24).to_bytes(4, "little") + (0x80000000 | 0x18).to_bytes(4, "little")
+        resources[0x18 + 14 : 0x18 + 16] = (1).to_bytes(2, "little")
+        resources[0x18 + 16 : 0x18 + 24] = (1).to_bytes(4, "little") + (0x80000000 | 0x30).to_bytes(4, "little")
+        resources[0x30 + 14 : 0x30 + 16] = (1).to_bytes(2, "little")
+        resources[0x30 + 16 : 0x30 + 24] = (0x409).to_bytes(4, "little") + (0x48).to_bytes(4, "little")
+        resources[0x48:0x50] = (0x1058).to_bytes(4, "little") + len(manifest).to_bytes(4, "little")
+        resources += manifest
+        header = bytearray(0x200)
+        header[0:2] = b"MZ"
+        header[0x3C:0x40] = (0x40).to_bytes(4, "little")
+        header[0x40:0x44] = b"PE\0\0"
+        header[0x46:0x48] = (1).to_bytes(2, "little")
+        header[0x54:0x56] = (240).to_bytes(2, "little")
+        header[0x58:0x5A] = (0x20B).to_bytes(2, "little")
+        header[0x58 + 128 : 0x58 + 136] = (0x1000).to_bytes(4, "little") + len(resources).to_bytes(4, "little")
+        section = 0x58 + 240
+        header[section : section + 8] = b".rsrc\0\0\0"
+        header[section + 8 : section + 24] = len(resources).to_bytes(4, "little") + (0x1000).to_bytes(4, "little") + len(resources).to_bytes(4, "little") + (0x200).to_bytes(4, "little")
+        return bytes(header + resources)
+
+    def test_the_manifest_of_a_windows_executable_selects_what_the_engine_needs(self):
+        manifest = (haylen.PLATFORM_TEMPLATES_DIR / "windows" / "resources" / "app.manifest").read_bytes()
+        self.assertEqual(haylen.windows_resources(self.executable(manifest), haylen.WINDOWS_MANIFEST_RESOURCE), [manifest])
+        self.assertEqual(haylen.windows_resources(b"not an executable", haylen.WINDOWS_MANIFEST_RESOURCE), [])
+
+        project = self.scratch / "project"
+        (project / "haylen" / "native").mkdir(parents=True)
+        (project / "haylen" / "native" / "glue.dll").write_bytes(b"glue")
+        app = mock.Mock(folder=self.app, build_folder=self.scratch / "build", executable="sky-garden", identifier="com.example.skygarden")
+        folder = self.scratch / "build" / "windows"
+        (folder / "app").mkdir(parents=True)
+        (folder / "app" / "app.json").write_text("{}")
+        (folder / "glue.dll").write_bytes(b"glue")
+        arguments = haylen.argparse.Namespace(platform="windows", config="Debug")
+        (folder / "sky-garden.exe").write_bytes(self.executable(manifest))
+        self.assertEqual(haylen.check_desktop(app, project, arguments), [])
+
+        (folder / "sky-garden.exe").write_bytes(self.executable(b'<assembly><application><windowsSettings/></application></assembly>'))
+        (folder / "glue.dll").unlink()
+        messages = [requirement.message for requirement in haylen.check_desktop(app, project, arguments)]
+        self.assertEqual(messages, [
+            'The app needs the native library "glue.dll" next to its executable, which the built app lacks.',
+            "The application manifest of the built executable lacks the Common Controls of version 6, which the message dialogs of Haylen need.",
+            "The application manifest of the built executable lacks UTF-8 as the code page of the process, which the text of Haylen needs.",
+        ])
+
+    @unittest.skipIf(os.name == "nt", "The Linux layout links the executable into its bin folder.")
+    def test_a_linux_app_needs_its_desktop_entry_named_after_the_identifier(self):
+        project = self.scratch / "project"
+        app = mock.Mock(folder=self.app, build_folder=self.scratch / "build", executable="sky-garden", identifier="com.example.skygarden")
+        folder = self.scratch / "build" / "linux"
+        (folder / "lib" / "sky-garden" / "app").mkdir(parents=True)
+        (folder / "lib" / "sky-garden" / "app" / "app.json").write_text("{}")
+        (folder / "lib" / "sky-garden" / "sky-garden").write_bytes(b"code")
+        (folder / "bin").mkdir()
+        (folder / "bin" / "sky-garden").symlink_to("../lib/sky-garden/sky-garden")
+        arguments = haylen.argparse.Namespace(platform="linux", config="Debug")
+        self.assertEqual([requirement.message for requirement in haylen.check_desktop(app, project, arguments)], ['Haylen needs the desktop entry "share/applications/com.example.skygarden.desktop" in the built app, which it lacks, since Linux desktops find the name and the icon of the window of the app by the identifier.'])
+        (folder / "share" / "applications").mkdir(parents=True)
+        (folder / "share" / "applications" / "com.example.skygarden.desktop").write_text("[Desktop Entry]\n")
+        self.assertEqual(haylen.check_desktop(app, project, arguments), [])
+
+
 class ContentKeysTest(unittest.TestCase):
     def test_keys_live_outside_every_project_unless_continuous_integration_names_their_folder(self):
         environment = {name: value for name, value in os.environ.items() if name != haylen.KEYS_VARIABLE}
