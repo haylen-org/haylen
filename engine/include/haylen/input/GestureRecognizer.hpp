@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "haylen/input/Gesture.hpp"
+#include "haylen/input/Touch.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::input {
@@ -67,6 +68,7 @@ class GestureRecognizer final {
     std::optional<Pointer> mouse;
     std::optional<std::pair<double, math::Vec2>> lastTap;
     std::optional<float> pinchStart;
+    std::vector<const Touch*> fingers;
     double time = 0.0;
 };
 

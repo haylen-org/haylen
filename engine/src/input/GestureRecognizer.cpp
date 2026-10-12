@@ -85,8 +85,9 @@ void GestureRecognizer::finish(const Pointer& pointer) {
     }
 }
 
+// The list of the fingers down keeps its memory from frame to frame.
 void GestureRecognizer::recognizePinch(const Input& input) {
-    std::vector<const Touch*> fingers;
+    fingers.clear();
     for (const Touch& touch : input.getTouches()) {
         if (touch.isActive()) {
             fingers.push_back(&touch);

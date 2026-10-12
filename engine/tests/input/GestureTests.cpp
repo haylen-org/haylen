@@ -8,6 +8,7 @@
 #include "haylen/input/GestureRecognizer.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Event.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::input {
@@ -156,6 +157,19 @@ TEST_F(GestureTest, RecognizesPinches) {
     EXPECT_EQ(frame(), Names{});
     touch(platform::Event::Type::TouchEnded, {{1, {100.0F, 100.0F}}, {2, {300.0F, 100.0F}}});
     EXPECT_EQ(frame(), Names{});
+}
+
+TEST_F(GestureTest, FollowsAPinchWithoutAllocating) {
+    touch(platform::Event::Type::TouchBegan, {{1, {100.0F, 100.0F}}, {2, {200.0F, 100.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchMoved, {{2, {300.0F, 100.0F}}});
+    frame();
+    const test::AllocationTracker tracker;
+    touch(platform::Event::Type::TouchMoved, {{2, {320.0F, 100.0F}}});
+    input.updateTouchDurations(0.05F);
+    gestures.update(input, 0.05F);
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(gestures.getGestures().size(), 1U);
 }
 
 TEST_F(GestureTest, TreatsTheMouseAsOneFinger) {
