@@ -16,6 +16,10 @@
 #include "haylen/core/Signal.hpp"
 #include "haylen/math/Vec2.hpp"
 
+namespace haylen::core {
+class JobSystem;
+}
+
 namespace haylen::graphics2d {
 class Camera;
 }
@@ -118,8 +122,8 @@ class Mixer final {
         bool processing = true;
     };
 
-    // Throws `std::invalid_argument` for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and `std::runtime_error` when the audio engine cannot start. The device opens on a thread of its own and plays from the first update after it opened. A device that the system refuses, or that does not answer for a few seconds, leaves the output unavailable, and the log writes one warning.
-    explicit Mixer(const Setup& setup);
+    // Throws `std::invalid_argument` for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and `std::runtime_error` when the audio engine cannot start. The device opens on a thread of its own and plays from the first update after it opened. A device that the system refuses, or that does not answer for a few seconds, leaves the output unavailable, and the log writes one warning. The voices of streamed sounds decode on the I/O pool of the job system, which must outlive the mixer.
+    Mixer(const Setup& setup, core::JobSystem& jobs);
     ~Mixer();
 
     Mixer(const Mixer&) = delete;
@@ -218,7 +222,7 @@ class Mixer final {
     // Opens the audio device again, such as after the system reset its audio services, which leaves every output it had open silent. The voices go on and play from the first frame after the device opened.
     void restartOutput();
 
-    // Emits the device events that arrived, mixes and discards the seconds since the last update while the output of a mixer with a device is unavailable, releases finished voices and refreshes positional voices, measuring their velocities over those seconds. The engine calls it once per frame.
+    // Emits the device events that arrived, mixes and discards the seconds since the last update while the output of a mixer with a device is unavailable, releases finished voices, refreshes positional voices, measuring their velocities over those seconds, and posts the fills that the voices of streamed sounds need to the I/O pool. The engine calls it once per frame.
     void update(float deltaSeconds);
 
     [[nodiscard]] std::uint32_t getSampleRate() const noexcept;

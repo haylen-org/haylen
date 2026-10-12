@@ -46,7 +46,28 @@ Every package, a folder, a zip archive, a package in memory or a protected relea
 | `read(path)` | Reads a whole file of at most `Package::kMaxReadSize`, one gibibyte, and throws for a larger one, which streams through a reader instead. |
 | `list(folder)` | Lists the files under a folder, sorted. A folder package that cannot read one of the folders throws instead of listing part of the files. |
 
-A zip archive stays on disk and reads each entry when it is asked for. An entry stored without compression seeks directly, and a compressed entry decompresses forward, from its start again when a read goes back. Zip archives serve development, such as `haylen --dev app.zip` and the archives a browser editor hands to the web runtime, and protected releases use shards. Lua reads ranges with `assets.bytes(path, offset, count)` and sizes with `assets.fileSize(path)`, as the [assets reference](lua-api/assets.md#assetsbytespath-offset-count) shows.
+A zip archive stays on disk and reads each entry when it is asked for. An entry stored without compression seeks directly, and a compressed entry decompresses forward, from its start again when a read goes back. Zip archives serve development, such as `haylen --dev app.zip` and the archives a browser editor hands to the web runtime, and protected releases use shards. Lua reads ranges with `assets.bytes(path, offset, count)` and sizes with `assets.fileSize(path)`, as the [assets reference](lua-api/assets.md#assetsbytespath-offset-count) shows. The methods `openAssetReader`, `readAsset` and `readAssetRange` take paths relative to `content`.
+
+## Streaming
+
+A file that streams never exists whole in memory, decrypted or not, and never on disk: its reader reads the ranges a consumer asks for, and a protected release decrypts and decompresses only the chunks that cover them, so a file of any size costs a window of its bytes and the chunk the reader keeps. These consumers stream:
+
+| Consumer | How it reads |
+| --- | --- |
+| Streamed sounds, with `stream = true` | Loading reads the header alone. Each voice decodes through a window of 64 KiB on the I/O pool into about a second of frames ahead of its cursor, a seek reads the range at the new cursor, and the thread that mixes never reads, as the [audio guide](audio.md#streamed-sounds) describes. |
+| `assets.bytes(path, offset, count)`, `readRange`, `openReader` and `openAssetReader` | They read only the range asked for, which serves large data files of an app. |
+| Asset types whose `assets::Manager::Type::streams` returns true for their options | Their decoder receives a reader of the file instead of its bytes and runs on the I/O pool, which is how a new kind of large media streams. |
+
+Every other consumer reads a file whole, within `Package::kMaxReadSize`, because it needs all of the file at once.
+
+| Consumer | Why it reads the whole file |
+| --- | --- |
+| Textures, and the images of atlases, particles, bitmap fonts and Tiled tilesets | The image decoder needs the whole compressed image, and the pixels it uploads take more memory than the file. |
+| Fonts, of the `font` asset type and of the UI | The rasterizer and the shaper look up tables anywhere in the file for as long as the font lives. |
+| Tiled maps and worlds, JSON, localization tables, shaders, SVG images, `app.json` and plugin manifests | The parser builds a document from the whole text, and the document takes more memory than the text, so reading the text in ranges would not lower the peak. |
+| Lua modules | A module compiles or loads as one chunk. |
+| `assets.bytes(path)` without a range | It returns the whole file as one Lua string, and the ranges of the same function serve large files. |
+| Video streams | They carry frames that native code pushes, such as a camera or a decoder of a plugin, so no video file passes through a package. |
 
 ## Building content
 

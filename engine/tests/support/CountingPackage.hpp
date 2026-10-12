@@ -4,13 +4,14 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "haylen/io/Package.hpp"
 
 namespace haylen::test {
 
-// Passes a package through and counts what its readers read and the readers that are open, so tests can show which bytes of a file an operation touches and how many files it holds open.
+// Passes a package through and counts what its readers read and the readers that are open, so tests can show which bytes of a file an operation touches and how many files it holds open. It also counts apart the reads of one thread it watches, such as the thread that mixes audio, so tests can show that the thread never reads.
 class CountingPackage final : public io::Package {
   public:
     explicit CountingPackage(std::shared_ptr<const io::Package> innerPackage);
@@ -41,6 +42,10 @@ class CountingPackage final : public io::Package {
     [[nodiscard]] std::size_t getMostOpenReaders() const noexcept {
         return counters->mostOpen;
     }
+    [[nodiscard]] std::uint64_t getWatchedReads() const noexcept {
+        return counters->watchedReads;
+    }
+    void watch(std::thread::id thread) noexcept;
     void reset() noexcept;
 
   private:
@@ -49,6 +54,8 @@ class CountingPackage final : public io::Package {
         std::atomic<std::uint64_t> largest{0};
         std::atomic<std::size_t> open{0};
         std::atomic<std::size_t> mostOpen{0};
+        std::atomic<std::thread::id> watched;
+        std::atomic<std::uint64_t> watchedReads{0};
     };
 
     class Reader final : public io::PackageReader {

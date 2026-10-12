@@ -23,7 +23,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `shader` | `.shader` | Shader from [`haylen.graphics`](graphics.md), compiled by `haylen.py shaders` as the [shader guide](../shaders.md) explains. | None. |
 | `vectorImage` | `.svg` | VectorImage from [`haylen.graphics`](graphics.md#vectorimage), an SVG document that draws sharp at any size. | None. |
 | `json` | `.json` | Plain Lua table, with objects as string keyed tables and arrays as sequences. | None. |
-| `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [`haylen.audio`](audio.md). | The option `stream` keeps the encoded file and decodes it while it plays (default `false`). |
+| `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [`haylen.audio`](audio.md). | The option `stream` reads the file in ranges while it plays instead of decoding it whole (default `false`). |
 | `atlas` | None, so load it with the type `'atlas'` | A `SpriteAtlas` from [`haylen.animation2d`](animation2d.md). | The `filter` and `wrap` of its texture. |
 | `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` and `particles2d.newSystem()` from [`haylen.particles2d`](particles2d.md). | The `filter` and `wrap` of its textures, which replace the ones the file names. |
 | `imageShape` | None, so load an image with the type `'imageShape'` | An `ImageShape` from [`haylen.particles2d`](particles2d.md#imageshape), the visible pixels of the image for the `image` shape of emitters. | The option `source` is the `{x, y, width, height}` part of the image to read, the whole image by default. The option `alphaThreshold` is the alpha a pixel needs to count, `0.5` by default. |
@@ -525,7 +525,7 @@ end, {owner = level})
 
 ### Sounds
 
-Sound files load as `haylen.Sound` for [`haylen.audio`](audio.md). Streaming suits music and long ambience, and decoding suits short effects that play often.
+Sound files load as `haylen.Sound` for [`haylen.audio`](audio.md). Streaming suits music and long ambience, and decoding suits short effects that play often. A streamed sound never reads its file whole: loading it reads only the header, and each voice reads the file in ranges while it plays and keeps only a bounded window of encoded bytes, which a protected release decrypts chunk by chunk, so a track of any length plays in bounded memory.
 
 ```lua
 local assets = require('haylen.assets')

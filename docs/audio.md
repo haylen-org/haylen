@@ -11,9 +11,9 @@ Sounds are assets of [`haylen.assets`](lua-api/assets.md) of the type `sound`, l
 | Mode | How to load | Memory | Suits |
 | --- | --- | --- | --- |
 | Decoded | `assets.load('audio/ui/click.ogg')` | The whole sound as 32-bit float samples. | Short effects that play often, because a new voice reads samples that are already in memory. |
-| Streamed | `assets.load('audio/music/day.mp3', 'sound', {stream = true})` | The encoded file. Each voice decodes it while it plays. | Music and long ambience, which would take a lot of memory decoded. |
+| Streamed | `assets.load('audio/music/day.mp3', 'sound', {stream = true})` | A reader of the encoded file, and for each voice a window of encoded bytes and about a second of decoded frames. Each voice decodes the file while it plays. | Music and long ambience of any length, which would take a lot of memory decoded. |
 
-A streamed MP3 has no index of its frames, so moving the cursor of its voice, or starting it at `startAt`, decodes the file from its start on the thread that mixes, which a long track may hear as a gap. Stream music as Ogg Vorbis or FLAC when the app seeks in it. A decoded sound is decoded when its asset loads, on worker threads when it loads through `assets.loadAsync` or a preload group. Preload group entries take the same options, so music can be preloaded as a stream:
+A decoded sound is decoded when its asset loads, on worker threads when it loads through `assets.loadAsync` or a preload group. A streamed sound reads only the header of its file when it loads. Preload group entries take the same options, so music can be preloaded as a stream:
 
 ```json
 {
@@ -30,6 +30,14 @@ A streamed MP3 has no index of its frames, so moving the cursor of its voice, or
 A loaded sound is a `haylen.Sound` value with the read-only properties `duration`, `channels`, `sampleRate`, `frameCount` and `streamed`. Two handles of the same cached sound compare equal with `==`.
 
 Sounds also come from bytes in memory, such as a recording that a plugin returns or audio the app downloaded or made itself: [`audio.newSound(bytes, options)`](lua-api/audio.md#audionewsoundbytes-options) decodes the bytes of a WAV, Ogg Vorbis, MP3 or FLAC file, or streams them with `stream = true`, and takes raw samples, 32-bit floats or 16-bit integers with their sample rate and channels.
+
+### Streamed sounds
+
+A streamed sound never holds its file. It keeps a reader of the package, which reads the file in ranges, and every voice that plays it decodes the file on its own as it goes, so a track of any length plays in the same bounded memory. Each voice reads the encoded file through a window of 64 KiB and decodes it on the I/O pool of the engine into a ring of about one second of frames ahead of its cursor, and once per frame the mixer asks the I/O pool to top up every ring that has room. The thread that mixes only takes frames from the ring: it never reads the package, decrypts or waits, and where the ring runs dry, such as behind a frame thread that stalls for longer than the ring lasts, the voice plays silence until the frames arrive. A voice that seeks plays silence until the I/O pool decoded the frames at the new cursor, and a looping voice goes from the end of the file into its start without a gap, because the ring already holds the start when the end plays.
+
+Folders, zip archives and protected releases all stream. A protected release decrypts and decompresses only the chunks around the cursor of a voice, one at a time, so a streamed track never exists decrypted as a whole, in memory or on disk. A read that fails, such as a damaged chunk of a release, ends the voice and reports an engine error.
+
+Every format streams, with two differences of their decoders. An MP3 file without the Xing or Info header that encoders write is read through once when the sound loads, since only its frames tell its length. An Ogg Vorbis file seeks by decoding forward, and a seek back starts decoding again from the start of the file, so a voice of a long Ogg Vorbis track that seeks back often reads more of the file than a voice of the other formats.
 
 ## Audio streams
 
@@ -415,7 +423,7 @@ The rest of the game completes the picture.
 
 ## From C++
 
-The class `haylen::audio::Mixer` (`haylen/audio/Mixer.hpp`), reached with `engine.getAudio()`, offers the same voices, buses, music, process modes, effects and positional audio with its `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization` structures, and `Mixer::play` also takes a `std::shared_ptr<platform::AudioStream>` to play an audio stream. The class `haylen::audio::Sound` (`haylen/audio/Sound.hpp`) holds decoded or streamed sound data, which `Sound::decode` and `Sound::stream` make from encoded bytes and `Sound::fromSamples` from spans of float or 16-bit samples. The effects are `audio::Filter`, `audio::Delay` and `audio::Reverb`, created with `std::make_shared` and their settings structures, and `audio::Session` is the session of `app.json`. The engine applies its pause through `Mixer::setProcessPaused`, and `Mixer::deviceEventReceived` delivers device events on the frame thread, which the audio plugin turns into the interruption behavior and the events above. The method `Mixer::isOutputAvailable` tells whether the mix reaches an audio device. A mixer created without a device mixes on demand through `render`, which tests and offline tools use.
+The class `haylen::audio::Mixer` (`haylen/audio/Mixer.hpp`), reached with `engine.getAudio()`, offers the same voices, buses, music, process modes, effects and positional audio with its `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization` structures, and `Mixer::play` also takes a `std::shared_ptr<platform::AudioStream>` to play an audio stream. The class `haylen::audio::Sound` (`haylen/audio/Sound.hpp`) holds decoded or streamed sound data, which `Sound::decode` makes from encoded bytes, `Sound::stream` from a `std::shared_ptr<io::PackageReader>` of an encoded file, such as the one `Package::openAssetReader` returns, and `Sound::fromSamples` from spans of float or 16-bit samples. The effects are `audio::Filter`, `audio::Delay` and `audio::Reverb`, created with `std::make_shared` and their settings structures, and `audio::Session` is the session of `app.json`. The engine applies its pause through `Mixer::setProcessPaused`, and `Mixer::deviceEventReceived` delivers device events on the frame thread, which the audio plugin turns into the interruption behavior and the events above. The method `Mixer::isOutputAvailable` tells whether the mix reaches an audio device. A mixer created without a device mixes on demand through `render`, which tests and offline tools use, and every mixer takes the `core::JobSystem` whose I/O pool decodes its streamed voices.
 
 ```cpp
 #include "haylen/audio/Filter.hpp"

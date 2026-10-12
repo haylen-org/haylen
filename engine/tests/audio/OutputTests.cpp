@@ -23,6 +23,7 @@
 #include "audio/OutputBackend.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/platform/Event.hpp"
+#include "io/MemoryReader.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::audio {
@@ -151,7 +152,7 @@ class AudioOutputTest : public MixerFixture {
 };
 
 TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
-    Mixer refused({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend});
+    Mixer refused({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
     EXPECT_TRUE(refused.hasDevice());
     ASSERT_TRUE(settle(refused));
     EXPECT_FALSE(refused.isOutputAvailable());
@@ -196,7 +197,7 @@ TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
 }
 
 TEST_F(AudioOutputTest, OpensTheOutputOnceTheSystemOffersIt) {
-    Mixer recovering({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend});
+    Mixer recovering({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
     const Mixer::VoiceId voice = recovering.play(makeTone(toFrames(0.25F)));
     ASSERT_TRUE(settle(recovering));
     play(recovering, 0.1F);
@@ -228,7 +229,7 @@ TEST_F(AudioOutputTest, KeepsPlayingWhileTheOutputDoesNotAnswer) {
     accepting = true;
     hang();
     const auto before = std::chrono::steady_clock::now();
-    Mixer waiting({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend});
+    Mixer waiting({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
     EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::seconds(1));
     EXPECT_TRUE(waiting.isOutputOpening());
     EXPECT_FALSE(waiting.isOutputAvailable());
@@ -261,7 +262,7 @@ TEST_F(AudioOutputTest, ClosesAnOpeningThatOutlivesItsMixer) {
     accepting = true;
     hang();
     {
-        Mixer gone({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend});
+        Mixer gone({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
         EXPECT_TRUE(gone.isOutputOpening());
     }
 
@@ -345,7 +346,7 @@ class PulledOutputTest : public MixerFixture {
 };
 
 TEST_F(PulledOutputTest, MovesTheCursorOfStreamedVoicesWhileTheDeviceReadsThem) {
-    Mixer pulled({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend});
+    Mixer pulled({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend}, jobs);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     while (pulled.isOutputOpening() && std::chrono::steady_clock::now() < deadline) {
         pulled.update(0.0F);
@@ -354,7 +355,7 @@ TEST_F(PulledOutputTest, MovesTheCursorOfStreamedVoicesWhileTheDeviceReadsThem) 
     ASSERT_TRUE(pulled.isOutputAvailable());
 
     for (const std::string name : {"tone.ogg", "tone.mp3"}) {
-        const Sound sound = Sound::stream(readFile(name));
+        const Sound sound = Sound::stream(std::make_shared<io::MemoryReader>(std::make_shared<const std::vector<std::uint8_t>>(readFile(name))));
         EXPECT_NEAR(sound.getDuration(), 2.0F, 0.1F) << name;
         const Mixer::VoiceId voice = pulled.play(sound, {.loop = true});
         for (int step = 0; step < 40; ++step) {

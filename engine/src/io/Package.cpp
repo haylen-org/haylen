@@ -115,6 +115,10 @@ std::uint64_t Package::getAssetSize(std::string_view path) const {
     return getFileSize(Path::asset(path));
 }
 
+std::unique_ptr<PackageReader> Package::openAssetReader(std::string_view path) const {
+    return openReader(Path::asset(path));
+}
+
 std::vector<std::uint8_t> Package::readAsset(std::string_view path) const {
     return read(Path::asset(path));
 }

@@ -6,8 +6,11 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include "audio/MemoryDecoder.hpp"
+#include "audio/ReaderDecoder.hpp"
 #include "audio/SoundData.hpp"
 
 namespace haylen::audio {
@@ -65,24 +68,23 @@ Sound Sound::fromSamples(std::span<const std::int16_t> samples, std::uint32_t ch
     return fromSamples(converted, channels, sampleRate);
 }
 
-Sound Sound::stream(std::vector<std::uint8_t> encoded) {
+Sound Sound::stream(std::shared_ptr<io::PackageReader> reader) {
+    if (!reader) {
+        throw std::invalid_argument("A streamed sound needs a reader of its file.");
+    }
     auto streamed = std::make_shared<SoundData>();
     {
-        MemoryDecoder decoder(encoded);
-        streamed->channels = decoder.get().outputChannels;
-        streamed->sampleRate = decoder.get().outputSampleRate;
-        ma_uint64 frames = 0;
-        ma_decoder_get_length_in_pcm_frames(&decoder.get(), &frames);
-        streamed->frames = frames;
+        ReaderDecoder decoder(reader);
+        streamed->channels = decoder.getChannels();
+        streamed->sampleRate = decoder.getSampleRate();
+        streamed->frames = decoder.getLength();
     }
-    streamed->encoded = std::move(encoded);
-    streamed->streamed = true;
-    streamed->tracked.setBytes(streamed->encoded.size());
+    streamed->reader = std::move(reader);
     return Sound(std::move(streamed));
 }
 
 bool Sound::isStreamed() const noexcept {
-    return data != nullptr && data->streamed;
+    return data != nullptr && data->reader != nullptr;
 }
 
 std::uint32_t Sound::getChannels() const noexcept {

@@ -42,7 +42,7 @@ TEST_F(SoundTest, DecodesAndStreamsAudioFiles) {
     EXPECT_EQ(decoded.getFrameCount(), 2205U);
     EXPECT_NEAR(decoded.getDuration(), 0.1F, 0.0001F);
 
-    const Sound streamed = Sound::stream(file);
+    const Sound streamed = Sound::stream(makeReader(file));
     EXPECT_TRUE(streamed.isStreamed());
     EXPECT_EQ(streamed.getFrameCount(), 2205U);
     EXPECT_NE(streamed, decoded);
@@ -52,7 +52,8 @@ TEST_F(SoundTest, DecodesAndStreamsAudioFiles) {
     EXPECT_EQ(empty.getDuration(), 0.0F);
     EXPECT_EQ(empty.getChannels(), 0U);
     EXPECT_THROW((void)Sound::decode(test::TestFiles::bytes("not audio")), std::runtime_error);
-    EXPECT_THROW((void)Sound::stream({}), std::runtime_error);
+    EXPECT_THROW((void)Sound::stream(makeReader({})), std::runtime_error);
+    EXPECT_THROW((void)Sound::stream(nullptr), std::invalid_argument);
     EXPECT_THROW((void)Sound::decode(makeWav(kRate, 1, {})), std::runtime_error);
 }
 
@@ -385,20 +386,11 @@ TEST_F(MixerTest, ManagesBusesAndRejectsInvalidUse) {
     EXPECT_THROW(mixer.play(makeTone(10), {.bus = "missing"}), std::invalid_argument);
     EXPECT_THROW(mixer.play(Sound{}), std::invalid_argument);
     EXPECT_THROW((void)mixer.getBusVolume("missing"), std::invalid_argument);
-    EXPECT_THROW(Mixer({.device = false, .sampleRate = 0}), std::invalid_argument);
-    EXPECT_THROW(Mixer({.device = false, .maxVoices = 0}), std::invalid_argument);
+    EXPECT_THROW(Mixer({.device = false, .sampleRate = 0}, jobs), std::invalid_argument);
+    EXPECT_THROW(Mixer({.device = false, .maxVoices = 0}, jobs), std::invalid_argument);
 
     mixer.suspend();
     mixer.resume();
-}
-
-TEST_F(MixerTest, StreamsLongSounds) {
-    const Sound music = Sound::stream(makeWav(kRate, 2, makeSignal(toFrames(0.2F), 2, 0.5F)));
-    const Mixer::VoiceId voice = mixer.play(music, {.bus = "music"});
-    EXPECT_NEAR(peak(toFrames(0.1F)), 0.5F, 0.01F);
-    peak(toFrames(0.2F));
-    mixer.update(1.0F / 60.0F);
-    EXPECT_FALSE(mixer.isActive(voice));
 }
 
 TEST_F(SoundTest, ReadsTheSessionFromAppJson) {
@@ -413,8 +405,8 @@ TEST_F(SoundTest, ReadsTheSessionFromAppJson) {
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": ""}})")), std::invalid_argument);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"focus": true}})")), std::invalid_argument);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"mixWithOthers": true}})")), std::invalid_argument);
-    EXPECT_THROW(Mixer({.device = false, .session = {.category = Session::Category::Ambient, .mixWithOthers = true}}), std::invalid_argument);
-    EXPECT_NO_THROW(Mixer({.device = false, .session = {.category = Session::Category::Playback, .mixWithOthers = true}}));
+    EXPECT_THROW(Mixer({.device = false, .session = {.category = Session::Category::Ambient, .mixWithOthers = true}}, jobs), std::invalid_argument);
+    EXPECT_NO_THROW(Mixer({.device = false, .session = {.category = Session::Category::Playback, .mixWithOthers = true}}, jobs));
 }
 
 TEST_F(AudioAssetTest, LoadsSoundsThroughTheAssetManager) {

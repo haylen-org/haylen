@@ -27,10 +27,11 @@ void AudioPlugin::start(core::Engine& engine) {
             return core::Json{{"stream", options.value("stream", false)}};
         },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
-            const audio::Sound sound = request.options.at("stream").get<bool>() ? audio::Sound::stream(std::move(request.bytes)) : audio::Sound::decode(request.bytes);
+            const audio::Sound sound = request.reader ? audio::Sound::stream(std::move(request.reader)) : audio::Sound::decode(request.bytes);
             return std::const_pointer_cast<audio::SoundData>(sound.getData());
         },
         .finalize = [](std::shared_ptr<void> decoded, const assets::Manager::Request&) { return decoded; },
+        .streams = [](const core::Json& options) { return options.at("stream").get<bool>(); },
     });
     engine.getPlugin<AssetsPlugin>().registerLuaPusher("sound", [](lua_State* L, const std::shared_ptr<void>& asset) {
         lua::Stack::push(L, audio::Sound(std::static_pointer_cast<const audio::SoundData>(asset)));

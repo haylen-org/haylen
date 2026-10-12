@@ -14,12 +14,17 @@
 
 #include "audio/Device.hpp"
 #include "audio/EffectChain.hpp"
+#include "audio/ReaderSource.hpp"
 #include "audio/StreamSource.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/audio/Sound.hpp"
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/math/Random.hpp"
 #include "haylen/math/Vec2.hpp"
+
+namespace haylen::core {
+class JobSystem;
+}
 
 namespace haylen::graphics2d {
 class Camera;
@@ -43,7 +48,7 @@ struct MixerState {
         bool muted = false;
     };
 
-    // One playing sound or audio stream with its own data source, so every voice keeps an independent cursor over shared sound data. A voice plays only while nothing holds it: its own pause, a pause of every voice for a reason, or its process mode during the engine pause.
+    // One playing sound or audio stream with its own data source, so every voice keeps an independent cursor over shared sound data, and a streamed sound decodes ahead of each of its voices on its own. A voice plays only while nothing holds it: its own pause, a pause of every voice for a reason, or its process mode during the engine pause.
     struct Voice {
         static constexpr std::uint8_t kVoiceHold = 1U << 0U;
         static constexpr std::uint8_t kAppHold = 1U << 1U;
@@ -54,11 +59,10 @@ struct MixerState {
         std::shared_ptr<platform::AudioStream> stream;
         Bus* bus = nullptr;
         ma_audio_buffer buffer{};
-        ma_decoder decoder{};
+        std::unique_ptr<ReaderSource> readerSource;
         std::unique_ptr<StreamSource> streamSource;
         ma_sound handle{};
-        bool decoderSource = false;
-        bool sourceReady = false;
+        bool bufferReady = false;
         bool handleReady = false;
         std::unique_ptr<EffectChain> effects;
         core::ProcessMode processMode = core::ProcessMode::Inherit;
@@ -96,7 +100,7 @@ struct MixerState {
 
     static constexpr ma_uint64 kSilentBlockFrames = 1024;
 
-    explicit MixerState(const Mixer::Setup& setup) : output(setup) {}
+    MixerState(const Mixer::Setup& setup, core::JobSystem& jobSystem) : output(setup), jobs(jobSystem) {}
     ~MixerState();
 
     MixerState(const MixerState&) = delete;
@@ -126,6 +130,9 @@ struct MixerState {
     // Applies the voice volume, pan and pitch and, for positional voices, the distance, direction and motion relative to the listener.
     void apply(Voice& voice) const;
 
+    // Posts the fill of a voice of a streamed sound to the I/O pool when its ring needs one.
+    void fill(Voice& voice) const;
+
     // Hands the effects of a voice that is about to go over to the tails when they ring on.
     void retire(Voice& voice);
 
@@ -144,6 +151,7 @@ struct MixerState {
 
     // The output stops reading the engine first thing in the destructor, before the voices, the buses and the engine go.
     Device output;
+    core::JobSystem& jobs;
     ma_engine engine{};
     bool engineReady = false;
     std::size_t maxVoices = 0;

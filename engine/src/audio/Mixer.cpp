@@ -53,14 +53,14 @@ float Mixer::Spatialization::getDopplerPitch(math::Vec2 offset, math::Vec2 liste
     return std::clamp(ratio, kMinDopplerPitch, kMaxDopplerPitch);
 }
 
-Mixer::Mixer(const Setup& setup) {
+Mixer::Mixer(const Setup& setup, core::JobSystem& jobs) {
     if (setup.sampleRate == 0 || setup.channels == 0 || setup.maxVoices == 0) {
         throw std::invalid_argument("Audio needs a sample rate, a channel count and room for at least one voice.");
     }
     if (setup.session.mixWithOthers && setup.session.category != Session::Category::Playback) {
         throw std::invalid_argument("Only the playback audio session mixes with other apps on request.");
     }
-    state = std::make_unique<MixerState>(setup);
+    state = std::make_unique<MixerState>(setup, jobs);
 
     ma_engine_config config = ma_engine_config_init();
     config.noDevice = MA_TRUE;
@@ -133,23 +133,21 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     voice->sound = sound;
 
     const SoundData& data = *sound.getData();
-    ma_data_source* source = nullptr;
-    if (data.streamed) {
-        const ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 0, 0);
-        if (ma_decoder_init_memory(data.encoded.data(), data.encoded.size(), &config, &voice->decoder) != MA_SUCCESS) {
-            throw std::runtime_error("A streamed sound could not be decoded.");
-        }
-        voice->decoderSource = true;
-        source = &voice->decoder;
-    } else {
-        ma_audio_buffer_config config = ma_audio_buffer_config_init(ma_format_f32, data.channels, data.frames, data.samples.data(), nullptr);
-        config.sampleRate = data.sampleRate;
-        if (ma_audio_buffer_init(&config, &voice->buffer) != MA_SUCCESS) {
-            throw std::runtime_error("A sound could not be prepared for playback.");
-        }
-        source = &voice->buffer;
+    if (data.reader) {
+        voice->readerSource = std::make_unique<ReaderSource>(data);
+        MixerState::Voice& streamed = *voice;
+        const VoiceId id = state->start(std::move(voice), streamed.readerSource->get(), options);
+        state->fill(streamed);
+        return id;
     }
-    voice->sourceReady = true;
+
+    ma_audio_buffer_config config = ma_audio_buffer_config_init(ma_format_f32, data.channels, data.frames, data.samples.data(), nullptr);
+    config.sampleRate = data.sampleRate;
+    if (ma_audio_buffer_init(&config, &voice->buffer) != MA_SUCCESS) {
+        throw std::runtime_error("A sound could not be prepared for playback.");
+    }
+    voice->bufferReady = true;
+    ma_data_source* source = &voice->buffer;
     return state->start(std::move(voice), source, options);
 }
 
@@ -538,6 +536,9 @@ void Mixer::update(float deltaSeconds) {
     state->advance(deltaSeconds);
     state->releaseFinished();
     state->spatialize(deltaSeconds);
+    for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {
+        state->fill(*voice);
+    }
     if (failure != nullptr) {
         std::rethrow_exception(failure);
     }

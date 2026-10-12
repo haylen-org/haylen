@@ -4,21 +4,24 @@
 #include <memory>
 #include <span>
 #include <utility>
-#include <vector>
+
+namespace haylen::io {
+class PackageReader;
+}
 
 namespace haylen::audio {
 
 struct SoundData;
 
-// Shared handle to audio. Decoded sounds keep 32-bit float frames in memory, which suits short effects. Streamed sounds keep the encoded file and decode it while they play, which suits long music.
+// Shared handle to audio. Decoded sounds keep 32-bit float frames in memory, which suits short effects. Streamed sounds keep only a reader of the encoded file and decode it while they play, which suits long music, so a file of any size plays in bounded memory.
 class Sound final {
   public:
     Sound() = default;
     explicit Sound(std::shared_ptr<const SoundData> value) noexcept : data(std::move(value)) {}
 
-    // Both factories accept WAV, FLAC, MP3 and Ogg Vorbis data and throw `std::runtime_error` when it cannot be decoded.
+    // Both factories accept WAV, FLAC, MP3 and Ogg Vorbis data and throw `std::runtime_error` when it cannot be decoded. A streamed sound reads only the header of its file here, except an MP3 file without the Xing or Info header of its encoder, which it reads through once to count its frames, and each voice that plays it reads the file in ranges as it goes.
     [[nodiscard]] static Sound decode(std::span<const std::uint8_t> encoded);
-    [[nodiscard]] static Sound stream(std::vector<std::uint8_t> encoded);
+    [[nodiscard]] static Sound stream(std::shared_ptr<io::PackageReader> reader);
 
     // Makes a decoded sound from raw samples, interleaved by channel, where 16-bit samples become floats. Throws `std::invalid_argument` for a sample rate or channels of 0 and for samples that do not fill whole frames, and `std::runtime_error` for no samples at all.
     [[nodiscard]] static Sound fromSamples(std::span<const float> samples, std::uint32_t channels, std::uint32_t sampleRate);

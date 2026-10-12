@@ -8,7 +8,7 @@ local audio = require('haylen.audio')
 
 ## Sounds and voices
 
-Sounds are assets loaded through [`haylen.assets`](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option keeps the encoded file in memory and decodes it while it plays, which suits long music.
+Sounds are assets loaded through [`haylen.assets`](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option never reads the file whole: the sound reads its file in ranges and each voice decodes it while it plays, keeping only a bounded window of encoded bytes and about a second of decoded frames, which a protected release decrypts chunk by chunk, so music of any length plays in the same small memory, as the [audio guide](../audio.md#streamed-sounds) describes.
 
 Every call to `audio.play()` starts a new voice and returns its id, an integer, and `audio.playMusic()` returns the id of the voice of the music track. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor. Calls with the id of a voice that already finished do nothing, so an app never has to check a voice before stopping it. At most 128 voices play at once, and a new voice stops the oldest voice that is not music when the limit is reached.
 
@@ -35,11 +35,11 @@ Sounds also come from bytes in memory with [`audio.newSound`](#audionewsoundbyte
 
 ### audio.newSound(bytes, options)
 
-Creates a `haylen.Sound` from `bytes`, a string with the contents of a WAV, Ogg Vorbis, MP3 or FLAC file, decoded into memory unless `options.stream` is `true`, which keeps the file and decodes it while a voice plays it. With `options.format` the string holds raw samples instead, interleaved by channel in the byte order of the device, which is little-endian on every platform the engine runs on:
+Creates a `haylen.Sound` from `bytes`, a string with the contents of a WAV, Ogg Vorbis, MP3 or FLAC file, decoded into memory unless `options.stream` is `true`, which keeps the bytes of the file and decodes them while a voice plays them, a bounded window at a time. With `options.format` the string holds raw samples instead, interleaved by channel in the byte order of the device, which is little-endian on every platform the engine runs on:
 
 | Option | Type | Meaning |
 | --- | --- | --- |
-| `stream` | boolean | Keeps a file encoded and decodes it while it plays, like the `stream` option of assets. It is `false` by default, and raw samples, which are decoded already, raise `Raw samples are decoded already, so they cannot stream.`. |
+| `stream` | boolean | Keeps a file encoded and decodes it while it plays, like the `stream` option of assets, though the string itself stays in memory. It is `false` by default, and raw samples, which are decoded already, raise `Raw samples are decoded already, so they cannot stream.`. |
 | `format` | string | Either `'float32'` for 32-bit floats from -1 to 1, or `'int16'` for 16-bit integers, which become floats. Any other format raises `The format of raw samples is "float32" or "int16", not "<format>".`. |
 | `sampleRate` | integer | The sample rate of raw samples in hertz, which they need. |
 | `channels` | integer | The channels of raw samples, which they need. |

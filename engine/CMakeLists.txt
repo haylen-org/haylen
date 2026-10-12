@@ -203,6 +203,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/MemoryDecoder.cpp
   src/audio/Mixer.cpp
   src/audio/MixerState.cpp
+  src/audio/ReaderDecoder.cpp
+  src/audio/ReaderSource.cpp
   src/audio/Reverb.cpp
   src/audio/Session.cpp
   src/audio/Sound.cpp

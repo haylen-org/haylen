@@ -181,7 +181,7 @@ TEST_F(AudioEffectTest, EffectsChainInOrderOnBusesAndVoices) {
     mixer.removeEffect(9999, *cut);
     EXPECT_TRUE(mixer.getEffects(9999).empty());
 
-    Mixer other({.device = false, .sampleRate = kRate});
+    Mixer other({.device = false, .sampleRate = kRate}, jobs);
     EXPECT_THROW(other.addBusEffect("sfx", cut), std::invalid_argument);
 }
 

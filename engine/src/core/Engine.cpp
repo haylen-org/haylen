@@ -41,7 +41,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.graphics = std::make_unique<graphics::Device>(host.getGraphicsSetup());
     audio::Mixer::Setup audioSetup = host.getAudioSetup();
     audioSetup.session = current.config.audioSession;
-    current.audio = std::make_unique<audio::Mixer>(audioSetup);
+    current.audio = std::make_unique<audio::Mixer>(audioSetup, *current.jobs);
     // clang-format off
     current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); });
     // clang-format on

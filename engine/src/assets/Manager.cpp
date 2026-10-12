@@ -243,7 +243,8 @@ std::size_t Manager::reload(std::string_view path) {
             cache.erase(key);
             continue;
         }
-        Request fresh{.type = entry.type, .path = changed, .options = entry.options, .bytes = package.readAsset(changed), .package = &package};
+        Request fresh{.type = entry.type, .path = changed, .options = entry.options, .package = &package};
+        readFile(fresh, isStreamed(fresh, kind));
         kind.reload(asset, fresh);
         publisher->publish(core::LifecycleEvent::kAssetReloaded, entry.type, changed);
     }
@@ -273,7 +274,7 @@ std::shared_ptr<void> Manager::load(std::string_view typeName, std::string_view 
     return share(typeName, path, options, [this, &assetType](const Request& shared) {
         requireLocal(shared.path);
         Request loading = shared;
-        loading.bytes = package.readAsset(loading.path);
+        readFile(loading, isStreamed(loading, assetType));
         return assetType.finalize(assetType.decode(loading), loading);
     });
     // clang-format on
@@ -351,7 +352,7 @@ void Manager::startLoad(Request request, Callback callback) {
 }
 
 void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::string& key, const Type& assetType) {
-    // The file is read on the I/O pool, where waiting on the disk blocks no decoding, then decoded on the task pool and queued on the frame thread, where `finalizePending` creates its GPU resources within the upload budget.
+    // The file is read on the I/O pool, where waiting on the disk blocks no decoding, then decoded on the task pool and queued on the frame thread, where `finalizePending` creates its GPU resources within the upload budget. An asset that streams decodes on the I/O pool as well, since its decoder reads the file.
     // clang-format off
     const auto deliver = [this, owner = std::weak_ptr<bool>(alive), key, loading, finalize = assetType.finalize](std::shared_ptr<void> decoded, std::string error) {
         jobs.postToFrame([this, owner, key, loading, finalize, decoded = std::move(decoded), error = std::move(error)]() mutable {
@@ -360,27 +361,43 @@ void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::
             }
         });
     };
-
-    jobs.postIo([this, loading, decode = assetType.decode, deliver] {
+    const auto decodeFile = [loading, decode = assetType.decode, deliver] {
+        std::shared_ptr<void> decoded;
+        std::string error;
         try {
-            loading->bytes = package.readAsset(loading->path);
+            decoded = decode(*loading);
+        } catch (const std::exception& exception) {
+            error = exception.what();
+        }
+        deliver(std::move(decoded), std::move(error));
+    };
+
+    jobs.postIo([this, loading, decodeFile, deliver, streamed = isStreamed(*loading, assetType)] {
+        try {
+            readFile(*loading, streamed);
         } catch (const std::exception& exception) {
             deliver(nullptr, exception.what());
             return;
         }
-
-        jobs.post([loading, decode, deliver] {
-            std::shared_ptr<void> decoded;
-            std::string error;
-            try {
-                decoded = decode(*loading);
-            } catch (const std::exception& exception) {
-                error = exception.what();
-            }
-            deliver(std::move(decoded), std::move(error));
-        });
+        if (streamed) {
+            decodeFile();
+            return;
+        }
+        jobs.post(decodeFile);
     });
     // clang-format on
+}
+
+bool Manager::isStreamed(const Request& request, const Type& assetType) {
+    return assetType.streams && assetType.streams(request.options);
+}
+
+void Manager::readFile(Request& request, bool streamed) const {
+    if (streamed) {
+        request.reader = package.openAssetReader(request.path);
+        return;
+    }
+    request.bytes = package.readAsset(request.path);
 }
 
 void Manager::setAvailability(Availability value) {

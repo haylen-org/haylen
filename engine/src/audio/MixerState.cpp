@@ -7,6 +7,7 @@
 
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/core/FrameClock.hpp"
+#include "haylen/core/JobSystem.hpp"
 
 namespace haylen::audio {
 
@@ -14,9 +15,7 @@ MixerState::Voice::~Voice() {
     if (handleReady) {
         ma_sound_uninit(&handle);
     }
-    if (sourceReady && decoderSource) {
-        ma_decoder_uninit(&decoder);
-    } else if (sourceReady) {
+    if (bufferReady) {
         ma_audio_buffer_uninit(&buffer);
     }
 }
@@ -161,6 +160,15 @@ void MixerState::apply(Voice& voice) const {
     ma_sound_set_volume(&voice.handle, voice.volume * gain);
     ma_sound_set_pan(&voice.handle, std::clamp(pan, -1.0F, 1.0F));
     ma_sound_set_pitch(&voice.handle, pitch);
+}
+
+void MixerState::fill(Voice& voice) const {
+    if (!voice.readerSource) {
+        return;
+    }
+    if (std::function<void()> work = voice.readerSource->takeFill()) {
+        jobs.postIo(std::move(work));
+    }
 }
 
 void MixerState::retire(Voice& voice) {

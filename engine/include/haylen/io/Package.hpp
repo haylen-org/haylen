@@ -49,6 +49,7 @@ class Package {
     [[nodiscard]] std::string readText(std::string_view path) const;
     [[nodiscard]] bool assetExists(std::string_view path) const;
     [[nodiscard]] std::uint64_t getAssetSize(std::string_view path) const;
+    [[nodiscard]] std::unique_ptr<PackageReader> openAssetReader(std::string_view path) const;
     [[nodiscard]] std::vector<std::uint8_t> readAsset(std::string_view path) const;
     [[nodiscard]] std::vector<std::uint8_t> readAssetRange(std::string_view path, std::uint64_t offset, std::size_t size) const;
     [[nodiscard]] std::string readAssetText(std::string_view path) const;

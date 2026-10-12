@@ -19,7 +19,8 @@
 
 namespace haylen::io {
 class Package;
-}
+class PackageReader;
+} // namespace haylen::io
 
 namespace haylen::core {
 class EventBus;
@@ -35,22 +36,24 @@ namespace haylen::assets {
 // Loads, caches and preloads assets by their path inside the package content folder. Cached assets stay alive while anything, including a preload group, still holds them. The manager publishes `assetLoaded` when an asset enters the cache, `assetReloaded` when a changed file updates it in place, `assetChanged` when a changed file leaves a live asset of a type that cannot update in place behind, and `assetUnloaded` when its last holder lets go, queued on the event bus with the type and path of the asset.
 class Manager final {
   public:
-    // What a loader receives. Decoders may read companion files, such as the image of an atlas, through the package from their worker thread.
+    // What a loader receives: the bytes of the file, or a reader of it for an asset that streams. Decoders may read companion files, such as the image of an atlas, through the package from their worker thread.
     struct Request {
         std::string type;
         std::string path;
         core::Json options;
         std::vector<std::uint8_t> bytes;
+        std::shared_ptr<io::PackageReader> reader;
         const io::Package* package = nullptr;
     };
 
-    // Loader for one kind of asset. The function `normalize` validates the options and returns their canonical form, so equal options share one cached asset. The function `decode` runs on a worker thread with the file bytes, and `finalize` runs on the frame thread, where GPU resources may be created.
+    // Loader for one kind of asset. The function `normalize` validates the options and returns their canonical form, so equal options share one cached asset. The function `decode` runs on a worker thread with the file bytes, and `finalize` runs on the frame thread, where GPU resources may be created. An asset for whose normalized options `streams` returns true never has its file read whole: its decoder receives a reader of the file instead and runs on the I/O pool, since it reads as it decodes, so files of any size, such as long music, load in bounded memory.
     struct Type {
         std::string name;
         std::vector<std::string> extensions;
         std::function<core::Json(const core::Json&)> normalize;
         std::function<std::shared_ptr<void>(Request&)> decode;
         std::function<std::shared_ptr<void>(std::shared_ptr<void>, const Request&)> finalize;
+        std::function<bool(const core::Json&)> streams;
 
         // Updates a live asset in place from the fresh bytes of its file. Types without it leave the cache on reload, so the next load reads the file again, and the live asset announces with `assetChanged` that it is stale.
         std::function<void(const std::shared_ptr<void>&, Request&)> reload;
@@ -204,6 +207,10 @@ class Manager final {
     [[nodiscard]] std::vector<Entry> expand(const std::vector<Entry>& entries) const;
     void startLoad(Request request, Callback callback);
     void readAndDecode(const std::shared_ptr<Request>& loading, const std::string& key, const Type& assetType);
+
+    // Gives the request the bytes of its file, or a reader of it for an asset that streams.
+    void readFile(Request& request, bool streamed) const;
+    [[nodiscard]] static bool isStreamed(const Request& request, const Type& assetType);
 
     // Throws for an asset whose bytes are not on the device, which a synchronous read never waits for.
     void requireLocal(std::string_view path) const;

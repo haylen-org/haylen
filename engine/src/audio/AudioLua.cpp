@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -21,6 +22,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "io/MemoryReader.hpp"
 
 namespace haylen::audio {
 
@@ -132,7 +134,7 @@ int AudioLua::newSound(lua_State* L) {
         if (sampleRate != 0 || channels != 0) {
             throw std::invalid_argument("Only raw samples take a sample rate and channels, together with their format.");
         }
-        lua::Stack::push(L, stream ? Sound::stream({encoded.begin(), encoded.end()}) : Sound::decode(encoded));
+        lua::Stack::push(L, stream ? Sound::stream(std::make_shared<io::MemoryReader>(std::make_shared<const std::vector<std::uint8_t>>(encoded.begin(), encoded.end()))) : Sound::decode(encoded));
         return 1;
     }
     if (stream) {
