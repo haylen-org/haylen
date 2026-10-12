@@ -13,7 +13,7 @@ Sounds are assets of [`haylen.assets`](lua-api/assets.md) of the type `sound`, l
 | Decoded | `assets.load('audio/ui/click.ogg')` | The whole sound as 32-bit float samples. | Short effects that play often, because a new voice reads samples that are already in memory. |
 | Streamed | `assets.load('audio/music/day.mp3', 'sound', {stream = true})` | The encoded file. Each voice decodes it while it plays. | Music and long ambience, which would take a lot of memory decoded. |
 
-A decoded sound is decoded when its asset loads, on worker threads when it loads through `assets.loadAsync` or a preload group. Preload group entries take the same options, so music can be preloaded as a stream:
+A streamed MP3 has no index of its frames, so moving the cursor of its voice, or starting it at `startAt`, decodes the file from its start on the thread that mixes, which a long track may hear as a gap. Stream music as Ogg Vorbis or FLAC when the app seeks in it. A decoded sound is decoded when its asset loads, on worker threads when it loads through `assets.loadAsync` or a preload group. Preload group entries take the same options, so music can be preloaded as a stream:
 
 ```json
 {

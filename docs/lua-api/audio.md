@@ -44,7 +44,7 @@ Creates a `haylen.Sound` from `bytes`, a string with the contents of a WAV, Ogg 
 | `sampleRate` | integer | The sample rate of raw samples in hertz, which they need. |
 | `channels` | integer | The channels of raw samples, which they need. |
 
-Bytes that are no sound file raise `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.`, raw samples without a sample rate or channels raise `Raw audio needs a sample rate and channels.`, bytes that do not fill whole samples raise `Samples of this format take <n> bytes each, which <m> bytes do not fill.`, samples that do not fill whole frames raise `Raw audio samples come in whole frames, one sample for every channel.`, and a sample rate or channels given for a file raise `Only raw samples take a sample rate and channels, together with their format.`.
+Bytes that are no sound file raise `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.`, raw samples without a sample rate or channels raise `Raw audio needs a sample rate and channels.`, bytes that do not fill whole samples raise `Samples of this format take <n> bytes each, which <m> bytes do not fill.`, samples that do not fill whole frames raise `Raw audio samples come in whole frames, one sample for every channel.`, a sample rate or channels given for a file raise `Only raw samples take a sample rate and channels, together with their format.`, and a file or raw samples without a single sample raise `Audio data contains no samples.`.
 
 ```lua
 local async = require('async')
@@ -922,6 +922,7 @@ end)
 | --- | --- |
 | `Unknown option "<key>".` | An options table has a key the call does not accept. |
 | `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.` | The function `audio.newSound()` received bytes that are no sound file. |
+| `Audio data contains no samples.` | The function `audio.newSound()` received a file or raw samples that hold no sample. |
 | `Raw audio needs a sample rate and channels.` | The function `audio.newSound()` received raw samples without a `sampleRate` or `channels`. |
 | `The audio bus "<name>" does not exist.` | A call names a bus that does not exist. |
 | `An audio bus needs a non-empty name that no other bus uses, not "<name>".` | The function `audio.createBus()` received an empty or existing name. |
