@@ -8,7 +8,6 @@
 #include <string_view>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/crypto/Aead.hpp"
 #include "content/crypto/ContentKey.hpp"
 #include "content/crypto/Digest.hpp"
@@ -17,6 +16,7 @@
 #include "content/crypto/VerifyingKey.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/Manifest.hpp"
+#include "haylen/content/Error.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"

@@ -7,8 +7,8 @@
 #include <stdexcept>
 #include <utility>
 
-#include "content/Error.hpp"
 #include "content/format/Compression.hpp"
+#include "haylen/content/Error.hpp"
 
 namespace haylen::content {
 

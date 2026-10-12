@@ -4,11 +4,11 @@
 #include <stdexcept>
 #include <utility>
 
-#include "content/Error.hpp"
 #include "content/crypto/Hasher.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/BinaryWriter.hpp"
 #include "content/format/ShardHeader.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/io/Path.hpp"
 
 namespace haylen::content {

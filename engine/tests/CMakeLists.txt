@@ -60,6 +60,7 @@ set(HAYLEN_TEST_SOURCES
   content/CryptoTests.cpp
   content/HostileInputTests.cpp
   content/HpakPackageTests.cpp
+  content/HttpTransportTests.cpp
   content/KeyStoreTests.cpp
   content/LuaCompilerTests.cpp
   content/ManifestTests.cpp
@@ -138,6 +139,7 @@ set(HAYLEN_TEST_SOURCES
   storage/StorageTests.cpp
   support/AllocationTracker.cpp
   support/ContentParsers.cpp
+  support/ContentServer.cpp
   support/CountingPackage.cpp
   support/EngineFixture.cpp
   support/ReleaseFixture.cpp

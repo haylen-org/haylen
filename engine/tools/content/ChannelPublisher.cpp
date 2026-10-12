@@ -10,10 +10,10 @@
 #include <string>
 #include <utility>
 
-#include "content/Error.hpp"
 #include "content/HpakPackage.hpp"
 #include "content/ShardSet.hpp"
 #include "content/format/Chunker.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/core/AppConfig.hpp"
 
 namespace haylen::content {

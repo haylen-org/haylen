@@ -9,9 +9,9 @@
 #include <string>
 #include <utility>
 
-#include "content/Error.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/ChunkRecord.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/core/Utf8.hpp"
 #include "haylen/io/Path.hpp"
 

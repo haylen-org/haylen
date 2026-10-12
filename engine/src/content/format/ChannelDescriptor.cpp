@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <format>
 
-#include "content/Error.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/BinaryWriter.hpp"
+#include "haylen/content/Error.hpp"
 
 namespace haylen::content {
 

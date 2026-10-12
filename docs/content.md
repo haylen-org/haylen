@@ -380,6 +380,24 @@ packs/<ab>/<id>.hpak           Every published shard, named by its ID under the 
 
 `content publish` builds the content domain of the app as the next generation of the channel, reusing the packs of the current one, so it adds only the packs of new chunks and a new manifest, which names the previous one and serves the build of the app and every later build. Manifests and packs are immutable: a publish that would write other bytes under a name that exists stops there, and the packs it moved into place before stay, named by no channel, until a later publish uses them or `content compact` deletes them. A channel name has at most 64 lowercase letters, digits, dashes and dots, and any other name stops the publish before it reads or writes a file. New packs grow in `staging/` of the tree and move into place, the new manifest follows, the whole new generation verifies against the files in the tree, and only then does the channel pointer move, written under another name and renamed over the old one, so a publish that fails at any point leaves every channel at its earlier generation. Only the content domain is published, since the code of an app belongs to the build that ships it. `content compact` keeps the current generation of every channel and the ones before it up to `--keep`, two by default, and deletes the manifests and packs that none of them names, and a folder without `channels/` is refused as no publication tree.
 
+## Downloads
+
+Content that is not on the device arrives over HTTP or HTTPS through `content::HttpTransport`, which runs on the streaming client of Varn, so a response streams through the engine in pieces and is never held whole. It downloads the files of a publication tree or of a release, whole files such as channel pointers and manifests, and byte ranges of shards, and it checks every response before a byte of it reaches the engine.
+
+| Check | What happens |
+| --- | --- |
+| Status | A whole file needs the status 200 and a range the status 206, and any other status fails with `UnexpectedHttpStatus` and the status in its details. |
+| Range | A partial response must cover exactly the bytes asked for, as its `Content-Range` says, and a server that sends another range fails with `RangeUnsupported`. |
+| Whole file instead of a range | A server that answers a range with the whole file fails with `RangeUnsupported` as soon as its head arrives, so a server without byte ranges never makes an app download a whole shard. |
+| Length | A range delivers exactly its size, more fails with `RangeUnsupported`, and a body that ends early fails with `UpdateInterrupted`. |
+| Validator | A download that resumes asks only for the bytes it lacks, with `If-Range` and the strong entity tag of the response that sent the bytes it holds, so the server sends the rest of the same file. When the file changed, the server answers with the whole file, and the range starts again from its first byte instead of mixing two files. A response without a strong entity tag never resumes. |
+| Deadline | One deadline covers a whole request: 30 seconds plus the time the bytes take at 32 KiB per second. |
+| Certificates | HTTPS verifies the certificate of the server, and a failure is `TlsFailed`. |
+
+`content::RangePlanner` turns the records an app needs from one shard into few requests: records whose gap is at most 256 KiB share one request, which stays within 16 MiB, so many small records cost few requests, a small shard whose records are all needed arrives in one request, and a large shard is never fetched for a few of its records.
+
+A server of protected content serves byte ranges of its files, sends `ETag` for them and leaves them uncompressed, since the shards are encrypted and do not compress. Every file of a publication tree is immutable except the channel pointers, so packs and manifests take long cache lifetimes, such as `Cache-Control: public, max-age=31536000, immutable`, and a channel pointer takes `Cache-Control: no-cache`. A server on another origin than a web page allows its requests with `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag`.
+
 ## Limits
 
 Every parser treats its bytes as hostile: it checks every offset and size against the bytes it has before it uses them, checks counts before it multiplies them, and allocates only what those checks allow.
@@ -398,7 +416,7 @@ Every parser treats its bytes as hostile: it checks every offset and size agains
 
 ## Errors
 
-Failures of protected content raise `content::Error`, a `std::runtime_error` whose code tells a damaged install from a missing key or a rejected update. Messages name files, shards and IDs, and never keys or decrypted bytes.
+Failures of protected content raise `content::Error` of `haylen/content/Error.hpp`, a `std::runtime_error` whose code tells a damaged install from a missing key, a network that is down or a rejected update. Its details hold the HTTP status of a failed request and the message of the platform, each empty when it does not apply. `isRetryable` tells whether trying again may succeed without a new build of the app: a network that comes back, a server error, a timeout, or a status 408 or 429. Messages and details name files, shards and IDs, and never keys or decrypted bytes.
 
 | Code | Cause |
 | --- | --- |
@@ -422,6 +440,14 @@ Failures of protected content raise `content::Error`, a `std::runtime_error` who
 | `MissingShard` | The file of a shard that a manifest names is missing. |
 | `MissingManifest` | A publication tree lacks a manifest that a channel names. |
 | `LuaBytecodeIncompatible` | The app manifest holds Lua bytecode of another ABI than the Lua of the running build loads. |
+| `NetworkOffline` | The server could not be reached. |
+| `NetworkTimeout` | A request passed its deadline. |
+| `NetworkCancelled` | A download was cancelled. |
+| `NetworkFailed` | A request failed in another way, such as an address the transport refuses or a redirect it does not follow. |
+| `TlsFailed` | The secure connection failed, such as a certificate that does not verify. |
+| `RangeUnsupported` | The server does not serve byte ranges as protected content needs. |
+| `UnexpectedHttpStatus` | The server answered with a status other than the file or the range. |
+| `UpdateInterrupted` | A download ended before all of its bytes arrived. |
 
 ## Security
 

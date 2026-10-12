@@ -7,8 +7,8 @@
 #include <string>
 #include <string_view>
 
-#include "content/Error.hpp"
 #include "content/crypto/Digest.hpp"
+#include "haylen/content/Error.hpp"
 
 namespace haylen::content {
 

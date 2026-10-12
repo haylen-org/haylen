@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/LuaCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "core/ErrorScreen.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Application.hpp"

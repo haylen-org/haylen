@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/format/Catalog.hpp"
 #include "content/format/CatalogWriter.hpp"
+#include "haylen/content/Error.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::content {

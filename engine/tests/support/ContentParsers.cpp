@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/crypto/SigningKey.hpp"
 #include "content/format/Catalog.hpp"
 #include "content/format/ChannelDescriptor.hpp"
@@ -10,6 +9,7 @@
 #include "content/format/Manifest.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
+#include "haylen/content/Error.hpp"
 #include "support/ReleaseFixture.hpp"
 
 namespace haylen::test {

@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/LuaCompiler.hpp"
 #include "content/ReleaseInspector.hpp"
 #include "content/ReleasePackage.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TestFiles.hpp"

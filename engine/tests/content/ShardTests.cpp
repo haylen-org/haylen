@@ -13,7 +13,6 @@
 #include <utility>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/ShardReader.hpp"
 #include "content/ShardWriter.hpp"
 #include "content/crypto/Aead.hpp"
@@ -22,6 +21,7 @@
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
+#include "haylen/content/Error.hpp"
 #include "io/MemoryReader.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"

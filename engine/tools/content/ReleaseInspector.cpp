@@ -10,10 +10,10 @@
 #include <utility>
 
 #include "content/Compatibility.hpp"
-#include "content/Error.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/Chunker.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/io/Package.hpp"
 
 namespace haylen::content {

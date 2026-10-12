@@ -9,13 +9,13 @@
 #include <vector>
 
 #include "content/Compatibility.hpp"
-#include "content/Error.hpp"
 #include "content/LuaCompiler.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/SigningKey.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChannelDescriptor.hpp"
 #include "content/format/Manifest.hpp"
+#include "haylen/content/Error.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TestFiles.hpp"
 

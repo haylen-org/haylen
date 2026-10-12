@@ -5,10 +5,10 @@
 #include <algorithm>
 #include <utility>
 
-#include "content/Error.hpp"
 #include "content/crypto/Hasher.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/BinaryWriter.hpp"
+#include "haylen/content/Error.hpp"
 
 namespace haylen::content {
 

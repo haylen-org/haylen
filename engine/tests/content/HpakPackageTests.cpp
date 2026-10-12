@@ -15,7 +15,6 @@
 #include <thread>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/HpakPackage.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/ShardSet.hpp"
@@ -24,6 +23,7 @@
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/Chunker.hpp"
 #include "content/format/ShardHeader.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/MemoryPackage.hpp"

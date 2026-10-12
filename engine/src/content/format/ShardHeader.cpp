@@ -2,11 +2,11 @@
 
 #include <algorithm>
 
-#include "content/Error.hpp"
 #include "content/crypto/Hasher.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/BinaryWriter.hpp"
 #include "content/format/ShardIndex.hpp"
+#include "haylen/content/Error.hpp"
 
 namespace haylen::content {
 

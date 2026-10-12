@@ -6,9 +6,9 @@
 #include <utility>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/HpakPackage.hpp"
 #include "content/ShardSet.hpp"
+#include "haylen/content/Error.hpp"
 #include "io/CompositePackage.hpp"
 
 namespace haylen::content {

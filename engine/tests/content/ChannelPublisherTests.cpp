@@ -14,8 +14,8 @@
 #include <vector>
 
 #include "content/ChannelPublisher.hpp"
-#include "content/Error.hpp"
 #include "content/format/ChannelDescriptor.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"

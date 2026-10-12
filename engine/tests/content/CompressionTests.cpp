@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "content/Error.hpp"
 #include "content/format/Compression.hpp"
+#include "haylen/content/Error.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::content {

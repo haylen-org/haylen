@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "content/Error.hpp"
+#include "haylen/content/Error.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/BinaryWriter.hpp"

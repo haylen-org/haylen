@@ -1,6 +1,6 @@
 #include "content/crypto/KeyRing.hpp"
 
-#include "content/Error.hpp"
+#include "haylen/content/Error.hpp"
 
 namespace haylen::content {
 
