@@ -98,7 +98,7 @@ haylen run-cpp ~/apps/my-cpp-game --platform catalyst
 haylen run-cpp ~/apps/my-cpp-game --platform android --device emulator-5554
 ```
 
-Configures the CMake project in the folder it names, relative to the current folder or absolute, which adds the engine and calls `haylen_add_app`, as the [embedding guide](embedding.md) shows, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is named after the project folder unless `--target` names another one. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes.
+Configures the CMake project in the folder it names, relative to the current folder or absolute, which adds the engine and calls `haylen_add_app`, as the [embedding guide](embedding.md) shows, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is named after the project folder unless `--target` names another one. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes. `--config Release` ships the protected release of the app, built with the content tool of the desktop artifacts, and inspects the built app before it launches, as the [embedding guide](embedding.md#protected-releases) describes.
 
 | Platform | Build | Launch |
 | --- | --- | --- |

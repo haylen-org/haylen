@@ -3911,15 +3911,17 @@ def command_run_cpp(args: argparse.Namespace) -> None:
     folder = CPP_BUILDS_DIR / build_folder_name(project)
 
     if args.platform == "web":
-        bundle_web(project, target, args.config, folder, args.jobs)
-        serve(folder / "web", args.host, args.port, args.coep, args.coop, args.open)
+        site = bundle_web(project, target, args.config, folder, args.jobs, cpp_release_options(args))
+        if args.config == "Release":
+            stop_on_release_problems(cpp_release_problems(cpp_release_app(folder / f"web-{args.config.lower()}", target), site, "app"))
+        serve(site, args.host, args.port, args.coep, args.coop, args.open)
     elif args.platform == "android":
         run_cpp_android(project, target, folder, args)
     elif args.platform in APPLE_NATIVE_SLICES and args.platform != "macos":
         run_cpp_apple(project, target, folder, args)
     else:
         directory = folder / f"{host_name()}-{args.config.lower()}"
-        command = ["cmake", "-S", project, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
+        command = ["cmake", "-S", project, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
         if host_name() != "windows" or shutil.which("ninja"):
             command += ["-G", "Ninja"]
         if host_name() == "macos":
@@ -3927,8 +3929,33 @@ def command_run_cpp(args: argparse.Namespace) -> None:
         terminal.step(f'Building the target "{target}" in `{shown_path(directory)}`')
         run(command)
         run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
+        executable = cmake_app_executable(directory, target)
+        if args.config == "Release":
+            app = cpp_release_app(directory, target)
+            bundle = next((parent for parent in executable.parents if parent.suffix == ".app"), None)
+            stop_on_release_problems(cpp_release_problems(app, bundle, "Contents/Resources/app") if bundle else cpp_release_problems(app, executable.parent, "app"))
         terminal.step(f'Running "{target}"')
-        run([cmake_app_executable(directory, target)])
+        run([executable])
+
+
+def cpp_release_options(args: argparse.Namespace) -> list[str]:
+    """The options that make the Release configuration of a C++ app ship its protected release, built by the content tool of the desktop artifacts, as Lua apps do, and every other configuration the package as it is."""
+    if args.config != "Release":
+        return ["-DHAYLEN_PROTECTED_RELEASE=OFF"]
+    return ["-DHAYLEN_PROTECTED_RELEASE=ON", f"-DHAYLEN_CONTENT_TOOL={content_tool(args.engine_config, args.jobs)}"]
+
+
+def cpp_release_app(directory: Path, target: str) -> App:
+    """The app whose package the release build of a C++ target shipped, which the build recorded in its release folder."""
+    recorded = directory / "haylen-release" / target / "package.txt"
+    if not recorded.is_file():
+        raise BuildError(f'The build in `{shown_path(directory)}` made no protected release of "{target}". Build the project again in the Release configuration.')
+    return App(Path(recorded.read_text().strip()), host_name())
+
+
+def cpp_release_problems(app: App, folder: Path, release: str) -> list[Requirement]:
+    """Inspects the built app of a C++ project for anything a release never holds."""
+    return [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(folder), release, read_secrets(app))]
 
 
 def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
@@ -3938,7 +3965,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
     directory = folder / f"{args.platform}-{args.config.lower()}"
     generator = "Ninja" if args.platform == "catalyst" else "Xcode"
-    command = ["cmake", "-S", project, "-B", directory, "-G", generator, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch)]
+    command = ["cmake", "-S", project, "-B", directory, "-G", generator, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args)]
     if device:
         command.append(f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}")
     terminal.step(f'Building the target "{target}" for "{args.platform}" in `{shown_path(directory)}`')
@@ -3947,8 +3974,11 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
 
     # Ninja places the bundle in `bin/<target>`, while the Xcode generator places it in `bin`.
     settings = APPLE_RUNS[args.platform]
+    bundle = next((directory / "bin").glob(f"**/{target}.app"))
+    if args.config == "Release":
+        stop_on_release_problems(cpp_release_problems(cpp_release_app(directory, target), bundle, "Contents/Resources/app" if args.platform == "catalyst" else "app"))
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
-    launch_apple(next((directory / "bin").glob(f"**/{target}.app")), args, simulator, [])
+    launch_apple(bundle, args, simulator, [])
 
 
 def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
@@ -3959,31 +3989,35 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
         raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {', '.join(f'"{name}"' for name in ANDROID_ABIS)}. Use a device or an emulator of one of those.")
     directory = folder / f"android-{abi}-{args.config.lower()}"
     terminal.step(f'Building the target "{target}" for "{abi}" in `{shown_path(directory)}`')
-    run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi)])
+    run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi), *cpp_release_options(args)])
     run(["cmake", "--build", directory, "--target", target, "--parallel", str(args.jobs)])
 
-    # The activity, the bridge and the other Java classes come from the `haylen` library of the artifacts, while the app brings the engine in its own library.
+    # The activity, the bridge and the other Java classes come from the `haylen` library of the artifacts, while the app brings the engine in its own library, and a release build brings the part of its protected release that ships.
     built = directory / "bin" / target
     app = App(Path((built / "package.txt").read_text().strip()), "android")
+    release = Path((built / "release.txt").read_text().strip()) if args.config == "Release" else None
     ensure_artifacts("android", args.engine_config, args.jobs)
     root = project_root(app, "android")
-    prepare_android(app, root, target, args.jobs)
+    prepare_android(app, root, target, args.jobs, release)
     copy_into(built / f"lib{target}.so", root / GENERATED_FOLDER / "jniLibs" / abi)
     apk = build_android(app, root, args)
-    report_requirements(check_android(app, root, args))
+    requirements = check_android(app, root, args)
+    report_requirements([requirement for requirement in requirements if requirement.advice != RELEASE_ADVICE])
+    stop_on_release_problems(requirements)
     launch_android(apk, args, device, [])
 
 
-def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) -> None:
-    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder, whose page runs the backend the browser supports."""
+def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
+    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder, whose page runs the backend the browser supports, and returns that folder. A protected release, which both builds make byte for byte the same, goes once into `app/` of the site, where its content streams by range."""
     output = folder / "web"
     shutil.rmtree(output, ignore_errors=True)
+    releases = []
     for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
         directory = folder / f"{platform_name}-{config.lower()}"
         terminal.step(f'Building the target "{target}" for "{platform_name}" in `{shown_path(directory)}`')
-        if not (directory / "CMakeCache.txt").exists():
+        if options is not None or not (directory / "CMakeCache.txt").exists():
             renderer = "WGPU" if platform_name == "web" else "GLES3"
-            run([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}"])
+            run([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}", *(options or [])])
         run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
         built = directory / "bin" / target
         destination = output / backend
@@ -3993,6 +4027,12 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) 
                 shutil.copy2(built / f"{target}{suffix}", destination)
         for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
             shutil.copy2(built / name, destination)
+        if (built / "app").is_dir():
+            releases.append(built / "app")
+    if releases:
+        if {path.name: file_hash(path) for path in releases[0].iterdir()} != {path.name: file_hash(path) for path in releases[-1].iterdir()}:
+            raise BuildError(f'The WebGPU and WebGL2 builds of "{target}" made different protected releases, while the page serves one. Build them again from a clean build folder.')
+        shutil.copytree(releases[0], output / "app")
 
     # The page is the shell of the target, with the script that picks the backend where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
     shell = (built / f"{target}.shell.html").read_text()
@@ -4002,6 +4042,7 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) 
     (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()))
     shutil.copy2(built / ENGINE_LOGO.name, output)
     terminal.success(f'Bundled "{target}" for WebGPU and WebGL2 into `{shown_path(output)}`.')
+    return output
 
 
 # Protected releases: the content tool builds them from the package of an app with the keys of the app, which live outside every project.

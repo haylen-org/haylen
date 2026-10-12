@@ -136,6 +136,26 @@ The function links `haylen::runtime`, which brings the system libraries of the p
 | Web | The page `<target>.html` with the shell, and the package preloaded at `/app` in the virtual file system. |
 | Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. The command `haylen.py run-cpp --platform android` prepares that project, `platform/android` of the package folder or a copy of the Android template, as the [distribution guide](distribution.md#the-android-project) describes. |
 
+### Protected releases
+
+The cache variable `HAYLEN_PROTECTED_RELEASE`, off by default, makes every app of the project ship its [protected release](content.md) instead of the package as it is, exactly like the release builds of Lua apps: the Lua modules as bytecode and every asset encrypted in shards, which the app opens with the bootstrap that the build compiles into it, so a C++ app and a Lua app read their content through the same code. `haylen.py run-cpp --config Release` turns it on, and any other configuration turns it off.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `HAYLEN_PROTECTED_RELEASE` | `OFF` | Ships the protected release of each app, with its bootstrap compiled in. |
+| `HAYLEN_CONTENT_TOOL` | Empty | The content tool of the host, `haylen-content`. Empty uses the `haylen-content` target of the build, which exists when the engine builds its tools for this machine, so a project that builds for another platform names the one of the desktop artifacts, as `run-cpp` does. |
+
+The build runs the content tool on the package with the keys of the app from its [key folder](content.md#key-folders), which it creates on the machine of the developer the first time, with a warning to back it up, and never in continuous integration, where `HAYLEN_KEYS_DIR` names the folders it receives. Each build reuses the shards of the release before it, writes the release into `haylen-release/<target>/` of the build tree with the bootstrap next to it, and rebuilds them when a file of the package changes. The profile follows the platform, `apple`, `android`, `web`, `windows` or `linux`, and the build number the version, 1.2.3 being 1002003.
+
+| Platform | What ships |
+| --- | --- |
+| Windows and Linux | The release in `app/` next to the executable, copied after each build. |
+| macOS, iOS, tvOS and Mac Catalyst | The release in `Resources/app` of the bundle, or `app` at the root of an iOS or tvOS bundle, copied before the bundle is signed. |
+| Web | The manifests and the app domain preloaded at `/app`, and the whole release in `app/` next to the page, from which the content streams by range into the [content store of the browser](content.md#the-web). |
+| Android | The release in `bin/<target>/release.txt`, which `run-cpp` places in the assets of the Android project instead of the package. |
+
+An app with a content server in `app.json` ships only what its required content needs, and the shards of named packs stay in `haylen-release/<target>/packs/`, as the [delivery guide](content.md#delivery) explains. `run-cpp --config Release` inspects the built app before it launches and stops when it holds Lua text, a file of the package as it is, symbol files or a key in any form.
+
 ## An app written in C++
 
 The sample `samples/cpp/embedding` is an app project of its own that uses no Lua. Its `CMakeLists.txt` adds the engine in the mode chosen by the `CPP_EMBEDDING_MODE` cache variable (`subdirectory`, `cpm` or `package`) from the checkout named by `HAYLEN_ENGINE_SOURCE`, and builds the app with the `CPP` option.

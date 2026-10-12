@@ -3,6 +3,10 @@
 # Apple bundles carry them under Resources/app.
 # Web builds preload them at /app in the virtual file system.
 # Android apps take them into the APK assets of their Gradle project, which haylen.py assembles from the Android template, so the build records the package folder next to the library.
+# With HAYLEN_PROTECTED_RELEASE every app ships its protected release instead, built by the content tool with the keys of the app, which the app opens with the bootstrap the build compiles into it, in the same places, and a web page preloads only the manifests and the app domain and streams the rest from the "app" folder next to it.
+
+option(HAYLEN_PROTECTED_RELEASE "Ships the package of every app as its protected release, with the bootstrap of the app compiled in." OFF)
+set(HAYLEN_CONTENT_TOOL "" CACHE FILEPATH "The content tool of the host, haylen-content, which builds protected releases. Empty uses the haylen-content target of the build.")
 
 # The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which haylen.py links them into the projects of Lua apps.
 # Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
@@ -221,6 +225,14 @@ function(haylen_add_app target)
     set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
   endif()
   target_link_libraries(${target} PRIVATE haylen::runtime)
+  get_filename_component(package "${arg_PACKAGE}" ABSOLUTE)
+  if(ANDROID)
+    file(WRITE "${CMAKE_BINARY_DIR}/bin/${target}/package.txt" "${package}")
+  endif()
+  if(HAYLEN_PROTECTED_RELEASE)
+    haylen_add_release(${target} "${package}" "${arg_APPLE_PROJECT}" "${arg_WEB_SHELL}")
+    return()
+  endif()
 
   if(APPLE)
     set(project_dir "${arg_APPLE_PROJECT}")
@@ -241,15 +253,131 @@ function(haylen_add_app target)
         target_link_options(${target} PRIVATE "--preload-file=${arg_PACKAGE}/${folder}@/app/${folder}")
       endif()
     endforeach()
-  elseif(ANDROID)
-    get_filename_component(package "${arg_PACKAGE}" ABSOLUTE)
-    file(WRITE "${CMAKE_BINARY_DIR}/bin/${target}/package.txt" "${package}")
-  else()
+  elseif(NOT ANDROID)
     haylen_link_package(${target} "${arg_PACKAGE}")
-    # Windows apps embed the application manifest of the engine, which selects the Common Controls that message dialogs need and UTF-8 as the code page of the process.
-    if(WIN32)
-      set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE ON VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${target}>")
-      target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/platform/windows/haylen.manifest")
-    endif()
+    haylen_setup_windows_app(${target})
   endif()
+endfunction()
+
+# Windows apps embed the application manifest of the engine, which selects the Common Controls that message dialogs need and UTF-8 as the code page of the process.
+function(haylen_setup_windows_app target)
+  if(WIN32)
+    set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE ON VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${target}>")
+    target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/platform/windows/haylen.manifest")
+  endif()
+endfunction()
+
+# The key folder of an app, as haylen.py finds it: under the folder that HAYLEN_KEYS_DIR names in continuous integration, or else under the configuration folder of the user, never inside a project.
+function(haylen_keys_folder identifier output)
+  if(DEFINED ENV{HAYLEN_KEYS_DIR} AND NOT "$ENV{HAYLEN_KEYS_DIR}" STREQUAL "")
+    set(root "$ENV{HAYLEN_KEYS_DIR}")
+  elseif(CMAKE_HOST_APPLE)
+    set(root "$ENV{HOME}/Library/Application Support/Haylen/keys")
+  elseif(CMAKE_HOST_WIN32)
+    file(TO_CMAKE_PATH "$ENV{APPDATA}/Haylen/keys" root)
+  elseif(DEFINED ENV{XDG_CONFIG_HOME} AND NOT "$ENV{XDG_CONFIG_HOME}" STREQUAL "")
+    set(root "$ENV{XDG_CONFIG_HOME}/haylen/keys")
+  else()
+    set(root "$ENV{HOME}/.config/haylen/keys")
+  endif()
+  set(${output} "${root}/${identifier}" PARENT_SCOPE)
+endfunction()
+
+# Builds the protected release of an app and its bootstrap, and ships the part of the release that the app needs where the platform keeps the package.
+function(haylen_add_release target package apple_project web_shell)
+  set(tool "${HAYLEN_CONTENT_TOOL}")
+  set(tool_target "")
+  if(NOT tool AND TARGET haylen-content)
+    set(tool "$<TARGET_FILE:haylen-content>")
+    set(tool_target haylen-content)
+  endif()
+  if(NOT tool)
+    message(FATAL_ERROR "A protected release needs the content tool of the host. Name it with \"HAYLEN_CONTENT_TOOL\", such as the haylen-content of the desktop artifacts that \"haylen.py engine --platform desktop\" builds.")
+  endif()
+
+  # The profile names the platform family of the release, and the build number comes from the version, 1.2.3 being 1002003.
+  if(APPLE)
+    set(profile apple)
+  elseif(ANDROID)
+    set(profile android)
+  elseif(EMSCRIPTEN)
+    set(profile web)
+  elseif(WIN32)
+    set(profile windows)
+  else()
+    set(profile linux)
+  endif()
+  string(REGEX MATCHALL "[0-9]+" parts "${app_version}")
+  list(APPEND parts 0 0 0)
+  list(GET parts 0 major)
+  list(GET parts 1 minor)
+  list(GET parts 2 patch)
+  math(EXPR build "${major} * 1000000 + ${minor} * 1000 + ${patch}")
+  file(READ "${package}/app.json" document)
+  string(JSON server ERROR_VARIABLE missing GET "${document}" content updates baseUrl)
+  if(missing)
+    set(server "")
+  endif()
+  haylen_keys_folder("${app_identifier}" keys)
+
+  # The build folder of the release records the package, which haylen.py inspects the built app against.
+  set(folder "${CMAKE_BINARY_DIR}/haylen-release/${target}")
+  file(WRITE "${folder}/package.txt" "${package}")
+  set(stamp "${folder}/release.stamp")
+  set(bootstrap "${folder}/HaylenBootstrap.cpp")
+  set(boot "")
+  if(EMSCRIPTEN)
+    set(boot "${folder}/boot")
+  endif()
+  file(GLOB_RECURSE package_files CONFIGURE_DEPENDS "${package}/source/*" "${package}/content/*" "${package}/plugins/*")
+  add_custom_command(OUTPUT "${stamp}"
+    COMMAND "${CMAKE_COMMAND}" "-DTOOL=${tool}" "-DPACKAGE=${package}" "-DIDENTIFIER=${app_identifier}" "-DKEYS=${keys}" "-DPROFILE=${profile}" "-DBUILD=${build}" "-DRELEASE=${folder}/release" "-DCACHE=${folder}/cache" "-DSHIPPED=${folder}/shipped" "-DPACKS=${folder}/packs" "-DSERVER=${server}" "-DBOOT=${boot}" "-DSTAMP=${stamp}" -P "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake"
+    DEPENDS "${package}/app.json" ${package_files} "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" ${tool_target}
+    COMMENT "Building the protected release of ${target}."
+    VERBATIM
+  )
+  add_custom_command(OUTPUT "${bootstrap}"
+    COMMAND "${tool}" bootstrap --keys "${keys}" --profile "${profile}" --build "${build}" --output "${bootstrap}"
+    DEPENDS "${stamp}"
+    COMMENT "Writing the bootstrap of ${target}."
+    VERBATIM
+  )
+  add_custom_target(${target}_release DEPENDS "${stamp}")
+  add_dependencies(${target} ${target}_release)
+  target_sources(${target} PRIVATE "${bootstrap}")
+
+  if(APPLE)
+    # The release goes into the bundle before the bundle is signed, at the resources of the bundle, where macOS and Mac Catalyst keep them in Contents.
+    set(destination "$<TARGET_BUNDLE_DIR:${target}>/app")
+    if(HAYLEN_PLATFORM STREQUAL "macos" OR CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
+      set(destination "$<TARGET_BUNDLE_CONTENT_DIR:${target}>/Resources/app")
+    endif()
+    haylen_copy_release(${target} "${folder}/shipped" "${destination}")
+    set(project_dir "${apple_project}")
+    if(NOT project_dir)
+      set(project_dir "${HAYLEN_ENGINE_DIR}/platform/apple")
+    endif()
+    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_orientation}" "${app_show_in_taskbar}")
+  elseif(EMSCRIPTEN)
+    # The page preloads the manifests and the app domain, and the shards of the content stay in the "app" folder next to it, where downloads read them by range.
+    haylen_setup_web_page(${target} "${web_shell}")
+    file(WRITE "${folder}/haylen-release.js" "Module.haylen = Module.haylen || {};\nModule.haylen.release = {address: \"app/\", identifier: \"${app_identifier}\", files: []};\n")
+    target_link_options(${target} PRIVATE "--preload-file=${boot}@/app" "--pre-js=${folder}/haylen-release.js")
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${stamp}")
+    haylen_copy_release(${target} "${folder}/release" "$<TARGET_FILE_DIR:${target}>/app")
+  elseif(ANDROID)
+    file(WRITE "${CMAKE_BINARY_DIR}/bin/${target}/release.txt" "${folder}/shipped")
+  else()
+    haylen_copy_release(${target} "${folder}/shipped" "$<TARGET_FILE_DIR:${target}>/app")
+    haylen_setup_windows_app(${target})
+  endif()
+endfunction()
+
+# Replaces the release folder of an app after each build, so a file the release no longer names never stays behind.
+function(haylen_copy_release target source destination)
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E rm -rf "${destination}"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory "${source}" "${destination}"
+    VERBATIM
+  )
 endfunction()

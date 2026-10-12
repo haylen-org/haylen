@@ -650,6 +650,22 @@ class AndroidPluginsTest(unittest.TestCase):
 
 
 
+class CppReleaseTest(unittest.TestCase):
+    """The Release configuration of a C++ project ships the protected release with the content tool of the desktop artifacts, and every other configuration turns it off again in the cache of the build tree."""
+
+    def test_turns_the_protected_release_on_only_for_release(self):
+        self.assertEqual(haylen.cpp_release_options(mock.Mock(config="Debug")), ["-DHAYLEN_PROTECTED_RELEASE=OFF"])
+        with mock.patch.object(haylen, "content_tool", return_value=Path("/tools/haylen-content")):
+            options = haylen.cpp_release_options(mock.Mock(config="Release", engine_config="Release", jobs=2))
+        self.assertEqual(options, ["-DHAYLEN_PROTECTED_RELEASE=ON", "-DHAYLEN_CONTENT_TOOL=/tools/haylen-content"])
+
+    def test_names_the_build_that_made_no_release(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            with self.assertRaises(haylen.BuildError) as raised:
+                haylen.cpp_release_app(Path(scratch), "game")
+        self.assertIn("made no protected release", str(raised.exception))
+
+
 class SteamTest(unittest.TestCase):
     """The Steam staging names a depot for the platform and one for every pack, and writes the build scripts that steamcmd runs."""
 
