@@ -61,7 +61,7 @@ Returns the update that the last check found, as a table with `generation` and `
 
 ### content.isLocal(path)
 
-Returns whether every byte of an asset, by its path relative to the `content` folder, is on the device, so loading it never waits for a download. An asset that does not exist counts as on the device, and loading it reports that it is missing.
+Returns whether every byte of an asset, by its path relative to the `content` folder, is on the device, so loading it never waits for a download. An asset that does not exist counts as on the device, and loading it reports that it is missing. On the web, where the content store lives in the browser, an asset counts once the page read its bytes in during the visit, which `assets.loadAsync`, a preload group or `content.prefetch` does without a download when the store holds them, while the required content is always read in before the app starts.
 
 ```lua
 local content = require('haylen.content')

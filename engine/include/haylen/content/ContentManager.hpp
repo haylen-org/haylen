@@ -106,7 +106,7 @@ class ContentManager final {
         return holdingStart;
     }
 
-    // Whether every byte of an asset, by its path relative to `content`, is on the device, so loading it never waits for a download.
+    // Whether every byte of an asset, by its path relative to `content`, is on the device and readable now, so loading it never waits. On the web the bytes that the browser keeps become readable once a load reads them in.
     [[nodiscard]] bool isLocal(std::string_view path) const;
 
     // Brings the assets that the device lacks, by their paths relative to `content`, and calls back once all of them are on the device. Throws `std::invalid_argument` for an asset that does not exist.

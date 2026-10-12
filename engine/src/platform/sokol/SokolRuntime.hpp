@@ -55,8 +55,8 @@ class SokolRuntime final {
     // Stops the running app and makes the package the one that `restart` starts, such as an empty package that a page fills file by file.
     static void stage(std::shared_ptr<io::Package> source);
 
-    // The overlay of the package that `restart` starts, whose files a page or the development server replace, or null for a package that plays without one.
-    [[nodiscard]] static io::OverlayPackage* getOverlay() noexcept;
+    // The overlay of the package that `restart` starts, whose files a page replaces. Throws for a protected release, which plays without one.
+    [[nodiscard]] static io::OverlayPackage& getOverlay();
 
     // The development session of the process, or null when it plays the app the way it ships.
     [[nodiscard]] static DevelopmentSession* getDevelopmentSession() noexcept;

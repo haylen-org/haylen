@@ -122,7 +122,7 @@ int WebPage::setFile(const char* path, const std::uint8_t* bytes, int size) {
     // clang-format off
     return answer([&] {
         std::string entry = io::Path::normalize(path);
-        SokolRuntime::getOverlay()->setFile(entry, std::vector<std::uint8_t>(bytes, bytes + size));
+        SokolRuntime::getOverlay().setFile(entry, std::vector<std::uint8_t>(bytes, bytes + size));
         touched.push_back(std::move(entry));
         return 1;
     });
@@ -133,7 +133,7 @@ int WebPage::removeFile(const char* path) {
     // clang-format off
     return answer([&] {
         std::string entry = io::Path::normalize(path);
-        const bool removed = SokolRuntime::getOverlay()->removeFile(entry);
+        const bool removed = SokolRuntime::getOverlay().removeFile(entry);
         touched.push_back(std::move(entry));
         return removed ? 1 : 0;
     });

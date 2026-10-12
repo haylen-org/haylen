@@ -42,8 +42,9 @@ WebStoreFiles* WebStoreFiles::active = nullptr;
 
 WebStoreFiles::WebStoreFiles() : metadata(std::filesystem::path(kRoot)) {
     active = this;
-    if (const std::optional<std::vector<std::uint8_t>> sizes = metadata.read(std::string(kSizesFile))) {
-        for (const auto& [name, size] : core::Json::parse(*sizes).items()) {
+    if (const std::optional<std::vector<std::uint8_t>> bytes = metadata.read(std::string(kSizesFile))) {
+        const core::Json sizes = core::Json::parse(*bytes);
+        for (const auto& [name, size] : sizes.items()) {
             segmentSizes.emplace(name, size.get<std::uint64_t>());
         }
     }

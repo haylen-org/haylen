@@ -4,10 +4,12 @@
 #include <cmath>
 #include <filesystem>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <utility>
 
+#include "content/ReleasePackage.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Engine.hpp"
@@ -179,8 +181,12 @@ DevelopmentSession* SokolRuntime::getDevelopmentSession() noexcept {
     return getCurrent().host.getDevelopmentSession();
 }
 
-io::OverlayPackage* SokolRuntime::getOverlay() noexcept {
-    return dynamic_cast<io::OverlayPackage*>(getCurrent().package.get());
+io::OverlayPackage& SokolRuntime::getOverlay() {
+    auto* overlay = dynamic_cast<io::OverlayPackage*>(getCurrent().package.get());
+    if (overlay == nullptr) {
+        throw std::runtime_error("The app plays a protected release, whose files a page never edits.");
+    }
+    return *overlay;
 }
 
 void SokolRuntime::stop() {
@@ -268,7 +274,7 @@ SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Pac
     return app;
 }
 
-// The web plays every package under an overlay, which the page edits file by file, and so does an app that a development server sends files to.
+// The web plays every package under an overlay, which the page edits file by file, and so does an app that a development server sends files to. A protected release plays as it ships, since no file of it is ever replaced.
 std::shared_ptr<io::Package> SokolRuntime::withOverlay(std::shared_ptr<io::Package> source) const {
 #if defined(__EMSCRIPTEN__)
     const bool overlaid = true;
@@ -276,7 +282,7 @@ std::shared_ptr<io::Package> SokolRuntime::withOverlay(std::shared_ptr<io::Packa
     const DevelopmentSession* session = host.getDevelopmentSession();
     const bool overlaid = session != nullptr && session->isConnected();
 #endif
-    if (!overlaid || std::dynamic_pointer_cast<io::OverlayPackage>(source)) {
+    if (!overlaid || std::dynamic_pointer_cast<io::OverlayPackage>(source) || std::dynamic_pointer_cast<content::ReleasePackage>(source)) {
         return source;
     }
     return std::make_shared<io::OverlayPackage>(std::move(source));
