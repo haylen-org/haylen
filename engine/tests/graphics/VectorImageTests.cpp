@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
+#include "graphics/Gpu.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/VectorImage.hpp"
 #include "support/EngineFixture.hpp"
@@ -87,6 +91,32 @@ TEST_F(VectorImageTest, LoadsAndRasterizesFromLua) {
     EXPECT_EQ(fixture.lua("return rasterized"), "20 10 linear");
     EXPECT_NE(fixture.lua("return icon:rasterize(0)").find("A vector image rasterizes at a positive scale"), std::string::npos);
     EXPECT_NE(fixture.lua("return icon:rasterize(1000)").find("fits the maximum texture size"), std::string::npos);
+}
+
+// A raster whose texture finds no room on the device rejects its promise, so the coroutine that waits for it goes on.
+TEST_F(VectorImageTest, RejectsARasterWithoutRoomForItsTexture) {
+    test::EngineFixture fixture({{"content/icons/icon.svg", kIcon}});
+    fixture.frames(2);
+    Device& device = fixture.engine().getGraphics();
+    std::vector<Texture> textures;
+    try {
+        while (textures.size() <= static_cast<std::size_t>(Gpu::kImagePoolSize)) {
+            textures.push_back(device.createTexture(Image(1, 1, math::Color::white())));
+        }
+    } catch (const std::runtime_error&) {}
+
+    // clang-format off
+    fixture.runLua(R"(
+        local icon = require('haylen.assets').vectorImage('icons/icon.svg')
+        require('async').spawn(function()
+            local texture, error = icon:rasterize(0.5):await()
+            failed = tostring(texture) .. ' ' .. tostring(error)
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return failed") != "nil"; }));
+    EXPECT_EQ(fixture.lua("return failed"), "nil The graphics device has no room for another texture. At most 4096 textures and render targets can exist at once.");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 } // namespace haylen::graphics

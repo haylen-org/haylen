@@ -1,6 +1,12 @@
 #include "graphics/GraphicsLua.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <exception>
+#include <memory>
+#include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -182,8 +188,8 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
     const VectorImage image = lua::Userdata::check<VectorImage>(L, 1);
     const auto scale = static_cast<float>(luaL_checknumber(L, 2));
     core::Engine& engine = lua::Runtime::getEngine(L);
-    const auto [width, height] = VectorImage::getRasterSize(image.getSize(), scale);
-    if (!(scale > 0.0F && std::isfinite(scale)) || std::max(width, height) > engine.getGraphics().getMaxTextureSize()) {
+    const math::Vec2 size = image.getSize() * scale;
+    if (!(scale > 0.0F && std::isfinite(scale)) || std::max(size.x, size.y) > static_cast<float>(engine.getGraphics().getMaxTextureSize())) {
         throw std::invalid_argument("A vector image rasterizes at a positive scale whose raster fits the maximum texture size of the device.");
     }
     Texture::Options options{.filter = Texture::Filter::Linear};
@@ -195,13 +201,21 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
     }
 
     auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    // A texture that finds no room on the device rejects the promise like a raster that failed.
     // clang-format off
     engine.getJobs().run([image, scale] { return image.rasterize(scale); }, [promise, device = &engine.getGraphics(), options](core::JobSystem::Result<Image> result) {
         if (!result.isOk()) {
             promise->reject(result.error);
             return;
         }
-        promise->resolveCustom([texture = device->createTexture(*result.value, options)](lua_State* state) { lua::Stack::push(state, texture); });
+        Texture texture;
+        try {
+            texture = device->createTexture(*result.value, options);
+        } catch (const std::exception& error) {
+            promise->reject(error.what());
+            return;
+        }
+        promise->resolveCustom([texture](lua_State* state) { lua::Stack::push(state, texture); });
     });
     // clang-format on
     varn::async::Promise::push(L, promise);
