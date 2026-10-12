@@ -16,6 +16,7 @@
 #include "haylen/audio/Filter.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Json.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -101,6 +102,22 @@ TEST_F(MixerTest, MixesVoicesThroughBuses) {
     EXPECT_EQ(mixer.getChannels(), 2U);
     EXPECT_FALSE(mixer.hasDevice());
     EXPECT_EQ(mixer.getBuses(), (std::vector<std::string>{"ambience", "master", "music", "sfx", "ui"}));
+}
+
+TEST_F(MixerTest, DeliversEveryDeviceEventWhenAListenerFails) {
+    std::vector<Mixer::DeviceEvent> heard;
+    // clang-format off
+    const core::Connection connection = mixer.deviceEventReceived.connect([&heard](Mixer::DeviceEvent event) {
+        heard.push_back(event);
+        if (event == Mixer::DeviceEvent::InterruptionBegan) {
+            throw std::runtime_error("The listener failed.");
+        }
+    });
+    // clang-format on
+    mixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
+    mixer.reportDeviceEvent(Mixer::DeviceEvent::RouteChanged);
+    EXPECT_THROW(mixer.update(0.0F), std::runtime_error);
+    EXPECT_EQ(heard, (std::vector{Mixer::DeviceEvent::InterruptionBegan, Mixer::DeviceEvent::RouteChanged}));
 }
 
 TEST_F(MixerTest, ReleasesVoicesWhenTheyFinish) {

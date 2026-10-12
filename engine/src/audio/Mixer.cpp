@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -520,14 +521,22 @@ bool Mixer::isInterrupted() const noexcept {
 }
 
 void Mixer::update(float deltaSeconds) {
-    // A device that opened starts playing, and device events go out first, so the listeners that pause or resume the mixer act before the voices refresh.
+    // A device that opened starts playing, and device events go out first, so the listeners that pause or resume the mixer act before the voices refresh. A listener that fails keeps neither the other events nor the voices from their update, and its failure comes out last.
     state->output.update(deltaSeconds);
+    std::exception_ptr failure;
     for (const DeviceEvent event : state->output.takeEvents()) {
-        deviceEventReceived.emit(event);
+        try {
+            deviceEventReceived.emit(event);
+        } catch (...) {
+            failure = failure != nullptr ? failure : std::current_exception();
+        }
     }
     state->advance(deltaSeconds);
     state->releaseFinished();
     state->spatialize(deltaSeconds);
+    if (failure != nullptr) {
+        std::rethrow_exception(failure);
+    }
 }
 
 std::uint32_t Mixer::getSampleRate() const noexcept {
