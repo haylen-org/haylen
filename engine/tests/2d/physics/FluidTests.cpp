@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <vector>
 
@@ -17,11 +18,32 @@ class FluidTest : public ::testing::Test {
         }
     }
 
-    void tank(float width, float height) {
+    void tank(float width, float height, float thickness = 20.0F) {
         Body walls = world.createBody({.type = Body::Type::Static});
-        walls.addBox({width + 40.0F, 20.0F}, {.offset = {0.0F, 10.0F}});
-        walls.addBox({20.0F, height}, {.offset = {-width * 0.5F - 10.0F, -height * 0.5F}});
-        walls.addBox({20.0F, height}, {.offset = {width * 0.5F + 10.0F, -height * 0.5F}});
+        walls.addBox({width + thickness * 2.0F, thickness}, {.offset = {0.0F, thickness * 0.5F}});
+        walls.addBox({thickness, height}, {.offset = {-(width + thickness) * 0.5F, -height * 0.5F}});
+        walls.addBox({thickness, height}, {.offset = {(width + thickness) * 0.5F, -height * 0.5F}});
+    }
+
+    // Returns the number of particles outside a tank of this width whose floor is at zero.
+    static std::size_t countOutside(const Fluid& fluid, float width) {
+        return static_cast<std::size_t>(std::count_if(fluid.getPositions().begin(), fluid.getPositions().end(), [width](math::Vec2 position) { return position.y > 0.0F || std::abs(position.x) > width * 0.5F; }));
+    }
+
+    static float getFastest(const Fluid& fluid) {
+        float fastest = 0.0F;
+        for (const math::Vec2 velocity : fluid.getVelocities()) {
+            fastest = std::max(fastest, velocity.getLength());
+        }
+        return fastest;
+    }
+
+    static float getTop(const Fluid& fluid) {
+        float top = 0.0F;
+        for (const math::Vec2 position : fluid.getPositions()) {
+            top = std::min(top, position.y);
+        }
+        return top;
     }
 
     World world;
@@ -80,6 +102,92 @@ TEST_F(FluidTest, FloatsLightBodiesAndSinksHeavyOnes) {
 
     EXPECT_LT(cork.getPosition().y, surface + 25.0F);
     EXPECT_GT(stone.getPosition().y, -60.0F);
+}
+
+TEST_F(FluidTest, RestsWithoutGainingEnergyOrVolume) {
+    // A deep tank settles and stays still: the bottom holds the weight of the column without squeezing the liquid to half its depth, and no particle is thrown out through the floor.
+    tank(600.0F, 400.0F);
+    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 4000});
+    const std::size_t added = fluid.fill({-300.0F, -200.0F, 600.0F, 200.0F});
+    const float depth = static_cast<float>(added) * 64.0F / 600.0F;
+    for (int second = 0; second < 6; ++second) {
+        simulate(1.0F);
+        ASSERT_EQ(countOutside(fluid, 600.0F), 0U) << "Second " << second;
+    }
+    EXPECT_LT(getFastest(fluid), 15.0F);
+    EXPECT_LT(getTop(fluid), -depth * 0.85F);
+}
+
+TEST_F(FluidTest, SlowTouchesNeverSplash) {
+    // A paddle that sinks slowly into still liquid and a floating crate dragged slowly through it only raise the surface by what they displace and the small waves they make, and the liquid calms down once they stop.
+    tank(600.0F, 400.0F);
+    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 4000});
+    fluid.fill({-300.0F, -160.0F, 600.0F, 160.0F});
+    simulate(4.0F);
+    const float surface = getTop(fluid);
+    Body crate = world.createBody({.position = {-20.0F, surface - 30.0F}});
+    crate.addBox({70.0F, 50.0F}, {.density = 0.4F});
+    simulate(2.0F);
+
+    Body paddle = world.createBody({.type = Body::Type::Kinematic, .position = {-200.0F, surface - 30.0F}, .velocity = {0.0F, 40.0F}});
+    paddle.addBox({70.0F, 50.0F});
+    float top = 0.0F;
+    for (int step = 0; step < 120; ++step) {
+        crate.setVelocity({40.0F, crate.getVelocity().y});
+        world.step(1.0F / 60.0F);
+        top = std::min(top, getTop(fluid));
+    }
+    EXPECT_GT(top, surface - 20.0F);
+    EXPECT_LT(std::abs(crate.getAngularVelocity()), 1.0F);
+
+    paddle.setVelocity({});
+    simulate(3.0F);
+    EXPECT_LT(getFastest(fluid), 40.0F);
+    EXPECT_EQ(countOutside(fluid, 600.0F), 0U);
+}
+
+TEST_F(FluidTest, FloatsVeryLightBodiesCalmly) {
+    // Many particles push a light body at once, and their pushes together never throw it back faster than they hit it, so crates far lighter than the liquid float still, lighter ones higher.
+    tank(600.0F, 400.0F);
+    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 4000});
+    fluid.fill({-300.0F, -160.0F, 600.0F, 160.0F});
+    simulate(3.0F);
+    const float surface = getTop(fluid);
+    std::vector<Body> crates;
+    for (const float density : {0.05F, 0.2F, 0.5F}) {
+        Body crate = world.createBody({.position = {-200.0F + static_cast<float>(crates.size()) * 200.0F, surface - 30.0F}});
+        crate.addBox({70.0F, 50.0F}, {.density = density});
+        crates.push_back(crate);
+    }
+    simulate(5.0F);
+    for (const Body& crate : crates) {
+        EXPECT_LT(crate.getVelocity().getLength(), 40.0F);
+        EXPECT_LT(std::abs(crate.getAngularVelocity()), 1.0F);
+        EXPECT_NEAR(crate.getPosition().y, surface, 40.0F);
+    }
+    EXPECT_LT(crates[0].getPosition().y, crates[2].getPosition().y);
+    EXPECT_EQ(countOutside(fluid, 600.0F), 0U);
+}
+
+TEST_F(FluidTest, ThinWallsHoldFastParticlesAtEveryStep) {
+    // Particles at the top speed cross a wall thinner than themselves within one step, and the collision along their path stops them at every step length.
+    for (const float stepSeconds : {1.0F / 30.0F, 1.0F / 60.0F, 1.0F / 120.0F}) {
+        World walled;
+        Body walls = walled.createBody({.type = Body::Type::Static});
+        walls.addBox({2.0F, 400.0F}, {.offset = {-200.0F, -200.0F}});
+        walls.addSegment({200.0F, -400.0F}, {200.0F, 0.0F});
+        walls.addBox({402.0F, 2.0F}, {.offset = {0.0F, 1.0F}});
+        Fluid fluid(walled, {.radius = 4.0F, .smoothingRadius = 16.0F, .maxParticles = 200});
+        for (int index = 0; index < 40; ++index) {
+            const float y = -20.0F - static_cast<float>(index) * 9.0F;
+            fluid.spawn({0.0F, y}, {index % 2 == 0 ? -3000.0F : 3000.0F, 0.0F});
+            fluid.spawn({static_cast<float>(index) * 9.0F - 180.0F, -360.0F}, {0.0F, 3000.0F});
+        }
+        for (float time = 0.0F; time < 1.0F; time += stepSeconds) {
+            walled.step(stepSeconds);
+        }
+        EXPECT_EQ(countOutside(fluid, 400.0F), 0U) << "Step " << stepSeconds;
+    }
 }
 
 TEST_F(FluidTest, StaysOutOfOneSidedWallsAndSlopes) {

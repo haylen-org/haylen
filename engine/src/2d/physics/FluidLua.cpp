@@ -29,7 +29,7 @@ template <> struct Type<physics2d::ScriptedOwner<physics2d::Fluid>> {
 
 namespace haylen::physics2d {
 
-// Creates a fluid with `newFluid(world, {radius, smoothingRadius, density, friction, restitution, restDensity, stiffness, nearStiffness, viscosity, gravityScale, maxSpeed, maxParticles, category, mask, group})`. Its user value is the world object, which steps it.
+// Creates a fluid with `newFluid(world, {radius, smoothingRadius, density, friction, restitution, viscosity, iterations, gravityScale, maxSpeed, maxParticles, category, mask, group})`. Its user value is the world object, which steps it.
 int FluidLua::newFluid(lua_State* L) {
     const std::shared_ptr<World>& world = lua::Userdata::checkShared<World>(L, 1);
     Fluid::Options options;
@@ -41,10 +41,8 @@ int FluidLua::newFluid(lua_State* L) {
         lua::Table::readField(L, 2, "density", options.density);
         lua::Table::readField(L, 2, "friction", options.friction);
         lua::Table::readField(L, 2, "restitution", options.restitution);
-        lua::Table::readField(L, 2, "restDensity", options.restDensity);
-        lua::Table::readField(L, 2, "stiffness", options.stiffness);
-        lua::Table::readField(L, 2, "nearStiffness", options.nearStiffness);
         lua::Table::readField(L, 2, "viscosity", options.viscosity);
+        lua::Table::readField(L, 2, "iterations", options.iterations);
         lua::Table::readField(L, 2, "gravityScale", options.gravityScale);
         lua::Table::readField(L, 2, "maxSpeed", options.maxSpeed);
         lua::Table::readField(L, 2, "maxParticles", options.maxParticles);

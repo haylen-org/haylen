@@ -2577,18 +2577,17 @@ print(#pieces)
 
 ### physics2d.newFluid(world, options)
 
-Creates a `Fluid`: a liquid of particles that hold together and spread apart with the double density relaxation of particle fluids, collide with the shapes of the world and push the dynamic bodies they hit, so crates float on it or sink by their density. The particles are not bodies. The fluid keeps them in flat arrays and moves them inside every `world:step()`, after Box2D advances the bodies, with its passes spread over the job system. They collide with the solid shapes that pass their filter, and with chains from the side the chains collide on, while sensors, ray casts and queries never see them. A push that changes the speed of a sleeping body by less than 0.05 meters per second leaves it asleep, so crates resting in still water fall asleep. The options table is optional, and unknown keys raise `Unknown option "<key>".`. A radius that is not positive, a smoothing radius not larger than it, or a negative density, friction, restitution, rest density, stiffness, viscosity or top speed raise `A fluid needs a positive particle radius, a larger smoothing radius, and a density, friction, restitution, rest density, stiffness, viscosity and top speed of zero or more.`.
+Creates a `Fluid`: a liquid of particles that keep the density of particles half a smoothing radius apart with the position based density constraints of particle fluids, so the liquid barely compresses under its own weight, collide with the shapes of the world and push the dynamic bodies they hit, so crates float on it or sink by their density. The particles are not bodies. The fluid keeps them in flat arrays and moves them inside every `world:step()`, after Box2D advances the bodies, with its passes spread over the job system. They collide with the solid shapes that pass their filter, and with chains from the side the chains collide on, while sensors, ray casts and queries never see them. Collisions follow the path of each particle over the step, so walls thinner than a particle hold it at its top speed and at any step length, and a particle that touched a shape stays on the side it touched. The density passes move a particle at most 3 meters per second, so an impact squeezes the liquid for a moment instead of throwing it apart. A body takes the pushes of its particles only until it moves away from them as fast as they approached it and as gravity moved it into them over the step, so a body far lighter than the liquid floats still instead of bouncing off it. A push that changes the speed of a sleeping body by less than 0.05 meters per second leaves it asleep, so crates resting in still water fall asleep. The options table is optional, and unknown keys raise `Unknown option "<key>".`. A radius that is not positive, a smoothing radius not larger than it, fewer than one iteration, a viscosity outside 0 to 1, or a negative density, friction, restitution or top speed raise `A fluid needs a positive particle radius, a larger smoothing radius, at least one iteration, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.`.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `radius` | number | `4` | Collision radius of the particles. |
-| `smoothingRadius` | number | `16` | Distance within which particles interact, which also sets the spacing of `fluid:fill` and the size of the metaballs `fluid:draw` draws. |
+| `smoothingRadius` | number | `16` | Distance within which particles interact, which also sets the spacing of `fluid:fill`, the density the liquid rests at and the size of the metaballs `fluid:draw` draws. |
 | `density` | number | `1` | Kilograms per square meter of the area of a particle, which gives the particles the mass they push bodies with. |
 | `friction` | number | `0.1` | How much particles that slide along shapes slow down, from 0 to 1. |
 | `restitution` | number | `0` | How much particles bounce off shapes. |
-| `restDensity` | number | `1.8` | Density the pressure pulls toward, where larger values pack the liquid tighter. |
-| `stiffness`, `nearStiffness` | number | `0.008`, `0.02` | Strength of the pressure and of the near pressure that keeps particles from clumping, tuned for 60 steps per second and scaled with the step. |
-| `viscosity` | number | `0.15` | How much particles moving toward each other slow down, which evens out the speeds of neighbors. |
+| `viscosity` | number | `0.1` | How much the velocity of each particle blends toward those of its neighbors every step, from 0 to 1, which calms the motion within the liquid. |
+| `iterations` | integer | `5` | Density passes in every step, where more passes compress the liquid less and cost more. |
 | `gravityScale` | number | `1` | Multiplies the world gravity for the particles. |
 | `maxSpeed` | number | `3000` | Speed limit of the particles in units per second. |
 | `maxParticles` | integer | `8192` | Most particles the fluid holds. |
@@ -2808,7 +2807,7 @@ Invalid input raises Lua errors with these messages.
 | `The terrain needs one value per sample.` | The property `terrain.samples` received a list of another length. |
 | `The sample is outside the terrain.` | The method `terrain:sample()` received a column or row outside the grid. |
 | `A fracture needs at least one piece.` | The function `physics2d.fracture()` or `physics2d.splitPolygon()` received fewer than one piece. |
-| `A fluid needs a positive particle radius, a larger smoothing radius, and a density, friction, restitution, rest density, stiffness, viscosity and top speed of zero or more.` | The function `physics2d.newFluid()` received bad options. |
+| `A fluid needs a positive particle radius, a larger smoothing radius, at least one iteration, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.` | The function `physics2d.newFluid()` received bad options. |
 | `particles count from 1` | The method `fluid:remove()` received a position below 1. It comes inside a bad argument error. |
 | `The fluid has no such particle.` | The method `fluid:remove()` received a position past the last particle. |
 | `the buffer needs two values for each particle` | The float buffer of `fluid:positions()` or `fluid:velocities()` is too short. It comes inside a bad argument error. |

@@ -153,7 +153,7 @@ TEST_F(PhysicsFeaturesLuaTest, FluidsExposePositionsInBulk) {
     fixture.runLua(R"(
         floor = world:createBody({type = 'static', x = 0, y = 200})
         floor:addBox(400, 20)
-        water = physics2d.newFluid(world, {radius = 4, smoothingRadius = 16, maxParticles = 100, viscosity = 0.2, gravityScale = 1})
+        water = physics2d.newFluid(world, {radius = 4, smoothingRadius = 16, maxParticles = 100, viscosity = 0.2, iterations = 2, gravityScale = 1})
         added = water:fill({-40, 0, 80, 40})
         spawned = water:spawn(0, -50, 0, 10)
         run(1)
@@ -178,6 +178,8 @@ TEST_F(PhysicsFeaturesLuaTest, FluidsExposePositionsInBulk) {
     EXPECT_NE(lua("water:draw({size = 2})").find("Unknown option \"size\""), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {radius = 4, smoothingRadius = 3})").find("larger smoothing radius"), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {density = -1})").find("A fluid needs"), std::string::npos);
+    EXPECT_NE(lua("physics2d.newFluid(world, {iterations = 0})").find("at least one iteration"), std::string::npos);
+    EXPECT_NE(lua("physics2d.newFluid(world, {stiffness = 0.1})").find("Unknown option \"stiffness\""), std::string::npos);
 }
 
 TEST_F(PhysicsFeaturesLuaTest, ReleasesTheDataOfBodiesHoweverTheyAreDestroyed) {

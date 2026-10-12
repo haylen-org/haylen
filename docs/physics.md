@@ -305,7 +305,7 @@ A tap or a click finds a body only when the point lies inside one of its shapes,
 
 ### Liquids
 
-A liquid made of circle bodies costs a body and its contacts per drop, and its drops never hold together. A fluid of `physics2d.newFluid` keeps its particles outside Box2D, in flat arrays that a spatial hash sorts every step, so pressure holds them together and spreads them apart like a liquid, and spreads the passes over the job system. The particles collide with the shapes of the world and push the dynamic bodies they hit, so crates float or sink by their density, and `fluid:draw` draws them as metaballs straight from the arrays. A fluid costs less than the step of a few thousand boxes: a tank of 1800 particles with six crates steps in 0.24 milliseconds, 4000 particles in 0.37 and 8000 in 0.49, and `fluid.stepMilliseconds` tells what a fluid takes in a scene. The test project shows it in `PHY-012` and `PHY-059`.
+A liquid made of circle bodies costs a body and its contacts per drop, and its drops never hold together. A fluid of `physics2d.newFluid` keeps its particles outside Box2D, in flat arrays that a spatial hash sorts every step, and spreads the passes over the job system. Every step pushes the particles that came closer than the spacing of the liquid apart again in a few density passes, so the liquid keeps its volume under its own weight like water, and the passes move a particle at most 3 meters per second, so a body that falls in squeezes the liquid for a moment instead of throwing it everywhere. The particles collide with the shapes of the world along their path over the step, so walls thinner than a particle hold the liquid at any speed and step length, and they push the dynamic bodies they hit, so crates float or sink by their density. A body takes those pushes only until it moves away from the particles as fast as they approached it, so a crate far lighter than the liquid floats still instead of bouncing off it, and a slow push only raises the surface by what it displaces. More `iterations` compress a deep liquid less, and more `viscosity` calms it sooner. The function `fluid:draw` draws the particles as metaballs straight from the arrays. A fluid costs about as much as the step of a few thousand boxes: a tank of 1800 particles with six crates steps in 0.57 milliseconds, 4000 particles in 1.0 and 8000 in 1.45, and `fluid.stepMilliseconds` tells what a fluid takes in a scene. The test project shows it in `PHY-012` and `PHY-059`.
 
 ## Performance
 
@@ -323,7 +323,7 @@ The cost of a world grows with what is awake and touching:
 
 ### Debug and Release builds
 
-A Debug build of the engine, without optimizations, runs physics several times slower than the Release engine that the desktop player of `haylen run` and the apps built for platforms use: a pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build and 2.1 in Release, and a fluid of 1800 particles 0.86 and 0.24. So the player runs a Debug engine only with `--engine-config Debug`, to debug the engine itself. Measure physics with `haylen bench --suite physics`, as the [build guide](build.md#bench) describes.
+A Debug build of the engine, without optimizations, runs physics several times slower than the Release engine that the desktop player of `haylen run` and the apps built for platforms use: a pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build and 2.1 in Release. So the player runs a Debug engine only with `--engine-config Debug`, to debug the engine itself. Measure physics with `haylen bench --suite physics`, as the [build guide](build.md#bench) describes.
 
 ### The physics benchmark
 
@@ -344,9 +344,9 @@ The command `haylen bench --suite physics` builds `haylen-physics-benchmark` in 
 | Pyramid of 40 rows, 8 sub-steps | The same pyramid with 8 sub-steps. | 0.54 |
 | Chain of 300 links with a heavy ball | A step of 300 capsules joined by revolute joints that swing a ball twenty times denser. | 0.064 |
 | 20 ragdolls tumbling down stairs | A step of 20 ragdolls 200 units tall that fall down ten stairs. | 0.10 |
-| Fluid of 1800 particles, whole step | A step of a tank of fluid with six floating crates, the fluid included. | 0.24 |
-| Fluid of 4000 particles, whole step | The same tank with 4000 particles. | 0.37 |
-| Fluid of 8000 particles, whole step | The same tank with 8000 particles. | 0.49 |
+| Fluid of 1800 particles, whole step | A step of a tank of fluid with six floating crates, the fluid included. | 0.57 |
+| Fluid of 4000 particles, whole step | The same tank with 4000 particles. | 1.0 |
+| Fluid of 8000 particles, whole step | The same tank with 8000 particles. | 1.45 |
 | 10000 ray casts through a pile of 2000 boxes | 10000 rays of 600 units cast one by one down into a settled pile, in one run. | 7.1 |
 | 10000 circle queries in a pile of 2000 boxes | 10000 circle queries of radius 40 in the same pile, in one run. | 14.9 |
 | Read the transforms of 5000 bodies | One `readTransforms` call over 5000 bodies. | 0.026 |
@@ -362,7 +362,7 @@ The numbers say this:
 - A pile at rest costs nothing while it sleeps and as much as a falling pile while it is kept awake.
 - Going from 2 to 4 sub-steps adds about a third to the step, and going from 4 to 8 about a half.
 - Joints and ragdolls are cheap: a chain of 300 links and 20 ragdolls step in about a tenth of a millisecond.
-- A fluid of thousands of particles costs a fraction of a millisecond, and its cost grows slower than its particles because its passes run in parallel.
+- A fluid of thousands of particles costs about a millisecond, and its cost grows slower than its particles because its passes run in parallel.
 - A ray cast costs about 0.7 microseconds and a circle query that returns its shapes about 1.5, and the timings of one run of each are noisy.
 - Reading 5000 transforms in bulk costs about 5 nanoseconds per body.
 - Stepping from Lua costs what the step costs, and the hit and contact callbacks of a pile of 2000 boxes add less than the noise of the run.

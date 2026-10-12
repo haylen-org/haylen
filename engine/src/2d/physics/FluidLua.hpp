@@ -16,7 +16,7 @@ class FluidLua final {
     static void addFunctions(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 15> kFluidFields{"radius", "smoothingRadius", "density", "friction", "restitution", "restDensity", "stiffness", "nearStiffness", "viscosity", "gravityScale", "maxSpeed", "maxParticles", "category", "mask", "group"};
+    static constexpr std::array<std::string_view, 13> kFluidFields{"radius", "smoothingRadius", "density", "friction", "restitution", "viscosity", "iterations", "gravityScale", "maxSpeed", "maxParticles", "category", "mask", "group"};
     static constexpr std::array<std::string_view, 5> kDrawFields{"radius", "color", "outlineColor", "outlineWidth", "threshold"};
 
     // The metaballs of a fluid are this many smoothing radii wide unless its draw call names their radius.
