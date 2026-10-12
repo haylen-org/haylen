@@ -129,6 +129,10 @@ TEST_F(AssetsLuaTest, ExplainsInvalidOptionsAndGroups) {
     EXPECT_NE(lua("return assets.texture('images/hero.png', {filter = 3})").find("The texture filter must be \"nearest\" or \"linear\", not 3."), std::string::npos);
     EXPECT_NE(lua("return assets.texture('images/hero.png', {wrap = 'diagonal'})").find("The texture wrap must be \"clamp\", \"repeat\" or \"mirror\", not \"diagonal\"."), std::string::npos);
     EXPECT_NE(lua("return assets.font('fonts/ui.ttf', {bakeSize = 'large'})").find("The font option \"bakeSize\" must be a number, not \"large\"."), std::string::npos);
+    EXPECT_EQ(lua("return select(2, pcall(assets.texture, 'images/hero.png', {filtr = 'linear'}))"), "Unknown option \"filtr\".");
+    EXPECT_EQ(lua("return select(2, pcall(assets.font, 'fonts/ui.ttf', {size = 32}))"), "Unknown option \"size\".");
+    EXPECT_EQ(lua("return select(2, pcall(assets.load, 'data/level.json', nil, {strict = true}))"), "Unknown option \"strict\".");
+    EXPECT_NE(lua("return assets.texture('images/hero.png', 'linear')").find("bad argument #2 to 'texture' (table expected, got string)"), std::string::npos);
     EXPECT_NE(lua("assets.defineGroups({})").find("The asset group manifest needs \"groups\", which maps each group name to its list of entries."), std::string::npos);
     EXPECT_NE(lua("assets.defineGroup('level', 'images/')").find("The asset group \"level\" must be a list of entries."), std::string::npos);
     EXPECT_NE(lua("assets.defineGroup('level', {{type = 'texture'}})").find("The asset group \"level\" has the entry {\"type\":\"texture\"}, which is not a path or an object with a \"path\" string, an optional \"type\" string and optional \"options\"."), std::string::npos);

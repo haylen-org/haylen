@@ -23,7 +23,7 @@ void AudioPlugin::start(core::Engine& engine) {
         .name = "sound",
         .extensions = {".wav", ".ogg", ".mp3", ".flac"},
         .normalize = [](const core::Json& options) {
-            core::JsonValidator::requireKnownKeys(options, {"stream"}, "sound options");
+            core::JsonValidator::requireKnownOptions(options, {"stream"}, "sound options");
             return core::Json{{"stream", options.value("stream", false)}};
         },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {

@@ -12,6 +12,9 @@ class JsonValidator final {
   public:
     // Throws `std::invalid_argument` naming the first key of the object that is not allowed, so a misspelled setting never goes unnoticed.
     static void requireKnownKeys(const Json& object, std::initializer_list<std::string_view> allowed, std::string_view context);
+
+    // Throws `std::invalid_argument` with `Unknown option "<key>".` for the first option that is not allowed, the message every option table of the engine raises, and names the options in the message for a value that is not an object.
+    static void requireKnownOptions(const Json& options, std::initializer_list<std::string_view> allowed, std::string_view context);
 };
 
 } // namespace haylen::core

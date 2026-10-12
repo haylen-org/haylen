@@ -49,7 +49,7 @@ std::string Manager::describe(const core::Json& value) {
 }
 
 text::TrueTypeFont::Options Manager::fontOptionsFromJson(const core::Json& options) {
-    core::JsonValidator::requireKnownKeys(options, {"bakeSize", "spread", "atlasSize"}, "font options");
+    core::JsonValidator::requireKnownOptions(options, {"bakeSize", "spread", "atlasSize"}, "font options");
     // clang-format off
     const auto number = [&options](const char* key, auto value) {
         if (!options.contains(key)) {
@@ -74,7 +74,7 @@ core::Json Manager::fontOptionsToJson(const text::TrueTypeFont::Options& options
 }
 
 graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& options) {
-    core::JsonValidator::requireKnownKeys(options, {"filter", "wrap"}, "texture options");
+    core::JsonValidator::requireKnownOptions(options, {"filter", "wrap"}, "texture options");
     graphics::Texture::Options result;
     if (options.contains("filter")) {
         const core::Json& value = options.at("filter");
@@ -135,7 +135,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
         .name = "shader",
         .extensions = {".shader"},
         .normalize = [](const core::Json& options) {
-            core::JsonValidator::requireKnownKeys(options, {}, "shader asset options");
+            core::JsonValidator::requireKnownOptions(options, {}, "shader asset options");
             return core::Json::object();
         },
         .decode = [this](Request& request) -> std::shared_ptr<void> {
@@ -154,7 +154,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
         .name = "vectorImage",
         .extensions = {".svg"},
         .normalize = [](const core::Json& options) {
-            core::JsonValidator::requireKnownKeys(options, {}, "vector image asset options");
+            core::JsonValidator::requireKnownOptions(options, {}, "vector image asset options");
             return core::Json::object();
         },
         .decode = [](Request& request) -> std::shared_ptr<void> {
@@ -166,7 +166,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
         .name = "json",
         .extensions = {".json"},
         .normalize = [](const core::Json& options) {
-            core::JsonValidator::requireKnownKeys(options, {}, "JSON asset options");
+            core::JsonValidator::requireKnownOptions(options, {}, "JSON asset options");
             return core::Json::object();
         },
         .decode = [](Request& request) -> std::shared_ptr<void> {

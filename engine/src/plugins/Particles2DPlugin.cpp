@@ -28,7 +28,6 @@ core::Json Particles2DPlugin::normalizeEffectOptions(const core::Json& options) 
     if (options.is_null()) {
         return core::Json::object();
     }
-    core::JsonValidator::requireKnownKeys(options, {"filter", "wrap"}, "texture options");
     (void)assets::Manager::textureOptionsFromJson(options);
     return options;
 }
@@ -39,7 +38,7 @@ particles2d::ImageShape::Options Particles2DPlugin::shapeOptionsFromJson(const c
     if (options.is_null()) {
         return result;
     }
-    core::JsonValidator::requireKnownKeys(options, {"source", "alphaThreshold"}, "image shape options");
+    core::JsonValidator::requireKnownOptions(options, {"source", "alphaThreshold"}, "image shape options");
     if (options.contains("source")) {
         const core::Json& source = options.at("source");
         if (!source.is_array() || source.size() != 4) {

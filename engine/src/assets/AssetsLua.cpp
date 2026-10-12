@@ -27,7 +27,11 @@ Manager& AssetsLua::getAssets(lua_State* L) {
 }
 
 core::Json AssetsLua::readOptions(lua_State* L, int index) {
-    return lua_isnoneornil(L, index) ? core::Json::object() : lua::JsonConverter::read(L, index);
+    if (lua_isnoneornil(L, index)) {
+        return core::Json::object();
+    }
+    luaL_checktype(L, index, LUA_TTABLE);
+    return lua::JsonConverter::read(L, index);
 }
 
 std::string AssetsLua::readType(lua_State* L, int typeIndex, std::string_view path) {

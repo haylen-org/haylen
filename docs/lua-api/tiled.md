@@ -40,7 +40,7 @@ end)
 
 The loaded asset is a `Map` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. The function `tiled.newMapRenderer` makes a playable `MapRenderer` from it.
 
-A Tiled world file with the `.world` extension loads as a plain list with one table per map, each with `path` (the map path inside the content folder), `x`, `y`, `width` and `height` (the map area in world pixels). Maps listed in `maps` keep their order, followed by the maps that `patterns` match. A pattern's `regexp` is matched against the files in the world's folder, its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, and `mapWidth` and `mapHeight` give the size. World loading accepts no options, and any key raises `Unknown key "name" in Tiled world options.`
+A Tiled world file with the `.world` extension loads as a plain list with one table per map, each with `path` (the map path inside the content folder), `x`, `y`, `width` and `height` (the map area in world pixels). Maps listed in `maps` keep their order, followed by the maps that `patterns` match. A pattern's `regexp` is matched against the files in the world's folder, its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, and `mapWidth` and `mapHeight` give the size. World loading accepts no options, and any key raises `Unknown option "name".`
 
 ```lua
 local assets = require('haylen.assets')

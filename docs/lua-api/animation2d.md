@@ -17,7 +17,7 @@ local atlas = assets.load('ui/hero.json', 'atlas')
 local smooth = assets.load('ui/hero.json', 'atlas', {filter = 'linear'})
 ```
 
-The optional options table accepts the texture options `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`). Any other key raises `Unknown key "name" in texture options.` The atlas image shares the texture cache, so `atlas.texture` is the same texture that `assets.texture` returns for that image with the same options. The call `assets.loadAsync('ui/hero.json', 'atlas'):await()` loads it without blocking inside a coroutine.
+The optional options table accepts the texture options `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`). Any other key raises `Unknown option "name".` The atlas image shares the texture cache, so `atlas.texture` is the same texture that `assets.texture` returns for that image with the same options. The call `assets.loadAsync('ui/hero.json', 'atlas'):await()` loads it without blocking inside a coroutine.
 
 The JSON file supports these fields:
 

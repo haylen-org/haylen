@@ -83,7 +83,7 @@ void TiledPlugin::start(core::Engine& engine) {
         .name = "tiledWorld",
         .extensions = {".world"},
         .normalize = [](const core::Json& options) {
-            core::JsonValidator::requireKnownKeys(options, {}, "Tiled world options");
+            core::JsonValidator::requireKnownOptions(options, {}, "Tiled world options");
             return core::Json::object();
         },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {

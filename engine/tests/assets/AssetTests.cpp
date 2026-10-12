@@ -66,6 +66,7 @@ TEST_F(AssetsManagerTest, LoadsAndCachesSynchronously) {
     EXPECT_THROW((void)assets.getTypeForPath("images/readme.txt"), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "linear"}, {"mipmaps", true}}), std::invalid_argument);
     EXPECT_THROW((void)assets.load("json", "data/config.json", {{"strict", true}}), std::invalid_argument);
+    EXPECT_THROW((void)assets.load("json", "data/config.json", 3), std::invalid_argument);
 }
 
 // The manager learns when the last holder of an asset lets go, so a preloaded asset stays loaded until every group that holds it unloads.

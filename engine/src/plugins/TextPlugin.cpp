@@ -70,7 +70,7 @@ text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
 }
 
 core::Json TextPlugin::normalizeGrid(const core::Json& options) {
-    core::JsonValidator::requireKnownKeys(options, {"characters", "cellWidth", "cellHeight", "spacing", "margin", "advance", "lineHeight", "baseline", "filter", "wrap"}, "grid font options");
+    core::JsonValidator::requireKnownOptions(options, {"characters", "cellWidth", "cellHeight", "spacing", "margin", "advance", "lineHeight", "baseline", "filter", "wrap"}, "grid font options");
     const text::BitmapFont::Grid grid = readGrid(options);
     core::Json texture = core::Json::object();
     for (const char* key : {"filter", "wrap"}) {

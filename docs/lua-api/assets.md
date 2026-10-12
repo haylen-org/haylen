@@ -12,7 +12,7 @@ Every path is relative to the `content/` folder of the app package and never inc
 
 ## Asset types
 
-The file extension picks the asset type, and the type decides what Lua receives. Extensions are matched without regard to case. Options are tables whose keys each type validates. Unknown keys raise `Unknown key "<key>" in <kind> options.`, where the kind names the options, such as `texture options` or `sound options`.
+The file extension picks the asset type, and the type decides what Lua receives. Extensions are matched without regard to case. Options are tables whose keys each type validates. Unknown keys raise `Unknown option "<key>".`, and options that are not a table raise a bad argument error.
 
 | Type | Extensions | Lua value | Options |
 | --- | --- | --- | --- |
@@ -628,7 +628,7 @@ end
 | `An asset path cannot be empty.` | The path is empty. |
 | `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.` | The extension belongs to no asset type and no type was given. |
 | `The asset type "<type>" does not exist.` | The type argument names no asset type. |
-| `Unknown key "<key>" in <kind> options.` | An options table has a key the asset type does not accept. |
+| `Unknown option "<key>".` | An options table has a key the asset type does not accept. |
 | `The texture filter must be "nearest" or "linear", not <filter>.` | The `filter` option is not `nearest` or `linear`, and the message shows it as JSON, such as `"blurry"` or `3`. |
 | `The texture wrap must be "clamp", "repeat" or "mirror", not <wrap>.` | The `wrap` option is not `clamp`, `repeat` or `mirror`, and the message shows it as JSON. |
 | `The font option "<option>" must be a number, not <value>.` | The `bakeSize`, `spread` or `atlasSize` of a font is not a number. |
