@@ -1824,7 +1824,7 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 
 #### AV. Correções de física, rolagem, samples e ferramenta
 
-- [ ] Cordas cortadas caem: o pedaço solto de uma corda cortada deixa de ficar preso no ar e cai com a gravidade, com teste de regressão no mundo headless e no teste de cordas do projeto de testes.
+- [x] Cordas cortadas caem: o pedaço solto de uma corda cortada deixa de ficar preso no ar e cai com a gravidade, com teste de regressão no mundo headless e no teste de cordas do projeto de testes. A causa era o limite de comprimento (`limitLength`), uma junta de distância entre as pontas que seguia segurando os pedaços no comprimento da corda depois do corte. O mundo agora destrói esse limite no passo seguinte ao corte, à quebra ou à perda de qualquer elo, testado no `AssemblyTest.CutRopesFallApart`.
 - [ ] Líquido estável: o fluido não espirra com toques lentos, não ganha energia sozinho e não sai do recipiente, com limites de velocidade e de pressão, colisão correta com as paredes e testes de conservação.
 - [ ] Plataformas de mão única: o personagem sobe por todas as plataformas até o topo no teste do projeto de testes, com teste de regressão.
 - [ ] Quebrar em muitas peças não derruba o app: achar a causa do crash, corrigir e testar com o maior número de peças do teste.

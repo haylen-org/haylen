@@ -1859,7 +1859,7 @@ scene.push({
 
 ### physics2d.newRope(world, options)
 
-Builds a chain of segments from `from` to `to` joined by revolute joints and returns a `Rope`. An end can hang from a body, or be pinned in place by a static anchor that the rope creates and destroys with itself. With `limitLength`, which is on by default, a slack distance joint between the two ends keeps the rope from stretching past its length, which a chain of revolute joints alone does under a load much heavier than its segments. Unknown keys raise `Unknown option "<key>".`, and a rope without segments, with ends in the same place or without thickness raises `A rope needs at least one segment, two distinct ends and a positive thickness.`. An invalid material or damping raises the errors of [Shape options](#shape-options) and [`world:createBody`](#worldcreatebodyoptions), and an end body that is destroyed or belongs to another world raises `A joint needs two bodies of this world.`. A rope that fails leaves none of its bodies in the world.
+Builds a chain of segments from `from` to `to` joined by revolute joints and returns a `Rope`. An end can hang from a body, or be pinned in place by a static anchor that the rope creates and destroys with itself. With `limitLength`, which is on by default, a slack distance joint between the two ends keeps the rope from stretching past its length, which a chain of revolute joints alone does under a load much heavier than its segments. The next step after any other joint of the rope is destroyed, breaks or goes with its segment destroys the length limit too, so the pieces of a cut rope fall apart. Unknown keys raise `Unknown option "<key>".`, and a rope without segments, with ends in the same place or without thickness raises `A rope needs at least one segment, two distinct ends and a positive thickness.`. An invalid material or damping raises the errors of [Shape options](#shape-options) and [`world:createBody`](#worldcreatebodyoptions), and an end body that is destroyed or belongs to another world raises `A joint needs two bodies of this world.`. A rope that fails leaves none of its bodies in the world.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1870,7 +1870,7 @@ Builds a chain of segments from `from` to `to` joined by revolute joints and ret
 | `linearDamping`, `angularDamping` | number | `0`, `0.5` | Damping of the segments, which calms swinging. |
 | `planks` | boolean | `false` | Makes the segments boxes instead of capsules. |
 | `pinStart`, `pinEnd` | boolean | `false` | Pins an end without a body to a static anchor. |
-| `limitLength` | boolean | `true` | Adds the slack joint that keeps the rope from stretching past its length. |
+| `limitLength` | boolean | `true` | Adds the slack joint that keeps the rope from stretching past its length while the rope is whole. |
 | `startBody`, `endBody` | Body | `nil` | Hangs an end from a body at the end point. |
 | `category`, `mask`, `group` | integer | `1`, all bits, `0` | Collision filter of the segments. |
 
@@ -1898,7 +1898,7 @@ print(#bridge:joints()) -- 18
 
 ### rope:bodies(), rope:joints(), rope:segments(), rope:points(), rope:destroy()
 
-The methods `bodies` and `joints` return lists of the segment bodies and of the joints: those between segments, those that hang the ends and the length limit last. The method `segments` returns `{x, y, rotation, length}` for each segment, which places a sprite at its center. The method `points` returns the ends of the segments in order as `Vec2`, which draws the rope as a line. The method `destroy` removes the segments, their joints and the anchors of the rope.
+The methods `bodies` and `joints` return lists of the segment bodies and of the joints: those between segments, those that hang the ends and the length limit last. Destroying a joint of the list cuts the rope there, and the length limit goes with the next step. The method `segments` returns `{x, y, rotation, length}` for each segment, which places a sprite at its center. The method `points` returns the ends of the segments in order as `Vec2`, which draws the rope as a line. The method `destroy` removes the segments, their joints and the anchors of the rope.
 
 ```lua
 local physics2d = require('haylen.physics2d')

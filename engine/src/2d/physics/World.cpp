@@ -329,6 +329,31 @@ void World::removeStepHook(std::uint64_t id) {
     std::erase_if(hooks, [id](const Hook& hook) { return hook.id == id; });
 }
 
+void World::tieToChain(const Joint& joint, std::span<const Joint> chain) {
+    ChainTie& tie = chainTies.emplace_back();
+    tie.joint = joint.getId();
+    for (const Joint& link : chain) {
+        tie.chain.push_back(link.getId());
+    }
+}
+
+// Destroys the joints whose chains lost a link since the last step, so the pieces of a cut rope fall apart.
+void World::releaseBrokenChains() {
+    // clang-format off
+    std::erase_if(chainTies, [](const ChainTie& tie) {
+        const b2JointId joint = b2LoadJointId(tie.joint);
+        if (!b2Joint_IsValid(joint)) {
+            return true;
+        }
+        if (std::all_of(tie.chain.begin(), tie.chain.end(), [](std::uint64_t link) { return b2Joint_IsValid(b2LoadJointId(link)); })) {
+            return false;
+        }
+        b2DestroyJoint(joint);
+        return true;
+    });
+    // clang-format on
+}
+
 void World::runHooks(StepPhase phase, float deltaSeconds) {
     for (const Hook& hook : hooks) {
         if (hook.phase == phase) {
@@ -361,6 +386,7 @@ bool World::isDroppingThrough(const Body& body) const {
 
 void World::step(float deltaSeconds) {
     const b2WorldId world = b2LoadWorldId(handle);
+    releaseBrokenChains();
     const auto hooksStart = std::chrono::steady_clock::now();
     runHooks(StepPhase::Before, deltaSeconds);
     auto hookTime = std::chrono::steady_clock::now() - hooksStart;

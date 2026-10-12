@@ -114,7 +114,7 @@ class World final {
     // Revolute and prismatic joints measure their angle from the pose the bodies have at creation, so revolute limits are angles away from that pose. Throws `std::invalid_argument` for a distance joint shorter than 0.005 meters, revolute limits beyond 0.99 pi radians, any limits whose lower value is above the upper one and negative break limits.
     Joint createJoint(Joint::Type type, Body first, Body second, const Joint::Options& options = {});
 
-    // Runs the hooks before the step, advances the world, breaks the joints loaded beyond their limits and runs the hooks after the step.
+    // Releases the length limits of the ropes that lost a link, runs the hooks before the step, advances the world, breaks the joints loaded beyond their limits and runs the hooks after the step.
     void step(float deltaSeconds);
 
     // Adds a function that runs at the given phase of every step until it is removed, which is how vehicles, force fields and fluids act on the world, and returns its id. Hooks never add or remove hooks while they run.
@@ -219,6 +219,7 @@ class World final {
     friend class Body;
     friend class Shape;
     friend class Joint;
+    friend class Rope;
     class OneWayFilter;
 
     struct Hook {
@@ -236,6 +237,12 @@ class World final {
     struct BreakLimit {
         std::optional<float> force;
         std::optional<float> torque;
+    };
+
+    // A joint that holds only while every joint of its chain holds, such as the length limit of a rope, which goes once any link of the rope is cut or broken.
+    struct ChainTie {
+        std::uint64_t joint = 0;
+        std::vector<std::uint64_t> chain;
     };
 
     // The transforms a body had after the last two steps it moved in, indexed by the slot of the body.
@@ -273,6 +280,8 @@ class World final {
     // Reports the bodies and contacts of the world to the debug statistics.
     void countObjects();
 
+    void tieToChain(const Joint& joint, std::span<const Joint> chain);
+    void releaseBrokenChains();
     void runHooks(StepPhase phase, float deltaSeconds);
     void prepareOneWayPlatforms(float deltaSeconds);
     void breakJoints();
@@ -303,6 +312,7 @@ class World final {
     std::vector<Hook> hooks;
     std::uint64_t nextHook = 1;
     std::map<std::uint64_t, BreakLimit> breakLimits;
+    std::vector<ChainTie> chainTies;
     std::vector<Motion> motions;
     std::uint64_t motionStep = 0;
 

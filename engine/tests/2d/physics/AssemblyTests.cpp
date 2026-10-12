@@ -173,6 +173,32 @@ TEST_F(AssemblyTest, RopesWithALengthLimitHoldHeavyLoads) {
     }
 }
 
+TEST_F(AssemblyTest, CutRopesFallApart) {
+    // The length limit of a rope goes with the first link that is cut, broken or lost with its segment, so the loose pieces fall instead of hanging in the air at the length of the rope.
+    ground({0.0F, 700.0F}, {2000.0F, 40.0F});
+    Body lamp = world.createBody({.position = {300.0F, 300.0F}});
+    lamp.addCircle(20.0F);
+    const Rope loose = Rope::create(world, {.start = {0.0F, 0.0F}, .end = {0.0F, 300.0F}, .segments = 16, .pinStart = true});
+    const Rope hanging = Rope::create(world, {.start = {300.0F, 0.0F}, .end = {300.0F, 300.0F}, .segments = 16, .pinStart = true, .endBody = lamp});
+    Rope torn = Rope::create(world, {.start = {600.0F, 0.0F}, .end = {600.0F, 300.0F}, .segments = 16, .pinStart = true});
+    simulate(2.0F);
+    ASSERT_EQ(loose.getJoints().size(), 17U);
+    ASSERT_TRUE(loose.getJoints().back().isValid());
+
+    Joint(loose.getJoints()[8]).destroy();
+    Joint(hanging.getJoints()[8]).setBreakForce(0.0F);
+    Body(torn.getBodies()[8]).destroy();
+    simulate(2.0F);
+
+    EXPECT_FALSE(loose.getJoints().back().isValid());
+    EXPECT_FALSE(hanging.getJoints().back().isValid());
+    EXPECT_FALSE(torn.getJoints().back().isValid());
+    EXPECT_GT(loose.getBodies().back().getPosition().y, 600.0F);
+    EXPECT_GT(lamp.getPosition().y, 600.0F);
+    EXPECT_GT(torn.getBodies().back().getPosition().y, 600.0F);
+    EXPECT_LT(loose.getBodies().front().getPosition().y, 160.0F);
+}
+
 TEST_F(AssemblyTest, RagdollsComputeJointStiffnessFromTheirSize) {
     // A stiff figure of any size and scale bends its joints with torques that grow with its weight, and a limp one keeps none.
     const Ragdoll small = Ragdoll::create(world, {.height = 100.0F, .stiffness = 0.5F});

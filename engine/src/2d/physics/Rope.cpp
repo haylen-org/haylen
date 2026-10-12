@@ -64,10 +64,12 @@ void Rope::build(World& world, const Options& options) {
     const Body first = attach(options.startBody, options.pinStart, options.start, bodies.front());
     const Body last = attach(options.endBody, options.pinEnd, options.end, bodies.back());
 
-    // A spring without stiffness leaves the joint slack below its length, and the limit stops it at the length of the rope.
+    // A spring without stiffness leaves the joint slack below its length, and the limit stops it at the length of the rope until a link of the rope goes.
     if (options.limitLength && first != last) {
         const float length = span.getLength();
-        joints.push_back(world.createJoint(Joint::Type::Distance, first, last, {.anchorA = options.start, .anchorB = options.end, .enableLimit = true, .upper = length, .enableSpring = true, .length = length}));
+        const Joint limit = world.createJoint(Joint::Type::Distance, first, last, {.anchorA = options.start, .anchorB = options.end, .enableLimit = true, .upper = length, .enableSpring = true, .length = length});
+        world.tieToChain(limit, joints);
+        joints.push_back(limit);
     }
 }
 
