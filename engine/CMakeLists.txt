@@ -670,6 +670,7 @@ add_library(haylen_platform STATIC
   src/platform/linux/LinuxFilePattern.cpp
   src/platform/linux/LinuxSystemReader.cpp
   src/platform/sokol/MemoryWarning.cpp
+  src/platform/sokol/ReportedState.cpp
   src/platform/sokol/SokolEvents.cpp
   src/platform/web/WebDialogJson.cpp
   src/platform/windows/WindowsPowerStatus.cpp

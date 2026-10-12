@@ -17,6 +17,7 @@
 #include "platform/GamepadSlots.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
+#include "platform/sokol/ReportedState.hpp"
 #include "platform/sokol/SokolEvents.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -172,6 +173,39 @@ TEST(MemoryWarningTest, HandsEachWarningOverOnce) {
     MemoryWarning::raise();
     EXPECT_TRUE(MemoryWarning::take());
     EXPECT_FALSE(MemoryWarning::take());
+}
+
+TEST(ReportedStateTest, GivesANewAppTheStateThePlatformReportedLast) {
+    ReportedState state;
+    EXPECT_TRUE(state.getReplay().empty());
+    for (const Event::Type type : {Event::Type::FocusLost, Event::Type::InterruptionBegan, Event::Type::Suspended}) {
+        EXPECT_TRUE(state.record({.type = type}));
+    }
+    EXPECT_TRUE(state.record({.type = Event::Type::NetworkChanged, .online = false}));
+    std::vector<Event::Type> replayed;
+    for (const Event& event : state.getReplay()) {
+        replayed.push_back(event.type);
+    }
+    EXPECT_EQ(replayed, (std::vector{Event::Type::NetworkChanged, Event::Type::FocusLost, Event::Type::InterruptionBegan, Event::Type::Suspended}));
+
+    for (const Event::Type type : {Event::Type::FocusGained, Event::Type::InterruptionEnded, Event::Type::Resumed}) {
+        EXPECT_TRUE(state.record({.type = type}));
+    }
+    ASSERT_EQ(state.getReplay().size(), 1U);
+    EXPECT_FALSE(state.getReplay()[0].online);
+}
+
+TEST(ReportedStateTest, KeepsAPausedAppSuspendedWhileItsPageShowsAndHides) {
+    ReportedState state;
+    EXPECT_EQ(state.setPaused(true)->type, Event::Type::Suspended);
+    EXPECT_FALSE(state.record({.type = Event::Type::Suspended}));
+    EXPECT_FALSE(state.record({.type = Event::Type::Resumed})) << "A paused app stays suspended when its page shows again.";
+    EXPECT_FALSE(state.setPaused(true).has_value());
+
+    EXPECT_FALSE(state.record({.type = Event::Type::Suspended}));
+    EXPECT_FALSE(state.setPaused(false).has_value()) << "An app resumed in a hidden page waits until the page shows.";
+    EXPECT_EQ(state.getReplay().back().type, Event::Type::Suspended);
+    EXPECT_TRUE(state.record({.type = Event::Type::Resumed}));
 }
 
 TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {

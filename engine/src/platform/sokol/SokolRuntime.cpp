@@ -186,17 +186,19 @@ void SokolRuntime::stop() {
     getCurrent().replace({.package = std::make_shared<io::MemoryPackage>("stopped"), .config = {}, .application = std::make_unique<StoppedApplication>(), .playing = false});
 }
 
+// A page that pauses an app in a hidden tab, or resumes it there, changes nothing the app hears until the tab shows again.
 void SokolRuntime::setPaused(bool value) {
     SokolRuntime& runtime = getCurrent();
-    if (runtime.engine == nullptr || runtime.paused == value) {
+    if (runtime.engine == nullptr) {
         return;
     }
-    runtime.paused = value;
-    runtime.engine->handleEvent({.type = value ? Event::Type::Suspended : Event::Type::Resumed});
+    if (const std::optional<Event> event = runtime.reported.setPaused(value)) {
+        runtime.engine->handleEvent(*event);
+    }
 }
 
 bool SokolRuntime::isPaused() noexcept {
-    return getCurrent().paused;
+    return getCurrent().reported.isPaused();
 }
 
 void SokolRuntime::handleEvent(const Event& event) {
@@ -285,7 +287,7 @@ void SokolRuntime::onInitialize(void* data) {
 
 void SokolRuntime::onFrame(void* data) {
     SokolRuntime& runtime = *static_cast<SokolRuntime*>(data);
-    if (runtime.paused || runtime.engine == nullptr) {
+    if (runtime.reported.isPaused() || runtime.engine == nullptr) {
         return;
     }
     Services::updateWindow();
@@ -379,7 +381,7 @@ void SokolRuntime::onCleanup(void* data) {
 void SokolRuntime::launch() {
     App app = std::exchange(pending, {});
     playing = app.playing;
-    paused = false;
+    (void)reported.setPaused(false);
     if (DevelopmentSession* session = host.getDevelopmentSession()) {
         session->setOverlay(std::dynamic_pointer_cast<io::OverlayPackage>(app.package));
     }
@@ -396,11 +398,8 @@ void SokolRuntime::launch() {
         return;
     }
     engine->start();
-    if (online) {
-        engine->handleEvent({.type = Event::Type::NetworkChanged, .online = *online});
-    }
-    if (suspended) {
-        engine->handleEvent({.type = Event::Type::Suspended});
+    for (const Event& event : reported.getReplay()) {
+        engine->handleEvent(event);
     }
 #if defined(__EMSCRIPTEN__)
     if (playing) {
@@ -434,8 +433,8 @@ void SokolRuntime::close() noexcept {
 
 // The typing of the plain keyboard reaches the app as the key and character events a physical keyboard would send.
 void SokolRuntime::deliver(const Event& event) {
-    remember(event);
-    if (engine == nullptr) {
+    const bool heard = reported.record(event);
+    if (engine == nullptr || !heard) {
         return;
     }
 
@@ -446,20 +445,6 @@ void SokolRuntime::deliver(const Event& event) {
     }
     for (const Event& key : host.translateKeyboard(event)) {
         engine->handleEvent(key);
-    }
-}
-
-void SokolRuntime::remember(const Event& event) noexcept {
-    switch (event.type) {
-    case Event::Type::NetworkChanged:
-        online = event.online;
-        break;
-    case Event::Type::Suspended:
-    case Event::Type::Resumed:
-        suspended = event.type == Event::Type::Suspended;
-        break;
-    default:
-        break;
     }
 }
 
