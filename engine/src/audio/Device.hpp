@@ -38,6 +38,9 @@ class Device final {
     // Opens the context and the device again after an interruption, or while the output is unavailable, which sets the iOS audio session category and activates the session again, and restarts the output unless it is suspended.
     void endInterruption();
 
+    // Opens the context and the device again whatever their state, such as after the system reset its media services, unless an opening still waits for the system.
+    void restart();
+
     // Takes the device of an opening that finished, and counts the seconds an opening waits for the system. The mixer calls it once per frame.
     void update(float deltaSeconds);
 

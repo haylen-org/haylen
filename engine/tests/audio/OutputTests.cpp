@@ -22,6 +22,7 @@
 #include "audio/MixerFixture.hpp"
 #include "audio/OutputBackend.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::audio {
@@ -284,6 +285,20 @@ TEST_F(AudioOutputTest, RunsAnAppWhoseOutputDoesNotAnswer) {
     answer();
     EXPECT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
     EXPECT_EQ(fixture.lua("return require('haylen.audio').outputOpening()"), "false");
+}
+
+TEST_F(AudioOutputTest, OpensTheOutputAgainWhenTheSystemResetsItsServices) {
+    accepting = true;
+    test::EngineFixture fixture({}, nullptr, {.audioOutput = &kBackend});
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
+    const int closed = closedDevices;
+    fixture.engine().handleEvent({.type = platform::Event::Type::AudioServicesReset});
+    EXPECT_EQ(closedDevices, closed + 1);
+    EXPECT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
+
+    fixture.runLua("require('haylen.audio').restartOutput()");
+    EXPECT_EQ(closedDevices, closed + 2);
+    EXPECT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
 }
 
 // Plays through a backend whose device asks for samples on a thread of its own, the way the audio thread of a platform does, so the tests see what the frame thread may touch while the device reads.

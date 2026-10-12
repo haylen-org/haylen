@@ -516,6 +516,10 @@ void Mixer::endInterruption() {
     }
 }
 
+void Mixer::restartOutput() {
+    state->output.restart();
+}
+
 bool Mixer::isInterrupted() const noexcept {
     return state->output.isInterrupted();
 }

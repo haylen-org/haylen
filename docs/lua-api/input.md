@@ -1080,7 +1080,7 @@ A scene with an `event(self, e)` callback receives every platform event as a tab
 | `'textAction'` | The field `field` is the id of the text field and `action` is `'submit'`, `'next'`, `'cancel'` or `'dismissed'`. |
 | `'keyboardChanged'` | The field `frame` is the rectangle the on-screen keyboard covers, empty while it is hidden. |
 | `'networkChanged'` | The field `online` is whether the device has a network. |
-| `'mouseEnter'`, `'mouseLeave'`, `'resized'`, `'suspended'`, `'resumed'`, `'focusGained'`, `'focusLost'`, `'quitRequested'`, `'lowMemory'`, `'interruptionBegan'`, `'interruptionEnded'`, `'windowMoved'`, `'monitorsChanged'` | No other fields. |
+| `'mouseEnter'`, `'mouseLeave'`, `'resized'`, `'suspended'`, `'resumed'`, `'focusGained'`, `'focusLost'`, `'quitRequested'`, `'lowMemory'`, `'interruptionBegan'`, `'interruptionEnded'`, `'windowMoved'`, `'monitorsChanged'`, `'audioServicesReset'` | No other fields. |
 
 The name `repeat` is a Lua keyword, so read it as `e['repeat']`.
 

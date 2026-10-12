@@ -64,12 +64,14 @@ void AudioPlugin::installLua(core::Engine&, lua_State* L) {
     audio::AudioLua::install(L);
 }
 
-// Platforms report interruptions that the audio device cannot see, such as the audio focus of Android, and they take the same path as the notifications of the device.
+// Platforms report interruptions that the audio device cannot see, such as the audio focus of Android, and they take the same path as the notifications of the device. A reset of the audio services of the system, such as the media services of iOS, leaves the device silent, so the output opens again.
 void AudioPlugin::event(core::Engine& engine, const platform::Event& event) {
     if (event.type == platform::Event::Type::InterruptionBegan) {
         handleDeviceEvent(engine, audio::Mixer::DeviceEvent::InterruptionBegan);
     } else if (event.type == platform::Event::Type::InterruptionEnded) {
         handleDeviceEvent(engine, audio::Mixer::DeviceEvent::InterruptionEnded);
+    } else if (event.type == platform::Event::Type::AudioServicesReset) {
+        engine.getAudio().restartOutput();
     }
 }
 

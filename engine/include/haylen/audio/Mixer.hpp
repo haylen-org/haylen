@@ -215,6 +215,9 @@ class Mixer final {
     void endInterruption();
     [[nodiscard]] bool isInterrupted() const noexcept;
 
+    // Opens the audio device again, such as after the system reset its audio services, which leaves every output it had open silent. The voices go on and play from the first frame after the device opened.
+    void restartOutput();
+
     // Emits the device events that arrived, mixes and discards the seconds since the last update while the output of a mixer with a device is unavailable, releases finished voices and refreshes positional voices, measuring their velocities over those seconds. The engine calls it once per frame.
     void update(float deltaSeconds);
 

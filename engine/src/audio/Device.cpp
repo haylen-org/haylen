@@ -69,6 +69,15 @@ void Device::endInterruption() {
     apply();
 }
 
+void Device::restart() {
+    if (setup.device && opening == nullptr) {
+        const bool played = connection != nullptr;
+        disconnect();
+        connect(played);
+    }
+    apply();
+}
+
 void Device::update(float deltaSeconds) {
     if (opening == nullptr) {
         return;

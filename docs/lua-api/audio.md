@@ -798,6 +798,16 @@ local audio = require('haylen.audio')
 print(audio.outputMuted())
 ```
 
+### audio.restartOutput()
+
+Opens the audio device again, which the engine does itself when the system resets its audio services, such as the media services of iOS. The voices go on and play from the first frame after the device opened, and a device that is still opening goes on opening instead.
+
+```lua
+local audio = require('haylen.audio')
+
+audio.restartOutput()
+```
+
 ## Types
 
 ### Sound

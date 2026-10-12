@@ -5,6 +5,7 @@
 #if TARGET_OS_OSX
 #import <AppKit/AppKit.h>
 #else
+#import <AVFoundation/AVFoundation.h>
 #import <UIKit/UIKit.h>
 #endif
 
@@ -31,6 +32,7 @@
 #import "platform/apple/CatalystInput.hpp"
 #import "platform/apple/CatalystWindow.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
+#include "platform/sokol/SokolRuntime.hpp"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -55,6 +57,7 @@ void Services::initialize() {
     dispatch_resume(pressure);
 #else
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(); }];
+    [NSNotificationCenter.defaultCenter addObserverForName:AVAudioSessionMediaServicesWereResetNotification object:nil queue:nil usingBlock:^(NSNotification*) { SokolRuntime::postEvent({.type = Event::Type::AudioServicesReset}); }];
 #endif
 #if !TARGET_OS_OSX
     AppleKeyboard::observe();

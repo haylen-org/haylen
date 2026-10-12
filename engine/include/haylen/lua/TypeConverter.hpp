@@ -96,7 +96,7 @@ class TypeConverter final {
     static const NameTable<graphics2d::SceneTransition::Direction, 8> kDirections;
     static const NameTable<input::InputDevice, 3> kDevices;
     static const NameTable<input::TouchPhase, 5> kPhases;
-    static const NameTable<platform::Event::Type, 28> kEvents;
+    static const NameTable<platform::Event::Type, 29> kEvents;
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
     static const NameTable<core::ProcessMode, 5> kProcessModes;

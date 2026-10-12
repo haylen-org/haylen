@@ -118,6 +118,7 @@ class AudioLua final {
     static int outputAvailable(lua_State* L);
     static int outputOpening(lua_State* L);
     static int outputMuted(lua_State* L);
+    static int restartOutput(lua_State* L);
 
     static int soundChannels(lua_State* L);
     static int soundSampleRate(lua_State* L);

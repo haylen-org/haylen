@@ -45,6 +45,7 @@ struct Event {
         InterruptionEnded,
         WindowMoved,
         MonitorsChanged,
+        AudioServicesReset,
     };
 
     static constexpr std::size_t kMaxTouchPoints = 10;
