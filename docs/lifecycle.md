@@ -205,7 +205,7 @@ Every event of the engine reaches the app on every platform where its source exi
 
 | Event | Source |
 | --- | --- |
-| `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the app switcher, Control Center, the Notification Center, a phone call or Siri, and the interruptions of the audio session. |
+| `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the app switcher, Control Center, the Notification Center, a phone call or Siri. An interruption of the audio session alone pauses the voices without changing the state, because iOS does not always report its end. |
 | `appBackground` | The scene in the background, such as after Home, another app or the lock of the device. |
 | `appLowMemory` | The memory warnings of UIKit. |
 | `appQuitRequested` | Never, because iOS apps never quit on request: the system ends them in the background. |
@@ -227,7 +227,7 @@ Every event of the engine reaches the app on every platform where its source exi
 
 | Event | Source |
 | --- | --- |
-| `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the Control Center of the TV, and the interruptions of the audio session. |
+| `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the Control Center of the TV. An interruption of the audio session alone pauses the voices without changing the state, because tvOS does not always report its end. |
 | `appBackground` | The scene in the background, such as after the TV button or another app. |
 | `appLowMemory` | The memory warnings of UIKit. |
 | `appQuitRequested` | Never, because tvOS apps never quit on request. |
