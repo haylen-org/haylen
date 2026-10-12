@@ -124,6 +124,45 @@ jobs:
       - name: Build "Haylen.xcframework"
         run: python haylen.py engine --platform apple
 
+  desktop-apps:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev dpkg-dev desktop-file-utils
+      - name: Install CMake with the AppImage generator of CPack
+        if: runner.os == 'Linux'
+        run: pip install cmake
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+      - name: Install Ninja
+        if: runner.os == 'Windows'
+        run: pip install ninja
+      - uses: actions/cache@v6
+        with:
+          path: .cache/cpm
+          key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+      - name: Build the packages of the starter app from the template of the platform
+        run: python haylen.py dist templates/app --platform ${{ matrix.platform }} --output build/dist
+      - name: Check the installed app
+        run: python haylen.py check templates/app --platform ${{ matrix.platform }} --config Release
+      - name: Validate the desktop entry
+        if: runner.os == 'Linux'
+        run: desktop-file-validate build/apps/app-*/installed/linux/share/applications/*.desktop
+
   tests-project:
     runs-on: ubuntu-latest
     steps:
