@@ -79,7 +79,8 @@ class ShardTest : public ::testing::Test {
         ShardWriter writer(folder, std::move(key));
         for (const std::vector<std::uint8_t>& chunk : chunks) {
             std::vector<std::uint8_t> ciphertext;
-            writer.add(ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext), ciphertext);
+            const ChunkRecord record = ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
+            writer.add(record, ciphertext);
         }
         return writer.finish();
     }
@@ -283,7 +284,8 @@ TEST_F(ShardTest, LeavesNoFileOfAShardItDidNotFinish) {
         ShardWriter writer(stopped, getKey());
         const std::vector<std::uint8_t> chunk = test::TestFiles::bytes("A chunk of a build that stopped.");
         std::vector<std::uint8_t> ciphertext;
-        writer.add(ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext), ciphertext);
+        const ChunkRecord record = ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
+        writer.add(record, ciphertext);
         EXPECT_FALSE(std::filesystem::is_empty(stopped));
     }
     EXPECT_TRUE(std::filesystem::is_empty(stopped)) << "A build that stops leaves no half shard behind.";
@@ -297,6 +299,16 @@ TEST_F(ShardTest, LeavesNoFileOfAShardItDidNotFinish) {
     } catch (const std::runtime_error& error) {
         EXPECT_EQ(std::string(error.what()), "The shard file \"" + partial.generic_string() + "\" could not be created.");
     }
+}
+
+TEST_F(ShardTest, RejectsARecordWithoutItsEncryptedBytes) {
+    ShardWriter writer(directory.getPath(), getKey());
+    const std::vector<std::uint8_t> chunk = test::TestFiles::bytes("A chunk whose bytes stay behind.");
+    std::vector<std::uint8_t> ciphertext;
+    const ChunkRecord record = ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
+    EXPECT_THROW(writer.add(record, {}), std::invalid_argument);
+    EXPECT_THROW(writer.add(record, std::span(ciphertext).first(ciphertext.size() - 1)), std::invalid_argument);
+    EXPECT_EQ(writer.getEntryCount(), 0U);
 }
 
 TEST_F(ShardTest, RejectsEveryChangeToTheHeaderAndTheIndex) {

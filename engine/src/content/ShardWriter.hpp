@@ -24,7 +24,7 @@ class ShardWriter final {
     ShardWriter(const ShardWriter&) = delete;
     ShardWriter& operator=(const ShardWriter&) = delete;
 
-    // Appends a sealed record, unless the shard holds its chunk already.
+    // Appends a sealed record with its encrypted bytes, unless the shard holds its chunk already.
     void add(const ChunkRecord& record, std::span<const std::uint8_t> ciphertext);
 
     // The size the shard file has once its index is written.

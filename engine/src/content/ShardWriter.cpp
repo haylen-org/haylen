@@ -39,6 +39,9 @@ void ShardWriter::write(std::span<const std::uint8_t> bytes) {
 }
 
 void ShardWriter::add(const ChunkRecord& record, std::span<const std::uint8_t> ciphertext) {
+    if (ciphertext.size() != record.encodedSize) {
+        throw std::invalid_argument("A shard record takes exactly the encrypted bytes its header declares.");
+    }
     if (!stored.insert(record.storedId).second) {
         return;
     }
