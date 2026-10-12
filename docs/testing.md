@@ -151,10 +151,11 @@ The command configures `build/<host>-<config>` when needed, builds `haylen_tests
 
 The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop, and its menu runs one test at a time or every test one after the other.
 
-The headless player runs it without a window, the same way every platform runs it, so a broken test shows up without a device:
+The headless player runs it without a window, the same way every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen_native_test` builds next to the player:
 
 ```sh
 haylen build --target haylen-headless
+haylen build --target haylen_native_test
 build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
@@ -232,6 +233,6 @@ The workflow `.github/workflows/ci.yml` runs on every push to a branch and every
 | `apple` | macOS | Installs Ninja and runs `python haylen.py engine --platform apple`, which builds `Haylen.xcframework`. |
 | `desktop-apps` | Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages, `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux, and Ninja with the MSVC environment on Windows. Creates the starter app with `python haylen.py new build/starter` and runs `python haylen.py dist build/starter` for the platform, which builds the desktop artifacts, the starter app from the Linux or Windows template in the Release configuration and its `.deb` and AppImage or its installer, then checks the installed app and validates its desktop entry on Linux. |
 | `release` | Ubuntu | Caches the Emscripten SDK and builds the protected release of the test project for the web with `prepare --config Release`, with keys made for the job and thrown away with it, and inspects the site with `check --config Release`, which fails when it holds Lua text, a file of the package as it is, a zipped package, symbol files or a key in any form. |
-| `tests-project` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, builds `haylen-headless` and runs every test of [the test project](#the-test-project) on it, which fails when a test raises an error or its scene fails to load. |
+| `tests-project` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, builds `haylen-headless` with the test library `haylen_native_test` and runs every test of [the test project](#the-test-project) on it, which fails when a test raises an error or its scene fails to load. |
 
 The engine tests run only in the `desktop` job, the web, Android and Apple jobs check that the engine artifacts of those platforms build, the `desktop-apps` job checks the desktop artifacts with the Windows and Linux templates, and the `release` job checks a protected web release. The [build guide](build.md) explains the platform builds, and the [embedding guide](embedding.md) explains the SDK.

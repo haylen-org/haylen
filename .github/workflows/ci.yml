@@ -178,8 +178,10 @@ jobs:
         with:
           path: .cache/cpm
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - name: Build the headless player
-        run: python haylen.py build --config Debug --target haylen-headless
+      - name: Build the headless player and the test library that the native tests load next to it
+        run: |
+          python haylen.py build --config Debug --target haylen-headless
+          python haylen.py build --config Debug --target haylen_native_test
       - name: Run every test of the test project
         run: build/linux-debug/bin/haylen-headless samples/tests --frames 60000
 
