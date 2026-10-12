@@ -575,7 +575,7 @@ class ContentKeysTest(unittest.TestCase):
             self.assertEqual(haylen.ensure_keys(app, Path("haylen-content")), Path(scratch) / "com.example.game")
 
     def test_every_platform_with_a_project_has_a_content_profile(self):
-        self.assertEqual(set(haylen.CONTENT_PROFILES), set(haylen.RUN_TARGETS) - {"web"})
+        self.assertEqual(set(haylen.CONTENT_PROFILES), set(haylen.RUN_TARGETS))
         self.assertEqual({haylen.CONTENT_PROFILES[name] for name in haylen.APPLE_RUNS}, {"apple"})
 
 

@@ -53,6 +53,7 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
     request.callbacks = std::move(callbacks);
 
     std::set<Digest> touched;
+    std::vector<Digest> held;
     for (const Catalog::Chunk& chunk : chunks) {
         if (request.waiting.contains(chunk.storedId) || store->contains(chunk.storedId)) {
             continue;
@@ -74,8 +75,18 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
             shard->second.url = locate(reference);
             shard->second.keys = std::shared_ptr<const KeyRing>(shardSet, &shardSet->getKeys());
         }
+
+        // A record that the store holds but cannot read yet, as on the web, comes in from the store instead of the network.
+        if (store->holds(chunk.storedId)) {
+            found->second.transferring = true;
+            held.push_back(chunk.storedId);
+            continue;
+        }
         shard->second.queued.push_back(chunk.storedId);
         touched.insert(reference.shardId);
+    }
+    if (!held.empty()) {
+        loadHeld(std::move(held));
     }
 
     if (request.waiting.empty()) {
@@ -92,6 +103,43 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
     }
     pump();
     return id;
+}
+
+void Downloader::loadHeld(std::vector<Digest> storedIds) {
+    // clang-format off
+    store->load(storedIds, [this, &pool = jobs, owner = std::weak_ptr(alive), storedIds](bool) {
+        pool.postToFrame([this, owner, storedIds] {
+            if (owner.expired()) {
+                return;
+            }
+
+            // A record the store lost on the way downloads like any other.
+            std::set<Digest> touched;
+            for (const Digest& storedId : storedIds) {
+                const auto found = wanted.find(storedId);
+                if (found == wanted.end()) {
+                    continue;
+                }
+                if (store->contains(storedId)) {
+                    stored(storedId, std::nullopt);
+                    continue;
+                }
+                found->second.transferring = false;
+                shards.at(found->second.shard).queued.push_back(storedId);
+                touched.insert(found->second.shard);
+            }
+            for (const Digest& shardId : touched) {
+                Shard& shard = shards.at(shardId);
+                if (shard.index) {
+                    plan(shard);
+                } else if (!shard.indexing) {
+                    indexShard(shard);
+                }
+            }
+            pump();
+        });
+    });
+    // clang-format on
 }
 
 void Downloader::indexShard(Shard& shard) {

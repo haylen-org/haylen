@@ -55,6 +55,10 @@ ANDROID_LIBRARY_PROJECT = ENGINE_DIR / "platform" / "android"
 ENGINE_LOGO = PLATFORM_TEMPLATES_DIR / "web" / "haylen-logo.svg"
 # The web runtime loads the AudioWorklet processor of its audio output from next to its script, so every web build ships it beside the `.js` and `.wasm` files.
 WEB_AUDIO_WORKLET = "haylen-audio-worklet.js"
+# The worker of the content store of a web page, which keeps downloaded content in the private file system of the origin.
+WEB_CONTENT_STORE = "haylen-content-store.js"
+# The files of the runtime of a web page, which travel together next to its script.
+WEB_RUNTIME_FILES = ("haylen.js", "haylen.wasm", WEB_AUDIO_WORKLET, WEB_CONTENT_STORE)
 # The project of the engine tests that adds the engine like another project does, in each of the ways of `CONSUMER_MODES`, which `sdk --check-consumers` builds.
 CONSUMER_PROJECT = ENGINE_DIR / "tests" / "consumer"
 CONSUMER_MODES = {"subdirectory": '"add_subdirectory"', "cpm": "CPM", "package": 'the installed SDK and "find_package"'}
@@ -108,7 +112,7 @@ CONTENT_TOOL = "haylen-content"
 # The variable that names the folder of the key folders of apps, as continuous integration gives it, instead of the configuration folder of the user.
 KEYS_VARIABLE = "HAYLEN_KEYS_DIR"
 # The content profile of each run platform, which a protected release is built for. The Apple platforms share one release, since their targets share one project.
-CONTENT_PROFILES = {"macos": "apple", "catalyst": "apple", "ios": "apple", "ios-simulator": "apple", "tvos": "apple", "tvos-simulator": "apple", "android": "android", "windows": "windows", "linux": "linux"}
+CONTENT_PROFILES = {"macos": "apple", "catalyst": "apple", "ios": "apple", "ios-simulator": "apple", "tvos": "apple", "tvos-simulator": "apple", "android": "android", "web": "web", "windows": "windows", "linux": "linux"}
 # A compaction of a publication tree keeps the current generation of every channel and the one before it.
 CONTENT_KEPT_GENERATIONS = 2
 # The source of the bootstrap that a release build compiles in, which the content tool writes from the key folder of the app.
@@ -853,16 +857,26 @@ def build_android_artifacts(config: str, jobs: int) -> None:
     run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, *tasks, f"--max-workers={jobs}", f"-PhaylenNativeLibraries={libraries}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}"])
 
 
+def web_sdk(backend: str) -> Path:
+    """The SDK of the engine for the web with one backend, which links the release runtime of each app."""
+    return ARTIFACTS_DIR / "web" / f"sdk-{backend}"
+
+
 def build_web_artifacts(config: str, jobs: int) -> None:
-    """Builds the player for WebGPU and for WebGL2, each next to the processor of its audio output. It loads the app package at runtime, so one build serves every app."""
+    """Builds the player for WebGPU and for WebGL2, each next to the processor of its audio output and the worker of its content store, and the SDK of each backend. The player loads the app package at runtime, so one build serves every app in development, and a release links a runtime of its own against the SDK."""
     for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
         command_build(build_options(platform_name, config, "haylen", jobs))
-        built = build_dir(platform_name, config) / "bin" / "haylen"
+        directory = build_dir(platform_name, config)
+        built = directory / "bin" / "haylen"
         destination = ARTIFACTS_DIR / "web" / backend
         shutil.rmtree(destination, ignore_errors=True)
         destination.mkdir(parents=True)
-        for name in ("haylen.js", "haylen.wasm", WEB_AUDIO_WORKLET):
+        for name in WEB_RUNTIME_FILES:
             shutil.copy2(built / name, destination)
+        run(["cmake", "-B", directory, "-DHAYLEN_BUILD_SDK=ON"])
+        run(["cmake", "--build", directory, "--target", "haylen_sdk", "--parallel", str(jobs)])
+        shutil.rmtree(web_sdk(backend), ignore_errors=True)
+        run(["cmake", "--install", directory, "--config", config, "--component", "haylen_sdk", "--prefix", web_sdk(backend)])
 
 
 def desktop_artifact(name: str = "haylen") -> Path:
@@ -2952,39 +2966,90 @@ def css_color(color: tuple[int, int, int, int]) -> str:
     return f"rgba({red}, {green}, {blue}, {alpha / 255:.3f})"
 
 
-def write_web_settings(app: App, site: Path) -> None:
-    """Writes `app.zip`, the splash logo, the web modules of the plugins and `config.json`, whose sizes let the loader show progress when the server sends no length."""
-    package_folder(app.folder, site / "app.zip")
+def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
+    """Writes the splash logo, the web modules of the plugins and `config.json` with the files of the protected release that download before the app starts, or `app.zip` in development, and the sizes that let the loader show progress when the server sends no length."""
+    downloads = [f"app/{name}" for name in release] if release is not None else ["app.zip"]
+    if release is None:
+        package_folder(app.folder, site / "app.zip")
     logo = app.splash_logo or ENGINE_LOGO
     logo_name = f"splash{logo.suffix.lower()}"
     shutil.copy2(logo, site / logo_name)
     splash = {"logo": logo_name, "background": css_color(app.background)}
     if app.dark_background:
         splash["darkBackground"] = css_color(app.dark_background)
-    sizes = {path: (site / path).stat().st_size for path in ("app.zip", "webgpu/haylen.wasm", "webgl2/haylen.wasm")}
-    config = {"name": app.name, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": write_web_plugins(app, site)}
+    sizes = {path: (site / path).stat().st_size for path in (*downloads, "webgpu/haylen.wasm", "webgl2/haylen.wasm")}
+    config = {"name": app.name, "identifier": app.identifier, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": write_web_plugins(app, site)}
+    if release is not None:
+        config["release"] = {"files": release}
     (site / "config.json").write_text(json.dumps(config, indent=4) + "\n")
 
 
+RELEASE_WEB_PROJECT = """# Written by haylen.py for the release build of the app: the runtime of the page with the bootstrap of the app, linked against the web SDK of the prebuilt engine.
+cmake_minimum_required(VERSION 3.28)
+project(haylen_release LANGUAGES C CXX)
+find_package(haylen REQUIRED CONFIG)
+add_executable(haylen_release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
+target_link_libraries(haylen_release PRIVATE haylen::runtime)
+set_target_properties(haylen_release PROPERTIES OUTPUT_NAME "haylen")
+"""
+
+
+def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[str]:
+    """Places the protected release of an app in `app/` of its site with a runtime of its own for each backend, linked against the web SDK with the bootstrap of the app, and returns the files that download before the app starts: the manifests and the app domain, while the shards of the content stay on the site and stream by range."""
+    release = build_release(app, CONTENT_PROFILES["web"], args.engine_config, args.jobs)
+    shutil.copytree(release_folder(app, CONTENT_PROFILES["web"]), site / "app")
+    tool = content_tool(args.engine_config, args.jobs)
+    boot = app.build_folder / "release" / "web.boot"
+    shutil.rmtree(boot, ignore_errors=True)
+    run([tool, "stage", release_folder(app, CONTENT_PROFILES["web"]), "--keys", ensure_keys(app, tool), "--output", boot, "--app-only"])
+    files = sorted(path.name for path in boot.iterdir())
+    shutil.rmtree(boot)
+
+    project = app.build_folder / "release-web"
+    project.mkdir(parents=True, exist_ok=True)
+    write_bootstrap(app, CONTENT_PROFILES["web"], project / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
+    write_if_changed(project / "CMakeLists.txt", RELEASE_WEB_PROJECT.format(bootstrap=BOOTSTRAP_SOURCE))
+    for backend in ("webgpu", "webgl2"):
+        build = project / f"build-{backend}"
+        terminal.step(f'Linking the release runtime of `{shown_path(app.folder)}` for "{backend}"')
+        run([ensure_emsdk(), "cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={web_sdk(backend) / 'lib' / 'cmake' / 'haylen'}"])
+        run(["cmake", "--build", build, "--config", "Release", "--parallel", str(args.jobs)])
+        destination = site / backend
+        shutil.rmtree(destination, ignore_errors=True)
+        destination.mkdir()
+        for name in ("haylen.js", "haylen.wasm"):
+            shutil.copy2(build / name, destination)
+        for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
+            shutil.copy2(web_sdk(backend) / "share" / "haylen" / "platform" / "web" / name, destination)
+    return files
+
+
 def prepare_web(app: App, args: argparse.Namespace) -> Path:
-    """Makes the site of an app again: the files of `platform/web` of the app, or of the template, as they are, and next to them the prebuilt runtimes and the generated files."""
+    """Makes the site of an app again: the files of `platform/web` of the app, or of the template, as they are, and next to them the runtimes and the generated files. The Release configuration ships the protected release with runtimes linked for the app, and development the prebuilt players with the package as it is."""
     own = app.folder / "platform" / "web"
     site = app.build_folder / "web"
     terminal.step(f"Preparing the site `{shown_path(site)}`")
     shutil.rmtree(site, ignore_errors=True)
     shutil.copytree(own if own.is_dir() else PLATFORM_TEMPLATES_DIR / "web", site, ignore=COPY_IGNORED)
-    for backend in ("webgpu", "webgl2"):
-        shutil.copytree(ARTIFACTS_DIR / "web" / backend, site / backend)
-    write_web_settings(app, site)
+    release = None
+    if args.config == "Release":
+        release = build_release_web(app, site, args)
+    else:
+        for backend in ("webgpu", "webgl2"):
+            shutil.copytree(ARTIFACTS_DIR / "web" / backend, site / backend)
+    write_web_settings(app, site, release)
     return site
 
 
 def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requirement]:
-    """Checks the site of an app: every plugin with a web part in `config.json` with its module, and plugins whose screens open popups on a page that the opener policy `same-origin` cuts off from them."""
+    """Checks the site of an app: every plugin with a web part in `config.json` with its module, plugins whose screens open popups on a page that the opener policy `same-origin` cuts off from them, and in the Release configuration anything a release never holds, such as Lua text, files of the package as they are, a zipped package, source maps or a key of the app."""
     if not (site / "config.json").is_file():
         raise BuildError(f'The site of `{shown_path(app.folder)}` was not made yet. Make it with "{TOOL} prepare {shown_path(app.folder)} --platform web".')
     listed = {entry["id"]: entry for entry in json.loads((site / "config.json").read_text()).get("plugins", [])}
     missing: list[Requirement] = []
+    if args.config == "Release":
+        missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(site), "app", read_secrets(app))]
+        missing += [Requirement(f'The site holds the zipped package "{path.relative_to(site).as_posix()}", while a release ships only its protected release.', RELEASE_ADVICE) for path in site.rglob("*.zip")]
     for plugin in app.plugins:
         if "web" not in plugin.manifest:
             continue
@@ -3926,7 +3991,8 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) 
         for suffix in (".js", ".wasm", ".data"):
             if (built / f"{target}{suffix}").is_file():
                 shutil.copy2(built / f"{target}{suffix}", destination)
-        shutil.copy2(built / WEB_AUDIO_WORKLET, destination)
+        for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
+            shutil.copy2(built / name, destination)
 
     # The page is the shell of the target, with the script that picks the backend where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
     shell = (built / f"{target}.shell.html").read_text()

@@ -22,7 +22,7 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
     return std::make_unique<ReleasePackage>(std::move(files), std::move(keys), trustedKeys, compatibility, std::move(store));
 }
 
-std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::Package> files, const Bootstrap& bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore) {
+std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::Package> files, const Bootstrap& bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore, std::string remoteAddress) {
     auto keys = std::make_shared<KeyRing>();
     for (const KeyProvider::KeyId& id : bootstrap.keys->getKeyIds()) {
         KeyProvider::Key key{};
@@ -49,17 +49,19 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
             core::Log::warning("The content store of the app could not be opened, so the app plays the content it ships with: {}", error.what());
         }
     }
-    return open(std::move(files), std::move(keys), trusted, compatibility, std::move(store));
+    std::unique_ptr<ReleasePackage> package = open(std::move(files), std::move(keys), trusted, compatibility, std::move(store));
+    package->remote = std::move(remoteAddress);
+    return package;
 }
 
-std::shared_ptr<io::Package> ReleasePackage::openBundled(std::shared_ptr<io::Package> files, const Bootstrap* bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore) {
+std::shared_ptr<io::Package> ReleasePackage::openBundled(std::shared_ptr<io::Package> files, const Bootstrap* bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore, std::string remoteAddress) {
     if (!files->exists(kAppManifestFile)) {
         return files;
     }
     if (bootstrap == nullptr) {
         throw Error(Error::Code::KeyUnavailable, "The app ships a protected release, and this build holds no keys to open it. Build the app in the Release configuration with \"haylen.py\", which compiles the keys of the app into it.");
     }
-    return open(std::move(files), *bootstrap, std::move(openStore));
+    return open(std::move(files), *bootstrap, std::move(openStore), std::move(remoteAddress));
 }
 
 std::string_view ReleasePackage::getManifestFile(Manifest::Domain domain) noexcept {

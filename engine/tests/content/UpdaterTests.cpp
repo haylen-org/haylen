@@ -18,6 +18,7 @@
 #include "haylen/content/Error.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "support/BrowserStoreFiles.hpp"
 #include "support/ContentServer.hpp"
 #include "support/LimitedStoreFiles.hpp"
 #include "support/ReleaseFixture.hpp"
@@ -288,6 +289,32 @@ TEST_F(UpdaterTest, ReplacesARecordThatTheDeviceDamaged) {
     client->downloader->fetch(content->shards, missing, [client = client.get()](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); }});
     ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
     ASSERT_FALSE(*fetched);
+    EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));
+}
+
+TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
+    publish(makeUpdate(2));
+    {
+        const auto client = std::make_unique<Client>(*this, std::make_unique<test::BrowserStoreFiles>(store.getPath()));
+        ASSERT_FALSE(install(*client, requireOffer(*client)));
+    }
+
+    // A store of the web reads records in only when they are needed, so a new visit starts with none of them readable.
+    auto files = std::make_unique<test::BrowserStoreFiles>(store.getPath());
+    test::BrowserStoreFiles& browser = *files;
+    const auto client = std::make_unique<Client>(*this, std::move(files));
+    EXPECT_THROW((void)client->package->read("content/maps/level.tmj"), Error);
+    const std::shared_ptr<const ReleasePackage::Content> content = client->package->getContent();
+    const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
+    ASSERT_FALSE(missing.empty());
+    server.clearExchanges();
+
+    std::optional<std::optional<Error>> fetched;
+    client->downloader->fetch(content->shards, missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); }});
+    ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
+    ASSERT_FALSE(*fetched);
+    EXPECT_EQ(server.getExchanges().size(), 0U) << "Nothing downloads that the store holds.";
+    EXPECT_EQ(browser.getLoadedCount(), missing.size());
     EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));
 }
 

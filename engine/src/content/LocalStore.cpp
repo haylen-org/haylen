@@ -138,7 +138,32 @@ void LocalStore::writeState(StoreState next) {
 
 bool LocalStore::contains(const Digest& storedId) const {
     std::shared_lock lock(mutex);
+    const auto found = records.find(storedId);
+    return found != records.end() && files->isResident(getSegmentName(found->second.segment), found->second.offset, found->second.size);
+}
+
+bool LocalStore::holds(const Digest& storedId) const {
+    std::shared_lock lock(mutex);
     return records.contains(storedId);
+}
+
+std::vector<StoreFiles::Range> LocalStore::getRanges(const std::vector<Digest>& storedIds) const {
+    std::shared_lock lock(mutex);
+    std::vector<StoreFiles::Range> ranges;
+    for (const Digest& storedId : storedIds) {
+        if (const auto found = records.find(storedId); found != records.end()) {
+            ranges.push_back({.name = getSegmentName(found->second.segment), .offset = found->second.offset, .size = found->second.size});
+        }
+    }
+    return ranges;
+}
+
+void LocalStore::load(const std::vector<Digest>& storedIds, std::function<void(bool)> done) {
+    files->load(getRanges(storedIds), std::move(done));
+}
+
+void LocalStore::pin(const std::vector<Digest>& storedIds) {
+    files->pin(getRanges(storedIds));
 }
 
 bool LocalStore::readRecord(const Digest& storedId, std::vector<std::uint8_t>& record, Digest& keyId) const {
@@ -149,6 +174,9 @@ bool LocalStore::readRecord(const Digest& storedId, std::vector<std::uint8_t>& r
         return false;
     }
     const Location& location = found->second;
+    if (!files->isResident(getSegmentName(location.segment), location.offset, location.size)) {
+        return false;
+    }
     record.resize(static_cast<std::size_t>(location.size));
     files->readRange(getSegmentName(location.segment), location.offset, record);
     keyId = location.keyId;
@@ -158,7 +186,7 @@ bool LocalStore::readRecord(const Digest& storedId, std::vector<std::uint8_t>& r
 void LocalStore::addRecord(const Digest& keyId, std::span<const std::uint8_t> record) {
     const ChunkRecord header = ChunkRecord::parse(record.first<ChunkRecord::kHeaderSize>());
     std::scoped_lock write(writeMutex);
-    if (contains(header.storedId)) {
+    if (holds(header.storedId)) {
         return;
     }
     const Location location = appendRecord(keyId, record);
@@ -187,7 +215,7 @@ LocalStore::Location LocalStore::appendRecord(const Digest& keyId, std::span<con
 
 void LocalStore::removeRecord(const Digest& storedId) {
     std::scoped_lock write(writeMutex);
-    if (!contains(storedId)) {
+    if (!holds(storedId)) {
         return;
     }
     const StoreEntry entry{.storedId = storedId, .removed = true};
@@ -267,12 +295,16 @@ LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Dige
     // The live bytes of every segment decide which segments stay as they are, which move their live records and which go.
     std::unordered_map<Digest, Location, Digest::Hash> kept;
     std::map<std::uint32_t, std::uint64_t> live;
+    std::set<std::uint32_t> unreadable;
     for (const auto& [storedId, location] : records) {
-        if (liveRecords.contains(storedId)) {
-            kept.emplace(storedId, location);
-            live[location.segment] += location.size;
-        } else {
+        if (!liveRecords.contains(storedId)) {
             ++collection.removedRecords;
+            continue;
+        }
+        kept.emplace(storedId, location);
+        live[location.segment] += location.size;
+        if (!files->isResident(getSegmentName(location.segment), location.offset, location.size)) {
+            unreadable.insert(location.segment);
         }
     }
     const std::uint32_t oldAppend = appendSegment;
@@ -281,7 +313,8 @@ LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Dige
         std::uint32_t segment = 0;
         std::from_chars(name.data(), name.data() + name.size(), segment);
         const std::uint64_t size = files->getSize(std::string(kSegmentFolder) + "/" + name);
-        if (live[segment] == 0 || (segment != oldAppend && live[segment] < size / 2)) {
+        // A segment moves its live records only when it can read them now, which the web cannot for records it never read in.
+        if (live[segment] == 0 || (segment != oldAppend && live[segment] < size / 2 && !unreadable.contains(segment))) {
             emptied.insert(segment);
             collection.freedBytes += size;
         }

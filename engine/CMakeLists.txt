@@ -253,6 +253,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/ShardSet.cpp
   src/content/ShardWriter.cpp
   src/content/StoreFile.cpp
+  src/content/StoreFiles.cpp
   src/content/UpdateScreen.cpp
   src/content/Updater.cpp
   src/core/AppConfig.cpp
@@ -757,7 +758,7 @@ elseif(WIN32)
 elseif(ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebTextInput.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp)
 else()
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxTheme.cpp)
 endif()

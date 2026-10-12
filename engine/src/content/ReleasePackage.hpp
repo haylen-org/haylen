@@ -50,10 +50,10 @@ class ReleasePackage final : public io::Package {
     [[nodiscard]] static std::unique_ptr<ReleasePackage> open(std::shared_ptr<const io::Package> files, std::shared_ptr<const KeyRing> keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility, std::shared_ptr<LocalStore> store = nullptr);
 
     // Opens a release with what the bootstrap of the app holds: the content keys of its provider, which the key ring derives its subkeys from before they are wiped, the public keys it trusts, and its app, build and profile, and with the local store in the files given, when any. A store that the device refuses to open leaves the release without one, which plays the content that ships with the app. Throws `KeyUnavailable` when the provider cannot give a key it lists.
-    [[nodiscard]] static std::unique_ptr<ReleasePackage> open(std::shared_ptr<const io::Package> files, const Bootstrap& bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore = {});
+    [[nodiscard]] static std::unique_ptr<ReleasePackage> open(std::shared_ptr<const io::Package> files, const Bootstrap& bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore = {}, std::string remoteAddress = {});
 
     // Opens the package that ships with an app: the protected release, with the bootstrap that the release build of the app compiled in, when the files hold an app manifest, or else the files themselves, which development builds ship. Throws `KeyUnavailable` for a release in a build without a bootstrap.
-    [[nodiscard]] static std::shared_ptr<io::Package> openBundled(std::shared_ptr<io::Package> files, const Bootstrap* bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore = {});
+    [[nodiscard]] static std::shared_ptr<io::Package> openBundled(std::shared_ptr<io::Package> files, const Bootstrap* bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore = {}, std::string remoteAddress = {});
 
     // The name of the manifest file of a domain in a release.
     [[nodiscard]] static std::string_view getManifestFile(Manifest::Domain domain) noexcept;
@@ -90,6 +90,11 @@ class ReleasePackage final : public io::Package {
     [[nodiscard]] const std::shared_ptr<const io::Package>& getFiles() const noexcept {
         return files;
     }
+
+    // The address that the shards of the release download from, ending with a slash, when the device holds only its manifests and its app domain, as a web page does. Empty when the release ships whole.
+    [[nodiscard]] const std::string& getRemoteAddress() const noexcept {
+        return remote;
+    }
     // Returns why the opening fell back to earlier content, once, so the app hears of it at its first start only.
     [[nodiscard]] std::optional<Recovery> takeRecovery() noexcept {
         return std::exchange(recovery, std::nullopt);
@@ -115,6 +120,7 @@ class ReleasePackage final : public io::Package {
     mutable std::mutex mutex;
     std::shared_ptr<const Content> content;
     std::optional<Recovery> recovery;
+    std::string remote;
 };
 
 } // namespace haylen::content

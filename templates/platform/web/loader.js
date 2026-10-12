@@ -1,5 +1,5 @@
-// Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and `app.zip` with a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
-// The script `haylen.py` writes `config.json` next to this file with the name, the transparency, the splash logo and backgrounds of `app.json`, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
+// Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the runtime with the manifests and the app domain of the protected release, or with `app.zip` in development, behind a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
+// The script `haylen.py` writes `config.json` next to this file with the name, the identifier, the transparency, the splash logo and backgrounds of `app.json`, the files of the release that download before the app starts, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
 
 var Module = {
     canvas: document.getElementById("canvas"),
@@ -181,13 +181,9 @@ var Module = {
     try {
         const backend = await pickBackend();
         status.textContent = "Loading " + config.name;
-        const [plugins, [wasm, archive]] = await Promise.all([
-            importPlugins(config.plugins),
-            download([
-                { url: backend + "/haylen.wasm", size: config.sizes[backend + "/haylen.wasm"] },
-                { url: "app.zip", size: config.sizes["app.zip"] },
-            ]),
-        ]);
+        // A protected release downloads only its manifests and its app domain before the app starts, and the content streams in as the app needs it, while development downloads the zipped package.
+        const files = config.release ? config.release.files.map((name) => ({ url: "app/" + name, size: config.sizes["app/" + name] })) : [{ url: "app.zip", size: config.sizes["app.zip"] }];
+        const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: backend + "/haylen.wasm", size: config.sizes[backend + "/haylen.wasm"] }, ...files])]);
         status.textContent = "Starting " + config.name;
         // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once.
         Module.instantiateWasm = (imports, receive) => {
@@ -196,7 +192,11 @@ var Module = {
                 (error) => fail("The app could not be loaded.", String(error.message || error))
             );
         };
-        Module.haylen.packageData = archive;
+        if (config.release) {
+            Module.haylen.release = { address: "app/", identifier: config.identifier, files: config.release.files.map((name, index) => ({ name, bytes: packageFiles[index] })) };
+        } else {
+            Module.haylen.packageData = packageFiles[0];
+        }
         // A run of `haylen.py run --platform web` serves the page in development, connected to the server that pushes every saved file, while a site that `haylen.py prepare` makes has no such entry.
         if (config.development) {
             Module.haylen.development = true;

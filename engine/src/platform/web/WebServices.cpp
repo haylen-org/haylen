@@ -20,6 +20,7 @@
 #include "platform/DialogRelay.hpp"
 #include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebPage.hpp"
+#include "platform/web/WebStoreFiles.hpp"
 #include "platform/web/WebTextInput.hpp"
 #include "sokol_app.h"
 
@@ -107,6 +108,10 @@ EM_JS(void, haylen_js_show_dialog, (double id, const char* json, const uint8_t* 
 EM_JS(void, haylen_js_cancel_dialog, (double id), {
     Module.haylen.cancelDialog(id);
 });
+
+EM_JS(char*, haylen_js_release_address, (), {
+    return stringToNewUTF8(Module.haylen.releaseAddress || "");
+});
 // clang-format on
 
 namespace haylen::platform {
@@ -138,8 +143,14 @@ std::vector<std::string> Services::getNativePlugins() {
     return ids.get<std::vector<std::string>>();
 }
 
+// A page holds the manifests and the app domain of its release, and the shards of its content stay next to the page, where downloads read them.
 std::shared_ptr<io::Package> Services::openBundledPackage() {
-    return content::ReleasePackage::openBundled(io::Package::openDirectory("/app"), content::Bootstrap::find());
+    char* address = haylen_js_release_address();
+    std::string remote(address);
+    std::free(address);
+    // clang-format off
+    return content::ReleasePackage::openBundled(io::Package::openDirectory("/app"), content::Bootstrap::find(), [](std::string_view) { return std::make_unique<WebStoreFiles>(); }, std::move(remote));
+    // clang-format on
 }
 
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {

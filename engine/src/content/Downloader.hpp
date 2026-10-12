@@ -126,6 +126,7 @@ class Downloader final {
         bool abandoned = false;
     };
 
+    void loadHeld(std::vector<Digest> storedIds);
     void indexShard(Shard& shard);
     void receiveIndex(const Digest& shard, std::vector<std::uint8_t> bytes);
     void failShard(const Digest& shard, const Error& error);

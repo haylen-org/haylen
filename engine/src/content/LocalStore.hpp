@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -55,7 +56,17 @@ class LocalStore final {
     // Makes the records added so far durable, then writes the state into the slot that does not hold the current one.
     void commit(StoreState next);
 
+    // Whether the store holds a record that can be read now.
     [[nodiscard]] bool contains(const Digest& storedId) const;
+
+    // Whether the store holds a record, which on the web may need `load` before it can be read.
+    [[nodiscard]] bool holds(const Digest& storedId) const;
+
+    // Reads records that the store holds in, and calls back with whether all of them came in, as `StoreFiles::load` does.
+    void load(const std::vector<Digest>& storedIds, std::function<void(bool)> done);
+
+    // Keeps records readable for the whole run.
+    void pin(const std::vector<Digest>& storedIds);
 
     // Reads a record whole into the buffer with the ID of the key that sealed it, and returns false when the store does not hold it. Throws `CacheCorrupt` when its segment lost it.
     bool readRecord(const Digest& storedId, std::vector<std::uint8_t>& record, Digest& keyId) const;
@@ -103,6 +114,7 @@ class LocalStore final {
     void removeLeftovers();
     void writeState(StoreState next);
     Location appendRecord(const Digest& keyId, std::span<const std::uint8_t> record);
+    [[nodiscard]] std::vector<StoreFiles::Range> getRanges(const std::vector<Digest>& storedIds) const;
 
     std::unique_ptr<StoreFiles> files;
     mutable std::shared_mutex mutex;

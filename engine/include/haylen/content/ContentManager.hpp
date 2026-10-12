@@ -27,6 +27,7 @@ namespace haylen::content {
 class Downloader;
 class HttpTransport;
 class ReleasePackage;
+class ShardReference;
 class Updater;
 struct UpdateOffer;
 
@@ -137,6 +138,12 @@ class ContentManager final {
     void finishStart();
     void prefetch();
     void fail(const Error& failure);
+
+    // Whether the content has a server to download from: the server of `app.json`, or the place that the release of a web page stays.
+    [[nodiscard]] bool hasServer() const noexcept;
+
+    // The address of a shard: next to the release on a web page for the shards that ship with the app, or in the publication tree of the server.
+    [[nodiscard]] std::string locate(const ShardReference& pack) const;
     [[nodiscard]] std::string toPackagePath(std::string_view path) const;
 
     core::Engine& engine;

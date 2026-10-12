@@ -496,6 +496,38 @@ While the app waits for required content that downloads, the engine draws the up
 
 In development the app plays its folder, without downloads or updates, and the delivery of `app.json` still applies: an asset that downloads later in a release stays off the device until `assets.loadAsync`, a preload group or `content.prefetch` brings it, which takes one frame, so `assets.load` of such an asset fails in development exactly as in a release, and a mistake shows long before a release.
 
+## The web
+
+A web page ships the same protected release as every other platform, built for the `web` profile, and nothing of the package as it is: no `app.zip`, no `content/` and no Lua text. The site of a release build holds the runtime of the app for WebGPU and for WebGL2, linked with the bootstrap of the app, and the release in `app/`:
+
+```text
+index.html, loader.js, loader.css, app.js, config.json, splash.png
+webgpu/haylen.js, webgpu/haylen.wasm, webgpu/haylen-audio-worklet.js, webgpu/haylen-content-store.js
+webgl2/...                       The same files for WebGL2.
+app/app.hmanifest
+app/content.hmanifest
+app/<shard>.hpak                 Every shard of the release.
+```
+
+The page downloads the runtime, the two manifests and the shards of the app domain, which hold `app.json` and the Lua bytecode and are small, before the app starts. The content never downloads whole: the content manager reads the encrypted index of each shard it needs and then only the records of the assets that the app needs, by byte range from `app/`, so a page of a game of many gigabytes starts after a download of a few megabytes. The required content comes down while the update screen shows, the prefetched content follows in the background, and assets that download on demand come when the app loads them, exactly as on the other platforms. WebGPU and WebGL2 share the same release and the same store, since only the runtime differs.
+
+### The content store of the browser
+
+What the page downloads stays in the content store of the app in the private file system of the origin, a folder per app under `haylen-content`, which a worker of `haylen-content-store.js` writes through synchronous access handles, each change flushed before the next one, so the records always reach the disk before the state that names them. The next visit reads the small files of the store, its state, journal, manifests and shard indexes, before the app starts, and reads in a record only when the app needs it, so a store of many gigabytes never enters memory: records in memory stay within 256 MiB beyond the required content, which stays for the whole visit, and the ones read least recently go. The saves of the app live apart, in IndexedDB, so clearing the content store never touches them.
+
+The page asks the browser to keep its storage with `navigator.storage.persist()`, and the room an update needs comes from `navigator.storage.estimate()`, so an update that does not fit fails with `insufficientStorage` before it writes a byte. Browsers decide how much an origin keeps and may clear it, which no page can prevent: content that the browser cleared downloads again the next time the app needs it. A browser without the private file system, or a second tab of the same app, which finds the store held by the first, keeps the downloads of that visit in memory and says so in the console.
+
+### Serving a release
+
+A server of the site serves the files of `app/` by byte range, with `206` and `Content-Range`, a strong `ETag` and `If-Range`, and without content encoding for `.hpak` files, which are encrypted and do not compress. `haylen run --platform web --config Release` serves the site that way on this machine. A content delivery network does it by default, and the files take long cache lifetimes, since a shard and a manifest never change under their name:
+
+```text
+app/*.hpak, app/*.hmanifest      Cache-Control: public, max-age=31536000, immutable
+index.html, loader.js, config.json, */haylen.js, */haylen.wasm   Cache-Control: no-cache
+```
+
+A page whose release or content server lives on another origin needs `Access-Control-Allow-Origin` for the page, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag` on that server.
+
 ## Local store
 
 What downloads bring stays on the device in the local content store of the app, `content::LocalStore`, in a folder of its own apart from the saves of the app, so clearing it never touches them. It never holds a plain byte: records stay sealed as they arrived, shard indexes stay encrypted, manifests stay signed, and no file of the store names a path.

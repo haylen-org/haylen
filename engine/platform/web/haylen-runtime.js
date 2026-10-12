@@ -1679,6 +1679,107 @@ Module.haylen = Module.haylen || {};
         }
     });
 
+    // The content store of a protected release keeps downloaded content in the private file system of the origin through the worker of `haylen-content-store.js`, so a later visit finds it there. The runtime writes the small files of the store, its state, journal, manifests, shard indexes and staged records, to `/content-store` and hands every change to the worker in order, while segments stay with the worker and come in by range when the runtime asks for them. A browser without the private file system, or a store that another tab of the same app holds, leaves the downloads in memory for the visit.
+    haylen.contentStore = (function () {
+        let worker = null;
+        let space = 0;
+        let nextId = 1;
+        const replies = new Map();
+
+        const post = (message, transfer) => {
+            if (worker) {
+                worker.postMessage(message, transfer || []);
+            }
+        };
+        const ask = (message) =>
+            new Promise((resolve) => {
+                const id = nextId++;
+                replies.set(id, resolve);
+                worker.postMessage({ ...message, id });
+            });
+        const deliver = (id, bytes) => {
+            const size = bytes ? bytes.length : 0;
+            const pointer = size > 0 ? Module._malloc(size) : 0;
+            if (size > 0) {
+                HEAPU8.set(bytes, pointer);
+            }
+            Module._haylen_web_store_received(id, pointer, size, bytes ? 1 : 0);
+            if (pointer) {
+                Module._free(pointer);
+            }
+        };
+
+        return {
+            async open(identifier) {
+                if (!navigator.storage || !navigator.storage.getDirectory || typeof Worker === "undefined") {
+                    console.warn("This browser keeps no files for the page, so downloaded content downloads again on the next visit.");
+                    return;
+                }
+                worker = new Worker(locateFile("haylen-content-store.js"));
+                worker.onmessage = (event) => {
+                    const message = event.data;
+                    if (message.op === "read") {
+                        deliver(message.id, message.ok ? message.bytes : null);
+                        return;
+                    }
+                    if (replies.has(message.id)) {
+                        replies.get(message.id)(message);
+                        replies.delete(message.id);
+                        return;
+                    }
+                    if (!message.ok) {
+                        console.warn("The browser did not keep a change of the downloaded content, which downloads again on the next visit: " + message.message);
+                    }
+                    if (message.op === "estimate" && message.ok) {
+                        space = message.available;
+                    }
+                };
+                const opened = await ask({ op: "open", identifier });
+                if (!opened.ok) {
+                    console.warn("The downloaded content of the app is held by another tab or the browser refused it, so this visit keeps its downloads in memory: " + opened.message);
+                    worker.terminate();
+                    worker = null;
+                    return;
+                }
+                FS.mkdirTree("/content-store");
+                for (const file of opened.files) {
+                    const folder = file.name.includes("/") ? "/content-store/" + file.name.slice(0, file.name.lastIndexOf("/")) : "/content-store";
+                    FS.mkdirTree(folder);
+                    FS.writeFile("/content-store/" + file.name, file.bytes);
+                }
+                FS.writeFile("/content-store/.segments", JSON.stringify(opened.segments));
+                space = opened.available;
+                if (navigator.storage.persist) {
+                    navigator.storage.persist().catch(() => {});
+                }
+            },
+            write(name, bytes) {
+                post({ op: "write", name, bytes }, [bytes.buffer]);
+                post({ op: "estimate" });
+            },
+            append(name, bytes) {
+                post({ op: "append", name, bytes }, [bytes.buffer]);
+                post({ op: "estimate" });
+            },
+            truncate(name, size) {
+                post({ op: "truncate", name, size });
+            },
+            remove(name) {
+                post({ op: "remove", name });
+            },
+            read(id, name, offset, size) {
+                if (worker) {
+                    worker.postMessage({ op: "read", id, name, offset, size });
+                } else {
+                    setTimeout(() => deliver(id, null), 0);
+                }
+            },
+            available() {
+                return worker ? space : 0;
+            },
+        };
+    })();
+
     // User data lives in IndexedDB under `/persistent`, loaded before the app starts so saves are there on the first frame, and so is what the browser tells about the device.
     Module.preRun = Module.preRun || [];
     Module.preRun.push(function () {
@@ -1696,6 +1797,20 @@ Module.haylen = Module.haylen || {};
             removeRunDependency("haylen-user-data");
         });
     });
+
+    // A protected release reaches the runtime as `Module.haylen.release`: the manifests and the app domain that the page downloaded, which go to `/app`, the address of the release, where the shards of its content stay and download by range, and the identifier of the app, which names its content store.
+    if (haylen.release) {
+        haylen.releaseAddress = new URL(haylen.release.address, document.baseURI).href;
+        Module.preRun.push(function () {
+            FS.mkdirTree("/app");
+            for (const file of haylen.release.files) {
+                FS.writeFile("/app/" + file.name, new Uint8Array(file.bytes));
+            }
+            haylen.release.files = null;
+            addRunDependency("haylen-content-store");
+            haylen.contentStore.open(haylen.release.identifier).finally(() => removeRunDependency("haylen-content-store"));
+        });
+    }
 
     // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`, and a page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts. The runtime plays it instead of the bundled package. Only a page that sets `Module.haylen.development` runs the app in development, connected to the development server that `Module.haylen.developmentServer` names, if any.
     const launch = [];

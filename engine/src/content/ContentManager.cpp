@@ -70,6 +70,18 @@ bool ContentManager::isLocal(std::string_view path) const {
     return release->isLocal(toPackagePath(path));
 }
 
+bool ContentManager::hasServer() const noexcept {
+    return settings.updates.has_value() || !release->getRemoteAddress().empty();
+}
+
+std::string ContentManager::locate(const ShardReference& pack) const {
+    const std::vector<ShardReference>& shipped = release->getBundledContent()->manifest->getEnvelope().shards;
+    if (!release->getRemoteAddress().empty() && std::ranges::find(shipped, pack) != shipped.end()) {
+        return release->getRemoteAddress() + pack.getFileName();
+    }
+    return updater->locate(pack);
+}
+
 void ContentManager::fail(const Error& failure) {
     status = Status::Failed;
     error = failure;
@@ -110,12 +122,12 @@ void ContentManager::bringRequired() {
             finishStart();
             return;
         }
-        if (!settings.updates) {
+        if (!hasServer()) {
             fail(Error(Error::Code::StoreAssetUnavailable, "The content that the app needs to start is not on the device, and the app names no server to download it from. Install the app again."));
             return;
         }
         progress = {.totalBytes = Downloader::measure(*missing.value)};
-        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return updater->locate(pack); }, {
+        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = [this](const Downloader::Progress& received) { progress = {.receivedBytes = received.receivedBytes, .totalBytes = received.totalBytes}; },
             .onComplete = [this, owner](std::optional<Error> failure) {
                 if (owner.expired()) {
@@ -145,6 +157,13 @@ void ContentManager::finishStart() {
     holdingStart = false;
     startHold.reset();
 
+    // The required content stays readable for the whole run, which matters where the store reads records in from elsewhere, as on the web.
+    std::vector<Digest> required;
+    for (const Catalog::Chunk& chunk : Updater::getChunks(*release->getContent()->catalog, Delivery::Required, settings)) {
+        required.push_back(chunk.storedId);
+    }
+    release->getStore()->pin(required);
+
     // The store forgets what no retained content uses before anything new arrives, and the background work begins after that.
     // clang-format off
     updater->collect([this, owner = std::weak_ptr(alive)](Updater::Collection, std::optional<Error> failure) {
@@ -154,11 +173,11 @@ void ContentManager::finishStart() {
         if (failure) {
             core::Log::warning("The content store could not drop what the app no longer uses: {}", failure->what());
         }
-        if (!settings.updates) {
+        if (!hasServer()) {
             return;
         }
         prefetch();
-        if (settings.updates->enabled) {
+        if (settings.updates && settings.updates->enabled) {
             startCheck();
         }
     });
@@ -172,7 +191,7 @@ void ContentManager::prefetch() {
         if (owner.expired() || !missing.isOk() || missing.value->empty()) {
             return;
         }
-        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return updater->locate(pack); }, {
+        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
             .onComplete = [](std::optional<Error> failure) {
                 if (failure) {
                     core::Log::warning("The prefetched content stopped downloading, and it downloads when the app asks for it: {}", failure->what());
@@ -221,7 +240,7 @@ void ContentManager::acquire(const std::vector<std::string>& paths, ProgressCall
         // clang-format on
         return;
     }
-    if (!downloader || !settings.updates) {
+    if (!downloader || !hasServer()) {
         // clang-format off
         engine.getJobs().postToFrame([path = wanted.front(), done = std::move(done)] {
             done(Error(Error::Code::StoreAssetUnavailable, "The asset \"" + path + "\" is not on the device, and the app names no server to download it from."));
@@ -247,7 +266,7 @@ void ContentManager::acquire(const std::vector<std::string>& paths, ProgressCall
             done(Error(Error::Code::CacheCorrupt, missing.error));
             return;
         }
-        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return updater->locate(pack); }, {
+        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = [onProgress = std::move(onProgress)](const Downloader::Progress& received) {
                 if (onProgress) {
                     onProgress({.receivedBytes = received.receivedBytes, .totalBytes = received.totalBytes});
