@@ -515,7 +515,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. The value `{0.5, 0.5}` centers the text. |
 | `rotation` | number | `0` | Rotation in radians. |
 | `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |
-| `pixelSnap` | boolean | `false` | Moves the block so its left edge lands on a whole pixel of the destination and puts the baseline of every line on a whole pixel row, which keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
+| `pixelSnap` | boolean | `false` | Moves every line so its left edge lands on a whole pixel of the destination, centered and right-aligned lines included, and puts its baseline on a whole pixel row, which keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
 | `layer`, `depth`, `blend` | | | Draw order. |
 
 ```lua

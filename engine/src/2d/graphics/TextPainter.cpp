@@ -48,10 +48,6 @@ void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, con
     blockRotation = style.rotation;
     blockTint = math::Color::white();
     pixels = style.rotation == 0.0F ? grid : std::nullopt;
-    if (pixels) {
-        const float left = place({}).x;
-        blockPosition.x += pixels->snapX(left) - left;
-    }
     if (style.shadowColor.a > 0.0F) {
         paintPlainGlyphs(layout, style, Layer::Shadow);
     }
@@ -63,7 +59,16 @@ void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, con
 
 // A synthetic bold bitmap glyph draws a second copy a native pixel to the right. Only distance field glyphs have outlines.
 void TextPainter::paintPlainGlyphs(const text::Layout& layout, const text::Style& style, Layer layer) {
+    std::size_t line = 0;
     for (const text::Layout::Glyph& glyph : layout.glyphs) {
+        // Every line lands on a pixel column of its own, since a centered or right-aligned line may start half a pixel from the others.
+        if (pixels) {
+            while (line + 1 < layout.lines.size() && glyph.character >= layout.lines[line].endCharacter) {
+                ++line;
+            }
+            const float left = place({layout.lines[line].box.x, 0.0F}).x;
+            lineShift = pixels->snapX(left) - left;
+        }
         const text::Layout::Look& look = layout.looks[glyph.look];
         const bool field = look.font->isDistanceField();
         const float outline = look.font->toDistance(style.outlineWidth, look.size);
@@ -113,6 +118,7 @@ SpriteInstance TextPainter::placeGlyph(const text::Layout::Glyph& glyph, math::V
     const float above = glyph.baseline - glyph.position.y;
     math::Vec2 pen = place(math::Vec2{glyph.position.x, glyph.baseline} + offset);
     if (pixels) {
+        pen.x += lineShift;
         pen.y = pixels->snapY(pen.y);
     }
     return {

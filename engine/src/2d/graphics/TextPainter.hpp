@@ -37,7 +37,7 @@ class TextPainter final {
 
     explicit TextPainter(graphics::Texture whiteTexture);
 
-    // Paints a layout of plain text in the color, outline and shadow of the style, stretched and turned by the style as one piece around the position, where its anchor lands. With a grid, text that does not turn puts the left edge of its block and the baselines of its glyphs on whole pixels.
+    // Paints a layout of plain text in the color, outline and shadow of the style, stretched and turned by the style as one piece around the position, where its anchor lands. With a grid, text that does not turn puts the left edge and the baseline of every line on whole pixels.
     void paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, const std::optional<PixelGrid>& grid = std::nullopt);
 
     // Paints rich text with the top-left of its block at the position, scaled from that corner and with every color multiplied by the tint.
@@ -79,6 +79,7 @@ class TextPainter final {
     float blockRotation = 0.0F;
     math::Color blockTint = math::Color::white();
     std::optional<PixelGrid> pixels;
+    float lineShift = 0.0F;
 };
 
 } // namespace haylen::graphics2d

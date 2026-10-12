@@ -225,6 +225,22 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
         EXPECT_FLOAT_EQ(after[index].position[1] * 2.0F, std::round(before[index].position[1] * 2.0F));
     }
 
+    // Every centered line starts on a pixel column of its own, though a line half a pixel narrower than the block would start half a pixel in.
+    const text::Style centered{.size = 11.0F, .align = text::Alignment::Center, .pixelSnap = true};
+    const std::shared_ptr<const text::Layout> lines = font.layout("Snap the grid\nGrid\ni", centered);
+    TextPainter middle(fixture.engine().getGraphics().getWhiteTexture());
+    middle.paintText(*lines, {10.3F, 20.6F}, centered, grid);
+    TextPainter unsnapped(fixture.engine().getGraphics().getWhiteTexture());
+    unsnapped.paintText(*lines, {10.3F, 20.6F}, centered);
+    std::size_t line = 0;
+    for (std::size_t index = 0; index < lines->glyphs.size(); ++index) {
+        while (lines->glyphs[index].character >= lines->lines[line].endCharacter) {
+            ++line;
+        }
+        const float left = 10.3F + lines->lines[line].box.x;
+        EXPECT_NEAR(middle.getBatches()[0].instances[index].position[0] - unsnapped.getBatches()[0].instances[index].position[0], std::round(left * 2.0F) / 2.0F - left, 0.0001F);
+    }
+
     // Turned text keeps its place, since no pixel row runs along its baselines.
     const text::Style turned{.size = 11.0F, .rotation = 0.5F, .pixelSnap = true};
     TextPainter rotated(fixture.engine().getGraphics().getWhiteTexture());
