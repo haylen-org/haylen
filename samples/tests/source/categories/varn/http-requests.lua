@@ -1,4 +1,4 @@
--- HTTP requests with Varn's "http" module against the local server of the category: GET with a query, POST with JSON, other methods, error statuses, timeouts, a missing server and URL encoding.
+-- HTTP requests with Varn's "http" module against the local server of the category: GET with a query, POST with JSON, other methods, error statuses, timeouts, a missing server and URL encoding, and a server of its own that the test opens on a free port and closes.
 local datetime = require('datetime')
 local haylen = require('haylen')
 local http = require('http')
@@ -23,7 +23,8 @@ app:post('/scores', function(ctx)
     table.insert(scores, entry)
     ctx:status(201):json({saved = entry.player, count = #scores})
 end)
-app:listen({host = '127.0.0.1', port = port})]]},
+local server = app:listen({host = '127.0.0.1', port = 0})
+local url = 'http://127.0.0.1:' .. server.port]]},
     {'Client', [[
 local response = http.client.get(url .. '/hello', {
     query = {name = 'Ana Bo'},
@@ -38,6 +39,12 @@ local saved = http.client.post(url .. '/scores', {
 local _, failure = http.client.get(url .. '/slow', {
     timeoutSeconds = 0.5,
 }):await()]]},
+    {'Closing a server', [[
+local server = app:listen({host = '127.0.0.1', port = 0})
+local other = http.createApp()
+local ok, busy = pcall(other.listen, other, {host = '127.0.0.1', port = server.port})
+server:close({graceful = true}):await()
+local _, refused = http.client.get(url):await()]]},
 }
 
 function HttpRequests:run()
@@ -50,6 +57,7 @@ function HttpRequests:run()
     self:timeout(url)
     self:refused()
     self:encoding()
+    self:closing()
 end
 
 function HttpRequests:update(dt)
@@ -126,6 +134,27 @@ function HttpRequests:refused()
     local started = datetime.now():millis()
     local response, failure = http.client.get('http://127.0.0.1:1/', {timeoutSeconds = 5}):await()
     self:check('refused', 'No server', response == nil and failure ~= nil, string.format('Rejected after %d ms: %s', datetime.now():millis() - started, tostring(failure)))
+end
+
+-- A server binds its port alone, reports the free port it got for port 0 and gives the port back once it closes.
+function HttpRequests:closing()
+    local name = 'Closing a server'
+    self.results:set('closing', 'waiting', name, 'Opening a server on a free port.')
+    local app = http.createApp()
+    app:get('/', function(ctx)
+        ctx:text('Open.')
+    end)
+    local server = app:listen({host = '127.0.0.1', port = 0})
+    local url = string.format('http://127.0.0.1:%d/', server.port)
+    local open = http.client.get(url):await()
+    local other = http.createApp()
+    local taken, busy = pcall(other.listen, other, {host = '127.0.0.1', port = server.port})
+    if taken then
+        busy:close():await()
+    end
+    server:close({graceful = true}):await()
+    local after, refused = http.client.get(url, {timeoutSeconds = 5}):await()
+    self:check('closing', name, open ~= nil and open.body == 'Open.' and not taken and after == nil, string.format('The server answered on port %d, a second server on that port failed with "%s", and once closed a request was refused: %s', server.port, tostring(busy), tostring(refused)))
 end
 
 function HttpRequests:encoding()

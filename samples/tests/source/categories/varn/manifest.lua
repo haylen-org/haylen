@@ -4,10 +4,10 @@ return {
     title = 'Varn',
     description = 'The modules of Varn, the Lua runtime of the engine, each lesson with its code and its live result.',
     tests = {
-        {code = 'VRN-001', title = 'Tasks and promises', description = 'Tasks that await promises, sleeps that never block a frame, rejections and callbacks turned into promises.', module = 'tasks'},
+        {code = 'VRN-001', title = 'Tasks and promises', description = 'Tasks that await promises, sleeps that never block a frame, rejections, failures caught, long loops that hand the frame back and callbacks turned into promises.', module = 'tasks'},
         {code = 'VRN-002', title = 'Combinators', description = 'All, race, any, every outcome and a few at a time, on a timeline of the jobs they wait on.', module = 'combinators'},
         {code = 'VRN-003', title = 'Deadlines and cancellation', description = 'Deadlines that give up waiting, tasks cancelled for good and tasks that end with their owner.', module = 'cancellation'},
-        {code = 'VRN-004', title = 'HTTP requests', description = 'GET with a query, POST with JSON, other methods, error statuses and timeouts against a server inside the app.', module = 'http-requests',
+        {code = 'VRN-004', title = 'HTTP requests', description = 'GET with a query, POST with JSON, other methods, error statuses and timeouts against a server inside the app, and a server that the test opens on a free port and closes.', module = 'http-requests',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'headless'},
             unsupported = {
                 web = 'A browser page cannot accept connections, so the browser build of Varn has no HTTP server for these requests, and the tests of this category never reach the internet.',
@@ -25,7 +25,7 @@ return {
         {code = 'VRN-007', title = 'WebSocket', description = 'A WebSocket server of Varn inside the app and a client of "haylen.net" that talk in text, bytes, broadcasts and pings.', module = 'websocket',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'headless'},
             unsupported = {web = 'A browser page cannot accept connections, so the browser build of Varn has no WebSocket server, and the tests of this category never reach the internet.'}},
-        {code = 'VRN-008', title = 'JSON', description = 'Tables to JSON text and back, with the way Lua values map to JSON values.', module = 'json'},
+        {code = 'VRN-008', title = 'JSON', description = 'Tables to JSON text and back, with the way Lua values map to JSON values, nulls that stay, marked arrays and objects, and errors that say where.', module = 'json'},
         {code = 'VRN-009', title = 'XML', description = 'A level written in XML, decoded into nodes and drawn, and nodes encoded back to text.', module = 'xml'},
         {code = 'VRN-010', title = 'Files', description = 'A private folder in the storage of the app, with writes, appends, streams, copies, listings and removal.', module = 'files'},
         {code = 'VRN-011', title = 'Zip archives', description = 'Files packed, listed with their sizes and extracted, and the archives refused before anything is written because an entry would leave its folder.', module = 'zip'},

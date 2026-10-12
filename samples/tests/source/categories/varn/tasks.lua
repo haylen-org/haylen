@@ -1,4 +1,4 @@
--- Tasks and promises of Varn's "async" module: a task is a coroutine that waits on promises with ":await()" while the app keeps drawing frames.
+-- Tasks and promises of Varn's "async" module: a task is a coroutine that waits on promises with ":await()" while the app keeps drawing frames, catches the failures that do not matter and hands the frame back in a long loop.
 local async = require('async')
 local datetime = require('datetime')
 local haylen = require('haylen')
@@ -40,7 +40,21 @@ end):await()
 local ok, failure = pcall(function()
     async.sleep(20):await()
     error('The map is broken.', 0)
-end)]]},
+end)
+
+local route = async.promise(function()
+    error('The bridge is out.', 0)
+end):catch(function(failure)
+    return 'The ferry, since ' .. failure
+end):await()]]},
+    {'Handing the frame back', [[
+local sum = 0
+for index = 1, 2000000 do
+    sum = sum + index
+    if index % 20000 == 0 then
+        async.yield():await()
+    end
+end]]},
     {'A callback as a promise', [[
 local opened, resolve = async.deferred()
 timer.after(0.2, resolve, {owner = self})
@@ -53,6 +67,8 @@ function Tasks:run()
     self:promises()
     self:rejection()
     self:errors()
+    self:caught()
+    self:slices()
     self:deferred()
     self:entryTask()
 end
@@ -104,6 +120,39 @@ function Tasks:errors()
         error('The map is broken.', 0)
     end)
     self:check('errors', 'Errors in a task', not ok and failure == 'The map is broken.', string.format('The "pcall" around an await caught "%s", and the task went on.', tostring(failure)))
+end
+
+-- A rejection that nothing awaits stops the app, so a failure that the app expects goes to "catch", whose function answers in its place.
+function Tasks:caught()
+    local route = async.promise(function()
+        error('The bridge is out.', 0)
+    end):catch(function(failure)
+        return 'The ferry, since ' .. failure
+    end):await()
+    self:check('catch', 'Catching a failure', route == 'The ferry, since The bridge is out.', string.format('The function of "catch" turned the rejection into "%s".', tostring(route)))
+end
+
+-- A long loop awaits "async.yield" now and then, so other tasks and timers take their turns, and the work goes on in the next frame once the event loop spent the budget of the frame.
+function Tasks:slices()
+    self.results:set('yield', 'waiting', 'Handing the frame back', 'Summing 2000000 numbers in slices.')
+    local ticks, summing = 0, true
+    async.spawn(function()
+        while summing do
+            ticks = ticks + 1
+            async.yield():await()
+        end
+    end)
+
+    local frame = haylen.frameIndex()
+    local sum = 0
+    for index = 1, 2000000 do
+        sum = sum + index
+        if index % 20000 == 0 then
+            async.yield():await()
+        end
+    end
+    summing = false
+    self:check('yield', 'Handing the frame back', sum == 2000001000000 and ticks > 0, string.format('The sum took %d frames, and another task ran %d times between its slices.', haylen.frameIndex() - frame, ticks))
 end
 
 -- A deferred promise turns a callback of the engine into something a task awaits.

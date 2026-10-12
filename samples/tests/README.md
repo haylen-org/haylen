@@ -622,14 +622,14 @@ The modules of Varn, the Lua runtime of the engine, each lesson with its code an
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
-| `VRN-001` | Tasks and promises | Tasks that await promises, sleeps that never block a frame, rejections and callbacks turned into promises. |  |
+| `VRN-001` | Tasks and promises | Tasks that await promises, sleeps that never block a frame, rejections, failures caught, long loops that hand the frame back and callbacks turned into promises. |  |
 | `VRN-002` | Combinators | All, race, any, every outcome and a few at a time, on a timeline of the jobs they wait on. |  |
 | `VRN-003` | Deadlines and cancellation | Deadlines that give up waiting, tasks cancelled for good and tasks that end with their owner. |  |
-| `VRN-004` | HTTP requests | GET with a query, POST with JSON, other methods, error statuses and timeouts against a server inside the app. | web, android |
+| `VRN-004` | HTTP requests | GET with a query, POST with JSON, other methods, error statuses and timeouts against a server inside the app, and a server that the test opens on a free port and closes. | web, android |
 | `VRN-005` | Streaming responses | Server-sent events that reach the app one by one, a body the server writes in parts and a download read in pieces. | web, android |
 | `VRN-006` | TCP and UDP sockets | An echo server on a free port and its client with text and binary data, the end of a stream, and datagrams one by one and in batches. | web |
 | `VRN-007` | WebSocket | A WebSocket server of Varn inside the app and a client of "haylen.net" that talk in text, bytes, broadcasts and pings. | web |
-| `VRN-008` | JSON | Tables to JSON text and back, with the way Lua values map to JSON values. |  |
+| `VRN-008` | JSON | Tables to JSON text and back, with the way Lua values map to JSON values, nulls that stay, marked arrays and objects, and errors that say where. |  |
 | `VRN-009` | XML | A level written in XML, decoded into nodes and drawn, and nodes encoded back to text. |  |
 | `VRN-010` | Files | A private folder in the storage of the app, with writes, appends, streams, copies, listings and removal. |  |
 | `VRN-011` | Zip archives | Files packed, listed with their sizes and extracted, and the archives refused before anything is written because an entry would leave its folder. |  |
