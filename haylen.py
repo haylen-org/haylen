@@ -3089,13 +3089,10 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
 
 # Where the installed app keeps its executable, its package and its native libraries: next to each other on Windows, and in `lib/<executable>` on Linux, where `bin/<executable>` links to the executable.
 DESKTOP_LAYOUTS = {"windows": ("", "{executable}.exe"), "linux": ("lib/{executable}", "bin/{executable}")}
-# The class of the window of a Linux app is the identifier of `app.json`, which desktops match with the desktop entry of the same name.
-DESKTOP_ENTRY_KEYS = ("Name", "Comment", "Exec", "Icon", "StartupWMClass")
-APPSTREAM_ELEMENTS = ("id", "name", "summary", "description", "developer", "launchable", "url")
-# The engine needs the Common Controls of version 6 for the message dialogs of Windows and UTF-8 as the code page of the process, which the application manifest of the executable selects.
+# What the engine needs from the application manifest of a Windows executable, each with the text that shows it in the manifest and the snippet that adds it.
 WINDOWS_MANIFEST_NEEDS = {
     "the Common Controls of version 6, which the message dialogs of Haylen need": ("Microsoft.Windows.Common-Controls", '<dependency>\n  <dependentAssembly>\n    <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>\n  </dependentAssembly>\n</dependency>'),
-    "UTF-8 as the code page of the process, which the text of Haylen needs": ("<activeCodePage", '<activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>'),
+    "UTF-8 as the code page of the process, which the text of Haylen needs": (">UTF-8</activeCodePage>", '<activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>'),
 }
 WINDOWS_MANIFEST_RESOURCE = 24
 

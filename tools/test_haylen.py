@@ -489,7 +489,7 @@ class DesktopProjectTest(unittest.TestCase):
         (folder / "sky-garden.exe").write_bytes(self.executable(manifest))
         self.assertEqual(haylen.check_desktop(app, project, arguments), [])
 
-        (folder / "sky-garden.exe").write_bytes(self.executable(b'<assembly><application><windowsSettings/></application></assembly>'))
+        (folder / "sky-garden.exe").write_bytes(self.executable(b'<assembly><application><windowsSettings><activeCodePage>Legacy</activeCodePage></windowsSettings></application></assembly>'))
         (folder / "glue.dll").unlink()
         messages = [requirement.message for requirement in haylen.check_desktop(app, project, arguments)]
         self.assertEqual(messages, [
