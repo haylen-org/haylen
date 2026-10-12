@@ -4,6 +4,10 @@
 
 namespace haylen::input {
 
+AppTextField::~AppTextField() {
+    finish();
+}
+
 void AppTextField::edit(State state) {
     const bool changed = state.text != field.text || state.selectionStart != field.selectionStart || state.selectionEnd != field.selectionEnd;
     if (changed) {
@@ -16,15 +20,28 @@ void AppTextField::edit(State state) {
     field.bounds = state.bounds;
     field.caret = {state.bounds.getRight(), state.bounds.y, 0.0F, state.bounds.height};
     field.options = state.options;
-    if (!editing || changed || moved) {
-        textInput.edit(field);
-    }
     editing = true;
+    if (!takenOver && (!published || changed || moved)) {
+        textInput.edit(field);
+        published = true;
+    }
 }
 
 void AppTextField::finish() {
-    if (std::exchange(editing, false)) {
+    editing = false;
+    if (std::exchange(published, false)) {
         textInput.finish();
+    }
+}
+
+void AppTextField::setTakenOver(bool value) {
+    if (std::exchange(takenOver, value) == value) {
+        return;
+    }
+    published = false;
+    if (!value && editing) {
+        textInput.edit(field);
+        published = true;
     }
 }
 

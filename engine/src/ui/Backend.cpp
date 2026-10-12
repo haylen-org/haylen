@@ -312,6 +312,9 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
 }
 
 Backend::~Backend() {
+    if (keyboardShown) {
+        window.setKeyboardVisible(false);
+    }
     ImGui::DestroyContext(imguiContext);
 }
 

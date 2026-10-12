@@ -151,6 +151,13 @@ std::optional<std::pair<int, int>> TextSession::getComposition(ImGuiID id) const
     return std::pair{compositionStart, compositionEnd};
 }
 
+// A field still published when the UI ends, such as when the app restarts while it edits, stops editing with it.
+TextSession::~TextSession() {
+    if (published) {
+        input.finish();
+    }
+}
+
 void TextSession::publish() {
     const bool composing = compositionStart >= 0 && compositionEnd > compositionStart;
     if (!activeThisFrame) {

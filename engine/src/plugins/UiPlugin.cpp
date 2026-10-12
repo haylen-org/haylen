@@ -22,6 +22,7 @@
 #include "haylen/core/SceneView.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/input/AppTextField.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/io/Package.hpp"
@@ -34,6 +35,7 @@
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImGuiLua.hpp"
 #include "ui/ImageLibrary.hpp"
+#include "ui/TextSession.hpp"
 #include "ui/UiLua.hpp"
 #include "ui/components/BuiltInComponents.hpp"
 
@@ -91,6 +93,7 @@ void UiPlugin::stop(core::Engine& engine) {
     events.clear();
     context.reset();
     backend.reset();
+    engine.getAppTextField().setTakenOver(false);
     owner = nullptr;
 }
 
@@ -280,6 +283,7 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
     }
 
     drawing.render(engine.getRenderer2D());
+    engine.getAppTextField().setTakenOver(drawing.getTextSession().isActive());
     applyVirtualInput(engine);
 
     // The action map of the next frame ignores mouse buttons while the interface owns the pointer, so a click on a button never reaches gameplay, and it leaves the presses the interface answers itself to the interface, such as the cancel that closes a popup.

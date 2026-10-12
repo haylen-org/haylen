@@ -24,13 +24,21 @@ class AppTextField final {
     };
 
     explicit AppTextField(platform::TextInput& input) : textInput(input) {}
+    AppTextField(const AppTextField&) = delete;
+    AppTextField& operator=(const AppTextField&) = delete;
+    ~AppTextField();
 
     // Starts editing or follows the field. The native field takes the text and the selection only when they differ from what the user typed last, so an app that shows the typed text back keeps a composition going.
     void edit(State state);
     void finish();
+
+    // Whether the field of the app edits, which it does not while a text field of the UI holds the keyboard.
     [[nodiscard]] bool isEditing() const noexcept {
-        return editing;
+        return editing && !takenOver;
     }
+
+    // Tells the field whether a text field of the UI holds the native text input. The field of the app keeps what the app gives it meanwhile and takes the keyboard back once the UI lets go.
+    void setTakenOver(bool value);
 
     // Keeps what the user typed into the field, which the app receives as a `TextEdited` event.
     void receive(const platform::TextInput::Edit& edit);
@@ -39,6 +47,10 @@ class AppTextField final {
     platform::TextInput& textInput;
     platform::TextInput::Field field{.id = kField};
     bool editing = false;
+    bool takenOver = false;
+
+    // Whether the native text input edits this field now.
+    bool published = false;
 };
 
 } // namespace haylen::input

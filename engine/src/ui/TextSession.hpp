@@ -19,6 +19,9 @@ namespace haylen::ui {
 class TextSession final {
   public:
     explicit TextSession(platform::TextInput& platformInput) : input(platformInput) {}
+    TextSession(const TextSession&) = delete;
+    TextSession& operator=(const TextSession&) = delete;
+    ~TextSession();
 
     void receiveEdit(platform::TextInput::Edit edit);
 

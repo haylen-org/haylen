@@ -14,6 +14,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/input/AppTextField.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -132,6 +133,49 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     getUi().getContext().getBackend().makeCurrent();
     ImGui::ClearActiveID();
     fixture.frames(1);
+    EXPECT_FALSE(getInput().isEditing());
+}
+
+TEST_F(TextInputTest, TakesTheKeyboardFromTheFieldOfTheAppAndGivesItBack) {
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
+    input::AppTextField& appField = getEngine().getAppTextField();
+    appField.edit({.text = "abc", .selectionStart = 3, .selectionEnd = 3, .bounds = {10.0F, 10.0F, 200.0F, 40.0F}});
+    EXPECT_EQ(getPublished().id, input::AppTextField::kField);
+
+    // The field of the UI takes the keyboard, and what the app gives meanwhile waits.
+    focus(*gui, "name");
+    EXPECT_NE(getPublished().id, input::AppTextField::kField);
+    EXPECT_FALSE(appField.isEditing());
+    const std::size_t published = getInput().getPublished().size();
+    appField.edit({.text = "abcd", .selectionStart = 4, .selectionEnd = 4, .bounds = {10.0F, 10.0F, 200.0F, 40.0F}});
+    fixture.frames(1);
+    EXPECT_EQ(getInput().getPublished().size(), published);
+
+    // Once the UI lets go, the field of the app edits again with what the app gave last.
+    getUi().getContext().getBackend().makeCurrent();
+    ImGui::ClearActiveID();
+    fixture.frames(1);
+    EXPECT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().id, input::AppTextField::kField);
+    EXPECT_EQ(getPublished().text, "abcd");
+    EXPECT_TRUE(appField.isEditing());
+
+    // The app ending its field leaves a field of the UI that edits alone.
+    focus(*gui, "name");
+    appField.finish();
+    EXPECT_TRUE(getInput().isEditing());
+}
+
+TEST_F(TextInputTest, StopsEditingWhenTheAppRestarts) {
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
+    focus(*gui, "name");
+    ASSERT_TRUE(getInput().isEditing());
+    fixture.restart();
+    EXPECT_FALSE(getInput().isEditing());
+
+    getEngine().getAppTextField().edit({.text = "abc"});
+    ASSERT_TRUE(getInput().isEditing());
+    fixture.restart();
     EXPECT_FALSE(getInput().isEditing());
 }
 
