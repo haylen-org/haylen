@@ -148,8 +148,9 @@ void Device::open(Connection& target, const Mixer::Setup& setup) {
 }
 
 std::optional<std::string_view> Device::initialize(Connection& target, const Mixer::Setup& setup) {
-    // Creating the context sets the category of the iOS audio session and activates it, and other platforms ignore the session.
+    // Creating the context sets the category of the iOS audio session and activates it, and other platforms ignore the session. Closing a context leaves the session active, because a closing that a restart or an abandoned opening runs late would otherwise silence the output that opened after it, and deactivating blocks the thread that closes.
     ma_context_config contextConfig = ma_context_config_init();
+    contextConfig.coreaudio.noAudioSessionDeactivate = MA_TRUE;
     contextConfig.coreaudio.sessionCategory = toSessionCategory(setup.session.category);
     contextConfig.coreaudio.sessionCategoryOptions = setup.session.mixWithOthers ? static_cast<ma_uint32>(ma_ios_session_category_option_mix_with_others) : 0U;
 
