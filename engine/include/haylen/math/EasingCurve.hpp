@@ -77,7 +77,7 @@ class EasingCurve final {
     Easing::StepPosition stepPosition = Easing::StepPosition::End;
     std::array<float, 4> parameters{};
     std::shared_ptr<const std::vector<Vec2>> polyline;
-    std::function<float(float)> callback;
+    std::shared_ptr<const std::function<float(float)>> callback;
 };
 
 } // namespace haylen::math

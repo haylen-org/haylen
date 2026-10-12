@@ -111,6 +111,8 @@ bool Tween::killTarget(const void*) {
 
 void Tween::yieldTo(const PropertyTween&) {}
 
+void Tween::releasePlayback() noexcept {}
+
 void Tween::discard() noexcept {
     killed = true;
     manager = nullptr;
@@ -306,8 +308,9 @@ void Tween::end(bool justCompleted) {
         parent->remove(*this);
     }
 
-    // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the `kill` callback fails. A killed tween never calls anything again, so it lets go of its callbacks and listeners.
+    // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the `kill` callback fails. A killed tween never calls anything again, so it lets go of its callbacks, its listeners and what it played with.
     const std::shared_ptr<const Callbacks> events = std::exchange(callbacks, nullptr);
+    releasePlayback();
     std::exception_ptr failure;
     try {
         if (events && events->kill) {

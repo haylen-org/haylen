@@ -44,6 +44,7 @@ class PropertyTween final : public Tween {
     bool killTarget(const void* target) override;
     void yieldTo(const PropertyTween& newer) override;
     void discard() noexcept override;
+    void releasePlayback() noexcept override;
 
   private:
     [[nodiscard]] bool areTargetsAlive() const;

@@ -294,6 +294,9 @@ template <> struct Converter<graphics2d::PartColors> {
 template <> struct Converter<math::EasingCurve> {
     static void push(lua_State* L, const math::EasingCurve& value);
     static math::EasingCurve read(lua_State* L, int index);
+
+    // Makes a curve of the function at index, held through the owner at the owner index like the listeners of an owner, or strongly with an owner index of 0. A curve whose owner is gone returns its progress unchanged.
+    static math::EasingCurve readFunction(lua_State* L, int index, int owner);
 };
 
 // Sprite effects accept a table with the keys `dissolve`, `dissolveEdge`, `dissolveSize`, `dissolveColor`, `outlineWidth`, `outlineColor`, `glowSize` and `glowColor`, the defaults where it has none, and push as a table with every key.

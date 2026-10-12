@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "lua/Owners.hpp"
 
 namespace haylen::lua {
 
@@ -231,6 +231,27 @@ void Converter<math::EasingCurve>::push(lua_State* L, const math::EasingCurve& v
     Userdata::emplace<math::EasingCurve>(L, value);
 }
 
+math::EasingCurve Converter<math::EasingCurve>::readFunction(lua_State* L, int index, int owner) {
+    auto function = std::make_shared<const Owners::Function>(L, index, owner);
+    lua_State* main = Runtime::getMainThread(L);
+    // clang-format off
+    return math::EasingCurve::custom([function, main](float t) {
+        if (!function->push(main)) {
+            return t;
+        }
+        lua_pushnumber(main, static_cast<lua_Number>(t));
+        Runtime::protectedCall(main, 1, 1);
+        const bool number = lua_type(main, -1) == LUA_TNUMBER;
+        const auto value = static_cast<float>(lua_tonumber(main, -1));
+        lua_pop(main, 1);
+        if (!number) {
+            throw std::runtime_error("An easing function must return a number.");
+        }
+        return value;
+    });
+    // clang-format on
+}
+
 math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     if (const math::EasingCurve* curve = Userdata::test<math::EasingCurve>(L, index)) {
         return *curve;
@@ -239,22 +260,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
         return math::EasingCurve(Stack::read<math::Easing::Type>(L, index));
     }
     if (lua_isfunction(L, index)) {
-        auto function = std::make_shared<Reference>(L, index);
-        // clang-format off
-        return math::EasingCurve::custom([function](float t) {
-            lua_State* main = function->getState();
-            function->push(main);
-            lua_pushnumber(main, static_cast<lua_Number>(t));
-            Runtime::protectedCall(main, 1, 1);
-            const bool number = lua_type(main, -1) == LUA_TNUMBER;
-            const auto value = static_cast<float>(lua_tonumber(main, -1));
-            lua_pop(main, 1);
-            if (!number) {
-                throw std::runtime_error("An easing function must return a number.");
-            }
-            return value;
-        });
-        // clang-format on
+        return readFunction(L, index, 0);
     }
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "easing curve name, function or table");

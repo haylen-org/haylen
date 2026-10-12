@@ -63,6 +63,9 @@ void PropertyTween::renderLoop(float loopTime, float, int loops, bool) {
         return;
     }
     easedProgress = ease.apply(duration > 0.0F ? loopTime / duration : 1.0F);
+    if (!isAlive()) {
+        return;
+    }
     for (const std::unique_ptr<TweenTrack>& track : tracks) {
         track->render(easedProgress, loops);
     }
@@ -100,6 +103,14 @@ void PropertyTween::yieldTo(const PropertyTween& newer) {
 void PropertyTween::discard() noexcept {
     Tween::discard();
     tracks.clear();
+    ease = {};
+}
+
+// Only a curve of a function holds anything, such as a Lua function that refers to the tween.
+void PropertyTween::releasePlayback() noexcept {
+    if (ease.getKind() == math::EasingCurve::Kind::Custom) {
+        ease = {};
+    }
 }
 
 } // namespace haylen::core

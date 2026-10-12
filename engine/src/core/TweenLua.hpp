@@ -19,6 +19,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
+#include "haylen/math/EasingCurve.hpp"
 #include "lua/Owners.hpp"
 
 struct lua_State;
@@ -80,6 +81,7 @@ class TweenLua final {
     static void start(lua_State* L, const std::shared_ptr<Tween>& tween, int options, int owner);
 
     [[nodiscard]] static std::shared_ptr<PropertyTween> createTween(lua_State* L, float length, int options, int owner);
+    [[nodiscard]] static math::EasingCurve readEase(lua_State* L, int options, int owner);
     [[nodiscard]] static bool isListed(lua_State* L, int options, const char* list, std::string_view name);
     [[nodiscard]] static TweenValue::Interpolation getInterpolation(lua_State* L, int options, std::string_view name, TweenValue::Kind kind);
     [[nodiscard]] static TweenValue readCurrent(Builder& builder, const std::vector<std::string>& names);

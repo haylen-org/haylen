@@ -73,7 +73,7 @@ EasingCurve EasingCurve::custom(std::function<float(float)> function) {
     }
     EasingCurve result;
     result.kind = Kind::Custom;
-    result.callback = std::move(function);
+    result.callback = std::make_shared<const std::function<float(float)>>(std::move(function));
     return result;
 }
 
@@ -106,8 +106,11 @@ float EasingCurve::apply(float t) const {
         return Easing::cubicBezier(t, parameters[0], parameters[1], parameters[2], parameters[3]);
     case Kind::Points:
         return applyPoints(Math::saturate(t));
-    case Kind::Custom:
-        return callback(Math::saturate(t));
+    case Kind::Custom: {
+        // The curve holds its function while it runs, so the function may replace the curve that runs it.
+        const std::shared_ptr<const std::function<float(float)>> function = callback;
+        return (*function)(Math::saturate(t));
+    }
     }
     return t;
 }

@@ -375,6 +375,33 @@ TEST(TweenLuaTest, EndedTweensLetGoOfCallbacksThatReferToThem) {
     EXPECT_EQ(fixture.lua("return tostring(finished) .. ' ' .. tostring(stopped) .. ' ' .. tostring(next(tracker))"), "true false nil");
 }
 
+// An easing function holds no tween and no owner alive: an ended tween lets go of it, and a tween with an owner holds it through the owner.
+TEST(TweenLuaTest, EasingFunctionsKeepNoTweenAndNoOwnerAlive) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        tween = require('haylen.tween')
+        tweens = setmetatable({}, {__mode = 'k'})
+        owners = setmetatable({}, {__mode = 'k'})
+        box = {x = 0, y = 0}
+        do
+            local ended
+            ended = tween.to({x = 0}, 0.1, {x = 1}, {ease = function(t) return ended and t or 0 end})
+            tweens[ended] = true
+            local owner = {}
+            owners[owner] = true
+            looping = tween.to(box, 1, {y = 1}, {owner = owner, repeatCount = -1, ease = function(t) return owner and t or 0 end})
+        end
+        local killing
+        killing = tween.to(box, 1, {x = 1}, {ease = function(t) killing:kill() return t end})
+    )");
+    // clang-format on
+    fixture.frames(10);
+    fixture.runLua("collectgarbage() collectgarbage()");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(next(tweens)) .. ' ' .. tostring(next(owners)) .. ' ' .. tostring(looping.alive) .. ' ' .. box.x"), "nil nil false 0");
+}
+
 TEST(TweenLuaTest, RunsByProcessModeAndTime) {
     test::EngineFixture fixture;
     // clang-format off

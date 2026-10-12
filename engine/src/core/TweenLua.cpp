@@ -218,11 +218,21 @@ std::shared_ptr<PropertyTween> TweenLua::createTween(lua_State* L, float length,
     auto tween = std::make_shared<PropertyTween>(length, speedBased);
     configure(L, options, owner, *tween);
     if (options != 0) {
-        math::EasingCurve ease;
-        lua::Table::readField(L, options, "ease", ease);
-        tween->setEase(std::move(ease));
+        tween->setEase(readEase(L, options, owner));
     }
     return tween;
+}
+
+// An easing function is held through the owner of the tween, like its callbacks, so a function that refers to the owner never keeps it alive.
+math::EasingCurve TweenLua::readEase(lua_State* L, int options, int owner) {
+    math::EasingCurve ease;
+    if (lua_getfield(L, options, "ease") == LUA_TFUNCTION) {
+        ease = lua::Converter<math::EasingCurve>::readFunction(L, -1, owner);
+    } else if (!lua_isnil(L, -1)) {
+        lua::Table::readValue(L, "ease", ease);
+    }
+    lua_pop(L, 1);
+    return ease;
 }
 
 bool TweenLua::isListed(lua_State* L, int options, const char* list, std::string_view name) {

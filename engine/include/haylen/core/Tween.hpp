@@ -209,6 +209,9 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     // Drops the tween without running any callback and lets go of everything it holds, which is what shutdown needs before the Lua state closes.
     virtual void discard() noexcept;
 
+    // Lets go of what only playing needs, once the tween ended for good.
+    virtual void releasePlayback() noexcept;
+
     // Kills the tween when it animates the target, or the tweens of a timeline that do. Returns whether the tween itself was killed.
     virtual bool killTarget(const void* target);
 
