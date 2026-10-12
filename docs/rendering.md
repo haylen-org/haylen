@@ -391,6 +391,28 @@ The results recorded in `PROJECT.md`, measured on an Apple M5 Pro with Metal in 
 | 2,000,000 animated sprites | 105 fps | 4.5 ms |
 | 2,000,000 baked sprites | 120 Hz, the refresh limit of the display | 0.02 ms |
 
+## Render benchmark
+
+```sh
+haylen bench --suite render
+```
+
+The suite `render` builds `haylen-render-benchmark` in Release, `engine/bench/RenderBenchmark.cpp`, and runs whole engine frames on the headless host, whose dummy backend takes the draw calls and uploads without a GPU, so it measures what the frame thread spends to record, sort, batch and submit. Each scene runs 30 warm-up frames and 300 measured frames of a 1920 by 1080 design area: ten thousand sprites in runs of four textures and then alternating them, a thousand circles, rounded panels and lines, 200 labels that stay the same, 200 labels whose numbers change every frame, 20 rich text blocks with a wave effect and a screen of 40 interface components. It prints for each scene the CPU time of a frame, the draw calls, instances and uploaded kilobytes of the last frame, and the allocations of the frame thread per frame, counted by replacing the allocation functions of the program.
+
+These are the numbers of an Apple M5 Pro in Release:
+
+| Scene | Frame ms | Draw calls | Instances | Uploaded KB | Allocations | Allocated KB |
+| --- | --- | --- | --- | --- | --- | --- |
+| 10,000 sprites in runs of 4 textures | 0.396 | 4 | 10,000 | 468.8 | 4 | 0.25 |
+| 10,000 sprites alternating 4 textures | 0.627 | 10,000 | 10,000 | 468.8 | 4 | 0.25 |
+| 3,000 circles, panels and lines | 0.204 | 2,000 | 3,000 | 140.6 | 4 | 0.25 |
+| 200 labels that stay | 0.130 | 1 | 4,892 | 229.3 | 4 | 0.25 |
+| 200 labels that change every frame | 1.508 | 1 | 4,090 | 189.7 | 13,001 | 6,934 |
+| 20 rich text blocks with a wave | 0.060 | 1 | 1,440 | 67.5 | 4 | 0.25 |
+| A screen of 40 interface components | 0.055 | 48 | 514 | 24.1 | 4 | 0.25 |
+
+The few allocations of every scene come from the frame loop of the engine around the drawing. Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost, while text that changes every frame lays out again, which is the one drawing that allocates, so a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, and alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains.
+
 ## Using the renderer from C++
 
 C++ apps and plugins reach the same renderer through `engine.getRenderer2D()`. This scene bakes a row of ground tiles once, draws it in a lit world canvas with a light, and draws a label in a screen canvas:

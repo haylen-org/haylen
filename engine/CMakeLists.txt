@@ -847,6 +847,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   set_target_properties(haylen-ui-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-ui-benchmark)
 
+  # The render benchmark times whole frames of sprites, shapes, text, rich text and interface components on the headless host, with the draw calls, uploads and allocations of each frame.
+  add_executable(haylen-render-benchmark bench/RenderBenchmark.cpp)
+  target_include_directories(haylen-render-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-render-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-render-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-render-benchmark)
+
   # The particle benchmark times the simulation and the drawing of emitters on the CPU, inside an engine on the headless host.
   add_executable(haylen-particle-benchmark bench/ParticleBenchmark.cpp)
   target_include_directories(haylen-particle-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")

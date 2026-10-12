@@ -138,7 +138,7 @@ engine/
   platform/android/       Gradle project of the Android libraries: `haylen` (activity with the splash screen, bridge, gamepad, insets, text input, requirements and the player library), the manifest-only `haylen-plugins` and `haylen-links`, and `haylen-coroutines`.
   platform/web/           JavaScript runtime, audio worklet and bridge, and the HTML shell and backend picker of C++ web apps.
   platform/apple/         Info.plist and launch screen templates of Apple apps built with CMake, and the PrivacyInfo.xcprivacy of the engine.
-  bench/                  The benchmark apps (sprites, algorithms, procedural, Lua).
+  bench/                  The benchmark apps (sprites, algorithms, procedural, physics, UI, render, particles, Lua).
   tools/content/          The content tool `haylen-content` and its library, which builds, verifies, inspects, compares and publishes protected releases on desktop hosts.
   tests/                  GoogleTest suite with its support helpers, test fonts and the native test library, and the consumer project that `haylen.py sdk --check-consumers` builds.
 samples/
