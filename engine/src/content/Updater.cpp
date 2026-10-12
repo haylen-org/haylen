@@ -61,7 +61,7 @@ void Updater::fetch(const std::string& url, std::uint64_t maximumSize, std::func
     std::erase_if(transfers, [](const HttpTransport::Transfer& transfer) { return !transfer.isActive(); });
 }
 
-void Updater::check(std::function<void(std::optional<Offer>, std::optional<Error>)> done) {
+void Updater::check(std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done) {
     // The pointer of a channel changes with every release, so its address changes with every check to pass any cache on the way.
     const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     const std::string url = std::format("{}{}?check={}-{}", baseUrl, PublicationLayout::getChannelPath(channel), now, ++checks);
@@ -104,15 +104,15 @@ void Updater::check(std::function<void(std::optional<Offer>, std::optional<Error
     // clang-format on
 }
 
-void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<Offer>, std::optional<Error>)> done) {
+void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done) {
     // Verifying, decrypting and measuring the offer runs on the task pool, which also opens the shard files the measure looks into.
     // clang-format off
     jobs.post([&pool = jobs, owner = std::weak_ptr(alive), releasePackage = release, channelName = channel, generation, manifest, bytes = std::move(bytes), done = std::move(done)]() mutable {
-        std::optional<Offer> offer;
+        std::optional<UpdateOffer> offer;
         std::optional<Error> failure;
         try {
             auto shared = std::make_shared<const std::vector<std::uint8_t>>(bytes);
-            offer = Offer{.generation = generation, .content = releasePackage->load(std::move(bytes)), .manifest = std::move(shared)};
+            offer = UpdateOffer{.generation = generation, .content = releasePackage->load(std::move(bytes)), .manifest = std::move(shared)};
             const Manifest::Envelope& envelope = offer->content->manifest->getEnvelope();
             if (offer->content->manifest->getId() != manifest || envelope.generation != generation || envelope.channel != channelName) {
                 throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest.toHex() + "\" is not the one its channel names.");
@@ -132,14 +132,14 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
     // clang-format on
 }
 
-std::uint64_t Updater::getRequiredSpace(const Offer& offer) noexcept {
+std::uint64_t Updater::getRequiredSpace(const UpdateOffer& offer) noexcept {
     // Beyond its records an install writes their journal entries, the indexes of their shards, the manifest and the staged starts of the records that run at once.
     const std::uint64_t records = offer.missing.size();
     const std::uint64_t overhead = records * (StoreEntry::kSize + ShardIndex::kEntrySize) + offer.content->manifest->getEnvelope().shards.size() * ShardHeader::kSize + offer.manifest->size() + Downloader::kMaximumTransfers * (ChunkRecord::kHeaderSize + Chunker::kMaximumSize);
     return offer.downloadBytes + overhead + std::max(kSafetyMargin, offer.downloadBytes / 20);
 }
 
-void Updater::install(const Offer& offer, std::function<void(const Downloader::Progress&)> progress, std::function<void(std::optional<Error>)> done) {
+void Updater::install(const UpdateOffer& offer, std::function<void(const Downloader::Progress&)> progress, std::function<void(std::optional<Error>)> done) {
     // clang-format off
     jobs.postIo([this, &pool = jobs, owner = std::weak_ptr(alive), store = release->getStore(), offer, progress = std::move(progress), done = std::move(done)]() mutable {
         const std::uint64_t available = store->getAvailableSpace();
@@ -168,7 +168,7 @@ void Updater::install(const Offer& offer, std::function<void(const Downloader::P
     // clang-format on
 }
 
-void Updater::commit(const Offer& offer, std::function<void(std::optional<Error>)> done) const {
+void Updater::commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const {
     // The manifest and every record go to the disk before the state that names them, so a crash leaves either the earlier content or the new one.
     // clang-format off
     jobs.postIo([&pool = jobs, owner = std::weak_ptr(alive), store = release->getStore(), channelName = channel, offer, done = std::move(done)]() mutable {

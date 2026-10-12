@@ -8,12 +8,12 @@
 #include <string>
 #include <vector>
 
-#include "content/Delivery.hpp"
 #include "content/crypto/Digest.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/VerifyingKey.hpp"
 #include "content/format/Catalog.hpp"
 #include "content/format/Manifest.hpp"
+#include "haylen/content/Delivery.hpp"
 
 namespace haylen::content {
 

@@ -82,21 +82,21 @@ class UpdaterTest : public ::testing::Test {
         return std::make_unique<Client>(*this, std::make_unique<FolderStoreFiles>(store.getPath()));
     }
 
-    std::pair<std::optional<Updater::Offer>, std::optional<Error>> check(Client& client) {
-        std::optional<std::pair<std::optional<Updater::Offer>, std::optional<Error>>> result;
-        client.updater->check([&result](std::optional<Updater::Offer> offer, std::optional<Error> error) { result.emplace(std::move(offer), std::move(error)); });
+    std::pair<std::optional<UpdateOffer>, std::optional<Error>> check(Client& client) {
+        std::optional<std::pair<std::optional<UpdateOffer>, std::optional<Error>>> result;
+        client.updater->check([&result](std::optional<UpdateOffer> offer, std::optional<Error> error) { result.emplace(std::move(offer), std::move(error)); });
         EXPECT_TRUE(runtime.pumpUntil([&result] { return result.has_value(); }));
         return std::move(*result);
     }
 
-    Updater::Offer requireOffer(Client& client) {
+    UpdateOffer requireOffer(Client& client) {
         auto [offer, error] = check(client);
         EXPECT_FALSE(error) << error->what();
         EXPECT_TRUE(offer);
         return std::move(*offer);
     }
 
-    std::optional<Error> install(Client& client, const Updater::Offer& offer) {
+    std::optional<Error> install(Client& client, const UpdateOffer& offer) {
         std::optional<std::optional<Error>> result;
         client.updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
         EXPECT_TRUE(runtime.pumpUntil([&result] { return result.has_value(); }, std::chrono::seconds(20)));
@@ -120,7 +120,7 @@ TEST_F(UpdaterTest, InstallsAnUpdateThatPlaysFromTheNextStart) {
     publish(makeUpdate(2));
     {
         const std::unique_ptr<Client> client = connect();
-        const Updater::Offer offer = requireOffer(*client);
+        const UpdateOffer offer = requireOffer(*client);
         EXPECT_EQ(offer.generation, 1U);
         server.clearExchanges();
         ASSERT_FALSE(install(*client, offer));
@@ -134,7 +134,7 @@ TEST_F(UpdaterTest, InstallsAnUpdateThatPlaysFromTheNextStart) {
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
     EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));
     EXPECT_EQ(client->package->read("content/music/theme.ogg"), game.at("content/music/theme.ogg"));
-    EXPECT_FALSE(client->package->getRecovery());
+    EXPECT_FALSE(client->package->takeRecovery());
 
     auto [offer, error] = check(*client);
     EXPECT_FALSE(offer);
@@ -144,7 +144,7 @@ TEST_F(UpdaterTest, InstallsAnUpdateThatPlaysFromTheNextStart) {
 TEST_F(UpdaterTest, DownloadsOnlyWhatChanged) {
     publish(makeUpdate(2));
     const std::unique_ptr<Client> client = connect();
-    const Updater::Offer offer = requireOffer(*client);
+    const UpdateOffer offer = requireOffer(*client);
 
     EXPECT_LT(offer.downloadBytes, 200U * 1024U) << "The unchanged music and image come from the shards that ship with the app.";
     server.clearExchanges();
@@ -221,7 +221,7 @@ TEST_F(UpdaterTest, ResumesAnUpdateThatStoppedAndCommitsOnlyOnceItIsWhole) {
     server.clearExchanges();
     const std::unique_ptr<Client> client = connect();
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
-    const Updater::Offer offer = requireOffer(*client);
+    const UpdateOffer offer = requireOffer(*client);
     EXPECT_LT(offer.downloadBytes, whole);
     ASSERT_FALSE(install(*client, offer));
     EXPECT_GE(client->downloader->getStatistics().resumedRecords, 1U);
@@ -238,7 +238,7 @@ TEST_F(UpdaterTest, FallsBackToThePreviousContentWhenTheActiveOneIsDamaged) {
         const std::unique_ptr<Client> client = connect();
         ASSERT_FALSE(install(*client, requireOffer(*client)));
         publish(makeUpdate(3));
-        const Updater::Offer offer = requireOffer(*client);
+        const UpdateOffer offer = requireOffer(*client);
         second = offer.content->manifest->getId();
         ASSERT_FALSE(install(*client, offer));
     }
@@ -246,8 +246,10 @@ TEST_F(UpdaterTest, FallsBackToThePreviousContentWhenTheActiveOneIsDamaged) {
 
     const std::unique_ptr<Client> client = connect();
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
-    ASSERT_TRUE(client->package->getRecovery());
-    EXPECT_EQ(client->package->getRecovery()->failed, second);
+    const std::optional<ReleasePackage::Recovery> recovery = client->package->takeRecovery();
+    ASSERT_TRUE(recovery);
+    EXPECT_EQ(recovery->failed, second);
+    EXPECT_FALSE(client->package->takeRecovery()) << "A fallback is reported once.";
     EXPECT_FALSE(client->package->getStore()->getState().active.isZero());
     EXPECT_TRUE(client->package->getStore()->getState().previous.isZero());
 }
@@ -262,7 +264,7 @@ TEST_F(UpdaterTest, FallsBackToTheContentThatShipsWhenNoDownloadIsUsable) {
 
     const std::unique_ptr<Client> client = connect();
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
-    ASSERT_TRUE(client->package->getRecovery());
+    ASSERT_TRUE(client->package->takeRecovery());
     EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
 }
 
@@ -292,7 +294,7 @@ TEST_F(UpdaterTest, ReplacesARecordThatTheDeviceDamaged) {
 TEST_F(UpdaterTest, SharesOneDownloadAmongRequestsAndKeepsItForTheOnesThatStay) {
     publish(makeUpdate(2));
     const std::unique_ptr<Client> client = connect();
-    const Updater::Offer offer = requireOffer(*client);
+    const UpdateOffer offer = requireOffer(*client);
     server.clearExchanges();
 
     std::optional<std::optional<Error>> first;

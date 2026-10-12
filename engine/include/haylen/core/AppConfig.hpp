@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "haylen/audio/Session.hpp"
+#include "haylen/content/Delivery.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/debug/StatsDisplay.hpp"
 #include "haylen/graphics/Viewport.hpp"
@@ -87,6 +88,28 @@ struct AppConfig {
         Reload reload = Reload::Module;
     };
 
+    // How the content of a protected release reaches the device, from the `content` object: the server of its updates and downloads, and the files that need not be on the device before the app starts.
+    struct Content {
+        // The publication tree that serves the updates of the content and the files that download, with its address ending in a slash and the update channel. While updates are off, the server still serves the files that download.
+        struct Updates {
+            std::string baseUrl;
+            std::string channel = "stable";
+            bool enabled = true;
+        };
+
+        // The files under `content` whose path matches the pattern, relative to `content`, take the delivery.
+        struct Rule {
+            std::string match;
+            content::Delivery mode = content::Delivery::Required;
+        };
+
+        std::optional<Updates> updates;
+        std::vector<Rule> delivery;
+
+        // The delivery of an asset by its path relative to `content`: the mode of the first rule that matches it, or required.
+        [[nodiscard]] content::Delivery getDelivery(std::string_view path) const noexcept;
+    };
+
     std::string name = "Haylen App";
     std::string identifier = "dev.haylen.app";
     std::string version = "1.0.0";
@@ -112,6 +135,8 @@ struct AppConfig {
     ui::Scaling uiScaling{};
     Debug debug{};
 
+    Content content{};
+
     // Lua modules that load before the first scene and live for the whole app.
     std::vector<std::string> autoloads;
 
@@ -130,15 +155,20 @@ struct AppConfig {
 
     [[nodiscard]] static std::optional<Debug::Reload> reloadFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view reloadName(Debug::Reload value) noexcept;
+    [[nodiscard]] static std::optional<content::Delivery> deliveryFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view deliveryName(content::Delivery value) noexcept;
 
   private:
     static const std::array<std::pair<std::string_view, Debug::Reload>, 2> kReloadNames;
+    static const std::array<std::pair<std::string_view, content::Delivery>, 3> kDeliveryNames;
 
     template <typename T> static void readValue(const Json& object, const char* key, T& target);
     static void requirePositive(double value, const char* key);
     static void requireNonNegative(double value, const char* key);
     [[nodiscard]] static math::Color readColor(const Json& object, const char* key, const char* name);
     static void readPlugins(const Json& section, AppConfig& config);
+    static void readContent(const Json& section, AppConfig& config);
+    [[nodiscard]] static bool isServerAddress(std::string_view url) noexcept;
     [[nodiscard]] static bool isPluginId(std::string_view text) noexcept;
     [[nodiscard]] static platform::Orientation orientationFromName(const std::string& text);
     [[nodiscard]] static audio::Session::Category sessionCategoryFromName(const std::string& text);

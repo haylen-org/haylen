@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "content/format/Manifest.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/io/Package.hpp"
@@ -15,6 +16,83 @@
 namespace haylen::core {
 
 const std::array<std::pair<std::string_view, AppConfig::Debug::Reload>, 2> AppConfig::kReloadNames{{{"module", Debug::Reload::Module}, {"restart", Debug::Reload::Restart}}};
+
+const std::array<std::pair<std::string_view, content::Delivery>, 3> AppConfig::kDeliveryNames{{{"required", content::Delivery::Required}, {"prefetch", content::Delivery::Prefetch}, {"onDemand", content::Delivery::OnDemand}}};
+
+std::optional<content::Delivery> AppConfig::deliveryFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kDeliveryNames, name, &std::pair<std::string_view, content::Delivery>::first);
+    return found != kDeliveryNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view AppConfig::deliveryName(content::Delivery value) noexcept {
+    return std::ranges::find(kDeliveryNames, value, &std::pair<std::string_view, content::Delivery>::second)->first;
+}
+
+content::Delivery AppConfig::Content::getDelivery(std::string_view path) const noexcept {
+    for (const Rule& rule : delivery) {
+        if (io::Path::matches(rule.match, path)) {
+            return rule.mode;
+        }
+    }
+    return content::Delivery::Required;
+}
+
+// A server of content is reached over HTTPS, or over plain HTTP only on this machine, which serves releases while they are tested.
+bool AppConfig::isServerAddress(std::string_view url) noexcept {
+    if (!url.ends_with('/')) {
+        return false;
+    }
+    if (url.starts_with("https://") && url.size() > 9) {
+        return true;
+    }
+    for (const std::string_view local : {"http://localhost", "http://127.0.0.1", "http://[::1]"}) {
+        if (url.starts_with(local) && (url.size() == local.size() || url[local.size()] == ':' || url[local.size()] == '/')) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void AppConfig::readContent(const Json& section, AppConfig& config) {
+    JsonValidator::requireKnownKeys(section, {"updates", "delivery"}, "the \"content\" section of \"app.json\"");
+    if (section.contains("updates")) {
+        const Json& updates = section.at("updates");
+        JsonValidator::requireKnownKeys(updates, {"baseUrl", "channel", "enabled"}, "the \"content.updates\" section of \"app.json\"");
+        Content::Updates read;
+        readValue(updates, "baseUrl", read.baseUrl);
+        readValue(updates, "channel", read.channel);
+        readValue(updates, "enabled", read.enabled);
+        if (!isServerAddress(read.baseUrl)) {
+            throw std::invalid_argument("The \"content.updates.baseUrl\" in \"app.json\" must be an \"https\" address that ends with a slash, such as \"https://cdn.example.com/my-game/\", or an \"http\" address of this machine, not \"" + read.baseUrl + "\".");
+        }
+        if (!content::Manifest::isValidName(read.channel)) {
+            throw std::invalid_argument("The \"content.updates.channel\" in \"app.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + read.channel + "\".");
+        }
+        config.content.updates = std::move(read);
+    }
+    if (section.contains("delivery")) {
+        const Json& rules = section.at("delivery");
+        if (!rules.is_array()) {
+            throw std::invalid_argument("The \"content.delivery\" section of \"app.json\" must be a list of rules with \"match\" and \"mode\".");
+        }
+        for (const Json& rule : rules) {
+            JsonValidator::requireKnownKeys(rule, {"match", "mode"}, "a rule of \"content.delivery\" in \"app.json\"");
+            Content::Rule read;
+            std::string mode;
+            readValue(rule, "match", read.match);
+            readValue(rule, "mode", mode);
+            const std::optional<content::Delivery> delivery = deliveryFromName(mode);
+            if (read.match.empty() || read.match.starts_with('/') || read.match.find("..") != std::string::npos || read.match.find('\\') != std::string::npos) {
+                throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" must match paths relative to the \"content\" folder, such as \"world/asia/**\", not \"" + read.match + "\".");
+            }
+            if (!delivery) {
+                throw std::invalid_argument("The \"mode\" of a rule of \"content.delivery\" in \"app.json\" must be \"required\", \"prefetch\" or \"onDemand\", not \"" + mode + "\".");
+            }
+            read.mode = *delivery;
+            config.content.delivery.push_back(std::move(read));
+        }
+    }
+}
 
 std::optional<AppConfig::Debug::Reload> AppConfig::reloadFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kReloadNames, name, &std::pair<std::string_view, Debug::Reload>::first);
@@ -117,7 +195,7 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
 }
 
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "autoload", "native", "plugins"}, "\"app.json\"");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "autoload", "native", "plugins"}, "\"app.json\"");
 
     AppConfig config;
     readValue(document, "name", config.name);
@@ -332,6 +410,9 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (document.contains("plugins")) {
         readPlugins(document.at("plugins"), config);
     }
+    if (document.contains("content")) {
+        readContent(document.at("content"), config);
+    }
     return config;
 }
 
@@ -351,8 +432,15 @@ Json AppConfig::toJson() const {
     if (window.position) {
         windowJson["position"] = window.position->toJson();
     }
+    Json contentJson = {{"delivery", Json::array()}};
+    for (const Content::Rule& rule : content.delivery) {
+        contentJson["delivery"].push_back({{"match", rule.match}, {"mode", deliveryName(rule.mode)}});
+    }
+    if (content.updates) {
+        contentJson["updates"] = {{"baseUrl", content.updates->baseUrl}, {"channel", content.updates->channel}, {"enabled", content.updates->enabled}};
+    }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
     };
 }
 

@@ -7,6 +7,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "content/Compatibility.hpp"
@@ -89,9 +90,13 @@ class ReleasePackage final : public io::Package {
     [[nodiscard]] const std::shared_ptr<const io::Package>& getFiles() const noexcept {
         return files;
     }
-    [[nodiscard]] const std::optional<Recovery>& getRecovery() const noexcept {
-        return recovery;
+    // Returns why the opening fell back to earlier content, once, so the app hears of it at its first start only.
+    [[nodiscard]] std::optional<Recovery> takeRecovery() noexcept {
+        return std::exchange(recovery, std::nullopt);
     }
+
+    // Whether every chunk of a file of the package is on the device. Throws `std::runtime_error` for a file that does not exist.
+    [[nodiscard]] bool isLocal(std::string_view path) const;
 
   private:
     [[nodiscard]] std::shared_ptr<const Content> load(std::vector<std::uint8_t> manifestBytes, Manifest::Domain domain) const;

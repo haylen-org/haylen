@@ -77,6 +77,9 @@ TEST_F(ContentToolTest, BuildsInspectsAndPublishesReleases) {
 
     ASSERT_EQ(run({"verify", getPath("second"), "--keys", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("3 files"), std::string::npos) << output.str();
+    ASSERT_EQ(run({"stage", getPath("second"), "--keys", getPath("keys"), "--output", getPath("shipped"), "--deferred", getPath("deferred")}), 0) << errors.str();
+    EXPECT_NE(output.str().find("files ship with the app"), std::string::npos) << output.str();
+    EXPECT_TRUE(std::filesystem::exists(work.getPath() / "shipped" / "content.hmanifest"));
     ASSERT_EQ(run({"inspect", getPath("second"), "--keys", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("File \"content/data/config.json\" holds 12 bytes of data, required"), std::string::npos) << output.str();
     EXPECT_EQ(output.str().find("Chunk at 0"), std::string::npos) << "Only \"--chunks\" lists the chunks.";

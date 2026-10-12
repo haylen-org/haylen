@@ -65,6 +65,22 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.screens = std::make_unique<platform::Screens>(host, *current.platform, [this] { return getAppState(); });
     current.renderer = std::make_unique<graphics2d::Renderer>(*current.graphics, *current.jobs);
     current.assets = std::make_unique<assets::Manager>(*current.package, *current.jobs, *current.graphics, current.events);
+    current.content = std::make_unique<content::ContentManager>(*this, current.package, current.config);
+
+    // Assets whose bytes are not on the device come down through the content manager before the asset manager reads them.
+    content::ContentManager& contentManager = *current.content;
+    // clang-format off
+    current.assets->setAvailability({
+        .isLocal = [&contentManager](std::string_view path) { return contentManager.isLocal(path); },
+        .acquire = [&contentManager](std::vector<std::string> paths, assets::Manager::GroupProgress onProgress, std::function<void(std::string)> done) {
+            contentManager.acquire(paths, [onProgress = std::move(onProgress)](const content::ContentManager::Progress& progress) {
+                if (onProgress) {
+                    onProgress(progress.totalBytes == 0 ? 1.0F : static_cast<float>(progress.receivedBytes) / static_cast<float>(progress.totalBytes));
+                }
+            }, [done = std::move(done)](std::optional<content::Error> error) { done(error ? error->what() : std::string()); });
+        },
+    });
+    // clang-format on
     current.scenes = std::make_unique<SceneManager>(*this);
 
     const std::span<const std::uint8_t> font = EmbeddedFiles::getDefaultFont();
@@ -94,6 +110,7 @@ Engine::~Engine() {
     current.frameQueue.clear();
     current.events.clear();
     current.assets->cancelAll();
+    current.content.reset();
     current.scenes.reset();
     current.screens.reset();
     current.platform.reset();
@@ -141,11 +158,32 @@ void Engine::start() {
             current.events.emit(LifecycleEvent::kPluginStarted, {{"name", std::string(plugin->getName())}});
         }
         lua::Environment::checkModules(*this);
-        current.application->start(*this);
-        current.events.emit(LifecycleEvent::kAppStarted);
+        if (isStartHeld()) {
+            current.applicationPending = true;
+            return;
+        }
+        startApplication();
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+}
+
+void Engine::startApplication() {
+    EngineState& current = *state;
+    current.applicationPending = false;
+    current.application->start(*this);
+    current.events.emit(LifecycleEvent::kAppStarted);
+}
+
+std::shared_ptr<void> Engine::holdStart() {
+    auto hold = std::make_shared<bool>(true);
+    state->startHolds.push_back(hold);
+    return hold;
+}
+
+bool Engine::isStartHeld() const noexcept {
+    std::erase_if(state->startHolds, [](const std::weak_ptr<void>& hold) { return hold.expired(); });
+    return !state->startHolds.empty();
 }
 
 // Every start applies the window options of app.json again, so an app that restarts from its package gets the window it asks for, with the mouse, the cursor and the keyboard as a new window has them. The position only applies when the window opens, so a restart leaves the window where the player moved it.
@@ -229,6 +267,12 @@ void Engine::frame(double frameSeconds) {
     try {
         if (current.recovering) {
             leaveErrorScreen();
+        }
+
+        // An app that waited for its holds starts in the first frame after they end, as a lifecycle step.
+        if (current.applicationPending && !current.errorScreen && !isStartHeld()) {
+            const PhaseScope scope(*this, Phase::Lifecycle);
+            startApplication();
         }
 
         // Window and gamepad changes, asynchronous results and platform replies arrive before the app updates, and their callbacks may fail like any app code.
@@ -993,6 +1037,10 @@ input::AppTextField& Engine::getAppTextField() noexcept {
 
 SceneManager& Engine::getScenes() noexcept {
     return *state->scenes;
+}
+
+content::ContentManager& Engine::getContent() noexcept {
+    return *state->content;
 }
 
 assets::Manager& Engine::getAssets() noexcept {

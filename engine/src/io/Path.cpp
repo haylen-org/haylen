@@ -77,4 +77,37 @@ bool Path::isInside(std::string_view path, std::string_view folder) noexcept {
     return folder.empty() || (path.size() > folder.size() && path.starts_with(folder) && path[folder.size()] == '/');
 }
 
+bool Path::matches(std::string_view pattern, std::string_view path) noexcept {
+    if (pattern.empty()) {
+        return path.empty();
+    }
+    if (pattern.starts_with("**")) {
+        // A `**/` also matches no folder at all, so `maps/**/a.tmj` matches `maps/a.tmj`.
+        if (pattern.starts_with("**/") && matches(pattern.substr(3), path)) {
+            return true;
+        }
+        for (std::size_t taken = 0; taken <= path.size(); ++taken) {
+            if (matches(pattern.substr(2), path.substr(taken))) {
+                return true;
+            }
+        }
+        return false;
+    }
+    if (pattern.front() == '*') {
+        for (std::size_t taken = 0; taken <= path.size(); ++taken) {
+            if (matches(pattern.substr(1), path.substr(taken))) {
+                return true;
+            }
+            if (taken < path.size() && path[taken] == '/') {
+                return false;
+            }
+        }
+        return false;
+    }
+    if (path.empty() || (pattern.front() != path.front() && (pattern.front() != '?' || path.front() == '/'))) {
+        return false;
+    }
+    return matches(pattern.substr(1), path.substr(1));
+}
+
 } // namespace haylen::io

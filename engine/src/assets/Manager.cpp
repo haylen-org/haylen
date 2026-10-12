@@ -271,6 +271,7 @@ std::shared_ptr<void> Manager::load(std::string_view typeName, std::string_view 
     const Type& assetType = getType(typeName);
     // clang-format off
     return share(typeName, path, options, [this, &assetType](const Request& shared) {
+        requireLocal(shared.path);
         Request loading = shared;
         loading.bytes = package.readAsset(loading.path);
         return assetType.finalize(assetType.decode(loading), loading);
@@ -325,7 +326,31 @@ void Manager::startLoad(Request request, Callback callback) {
 
     const Type& assetType = getType(request.type);
     auto loading = std::make_shared<Request>(std::move(request));
+    if (isLocal(loading->path)) {
+        readAndDecode(loading, key, assetType);
+        return;
+    }
 
+    // An asset whose bytes are not on the device comes down first, and then loads like any other.
+    // clang-format off
+    availability.acquire({loading->path}, {}, [this, owner = std::weak_ptr<bool>(alive), loading, key, &assetType](const std::string& error) {
+        if (owner.expired()) {
+            return;
+        }
+        if (error.empty()) {
+            readAndDecode(loading, key, assetType);
+            return;
+        }
+        jobs.postToFrame([this, owner, key, loading, finalize = assetType.finalize, error] {
+            if (!owner.expired()) {
+                uploads.push_back({.key = key, .request = loading, .finalize = finalize, .error = error});
+            }
+        });
+    });
+    // clang-format on
+}
+
+void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::string& key, const Type& assetType) {
     // The file is read on the I/O pool, where waiting on the disk blocks no decoding, then decoded on the task pool and queued on the frame thread, where `finalizePending` creates its GPU resources within the upload budget.
     // clang-format off
     const auto deliver = [this, owner = std::weak_ptr<bool>(alive), key, loading, finalize = assetType.finalize](std::shared_ptr<void> decoded, std::string error) {
@@ -356,6 +381,20 @@ void Manager::startLoad(Request request, Callback callback) {
         });
     });
     // clang-format on
+}
+
+void Manager::setAvailability(Availability value) {
+    availability = std::move(value);
+}
+
+bool Manager::isLocal(std::string_view path) const {
+    return !availability.isLocal || availability.isLocal(path);
+}
+
+void Manager::requireLocal(std::string_view path) const {
+    if (!isLocal(path)) {
+        throw std::runtime_error("The asset \"" + std::string(path) + "\" is not on the device yet, since it downloads when the app asks for it. Load it with \"loadAsync\" or a preload group, which bring it first.");
+    }
 }
 
 void Manager::finish(const std::string& key, const std::shared_ptr<void>& asset, const std::string& error) {
@@ -399,14 +438,17 @@ core::Json Manager::json(std::string_view path) {
 }
 
 std::string Manager::text(std::string_view path) const {
+    requireLocal(io::Path::normalize(path));
     return package.readAssetText(path);
 }
 
 std::vector<std::uint8_t> Manager::bytes(std::string_view path) const {
+    requireLocal(io::Path::normalize(path));
     return package.readAsset(path);
 }
 
 std::vector<std::uint8_t> Manager::bytes(std::string_view path, std::uint64_t offset, std::size_t size) const {
+    requireLocal(io::Path::normalize(path));
     return package.readAssetRange(path, offset, size);
 }
 
@@ -487,6 +529,18 @@ std::vector<Manager::Entry> Manager::expand(const std::vector<Entry>& entries) c
     return expanded;
 }
 
+std::vector<std::string> Manager::getGroupPaths(std::string_view group) const {
+    const auto found = groups.find(std::string(group));
+    if (found == groups.end()) {
+        throw std::invalid_argument("The asset group \"" + std::string(group) + "\" is not defined.");
+    }
+    std::vector<std::string> paths;
+    for (const Entry& entry : expand(found->second.entries)) {
+        paths.push_back(entry.path);
+    }
+    return paths;
+}
+
 void Manager::preload(std::string_view name, GroupProgress progress, GroupCompletion completion) {
     const auto found = groups.find(std::string(name));
     if (found == groups.end()) {
@@ -529,6 +583,8 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
     group.held.clear();
     group.errors.clear();
     group.completed = 0;
+    group.downloadShare = 0.0F;
+    group.downloaded = 0.0F;
     group.total = requests.size();
     group.loading = true;
     const std::uint64_t generation = ++group.generation;
@@ -539,9 +595,55 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
         return;
     }
 
+    // Assets whose bytes are not on the device come down first in one request, which takes half of the progress of the group, and then every asset loads.
+    std::vector<std::string> missing;
     for (const Request& request : requests) {
+        if (!isLocal(request.path) && std::ranges::find(missing, request.path) == missing.end()) {
+            missing.push_back(request.path);
+        }
+    }
+    if (missing.empty()) {
+        loadGroup(groupName, generation, std::move(requests));
+        return;
+    }
+    group.downloadShare = 0.5F;
+    // clang-format off
+    availability.acquire(missing, [this, groupName, generation](float fraction) {
+        Group& target = groups.at(groupName);
+        if (target.generation == generation) {
+            target.downloaded = fraction;
+            reportGroupProgress(target);
+        }
+    }, [this, owner = std::weak_ptr<bool>(alive), groupName, generation, requests = std::move(requests)](const std::string& error) mutable {
+        if (owner.expired() || groups.at(groupName).generation != generation) {
+            return;
+        }
+        Group& target = groups.at(groupName);
+        target.downloaded = 1.0F;
+        if (!error.empty()) {
+            std::erase_if(requests, [this, &target, &error](const Request& request) {
+                if (isLocal(request.path)) {
+                    return false;
+                }
+                target.errors.push_back(request.path + ": " + error);
+                ++target.completed;
+                return true;
+            });
+        }
+        if (requests.empty()) {
+            completeGroup(groupName, generation);
+            return;
+        }
+        loadGroup(groupName, generation, std::move(requests));
+    });
+    // clang-format on
+}
+
+void Manager::loadGroup(const std::string& groupName, std::uint64_t generation, std::vector<Request> requests) {
+    for (Request& request : requests) {
+        const std::string path = request.path;
         // clang-format off
-        startLoad(request, [this, groupName, generation, path = request.path](std::shared_ptr<void> asset, std::string error) {
+        startLoad(std::move(request), [this, groupName, generation, path](std::shared_ptr<void> asset, std::string error) {
             Group& target = groups.at(groupName);
             if (target.generation != generation) {
                 return;
@@ -553,17 +655,21 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
                 target.errors.push_back(path + ": " + error);
             }
             ++target.completed;
-
-            const float fraction = static_cast<float>(target.completed) / static_cast<float>(target.total);
-            const std::vector<GroupProgress> listeners = target.progressListeners;
-            for (const GroupProgress& listener : listeners) {
-                listener(fraction);
-            }
+            reportGroupProgress(target);
             if (target.completed == target.total) {
                 completeGroup(groupName, generation);
             }
         });
         // clang-format on
+    }
+}
+
+void Manager::reportGroupProgress(Group& group) const {
+    const float loaded = static_cast<float>(group.completed) / static_cast<float>(group.total);
+    const float fraction = group.downloadShare * group.downloaded + (1.0F - group.downloadShare) * loaded;
+    const std::vector<GroupProgress> listeners = group.progressListeners;
+    for (const GroupProgress& listener : listeners) {
+        listener(fraction);
     }
 }
 

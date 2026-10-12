@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "content/Delivery.hpp"
 #include "content/crypto/Digest.hpp"
 #include "content/format/Catalog.hpp"
+#include "haylen/content/Delivery.hpp"
 
 namespace haylen::content {
 

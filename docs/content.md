@@ -340,7 +340,7 @@ The Release configuration of `haylen.py run` and `prepare` ships an app only as 
 | `content compact <app> <tree> [--keep 2]` | Deletes the manifests and packs of a publication tree that no channel reaches within its last generations. |
 | `content keys <app> [--rotate]` | Shows the key folder of the app with the IDs of its keys and its public key, and with `--rotate` adds a content key. |
 
-The tool also writes the bootstrap of an app with `haylen-content bootstrap --keys <folder> --profile <profile> --build <number> --output <file>`, which the release builds of `haylen.py` run on their own, into a file that only its owner reads and that keeps its bytes when nothing changed.
+`content build` of an app with a content server also lays out the part of the release that ships with the app in `build/apps/<app>-<hash>/release/<profile>.shipped/`, which the release builds of the platforms ship, with `haylen-content stage <release> --keys <folder> --output <folder> [--deferred <folder>]`, while the whole release stays for `content publish`, which puts the shards that stay behind on the server. The tool also writes the bootstrap of an app with `haylen-content bootstrap --keys <folder> --profile <profile> --build <number> --output <file>`, which the release builds of `haylen.py` run on their own, into a file that only its owner reads and that keeps its bytes when nothing changed.
 
 ```sh
 haylen content build ~/apps/my-game --platform android
@@ -398,6 +398,43 @@ Content that is not on the device arrives over HTTP or HTTPS through `content::H
 
 A server of protected content serves byte ranges of its files, sends `ETag` for them and leaves them uncompressed, since the shards are encrypted and do not compress. Every file of a publication tree is immutable except the channel pointers, so packs and manifests take long cache lifetimes, such as `Cache-Control: public, max-age=31536000, immutable`, and a channel pointer takes `Cache-Control: no-cache`. A server on another origin than a web page allows its requests with `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag`.
 
+## Delivery
+
+Every asset of an app is `required` unless the `content` section of `app.json` says otherwise: its encrypted bytes are on the device before the app starts. The section names the server of the content and the assets that may arrive later, and an app without it needs no configuration at all.
+
+```json
+{
+    "content": {
+        "updates": {
+            "baseUrl": "https://cdn.example.com/large-world/",
+            "channel": "stable",
+            "enabled": true
+        },
+        "delivery": [
+            {"match": "world/asia/**", "mode": "onDemand"},
+            {"match": "cinematics/4k/**", "mode": "prefetch"}
+        ]
+    }
+}
+```
+
+| Setting | Default | What it decides |
+| --- | --- | --- |
+| `updates.baseUrl` | None, so the app has no server. | The root of the publication tree that `content publish` writes, ending with a slash: an `https` address, or an `http` address of this machine while a release is tested. It serves the updates of the content and the assets that download. Haylen cannot guess where an app hosts its content, so an app that downloads content names it. |
+| `updates.channel` | `stable` | The channel whose updates the app takes, such as `beta` for testers, with at most 64 lowercase letters, digits, dashes and dots. |
+| `updates.enabled` | `true` | Whether the app checks its channel when it starts and installs newer content in the background. With `false` the server still serves the assets that download, and the app checks and installs updates itself with [`haylen.content`](lua-api/content.md). |
+| `delivery` | None, so every asset is required. | Rules of a `match` pattern of paths relative to `content/`, where `**` stands for any folders, `*` for any name inside a folder and `?` for one character, and a `mode`. The first rule that matches an asset decides its delivery, and an asset that no rule matches is required. Haylen cannot know which content an app needs only in some places, so the app says it. |
+
+| Delivery | When the encrypted bytes reach the device |
+| --- | --- |
+| `required` | Before the app starts. They ship with the app, or the engine downloads them while it shows the [update screen](#the-update-screen). |
+| `prefetch` | In the background once the app runs, before anything asks for them, so a later load finds them on the device. |
+| `onDemand` | Only when the app asks for them, through `assets.loadAsync`, a preload group, the `load` hook of a scene that preloads, or `content.prefetch`. |
+
+A delivery decides only when encrypted bytes are on the device, never when an asset is decoded into memory: a required asset stays on the disk until the app loads it, and a prefetched asset costs storage and no memory until a load or a preload decodes it. A synchronous load never waits for the network, so `assets.load` of an asset that is not on the device fails with a message that names `loadAsync`, and every asynchronous path brings the asset first. Lua modules, `app.json` and plugins are always required and belong to the build of the app.
+
+The release builder keeps the files of each delivery in shards of their own, required ones first, so `haylen-content stage` lays out a release for a platform: the manifests, the shards of the app domain and the shards that the required files use go into the app, and the shards that only prefetched and on-demand files use stay behind for the server, which `content publish` fills, or for a store that delivers them. Without a server the whole release ships with the app, and every asset is on the device.
+
 ## Updates
 
 `content::Updater` updates the content of an installed app from the channel of a publication tree as one transaction, and `content::Downloader` brings the records it needs.
@@ -419,6 +456,42 @@ When the app starts, the release opens the content that the state names as activ
 | Android | `no_backup/<identifier>-content` of the data folder of the app, which Android leaves out of its backups. |
 | Windows | `%LOCALAPPDATA%\<identifier>\Content`, which never roams with the profile. |
 | Linux | `$XDG_CACHE_HOME/<identifier>/content`, by default `~/.cache/<identifier>/content`. |
+
+## The content manager
+
+`content::ContentManager` of `haylen/content/ContentManager.hpp` drives the content of the running app, and `core::Engine::getContent` returns it. The module [`haylen.content`](lua-api/content.md) gives Lua the same API, and C++ apps use it directly.
+
+```cpp
+#include "haylen/content/ContentManager.hpp"
+
+haylen::content::ContentManager& content = engine.getContent();
+if (!content.isLocal("world/asia/maps/tokyo.tmj")) {
+    content.acquire({"world/asia/maps/tokyo.tmj"}, {}, [](std::optional<haylen::content::Error> error) {
+        // The map is on the device unless the error says why it is not.
+    });
+}
+```
+
+| Method | What it does |
+| --- | --- |
+| `isProtected()` | Whether the app plays a protected release. |
+| `getGeneration()`, `getChannel()` | The generation of the content that plays and the channel of the app. |
+| `getStatus()`, `getProgress()`, `getError()` | What the content does now, the bytes of its download and the last failure with its details. |
+| `isLocal(path)` | Whether every byte of an asset is on the device. |
+| `acquire(paths, progress, done)` | Brings assets onto the device without loading them. |
+| `check(done)`, `download(progress, done)`, `apply()` | Asks the channel for newer content, installs it for the next start, and starts the app again on it. |
+| `cancel()`, `retry()` | Stops what runs, and tries the required content again after a failure while the app waits. |
+| `getStatistics()` | Counters for debugging, without any secret. |
+
+When the app starts, the manager looks on a worker thread for required content that the device lacks, while the engine holds the start of the app with `Engine::holdStart`. Content that ships with the app is there, so the app starts in the next frames. Content that is not there, as on a web page or on a device that cleared its downloads, downloads from the server first, and the app starts once all of it is verified. When downloaded content cannot come back, the manager plays the content that ships with the app instead. Once the app runs, the manager removes from the store what no retained content uses, downloads the prefetched content, and checks the channel when updates are on, which installs newer content in the background for the next start. It publishes `contentUpdateAvailable`, `contentUpdateReady`, `contentUpdateFailed` and `contentRecovered` on the event bus.
+
+### The update screen
+
+While the app waits for required content that downloads, the engine draws the update screen in the background color, with the name and the logo of the [splash screen](distribution.md#splash-screens) of `app.json`, the logo only once it is on the device. It shows the bytes received and the size of the download, and after a failure the reason in plain words, such as an offline device or a device without room and the room it needs, with a button that tries again and, except on iOS, iPadOS and tvOS, which never let apps close themselves, a button that quits. A mouse, a finger, Enter, the south button of a gamepad and the select button of a TV remote press the focused button, and the arrow keys and the directional pad move the focus. No screen shows while the manager only finds the content on the device, and apps never draw their own screen to download their required content.
+
+### Development
+
+In development the app plays its folder, without downloads or updates, and the delivery of `app.json` still applies: an asset that downloads later in a release stays off the device until `assets.loadAsync`, a preload group or `content.prefetch` brings it, which takes one frame, so `assets.load` of such an asset fails in development exactly as in a release, and a mistake shows long before a release.
 
 ## Local store
 

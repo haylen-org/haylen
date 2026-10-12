@@ -37,6 +37,10 @@ namespace haylen::assets {
 class Manager;
 }
 
+namespace haylen::content {
+class ContentManager;
+}
+
 namespace haylen::audio {
 class Mixer;
 }
@@ -169,6 +173,7 @@ class Engine final {
     [[nodiscard]] input::AppTextField& getAppTextField() noexcept;
     [[nodiscard]] SceneManager& getScenes() noexcept;
     [[nodiscard]] assets::Manager& getAssets() noexcept;
+    [[nodiscard]] content::ContentManager& getContent() noexcept;
     [[nodiscard]] platform::Bridge& getPlatform() noexcept;
     [[nodiscard]] platform::System& getSystem() noexcept;
     [[nodiscard]] platform::Dialogs& getDialogs() noexcept;
@@ -216,6 +221,12 @@ class Engine final {
     void quit(std::uint8_t status = 0);
     [[nodiscard]] bool isRunning() const noexcept;
     [[nodiscard]] std::uint8_t getExitStatus() const noexcept;
+
+    // Keeps the app from starting until the returned hold ends, while the engine and its plugins run frames, such as while the content the app needs to start downloads. The app starts in the first frame after the last hold ends, or at once when no hold was taken before `start`.
+    [[nodiscard]] std::shared_ptr<void> holdStart();
+
+    // Whether the app waits for a hold before it starts.
+    [[nodiscard]] bool isStartHeld() const noexcept;
 
     // Asks the runtime to start the app again from its package once this frame ends, which is how edited scripts reload.
     void requestRestart() noexcept;
@@ -280,6 +291,7 @@ class Engine final {
 
     [[nodiscard]] static std::chrono::nanoseconds getPollBudget(double frameSeconds) noexcept;
     void activatePlugin(plugins::Plugin& plugin);
+    void startApplication();
     void applyWindowOptions();
     void leaveErrorScreen();
     void publishDeviceChanges();

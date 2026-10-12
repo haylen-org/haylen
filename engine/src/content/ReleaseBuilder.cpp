@@ -110,9 +110,11 @@ std::vector<ContentBuilder::Input> ReleaseBuilder::listFiles(const io::Package& 
 
     std::vector<ContentBuilder::Input> inputs;
     for (std::string& path : paths) {
-        if (path.substr(path.rfind('/') + 1) != kFolderFile) {
-            inputs.push_back({.path = std::move(path)});
+        if (path.substr(path.rfind('/') + 1) == kFolderFile) {
+            continue;
         }
+        const Delivery delivery = domain == Manifest::Domain::Content ? config.content.getDelivery(std::string_view(path).substr(io::Path::kContentDirectory.size() + 1)) : Delivery::Required;
+        inputs.push_back({.path = std::move(path), .delivery = delivery});
     }
     return inputs;
 }

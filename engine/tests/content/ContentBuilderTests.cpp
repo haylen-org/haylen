@@ -63,6 +63,21 @@ class ContentBuilderTest : public ::testing::Test {
     test::TemporaryDirectory directory;
 };
 
+TEST_F(ContentBuilderTest, KeepsTheFilesOfEachDeliveryInShardsOfTheirOwn) {
+    const Files files = {{"content/a.json", test::TestFiles::bytes("required")}, {"content/b.json", test::TestFiles::bytes("on demand")}, {"content/c.json", test::TestFiles::bytes("prefetched")}, {"content/d.json", test::TestFiles::bytes("required too")}};
+    ContentBuilder builder(directory.getPath(), keys.get(keyId));
+    const ContentBuilder::Result result = builder.build(io::MemoryPackage("source", files), {{.path = "content/b.json", .delivery = Delivery::OnDemand}, {.path = "content/d.json"}, {.path = "content/c.json", .delivery = Delivery::Prefetch}, {.path = "content/a.json"}});
+
+    ASSERT_EQ(result.shards.size(), 3U);
+    const Catalog catalog = Catalog::parse(result.catalog, result.shards.size());
+    const auto shardOf = [&catalog](std::string_view path) { return catalog.getChunk(catalog.getPart(catalog.getFile(*catalog.findFile(path)).firstPart).chunk).shard; };
+    EXPECT_EQ(shardOf("content/a.json"), 0U);
+    EXPECT_EQ(shardOf("content/d.json"), 0U);
+    EXPECT_EQ(shardOf("content/c.json"), 1U);
+    EXPECT_EQ(shardOf("content/b.json"), 2U);
+    EXPECT_EQ(catalog.getFile(*catalog.findFile("content/b.json")).delivery, Delivery::OnDemand);
+}
+
 TEST_F(ContentBuilderTest, BuildsTheSameBytesInEveryCleanBuild) {
     const Files files = makeFiles();
     const ContentBuilder::Result first = build(directory.getPath() / "first", files);

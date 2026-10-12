@@ -54,6 +54,19 @@ TEST(PathTest, BuildsAssetPathsAndParts) {
     EXPECT_FALSE(Path::isInside("maps", "maps"));
 }
 
+TEST(PathTest, MatchesPatternsOfFoldersAndNames) {
+    EXPECT_TRUE(Path::matches("world/asia/**", "world/asia/maps/tokyo.tmj"));
+    EXPECT_TRUE(Path::matches("world/**/tokyo.tmj", "world/tokyo.tmj"));
+    EXPECT_TRUE(Path::matches("**/*.ogg", "music/theme.ogg"));
+    EXPECT_TRUE(Path::matches("**/a*", "x/ab/a1"));
+    EXPECT_TRUE(Path::matches("levels/level-?.json", "levels/level-3.json"));
+    EXPECT_FALSE(Path::matches("levels/*.json", "levels/forest/one.json"));
+    EXPECT_FALSE(Path::matches("levels/?", "levels//"));
+    EXPECT_FALSE(Path::matches("world/asia/**", "world/asian/a.png"));
+    EXPECT_TRUE(Path::matches("*", "readme"));
+    EXPECT_FALSE(Path::matches("*", "a/b"));
+}
+
 class PackageTest : public ::testing::TestWithParam<std::string> {
   protected:
     std::unique_ptr<Package> makePackage() {

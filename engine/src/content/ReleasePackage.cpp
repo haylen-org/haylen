@@ -167,6 +167,21 @@ bool ReleasePackage::isLuaBytecode(std::string_view path) const {
     return getDomain(path)->isLuaBytecode(path);
 }
 
+bool ReleasePackage::isLocal(std::string_view path) const {
+    const std::shared_ptr<const Content> shown = io::Path::isInside(io::Path::normalize(path), io::Path::kContentDirectory) ? getContent() : app;
+    const std::optional<std::uint64_t> index = shown->catalog->findFile(io::Path::normalize(path));
+    if (!index) {
+        throw std::runtime_error("The package file \"" + io::Path::normalize(path) + "\" was not found.");
+    }
+    const Catalog::File file = shown->catalog->getFile(*index);
+    for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
+        if (!shown->shards->hasChunk(shown->catalog->getChunk(shown->catalog->getPart(part).chunk))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::vector<std::string> ReleasePackage::list(std::string_view directory) const {
     if (!io::Path::normalize(directory).empty()) {
         return getDomain(directory)->list(directory);

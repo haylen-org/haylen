@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "content/ContentBuilder.hpp"
-#include "content/Delivery.hpp"
 #include "content/KeyStore.hpp"
 #include "content/ReleaseInspector.hpp"
 #include "content/format/Manifest.hpp"
@@ -32,7 +31,6 @@ class ContentTool final {
     // A compaction keeps the current generation of every channel and the one before it, which apps that are still downloading it need.
     static constexpr std::uint64_t kDefaultKeep = 2;
 
-    static const std::array<std::pair<std::string_view, Delivery>, 3> kDeliveryNames;
     static const std::array<std::pair<std::string_view, Catalog::Kind>, 2> kKindNames;
     static const std::array<std::pair<std::string_view, Manifest::Domain>, 2> kDomainNames;
 
@@ -60,6 +58,7 @@ class ContentTool final {
     void runKeys(Arguments& arguments);
     void runBuild(Arguments& arguments);
     void runVerify(Arguments& arguments);
+    void runStage(Arguments& arguments);
     void runInspect(Arguments& arguments);
     void runDiff(Arguments& arguments);
     void runPublish(Arguments& arguments);
@@ -71,7 +70,6 @@ class ContentTool final {
     void printStatistics(Manifest::Domain domain, const ContentBuilder::Statistics& statistics);
 
     [[nodiscard]] static ReleaseInspector makeInspector(const KeyStore& store);
-    [[nodiscard]] static std::string_view getDeliveryName(Delivery delivery) noexcept;
     [[nodiscard]] static std::string_view getKindName(Catalog::Kind kind) noexcept;
     [[nodiscard]] static std::string_view getDomainName(Manifest::Domain domain) noexcept;
 

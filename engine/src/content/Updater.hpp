@@ -7,11 +7,12 @@
 #include <string>
 #include <vector>
 
-#include "content/Delivery.hpp"
 #include "content/Downloader.hpp"
 #include "content/HttpTransport.hpp"
 #include "content/ReleasePackage.hpp"
+#include "content/UpdateOffer.hpp"
 #include "content/format/Catalog.hpp"
+#include "haylen/content/Delivery.hpp"
 #include "haylen/content/Error.hpp"
 
 namespace haylen::core {
@@ -29,15 +30,6 @@ class Updater final {
     // An install keeps at least this much of the device free beyond what it writes, or a twentieth of its download when that is larger.
     static constexpr std::uint64_t kSafetyMargin = std::uint64_t{64} << 20;
 
-    // The newer content that a channel offers: its generation, the verified manifest with its catalog, the chunks of its required files that the device lacks and the bytes an install downloads for them.
-    struct Offer {
-        std::uint64_t generation = 0;
-        std::shared_ptr<const ReleasePackage::Content> content;
-        std::shared_ptr<const std::vector<std::uint8_t>> manifest;
-        std::vector<Catalog::Chunk> missing;
-        std::uint64_t downloadBytes = 0;
-    };
-
     struct Collection {
         std::uint64_t removedRecords = 0;
         std::uint64_t freedBytes = 0;
@@ -51,10 +43,10 @@ class Updater final {
     Updater& operator=(const Updater&) = delete;
 
     // Asks the channel for newer content and calls back with what it offers, with nothing when the app plays the newest content, or with the error.
-    void check(std::function<void(std::optional<Offer>, std::optional<Error>)> done);
+    void check(std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
 
     // Installs an offer as the content of the next start, and calls back with no error once the new state is durable. Throws nothing: a shortage of room fails with `InsufficientStorage`, which names the bytes needed and available.
-    void install(const Offer& offer, std::function<void(const Downloader::Progress&)> progress, std::function<void(std::optional<Error>)> done);
+    void install(const UpdateOffer& offer, std::function<void(const Downloader::Progress&)> progress, std::function<void(std::optional<Error>)> done);
 
     // Ends the check or install that runs with `NetworkCancelled`.
     void cancel();
@@ -70,9 +62,9 @@ class Updater final {
 
   private:
     void fetch(const std::string& url, std::uint64_t maximumSize, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done);
-    void readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<Offer>, std::optional<Error>)> done);
-    void commit(const Offer& offer, std::function<void(std::optional<Error>)> done) const;
-    [[nodiscard]] static std::uint64_t getRequiredSpace(const Offer& offer) noexcept;
+    void readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
+    void commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const;
+    [[nodiscard]] static std::uint64_t getRequiredSpace(const UpdateOffer& offer) noexcept;
 
     std::shared_ptr<ReleasePackage> release;
     core::JobSystem& jobs;

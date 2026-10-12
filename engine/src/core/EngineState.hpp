@@ -12,6 +12,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Mixer.hpp"
+#include "haylen/content/ContentManager.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
@@ -58,6 +59,7 @@ struct EngineState {
     AppConfig::Lifecycle lifecycle;
     input::AppTextField appTextField;
     std::unique_ptr<graphics::Device> graphics;
+    std::unique_ptr<content::ContentManager> content;
     std::unique_ptr<audio::Mixer> audio;
     std::unique_ptr<storage::UserStorage> storage;
     graphics::Viewport viewport;
@@ -122,6 +124,10 @@ struct EngineState {
     // Whether the covered app drew the frame that stays on screen under the cover, which a halted app would only draw again the same, until the window changes size or the app comes back from the background.
     bool coveredFrameDrawn = false;
     bool started = false;
+
+    // The holds that keep the app from starting, and whether the app waits for them to end.
+    std::vector<std::weak_ptr<void>> startHolds;
+    bool applicationPending = false;
     bool running = true;
     std::uint8_t exitStatus = 0;
     bool restartRequested = false;

@@ -210,6 +210,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/Bootstrap.cpp
   src/content/Compatibility.cpp
   src/content/ContentBuilder.cpp
+  src/content/ContentLua.cpp
+  src/content/ContentManager.cpp
   src/content/crypto/Aead.cpp
   src/content/crypto/ContentKey.cpp
   src/content/crypto/Digest.cpp
@@ -251,6 +253,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/ShardSet.cpp
   src/content/ShardWriter.cpp
   src/content/StoreFile.cpp
+  src/content/UpdateScreen.cpp
   src/content/Updater.cpp
   src/core/AppConfig.cpp
   src/core/Application.cpp
@@ -428,6 +431,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/AssetsPlugin.cpp
   src/plugins/AudioPlugin.cpp
   src/plugins/BuiltInPlugins.cpp
+  src/plugins/ContentPlugin.cpp
   src/plugins/CorePlugin.cpp
   src/plugins/DebugPlugin.cpp
   src/plugins/Graphics2DPlugin.cpp

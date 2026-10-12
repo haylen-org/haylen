@@ -983,6 +983,10 @@ class App:
             if not self.splash_logo.is_file():
                 raise BuildError(f'The splash logo `{shown_path(self.splash_logo)}` that `{where}` names does not exist. Give "splash.logo" the path of an image relative to "content".')
 
+        # An app with a content server ships only the content it needs to start, and the server delivers the rest.
+        content = document.get("content", {})
+        self.content_server: str | None = content.get("updates", {}).get("baseUrl") if isinstance(content, dict) and isinstance(content.get("updates"), dict) else None
+
         native = document.get("native", {})
         if not isinstance(native, dict):
             raise BuildError(f'The "native" section of `{where}` must map library names to their files or CMake projects.')
@@ -3975,7 +3979,7 @@ def release_folder(app: App, profile: str) -> Path:
 
 
 def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
-    """Builds the protected release of an app for a content profile into its build folder with the content tool, reusing the shards of the release before it and the build cache of the app, and returns the folder of the release."""
+    """Builds the protected release of an app for a content profile into its build folder with the content tool, reusing the shards of the release before it and the build cache of the app, and returns the folder that ships with the app: the whole release, or for an app with a content server the part that its required content needs."""
     compile_app_shaders(app.folder)
     tool = content_tool(config, jobs)
     keys = ensure_keys(app, tool)
@@ -3989,8 +3993,16 @@ def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
     run(command)
     shutil.rmtree(folder, ignore_errors=True)
     staging.rename(folder)
-    warn_store_size(folder, profile)
-    return folder
+    if not app.content_server:
+        warn_store_size(folder, profile)
+        return folder
+
+    # The shards that only later deliveries use stay in the release, which "content publish" puts on the server, and the app ships the rest.
+    shipped = folder.with_name(f"{profile}.shipped")
+    shutil.rmtree(shipped, ignore_errors=True)
+    run([tool, "stage", folder, "--keys", keys, "--output", shipped])
+    warn_store_size(shipped, profile)
+    return shipped
 
 
 def warn_store_size(folder: Path, profile: str) -> None:
@@ -4072,7 +4084,9 @@ def content_release(app: App, args: argparse.Namespace) -> Path:
 def command_content_build(args: argparse.Namespace) -> None:
     app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
     folder = build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs)
-    terminal.success(f"Built the protected release `{shown_path(folder)}`.")
+    release = release_folder(app, CONTENT_PROFILES[args.platform])
+    shipped = "" if folder == release else f", and the part that ships with the app in `{shown_path(folder)}`"
+    terminal.success(f"Built the protected release `{shown_path(release)}`{shipped}.")
 
 
 def command_content_verify(args: argparse.Namespace) -> None:

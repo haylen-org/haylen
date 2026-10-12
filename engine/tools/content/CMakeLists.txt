@@ -5,6 +5,7 @@ add_library(haylen_content_tool STATIC
   ContentTool.cpp
   KeyStore.cpp
   ReleaseInspector.cpp
+  ReleaseStager.cpp
   SecureRandom.cpp
 )
 target_include_directories(haylen_content_tool PUBLIC "${HAYLEN_ENGINE_DIR}/tools" "${HAYLEN_ENGINE_DIR}/src")

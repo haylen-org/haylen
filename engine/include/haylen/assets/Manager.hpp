@@ -67,6 +67,12 @@ class Manager final {
     using GroupProgress = std::function<void(float)>;
     using GroupCompletion = std::function<void(std::vector<std::string>)>;
 
+    // How the manager learns which assets have their bytes on the device and brings the ones that do not, before it reads them: the content of a protected release whose files download on demand. The request calls back on the frame thread with an error message, empty once every asset is on the device.
+    struct Availability {
+        std::function<bool(std::string_view)> isLocal;
+        std::function<void(std::vector<std::string>, GroupProgress, std::function<void(std::string)>)> acquire;
+    };
+
     Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphics::Device& graphicsDevice, core::EventBus& eventBus);
     ~Manager();
 
@@ -114,6 +120,9 @@ class Manager final {
     [[nodiscard]] bool isGroupLoaded(std::string_view group) const;
     [[nodiscard]] std::vector<std::string> getGroups() const;
 
+    // The paths of the assets of a group, with its folders expanded. Throws `std::invalid_argument` for a group that is not defined.
+    [[nodiscard]] std::vector<std::string> getGroupPaths(std::string_view group) const;
+
     [[nodiscard]] std::size_t getCachedCount() const noexcept;
     [[nodiscard]] std::size_t getPendingCount() const noexcept;
     std::size_t releaseUnused();
@@ -125,6 +134,9 @@ class Manager final {
     void cancelAll() noexcept;
 
     // Finalizes the assets that finished decoding in the background, creating their GPU resources, until the upload budget of the frame runs out, and at least one per call so loading always moves on. The engine calls it once per frame and never while the app is in the background.
+    // Makes loads ask the availability before they read, so a synchronous load of an asset that is not on the device fails at once and an asynchronous load or a preload brings it first. Without one every asset is on the device.
+    void setAvailability(Availability value);
+
     void finalizePending();
     void setUploadBudget(double seconds);
     [[nodiscard]] double getUploadBudget() const noexcept {
@@ -154,6 +166,10 @@ class Manager final {
         std::vector<GroupCompletion> completionListeners;
         std::size_t completed = 0;
         std::size_t total = 0;
+
+        // The share of the progress that the download of assets that are not on the device takes, and how far it got.
+        float downloadShare = 0.0F;
+        float downloaded = 0.0F;
         std::uint64_t generation = 0;
         bool loading = false;
         bool loaded = false;
@@ -187,6 +203,13 @@ class Manager final {
     [[nodiscard]] std::shared_ptr<void> findCached(const std::string& key) const;
     [[nodiscard]] std::vector<Entry> expand(const std::vector<Entry>& entries) const;
     void startLoad(Request request, Callback callback);
+    void readAndDecode(const std::shared_ptr<Request>& loading, const std::string& key, const Type& assetType);
+
+    // Throws for an asset whose bytes are not on the device, which a synchronous read never waits for.
+    void requireLocal(std::string_view path) const;
+    [[nodiscard]] bool isLocal(std::string_view path) const;
+    void loadGroup(const std::string& groupName, std::uint64_t generation, std::vector<Request> requests);
+    void reportGroupProgress(Group& group) const;
     void finish(const std::string& key, const std::shared_ptr<void>& asset, const std::string& error);
 
     // Wraps a new asset so the manager learns when its last holder lets go, and announces it.
@@ -200,6 +223,7 @@ class Manager final {
     std::unordered_map<std::string, Cached> cache;
     std::unordered_map<std::string, Pending> pending;
     std::unordered_map<std::string, Group> groups;
+    Availability availability;
     std::deque<Upload> uploads;
     double uploadBudget = kDefaultUploadBudget;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);

@@ -30,6 +30,9 @@ class Path final {
 
     // Tells whether a normalized path lies under a normalized folder. Every path lies under the empty root folder.
     [[nodiscard]] static bool isInside(std::string_view path, std::string_view folder) noexcept;
+
+    // Tells whether a path matches a pattern, where `**` stands for any run of characters across folders, `*` for any run inside one folder and `?` for one character other than `/`.
+    [[nodiscard]] static bool matches(std::string_view pattern, std::string_view path) noexcept;
 };
 
 } // namespace haylen::io

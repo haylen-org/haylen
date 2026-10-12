@@ -31,6 +31,9 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
         throw std::invalid_argument("The content build lists the file \"" + repeated->path + "\" twice.");
     }
 
+    // The files of each delivery go into shards of their own, the required ones first, so a platform ships the shards an app needs to start and leaves the others to download.
+    std::ranges::stable_sort(inputs, {}, &Input::delivery);
+
     // Every file is split into chunks first, so the build knows which earlier shards its files still use before it writes anything.
     std::vector<File> files;
     files.reserve(inputs.size());
@@ -39,8 +42,11 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
     }
     keepEarlierShards(files);
 
-    for (File& file : files) {
-        storeFile(source, file);
+    for (std::size_t index = 0; index < files.size(); ++index) {
+        if (writer && index > 0 && files[index].input.delivery != files[index - 1].input.delivery) {
+            closeShard();
+        }
+        storeFile(source, files[index]);
     }
     if (writer) {
         closeShard();

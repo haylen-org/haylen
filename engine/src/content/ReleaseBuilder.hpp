@@ -62,7 +62,7 @@ class ReleaseBuilder final {
     // Reads a manifest of an earlier release that the signing key of this builder signed.
     [[nodiscard]] Manifest readManifest(const std::filesystem::path& file) const;
 
-    // Lists the files of an app package that a domain holds, without the files that file managers leave in folders.
+    // Lists the files of an app package that a domain holds, with the delivery that the rules of `app.json` give each asset, without the files that file managers leave in folders.
     [[nodiscard]] static std::vector<ContentBuilder::Input> listFiles(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain);
 
   private:

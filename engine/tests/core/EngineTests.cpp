@@ -247,6 +247,28 @@ TEST(AppConfigTest, RejectsInvalidValues) {
     }
 }
 
+TEST(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"content": {"updates": {"baseUrl": "https://cdn.example.com/game/", "channel": "beta"}, "delivery": [{"match": "world/asia/**", "mode": "onDemand"}, {"match": "cinematics/*.webm", "mode": "prefetch"}]}})"));
+    ASSERT_TRUE(config.content.updates);
+    EXPECT_EQ(config.content.updates->baseUrl, "https://cdn.example.com/game/");
+    EXPECT_EQ(config.content.updates->channel, "beta");
+    EXPECT_TRUE(config.content.updates->enabled);
+    EXPECT_EQ(config.content.getDelivery("world/asia/maps/tokyo.tmj"), content::Delivery::OnDemand);
+    EXPECT_EQ(config.content.getDelivery("cinematics/intro.webm"), content::Delivery::Prefetch);
+    EXPECT_EQ(config.content.getDelivery("cinematics/4k/intro.webm"), content::Delivery::Required);
+    EXPECT_EQ(config.content.getDelivery("world/europe/paris.tmj"), content::Delivery::Required);
+    const core::AppConfig again = core::AppConfig::fromJson(config.toJson());
+    EXPECT_EQ(again.content.updates->channel, "beta");
+    EXPECT_EQ(again.content.delivery.size(), 2U);
+    EXPECT_FALSE(core::AppConfig::fromJson(core::Json::object()).content.updates);
+
+    // A content server is an `https` address that ends with a slash, or an `http` address of this machine while a release is tested.
+    EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"content": {"updates": {"baseUrl": "http://127.0.0.1:8080/tree/"}}})")));
+    for (const char* document : {R"({"content": {"updates": {"baseUrl": "http://cdn.example.com/"}}})", R"({"content": {"updates": {"baseUrl": "https://cdn.example.com"}}})", R"({"content": {"updates": {}}})", R"({"content": {"updates": {"baseUrl": "https://a.com/", "channel": "Stable"}}})", R"({"content": {"delivery": [{"match": "../x", "mode": "onDemand"}]}})", R"({"content": {"delivery": [{"match": "x/**", "mode": "later"}]}})", R"({"content": {"delivery": {"match": "x"}}})", R"({"content": {"cdn": true}})"}) {
+        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
+    }
+}
+
 TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"admob": {"testMode": true, "placements": ["top"]}, "firebase-analytics": {}}})"));
     EXPECT_EQ(config.plugins.size(), 2U);

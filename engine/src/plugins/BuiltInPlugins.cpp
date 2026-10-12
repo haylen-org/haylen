@@ -13,6 +13,7 @@
 #include "platform/Host.hpp"
 #include "plugins/Animation2DPlugin.hpp"
 #include "plugins/AudioPlugin.hpp"
+#include "plugins/ContentPlugin.hpp"
 #include "plugins/CorePlugin.hpp"
 #include "plugins/Graphics2DPlugin.hpp"
 #include "plugins/HotReloadPlugin.hpp"
@@ -35,6 +36,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host&
     registry.add(std::make_unique<InputPlugin>());
     registry.add(std::make_unique<Graphics2DPlugin>());
     registry.add(std::make_unique<AssetsPlugin>());
+    registry.add(std::make_unique<ContentPlugin>());
     registry.add(std::make_unique<TextPlugin>());
     registry.add(std::make_unique<Animation2DPlugin>());
     registry.add(std::make_unique<Particles2DPlugin>());

@@ -16,12 +16,12 @@
 #include "content/RecordCache.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/ReleasePackage.hpp"
+#include "content/ReleaseStager.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/io/Package.hpp"
 
 namespace haylen::content {
 
-const std::array<std::pair<std::string_view, Delivery>, 3> ContentTool::kDeliveryNames{{{"required", Delivery::Required}, {"prefetch", Delivery::Prefetch}, {"onDemand", Delivery::OnDemand}}};
 const std::array<std::pair<std::string_view, Catalog::Kind>, 2> ContentTool::kKindNames{{{"data", Catalog::Kind::File}, {"Lua bytecode", Catalog::Kind::LuaBytecode}}};
 const std::array<std::pair<std::string_view, Manifest::Domain>, 2> ContentTool::kDomainNames{{{"app", Manifest::Domain::App}, {"content", Manifest::Domain::Content}}};
 
@@ -117,7 +117,7 @@ ContentTool::ContentTool(std::ostream& standardOutput, std::ostream& errorOutput
 int ContentTool::run(std::span<const std::string> arguments) {
     try {
         if (arguments.empty()) {
-            throw std::invalid_argument("Name a command: \"keys\", \"build\", \"verify\", \"inspect\", \"diff\", \"publish\", \"compact\" or \"bootstrap\".");
+            throw std::invalid_argument("Name a command: \"keys\", \"build\", \"verify\", \"stage\", \"inspect\", \"diff\", \"publish\", \"compact\" or \"bootstrap\".");
         }
         const std::string& command = arguments.front();
         Arguments rest(arguments.subspan(1));
@@ -127,6 +127,8 @@ int ContentTool::run(std::span<const std::string> arguments) {
             runBuild(rest);
         } else if (command == "verify") {
             runVerify(rest);
+        } else if (command == "stage") {
+            runStage(rest);
         } else if (command == "inspect") {
             runInspect(rest);
         } else if (command == "diff") {
@@ -138,7 +140,7 @@ int ContentTool::run(std::span<const std::string> arguments) {
         } else if (command == "bootstrap") {
             runBootstrap(rest);
         } else {
-            throw std::invalid_argument("The command \"" + command + "\" is unknown. The commands are \"keys\", \"build\", \"verify\", \"inspect\", \"diff\", \"publish\", \"compact\" and \"bootstrap\".");
+            throw std::invalid_argument("The command \"" + command + "\" is unknown. The commands are \"keys\", \"build\", \"verify\", \"stage\", \"inspect\", \"diff\", \"publish\", \"compact\" and \"bootstrap\".");
         }
         return 0;
     } catch (const std::exception& error) {
@@ -220,6 +222,17 @@ void ContentTool::runVerify(Arguments& arguments) {
     output << std::format("Verified the release \"{}\": 2 manifests, {} shards and {} files of {} bytes, with every chunk authenticated.\n", folder.generic_string(), verification.shards, verification.files, verification.bytes);
 }
 
+void ContentTool::runStage(Arguments& arguments) {
+    const std::filesystem::path folder = arguments.takePositional("release folder");
+    const KeyStore store = KeyStore::open(arguments.takeOption("keys"));
+    const std::filesystem::path shipped = arguments.takeOption("output");
+    const std::optional<std::string> deferred = arguments.takeOptional("deferred");
+    arguments.finish();
+    const ReleaseInspector inspector = makeInspector(store);
+    const ReleaseStager::Layout layout = ReleaseStager(inspector).stage(folder, shipped, deferred ? std::optional<std::filesystem::path>(*deferred) : std::nullopt);
+    output << std::format("Staged the release \"{}\": {} files ship with the app in \"{}\" and {} shards stay for the server.\n", folder.generic_string(), layout.shipped.size(), shipped.generic_string(), layout.deferred.size());
+}
+
 void ContentTool::runInspect(Arguments& arguments) {
     const std::filesystem::path folder = arguments.takePositional("release folder");
     const KeyStore store = KeyStore::open(arguments.takeOption("keys"));
@@ -252,7 +265,7 @@ void ContentTool::printDomain(const ReleaseInspector::Domain& domain, bool chunk
         for (const std::uint32_t shard : shards) {
             places += (places.empty() ? "" : ", ") + std::to_string(shard);
         }
-        output << std::format("  File \"{}\" holds {} bytes of {}, {}, in {} chunks stored in {} bytes{}.\n", file.path, file.size, getKindName(file.kind), getDeliveryName(file.delivery), file.chunks.size(), stored, places.empty() ? "" : " in shard " + places);
+        output << std::format("  File \"{}\" holds {} bytes of {}, {}, in {} chunks stored in {} bytes{}.\n", file.path, file.size, getKindName(file.kind), core::AppConfig::deliveryName(file.delivery), file.chunks.size(), stored, places.empty() ? "" : " in shard " + places);
         if (!chunks) {
             continue;
         }
@@ -347,10 +360,6 @@ void ContentTool::runBootstrap(Arguments& arguments) {
         }
     }
     output << "Wrote the bootstrap of \"" << store.getIdentifier() << "\" for the profile \"" << profile << "\" into \"" << file.generic_string() << "\".\n";
-}
-
-std::string_view ContentTool::getDeliveryName(Delivery delivery) noexcept {
-    return std::ranges::find(kDeliveryNames, delivery, &std::pair<std::string_view, Delivery>::second)->first;
 }
 
 std::string_view ContentTool::getKindName(Catalog::Kind kind) noexcept {

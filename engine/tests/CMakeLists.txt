@@ -56,6 +56,8 @@ set(HAYLEN_TEST_SOURCES
   content/ChunkerTests.cpp
   content/CompressionTests.cpp
   content/ContentBuilderTests.cpp
+  content/ContentLuaTests.cpp
+  content/ContentManagerTests.cpp
   content/ContentToolTests.cpp
   content/CryptoTests.cpp
   content/HostileInputTests.cpp

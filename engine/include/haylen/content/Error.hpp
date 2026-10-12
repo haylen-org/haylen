@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace haylen::content {
@@ -44,6 +46,7 @@ class Error final : public std::runtime_error {
         PermissionDenied,
         CacheCorrupt,
         InsufficientStorage,
+        StoreAssetUnavailable,
     };
 
     // What else is known about a failure. Every field is empty when it does not apply.
@@ -67,7 +70,12 @@ class Error final : public std::runtime_error {
     // Whether trying again may succeed without a new build of the app, such as when a network comes back or a server recovers. A damaged install, a missing key or a rejected manifest stays as it is.
     [[nodiscard]] bool isRetryable() const noexcept;
 
+    // The name of a code as Lua and events read it, such as `networkOffline`.
+    [[nodiscard]] static std::string_view getCodeName(Code value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Code>, 33> kCodeNames;
+
     Code code;
     Details details;
 };

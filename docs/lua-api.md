@@ -55,6 +55,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | Module | Purpose |
 | --- | --- |
 | [`haylen.assets`](lua-api/assets.md) | Loading package files now or in the background, and preload groups. |
+| [`haylen.content`](lua-api/content.md) | Which content plays and which assets are on the device, assets brought down ahead of time, and the updates of the content. |
 | [`haylen.storage`](lua-api/storage.md) | Private files of the player, the folder Varn's `fs` shares with them, and named save slots with summaries, on the frame thread or asynchronously on the I/O pool. |
 | [`haylen.preferences`](lua-api/preferences.md) | Player preferences that persist between sessions. |
 | [`haylen.system`](lua-api/system.md) | What the device and its operating system are, the theme and the battery with their changes, opening urls and vibrating. |
