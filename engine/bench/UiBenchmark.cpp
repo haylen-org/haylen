@@ -55,7 +55,7 @@ class UiBenchmark final {
     class CountingItems final : public ui::CollectionItems {
       public:
         [[nodiscard]] core::Json getValue(std::size_t index, std::string_view field) const override {
-            binds += field == "title" ? 1 : 0;
+            binds += field == "title" ? 1U : 0U;
             return ui::CollectionItems::getValue(index, field);
         }
 
