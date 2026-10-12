@@ -763,8 +763,9 @@ if(HAYLEN_BUILD_SDK)
   include(haylen-install)
 endif()
 
+# The headless host is an object library, so the dummy backend that implements the graphics calls of the engine joins every executable that links it, wherever the linker meets the engine.
 if(HAYLEN_DESKTOP)
-  add_library(haylen_headless STATIC
+  add_library(haylen_headless OBJECT
     src/platform/headless/HeadlessHost.cpp
     src/platform/headless/HeadlessPlayer.cpp
     src/platform/headless/SokolDummy.c
