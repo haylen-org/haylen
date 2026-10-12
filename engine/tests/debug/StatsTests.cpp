@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "graphics/Gpu.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/particles/Emitter.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/AppConfig.hpp"
@@ -20,6 +21,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::debug {
@@ -361,6 +363,28 @@ TEST(StatsTest, DrawsTheCompactDisplayAndTheOverlay) {
     plugin.setStatsMode(StatsDisplay::Mode::Compact);
     fixture.frames(2);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, failed);
+}
+
+// The compact display keeps its lines while the numbers stay, and the monitors and drawings walk copies they keep, so those frames allocate no more than frames without them.
+TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
+    test::EngineFixture fixture;
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    // clang-format off
+    const auto measure = [&fixture] {
+        fixture.frames(5, 1.0 / 240.0);
+        const test::AllocationTracker tracker;
+        fixture.frames(10, 1.0 / 240.0);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t quiet = measure();
+
+    const core::Connection monitor = plugin.addMonitor("frames", [] { return std::optional(1.0); });
+    const core::Connection drawer = plugin.addDrawer("marks", [](graphics2d::Renderer& renderer) { renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white()); });
+    plugin.setDrawing("marks", true);
+    plugin.setStatsMode(StatsDisplay::Mode::Compact);
+    EXPECT_EQ(measure(), quiet);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 } // namespace haylen::debug

@@ -3,11 +3,12 @@
 #include <algorithm>
 #include <array>
 #include <format>
+#include <iterator>
 #include <limits>
-#include <string>
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/FrameClock.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/Font.hpp"
@@ -25,17 +26,30 @@ std::string_view StatsDisplay::modeName(Mode value) noexcept {
     return std::ranges::find(kModeNames, value, &std::pair<std::string_view, Mode>::second)->first;
 }
 
+// The strings keep their capacity, so the numbers format in place.
+void StatsDisplay::format(const Numbers& numbers) {
+    for (std::string& line : lines) {
+        line.clear();
+    }
+    std::format_to(std::back_inserter(lines[0]), "{:.1f} FPS  {:.2f} ms", numbers.fps, numbers.milliseconds);
+    std::format_to(std::back_inserter(lines[1]), "{} draws  {} vertices", numbers.drawCalls, numbers.vertices);
+    std::format_to(std::back_inserter(lines[2]), "{} instances", numbers.instances);
+}
+
 void StatsDisplay::drawCompact(core::Engine& engine, const Numbers& numbers) {
+    const core::FrameClock& clock = engine.getClock();
+    const bool drewLastFrame = clock.getFrameIndex() == drawnFrame + 1 && !lines.front().empty();
+    sinceRefresh = drewLastFrame ? sinceRefresh + clock.getUnscaledDelta() : kRefreshSeconds;
+    drawnFrame = clock.getFrameIndex();
+    if (sinceRefresh >= kRefreshSeconds) {
+        sinceRefresh = 0.0;
+        format(numbers);
+    }
+
     graphics2d::Renderer& renderer = engine.getRenderer2D();
     text::Font& font = *engine.getDefaultFont();
     const float unit = engine.getWindow().getDpiScale() / engine.getViewport().getPixelsPerUnit().y;
     const text::Style style{.size = kTextSize * unit, .color = math::Color::fromHex(0xE8F0FFFFU)};
-    const std::array<std::string, 3> lines{
-        std::format("{:.1f} FPS  {:.2f} ms", numbers.fps, numbers.milliseconds),
-        std::format("{} draws  {} vertices", numbers.drawCalls, numbers.vertices),
-        std::format("{} instances", numbers.instances),
-    };
-
     float width = 0.0F;
     for (const std::string& line : lines) {
         width = std::max(width, font.measure(line, style).x);

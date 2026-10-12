@@ -144,6 +144,8 @@ class DebugPlugin final : public Plugin {
     std::deque<debug::LogLine> lines;
     std::vector<std::shared_ptr<MonitorEntry>> monitors;
     std::vector<std::shared_ptr<DrawerEntry>> drawers;
+    std::vector<std::shared_ptr<MonitorEntry>> monitorSnapshot;
+    std::vector<std::shared_ptr<DrawerEntry>> drawerSnapshot;
     std::set<std::string, std::less<>> drawings;
     core::Engine* owner = nullptr;
     graphics2d::Renderer::Stats lastRendering;
@@ -152,6 +154,7 @@ class DebugPlugin final : public Plugin {
     std::optional<input::Key> toggleKey = input::Key::F3;
     std::optional<input::Key> drawKey = input::Key::F4;
     debug::StatsDisplay::Mode statsMode = debug::StatsDisplay::Mode::Off;
+    debug::StatsDisplay statsDisplay;
     bool objectEvents = false;
 };
 

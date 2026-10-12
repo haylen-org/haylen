@@ -81,17 +81,21 @@ core::Connection DebugPlugin::addDrawer(std::string name, Drawer drawer) {
     return core::Connection(std::weak_ptr<core::Connection::Link>(entry));
 }
 
-// A drawer may add or remove drawers while it draws, so the loop walks a copy and skips the ones removed meanwhile, and the bounds come last, around everything the canvas holds.
+// A drawer may add or remove drawers while it draws, so the loop walks a copy and skips the ones removed meanwhile, and the bounds come last, around everything the canvas holds. The copy goes back into a member, which keeps its capacity for the next canvas.
 void DebugPlugin::drawOverlay(core::Engine& engine, graphics2d::Renderer& renderer) {
     if (drawings.empty()) {
         return;
     }
-    const std::vector<std::shared_ptr<DrawerEntry>> snapshot = drawers;
+    std::vector<std::shared_ptr<DrawerEntry>> snapshot = std::exchange(drawerSnapshot, {});
+    snapshot.assign(drawers.begin(), drawers.end());
     for (const std::shared_ptr<DrawerEntry>& entry : snapshot) {
         if (entry->isConnected() && !entry->blocked && drawings.contains(entry->name)) {
             entry->drawer(renderer);
         }
     }
+    snapshot.clear();
+    drawerSnapshot = std::move(snapshot);
+
     if (drawings.contains(kBoundsDrawing)) {
         renderer.drawBounds(*engine.getDefaultFont(), kBoundsColor, kBoundsLabelSize);
     }
@@ -225,18 +229,21 @@ void DebugPlugin::renderOverlay(core::Engine& engine) {
         return;
     }
     const debug::Profiler& profiler = engine.getProfiler();
-    debug::StatsDisplay::drawCompact(engine, {.fps = profiler.getFramesPerSecond(), .milliseconds = profiler.getLastFrameMilliseconds(), .drawCalls = lastRendering.drawCalls, .vertices = lastRendering.vertices, .instances = lastRendering.instances});
+    statsDisplay.drawCompact(engine, {.fps = profiler.getFramesPerSecond(), .milliseconds = profiler.getLastFrameMilliseconds(), .drawCalls = lastRendering.drawCalls, .vertices = lastRendering.vertices, .instances = lastRendering.instances});
 }
 
-// The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy and skips the ones removed meanwhile.
+// The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy, kept in a member like the copy of the drawers, and skips the ones removed meanwhile.
 void DebugPlugin::endFrame(core::Engine& engine) {
     lastRendering = engine.getRenderer2D().getStats();
-    const std::vector<std::shared_ptr<MonitorEntry>> snapshot = monitors;
+    std::vector<std::shared_ptr<MonitorEntry>> snapshot = std::exchange(monitorSnapshot, {});
+    snapshot.assign(monitors.begin(), monitors.end());
     for (const std::shared_ptr<MonitorEntry>& entry : snapshot) {
         if (entry->isConnected() && !entry->blocked) {
             entry->monitor->sample();
         }
     }
+    snapshot.clear();
+    monitorSnapshot = std::move(snapshot);
 }
 
 void DebugPlugin::installLua(core::Engine&, lua_State* L) {
