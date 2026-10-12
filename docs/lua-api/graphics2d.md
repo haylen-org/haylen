@@ -1462,7 +1462,7 @@ print(sprite.x, sprite.width, sprite.flipHorizontal, sprite.color:toHex())
 
 ### batch:reserve(count)
 
-Makes room for `count` sprites at once, so a batch filled in a loop does not grow step by step.
+Makes room for `count` sprites at once, so a batch filled in a loop does not grow step by step. A batch holds at most 16777216 sprites, and a larger `count` here or in `batch:resize` raises `A sprite batch holds at most 16777216 sprites.`
 
 ```lua
 local graphics = require('haylen.graphics')

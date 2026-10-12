@@ -116,6 +116,8 @@ TEST_F(Graphics2DLuaTest, DrawsBatchesAndStaticBatches) {
     EXPECT_EQ(lua("local index = batch:add({flipDiagonal = true}) local diagonal = batch:get(index).flipDiagonal batch:remove(index) return tostring(diagonal) .. ' ' .. tostring(batch:get(1).flipDiagonal)"), "true false");
     EXPECT_NE(lua("batch:get(9)").find("sprite index out of range"), std::string::npos);
     EXPECT_NE(lua("batch:reserve(-1)").find("expected a non-negative integer"), std::string::npos);
+    EXPECT_NE(lua("batch:reserve(1 << 60)").find("A sprite batch holds at most 16777216 sprites."), std::string::npos);
+    EXPECT_NE(lua("batch:resize(1 << 40)").find("A sprite batch holds at most 16777216 sprites."), std::string::npos);
     EXPECT_EQ(lua("batch:set(2, {x = 30}) batch:remove(1) return batch:size()"), "1");
     EXPECT_NE(lua("batch:set(5, {x = 1})").find("sprite index out of range"), std::string::npos);
     EXPECT_NE(lua("batch:remove(0)").find("sprite index out of range"), std::string::npos);

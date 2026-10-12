@@ -45,11 +45,19 @@ void SpriteBatch::clear() noexcept {
     partColors.clear();
 }
 
+void SpriteBatch::checkCount(std::size_t count) {
+    if (count > kMaxSprites) {
+        throw std::invalid_argument("A sprite batch holds at most 16777216 sprites.");
+    }
+}
+
 void SpriteBatch::reserve(std::size_t count) {
+    checkCount(count);
     sprites.reserve(count);
 }
 
 void SpriteBatch::resize(std::size_t count, const SpriteInstance& sprite) {
+    checkCount(count);
     sprites.resize(count, sprite);
     if (!partColors.empty()) {
         partColors.resize(count);

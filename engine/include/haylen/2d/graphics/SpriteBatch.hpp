@@ -18,6 +18,8 @@ class Renderer;
 // Many sprites that share one texture and are drawn with a single batch. Scripts keep the data in C++ and change only what moves. Every sprite has part colors, white until set, which recolor it when the batch draws with a part mask, and a batch keeps room for them only once one is set.
 class SpriteBatch final {
   public:
+    static constexpr std::size_t kMaxSprites = std::size_t{1} << 24U;
+
     explicit SpriteBatch(graphics::Texture image);
 
     std::size_t add(const SpriteInstance& sprite);
@@ -25,9 +27,8 @@ class SpriteBatch final {
     [[nodiscard]] const SpriteInstance& get(std::size_t index) const;
     void remove(std::size_t index);
     void clear() noexcept;
+    // Make room for a number of sprites or set it, filling new sprites with the sprite. A count above `kMaxSprites` throws `std::invalid_argument`.
     void reserve(std::size_t count);
-
-    // Sets the number of sprites, filling new ones with the sprite.
     void resize(std::size_t count, const SpriteInstance& sprite = {});
 
     void setPartColors(std::size_t index, const PartColors& colors);
@@ -53,6 +54,8 @@ class SpriteBatch final {
     [[nodiscard]] StaticSpriteBatch bake(Renderer& renderer) const;
 
   private:
+    static void checkCount(std::size_t count);
+
     graphics::Texture texture;
     std::vector<SpriteInstance> sprites;
     std::vector<PartColors> partColors;
