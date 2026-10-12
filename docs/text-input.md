@@ -1,6 +1,6 @@
 # Text input
 
-Text fields of the UI type through the native text input of each platform. A hidden native field sits over the focused field of the UI and edits its text, so phones, tablets and TVs open their software keyboard, and every platform brings its input methods for languages such as Japanese and Chinese, autocorrection, dictation, the emoji picker and native paste, copy and undo. The UI still draws the field, its text, its selection and its caret. This guide explains how the two sides stay in step and what each platform does. The [UI guide](ui.md#text-entry) shows how apps use text fields, and the [haylen.ui reference](lua-api/ui.md#inputs) lists their keyboard options.
+Text fields of the UI type through the native text input of each platform. A hidden native field sits over the focused field of the UI and edits its text, so phones, tablets and TVs open their software keyboard, and every platform but Linux brings its input methods for languages such as Japanese and Chinese, autocorrection, dictation, the emoji picker and native paste, copy and undo. The UI still draws the field, its text, its selection and its caret. This guide explains how the two sides stay in step and what each platform does. The [UI guide](ui.md#text-entry) shows how apps use text fields, and the [haylen.ui reference](lua-api/ui.md#inputs) lists their keyboard options.
 
 ## How a field edits
 
@@ -46,7 +46,7 @@ While a field is edited, an invisible `NSTextView` over it is the first responde
 
 ## Windows and Linux
 
-Windows types through `WM_CHAR`, which `sokol_app` turns into character events, and the input method composes in its own window. The text input places the composition window at the caret of the focused field with `ImmSetCompositionWindow` and the candidate list below the caret line with `ImmSetCandidateWindow`, so it never covers the text being typed. Linux types through the key and character events of X11. Neither has a native field, so the UI edits the text itself. While a field edits, the keys it types never reach the navigation actions, so Space types a space and Enter starts a new line in a text area, while Enter submits a single line, Escape cancels and the gamepad buttons of `uiAccept` and `uiCancel` end the editing.
+Windows types through `WM_CHAR`, which `sokol_app` turns into character events, and the input method composes in its own window. The text input places the composition window at the caret of the focused field with `ImmSetCompositionWindow` and the candidate list below the caret line with `ImmSetCandidateWindow`, so it never covers the text being typed. Linux types through the key and character events of X11, which `sokol_app` reads without an input method of X11, so text that an input method composes, such as Japanese, Chinese or Korean, does not reach Linux apps, while the characters of the keyboard layout do. Neither has a native field, so the UI edits the text itself. While a field edits, the keys it types never reach the navigation actions, so Space types a space and Enter starts a new line in a text area, while Enter submits a single line, Escape cancels and the gamepad buttons of `uiAccept` and `uiCancel` end the editing.
 
 ## Complex scripts and right-to-left text
 

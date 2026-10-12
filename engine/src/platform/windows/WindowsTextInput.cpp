@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-// The framebuffer covers the client area pixel for pixel, so the caret needs no conversion. The plain keyboard has no caret on screen and leaves the input method where the system puts it.
+// The framebuffer covers the client area, with fewer pixels when the app turns high DPI off, so the caret turns into pixels of the client area. The plain keyboard has no caret on screen and leaves the input method where the system puts it.
 void WindowsTextInput::edit(const Field& field) {
     if (field.id == kKeyboardField) {
         return;
@@ -21,8 +21,12 @@ void WindowsTextInput::edit(const Field& field) {
         return;
     }
 
-    const POINT caret{.x = static_cast<LONG>(field.caret.x), .y = static_cast<LONG>(field.caret.y)};
-    const RECT line{.left = caret.x, .top = caret.y, .right = static_cast<LONG>(field.caret.getRight()), .bottom = static_cast<LONG>(field.caret.getBottom())};
+    RECT client{};
+    GetClientRect(window, &client);
+    const float scale = sapp_widthf() > 0.0F ? static_cast<float>(client.right) / sapp_widthf() : 1.0F;
+    const auto toClient = [scale](float value) { return static_cast<LONG>(value * scale); };
+    const POINT caret{.x = toClient(field.caret.x), .y = toClient(field.caret.y)};
+    const RECT line{.left = caret.x, .top = caret.y, .right = toClient(field.caret.getRight()), .bottom = toClient(field.caret.getBottom())};
     COMPOSITIONFORM composition{.dwStyle = CFS_FORCE_POSITION, .ptCurrentPos = caret, .rcArea = line};
     ImmSetCompositionWindow(context, &composition);
 

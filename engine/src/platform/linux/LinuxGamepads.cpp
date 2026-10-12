@@ -20,7 +20,7 @@ void LinuxGamepads::scan() {
             continue;
         }
         const std::string path = "/dev/input/js" + std::to_string(index);
-        joystick.descriptor = open(path.c_str(), O_RDONLY | O_NONBLOCK);
+        joystick.descriptor = open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
         if (joystick.descriptor < 0) {
             continue;
         }
@@ -55,7 +55,10 @@ void LinuxGamepads::poll(std::span<input::GamepadState> states) {
                 apply(joystick.state, event);
                 continue;
             }
-            // An empty queue ends the frame's events, and any other outcome means the controller went away.
+            // An empty queue ends the frame's events, a signal that interrupted the read tries again, and any other outcome means the controller went away.
+            if (count < 0 && errno == EINTR) {
+                continue;
+            }
             if (count < 0 && errno == EAGAIN) {
                 break;
             }
