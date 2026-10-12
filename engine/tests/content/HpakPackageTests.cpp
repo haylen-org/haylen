@@ -387,7 +387,7 @@ TEST_F(HpakPackageTest, KeepsABoundedNumberOfShardsOpen) {
         threads.emplace_back([&, thread] {
             for (std::size_t index = 0; index < 2 * parts.size(); ++index) {
                 const std::string& part = parts[(index * (thread + 1) + thread * 5) % parts.size()];
-                matches[thread] += package->readAsset(part) == files.at("content/" + part) ? 1 : 0;
+                matches[thread] += package->readAsset(part) == files.at("content/" + part) ? 1U : 0U;
             }
         });
         // clang-format on
@@ -408,11 +408,13 @@ TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
     // A damaged record fails only the reads that need it, and the middle of the largest shard belongs to the large file.
     const std::string largest = *std::ranges::max_element(shards, {}, [this](const std::string& shard) { return std::filesystem::file_size(release.getFolder() / shard); });
     damage(largest, std::filesystem::file_size(release.getFolder() / largest) / 2);
-    const std::shared_ptr<io::Package> damaged = open();
-    EXPECT_EQ(damaged->readAssetText("data/config.json"), R"({"level": 3})");
-    expectCode(Error::Code::ChunkAuthenticationFailed, [&] { (void)damaged->readAsset("world/terrain.bin"); });
+    {
+        const std::shared_ptr<io::Package> damaged = open();
+        EXPECT_EQ(damaged->readAssetText("data/config.json"), R"({"level": 3})");
+        expectCode(Error::Code::ChunkAuthenticationFailed, [&] { (void)damaged->readAsset("world/terrain.bin"); });
+    }
 
-    // A missing shard keeps the package listing its files and fails the reads of them.
+    // A missing shard keeps the package listing its files and fails the reads of them. The damaged package closed its shards first, since Windows deletes no file that is open.
     for (const std::string& shard : shards) {
         std::filesystem::remove(release.getFolder() / shard);
     }
