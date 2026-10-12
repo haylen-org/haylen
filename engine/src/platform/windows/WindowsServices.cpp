@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include "content/FolderStoreFiles.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
@@ -58,7 +59,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
 
     const std::filesystem::path directory = std::filesystem::path(executable).parent_path();
     if (std::filesystem::is_directory(directory / "app")) {
-        return content::ReleasePackage::openBundled(io::Package::openDirectory(directory / "app"), content::Bootstrap::find());
+        return content::ReleasePackage::openBundled(io::Package::openDirectory(directory / "app"), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
     return io::Package::open(directory / "app.zip");
 }
@@ -72,6 +73,18 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
     std::filesystem::path path(folder);
     CoTaskMemFree(folder);
     return path / std::string(identifier);
+}
+
+// Downloaded content is large and comes back with a download, so it stays on the machine instead of roaming with the profile.
+std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+    PWSTR folder = nullptr;
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &folder))) {
+        CoTaskMemFree(folder);
+        throw std::runtime_error("The local application data folder could not be found.");
+    }
+    std::filesystem::path path(folder);
+    CoTaskMemFree(folder);
+    return path / std::string(identifier) / "Content";
 }
 
 void Services::persistUserData() {}

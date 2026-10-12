@@ -9,6 +9,7 @@
 #include "content/crypto/Aead.hpp"
 #include "content/crypto/ContentKey.hpp"
 #include "content/crypto/Digest.hpp"
+#include "content/format/Catalog.hpp"
 #include "content/format/Chunker.hpp"
 #include "content/format/Compression.hpp"
 
@@ -50,6 +51,9 @@ class ChunkRecord final {
 
     // Authenticates and decrypts the ciphertext in place, then decodes it into the plain chunk, resized to the plain size, and checks its content ID. Throws `ChunkAuthenticationFailed`, `CorruptChunk` when the encoded bytes do not decode to the plain size, or `ChunkHashMismatch`, never leaves unverified bytes in the output, and wipes the earlier chunk of the output before it resizes, so none of it stays in memory the output frees or keeps spare.
     void open(const ContentKey& key, std::span<std::uint8_t> ciphertext, std::vector<std::uint8_t>& plain) const;
+
+    // Tells whether the record is the chunk that a catalog names, with its IDs, sizes and codec.
+    [[nodiscard]] bool describes(const Catalog::Chunk& chunk) const noexcept;
 
     [[nodiscard]] std::uint64_t getRecordSize() const noexcept {
         return kHeaderSize + encodedSize;

@@ -50,7 +50,7 @@ void ShardReader::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_
     const ChunkRecord record = ChunkRecord::parse(std::span(scratch).first<ChunkRecord::kHeaderSize>());
 
     // The record must be the chunk that the signed catalog names, with the sizes and the codec the catalog gives it, so a shard that someone rewrote with the content key still cannot change what an app reads, and a reader never trusts a size the record does not have.
-    const bool matchesCatalog = record.storedId == chunk.storedId && record.contentId == chunk.contentId && record.codec == chunk.codec && record.profile == chunk.profile && record.plainSize == chunk.plainSize && record.encodedSize == chunk.encodedSize;
+    const bool matchesCatalog = record.describes(chunk);
     const bool matchesIndex = record.codec == entry->codec && record.profile == entry->profile && record.plainSize == entry->plainSize && record.encodedSize == entry->encodedSize;
     if (!matchesCatalog || !matchesIndex) {
         throw Error(Error::Code::CorruptChunk, "The record of the chunk \"" + chunk.storedId.toHex() + "\" does not match the index of its shard and its catalog.");

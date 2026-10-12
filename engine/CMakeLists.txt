@@ -236,18 +236,22 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/format/StoreEntry.cpp
   src/content/format/StoreState.cpp
   src/content/HpakFileReader.cpp
+  src/content/Downloader.cpp
   src/content/HpakPackage.cpp
   src/content/HttpTransport.cpp
   src/content/LocalStore.cpp
   src/content/LuaCompiler.cpp
+  src/content/PublicationLayout.cpp
   src/content/RangePlanner.cpp
   src/content/RecordCache.cpp
   src/content/ReleaseBuilder.cpp
   src/content/ReleasePackage.cpp
+  src/content/ShardIndexFile.cpp
   src/content/ShardReader.cpp
   src/content/ShardSet.cpp
   src/content/ShardWriter.cpp
   src/content/StoreFile.cpp
+  src/content/Updater.cpp
   src/core/AppConfig.cpp
   src/core/Application.cpp
   src/core/ClassLua.cpp

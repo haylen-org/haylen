@@ -71,6 +71,7 @@ set(HAYLEN_TEST_SOURCES
   content/ReleaseInspectorTests.cpp
   content/ReleaseLuaTests.cpp
   content/ShardTests.cpp
+  content/UpdaterTests.cpp
   core/ContainerTests.cpp
   core/CoreTests.cpp
   core/EngineTests.cpp

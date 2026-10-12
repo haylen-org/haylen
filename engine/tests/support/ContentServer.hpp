@@ -51,7 +51,7 @@ class ContentServer final {
     // Answers the requests of a path with a status and no body.
     void setStatus(const std::string& path, int status);
 
-    // Closes the connection of the next responses once they sent this many bytes of their body.
+    // Closes the connection of the next responses longer than this many bytes once they sent that many.
     void dropAfter(std::uint64_t bytes, int times = 1) noexcept;
 
     // Waits before every body, longer than any test lets a request take.

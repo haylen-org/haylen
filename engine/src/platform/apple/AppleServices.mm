@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 
+#include "content/FolderStoreFiles.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/io/Package.hpp"
@@ -85,7 +86,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     NSString* resources = NSBundle.mainBundle.resourcePath;
     const std::filesystem::path folder = std::filesystem::path(resources.UTF8String) / "app";
     if (std::filesystem::is_directory(folder)) {
-        return content::ReleasePackage::openBundled(io::Package::openDirectory(folder), content::Bootstrap::find());
+        return content::ReleasePackage::openBundled(io::Package::openDirectory(folder), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
     return io::Package::open(folder.string() + ".zip");
 }
@@ -99,6 +100,22 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 #endif
     NSString* root = NSSearchPathForDirectoriesInDomains(directory, NSUserDomainMask, YES).firstObject;
     return std::filesystem::path(root.UTF8String) / std::string(identifier);
+}
+
+// Downloaded content comes back with a download, so it stays out of backups, and tvOS keeps it among the caches, which the system may clear.
+std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+#if TARGET_OS_TV
+    const NSSearchPathDirectory directory = NSCachesDirectory;
+#else
+    const NSSearchPathDirectory directory = NSApplicationSupportDirectory;
+#endif
+    NSString* root = NSSearchPathForDirectoriesInDomains(directory, NSUserDomainMask, YES).firstObject;
+    const std::filesystem::path folder = std::filesystem::path(root.UTF8String) / (std::string(identifier) + "-content");
+    std::error_code error;
+    std::filesystem::create_directories(folder, error);
+    NSURL* url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:folder.c_str()] isDirectory:YES];
+    [url setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+    return folder;
 }
 
 void Services::persistUserData() {}

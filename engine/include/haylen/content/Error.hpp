@@ -43,11 +43,14 @@ class Error final : public std::runtime_error {
         DiskFull,
         PermissionDenied,
         CacheCorrupt,
+        InsufficientStorage,
     };
 
     // What else is known about a failure. Every field is empty when it does not apply.
     struct Details {
         std::optional<int> httpStatus;
+        std::optional<std::uint64_t> requiredBytes;
+        std::optional<std::uint64_t> availableBytes;
         std::string platformMessage;
     };
 

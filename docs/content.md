@@ -378,7 +378,7 @@ manifests/<id>.hmanifest       Every published content manifest, named by its ID
 packs/<ab>/<id>.hpak           Every published shard, named by its ID under the first two digits of the ID.
 ```
 
-`content publish` builds the content domain of the app as the next generation of the channel, reusing the packs of the current one, so it adds only the packs of new chunks and a new manifest, which names the previous one and serves the build of the app and every later build. Manifests and packs are immutable: a publish that would write other bytes under a name that exists stops there, and the packs it moved into place before stay, named by no channel, until a later publish uses them or `content compact` deletes them. A channel name has at most 64 lowercase letters, digits, dashes and dots, and any other name stops the publish before it reads or writes a file. New packs grow in `staging/` of the tree and move into place, the new manifest follows, the whole new generation verifies against the files in the tree, and only then does the channel pointer move, written under another name and renamed over the old one, so a publish that fails at any point leaves every channel at its earlier generation. Only the content domain is published, since the code of an app belongs to the build that ships it. `content compact` keeps the current generation of every channel and the ones before it up to `--keep`, two by default, and deletes the manifests and packs that none of them names, and a folder without `channels/` is refused as no publication tree.
+`content publish` builds the content domain of the app as the next generation of the channel, reusing the packs of the current one, or for the first generation the shards of the release that ships with the app, which it publishes next to the new packs, so an installed app downloads only what changed, so it adds only the packs of new chunks and a new manifest, which names the previous one and serves the build of the app and every later build. Manifests and packs are immutable: a publish that would write other bytes under a name that exists stops there, and the packs it moved into place before stay, named by no channel, until a later publish uses them or `content compact` deletes them. A channel name has at most 64 lowercase letters, digits, dashes and dots, and any other name stops the publish before it reads or writes a file. New packs grow in `staging/` of the tree and move into place, the new manifest follows, the whole new generation verifies against the files in the tree, and only then does the channel pointer move, written under another name and renamed over the old one, so a publish that fails at any point leaves every channel at its earlier generation. Only the content domain is published, since the code of an app belongs to the build that ships it. `content compact` keeps the current generation of every channel and the ones before it up to `--keep`, two by default, and deletes the manifests and packs that none of them names, and a folder without `channels/` is refused as no publication tree.
 
 ## Downloads
 
@@ -397,6 +397,28 @@ Content that is not on the device arrives over HTTP or HTTPS through `content::H
 `content::RangePlanner` turns the records an app needs from one shard into few requests: records whose gap is at most 256 KiB share one request, which stays within 16 MiB, so many small records cost few requests, a small shard whose records are all needed arrives in one request, and a large shard is never fetched for a few of its records.
 
 A server of protected content serves byte ranges of its files, sends `ETag` for them and leaves them uncompressed, since the shards are encrypted and do not compress. Every file of a publication tree is immutable except the channel pointers, so packs and manifests take long cache lifetimes, such as `Cache-Control: public, max-age=31536000, immutable`, and a channel pointer takes `Cache-Control: no-cache`. A server on another origin than a web page allows its requests with `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag`.
+
+## Updates
+
+`content::Updater` updates the content of an installed app from the channel of a publication tree as one transaction, and `content::Downloader` brings the records it needs.
+
+1. A check downloads the signed pointer of the channel, under an address that changes with every check so no cache answers it, verifies its signature, and checks that it names the app and the channel. A generation older than the one the app accepted last, or the same generation with another manifest, raises `ManifestRollbackRejected`, so a server that replays an old pointer never takes the app back. The same generation as the content the app plays offers nothing.
+2. The check downloads the manifest the pointer names, verifies it, checks it against the build of the app, which raises `ManifestIncompatible` for content of another app, profile or range of builds and keeps the content as it is, decrypts its catalog and finds the chunks of its required files that the device lacks, in the shard files the app ships with or in the store. A chunk that the app already holds, because the new content keeps a shard or holds the same bytes, is never downloaded again.
+3. An install first checks that the device has room: the records it downloads, their journal entries, the indexes of their shards, the manifest, the records that download at once, and a margin of 64 MiB or a twentieth of the download, whichever is larger. A device without that room raises `InsufficientStorage` with the bytes needed and available before a byte is written, and the content stays as it was.
+4. The install downloads the header and the encrypted index of every shard it needs records from, once, which the store keeps, and then the records alone, in ranges that `RangePlanner` joins, with four requests at once. Every record is checked against the signed catalog and the index of its shard, authenticated and decoded on the task pool before the store keeps it, so nothing unverified enters the store.
+5. Only once every record is verified does the install write the manifest and a new state that names the new content as active and the content before it as previous, after the records and the manifest are on the disk. The new content plays from the next start of the app.
+
+A request for a record that another request is downloading waits for the same download, and cancelling one request stops only the downloads that no other request needs. A download that stops keeps the first bytes of the record it was receiving in the staging folder of the store, with the validator of the response, and the next attempt asks only for the rest of that record, in a range that starts with it. A crash, a lost network or a full disk at any point leaves the content the app plays as it was, the records already verified serve the next attempt, and an attempt after a restart downloads only what is still missing.
+
+When the app starts, the release opens the content that the state names as active, verifies its manifest again, checks it against the build and decrypts its catalog. Content that fails any of these, such as a manifest that the device damaged or lost, falls back to the previous content and then to the content that ships with the app, and the release records why in `getRecovery`, so damaged downloads never keep an app from starting. A store that the device refuses to open leaves the app with the content it ships. A collection keeps the records of the content that ships with the app, of the active and of the previous content, and removes the rest.
+
+| Platform | Folder of the store |
+| --- | --- |
+| macOS, iOS and iPadOS, Mac Catalyst | `Application Support/<identifier>-content`, left out of backups. |
+| tvOS | `Caches/<identifier>-content`, which the system may clear, after which downloads bring the content back. |
+| Android | `no_backup/<identifier>-content` of the data folder of the app, which Android leaves out of its backups. |
+| Windows | `%LOCALAPPDATA%\<identifier>\Content`, which never roams with the profile. |
+| Linux | `$XDG_CACHE_HOME/<identifier>/content`, by default `~/.cache/<identifier>/content`. |
 
 ## Local store
 
@@ -472,6 +494,7 @@ Failures of protected content raise `content::Error` of `haylen/content/Error.hp
 | `DiskFull` | The device has no room for what the store writes. |
 | `PermissionDenied` | The device does not let the store write its folder. |
 | `CacheCorrupt` | A file of the local store is damaged, such as a record that fails its checks, which the store removes so a download replaces it. |
+| `InsufficientStorage` | The device lacks the room an update needs, which the error names with the room that is free. |
 
 ## Security
 

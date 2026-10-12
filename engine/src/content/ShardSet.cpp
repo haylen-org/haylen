@@ -88,8 +88,7 @@ void ShardSet::readRecord(const Catalog::Chunk& chunk, std::vector<std::uint8_t>
     // A record of the store passes the same checks as one of a shard against the signed catalog, and one that fails leaves the store so a download replaces it.
     try {
         const ChunkRecord record = ChunkRecord::parse(std::span(scratch).first<ChunkRecord::kHeaderSize>());
-        const bool matchesCatalog = record.storedId == chunk.storedId && record.contentId == chunk.contentId && record.codec == chunk.codec && record.profile == chunk.profile && record.plainSize == chunk.plainSize && record.encodedSize == chunk.encodedSize;
-        if (!matchesCatalog || scratch.size() != record.getRecordSize()) {
+        if (!record.describes(chunk) || scratch.size() != record.getRecordSize()) {
             throw Error(Error::Code::CorruptChunk, "The record does not match its catalog.");
         }
         record.open(*keys->get(keyId), std::span(scratch).subspan(ChunkRecord::kHeaderSize), plain);

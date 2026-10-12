@@ -4099,7 +4099,10 @@ def command_content_publish(args: argparse.Namespace) -> None:
     tool = content_tool(args.engine_config, args.jobs)
     keys = ensure_keys(app, tool)
     terminal.step(f'Publishing the content of `{shown_path(app.folder)}` to the channel "{args.channel}" of `{shown_path(Path(args.output).resolve())}`')
-    run([tool, "publish", app.folder, "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.version_code), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache"])
+    # The first generation of a channel keeps the shards of the release that ships with the app, so installed apps download only what changed.
+    release = release_folder(app, CONTENT_PROFILES[args.platform])
+    shipped = ["--release", release] if (release / "content.hmanifest").is_file() else []
+    run([tool, "publish", app.folder, "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.version_code), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache", *shipped])
 
 
 def command_content_compact(args: argparse.Namespace) -> None:

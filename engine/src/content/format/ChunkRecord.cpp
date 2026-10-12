@@ -113,4 +113,8 @@ void ChunkRecord::open(const ContentKey& key, std::span<std::uint8_t> ciphertext
     }
 }
 
+bool ChunkRecord::describes(const Catalog::Chunk& chunk) const noexcept {
+    return storedId == chunk.storedId && contentId == chunk.contentId && codec == chunk.codec && profile == chunk.profile && plainSize == chunk.plainSize && encodedSize == chunk.encodedSize;
+}
+
 } // namespace haylen::content

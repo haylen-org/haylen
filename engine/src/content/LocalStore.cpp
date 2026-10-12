@@ -241,6 +241,19 @@ void LocalStore::writePartial(const PartialRecord& partial) {
     files->write(getPartialName(partial.shardId, partial.recordOffset), partial.write());
 }
 
+std::vector<PartialRecord> LocalStore::listPartials() const {
+    std::vector<PartialRecord> partials;
+    for (const std::string& name : files->list(std::string(kStagingFolder))) {
+        const std::optional<std::vector<std::uint8_t>> bytes = files->read(std::string(kStagingFolder) + "/" + name);
+        try {
+            if (bytes) {
+                partials.push_back(PartialRecord::parse(*bytes));
+            }
+        } catch (const Error&) {}
+    }
+    return partials;
+}
+
 void LocalStore::removePartial(const Digest& shard, std::uint64_t recordOffset) {
     std::scoped_lock write(writeMutex);
     files->remove(getPartialName(shard, recordOffset));

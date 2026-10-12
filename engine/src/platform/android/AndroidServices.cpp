@@ -9,6 +9,7 @@
 #include <utility>
 #include <variant>
 
+#include "content/FolderStoreFiles.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
@@ -61,13 +62,18 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     AAssetManager* manager = AndroidActivity::getNative().assetManager;
     const AndroidAssetReader::Handle manifest(AAssetManager_open(manager, ("app/" + std::string(content::ReleasePackage::kAppManifestFile)).c_str(), AASSET_MODE_UNKNOWN), &AAsset_close);
     if (manifest != nullptr) {
-        return content::ReleasePackage::openBundled(AndroidAssetPackage::openFlat(manager, "app"), content::Bootstrap::find());
+        return content::ReleasePackage::openBundled(AndroidAssetPackage::openFlat(manager, "app"), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
     return AndroidAssetPackage::openIndexed(manager, "app");
 }
 
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
     return std::filesystem::path(AndroidActivity::getNative().internalDataPath) / std::string(identifier);
+}
+
+// Downloaded content comes back with a download, so it lives in the folder of the app that Android leaves out of its backups, next to the files folder.
+std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+    return std::filesystem::path(AndroidActivity::getNative().internalDataPath).parent_path() / "no_backup" / (std::string(identifier) + "-content");
 }
 
 void Services::persistUserData() {}

@@ -294,6 +294,7 @@ void ContentTool::runPublish(Arguments& arguments) {
     ChannelPublisher::Options options{.profile = arguments.takeOption("profile"), .appBuild = arguments.takeNumber("build"), .channel = arguments.takeOption("channel")};
     const std::filesystem::path tree = arguments.takeOption("output");
     const std::optional<std::string> cache = arguments.takeOptional("cache");
+    options.release = arguments.takeOptional("release").value_or("");
     arguments.finish();
 
     const std::shared_ptr<const io::Package> package = io::Package::openDirectory(app);

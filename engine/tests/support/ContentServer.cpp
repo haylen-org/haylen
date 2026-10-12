@@ -161,7 +161,7 @@ void ContentServer::serve(const std::string& target, const std::string& range, c
         response.set("Content-Range", std::format("bytes {}-{}/{}", sent, last, size));
     }
     response.setContentLength64(static_cast<Poco::Int64>(length));
-    const bool drop = drops.load() > 0 && drops.fetch_sub(1) > 0;
+    const bool drop = length > dropBytes.load() && drops.load() > 0 && drops.fetch_sub(1) > 0;
     if (drop) {
         response.setKeepAlive(false);
     }

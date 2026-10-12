@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "content/FolderStoreFiles.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
@@ -46,7 +47,7 @@ std::vector<std::string> Services::getNativePlugins() {
 std::shared_ptr<io::Package> Services::openBundledPackage() {
     const std::filesystem::path directory = std::filesystem::read_symlink("/proc/self/exe").parent_path();
     if (std::filesystem::is_directory(directory / "app")) {
-        return content::ReleasePackage::openBundled(io::Package::openDirectory(directory / "app"), content::Bootstrap::find());
+        return content::ReleasePackage::openBundled(io::Package::openDirectory(directory / "app"), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
     return io::Package::open(directory / "app.zip");
 }
@@ -60,6 +61,18 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
         throw std::runtime_error("The home folder is unknown, so there is no place for user data.");
     }
     return std::filesystem::path(home) / ".local" / "share" / std::string(identifier);
+}
+
+// Downloaded content comes back with a download, so it lives among the caches of the user.
+std::filesystem::path Services::getContentStoreDirectory(std::string_view identifier) {
+    if (const char* cache = std::getenv("XDG_CACHE_HOME"); cache != nullptr && *cache != '\0') {
+        return std::filesystem::path(cache) / std::string(identifier) / "content";
+    }
+    const char* home = std::getenv("HOME");
+    if (home == nullptr) {
+        throw std::runtime_error("The home folder is unknown, so there is no place for downloaded content.");
+    }
+    return std::filesystem::path(home) / ".cache" / std::string(identifier) / "content";
 }
 
 void Services::persistUserData() {}

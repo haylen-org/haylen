@@ -51,6 +51,9 @@ class Services final {
     [[nodiscard]] static std::shared_ptr<io::Package> openBundledPackage();
 
     [[nodiscard]] static std::filesystem::path getUserDataDirectory(std::string_view identifier);
+
+    // The folder of the local content store of an app, apart from its user data so clearing one never touches the other, in a place the system does not back up.
+    [[nodiscard]] static std::filesystem::path getContentStoreDirectory(std::string_view identifier);
     static void persistUserData();
 
     // Whether the platform has a desktop, where the app runs in a window that moves among other windows, which Windows, macOS and Linux have.

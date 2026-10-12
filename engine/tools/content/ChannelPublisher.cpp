@@ -11,6 +11,8 @@
 #include <utility>
 
 #include "content/HpakPackage.hpp"
+#include "content/PublicationLayout.hpp"
+#include "content/ReleasePackage.hpp"
 #include "content/ShardSet.hpp"
 #include "content/format/Chunker.hpp"
 #include "haylen/content/Error.hpp"
@@ -19,19 +21,6 @@
 namespace haylen::content {
 
 ChannelPublisher::ChannelPublisher(std::shared_ptr<const KeyRing> contentKeys, const Digest& activeKeyId, std::shared_ptr<const SigningKey> signing, std::shared_ptr<const RecordCache> recordCache) : keys(contentKeys), signingKey(signing), builder(std::move(contentKeys), activeKeyId, std::move(signing), std::move(recordCache)) {}
-
-std::filesystem::path ChannelPublisher::getPackPath(const ShardReference& pack) {
-    const std::string name = pack.getFileName();
-    return std::filesystem::path(kPacksFolder) / name.substr(0, 2) / name;
-}
-
-std::filesystem::path ChannelPublisher::getManifestPath(const Digest& manifest) {
-    return std::filesystem::path(kManifestsFolder) / (manifest.toHex() + ".hmanifest");
-}
-
-std::filesystem::path ChannelPublisher::getChannelPath(std::string_view channel) {
-    return std::filesystem::path(kChannelsFolder) / (std::string(channel) + ".hchannel");
-}
 
 ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, const std::filesystem::path& tree, const Options& options) const {
     if (options.channel.empty() || !Manifest::isValidName(options.channel)) {
@@ -46,6 +35,8 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
             throw std::invalid_argument("The channel \"" + options.channel + "\" of the tree belongs to another app.");
         }
         earlier = readManifest(tree, current->manifest);
+    } else if (!options.release.empty()) {
+        earlier = builder.readManifest(options.release / ReleasePackage::kContentManifestFile);
     }
 
     // New packs grow in a staging folder of the tree, so moving them into place never copies them, and a failed publish leaves them where the next one clears them.
@@ -56,9 +47,19 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
     ReleaseBuilder::DomainBuild built = builder.buildDomain(app, ReleaseBuilder::listFiles(app, config, Manifest::Domain::Content), envelope, earlier ? &*earlier : nullptr, staging, options.shardTarget);
 
     Publication publication{.generation = envelope.generation, .statistics = built.result.statistics};
+
+    // The first generation publishes the shards it keeps from the release too, since no generation before it did.
+    for (std::size_t index = 0; index < built.result.keptShards && !current; ++index) {
+        const ShardReference& pack = built.result.shards[index];
+        if (!std::filesystem::exists(tree / PublicationLayout::getPackPath(pack))) {
+            std::filesystem::create_directories((tree / PublicationLayout::getPackPath(pack)).parent_path());
+            std::filesystem::copy_file(options.release / pack.getFileName(), tree / PublicationLayout::getPackPath(pack));
+            publication.newPacks.push_back(pack);
+        }
+    }
     for (std::size_t index = built.result.keptShards; index < built.result.shards.size(); ++index) {
         const ShardReference& pack = built.result.shards[index];
-        placeImmutable(staging / pack.getFileName(), tree / getPackPath(pack));
+        placeImmutable(staging / pack.getFileName(), tree / PublicationLayout::getPackPath(pack));
         publication.newPacks.push_back(pack);
     }
 
@@ -66,20 +67,20 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
     const Manifest manifest = Manifest::read(built.manifest, std::span(&trusted, 1));
     publication.manifest = manifest.getId();
     writeFile(staging / "manifest", built.manifest);
-    placeImmutable(staging / "manifest", tree / getManifestPath(manifest.getId()));
+    placeImmutable(staging / "manifest", tree / PublicationLayout::getManifestPath(manifest.getId()));
     verify(tree, manifest);
 
     // The channel moves to the new generation only now that every file it reaches is in place and verified.
     const ChannelDescriptor descriptor{.application = application, .channel = options.channel, .generation = envelope.generation, .manifest = manifest.getId()};
     writeFile(staging / "channel", descriptor.write(*signingKey));
-    std::filesystem::create_directories((tree / getChannelPath(options.channel)).parent_path());
-    std::filesystem::rename(staging / "channel", tree / getChannelPath(options.channel));
+    std::filesystem::create_directories((tree / PublicationLayout::getChannelPath(options.channel)).parent_path());
+    std::filesystem::rename(staging / "channel", tree / PublicationLayout::getChannelPath(options.channel));
     std::filesystem::remove_all(staging);
     return publication;
 }
 
 std::optional<ChannelDescriptor> ChannelPublisher::readChannel(const std::filesystem::path& tree, std::string_view channel) const {
-    std::ifstream stream(tree / getChannelPath(channel), std::ios::binary);
+    std::ifstream stream(tree / PublicationLayout::getChannelPath(channel), std::ios::binary);
     if (!stream) {
         return std::nullopt;
     }
@@ -93,7 +94,7 @@ std::optional<ChannelDescriptor> ChannelPublisher::readChannel(const std::filesy
 }
 
 Manifest ChannelPublisher::readManifest(const std::filesystem::path& tree, const Digest& manifest) const {
-    std::ifstream stream(tree / getManifestPath(manifest), std::ios::binary);
+    std::ifstream stream(tree / PublicationLayout::getManifestPath(manifest), std::ios::binary);
     if (!stream) {
         throw Error(Error::Code::MissingManifest, "The tree has no manifest \"" + manifest.toHex() + "\", which a channel names.");
     }
@@ -107,7 +108,7 @@ Manifest ChannelPublisher::readManifest(const std::filesystem::path& tree, const
 
 void ChannelPublisher::verify(const std::filesystem::path& tree, const Manifest& manifest) const {
     for (const ShardReference& pack : manifest.getEnvelope().shards) {
-        const std::filesystem::path file = tree / getPackPath(pack);
+        const std::filesystem::path file = tree / PublicationLayout::getPackPath(pack);
         if (!std::filesystem::is_regular_file(file)) {
             throw Error(Error::Code::MissingShard, "The tree has no pack \"" + pack.getFileName() + "\", which its manifest names.");
         }
@@ -119,7 +120,7 @@ void ChannelPublisher::verify(const std::filesystem::path& tree, const Manifest&
     const std::shared_ptr<const io::Package> files = io::Package::openDirectory(tree);
     // clang-format off
     const HpakPackage package("publication", std::make_shared<const Catalog>(manifest.decryptCatalog(*keys)), std::make_shared<const ShardSet>(manifest.getEnvelope().shards, keys, [files](const ShardReference& pack) {
-        return files->openReader(getPackPath(pack).generic_string());
+        return files->openReader(PublicationLayout::getPackPath(pack));
     }));
     // clang-format on
     std::vector<std::uint8_t> buffer(Chunker::kMaximumSize);
@@ -158,30 +159,30 @@ ChannelPublisher::Compaction ChannelPublisher::compact(const std::filesystem::pa
         throw std::invalid_argument("A compaction keeps at least the current generation of every channel.");
     }
 
-    if (!std::filesystem::is_directory(tree / kChannelsFolder)) {
-        throw std::invalid_argument("The folder \"" + tree.generic_string() + "\" is not a publication tree, because it has no \"" + std::string(kChannelsFolder) + "\" folder.");
+    if (!std::filesystem::is_directory(tree / PublicationLayout::kChannelsFolder)) {
+        throw std::invalid_argument("The folder \"" + tree.generic_string() + "\" is not a publication tree, because it has no \"" + std::string(PublicationLayout::kChannelsFolder) + "\" folder.");
     }
 
     // Every channel keeps its current manifest and the ones before it, up to the count, with every pack they name.
     std::set<std::filesystem::path> kept;
-    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(tree / kChannelsFolder)) {
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(tree / PublicationLayout::kChannelsFolder)) {
         const std::optional<ChannelDescriptor> descriptor = entry.path().extension() == ".hchannel" ? readChannel(tree, entry.path().stem().generic_string()) : std::nullopt;
         if (!descriptor) {
             continue;
         }
         Digest next = descriptor->manifest;
-        for (std::uint64_t generation = 0; generation < keep && !next.isZero() && std::filesystem::exists(tree / getManifestPath(next)); ++generation) {
+        for (std::uint64_t generation = 0; generation < keep && !next.isZero() && std::filesystem::exists(tree / PublicationLayout::getManifestPath(next)); ++generation) {
             const Manifest manifest = readManifest(tree, next);
-            kept.insert(getManifestPath(next));
+            kept.insert(PublicationLayout::getManifestPath(next));
             for (const ShardReference& pack : manifest.getEnvelope().shards) {
-                kept.insert(getPackPath(pack));
+                kept.insert(PublicationLayout::getPackPath(pack));
             }
             next = manifest.getEnvelope().previousManifest;
         }
     }
 
     Compaction compaction;
-    for (const std::string_view folder : {kManifestsFolder, kPacksFolder}) {
+    for (const std::string_view folder : {PublicationLayout::kManifestsFolder, PublicationLayout::kPacksFolder}) {
         if (!std::filesystem::is_directory(tree / folder)) {
             continue;
         }
@@ -193,7 +194,7 @@ ChannelPublisher::Compaction ChannelPublisher::compact(const std::filesystem::pa
         }
         for (const std::filesystem::path& file : removed) {
             compaction.bytes += std::filesystem::file_size(file);
-            ++(folder == kManifestsFolder ? compaction.manifests : compaction.packs);
+            ++(folder == PublicationLayout::kManifestsFolder ? compaction.manifests : compaction.packs);
             std::filesystem::remove(file);
         }
     }

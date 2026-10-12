@@ -45,6 +45,12 @@ class ReleaseFixture final {
     [[nodiscard]] const content::SigningKey& getSigningKey() const noexcept {
         return *signingKey;
     }
+    [[nodiscard]] const std::shared_ptr<const content::SigningKey>& getSharedSigningKey() const noexcept {
+        return signingKey;
+    }
+    [[nodiscard]] const content::Digest& getContentKeyId() const noexcept {
+        return contentKeyId;
+    }
     [[nodiscard]] std::shared_ptr<const content::ContentKey> getContentKey() const;
     [[nodiscard]] content::Compatibility getCompatibility() const;
     [[nodiscard]] const content::ContentBuilder::Statistics& getStatistics(content::Manifest::Domain domain) const;
