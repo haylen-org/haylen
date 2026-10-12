@@ -45,7 +45,7 @@ print('fullscreen:', window.fullscreen())
 
 ### window.setFullscreen(enabled)
 
-Switches between fullscreen and windowed mode. Nothing happens when the window is already in the requested mode. Every change, from the app or from the player, publishes the `windowFullscreenChanged` event of [`haylen.events`](events.md#engine-events) on the next frame.
+Switches between fullscreen and windowed mode. Nothing happens when the window is already in the requested mode. Every change, from the app or from the player, publishes the `windowFullscreenChanged` event of [`haylen.events`](events.md#engine-events) on the next frame. On the web the page goes fullscreen with the element that holds the canvas, so the dialogs and the views of plugins stay over the app, and browsers grant it only shortly after a click, a tap or a key of the person, so the `fullscreen` key of `app.json` leaves a page as it loads.
 
 ```lua
 local window = require('haylen.window')

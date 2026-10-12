@@ -254,7 +254,7 @@ scene.push({
 
 ### input.mouseScroll()
 
-Returns the scroll of this frame as two numbers, horizontal and vertical, in steps of a wheel, with positive values for scrolling to the left and up. A step of a mouse wheel counts as 1 on every platform, and a trackpad counts every 40 points of the screen it moves as a step. The scroll speed of [`input.setScrollSpeed()`](#inputsetscrollspeedspeed) multiplies both.
+Returns the scroll of this frame as two numbers, horizontal and vertical, in steps of a wheel, with positive values for scrolling to the left and up. A step of a mouse wheel counts as 1, and a trackpad counts every 40 points of the screen it moves as a step. Chromium and Safari report most mouse wheels to a page in points, about 100 for a step, so there a step counts as about 2.5. The scroll speed of [`input.setScrollSpeed()`](#inputsetscrollspeedspeed) multiplies both.
 
 ```lua
 local input = require('haylen.input')

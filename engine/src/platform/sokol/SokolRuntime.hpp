@@ -152,6 +152,9 @@ class SokolRuntime final {
     ReportedState reported;
     bool playing = false;
 
+    // Whether `sokol_app` initialized, from when on the runtime plays the apps that replace each other.
+    bool initialized = false;
+
     // Whether the app took the last press of the back button, so its release goes to the same place.
     bool backCaptured = false;
 

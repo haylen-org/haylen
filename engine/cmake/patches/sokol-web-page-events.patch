@@ -1,0 +1,50 @@
+--- a/sokol_app.h
++++ b/sokol_app.h
+@@ -7580,6 +7580,11 @@
+ #ifdef __cplusplus
+ } /* extern "C" */
+ #endif
++
++/* A page that hosts the app next to elements of its own, such as an editor, keeps their keys from the app by naming the time stamp of each one in `Module.sappIgnoredKey`, so those elements still hear their keys. */
++EM_JS(int, sapp_js_is_ignored_key, (double timestamp), {
++    return Module.sappIgnoredKey === timestamp ? 1 : 0;
++});
+ 
+ EM_JS(void, sapp_js_add_beforeunload_listener, (void), {
+     Module.sokol_beforeunload = (event) => {
+@@ -8321,6 +8326,9 @@
+ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_key_cb(int emsc_type, const EmscriptenKeyboardEvent* emsc_event, void* user_data) {
+     _SOKOL_UNUSED(user_data);
+     bool consume_event = false;
++    if (sapp_js_is_ignored_key(emsc_event->timestamp)) {
++        return false;
++    }
+     if (_sapp_events_enabled()) {
+         sapp_event_type type;
+         switch (emsc_type) {
+@@ -8433,8 +8441,11 @@
+ 
+ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_focus_cb(int emsc_type, const EmscriptenFocusEvent* emsc_event, void* user_data) {
+     _SOKOL_UNUSED(emsc_type);
+-    _SOKOL_UNUSED(emsc_event);
+     _SOKOL_UNUSED(user_data);
++    /* Only the window gaining or losing the focus is a change of the focus of the app, while the focus moves between the elements of the page. */
++    if (strcmp(emsc_event->nodeName, "#window") != 0) {
++        return false;
++    }
+     if (_sapp_events_enabled()) {
+         _sapp_init_event(SAPP_EVENTTYPE_FOCUSED);
+         _sapp_call_event(&_sapp.event);
+@@ -8444,8 +8455,11 @@
+ 
+ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_blur_cb(int emsc_type, const EmscriptenFocusEvent* emsc_event, void* user_data) {
+     _SOKOL_UNUSED(emsc_type);
+-    _SOKOL_UNUSED(emsc_event);
+     _SOKOL_UNUSED(user_data);
++    /* Only the window gaining or losing the focus is a change of the focus of the app, while the focus moves between the elements of the page. */
++    if (strcmp(emsc_event->nodeName, "#window") != 0) {
++        return false;
++    }
+     if (_sapp_events_enabled()) {
+         _sapp_init_event(SAPP_EVENTTYPE_UNFOCUSED);
+         _sapp_call_event(&_sapp.event);

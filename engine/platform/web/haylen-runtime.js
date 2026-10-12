@@ -109,6 +109,24 @@ Module.haylen = Module.haylen || {};
         });
     };
 
+    // Calls an export of the engine with `ccall`, but with every string argument copied to the heap of the program for the duration of the call, because `ccall` copies strings onto its stack, which a large payload, such as the JSON of a result or the text of a long text area, would overflow.
+    const callEngine = (name, returns, types, values) => {
+        const owned = [];
+        const args = values.map((value, index) => {
+            if (types[index] !== "string") {
+                return value;
+            }
+            const address = Module.stringToNewUTF8(value);
+            owned.push(address);
+            return address;
+        });
+        try {
+            return Module.ccall(name, returns, types.map((type) => (type === "string" ? "number" : type)), args);
+        } finally {
+            owned.forEach((address) => Module._free(address));
+        }
+    };
+
     // Copies the buffers into wasm memory with a table of an address and a size for each, for the duration of a call that copies them into the engine.
     const withBuffers = (buffers, body) => {
         const addresses = buffers.map((buffer) => {
@@ -140,7 +158,7 @@ Module.haylen = Module.haylen || {};
     };
 
     const sendEvent = (event, json, buffers, flags) => {
-        withBuffers(buffers, (table, count) => Module.ccall("haylen_web_emit", null, ["string", "string", "number", "number", "number"], [event, json, table, count, flags]));
+        withBuffers(buffers, (table, count) => callEngine("haylen_web_emit", null, ["string", "string", "number", "number", "number"], [event, json, table, count, flags]));
     };
 
     // Sends an event to the app, which receives it through `haylen.platform.on`, with `ArrayBuffer` and `Uint8Array` values as bytes. An event that nothing listens to is dropped, unless `options.retain` is `true`: then it waits for the first listener of its name. The events of a name with `options.batched` that arrive in one frame reach the app as one list in order. Events sent before the first app started reach it once it starts.
@@ -173,7 +191,7 @@ Module.haylen = Module.haylen || {};
                 return;
             }
             const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
-            withBuffers(encoded.buffers, (table, count) => Module.ccall("haylen_web_resolve", null, ["number", "number", "string", "number", "number"], [call, ok ? 1 : 0, encoded.json, table, count]));
+            withBuffers(encoded.buffers, (table, count) => callEngine("haylen_web_resolve", null, ["number", "number", "string", "number", "number"], [call, ok ? 1 : 0, encoded.json, table, count]));
         };
         const handler = handlers.get(method);
         const controller = new AbortController();
@@ -220,7 +238,7 @@ Module.haylen = Module.haylen || {};
             screen.popup.close();
         }
         const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
-        withBuffers(encoded.buffers, (table, count) => Module.ccall("haylen_web_finish_screen", null, ["number", "number", "string", "number", "number"], [screen.id, ok ? 1 : 0, encoded.json, table, count]));
+        withBuffers(encoded.buffers, (table, count) => callEngine("haylen_web_finish_screen", null, ["number", "number", "string", "number", "number"], [screen.id, ok ? 1 : 0, encoded.json, table, count]));
     };
 
     // A popup answers with `{haylenScreen: token, result}` or `{haylenScreen: token, error: {message, code, data}}`, which its page posts to the opener, from an origin the screen trusts, or on the `BroadcastChannel` `haylen-screens`, which only pages of this origin reach and which works even when the popup lost its opener.
@@ -347,7 +365,7 @@ Module.haylen = Module.haylen || {};
             settled = true;
             const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
             const buffers = encoded.buffers.map((buffer) => buffer.slice());
-            whenRuntimeReady(() => withBuffers(buffers, (table, count) => Module.ccall("haylen_web_restore_screen", null, ["string", "string", "string", "number", "string", "number", "number"], [record.plugin, record.screen, JSON.stringify(record.state), ok ? 1 : 0, encoded.json, table, count])));
+            whenRuntimeReady(() => withBuffers(buffers, (table, count) => callEngine("haylen_web_restore_screen", null, ["string", "string", "string", "number", "string", "number", "number"], [record.plugin, record.screen, JSON.stringify(record.state), ok ? 1 : 0, encoded.json, table, count])));
         };
         return { id: record.id, name: record.screen, token: record.token, resolve: (value) => restore(true, value), reject: (error) => restore(false, describeFailure(error)) };
     };
@@ -385,10 +403,11 @@ Module.haylen = Module.haylen || {};
         return value;
     };
 
-    // The safe area insets of the page in page pixels, as far as they reach into the canvas box.
+    // The safe area insets of the canvas box in page pixels, from the canvas pixels that `haylen.safeAreaInsets` reports as far as the insets reach into the box.
     const safeInsets = (box) => {
-        const [left, top, right, bottom] = haylen.safeAreaInsets().map((value) => value / (window.devicePixelRatio || 1));
-        return { left: Math.max(0, left - box.left), top: Math.max(0, top - box.top), right: Math.max(0, right - (window.innerWidth - box.right)), bottom: Math.max(0, bottom - (window.innerHeight - box.bottom)) };
+        const scale = box.width > 0 ? Module.canvas.width / box.width : 1;
+        const [left, top, right, bottom] = haylen.safeAreaInsets().map((value) => value / scale);
+        return { left, top, right, bottom };
     };
 
     // Tells the engine only what changed, and insets of `null` release the edge of the item.
@@ -400,9 +419,9 @@ Module.haylen = Module.haylen || {};
         item.reserved = insets;
         const key = item.key;
         if (insets) {
-            whenRuntimeReady(() => Module.ccall("haylen_web_reserve_insets", null, ["string", "number", "number", "number", "number"], [key, insets.left, insets.top, insets.right, insets.bottom]));
+            whenRuntimeReady(() => callEngine("haylen_web_reserve_insets", null, ["string", "number", "number", "number", "number"], [key, insets.left, insets.top, insets.right, insets.bottom]));
         } else {
-            whenRuntimeReady(() => Module.ccall("haylen_web_release_insets", null, ["string"], [key]));
+            whenRuntimeReady(() => callEngine("haylen_web_release_insets", null, ["string"], [key]));
         }
     };
 
@@ -536,7 +555,7 @@ Module.haylen = Module.haylen || {};
 
     const answerDialog = (id, answer) => {
         if (dialogs.open.delete(id)) {
-            Module.ccall("haylen_web_resolve_dialog", null, ["number", "string"], [id, JSON.stringify(answer)]);
+            callEngine("haylen_web_resolve_dialog", null, ["number", "string"], [id, JSON.stringify(answer)]);
         }
     };
 
@@ -781,7 +800,7 @@ Module.haylen = Module.haylen || {};
     // A video stream draws each source into a canvas of its size and copies the RGBA pixels into wasm memory, where the engine keeps the newest frame for its texture. Pushes before the runtime is ready, and of a video without its first frame yet, are dropped and return `false`.
     const openVideoStream = (id, name) => {
         const stream = { handle: 0, canvas: null, context: null, memory: 0, size: 0 };
-        openStream(stream, () => Module.ccall("haylen_web_open_video_stream", "number", ["string", "string"], [id, name]));
+        openStream(stream, () => callEngine("haylen_web_open_video_stream", "number", ["string", "string"], [id, name]));
         return {
             push(source, timestamp) {
                 const [width, height] = sourceSize(source);
@@ -806,7 +825,7 @@ Module.haylen = Module.haylen || {};
     const openAudioStream = (id, name, options) => {
         const { sampleRate, channels, capacity } = { capacity: options.sampleRate, ...options };
         const stream = { handle: 0, memory: 0, size: 0 };
-        openStream(stream, () => Module.ccall("haylen_web_open_audio_stream", "number", ["string", "string", "number", "number", "number"], [id, name, sampleRate, channels, capacity]));
+        openStream(stream, () => callEngine("haylen_web_open_audio_stream", "number", ["string", "string", "number", "number", "number"], [id, name, sampleRate, channels, capacity]));
         return {
             push(samples) {
                 if (samples.length % channels !== 0) {
@@ -986,7 +1005,22 @@ Module.haylen = Module.haylen || {};
     };
 
     // Reads `env(safe-area-inset-*)` of the viewport through a hidden probe and returns the part of each inset that covers the canvas, in framebuffer pixels, so a canvas away from the edges that a cutout or the bars of the system cover has none.
+    // The safe area and the fold change only with the layout of the page, so the engine, which asks for them in every frame, reads them once after each change of the size, the scroll or the posture of the page.
+    const pageLayout = { safeArea: null, fold: undefined };
+    const forgetLayout = () => {
+        pageLayout.safeArea = null;
+        pageLayout.fold = undefined;
+    };
+    window.addEventListener("resize", forgetLayout);
+    window.addEventListener("scroll", forgetLayout, { passive: true });
+    if (navigator.devicePosture) {
+        navigator.devicePosture.addEventListener("change", forgetLayout);
+    }
+
     haylen.safeAreaInsets = function () {
+        if (pageLayout.safeArea) {
+            return pageLayout.safeArea;
+        }
         let probe = document.getElementById("haylen-safe-area");
         if (!probe) {
             probe = document.createElement("div");
@@ -1003,11 +1037,19 @@ Module.haylen = Module.haylen || {};
             parseFloat(style.paddingRight) - (window.innerWidth - box.right),
             parseFloat(style.paddingBottom) - (window.innerHeight - box.bottom),
         ];
-        return covered.map((inset) => Math.max(0, inset || 0) * scale);
+        pageLayout.safeArea = covered.map((inset) => Math.max(0, inset || 0) * scale);
+        return pageLayout.safeArea;
     };
 
     // Reads the segments of the viewport, which a browser on a foldable or dual-screen device splits at the fold, and the posture of the device, and returns the fold across the canvas in framebuffer pixels as `[left, top, right, bottom, vertical, halfOpened, separating, occluding]`, or `null` while the viewport has one segment.
     haylen.fold = function () {
+        if (pageLayout.fold === undefined) {
+            pageLayout.fold = readFold();
+        }
+        return pageLayout.fold;
+    };
+
+    const readFold = () => {
         const segments = window.viewport && window.viewport.segments;
         if (!segments || segments.length < 2) {
             return null;
@@ -1061,14 +1103,14 @@ Module.haylen = Module.haylen || {};
         const pointer = Module._malloc(data.length);
         Module.HEAPU8.set(data, pointer);
         try {
-            checked(Module.ccall("haylen_web_set_file", "number", ["string", "number", "number"], [path, pointer, data.length]));
+            checked(callEngine("haylen_web_set_file", "number", ["string", "number", "number"], [path, pointer, data.length]));
         } finally {
             Module._free(pointer);
         }
     };
 
     haylen.removeFile = function (path) {
-        return checked(Module.ccall("haylen_web_remove_file", "number", ["string"], [path])) === 1;
+        return checked(callEngine("haylen_web_remove_file", "number", ["string"], [path])) === 1;
     };
 
     haylen.run = function () {
@@ -1109,14 +1151,14 @@ Module.haylen = Module.haylen || {};
     const sockets = new Map();
 
     haylen.openSocket = function (id, url, protocols) {
-        const report = (name, types, values) => Module.ccall(name, null, ["number", ...types], [id, ...values]);
+        const report = (name, types, values) => callEngine(name, null, ["number", ...types], [id, ...values]);
         let socket;
         try {
             socket = new WebSocket(url, protocols);
         } catch (error) {
             // An address the browser rejects fails later, like any connection that fails.
             setTimeout(() => {
-                report("haylen_web_socket_failed", ["string"], [String(error.message)]);
+                report("haylen_web_socket_failed", ["string"], ["The WebSocket connection to \"" + url + "\" failed. " + String(error.message)]);
                 report("haylen_web_socket_closed", ["number", "string"], [1006, ""]);
             });
             return;
@@ -1214,13 +1256,13 @@ Module.haylen = Module.haylen || {};
         const composition = text.composition;
         const start = composition ? toCodePoints(value, composition.start) : -1;
         const end = composition ? toCodePoints(value, Math.min(value.length, composition.start + composition.length)) : -1;
-        Module.ccall("haylen_web_text_edited", null, ["number", "number", "string", "number", "number", "number", "number"], [field.id, field.revision, value, toCodePoints(value, target.selectionStart), toCodePoints(value, target.selectionEnd), start, end]);
+        callEngine("haylen_web_text_edited", null, ["number", "number", "string", "number", "number", "number", "number"], [field.id, field.revision, value, toCodePoints(value, target.selectionStart), toCodePoints(value, target.selectionEnd), start, end]);
     };
 
     // Actions are 0 for submit, 1 for next, 2 for cancel and 3 for a keyboard the user closed.
     const act = (action) => {
         if (text.field) {
-            Module.ccall("haylen_web_text_action", null, ["number", "number"], [text.field.id, action]);
+            callEngine("haylen_web_text_action", null, ["number", "number"], [text.field.id, action]);
         }
     };
 
@@ -1238,7 +1280,7 @@ Module.haylen = Module.haylen || {};
         }
         if (frame.some((value, index) => value !== text.keyboard[index])) {
             text.keyboard = frame;
-            Module.ccall("haylen_web_keyboard", null, ["number", "number", "number", "number"], frame);
+            callEngine("haylen_web_keyboard", null, ["number", "number", "number", "number"], frame);
         }
     };
 
@@ -1250,13 +1292,13 @@ Module.haylen = Module.haylen || {};
     // The keys whose press reached `sokol_app`, whose release reaches it too wherever the focus went in between, such as to the field that the press started editing, so no key stays held.
     const held = new Set();
 
-    // The library `sokol_app` listens for keys on the window in the capture phase, before the element sees them. A field of the UI owns every key, so `sokol_app` never applies them twice, and its return, tab and escape become actions. The plain keyboard of `haylen.window.setKeyboardVisible` leaves keys to `sokol_app` and only takes their text.
+    // The library `sokol_app` listens for keys on the window in the capture phase, before the element sees them. The keys of other elements of the page reach those elements and never the app, which `sokol_app` skips by their time stamp. A field of the UI owns every key, so `sokol_app` never applies them twice, and its return, tab and escape become actions. The plain keyboard of `haylen.window.setKeyboardVisible` leaves keys to `sokol_app` and only takes their text.
     const onKey = (event) => {
         if (event.type === "keyup" && held.delete(event.code)) {
             return;
         }
         if (isForeign(event.target)) {
-            event.stopImmediatePropagation();
+            Module.sappIgnoredKey = event.timeStamp;
             if (event.type === "keydown") {
                 keyOfDialog(event);
             }
@@ -1280,7 +1322,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, which `sokol_app` would report as the app losing its focus, so only the focus of the window reaches it. The engine releases every held key when the window loses the focus, so the page forgets them then too. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
+    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, so `sokol_app` reports only the focus of the window. The engine releases every held key when the window loses the focus, so the page forgets them then too. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
     const onFocus = (event) => {
         if (event.target === window) {
             if (event.type === "blur") {
@@ -1288,7 +1330,6 @@ Module.haylen = Module.haylen || {};
             }
             return;
         }
-        event.stopImmediatePropagation();
         if (!isElement(event.target) || event.type !== "blur" || text.finishing) {
             return;
         }
@@ -1570,6 +1611,19 @@ Module.haylen = Module.haylen || {};
     };
 
     // Takes 0 for landscape, 1 for portrait and 2 for any. Browsers refuse the lock outside fullscreen pages on phones, which leaves the orientation free.
+    // Fullscreen covers the element that holds the canvas and the overlay of the runtime, so the dialogs, the fields and the views of plugins stay over the app. Browsers grant it only shortly after an input of the person, and Safari before 16.4 names it with its prefix.
+    haylen.setFullscreen = function (value) {
+        const holder = Module.canvas.parentElement;
+        const current = document.fullscreenElement || document.webkitFullscreenElement;
+        if (value && !current) {
+            const request = holder.requestFullscreen ? holder.requestFullscreen() : holder.webkitRequestFullscreen && holder.webkitRequestFullscreen();
+            Promise.resolve(request).catch((error) => console.warn("The page could not enter fullscreen: " + error.message));
+        } else if (!value && current) {
+            const exit = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen();
+            Promise.resolve(exit).catch((error) => console.warn("The page could not leave fullscreen: " + error.message));
+        }
+    };
+
     haylen.lockOrientation = function (value) {
         const orientation = screen.orientation;
         if (!orientation || !orientation.lock) {

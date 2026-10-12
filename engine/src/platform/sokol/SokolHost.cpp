@@ -12,6 +12,7 @@
 #include <emscripten/emscripten.h>
 
 #include "platform/web/BrowserAudioOutput.hpp"
+#include "platform/web/WebPage.hpp"
 #elif defined(__ANDROID__)
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/JavaBridge.hpp"
@@ -44,11 +45,15 @@ void SokolHost::setFullscreen(bool value) {
     if (sapp_is_fullscreen() == value) {
         return;
     }
+#if defined(__EMSCRIPTEN__)
+    WebPage::setFullscreen(value);
+#else
     sapp_toggle_fullscreen();
     // Leaving fullscreen restores the default style of the window, which may have lost its decorations or its fixed size.
     if (!value) {
         applyStyle();
     }
+#endif
 }
 
 bool SokolHost::isResizable() const noexcept {

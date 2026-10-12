@@ -260,7 +260,7 @@ SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Pac
     } catch (const std::exception& error) {
         core::Log::error("The app could not be loaded: {}", error.what());
         if (app.package == nullptr) {
-            app.package = std::make_shared<io::MemoryPackage>("missing");
+            app.package = withOverlay(std::make_shared<io::MemoryPackage>("missing"));
         }
         app.config = {};
         app.application = std::make_unique<FailedApplication>(std::string("The app could not be loaded. ") + error.what());
@@ -286,7 +286,9 @@ std::shared_ptr<io::Package> SokolRuntime::withOverlay(std::shared_ptr<io::Packa
 void SokolRuntime::onInitialize(void* data) {
     Services::watchWindow();
     NativeApi::setWindow(Services::getNativeWindow());
-    static_cast<SokolRuntime*>(data)->launch();
+    auto& runtime = *static_cast<SokolRuntime*>(data);
+    runtime.initialized = true;
+    runtime.launch();
 }
 
 void SokolRuntime::onFrame(void* data) {
@@ -460,15 +462,14 @@ void SokolRuntime::deliver(const Event& event) {
 
 // The package of the last playing app stays around, so a restart after a stop brings that app back.
 void SokolRuntime::replace(App app) {
-    const bool running = engine != nullptr;
     close();
     if (app.playing) {
         package = app.package;
     }
     pending = std::move(app);
 
-    // Before sokol_app initializes, which on the web waits for the GPU device, the new app simply replaces the one waiting to start.
-    if (running) {
+    // Before sokol_app initializes, which on the web waits for the GPU device, the new app simply replaces the one waiting to start. Once it initialized, the new app starts, also after an app whose engine could not start, which the web page replaces this way.
+    if (initialized) {
         host.setTitle(pending.config.window.title);
         launch();
     }

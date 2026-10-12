@@ -50,6 +50,10 @@ EM_JS(void, haylen_js_reloaded, (const char* json), {
     Module.haylen.reportReloaded(JSON.parse(UTF8ToString(json)));
 });
 
+EM_JS(void, haylen_js_set_fullscreen, (int value), {
+    Module.haylen.setFullscreen(value !== 0);
+});
+
 EM_JS(char*, haylen_js_canvas_selector, (), {
     return stringToNewUTF8(Module.haylen.canvasSelector());
 });
@@ -68,6 +72,10 @@ template <typename Body> int WebPage::answer(Body&& body) {
         lastError = error.what();
         return -1;
     }
+}
+
+void WebPage::setFullscreen(bool value) {
+    haylen_js_set_fullscreen(value ? 1 : 0);
 }
 
 std::string WebPage::getCanvasSelector() {
