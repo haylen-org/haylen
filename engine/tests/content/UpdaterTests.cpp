@@ -41,7 +41,7 @@ class UpdaterTest : public ::testing::Test {
             auto recordStore = std::make_shared<LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
             package = ReleasePackage::open(test.release.getFiles(), test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore));
             downloader = std::make_unique<Downloader>(jobs, transport, package->getStore());
-            updater = std::make_unique<Updater>(package, jobs, transport, *downloader, test.server.getUrl(), "stable");
+            updater = std::make_unique<Updater>(package, jobs, transport, *downloader, core::AppConfig::Content{.updates = core::AppConfig::Content::Updates{.baseUrl = test.server.getUrl()}});
         }
 
         std::shared_ptr<ReleasePackage> package;
@@ -283,7 +283,7 @@ TEST_F(UpdaterTest, ReplacesARecordThatTheDeviceDamaged) {
     const std::shared_ptr<const ReleasePackage::Content> content = client->package->getContent();
     EXPECT_THROW((void)client->package->read("content/maps/level.tmj"), Error);
     std::optional<std::optional<Error>> fetched;
-    const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required));
+    const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
     EXPECT_FALSE(missing.empty());
     client->downloader->fetch(content->shards, missing, [client = client.get()](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); }});
     ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));

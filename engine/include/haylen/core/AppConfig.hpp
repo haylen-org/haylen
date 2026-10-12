@@ -97,10 +97,11 @@ struct AppConfig {
             bool enabled = true;
         };
 
-        // The files under `content` whose path matches the pattern, relative to `content`, take the delivery.
+        // The files under `content` whose path matches the pattern, relative to `content`, take the delivery, and with a pack name they go into shards of that pack, which a store delivers on its own, such as the content of a downloadable expansion.
         struct Rule {
             std::string match;
             content::Delivery mode = content::Delivery::Required;
+            std::string pack;
         };
 
         std::optional<Updates> updates;
@@ -108,6 +109,9 @@ struct AppConfig {
 
         // The delivery of an asset by its path relative to `content`: the mode of the first rule that matches it, or required.
         [[nodiscard]] content::Delivery getDelivery(std::string_view path) const noexcept;
+
+        // The pack of an asset by its path relative to `content`: the pack of the first rule that matches it, empty for the content that is no pack of its own.
+        [[nodiscard]] std::string_view getPack(std::string_view path) const noexcept;
     };
 
     std::string name = "Haylen App";

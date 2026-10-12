@@ -10,6 +10,7 @@
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
+#include "io/CompositePackage.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
@@ -47,7 +48,12 @@ std::vector<std::string> Services::getNativePlugins() {
 std::shared_ptr<io::Package> Services::openBundledPackage() {
     const std::filesystem::path directory = std::filesystem::read_symlink("/proc/self/exe").parent_path();
     if (std::filesystem::is_directory(directory / "app")) {
-        return content::ReleasePackage::openBundled(io::Package::openDirectory(directory / "app"), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
+        // The shards of the packs that a store installs on their own, such as the expansions of a Steam app, land in `packs` next to the release.
+        std::shared_ptr<io::Package> files = io::Package::openDirectory(directory / "app");
+        if (std::filesystem::is_directory(directory / "packs")) {
+            files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{files, io::Package::openDirectory(directory / "packs")});
+        }
+        return content::ReleasePackage::openBundled(std::move(files), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
     return io::Package::open(directory / "app.zip");
 }

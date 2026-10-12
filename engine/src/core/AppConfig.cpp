@@ -37,6 +37,15 @@ content::Delivery AppConfig::Content::getDelivery(std::string_view path) const n
     return content::Delivery::Required;
 }
 
+std::string_view AppConfig::Content::getPack(std::string_view path) const noexcept {
+    for (const Rule& rule : delivery) {
+        if (io::Path::matches(rule.match, path)) {
+            return rule.pack;
+        }
+    }
+    return {};
+}
+
 // A server of content is reached over HTTPS, or over plain HTTP only on this machine, which serves releases while they are tested.
 bool AppConfig::isServerAddress(std::string_view url) noexcept {
     if (!url.ends_with('/')) {
@@ -73,14 +82,21 @@ void AppConfig::readContent(const Json& section, AppConfig& config) {
     if (section.contains("delivery")) {
         const Json& rules = section.at("delivery");
         if (!rules.is_array()) {
-            throw std::invalid_argument("The \"content.delivery\" section of \"app.json\" must be a list of rules with \"match\" and \"mode\".");
+            throw std::invalid_argument("The \"content.delivery\" section of \"app.json\" must be a list of rules with \"match\" and a \"mode\" or a \"pack\".");
         }
         for (const Json& rule : rules) {
-            JsonValidator::requireKnownKeys(rule, {"match", "mode"}, "a rule of \"content.delivery\" in \"app.json\"");
+            JsonValidator::requireKnownKeys(rule, {"match", "mode", "pack"}, "a rule of \"content.delivery\" in \"app.json\"");
             Content::Rule read;
-            std::string mode;
+            std::string mode = "required";
             readValue(rule, "match", read.match);
             readValue(rule, "mode", mode);
+            readValue(rule, "pack", read.pack);
+            if (rule.contains("mode") == rule.contains("pack")) {
+                throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" needs either a \"mode\" or a \"pack\", since a store delivers a pack on its own.");
+            }
+            if (rule.contains("pack") && !content::Manifest::isValidName(read.pack)) {
+                throw std::invalid_argument("The \"pack\" of a rule of \"content.delivery\" in \"app.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + read.pack + "\".");
+            }
             const std::optional<content::Delivery> delivery = deliveryFromName(mode);
             if (read.match.empty() || read.match.starts_with('/') || read.match.find("..") != std::string::npos || read.match.find('\\') != std::string::npos) {
                 throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" must match paths relative to the \"content\" folder, such as \"world/asia/**\", not \"" + read.match + "\".");
@@ -434,7 +450,11 @@ Json AppConfig::toJson() const {
     }
     Json contentJson = {{"delivery", Json::array()}};
     for (const Content::Rule& rule : content.delivery) {
-        contentJson["delivery"].push_back({{"match", rule.match}, {"mode", deliveryName(rule.mode)}});
+        if (rule.pack.empty()) {
+            contentJson["delivery"].push_back({{"match", rule.match}, {"mode", deliveryName(rule.mode)}});
+        } else {
+            contentJson["delivery"].push_back({{"match", rule.match}, {"pack", rule.pack}});
+        }
     }
     if (content.updates) {
         contentJson["updates"] = {{"baseUrl", content.updates->baseUrl}, {"channel", content.updates->channel}, {"enabled", content.updates->enabled}};

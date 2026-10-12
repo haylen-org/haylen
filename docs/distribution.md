@@ -32,6 +32,7 @@ The file `haylen` at the root of the repository, a shell script for macOS and Li
 | `check <app> --platform [--config] [--coop]` | Checks the last build of an app against what the engine and its plugins need, and prints every missing requirement with the snippet that adds it. |
 | `dist <app> --platform windows\|linux [-o] [--engine-config]` | Builds the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the `.deb` and the AppImage of Linux. |
 | `android-key <app> [--release\|--debug] [--alias] [--password] [--dname] [--force]` | Creates the upload key of release builds, or a debug key, in `platform/android/keystore/` of an app, with its certificate and the properties that sign its builds. |
+| `steam <app> --platform macos\|windows\|linux --app-id <id> --depot <name>=<id> [--branch] [--output]` | Builds the release of an app for a desktop platform and stages its Steam depots, one for the app and one for each pack, with the build scripts of `steamcmd`. |
 | `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
 | `content build\|verify\|inspect\|diff\|publish\|compact\|keys <app> ...` | Builds, verifies, inspects, compares, publishes and compacts the protected releases of an app, and shows or rotates its keys, as the [content guide](content.md#the-content-tool) describes. |
@@ -142,6 +143,7 @@ Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. `-
 | `Cross-Origin-Resource-Policy` | `cross-origin` |
 | `Access-Control-Allow-Origin` | `*` |
 | `Cache-Control` | `no-cache` |
+| `ETag`, `Accept-Ranges` | A strong validator of each file, and `bytes`, since the server answers one byte range of a file with `206`, `Content-Range` and the bytes asked for, and a range whose `If-Range` names another validator with the whole file, as a content delivery network serves the shards of a protected release. |
 
 The web runtime is single-threaded, so its pages need no cross-origin isolation, and the server sends no opener policy by default: `same-origin` would put the sign-in and payment popups of plugins into a browsing context group of their own, which cuts them off from the page, as the [plugin guide](plugins.md#web-screens) explains. `--coop same-origin` together with a `--coep` policy makes a page cross-origin isolated, for pages that use `SharedArrayBuffer` or threads of their own, and `--coop same-origin-allow-popups` keeps the popups of the page linked to it. Pages that load third-party scripts, such as sign-in libraries, need `--coep credentialless` or `--coep off`, because those scripts do not send the resource policy that `require-corp` asks for. The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg` and `.png` explicitly. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding` when the browser accepts that encoding.
 
@@ -280,6 +282,16 @@ steps:
 The content keys of the app reach the workflow through `HAYLEN_KEYS_DIR` as [the content guide](content.md) describes, since every release of an app needs the keys of its earlier releases. The command `signtool verify /pa /v my-game-1.0.0-setup.exe` shows the signature of an installer.
 
 Linux packages carry no signature of their own: the repositories that publish `.deb` packages sign their indexes, and the AppImage takes a GnuPG signature from `CPACK_APPIMAGE_SIGN` and `CPACK_APPIMAGE_SIGN_KEY` in the project.
+
+### steam
+
+```sh
+haylen steam ~/apps/my-game --platform windows --app-id 480 --depot windows=481 --depot forest=482
+```
+
+Builds the release of an app for macOS, Windows or Linux, inspects it as `check --config Release` does, and lays it out for SteamPipe in `build/apps/<app>-<hash>/steam/`, or in the folder of `--output`. Steam installs the app with its whole release, so the app needs no content server: `content/<platform>/` holds the depot of the app, the installed Windows or Linux app with its release, or the macOS bundle, with every shard of the release except those of the [packs](content.md#delivery) of the app, and `content/<pack>/` holds the depot of each pack, whose shards install into `packs/` next to the executable, in `lib/<executable>/` on Linux, or next to the macOS bundle, where the runtime finds them. A player who does not own a pack, such as an expansion sold apart, never receives its depot, and its assets stay unavailable: `assets.loadAsync` of one fails with `storeAssetUnavailable`, which an app shows as content to buy. `scripts/` holds `app_build.vdf` with the app ID, a description of the app and its version, and the branch of `--branch` that the build goes live on, and one `depot_build_<id>.vdf` per depot that maps its whole folder. Every depot needs its ID from Steamworks with `--depot <name>=<id>`, the platform as one name and each pack as another, and the command stops before it builds when one is missing.
+
+Steam compares each depot with the build before it file by file, and a release keeps every unchanged shard byte for byte under the same name, so an update of a few assets uploads and downloads only the shards that changed and the two manifests. The command `steamcmd +login <account> +run_app_build <steam>/scripts/app_build.vdf +quit` uploads the build. The Steamworks API of the app itself, such as achievements and the ownership of packs, is a native library that the app calls through `haylen.native`, as the [native libraries](#native-libraries) describe.
 
 ## Engine artifacts
 

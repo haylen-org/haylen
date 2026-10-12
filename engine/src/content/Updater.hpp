@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "content/Downloader.hpp"
@@ -14,6 +15,7 @@
 #include "content/format/Catalog.hpp"
 #include "haylen/content/Delivery.hpp"
 #include "haylen/content/Error.hpp"
+#include "haylen/core/AppConfig.hpp"
 
 namespace haylen::core {
 class JobSystem;
@@ -35,8 +37,8 @@ class Updater final {
         std::uint64_t freedBytes = 0;
     };
 
-    // The base address ends with a slash and names the root of the publication tree.
-    Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, std::string baseAddress, std::string channelName);
+    // The updates of the settings name the publication tree, with its address ending in a slash, and the channel, and their rules name the packs, which updates leave to the stores that deliver them.
+    Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, core::AppConfig::Content contentSettings);
     ~Updater();
 
     Updater(const Updater&) = delete;
@@ -57,19 +59,21 @@ class Updater final {
     // The address of a pack of the publication tree.
     [[nodiscard]] std::string locate(const ShardReference& pack) const;
 
-    // The chunks of the files of a catalog with a delivery, each once.
-    [[nodiscard]] static std::vector<Catalog::Chunk> getChunks(const Catalog& catalog, Delivery delivery);
+    // The chunks of the files of a catalog with a delivery that belong to no pack, each once, since a store installs the packs on its own.
+    [[nodiscard]] static std::vector<Catalog::Chunk> getChunks(const Catalog& catalog, Delivery delivery, const core::AppConfig::Content& rules);
 
   private:
     void fetch(const std::string& url, std::uint64_t maximumSize, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done);
     void readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
     void commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const;
     [[nodiscard]] static std::uint64_t getRequiredSpace(const UpdateOffer& offer) noexcept;
+    [[nodiscard]] static bool isPacked(std::string_view path, const core::AppConfig::Content& rules) noexcept;
 
     std::shared_ptr<ReleasePackage> release;
     core::JobSystem& jobs;
     HttpTransport& transport;
     Downloader& downloader;
+    core::AppConfig::Content settings;
     std::string baseUrl;
     std::string channel;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);

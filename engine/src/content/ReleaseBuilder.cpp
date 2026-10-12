@@ -113,8 +113,14 @@ std::vector<ContentBuilder::Input> ReleaseBuilder::listFiles(const io::Package& 
         if (path.substr(path.rfind('/') + 1) == kFolderFile) {
             continue;
         }
-        const Delivery delivery = domain == Manifest::Domain::Content ? config.content.getDelivery(std::string_view(path).substr(io::Path::kContentDirectory.size() + 1)) : Delivery::Required;
-        inputs.push_back({.path = std::move(path), .delivery = delivery});
+        if (domain == Manifest::Domain::App) {
+            inputs.push_back({.path = std::move(path)});
+            continue;
+        }
+        const std::string_view asset = std::string_view(path).substr(io::Path::kContentDirectory.size() + 1);
+        const Delivery delivery = config.content.getDelivery(asset);
+        std::string pack(config.content.getPack(asset));
+        inputs.push_back({.path = std::move(path), .delivery = delivery, .pack = std::move(pack)});
     }
     return inputs;
 }

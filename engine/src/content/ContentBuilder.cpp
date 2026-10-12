@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <tuple>
 #include <unordered_set>
 #include <utility>
 
@@ -31,8 +32,8 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
         throw std::invalid_argument("The content build lists the file \"" + repeated->path + "\" twice.");
     }
 
-    // The files of each delivery go into shards of their own, the required ones first, so a platform ships the shards an app needs to start and leaves the others to download.
-    std::ranges::stable_sort(inputs, {}, &Input::delivery);
+    // The files of each delivery and of each pack go into shards of their own, the required ones first, so a platform ships the shards an app needs to start and leaves the others to download or to the store that delivers each pack.
+    std::ranges::stable_sort(inputs, {}, [](const Input& input) { return std::tie(input.delivery, input.pack); });
 
     // Every file is split into chunks first, so the build knows which earlier shards its files still use before it writes anything.
     std::vector<File> files;
@@ -43,7 +44,8 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
     keepEarlierShards(files);
 
     for (std::size_t index = 0; index < files.size(); ++index) {
-        if (writer && index > 0 && files[index].input.delivery != files[index - 1].input.delivery) {
+        const Input& previous = index > 0 ? files[index - 1].input : files[index].input;
+        if (writer && (files[index].input.delivery != previous.delivery || files[index].input.pack != previous.pack)) {
             closeShard();
         }
         storeFile(source, files[index]);

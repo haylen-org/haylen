@@ -27,6 +27,7 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/platform/Event.hpp"
+#include "io/CompositePackage.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/ContentServer.hpp"
 #include "support/ReleaseFixture.hpp"
@@ -89,15 +90,19 @@ class ContentManagerTest : public ::testing::Test {
     [[nodiscard]] std::filesystem::path ship() {
         const std::filesystem::path folder = shipped.getPath() / std::to_string(++ships);
         const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
-        (void)ReleaseStager(inspector).stage(release.getFolder(), folder, std::nullopt);
+        (void)ReleaseStager(inspector, {}).stage(release.getFolder(), folder, std::nullopt, std::nullopt);
         return folder;
     }
 
     void run(const std::filesystem::path& folder) {
+        run(io::Package::openDirectory(folder));
+    }
+
+    void run(std::shared_ptr<const io::Package> files) {
         engine.reset();
         const VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
         auto store = std::make_shared<LocalStore>(std::make_unique<FolderStoreFiles>(storeFolder.getPath()), release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
-        package = ReleasePackage::open(io::Package::openDirectory(folder), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), std::move(store));
+        package = ReleasePackage::open(std::move(files), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), std::move(store));
         core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
         application->configure(config);
@@ -298,6 +303,38 @@ TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomething
     engine.frame(1.0 / 60.0);
     EXPECT_TRUE(brought);
     EXPECT_EQ(engine.getAssets().json("levels/forest.json")["trees"], 12);
+}
+
+// An app without a server whose expansion is a pack that a store installs next to the app, or leaves out for a player who does not own it.
+class ContentPackTest : public ContentManagerTest {
+  protected:
+    ContentPackTest() {
+        game.erase("content/levels/forest.json");
+        const std::string app = R"({"name": "Packs", "identifier": "dev.haylen.tests", "content": {"delivery": [{"match": "expansion/**", "pack": "expansion"}]}})";
+        game["app.json"] = test::TestFiles::bytes(app);
+        game.emplace("content/expansion/island.json", test::TestFiles::bytes(R"({"palms": 7})"));
+        release.build(io::MemoryPackage("source", game));
+        const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
+        const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(app));
+        (void)ReleaseStager(inspector, config.content).stage(release.getFolder(), shipped.getPath() / "app", std::nullopt, shipped.getPath() / "packs", ReleaseStager::Content::All);
+    }
+};
+
+TEST_F(ContentPackTest, StartsWithoutAPackThatIsNotInstalledAndReadsOneThatIs) {
+    run(shipped.getPath() / "app");
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << "A pack never holds back the start.";
+    EXPECT_FALSE(engine->getContent().isLocal("expansion/island.json"));
+    std::string failure;
+    engine->getAssets().loadAsync("json", "expansion/island.json", [&failure](const std::shared_ptr<void>&, std::string error) { failure = std::move(error); });
+    ASSERT_TRUE(frameUntil([&failure] { return !failure.empty(); }));
+    EXPECT_NE(failure.find("no server"), std::string::npos) << failure;
+
+    // The store installs the pack into the folder of packs next to the app, which the runtime reads with the release.
+    auto files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{io::Package::openDirectory(shipped.getPath() / "app"), io::Package::openDirectory(shipped.getPath() / "packs" / "expansion")});
+    run(files);
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+    EXPECT_TRUE(engine->getContent().isLocal("expansion/island.json"));
+    EXPECT_EQ(engine->getAssets().json("expansion/island.json")["palms"], 7);
 }
 
 } // namespace haylen::content

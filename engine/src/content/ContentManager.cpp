@@ -31,7 +31,7 @@ ContentManager::ContentManager(core::Engine& owner, std::shared_ptr<io::Package>
     }
     transport = std::make_unique<HttpTransport>(engine.getScriptRuntime());
     downloader = std::make_unique<Downloader>(engine.getJobs(), *transport, release->getStore());
-    updater = std::make_unique<Updater>(release, engine.getJobs(), *transport, *downloader, settings.updates ? settings.updates->baseUrl : std::string(), settings.updates ? settings.updates->channel : std::string());
+    updater = std::make_unique<Updater>(release, engine.getJobs(), *transport, *downloader, settings);
 }
 
 ContentManager::~ContentManager() = default;
@@ -98,7 +98,7 @@ void ContentManager::bringRequired() {
 
     // Finding what the device lacks opens the shard files it looks into, so it runs away from the frame thread.
     // clang-format off
-    engine.getJobs().run([content] { return Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required)); }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::vector<Catalog::Chunk>> missing) {
+    engine.getJobs().run([content, rules = settings] { return Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, rules)); }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::vector<Catalog::Chunk>> missing) {
         if (owner.expired()) {
             return;
         }
@@ -168,7 +168,7 @@ void ContentManager::finishStart() {
 void ContentManager::prefetch() {
     const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
     // clang-format off
-    engine.getJobs().run([content] { return Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Prefetch)); }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::vector<Catalog::Chunk>> missing) {
+    engine.getJobs().run([content, rules = settings] { return Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Prefetch, rules)); }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::vector<Catalog::Chunk>> missing) {
         if (owner.expired() || !missing.isOk() || missing.value->empty()) {
             return;
         }

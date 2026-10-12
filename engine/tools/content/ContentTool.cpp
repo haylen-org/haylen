@@ -227,10 +227,16 @@ void ContentTool::runStage(Arguments& arguments) {
     const KeyStore store = KeyStore::open(arguments.takeOption("keys"));
     const std::filesystem::path shipped = arguments.takeOption("output");
     const std::optional<std::string> deferred = arguments.takeOptional("deferred");
+    const std::optional<std::string> packs = arguments.takeOptional("packs");
+    const std::optional<std::string> app = arguments.takeOptional("app");
+    const bool appOnly = arguments.takeFlag("app-only");
+    const ReleaseStager::Content content = arguments.takeFlag("ship-deferred") ? ReleaseStager::Content::All : appOnly ? ReleaseStager::Content::None : ReleaseStager::Content::Required;
     arguments.finish();
     const ReleaseInspector inspector = makeInspector(store);
-    const ReleaseStager::Layout layout = ReleaseStager(inspector).stage(folder, shipped, deferred ? std::optional<std::filesystem::path>(*deferred) : std::nullopt);
-    output << std::format("Staged the release \"{}\": {} files ship with the app in \"{}\" and {} shards stay for the server.\n", folder.generic_string(), layout.shipped.size(), shipped.generic_string(), layout.deferred.size());
+    const core::AppConfig::Content rules = app ? core::AppConfig::fromPackage(*io::Package::openDirectory(*app)).content : core::AppConfig::Content{};
+    const auto folderOf = [](const std::optional<std::string>& path) { return path ? std::optional<std::filesystem::path>(*path) : std::nullopt; };
+    const ReleaseStager::Layout layout = ReleaseStager(inspector, rules).stage(folder, shipped, folderOf(deferred), folderOf(packs), content);
+    output << std::format("Staged the release \"{}\": {} files ship with the app in \"{}\", {} shards stay for the server and {} packs go to their stores.\n", folder.generic_string(), layout.shipped.size(), shipped.generic_string(), layout.deferred.size(), layout.packs.size());
 }
 
 void ContentTool::runInspect(Arguments& arguments) {

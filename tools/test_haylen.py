@@ -3,6 +3,7 @@
 import base64
 import contextlib
 import functools
+import http.client
 import http.server
 import io
 import json
@@ -647,6 +648,71 @@ class AndroidPluginsTest(unittest.TestCase):
         written = json.loads((assets / haylen.ANDROID_PLUGINS_FILE).read_text())
         self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "config": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "config": {"sandbox": True}}]})
 
+
+
+class SteamTest(unittest.TestCase):
+    """The Steam staging names a depot for the platform and one for every pack, and writes the build scripts that steamcmd runs."""
+
+    def test_writes_a_build_script_per_depot(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            args = mock.Mock(depot=["macos=1001", "forest=1002"], platform="macos")
+            depots = haylen.steam_depot_ids(args, ["macos", "forest"])
+            haylen.write_steam_scripts(Path(scratch), "1000", "Island 1.2.0", depots, "beta")
+            build = (Path(scratch) / "scripts" / "app_build.vdf").read_text()
+            self.assertIn('"AppID" "1000"', build)
+            self.assertIn('"SetLive" "beta"', build)
+            self.assertIn('"1002" "depot_build_1002.vdf"', build)
+            forest = (Path(scratch) / "scripts" / "depot_build_1002.vdf").read_text()
+            self.assertIn('"ContentRoot" "../content/forest/"', forest)
+
+    def test_names_the_depots_without_an_id(self):
+        args = mock.Mock(depot=["macos=1001", "forest=x"], platform="macos")
+        with self.assertRaises(haylen.BuildError):
+            haylen.steam_depot_ids(args, ["macos"])
+        args = mock.Mock(depot=["macos=1001"], platform="macos")
+        with self.assertRaisesRegex(haylen.BuildError, '"forest"'):
+            haylen.steam_depot_ids(args, ["macos", "forest"])
+
+
+class SiteServerTest(unittest.TestCase):
+    """The server of `run --platform web` serves the shards of a protected release by byte range with a strong validator, as a content delivery network does."""
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        (Path(self.scratch.name) / "app").mkdir()
+        (Path(self.scratch.name) / "app" / "shard.hpak").write_bytes(bytes(range(256)) * 4)
+        handler = functools.partial(type("Handler", (haylen.WebHandler,), {"log_message": lambda *arguments: None}), directory=self.scratch.name)
+        self.web = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=self.web.serve_forever, daemon=True).start()
+        self.addCleanup(self.web.server_close)
+        self.addCleanup(self.web.shutdown)
+
+    def get(self, headers):
+        connection = http.client.HTTPConnection("127.0.0.1", self.web.server_address[1], timeout=5)
+        self.addCleanup(connection.close)
+        connection.request("GET", "/app/shard.hpak", headers=headers)
+        response = connection.getresponse()
+        return response, response.read()
+
+    def test_serves_ranges_and_the_whole_file_when_the_file_changed(self):
+        whole, body = self.get({})
+        self.assertEqual(whole.status, 200)
+        self.assertEqual(len(body), 1024)
+        validator = whole.getheader("ETag")
+        self.assertTrue(validator.startswith('"'))
+
+        part, body = self.get({"Range": "bytes=10-19"})
+        self.assertEqual(part.status, 206)
+        self.assertEqual(part.getheader("Content-Range"), "bytes 10-19/1024")
+        self.assertEqual(body, bytes(range(10, 20)))
+
+        resumed, body = self.get({"Range": "bytes=1000-", "If-Range": validator})
+        self.assertEqual((resumed.status, len(body)), (206, 24))
+        changed, body = self.get({"Range": "bytes=1000-", "If-Range": '"other"'})
+        self.assertEqual((changed.status, len(body)), (200, 1024))
+        beyond, _ = self.get({"Range": "bytes=5000-"})
+        self.assertEqual(beyond.status, 416)
 
 
 class DevelopmentServerTest(unittest.TestCase):

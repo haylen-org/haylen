@@ -986,6 +986,8 @@ class App:
         # An app with a content server ships only the content it needs to start, and the server delivers the rest.
         content = document.get("content", {})
         self.content_server: str | None = content.get("updates", {}).get("baseUrl") if isinstance(content, dict) and isinstance(content.get("updates"), dict) else None
+        rules = content.get("delivery", []) if isinstance(content, dict) else []
+        self.content_packs: list[str] = sorted({rule["pack"] for rule in rules if isinstance(rule, dict) and isinstance(rule.get("pack"), str)})
 
         native = document.get("native", {})
         if not isinstance(native, dict):
@@ -3993,16 +3995,24 @@ def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
     run(command)
     shutil.rmtree(folder, ignore_errors=True)
     staging.rename(folder)
-    if not app.content_server:
+    if not app.content_server and not app.content_packs:
         warn_store_size(folder, profile)
         return folder
 
-    # The shards that only later deliveries use stay in the release, which "content publish" puts on the server, and the app ships the rest.
+    # The shards of named packs go to the stores that deliver them, in a folder per pack, and with a server the shards that only later deliveries use stay in the release, which "content publish" puts on the server.
     shipped = folder.with_name(f"{profile}.shipped")
+    packs = release_packs_folder(app, profile)
     shutil.rmtree(shipped, ignore_errors=True)
-    run([tool, "stage", folder, "--keys", keys, "--output", shipped])
+    shutil.rmtree(packs, ignore_errors=True)
+    command = [tool, "stage", folder, "--keys", keys, "--output", shipped, "--app", app.folder, "--packs", packs]
+    run(command if app.content_server else [*command, "--ship-deferred"])
     warn_store_size(shipped, profile)
     return shipped
+
+
+def release_packs_folder(app: App, profile: str) -> Path:
+    """The folder of the shards of the named packs of the last release of an app, one folder per pack, which stores deliver on their own."""
+    return app.build_folder / "release" / f"{profile}.packs"
 
 
 def warn_store_size(folder: Path, profile: str) -> None:
@@ -4119,6 +4129,67 @@ def command_content_publish(args: argparse.Namespace) -> None:
     run([tool, "publish", app.folder, "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.version_code), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache", *shipped])
 
 
+# Steam: the depots of a release for SteamPipe, which delivers the app with its protected content and the packs of the app as depots of their own, so a Steam app needs no content server of its own.
+STEAM_PLATFORMS = ("macos", "windows", "linux")
+
+
+def steam_depot_ids(args: argparse.Namespace, names: list[str]) -> dict[str, str]:
+    """Reads the depot ID of every depot from the "--depot name=id" options, and stops when one lacks it."""
+    ids = {}
+    for entry in args.depot:
+        name, _, value = entry.partition("=")
+        if not value.isdigit():
+            raise BuildError(f'The option "--depot {entry}" must name a depot and its numeric ID, such as "--depot {args.platform}=1001".')
+        ids[name] = value
+    missing = ", ".join('"' + name + '"' for name in names if name not in ids)
+    if missing:
+        raise BuildError(f'The depots {missing} have no ID. Give each one with "--depot <name>=<id>", the IDs of the depots that Steamworks shows.')
+    return ids
+
+
+def write_steam_scripts(output: Path, app_id: str, description: str, depots: dict[str, str], branch: str | None) -> None:
+    """Writes the app build script and one depot build script per depot for "steamcmd +run_app_build", each depot taking its whole folder under `content/`."""
+    scripts = output / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    entries = "".join(f'\t\t"{depot}" "depot_build_{depot}.vdf"\n' for depot in depots.values())
+    live = f'\t"SetLive" "{branch}"\n' if branch else ""
+    (scripts / "app_build.vdf").write_text(f'"AppBuild"\n{{\n\t"AppID" "{app_id}"\n\t"Desc" "{description}"\n\t"ContentRoot" "../content/"\n\t"BuildOutput" "../output/"\n{live}\t"Depots"\n\t{{\n{entries}\t}}\n}}\n')
+    for name, depot in depots.items():
+        (scripts / f"depot_build_{depot}.vdf").write_text(f'"DepotBuild"\n{{\n\t"DepotID" "{depot}"\n\t"ContentRoot" "../content/{name}/"\n\t"FileMapping"\n\t{{\n\t\t"LocalPath" "*"\n\t\t"DepotPath" "."\n\t\t"Recursive" "1"\n\t}}\n}}\n')
+
+
+def command_steam(args: argparse.Namespace) -> None:
+    """Builds the release of an app for a desktop platform and lays it out for SteamPipe in `build/apps/<app>-<hash>/steam/`: the depot of the platform with the app and its protected release, a depot for every named pack whose shards install into `packs/` next to the executable or the bundle, and the build scripts of steamcmd."""
+    app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
+    args.config = "Release"
+    depots = steam_depot_ids(args, [args.platform, *app.content_packs])
+    output = Path(args.output).resolve() if args.output else app.build_folder / "steam"
+    shutil.rmtree(output / "content", ignore_errors=True)
+    platform_folder = output / "content" / args.platform
+    place = ""
+    if args.platform == "macos":
+        root = prepare_apple_run(app, args)
+        generate_apple_project(app, root, forced=False)
+        bundle, _ = build_apple(app, root, args)
+        stop_on_release_problems(check_apple(app, root, args))
+        platform_folder.mkdir(parents=True)
+        shutil.copytree(bundle, platform_folder / bundle.name, symlinks=True)
+    else:
+        root = prepare_desktop(app, args)
+        build_desktop(app, root, args)
+        stop_on_release_problems(check_desktop(app, root, args))
+        shutil.copytree(desktop_folder(app, args.platform), platform_folder, symlinks=True)
+        place = DESKTOP_LAYOUTS[args.platform][0].format(executable=app.executable)
+
+    # The shards of a pack install next to the executable or the bundle, where the runtime looks for them, so a pack the player does not own leaves its files out and its assets unavailable.
+    packs = release_packs_folder(app, CONTENT_PROFILES[args.platform])
+    for pack in app.content_packs:
+        shutil.copytree(packs / pack, output / "content" / pack / place / "packs")
+    write_steam_scripts(output, args.app_id, f"{app.name} {app.version}", depots, args.branch)
+    terminal.success(f"Staged the Steam depots of `{shown_path(app.folder)}` in `{shown_path(output)}`.")
+    terminal.info(f'Upload them with "steamcmd +login <account> +run_app_build {shown_path(output / "scripts" / "app_build.vdf")} +quit".')
+
+
 def command_content_compact(args: argparse.Namespace) -> None:
     app = App(resolve_app(args.app), host_name())
     tool = content_tool(args.engine_config, args.jobs)
@@ -4182,7 +4253,55 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Vary", "Accept-Encoding")
                 self.end_headers()
                 return data
-        return super().send_head()
+        if not path.is_file():
+            return super().send_head()
+        return self.send_file(path)
+
+    def send_file(self, path: Path):
+        """Answers a file whole or by one byte range, with a strong validator, so the protected content of a release streams from the site the way a content delivery network serves it, and a range whose `If-Range` names another validator gets the whole file."""
+        status = path.stat()
+        size = status.st_size
+        validator = f'"{size:x}-{status.st_mtime_ns:x}"'
+        first, last = 0, size - 1
+        requested = re.fullmatch(r"bytes=(\d+)-(\d*)", self.headers.get("Range", "").strip())
+        partial = requested is not None and self.headers.get("If-Range", validator) == validator
+        if partial:
+            first = int(requested.group(1))
+            last = min(int(requested.group(2)) if requested.group(2) else size - 1, size - 1)
+            if first >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return None
+        self.send_response(206 if partial else 200)
+        self.send_header("Content-Type", self.guess_type(str(path)))
+        self.send_header("Content-Length", str(max(0, last - first + 1)))
+        self.send_header("ETag", validator)
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Access-Control-Expose-Headers", "Content-Range, Content-Length, ETag")
+        if partial:
+            self.send_header("Content-Range", f"bytes {first}-{last}/{size}")
+        self.end_headers()
+        return FileRange(path, first, max(0, last - first + 1))
+
+
+class FileRange:
+    """Reads one range of a file, so a server copies only the bytes a response promised."""
+
+    def __init__(self, path: Path, offset: int, length: int) -> None:
+        self.stream = path.open("rb")
+        self.stream.seek(offset)
+        self.remaining = length
+
+    def read(self, size: int = -1) -> bytes:
+        wanted = self.remaining if size < 0 else min(size, self.remaining)
+        data = self.stream.read(wanted)
+        self.remaining -= len(data)
+        return data
+
+    def close(self) -> None:
+        self.stream.close()
 
 
 def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coop: str = "off", open_page: bool = False, development: DevelopmentServer | None = None) -> None:
@@ -4656,6 +4775,18 @@ def build_parser() -> argparse.ArgumentParser:
     dist.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
     add_jobs_option(dist)
     dist.set_defaults(handler=command_dist)
+
+    steam = commands.add_parser("steam", help="Build the release of an app for a desktop platform and stage its depots and build scripts for SteamPipe.")
+    add_app_argument(steam)
+    steam.add_argument("--platform", required=True, choices=STEAM_PLATFORMS, help="The desktop platform of the depot of the app.")
+    steam.add_argument("--app-id", required=True, help="The ID of the app on Steam.")
+    steam.add_argument("--depot", action="append", default=[], metavar="name=id", help="The ID of a depot: the one named after the platform, and one for every pack of the app. Repeat it for every depot.")
+    steam.add_argument("--branch", help="The beta branch that the build goes live on, such as \"beta\". Without it the build waits in Steamworks to be set live.")
+    steam.add_argument("--output", help="The folder of the staging, build/apps/<app>-<hash>/steam by default.")
+    steam.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the app links.")
+    steam.add_argument("--device", help=argparse.SUPPRESS)
+    add_jobs_option(steam)
+    steam.set_defaults(handler=command_steam)
 
     package = commands.add_parser("package", help='Zip the "app.json", "source" and "content" of an app.')
     add_app_argument(package)

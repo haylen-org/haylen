@@ -17,6 +17,7 @@
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/io/Package.hpp"
+#include "io/CompositePackage.hpp"
 #import "platform/apple/AppleBattery.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleDesktop.hpp"
@@ -86,7 +87,15 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     NSString* resources = NSBundle.mainBundle.resourcePath;
     const std::filesystem::path folder = std::filesystem::path(resources.UTF8String) / "app";
     if (std::filesystem::is_directory(folder)) {
-        return content::ReleasePackage::openBundled(io::Package::openDirectory(folder), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
+        std::shared_ptr<io::Package> files = io::Package::openDirectory(folder);
+#if TARGET_OS_OSX
+        // The shards of the packs that a store installs on their own, such as the expansions of a Steam app, land in `packs` next to the app, outside its signed bundle.
+        const std::filesystem::path packs = std::filesystem::path(NSBundle.mainBundle.bundlePath.UTF8String).parent_path() / "packs";
+        if (std::filesystem::is_directory(packs)) {
+            files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{files, io::Package::openDirectory(packs)});
+        }
+#endif
+        return content::ReleasePackage::openBundled(std::move(files), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
     return io::Package::open(folder.string() + ".zip");
 }

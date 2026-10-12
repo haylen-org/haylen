@@ -21,7 +21,7 @@
 
 namespace haylen::content {
 
-// Builds the shards and the plain catalog of one domain from the files of a source package. Files are taken in path order, the files of each delivery in shards of their own and the required ones first, and read in windows, so no file is ever loaded whole, and each is split into chunks that are identified, compressed and sealed. A chunk whose content an earlier release already stored is referenced in its old shard instead of being stored again, so an update writes only new chunks into new shards and never touches the old ones. An earlier shard stays only while the files still use at least half of its bytes, and the chunks they use of a shard that falls below that move into the new shards, so releases that follow each other never carry more dead bytes than live ones. New shards close near the target size, and a file small against that target stays in one shard.
+// Builds the shards and the plain catalog of one domain from the files of a source package. Files are taken in path order, the files of each delivery and of each pack in shards of their own and the required ones first, and read in windows, so no file is ever loaded whole, and each is split into chunks that are identified, compressed and sealed. A chunk whose content an earlier release already stored is referenced in its old shard instead of being stored again, so an update writes only new chunks into new shards and never touches the old ones. An earlier shard stays only while the files still use at least half of its bytes, and the chunks they use of a shard that falls below that move into the new shards, so releases that follow each other never carry more dead bytes than live ones. New shards close near the target size, and a file small against that target stays in one shard.
 class ContentBuilder final {
   public:
     static constexpr std::uint64_t kDefaultShardTarget = std::uint64_t{1} << 30;
@@ -30,6 +30,9 @@ class ContentBuilder final {
         std::string path;
         Catalog::Kind kind = Catalog::Kind::File;
         Delivery delivery = Delivery::Required;
+
+        // The pack whose shards hold the file, empty for none.
+        std::string pack;
     };
 
     struct Statistics {

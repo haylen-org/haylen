@@ -12,10 +12,16 @@
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/StoreEntry.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/io/Path.hpp"
 
 namespace haylen::content {
 
-Updater::Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, std::string baseAddress, std::string channelName) : release(std::move(releasePackage)), jobs(jobSystem), transport(httpTransport), downloader(recordDownloader), baseUrl(std::move(baseAddress)), channel(std::move(channelName)) {}
+Updater::Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem& jobSystem, HttpTransport& httpTransport, Downloader& recordDownloader, core::AppConfig::Content contentSettings) : release(std::move(releasePackage)), jobs(jobSystem), transport(httpTransport), downloader(recordDownloader), settings(std::move(contentSettings)) {
+    if (settings.updates) {
+        baseUrl = settings.updates->baseUrl;
+        channel = settings.updates->channel;
+    }
+}
 
 Updater::~Updater() {
     for (const HttpTransport::Transfer& transfer : transfers) {
@@ -27,12 +33,12 @@ std::string Updater::locate(const ShardReference& pack) const {
     return baseUrl + PublicationLayout::getPackPath(pack);
 }
 
-std::vector<Catalog::Chunk> Updater::getChunks(const Catalog& catalog, Delivery delivery) {
+std::vector<Catalog::Chunk> Updater::getChunks(const Catalog& catalog, Delivery delivery, const core::AppConfig::Content& rules) {
     std::vector<Catalog::Chunk> chunks;
     std::unordered_set<std::uint64_t> listed;
     for (std::uint64_t index = 0; index < catalog.getFileCount(); ++index) {
         const Catalog::File file = catalog.getFile(index);
-        if (file.delivery != delivery) {
+        if (file.delivery != delivery || isPacked(file.path, rules)) {
             continue;
         }
         for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
@@ -43,6 +49,11 @@ std::vector<Catalog::Chunk> Updater::getChunks(const Catalog& catalog, Delivery 
         }
     }
     return chunks;
+}
+
+bool Updater::isPacked(std::string_view path, const core::AppConfig::Content& rules) noexcept {
+    const std::string_view folder = io::Path::kContentDirectory;
+    return path.size() > folder.size() && path.starts_with(folder) && path[folder.size()] == '/' && !rules.getPack(path.substr(folder.size() + 1)).empty();
 }
 
 void Updater::fetch(const std::string& url, std::uint64_t maximumSize, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done) {
@@ -107,7 +118,7 @@ void Updater::check(std::function<void(std::optional<UpdateOffer>, std::optional
 void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done) {
     // Verifying, decrypting and measuring the offer runs on the task pool, which also opens the shard files the measure looks into.
     // clang-format off
-    jobs.post([&pool = jobs, owner = std::weak_ptr(alive), releasePackage = release, channelName = channel, generation, manifest, bytes = std::move(bytes), done = std::move(done)]() mutable {
+    jobs.post([&pool = jobs, owner = std::weak_ptr(alive), releasePackage = release, channelName = channel, rules = settings, generation, manifest, bytes = std::move(bytes), done = std::move(done)]() mutable {
         std::optional<UpdateOffer> offer;
         std::optional<Error> failure;
         try {
@@ -117,7 +128,7 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
             if (offer->content->manifest->getId() != manifest || envelope.generation != generation || envelope.channel != channelName) {
                 throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest.toHex() + "\" is not the one its channel names.");
             }
-            offer->missing = Downloader::findMissing(*offer->content->shards, getChunks(*offer->content->catalog, Delivery::Required));
+            offer->missing = Downloader::findMissing(*offer->content->shards, getChunks(*offer->content->catalog, Delivery::Required, rules));
             offer->downloadBytes = Downloader::measure(offer->missing);
         } catch (const Error& error) {
             offer.reset();
