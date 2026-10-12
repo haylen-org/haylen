@@ -70,6 +70,8 @@ class InputLua final {
     static int gamepadStick(lua_State* L);
     static int setGamepadDeadzone(lua_State* L);
     static int gamepadDeadzone(lua_State* L);
+    static int setScrollSpeed(lua_State* L);
+    static int scrollSpeed(lua_State* L);
     static int lastDevice(lua_State* L);
     static int editText(lua_State* L);
     static int finishText(lua_State* L);

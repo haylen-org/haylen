@@ -30,6 +30,9 @@ class Scrollbar final {
     // Places the bar in the lane of the area and takes the pointer there, and returns the offset the player asks for. A reversed bar starts at its far end, as a horizontal bar of a right-to-left UI does, and the ends of the track keep clear of corners of the area rounded by `radius`.
     [[nodiscard]] std::optional<double> interact(Context& context, const math::Rect& area, bool horizontal, bool reversed, double offset, double maximum, float viewLength, float radius = 0.0F);
 
+    // Scrolls the current ImGui window up and down by the wheel distance of the frame while the pointer is over it and it can scroll, unless an area inside it took the wheel, so it runs after the content draws. Windows that scroll this way set `ImGuiWindowFlags_NoScrollWithMouse`, so the wheel moves them as far as it moves the other areas that scroll.
+    static void takeWheel(Context& context);
+
     // Draws the track, when the theme paints it with an image, and the thumb, faded by `alpha`.
     void draw(Context& context, float alpha) const;
 

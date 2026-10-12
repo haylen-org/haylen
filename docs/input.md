@@ -27,7 +27,7 @@ The other platforms keep the same rule. On macOS the hidden field passes the rel
 
 ### Mouse
 
-Mouse buttons are `'left'`, `'right'` and `'middle'`. `input.mousePosition()` returns the position in design coordinates, `input.mouseDelta()` the movement of this frame (which keeps working while the mouse is locked with [haylen.window](lua-api/window.md)), `input.mouseScroll()` the wheel movement and `input.mouseInside()` whether the mouse is over the window.
+Mouse buttons are `'left'`, `'right'` and `'middle'`. `input.mousePosition()` returns the position in design coordinates, `input.mouseDelta()` the movement of this frame (which keeps working while the mouse is locked with [haylen.window](lua-api/window.md)), `input.mouseScroll()` the scroll of the wheel or the trackpad in steps of a wheel, which `input.setScrollSpeed()` and the `app.json` key `input.scrollSpeed` speed up or slow down, and `input.mouseInside()` whether the mouse is over the window.
 
 A camera converts screen points in design coordinates, the space of the mouse position, to world positions with `camera:screenToWorld`, which also accounts for its viewport.
 

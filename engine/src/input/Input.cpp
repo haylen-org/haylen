@@ -71,7 +71,7 @@ void Input::handleEvent(const platform::Event& event, const graphics::Viewport& 
         break;
     }
     case platform::Event::Type::MouseScroll:
-        mouseScroll += event.scroll;
+        mouseScroll += event.preciseScroll ? event.scroll / kPointsPerLine : event.scroll;
         break;
     case platform::Event::Type::MouseEnter:
         mouseInside = true;
@@ -280,6 +280,13 @@ void Input::setGamepadDeadzone(float value) {
         throw std::invalid_argument("The gamepad dead zone must be at least 0 and below 1.");
     }
     deadzone = value;
+}
+
+void Input::setScrollSpeed(float value) {
+    if (!(value > 0.0F && std::isfinite(value))) {
+        throw std::invalid_argument("The scroll speed must be a positive number.");
+    }
+    scrollSpeed = value;
 }
 
 } // namespace haylen::input

@@ -75,11 +75,12 @@ void UiFixture::drag(math::Vec2 from, math::Vec2 to, int steps) {
     frames(2);
 }
 
-void UiFixture::wheel(math::Vec2 point, float delta, float horizontal) {
+void UiFixture::wheel(math::Vec2 point, float delta, float horizontal, bool precise) {
     pointer(platform::Event::Type::MouseMove, point);
     platform::Event event;
     event.type = platform::Event::Type::MouseScroll;
     event.scroll = {horizontal, delta};
+    event.preciseScroll = precise;
     getEngine().handleEvent(event);
     frames();
 }

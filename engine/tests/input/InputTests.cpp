@@ -157,6 +157,16 @@ TEST_F(InputTest, MouseIsReportedInDesignCoordinates) {
     input.handleEvent(scroll, viewport);
     EXPECT_EQ(input.getMouseScroll(), math::Vec2(0.0F, 2.0F));
 
+    // A trackpad counts every forty points it moves as a step of a wheel.
+    scroll.scroll = math::Vec2(-20.0F, 120.0F);
+    scroll.preciseScroll = true;
+    input.handleEvent(scroll, viewport);
+    EXPECT_EQ(input.getMouseScroll(), math::Vec2(-0.5F, 5.0F));
+    EXPECT_THROW(input.setScrollSpeed(0.0F), std::invalid_argument);
+    EXPECT_THROW(input.setScrollSpeed(std::numeric_limits<float>::infinity()), std::invalid_argument);
+    input.setScrollSpeed(2.0F);
+    EXPECT_EQ(input.getScrollSpeed(), 2.0F);
+
     input.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, MouseButton::Right), viewport);
     EXPECT_TRUE(input.isMousePressed(MouseButton::Right));
     EXPECT_TRUE(input.isMouseDown(MouseButton::Right));

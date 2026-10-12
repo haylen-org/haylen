@@ -62,6 +62,12 @@ class Backend final {
     // The name of the font the UI starts with, the default font of the engine.
     static constexpr std::string_view kDefaultFontName = "default";
 
+    // The scroll of the wheels and the trackpads that reaches a frame: steps of a wheel and points of the screen that a trackpad moved, with positive values for scrolling up and to the left.
+    struct Wheel {
+        math::Vec2 lines{};
+        math::Vec2 points{};
+    };
+
     // The TrueType or OpenType files of a UI font: its regular face, the bold, italic and bold italic faces it may add, left empty when it has none, and the fallback fonts that draw the characters its faces lack, in order.
     struct FontFiles {
         std::vector<std::uint8_t> regular;
@@ -102,6 +108,17 @@ class Backend final {
     // The points of the screen one UI unit spans in the current frame, from the scale and the density of the screen.
     [[nodiscard]] float getPointsPerUnit() const noexcept {
         return pointsPerUnit;
+    }
+
+    [[nodiscard]] const Wheel& getWheel() const noexcept {
+        return wheel;
+    }
+    // The area that scrolls by the wheel of a frame takes it, so the areas around it leave it alone.
+    void takeWheel() noexcept {
+        wheelTaken = true;
+    }
+    [[nodiscard]] bool isWheelTaken() const noexcept {
+        return wheelTaken;
     }
 
     // The framebuffer pixels one UI unit covers in the current frame, which pictures rasterize for.
@@ -260,6 +277,8 @@ class Backend final {
     // App textures shown by the UI get identifiers with the top bit set, so they never collide with the atlas textures ImGui asks for.
     static constexpr ImTextureID kAppTextureBit = ImTextureID{1} << 63U;
     static constexpr float kBaseFontSize = 28.0F;
+    // ImGui windows of the app scroll by this many font sizes for each step of a wheel.
+    static constexpr float kImGuiScrollFonts = 5.0F;
     static constexpr std::size_t kFontHeaderSize = 12;
 
     // The farthest in pixels of the screen that ImGui lets the segments of a curve stray from the true curve.
@@ -324,6 +343,9 @@ class Backend final {
     float scale = 1.0F;
     float pointsPerUnit = 1.0F;
     math::Vec2 density{1.0F, 1.0F};
+    Wheel wheel;
+    Wheel pendingWheel;
+    bool wheelTaken = false;
     math::Rect safeRect;
     std::vector<math::Rect> blocked;
     std::vector<math::Rect> blockedPrevious;

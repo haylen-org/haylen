@@ -181,6 +181,7 @@ set(HAYLEN_TEST_SOURCES
   ui/ToastStackTests.cpp
   ui/TransformTests.cpp
   ui/UiLuaTests.cpp
+  ui/WheelTests.cpp
 )
 
 add_executable(haylen_tests ${HAYLEN_TEST_SOURCES})

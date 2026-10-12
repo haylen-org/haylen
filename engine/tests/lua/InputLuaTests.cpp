@@ -181,7 +181,7 @@ TEST_F(InputLuaTest, DeliversEventsToScenesInDesignCoordinates) {
     EXPECT_EQ(lua("local m = events[1].modifiers return tostring(m.shift) .. tostring(m.control) .. tostring(m.alt) .. tostring(m.super)"), "truefalsefalsefalse");
     EXPECT_EQ(lua("return events[2].character"), "a");
     EXPECT_EQ(lua("return events[3].type .. ' ' .. events[3].button .. ' ' .. events[3].x .. ',' .. events[3].y"), "mouseDown left 20.0,40.0");
-    EXPECT_EQ(lua("return events[4].scrollX"), "1.0");
+    EXPECT_EQ(lua("return events[4].scrollX .. ' ' .. tostring(events[4].precise)"), "1.0 false");
     EXPECT_EQ(lua("local t = events[5].touches[1] return t.id .. ' ' .. t.x .. ' ' .. tostring(t.changed)"), "7 10.0 true");
     EXPECT_EQ(lua("return events[6].type .. ' ' .. tostring(events[6].modifiers)"), "focusLost nil");
     EXPECT_EQ(lua("local e = events[7] return e.x .. ',' .. e.y .. ' ' .. e.dx .. ',' .. e.dy .. ' ' .. tostring(e.button) .. ' ' .. tostring(e.modifiers.control and e.modifiers.alt)"), "60.0,80.0 6.0,-8.0 nil true");
@@ -198,6 +198,14 @@ TEST_F(InputLuaTest, ReadsSingleTouchesAndDeviceSettings) {
 
     EXPECT_EQ(lua("return input.gamepadDeadzone() > 0.19 and input.gamepadDeadzone() < 0.21"), "true");
     EXPECT_EQ(lua("input.setGamepadDeadzone(0.5) return input.gamepadDeadzone()"), "0.5");
+
+    // A trackpad counts forty points as a step of a wheel, and the scroll speed multiplies both kinds.
+    EXPECT_EQ(lua("return input.scrollSpeed()"), "1.0");
+    lua("input.setScrollSpeed(0.5)");
+    engine.handleEvent({.type = platform::Event::Type::MouseScroll, .scroll = {0.0F, -80.0F}, .preciseScroll = true});
+    engine.handleEvent({.type = platform::Event::Type::MouseScroll, .scroll = {0.0F, 2.0F}});
+    EXPECT_EQ(lua("local x, y = input.mouseScroll() return x .. ',' .. y .. ' ' .. input.scrollSpeed()"), "0.0,0.0 0.5");
+    EXPECT_NE(lua("input.setScrollSpeed(0)").find("The scroll speed must be a positive number."), std::string::npos);
 
     EXPECT_EQ(lua("local s = input.gestureSettings() return s.longPressDuration .. ' ' .. s.swipeMinDistance .. ' ' .. tostring(s.mouse)"), "0.5 90.0 true");
     lua("input.setGestureSettings({longPressDuration = 0.75, mouse = false})");

@@ -33,7 +33,7 @@ std::optional<Event> SokolEvents::translate(const sapp_event& source) noexcept {
     case SAPP_EVENTTYPE_MOUSE_MOVE:
         return Event{.type = Event::Type::MouseMove, .modifiers = held, .position = {source.mouse_x, source.mouse_y}, .delta = {source.mouse_dx, source.mouse_dy}};
     case SAPP_EVENTTYPE_MOUSE_SCROLL:
-        return Event{.type = Event::Type::MouseScroll, .modifiers = held, .scroll = {source.scroll_x, source.scroll_y}};
+        return Event{.type = Event::Type::MouseScroll, .modifiers = held, .scroll = {source.scroll_x, source.scroll_y}, .preciseScroll = source.scroll_precise};
     case SAPP_EVENTTYPE_MOUSE_ENTER:
         return Event{.type = Event::Type::MouseEnter};
     case SAPP_EVENTTYPE_MOUSE_LEAVE:

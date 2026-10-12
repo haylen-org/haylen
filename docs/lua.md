@@ -67,6 +67,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. Other sessions reject `true`. |
 | `input.mouseAsTouch` | boolean | `false` | Makes the mouse act as a finger from the start, as [`input.setMouseAsTouch`](lua-api/input.md#inputsetmouseastouchenabled) describes. |
 | `input.touchAsMouse` | boolean | `false` | Makes a finger act as the mouse from the start, as [`input.setTouchAsMouse`](lua-api/input.md#inputsettouchasmouseenabled) describes. |
+| `input.scrollSpeed` | number | `1` | Multiplies every scroll of the wheels and the trackpads from the start, as [`input.setScrollSpeed`](lua-api/input.md#inputsetscrollspeedspeed) describes. A value that is not positive raises `The "input.scrollSpeed" value in "app.json" must be a positive number.` |
 | `ui.scaleMode` | string | `"design"` | How large the interface draws: `"design"` or `"physical"`, as [`ui.setScaleMode`](lua-api/ui.md#uisetscalemodemode) describes. |
 | `ui.scale` | number | `1` | Factor from 0.25 to 4 that multiplies the size of the interface, as [`ui.setScale`](lua-api/ui.md#uisetscalefactor) describes. |
 | `debug.stats` | string | `"off"` | Debug statistics the app starts with: `"off"`, `"compact"` for the frame rate, frame time, draw calls, vertices and instances in a corner, or `"full"` for the debug overlay, described in [`haylen.debug`](lua-api/debug.md). |

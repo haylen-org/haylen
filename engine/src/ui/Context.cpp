@@ -77,6 +77,23 @@ float Context::getMetric(Theme::Metric role) const noexcept {
     return resolve<float>([role](const Style& style) { return style.findMetric(role); }, [role](const Theme& theme) { return theme.getMetric(role); });
 }
 
+math::Vec2 Context::getWheelDistance() const noexcept {
+    const Backend::Wheel& wheel = getBackend().getWheel();
+    return wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit();
+}
+
+math::Vec2 Context::takeWheelDistance() noexcept {
+    Backend& owner = getBackend();
+    if (owner.isWheelTaken()) {
+        return {};
+    }
+    const math::Vec2 distance = getWheelDistance();
+    if (!distance.isZero()) {
+        owner.takeWheel();
+    }
+    return distance;
+}
+
 // A style that sets a surface paints it with its image, or with flat colors while the image loads or when the style asks for them.
 const Theme::Image* Context::getSurface(Theme::Surface role) const {
     for (auto layer = layers.rbegin(); layer != layers.rend(); ++layer) {

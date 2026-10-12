@@ -33,7 +33,7 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {padding, padding});
-    const bool open = ImGui::BeginPopup(name, flags | ImGuiWindowFlags_NoScrollbar);
+    const bool open = ImGui::BeginPopup(name, flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor();
     if (!open) {
@@ -65,6 +65,7 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
 void Popup::end(Context& context) {
     if (overflowing) {
         ImGui::PopClipRect();
+        Scrollbar::takeWheel(context);
         scrollbar.draw(context, 1.0F);
     }
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(box.getMin()));

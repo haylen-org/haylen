@@ -254,7 +254,7 @@ scene.push({
 
 ### input.mouseScroll()
 
-Returns the wheel movement of this frame as two numbers, horizontal and vertical, in the wheel units the platform reports.
+Returns the scroll of this frame as two numbers, horizontal and vertical, in steps of a wheel, with positive values for scrolling to the left and up. A step of a mouse wheel counts as 1 on every platform, and a trackpad counts every 40 points of the screen it moves as a step. The scroll speed of [`input.setScrollSpeed()`](#inputsetscrollspeedspeed) multiplies both.
 
 ```lua
 local input = require('haylen.input')
@@ -607,6 +607,26 @@ Returns the dead zone of every gamepad axis and stick, as `input.setGamepadDeadz
 local input = require('haylen.input')
 
 input.setGamepadDeadzone(input.gamepadDeadzone() + 0.05)
+```
+
+### input.setScrollSpeed(speed)
+
+Multiplies every scroll of the wheels and the trackpads by `speed` before the UI, `input.mouseScroll()` and the `mouseScroll` events see it, 1 by default, which suits a setting of the player for how fast the wheel scrolls. The `app.json` key `input.scrollSpeed` sets it at start. A value that is not positive raises `The scroll speed must be a positive number.` and keeps the current speed.
+
+```lua
+local input = require('haylen.input')
+
+input.setScrollSpeed(0.5)
+```
+
+### input.scrollSpeed()
+
+Returns the speed of every scroll, as `input.setScrollSpeed()` set it.
+
+```lua
+local input = require('haylen.input')
+
+print(input.scrollSpeed()) -- 1
 ```
 
 ## Devices
@@ -1054,7 +1074,7 @@ A scene with an `event(self, e)` callback receives every platform event as a tab
 | `'character'` | The field `character` is the typed character as a UTF-8 string. |
 | `'mouseDown'`, `'mouseUp'` | The field `button` is the mouse button name. The fields `x` and `y` are the mouse position. |
 | `'mouseMove'` | The fields `x` and `y` are the mouse position. The fields `dx` and `dy` are the movement of this event, which keeps coming while the mouse is locked. |
-| `'mouseScroll'` | The fields `scrollX` and `scrollY` are the wheel movement. |
+| `'mouseScroll'` | The fields `scrollX` and `scrollY` are the scroll, with positive values for scrolling to the left and up, in points of the screen when `precise` is `true`, as a trackpad reports it, and in steps of a wheel otherwise. |
 | `'touchBegan'`, `'touchMoved'`, `'touchEnded'`, `'touchCancelled'` | The field `touches` is a list of every finger with `id`, `x`, `y` and `changed`, which is `true` for the fingers this event is about. |
 | `'textEdited'` | The field `field` is the id of the text field, a field of the UI or the one of [`input.editText`](#inputedittextoptions), `text` what its native field holds, `selectionStart` and `selectionEnd` the selection in code points, and `compositionStart` and `compositionEnd` the text an input method still composes, present only while it composes. |
 | `'textAction'` | The field `field` is the id of the text field and `action` is `'submit'`, `'next'`, `'cancel'` or `'dismissed'`. |

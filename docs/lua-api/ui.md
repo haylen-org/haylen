@@ -1192,7 +1192,7 @@ Every node reports these events, each only while the node has a handler for it, 
 | `press` | `x`, `y` (numbers), `button` (`'left'`, `'right'` or `'middle'`) | A mouse button or a finger pressed the node. |
 | `drag` | `x`, `y`, `deltaX`, `deltaY` (numbers), `button` | The pointer moved while the press that started on the node holds, wherever the pointer is. |
 | `release` | `x`, `y` (numbers), `button`, `inside` (boolean) | The press that started on the node let go, with `inside` telling whether the pointer was still over the node. |
-| `scroll` | `deltaX`, `deltaY` (numbers) | The mouse wheel or a trackpad scrolled over the node, in wheel steps, with positive `deltaY` for scrolling up. |
+| `scroll` | `deltaX`, `deltaY` (numbers) | The mouse wheel or a trackpad scrolled over the node, in UI units: `scrollLine` of the theme for each step of a wheel and the points a trackpad moved, with positive `deltaY` for scrolling up. |
 
 Positions are in the design coordinates of screen canvases, like `gui:bounds`. Every node under the pointer that listens reports the pointer events, so a press on a button inside a card reaches both when both listen, and a disabled node reports none of them. The pointer events follow the visible part of the node and stop while a window, a dialog or a popup above it takes the pointer.
 
@@ -3142,6 +3142,7 @@ Both built-in themes share these metrics, in design units.
 | `checkRadius` | `8` | Corner radius of check boxes. |
 | `menuPadding` | `8` | Space between the edge of the popup of a combo, a menu button or a context menu and its rows. |
 | `splitterSize` | `10` | Thickness of the handle of splitters. |
+| `scrollLine` | `64` | Distance that one step of a mouse wheel scrolls a `scroll`, a `collection`, a `textArea`, a `dialog` and a popup. A trackpad scrolls them by the points it moves instead. |
 | `cellRadius` | `12` | Corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |
 | `refreshDistance` | `120` | How far a pull at the start of a refreshable collection goes before it refreshes. |
 

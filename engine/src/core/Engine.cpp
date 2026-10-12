@@ -73,6 +73,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.foldSimulation = current.config.debug.fold;
     current.pointerEmulation.setMouseAsTouch(current.config.input.mouseAsTouch);
     current.pointerEmulation.setTouchAsMouse(current.config.input.touchAsMouse);
+    current.input.setScrollSpeed(current.config.input.scrollSpeed);
     current.reservedInsets = host.getReservedInsets();
     current.viewport.update(host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets(), host.getDpiScale());
     current.fullscreen = host.isFullscreen();
@@ -402,9 +403,11 @@ void Engine::renderScenes(const std::vector<plugins::Plugin*>& all) {
     }
 }
 
-// The mouse and the fingers reach the app as the device the app asked for, which may turn one event into several.
+// The mouse and the fingers reach the app as the device the app asked for, which may turn one event into several, and the scroll speed of the app scales every scroll.
 void Engine::handleEvent(const platform::Event& event) {
-    for (const platform::Event& converted : state->pointerEmulation.convert(event)) {
+    platform::Event scaled = event;
+    scaled.scroll *= state->input.getScrollSpeed();
+    for (const platform::Event& converted : state->pointerEmulation.convert(scaled)) {
         dispatchEvent(converted);
     }
 }

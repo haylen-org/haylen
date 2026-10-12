@@ -268,6 +268,15 @@ TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
     screen.handleEvent(wheel);
     EXPECT_EQ(screen.getScroll(), 0.0F);
 
+    // A trackpad moves the content by its points, where a wheel moves it by forty points for each step.
+    wheel.scroll = {0.0F, -10.0F};
+    wheel.preciseScroll = true;
+    screen.handleEvent(wheel);
+    EXPECT_NEAR(screen.getScroll(), step / 4.0F, 1e-3F);
+    wheel.scroll = {0.0F, 10.0F};
+    screen.handleEvent(wheel);
+    wheel.preciseScroll = false;
+
     // A drag moves the content with the pointer and stops at its end, and a press on a button starts no drag.
     point(fixture, screen, platform::Event::Type::MouseDown, content);
     point(fixture, screen, platform::Event::Type::MouseMove, content - math::Vec2{0.0F, 10.0F});

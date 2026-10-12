@@ -57,7 +57,9 @@ struct Event {
     input::MouseButton mouseButton = input::MouseButton::Left;
     math::Vec2 position{};
     math::Vec2 delta{};
+    // A scroll moves by the points of the screen that a precise device, such as a trackpad, reports when `preciseScroll` is set, and by steps of a wheel otherwise, with positive values for scrolling up and to the left.
     math::Vec2 scroll{};
+    bool preciseScroll = false;
     std::array<TouchPoint, kMaxTouchPoints> touches{};
     std::size_t touchCount = 0;
 

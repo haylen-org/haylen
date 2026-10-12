@@ -24,6 +24,7 @@
 #include "platform/android/AndroidDialogJson.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
+#include "platform/android/AndroidMouseWheel.hpp"
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
@@ -41,6 +42,7 @@ std::string_view Services::getName() noexcept {
 void Services::initialize() {
     AndroidActivity::holdSplashScreen();
     AndroidGamepads::enableAxes();
+    AndroidMouseWheel::enableAxes();
 }
 
 void Services::shutdown() noexcept {}

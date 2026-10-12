@@ -238,9 +238,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("input")) {
         const Json& inputJson = document.at("input");
-        JsonValidator::requireKnownKeys(inputJson, {"mouseAsTouch", "touchAsMouse"}, "the \"input\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(inputJson, {"mouseAsTouch", "touchAsMouse", "scrollSpeed"}, "the \"input\" section of \"app.json\"");
         readValue(inputJson, "mouseAsTouch", config.input.mouseAsTouch);
         readValue(inputJson, "touchAsMouse", config.input.touchAsMouse);
+        readValue(inputJson, "scrollSpeed", config.input.scrollSpeed);
+        if (!(config.input.scrollSpeed > 0.0F && std::isfinite(config.input.scrollSpeed))) {
+            throw std::invalid_argument("The \"input.scrollSpeed\" value in \"app.json\" must be a positive number.");
+        }
     }
 
     if (document.contains("ui")) {
@@ -341,7 +345,7 @@ Json AppConfig::toJson() const {
         windowJson["position"] = window.position->toJson();
     }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
     };
 }
 

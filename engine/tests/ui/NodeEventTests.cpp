@@ -158,8 +158,9 @@ TEST_F(NodeEventTest, ReportsThePointerOverANode) {
     EXPECT_EQ(findLastEvent("release").value.at("inside"), true);
     EXPECT_EQ(countEvents("card:drag"), 0);
 
+    // Two steps of the wheel scroll by two lines of the theme.
     scroll(card.getCenter(), {0.0F, -2.0F});
-    EXPECT_EQ(findLastEvent("scroll").value, (core::Json{{"deltaX", 0.0F}, {"deltaY", -2.0F}}));
+    EXPECT_EQ(findLastEvent("scroll").value, (core::Json{{"deltaX", 0.0F}, {"deltaY", -128.0F}}));
 
     // A disabled node and the nodes inside it report nothing of the pointer, and the button inside only loses the focus.
     clearEvents();

@@ -342,9 +342,9 @@ void Component::reportPointer(Context& context, const math::Rect& bounds) {
         reportPress(context, over);
     }
 
-    const ImGuiIO& io = ImGui::GetIO();
-    if (over && isListening(Notice::Scroll) && (io.MouseWheel != 0.0F || io.MouseWheelH != 0.0F)) {
-        context.emit(*this, "scroll", {{"deltaX", io.MouseWheelH}, {"deltaY", io.MouseWheel}});
+    const math::Vec2 distance = context.getWheelDistance();
+    if (over && isListening(Notice::Scroll) && !distance.isZero()) {
+        context.emit(*this, "scroll", {{"deltaX", distance.x}, {"deltaY", distance.y}});
     }
 }
 

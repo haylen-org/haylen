@@ -875,9 +875,10 @@ void Collection::takeInput(Context& context) {
     const bool hovered = ImGui::IsWindowHovered() && viewport.contains(math::Vec2{io.MousePos.x, io.MousePos.y});
     idle += delta;
 
-    const float wheel = isVertical() ? -io.MouseWheel : -io.MouseWheel + (rightToLeft ? io.MouseWheelH : -io.MouseWheelH);
-    if (hovered && wheel != 0.0F && scroller->getMaximum() > 0.0) {
-        scroller->jumpTo(scroller->getOffset() + static_cast<double>(wheel * context.getMetric(Theme::Metric::ControlHeight)));
+    const math::Vec2 distance = hovered && scroller->getMaximum() > 0.0 ? context.takeWheelDistance() : math::Vec2{};
+    const float wheel = isVertical() ? -distance.y : -distance.y + (rightToLeft ? distance.x : -distance.x);
+    if (wheel != 0.0F) {
+        scroller->jumpTo(scroller->getOffset() + static_cast<double>(wheel));
         pendingScroll.reset();
         idle = 0.0F;
     }

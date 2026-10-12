@@ -63,10 +63,11 @@ struct AppConfig {
         bool muteOnFocusLoss = false;
     };
 
-    // Whether the mouse acts as a finger, so an app made for touch screens runs with a mouse, and whether a finger acts as the mouse, so an app that reads the mouse runs on a touch screen. Both change at run time through `input::PointerEmulation`.
+    // Whether the mouse acts as a finger, so an app made for touch screens runs with a mouse, and whether a finger acts as the mouse, so an app that reads the mouse runs on a touch screen. Both change at run time through `input::PointerEmulation`. The scroll speed multiplies every scroll of the wheels and the trackpads, and changes at run time through `input::Input`.
     struct Input {
         bool mouseAsTouch = false;
         bool touchAsMouse = false;
+        float scrollSpeed = 1.0F;
     };
 
     // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, the safe area to simulate instead of the one of the device, whether the safe area shows over the app, and how a changed Lua module applies while the app runs in development.

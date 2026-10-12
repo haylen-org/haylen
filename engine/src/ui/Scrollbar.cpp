@@ -20,6 +20,12 @@ float Scrollbar::getGap(const Context& context) {
     return getGap(context.getMetric(Theme::Metric::ScrollbarGap), context.getBackend().getPointsPerUnit());
 }
 
+void Scrollbar::takeWheel(Context& context) {
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetScrollMaxY() > 0.0F) {
+        ImGui::SetScrollY(ImGui::GetScrollY() - context.takeWheelDistance().y);
+    }
+}
+
 float Scrollbar::getLane(const Context& context) {
     return getGap(context) + context.getMetric(Theme::Metric::ScrollbarSize) + context.getMetric(Theme::Metric::ScrollbarInset);
 }

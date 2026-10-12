@@ -53,9 +53,9 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
     }
 
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(bounds.getMin()));
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar;
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
     if (horizontal) {
-        flags |= ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+        flags |= ImGuiWindowFlags_HorizontalScrollbar;
     }
     if (context.getBackend().beginChild("##scroll", bounds.getSize(), ImGuiChildFlags_NavFlattened, flags)) {
         // The bar takes the pointer in its lane before the content does.
@@ -91,20 +91,19 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             }
         }
 
-        // A horizontal area that can scroll takes both wheels while the pointer is over it, so the vertical wheel scrolls it sideways too and never also scrolls an area around it.
-        const ImGuiIO& io = ImGui::GetIO();
+        // The innermost area under the pointer that can scroll takes the wheel, so one turn moves one area, and a horizontal one takes the vertical wheel too.
         const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
-        if (horizontal && hovered && ImGui::GetScrollMaxX() > 0.0F) {
-            const ImGuiID wheel = ImGui::GetID("##wheel");
-            ImGui::SetKeyOwner(ImGuiKey_MouseWheelX, wheel);
-            ImGui::SetKeyOwner(ImGuiKey_MouseWheelY, wheel);
-            const float turned = io.MouseWheel + io.MouseWheelH;
-            if (turned != 0.0F) {
-                ImGui::SetScrollX(ImGui::GetScrollX() - turned * context.getMetric(Theme::Metric::ControlHeight));
+        const float room = horizontal ? ImGui::GetScrollMaxX() : ImGui::GetScrollMaxY();
+        const math::Vec2 distance = hovered && room > 0.0F ? context.takeWheelDistance() : math::Vec2{};
+        if (!distance.isZero()) {
+            if (horizontal) {
+                ImGui::SetScrollX(ImGui::GetScrollX() - distance.y - distance.x);
+            } else {
+                ImGui::SetScrollY(ImGui::GetScrollY() - distance.y);
             }
         }
         followFinger();
-        const bool touched = (hovered && (io.MouseWheel != 0.0F || io.MouseWheelH != 0.0F || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
+        const bool touched = (hovered && (!distance.isZero() || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
         idle = touched ? 0.0F : idle + context.getDeltaSeconds();
         if (snap && idle > kSnapDelay) {
             settle(context, horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY(), horizontal ? ImGui::GetScrollMaxX() : ImGui::GetScrollMaxY());

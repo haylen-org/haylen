@@ -125,7 +125,7 @@ TEST(AppConfigTest, ReadsEveryField) {
         "maxFrameTime": 0.1,
         "clearColor": "#102030",
         "splash": {"logo": "ui/logo.png", "background": "#405060", "darkBackground": "#FF000000", "duration": 1.5, "fadeOut": 0.5},
-        "input": {"mouseAsTouch": true},
+        "input": {"mouseAsTouch": true, "scrollSpeed": 0.5},
         "ui": {"scaleMode": "physical", "scale": 1.25},
         "native": {"steam_api": {"files": {"macos": "platform/apple/libsteam_api.dylib"}}}
     })"));
@@ -152,6 +152,8 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_EQ(config.splash.fadeOut, 0.5F);
     EXPECT_TRUE(config.input.mouseAsTouch);
     EXPECT_FALSE(config.input.touchAsMouse);
+    EXPECT_EQ(config.input.scrollSpeed, 0.5F);
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"input", {{"scrollSpeed", 0}}}}), std::invalid_argument);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"input", {{"mouseAsFinger", true}}}}), std::invalid_argument);
     EXPECT_EQ(config.uiScaling.mode, ui::Scaling::Mode::Physical);
     EXPECT_EQ(config.uiScaling.factor, 1.25F);

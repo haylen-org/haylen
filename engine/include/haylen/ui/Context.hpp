@@ -118,6 +118,10 @@ class Context final {
 
     [[nodiscard]] math::Color getColor(Theme::Color role) const noexcept;
     [[nodiscard]] float getMetric(Theme::Metric role) const noexcept;
+    // Returns how far the wheels and the trackpads scroll in this frame in UI units: `scrollLine` for each step of a wheel and the points a trackpad moved, with positive values for scrolling up and to the left.
+    [[nodiscard]] math::Vec2 getWheelDistance() const noexcept;
+    // Returns the wheel distance of the frame for the area that scrolls by it and keeps it from the areas around, which draw later and get nothing. Areas inside others draw first, so the innermost area that can scroll under the pointer takes the wheel.
+    math::Vec2 takeWheelDistance() noexcept;
     [[nodiscard]] const Theme::Image* getSurface(Theme::Surface role) const;
     [[nodiscard]] const std::string& getFontName(Theme::Font role) const noexcept;
     [[nodiscard]] float getFontSize(Theme::Font role) const noexcept;

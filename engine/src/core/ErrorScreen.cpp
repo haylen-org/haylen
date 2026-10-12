@@ -309,7 +309,8 @@ void ErrorScreen::handleEvent(const platform::Event& event) {
         handleKey(event);
         break;
     case platform::Event::Type::MouseScroll:
-        scrollBy(-event.scroll.y * kLineStep * getUnit());
+        // A trackpad moves the content by its points and a wheel by a line for each of its steps.
+        scrollBy(-event.scroll.y * (event.preciseScroll ? 1.0F : kLineStep) * getUnit());
         break;
     case platform::Event::Type::MouseDown:
         if (event.mouseButton == input::MouseButton::Left) {

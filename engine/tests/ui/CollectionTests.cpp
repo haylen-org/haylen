@@ -121,6 +121,18 @@ TEST_F(CollectionTest, KeepsTheCellsBoundedWhileScrollingOneHundredThousandItems
     EXPECT_NEAR(last.getBottom(), area.getBottom(), 0.5F);
 }
 
+TEST_F(CollectionTest, ScrollsByThePointsOfATrackpadAndTheLinesOfAWheel) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    show(list, makeItems(200));
+    wheel(list.getBounds().getCenter(), -45.0F, 0.0F, true);
+    frames(2);
+    EXPECT_NEAR(list.getScrollOffset(), 45.0, 0.5);
+    wheel(list.getBounds().getCenter(), -1.0F);
+    frames(2);
+    EXPECT_NEAR(list.getScrollOffset(), 109.0, 0.5);
+}
+
 TEST_F(CollectionTest, RecyclesCellsOfTheRightType) {
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "poolSize": 2, "types": {
         "header": {"template": {"kind": "sectionTitle", "part": "heading", "bind": {"text": "title"}}},

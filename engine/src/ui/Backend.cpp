@@ -485,7 +485,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
         io.AddMouseButtonEvent(static_cast<int>(event.mouseButton), event.type == platform::Event::Type::MouseDown);
         break;
     case platform::Event::Type::MouseScroll:
-        io.AddMouseWheelEvent(event.scroll.x, event.scroll.y);
+        (event.preciseScroll ? pendingWheel.points : pendingWheel.lines) += event.scroll;
         break;
     case platform::Event::Type::MouseLeave:
         io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
@@ -649,6 +649,14 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
         ImGui::GetStyle().CircleTessellationMaxError = kCurveTolerance / pixels;
     }
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
+
+    // The components scroll by the steps and points of the frame themselves, and the ImGui windows of the app take them in the steps of ImGui.
+    wheel = std::exchange(pendingWheel, {});
+    wheelTaken = false;
+    const math::Vec2 steps = wheel.lines + wheel.points / (pointsPerUnit * kImGuiScrollFonts * kBaseFontSize);
+    if (!steps.isZero()) {
+        io.AddMouseWheelEvent(steps.x, steps.y);
+    }
     textSession->beginFrame(viewport, scale, deltaSeconds);
     closeAbandonedPopups();
     feedGamepad(input, navigation);

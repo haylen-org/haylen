@@ -28,6 +28,8 @@ namespace haylen::input {
 class Input final {
   public:
     static constexpr std::size_t kMaxGamepads = 4;
+    // A precise scroll counts as one step of a wheel for every this many points of the screen it moves.
+    static constexpr float kPointsPerLine = 40.0F;
 
     void handleEvent(const platform::Event& event, const graphics::Viewport& viewport);
     void updateGamepads(std::span<const GamepadState> states);
@@ -65,6 +67,7 @@ class Input final {
     [[nodiscard]] math::Vec2 getMouseDelta() const noexcept {
         return mouseDelta;
     }
+    // The scroll of the frame in steps of a wheel, where precise scrolls count `kPointsPerLine` points as a step.
     [[nodiscard]] math::Vec2 getMouseScroll() const noexcept {
         return mouseScroll;
     }
@@ -97,6 +100,12 @@ class Input final {
     [[nodiscard]] float getGamepadDeadzone() const noexcept {
         return deadzone;
     }
+
+    // Multiplies every scroll of the wheels and the trackpads before the app and the UI see it, 1 by default. Throws `std::invalid_argument` for a value that is not positive and finite.
+    void setScrollSpeed(float value);
+    [[nodiscard]] float getScrollSpeed() const noexcept {
+        return scrollSpeed;
+    }
     [[nodiscard]] InputDevice getLastDevice() const noexcept {
         return lastDevice;
     }
@@ -127,6 +136,7 @@ class Input final {
     math::Vec2 mouseDelta{};
     math::Vec2 mouseScroll{};
     float deadzone = 0.2F;
+    float scrollSpeed = 1.0F;
     bool mouseInside = false;
     bool pointerCaptured = false;
     InputDevice lastDevice = InputDevice::KeyboardMouse;

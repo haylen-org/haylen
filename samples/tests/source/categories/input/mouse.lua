@@ -1,4 +1,4 @@
--- Mouse: the three buttons held, pressed and released, the wheel, the movement of each frame, the position in design units and framebuffer pixels, a zone per cursor shape, a hidden cursor and a captured mouse that moves a crosshair by its movement alone.
+-- Mouse: the three buttons held, pressed and released, the wheel and the trackpad with the scroll speed, the movement of each frame, the position in design units and framebuffer pixels, a zone per cursor shape, a hidden cursor and a captured mouse that moves a crosshair by its movement alone.
 local collections = require('haylen.collections')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -25,6 +25,7 @@ function Mouse:enter()
     self.trail = collections.newRingBuffer(40)
     self.journal = Journal(40)
     self.cursor = 'default'
+    self.scrollSpeed = input.scrollSpeed()
     self:frame({
         hint = 'Hover a zone to change the cursor, click, scroll and move the mouse. On a touch screen, turn on the finger as the mouse to drive the buttons with the first finger down.',
         focus = 'visible',
@@ -34,8 +35,10 @@ function Mouse:enter()
             ui.toggle{id = 'locked', text = 'Capture the mouse', onChange = function(event) self:capture(event.checked) end},
             ui.label{text = 'A captured mouse stays hidden over this toggle and reports only its movement, which moves the white crosshair. A click releases it.', color = 'textMuted', font = 'caption'},
             ui.button{id = 'reset', text = 'Reset the wheel totals', onClick = function() self.scrollX, self.scrollY = 0, 0 end},
+            ui.label{text = 'Scroll speed', font = 'caption', color = 'textMuted'},
+            ui.slider{id = 'scrollSpeed', value = self.scrollSpeed, min = 0.25, max = 3, step = 0.25, showValue = true, onChange = function(event) input.setScrollSpeed(event.value) end},
             ui.sectionTitle{text = 'Reading the mouse'},
-            ui.label{font = 'monospace', text = "input.mouseDown('left')\ninput.mousePosition()\ninput.mouseDelta()\ninput.mouseScroll()\ninput.pointerCaptured()\nwindow.setCursor('iBeam')\nwindow.setMouseLocked(true)"},
+            ui.label{font = 'monospace', text = "input.mouseDown('left')\ninput.mousePosition()\ninput.mouseDelta()\ninput.mouseScroll()\ninput.setScrollSpeed(1.5)\ninput.pointerCaptured()\nwindow.setCursor('iBeam')\nwindow.setMouseLocked(true)"},
         },
     })
 end
@@ -43,6 +46,7 @@ end
 function Mouse:exit()
     Mouse.super.exit(self)
     input.setTouchAsMouse(false)
+    input.setScrollSpeed(self.scrollSpeed)
     window.setCursor('default')
     window.setCursorVisible(true)
     window.setMouseLocked(false)
@@ -72,7 +76,7 @@ function Mouse:event(event)
     if event.type == 'mouseDown' or event.type == 'mouseUp' then
         self.journal:add(string.format('Event "%s" of button "%s" at %.0f, %.0f', event.type, event.button, event.x, event.y), event.type == 'mouseDown' and Test.warm or Test.red)
     elseif event.type == 'mouseScroll' then
-        self.journal:add(string.format('Event "mouseScroll" %.1f, %.1f', event.scrollX, event.scrollY), Test.green)
+        self.journal:add(string.format('Event "mouseScroll" %.1f, %.1f %s', event.scrollX, event.scrollY, event.precise and 'points of a trackpad' or 'steps of a wheel'), Test.green)
     elseif event.type == 'mouseEnter' or event.type == 'mouseLeave' then
         self.journal:add('Event "' .. event.type .. '"', Test.accent)
     end

@@ -31,6 +31,7 @@
 #elif defined(__ANDROID__)
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidGlesVersion.hpp"
+#include "platform/android/AndroidInputEvents.hpp"
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
 #elif defined(__EMSCRIPTEN__)
@@ -126,7 +127,7 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     desc.html5.update_document_title = true;
 #endif
 #if defined(__ANDROID__)
-    desc.android.native_event_cb = &AndroidGamepads::handleEvent;
+    desc.android.native_event_cb = &AndroidInputEvents::take;
     desc.android.key_consumed_cb = &AndroidGamepads::takesKey;
 #endif
     return desc;
