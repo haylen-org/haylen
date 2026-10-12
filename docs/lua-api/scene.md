@@ -92,7 +92,7 @@ The hook `load` receives a context, a `haylen.SceneLoad` userdata, which lives u
 | `context:progress(value, message)` | Reports the progress of the work the scene does itself, from 0 to 1, with an optional message for the loading view. A value outside that range raises `A load progress runs from 0 to 1.` |
 | `context:preload(groups)` | Loads one [preload group of `haylen.assets`](assets.md#preload-groups), or a list of them, and holds the load until they loaded. It returns a promise that resolves with `true` once all of them loaded. An asset that fails fails the load, and the promise rejects with the error. Calling it once the load is over raises `The scene load is over.` |
 
-The progress of the load, which loading views receive and `scene.loadProgress` returns, is the mean of the progress the scene reports and of the progress of each group it preloads. Heavy work stays in the background, since the asset manager decodes on the worker pools and creates the GPU resources of the decoded assets within the [upload budget](assets.md#assetssetuploadbudgetseconds) of each frame.
+The progress of the load, which loading views receive and `scene.loadProgress` returns, is the mean of the progress the scene reports and of the progress of each group it preloads. Heavy work stays in the background, since the asset manager decodes on the worker pools and creates the GPU resources of the decoded assets within the [upload budget](assets.md#assetssetuploadbudgetseconds) of each frame. A group whose assets are not on the device yet downloads them first, so a scene loads content that arrives later the same way, as the [loading guide](../loading.md#scenes) describes.
 
 ```lua
 local scene = require('haylen.scene')

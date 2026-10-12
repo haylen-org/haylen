@@ -6,7 +6,7 @@ The module `haylen.content` tells which content the app plays and which of its a
 local content = require('haylen.content')
 ```
 
-The [content guide](../content.md) describes how content reaches the device: `required` assets are on the device before the app starts, `prefetch` assets download in the background once it runs, and `onDemand` assets download only when the app asks for them, as the `content` section of `app.json` decides.
+The [content guide](../content.md) describes how content reaches the device: `required` assets are on the device before the app starts, `prefetch` assets download in the background once it runs, and `onDemand` assets download only when the app asks for them, as the `content` section of `app.json` decides. The [loading guide](../loading.md) shows with complete examples how deliveries, preload groups, scene loads and the packages of each store work together.
 
 ## Development and releases
 
