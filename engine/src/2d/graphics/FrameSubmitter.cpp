@@ -559,7 +559,7 @@ void FrameSubmitter::renderSwapchain() {
     sg_commit();
 }
 
-// Draws the world and screen canvases of a destination, the screen or a capture, by their order and then in the order they began.
+// Draws the world and screen canvases of a destination, the screen or a capture, by their order and then in the order they began, which is their place in the list of canvases. A stable sort would take a buffer of its own in some standard libraries.
 void FrameSubmitter::drawCanvases(std::size_t capture, graphics::PassTarget pass) {
     std::vector<const Canvas*>& ordered = state.orderedCanvases;
     ordered.clear();
@@ -568,7 +568,7 @@ void FrameSubmitter::drawCanvases(std::size_t capture, graphics::PassTarget pass
             ordered.push_back(&canvas);
         }
     }
-    std::stable_sort(ordered.begin(), ordered.end(), [](const Canvas* lhs, const Canvas* rhs) { return lhs->options.order < rhs->options.order; });
+    std::ranges::sort(ordered, [](const Canvas* lhs, const Canvas* rhs) { return lhs->options.order != rhs->options.order ? lhs->options.order < rhs->options.order : lhs < rhs; });
 
     for (const Canvas* canvas : ordered) {
         const math::Rect rect = state.getPassRect(*canvas);
