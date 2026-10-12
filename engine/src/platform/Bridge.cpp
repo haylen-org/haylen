@@ -203,8 +203,18 @@ void Bridge::deliver(NativeEvent& event) {
     }
 }
 
-// A batch keeps its buffers in the order of its events, so each event moves its references behind the buffers of the events before it. A batch is retained when any of its events is.
+// A batch keeps its buffers in the order of its events, so each event moves its references behind the buffers of the events before it. A batch is retained when any of its events is. Arrivals without a batched event stay as they came, without the table of batches, which some standard libraries allocate even while it is empty.
 std::vector<Bridge::Arrival> Bridge::gather(std::vector<Arrival> arrivals) {
+    // clang-format off
+    const bool batched = std::ranges::any_of(arrivals, [](const Arrival& arrival) {
+        const auto* event = std::get_if<NativeEvent>(&arrival);
+        return event != nullptr && event->options.batched;
+    });
+    // clang-format on
+    if (!batched) {
+        return arrivals;
+    }
+
     std::vector<Arrival> gathered;
     gathered.reserve(arrivals.size());
     std::unordered_map<std::string, std::size_t> batches;
