@@ -204,7 +204,7 @@ class RawServer final {
     static constexpr std::string_view kKeyField = "Sec-WebSocket-Key: ";
     static constexpr std::string_view kAcceptSuffix = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-    // The reset waits for the request, so it reaches the client while the client waits for the answer, and closing without lingering resets the connection. Half a frame announces five bytes and carries two.
+    // The plain answer ends the stream of the server, since a TLS client may read it as the start of a longer record and wait for the rest. The reset waits for the request, so it reaches the client while the client waits for the answer, and closing without lingering resets the connection. Half a frame announces five bytes and carries two.
     void serve() {
         while (!done) {
             if (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
@@ -214,6 +214,7 @@ class RawServer final {
             switch (behavior) {
             case Behavior::PlainText:
                 send(peer, "HTTP/1.1 400 Bad Request\r\n\r\n");
+                peer.shutdownSend();
                 drain(peer);
                 break;
             case Behavior::Reset:
