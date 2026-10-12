@@ -3279,6 +3279,9 @@ def desktop_folder(app: App, platform: str) -> Path:
 def build_desktop(app: App, root: Path, args: argparse.Namespace) -> Path:
     """Builds a Windows or Linux project with CMake into the build folder of the app, outside the project, installs the app into its own folder there and returns the folder of the build."""
     build = app.build_folder / "cmake" / f"{args.platform}-{args.config.lower()}"
+    # A build tree belongs to one project, so a project of the developer that replaces the copy of the template builds in a new tree.
+    if (build / "CMakeCache.txt").is_file() and cmake_cache_value(build, "CMAKE_HOME_DIRECTORY") != root.as_posix():
+        shutil.rmtree(build)
     terminal.step(f'Building the {args.platform.capitalize()} project `{shown_path(root)}` in the "{args.config}" configuration')
     run(["cmake", "-S", root, "-B", build, *cmake_generator(), f"-DCMAKE_BUILD_TYPE={args.config}"])
     run(["cmake", "--build", build, "--config", args.config, "--parallel", str(args.jobs)])

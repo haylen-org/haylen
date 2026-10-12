@@ -401,6 +401,19 @@ class DesktopProjectTest(unittest.TestCase):
         for platform in ("windows", "linux"):
             self.assertFalse(haylen.desktop_folder(info, platform).is_relative_to(info.build_folder / platform))
 
+    def test_a_project_that_replaces_the_copy_of_the_template_builds_in_a_new_tree(self):
+        info = mock.Mock(build_folder=self.scratch / "build")
+        build = self.scratch / "build" / "cmake" / "linux-debug"
+        build.mkdir(parents=True)
+        (build / "CMakeCache.txt").write_text(f"CMAKE_HOME_DIRECTORY:INTERNAL={(self.scratch / 'build' / 'linux').as_posix()}\n")
+        (build / "stale.o").write_bytes(b"object")
+        arguments = haylen.argparse.Namespace(platform="linux", config="Debug", jobs=1)
+        with mock.patch.object(haylen, "run"), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            haylen.build_desktop(info, self.scratch / "build" / "linux", arguments)
+            self.assertTrue((build / "stale.o").exists())
+            haylen.build_desktop(info, self.app / "platform" / "linux", arguments)
+        self.assertFalse(build.exists())
+
     def test_values_reach_cmake_and_resource_scripts_as_they_are(self):
         self.assertEqual(haylen.cmake_text("Sky Garden"), "[[Sky Garden]]")
         self.assertEqual(haylen.cmake_text('A "quoted" ${name}; with ]] inside'), '[=[A "quoted" ${name}; with ]] inside]=]')
