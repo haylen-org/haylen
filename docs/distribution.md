@@ -83,7 +83,7 @@ Before anything else, `run` compiles the shaders of the app whose sources change
 | `ios`, `tvos` | `xcodebuild` for the device, signed with the team in the `HAYLEN_APPLE_TEAM` environment variable. | `xcrun devicectl device install app` and `device process launch --console` on the device id given with `--device`. |
 | `android` | Gradle `:app:assembleDebug`, or `assembleRelease` with `--config Release`, into the build folder of the app. | `adb install -r` of the newest APK of the configuration, `adb shell am start` of its package and the log of the app process, on the device or emulator serial given with `--device`, which may be left out when only one is connected. |
 | `web` | Copies the files of the web project and the prebuilt runtime into the site and writes `app.zip` and `config.json` next to them. | Serves the site on `--port` (8000 by default) with the `--coep` and `--coop` policies, and opens it with `--open`. |
-| `windows`, `linux` | CMake builds the project with Ninja, or the default generator on Windows without Ninja, into `cmake/<platform>-<config>` of the build folder of the app, and installs the app into `build/apps/<app>-<hash>/<platform>/`, as [Windows and Linux](#windows-and-linux) describes. | Runs the installed executable, `<executable>.exe` on Windows and `bin/<executable>` on Linux, which plays the `app` folder next to it. |
+| `windows`, `linux` | CMake builds the project with Ninja, or the default generator on Windows without Ninja, into `cmake/<platform>-<config>` of the build folder of the app, and installs the app into `build/apps/<app>-<hash>/installed/<platform>/`, as [Windows and Linux](#windows-and-linux) describes. | Runs the installed executable, `<executable>.exe` on Windows and `bin/<executable>` on Linux, which plays the `app` folder next to it. |
 
 `--config` is the configuration of the platform project (`Debug` by default), and `--engine-config` the configuration of the engine, of the artifacts the project links and of the desktop player (`Release` by default). A `Debug` engine is only for debugging the engine itself, because it runs many times slower. `xcodebuild` and Gradle build with the jobs of `--jobs`. `run` streams the output of the app until it exits or Ctrl+C stops it. The engine logs to the standard output on desktops, to the log of the process on Android, which `adb logcat --pid` streams, and to the unified log on iOS, tvOS and Mac Catalyst, under the `dev.varn.engine` subsystem. On Mac Catalyst and the simulators `run` streams those lines next to the standard output and error of the process, with warnings and errors on stderr, and keeps streaming for a second after the app ends so its last lines arrive. The log of an app on a device shows in Console.app, while `run` shows the standard output and error of its process.
 
@@ -517,15 +517,15 @@ The files of `platform/web/` of the app, or of the template, go as they are into
 | `HaylenApp.h` | On Windows, the values of `app.json` as strings of the resource script and the version as four numbers, which `resources/app.rc` includes. |
 | `app.desktop`, `app.metainfo.xml` | On Linux, the desktop entry and the AppStream metainfo of the project completed with the values of `app.json`, as [linux](#linux) describes. |
 
-The executable is named after the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts. `run` configures the project with the configuration of `--config` in `cmake/<platform>-<config>/` of the build folder of the app, builds it and installs it again into `<platform>/` of the build folder, which is the app as it ships:
+The executable is named after the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts. `run` configures the project with the configuration of `--config` in `cmake/<platform>-<config>/` of the build folder of the app, builds it and installs it again into `installed/<platform>/` of the build folder, which is the app as it ships:
 
 ```text
-build/apps/my-game-1a2b3c4d/windows/
+build/apps/my-game-1a2b3c4d/installed/windows/
   my-game.exe             The executable of the app, with its icon, version resource and manifest.
   app/                    The package, or the manifests and shards of the protected release.
   my_glue.dll             The native libraries of the app.
 
-build/apps/my-game-1a2b3c4d/linux/
+build/apps/my-game-1a2b3c4d/installed/linux/
   bin/my-game             A link to the executable.
   lib/my-game/my-game     The executable of the app.
   lib/my-game/app/        The package, or the manifests and shards of the protected release.

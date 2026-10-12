@@ -3275,8 +3275,8 @@ def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
 
 
 def desktop_folder(app: App, platform: str) -> Path:
-    """The folder that the last Windows or Linux build of an app installs into, which is the app as it ships."""
-    return app.build_folder / platform
+    """The folder that the last Windows or Linux build of an app installs into, which is the app as it ships, apart from the copy of the template that an app without a project of its own builds."""
+    return app.build_folder / "installed" / platform
 
 
 def build_desktop(app: App, root: Path, args: argparse.Namespace) -> Path:

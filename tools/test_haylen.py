@@ -396,6 +396,11 @@ class DesktopProjectTest(unittest.TestCase):
         for template in haylen.platform_templates():
             self.assertEqual(sorted(haylen.project_files(self.scratch / "fresh" / "platform" / template)), sorted(haylen.project_files(haylen.PLATFORM_TEMPLATES_DIR / template)))
 
+    def test_the_installed_app_stays_apart_from_the_copy_of_the_template(self):
+        info = haylen.App(self.app, "linux")
+        for platform in ("windows", "linux"):
+            self.assertFalse(haylen.desktop_folder(info, platform).is_relative_to(info.build_folder / platform))
+
     def test_values_reach_cmake_and_resource_scripts_as_they_are(self):
         self.assertEqual(haylen.cmake_text("Sky Garden"), "[[Sky Garden]]")
         self.assertEqual(haylen.cmake_text('A "quoted" ${name}; with ]] inside'), '[=[A "quoted" ${name}; with ]] inside]=]')
@@ -476,7 +481,7 @@ class DesktopProjectTest(unittest.TestCase):
         (project / "haylen" / "native").mkdir(parents=True)
         (project / "haylen" / "native" / "glue.dll").write_bytes(b"glue")
         app = mock.Mock(folder=self.app, build_folder=self.scratch / "build", executable="sky-garden", identifier="com.example.skygarden")
-        folder = self.scratch / "build" / "windows"
+        folder = self.scratch / "build" / "installed" / "windows"
         (folder / "app").mkdir(parents=True)
         (folder / "app" / "app.json").write_text("{}")
         (folder / "glue.dll").write_bytes(b"glue")
@@ -497,7 +502,7 @@ class DesktopProjectTest(unittest.TestCase):
     def test_a_linux_app_needs_its_desktop_entry_named_after_the_identifier(self):
         project = self.scratch / "project"
         app = mock.Mock(folder=self.app, build_folder=self.scratch / "build", executable="sky-garden", identifier="com.example.skygarden")
-        folder = self.scratch / "build" / "linux"
+        folder = self.scratch / "build" / "installed" / "linux"
         (folder / "lib" / "sky-garden" / "app").mkdir(parents=True)
         (folder / "lib" / "sky-garden" / "app" / "app.json").write_text("{}")
         (folder / "lib" / "sky-garden" / "sky-garden").write_bytes(b"code")
