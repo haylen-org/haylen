@@ -279,6 +279,14 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 207. As bordas arredondadas de botões, switches, pinos e de tudo o que tem curva estão serrilhadas: revisar as bordas e o jeito como as curvas são geradas, para ficarem lisas em qualquer escala.
 208. Prioridade: tudo o que é a base da engine (núcleo, Lua, rendering, textos, UI, input, áudio, assets, empacotamento do conteúdo e os hosts das plataformas) vem primeiro e tem que estar 100% perfeito e rodando perfeitamente bem em todas as plataformas. Os samples vêm em segundo lugar.
 209. Em `templates/platform` falta o template completo de desktop: Windows e Linux precisam de um projeto de plataforma de verdade como os da Apple, do Android e da web, com ícone, metadados, manifesto, recursos e empacotamento em instalador.
+210. Física: as cordas cortadas continuam flutuando como se ainda estivessem presas no ar.
+211. Física: o líquido espirra para todo lado com qualquer toque, mesmo devagar, e sai do ambiente o tempo todo.
+212. Física: no teste de plataformas de mão única não dá para subir até o fim.
+213. Física: o teste de quebrar em muitas peças derruba o app.
+214. A rolagem pelo trackpad e pela roda do mouse está rápida demais e sensível demais: ajustar na engine.
+215. Regra: os samples usam o mínimo de imagens, só o suficiente para ficarem bons. O Codex fica para onde a arte faz diferença (jogos, nine-slice, temas de UI e interface), e no resto entram SVG e primitivas, sem uma imagem por produto nos apps de exemplo, para não encher o repositório de imagens.
+216. Apagar todos os simuladores do iOS e emuladores do Android que os agentes criaram, usar só os padrões que já existem e resetá-los, porque ficaram com muitos samples instalados.
+217. Um comando `haylen` na raiz do repositório, para Windows, Linux e macOS, que chama o `haylen.py`, para que com a raiz no `PATH` baste digitar `haylen run` ou qualquer outro comando.
 
 ## 3. Regras
 
@@ -935,7 +943,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 209 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 217 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -946,9 +954,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 209: decisões e checklist
+## 14. Pedidos 51 a 217: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 209 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 217 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1813,6 +1821,17 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [ ] A engine roda perfeitamente bem: o projeto de testes inteiro passa sem falhas no player headless, na web com os dois backends, no simulador de iOS, no simulador de tvOS, no Mac Catalyst e no emulador de Android, sem nenhum aviso de build e sem erro nos logs.
 
 - [ ] Lacunas da engine achadas pelos samples de apps e de estresse: o custo de recarregar e inserir numa `collection` cresce com a lista inteira, as superfícies do tema só aceitam imagens raster (sem SVG), o ruído não tem amostragem em grade de uma vez, o `jobs.spawn` não tem dono nem cancelamento, os lotes não informam a memória de GPU, a leitura de FPS vem do tempo de CPU do quadro e não dos quadros mostrados, e a `ui.table` aceita em silêncio linhas com células a mais. Cada uma corrigida com teste.
+
+#### AV. Correções de física, rolagem, samples e ferramenta
+
+- [ ] Cordas cortadas caem: o pedaço solto de uma corda cortada deixa de ficar preso no ar e cai com a gravidade, com teste de regressão no mundo headless e no teste de cordas do projeto de testes.
+- [ ] Líquido estável: o fluido não espirra com toques lentos, não ganha energia sozinho e não sai do recipiente, com limites de velocidade e de pressão, colisão correta com as paredes e testes de conservação.
+- [ ] Plataformas de mão única: o personagem sobe por todas as plataformas até o topo no teste do projeto de testes, com teste de regressão.
+- [ ] Quebrar em muitas peças não derruba o app: achar a causa do crash, corrigir e testar com o maior número de peças do teste.
+- [ ] Rolagem pelo trackpad e pela roda do mouse com a velocidade das plataformas: deltas de precisão do trackpad tratados como pixels, a roda em linhas, uma sensibilidade configurável pelo tema e pelo `app.json`, e testes.
+- [ ] Samples com o mínimo de imagens: regra no `AGENTS.md`, o Codex só onde a arte faz diferença, SVG e primitivas no resto, e os apps de exemplo sem uma imagem por produto.
+- [ ] Simuladores e emuladores: os criados pelos agentes apagados, os padrões resetados, e a regra de usar só os padrões no `AGENTS.md`.
+- [ ] Comando `haylen` na raiz (script para macOS e Linux, e `haylen.cmd` para Windows) que repassa tudo ao `haylen.py`, documentado no `README.md` e no guia de distribuição, com teste.
 
 #### AT. Documentação
 
