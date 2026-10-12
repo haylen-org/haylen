@@ -896,6 +896,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-core-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
   set_target_properties(haylen-core-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-core-benchmark)
+
+  # The content benchmark times building, opening and reading a protected release, catalog lookups, the planning of update ranges and the local store, with the largest allocation of each.
+  add_executable(haylen-content-benchmark bench/ContentBenchmark.cpp)
+  target_include_directories(haylen-content-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-content-benchmark PRIVATE haylen::engine haylen::headless)
+  set_target_properties(haylen-content-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-content-benchmark)
 endif()
 
 if((HAYLEN_BUILD_TOOLS OR HAYLEN_BUILD_TESTS) AND HAYLEN_DESKTOP)

@@ -550,6 +550,23 @@ A collection keeps the records that the manifests the app retains use, removes t
 
 Every record of the store passes the same checks on every read as a record of a shard: its header must match the signed catalog, and its encryption must authenticate. A record that fails leaves the store with `CacheCorrupt`, and the next download replaces it.
 
+## Performance
+
+The command `haylen bench --suite content` measures the work of protected content on this machine and prints the largest single allocation of each measurement, so a reader that starts to hold whole files shows at once. These are the results of one Release build on an Apple M5 Pro with the machine loaded by other work, so they are a ceiling, and absolute values vary from machine to machine.
+
+| Measurement | Result | Largest allocation |
+| --- | --- | --- |
+| Building the release of 64 MiB of incompressible data, 16 MiB of text and 2000 small files | 135 MiB/s | 4.0 MiB |
+| Opening the release, with both signatures checked and both catalogs decrypted | 1.2 ms | 0.3 MiB |
+| Reading an incompressible file in order | 355 MiB/s | 2.3 MiB |
+| Reading a compressible file in order | 1011 MiB/s | 4.0 MiB |
+| 2000 reads of 4 KiB at random offsets of one file | 6.5 s | 2.4 MiB |
+| Finding 2000 files in the catalog | 0.6 ms | 0 MiB |
+| Planning the download ranges of 100 thousand records | 0.7 ms | 2.0 MiB |
+| Adding 256 records of 256 KiB to the local store | 171 MiB/s | 0.25 MiB |
+
+The largest allocation of every read stays at the size of one chunk, at most 4 MiB, whatever the size of the file or the release. A read authenticates, decrypts and decompresses the whole chunk that holds its first byte, so reading a file in order costs each chunk once, while a small read at a random place costs a whole chunk, about 3 ms for a chunk of 1 MiB of incompressible data. Formats that read small pieces at random places, such as a database of many records, keep each piece in a file of its own or read their file in order.
+
 ## Limits
 
 Every parser treats its bytes as hostile: it checks every offset and size against the bytes it has before it uses them, checks counts before it multiplies them, and allocates only what those checks allow.
