@@ -75,7 +75,7 @@ TEST(WindowLuaTest, MovesAndPlacesTheWindow) {
     EXPECT_EQ(fixture.host().getFrame(), (math::Rect{10.0F, 20.0F, 1920.0F, 200.0F}));
     fixture.runLua("window.place('center')");
     EXPECT_EQ(fixture.host().getFrame(), (math::Rect{0.0F, 420.0F, 1920.0F, 200.0F}));
-    EXPECT_NE(fixture.lua("window.place({anchor = 'middle'})").find("unknown anchor"), std::string::npos);
+    EXPECT_NE(fixture.lua("window.place({anchor = 'middle'})").find("A window position has the unknown \"anchor\" \"middle\"."), std::string::npos);
 }
 
 TEST(WindowLuaTest, ListsTheMonitors) {

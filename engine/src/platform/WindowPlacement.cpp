@@ -21,7 +21,7 @@ template <typename T, std::size_t Size> T WindowPlacement::readName(const core::
             return found->second;
         }
     }
-    throw std::invalid_argument(std::string("A window position has an unknown ") + key + ": " + value.dump() + ".");
+    throw std::invalid_argument(std::string("A window position has the unknown \"") + key + "\" " + value.dump() + ".");
 }
 
 template <typename T, std::size_t Size> std::string_view WindowPlacement::getName(const std::array<std::pair<std::string_view, T>, Size>& names, T value) {
@@ -41,7 +41,7 @@ WindowPlacement WindowPlacement::fromJson(const core::Json& value) {
         return placement;
     }
     if (!value.is_object()) {
-        throw std::invalid_argument("A window position is \"center\", a point with x and y, or an object with an anchor.");
+        throw std::invalid_argument("A window position is \"center\", a point with \"x\" and \"y\", or an object with an \"anchor\".");
     }
     if (value.contains("x") || value.contains("y")) {
         core::JsonValidator::requireKnownKeys(value, {"x", "y"}, "window position");

@@ -119,7 +119,7 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
         return {.name = std::string(name), .linked = true};
     }
     if (!given.has_parent_path()) {
-        searched += "\n  the libraries linked into the app: not registered";
+        searched += "\n  The libraries linked into the app: not registered";
     }
     throw std::runtime_error("The native library \"" + std::string(name) + "\" could not be loaded. These are the places it searched:" + searched + "\nPut the library in one of them or load it by its path.");
 }

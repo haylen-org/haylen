@@ -14,7 +14,7 @@ local platform = require('haylen.platform')
 2. A handler that a native library registered through the `HaylenNativeApi` of the engine, as [haylen.native](native.md#library-handlers) describes.
 3. The native handler of the running platform: `HaylenBridge` on Android and Apple platforms and `Module.haylen` on the web. Windows and Linux have no handler registry of their own, so handlers of native libraries and C++ handlers answer there.
 
-A method that no handler answers fails with the code `noHandler` and `No native handler is registered for "<method>".`, or `No page handler is registered for "<method>".` on the web.
+A method that no handler answers fails with the code `noHandler` and `No native handler is registered for "<method>".`, or `No page handler is registered for "<method>".` on the web. The headless host of the engine tests and of `haylen-headless` has no native side: it records each call that no handler of the engine answers and leaves it pending, so a test answers it or the call waits.
 
 Parameters and results cross the bridge as JSON. Lua tables with only consecutive integer keys starting at 1 become arrays, other tables become objects, and an empty table becomes an empty object. Functions, userdata and other values that JSON cannot hold raise `A <type> cannot be converted to JSON.`. JSON `null` arrives in Lua as `nil`.
 
@@ -230,7 +230,7 @@ end
 
 ### platform.plugin(id)
 
-Returns the [handle](#plugin-handles) of the plugin `id` that `app.json` lists, which the Lua modules of the plugin use to reach its native part. An id that `app.json` does not list raises `The plugin <id> is not among the plugins of app.json.`.
+Returns the [handle](#plugin-handles) of the plugin `id` that `app.json` lists, which the Lua modules of the plugin use to reach its native part. An id that `app.json` does not list raises `The plugin "<id>" is not among the plugins of "app.json".`.
 
 ```lua
 local platform = require('haylen.platform')
@@ -289,7 +289,7 @@ end)
 | `handle:audioStream(name)` | The [audio stream](#audio-streams) `name` that the native part of the plugin opened, or `nil` until it opens it. |
 | `handle:openScreen(name, params, options)` | Opens the [screen](#screens) `name` of the plugin, which covers the app until it ends, and returns a call that the result of the screen settles. |
 
-The members are read-only, and an empty method or event name raises `A method or event of the plugin <id> needs a name.`. A platform without the native part of the plugin answers its calls with the code `noHandler`, so a plugin checks `handle.native` when it can do without it. The [plugin guide](../plugins.md#lua-api-of-plugins) shows the Lua API of a whole plugin.
+The members are read-only, and an empty method or event name raises `A method or event of the plugin "<id>" needs a name.`. A platform without the native part of the plugin answers its calls with the code `noHandler`, so a plugin checks `handle.native` when it can do without it. The [plugin guide](../plugins.md#lua-api-of-plugins) shows the Lua API of a whole plugin.
 
 ```lua
 -- plugins/admob/source/init.lua
@@ -339,7 +339,7 @@ A screen fails with the codes of [errors](#errors) and these.
 | `unsupported` | The device cannot show the screen the way the plugin asks, such as a window of its own on an iPhone. |
 | `popupBlocked` | The browser blocked the popup of a web screen, which happens when the tap that asked for it is too long ago. |
 
-An empty name raises `A screen of the plugin <id> needs a name.`, a timeout that is not a positive number raises `The timeout of a screen is a positive number of seconds.`, a state with bytes raises `The state of a screen is JSON without bytes.`, and an unknown option raises an error that names it. The [plugin guide](../plugins.md#plugin-screens) describes how the native parts of plugins open screens on each platform.
+An empty name raises `A screen of the plugin "<id>" needs a name.`, a timeout that is not a positive number raises `The timeout of a screen is a positive number of seconds.`, a state with bytes raises `The state of a screen is JSON without bytes.`, and an unknown option raises an error that names it. The [plugin guide](../plugins.md#plugin-screens) describes how the native parts of plugins open screens on each platform.
 
 ```lua
 local async = require('async')
@@ -428,7 +428,7 @@ The native part of a plugin, such as a microphone, a synthesized voice or decode
 
 | Member | Meaning |
 | --- | --- |
-| `stream:play(options)` | Starts a voice that plays the stream and returns its id, which every voice function of `haylen.audio` takes. `options` takes the options of [`audio.play`](audio.md#audioplaysound-options) that apply to a live stream, `bus`, `volume`, `pan`, `fadeIn`, `x`, `y`, `processMode` and `effects`, and any other key raises `Unknown option '<key>'.`. A new voice takes the stream over from the voice that played it before, which plays silence from then on. |
+| `stream:play(options)` | Starts a voice that plays the stream and returns its id, which every voice function of `haylen.audio` takes. `options` takes the options of [`audio.play`](audio.md#audioplaysound-options) that apply to a live stream, `bus`, `volume`, `pan`, `fadeIn`, `x`, `y`, `processMode` and `effects`, and any other key raises `Unknown option "<key>".`. A new voice takes the stream over from the voice that played it before, which plays silence from then on. |
 | `stream:read(buffer)` | Copies the newest samples that native code pushed into a float buffer of [haylen.collections](collections.md#float-buffers), interleaved by channel, in whole frames and oldest first from the first value, and returns how many values it wrote, fewer while less has arrived. It suits level meters and waveforms, whether a voice plays the stream or not. |
 | `stream.sampleRate` | The sample rate of the stream in hertz. |
 | `stream.channels` | The channels of the stream. |

@@ -513,7 +513,7 @@ Moves the window to a position that reads like `window.position` in `app.json`, 
 | `offset` | `{0, 0}` | Points added to the anchored position. |
 | `fill` | `'none'` | The values `'width'`, `'height'` or `'both'` stretch the window across the area. |
 
-Anchored positions land on whole points. A position that cannot be read raises an error such as `A window position has an unknown anchor: "middle".`.
+Anchored positions land on whole points. A position that cannot be read raises an error such as `A window position has the unknown "anchor" "middle".`.
 
 ```lua
 local window = require('haylen.window')

@@ -6,7 +6,7 @@
 local dialogs = require('haylen.dialogs')
 ```
 
-A dialog never blocks the app. Every function shows its dialog at once and returns a [call](#calls), the same kind of object `platform.call` of [haylen.platform](platform.md#calls) returns, and the choice of the user reaches Lua at the start of a later frame, where `call:await()` inside a coroutine returns it. A dialog that the user dismissed or cancelled returns `nil`, and a dialog that failed returns `nil` and an [error](#errors). A platform that has no such dialog fails the call with the code `unsupported`, never with a default choice. Options are tables whose unknown keys raise `Unknown option '<key>'.`, and every function takes a `timeout` of its own.
+A dialog never blocks the app. Every function shows its dialog at once and returns a [call](#calls), the same kind of object `platform.call` of [haylen.platform](platform.md#calls) returns, and the choice of the user reaches Lua at the start of a later frame, where `call:await()` inside a coroutine returns it. A dialog that the user dismissed or cancelled returns `nil`, and a dialog that failed returns `nil` and an [error](#errors). A platform that has no such dialog fails the call with the code `unsupported`, never with a default choice. Options are tables whose unknown keys raise `Unknown option "<key>".`, and every function takes a `timeout` of its own.
 
 ## Functions
 
@@ -55,7 +55,7 @@ Shows a picker of files to open and returns a call whose `await` gives a list of
 | `multiple` | boolean | `false` | Whether the user may pick several files. |
 | `timeout` | number | None | Seconds after which the call fails with the code `timeout` and the platform closes the picker. |
 
-A filter that is not a table with a name and a list of extensions raises `The filters of a file dialog are a list of tables with a name and a list of extensions.`, a filter without a name raises `Every filter of a file dialog needs a name.`, a filter without extensions raises `The filter '<name>' needs at least one extension.`, and an extension with a leading dot, a wildcard, a separator or a space raises `The extension '<extension>' of the filter '<name>' is invalid. Extensions come without their dot, such as png or tar.gz.`.
+A filter that is not a table with a name and a list of extensions raises `The filters of a file dialog are a list of tables with a name and a list of extensions.`, a filter without a name raises `Every filter of a file dialog needs a name.`, a filter without extensions raises `The filter "<name>" needs at least one extension.`, and an extension with a leading dot, a wildcard, a separator or a space raises `The extension "<extension>" of the filter "<name>" is invalid. Extensions come without their dot, such as "png" or "tar.gz".`.
 
 ```lua
 local async = require('async')
@@ -86,7 +86,7 @@ Shows a picker of the destination of a file, writes `data` there and returns a c
 | `filters` | table | Every file | File types as `dialogs.openFiles` takes them. |
 | `timeout` | number | None | Seconds after which the call fails with the code `timeout` and the platform closes the picker. |
 
-A missing name raises `A save dialog needs the name it suggests for the file.`, a name with a folder raises `The name '<name>' that a save dialog suggests is a file name, without folders.`, and missing data raises `A save dialog needs the data it writes, as a string.`.
+A missing name raises `A save dialog needs the name it suggests for the file.`, a name with a folder raises `The name "<name>" that a save dialog suggests is a file name, without folders.`, and missing data raises `A save dialog needs the data it writes, as a string.`.
 
 ```lua
 local async = require('async')
