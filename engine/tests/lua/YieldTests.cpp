@@ -152,7 +152,11 @@ TEST_F(YieldTest, PassesThroughJobCheckpoints) {
         end)
     )");
     // clang-format on
-    ASSERT_TRUE(finishes("total ~= nil"));
+
+    // The jobs move on with the frames and not with the time between them, which a sleep of the waiting loop stretches past its timeout on Windows.
+    for (int frame = 0; frame < 100000 && fixture.lua("return total") == "nil"; ++frame) {
+        fixture.frames(1);
+    }
     EXPECT_EQ(fixture.lua("return total"), "5005000");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
