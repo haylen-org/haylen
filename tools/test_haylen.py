@@ -1,6 +1,7 @@
 """Tests of the rules of haylen.py that need no build: how it merges Info.plist keys, entitlements and privacy manifests, what it checks in a built app, when it generates App.xcodeproj again, how it prints to the terminal and how its commands read their arguments."""
 
 import argparse
+import ast
 import base64
 import dataclasses
 import contextlib
@@ -163,6 +164,15 @@ class SplashTest(unittest.TestCase):
 class PropertiesTest(unittest.TestCase):
     def test_values_survive_as_ascii_with_escapes(self):
         self.assertEqual(haylen.java_property("Ilha Tropical ✓\\n"), "Ilha Tropical \\u2713\\\\n")
+
+
+class TextFileTest(unittest.TestCase):
+    def test_every_text_file_is_read_and_written_as_utf_8(self):
+        # Windows reads and writes text in its own code page by default, which turns the copyright sign of `app.json` into a byte that no UTF-8 tool reads.
+        tree = ast.parse(Path(haylen.__file__).read_text(encoding="utf-8"))
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("read_text", "write_text")]
+        self.assertTrue(calls)
+        self.assertEqual([node.lineno for node in calls if not any(keyword.arg == "encoding" for keyword in node.keywords)], [])
 
 
 class TerminalStream(io.StringIO):

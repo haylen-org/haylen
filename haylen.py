@@ -354,7 +354,7 @@ def executable_name(name: str) -> str:
 
 
 def engine_version() -> str:
-    return (ENGINE_DIR / "VERSION").read_text().strip()
+    return (ENGINE_DIR / "VERSION").read_text(encoding="utf-8").strip()
 
 
 def download(url: str, target: Path, sha256: str | None = None) -> None:
@@ -539,7 +539,7 @@ def command_configure(args: argparse.Namespace) -> None:
 
 def cmake_cache_value(directory: Path, name: str) -> str:
     prefix = f"{name}:"
-    for line in (directory / "CMakeCache.txt").read_text().splitlines():
+    for line in (directory / "CMakeCache.txt").read_text(encoding="utf-8").splitlines():
         if line.startswith(prefix):
             return line.split("=", 1)[1]
     raise BuildError(f'The variable "{name}" is missing from the CMake cache of `{shown_path(directory)}`. Configure the build tree again with "{TOOL} configure".')
@@ -632,7 +632,7 @@ def unguarded_lambdas(files: list[Path]) -> list[str]:
     findings: list[str] = []
     for path in files:
         guarded = False
-        for number, line in enumerate(path.read_text().splitlines(), start=1):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             stripped = line.strip()
             if stripped == "// clang-format off":
                 guarded = True
@@ -770,7 +770,7 @@ def engine_sources_hash() -> str:
 
 def read_manifest() -> dict:
     path = ARTIFACTS_DIR / "manifest.json"
-    return json.loads(path.read_text()) if path.is_file() else {"platforms": {}}
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"platforms": {}}
 
 
 def write_manifest(platform_name: str, config: str, sources: str) -> None:
@@ -778,7 +778,7 @@ def write_manifest(platform_name: str, config: str, sources: str) -> None:
     manifest["version"] = engine_version()
     manifest["platforms"][platform_name] = {"config": config, "sources": sources}
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-    (ARTIFACTS_DIR / "manifest.json").write_text(json.dumps(manifest, indent=4) + "\n")
+    (ARTIFACTS_DIR / "manifest.json").write_text(json.dumps(manifest, indent=4) + "\n", encoding="utf-8")
 
 
 def apple_slice_options(slice_name: str, arch: str) -> list[str]:
@@ -966,7 +966,7 @@ class App:
     def __init__(self, folder: Path, platform: str) -> None:
         self.folder = folder
         where = shown_path(folder / "app.json")
-        document = json.loads((folder / "app.json").read_text())
+        document = json.loads((folder / "app.json").read_text(encoding="utf-8"))
         for key in ("name", "identifier", "version"):
             if not isinstance(document.get(key), str) or not document[key]:
                 raise BuildError(f'The file `{where}` needs a "{key}" to build an app.')
@@ -1039,7 +1039,7 @@ class App:
 
 def package_files(folder: Path) -> list[Path]:
     """Lists the files of the package of an app folder: `app.json`, `source`, `content` and, for every plugin that `app.json` lists, its `plugin.json` and its `source` folder."""
-    plugins = json.loads((folder / "app.json").read_text()).get("plugins", {})
+    plugins = json.loads((folder / "app.json").read_text(encoding="utf-8")).get("plugins", {})
     if not isinstance(plugins, dict):
         raise BuildError(f'The "plugins" section of `{shown_path(folder / "app.json")}` must map plugin ids to objects of parameter values.')
 
@@ -1376,7 +1376,7 @@ class Plugin:
         if not path.is_file():
             raise BuildError(f'The folder `{shown_path(folder)}` is not a plugin, because it holds no "plugin.json".')
         try:
-            manifest = json.loads(path.read_text())
+            manifest = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as error:
             raise BuildError(f"The file `{shown_path(path)}` is not valid JSON: {error}.") from error
         problems = PluginManifestCheck.problems_of(folder, manifest)
@@ -1815,7 +1815,7 @@ def describe_shader_program(program: dict, sources: list[str], known: dict[str, 
     """Turns the reflection of one program for one shader language into the description the engine builds its GPU program from, with the sources in a shared list."""
 
     def stage(function: dict) -> dict:
-        text = Path(function["path"]).read_text()
+        text = Path(function["path"]).read_text(encoding="utf-8")
         if text not in known:
             known[text] = len(sources)
             sources.append(text)
@@ -1841,7 +1841,7 @@ def describe_shader_program(program: dict, sources: list[str], known: dict[str, 
 
 def compile_shader(source: Path, output: Path) -> None:
     """Compiles one annotated GLSL source into a `.shader` file with every program the engine draws with, for every shader language it supports, and the reflection of the uniforms and textures of the source."""
-    text = source.read_text()
+    text = source.read_text(encoding="utf-8")
     declared = re.findall(r"^\s*@program\s+(\w+)\s+(\w+)\s+(\w+)", text, re.MULTILINE)
     if len(declared) != 1 or declared[0][1] != "haylen_vs":
         raise BuildError(f'The shader `{shown_path(source)}` must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".')
@@ -1859,25 +1859,25 @@ def compile_shader(source: Path, output: Path) -> None:
         folder = Path(temporary)
         for program, defines in SHADER_PROGRAMS.items():
             shdc(["--output", folder / program, "--slang", SHADER_SLANGS, "--format", "bare_yaml", *([f"--defines={':'.join(defines)}"] if defines else [])], program)
-            reflection = parse_shdc_yaml((folder / f"{program}_reflection.yaml").read_text())
+            reflection = parse_shdc_yaml((folder / f"{program}_reflection.yaml").read_text(encoding="utf-8"))
             programs[program] = {shader["slang"]: describe_shader_program(shader["programs"][0], sources, known) for shader in reflection["shaders"]}
 
         # The C header of one language holds the members of every uniform block, which the reflection YAML leaves out.
         shdc(["--output", folder / "reflection.h", "--slang", "glsl430", "--reflection"], "sprite")
-        members = reflect_uniform_members((folder / "reflection.h").read_text(), name)
-        reflection = parse_shdc_yaml((folder / "sprite_reflection.yaml").read_text())["shaders"][0]["programs"][0]
+        members = reflect_uniform_members((folder / "reflection.h").read_text(encoding="utf-8"), name)
+        reflection = parse_shdc_yaml((folder / "sprite_reflection.yaml").read_text(encoding="utf-8"))["shaders"][0]["programs"][0]
 
     blocks = [{"name": block["struct_name"], "slot": block["slot"], "size": block["size"], "uniforms": members.get(block["struct_name"], [])} for block in reflection.get("uniform_blocks", []) if block["stage"] == "fragment" and block["struct_name"] not in SHADER_ENGINE_BLOCKS]
     textures = [{"name": view["texture"]["name"], "slot": view["texture"]["slot"]} for view in reflection.get("views", []) if view["texture"]["name"] not in SHADER_ENGINE_TEXTURES]
     document = {"format": "haylen-shader", "version": 1, "name": name, "blocks": blocks, "textures": textures, "sources": sources, "programs": programs}
-    output.write_text(json.dumps(document, separators=(",", ":")))
+    output.write_text(json.dumps(document, separators=(",", ":")), encoding="utf-8")
     terminal.success(f"Compiled `{shown_path(source)}` into `{shown_path(output)}`.")
 
 
 def shader_sources(folder: Path) -> list[Path]:
     """Lists the sources of an app that declare a program, which are the ones `haylen.py` compiles, while the others are files they include."""
     shaders = folder / "content" / "shaders"
-    return sorted(path for path in shaders.rglob("*.glsl") if re.search(r"^\s*@program\b", path.read_text(), re.MULTILINE)) if shaders.is_dir() else []
+    return sorted(path for path in shaders.rglob("*.glsl") if re.search(r"^\s*@program\b", path.read_text(encoding="utf-8"), re.MULTILINE)) if shaders.is_dir() else []
 
 
 def newest_shader_source(folder: Path) -> float:
@@ -1933,8 +1933,8 @@ def platform_templates() -> list[str]:
 
 def write_if_changed(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.is_file() or path.read_text() != text:
-        path.write_text(text)
+    if not path.is_file() or path.read_text(encoding="utf-8") != text:
+        path.write_text(text, encoding="utf-8")
 
 
 def file_hash(path: Path) -> str:
@@ -1952,7 +1952,7 @@ def tree_hash(folder: Path) -> str:
 def read_state(root: Path) -> dict:
     """Reads what haylen.py records about a platform project in `haylen/state.json`: the hashes of the last generation of `App.xcodeproj` and, for a copy of a template, the hash of the template."""
     path = root / GENERATED_FOLDER / "state.json"
-    return json.loads(path.read_text()) if path.is_file() else {}
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
 
 
 def write_state(root: Path, state: dict) -> None:
@@ -2080,7 +2080,7 @@ def report_requirements(requirements: list[Requirement]) -> None:
 
 def apple_frameworks() -> dict[str, list[str]]:
     """The system frameworks of each Apple platform, by the names of `haylen-frameworks.json`, which the Apple artifacts publish from the lists of the engine."""
-    return json.loads((ARTIFACTS_DIR / "apple" / "haylen-frameworks.json").read_text())
+    return json.loads((ARTIFACTS_DIR / "apple" / "haylen-frameworks.json").read_text(encoding="utf-8"))
 
 
 def apple_colorset(color: tuple[int, int, int, int], dark: tuple[int, int, int, int] | None = None) -> dict:
@@ -2816,7 +2816,7 @@ def android_module_needs(module: Path) -> list[tuple[str, str]]:
     """Reads what the manifest of a plugin module brings to the merged manifest of the app, as tags and names: its permissions, its components and its meta-data."""
     manifest = xml.etree.ElementTree.parse(module / "src" / "main" / "AndroidManifest.xml").getroot()
     script = next((module / name for name in ("build.gradle.kts", "build.gradle") if (module / name).is_file()), None)
-    found = re.search(r'namespace\s*=\s*"([^"]+)"', script.read_text()) if script else None
+    found = re.search(r'namespace\s*=\s*"([^"]+)"', script.read_text(encoding="utf-8")) if script else None
     needs = []
     for element in manifest.iter():
         name = element.get(f"{ANDROID_NAMESPACE}name", "")
@@ -2836,7 +2836,7 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         entries = set(archive.namelist())
         compressed = [info.filename for info in archive.infolist() if info.filename.endswith(RELEASE_SHARD_SUFFIX) and info.compress_type != zipfile.ZIP_STORED]
     manifest = root / "app" / "src" / "main" / "AndroidManifest.xml"
-    own = manifest.read_text() if manifest.is_file() else ""
+    own = manifest.read_text(encoding="utf-8") if manifest.is_file() else ""
     modules = f'Keep the plugin modules of "{GENERATED_FOLDER}/haylen.properties" in `{shown_path(root / "settings.gradle.kts")}` and `{shown_path(root / "app" / "build.gradle.kts")}`.'
     missing: list[Requirement] = []
 
@@ -2986,7 +2986,7 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
     config = {"name": app.name, "identifier": app.identifier, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": write_web_plugins(app, site)}
     if release is not None:
         config["release"] = {"files": release}
-    (site / "config.json").write_text(json.dumps(config, indent=4) + "\n")
+    (site / "config.json").write_text(json.dumps(config, indent=4) + "\n", encoding="utf-8")
 
 
 RELEASE_WEB_PROJECT = """# Written by haylen.py for the release build of the app: the runtime of the page with the bootstrap of the app, linked against the web SDK of the prebuilt engine.
@@ -3052,7 +3052,7 @@ def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requiremen
     """Checks the site of an app: every plugin with a web part in `config.json` with its module, plugins whose screens open popups on a page that the opener policy `same-origin` cuts off from them, and in the Release configuration anything a release never holds, such as Lua text, files of the package as they are, a zipped package, source maps or a key of the app."""
     if not (site / "config.json").is_file():
         raise BuildError(f'The site of `{shown_path(app.folder)}` was not made yet. Make it with "{TOOL} prepare {shown_path(app.folder)} --platform web".')
-    listed = {entry["id"]: entry for entry in json.loads((site / "config.json").read_text()).get("plugins", [])}
+    listed = {entry["id"]: entry for entry in json.loads((site / "config.json").read_text(encoding="utf-8")).get("plugins", [])}
     missing: list[Requirement] = []
     if args.config == "Release":
         missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(site), "app", read_secrets(app))]
@@ -3065,7 +3065,7 @@ def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requiremen
         if entry is None or not (site / entry["module"]).is_file():
             missing.append(Requirement(f'{owner} needs its web module in the site, which "config.json" does not list.', f'Make the site again with "{TOOL} prepare {shown_path(app.folder)} --platform web".'))
         # Popups of screens are the one feature of plugins that the opener policy breaks, and a module registers its screens by name.
-        screens = any("registerScreen(" in path.read_text() for path in (plugin.folder / "web").rglob("*") if path.suffix in (".js", ".mjs"))
+        screens = any("registerScreen(" in path.read_text(encoding="utf-8") for path in (plugin.folder / "web").rglob("*") if path.suffix in (".js", ".mjs"))
         if screens and args.coop == "same-origin":
             missing.append(Requirement(f'{owner} opens screens, whose popups the header "Cross-Origin-Opener-Policy: same-origin" cuts off from the app.', 'Serve the page with "--coop same-origin-allow-popups" or "--coop off".'))
     return missing
@@ -3076,9 +3076,9 @@ def start_web_development(app: App, site: Path) -> DevelopmentServer:
     with zipfile.ZipFile(site / "app.zip") as archive:
         manifest = {name: hashlib.sha256(archive.read(name)).hexdigest() for name in archive.namelist()}
     development = DevelopmentServer(app.folder, manifest)
-    config = json.loads((site / "config.json").read_text())
+    config = json.loads((site / "config.json").read_text(encoding="utf-8"))
     config["development"] = {"path": DEVELOPMENT_PATH, "token": development.token}
-    (site / "config.json").write_text(json.dumps(config, indent=4) + "\n")
+    (site / "config.json").write_text(json.dumps(config, indent=4) + "\n", encoding="utf-8")
     return development
 
 
@@ -3319,8 +3319,8 @@ def write_linux_entries(app: App, root: Path, generated: Path) -> None:
         if not path.is_file():
             raise BuildError(f'The Linux project `{shown_path(root)}` has no `{shown_path(path)}`, which haylen.py completes with the values of "app.json". Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} --template linux" shows.')
     keys = {"Name": app.name, "Comment": app.description, "Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
-    write_if_changed(generated / "app.desktop", complete_desktop_entry(entry.read_text(), keys, shown_path(entry), warnings))
-    write_if_changed(generated / "app.metainfo.xml", complete_metainfo(metainfo.read_text(), appstream_elements(app), shown_path(metainfo), warnings))
+    write_if_changed(generated / "app.desktop", complete_desktop_entry(entry.read_text(encoding="utf-8"), keys, shown_path(entry), warnings))
+    write_if_changed(generated / "app.metainfo.xml", complete_metainfo(metainfo.read_text(encoding="utf-8"), appstream_elements(app), shown_path(metainfo), warnings))
     for warning in warnings:
         terminal.warning(warning)
 
@@ -3658,14 +3658,14 @@ def command_new(args: argparse.Namespace) -> None:
         raise BuildError(f'The identifier "{identifier}" is not a reverse domain identifier such as "com.example.game".')
 
     shutil.copytree(APP_TEMPLATE, folder, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".DS_Store"))
-    document = json.loads((folder / "app.json").read_text())
+    document = json.loads((folder / "app.json").read_text(encoding="utf-8"))
     document.update({"name": name, "identifier": identifier, "orientation": args.orientation})
     document["window"]["title"] = name
     # The starter app is laid out for landscape, so a portrait app turns its window and design resolution upright.
     if args.orientation == "portrait":
         for section in (document["window"], document["design"]):
             section["width"], section["height"] = section["height"], section["width"]
-    (folder / "app.json").write_text(json.dumps(document, indent=4) + "\n")
+    (folder / "app.json").write_text(json.dumps(document, indent=4) + "\n", encoding="utf-8")
     for template in platform_templates():
         copy_template(template, folder / "platform" / template)
     terminal.success(f'Created the app "{name}" with the identifier "{identifier}" in `{shown_path(folder)}`.')
@@ -3704,7 +3704,7 @@ def command_platform_diff(args: argparse.Namespace) -> None:
             terminal.info(f"Only the app has `{shown_path(own[path])}`.")
         elif template[path].read_bytes() != own[path].read_bytes():
             try:
-                lines = difflib.unified_diff(template[path].read_text().splitlines(keepends=True), own[path].read_text().splitlines(keepends=True), f"template/{path}", f"app/{path}")
+                lines = difflib.unified_diff(template[path].read_text(encoding="utf-8").splitlines(keepends=True), own[path].read_text(encoding="utf-8").splitlines(keepends=True), f"template/{path}", f"app/{path}")
                 terminal.verbatim("".join(lines).rstrip("\n"))
             except UnicodeDecodeError:
                 terminal.info(f"The binary file `{shown_path(own[path])}` differs from `{shown_path(template[path])}`.")
@@ -3765,13 +3765,13 @@ def command_android_key(args: argparse.Namespace) -> None:
     terminal.step(f"Creating the {args.kind} key of `{shown_path(root)}`")
     run([tool, "-genkeypair", "-keystore", files["keystore"], "-storetype", "PKCS12", "-alias", args.alias, "-keyalg", "RSA", "-keysize", str(ANDROID_KEY_SIZE), "-validity", str(ANDROID_KEY_DAYS), "-dname", args.dname, *password], env=environment)
     run([tool, "-exportcert", "-rfc", "-keystore", files["keystore"], "-alias", args.alias, "-file", files["certificate"], *password], env=environment)
-    files["properties"].write_text(android_key_properties(args.kind, args.alias, args.password))
+    files["properties"].write_text(android_key_properties(args.kind, args.alias, args.password), encoding="utf-8")
     terminal.success(f"Created the {args.kind} key `{shown_path(files['keystore'])}` with its certificate `{shown_path(files['certificate'])}`.")
     terminal.info(f"The {args.kind} builds of the project sign with it, through `{shown_path(files['properties'])}`, and the folder stays out of the repository.")
 
 
 def write_app_json(folder: Path, document: dict) -> None:
-    (folder / "app.json").write_text(json.dumps(document, indent=4, ensure_ascii=False) + "\n")
+    (folder / "app.json").write_text(json.dumps(document, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def is_git_repository(value: str) -> bool:
@@ -3791,7 +3791,7 @@ def command_plugin_add(args: argparse.Namespace) -> None:
             run(["git", "-C", checkout, "checkout", "--quiet", "FETCH_HEAD"])
             if not (checkout / "plugin.json").is_file():
                 raise BuildError(f'The repository `{args.plugin}` is not a plugin, because it holds no "plugin.json" at its root.')
-            identifier = json.loads((checkout / "plugin.json").read_text()).get("id")
+            identifier = json.loads((checkout / "plugin.json").read_text(encoding="utf-8")).get("id")
             source = checkout.rename(Path(scratch) / identifier) if isinstance(identifier, str) and PLUGIN_ID.fullmatch(identifier) else checkout
         elif args.ref:
             raise BuildError('The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none. Leave the option out for a folder.')
@@ -3805,7 +3805,7 @@ def command_plugin_add(args: argparse.Namespace) -> None:
             shutil.rmtree(target, ignore_errors=True)
             shutil.copytree(source, target, ignore=COPY_IGNORED)
 
-    document = json.loads((app / "app.json").read_text())
+    document = json.loads((app / "app.json").read_text(encoding="utf-8"))
     listed = document.setdefault("plugins", {})
     values = listed.setdefault(plugin.id, {})
     for name, parameter in plugin.parameters.items():
@@ -3827,7 +3827,7 @@ def command_plugin_remove(args: argparse.Namespace) -> None:
     """Deletes a plugin from `plugins/` of an app and from its `app.json`."""
     app = resolve_app(args.app)
     folder = app / "plugins" / args.id
-    document = json.loads((app / "app.json").read_text())
+    document = json.loads((app / "app.json").read_text(encoding="utf-8"))
     listed = document.get("plugins", {})
     if args.id not in listed and not folder.exists():
         raise BuildError(f'The app `{shown_path(app)}` has no plugin "{args.id}". List its plugins with "{TOOL} plugin list --app {shown_path(app)}".')
@@ -3867,7 +3867,7 @@ def plugin_status(app: Path, identifier: str, listed: dict) -> list[str]:
 def command_plugin_list(args: argparse.Namespace) -> None:
     """Lists the plugins of an app with the problems that keep each one from building."""
     app = resolve_app(args.app)
-    listed = json.loads((app / "app.json").read_text()).get("plugins", {})
+    listed = json.loads((app / "app.json").read_text(encoding="utf-8")).get("plugins", {})
     folders = sorted(path.name for path in (app / "plugins").iterdir() if path.is_dir()) if (app / "plugins").is_dir() else []
     identifiers = [*listed, *(name for name in folders if name not in listed)]
     if not identifiers:
@@ -3898,7 +3898,7 @@ def command_plugin_new(args: argparse.Namespace) -> None:
     for source in sorted(path for path in PLUGIN_TEMPLATE.rglob("*") if path.is_file() and path.name != ".DS_Store"):
         target = folder / substitute(source.relative_to(PLUGIN_TEMPLATE).as_posix())
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(substitute(source.read_text()))
+        target.write_text(substitute(source.read_text(encoding="utf-8")), encoding="utf-8")
     terminal.success(f'Created the plugin "{identifier}" in `{shown_path(folder)}`.')
     terminal.info(f'Add it to an app with "{TOOL} plugin add {shown_path(folder)} --app <app folder>".')
 
@@ -3961,7 +3961,7 @@ def cpp_release_app(directory: Path, target: str) -> App:
     recorded = directory / "haylen-release" / target / "package.txt"
     if not recorded.is_file():
         raise BuildError(f'The build in `{shown_path(directory)}` made no protected release of "{target}". Build the project again in the Release configuration.')
-    return App(Path(recorded.read_text().strip()), host_name())
+    return App(Path(recorded.read_text(encoding="utf-8").strip()), host_name())
 
 
 def cpp_release_problems(app: App, folder: Path, release: str) -> list[Requirement]:
@@ -4005,8 +4005,8 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
 
     # The activity, the bridge and the other Java classes come from the `haylen` library of the artifacts, while the app brings the engine in its own library, and a release build brings the part of its protected release that ships.
     built = directory / "bin" / target
-    app = App(Path((built / "package.txt").read_text().strip()), "android")
-    release = Path((built / "release.txt").read_text().strip()) if args.config == "Release" else None
+    app = App(Path((built / "package.txt").read_text(encoding="utf-8").strip()), "android")
+    release = Path((built / "release.txt").read_text(encoding="utf-8").strip()) if args.config == "Release" else None
     ensure_artifacts("android", args.engine_config, args.jobs)
     root = project_root(app, "android")
     prepare_android(app, root, target, args.jobs, release)
@@ -4046,11 +4046,11 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, 
         shutil.copytree(releases[0], output / "app")
 
     # The page is the shell of the target, with the script that picks the backend where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
-    shell = (built / f"{target}.shell.html").read_text()
-    picker = (ENGINE_DIR / "platform" / "web" / "backend-picker.html").read_text().replace("{{TARGET}}", target)
+    shell = (built / f"{target}.shell.html").read_text(encoding="utf-8")
+    picker = (ENGINE_DIR / "platform" / "web" / "backend-picker.html").read_text(encoding="utf-8").replace("{{TARGET}}", target)
     if "{{{ SCRIPT }}}" not in shell:
         raise BuildError(f'The web shell of "{target}" has no "{{{{{{ SCRIPT }}}}}}" placeholder, where the page loads the runtime. Add it to the shell that "WEB_SHELL" names.')
-    (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()))
+    (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()), encoding="utf-8")
     shutil.copy2(built / ENGINE_LOGO.name, output)
     terminal.success(f'Bundled "{target}" for WebGPU and WebGL2 into `{shown_path(output)}`.')
     return output
@@ -4154,7 +4154,7 @@ def read_secrets(app: App) -> dict[str, bytes]:
     folder = keys_folder(app.identifier)
     if not (folder / "keys.json").is_file():
         return {}
-    index = json.loads((folder / "keys.json").read_text())
+    index = json.loads((folder / "keys.json").read_text(encoding="utf-8"))
     secrets = {f'the content key "{identifier}"': (folder / f"content-{identifier}.key").read_bytes() for identifier in index["contentKeys"]}
     secrets["the signing key"] = (folder / "signing.key").read_bytes()
     return secrets
@@ -4271,9 +4271,9 @@ def write_steam_scripts(output: Path, app_id: str, description: str, depots: dic
     scripts.mkdir(parents=True, exist_ok=True)
     entries = "".join(f'\t\t"{depot}" "depot_build_{depot}.vdf"\n' for depot in depots.values())
     live = f'\t"SetLive" "{branch}"\n' if branch else ""
-    (scripts / "app_build.vdf").write_text(f'"AppBuild"\n{{\n\t"AppID" "{app_id}"\n\t"Desc" "{description}"\n\t"ContentRoot" "../content/"\n\t"BuildOutput" "../output/"\n{live}\t"Depots"\n\t{{\n{entries}\t}}\n}}\n')
+    (scripts / "app_build.vdf").write_text(f'"AppBuild"\n{{\n\t"AppID" "{app_id}"\n\t"Desc" "{description}"\n\t"ContentRoot" "../content/"\n\t"BuildOutput" "../output/"\n{live}\t"Depots"\n\t{{\n{entries}\t}}\n}}\n', encoding="utf-8")
     for name, depot in depots.items():
-        (scripts / f"depot_build_{depot}.vdf").write_text(f'"DepotBuild"\n{{\n\t"DepotID" "{depot}"\n\t"ContentRoot" "../content/{name}/"\n\t"FileMapping"\n\t{{\n\t\t"LocalPath" "*"\n\t\t"DepotPath" "."\n\t\t"Recursive" "1"\n\t}}\n}}\n')
+        (scripts / f"depot_build_{depot}.vdf").write_text(f'"DepotBuild"\n{{\n\t"DepotID" "{depot}"\n\t"ContentRoot" "../content/{name}/"\n\t"FileMapping"\n\t{{\n\t\t"LocalPath" "*"\n\t\t"DepotPath" "."\n\t\t"Recursive" "1"\n\t}}\n}}\n', encoding="utf-8")
 
 
 def command_steam(args: argparse.Namespace) -> None:
