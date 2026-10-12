@@ -10,14 +10,14 @@
 namespace haylen::core {
 
 SceneLoad::Deferral::~Deferral() {
-    fail(lua::Error("The scene load was dropped before it finished."));
+    drop();
 }
 
 SceneLoad::Deferral::Deferral(Deferral&& other) noexcept : load(std::exchange(other.load, {})) {}
 
 SceneLoad::Deferral& SceneLoad::Deferral::operator=(Deferral&& other) noexcept {
     if (this != &other) {
-        fail(lua::Error("The scene load was dropped before it finished."));
+        drop();
         load = std::exchange(other.load, {});
     }
     return *this;
@@ -32,6 +32,12 @@ void SceneLoad::Deferral::complete() {
 void SceneLoad::Deferral::fail(const lua::Error& failure) {
     if (const std::shared_ptr<SceneLoad> target = std::exchange(load, {}).lock()) {
         target->fail(failure);
+    }
+}
+
+void SceneLoad::Deferral::drop() {
+    if (const std::shared_ptr<SceneLoad> target = std::exchange(load, {}).lock()) {
+        target->drop();
     }
 }
 
@@ -109,11 +115,21 @@ void SceneLoad::release() {
     --pending;
 }
 
+// A failure takes the place of a drop, which it explains, such as the error of a hook that dropped its deferral while it threw.
 void SceneLoad::fail(const lua::Error& failure) {
-    if (isOver()) {
+    if (cancelled || (isOver() && !dropped)) {
         return;
     }
     error = failure;
+    dropped = false;
+}
+
+void SceneLoad::drop() {
+    if (isOver()) {
+        return;
+    }
+    error = lua::Error("The scene load was dropped before it finished.");
+    dropped = true;
 }
 
 void SceneLoad::cancel() noexcept {

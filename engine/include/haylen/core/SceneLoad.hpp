@@ -23,7 +23,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
         std::string message;
     };
 
-    // Keeps the load open until it completes or fails. A deferral destroyed before either fails the load, so a load never waits for work that was dropped.
+    // Keeps the load open until it completes or fails. A deferral destroyed before either fails the load, so a load never waits for work that was dropped, unless a failure that explains the drop follows it, such as the error of a hook that throws while it holds the deferral.
     class Deferral final {
       public:
         Deferral() = default;
@@ -41,6 +41,8 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
         friend class SceneLoad;
 
         explicit Deferral(std::weak_ptr<SceneLoad> value) : load(std::move(value)) {}
+
+        void drop();
 
         std::weak_ptr<SceneLoad> load;
     };
@@ -84,6 +86,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
     // Releases one hold on the load: the load hook itself, which the scene manager releases once it returned, or a deferral.
     void release();
     void fail(const lua::Error& failure);
+    void drop();
     void cancel() noexcept;
 
     Engine& engine;
@@ -93,6 +96,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
     std::vector<float> groups;
     std::size_t pending = 1;
     std::optional<lua::Error> error;
+    bool dropped = false;
     bool cancelled = false;
 };
 

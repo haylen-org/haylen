@@ -166,18 +166,33 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
     EXPECT_STREQ(result->error->what(), "The scene load was dropped before it finished.");
 
-    // A load fails with its first failure, and the failures after it change nothing.
+    // A hook that throws while it holds a deferral fails the load with its own error, which explains why the deferral went away.
+    result.reset();
+    // clang-format off
+    auto throwing = std::make_shared<LoadScene>([](SceneLoad& load) {
+        const SceneLoad::Deferral reading = load.defer();
+        throw std::runtime_error("The level file is damaged.");
+    });
+    // clang-format on
+    scenes.preload(throwing, {}, [&](const SceneManager::Result& value) { result = value; });
+    ASSERT_TRUE(result.has_value());
+    EXPECT_STREQ(result->error->what(), "The level file is damaged.");
+
+    // A load fails with its first failure, and the failures and drops after it change nothing.
     result.reset();
     std::optional<SceneLoad::Deferral> early;
     std::optional<SceneLoad::Deferral> late;
+    std::optional<SceneLoad::Deferral> dropped;
     // clang-format off
     auto twice = std::make_shared<LoadScene>([&](SceneLoad& load) {
         early.emplace(load.defer());
         late.emplace(load.defer());
+        dropped.emplace(load.defer());
     });
     // clang-format on
     scenes.preload(twice, {}, [&](const SceneManager::Result& value) { result = value; });
     early->fail(lua::Error("the first failure"));
+    dropped.reset();
     late->fail(lua::Error("the second failure"));
     fixture.frames(1);
     ASSERT_TRUE(result.has_value());
