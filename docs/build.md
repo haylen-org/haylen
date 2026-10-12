@@ -4,7 +4,7 @@
 
 ## Requirements
 
-Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler. Ninja is needed by every build except iOS, tvOS, macOS with `--xcode`, and Windows builds, which fall back to the default CMake generator when Ninja is not on `PATH`. Run the script with `python3 haylen.py` on macOS and Linux and with `python haylen.py` on Windows.
+Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler. Ninja is needed by every build except iOS, tvOS, macOS with `--xcode`, and Windows builds, which fall back to the default CMake generator when Ninja is not on `PATH`. Run the script with `haylen` on macOS and Linux and with `python haylen.py` on Windows.
 
 `haylen.py` downloads the remaining tools the first time a command needs them:
 
@@ -32,7 +32,7 @@ What each platform needs on top of that:
 
 ## Build trees
 
-Every platform and configuration gets its own tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`, and builds with sanitizers get trees of their own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree. `python3 haylen.py clean` removes the whole `build/` folder but keeps `.tools/` and the dependency cache.
+Every platform and configuration gets its own tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`, and builds with sanitizers get trees of their own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree. `haylen clean` removes the whole `build/` folder but keeps `.tools/` and the dependency cache.
 
 `build` configures a tree when it has no CMake cache yet or when `--backend` differs from the backend the tree was configured with. Run `clean` before switching the generator with `--xcode`, because CMake cannot change the generator of a tree. The prebuilt engine artifacts that apps use have trees of their own, described in the [distribution guide](distribution.md#engine-artifacts).
 
@@ -96,7 +96,7 @@ The runtime links the system libraries of each platform's default backend, plus 
 ### tools
 
 ```sh
-python3 haylen.py tools [--emsdk] [--gradle]
+haylen tools [--emsdk] [--gradle]
 ```
 
 Downloads `sokol-shdc`, XcodeGen 2.46.0 on macOS, and Emscripten 6.0.10 or Gradle 9.8.0 when asked, and prints where each one lives. Every other command downloads what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
@@ -104,7 +104,7 @@ Downloads `sokol-shdc`, XcodeGen 2.46.0 on macOS, and Emscripten 6.0.10 or Gradl
 ### configure
 
 ```sh
-python3 haylen.py configure --platform ios
+haylen configure --platform ios
 ```
 
 Generates the build tree with the options above. Every tree receives `-DHAYLEN_SOKOL_SHDC` and `-DCMAKE_BUILD_TYPE`. The platforms add their own settings:
@@ -118,8 +118,8 @@ Generates the build tree with the options above. Every tree receives `-DHAYLEN_S
 ### build
 
 ```sh
-python3 haylen.py build
-python3 haylen.py build --platform web-webgl2 --config Release --target haylen
+haylen build
+haylen build --platform web-webgl2 --config Release --target haylen
 ```
 
 Configures the tree when needed and runs `cmake --build`. Without `--target` it builds everything the tree defines: the engine, the `haylen` player on desktop, web and Android, and the tests and the sprite benchmark on desktop. Useful targets are `haylen`, `haylen_tests` and `haylen-sprite-benchmark`. Apps are not part of the workspace: `haylen.py run` runs Lua apps from their folders and `haylen.py run-cpp` builds C++ app projects, as the [distribution guide](distribution.md) describes.
@@ -127,8 +127,8 @@ Configures the tree when needed and runs `cmake --build`. Without `--target` it 
 ### test
 
 ```sh
-python3 haylen.py test
-python3 haylen.py test --config Release --sanitizers address
+haylen test
+haylen test --config Release --sanitizers address
 ```
 
 Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on-failure` in parallel. See the [testing guide](testing.md).
@@ -136,7 +136,7 @@ Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on
 ### coverage
 
 ```sh
-python3 haylen.py coverage
+haylen coverage
 ```
 
 Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and without samples and the player, builds and runs the tests, merges the profiles with `llvm-profdata`, prints the `llvm-cov report` table and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, tests, generated files and the platform backends in `engine/src/platform/{apple,android,web,windows,linux,sokol}`, which need a real device. Coverage uses LLVM source-based coverage, so it needs Clang. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. It accepts `--jobs` and `--sanitizers`.
@@ -144,8 +144,8 @@ Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and withou
 ### format
 
 ```sh
-python3 haylen.py format
-python3 haylen.py format --check
+haylen format
+haylen format --check
 ```
 
 Runs `clang-format --style=file` on every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, then lists every multi-line lambda outside a `// clang-format off` and `// clang-format on` region. `--check` rewrites nothing and fails on formatting differences or unguarded lambdas. `clang-format` must be on `PATH`, and CI pins version 23.1.1.
@@ -153,13 +153,13 @@ Runs `clang-format --style=file` on every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `
 ### bench
 
 ```sh
-python3 haylen.py bench
-python3 haylen.py bench --suite algorithms
-python3 haylen.py bench --suite procedural
-python3 haylen.py bench --suite physics
-python3 haylen.py bench --suite ui
-python3 haylen.py bench --suite particles
-python3 haylen.py bench --suite lua
+haylen bench
+haylen bench --suite algorithms
+haylen bench --suite procedural
+haylen bench --suite physics
+haylen bench --suite ui
+haylen bench --suite particles
+haylen bench --suite lua
 ```
 
 Builds `haylen-sprite-benchmark` in Release for the host and runs it on the local GPU. It accepts `--jobs`. The [rendering guide](rendering.md#sprite-benchmark) describes the phases and the recorded results. `--suite algorithms` builds and runs `haylen-algorithm-benchmark` instead, which times A*, weighted A*, jump point search, flow fields and hierarchical path finding on a 512 by 512 grid, navigation mesh builds and funnel paths, ORCA crowd steps on one thread, on the job system and on the job system while navmesh builds keep every worker busy, with the slowest of those steps, AABB and k-d tree queries, and batches of physics ray casts on one thread and on the job system, and prints the average time of each. `--suite procedural` builds and runs `haylen-procedural-benchmark`, which times wave function collapse, Poisson disk sampling with a fixed and a varying distance, random scattering, marching squares, Delaunay triangulation of 100 thousand points and carving destructible terrain, and prints the average time of each. The suite `physics` builds and runs `haylen-physics-benchmark` on the headless host, which times the step of a pile of falling boxes on one, two, four and eight threads, a settled pile with sleeping on and off, a pyramid on one and four threads and with two, four and eight sub-steps, a chain of 300 links, ragdolls tumbling down stairs, fluids of three sizes with the fluid pass alone and the whole step, ray casts and circle queries in a pile, reading the transforms of 5000 bodies with and without interpolation, the debug drawing of a pile and a pile stepped from Lua with and without its contact and hit callbacks, and prints the average time of each, as the [physics guide](physics.md#the-physics-benchmark) explains. The suite `ui` builds and runs `haylen-ui-benchmark`, which flings collections of a hundred thousand items of three types in a list and in a grid on the headless host and prints the CPU time of a frame with the items bound, the binder calls and the cells created while flinging and at rest, as the [long lists section of the UI guide](ui.md#what-a-long-list-costs) shows. The suite `particles` builds and runs `haylen-particle-benchmark` on the headless host, which times the update of one emitter of 100 thousand particles on one thread and on the job system, a thousand emitters of a hundred particles, spawning 200 thousand particles per second, the draw calls of both kinds of emitter and 500 emitters updated from Lua, and prints the average time of each, as the [particles guide](particles.md#the-particle-benchmark) explains. `--suite lua` builds `haylen-lua-benchmark` and runs the Lua bunnymark of `engine/bench/lua-benchmark` on the headless host, which prints how long Lua takes to update and draw 10 thousand, 100 thousand and a million sprites kept in tables, drawn in one batch or with a call each, in a float buffer and in a sprite batch, as the [performance section of the Lua guide](lua.md#performance) explains.
@@ -167,10 +167,10 @@ Builds `haylen-sprite-benchmark` in Release for the host and runs it on the loca
 ### sdk
 
 ```sh
-python3 haylen.py sdk
-python3 haylen.py sdk --platform web --output dist/haylen-web
-python3 haylen.py sdk --check-consumers
-python3 haylen.py sdk --config Release --check-consumers package
+haylen sdk
+haylen sdk --platform web --output dist/haylen-web
+haylen sdk --check-consumers
+haylen sdk --config Release --check-consumers package
 ```
 
 Configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `HAYLEN_BUILD_SDK=ON`, builds the `haylen_sdk` target and installs the `haylen_sdk` component to `build/sdk/haylen-<platform>-<config>` or to `--output`. `--platform` accepts `macos`, `linux`, `windows`, `web` and `web-webgl2`, and `--config` defaults to `Release`. The [embedding guide](embedding.md) explains what the SDK contains and how a project finds it.
@@ -180,8 +180,8 @@ Configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `H
 ### package and clean
 
 ```sh
-python3 haylen.py package ~/apps/my-game -o dist/my-game.zip
-python3 haylen.py clean
+haylen package ~/apps/my-game -o dist/my-game.zip
+haylen clean
 ```
 
 - `package <app> [-o <output>]` zips the `app.json`, `source/` and `content/` of an app folder, and nothing else in it, into `app.zip` or the file `-o` names. It fails when the folder has no `app.json`, and it skips `.DS_Store` files.
@@ -262,7 +262,7 @@ haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJE
 | `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in` and `tvos/LaunchScreen.storyboard`. Defaults to `engine/platform/apple`. |
 | `WEB_SHELL` | HTML shell of the web page. Defaults to `engine/platform/web/shell.html`. |
 
-The C++ sample `samples/cpp/embedding` is such a project, and `python3 haylen.py run-cpp samples/cpp/embedding` builds and runs it from the root of the repository:
+The C++ sample `samples/cpp/embedding` is such a project, and `haylen run-cpp samples/cpp/embedding` builds and runs it from the root of the repository:
 
 ```cmake
 haylen_add_app(embedding CPP
@@ -378,7 +378,7 @@ async function play(files) {
 
 ## Android
 
-`python3 haylen.py build --platform android` builds the engine and the player library `libhaylen.so` for arm64-v8a with the NDK and Ninja in `build/android-<config>`, which is the quick way to compile the engine for Android. Apps come from the Android library module and the Android template:
+`haylen build --platform android` builds the engine and the player library `libhaylen.so` for arm64-v8a with the NDK and Ninja in `build/android-<config>`, which is the quick way to compile the engine for Android. Apps come from the Android library module and the Android template:
 
 - `engine/platform/android` is the Gradle project of the Haylen Android libraries. Its module `haylen` is the `haylen` library (namespace `dev.haylen`), which holds `HaylenActivity`, a GameActivity, `HaylenBridge`, the plugin API, `HaylenRequirements`, `HaylenPluginProvider`, `HaylenLinkActivity`, the AppCompat splash themes and the R8 rules for the classes C++ calls by name. Its manifest declares only the OpenGL ES 3 requirement, with no permission and no component, and it packages the `libhaylen.so` of arm64-v8a, armeabi-v7a and x86_64 from `-PhaylenNativeLibraries`, which `haylen.py` builds with the engine CMake project. Its `copyVarnTransport` task copies Varn's `VarnHttp.kt` from `-PhaylenVarnSourceDir` into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport of Varn's Android library runs in the app. The modules `haylen-plugins` and `haylen-links` hold only a manifest, which declares `HaylenPluginProvider` for plugin modules and the exported `HaylenLinkActivity` for plugins of links and notifications, and `haylen-coroutines` holds `HaylenCoroutines` with its dependency on `kotlinx-coroutines-android`. Each of them depends on `haylen` as an API. `haylen.py engine --platform android` passes the libraries, that folder and the Maven repository as `-PhaylenMavenDir`, and the root `build.gradle.kts` publishes every module there as `dev.haylen:<module>` at the engine version.
 - The Java classes of GameActivity must match its native side in `libhaylen.so`, so the library depends on `androidx.games:games-activity` 4.4.2, strictly, the version that `engine/cmake/haylen-dependencies.cmake` pins, and on the AndroidX libraries that GameActivity leaves to apps, AppCompat 1.8.0, the activity library 1.13.0 and core 1.19.1, as APIs. A version change updates the pin, the library and the template together.
@@ -388,7 +388,7 @@ Gradle finds the Android SDK through `ANDROID_HOME` or a `local.properties` file
 
 ## iOS, tvOS and Mac Catalyst
 
-`python3 haylen.py configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `haylen.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
+`haylen configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `haylen.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
 
 C++ apps built with `haylen_add_app` target iOS 16.3 on iPhone and iPad and tvOS 16.3, with automatic code signing, because the engine needs the C++ library of those releases, and macOS apps macOS 14.0, the first release with the display link of `NSView` that `sokol_app` draws with. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources. The iOS template lists the supported orientations through `@HAYLEN_ORIENTATIONS@` and `@HAYLEN_ORIENTATIONS_IPAD@`, which `haylen_add_app` fills from `orientation` in `app.json`: `landscape` allows both landscape sides, `portrait` allows portrait (and upside down on iPad) and `any` allows all of them. The macOS template ends its dictionary with `@HAYLEN_UI_ELEMENT@`, which `haylen_add_app` fills with `LSUIElement` when `window.showInTaskbar` is `false` in `app.json`, so the app never shows a Dock icon. Pass `APPLE_PROJECT` to `haylen_add_app` to use templates of your own with the same layout and placeholders. macOS apps use the same mechanism with `engine/platform/apple/mac/Info.plist.in`.
 

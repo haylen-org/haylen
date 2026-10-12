@@ -59,7 +59,7 @@ The effects `fire/heat_haze`, `explosions/shockwave_distortion` and `scifi/shiel
 
 ## The particle benchmark
 
-The command `python3 haylen.py bench --suite particles` builds `haylen-particle-benchmark` in Release and runs it on the headless host. It prints the workers of the job system and, for each scene, the average time of one frame in milliseconds. These numbers come from an Apple M5 Pro with a Release build, and absolute values vary from machine to machine and from run to run. The column "Before" is the emitter before turbulence, attractors, collision, sub-emitters, trails, lights and the other features of the configuration existed, and the column "After" is the current emitter, so the features cost nothing to the emitters that leave them out. The scenes of the new features have no earlier number.
+The command `haylen bench --suite particles` builds `haylen-particle-benchmark` in Release and runs it on the headless host. It prints the workers of the job system and, for each scene, the average time of one frame in milliseconds. These numbers come from an Apple M5 Pro with a Release build, and absolute values vary from machine to machine and from run to run. The column "Before" is the emitter before turbulence, attractors, collision, sub-emitters, trails, lights and the other features of the configuration existed, and the column "After" is the current emitter, so the features cost nothing to the emitters that leave them out. The scenes of the new features have no earlier number.
 
 | Scene | What it measures | Before ms | After ms |
 | --- | --- | --- | --- |

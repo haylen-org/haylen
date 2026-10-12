@@ -9,6 +9,7 @@ import json
 import os
 import plistlib
 import shutil
+import subprocess
 import socket
 import sys
 import tempfile
@@ -262,6 +263,23 @@ class AppArgumentTest(unittest.TestCase):
             with mock.patch.object(haylen, "compile_app_shaders"), mock.patch.object(haylen, "command_build", side_effect=stop), self.assertRaises(haylen.BuildError):
                 haylen.command_run(haylen.build_parser().parse_args(arguments))
             self.assertEqual(builds[-1].config, config)
+
+
+class LauncherTest(unittest.TestCase):
+    @unittest.skipIf(os.name == "nt", "The shell launcher runs on macOS and Linux.")
+    def test_the_launcher_runs_the_tool_from_any_folder_and_through_a_link(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            link = Path(scratch) / "haylen"
+            link.symlink_to(haylen.ROOT / "haylen")
+            for command in (haylen.ROOT / "haylen", link):
+                result = subprocess.run([str(command), "--help"], cwd=scratch, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(result.stdout.startswith("usage: haylen "))
+
+    def test_the_windows_launcher_hands_every_argument_to_the_tool(self):
+        script = (haylen.ROOT / "haylen.cmd").read_text()
+        self.assertIn('python "%~dp0haylen.py" %*', script)
+        self.assertIn("exit /b %errorlevel%", script)
 
 
 class ConsumerArgumentTest(unittest.TestCase):

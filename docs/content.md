@@ -343,10 +343,10 @@ The Release configuration of `haylen.py run` and `prepare` ships an app only as 
 The tool also writes the bootstrap of an app with `haylen-content bootstrap --keys <folder> --profile <profile> --build <number> --output <file>`, which the release builds of `haylen.py` run on their own, into a file that only its owner reads and that keeps its bytes when nothing changed.
 
 ```sh
-python3 haylen.py content build ~/apps/my-game --platform android
-python3 haylen.py content inspect ~/apps/my-game --platform android
-python3 haylen.py content diff ~/apps/my-game old-release build/apps/my-game-1a2b3c4d/release/android
-python3 haylen.py content publish ~/apps/my-game --platform android --channel stable --output ~/cdn/my-game
+haylen content build ~/apps/my-game --platform android
+haylen content inspect ~/apps/my-game --platform android
+haylen content diff ~/apps/my-game old-release build/apps/my-game-1a2b3c4d/release/android
+haylen content publish ~/apps/my-game --platform android --channel stable --output ~/cdn/my-game
 ```
 
 The profile of a release names the platform family it was made for: `apple` for every target of the Apple project, `android`, `windows` and `linux`. The build number of an app comes from its version, `1.2.3` being 1002003, as on Android.

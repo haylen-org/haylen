@@ -14,7 +14,7 @@ When the engine is not the top-level project, its player, tests and benchmarks a
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `HAYLEN_SOKOL_SHDC` | Empty | Path to the `sokol-shdc` executable that compiles the engine shaders. A source build fails without it. The command `python3 haylen.py tools` downloads the pinned version into `.tools/` of a Haylen checkout. |
+| `HAYLEN_SOKOL_SHDC` | Empty | Path to the `sokol-shdc` executable that compiles the engine shaders. A source build fails without it. The command `haylen tools` downloads the pinned version into `.tools/` of a Haylen checkout. |
 | `HAYLEN_RENDER_BACKEND` | `AUTO` | `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer, or `THREAD` for ThreadSanitizer. |
 | `HAYLEN_BUILD_SDK` | `OFF` | Adds the `haylen_sdk` target and the install rules of the SDK. |
@@ -71,7 +71,7 @@ A local checkout works the same way with `CPMAddPackage(NAME haylen SOURCE_DIR "
 The SDK is a prebuilt engine for one platform and one graphics backend. It needs neither the engine sources nor `sokol-shdc`, because the shaders are already compiled into it.
 
 ```sh
-python3 haylen.py sdk --platform macos --config Release
+haylen sdk --platform macos --config Release
 ```
 
 | Option | Default | Meaning |
@@ -200,9 +200,9 @@ A plugin is the place for native code that the app compiles itself: a C++ SDK pu
 The option `--check-consumers` of `haylen.py sdk` builds `engine/tests/consumer`, a CMake project of its own with a small C++ app, the way another repository consumes the engine, after it builds and installs the SDK of the host.
 
 ```sh
-python3 haylen.py sdk --check-consumers
-python3 haylen.py sdk --check-consumers subdirectory cpm
-python3 haylen.py sdk --check-consumers package
+haylen sdk --check-consumers
+haylen sdk --check-consumers subdirectory cpm
+haylen sdk --check-consumers package
 ```
 
 The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`, and each way builds in `build/consumers/<mode>-<config>`, with `--config` defaulting to `Release`. The `package` way points `CMAKE_PREFIX_PATH` at the SDK that the command installed. The CI workflow runs `python haylen.py sdk --config Release --check-consumers package` on macOS, Linux and Windows, as the [testing guide](testing.md#continuous-integration) describes.

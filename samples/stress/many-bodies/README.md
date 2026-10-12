@@ -8,12 +8,12 @@ The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 haylen.py run samples/stress/many-bodies` |
-| macOS app | `python3 haylen.py run samples/stress/many-bodies --platform macos` |
-| iPhone and iPad simulator | `python3 haylen.py run samples/stress/many-bodies --platform ios-simulator` |
-| Apple TV simulator | `python3 haylen.py run samples/stress/many-bodies --platform tvos-simulator` |
-| Android device or emulator | `python3 haylen.py run samples/stress/many-bodies --platform android --device <serial>` |
-| Browser | `python3 haylen.py run samples/stress/many-bodies --platform web --coep off` |
+| Desktop player with hot reload | `haylen run samples/stress/many-bodies` |
+| macOS app | `haylen run samples/stress/many-bodies --platform macos` |
+| iPhone and iPad simulator | `haylen run samples/stress/many-bodies --platform ios-simulator` |
+| Apple TV simulator | `haylen run samples/stress/many-bodies --platform tvos-simulator` |
+| Android device or emulator | `haylen run samples/stress/many-bodies --platform android --device <serial>` |
+| Browser | `haylen run samples/stress/many-bodies --platform web --coep off` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/stress/many-bodies --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it pours, sets off blasts, shakes the bin, removes toys, empties the bin, pours again, logs the frame numbers of every step and quits.
@@ -42,7 +42,7 @@ Every toy is a sprite of one batch whose size and source the app sets once when 
 
 ## Numbers
 
-The numbers come from the Release desktop player that `python3 haylen.py engine` builds, on an Apple M5 Pro with macOS, in a window of 1600 by 900 points, 3200 by 1800 pixels on its display, with `vsync` off. Each load settles for 8 seconds, 14 for the pile at rest, and then samples 3 seconds. The average frame and the one percent low, the average of the slowest 1 percent of the frames, come from `debug.frame().milliseconds`, the time the engine spends on a frame, and the frames per second are the frames counted in the 3 seconds, which never pass the 120 Hz of the display. Other heavy work ran on the machine at the same time, with a load average from 21 to 30 and nearly no idle processor time, so the frame thread did not always get the fastest cores, and the numbers are a floor of what the machine does.
+The numbers come from the Release desktop player that `haylen engine` builds, on an Apple M5 Pro with macOS, in a window of 1600 by 900 points, 3200 by 1800 pixels on its display, with `vsync` off. Each load settles for 8 seconds, 14 for the pile at rest, and then samples 3 seconds. The average frame and the one percent low, the average of the slowest 1 percent of the frames, come from `debug.frame().milliseconds`, the time the engine spends on a frame, and the frames per second are the frames counted in the 3 seconds, which never pass the 120 Hz of the display. Other heavy work ran on the machine at the same time, with a load average from 21 to 30 and nearly no idle processor time, so the frame thread did not always get the fastest cores, and the numbers are a floor of what the machine does.
 
 | Toys | State | Average frame | One percent low | Frames per second | Last physics step | Awake bodies | Contacts |
 | --- | --- | --- | --- | --- | --- | --- | --- |

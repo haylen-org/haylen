@@ -19,7 +19,7 @@ fun haylenKey(type: String): Map<String, String>? {
     val own = providers.fileContents(keystore.file("$type.properties")).asText.orNull
     if (own != null) {
         val values = Properties().apply { load(own.reader()) }
-        val key = keyValues.keys.associateWith { values.getProperty(it) ?: throw GradleException("The file keystore/$type.properties has no \"$it\". Create the key again with \"python3 haylen.py android-key\" and the app folder.") }
+        val key = keyValues.keys.associateWith { values.getProperty(it) ?: throw GradleException("The file keystore/$type.properties has no \"$it\". Create the key again with \"haylen android-key\" and the app folder.") }
         return key + ("storeFile" to keystore.file(key.getValue("storeFile")).asFile.path)
     }
     val given = keyValues.mapValues { (name, variable) -> providers.gradleProperty("haylen.$type.$name").orElse(providers.environmentVariable("HAYLEN_${type.uppercase()}_$variable")).orNull }
@@ -105,12 +105,12 @@ haylenEntries("gradlePlugins").forEach { (id, _) -> apply(plugin = id) }
 
 // A release build ships the protected release of the app with a library of its own, while the Lua player of the `haylen` library plays the package of a debug build as it is.
 if (haylen.getProperty("library") == "haylen") {
-    val development = "The project holds the development package of the app, which release builds never ship. Prepare it with \"python3 haylen.py prepare\" and the app folder with \"--platform android --config Release\"."
+    val development = "The project holds the development package of the app, which release builds never ship. Prepare it with \"haylen prepare\" and the app folder with \"--platform android --config Release\"."
     tasks.named { it.startsWith("pre") && it.endsWith("ReleaseBuild") }.configureEach { doFirst { throw GradleException(development) } }
 }
 
 // A release build without the upload key stops with the way to add it.
 if ("release" !in haylenKeys) {
-    val missing = "The release build needs the upload key of the app. Create it with \"python3 haylen.py android-key\" and the app folder, or give the Gradle properties \"haylen.release.storeFile\", \"haylen.release.storePassword\", \"haylen.release.keyAlias\" and \"haylen.release.keyPassword\", or the environment variables \"HAYLEN_RELEASE_STORE_FILE\", \"HAYLEN_RELEASE_STORE_PASSWORD\", \"HAYLEN_RELEASE_KEY_ALIAS\" and \"HAYLEN_RELEASE_KEY_PASSWORD\"."
+    val missing = "The release build needs the upload key of the app. Create it with \"haylen android-key\" and the app folder, or give the Gradle properties \"haylen.release.storeFile\", \"haylen.release.storePassword\", \"haylen.release.keyAlias\" and \"haylen.release.keyPassword\", or the environment variables \"HAYLEN_RELEASE_STORE_FILE\", \"HAYLEN_RELEASE_STORE_PASSWORD\", \"HAYLEN_RELEASE_KEY_ALIAS\" and \"HAYLEN_RELEASE_KEY_PASSWORD\"."
     tasks.named { it.startsWith("pre") && it.endsWith("ReleaseBuild") }.configureEach { doFirst { throw GradleException(missing) } }
 }

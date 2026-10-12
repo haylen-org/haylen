@@ -1831,7 +1831,7 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [ ] Rolagem pelo trackpad e pela roda do mouse com a velocidade das plataformas: deltas de precisão do trackpad tratados como pixels, a roda em linhas, uma sensibilidade configurável pelo tema e pelo `app.json`, e testes.
 - [ ] Samples com o mínimo de imagens: regra no `AGENTS.md`, o Codex só onde a arte faz diferença, SVG e primitivas no resto, e os apps de exemplo sem uma imagem por produto.
 - [ ] Simuladores e emuladores: os criados pelos agentes apagados, os padrões resetados, e a regra de usar só os padrões no `AGENTS.md`.
-- [ ] Comando `haylen` na raiz (script para macOS e Linux, e `haylen.cmd` para Windows) que repassa tudo ao `haylen.py`, documentado no `README.md` e no guia de distribuição, com teste.
+- [x] Comando `haylen` na raiz (script para macOS e Linux, e `haylen.cmd` para Windows) que repassa tudo ao `haylen.py`, documentado no `README.md` e no guia de distribuição, com teste. Funciona de qualquer pasta e por link, a ajuda e as mensagens da ferramenta dizem `haylen <comando>`, e os docs, os READMEs e o `AGENTS.md` usam `haylen` no lugar de `python3 haylen.py`, testado no `LauncherTest`.
 
 #### AT. Documentação
 

@@ -277,7 +277,7 @@ def shown_path(path: Path) -> str:
 
 
 # The command that runs haylen.py from the current folder, which the messages that suggest a command start with.
-TOOL = Terminal.command_line(["python" if os.name == "nt" else "python3", shown_path(ROOT / "haylen.py")])
+TOOL = "haylen"
 APP_FOLDER = f'An app folder holds "app.json", its Lua modules under "source" and its assets under "content", and "{TOOL} new <folder>" creates one.'
 
 
@@ -2284,7 +2284,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
 # The bootstrap of the debug builds of an Apple project, which read the package as it is, and which stops a release build of a project that holds no protected release.
 DEVELOPMENT_BOOTSTRAP = """// Written by haylen.py for the debug builds of the app, which read its package as it is. A release build needs the protected release and the bootstrap of the app, which "haylen.py prepare" writes with "--config Release".
 #if !DEBUG
-#error "The project holds the development package of the app, which release builds never ship. Prepare it with \"python3 haylen.py prepare\" and the app folder with \"--config Release\"."
+#error "The project holds the development package of the app, which release builds never ship. Prepare it with \"haylen prepare\" and the app folder with \"--config Release\"."
 #endif
 """
 
@@ -4161,7 +4161,7 @@ def add_app_argument(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="haylen.py", description="Builds, tests and runs the Haylen engine, and creates, runs, checks and packages the apps that a developer names by their folder.")
+    parser = argparse.ArgumentParser(prog="haylen", description="Builds, tests and runs the Haylen engine, and creates, runs, checks and packages the apps that a developer names by their folder.")
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
 
     tools = commands.add_parser("tools", help="Download the pinned build tools.")

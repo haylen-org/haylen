@@ -366,7 +366,7 @@ A slot is freed when the last handle to its object goes away, and the object is 
 ## Sprite benchmark
 
 ```sh
-python3 haylen.py bench
+haylen bench
 ```
 
 The command `bench` builds the `haylen-sprite-benchmark` app in Release for the host and runs it on the local GPU. The app is `engine/bench/SpriteBenchmark.cpp`, written in C++ and added with `haylen_add_app(... CPP ...)` on desktop builds when `HAYLEN_BUILD_BENCHMARKS` is on, with the package `engine/bench/sprite-benchmark`. Its `app.json` opens a 1280 by 720 high-DPI window with vsync off and a 1920 by 1080 design area with the `fit` policy.

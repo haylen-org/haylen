@@ -323,11 +323,11 @@ The cost of a world grows with what is awake and touching:
 
 ### Debug and Release builds
 
-A Debug build of the engine, without optimizations, runs physics several times slower than the Release engine that the desktop player of `python3 haylen.py run` and the apps built for platforms use: a pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build and 2.1 in Release, and a fluid of 1800 particles 0.86 and 0.24. So the player runs a Debug engine only with `--engine-config Debug`, to debug the engine itself. Measure physics with `python3 haylen.py bench --suite physics`, as the [build guide](build.md#bench) describes.
+A Debug build of the engine, without optimizations, runs physics several times slower than the Release engine that the desktop player of `haylen run` and the apps built for platforms use: a pile of 4000 falling boxes takes about 27 milliseconds a step on one thread in a Debug build and 2.1 in Release, and a fluid of 1800 particles 0.86 and 0.24. So the player runs a Debug engine only with `--engine-config Debug`, to debug the engine itself. Measure physics with `haylen bench --suite physics`, as the [build guide](build.md#bench) describes.
 
 ### The physics benchmark
 
-The command `python3 haylen.py bench --suite physics` builds `haylen-physics-benchmark` in Release and runs it on the headless host. It prints the workers of the job system and, for each scene, the average time of one step or one operation in milliseconds. These numbers come from an Apple silicon Mac with a Release build, and absolute values vary from machine to machine and from run to run.
+The command `haylen bench --suite physics` builds `haylen-physics-benchmark` in Release and runs it on the headless host. It prints the workers of the job system and, for each scene, the average time of one step or one operation in milliseconds. These numbers come from an Apple silicon Mac with a Release build, and absolute values vary from machine to machine and from run to run.
 
 | Scene | What it measures | Average ms |
 | --- | --- | --- |

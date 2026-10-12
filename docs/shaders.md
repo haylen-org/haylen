@@ -28,7 +28,7 @@ void main() {
 @program ripple haylen_vs ripple_fs
 ```
 
-The command `python3 haylen.py shaders my-game` compiles it into `content/shaders/ripple.shader`, and `haylen.py run` and `haylen.py package` compile the shaders that changed on their own. In Lua, [`haylen.assets`](lua-api/assets.md) loads the file and [`haylen.graphics2d`](lua-api/graphics2d.md#material) makes a material of it:
+The command `haylen shaders my-game` compiles it into `content/shaders/ripple.shader`, and `haylen.py run` and `haylen.py package` compile the shaders that changed on their own. In Lua, [`haylen.assets`](lua-api/assets.md) loads the file and [`haylen.graphics2d`](lua-api/graphics2d.md#material) makes a material of it:
 
 ```lua
 local assets = require('haylen.assets')

@@ -4,12 +4,12 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 
 ## Running
 
-- Desktop: `python3 haylen.py run samples/tests` runs the project in the player with hot reload.
-- A platform: `python3 haylen.py run samples/tests --platform ios-simulator`, and the same with `tvos-simulator`, `android`, `web`, `macos`, `windows` or `linux`.
+- Desktop: `haylen run samples/tests` runs the project in the player with hot reload.
+- A platform: `haylen run samples/tests --platform ios-simulator`, and the same with `tvos-simulator`, `android`, `web`, `macos`, `windows` or `linux`.
 - Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error or whose scene failed to load, and exits with the status 1 when any test failed, which the CI job `tests-project` does on every push:
 
 ```sh
-python3 haylen.py build --target haylen-headless
+haylen build --target haylen-headless
 build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
@@ -494,7 +494,7 @@ The anchors of the interface against the safe area and the whole screen, drawing
 
 #### Development (DEV)
 
-Hot reload while the project runs in development, with "python3 haylen.py run samples/tests" or with "--platform web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The error screen of every kind of code that runs for the app, and the return to the app from it, run in development and in apps that ship. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.
+Hot reload while the project runs in development, with "haylen run samples/tests" or with "--platform web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The error screen of every kind of code that runs for the app, and the return to the app from it, run in development and in apps that ship. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |

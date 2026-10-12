@@ -5,7 +5,7 @@ A Haylen plugin that exercises every capability of native plugins with the APIs 
 ## Installation
 
 ```sh
-python3 haylen.py plugin add samples/tests/plugins/native-demo --app my-app
+haylen plugin add samples/tests/plugins/native-demo --app my-app
 ```
 
 `plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `app.json` with the defaults of its parameters:

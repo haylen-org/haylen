@@ -9,7 +9,7 @@ local Test = require('harness.test')
 local HotReload = haylen.class('HotReload', ShaderTest)
 
 HotReload.steps = {
-    '1. Run the test project on the desktop with "python3 haylen.py run tests".',
+    '1. Run the test project on the desktop with "haylen run tests".',
     '2. Open "samples/tests/content/shaders/live.glsl" and change the colors or the stripe count.',
     '3. Save: "haylen.py" compiles "live.shader" again and the player reloads it without a restart.',
     '4. The material keeps its values, so the "time" uniform goes on where it was.',

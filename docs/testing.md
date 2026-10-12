@@ -141,19 +141,19 @@ To add a test for a new binding:
 ## Running the tests
 
 ```sh
-python3 haylen.py test
+haylen test
 ```
 
 The command configures `build/<host>-<config>` when needed, builds `haylen_tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
 
 ## The test project
 
-The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../samples/tests/README.md) lists. A person runs it on every platform, with `python3 haylen.py run samples/tests` on the desktop, and its menu runs one test at a time or every test one after the other.
+The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop, and its menu runs one test at a time or every test one after the other.
 
 The headless player runs it without a window, the same way every platform runs it, so a broken test shows up without a device:
 
 ```sh
-python3 haylen.py build --target haylen-headless
+haylen build --target haylen-headless
 build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
@@ -162,8 +162,8 @@ The executable `haylen-headless`, built with the player on desktop platforms, ru
 ## Sanitizers
 
 ```sh
-python3 haylen.py test --sanitizers address
-python3 haylen.py test --sanitizers thread
+haylen test --sanitizers address
+haylen test --sanitizers thread
 ```
 
 The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never rebuilds the plain tree. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
@@ -195,7 +195,7 @@ The parsers of the content formats treat every file as hostile, and the fuzzer `
 ## Coverage
 
 ```sh
-python3 haylen.py coverage
+haylen coverage
 ```
 
 Coverage uses LLVM source-based coverage and needs Clang. The command configures `build/coverage` with `HAYLEN_ENABLE_COVERAGE=ON` and without the samples and the player, builds `haylen_tests` and runs every test, which writes one profile per process into `build/coverage/coverage/`. Then it merges the profiles with `llvm-profdata`, prints the `llvm-cov` report and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, the tests themselves, generated files and the platform backends in `engine/src/platform/` that need a platform SDK (`apple`, `android`, `web`, `windows`, `linux` and `sokol`). On macOS the LLVM tools come from `xcrun`, and elsewhere they must be on `PATH`. Engine coverage stays as close to 100 percent as the code allows.
@@ -203,8 +203,8 @@ Coverage uses LLVM source-based coverage and needs Clang. The command configures
 ## Formatting
 
 ```sh
-python3 haylen.py format
-python3 haylen.py format --check
+haylen format
+haylen format --check
 ```
 
 The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, and then lists the multi-line lambdas that are not between `// clang-format off` and `// clang-format on`. The option `--check` changes nothing and fails when a file is not formatted or a lambda is missing its markers. The command `clang-format` must be on `PATH`, and CI installs version 23.1.1 with `pip install clang-format==23.1.1`.

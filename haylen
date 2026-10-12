@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs haylen.py from the folder of this script, wherever it is called from or linked to.
+root=$(dirname "$(readlink -f "$0")")
+exec python3 "$root/haylen.py" "$@"

@@ -1,4 +1,4 @@
--- The base of the hot reload tests: a test names the file to edit and the steps to follow, and the status line shows whether hot reload is on, its mode, how many modules reloaded and the last one. Hot reload is on while the project runs in development, with "python3 haylen.py run samples/tests" or with "--platform web", and the tests say so when it is off.
+-- The base of the hot reload tests: a test names the file to edit and the steps to follow, and the status line shows whether hot reload is on, its mode, how many modules reloaded and the last one. Hot reload is on while the project runs in development, with "haylen run samples/tests" or with "--platform web", and the tests say so when it is off.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local hotReload = require('haylen.hotReload')
@@ -10,7 +10,7 @@ local DevelopmentTest = haylen.class('DevelopmentTest', Test)
 
 DevelopmentTest.file = ''
 DevelopmentTest.steps = {}
-DevelopmentTest.off = 'Hot reload is off, because the project does not run in development. Run it with "python3 haylen.py run samples/tests" or with "--platform web" to try it.'
+DevelopmentTest.off = 'Hot reload is off, because the project does not run in development. Run it with "haylen run samples/tests" or with "--platform web" to try it.'
 
 function DevelopmentTest:init(entry)
     DevelopmentTest.super.init(self, entry)

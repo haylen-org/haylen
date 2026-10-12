@@ -315,7 +315,7 @@ The wheel scrolls the collection under the pointer, a finger drags it along its 
 
 ### What a long list costs
 
-The command `python3 haylen.py bench --suite ui` runs the UI benchmark, `engine/bench/UiBenchmark.cpp`, on the headless host: a list and a grid of a hundred thousand items of three types, a sticky header type, a plain type and a type with a binder, take a fling every 45 frames for 900 frames and then rest for 300 frames. It prints the average and the worst CPU time of a frame, the items bound, the binder calls and the cells created in each phase, and the cells alive at its end. These are the numbers of an Apple M5 Pro in Release:
+The command `haylen bench --suite ui` runs the UI benchmark, `engine/bench/UiBenchmark.cpp`, on the headless host: a list and a grid of a hundred thousand items of three types, a sticky header type, a plain type and a type with a binder, take a fling every 45 frames for 900 frames and then rest for 300 frames. It prints the average and the worst CPU time of a frame, the items bound, the binder calls and the cells created in each phase, and the cells alive at its end. These are the numbers of an Apple M5 Pro in Release:
 
 | Layout | Phase | Frame ms | Worst ms | Binds | Binder calls | Cells created | Cells alive |
 | --- | --- | --- | --- | --- | --- | --- | --- |

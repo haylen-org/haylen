@@ -9,12 +9,12 @@ These plugins are distributable folders, not the engine plugins of `haylen::plug
 ### Commands
 
 ```sh
-python3 haylen.py plugin list
-python3 haylen.py plugin add admob --app ~/apps/my-game
-python3 haylen.py plugin add ~/plugins/my-plugin --app ~/apps/my-game
-python3 haylen.py plugin list --app ~/apps/my-game
-python3 haylen.py plugin remove admob --app ~/apps/my-game
-python3 haylen.py plugin new ~/plugins/my-plugin
+haylen plugin list
+haylen plugin add admob --app ~/apps/my-game
+haylen plugin add ~/plugins/my-plugin --app ~/apps/my-game
+haylen plugin list --app ~/apps/my-game
+haylen plugin remove admob --app ~/apps/my-game
+haylen plugin new ~/plugins/my-plugin
 ```
 
 | Command | Purpose |
@@ -71,7 +71,7 @@ The tool `haylen.py` brings the Apple parts of the plugins into the target templ
 1. It copies the `sources` folder of every plugin to `haylen/plugins/<id>/sources/` and its resources to `haylen/plugins/<id>/resources/`.
 2. It adds the sources, the Swift packages with the products they link, the system frameworks, the resources and the build scripts of each plugin to the templates `HaylenIOS`, `HaylenTVOS` and `HaylenMacOS` of the platforms the plugin lists. `HaylenIOS` builds iOS and Mac Catalyst, so a plugin that lists only one of `ios` and `catalyst` joins it with `destinationFilters`, which keep its sources, products and frameworks to that destination. A product or a framework that several plugins link joins a template once, and a framework of the engine or one that a target of the template links itself stays out, since XcodeGen refuses a dependency that a target lists twice.
 3. It merges the `infoPlist` keys of the plugins into the `Info.plist` of each platform, where `ios/Info.plist` serves iOS and Mac Catalyst, the `entitlements` into the entitlements of iOS, Mac Catalyst, tvOS and macOS, and the `privacy` declarations into the privacy manifest of the app, all in `haylen/`. The values of the developer win and the keys of the plugins fill what is missing: objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, while a key that two plugins, or a plugin and `app.json`, set to different values fails the build with both named.
-4. `run` generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `haylen.py tools` and the first such build download, when `haylen/project.yml` changed and the project holds no edits made in Xcode since its last generation, and `python3 haylen.py xcodegen <app>` generates it whenever the developer asks.
+4. `run` generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `haylen.py tools` and the first such build download, when `haylen/project.yml` changed and the project holds no edits made in Xcode since its last generation, and `haylen xcodegen <app>` generates it whenever the developer asks.
 
 The sources of a plugin compile into the targets like the files of `source/`, so Swift reaches the engine through `HaylenBridging.h`, and [the Apple part](#the-apple-part) describes the plugin class they hold. The resources land at the root of the app bundle. Build scripts run as post-build phases for every destination of their targets, so a script of a plugin that leaves out Mac Catalyst checks `IS_MACCATALYST` itself. The runtime reads the plugin classes and their order from the package, as [the plugin class](#the-plugin-class) describes. A target without its template, or with an `INFOPLIST_FILE` of its own, leaves out what the plugins bring, which [`check`](distribution.md#check) reports and the plugins answer with `unsupported` at run time.
 
@@ -203,8 +203,8 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 ### Creating a plugin
 
 ```sh
-python3 haylen.py plugin new ~/plugins/my-plugin
-python3 haylen.py plugin add ~/plugins/my-plugin --app ~/apps/my-game
+haylen plugin new ~/plugins/my-plugin
+haylen plugin add ~/plugins/my-plugin --app ~/apps/my-game
 ```
 
 `plugin new` copies `templates/plugin/` with the id in the names of the files, classes and modules: `plugin.json`, a README, `source/init.lua` with the Lua API, `apple/<Name>Plugin.swift`, the Android module with its manifest meta-data and `<Name>Plugin.kt`, and `web/<id>.js`, together with the files that the repository of a plugin keeps at its root: `.gitignore`, which keeps out the build folders of the Android module and of the CMake project in `native/`, the caches of Gradle and Kotlin and the files of Finder and the editors, `.editorconfig`, which sets the style of text files, and `.clang-format`, the C, C++ and Objective-C style of the engine. Each native part answers the method `<id>.echo` and sends the event `<id>.echoed`, and the Lua API wraps both with the plugin handle of `platform.plugin(id)`.

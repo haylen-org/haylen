@@ -55,10 +55,16 @@ macOS, Windows, Linux, iOS and iPadOS, Mac Catalyst, tvOS, Android phones, table
 
 Haylen builds with CMake, Ninja, Python and a C++20 compiler, and `haylen.py` downloads the other tools it needs. Apple platforms need Xcode, and Android needs the Android SDK.
 
+The command `haylen` at the root of the repository runs `haylen.py` on macOS, Linux and Windows, so put the root on `PATH` once:
+
 ```sh
-python3 haylen.py new ~/apps/my-app --name "My App" --identifier com.example.myapp
-python3 haylen.py run ~/apps/my-app
-python3 haylen.py run ~/apps/my-app --platform web
+export PATH="$HOME/path/to/haylen:$PATH"
+```
+
+```sh
+haylen new ~/apps/my-app --name "My App" --identifier com.example.myapp
+haylen run ~/apps/my-app
+haylen run ~/apps/my-app --platform web
 ```
 
 The command `new` writes a starter app with a project of every platform, and `run` opens it in the desktop player with hot reload, or builds it for a platform with `--platform`, such as `ios-simulator`, `android` or `web`.
