@@ -133,7 +133,9 @@ void main() {
         vec4 surface = texelFetch(sampler2D(surface_texture, surface_sampler), pixel, 0);
         vec2 planar = surface.xy * 2.0 - 1.0;
         vec3 normal = vec3(planar, sqrt(max(0.0, 1.0 - dot(planar, planar))));
-        vec3 toward = normalize(kind > 1.5 ? vec3(-cone.xy, shape.z) : vec3(-offset, shape.z));
+        // A light at the height of the surface right on the pixel shines straight at it, instead of from no direction.
+        vec3 toward = kind > 1.5 ? vec3(-cone.xy, shape.z) : vec3(-offset, shape.z);
+        toward = length(toward) > 0.0001 ? normalize(toward) : vec3(0.0, 0.0, 1.0);
         diffuse = max(dot(normal, toward), 0.0);
         specular = surface.z * pow(max(dot(normal, normalize(toward + vec3(0.0, 0.0, 1.0))), 0.0), shininess);
     }

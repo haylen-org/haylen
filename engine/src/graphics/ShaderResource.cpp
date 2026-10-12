@@ -316,7 +316,12 @@ const ShaderResource::Program& ShaderResource::getProgram(std::string_view progr
         throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program.", name, program));
     }
 
-    const core::Json& backend = programs.at(key).at(std::string(slangOf(sg_query_backend())));
+    const std::string slang(slangOf(sg_query_backend()));
+    const core::Json& languages = programs.at(key);
+    if (!languages.contains(slang)) {
+        throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program for the \"{}\" language of this graphics backend. Compile it again with \"haylen.py shaders\".", name, program, slang));
+    }
+    const core::Json& backend = languages.at(slang);
     sg_shader_desc desc{};
     describe(desc, backend);
     const std::string label = std::format("{}/{}", name, program);

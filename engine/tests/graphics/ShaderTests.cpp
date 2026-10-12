@@ -266,6 +266,21 @@ TEST_F(ShaderTest, MakesTheProgramsOfTheRendererWhenDrawsFirstNeedThem) {
     EXPECT_EQ(shaders(), 1);
 }
 
+// A shader file compiled without the language of the active backend names the program and the language it lacks.
+TEST_F(ShaderTest, NamesTheLanguageAProgramLacks) {
+    const test::EngineFixture fixture;
+    core::Json document = core::Json::parse(kSmallShader);
+    document["programs"]["sprite"]["glsl300es"] = document["programs"]["sprite"]["glsl430"];
+    document["programs"]["sprite"].erase("glsl430");
+    const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
+    try {
+        (void)shader.getResource()->getProgram("sprite");
+        ADD_FAILURE() << "A program without the language of the backend was made.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The shader \"small\" has no \"sprite\" program for the \"glsl430\" language of this graphics backend. Compile it again with \"haylen.py shaders\".");
+    }
+}
+
 TEST_F(ShaderTest, ReportsAFullShaderPool) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();
