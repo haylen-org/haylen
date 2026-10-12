@@ -173,7 +173,7 @@ haylen prepare ~/apps/my-game --platform ios-simulator
 haylen prepare ~/apps/my-game --platform android
 ```
 
-Builds the engine artifacts of the platform when they are missing or stale and writes the folder `haylen/` of the project of the platform, and nothing else, which is enough to open the project in Xcode or Android Studio and build, run or archive it there. On the web it makes the site, and on Windows and Linux the folder of the app. The native libraries of an Apple project are the ones of the platform it names. `--config Release` writes the protected release and the bootstrap of the app, as [release builds](#release-builds) describe, which is what an archive for a store needs.
+Builds the engine artifacts of the platform when they are missing or stale and writes the folder `haylen/` of the project of the platform, and nothing else, which is enough to open the project in Xcode, Android Studio or an editor that opens CMake projects and build, run or archive it there. On the web it makes the site. The native libraries of an Apple project are the ones of the platform it names. `--config Release` writes the protected release and the bootstrap of the app, as [release builds](#release-builds) describe, which is what an archive for a store needs.
 
 ### xcodegen
 
