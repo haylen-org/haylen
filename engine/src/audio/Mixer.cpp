@@ -551,8 +551,8 @@ bool Mixer::isOutputOpening() const noexcept {
 }
 
 void Mixer::render(std::span<float> samples) {
-    if (hasDevice()) {
-        throw std::logic_error("A mixer with a device renders on its own.");
+    if (state->output.isSelfRendering()) {
+        throw std::logic_error("A mixer with a device or one that keeps time renders on its own.");
     }
     if (!state->output.isRunning()) {
         std::ranges::fill(samples, 0.0F);

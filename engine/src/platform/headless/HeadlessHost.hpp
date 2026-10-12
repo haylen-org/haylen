@@ -165,7 +165,7 @@ class HeadlessHost final : public Host {
     [[nodiscard]] graphics::DeviceSetup getGraphicsSetup() override;
     // Without an output backend the mixer has no device and mixes only when a test asks it to.
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override {
-        return {.device = audioOutput != nullptr, .backend = audioOutput};
+        return {.device = audioOutput != nullptr, .keepsTime = true, .backend = audioOutput};
     }
 
     // Gives the mixers of the engines created afterwards a device that opens through the backend, which simulates an audio output that plays, refuses or never answers.

@@ -49,9 +49,10 @@ class Mixer final {
         RouteChanged,
     };
 
-    // A mixer with a device plays in real time through the audio device of the platform, and a mixer without one mixes only when `render` asks. Hosts give the device a backend of their own where the platform needs one, such as the audio output of the page in browsers.
+    // A mixer with a device plays in real time through the audio device of the platform. A mixer without one mixes only when `render` asks, or, when it keeps time, mixes the time of each update into silence, as a device that nobody hears would play it. Hosts give the device a backend of their own where the platform needs one, such as the audio output of the page in browsers.
     struct Setup {
         bool device = true;
+        bool keepsTime = false;
         std::uint32_t sampleRate = 48000;
         std::uint32_t channels = 2;
         std::size_t maxVoices = 128;
@@ -227,7 +228,7 @@ class Mixer final {
     // Tells whether the system is still opening the audio device, which happens on a thread of its own when the mixer starts and when an interruption ends, so a device that answers slowly or never never stalls the frames.
     [[nodiscard]] bool isOutputOpening() const noexcept;
 
-    // Mixes the next frames into interleaved samples, or silence while the output is stopped. Only a mixer without a device renders this way, which tests and offline tools use.
+    // Mixes the next frames into interleaved samples, or silence while the output is stopped. Only a mixer without a device that keeps no time renders this way, which tests and offline tools use.
     void render(std::span<float> samples);
 
     core::Signal<DeviceEvent> deviceEventReceived;

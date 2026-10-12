@@ -34,4 +34,19 @@ TEST_F(HeadlessPlayerTest, ExitsWithOneWhenAnErrorWasReportedOrTheAppDidNotQuit)
     EXPECT_EQ(play("", 3), 1);
 }
 
+// The player has no audio device, and its voices still play out in real time, so an app that waits for a sound to end goes on.
+TEST_F(HeadlessPlayerTest, PlaysSoundsOutWithoutADevice) {
+    // clang-format off
+    EXPECT_EQ(play(R"(
+        local audio = require('haylen.audio')
+        local haylen = require('haylen')
+        local beep = audio.newSound(string.rep(string.pack('<h', 1000), 2205), {format = 'int16', sampleRate = 22050, channels = 1})
+        local voice = audio.play(beep)
+        require('haylen.scene').push({update = function()
+            if not audio.active(voice) then haylen.quit() end
+        end})
+    )", 60), 0);
+    // clang-format on
+}
+
 } // namespace haylen::platform

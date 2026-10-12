@@ -44,6 +44,11 @@ class Device final {
     [[nodiscard]] bool hasDevice() const noexcept {
         return setup.device;
     }
+
+    // Tells whether the mix advances without `render`, through a device or by keeping time.
+    [[nodiscard]] bool isSelfRendering() const noexcept {
+        return setup.device || setup.keepsTime;
+    }
     [[nodiscard]] bool isRunning() const noexcept {
         return running;
     }
@@ -63,7 +68,7 @@ class Device final {
 
     // Tells whether the output runs while no device plays it, which leaves the mixer to mix the time that passes.
     [[nodiscard]] bool isSilent() const noexcept {
-        return setup.device && running && !started;
+        return running && (setup.device ? !started : setup.keepsTime);
     }
 
     // Queues an event from any thread.
