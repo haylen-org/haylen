@@ -349,6 +349,13 @@ TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
     fixture.engine().getScenes().clear();
     renderer.beginWorld(camera);
     EXPECT_THROW(layer.draw(renderer, camera), std::invalid_argument);
+
+    // Copies far too small to fill the view, and a scroll that is not finite, refuse to draw instead of counting copies without end.
+    layer.size = {0.01F, 0.01F};
+    EXPECT_THROW(layer.draw(renderer, camera), std::invalid_argument);
+    layer.size = {};
+    layer.update(std::numeric_limits<float>::quiet_NaN());
+    EXPECT_THROW(layer.draw(renderer, camera), std::invalid_argument);
     layer.texture = {};
     EXPECT_THROW(layer.draw(renderer, camera), std::logic_error);
     fixture.frames(1);

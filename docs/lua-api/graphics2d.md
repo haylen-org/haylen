@@ -2179,7 +2179,7 @@ Returns how far the layer is moved from where the world would put it, as `x, y` 
 
 ### parallax:draw(camera, order)
 
-Draws the layer in the active canvas, moved by how `camera` sees it, with the repeated axes covering the whole area the canvas shows, a render target canvas included. The argument `order` is an optional [Draw order](#draw-order). A layer without a texture raises `A parallax layer needs a texture to draw.`, and a repeated copy without a size raises `A parallax layer needs a positive size to repeat.`
+Draws the layer in the active canvas, moved by how `camera` sees it, with the repeated axes covering the whole area the canvas shows, a render target canvas included. The argument `order` is an optional [Draw order](#draw-order). A layer without a texture raises `A parallax layer needs a texture to draw.`, and a repeated copy without a size raises `A parallax layer needs a positive size to repeat.` A position or scroll that is not finite raises `A parallax layer needs a finite position and scroll.`, and copies so small that more than 65536 of them would fill the area raise `A parallax layer would draw more than 65536 copies to fill the view. Give it a larger size or repeat size.`
 
 ```lua
 local graphics = require('haylen.graphics')

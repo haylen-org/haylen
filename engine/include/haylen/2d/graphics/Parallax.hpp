@@ -16,6 +16,8 @@ class Renderer;
 // A layer that scrolls at its own rate as the camera moves, which suggests depth. It draws a texture that can repeat on each axis to fill the view, scrolls by itself over time and stops following the camera while the camera is outside its limits. The offset also moves anything else, such as a static batch, with the layer.
 class Parallax final {
   public:
+    static constexpr int kMaxCopies = 65536;
+
     graphics::Texture texture;
 
     // The part of the texture to draw, or the whole texture when empty.
@@ -50,7 +52,7 @@ class Parallax final {
         return scrolled;
     }
 
-    // Draws the texture at the offset position in the active canvas, repeated over the part of the world the canvas shows on the axes that repeat.
+    // Draws the texture at the offset position in the active canvas, repeated over the part of the world the canvas shows on the axes that repeat. A position or offset that is not finite, or copies so small that more than `kMaxCopies` of them would fill the view, throw `std::invalid_argument`.
     void draw(Renderer& renderer, const Camera& camera, const DrawOrder& order = {}) const;
 
   private:

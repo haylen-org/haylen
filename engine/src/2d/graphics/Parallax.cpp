@@ -37,16 +37,22 @@ void Parallax::draw(Renderer& renderer, const Camera& camera, const DrawOrder& o
 
     // Repeated axes cover the part of the world the canvas shows with copies on a grid anchored at the layer origin, counted rather than stepped so far positions never stall on float precision.
     const math::Vec2 origin = position + getOffset(camera);
+    if (!std::isfinite(origin.x) || !std::isfinite(origin.y)) {
+        throw std::invalid_argument("A parallax layer needs a finite position and scroll.");
+    }
     const math::Rect visible = renderer.getCanvasBounds();
     const float left = repeatX ? firstCopy(visible.getLeft(), origin.x, step.x) : origin.x;
     const float top = repeatY ? firstCopy(visible.getTop(), origin.y, step.y) : origin.y;
-    const int columns = repeatX ? static_cast<int>(std::ceil((visible.getRight() - left) / step.x)) : 1;
-    const int rows = repeatY ? static_cast<int>(std::ceil((visible.getBottom() - top) / step.y)) : 1;
+    const double columns = repeatX ? std::ceil(static_cast<double>(visible.getRight() - left) / step.x) : 1.0;
+    const double rows = repeatY ? std::ceil(static_cast<double>(visible.getBottom() - top) / step.y) : 1.0;
+    if (columns * rows > kMaxCopies) {
+        throw std::invalid_argument("A parallax layer would draw more than 65536 copies to fill the view. Give it a larger size or repeat size.");
+    }
 
     // Every copy is a sprite of its own, which the renderer merges into one draw call with its neighbours, so a frame allocates nothing for them.
     Sprite copy{.texture = texture, .source = part, .size = drawn, .pivot = {}, .color = color, .order = order};
-    for (int row = 0; row < rows; ++row) {
-        for (int column = 0; column < columns; ++column) {
+    for (int row = 0; row < static_cast<int>(rows); ++row) {
+        for (int column = 0; column < static_cast<int>(columns); ++column) {
             copy.position = {left + static_cast<float>(column) * step.x, top + static_cast<float>(row) * step.y};
             renderer.draw(copy);
         }
