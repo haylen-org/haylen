@@ -103,6 +103,7 @@ set(HAYLEN_TEST_SOURCES
   lua/SceneLuaTests.cpp
   lua/ToolkitTests.cpp
   lua/TweenLuaTests.cpp
+  lua/YieldTests.cpp
   math/ColorTransformTests.cpp
   math/PolygonTests.cpp
   math/ProceduralTests.cpp
