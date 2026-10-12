@@ -12,10 +12,10 @@
 #include <Poco/Net/RejectCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
 #include <Poco/Net/SSLManager.h>
+#include <Poco/Net/SocketDefs.h>
 #include <Poco/URI.h>
 
 #include <algorithm>
-#include <cerrno>
 #include <iterator>
 #include <stdexcept>
 #include <thread>
@@ -189,16 +189,16 @@ std::string PocoWebSocket::describe(const Connection& target, const Poco::Except
     if (dynamic_cast<const Poco::TimeoutException*>(&error) != nullptr) {
         return error.message();
     }
-    if (dynamic_cast<const Poco::Net::ConnectionRefusedException*>(&error) != nullptr || error.code() == ECONNREFUSED) {
+    if (dynamic_cast<const Poco::Net::ConnectionRefusedException*>(&error) != nullptr || error.code() == POCO_ECONNREFUSED) {
         return "The server refused the connection.";
     }
     if (dynamic_cast<const Poco::Net::DNSException*>(&error) != nullptr) {
         return "The host \"" + target.host + "\" was not found.";
     }
-    if (dynamic_cast<const Poco::Net::ConnectionResetException*>(&error) != nullptr || error.code() == ECONNRESET) {
+    if (dynamic_cast<const Poco::Net::ConnectionResetException*>(&error) != nullptr || error.code() == POCO_ECONNRESET) {
         return "The server reset the connection.";
     }
-    if (error.code() == ENETUNREACH || error.code() == EHOSTUNREACH) {
+    if (error.code() == POCO_ENETUNREACH || error.code() == POCO_EHOSTUNREACH) {
         return "The host \"" + target.host + "\" is out of reach of this network.";
     }
     if (dynamic_cast<const Poco::Net::SSLException*>(&error) != nullptr) {
