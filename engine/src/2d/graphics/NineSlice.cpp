@@ -95,7 +95,8 @@ void NineSlice::layout(const math::Rect& area, float borderScale, std::vector<Pa
 }
 
 // Copies are placed by their index rather than by adding up their sizes, so the error of every addition never piles up into a gap or a sliver.
-void NineSlice::tile(const math::Rect& area, const math::Rect& source, math::Vec2 size, std::vector<Patch>& patches) {
+void NineSlice::tile(const math::Rect& area, const math::Rect& source, math::Vec2 tileSize, std::vector<Patch>& patches) {
+    const math::Vec2 size{std::max(tileSize.x, area.width / static_cast<float>(kMaxCopies)), std::max(tileSize.y, area.height / static_cast<float>(kMaxCopies))};
     const int columns = countCopies(area.width, size.x);
     const int rows = countCopies(area.height, size.y);
     for (int row = 0; row < rows; ++row) {
@@ -110,7 +111,7 @@ void NineSlice::tile(const math::Rect& area, const math::Rect& source, math::Vec
 }
 
 int NineSlice::countCopies(float length, float size) noexcept {
-    return std::max(1, static_cast<int>(std::ceil(length / size - kSliver)));
+    return std::clamp(static_cast<int>(std::ceil(length / size - kSliver)), 1, kMaxCopies);
 }
 
 } // namespace haylen::graphics2d

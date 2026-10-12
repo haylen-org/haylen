@@ -128,6 +128,19 @@ TEST_F(NineSliceTest, KeepsTheShapeOfTiledEdgesAcrossTheirBorder) {
     EXPECT_EQ(top[1].area, (math::Rect{12.0F, 0.0F, 8.0F, 4.0F}));
 }
 
+// A tiled frame squeezed far below its borders, such as a panel whose width animates to zero, stretches its copies instead of making millions of them.
+TEST_F(NineSliceTest, BoundsTheCopiesOfASqueezedTiledFrame) {
+    NineSlice slice = NineSlice::fromBorders(makeTexture(16, 16), {}, math::Insets::uniform(4.0F));
+    slice.fill = NineSlice::Fill::Tile;
+    const std::vector<NineSlice::Patch> patches = layout(slice, {0.0F, 0.0F, 0.001F, 500.0F});
+    EXPECT_LE(patches.size(), 4U + 2U * static_cast<std::size_t>(NineSlice::kMaxCopies));
+    float covered = 0.0F;
+    for (const NineSlice::Patch& patch : patches) {
+        covered += patch.area.x == 0.0F && patch.area.y >= 0.0F && patch.area.y < 500.0F ? patch.area.height : 0.0F;
+    }
+    EXPECT_NEAR(covered, 500.0F, 0.01F);
+}
+
 // A length that is a whole number of tiles up to the error of floats draws no sliver of an extra tile.
 TEST_F(NineSliceTest, LeavesOutSliversOfRoundingError) {
     NineSlice slice = NineSlice::fromBorders(makeTexture(10, 10), {}, {});

@@ -1074,7 +1074,7 @@ Creates a `NineSlice`. Give either `borders`, which cut `source` into nine regio
 | `source` | Rect | whole texture | Region of the texture that holds the frame. Used with `borders`. |
 | `borders` | table | required without `pieces` | Border sizes in pixels, as `{left, top, right, bottom}`. |
 | `pieces` | table | none | Nine `Rect` values, row by row from the top-left corner to the bottom-right corner. |
-| `fill` | string | `'stretch'` | The value `'stretch'` stretches the edges and the center. The value `'tile'` repeats them at their pixel size times the `borderScale` of the draw. |
+| `fill` | string | `'stretch'` | The value `'stretch'` stretches the edges and the center. The value `'tile'` repeats them at their pixel size times the `borderScale` of the draw, at most 4096 times along a row or a column, so a frame squeezed far below its borders stretches its copies instead. |
 
 Errors: `a nine-slice needs exactly nine pieces`, `borders need left, top, right and bottom`, `The borders of a nine-slice cannot be negative.`, `The borders of a nine-slice must fit inside its source rectangle, with the left and right borders at most its width and the top and bottom borders at most its height.`, and a `fill` other than `'stretch'` or `'tile'` raises an error that contains `unknown value 'name'`.
 
