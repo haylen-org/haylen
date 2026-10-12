@@ -20,11 +20,11 @@ bool Bridge::Mailbox::post(std::function<void()> task) const {
         return false;
     }
     const std::scoped_lock lock(target->mutex);
-    target->tasks.push_back(std::move(task));
+    target->arrivals.emplace_back(std::move(task));
     return true;
 }
 
-Bridge::Bridge(Dispatcher native, Canceller cancel) : dispatcher(std::move(native)), canceller(std::move(cancel)) {
+Bridge::Bridge(Dispatcher native, Canceller nativeCancel) : dispatcher(std::move(native)), canceller(std::move(nativeCancel)) {
     if (!dispatcher || !canceller) {
         throw std::invalid_argument("The platform bridge needs a native dispatcher and a canceller.");
     }
@@ -53,13 +53,19 @@ std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callb
     }
     pending.emplace(id, std::move(entry));
 
+    // A handler that throws leaves no call behind, and its exception reaches the caller.
     // clang-format off
-    start(id, method, params, [shared = std::weak_ptr<Inbox>(inbox), id](Result result) {
-        if (const std::shared_ptr<Inbox> alive = shared.lock()) {
-            const std::scoped_lock lock(alive->mutex);
-            alive->completions.push_back({id, std::move(result)});
-        }
-    });
+    try {
+        start(id, method, params, [shared = std::weak_ptr<Inbox>(inbox), id](Result result) {
+            if (const std::shared_ptr<Inbox> alive = shared.lock()) {
+                const std::scoped_lock lock(alive->mutex);
+                alive->arrivals.emplace_back(Completion{id, std::move(result)});
+            }
+        });
+    } catch (...) {
+        pending.erase(id);
+        throw;
+    }
     // clang-format on
     return id;
 }
@@ -108,7 +114,7 @@ core::Connection Bridge::on(const std::string& event, std::function<void(const P
 void Bridge::resolve(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers) {
     Result result = parseResult(ok, resultJson, std::move(buffers));
     const std::scoped_lock lock(inbox->mutex);
-    inbox->completions.push_back({id, std::move(result)});
+    inbox->arrivals.emplace_back(Completion{id, std::move(result)});
 }
 
 void Bridge::emit(std::string_view event, std::string_view payloadJson, std::vector<std::vector<std::byte>> buffers, const EmitOptions& options) {
@@ -125,38 +131,21 @@ void Bridge::emit(std::string_view event, std::string_view payloadJson, std::vec
     }
 
     const std::scoped_lock lock(inbox->mutex);
-    inbox->events.push_back({.name = std::string(event), .payload = {.json = std::move(payload), .buffers = std::move(buffers)}, .options = options});
+    inbox->arrivals.emplace_back(NativeEvent{.name = std::string(event), .payload = {.json = std::move(payload), .buffers = std::move(buffers)}, .options = options});
 }
 
 Bridge::Mailbox Bridge::getMailbox() const {
     return Mailbox(inbox);
 }
 
+// Replies, native events and posted work reach the app in the order they arrived, after the retained events that listeners connected since the last pump wait for.
 void Bridge::pump() {
-    std::vector<Completion> completions;
-    std::vector<NativeEvent> events;
-    std::vector<std::function<void()>> tasks;
+    std::vector<Arrival> arrivals;
     {
         const std::scoped_lock lock(inbox->mutex);
-        completions.swap(inbox->completions);
-        events.swap(inbox->events);
-        tasks.swap(inbox->tasks);
+        arrivals.swap(inbox->arrivals);
     }
 
-    // A reply for a call this bridge never made, or already settled, belongs to nobody and is dropped.
-    for (Completion& completion : completions) {
-        const auto found = pending.find(completion.id);
-        if (found == pending.end()) {
-            continue;
-        }
-        Callback callback = std::move(found->second.callback);
-        pending.erase(found);
-        if (callback) {
-            callback(std::move(completion.result));
-        }
-    }
-
-    // Retained events reach the listeners that connected since the last pump before any newer event of their name.
     std::vector<std::string> waiting;
     waiting.reserve(retained.size());
     for (const auto& [name, payloads] : retained) {
@@ -165,25 +154,15 @@ void Bridge::pump() {
     for (const std::string& name : waiting) {
         deliverRetained(name);
     }
-    for (NativeEvent& event : gather(std::move(events))) {
-        const auto found = signals.find(event.name);
-        if (found != signals.end() && !found->second->empty()) {
-            core::Signal<const Payload&>& signal = *found->second;
-            deliverRetained(event.name);
-            signal.emit(event.payload);
-            continue;
-        }
-        if (event.options.retain) {
-            std::deque<Payload>& payloads = retained[event.name];
-            if (payloads.size() == kRetainedLimit) {
-                payloads.pop_front();
-            }
-            payloads.push_back(std::move(event.payload));
-        }
-    }
 
-    for (const std::function<void()>& task : tasks) {
-        task();
+    for (Arrival& arrival : gather(std::move(arrivals))) {
+        if (auto* completion = std::get_if<Completion>(&arrival)) {
+            complete(*completion);
+        } else if (auto* event = std::get_if<NativeEvent>(&arrival)) {
+            deliver(*event);
+        } else {
+            std::get<std::function<void()>>(arrival)();
+        }
     }
 
     for (auto& [callback, result] : std::exchange(cancelled, {})) {
@@ -194,26 +173,57 @@ void Bridge::pump() {
     expireCalls();
 }
 
+// A reply for a call this bridge never made, or already settled, belongs to nobody and is dropped.
+void Bridge::complete(Completion& completion) {
+    const auto found = pending.find(completion.id);
+    if (found == pending.end()) {
+        return;
+    }
+    Callback callback = std::move(found->second.callback);
+    pending.erase(found);
+    if (callback) {
+        callback(std::move(completion.result));
+    }
+}
+
+void Bridge::deliver(NativeEvent& event) {
+    const auto found = signals.find(event.name);
+    if (found != signals.end() && !found->second->empty()) {
+        core::Signal<const Payload&>& signal = *found->second;
+        deliverRetained(event.name);
+        signal.emit(event.payload);
+        return;
+    }
+    if (event.options.retain) {
+        std::deque<Payload>& payloads = retained[event.name];
+        if (payloads.size() == kRetainedLimit) {
+            payloads.pop_front();
+        }
+        payloads.push_back(std::move(event.payload));
+    }
+}
+
 // A batch keeps its buffers in the order of its events, so each event moves its references behind the buffers of the events before it. A batch is retained when any of its events is.
-std::vector<Bridge::NativeEvent> Bridge::gather(std::vector<NativeEvent> events) {
-    std::vector<NativeEvent> gathered;
-    gathered.reserve(events.size());
+std::vector<Bridge::Arrival> Bridge::gather(std::vector<Arrival> arrivals) {
+    std::vector<Arrival> gathered;
+    gathered.reserve(arrivals.size());
     std::unordered_map<std::string, std::size_t> batches;
-    for (NativeEvent& event : events) {
-        if (!event.options.batched) {
-            gathered.push_back(std::move(event));
+    for (Arrival& arrival : arrivals) {
+        auto* event = std::get_if<NativeEvent>(&arrival);
+        if (event == nullptr || !event->options.batched) {
+            gathered.push_back(std::move(arrival));
             continue;
         }
-        const auto [found, created] = batches.try_emplace(event.name, gathered.size());
+        const auto [found, created] = batches.try_emplace(event->name, gathered.size());
         if (created) {
-            gathered.push_back({.name = event.name, .payload = {.json = core::Json::array()}, .options = event.options});
+            gathered.emplace_back(NativeEvent{.name = event->name, .payload = {.json = core::Json::array()}, .options = event->options});
         }
 
-        NativeEvent& batch = gathered[found->second];
-        core::JsonBytes::shift(event.payload.json, batch.payload.buffers.size());
-        batch.payload.json.push_back(std::move(event.payload.json));
-        std::ranges::move(event.payload.buffers, std::back_inserter(batch.payload.buffers));
-        batch.options.retain = batch.options.retain || event.options.retain;
+        auto& batch = std::get<NativeEvent>(gathered[found->second]);
+        core::JsonBytes::shift(event->payload.json, batch.payload.buffers.size());
+        batch.payload.json.push_back(std::move(event->payload.json));
+        std::ranges::move(event->payload.buffers, std::back_inserter(batch.payload.buffers));
+        batch.options.retain = batch.options.retain || event->options.retain;
     }
     return gathered;
 }

@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -74,7 +75,7 @@ class Bridge final {
     using Canceller = std::function<void(std::uint64_t id, std::string_view method)>;
 
     // The dispatcher hands calls to native code, and the canceller tells native code that the app no longer waits for one.
-    Bridge(Dispatcher native, Canceller cancel);
+    Bridge(Dispatcher native, Canceller nativeCancel);
 
     Bridge(const Bridge&) = delete;
     Bridge& operator=(const Bridge&) = delete;
@@ -118,12 +119,13 @@ class Bridge final {
         EmitOptions options;
     };
 
-    // Replies, native events and posted work wait here, shared with the replies of C++ handlers and with mailboxes so late native code never touches a destroyed bridge.
+    // A reply, a native event or posted work, which the pump hands over in the order they arrived.
+    using Arrival = std::variant<Completion, NativeEvent, std::function<void()>>;
+
+    // Arrivals wait here, shared with the replies of C++ handlers and with mailboxes so late native code never touches a destroyed bridge.
     struct Inbox {
         std::mutex mutex;
-        std::vector<Completion> completions;
-        std::vector<NativeEvent> events;
-        std::vector<std::function<void()>> tasks;
+        std::vector<Arrival> arrivals;
     };
 
     struct Pending {
@@ -141,7 +143,10 @@ class Bridge final {
     [[nodiscard]] static Error readFailure(core::Json payload);
 
     // Gathers the batched events of each name into one event at the place of the first of them, whose JSON lists theirs in order.
-    [[nodiscard]] static std::vector<NativeEvent> gather(std::vector<NativeEvent> events);
+    [[nodiscard]] static std::vector<Arrival> gather(std::vector<Arrival> arrivals);
+
+    void complete(Completion& completion);
+    void deliver(NativeEvent& event);
 
     // Runs the engine handler of the method, from a copy because it may register handlers itself, or hands the call to native code.
     void start(std::uint64_t id, std::string_view method, const Payload& params, Reply reply);

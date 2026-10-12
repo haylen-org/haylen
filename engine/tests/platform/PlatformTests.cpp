@@ -286,6 +286,26 @@ TEST(BridgeTest, RunsPostedWorkOnTheFrameThreadUntilTheBridgeIsGone) {
     EXPECT_EQ(threads.size(), 1U);
 }
 
+TEST(BridgeTest, HandsOverRepliesEventsAndPostedWorkInTheOrderTheyArrived) {
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    std::vector<std::string> order;
+    const core::Connection progress = bridge.on("download.progress", [&order](const Bridge::Payload& payload) { order.push_back("progress " + payload.json.dump()); });
+    const std::uint64_t call = bridge.call("download.start", {.json = core::Json::object()}, [&order](const Bridge::Result&) { order.emplace_back("done"); });
+    EXPECT_TRUE(bridge.getMailbox().post([&order] { order.emplace_back("callback"); }));
+    bridge.emit("download.progress", "1");
+    bridge.resolve(call, true, "{}");
+    bridge.emit("download.progress", "2");
+    bridge.pump();
+    EXPECT_EQ(order, (std::vector<std::string>{"callback", "progress 1", "done", "progress 2"}));
+}
+
+TEST(BridgeTest, LeavesNoCallBehindWhenItsHandlerThrows) {
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    bridge.registerHandler("broken", [](const Bridge::Payload&, const Bridge::Reply&) { throw std::runtime_error("The handler failed."); });
+    EXPECT_THROW((void)bridge.call("broken", {.json = core::Json::object()}, {}), std::runtime_error);
+    EXPECT_EQ(bridge.getPendingCallCount(), 0U);
+}
+
 TEST(BridgeTest, KeepsLateRepliesAwayFromOtherBridges) {
     std::vector<std::string> answers;
     Bridge::Reply late;
