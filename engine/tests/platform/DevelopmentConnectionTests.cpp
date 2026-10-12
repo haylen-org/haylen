@@ -73,7 +73,11 @@ class PushingServer final {
         }
 
       private:
+        // Messages of the wrong shape come first, and the app drops them without stopping.
         static void push(Poco::Net::WebSocket& socket) {
+            for (const std::string malformed : {R"({"type": 1})", R"({"type": "files", "files": [1]})", R"({"type": "files", "files": [], "removed": [2]})", R"({"type": "files", "files": [], "revision": "one"})", R"({"type": "shaderError", "path": 3})"}) {
+                socket.sendFrame(malformed.data(), static_cast<int>(malformed.size()), Poco::Net::WebSocket::FRAME_TEXT);
+            }
             const std::vector<std::pair<std::string, std::string>> files{{"source/counter.lua", "return {value = 'pushed'}"}, {"content/data.json", R"({"level": 9})"}, {"../secret.lua", "return 'stolen'"}};
             core::Json listed = core::Json::array();
             for (const auto& [path, content] : files) {
@@ -139,6 +143,8 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     core::Log::removeListener(listener);
     const std::scoped_lock lock(linesMutex);
     EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("The development server sent the path \"../secret.lua\", which is not a file of the package, so it was refused.") != std::string::npos; }));
+    EXPECT_EQ(std::ranges::count_if(lines, [](const std::string& line) { return line.find("The development server sent a message that this engine does not know.") != std::string::npos; }), 4);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 } // namespace haylen::platform

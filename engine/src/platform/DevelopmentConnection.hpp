@@ -27,6 +27,10 @@ class DevelopmentConnection final {
   private:
     static constexpr float kMaxReconnectDelay = 5.0F;
 
+    // Returns the text of a key of a message, or an empty text when the message or the key holds something else.
+    [[nodiscard]] static std::string readText(const core::Json& message, const char* key);
+    [[nodiscard]] static bool isBatch(const core::Json& message);
+
     void sendHello();
     void receive(std::string_view data, bool binary);
     void apply();

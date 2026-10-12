@@ -1,5 +1,6 @@
 #include "platform/DevelopmentConnection.hpp"
 
+#include <algorithm>
 #include <exception>
 #include <span>
 #include <utility>
@@ -53,12 +54,12 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
     }
 
     const core::Json message = core::Json::parse(data, nullptr, false);
-    const std::string type = message.is_object() ? message.value("type", "") : "";
+    const std::string type = readText(message, "type");
     if (type == "shaderError") {
-        core::Log::error("The shader \"{}\" did not compile: {}", message.value("path", ""), message.value("message", ""));
+        core::Log::error("The shader \"{}\" did not compile: {}", readText(message, "path"), readText(message, "message"));
         return;
     }
-    if (type != "files" || !message.contains("files") || !message.at("files").is_array()) {
+    if (type != "files" || !isBatch(message)) {
         core::Log::warning("The development server sent a message that this engine does not know.");
         return;
     }
@@ -67,6 +68,29 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
     if (batch.at("files").empty()) {
         apply();
     }
+}
+
+std::string DevelopmentConnection::readText(const core::Json& message, const char* key) {
+    if (!message.is_object()) {
+        return {};
+    }
+    const auto found = message.find(key);
+    return found != message.end() && found->is_string() ? found->get<std::string>() : std::string();
+}
+
+// A batch lists files with their paths, and may list removed paths, the session of the server and its revision.
+bool DevelopmentConnection::isBatch(const core::Json& message) {
+    const auto files = message.find("files");
+    if (files == message.end() || !files->is_array() || !std::ranges::all_of(*files, [](const core::Json& file) { return file.is_object() && file.contains("path") && file.at("path").is_string(); })) {
+        return false;
+    }
+    const auto removed = message.find("removed");
+    if (removed != message.end() && (!removed->is_array() || !std::ranges::all_of(*removed, &core::Json::is_string))) {
+        return false;
+    }
+    const auto server = message.find("session");
+    const auto number = message.find("revision");
+    return (server == message.end() || server->is_string()) && (number == message.end() || number->is_number_integer());
 }
 
 // Only files of the package reach the overlay, so a path that is absolute, leaves the package or names anything but a file that hot reload watches is refused.
@@ -90,7 +114,7 @@ void DevelopmentConnection::apply() {
 
     const core::Json& files = batch.at("files");
     for (std::size_t index = 0; index < files.size(); ++index) {
-        const std::string path = accept(files.at(index).value("path", ""));
+        const std::string path = accept(files.at(index).at("path").get<std::string>());
         if (!path.empty() && overlay != nullptr) {
             overlay->setFile(path, std::move(contents[index]));
         }
