@@ -59,10 +59,10 @@ in vec4 glow_color;
 in vec4 amounts;
 in vec2 widths;
 
-// The texture inside the source of the sprite, and nothing outside it, where the outline and the glow spill.
+// The texture inside the source of the sprite, and nothing outside it, where the outline and the glow spill. Points on the edge texels stay inside them, so filtering never reads the neighbours of the region in an atlas.
 vec4 effect_sample(vec2 point) {
     bool inside = all(greaterThanEqual(point, haylen_source.xy)) && all(lessThanEqual(point, haylen_source.zw));
-    return inside ? haylen_texture(point) : vec4(0.0);
+    return inside ? haylen_texture(haylen_inside(point)) : vec4(0.0);
 }
 
 float effect_hash(vec2 cell) {
