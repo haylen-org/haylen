@@ -492,6 +492,17 @@ The anchors of the interface against the safe area and the whole screen, drawing
 
 ### System
 
+#### Content delivery (DLV)
+
+Assets that the app needs to start, assets that download in the background or when the app asks for them, their progress, and how a release ships and updates its content. The tests are in `source/categories/delivery/`, and the rules of `content.delivery` in `app.json` name the folders of `content/delivery/` that each test delivers later.
+
+| Code | Test | What it shows | Unsupported on |
+| --- | --- | --- | --- |
+| `DLV-001` | Required content | An asset that is on the device before the app starts, read at once, and how the app runs from a protected release. |  |
+| `DLV-002` | On-demand content | An asset that comes only when the app asks for it: a synchronous load refuses it, and an asynchronous load brings it first. |  |
+| `DLV-003` | Prefetch and progress | Assets brought onto the device without loading them, with the progress of the bytes that arrive. |  |
+| `DLV-004` | Updates and offline play | The status of the content, the update events, a check that fails and the content that plays when nothing can download. |  |
+
 #### Development (DEV)
 
 Hot reload while the project runs in development, with "haylen run samples/tests" or with "--platform web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The error screen of every kind of code that runs for the app, and the return to the app from it, run in development and in apps that ship. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.

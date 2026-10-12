@@ -17,6 +17,12 @@
     },
     "clearColor": "#FF101418",
     "autoload": ["categories.events.player-data"],
+    "content": {
+        "delivery": [
+            {"match": "delivery/later/**", "mode": "onDemand"},
+            {"match": "delivery/prefetched/**", "mode": "prefetch"}
+        ]
+    },
     "native": {
         "native_test": {
             "cmake": "plugins/native-test/native",
