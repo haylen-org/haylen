@@ -375,7 +375,7 @@ Returns a list of the gestures recognized in this frame. Each gesture is a table
 | `type` | string | One of `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` or `'pinch'`. |
 | `x`, `y` | number | Where the gesture happened in design coordinates. A pinch reports the center between the two fingers. |
 | `dx`, `dy` | number | The movement of a swipe, from where the finger landed to where it lifted. Other gestures report 0. |
-| `scale` | number | The spread of a pinch divided by the spread when the second finger landed. Other gestures report 1. |
+| `scale` | number | The spread of a pinch divided by the spread when exactly two fingers started touching the screen, which a third finger starts again when it comes or goes. Other gestures report 1. |
 
 A tap fires when a finger lifts quickly without moving far. The second tap of a double tap reports both a `'tap'` and a `'doubleTap'` in the same frame. A long press fires once while the finger is still down, and that finger ends without a tap. A swipe fires when a finger lifts after moving far enough quickly enough. A pinch fires every frame in which one of exactly two fingers moves, and fingers that were part of a pinch never end as taps or swipes. A finger the system cancels, and every finger or mouse press still down when the window loses focus or the app is suspended, ends without a gesture.
 
@@ -1080,7 +1080,7 @@ A scene with an `event(self, e)` callback receives every platform event as a tab
 | `'textAction'` | The field `field` is the id of the text field and `action` is `'submit'`, `'next'`, `'cancel'` or `'dismissed'`. |
 | `'keyboardChanged'` | The field `frame` is the rectangle the on-screen keyboard covers, empty while it is hidden. |
 | `'networkChanged'` | The field `online` is whether the device has a network. |
-| `'mouseEnter'`, `'mouseLeave'`, `'resized'`, `'suspended'`, `'resumed'`, `'focusGained'`, `'focusLost'`, `'quitRequested'`, `'lowMemory'`, `'interruptionBegan'`, `'interruptionEnded'` | No other fields. |
+| `'mouseEnter'`, `'mouseLeave'`, `'resized'`, `'suspended'`, `'resumed'`, `'focusGained'`, `'focusLost'`, `'quitRequested'`, `'lowMemory'`, `'interruptionBegan'`, `'interruptionEnded'`, `'windowMoved'`, `'monitorsChanged'` | No other fields. |
 
 The name `repeat` is a Lua keyword, so read it as `e['repeat']`.
 

@@ -17,6 +17,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/math/Insets.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -215,6 +216,63 @@ TEST(DeviceTest, ReportsAFullPipelinePool) {
         sg_destroy_pipeline(pipeline);
     }
     sg_destroy_shader(shader);
+}
+
+TEST(ViewportTest, FitLetterboxesAndConvertsCoordinates) {
+    graphics::Viewport viewport;
+    viewport.update(math::Vec2(1920.0F, 1200.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::Fit);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 60.0F, 1920.0F, 1080.0F}));
+    EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{0.0F, 0.0F, 1920.0F, 1080.0F}));
+    EXPECT_EQ(viewport.toDesign(math::Vec2(960.0F, 600.0F)), math::Vec2(960.0F, 540.0F));
+    EXPECT_EQ(viewport.toFramebuffer(math::Vec2(0.0F, 0.0F)), math::Vec2(0.0F, 60.0F));
+    EXPECT_EQ(viewport.getScaling(), graphics::Viewport::ScalingPolicy::Fit);
+    EXPECT_EQ(viewport.getDesignSize(), math::Vec2(1920.0F, 1080.0F));
+    EXPECT_EQ(viewport.getFramebufferSize(), math::Vec2(1920.0F, 1200.0F));
+}
+
+TEST(ViewportTest, ExpandFillsTheScreenAroundTheDesignArea) {
+    graphics::Viewport viewport;
+    viewport.update(math::Vec2(2340.0F, 1080.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::Expand, math::Insets{90.0F, 0.0F, 90.0F, 40.0F});
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 0.0F, 2340.0F, 1080.0F}));
+    EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{-210.0F, 0.0F, 2340.0F, 1080.0F}));
+    EXPECT_EQ(viewport.getSafeRect(), (math::Rect{-120.0F, 0.0F, 2160.0F, 1040.0F}));
+    EXPECT_EQ(viewport.getPixelsPerUnit(), math::Vec2(1.0F, 1.0F));
+}
+
+TEST(ViewportTest, FillStretchAndPixelPerfect) {
+    graphics::Viewport viewport;
+    viewport.update(math::Vec2(1000.0F, 1000.0F), math::Vec2(2000.0F, 1000.0F), graphics::Viewport::ScalingPolicy::Fill);
+    EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{500.0F, 0.0F, 1000.0F, 1000.0F}));
+
+    viewport.update(math::Vec2(1000.0F, 1000.0F), math::Vec2(2000.0F, 1000.0F), graphics::Viewport::ScalingPolicy::Stretch);
+    EXPECT_EQ(viewport.getPixelsPerUnit(), math::Vec2(0.5F, 1.0F));
+
+    viewport.update(math::Vec2(1000.0F, 700.0F), math::Vec2(320.0F, 180.0F), graphics::Viewport::ScalingPolicy::PixelPerfect);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{20.0F, 80.0F, 960.0F, 540.0F}));
+
+    viewport.update(math::Vec2(0.0F, 0.0F), math::Vec2(0.0F, 0.0F), graphics::Viewport::ScalingPolicy::Fit);
+    EXPECT_EQ(viewport.getFramebufferSize(), math::Vec2(1.0F, 1.0F));
+
+    EXPECT_EQ(graphics::Viewport::scalingPolicyFromName("expand"), graphics::Viewport::ScalingPolicy::Expand);
+    EXPECT_FALSE(graphics::Viewport::scalingPolicyFromName("zoom").has_value());
+}
+
+TEST(ViewportTest, FitsTheWidthOrScalesNothing) {
+    // A tall screen shows the whole design width and more height above and below the design area.
+    graphics::Viewport viewport;
+    viewport.update(math::Vec2(1080.0F, 2400.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::FitWidth);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 0.0F, 1080.0F, 2400.0F}));
+    const math::Rect visible = viewport.getVisibleRect();
+    EXPECT_EQ(visible.x, 0.0F);
+    EXPECT_EQ(visible.width, 1920.0F);
+    EXPECT_NEAR(visible.height, 4266.67F, 0.01F);
+    EXPECT_NEAR(visible.getCenter().y, 540.0F, 0.01F);
+
+    // Without scaling a design unit is a point, so the visible area follows the window from the top left.
+    viewport.update(math::Vec2(2560.0F, 1600.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::None, {}, 2.0F);
+    EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{0.0F, 0.0F, 1280.0F, 800.0F}));
+    EXPECT_EQ(viewport.getPixelsPerUnit(), math::Vec2(2.0F, 2.0F));
+    EXPECT_EQ(graphics::Viewport::scalingPolicyName(graphics::Viewport::ScalingPolicy::FitWidth), "fitWidth");
 }
 
 TEST(ViewportTest, PixelPerfectShrinksByWholeDivisorsOnSmallFramebuffers) {

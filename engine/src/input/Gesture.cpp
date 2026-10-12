@@ -1,21 +1,11 @@
 #include "haylen/input/Gesture.hpp"
 
+#include <algorithm>
+
 namespace haylen::input {
 
 std::string_view Gesture::typeName(Type value) noexcept {
-    switch (value) {
-    case Type::Tap:
-        return "tap";
-    case Type::DoubleTap:
-        return "doubleTap";
-    case Type::LongPress:
-        return "longPress";
-    case Type::Swipe:
-        return "swipe";
-    case Type::Pinch:
-        return "pinch";
-    }
-    return "tap";
+    return std::ranges::find(kTypeNames, value, &std::pair<std::string_view, Type>::second)->first;
 }
 
 } // namespace haylen::input
