@@ -78,8 +78,9 @@ void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy s
         break;
     }
 
-    // The edges land on whole pixels, as the GPU places the viewport, so a centered area never starts half a pixel in and input maps to what the screen shows.
-    pixelRect = math::Rect::fromMinMax(math::Vec2::round(pixelRect.getMin()), math::Vec2::round(pixelRect.getMax()));
+    // The edges land on whole pixels, as the GPU places the viewport, so a centered area never starts half a pixel in and input maps to what the screen shows. The area keeps at least one pixel, so a design far longer than the framebuffer still maps to it.
+    const math::Vec2 low = math::Vec2::min(math::Vec2::round(pixelRect.getMin()), framebufferSize - math::Vec2{1.0F, 1.0F});
+    pixelRect = math::Rect::fromMinMax(low, math::Vec2::max(math::Vec2::round(pixelRect.getMax()), low + math::Vec2{1.0F, 1.0F}));
 
     const math::Rect safePixels = fullFramebuffer.inset(safeInsetsPixels).intersection(pixelRect);
     safeRect = math::Rect::fromMinMax(toDesign(safePixels.getMin()), toDesign(safePixels.getMax()));

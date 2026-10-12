@@ -212,6 +212,12 @@ TEST(ViewportTest, LandsOnWholePixels) {
         EXPECT_EQ(edge, std::round(edge));
     }
     EXPECT_EQ(viewport.toDesign(fitted.getMin()), math::Vec2(0.0F, 0.0F));
+
+    // A design that fits into less than a pixel still takes one, so every conversion stays finite.
+    viewport.update(math::Vec2(1.0F, 2.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::Fit);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 1.0F, 1.0F, 1.0F}));
+    EXPECT_TRUE(std::isfinite(viewport.toDesign(math::Vec2(1.0F, 1.0F)).y));
+    EXPECT_TRUE(std::isfinite(viewport.getSafeRect().height));
 }
 
 // Each enum keeps its names in one place, which Lua, asset options and `app.json` all read, and every value reads back as the name it came from.
