@@ -154,13 +154,23 @@ void Updater::install(const UpdateOffer& offer, std::function<void(const Downloa
     // clang-format off
     jobs.postIo([this, &pool = jobs, owner = std::weak_ptr(alive), store = release->getStore(), offer, progress = std::move(progress), done = std::move(done)]() mutable {
         const std::uint64_t available = store->getAvailableSpace();
-        pool.postToFrame([this, owner, available, offer = std::move(offer), progress = std::move(progress), done = std::move(done)]() mutable {
+        const std::uint64_t required = getRequiredSpace(offer);
+        std::optional<Error> failure;
+        if (required > available) {
+            failure = Error(Error::Code::InsufficientStorage, std::format("The update needs {} bytes of room on the device and {} are free. Free some room and try again.", required, available), {.requiredBytes = required, .availableBytes = available});
+        } else {
+            try {
+                markPending(*store, offer);
+            } catch (const Error& error) {
+                failure = error;
+            }
+        }
+        pool.postToFrame([this, owner, failure = std::move(failure), offer = std::move(offer), progress = std::move(progress), done = std::move(done)]() mutable {
             if (owner.expired()) {
                 return;
             }
-            const std::uint64_t required = getRequiredSpace(offer);
-            if (required > available) {
-                done(Error(Error::Code::InsufficientStorage, std::format("The update needs {} bytes of room on the device and {} are free. Free some room and try again.", required, available), {.requiredBytes = required, .availableBytes = available}));
+            if (failure) {
+                done(std::move(failure));
                 return;
             }
             download = downloader.fetch(offer.content->shards, offer.missing, [this](const ShardReference& pack) { return locate(pack); }, {
@@ -179,6 +189,18 @@ void Updater::install(const UpdateOffer& offer, std::function<void(const Downloa
     // clang-format on
 }
 
+// The store keeps the manifest of an install and names it as pending before the first record arrives, so the records of an install that a restart interrupts stay for the next attempt.
+void Updater::markPending(LocalStore& store, const UpdateOffer& offer) {
+    const Digest id = offer.content->manifest->getId();
+    StoreState state = store.getState();
+    if (state.pending == id || state.active == id) {
+        return;
+    }
+    store.writeManifest(id, *offer.manifest);
+    state.pending = id;
+    store.commit(std::move(state));
+}
+
 void Updater::commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const {
     // The manifest and every record go to the disk before the state that names them, so a crash leaves either the earlier content or the new one.
     // clang-format off
@@ -192,6 +214,7 @@ void Updater::commit(const UpdateOffer& offer, std::function<void(std::optional<
                 state.previous = state.active;
                 state.active = id;
             }
+            state.pending = Digest();
             state.channel = channelName;
             state.acceptedGeneration = offer.generation;
             state.acceptedManifest = id;
@@ -237,7 +260,7 @@ void Updater::collect(std::function<void(Collection, std::optional<Error>)> done
                 }
             };
             keep(*releasePackage->getBundledContent());
-            for (const Digest& id : {state.active, state.previous}) {
+            for (const Digest& id : {state.active, state.previous, state.pending}) {
                 if (id.isZero()) {
                     continue;
                 }

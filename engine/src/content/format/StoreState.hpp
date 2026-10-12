@@ -27,6 +27,9 @@ class StoreState final {
     Digest active;
     Digest previous;
 
+    // The content manifest that an install is bringing, zero for none, whose records stay through restarts until the install commits or another update replaces it.
+    Digest pending;
+
     std::string channel;
     std::uint64_t acceptedGeneration = 0;
     Digest acceptedManifest;

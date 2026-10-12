@@ -90,6 +90,18 @@ class UpdaterTest : public ::testing::Test {
         return std::move(*result);
     }
 
+    Updater::Collection collect(Client& client) {
+        std::optional<Updater::Collection> collection;
+        // clang-format off
+        client.updater->collect([&collection](Updater::Collection collected, std::optional<Error> error) {
+            EXPECT_FALSE(error);
+            collection = collected;
+        });
+        // clang-format on
+        EXPECT_TRUE(runtime.pumpUntil([&collection] { return collection.has_value(); }));
+        return collection.value_or(Updater::Collection{});
+    }
+
     UpdateOffer requireOffer(Client& client) {
         auto [offer, error] = check(client);
         EXPECT_FALSE(error) << error->what();
@@ -218,9 +230,10 @@ TEST_F(UpdaterTest, ResumesAnUpdateThatStoppedAndCommitsOnlyOnceItIsWhole) {
         EXPECT_TRUE(runtime.pumpUntil([&staging] { return std::filesystem::exists(staging) && !std::filesystem::is_empty(staging); })) << "The record that stopped keeps its first bytes.";
     }
 
-    // The app starts again with the content it had, and the next attempt downloads only what is missing, from the middle of the record that stopped.
+    // The app starts again with the content it had and collects what no content uses, which keeps the records of the install that stopped, and the next attempt downloads only what is missing, from the middle of the record that stopped.
     server.clearExchanges();
     const std::unique_ptr<Client> client = connect();
+    EXPECT_EQ(collect(*client).removedRecords, 0U);
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
     const UpdateOffer offer = requireOffer(*client);
     EXPECT_LT(offer.downloadBytes, whole);
@@ -349,16 +362,7 @@ TEST_F(UpdaterTest, CollectsWhatNoRetainedContentUses) {
     }
     const LocalStore::Statistics before = client->package->getStore()->getStatistics();
 
-    std::optional<Updater::Collection> collection;
-    // clang-format off
-    client->updater->collect([&collection](Updater::Collection collected, std::optional<Error> error) {
-        EXPECT_FALSE(error);
-        collection = collected;
-    });
-    // clang-format on
-    ASSERT_TRUE(runtime.pumpUntil([&collection] { return collection.has_value(); }));
-
-    EXPECT_GT(collection->removedRecords, 0U);
+    EXPECT_GT(collect(*client).removedRecords, 0U);
     EXPECT_LT(client->package->getStore()->getStatistics().records, before.records);
     const std::unique_ptr<Client> restarted = connect();
     EXPECT_EQ(readText(*restarted->package, "content/data/config.json"), R"({"level": 4})");

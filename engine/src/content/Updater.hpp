@@ -10,6 +10,7 @@
 
 #include "content/Downloader.hpp"
 #include "content/HttpTransport.hpp"
+#include "content/LocalStore.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/UpdateOffer.hpp"
 #include "content/format/Catalog.hpp"
@@ -53,7 +54,7 @@ class Updater final {
     // Ends the check or install that runs with `NetworkCancelled`.
     void cancel();
 
-    // Removes from the store what neither the content that ships with the app, the active content nor the previous one uses.
+    // Removes from the store what neither the content that ships with the app, the active content, the previous one nor the one an install is bringing uses.
     void collect(std::function<void(Collection, std::optional<Error>)> done);
 
     // The address of a pack of the publication tree.
@@ -66,6 +67,7 @@ class Updater final {
     void fetch(const std::string& url, std::uint64_t maximumSize, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done);
     void readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
     void commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const;
+    static void markPending(LocalStore& store, const UpdateOffer& offer);
     [[nodiscard]] static std::uint64_t getRequiredSpace(const UpdateOffer& offer) noexcept;
     [[nodiscard]] static bool isPacked(std::string_view path, const core::AppConfig::Content& rules) noexcept;
 

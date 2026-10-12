@@ -55,6 +55,7 @@ StoreState LocalStore::readState(const Digest& application, std::uint64_t appBui
         newest->appBuild = appBuild;
         newest->active = Digest();
         newest->previous = Digest();
+        newest->pending = Digest();
     }
     return *newest;
 }

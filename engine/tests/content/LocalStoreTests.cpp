@@ -233,7 +233,7 @@ TEST_F(LocalStoreTest, KeepsTheStartOfARecordWhoseDownloadStopped) {
 }
 
 TEST(StoreFormatTest, ReadsWhatItWritesAndRefusesTornCopies) {
-    const StoreState state{.application = Digest::of(test::TestFiles::bytes("app")), .appBuild = 5, .channel = "beta", .acceptedGeneration = 7, .journal = 2, .sequence = 11};
+    const StoreState state{.application = Digest::of(test::TestFiles::bytes("app")), .appBuild = 5, .pending = Digest::of(test::TestFiles::bytes("update")), .channel = "beta", .acceptedGeneration = 7, .journal = 2, .sequence = 11};
     std::vector<std::uint8_t> bytes = state.write();
     EXPECT_EQ(StoreState::parse(bytes), state);
     bytes[40] ^= 1U;

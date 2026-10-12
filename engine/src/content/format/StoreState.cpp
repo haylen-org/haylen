@@ -10,7 +10,7 @@ namespace haylen::content {
 
 std::vector<std::uint8_t> StoreState::write() const {
     BinaryWriter writer;
-    writer.writeBytes(kMagic).write(kVersion).writeZeros(6).write(sequence).writeDigest(application).write(appBuild).writeDigest(active).writeDigest(previous);
+    writer.writeBytes(kMagic).write(kVersion).writeZeros(6).write(sequence).writeDigest(application).write(appBuild).writeDigest(active).writeDigest(previous).writeDigest(pending);
     writer.write(acceptedGeneration).writeDigest(acceptedManifest).write(journal).writeString(channel);
     std::vector<std::uint8_t> bytes = writer.take();
     const Digest check = Digest::of(bytes);
@@ -44,6 +44,7 @@ StoreState StoreState::parse(std::span<const std::uint8_t> bytes) {
     state.appBuild = fields.read<std::uint64_t>();
     state.active = fields.readDigest();
     state.previous = fields.readDigest();
+    state.pending = fields.readDigest();
     state.acceptedGeneration = fields.read<std::uint64_t>();
     state.acceptedManifest = fields.readDigest();
     state.journal = fields.read<std::uint64_t>();
