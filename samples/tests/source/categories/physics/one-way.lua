@@ -16,6 +16,8 @@ local kOneWay = 4
 local kSpeed = 360
 local kJumpSpeed = 900
 local kDropTime = 0.3
+local kPlatforms = {{-520, 283, 280}, {-140, 168, 260}, {240, 53, 260}, {-140, -62, 260}, {-520, -177, 260}, {-140, -292, 260}}
+local kLift = {470, -62, 220}
 
 OneWay.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
@@ -24,7 +26,7 @@ OneWay.actions = {
 
 function OneWay:enter()
     self:frame{
-        hint = 'Move with A and D, the arrows or the left stick, jump with Space, W or the south button, and hold down while jumping to drop through a platform.',
+        hint = 'Move with A and D, the arrows or the left stick, jump with Space, W or the south button, and hold down while jumping to drop through a platform. Climb from platform to platform up to the top one, or ride the lift.',
         controls = {
             ui.checkbox{id = 'solid', text = 'Make the platforms solid', onChange = function(event) self:setSolid(event.checked) end},
             ui.button{id = 'reset', text = 'Start over', onClick = function() self:build() end},
@@ -53,12 +55,14 @@ function OneWay:build()
     parts.box(right, 20, 800, {category = kSolid})
     self.statics = {ground, left, right}
 
-    for _, spot in ipairs({{-500, 250, 300}, {-100, 130, 280}, {300, 10, 300}, {-420, -110, 260}, {560, -220, 240}}) do
+    -- Each platform lies one jump above the one before it and less than a jump away to the side, zigzagging up to the top one.
+    for _, spot in ipairs(kPlatforms) do
         self:platform('static', spot[1], spot[2], spot[3])
     end
-    self.lift = self:platform('kinematic', 60, -250, 220)
+    self.top = self.platforms[#self.platforms].body
+    self.lift = self:platform('kinematic', kLift[1], kLift[2], kLift[3])
 
-    self.hero = self.world:createBody({x = -600, y = 330, fixedRotation = true, sleepEnabled = false})
+    self.hero = self.world:createBody({x = -720, y = 330, fixedRotation = true, sleepEnabled = false})
     parts.capsule(self.hero, 0, -22, 0, 22, 20, {friction = 0, category = kHero})
     parts.paint(self.hero, '#FF4DD0E1')
 end
@@ -77,18 +81,19 @@ function OneWay:setSolid(solid)
     end
 end
 
--- The character stands when it is not rising and a short ray from its feet meets the ground or a platform.
-function OneWay:grounded()
+-- Returns the body the character stands on, which it stands on when it is not rising and a short ray from its feet meets the ground or a platform.
+function OneWay:ground()
     if self.hero.velocity.y < -50 then
-        return false
+        return nil
     end
     local x, y = self.hero.x, self.hero.y
     for _, offset in ipairs({-14, 0, 14}) do
-        if self.world:raycast(x + offset, y + 40, x + offset, y + 48, {mask = kSolid | kOneWay}) then
-            return true
+        local hit = self.world:raycast(x + offset, y + 40, x + offset, y + 48, {mask = kSolid | kOneWay})
+        if hit then
+            return hit.body
         end
     end
-    return false
+    return nil
 end
 
 function OneWay:exit()
@@ -103,21 +108,24 @@ function OneWay:update(dt)
     end
     local moveX, moveY = input.vector('move')
     local velocity = self.hero.velocity
-    local grounded = self:grounded()
-    if input.pressed('jump') and grounded then
+    local ground = self:ground()
+    if input.pressed('jump') and ground then
         if moveY > 0.5 then
             self.hero:dropThrough(kDropTime)
         else
             velocity.y = -kJumpSpeed
         end
     end
-    self.hero.velocity = {moveX * kSpeed, velocity.y}
-    self:status(string.format('%s, velocity %.0f, %.0f', grounded and 'Grounded' or 'In the air', velocity.x, velocity.y))
+    -- The character keeps the speed of the platform it stands on, so it rides the lift.
+    local carried = ground and ground.velocity.x or 0
+    self.hero.velocity = {moveX * kSpeed + carried, velocity.y}
+    local place = ground == self.top and 'On the top platform' or ground and 'Grounded' or 'In the air'
+    self:status(string.format('%s, velocity %.0f, %.0f', place, velocity.x, velocity.y))
 end
 
 function OneWay:fixedUpdate(step)
     self.time = self.time + step
-    self.lift.velocity = {math.cos(self.time * 0.8) * 220, 0}
+    self.lift.velocity = {math.cos(self.time * 0.8) * 100, 0}
     self:simulate(self.world, step)
 end
 
