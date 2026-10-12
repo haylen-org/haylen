@@ -141,7 +141,46 @@ local socket = net.connectWebSocket('ws://127.0.0.1:1/')
 socket:on('error', function()
     error('The socket listener failed.')
 end)
-)", "The socket listener failed.", 4}),
+)", "The socket listener failed.", 4},
+    FailingCode{"unobservedRejection", R"(local async = require('async')
+async.promise(function()
+    async.sleep(1):await()
+    error('The promise failed after it waited.')
+end)
+)", "A promise rejected, and nothing awaited or caught it. The promise failed after it waited.", 4},
+    FailingCode{"serverRoute", R"(local async = require('async')
+local http = require('http')
+local app = http.createApp()
+app:get('/fault', function(ctx)
+    async.sleep(1):await()
+    error('The route failed.')
+end)
+local server = app:listen({host = '127.0.0.1', port = 0})
+http.client.get(string.format('http://127.0.0.1:%d/fault', server.port)):catch(function() end)
+)", "The route failed.", 6},
+    FailingCode{"webSocketCallback", R"(local http = require('http')
+local net = require('haylen.net')
+local app = http.createApp()
+app:ws('/fault', {message = function(conn, data)
+    error('The WebSocket callback failed.')
+end})
+local server = app:listen({host = '127.0.0.1', port = 0})
+client = net.connectWebSocket(string.format('ws://127.0.0.1:%d/fault', server.port))
+client:on('open', function() client:send('Hello.') end)
+)", "The WebSocket callback failed.", 5},
+    FailingCode{"streamCallback", R"(local async = require('async')
+local http = require('http')
+local app = http.createApp()
+app:get('/stream', function(ctx)
+    ctx:send('Some bytes.')
+end)
+local server = app:listen({host = '127.0.0.1', port = 0})
+async.spawn(function()
+    http.client.stream({url = string.format('http://127.0.0.1:%d/stream', server.port)}, function(chunk)
+        error('The stream callback failed.')
+    end):await()
+end)
+)", "The stream callback failed.", 10}),
     [](const ::testing::TestParamInfo<FailingCode>& info) { return std::string(info.param.name); });
 // clang-format on
 

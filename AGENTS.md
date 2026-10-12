@@ -62,7 +62,7 @@ This file is binding for every change. It describes the project as it is and the
 ## Async and threading
 
 - The frame thread owns the GPU, the Lua state, scenes, UI, audio control and physics. It never blocks, so the audio device opens on a thread of its own and the app runs without sound until the system answers.
-- Varn's event loop is advanced with `Runtime::poll()` once per frame. Promises resolve, coroutines resume, timers fire and socket and HTTP callbacks run inside that call, on the frame thread.
+- Varn's event loop is advanced once per frame with `Runtime::poll(budget)`, whose budget is a share of the frame time within bounds that `core::Engine` declares, so no amount of ready work holds a frame up. Promises resolve, coroutines resume, timers fire and socket and HTTP callbacks run inside that call, on the frame thread, in passes that repeat while they make progress and the budget lasts, and what the poll reports reaches the debug overlay and `debug.stats()`.
 - Long-running CPU work (image and audio decoding, map parsing, path finding, procedural generation, data-parallel updates) runs on Varn's `taskPool()` through `core::JobSystem`. Blocking I/O runs on `ioPool()`. Results return to the frame thread through the event loop and, for Lua, through a Varn `Promise` that a coroutine can `:await()`. Slow Lua APIs offer an asynchronous version that returns a promise.
 - Metal compiles a shader when its program is made, so the sources of the programs of the renderer and of every `.shader` file start compiling on the I/O pool as soon as they are known, and each program is made the first time a draw needs it.
 - Lua code never runs on worker threads. Long Lua computations run as `haylen.jobs` coroutines that share a time budget each frame.
@@ -70,7 +70,7 @@ This file is binding for every change. It describes the project as it is and the
 - A job posted to a pool or to the loop never lets an exception escape. The job system hands failures to the frame thread, where they become engine errors.
 - GPU resource creation and destruction stay on the frame thread. Handles released on any thread hand their GPU objects to the device, which destroys them after the frame is submitted.
 - Static objects that other threads may still use at process exit are created with `new` and never destroyed.
-- The web build is single-threaded like Varn. Pool jobs run when `poll()` drains them, and `JobSystem::parallelFor` runs inline there, so pages need no cross-origin isolation.
+- The web build is single-threaded like Varn. Pool jobs run when the poll drains them, and `JobSystem::parallelFor` runs inline there, so pages need no cross-origin isolation.
 
 ## Lifecycle and ownership
 
@@ -114,10 +114,12 @@ This file is binding for every change. It describes the project as it is and the
 - Options are passed as tables whose unknown keys raise `Unknown option "<key>".`, and enums are passed as their string names.
 - Option tables read on every draw or for every item go through `Table::readFields`, which reads the keys a table holds in one pass with `Table::readValue`, instead of one `Table::readField` per known option.
 - Error messages are complete sentences that start with a capital letter and end with a period, and they say what was wrong and what is expected, such as `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`. The only exceptions are the short reasons of `luaL_argerror` and `luaL_typeerror`, which Lua wraps into its own `bad argument` sentence.
+- A yield of Lua jumps straight back to its `lua_resume` with `_longjmp` on every compiler but MSVC and except in thread sanitizer builds, and runs no destructor of the C++ frames it leaves. A C++ function that calls `lua_callk`, `lua_pcallk` or `lua_yieldk` therefore keeps no destructible local alive across that call, never makes it inside a `catch` block or inside `Binding::guarded`, and hands what its continuation needs over the Lua stack, an upvalue or its `lua_KContext`. An error stays a C++ exception and runs every destructor. Each such function has a test that yields through it.
 - Userdata keep their Lua callbacks in their user value, so a callback that refers back to its owner never keeps it alive. C++ code that keeps a Lua value alive uses `lua::Reference` and releases it in `stop`.
 - Hot paths offer fast Lua access: number fields next to vector properties, native properties that tweens animate in C++, float buffers shared with C++ and bulk APIs that move many objects in one call.
 - App code loads Lua chunks only as text (`"t"` mode): `load` and `loadfile` refuse bytecode, `dofile` runs only text and `string.dump` does not exist. The one exception is the module loader of the engine, which loads a module as bytecode only when the authenticated catalog of a protected release holds it as `LuaBytecode`, compiled by the content tool with the Lua of the engine for the ABI that the app manifest records.
 - Code that may fail runs in an `Engine::Phase`: lifecycle steps, such as the start of the app, scene hooks that load, enter, exit, unload, pause or resume, autoloads that start or stop and tasks that failed, open an `Engine::PhaseScope` of `Lifecycle`, so their errors restart the app in development, while errors of frame code and of reloads resume it once a fix reloads.
+- Every failure that no caller receives reaches the error screen through the handler of `async.onFailure` that the engine installs, and a promise that rejects while nothing awaits or catches it is such a failure. A binding rejects with `lua::Promise::reject` when the promise is the only way its failure reaches the app, and with `rejectHandled` when the engine reports the failure another way or the app asked for it, such as a cancellation.
 
 ## Repository layout
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <memory>
@@ -124,6 +125,14 @@ class Engine final {
         int exceptions;
     };
 
+    // What the poll of the event loop of Varn did in the last frame: the time it could take, whether any job, timer or socket callback ran, whether work remains, and the milliseconds the loop can wait before it has work of its own, which is -1 when only work from outside can bring any.
+    struct EventLoopPoll {
+        std::chrono::nanoseconds budget{};
+        bool ran = false;
+        bool pending = false;
+        long long idleMilliseconds = -1;
+    };
+
     Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppConfig config, std::unique_ptr<Application> application);
     ~Engine();
 
@@ -167,6 +176,7 @@ class Engine final {
     [[nodiscard]] const std::shared_ptr<text::Font>& getDefaultFont() noexcept;
     [[nodiscard]] varn::runtime::Runtime& getScriptRuntime() noexcept;
     [[nodiscard]] lua_State* getLuaState() noexcept;
+    [[nodiscard]] const EventLoopPoll& getEventLoopPoll() const noexcept;
 
     template <typename T> [[nodiscard]] T& getPlugin() {
         return getPlugins().get<T>();
@@ -262,6 +272,12 @@ class Engine final {
     Signal<> lowMemory;
 
   private:
+    // The event loop takes a share of the time of a frame, within bounds, so its tasks and sockets advance every frame without ever holding one up.
+    static constexpr double kPollBudgetShare = 0.25;
+    static constexpr std::chrono::nanoseconds kMinimumPollBudget = std::chrono::milliseconds(1);
+    static constexpr std::chrono::nanoseconds kMaximumPollBudget = std::chrono::milliseconds(8);
+
+    [[nodiscard]] static std::chrono::nanoseconds getPollBudget(double frameSeconds) noexcept;
     void activatePlugin(plugins::Plugin& plugin);
     void applyWindowOptions();
     void leaveErrorScreen();

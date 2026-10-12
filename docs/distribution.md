@@ -574,7 +574,7 @@ The Debug configuration of `run` with any other platform starts the same develop
 | visionOS | Runs the iPad app | The iOS target runs on Apple Vision Pro as a compatible iPad app. A native visionOS slice is not possible yet: `sokol_app` reads `UIScreen` through `windowScene.screen` in eight places, which the visionOS SDK marks unavailable, so its implementation does not compile for visionOS. |
 | watchOS | Not possible | The watchOS 27 SDK has no Metal, MetalKit, GameController or AudioToolbox, which the renderer, the input and the audio of the engine need. |
 | Android | Supported | Phones, tablets and Android TV from one APK, on arm64-v8a, armeabi-v7a and x86_64, Android 8.1 (API 27) and later. |
-| Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2. Sound needs `AudioWorklet`, which browsers offer only to pages served over https or from localhost, and apps on other pages run without sound. |
+| Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2 and the exception handling of WebAssembly, which Chrome 95, Firefox 100 and Safari 15.2 introduced, since Lua unwinds its errors and yields through it. Sound needs `AudioWorklet`, which browsers offer only to pages served over https or from localhost, and apps on other pages run without sound. |
 
 ## Notes on dependencies
 

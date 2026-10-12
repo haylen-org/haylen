@@ -9,7 +9,7 @@ namespace haylen::lua {
 // What a module produced when it last loaded, which the next reload compares with the live state to tell the values the app changed from the literals the developer edited: its value, the variables its functions capture by name and the globals it wrote. Mergeable tables are copied, within a bound on their depth and entries, and every other value is kept as it is.
 class ModuleSnapshot final {
   public:
-    // Tells whether a reload merges the fields of the table at index into the live table: a table without a metatable, or a prototype whose `__index` is the table itself, such as a class of `haylen.class`. Any other table, such as an instance of a class, is an object whose identity a reload keeps.
+    // Tells whether a reload merges the fields of the table at index into the live table: a table without a metatable, a table that Varn marked as a JSON array or object, such as a decoded array, or a prototype whose `__index` is the table itself, such as a class of `haylen.class`. Any other table, such as an instance of a class, is an object whose identity a reload keeps.
     [[nodiscard]] static bool isMergeable(lua_State* L, int index);
 
     // Pushes the snapshot `{value, upvalues, globals}` of the module value and the tables of captured values by name and of written globals at the indices. Every table it copies that no module claimed yet becomes a table of the module at `path` in the weak table at `creators`, so a later reload tells the tables of the module from the tables of other modules.
@@ -21,6 +21,9 @@ class ModuleSnapshot final {
   private:
     static constexpr int kMaxDepth = 32;
     static constexpr int kMaxEntries = 20000;
+
+    // Tells whether the metatable at index is one of the marks of the `json` module of Varn.
+    [[nodiscard]] static bool isJsonMarker(lua_State* L, int metatable);
 
     // Pushes a copy of the value at index, reusing the copies that the table at `copies` already holds for shared and cyclic tables.
     static void copy(lua_State* L, int value, int copies, int depth, int& budget);

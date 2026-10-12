@@ -30,12 +30,19 @@ else()
   set(HAYLEN_VARN_TARGET "cli")
 endif()
 
+# The thread sanitizer cannot follow the `_longjmp` that a yield of Lua takes, so its builds tell Varn to keep yields as exceptions.
+if(HAYLEN_SANITIZERS STREQUAL "THREAD" AND HAYLEN_DESKTOP AND NOT MSVC)
+  set(HAYLEN_VARN_SANITIZE "thread")
+else()
+  set(HAYLEN_VARN_SANITIZE "")
+endif()
+
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/0248f79a7b257ec2603d31fd259cec8acc90b2a8.tar.gz"
-  URL_HASH SHA256=cadadaba84c4a7b12f1ed62e8eb599ec99d6cc43d7499d5764653a860d21f51e
-  OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF"
+  URL "https://github.com/varn-org/varn/archive/19d8d869a61a0684583f5c951f956a7e52374619.tar.gz"
+  URL_HASH SHA256=1fdde6a16c4e228157e9a947877931164940007871544388e642173da9e232c7
+  OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
 )

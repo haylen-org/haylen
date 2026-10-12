@@ -129,6 +129,15 @@ return M
     EXPECT_EQ(lua("return tuning.limits()"), "4 2");
 }
 
+TEST_F(ModuleReloadTest, MergesDecodedJsonLikePlainTables) {
+    start({{"source/levels.lua", "local json = require('json')\nreturn {waves = json.decode('[1, 2, 3]'), empty = json.array()}\n"}, {"source/main.lua", "levels = require('levels') waves = levels.waves"}});
+
+    // Varn marks decoded arrays with a metatable of its own, which still makes them data that a reload merges in place.
+    edit({{"source/levels.lua", "local json = require('json')\nreturn {waves = json.decode('[1, 2, 3, 4]'), empty = json.array({5})}\n"}});
+    EXPECT_EQ(lua("return tostring(rawequal(waves, levels.waves)) .. ' ' .. #levels.waves .. ' ' .. levels.empty[1]"), "true 4 5");
+    EXPECT_EQ(lua("return require('json').encode(levels.waves)"), "[1,2,3,4]");
+}
+
 TEST_F(ModuleReloadTest, RemovesDeletedFunctionsAndKeepsRuntimeFields) {
     start({{"source/shop.lua", R"(
 local M = {limit = 3}

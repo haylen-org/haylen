@@ -1,4 +1,4 @@
--- The function `http.client.stream` hands the body over chunk by chunk as it arrives, after `onResponse` has given the status and the headers, whose `content-length` tells how much is coming. The finished file goes to the user folder with Varn `fs`. The browser build of Varn cannot stream, so there the stream fails with its reason and the plain download still works.
+-- The function `http.client.stream` hands the body over chunk by chunk as it arrives, after `onResponse` has given the status and the headers, whose `content-length` tells how much is coming. The finished file goes to the user folder with Varn `fs`. The browser streams through `fetch` the same way, with the headers that the CORS rules of the service expose to the page.
 local fs = require('fs')
 local haylen = require('haylen')
 local http = require('http')

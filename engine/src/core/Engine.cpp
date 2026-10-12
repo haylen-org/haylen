@@ -1,6 +1,7 @@
 #include "haylen/core/Engine.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <exception>
 #include <optional>
@@ -236,7 +237,9 @@ void Engine::frame(double frameSeconds) {
         }
         {
             const debug::ProfileScope scope(profiler, "scripts");
-            current.runtime->poll();
+            const std::chrono::nanoseconds budget = getPollBudget(frameSeconds);
+            const varn::runtime::EventLoop::PollResult polled = current.runtime->poll(budget);
+            current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
             current.platform->pump();
             current.system->pump();
             current.dialogs->pump();
@@ -998,6 +1001,15 @@ plugins::PluginRegistry& Engine::getPlugins() noexcept {
 
 const std::shared_ptr<text::Font>& Engine::getDefaultFont() noexcept {
     return state->defaultFont;
+}
+
+const Engine::EventLoopPoll& Engine::getEventLoopPoll() const noexcept {
+    return state->loopPoll;
+}
+
+std::chrono::nanoseconds Engine::getPollBudget(double frameSeconds) noexcept {
+    const std::chrono::duration<double> share(frameSeconds * kPollBudgetShare);
+    return std::clamp(std::chrono::duration_cast<std::chrono::nanoseconds>(share), kMinimumPollBudget, kMaximumPollBudget);
 }
 
 varn::runtime::Runtime& Engine::getScriptRuntime() noexcept {

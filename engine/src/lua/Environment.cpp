@@ -3,7 +3,9 @@
 #include <monocypher.h>
 
 #include <algorithm>
+#include <format>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 #include "haylen/core/AppConfig.hpp"
@@ -110,18 +112,31 @@ int Environment::readInteger(lua_State* L, int index, const char* key) {
     return value;
 }
 
-// Receives the value that was raised, the traceback as text and the frames of where it was raised, which a callback called from another thread and a closing variable of a cancelled task have none of.
+// Receives the value that was raised, the traceback as text, the frames of where it was raised and the kind of the failure. A callback called from another thread, a closing variable of a cancelled task and a promise that native code rejected carry no frames.
 int Environment::reportFailure(lua_State* L) {
     std::vector<Error::Frame> frames;
     if (lua_istable(L, 3)) {
         frames = readFrames(L, 3);
     }
+    Error error(Runtime::describeValue(L, 1), std::move(frames));
+    if (lua_type(L, 4) == LUA_TSTRING && std::string_view(lua_tostring(L, 4)) == "rejection") {
+        error = describeRejection(error);
+    }
     const core::Engine::PhaseScope scope(Runtime::getEngine(L), core::Engine::Phase::Lifecycle);
-    Runtime::reportError(L, Error(Runtime::describeValue(L, 1), std::move(frames)));
+    Runtime::reportError(L, error);
     return 0;
 }
 
-// Varn hands the failures that no caller receives, those of the tasks of `async.spawn` and `async.run`, of the to-be-closed variables of cancelled tasks and of `ffi` callbacks that fail outside any `ffi` call, to the one handler of `async.onFailure`, which shows them on the error screen.
+// The message of an unobserved rejection says that nothing awaited the promise, and the error keeps the file and line that its text or its frames gave.
+Error Environment::describeRejection(const Error& error) {
+    const std::string message = "A promise rejected, and nothing awaited or caught it. " + error.getMessage();
+    if (error.getMessage() == error.what()) {
+        return Error(message, error.getFrames());
+    }
+    return Error(std::format("{}:{}: {}", error.getFile(), error.getLine(), message), error.getFrames());
+}
+
+// Varn hands the failures that no caller receives to the one handler of `async.onFailure`, which shows them on the error screen: those of the tasks of `async.spawn` and `async.run`, of the to-be-closed variables of cancelled tasks, of `ffi` callbacks that fail outside any `ffi` call, of the handlers of its HTTP and WebSocket servers and the callbacks of `http.client.stream`, and the rejections of promises that nothing awaited or caught.
 void Environment::installFailureHandler(lua_State* L) {
     lua_getglobal(L, "require");
     lua_pushliteral(L, "async");

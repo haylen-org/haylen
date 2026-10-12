@@ -42,6 +42,7 @@ class Environment final {
     [[nodiscard]] static std::string readText(lua_State* L, int index, const char* key);
     [[nodiscard]] static int readInteger(lua_State* L, int index, const char* key);
     static int reportFailure(lua_State* L);
+    [[nodiscard]] static Error describeRejection(const Error& error);
 
     // Loads a module of the package, named after its package path, and leaves its function on the stack, or the message of Lua when it fails, and returns the status of Lua. A module that the authenticated catalog of a protected release holds as Lua bytecode loads as bytecode, whose bytes are wiped once Lua read them, and every other module loads as text, so no other file ever reaches Lua as bytecode.
     static int loadModule(lua_State* L, const io::Package& package, const std::string& path);

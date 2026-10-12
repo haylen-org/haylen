@@ -1,4 +1,4 @@
--- Zip archives with Varn `zip`: `zip.create` packs files of the user folder, `zip.list` reads the names of the entries and `zip.extract` unpacks them into a folder. A package file cannot be opened in place, so the archive shipped in the package is first written to the user folder.
+-- Zip archives with Varn `zip`: `zip.create` packs files of the user folder, `zip.list` reads the entries with their names and sizes and `zip.extract` unpacks them into a folder. A package file cannot be opened in place, so the archive shipped in the package is first written to the user folder.
 local assets = require('haylen.assets')
 local fs = require('fs')
 local haylen = require('haylen')
@@ -113,9 +113,18 @@ function Zip:create()
 end
 
 function Zip:list()
-    local names = need(zip.list(self.archive))
-    self:showEntries('Entries from "zip.list" of "bundle.zip"', names)
-    return string.format('The call "zip.list" found %d entries', #names)
+    local entries = need(zip.list(self.archive))
+    self:showEntries('Entries from "zip.list" of "bundle.zip"', Zip.describeEntries(entries))
+    return string.format('The call "zip.list" found %d entries', #entries)
+end
+
+-- Names each entry that "zip.list" returns with its size and the size it takes in the archive.
+function Zip.describeEntries(entries)
+    local lines = {}
+    for index, entry in ipairs(entries) do
+        lines[index] = string.format('%s, %s, %s packed', entry.name, readout.bytes(entry.size), readout.bytes(entry.compressedSize))
+    end
+    return lines
 end
 
 function Zip:extract()
@@ -130,11 +139,11 @@ function Zip:postcards()
     local archive = self.base .. '/postcards.zip'
     need(fs.mkdir(self.base))
     need(fs.writeFile(archive, assets.bytes('files/archives/postcards.zip')))
-    local names = need(zip.list(archive))
+    local entries = need(zip.list(archive))
     need(zip.extract(archive, self.base .. '/postcards'))
-    self:showEntries('Entries from "zip.list" of "postcards.zip"', names)
+    self:showEntries('Entries from "zip.list" of "postcards.zip"', Zip.describeEntries(entries))
     self:set('preview', {text = storage.readText('zip-demo/postcards/postcards/palm-cove.txt')})
-    return string.format('Copied "files/archives/postcards.zip" from the package and extracted its %d entries', #names)
+    return string.format('Copied "files/archives/postcards.zip" from the package and extracted its %d entries', #entries)
 end
 
 function Zip:remove()

@@ -9,13 +9,11 @@ local VarnTest = require('categories.varn.varn-test')
 local LocalSockets = haylen.class('LocalSockets', VarnTest)
 
 LocalSockets.host = '127.0.0.1'
--- Varn listeners share their port with any other Varn listener on it, so each run takes a random port of a range of its own.
-LocalSockets.ports = {50900, 51899}
 LocalSockets.streamSize = 1024 * 1024
 LocalSockets.pieceSize = 64 * 1024
 LocalSockets.datagrams = 50
 LocalSockets.datagramSize = 1024
-LocalSockets.hint = 'The server and the client both run in the app, on 127.0.0.1. Run again opens new sockets on another port.'
+LocalSockets.hint = 'The server and the client both run in the app, on 127.0.0.1, on free ports the system picks. Run again opens new sockets.'
 
 LocalSockets.excerpts = {
     {'A large stream', [[
@@ -27,28 +25,27 @@ local piece = client:receive():await()]]},
     {'Deadlines and refusals', [[
 local pending = client:receive()
 local data, failure = async.timeout(pending, 300):await()
-socket.tcp.connect('127.0.0.1', 1, 1000):await()]]},
+socket.tcp.connect('127.0.0.1', 1, {timeoutMs = 1000}):await()]]},
     {'A burst of datagrams', [[
 for index = 1, 50 do
-    sends[index] = sender:sendTo(host, port, string.pack('>I4', index) .. filler)
+    sends[index] = sender:sendTo(receiver.host, receiver.port, string.pack('>I4', index) .. filler)
 end
 async.all(sends):await()
 local packet = receiver:recvFrom():await()]]},
 }
 
 function LocalSockets:run()
-    local port = math.random(LocalSockets.ports[1], LocalSockets.ports[2])
-    local listener, failure = socket.tcp.listen(LocalSockets.host, port):await()
+    local listener, failure = socket.tcp.listen(LocalSockets.host, 0):await()
     if not listener then
         self:check('stream', 'A large stream', false, 'The listener failed: ' .. tostring(failure))
         return
     end
     local listening <close> = VarnTest.closing(listener)
     self:serve(listener)
-    self:stream(port)
-    self:silence(port)
+    self:stream(listener.port)
+    self:silence(listener.port)
     self:refused()
-    self:burst(port)
+    self:burst()
 end
 
 -- Echoes every byte of every client until the listener closes.
@@ -77,7 +74,7 @@ end
 function LocalSockets:stream(port)
     local name = 'A large stream'
     self.results:set('stream', 'waiting', name, string.format('Sending %d bytes through the echo server.', LocalSockets.streamSize))
-    local client, failure = socket.tcp.connect(LocalSockets.host, port, 1000):await()
+    local client, failure = socket.tcp.connect(LocalSockets.host, port, {timeoutMs = 1000}):await()
     if not client then
         self:check('stream', name, false, 'The connection failed: ' .. tostring(failure))
         return
@@ -119,7 +116,7 @@ end
 function LocalSockets:silence(port)
     local name = 'A silent peer'
     self.results:set('silence', 'waiting', name, 'Waiting at most 300 ms for a server that has nothing to say.')
-    local client, failure = socket.tcp.connect(LocalSockets.host, port, 1000):await()
+    local client, failure = socket.tcp.connect(LocalSockets.host, port, {timeoutMs = 1000}):await()
     if not client then
         self:check('silence', name, false, 'The connection failed: ' .. tostring(failure))
         return
@@ -140,7 +137,7 @@ function LocalSockets:refused()
     local name = 'No server'
     self.results:set('refused', 'waiting', name, 'Connecting to "127.0.0.1:1".')
     local started = datetime.now():millis()
-    local client, failure = socket.tcp.connect(LocalSockets.host, 1, 1000):await()
+    local client, failure = socket.tcp.connect(LocalSockets.host, 1, {timeoutMs = 1000}):await()
     if client then
         client:close()
     end
@@ -148,16 +145,16 @@ function LocalSockets:refused()
 end
 
 -- Datagrams sent at once with their numbers, which the loopback interface delivers whole and in order.
-function LocalSockets:burst(port)
+function LocalSockets:burst()
     local name = 'A burst of datagrams'
     self.results:set('burst', 'waiting', name, string.format('Sending %d datagrams of %d bytes.', LocalSockets.datagrams, LocalSockets.datagramSize))
-    local receiver, failure = socket.udp.bind(LocalSockets.host, port + 1):await()
+    local receiver, failure = socket.udp.bind(LocalSockets.host, 0):await()
     if not receiver then
         self:check('burst', name, false, 'Binding failed: ' .. tostring(failure))
         return
     end
     local openReceiver <close> = VarnTest.closing(receiver)
-    local sender, other = socket.udp.bind(LocalSockets.host, port + 2):await()
+    local sender, other = socket.udp.bind(LocalSockets.host, 0):await()
     if not sender then
         self:check('burst', name, false, 'Binding failed: ' .. tostring(other))
         return
@@ -181,7 +178,7 @@ function LocalSockets:burst(port)
     local filler = string.rep('d', LocalSockets.datagramSize - 4)
     local sends = {}
     for index = 1, LocalSockets.datagrams do
-        sends[index] = sender:sendTo(LocalSockets.host, port + 1, string.pack('>I4', index) .. filler)
+        sends[index] = sender:sendTo(receiver.host, receiver.port, string.pack('>I4', index) .. filler)
     end
     async.all(sends):await()
     async.timeout(done, 5000):await()

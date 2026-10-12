@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -597,6 +598,78 @@ TEST(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     EXPECT_EQ(error.getFrames()[1].kind, lua::Error::Frame::Kind::Lua);
     EXPECT_EQ(fixture.host().getErrorReports().back(), error.toJson());
     EXPECT_NE(fixture.lua("require('async').spawn(3)").find("bad argument #1 to 'spawn' (function expected, got number)"), std::string::npos);
+}
+
+TEST(EngineTest, BoundsThePollOfTheEventLoopByTheFrameTime) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        local async = require('async')
+        steps = 0
+        for task = 1, 2000 do
+            async.spawn(function()
+                while true do
+                    steps = steps + 1
+                    async.yield():await()
+                end
+            end)
+        end
+    )");
+    // clang-format on
+
+    // Tasks that always hand the loop back would keep an unbounded poll running for ever, so each frame takes what its budget allows and leaves the rest ready.
+    const auto started = std::chrono::steady_clock::now();
+    fixture.frames(1);
+    EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds(1));
+    const core::Engine::EventLoopPoll& polled = fixture.engine().getEventLoopPoll();
+    EXPECT_EQ(polled.budget, std::chrono::nanoseconds(4166666));
+    EXPECT_TRUE(polled.ran);
+    EXPECT_TRUE(polled.pending);
+    EXPECT_EQ(polled.idleMilliseconds, 0);
+    const std::string first = fixture.lua("return steps");
+    EXPECT_TRUE(fixture.frameUntil([&] { return fixture.lua("return steps") != first; }));
+    EXPECT_EQ(fixture.lua("local loop = require('haylen.debug').stats().eventLoop return string.format('%.3f %s %s %d', loop.budget, loop.ran, loop.pending, loop.idle)"), "4.167 true true 0");
+
+    // The budget is a quarter of the frame time, never less than 1 millisecond and never more than 8.
+    fixture.frames(1, 1.0);
+    EXPECT_EQ(fixture.engine().getEventLoopPoll().budget, std::chrono::milliseconds(8));
+    fixture.frames(1, 0.001);
+    EXPECT_EQ(fixture.engine().getEventLoopPoll().budget, std::chrono::milliseconds(1));
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST(EngineTest, KeepsRunningWhileEveryRejectionIsObservedOrHandled) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        local async = require('async')
+        local platform = require('haylen.platform')
+        local function failing(message)
+            return async.promise(function()
+                async.sleep(1):await()
+                error(message, 0)
+            end)
+        end
+        caught = failing('A failure that does not matter.'):catch(function(message) return 'caught ' .. message end)
+        abandoned = platform.call('store.slow')
+        abandoned:cancel()
+        async.spawn(function()
+            local results = async.allSettled({failing('First.'), failing('Second.')}):await()
+            settled = tostring(results[1].ok) .. ' ' .. results[2].error
+            recovered = caught:await()
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(recovered ~= nil)") == "true"; }));
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return settled .. ' | ' .. recovered"), "false Second. | caught A failure that does not matter.");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST(EngineTest, StopsTheAppWhenARejectionOfNativeCodeIsNotObserved) {
+    test::EngineFixture fixture({{"source/main.lua", "require('haylen.jobs').spawn(function() error('The job that nobody awaits failed.', 0) end)"}});
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+    EXPECT_TRUE(fixture.engine().getError()->getMessage().starts_with("A promise rejected, and nothing awaited or caught it. The job that nobody awaits failed.")) << fixture.engine().getError()->getMessage();
 }
 
 TEST(EngineTest, ReportsRenderSubmissionFailures) {

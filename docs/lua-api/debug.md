@@ -16,7 +16,7 @@ The engine shows its statistics in one of three modes.
 | --- | --- |
 | `'off'` | Nothing. Every app starts this way unless `app.json` picks another mode. |
 | `'compact'` | Three lines in the bottom left corner of the safe area: frames per second and the last frame time, draw calls and vertices, and GPU instances. The 2D renderer draws them above everything else, including scene transitions and the error screen, so they work in every app, with or without UI. |
-| `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the profiler scopes of the last frame, the scenes of the stack from the bottom up with their names, states and process modes and whether the scenes below them keep rendering, a checkbox for every [drawing](#drawings), the rendering statistics, the memory of Lua, textures, render targets and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
+| `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the budget of the poll of the event loop with whether work ran and what it waits for, the profiler scopes of the last frame, the scenes of the stack from the bottom up with their names, states and process modes and whether the scenes below them keep rendering, a checkbox for every [drawing](#drawings), the rendering statistics, the memory of Lua, textures, render targets and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
 
 F3 cycles through `off`, `compact` and `full`, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
 
@@ -206,6 +206,7 @@ Returns a snapshot of the engine statistics as a table with these fields. Render
 | Field | Contents |
 | --- | --- |
 | `frame` | `fps`, `milliseconds` of the last frame, `average`, `minimum` and `maximum` over the recent frames, `onePercentLow`, the average of the slowest one percent of them, all in milliseconds, and `fixedSteps` of the current frame. |
+| `eventLoop` | The last poll of the event loop of Varn: its `budget` in milliseconds, a quarter of the frame time between 1 and 8, `ran`, whether any job, timer or socket callback ran, `pending`, whether work remains, and `idle`, the milliseconds the loop can wait before it has work of its own, which is `0` when the budget ended the poll with work still ready and `-1` when only sockets, workers or the platform can bring work. |
 | `rendering` | `drawCalls`, `passes`, `canvases`, `sprites`, `instances`, `vertices`, `indices`, `lights`, `occluders`, `shadows`, `textureSwitches` and `uploadedBytes`. |
 | `memory` | Bytes of `lua`, the Lua heap, and the estimated bytes of `textures`, `targets` for render targets, and `sounds`. |
 | `counts` | `scenes` on the stack, root `tweens`, `timers`, playing `voices`, `assetsCached`, `assetsPending`, open `sockets`, physics `bodies` and `contacts`, and live `particles`. |
@@ -221,6 +222,9 @@ timer.every(5, function()
     local stats = debug.stats()
     print(string.format('%.0f FPS, 1%% low %.2f ms, Lua %.1f MB', stats.frame.fps, stats.frame.onePercentLow, stats.memory.lua / 1048576))
     print(stats.rendering.drawCalls .. ' draw calls, ' .. stats.pools.images.used .. ' of ' .. stats.pools.images.size .. ' images')
+    if stats.eventLoop.idle == 0 then
+        print(string.format('The event loop left work for the next frame after its budget of %.2f ms.', stats.eventLoop.budget))
+    end
     local sprites = stats.objects['haylen.Sprite']
     if sprites then
         print(sprites.alive .. ' sprites alive, ' .. sprites.created .. ' created so far')

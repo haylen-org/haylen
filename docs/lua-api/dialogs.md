@@ -131,7 +131,7 @@ Every function returns a `haylen.PlatformCall`, whose members work as for [platf
 | Member | Meaning |
 | --- | --- |
 | `call:await()` | Waits inside a coroutine and returns the choice of the user, or `nil` and the [error](#errors) of the dialog. Awaiting a call that already settled returns at once. |
-| `call:cancel()` | Closes the dialog where the platform can and fails the call with the code `cancelled` at the start of the next frame. Returns `true` when the dialog was still open and `false` when it had already settled. |
+| `call:cancel()` | Closes the dialog where the platform can and fails the call with the code `cancelled` at the start of the next frame, which never stops the app when nothing awaits the call. Returns `true` when the dialog was still open and `false` when it had already settled. |
 | `call.id` | The id of the dialog, unique in the process, so an answer that arrives after the app restarted never answers a dialog of the new app. |
 | `call.done` | Whether the call has settled. |
 | `call.promise` | The Varn promise of the call, for the combinators of `async`, where a failure is only its message. |

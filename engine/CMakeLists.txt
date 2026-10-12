@@ -594,10 +594,10 @@ add_library(haylen::engine ALIAS haylen_engine)
 
 # Public headers use C++20, so projects that link the engine compile with it too.
 target_compile_features(haylen_engine PUBLIC cxx_std_20)
-# Apps live in folders of their own, so the exception support of the browser build travels with the engine target instead of the engine folder.
+# Apps live in folders of their own, so the exception and `longjmp` support of the browser build travels with the engine target instead of the engine folder.
 if(EMSCRIPTEN)
-  target_compile_options(haylen_engine INTERFACE -fexceptions)
-  target_link_options(haylen_engine INTERFACE -fexceptions)
+  target_compile_options(haylen_engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
+  target_link_options(haylen_engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
 endif()
 target_include_directories(haylen_engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"

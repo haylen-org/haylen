@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <numeric>
 
@@ -45,6 +46,8 @@ Stats::Frame Stats::measureFrames(core::Engine& engine) {
 Stats Stats::capture(core::Engine& engine, const graphics2d::Renderer::Stats& lastFrame) {
     Stats stats;
     stats.frame = measureFrames(engine);
+    const core::Engine::EventLoopPoll& polled = engine.getEventLoopPoll();
+    stats.eventLoop = {.budget = std::chrono::duration<double, std::milli>(polled.budget).count(), .ran = polled.ran, .pending = polled.pending, .idle = polled.idleMilliseconds};
     stats.rendering = lastFrame;
     stats.pools = engine.getGraphics().getPools();
     stats.buses = engine.getAudio().getBusStats();

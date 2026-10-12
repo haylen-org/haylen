@@ -108,6 +108,7 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
         typed = platform.call('store.typed')
         given = platform.call('store.given')
         async.spawn(function()
+            async.allSettled({slow.promise, typed.promise, given.promise}):await()
             local _, timeout = slow:await()
             local _, typedError = typed:await()
             local _, cancel = given:await()
@@ -124,6 +125,7 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
     EXPECT_EQ(fixture.lua("return summary"), "timeout|The platform call \"store.slow\" timed out.|closed|The store is closed.|30|cancelled|true|Island|7");
     EXPECT_EQ(fixture.host().getCancelledCalls(), (std::vector<std::uint64_t>{std::stoull(fixture.lua("return given.id")), std::stoull(fixture.lua("return slow.id"))}));
     EXPECT_EQ(fixture.lua("return given:cancel()"), "false");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 0})").find("positive number of seconds"), std::string::npos);
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 'soon'})").find("timeout"), std::string::npos);

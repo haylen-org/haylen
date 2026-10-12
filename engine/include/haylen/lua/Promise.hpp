@@ -33,7 +33,11 @@ class Promise final {
 
     // The function runs on the frame thread when the coroutine resumes and pushes exactly one value.
     void resolveWith(std::function<void(lua_State* L)> pushValue) const;
+    // A rejection that nothing awaits or catches stops the app like a failed task, as `async.onFailure` receives it.
     void reject(std::string message) const;
+
+    // Rejects with a failure that reaches the app another way, such as through an error handler or the log, or that the app asked for, such as a cancellation, so the rejection never stops the app when nothing awaits it.
+    void rejectHandled(std::string message) const;
     [[nodiscard]] bool isSettled() const;
 
   private:

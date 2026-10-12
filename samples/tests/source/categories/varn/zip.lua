@@ -1,4 +1,4 @@
--- Archives with Varn's "zip" module, inside the storage folder of the app: packing files, listing and extracting them, and the names and archives it refuses because an entry would leave its folder.
+-- Archives with Varn's "zip" module, inside the storage folder of the app: packing files, listing their entries with their sizes and extracting them, and the names and archives it refuses because an entry would leave its folder, which it checks before it writes anything.
 local assets = require('haylen.assets')
 local fs = require('fs')
 local haylen = require('haylen')
@@ -18,12 +18,17 @@ zip.create(pack, {
     {file = folder .. '/map.json', entry = 'levels/map.json'},
     {file = folder .. '/notes.txt', entry = 'notes.txt'},
 }):await()
-print(table.concat(zip.list(pack):await(), ', '))
+for _, entry in ipairs(zip.list(pack):await()) do
+    print(entry.name, entry.size, entry.compressedSize)
+end
 fs.mkdir(folder .. '/out'):await()
 zip.extract(pack, folder .. '/out'):await()]]},
     {'Unsafe archives', [[
 local bytes = assets.bytes('varn/unsafe_archive.zip')
 fs.writeFile(folder .. '/unsafe.zip', bytes):await()
+for _, entry in ipairs(zip.list(folder .. '/unsafe.zip'):await()) do
+    print(entry.name, entry.unsafe)
+end
 local done, failure = zip.extract(
     folder .. '/unsafe.zip', folder .. '/trap'):await()]]},
 }
@@ -63,10 +68,16 @@ function Zip:pack(folder, map, notes)
     local size = fs.stat(pack):await().size
     self:check('create', 'Pack', size < #map, string.format('Packed 2 files of %d bytes into an archive of %d bytes, since the repeated rows of the map compress well.', #map + #notes, size))
 
-    local names = zip.list(pack):await()
+    local entries = zip.list(pack):await()
+    local names, sizes = {}, {}
+    for index, entry in ipairs(entries) do
+        names[index] = entry.name
+        sizes[entry.name] = entry
+    end
     table.sort(names)
     local listing = table.concat(names, ', ')
-    self:check('list', 'List', listing == 'levels/map.json, notes.txt', string.format('The archive holds "%s".', listing))
+    local listed = sizes['levels/map.json'] or {}
+    self:check('list', 'List', listing == 'levels/map.json, notes.txt' and listed.size == #map and listed.compressedSize < listed.size, string.format('The archive holds "%s", and "levels/map.json" takes %s of its %s bytes.', listing, tostring(listed.compressedSize), tostring(listed.size)))
 
     fs.mkdir(folder .. '/out'):await()
     zip.extract(pack, folder .. '/out'):await()
@@ -81,14 +92,21 @@ function Zip:unsafeName(folder)
     self:check('name', 'Unsafe names', done == nil and failure ~= nil, 'The function "zip.create" refused the entry "../escape.txt": ' .. tostring(failure))
 end
 
--- An archive of the package lives inside the package, so the test copies its bytes to the storage folder, where the files of "zip" live.
+-- An archive of the package lives inside the package, so the test copies its bytes to the storage folder, where the files of "zip" live. The listing marks the entry that extracting refuses, and the refusal comes before any entry is written, the safe one before it included.
 function Zip:unsafeArchive(folder)
     local bytes = assets.bytes('varn/unsafe_archive.zip')
     fs.writeFile(folder .. '/unsafe.zip', bytes):await()
+    local unsafe = {}
+    for _, entry in ipairs(zip.list(folder .. '/unsafe.zip'):await() or {}) do
+        if entry.unsafe then
+            unsafe[#unsafe + 1] = entry.name
+        end
+    end
     fs.mkdir(folder .. '/trap'):await()
     local done, failure = zip.extract(
         folder .. '/unsafe.zip', folder .. '/trap'):await()
-    self:check('archive', 'Unsafe archives', done == nil and not fs.exists(folder .. '/escape.txt'), 'An archive with the entry "../escape.txt" was refused, and nothing left the folder: ' .. tostring(failure))
+    local untouched = not fs.exists(folder .. '/escape.txt') and not fs.exists(folder .. '/trap/notes.txt')
+    self:check('archive', 'Unsafe archives', done == nil and untouched and table.concat(unsafe, ', ') == '../escape.txt', string.format('The listing marked "%s" as unsafe, extracting refused the archive, and nothing was written: %s', table.concat(unsafe, ', '), tostring(failure)))
 end
 
 return Zip

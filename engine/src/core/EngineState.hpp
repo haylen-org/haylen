@@ -84,6 +84,7 @@ struct EngineState {
     std::vector<plugins::Plugin*> startedPlugins;
     std::shared_ptr<text::Font> defaultFont;
     std::unique_ptr<varn::runtime::Runtime> runtime;
+    Engine::EventLoopPoll loopPoll;
     std::unique_ptr<JobSystem> jobs;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
 

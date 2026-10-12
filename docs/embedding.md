@@ -6,7 +6,7 @@ The `engine/` folder is a standalone CMake project that other projects consume a
 
 | Name | Kind | Purpose |
 | --- | --- | --- |
-| `haylen::engine` | Library target | The whole C++ API and every Lua binding. Its include folder is `engine/include`, and it carries the C++20 requirement to every target that links it. In browser builds it also carries `-fexceptions`, because Lua errors unwind as C++ exceptions. |
+| `haylen::engine` | Library target | The whole C++ API and every Lua binding. Its include folder is `engine/include`, and it carries the C++20 requirement to every target that links it. In browser builds it also carries `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`, because Lua errors unwind as C++ exceptions and yields jump back to their resume with `longjmp`, both native to WebAssembly. |
 | `haylen::runtime` | Library target | The Sokol app entry point, the platform host and the platform services. Linking it turns an executable into a Haylen app, whose sources must define `haylen::core::Application::create()`. In a source build it is an object library, so the entry points always reach the final binary. |
 | `haylen_add_app` | CMake function | Builds the app of one package for the current platform. |
 

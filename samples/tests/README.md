@@ -626,13 +626,13 @@ The modules of Varn, the Lua runtime of the engine, each lesson with its code an
 | `VRN-002` | Combinators | All, race, any, every outcome and a few at a time, on a timeline of the jobs they wait on. |  |
 | `VRN-003` | Deadlines and cancellation | Deadlines that give up waiting, tasks cancelled for good and tasks that end with their owner. |  |
 | `VRN-004` | HTTP requests | GET with a query, POST with JSON, other methods, error statuses and timeouts against a server inside the app. | web, android |
-| `VRN-005` | Streaming responses | Server-sent events that reach the app one by one, and a download read in pieces. | web, android |
-| `VRN-006` | TCP and UDP sockets | An echo server and its client with text and binary data, the end of a stream, and datagrams. | web |
+| `VRN-005` | Streaming responses | Server-sent events that reach the app one by one, a body the server writes in parts and a download read in pieces. | web, android |
+| `VRN-006` | TCP and UDP sockets | An echo server on a free port and its client with text and binary data, the end of a stream, and datagrams one by one and in batches. | web |
 | `VRN-007` | WebSocket | A WebSocket server of Varn inside the app and a client of "haylen.net" that talk in text, bytes, broadcasts and pings. | web |
 | `VRN-008` | JSON | Tables to JSON text and back, with the way Lua values map to JSON values. |  |
 | `VRN-009` | XML | A level written in XML, decoded into nodes and drawn, and nodes encoded back to text. |  |
 | `VRN-010` | Files | A private folder in the storage of the app, with writes, appends, streams, copies, listings and removal. |  |
-| `VRN-011` | Zip archives | Files packed, listed and extracted, and the archives refused because an entry would leave its folder. |  |
+| `VRN-011` | Zip archives | Files packed, listed with their sizes and extracted, and the archives refused before anything is written because an entry would leave its folder. |  |
 | `VRN-012` | Crypto | Digests and HMAC against published vectors, random bytes, codecs, UUIDs and encryption. |  |
 | `VRN-013` | Dates and times | A live clock, ISO-8601 with offsets, calendar arithmetic, differences and boundaries. |  |
 | `VRN-014` | Log and platform | Leveled lines with structured fields in the log of the engine, and what Varn knows about the device. |  |

@@ -140,7 +140,7 @@ int DebugLua::objectEvents(lua_State* L) {
 }
 
 void DebugLua::pushStats(lua_State* L, const Stats& snapshot) {
-    lua_createtable(L, 0, 7);
+    lua_createtable(L, 0, 8);
 
     lua_createtable(L, 0, 7);
     lua::Stack::push(L, snapshot.frame.fps);
@@ -158,6 +158,17 @@ void DebugLua::pushStats(lua_State* L, const Stats& snapshot) {
     lua::Stack::push(L, snapshot.frame.fixedSteps);
     lua_setfield(L, -2, "fixedSteps");
     lua_setfield(L, -2, "frame");
+
+    lua_createtable(L, 0, 4);
+    lua::Stack::push(L, snapshot.eventLoop.budget);
+    lua_setfield(L, -2, "budget");
+    lua::Stack::push(L, snapshot.eventLoop.ran);
+    lua_setfield(L, -2, "ran");
+    lua::Stack::push(L, snapshot.eventLoop.pending);
+    lua_setfield(L, -2, "pending");
+    lua::Stack::push(L, snapshot.eventLoop.idle);
+    lua_setfield(L, -2, "idle");
+    lua_setfield(L, -2, "eventLoop");
 
     const graphics2d::Renderer::Stats& rendering = snapshot.rendering;
     lua_createtable(L, 0, 12);

@@ -19,13 +19,16 @@ app:ws('/echo', {
     open = function(conn)
         conn:send('Welcome.')
     end,
-    message = function(conn, data)
-        local news = data:match('^/broadcast (.+)$')
+    message = function(conn, data, binary)
+        local news = not binary and data:match('^/broadcast (.+)$')
         if news then
             app:wsBroadcast('/echo', news)
             return
         end
-        conn:send('Echo: ' .. data)
+        conn:send(binary and data or 'Echo: ' .. data, {binary = binary})
+    end,
+    close = function(conn, code, reason)
+        print(code, reason)
     end,
 })]]},
     {'Client', [[
@@ -117,15 +120,15 @@ function WebSocket:text(socket)
     self:check('text', 'Text', reply ~= nil and reply[1] == 'Echo: Hello, server.' and not reply[2], string.format('Sent "Hello, server." and got "%s" back as text.', tostring(reply and reply[1])))
 end
 
--- The server of Varn answers every message in a text frame, so the bytes come back whole in a text message.
+-- The handler hears whether a message was binary, and the server answers bytes in a binary frame, since a text frame must hold UTF-8.
 function WebSocket:binary(socket)
     local packed = string.pack('<I2f', 7, 1.5)
     self.exchange:add(1, Exchange.printable(packed))
     socket:sendBinary(packed)
     local reply = self:nextEvent('message')
-    local echoed = reply and reply[1]:sub(#'Echo: ' + 1)
-    local count, speed = string.unpack('<I2f', echoed or string.rep('\0', 6))
-    self:check('binary', 'Binary', echoed == packed, string.format('Sent %d bytes packed from 7 and 1.5, and the server echoed %d, %s in a text message, the only kind it sends.', #packed, count, speed))
+    local echoed = reply and reply[1]
+    local count, speed = string.unpack('<I2f', echoed and #echoed == #packed and echoed or string.rep('\0', 6))
+    self:check('binary', 'Binary', echoed == packed and reply[2] == true, string.format('Sent %d bytes packed from 7 and 1.5, and the server echoed %d, %s back in a binary message.', #packed, count, speed))
 end
 
 function WebSocket:broadcast(socket)
@@ -148,7 +151,8 @@ function WebSocket:closeSocket(socket)
     socket:close(1000, 'Done.')
     local closed = self:nextEvent('close')
     async.sleep(100):await()
-    self:check('close', 'Close', closed ~= nil and closed[1] == 1000 and localServer.closes > closesBefore, string.format('Closed with %s "%s", and the "close" handler of the server ran.', tostring(closed and closed[1]), tostring(closed and closed[2])))
+    local heard = localServer.lastClose or {}
+    self:check('close', 'Close', closed ~= nil and closed[1] == 1000 and localServer.closes > closesBefore and heard.code == 1000 and heard.reason == 'Done.', string.format('Closed with %s "%s", and the "close" handler of the server heard %s "%s".', tostring(closed and closed[1]), tostring(closed and closed[2]), tostring(heard.code), tostring(heard.reason)))
 end
 
 function WebSocket:draw(area)

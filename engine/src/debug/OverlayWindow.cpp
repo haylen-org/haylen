@@ -48,6 +48,19 @@ void OverlayWindow::drawFrame(const Profiler& profiler, const Stats::Frame& fram
     ImGui::PlotLines("##frames", history.data(), static_cast<int>(history.size()), 0, nullptr, 0.0F, 50.0F, {-1.0F, 80.0F});
 }
 
+void OverlayWindow::drawEventLoop(const Stats::EventLoop& loop) {
+    const char* activity = loop.ran ? "work ran" : "nothing ran";
+    if (!loop.pending) {
+        ImGui::TextWrapped("Event loop budget %.2f ms, %s, nothing pending", loop.budget, activity);
+    } else if (loop.idle == 0) {
+        ImGui::TextWrapped("Event loop budget %.2f ms, %s, work left for the next frame", loop.budget, activity);
+    } else if (loop.idle > 0) {
+        ImGui::TextWrapped("Event loop budget %.2f ms, %s, next timer in %lld ms", loop.budget, activity, loop.idle);
+    } else {
+        ImGui::TextWrapped("Event loop budget %.2f ms, %s, waiting for sockets and workers", loop.budget, activity);
+    }
+}
+
 void OverlayWindow::drawProfiler(const Profiler& profiler) {
     if (!ImGui::BeginTable("##scopes", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         return;
@@ -243,6 +256,7 @@ bool OverlayWindow::draw(core::Engine& engine, const Stats& stats, const std::ve
     const std::vector<core::EventBus::Topic> signals = core::SignalLua::getNamedSignals(engine.getLuaState());
     const std::size_t stale = countStale(events) + countStale(signals);
     drawFrame(profiler, stats.frame);
+    drawEventLoop(stats.eventLoop);
     if (stale > 0) {
         ImGui::TextColored(getLevelColor(core::Log::Level::Warning), "%zu events or signals keep listeners whose owner is gone.", stale);
     }

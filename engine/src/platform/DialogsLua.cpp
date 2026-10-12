@@ -44,8 +44,7 @@ void DialogsLua::pushCall(lua_State* L, const DialogRequest& request, int option
     // clang-format off
     pending->id = owner.getDialogs().show(request, [pending](DialogResult result) {
         if (result.failure) {
-            pending->error = Bridge::Error{.message = result.failure->message, .code = std::string(DialogResult::codeName(result.failure->code))};
-            pending->promise->reject(pending->error->message);
+            pending->fail(Bridge::Error{.message = result.failure->message, .code = std::string(DialogResult::codeName(result.failure->code))});
             return;
         }
         pending->promise->resolveCustom([choice = std::move(result)](lua_State* state) { pushChoice(state, choice); });

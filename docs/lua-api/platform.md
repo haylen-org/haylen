@@ -246,7 +246,7 @@ print(ads.id, ads.version, ads.native, ads.config.testMode)
 | Member | Meaning |
 | --- | --- |
 | `call:await()` | Waits inside a coroutine and returns the result, or `nil` and the [error](#errors) of the call. Awaiting a call that already settled returns at once. |
-| `call:cancel()` | Fails the call with the code `cancelled` at the start of the next frame and tells the native handler, which may stop its work. Returns `true` when the call was still pending, and `false` when it had already settled, when the call stays as it was. |
+| `call:cancel()` | Fails the call with the code `cancelled` at the start of the next frame and tells the native handler, which may stop its work. A cancelled call never stops the app when nothing awaits it, while a call that fails any other way while nothing awaits it stops the app, as an [unobserved rejection](../lua.md#asynchronous-code) does. Returns `true` when the call was still pending, and `false` when it had already settled, when the call stays as it was. |
 | `call.id` | The id of the call, an integer that is unique in the process and that `platform.resolve` takes. |
 | `call.done` | Whether the call has settled. |
 | `call.promise` | The Varn promise of the call, for the combinators of `async` such as `async.all` and `async.race`, where a failure is only its message. |

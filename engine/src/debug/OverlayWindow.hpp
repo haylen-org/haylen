@@ -39,6 +39,7 @@ class OverlayWindow final {
     [[nodiscard]] static std::size_t countStale(const std::vector<core::EventBus::Topic>& topics) noexcept;
 
     static void drawFrame(const Profiler& profiler, const Stats::Frame& frame);
+    static void drawEventLoop(const Stats::EventLoop& loop);
     static void drawProfiler(const Profiler& profiler);
     static void drawScenes(const core::SceneManager& scenes);
     static void drawDrawings(plugins::DebugPlugin& plugin);

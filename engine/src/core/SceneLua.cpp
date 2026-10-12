@@ -137,12 +137,12 @@ SceneManager::Completion SceneLua::pushCompletion(lua_State* L, int options) {
     }
     promise.push(L);
 
-    // The promise resolves with `true` once the change is done and with `false` once it was dropped, and a failed load rejects it with the error.
+    // The promise resolves with `true` once the change is done and with `false` once it was dropped, and a failed load rejects it with the error, which the scenes report themselves through the event of the failed load, the error handler of a change or the log.
     // clang-format off
     return [promise, callback](const SceneManager::Result& result) {
         const bool completed = result.outcome == SceneManager::Outcome::Completed;
         if (result.error) {
-            promise.reject(result.error->what());
+            promise.rejectHandled(result.error->what());
         } else {
             promise.resolveWith([completed](lua_State* state) { lua_pushboolean(state, completed ? 1 : 0); });
         }
@@ -403,7 +403,7 @@ int SceneLua::loadPreload(lua_State* L) {
         // clang-format off
         load.preload(group, [promise, remaining](const std::optional<lua::Error>& failure) {
             if (failure) {
-                promise.reject(failure->what());
+                promise.rejectHandled(failure->what());
                 return;
             }
             if (--*remaining == 0) {

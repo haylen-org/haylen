@@ -168,7 +168,7 @@ end
 
 Starts loading an asset in the background and returns a promise. The type and options work as in `assets.load()`. Reading and decoding run on worker threads, and GPU resources are created on the frame thread within the [upload budget](#assetssetuploadbudgetseconds) of each frame, so the app keeps running smoothly while large files load.
 
-Promises come from Varn's `async` module. Call `:await()` on a promise inside a coroutine started with `async.spawn()`. The coroutine pauses until the asset is ready and resumes during a later frame. The method `:await()` returns the asset on success and returns `nil` and the error message on failure instead of raising, so check the first value. An unknown type or invalid options still raise at once, when `assets.loadAsync()` is called.
+Promises come from Varn's `async` module. Call `:await()` on a promise inside a coroutine started with `async.spawn()`. The coroutine pauses until the asset is ready and resumes during a later frame. The method `:await()` returns the asset on success and returns `nil` and the error message on failure instead of raising, so check the first value. A load whose promise nothing awaits or catches stops the app when it fails, as an [unobserved rejection](../lua.md#asynchronous-code) does. An unknown type or invalid options still raise at once, when `assets.loadAsync()` is called.
 
 ```lua
 local async = require('async')

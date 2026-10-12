@@ -14,8 +14,6 @@ LocalWebSocket.hint = 'The server runs inside the app on 127.0.0.1, and nothing 
 LocalWebSocket.wait = 5000
 LocalWebSocket.largeSize = 1024 * 1024
 LocalWebSocket.burst = {count = 4, size = 512 * 1024}
--- The silent listener takes a random port of a range of its own, because Varn listeners share their port with any other Varn listener on it.
-LocalWebSocket.ports = {49900, 50899}
 
 LocalWebSocket.excerpts = {
     {'Large messages and waiting bytes', [[
@@ -187,14 +185,13 @@ end
 -- A listener that never accepts leaves the upgrade request without an answer, so only "connectTimeout" ends the attempt.
 function LocalWebSocket:timeout()
     local name = 'Connect timeout'
-    local port = math.random(LocalWebSocket.ports[1], LocalWebSocket.ports[2])
-    local listener, failure = socket.tcp.listen(localServer.host, port):await()
+    local listener, failure = socket.tcp.listen(localServer.host, 0):await()
     if not listener then
         self:check('timeout', name, false, 'The silent listener failed: ' .. tostring(failure))
         return
     end
     local listening <close> = VarnTest.closing(listener)
-    local url = string.format('ws://%s:%d/silent', localServer.host, port)
+    local url = string.format('ws://%s:%d/silent', listener.host, listener.port)
     self.results:set('timeout', 'waiting', name, string.format('Waiting at most half a second for "%s", which never answers.', url))
 
     local started = datetime.now():millis()

@@ -1,5 +1,7 @@
 #include "lua/ModuleSnapshot.hpp"
 
+#include "varn/json/JsonSerializer.h"
+
 namespace haylen::lua {
 
 bool ModuleSnapshot::isMergeable(lua_State* L, int index) {
@@ -10,12 +12,24 @@ bool ModuleSnapshot::isMergeable(lua_State* L, int index) {
     if (lua_getmetatable(L, table) == 0) {
         return true;
     }
+    const bool marked = isJsonMarker(L, lua_gettop(L));
     lua_pop(L, 1);
+    if (marked) {
+        return true;
+    }
     lua_pushliteral(L, "__index");
     lua_rawget(L, table);
     const bool prototype = lua_rawequal(L, -1, table) != 0;
     lua_pop(L, 1);
     return prototype;
+}
+
+bool ModuleSnapshot::isJsonMarker(lua_State* L, int metatable) {
+    luaL_getmetatable(L, varn::json::JsonSerializer::arrayMetatable);
+    luaL_getmetatable(L, varn::json::JsonSerializer::objectMetatable);
+    const bool marker = lua_rawequal(L, metatable, -2) != 0 || lua_rawequal(L, metatable, -1) != 0;
+    lua_pop(L, 2);
+    return marker;
 }
 
 void ModuleSnapshot::push(lua_State* L, int value, int upvalues, int globals, int creators, std::string_view path) {

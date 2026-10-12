@@ -25,6 +25,9 @@ class PlatformLua final {
   public:
     // A call as Lua holds it: the promise that its awaiters wait on, the error that it failed with and how the service that runs it gives it up, which returns whether it was still pending.
     struct Call {
+        // Keeps the error for `await` and rejects the promise with it. A call that was cancelled rejects without stopping the app when nothing awaits it, since the app or the owner of the call gave it up.
+        void fail(Bridge::Error failure);
+
         std::shared_ptr<varn::async::Promise> promise;
         std::uint64_t id = 0;
         std::optional<Bridge::Error> error;

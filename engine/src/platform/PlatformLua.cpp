@@ -60,12 +60,21 @@ void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIn
     lua::Userdata::emplace<Call>(L, std::move(pending));
 }
 
+void PlatformLua::Call::fail(Bridge::Error failure) {
+    const bool cancelled = failure.code == "cancelled";
+    error = std::move(failure);
+    if (cancelled) {
+        promise->rejectReported(error->message);
+        return;
+    }
+    promise->reject(error->message);
+}
+
 Bridge::Callback PlatformLua::settle(std::shared_ptr<Call> pending) {
     // clang-format off
     return [pending = std::move(pending)](Bridge::Result result) {
         if (!result.ok) {
-            pending->error = std::move(result.error);
-            pending->promise->reject(pending->error->message);
+            pending->fail(std::move(result.error));
             return;
         }
         pending->promise->resolveCustom([value = std::move(result.value)](lua_State* state) { pushPayload(state, value); });

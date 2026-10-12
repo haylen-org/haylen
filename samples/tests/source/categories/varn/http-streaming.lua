@@ -1,4 +1,4 @@
--- Responses that arrive in pieces with "http.client.stream" of Varn: server-sent events that reach the app one by one as the local server sends them, and a download with its progress.
+-- Responses that arrive in pieces with "http.client.stream" of Varn: server-sent events that reach the app one by one as the local server sends them, a body the server writes in parts with "ctx:write", and a download with its progress.
 local datetime = require('datetime')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -23,6 +23,16 @@ app:get('/events', function(ctx)
     end
     stream:close()
 end)]]},
+    {'Writing in parts', [[
+app:get('/parts', function(ctx)
+    ctx:type('text/plain'):header('X-Content-Type-Options', 'nosniff')
+    for part = 1, 4 do
+        if not ctx:write('Part ' .. part .. '\n'):await() then
+            return
+        end
+        async.sleep(100):await()
+    end
+end)]]},
     {'Client', [[
 local done, failure = http.client.stream({
     url = url .. '/events',
@@ -41,6 +51,7 @@ function HttpStreaming:run()
     self.events = nil
     self.download = nil
     self:serverSentEvents(url)
+    self:writtenParts(url)
     self:largeDownload(url)
 end
 
@@ -74,6 +85,26 @@ function HttpStreaming:serverSentEvents(url)
     local spread = #events > 0 and events[#events].at - events[1].at or 0
     self:check('head', 'The head first', headFirst and head[1] == 200 and tostring(head[2]):find('text/event-stream', 1, true) ~= nil, string.format('The function "onResponse" saw status %s with "%s" before the first piece of the body.', tostring(head[1]), tostring(head[2])))
     self:check('events', 'Events as they come', #events == 6 and spread >= 500, string.format('Got %d events spread over %d ms, each one when the server sent it.', #events, spread))
+end
+
+-- Each "ctx:write" leaves as soon as the client takes it, so the parts arrive while the handler still runs instead of together at its end.
+function HttpStreaming:writtenParts(url)
+    local name = 'Writes that stream'
+    self.results:set('parts', 'waiting', name, 'Waiting for the parts of "/parts".')
+    local started = datetime.now():millis()
+    local arrivals = {}
+    local done, failure = http.client.stream({url = url .. '/parts'}, function(chunk)
+        for part in chunk:gmatch('Part (%d+)') do
+            arrivals[#arrivals + 1] = {part = tonumber(part), at = datetime.now():millis() - started}
+        end
+    end):await()
+
+    if not done then
+        self:check('parts', name, false, 'The stream failed: ' .. tostring(failure))
+        return
+    end
+    local spread = #arrivals > 0 and arrivals[#arrivals].at - arrivals[1].at or 0
+    self:check('parts', name, #arrivals == localServer.parts and spread >= 250, string.format('Got %d parts spread over %d ms, each one when the handler wrote it.', #arrivals, spread))
 end
 
 function HttpStreaming:largeDownload(url)

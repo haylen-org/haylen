@@ -38,6 +38,14 @@ class Stats final {
         std::int64_t sounds = 0;
     };
 
+    // The last poll of the event loop of Varn: the milliseconds it could take, whether anything ran, whether work remains and the milliseconds the loop can wait before it has work of its own, which is -1 when only work from outside can bring any.
+    struct EventLoop {
+        double budget = 0.0;
+        bool ran = false;
+        bool pending = false;
+        long long idle = -1;
+    };
+
     struct Counts {
         std::size_t scenes = 0;
         std::size_t tweens = 0;
@@ -55,6 +63,7 @@ class Stats final {
     [[nodiscard]] static Stats capture(core::Engine& engine, const graphics2d::Renderer::Stats& lastFrame);
 
     Frame frame;
+    EventLoop eventLoop;
     graphics2d::Renderer::Stats rendering;
     Memory memory;
     Counts counts;
