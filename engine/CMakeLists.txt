@@ -219,6 +219,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/crypto/VerifyingKey.cpp
   src/content/EmbeddedKeyProvider.cpp
   src/content/Error.cpp
+  src/content/FolderStoreFiles.cpp
   src/content/format/BinaryReader.cpp
   src/content/format/BinaryWriter.cpp
   src/content/format/Catalog.cpp
@@ -228,12 +229,16 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/format/ChunkRecord.cpp
   src/content/format/Compression.cpp
   src/content/format/Manifest.cpp
+  src/content/format/PartialRecord.cpp
   src/content/format/ShardHeader.cpp
   src/content/format/ShardIndex.cpp
   src/content/format/ShardReference.cpp
+  src/content/format/StoreEntry.cpp
+  src/content/format/StoreState.cpp
   src/content/HpakFileReader.cpp
   src/content/HpakPackage.cpp
   src/content/HttpTransport.cpp
+  src/content/LocalStore.cpp
   src/content/LuaCompiler.cpp
   src/content/RangePlanner.cpp
   src/content/RecordCache.cpp
@@ -242,6 +247,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/ShardReader.cpp
   src/content/ShardSet.cpp
   src/content/ShardWriter.cpp
+  src/content/StoreFile.cpp
   src/core/AppConfig.cpp
   src/core/Application.cpp
   src/core/ClassLua.cpp

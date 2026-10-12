@@ -13,6 +13,8 @@ bool Error::isRetryable() const noexcept {
     case Code::NetworkCancelled:
     case Code::NetworkFailed:
     case Code::UpdateInterrupted:
+    case Code::DiskFull:
+    case Code::CacheCorrupt:
         return true;
     case Code::UnexpectedHttpStatus:
         // A server error, a timeout of the server or a request that came too often may pass, while a missing file or a refused request stays.

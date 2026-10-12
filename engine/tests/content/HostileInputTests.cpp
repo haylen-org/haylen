@@ -9,14 +9,17 @@
 #include <string>
 #include <vector>
 
-#include "haylen/content/Error.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/BinaryWriter.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChannelDescriptor.hpp"
 #include "content/format/ChunkRecord.hpp"
+#include "content/format/PartialRecord.hpp"
 #include "content/format/ShardIndex.hpp"
+#include "content/format/StoreEntry.hpp"
+#include "content/format/StoreState.hpp"
+#include "haylen/content/Error.hpp"
 #include "support/ContentParsers.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -62,6 +65,10 @@ class HostileInputTest : public ::testing::Test {
         seeds.push_back(withParser(4, readFile(release.getFolder() / ReleasePackage::kContentManifestFile)));
         const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("dev.haylen.tests"), .channel = "stable", .generation = 2};
         seeds.push_back(withParser(5, descriptor.write(release.getSigningKey())));
+        seeds.push_back(withParser(6, StoreState{.application = descriptor.application, .channel = "stable", .acceptedGeneration = 2}.write()));
+        const StoreEntry::Bytes entry = StoreEntry{.storedId = Digest::of(plain), .segment = 1, .offset = 16, .size = 200}.write();
+        seeds.push_back(withParser(7, {entry.begin(), entry.end()}));
+        seeds.push_back(withParser(8, PartialRecord{.shardId = Digest::of(plain), .recordOffset = 160, .recordSize = 300, .validator = "\"v\"", .bytes = plain}.write()));
         return seeds;
     }
 

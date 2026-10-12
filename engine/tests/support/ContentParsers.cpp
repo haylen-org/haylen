@@ -7,8 +7,11 @@
 #include "content/format/ChannelDescriptor.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/Manifest.hpp"
+#include "content/format/PartialRecord.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
+#include "content/format/StoreEntry.hpp"
+#include "content/format/StoreState.hpp"
 #include "haylen/content/Error.hpp"
 #include "support/ReleaseFixture.hpp"
 
@@ -37,7 +40,7 @@ void ContentParsers::parse(std::span<const std::uint8_t> input) {
 
     const std::span<const std::uint8_t> bytes = input.subspan(1);
     try {
-        switch (input.front() % 6) {
+        switch (input.front() % 9) {
         case 0:
             if (bytes.size() >= content::ChunkRecord::kHeaderSize) {
                 (void)content::ChunkRecord::parse(bytes.first<content::ChunkRecord::kHeaderSize>());
@@ -66,8 +69,19 @@ void ContentParsers::parse(std::span<const std::uint8_t> input) {
         case 4:
             (void)content::Manifest::read({bytes.begin(), bytes.end()}, getTrustedKeys()).decryptCatalog(getKeys());
             break;
-        default:
+        case 5:
             (void)content::ChannelDescriptor::read(bytes, getTrustedKeys());
+            break;
+        case 6:
+            (void)content::StoreState::parse(bytes);
+            break;
+        case 7:
+            if (bytes.size() >= content::StoreEntry::kSize) {
+                (void)content::StoreEntry::parse(bytes.first<content::StoreEntry::kSize>());
+            }
+            break;
+        default:
+            (void)content::PartialRecord::parse(bytes);
             break;
         }
     } catch (const content::Error&) {}

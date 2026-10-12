@@ -40,6 +40,9 @@ class Error final : public std::runtime_error {
         RangeUnsupported,
         UnexpectedHttpStatus,
         UpdateInterrupted,
+        DiskFull,
+        PermissionDenied,
+        CacheCorrupt,
     };
 
     // What else is known about a failure. Every field is empty when it does not apply.

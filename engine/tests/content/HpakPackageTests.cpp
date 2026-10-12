@@ -15,7 +15,9 @@
 #include <thread>
 #include <vector>
 
+#include "content/FolderStoreFiles.hpp"
 #include "content/HpakPackage.hpp"
+#include "content/LocalStore.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/ShardSet.hpp"
 #include "content/ShardWriter.hpp"
@@ -280,6 +282,58 @@ TEST_F(HpakPackageTest, NamesAMissingFileByItsPathInThePackage) {
             EXPECT_EQ(std::string(error.what()), message);
         }
     }
+}
+
+TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
+    test::TemporaryDirectory folder;
+    const std::vector<std::uint8_t> first = test::TestFiles::randomBytes(5000, 7);
+    const std::vector<std::uint8_t> second = test::TestFiles::randomBytes(3000, 8);
+    CatalogWriter catalogWriter;
+    std::vector<Digest> parts;
+    std::vector<std::vector<std::uint8_t>> records;
+    for (const std::vector<std::uint8_t>& plain : {first, second}) {
+        std::vector<std::uint8_t> ciphertext;
+        const ChunkRecord record = ChunkRecord::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+        catalogWriter.addChunk({.storedId = record.storedId, .contentId = record.contentId, .plainSize = record.plainSize, .encodedSize = record.encodedSize, .codec = record.codec, .profile = record.profile});
+        parts.push_back(record.storedId);
+        const ChunkRecord::Header header = record.serialize();
+        records.emplace_back(header.begin(), header.end()).insert(records.back().end(), ciphertext.begin(), ciphertext.end());
+    }
+    catalogWriter.addFile("content/level.bin", Delivery::OnDemand, parts);
+    const auto catalog = std::make_shared<const Catalog>(Catalog::parse(catalogWriter.write(), 1));
+    const ShardReference reference{.shardId = Digest::of(test::TestFiles::bytes("remote shard")), .fileSize = 1000};
+    const auto store = std::make_shared<LocalStore>(std::make_unique<FolderStoreFiles>(folder.getPath() / "store"), Digest(), 1);
+    const auto missing = [](const ShardReference&) { return std::unique_ptr<io::PackageReader>(); };
+    const HpakPackage package("store", catalog, std::make_shared<const ShardSet>(std::vector{reference}, release.getKeys(), missing, store));
+    const HpakPackage bundled("bundled", catalog, std::make_shared<const ShardSet>(std::vector{reference}, release.getKeys(), missing));
+
+    const auto expectCode = [](Error::Code code, const std::function<void()>& action) {
+        try {
+            action();
+            FAIL() << "The read must fail.";
+        } catch (const Error& error) {
+            EXPECT_EQ(error.getCode(), code) << error.what();
+        }
+    };
+    expectCode(Error::Code::MissingShard, [&] { (void)bundled.read("content/level.bin"); });
+    store->addRecord(release.getContentKey()->getId(), records[0]);
+    expectCode(Error::Code::MissingChunk, [&] { (void)package.read("content/level.bin"); });
+
+    store->addRecord(release.getContentKey()->getId(), records[1]);
+    std::vector<std::uint8_t> whole = first;
+    whole.insert(whole.end(), second.begin(), second.end());
+    EXPECT_EQ(package.read("content/level.bin"), whole);
+
+    // A record that the device damaged leaves the store, and a download brings it back.
+    store->flush();
+    for (const std::filesystem::directory_entry& segment : std::filesystem::directory_iterator(folder.getPath() / "store" / "segments")) {
+        std::fstream stream(segment.path(), std::ios::binary | std::ios::in | std::ios::out);
+        stream.seekp(-10, std::ios::end);
+        stream.put('x');
+    }
+    expectCode(Error::Code::CacheCorrupt, [&] { (void)package.readRange("content/level.bin", 5000, 10); });
+    EXPECT_FALSE(store->contains(parts[1]));
+    EXPECT_TRUE(store->contains(parts[0]));
 }
 
 TEST_F(HpakPackageTest, ReadsFromManyThreadsAtOnce) {

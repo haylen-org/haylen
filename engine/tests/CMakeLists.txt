@@ -62,6 +62,7 @@ set(HAYLEN_TEST_SOURCES
   content/HpakPackageTests.cpp
   content/HttpTransportTests.cpp
   content/KeyStoreTests.cpp
+  content/LocalStoreTests.cpp
   content/LuaCompilerTests.cpp
   content/ManifestTests.cpp
   content/RecordCacheTests.cpp

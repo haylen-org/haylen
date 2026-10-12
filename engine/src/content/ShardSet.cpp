@@ -3,11 +3,12 @@
 #include <algorithm>
 #include <utility>
 
+#include "content/format/ChunkRecord.hpp"
 #include "haylen/content/Error.hpp"
 
 namespace haylen::content {
 
-ShardSet::ShardSet(std::vector<ShardReference> shardReferences, std::shared_ptr<const KeyRing> contentKeys, Opener shardOpener) : references(std::move(shardReferences)), keys(std::move(contentKeys)), opener(std::move(shardOpener)), readers(references.size()) {
+ShardSet::ShardSet(std::vector<ShardReference> shardReferences, std::shared_ptr<const KeyRing> contentKeys, Opener shardOpener, std::shared_ptr<LocalStore> recordStore) : references(std::move(shardReferences)), keys(std::move(contentKeys)), opener(std::move(shardOpener)), store(std::move(recordStore)), readers(references.size()), missing(references.size()) {
     recent.reserve(kMaxOpenShards + 1);
 }
 
@@ -22,7 +23,7 @@ std::shared_ptr<const ShardReader> ShardSet::findOpen(std::uint32_t shard) const
 }
 
 // A shard that fails to open stays closed, so a later read tries again.
-std::shared_ptr<const ShardReader> ShardSet::open(std::uint32_t shard) const {
+std::shared_ptr<const ShardReader> ShardSet::findShard(std::uint32_t shard) const {
     if (std::shared_ptr<const ShardReader> reader = findOpen(shard)) {
         return reader;
     }
@@ -30,11 +31,19 @@ std::shared_ptr<const ShardReader> ShardSet::open(std::uint32_t shard) const {
     if (std::shared_ptr<const ShardReader> reader = findOpen(shard)) {
         return reader;
     }
+    {
+        const std::scoped_lock lock(mutex);
+        if (missing[shard]) {
+            return nullptr;
+        }
+    }
 
     const ShardReference& reference = references[shard];
     std::unique_ptr<io::PackageReader> file = opener(reference);
     if (file == nullptr) {
-        throw Error(Error::Code::MissingShard, "The shard file \"" + reference.getFileName() + "\" is missing, so the app needs to be installed again.");
+        const std::scoped_lock lock(mutex);
+        missing[shard] = true;
+        return nullptr;
     }
     auto reader = std::make_shared<const ShardReader>(std::move(file), reference, *keys);
 
@@ -50,8 +59,44 @@ std::shared_ptr<const ShardReader> ShardSet::open(std::uint32_t shard) const {
     return reader;
 }
 
+bool ShardSet::hasChunk(const Catalog::Chunk& chunk) const {
+    return (store && store->contains(chunk.storedId)) || findShard(chunk.shard) != nullptr;
+}
+
+void ShardSet::forgetMissing() const {
+    const std::scoped_lock lock(mutex);
+    missing.assign(missing.size(), false);
+}
+
 void ShardSet::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {
-    open(chunk.shard)->readChunk(chunk, scratch, plain);
+    if (const std::shared_ptr<const ShardReader> reader = findShard(chunk.shard)) {
+        reader->readChunk(chunk, scratch, plain);
+        return;
+    }
+    if (!store) {
+        throw Error(Error::Code::MissingShard, "The shard file \"" + references[chunk.shard].getFileName() + "\" is missing, so the app needs to be installed again.");
+    }
+    readRecord(chunk, scratch, plain);
+}
+
+void ShardSet::readRecord(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {
+    Digest keyId;
+    if (!store->readRecord(chunk.storedId, scratch, keyId)) {
+        throw Error(Error::Code::MissingChunk, "The chunk \"" + chunk.storedId.toHex() + "\" is not on the device yet, so its file must be downloaded before it is read.");
+    }
+
+    // A record of the store passes the same checks as one of a shard against the signed catalog, and one that fails leaves the store so a download replaces it.
+    try {
+        const ChunkRecord record = ChunkRecord::parse(std::span(scratch).first<ChunkRecord::kHeaderSize>());
+        const bool matchesCatalog = record.storedId == chunk.storedId && record.contentId == chunk.contentId && record.codec == chunk.codec && record.profile == chunk.profile && record.plainSize == chunk.plainSize && record.encodedSize == chunk.encodedSize;
+        if (!matchesCatalog || scratch.size() != record.getRecordSize()) {
+            throw Error(Error::Code::CorruptChunk, "The record does not match its catalog.");
+        }
+        record.open(*keys->get(keyId), std::span(scratch).subspan(ChunkRecord::kHeaderSize), plain);
+    } catch (const Error& error) {
+        store->removeRecord(chunk.storedId);
+        throw Error(Error::Code::CacheCorrupt, "The downloaded chunk \"" + chunk.storedId.toHex() + "\" was damaged on the device, so it was removed and downloads again. " + error.what());
+    }
 }
 
 } // namespace haylen::content

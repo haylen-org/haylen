@@ -398,6 +398,27 @@ Content that is not on the device arrives over HTTP or HTTPS through `content::H
 
 A server of protected content serves byte ranges of its files, sends `ETag` for them and leaves them uncompressed, since the shards are encrypted and do not compress. Every file of a publication tree is immutable except the channel pointers, so packs and manifests take long cache lifetimes, such as `Cache-Control: public, max-age=31536000, immutable`, and a channel pointer takes `Cache-Control: no-cache`. A server on another origin than a web page allows its requests with `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag`.
 
+## Local store
+
+What downloads bring stays on the device in the local content store of the app, `content::LocalStore`, in a folder of its own apart from the saves of the app, so clearing it never touches them. It never holds a plain byte: records stay sealed as they arrived, shard indexes stay encrypted, manifests stay signed, and no file of the store names a path.
+
+```text
+state-a, state-b               The state, written into each slot in turn.
+journal-<n>                    The journal of the records: where each one lies, by stored ID.
+segments/<n>.hseg              Records one after another, as the shards held them.
+manifests/<id>.hmanifest       The signed manifests the app retains.
+indexes/<shard>.hidx           The header and the encrypted index of shards whose records came by download.
+staging/<shard>-<offset>.hpart The first bytes of a record whose download stopped.
+```
+
+Records go into segments that close near 256 MiB, so a store of hundreds of gigabytes holds a few hundred files and never rewrites a large one. Each record that a segment receives gets an entry of 96 bytes in the journal: its stored ID, the ID of the key that sealed it, its segment, its offset and its size, with a checksum. The journal only grows, so a crash can tear only its last entry, which the store finds and drops when it opens. A segment that the platform evicted or that lost its end takes the records of its entries with it, and downloads bring them back.
+
+The state names the content manifest the app plays and the one before it, the generation the app accepted last from its channel and the journal of the records. It goes into two slots in turn, `state-a` and `state-b`, each with a sequence number and a BLAKE2b-256 checksum, so a write that a crash or a loss of power tears leaves the other slot whole, and the store opens with the whole slot of the higher sequence. A new state becomes durable only after every record it relies on, since the store flushes the segments and the journal to the disk before it writes the slot. A new build of the app starts again from the content it ships with, keeping the records and the generation it accepted, and a store of another app opens empty.
+
+A collection keeps the records that the manifests the app retains use, removes the others, and moves the live records of a segment less than half alive into the newest segment. It writes a new journal of the live records, switches to it with a new state and only then deletes what it replaced, so a collection that a crash interrupts leaves the store as it was. A reader never meets a segment that a collection removes, since the removal waits for the reads that run.
+
+Every record of the store passes the same checks on every read as a record of a shard: its header must match the signed catalog, and its encryption must authenticate. A record that fails leaves the store with `CacheCorrupt`, and the next download replaces it.
+
 ## Limits
 
 Every parser treats its bytes as hostile: it checks every offset and size against the bytes it has before it uses them, checks counts before it multiplies them, and allocates only what those checks allow.
@@ -416,7 +437,7 @@ Every parser treats its bytes as hostile: it checks every offset and size agains
 
 ## Errors
 
-Failures of protected content raise `content::Error` of `haylen/content/Error.hpp`, a `std::runtime_error` whose code tells a damaged install from a missing key, a network that is down or a rejected update. Its details hold the HTTP status of a failed request and the message of the platform, each empty when it does not apply. `isRetryable` tells whether trying again may succeed without a new build of the app: a network that comes back, a server error, a timeout, or a status 408 or 429. Messages and details name files, shards and IDs, and never keys or decrypted bytes.
+Failures of protected content raise `content::Error` of `haylen/content/Error.hpp`, a `std::runtime_error` whose code tells a damaged install from a missing key, a network that is down or a rejected update. Its details hold the HTTP status of a failed request and the message of the platform, each empty when it does not apply. `isRetryable` tells whether trying again may succeed without a new build of the app: a network that comes back, a server error, a timeout, a status 408 or 429, room that the user frees on the device, or a damaged record of the store that a download replaces. Messages and details name files, shards and IDs, and never keys or decrypted bytes.
 
 | Code | Cause |
 | --- | --- |
@@ -448,6 +469,9 @@ Failures of protected content raise `content::Error` of `haylen/content/Error.hp
 | `RangeUnsupported` | The server does not serve byte ranges as protected content needs. |
 | `UnexpectedHttpStatus` | The server answered with a status other than the file or the range. |
 | `UpdateInterrupted` | A download ended before all of its bytes arrived. |
+| `DiskFull` | The device has no room for what the store writes. |
+| `PermissionDenied` | The device does not let the store write its folder. |
+| `CacheCorrupt` | A file of the local store is damaged, such as a record that fails its checks, which the store removes so a download replaces it. |
 
 ## Security
 
