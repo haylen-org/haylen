@@ -232,9 +232,9 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (document.contains("audio")) {
         const Json& audioJson = document.at("audio");
         JsonValidator::requireKnownKeys(audioJson, {"iosSession", "mixWithOthers"}, "the \"audio\" section of \"app.json\"");
-        std::string category;
-        readValue(audioJson, "iosSession", category);
-        if (!category.empty()) {
+        if (audioJson.contains("iosSession")) {
+            std::string category;
+            readValue(audioJson, "iosSession", category);
             config.audioSession.category = sessionCategoryFromName(category);
         }
         readValue(audioJson, "mixWithOthers", config.audioSession.mixWithOthers);

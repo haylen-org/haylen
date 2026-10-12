@@ -42,6 +42,8 @@ TEST_F(MixerLuaTest, SoundsFollowTheEnginePauseByProcessMode) {
     fixture->runLua("haylen.setPaused(false) audio.setBusProcessMode('sfx', 'whenPaused')");
     EXPECT_EQ(fixture->lua("return audio.busProcessMode('sfx')"), "whenPaused");
     EXPECT_NE(fixture->lua("audio.play(hit, {processMode = 'sometimes'})").find("processMode"), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.play(hit, {x = 'left'})").find("option \"x\""), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.play(hit, {volume = 1, colour = 'red'})").find("Unknown option \"colour\"."), std::string::npos);
     EXPECT_NE(fixture->lua("audio.setBusProcessMode('sfx', 'never')").find("error: "), std::string::npos);
 }
 

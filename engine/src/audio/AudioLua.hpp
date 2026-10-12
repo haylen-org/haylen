@@ -61,7 +61,7 @@ class AudioLua final {
     static constexpr const char* kCameraKey = "haylen.audio.camera";
 
     [[nodiscard]] static Mixer& getMixer(lua_State* L);
-    [[nodiscard]] static std::vector<std::shared_ptr<Effect>> readEffects(lua_State* L, int index);
+    [[nodiscard]] static std::vector<std::shared_ptr<Effect>> readEffects(lua_State* L);
     static void pushEffects(lua_State* L, const std::vector<std::shared_ptr<Effect>>& effects);
 
     static int newSound(lua_State* L);

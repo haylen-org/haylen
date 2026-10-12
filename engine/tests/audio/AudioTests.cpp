@@ -393,6 +393,7 @@ TEST_F(SoundTest, ReadsTheSessionFromAppJson) {
     EXPECT_EQ(core::AppConfig{}.audioSession.category, Session::Category::Ambient);
 
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "record"}})")), std::invalid_argument);
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": ""}})")), std::invalid_argument);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"focus": true}})")), std::invalid_argument);
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"mixWithOthers": true}})")), std::invalid_argument);
     EXPECT_THROW(Mixer({.device = false, .session = {.category = Session::Category::Ambient, .mixWithOthers = true}}), std::invalid_argument);

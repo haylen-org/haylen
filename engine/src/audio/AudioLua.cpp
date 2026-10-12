@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -27,41 +28,55 @@ Mixer& AudioLua::getMixer(lua_State* L) {
     return lua::Runtime::getEngine(L).getAudio();
 }
 
+// The options of a play are read in one pass over the keys the table holds, because sound effects play often.
 Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index, std::span<const std::string_view> fields) {
     Mixer::PlayOptions options;
     if (lua_isnoneornil(L, index)) {
         return options;
     }
     luaL_checktype(L, index, LUA_TTABLE);
-    lua::Table::checkFields(L, index, {fields});
-    lua::Table::readField(L, index, "bus", options.bus);
-    lua::Table::readField(L, index, "volume", options.volume);
-    lua::Table::readField(L, index, "pitch", options.pitch);
-    lua::Table::readField(L, index, "pitchVariation", options.pitchVariation);
-    lua::Table::readField(L, index, "pan", options.pan);
-    lua::Table::readField(L, index, "loop", options.loop);
-    lua::Table::readField(L, index, "fadeIn", options.fadeIn);
-    lua::Table::readField(L, index, "startAt", options.startAt);
-    lua::Table::readField(L, index, "processMode", options.processMode);
-    options.effects = readEffects(L, index);
 
     // A voice becomes positional when the options give it a place in the world.
-    lua_getfield(L, index, "x");
-    lua_getfield(L, index, "y");
-    if (!lua_isnil(L, -2) || !lua_isnil(L, -1)) {
-        options.position = math::Vec2{static_cast<float>(luaL_optnumber(L, -2, 0.0)), static_cast<float>(luaL_optnumber(L, -1, 0.0))};
+    std::optional<float> x;
+    std::optional<float> y;
+    // clang-format off
+    lua::Table::readFields(L, index, fields, {}, [L, &options, &x, &y](std::string_view key) {
+        if (key == "bus") {
+            lua::Table::readValue(L, key, options.bus);
+        } else if (key == "volume") {
+            lua::Table::readValue(L, key, options.volume);
+        } else if (key == "pitch") {
+            lua::Table::readValue(L, key, options.pitch);
+        } else if (key == "pitchVariation") {
+            lua::Table::readValue(L, key, options.pitchVariation);
+        } else if (key == "pan") {
+            lua::Table::readValue(L, key, options.pan);
+        } else if (key == "loop") {
+            lua::Table::readValue(L, key, options.loop);
+        } else if (key == "fadeIn") {
+            lua::Table::readValue(L, key, options.fadeIn);
+        } else if (key == "startAt") {
+            lua::Table::readValue(L, key, options.startAt);
+        } else if (key == "processMode") {
+            lua::Table::readValue(L, key, options.processMode);
+        } else if (key == "effects") {
+            options.effects = readEffects(L);
+        } else if (key == "x") {
+            lua::Table::readValue(L, key, x.emplace());
+        } else if (key == "y") {
+            lua::Table::readValue(L, key, y.emplace());
+        }
+    });
+    // clang-format on
+    if (x || y) {
+        options.position = math::Vec2{x.value_or(0.0F), y.value_or(0.0F)};
     }
-    lua_pop(L, 2);
     return options;
 }
 
-std::vector<std::shared_ptr<Effect>> AudioLua::readEffects(lua_State* L, int index) {
+// Reads the list of effects on top of the stack.
+std::vector<std::shared_ptr<Effect>> AudioLua::readEffects(lua_State* L) {
     std::vector<std::shared_ptr<Effect>> list;
-    lua_getfield(L, index, "effects");
-    if (lua_isnil(L, -1)) {
-        lua_pop(L, 1);
-        return list;
-    }
     if (!lua_istable(L, -1)) {
         luaL_error(L, "The option \"effects\" must be a list of audio effects.");
     }
@@ -75,7 +90,6 @@ std::vector<std::shared_ptr<Effect>> AudioLua::readEffects(lua_State* L, int ind
         list.push_back(std::move(effect));
         lua_pop(L, 1);
     }
-    lua_pop(L, 1);
     return list;
 }
 
