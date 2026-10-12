@@ -153,6 +153,7 @@ struct MixerState {
     std::vector<Tail> tails;
     Mixer::VoiceId nextVoice = 1;
     Mixer::VoiceId musicVoice = 0;
+    bool outputMuted = false;
     math::Vec2 listener{};
     math::Vec2 lastListener{};
     math::Vec2 listenerVelocity{};

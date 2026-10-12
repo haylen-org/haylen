@@ -83,7 +83,7 @@ TEST_F(ScreensTest, OpensTheScreenOnceTheCoverHoldsAndAnswersWithItsResult) {
     EXPECT_TRUE(engine.isAppCovered());
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
     EXPECT_TRUE(engine.isHalted());
-    EXPECT_TRUE(engine.getAudio().isBusMuted("master"));
+    EXPECT_TRUE(engine.getAudio().isOutputMuted());
     ASSERT_EQ(fixture.host().getScreenRequests().size(), 1U);
     const ScreenRequest& request = fixture.host().getScreenRequests()[0];
     EXPECT_EQ(request.id, id);
@@ -105,7 +105,7 @@ TEST_F(ScreensTest, OpensTheScreenOnceTheCoverHoldsAndAnswersWithItsResult) {
     EXPECT_EQ(answer->value.buffers, (std::vector<std::vector<std::byte>>{{std::byte{7}}}));
     EXPECT_FALSE(engine.isAppCovered());
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
-    EXPECT_FALSE(engine.getAudio().isBusMuted("master"));
+    EXPECT_FALSE(engine.getAudio().isOutputMuted());
     EXPECT_FALSE(screens.isShowing());
     EXPECT_EQ(screens.getPendingCount(), 0U);
 

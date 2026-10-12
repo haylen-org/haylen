@@ -788,6 +788,16 @@ end)
 
 The engine pauses the output while the app is suspended and resumes it afterwards, unless an interruption still holds it.
 
+### audio.outputMuted()
+
+Returns `true` while the engine silences the output, which it does while a [cover](../lifecycle.md#covered-by-native-ui) of a plugin lasts and, with `muteOnFocusLoss`, while the app is not active. The silence comes after every bus, so `audio.busMuted` keeps reporting the mute the app set, which the app can still change and save meanwhile.
+
+```lua
+local audio = require('haylen.audio')
+
+print(audio.outputMuted())
+```
+
 ## Types
 
 ### Sound

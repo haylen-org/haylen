@@ -622,16 +622,9 @@ void Engine::applyCover() {
 void Engine::applyStateMute() {
     EngineState& current = *state;
     const bool mute = current.covered || (current.lifecycle.muteOnFocusLoss && current.appState != AppState::Active);
-    if (mute == current.stateMuted) {
-        return;
+    if (mute != current.audio->isOutputMuted()) {
+        current.audio->setOutputMuted(mute);
     }
-    if (mute) {
-        current.mutedBeforeState = current.audio->isBusMuted("master");
-        current.audio->setBusMuted("master", true);
-    } else {
-        current.audio->setBusMuted("master", current.mutedBeforeState);
-    }
-    current.stateMuted = mute;
 }
 
 void Engine::setPaused(bool value) {

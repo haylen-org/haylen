@@ -89,6 +89,14 @@ TEST_F(MixerTest, MixesVoicesThroughBuses) {
     mixer.setVolume(voice, 0.5F);
     EXPECT_NEAR(settledPeak(256), 0.25F, 0.01F);
 
+    // The output mute silences everything after the buses and leaves their mutes alone.
+    mixer.setOutputMuted(true);
+    EXPECT_TRUE(mixer.isOutputMuted());
+    EXPECT_FALSE(mixer.isBusMuted("master"));
+    EXPECT_EQ(settledPeak(256), 0.0F);
+    mixer.setOutputMuted(false);
+    EXPECT_NEAR(settledPeak(256), 0.25F, 0.01F);
+
     EXPECT_EQ(mixer.getSampleRate(), kRate);
     EXPECT_EQ(mixer.getChannels(), 2U);
     EXPECT_FALSE(mixer.hasDevice());

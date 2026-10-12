@@ -162,7 +162,7 @@ TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
     EXPECT_TRUE(engine.isAppCovered());
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
     EXPECT_TRUE(engine.isHalted());
-    EXPECT_TRUE(engine.getAudio().isBusMuted("master"));
+    EXPECT_TRUE(engine.getAudio().isOutputMuted());
     EXPECT_EQ(ticks, 0);
     views.uncoverApp();
     fixture.frames(2, 0.06);
@@ -175,19 +175,25 @@ TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
     EXPECT_FALSE(engine.isAppCovered());
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
     EXPECT_FALSE(engine.isHalted());
-    EXPECT_FALSE(engine.getAudio().isBusMuted("master"));
+    EXPECT_FALSE(engine.getAudio().isOutputMuted());
     EXPECT_EQ(ticks, 0);
     fixture.frames(1, 0.06);
     EXPECT_EQ(ticks, 1);
     EXPECT_EQ(log, (std::vector<std::string>{"appInactive", "appActive"}));
 
-    // The mute the player chose survives a cover.
+    // The mute the player chose survives a cover, which keeps the app silent whatever the app unmutes meanwhile, and the app reads its own mute all along.
     engine.getAudio().setBusMuted("master", true);
     views.coverApp();
     fixture.frames(1);
+    EXPECT_TRUE(engine.getAudio().isOutputMuted());
+    engine.getAudio().setBusMuted("master", false);
+    EXPECT_FALSE(engine.getAudio().isBusMuted("master"));
+    EXPECT_TRUE(engine.getAudio().isOutputMuted());
+    engine.getAudio().setBusMuted("master", true);
     views.uncoverApp();
     fixture.frames(1);
     EXPECT_TRUE(engine.getAudio().isBusMuted("master"));
+    EXPECT_FALSE(engine.getAudio().isOutputMuted());
 }
 
 TEST_F(AppCoverTest, DrawsTheCoveredFrameOnce) {
@@ -250,7 +256,7 @@ TEST_F(AppCoverTest, KeepsTheAppCoveredThroughTheBackground) {
     EXPECT_FALSE(engine.isAppCovered());
     engine.handleEvent({.type = Event::Type::Resumed});
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
-    EXPECT_FALSE(engine.getAudio().isBusMuted("master"));
+    EXPECT_FALSE(engine.getAudio().isOutputMuted());
     EXPECT_EQ(log, (std::vector<std::string>{"appInactive", "appBackground", "appInactive", "appActive", "appInactive", "appBackground", "appActive"}));
 }
 
@@ -266,7 +272,7 @@ TEST_F(AppCoverTest, CoversAnAppThatRestartsUnderNativeUi) {
     EXPECT_FALSE(fixture.engine().isAppCovered());
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat({tostring(haylen.appCovered()), haylen.appState(), #states}, ' ')"), "true inactive 1");
-    EXPECT_TRUE(fixture.engine().getAudio().isBusMuted("master"));
+    EXPECT_TRUE(fixture.engine().getAudio().isOutputMuted());
     views.uncoverApp();
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(haylen.appCovered()) .. ' ' .. haylen.appState()"), "false active");

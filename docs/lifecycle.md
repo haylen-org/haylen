@@ -71,7 +71,7 @@ Android also freezes the processes of cached apps, which stops every thread of t
 | --- | --- | --- |
 | `pauseOnBackground` | `true` | Halts the app in the background. |
 | `pauseOnFocusLoss` | `false` | Halts the app while it is inactive. Tiny Island turns it on, so the run stands still whenever the window loses focus, and opens its pause menu on `appInactive` and `appBackground`, so the run stays paused when the player comes back. |
-| `muteOnFocusLoss` | `false` | Mutes the master bus while the app is not active, and restores the mute the player chose when it comes back. |
+| `muteOnFocusLoss` | `false` | Mutes the output while the app is not active, after every bus, so the mutes of the buses stay what the app and the player chose and the app reads and saves them unchanged. |
 
 ```json
 {
@@ -119,7 +119,7 @@ end)
 
 ### Covered by native UI
 
-Plugins show native UI over the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, and tell the engine that it covers the app while it shows. Covered content must never play under native UI, so while any cover lasts the app is `'inactive'`, halted and its master bus muted, whatever the lifecycle options say, and `haylen.appCovered()` returns `true`. Covers nest, and when the last one ends the app returns to the state it would have without them, `'active'` when its window has the focus and nothing else interrupts it, with the mute the player chose and without a jump of the clock. An app that goes to the background while covered goes there as usual, comes back `'inactive'` while the cover lasts, and stays in the background when the cover ends there.
+Plugins show native UI over the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, and tell the engine that it covers the app while it shows. Covered content must never play under native UI, so while any cover lasts the app is `'inactive'`, halted and its output muted, whatever the lifecycle options say and whatever the app unmutes meanwhile, and `haylen.appCovered()` returns `true`. Covers nest, and when the last one ends the app returns to the state it would have without them, `'active'` when its window has the focus and nothing else interrupts it, with the mute the player chose and without a jump of the clock. An app that goes to the background while covered goes there as usual, comes back `'inactive'` while the cover lasts, and stays in the background when the cover ends there.
 
 The engine takes the cover at the start of every frame and publishes the state changes as usual, so an app pauses its game on `appInactive` the same way for a cover as for a phone call. A halted app would draw the same frame again and again, so the engine draws one frame once the cover begins, which shows what the app drew for `appInactive`, such as a pause menu, and keeps it on screen. It draws the frame again only when the window changes size or the app comes back from the background, since the frame on screen no longer fits then, and draws every frame again once the cover ends. The cover belongs to the platform, so an app that restarts under native UI, such as after a hot reload, becomes covered on its first frame. The [plugin guide](plugins.md#engine-services) shows how native code covers the app.
 

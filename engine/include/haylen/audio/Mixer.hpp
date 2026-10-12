@@ -178,6 +178,10 @@ class Mixer final {
     void setBusMuted(std::string_view bus, bool muted);
     [[nodiscard]] bool isBusMuted(std::string_view bus) const;
 
+    // Silences the output after every bus, which the engine does while the app state or a cover asks for it, without touching the mutes of the buses that the app sets.
+    void setOutputMuted(bool value);
+    [[nodiscard]] bool isOutputMuted() const noexcept;
+
     // Sets the process mode that the voices of a bus inherit. The mode `Inherit` takes the mode of the parent bus, and `master` resolves it to `Pausable`. The buses `music` and `ui` start as `Always`, `sfx` and `ambience` as `Pausable`.
     void setBusProcessMode(std::string_view bus, core::ProcessMode mode);
     [[nodiscard]] core::ProcessMode getBusProcessMode(std::string_view bus) const;

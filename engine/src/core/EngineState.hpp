@@ -125,10 +125,6 @@ struct EngineState {
     bool running = true;
     std::uint8_t exitStatus = 0;
     bool restartRequested = false;
-
-    // Whether the app state muted the master bus, through muteOnFocusLoss or a cover, and whether it was muted before, so the app coming back restores the choice of the player.
-    bool stateMuted = false;
-    bool mutedBeforeState = false;
 };
 
 } // namespace haylen::core

@@ -66,7 +66,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `splash.fadeOut` | number | `0.25` | Seconds the launch screen takes to fade out into the app, as the [distribution guide](distribution.md#splash-screens) describes. |
 | `lifecycle.pauseOnBackground` | boolean | `true` | Halts the app while it is in the background. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Halts the app while its window has no focus. |
-| `lifecycle.muteOnFocusLoss` | boolean | `false` | Mutes the master bus while the app is not active. |
+| `lifecycle.muteOnFocusLoss` | boolean | `false` | Mutes the output while the app is not active. |
 | `audio.iosSession` | string | `"ambient"` | Category of the audio session on iOS and tvOS: `"ambient"`, `"soloAmbient"` or `"playback"`, described in the [audio guide](audio.md#sessions-and-interruptions). |
 | `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. Other sessions reject `true`. |
 | `input.mouseAsTouch` | boolean | `false` | Makes the mouse act as a finger from the start, as [`input.setMouseAsTouch`](lua-api/input.md#inputsetmouseastouchenabled) describes. |

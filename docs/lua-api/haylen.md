@@ -81,7 +81,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `splash.fadeOut` | number | `0.25` | Seconds the launch screen takes to fade out into the app. |
 | `lifecycle.pauseOnBackground` | boolean | `true` | Whether the app halts in the background, see `haylen.lifecycle()`. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Whether the app halts while its window has no focus. |
-| `lifecycle.muteOnFocusLoss` | boolean | `false` | Whether the master bus is muted while the app is not active. |
+| `lifecycle.muteOnFocusLoss` | boolean | `false` | Whether the output is muted while the app is not active. |
 | `audio.iosSession` | string | `'ambient'` | Category of the audio session on iOS and tvOS: `'ambient'`, `'soloAmbient'` or `'playback'`, described in the [audio guide](../audio.md#sessions-and-interruptions). |
 | `audio.mixWithOthers` | boolean | `false` | Whether the `'playback'` session plays along with other apps. |
 | `debug.stats` | string | `'off'` | Debug statistics the app starts with: `'off'`, `'compact'` or `'full'`, see [`haylen.debug`](debug.md). |
@@ -380,7 +380,7 @@ Changes the lifecycle options that `options` names and keeps the others. Unknown
 | --- | --- | --- |
 | `pauseOnBackground` | boolean | Halts the app in the background. |
 | `pauseOnFocusLoss` | boolean | Halts the app while its window has no focus. |
-| `muteOnFocusLoss` | boolean | Mutes the master bus while the app is not active. |
+| `muteOnFocusLoss` | boolean | Mutes the output while the app is not active. |
 
 ```lua
 local haylen = require('haylen')

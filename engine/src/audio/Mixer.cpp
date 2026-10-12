@@ -384,6 +384,15 @@ bool Mixer::isBusMuted(std::string_view name) const {
     return state->getBus(name).muted;
 }
 
+void Mixer::setOutputMuted(bool value) {
+    state->outputMuted = value;
+    ma_engine_set_volume(&state->engine, value ? 0.0F : 1.0F);
+}
+
+bool Mixer::isOutputMuted() const noexcept {
+    return state->outputMuted;
+}
+
 void Mixer::setBusProcessMode(std::string_view name, core::ProcessMode mode) {
     state->getBus(name).processMode = mode;
     state->refreshAll();

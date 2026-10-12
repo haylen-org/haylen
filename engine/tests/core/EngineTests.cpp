@@ -506,13 +506,15 @@ TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
 
     engine.handleEvent({.type = platform::Event::Type::FocusLost});
     EXPECT_TRUE(engine.isHalted());
-    EXPECT_TRUE(engine.getAudio().isBusMuted("master"));
+    EXPECT_TRUE(engine.getAudio().isOutputMuted());
+    EXPECT_FALSE(engine.getAudio().isBusMuted("master")) << "What the app saves of its mute stays its own choice.";
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen.audio').outputMuted()) .. ' ' .. tostring(require('haylen.audio').busMuted('master'))"), "true false");
     fixture.frames(5);
     EXPECT_EQ(ticks, 0);
 
     // Coming back does not jump the clock by the time the app was away.
     engine.handleEvent({.type = platform::Event::Type::FocusGained});
-    EXPECT_FALSE(engine.getAudio().isBusMuted("master"));
+    EXPECT_FALSE(engine.getAudio().isOutputMuted());
     fixture.frames(1, 10.0);
     EXPECT_EQ(ticks, 0);
     fixture.frames(1, 0.06);
