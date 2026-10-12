@@ -5,8 +5,11 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
+#include <fstream>
 #include <functional>
+#include <iterator>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -281,6 +284,73 @@ TEST_F(AudioOutputTest, RunsAnAppWhoseOutputDoesNotAnswer) {
     answer();
     EXPECT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
     EXPECT_EQ(fixture.lua("return require('haylen.audio').outputOpening()"), "false");
+}
+
+// Plays through a backend whose device asks for samples on a thread of its own, the way the audio thread of a platform does, so the tests see what the frame thread may touch while the device reads.
+class PulledOutputTest : public MixerFixture {
+  protected:
+    static ma_result initContext(ma_context*, const ma_context_config*, ma_backend_callbacks* callbacks) {
+        callbacks->onDeviceInit = &initDevice;
+        callbacks->onDeviceUninit = &ignore;
+        callbacks->onDeviceStart = &ignore;
+        callbacks->onDeviceStop = &ignore;
+        callbacks->onDeviceDataLoop = &pull;
+        callbacks->onDeviceDataLoopWakeup = &ignore;
+        return MA_SUCCESS;
+    }
+
+    static ma_result initDevice(ma_device*, const ma_device_config*, ma_device_descriptor* playback, ma_device_descriptor*) {
+        playback->format = ma_format_f32;
+        ma_channel_map_init_standard(ma_standard_channel_map_default, playback->channelMap, MA_MAX_CHANNELS, playback->channels);
+        playback->periodSizeInFrames = kPeriod;
+        playback->periodCount = 2;
+        return MA_SUCCESS;
+    }
+
+    static ma_result ignore(ma_device*) {
+        return MA_SUCCESS;
+    }
+
+    static ma_result pull(ma_device* device) {
+        std::vector<float> samples(static_cast<std::size_t>(kPeriod) * 2);
+        while (ma_device_get_state(device) == ma_device_state_started) {
+            ma_device_handle_backend_data_callback(device, samples.data(), nullptr, kPeriod);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return MA_SUCCESS;
+    }
+
+    [[nodiscard]] static std::vector<std::uint8_t> readFile(const std::string& name) {
+        std::ifstream file(std::string(HAYLEN_TEST_AUDIO) + "/" + name, std::ios::binary);
+        return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    }
+
+    static constexpr ma_uint32 kPeriod = 256;
+    static constexpr OutputBackend kBackend{.initContext = &initContext, .refusal = "the test refuses the audio"};
+};
+
+TEST_F(PulledOutputTest, MovesTheCursorOfStreamedVoicesWhileTheDeviceReadsThem) {
+    Mixer pulled({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kBackend});
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (pulled.isOutputOpening() && std::chrono::steady_clock::now() < deadline) {
+        pulled.update(0.0F);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    ASSERT_TRUE(pulled.isOutputAvailable());
+
+    for (const std::string name : {"tone.ogg", "tone.mp3"}) {
+        const Sound sound = Sound::stream(readFile(name));
+        EXPECT_NEAR(sound.getDuration(), 2.0F, 0.1F) << name;
+        const Mixer::VoiceId voice = pulled.play(sound, {.loop = true});
+        for (int step = 0; step < 40; ++step) {
+            pulled.setCursor(voice, static_cast<float>(step % 4) * 0.5F);
+            pulled.update(1.0F / 60.0F);
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        pulled.setCursor(voice, 1000.0F);
+        EXPECT_LE(pulled.getCursor(voice), sound.getDuration() + 0.01F) << name;
+        pulled.stop(voice);
+    }
 }
 
 } // namespace haylen::audio

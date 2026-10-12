@@ -189,9 +189,9 @@ set_target_properties(haylen_tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_
 target_link_libraries(haylen_tests PRIVATE haylen::engine haylen::headless haylen_content_tool haylen_sokol_headers haylen_miniaudio haylen_stb haylen_monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen_tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
-# The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, and the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use.
+# The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, and the audio tests read short tones made for them in `data/audio`.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-target_compile_definitions(haylen_tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_TOOL_SCRIPT="${HAYLEN_ENGINE_DIR}/../haylen.py" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts")
+target_compile_definitions(haylen_tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_TOOL_SCRIPT="${HAYLEN_ENGINE_DIR}/../haylen.py" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio")
 haylen_enable_warnings(haylen_tests)
 haylen_enable_coverage(haylen_tests)
 

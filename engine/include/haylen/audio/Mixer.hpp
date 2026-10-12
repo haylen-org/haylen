@@ -29,10 +29,12 @@ namespace haylen::audio {
 struct MixerState;
 struct OutputBackend;
 
-// Mixes sounds through named buses. The `master` bus feeds the output, and `music`, `sfx`, `ui` and `ambience` exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing. Volumes, pans, positions and spatialization settings must be finite and pitches finite and above 0, or the call throws `std::invalid_argument`.
+// Mixes sounds through named buses. The `master` bus feeds the output, and `music`, `sfx`, `ui` and `ambience` exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing. Volumes, pans, positions and spatialization settings must be finite, pitches finite and above 0 and fades from 0 to `kMaxFadeSeconds`, or the call throws `std::invalid_argument`.
 class Mixer final {
   public:
     using VoiceId = std::uint64_t;
+
+    static constexpr float kMaxFadeSeconds = 86400.0F;
 
     // Why every voice pauses at once. Each reason holds voices on its own, so ending one pause never resumes a voice that another reason or the app still holds.
     enum class PauseReason : std::uint8_t {
@@ -231,6 +233,7 @@ class Mixer final {
     static const MusicOptions kDefaultMusicOptions;
 
     static void requireFinite(float value, const char* name);
+    static void requireFade(float seconds);
     static void requirePitch(float value);
     static void requirePosition(math::Vec2 position);
     static void requirePlayOptions(const PlayOptions& options);

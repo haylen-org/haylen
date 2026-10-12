@@ -92,6 +92,12 @@ void Mixer::requireFinite(float value, const char* name) {
     }
 }
 
+void Mixer::requireFade(float seconds) {
+    if (!(seconds >= 0.0F && seconds <= kMaxFadeSeconds)) {
+        throw std::invalid_argument("Audio needs a fade from 0 to " + std::to_string(static_cast<int>(kMaxFadeSeconds)) + " seconds.");
+    }
+}
+
 void Mixer::requirePitch(float value) {
     if (!(value > 0.0F) || !std::isfinite(value)) {
         throw std::invalid_argument("Audio needs a finite pitch above 0.");
@@ -110,7 +116,7 @@ void Mixer::requirePlayOptions(const PlayOptions& options) {
         throw std::invalid_argument("A pitch variation must be at least 0 and smaller than the pitch.");
     }
     requireFinite(options.pan, "pan");
-    requireFinite(options.fadeIn, "fade-in");
+    requireFade(options.fadeIn);
     requireFinite(options.startAt, "start time");
     if (options.position) {
         requirePosition(*options.position);
@@ -163,6 +169,7 @@ Mixer::VoiceId Mixer::play(const std::shared_ptr<platform::AudioStream>& stream,
 }
 
 void Mixer::stop(VoiceId id, float fadeOutSeconds) {
+    requireFade(fadeOutSeconds);
     MixerState::Voice* voice = state->findVoice(id);
     if (voice == nullptr) {
         return;
@@ -263,12 +270,13 @@ void Mixer::setCursor(VoiceId id, float seconds) {
     if (voice->stream) {
         throw std::invalid_argument("The voice of a live audio stream has no cursor to move.");
     }
-    float length = 0.0F;
-    ma_sound_get_length_in_seconds(&voice->handle, &length);
+    // The length comes from the sound, because asking the decoder of a streamed voice would seek it while the audio thread reads it.
+    const float length = voice->sound.getDuration();
     ma_sound_seek_to_second(&voice->handle, std::max(0.0F, length > 0.0F ? std::min(seconds, length) : seconds));
 }
 
 void Mixer::stopAll(float fadeOutSeconds) {
+    requireFade(fadeOutSeconds);
     for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {
         stop(voice->id, fadeOutSeconds);
     }
@@ -356,6 +364,7 @@ void Mixer::createBus(const std::string& name, std::string_view parent) {
 
 void Mixer::setBusVolume(std::string_view name, float volume, float fadeSeconds) {
     requireFinite(volume, "bus volume");
+    requireFade(fadeSeconds);
     MixerState::Bus& bus = state->getBus(name);
     bus.volume = std::max(0.0F, volume);
     ma_sound_group_set_fade_in_milliseconds(&bus.group, -1.0F, bus.volume, MixerState::toMilliseconds(fadeSeconds));

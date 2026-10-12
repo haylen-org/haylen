@@ -61,6 +61,18 @@ TEST_F(MixerLuaTest, PausesEveryVoiceAndReportsInterruptions) {
     EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "false audioInterrupted,audioResumed,audioRouteChanged");
 }
 
+TEST_F(MixerLuaTest, RefusesFadesThatAreNotSeconds) {
+    const auto fixture = makeEngine();
+    fixture->runLua("voice = audio.play(hit, {loop = true})");
+    const std::string message = "Audio needs a fade from 0 to 86400 seconds.";
+    for (const std::string call : {"audio.stop(voice, math.huge)", "audio.stop(voice, -1)", "audio.stopAll(0 / 0)", "audio.stopMusic(1e30)", "audio.setBusVolume('sfx', 1, 0 / 0)", "audio.play(hit, {fadeIn = 1e30})", "audio.playMusic(hit, {fade = math.huge})"}) {
+        EXPECT_NE(fixture->lua(call).find(message), std::string::npos) << call;
+    }
+    EXPECT_EQ(fixture->lua("return audio.active(voice)"), "true");
+    fixture->runLua("audio.stop(voice, 86400)");
+    EXPECT_EQ(fixture->lua("return audio.active(voice)"), "false");
+}
+
 TEST_F(MixerLuaTest, CreatesAndWiresEffects) {
     const auto fixture = makeEngine();
     // clang-format off

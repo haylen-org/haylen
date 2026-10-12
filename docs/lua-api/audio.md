@@ -86,7 +86,7 @@ Starts a voice for the sound and returns its id. The options table is optional, 
 | `processMode` | string | `'inherit'` | One of `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. The mode `'inherit'` takes the mode of the bus. |
 | `effects` | table | none | A list of effects from `audio.newEffect` that process the voice in order before its bus. |
 
-An unknown bus raises `The audio bus "<name>" does not exist.`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option "effects" must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `fadeIn`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite fade-in.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
+An unknown bus raises `The audio bus "<name>" does not exist.`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option "effects" must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, a `fadeIn` below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
 
 ```lua
 local assets = require('haylen.assets')
@@ -104,7 +104,7 @@ audio.play(click, {bus = 'ui', processMode = 'always', effects = {audio.newEffec
 
 ### audio.stop(voice, fadeOut)
 
-Stops a voice, fading it out over `fadeOut` seconds when given. The fade defaults to 0.
+Stops a voice, fading it out over `fadeOut` seconds when given. The fade defaults to 0, and a fade below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, as it does for every fade of this module.
 
 ```lua
 local assets = require('haylen.assets')
@@ -919,7 +919,7 @@ end)
 | `Audio needs a finite volume.` | The function `audio.play()` or `audio.setVolume()` received a volume that is not finite, such as `0 / 0` or `math.huge`. |
 | `Audio needs a finite pitch above 0.` | The function `audio.play()` or `audio.setPitch()` received a pitch of 0 or less or one that is not finite. |
 | `Audio needs a finite pan.` | The function `audio.play()` or `audio.setPan()` received a pan that is not finite. |
-| `Audio needs a finite fade-in.` | The function `audio.play()` received a `fadeIn` that is not finite. |
+| `Audio needs a fade from 0 to 86400 seconds.` | A fade, such as the `fadeIn` of `audio.play()`, the `fade` of `audio.playMusic()` or the fade of `audio.stop()`, `audio.stopAll()`, `audio.stopMusic()` or `audio.setBusVolume()`, is below 0, longer than a day or not a number. |
 | `Audio needs a finite start time.` | The function `audio.play()` or `audio.playMusic()` received a `startAt` that is not finite. |
 | `Audio needs a finite cursor.` | The function `audio.setCursor()` received a time that is not finite. |
 | `The voice of a live audio stream has no cursor to move.` | The function `audio.setCursor()` received the voice of an audio stream. |
