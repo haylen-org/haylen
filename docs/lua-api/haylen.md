@@ -51,6 +51,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `description` | string | The value of `name` | One sentence about the app, which desktops and installers show. |
 | `company` | string | The value of `name` | The person or company that publishes the app. |
 | `copyright` | string | `'Copyright © <company>'` | The copyright notice of the app. |
+| `website` | string | `''` | The address of the website of the app. |
 | `window.title` | string | The value of `name` | Initial window title. |
 | `window.width` | integer | `1280` | Initial window width. |
 | `window.height` | integer | `720` | Initial window height. |

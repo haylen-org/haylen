@@ -38,6 +38,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `description` | string | The value of `name` | One sentence about the app, which the Windows and Linux templates give the executable, the desktop entry, the AppStream metainfo and the packages. |
 | `company` | string | The value of `name` | The person or company that publishes the app, in the same places. |
 | `copyright` | string | `"Copyright © <company>"` | The copyright notice of the app, which the Windows executable and the installer show. |
+| `website` | string | `""` | The address of the website of the app, which the AppStream metainfo, the `.deb` package and the Windows installer link to. |
 | `window.title` | string | The value of `name` | Window title. |
 | `window.width`, `window.height` | integer | `1280`, `720` | Initial window size. |
 | `window.fullscreen` | boolean | `false` | Starts fullscreen. |

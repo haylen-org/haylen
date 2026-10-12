@@ -218,7 +218,7 @@ TEST(AppConfigTest, ReadsEveryField) {
     }
 }
 
-// The description, the company and the copyright that desktops and installers show follow the name of the app until it gives its own.
+// The description, the company and the copyright that desktops and installers show follow the name of the app until it gives its own, and the website stays empty.
 TEST(AppConfigTest, ThePublisherFollowsTheNameUntilTheAppGivesItsOwn) {
     const core::AppConfig named = core::AppConfig::fromJson(core::Json{{"name", "Tiny Island"}});
     EXPECT_EQ(named.description, "Tiny Island");
@@ -230,6 +230,8 @@ TEST(AppConfigTest, ThePublisherFollowsTheNameUntilTheAppGivesItsOwn) {
     EXPECT_EQ(published.copyright, "Copyright \xC2\xA9 Harbor Games");
     EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"copyright", "Copyright 2026 Harbor Games"}}).copyright, "Copyright 2026 Harbor Games");
     EXPECT_EQ(published.toJson().at("company"), "Harbor Games");
+    EXPECT_EQ(named.website, "");
+    EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"website", "https://harbor.example"}}).toJson().at("website"), "https://harbor.example");
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::object()).toJson().at("copyright"), core::AppConfig{}.copyright);
 }
 
