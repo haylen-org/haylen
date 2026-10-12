@@ -295,6 +295,28 @@ TEST_F(AssemblyTest, OneWayPlatformsCatchFastFalls) {
     }
 }
 
+TEST_F(AssemblyTest, OneWayPlatformsHoldWhatLandsDeepInThem) {
+    // A character that falls from the top of a jump onto a platform moves too little per step for continuous collision and lands several units deep, and the platform keeps holding it while the solver pushes it out, from every height.
+    World steep({.gravity = {0.0F, 2200.0F}});
+    for (int drop = 0; drop < 12; ++drop) {
+        const float x = static_cast<float>(drop) * 200.0F;
+        Body platform = steep.createBody({.type = Body::Type::Static, .position = {x, 8.0F}});
+        platform.addBox({160.0F, 16.0F}, {.oneWay = math::Vec2{0.0F, -1.0F}});
+    }
+    std::vector<Body> heroes;
+    for (int drop = 0; drop < 12; ++drop) {
+        Body hero = steep.createBody({.position = {static_cast<float>(drop) * 200.0F, -42.0F - 20.0F - static_cast<float>(drop) * 7.0F}, .fixedRotation = true});
+        hero.addCapsule({0.0F, -22.0F}, {0.0F, 22.0F}, 20.0F, {.friction = 0.0F});
+        heroes.push_back(hero);
+    }
+    for (int step = 0; step < 120; ++step) {
+        steep.step(1.0F / 60.0F);
+    }
+    for (const Body& hero : heroes) {
+        EXPECT_NEAR(hero.getPosition().y, -42.0F, 2.0F) << hero.getPosition().x;
+    }
+}
+
 TEST_F(AssemblyTest, DropThroughPassesOnePlatform) {
     // A body that drops through the platform it stands on lands on the next one below.
     for (const float y : {0.0F, 60.0F, 120.0F}) {

@@ -22,7 +22,7 @@ const float World::kRevoluteLimit = 0.99F * math::Math::kPi;
 debug::ObjectCounter& World::bodyCounter = *new debug::ObjectCounter("PhysicsBody", debug::ObjectCounter::Kind::Native);
 debug::ObjectCounter& World::contactCounter = *new debug::ObjectCounter("PhysicsContact", debug::ObjectCounter::Kind::Native);
 
-// Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds. It may run on several threads at once, so it only reads the platforms and dropping bodies, which change between steps, and the velocities of bodies, which stay still while Box2D collides.
+// Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds. It may run on several threads at once, so it only reads the platforms, the dropping bodies and the standing contacts, which change between steps, and the velocities of bodies, which stay still while Box2D collides.
 class World::OneWayFilter final {
   public:
     static bool preSolve(b2ShapeId shapeA, b2ShapeId shapeB, b2Manifold* manifold, void* context) {
@@ -33,8 +33,37 @@ class World::OneWayFilter final {
         return holds(world, shapeA, shapeB, normal, *manifold) && holds(world, shapeB, shapeA, -normal, *manifold);
     }
 
+    // Lists the shapes that touch a one-way platform after a step, which only those the platform held do, sorted for the lookups of the next step.
+    void collectStanding(const World& world) {
+        standing.clear();
+        bodies.clear();
+        for (const auto& [shape, platform] : world.oneWayShapes) {
+            const std::uint64_t body = b2StoreBodyId(b2Shape_GetBody(b2LoadShapeId(shape)));
+            if (std::find(bodies.begin(), bodies.end(), body) == bodies.end()) {
+                bodies.push_back(body);
+            }
+        }
+        for (const std::uint64_t body : bodies) {
+            const b2BodyId id = b2LoadBodyId(body);
+            contacts.resize(static_cast<std::size_t>(b2Body_GetContactCapacity(id)));
+            const int count = b2Body_GetContactData(id, contacts.data(), static_cast<int>(contacts.size()));
+            for (int index = 0; index < count; ++index) {
+                const std::uint64_t first = b2StoreShapeId(contacts[static_cast<std::size_t>(index)].shapeIdA);
+                const std::uint64_t second = b2StoreShapeId(contacts[static_cast<std::size_t>(index)].shapeIdB);
+                if (world.oneWayShapes.contains(first)) {
+                    standing.emplace_back(first, second);
+                }
+                if (world.oneWayShapes.contains(second)) {
+                    standing.emplace_back(second, first);
+                }
+            }
+        }
+        std::sort(standing.begin(), standing.end());
+        standing.erase(std::unique(standing.begin(), standing.end()), standing.end());
+    }
+
   private:
-    // Returns whether a contact whose normal points from the platform to the other shape holds. It holds when the normal leans toward the open side of the platform and the other shape was outside the platform at the start of the step, which the separation and the speed between them tell.
+    // Returns whether a contact whose normal points from the platform to the other shape holds. It holds when the normal leans toward the open side of the platform and the other shape stood on the platform in the last step or was outside it at the start of this one, which the separation and the speed between them tell.
     static bool holds(const World& world, b2ShapeId platform, b2ShapeId other, math::Vec2 normal, const b2Manifold& manifold) {
         const auto found = world.oneWayShapes.find(b2StoreShapeId(platform));
         if (found == world.oneWayShapes.end()) {
@@ -43,6 +72,9 @@ class World::OneWayFilter final {
         const b2BodyId otherBody = b2Shape_GetBody(other);
         if (world.droppingBodies.contains(b2StoreBodyId(otherBody)) || math::Vec2::dot(normal, found->second.worldDirection) < kOneWayThreshold) {
             return false;
+        }
+        if (std::binary_search(world.oneWayFilter->standing.begin(), world.oneWayFilter->standing.end(), std::pair{b2StoreShapeId(platform), b2StoreShapeId(other)})) {
+            return true;
         }
 
         float separation = 0.0F;
@@ -61,9 +93,13 @@ class World::OneWayFilter final {
         const float approach = -(relative.x * normal.x + relative.y * normal.y);
         return separation + approach * world.lastStep >= -kOneWayDepth;
     }
+
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> standing;
+    std::vector<std::uint64_t> bodies;
+    std::vector<b2ContactData> contacts;
 };
 
-World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMeter(settings.pixelsPerMeter), subSteps(settings.subSteps), threads(settings.threads), interpolate(settings.interpolate), jobs(jobSystem) {
+World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMeter(settings.pixelsPerMeter), subSteps(settings.subSteps), threads(settings.threads), interpolate(settings.interpolate), jobs(jobSystem), oneWayFilter(std::make_unique<OneWayFilter>()) {
     if (settings.pixelsPerMeter <= 0.0F || settings.subSteps < 1 || settings.threads < 1) {
         throw std::invalid_argument("A physics world needs positive pixels per meter, at least one sub-step and at least one thread.");
     }
@@ -362,7 +398,7 @@ void World::runHooks(StepPhase phase, float deltaSeconds) {
     }
 }
 
-// Turns the direction of every one-way platform with its body before the step, so the pre-solve callback reads it without touching Box2D, and counts down the bodies that drop through platforms.
+// Turns the direction of every one-way platform with its body before the step, so the pre-solve callback reads it without touching Box2D, lists the shapes that stand on the platforms and counts down the bodies that drop through platforms.
 void World::prepareOneWayPlatforms(float deltaSeconds) {
     for (auto platform = oneWayShapes.begin(); platform != oneWayShapes.end();) {
         const b2ShapeId shape = b2LoadShapeId(platform->first);
@@ -374,6 +410,7 @@ void World::prepareOneWayPlatforms(float deltaSeconds) {
         platform->second.worldDirection = {direction.x, direction.y};
         ++platform;
     }
+    oneWayFilter->collectStanding(*this);
     std::erase_if(droppingBodies, [](const auto& body) { return body.second <= 0.0F || !b2Body_IsValid(b2LoadBodyId(body.first)); });
     for (auto& [id, seconds] : droppingBodies) {
         seconds -= deltaSeconds;

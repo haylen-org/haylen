@@ -58,7 +58,7 @@ class World final {
     // A world of more than one thread steps on its threads only while this many bodies are awake, because below it waking the workers costs more than they save.
     static constexpr int kParallelBodies = 1000;
 
-    // One-way platforms keep contacts whose normal leans at least this much toward their direction. A body starts standing on one only when it is at most `kOneWayDepth` meters inside it, so a body that rises halfway through falls back instead of popping up.
+    // One-way platforms keep contacts whose normal leans at least this much toward their direction. A body starts standing on one only when it is at most `kOneWayDepth` meters inside it, or reached that depth within the step, so a body that rises halfway through falls back instead of popping up. A body that stands on one keeps standing however deep a fast landing left it, while the solver pushes it out.
     static constexpr float kOneWayThreshold = 0.5F;
     static constexpr float kOneWayDepth = 0.02F;
 
@@ -319,6 +319,7 @@ class World final {
     // The pre-solve callback of Box2D reads these while the world steps, maybe on several threads, so they only change between steps.
     std::unordered_map<std::uint64_t, OneWayPlatform> oneWayShapes;
     std::unordered_map<std::uint64_t, float> droppingBodies;
+    std::unique_ptr<OneWayFilter> oneWayFilter;
 
     debug::TrackedCount liveBodies{bodyCounter};
     debug::TrackedCount liveContacts{contactCounter};
