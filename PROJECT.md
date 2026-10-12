@@ -1834,6 +1834,9 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [x] Simuladores e emuladores: os criados pelos agentes apagados, os padrões resetados, e a regra de usar só os padrões no `AGENTS.md`. Os criados pelos agentes já não existiam, os 12 simuladores padrão desligados foram apagados (erase), e o iPhone e o emulador Android que estavam abertos só tinham apps de outro projeto do dono, então ficaram como estavam. A regra diz que as conferências usam só os aparelhos que já existem, não criam nem apagam nenhum e desinstalam o que instalam.
 - [x] Comando `haylen` na raiz (script para macOS e Linux, e `haylen.cmd` para Windows) que repassa tudo ao `haylen.py`, documentado no `README.md` e no guia de distribuição, com teste. Funciona de qualquer pasta e por link, a ajuda e as mensagens da ferramenta dizem `haylen <comando>`, e os docs, os READMEs e o `AGENTS.md` usam `haylen` no lugar de `python3 haylen.py`, testado no `LauncherTest`.
 
+- [ ] Os testes `PLT-001` e `PLT-002` passam mesmo sem o plugin `platform-sample`, porque só demonstram e não conferem nada: fazer cada um conferir as respostas do plugin e falhar quando ele faltar.
+- [ ] Servidor de desenvolvimento no Mac Catalyst: uma vez logou "Socket is not connected" logo depois de conectar e reconectou em um segundo. Achar a causa no código de rede.
+
 #### AT. Documentação
 
 - [ ] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro.
