@@ -53,7 +53,7 @@ bool ShadowMap::blocks(const Light& light, std::span<const Segment> segments, ma
     for (const Segment& segment : segments) {
         const math::Vec2 edge = segment.to - segment.from;
         const float denominator = math::Vec2::cross(unit, edge);
-        if (!casts(light, segment) || std::fabs(denominator) < 1.0e-6F) {
+        if (!casts(light, segment) || std::fabs(denominator) < 1.0e-6F || (!directional && isEdgeOn(segment.from - origin, segment.to - origin))) {
             continue;
         }
         const float along = math::Vec2::cross(segment.from - origin, edge) / denominator;
@@ -79,6 +79,11 @@ bool ShadowMap::casts(const Light& light, const Segment& segment) noexcept {
     return segment.cull == Occluder::Cull::Clockwise ? winding <= 0.0F : winding >= 0.0F;
 }
 
+bool ShadowMap::isEdgeOn(math::Vec2 from, math::Vec2 to) noexcept {
+    const math::Vec2 edge = to - from;
+    return std::fabs(math::Vec2::cross(from, edge)) <= kEdgeOnUnits * edge.getLength();
+}
+
 void ShadowMap::castRadial(const Light& light, std::span<const Segment> segments, std::span<float> row) {
     const auto width = static_cast<int>(row.size());
     const float texels = static_cast<float>(width);
@@ -87,7 +92,7 @@ void ShadowMap::castRadial(const Light& light, std::span<const Segment> segments
     for (const Segment& segment : segments) {
         const math::Vec2 from = segment.from - light.position;
         const math::Vec2 to = segment.to - light.position;
-        if (!casts(light, segment) || math::Geometry::distanceToSegment(math::Segment{from, to}, math::Vec2{}) > range) {
+        if (!casts(light, segment) || isEdgeOn(from, to) || math::Geometry::distanceToSegment(math::Segment{from, to}, math::Vec2{}) > range) {
             continue;
         }
 

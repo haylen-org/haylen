@@ -208,6 +208,27 @@ TEST_F(ShadowMapTest, ShadowsWhatLiesBehindOccludersOfPointLights) {
     EXPECT_THROW((void)light.isShadowedAt({400.0F, 100.0F}, empty), std::invalid_argument);
 }
 
+// A light on a corner or on an edge of an occluder sees the edges through it from the side, so they shadow no direction, while the other edges still cast.
+TEST_F(ShadowMapTest, LightsAroundTheEdgesThatPassThroughTheLight) {
+    const lighting2d::Light light{.position = {100.0F, 100.0F}, .radius = 400.0F, .shadows = true};
+    const std::vector<lighting2d::Occluder> corner{box({80.0F, 120.0F})};
+    const CastRow cornerCast(light, corner);
+    for (const math::Vec2 point : {math::Vec2{130.0F, 130.0F}, math::Vec2{130.0F, 70.0F}, math::Vec2{70.0F, 70.0F}}) {
+        EXPECT_FALSE(cornerCast.shadows(light, point));
+        EXPECT_FALSE(light.isShadowedAt(point, corner));
+    }
+    EXPECT_TRUE(light.isShadowedAt({60.0F, 160.0F}, corner));
+
+    const std::vector<lighting2d::Occluder> edge{box({100.0F, 120.0F})};
+    const CastRow edgeCast(light, edge);
+    for (const math::Vec2 point : {math::Vec2{100.0F, 50.0F}, math::Vec2{160.0F, 80.0F}}) {
+        EXPECT_FALSE(edgeCast.shadows(light, point));
+        EXPECT_FALSE(light.isShadowedAt(point, edge));
+    }
+    EXPECT_TRUE(edgeCast.shadows(light, {100.0F, 200.0F}));
+    EXPECT_TRUE(light.isShadowedAt({100.0F, 200.0F}, edge));
+}
+
 TEST_F(ShadowMapTest, SkipsEdgesByCullModeAndMask) {
     const lighting2d::Light light{.position = {100.0F, 100.0F}, .radius = 400.0F, .shadows = true};
     const math::Vec2 inside{300.0F, 100.0F};
@@ -347,6 +368,13 @@ TEST(Lighting2DLuaTest, CreatesLightsAndAsksWhereTheyReach) {
     EXPECT_NE(fixture.lua("lighting2d.newLight({type = 'area'})").find("unknown value 'area'"), std::string::npos);
     EXPECT_NE(fixture.lua("torch.itemMask = 300").find("integer out of range"), std::string::npos);
     EXPECT_NE(fixture.lua("lighting2d.illuminate('#FF000000', {}, 0, 0, {mask = 1})").find("Unknown option \"mask\""), std::string::npos);
+
+    // The queries refuse a light that could never draw, instead of answering with numbers that are not finite.
+    fixture.runLua("flat = lighting2d.newLight({radius = 0})");
+    EXPECT_NE(fixture.lua("lighting2d.illuminate('#FF000000', {{radius = 0}}, 0, 0)").find("A light radius must be positive."), std::string::npos);
+    EXPECT_NE(fixture.lua("flat:strengthAt(0, 0)").find("A light radius must be positive."), std::string::npos);
+    EXPECT_NE(fixture.lua("flat:apply('#FF000000', 0, 0)").find("A light radius must be positive."), std::string::npos);
+    EXPECT_NE(fixture.lua("flat:shadowedAt(0, 0, {})").find("A light radius must be positive."), std::string::npos);
 }
 
 TEST(Lighting2DLuaTest, BuildsOccludersFromTablesBodiesAndMaps) {
@@ -365,7 +393,8 @@ TEST(Lighting2DLuaTest, BuildsOccludersFromTablesBodiesAndMaps) {
     EXPECT_EQ(fixture.lua("wall.points = {1, 2, 3, 4} wall.closed = false return #wall.points .. ' ' .. wall.points[2].y"), "2 4.0");
     EXPECT_EQ(fixture.lua("local list = lighting2d.occludersFromBody(world, crate) return #list .. ' ' .. #list[1].points .. ' ' .. list[1].x .. ' ' .. tostring(list[1].closed)"), "1 4 100.0 true");
 
-    EXPECT_NE(fixture.lua("wall.points = {1, 2, 3}").find("two numbers per point"), std::string::npos);
+    EXPECT_NE(fixture.lua("wall.points = {1, 2, 3}").find("A flat list of points needs two numbers per point."), std::string::npos);
+    EXPECT_NE(fixture.lua("lighting2d.newOccluder({points = {1, 2, 3, 'four'}})").find("A flat list of points needs two numbers per point."), std::string::npos);
     EXPECT_NE(fixture.lua("lighting2d.newOccluder({cull = 'both'})").find("unknown value 'both'"), std::string::npos);
     EXPECT_NE(fixture.lua("lighting2d.newOccluder({point = {}})").find("Unknown option \"point\""), std::string::npos);
 }

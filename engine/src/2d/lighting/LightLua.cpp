@@ -63,6 +63,7 @@ int LightLua::illuminate(lua_State* L) {
     for (std::size_t index = 0; index < lights.size(); ++index) {
         lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
         lights[index] = read(L, -1);
+        lights[index].validate();
         lua_pop(L, 1);
     }
 
@@ -103,20 +104,26 @@ int LightLua::affects(lua_State* L) {
     return 1;
 }
 
+// The queries check the light first, as drawing it does, so a light that could never draw answers no number.
 int LightLua::strengthAt(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<Light>(L, 1).getStrengthAt({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}));
+    const Light& light = lua::Userdata::check<Light>(L, 1);
+    light.validate();
+    lua::Stack::push(L, light.getStrengthAt({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}));
     return 1;
 }
 
 // Returns the light map value after the light draws over a color with `light:apply(color, x, y)`.
 int LightLua::apply(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<Light>(L, 1).apply(lua::Stack::read<math::Color>(L, 2), {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}));
+    const Light& light = lua::Userdata::check<Light>(L, 1);
+    light.validate();
+    lua::Stack::push(L, light.apply(lua::Stack::read<math::Color>(L, 2), {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}));
     return 1;
 }
 
 // Tells whether occluders shadow a point with `light:shadowedAt(x, y, occluders)`, where `occluders` is a list of `Occluder` objects or tables.
 int LightLua::shadowedAt(lua_State* L) {
     const Light& light = lua::Userdata::check<Light>(L, 1);
+    light.validate();
     luaL_checktype(L, 4, LUA_TTABLE);
     std::vector<Occluder> occluders(static_cast<std::size_t>(luaL_len(L, 4)));
     for (std::size_t index = 0; index < occluders.size(); ++index) {

@@ -28,7 +28,7 @@ Draws shade themselves with the draw options of [`graphics2d`](graphics2d.md#dra
 
 A light with `shadows = true` is blocked by occluders, the outlines that `graphics2d.drawOccluder` draws in the same canvas. Every frame the engine casts a 1D shadow map of 1024 texels per shadowed light: the distance of the nearest occluder in every direction around a point or spot light, and for a directional light the depth of the nearest occluder along the light at every point across the canvas, so its shadows run across the whole view. The light pass compares each pixel with its texel, with one sample when `shadowFilter` is `'none'` and 5 or 13 samples with `'pcf5'` and `'pcf13'`, spread wider by `shadowSmoothness`. Shadowed pixels receive `shadowColor`, whose alpha sets how dark the shadow is.
 
-Every edge of an occluder casts shadows unless its `cull` mode skips the edges the light sees wound one way. A polygon whose points go clockwise on screen with `cull = 'counterClockwise'` skips its edges that face the light, so the object stays lit and only what lies behind it is dark. Without culling the object sits in its own shadow. Occluders cast the shadows of lights whose `shadowMask` shares a bit with the occluder `mask`.
+Every edge of an occluder casts shadows unless its `cull` mode skips the edges the light sees wound one way. A polygon whose points go clockwise on screen with `cull = 'counterClockwise'` skips its edges that face the light, so the object stays lit and only what lies behind it is dark. Without culling the object sits in its own shadow. An edge whose line passes through the light, such as the two edges of a corner the light sits on, shows the light only its side and casts no shadow, while the other edges of its occluder still do. Occluders cast the shadows of lights whose `shadowMask` shares a bit with the occluder `mask`.
 
 Occluders and lights belong to the canvas they are drawn in, and every lit canvas casts the shadows of its own lights from its own occluders. Shadow maps are cast on the CPU in parallel on the task pool, so their cost grows with the shadowed lights times the edges within their reach.
 
@@ -95,7 +95,7 @@ print(lamp:affects(2, 1), lamp:affects(1, 1), lamp:affects(2, 0))
 
 ### light:strengthAt(x, y)
 
-Returns how strongly the light reaches a point, from 0 to 1, through the radial falloff and the cone of point and spot lights. Directional lights reach every point fully, and textured lights count with the radial falloff.
+Returns how strongly the light reaches a point, from 0 to 1, through the radial falloff and the cone of point and spot lights. Directional lights reach every point fully, and textured lights count with the radial falloff. Like `light:apply`, `light:shadowedAt` and `lighting2d.illuminate`, it first checks the light as a draw does, so a light that could never draw raises the same error, such as `A light radius must be positive.`
 
 ```lua
 local lighting2d = require('haylen.lighting2d')
@@ -183,7 +183,7 @@ scene.push({
 
 ### lighting2d.newOccluder(properties)
 
-Creates an `Occluder` with the properties of the table over the defaults. Unknown keys raise `Unknown option "name".`, and a flat list of points with an odd count raises `a flat list of points needs two numbers per point`.
+Creates an `Occluder` with the properties of the table over the defaults. Unknown keys raise `Unknown option "name".`, and a flat list of points with an odd count or a value that is not a number raises `A flat list of points needs two numbers per point.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

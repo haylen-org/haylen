@@ -51,9 +51,13 @@ class ShadowMap final {
 
   private:
     static constexpr float kBiasUnits = 1.5F;
+    static constexpr float kEdgeOnUnits = 1.0e-3F;
 
     // A segment casts shadows when its mask shares a bit with the shadow mask and the light does not see it wound the way its cull mode skips.
     [[nodiscard]] static bool casts(const Light& light, const Segment& segment) noexcept;
+
+    // Tells whether a point light, at the origin of the segment's coordinates, lies on the line of the segment, such as on a corner of its occluder, so it sees the segment edge-on and the segment blocks no direction.
+    [[nodiscard]] static bool isEdgeOn(math::Vec2 from, math::Vec2 to) noexcept;
     static void castRadial(const Light& light, std::span<const Segment> segments, std::span<float> row);
     static Axis castParallel(const Light& light, std::span<const Segment> segments, const math::Rect& bounds, std::span<float> row);
 };

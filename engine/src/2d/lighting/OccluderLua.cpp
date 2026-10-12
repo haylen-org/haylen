@@ -1,5 +1,6 @@
 #include "2d/lighting/OccluderLua.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 #include "2d/physics/Physics2DLua.hpp"
@@ -23,14 +24,19 @@ std::vector<math::Vec2> OccluderLua::readPoints(lua_State* L, int index) {
         return lua::Stack::read<std::vector<math::Vec2>>(L, table);
     }
 
+    // The list may sit in a field of a table, so the error names the list instead of an argument.
     const auto count = static_cast<std::size_t>(luaL_len(L, table));
-    luaL_argcheck(L, count % 2 == 0, index, "a flat list of points needs two numbers per point");
     std::vector<math::Vec2> points(count / 2);
-    for (std::size_t point = 0; point < points.size(); ++point) {
+    bool numbers = count % 2 == 0;
+    for (std::size_t point = 0; numbers && point < points.size(); ++point) {
         lua_rawgeti(L, table, static_cast<lua_Integer>(point * 2 + 1));
         lua_rawgeti(L, table, static_cast<lua_Integer>(point * 2 + 2));
-        points[point] = {static_cast<float>(luaL_checknumber(L, -2)), static_cast<float>(luaL_checknumber(L, -1))};
+        numbers = lua_type(L, -2) == LUA_TNUMBER && lua_type(L, -1) == LUA_TNUMBER;
+        points[point] = {static_cast<float>(lua_tonumber(L, -2)), static_cast<float>(lua_tonumber(L, -1))};
         lua_pop(L, 2);
+    }
+    if (!numbers) {
+        throw std::invalid_argument("A flat list of points needs two numbers per point.");
     }
     return points;
 }
