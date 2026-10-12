@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <list>
 #include <map>
 #include <memory>
 #include <optional>
@@ -37,7 +38,7 @@ class UpdaterTest : public ::testing::Test {
 
     // An installed app: its release with the local store of its downloads and the parts that update it.
     struct Client {
-        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles) : jobs(test.runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; }), transport(test.runtime.getRuntime()) {
+        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles) : jobs(test.jobSystems.emplace_back(test.runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; })), transport(test.runtime.getRuntime()) {
             const VerifyingKey trusted = test.release.getSigningKey().getVerifyingKey();
             auto recordStore = std::make_shared<LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
             package = ReleasePackage::open(test.release.getFiles(), test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore));
@@ -46,7 +47,7 @@ class UpdaterTest : public ::testing::Test {
         }
 
         std::shared_ptr<ReleasePackage> package;
-        core::JobSystem jobs;
+        core::JobSystem& jobs;
         HttpTransport transport;
         std::unique_ptr<Downloader> downloader;
         std::unique_ptr<Updater> updater;
@@ -126,6 +127,9 @@ class UpdaterTest : public ::testing::Test {
     test::TemporaryDirectory tree;
     test::TemporaryDirectory store;
     test::ContentServer server{tree.getPath()};
+
+    // The job systems of the clients outlive the pools, as the one of an engine does, so a job that a client left running when it went away still finds the job system it posts through.
+    std::list<core::JobSystem> jobSystems;
     test::VarnRuntime runtime;
 };
 
