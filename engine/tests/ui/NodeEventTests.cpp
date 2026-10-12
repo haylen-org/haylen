@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -35,7 +36,7 @@ class NodeEventTest : public ::testing::Test, public test::UiFixture {
         return gui;
     }
 
-    [[nodiscard]] long countEvents(std::string_view entry) const {
+    [[nodiscard]] std::ptrdiff_t countEvents(std::string_view entry) const {
         const std::vector<std::string> names = getEventNames();
         return std::ranges::count(names, entry);
     }

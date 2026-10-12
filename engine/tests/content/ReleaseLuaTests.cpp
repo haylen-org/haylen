@@ -61,7 +61,7 @@ TEST_F(ReleaseLuaTest, RunsModulesPluginsAndAutoloadsFromBytecode) {
     });
     ASSERT_EQ(engine->getError(), nullptr) << engine->getError()->getMessage();
     EXPECT_EQ(readGlobal("loaded"), "menu true player");
-    for (const std::string& path : {"source/main.lua", "source/scenes/menu.lua", "source/state/player.lua", "plugins/ads/source/init.lua"}) {
+    for (const char* path : {"source/main.lua", "source/scenes/menu.lua", "source/state/player.lua", "plugins/ads/source/init.lua"}) {
         EXPECT_TRUE(package->isLuaBytecode(path)) << path;
     }
     EXPECT_FALSE(package->isLuaBytecode("app.json"));

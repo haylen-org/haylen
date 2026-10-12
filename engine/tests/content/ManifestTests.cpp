@@ -192,7 +192,7 @@ TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
     EXPECT_EQ(decrypt(app, "source/scenes/menu.lua"), 1U);
     EXPECT_EQ(decrypt(app, "plugins/ads/source/init.lua"), 1U);
     EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, LuaCompiler::getAbi());
-    for (const std::string& path : {"app.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
+    for (const char* path : {"app.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
         expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, path); });
     }
     EXPECT_FALSE(Manifest::isLuaModule("content/script.lua")) << "Only the source folders of the app and its plugins hold modules.";

@@ -181,7 +181,7 @@ async.spawn(function()
     end):await()
 end)
 )", "The stream callback failed.", 10}),
-    [](const ::testing::TestParamInfo<FailingCode>& info) { return std::string(info.param.name); });
+    [](const ::testing::TestParamInfo<FailingCode>& entry) { return std::string(entry.param.name); });
 // clang-format on
 
 } // namespace haylen::core
