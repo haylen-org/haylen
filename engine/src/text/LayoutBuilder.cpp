@@ -163,7 +163,8 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
 
     shapedGlyphs.clear();
     drawing.shape({.text = source.text, .begin = begin, .end = end, .script = script, .language = options.language, .rightToLeft = level % 2 != 0}, shapedGlyphs);
-    std::vector<std::size_t> byCluster(shapedGlyphs.size());
+    std::vector<std::size_t>& byCluster = clusterOrder;
+    byCluster.resize(shapedGlyphs.size());
     std::iota(byCluster.begin(), byCluster.end(), std::size_t{0});
     std::ranges::stable_sort(byCluster, {}, [this](std::size_t index) { return shapedGlyphs[index].cluster; });
 
@@ -201,7 +202,10 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
     const std::vector<bool> graphemes = Segmenter::getGraphemeStarts(text);
     const std::vector<Segmenter::Break> breaks = Segmenter::getLineBreaks(text, options.language);
 
+    // A code point makes at most one piece and most often one glyph, so the lists take their room once.
     std::vector<Piece> pieces;
+    pieces.reserve(text.size() + source.pauses.size());
+    glyphs.reserve(glyphs.size() + text.size());
     std::size_t nextPause = 0;
     // clang-format off
     const auto add = [&](Piece piece) {
@@ -218,6 +222,7 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
     // clang-format on
 
     std::vector<Piece> shaped;
+    shaped.reserve(text.size());
     std::size_t runBegin = 0;
     FontFamily::Selection runFace;
     Font* previous = nullptr;
@@ -370,6 +375,7 @@ std::vector<std::size_t> LayoutBuilder::orderPieces(const std::vector<Piece>& pi
         return order;
     }
 
+    order.reserve(last - first);
     for (const BidiParagraph::Run& run : bidi.getVisualRuns(pieces[first].begin, pieces[last - 1].end)) {
         const std::size_t start = order.size();
         for (std::size_t index = first; index < last; ++index) {
@@ -671,9 +677,15 @@ Layout LayoutBuilder::build() {
             width = std::max(width, block.naturalWidth);
         }
     }
+    std::size_t glyphs = 0;
+    std::size_t characters = 0;
     for (const Block& block : blocks) {
         layout.lineCount += block.table ? block.table->rows.size() : std::max<std::size_t>(block.flow.lines.size(), 1);
+        glyphs += block.flow.glyphs.size();
+        characters += block.flow.pieces.size() + block.flow.dropCap.size();
     }
+    layout.glyphs.reserve(glyphs);
+    layout.characters.reserve(characters);
 
     layout.size = {width, emitBlocks(blocks, {}, width)};
     return std::move(layout);

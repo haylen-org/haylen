@@ -403,13 +403,13 @@ These are the numbers of an Apple M5 Pro in Release:
 
 | Scene | Frame ms | Draw calls | Instances | Uploaded KB | Allocations | Allocated KB |
 | --- | --- | --- | --- | --- | --- | --- |
-| 10,000 sprites in runs of 4 textures | 0.396 | 4 | 10,000 | 468.8 | 4 | 0.25 |
-| 10,000 sprites alternating 4 textures | 0.627 | 10,000 | 10,000 | 468.8 | 4 | 0.25 |
-| 3,000 circles, panels and lines | 0.204 | 2,000 | 3,000 | 140.6 | 4 | 0.25 |
+| 10,000 sprites in runs of 4 textures | 0.407 | 4 | 10,000 | 468.8 | 4 | 0.25 |
+| 10,000 sprites alternating 4 textures | 0.634 | 10,000 | 10,000 | 468.8 | 4 | 0.25 |
+| 3,000 circles, panels and lines | 0.218 | 2,000 | 3,000 | 140.6 | 4 | 0.25 |
 | 200 labels that stay | 0.130 | 1 | 4,892 | 229.3 | 4 | 0.25 |
-| 200 labels that change every frame | 1.508 | 1 | 4,090 | 189.7 | 13,001 | 6,934 |
-| 20 rich text blocks with a wave | 0.060 | 1 | 1,440 | 67.5 | 4 | 0.25 |
-| A screen of 40 interface components | 0.055 | 48 | 514 | 24.1 | 4 | 0.25 |
+| 200 labels that change every frame | 1.275 | 1 | 4,090 | 189.7 | 7,001 | 3,179 |
+| 20 rich text blocks with a wave | 0.063 | 1 | 1,440 | 67.5 | 4 | 0.25 |
+| A screen of 40 interface components | 0.052 | 48 | 514 | 24.1 | 4 | 0.25 |
 
 The few allocations of every scene come from the frame loop of the engine around the drawing. Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost, while text that changes every frame lays out again, which is the one drawing that allocates, so a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, and alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains.
 

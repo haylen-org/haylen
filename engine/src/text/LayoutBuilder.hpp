@@ -219,6 +219,7 @@ class LayoutBuilder final {
     std::map<std::string, std::shared_ptr<FontFamily>, std::less<>> families;
     std::map<std::pair<std::size_t, const Font*>, std::size_t> looks;
     std::vector<Font::ShapedGlyph> shapedGlyphs;
+    std::vector<std::size_t> clusterOrder;
     float pendingPause = 0.0F;
     std::size_t textOffset = 0;
 };
