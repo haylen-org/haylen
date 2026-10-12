@@ -194,6 +194,10 @@ TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
     slots.update(std::vector{pad(1), pad(3), pad(2), pad(4), pad(5)});
     EXPECT_EQ(slots.getController(0), pad(3));
     EXPECT_EQ(slots.getController(3), pad(4));
+
+    // A controller that takes the place of one that left waits an update, so the app hears the one that left first.
+    slots.update(std::vector{pad(3), pad(2), pad(4), pad(5)});
+    EXPECT_EQ(slots.getController(1), nullptr);
     slots.update(std::vector{pad(3), pad(2), pad(4), pad(5)});
     EXPECT_EQ(slots.getController(1), pad(5));
     EXPECT_EQ(slots.getController(input::Input::kMaxGamepads), nullptr);
