@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -30,6 +31,9 @@ class UserStorage final {
     void flush();
 
   private:
+    static constexpr int kReplaceAttempts = 20;
+    static constexpr std::chrono::milliseconds kReplaceDelay{25};
+
     [[nodiscard]] std::filesystem::path resolve(std::string_view path) const;
 
     // Writes the bytes to the temporary sibling and moves it over the file, and returns whether every step succeeded.

@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -546,10 +548,15 @@ TEST(UserStorageTest, ReadsAndWritesOfTheSameFileOnTwoThreadsNeverMix) {
     UserStorage storage(directory.getPath());
     const std::string first(1U << 20U, 'a');
     const std::string second(1U << 20U, 'b');
+    std::string failure;
     // clang-format off
     std::thread writer([&] {
-        for (int round = 0; round < 20; ++round) {
-            storage.writeText("shared.bin", first);
+        try {
+            for (int round = 0; round < 20; ++round) {
+                storage.writeText("shared.bin", first);
+            }
+        } catch (const std::exception& error) {
+            failure = error.what();
         }
     });
     // clang-format on
@@ -559,7 +566,29 @@ TEST(UserStorageTest, ReadsAndWritesOfTheSameFileOnTwoThreadsNeverMix) {
         EXPECT_TRUE(stored == first || stored == second);
     }
     writer.join();
+    EXPECT_EQ(failure, "");
     EXPECT_EQ(storage.list(""), (std::vector<std::string>{"shared.bin"}));
+}
+
+// Windows refuses to replace a file that another program holds open, as a virus scanner does for a moment after a file changes, so a write waits for the program to let go.
+TEST(UserStorageTest, ReplacesAFileThatAnotherProgramHoldsForAMoment) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    storage.writeText("save.json", "{}");
+    std::atomic<bool> holding = false;
+    // clang-format off
+    std::thread scanner([&] {
+        const std::ifstream held(directory.getPath() / "save.json", std::ios::binary);
+        holding = true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    });
+    // clang-format on
+    while (!holding) {
+        std::this_thread::yield();
+    }
+    storage.writeText("save.json", R"({"level": 2})");
+    scanner.join();
+    EXPECT_EQ(storage.readText("save.json"), R"({"level": 2})");
 }
 
 } // namespace haylen::storage

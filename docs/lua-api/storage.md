@@ -58,7 +58,7 @@ end
 
 ### storage.writeText(path, text)
 
-Writes `text` to a file, replacing any previous content and creating missing folders. The data goes to a temporary sibling file first and then replaces the target, so a crash never leaves a half-written file behind. A write that fails, such as over a folder or inside a path that names a file, raises `The storage file "<path>" could not be written.` and leaves the previous content and no temporary file behind.
+Writes `text` to a file, replacing any previous content and creating missing folders. The data goes to a temporary sibling file first and then replaces the target, so a crash never leaves a half-written file behind. When another program holds the file for a moment, as a virus scanner does after a file changes and which makes Windows refuse to replace it, the write tries again for a short while. A write that fails, such as over a folder or inside a path that names a file, raises `The storage file "<path>" could not be written.` and leaves the previous content and no temporary file behind.
 
 ```lua
 local storage = require('haylen.storage')

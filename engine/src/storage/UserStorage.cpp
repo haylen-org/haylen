@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <thread>
 
 #include "haylen/io/Path.hpp"
 
@@ -81,10 +82,17 @@ bool UserStorage::replace(const std::filesystem::path& file, const std::filesyst
         return false;
     }
 
-    // Windows refuses to replace or remove a file that another thread is replacing or reading, so those steps wait for each other.
-    const std::scoped_lock lock(mutex);
-    std::filesystem::rename(temporary, file, error);
-    return !error;
+    // Windows refuses to replace or remove a file that another thread is replacing or reading, so those steps wait for each other. Another program, such as a virus scanner or a search indexer, may also hold the file for a moment after it changes, so the replace tries again for a short while before it fails.
+    for (int attempt = 1;; ++attempt) {
+        {
+            const std::scoped_lock lock(mutex);
+            std::filesystem::rename(temporary, file, error);
+        }
+        if (!error || attempt == kReplaceAttempts) {
+            return !error;
+        }
+        std::this_thread::sleep_for(kReplaceDelay);
+    }
 }
 
 void UserStorage::writeText(std::string_view path, std::string_view text) {
