@@ -106,11 +106,12 @@ class ActionMap final {
     // Blocked input, such as during a scene change or while the app is halted, reads every action as up. An action still down when input returns stays up until its bindings let go, so a key held across a scene change never reads as a second press.
     void update(const Input& input, const VirtualInput& virtualInput, bool blocked);
 
-    // A key or gamepad button pressed while the UI captures it stays with the UI until it is released, and every binding reads it as up meanwhile, like mouse buttons while the UI owns the pointer. An axis is pressed while it leans past the press threshold, and a captured axis also holds the stick it belongs to.
+    // A key or gamepad button pressed while the UI captures it stays with the UI until it is released, and every binding reads it as up meanwhile, and so does a mouse button pressed while the UI owns the pointer. A press the game took stays with the game the same way, also when the pointer passes over the UI. An axis is pressed while it leans past the press threshold, and a captured axis also holds the stick it belongs to.
     void setCapture(const Capture& value) noexcept {
         capture = value;
     }
     [[nodiscard]] bool isKeyCaptured(Key key) const noexcept;
+    [[nodiscard]] bool isMouseButtonCaptured(MouseButton button) const noexcept;
     [[nodiscard]] bool isGamepadButtonCaptured(std::size_t index, GamepadButton button) const noexcept;
     [[nodiscard]] bool isGamepadAxisCaptured(std::size_t index, GamepadAxis axis) const noexcept;
 
@@ -151,6 +152,7 @@ class ActionMap final {
     float pressThreshold = 0.5F;
     Capture capture;
     std::bitset<Controls::kKeyCount> capturedKeys;
+    std::bitset<Controls::kMouseButtonCount> capturedMouseButtons;
     std::array<std::bitset<Controls::kGamepadButtonCount>, Input::kMaxGamepads> capturedButtons;
     std::array<std::bitset<Controls::kGamepadAxisCount>, Input::kMaxGamepads> capturedAxes;
     std::array<std::bitset<Controls::kGamepadAxisCount>, Input::kMaxGamepads> leaningAxes;

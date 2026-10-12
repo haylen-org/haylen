@@ -294,7 +294,7 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
     case Binding::Source::Key:
         return !isKeyCaptured(binding.key) && (input.isKeyDown(binding.key) || input.isKeyPressed(binding.key)) ? 1.0F : 0.0F;
     case Binding::Source::MouseButton:
-        return !input.isPointerCaptured() && (input.isMouseDown(binding.mouseButton) || input.isMousePressed(binding.mouseButton)) ? 1.0F : 0.0F;
+        return !isMouseButtonCaptured(binding.mouseButton) && (input.isMouseDown(binding.mouseButton) || input.isMousePressed(binding.mouseButton)) ? 1.0F : 0.0F;
     case Binding::Source::GamepadButton:
         return anyGamepad([&](std::size_t index) { return input.isGamepadDown(index, binding.gamepadButton) && !isGamepadButtonCaptured(index, binding.gamepadButton) ? 1.0F : 0.0F; });
     case Binding::Source::GamepadAxis:
@@ -393,6 +393,14 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
             capturedKeys.reset(code);
         }
     }
+    for (std::size_t code = 0; code < Controls::kMouseButtonCount; ++code) {
+        const auto button = static_cast<MouseButton>(code);
+        if (input.isMousePressed(button)) {
+            capturedMouseButtons.set(code, input.isPointerCaptured());
+        } else if (!input.isMouseDown(button)) {
+            capturedMouseButtons.reset(code);
+        }
+    }
     for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
         for (std::size_t code = 0; code < Controls::kGamepadButtonCount; ++code) {
             const auto button = static_cast<GamepadButton>(code);
@@ -417,6 +425,11 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
 bool ActionMap::isKeyCaptured(Key key) const noexcept {
     const auto code = static_cast<std::size_t>(key);
     return code < Controls::kKeyCount && capturedKeys.test(code);
+}
+
+bool ActionMap::isMouseButtonCaptured(MouseButton button) const noexcept {
+    const auto code = static_cast<std::size_t>(button);
+    return code < Controls::kMouseButtonCount && capturedMouseButtons.test(code);
 }
 
 bool ActionMap::isGamepadButtonCaptured(std::size_t index, GamepadButton button) const noexcept {

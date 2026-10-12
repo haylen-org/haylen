@@ -289,7 +289,7 @@ scene.push({
 
 ### input.pointerCaptured()
 
-Returns `true` while the interface of [`haylen.ui`](ui.md) owns the pointer, which is what `ui.usingPointer()` reported at the end of the previous frame. Meanwhile `mouse:` bindings of the [action map](#action-map) read as released, so a click on a menu button never swings a sword bound to `mouse:left`. The raw mouse functions above keep reporting the buttons, and virtual buttons of touch controls keep driving their actions.
+Returns `true` while the interface of [`haylen.ui`](ui.md) owns the pointer, which is what `ui.usingPointer()` reported at the end of the previous frame. A mouse button pressed meanwhile stays with the interface until it is released, so `mouse:` bindings of the [action map](#action-map) read it as released and a click on a menu button never swings a sword bound to `mouse:left`, and a button pressed in the game stays with the game while the pointer passes over the interface. The interface learns what the pointer is over while it draws, so a press with no hover before it, such as the tap of a finger that drives the mouse, goes to the game unless the interface owned the pointer in the frame before. The raw mouse functions above keep reporting the buttons, and virtual buttons of touch controls keep driving their actions.
 
 ```lua
 local input = require('haylen.input')
@@ -791,7 +791,7 @@ Bindings are strings with a source and a name.
 | `virtual:<name>` | A virtual button set with `input.setVirtualButton()` or an on-screen `touchButton`. |
 | `virtualStick:<name>` | A virtual stick set with `input.setVirtualStick()` or an on-screen `touchStick`, for vector actions. |
 
-Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released while the interface owns the pointer, as [`input.pointerCaptured()`](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [`input.keyCaptured()`](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [`haylen.scene`](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
+Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released for a press the interface took, as [`input.pointerCaptured()`](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [`input.keyCaptured()`](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [`haylen.scene`](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
 
 An action map document is a table or a JSON file with an `actions` list. Each action has `name`, `type` and the binding lists its type uses.
 

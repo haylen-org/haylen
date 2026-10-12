@@ -180,7 +180,7 @@ Touch controls use the same rule through their `touchOnly` property. A `touchSti
 
 ## UI and gameplay input
 
-The action map reads `mouse:` bindings as released while the interface owns the pointer, so an action bound to `mouse:left` never goes down when the player clicks a HUD button. The raw mouse and keyboard functions still report every click and key. `ui.usingPointer()` returns `true` while the pointer is over something the interface owns, and `ui.usingKeyboard()` returns `true` while a text field has the focus, so code that reads the raw devices checks them first.
+The action map reads `mouse:` bindings as released for a press that went down while the interface owned the pointer, until it is released, so an action bound to `mouse:left` never goes down when the player clicks a HUD button, and a drag that started in the game keeps its action down while it crosses the interface. The raw mouse and keyboard functions still report every click and key. `ui.usingPointer()` returns `true` while the pointer is over something the interface owns, and `ui.usingKeyboard()` returns `true` while a text field has the focus, so code that reads the raw devices checks them first.
 
 ```lua
 local input = require('haylen.input')

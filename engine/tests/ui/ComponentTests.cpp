@@ -757,6 +757,34 @@ TEST_F(ComponentTest, KeepsMouseClicksOnTheInterfaceFromActions) {
     EXPECT_TRUE(getEngine().getActions().isDown("attack"));
 }
 
+TEST_F(ComponentTest, KeepsAMousePressWithTheSideThatTookItUntilItIsReleased) {
+    getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "attack", "type": "button", "bindings": ["mouse:left"]}]})"));
+    auto gui = mount(R"({"kind": "stack", "children": [{"kind": "card", "id": "card", "width": 300, "height": 200, "align": "start"}]})");
+    const math::Vec2 card = getBounds(*gui, "card").getCenter();
+
+    // A drag that starts in the game keeps its action down while it crosses the interface.
+    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    frames(2);
+    pointer(platform::Event::Type::MouseDown, {1500.0F, 900.0F});
+    frames();
+    ASSERT_TRUE(getEngine().getActions().isDown("attack"));
+    pointer(platform::Event::Type::MouseMove, card);
+    frames(2);
+    EXPECT_TRUE(getEngine().getInput().isPointerCaptured());
+    EXPECT_TRUE(getEngine().getActions().isDown("attack"));
+    EXPECT_FALSE(getEngine().getActions().isPressed("attack"));
+    pointer(platform::Event::Type::MouseUp, card);
+    frames(2);
+
+    // A press on the interface stays with it when the pointer leaves.
+    pointer(platform::Event::Type::MouseDown, card);
+    frames();
+    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    frames(2);
+    EXPECT_FALSE(getEngine().getInput().isPointerCaptured());
+    EXPECT_FALSE(getEngine().getActions().isDown("attack"));
+}
+
 // Presses the interface answers itself never reach the actions bound to the same keys and buttons, even while they stay held after the interface lets go, and they reach the actions again once it answers nothing.
 TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
     getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "back", "type": "button", "bindings": ["key:escape", "button:east"]}, {"name": "jump", "type": "button", "bindings": ["key:space", "key:j"]}]})"));
