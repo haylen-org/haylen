@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <mutex>
 #include <span>
+#include <string>
 
 #include "haylen/input/GamepadButton.hpp"
 #include "haylen/input/GamepadState.hpp"
@@ -26,7 +27,8 @@ class AndroidGamepads final {
 
     static void poll(std::span<input::GamepadState> states);
 
-    // Frees the slot of a controller that Android reports as removed.
+    // Gives a controller that Android adds its slot and its name, and frees the slot of one that Android removes.
+    static void add(std::int32_t device, std::string name);
     static void remove(std::int32_t device);
 
     // Centers the sticks and the triggers of every controller when the window of the app loses the focus, on the frame thread in order with the input events.

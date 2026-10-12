@@ -61,6 +61,36 @@ TEST_F(AndroidGamepadStatesTest, ReleasesTheAxesOfEveryControllerWhenTheWindowLo
     EXPECT_FLOAT_EQ(axis(read(controllers)[1], input::GamepadAxis::LeftY), -0.3F);
 }
 
+TEST_F(AndroidGamepadStatesTest, ConnectsAControllerThatAndroidAddsBeforeItsFirstEvent) {
+    AndroidGamepadStates controllers;
+    controllers.add(12, "Wireless Controller");
+    States states = read(controllers);
+    EXPECT_TRUE(states[0].connected);
+    EXPECT_EQ(states[0].name, "Wireless Controller");
+
+    // Its events keep the slot and the name.
+    controllers.press(12, input::GamepadButton::South, true);
+    states = read(controllers);
+    EXPECT_EQ(states[0].name, "Wireless Controller");
+    EXPECT_TRUE(button(states[0], input::GamepadButton::South));
+    EXPECT_FALSE(states[1].connected);
+}
+
+TEST_F(AndroidGamepadStatesTest, KeepsTheDirectionalPadKeysWhileTheSticksMove) {
+    AndroidGamepadStates controllers;
+    controllers.press(4, input::GamepadButton::DpadUp, true);
+    controllers.move(4, {.leftX = 0.3F});
+    controllers.releaseAxes();
+    EXPECT_TRUE(button(read(controllers)[0], input::GamepadButton::DpadUp));
+
+    // A hat and a key that hold the same direction release it only once both let go.
+    controllers.move(4, {.hatY = -1.0F});
+    controllers.press(4, input::GamepadButton::DpadUp, false);
+    EXPECT_TRUE(button(read(controllers)[0], input::GamepadButton::DpadUp));
+    controllers.move(4, {});
+    EXPECT_FALSE(button(read(controllers)[0], input::GamepadButton::DpadUp));
+}
+
 TEST_F(AndroidGamepadStatesTest, KeepsEveryControllerInTheSlotOfItsFirstEvent) {
     AndroidGamepadStates controllers;
     controllers.press(4, input::GamepadButton::South, true);

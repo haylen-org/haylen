@@ -25,6 +25,9 @@ class AndroidDialogJson final {
     // Reads the copies of the picked files, a list of `{name, path}`.
     [[nodiscard]] static std::vector<DialogResult::File> readFiles(std::string_view json);
 
+    // Reads a failure of a dialog by the name of its code, which the Java side takes from the codes of `DialogResult`.
+    [[nodiscard]] static DialogResult::Failure readFailure(std::string_view code, std::string message);
+
   private:
     // Every extension of the filters once, in their order.
     [[nodiscard]] static std::vector<std::string> getExtensions(const std::vector<DialogRequest::Filter>& filters);

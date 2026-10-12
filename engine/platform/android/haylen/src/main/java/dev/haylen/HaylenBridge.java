@@ -108,7 +108,7 @@ public final class HaylenBridge {
         try {
             encoded = HaylenPayload.encode(payload);
         } catch (JSONException error) {
-            Log.e("haylen", "The event \"" + event + "\" carried a payload that is not JSON and was dropped: " + error.getMessage());
+            Log.e("haylen", "The event \"" + event + "\" carried a payload that is not JSON and was dropped: " + reason(error));
             return;
         }
         KeptEvent kept = new KeptEvent(event, utf8(event), encoded, retain, batched);
@@ -205,7 +205,7 @@ public final class HaylenBridge {
         try {
             params = HaylenPayload.decode(paramsBytes, buffers);
         } catch (JSONException error) {
-            reply.failure(error.getMessage());
+            reply.failure("The parameters of \"" + method + "\" are not JSON: " + reason(error));
             return;
         }
         try {
@@ -235,8 +235,12 @@ public final class HaylenBridge {
             Failure failure = (Failure) error;
             return encodeFailure(failure.getMessage(), failure.code(), failure.data());
         }
-        String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-        return encodeFailure(message, "exception", Collections.singletonMap("type", error.getClass().getName()));
+        return encodeFailure(reason(error), "exception", Collections.singletonMap("type", error.getClass().getName()));
+    }
+
+    // The message of an error, or the name of its class when it has none, which the messages of the engine put after their own sentence.
+    static String reason(Throwable error) {
+        return error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
     }
 
     // Text crosses JNI as UTF-8 bytes, because the JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji.
@@ -294,7 +298,7 @@ public final class HaylenBridge {
                 HaylenPayload payload = HaylenPayload.encode(value);
                 nativeResolve(call, true, payload.json, payload.buffers);
             } catch (JSONException error) {
-                nativeResolve(call, false, encodeFailure("The native handler returned a value that is not JSON: " + error.getMessage(), null, null), HaylenPayload.NO_BUFFERS);
+                nativeResolve(call, false, encodeFailure("The native handler returned a value that is not JSON: " + reason(error), null, null), HaylenPayload.NO_BUFFERS);
             }
         }
 

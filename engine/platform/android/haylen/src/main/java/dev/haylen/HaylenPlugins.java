@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -101,51 +102,48 @@ final class HaylenPlugins {
                 Log.e(TAG, "The engine reported an error that is not a JSON object.", failure);
                 return;
             }
-            for (Loaded entry : loaded) {
-                entry.plugin.onAppError(error);
-            }
+            notifyPlugins("onAppError", plugin -> plugin.onAppError(error));
         });
     }
 
     // From here on the lifecycle of the activity hands the plugins its start, resume, pause and stop.
     static void activityCreated(HaylenActivity activity, Bundle savedInstanceState) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onActivityCreated(activity, savedInstanceState);
-        }
+        notifyPlugins("onActivityCreated", plugin -> plugin.onActivityCreated(activity, savedInstanceState));
         activity.getLifecycle().addObserver(new ActivityLifecycle(activity));
     }
 
     // The covers that plugins left open end with the activity, so the next app starts uncovered.
     static void activityDestroyed(HaylenActivity activity) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onActivityDestroyed(activity);
-        }
+        notifyPlugins("onActivityDestroyed", plugin -> plugin.onActivityDestroyed(activity));
         for (Loaded entry : loaded) {
             entry.context.endCovers();
         }
     }
 
     static void newIntent(Intent intent) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onNewIntent(intent);
-        }
+        notifyPlugins("onNewIntent", plugin -> plugin.onNewIntent(intent));
     }
 
     static void configurationChanged(Configuration configuration) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onConfigurationChanged(configuration);
-        }
+        notifyPlugins("onConfigurationChanged", plugin -> plugin.onConfigurationChanged(configuration));
     }
 
     static void windowFocusChanged(boolean hasFocus) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onWindowFocusChanged(hasFocus);
-        }
+        notifyPlugins("onWindowFocusChanged", plugin -> plugin.onWindowFocusChanged(hasFocus));
     }
 
     static void trimMemory(int level) {
+        notifyPlugins("onTrimMemory", plugin -> plugin.onTrimMemory(level));
+    }
+
+    // Hands an event to every plugin in load order. A plugin that fails is logged, and the plugins after it still hear the event, so a plugin never takes the app down.
+    private static void notifyPlugins(String event, Consumer<HaylenPlugin> call) {
         for (Loaded entry : loaded) {
-            entry.plugin.onTrimMemory(level);
+            try {
+                call.accept(entry.plugin);
+            } catch (RuntimeException error) {
+                Log.e(TAG, "The plugin \"" + entry.context.id() + "\" failed in \"" + event + "\".", error);
+            }
         }
     }
 
@@ -184,7 +182,7 @@ final class HaylenPlugins {
                 declared.put(entry.getString("id"), entry);
             }
         } catch (IOException | JSONException error) {
-            Log.w(TAG, "The assets of the app have no readable \"" + PLUGINS_FILE + "\", which \"haylen.py prepare\" writes: " + error.getMessage());
+            Log.w(TAG, "The assets of the app have no readable \"" + PLUGINS_FILE + "\", which \"haylen.py prepare\" writes: " + HaylenBridge.reason(error));
         }
         return declared;
     }
@@ -220,30 +218,22 @@ final class HaylenPlugins {
 
         @Override
         public void onStart(@NonNull LifecycleOwner owner) {
-            for (Loaded entry : loaded) {
-                entry.plugin.onActivityStarted(activity);
-            }
+            notifyPlugins("onActivityStarted", plugin -> plugin.onActivityStarted(activity));
         }
 
         @Override
         public void onResume(@NonNull LifecycleOwner owner) {
-            for (Loaded entry : loaded) {
-                entry.plugin.onActivityResumed(activity);
-            }
+            notifyPlugins("onActivityResumed", plugin -> plugin.onActivityResumed(activity));
         }
 
         @Override
         public void onPause(@NonNull LifecycleOwner owner) {
-            for (Loaded entry : loaded) {
-                entry.plugin.onActivityPaused(activity);
-            }
+            notifyPlugins("onActivityPaused", plugin -> plugin.onActivityPaused(activity));
         }
 
         @Override
         public void onStop(@NonNull LifecycleOwner owner) {
-            for (Loaded entry : loaded) {
-                entry.plugin.onActivityStopped(activity);
-            }
+            notifyPlugins("onActivityStopped", plugin -> plugin.onActivityStopped(activity));
         }
     }
 

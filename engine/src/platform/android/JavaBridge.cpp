@@ -50,39 +50,45 @@ jint JavaBridge::load(JavaVM* vm) {
     javaVm = vm;
     pthread_key_create(&attachedThreads, &JavaBridge::detachThread);
 
-    // A missing class leaves an exception pending, so the lookup stops at the first one.
+    // A class or a method that is missing, such as one that R8 removed, stops the load with an engine error that names it, so no call ever runs with an exception pending.
     byteArrayClass = findClass(*env, "[B");
     bridgeClass = findClass(*env, "dev/haylen/HaylenBridge");
-    pluginsClass = bridgeClass != nullptr ? findClass(*env, "dev/haylen/HaylenPlugins") : nullptr;
-    editorClass = pluginsClass != nullptr ? findClass(*env, "dev/haylen/HaylenEditText") : nullptr;
-    activityClass = editorClass != nullptr ? findClass(*env, "dev/haylen/HaylenActivity") : nullptr;
-    dialogsClass = activityClass != nullptr ? findClass(*env, "dev/haylen/HaylenDialogs") : nullptr;
-    screensClass = dialogsClass != nullptr ? findClass(*env, "dev/haylen/HaylenScreens") : nullptr;
-    if (screensClass == nullptr) {
+    pluginsClass = findClass(*env, "dev/haylen/HaylenPlugins");
+    editorClass = findClass(*env, "dev/haylen/HaylenEditText");
+    activityClass = findClass(*env, "dev/haylen/HaylenActivity");
+    dialogsClass = findClass(*env, "dev/haylen/HaylenDialogs");
+    screensClass = findClass(*env, "dev/haylen/HaylenScreens");
+    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr) {
         return JNI_ERR;
     }
-    dispatchMethod = env->GetStaticMethodID(bridgeClass, "dispatch", "(J[B[B[[B)V");
-    cancelMethod = env->GetStaticMethodID(bridgeClass, "cancel", "(J)V");
-    setAppRunningMethod = env->GetStaticMethodID(bridgeClass, "setAppRunning", "(Z)V");
-    reportErrorMethod = env->GetStaticMethodID(pluginsClass, "reportError", "([B)V");
-    editMethod = env->GetStaticMethodID(editorClass, "edit", "([B)V");
-    finishMethod = env->GetStaticMethodID(editorClass, "finish", "()V");
-    lockOrientationMethod = env->GetStaticMethodID(activityClass, "lockOrientation", "(I)V");
-    captureBackMethod = env->GetStaticMethodID(activityClass, "captureBack", "(Z)V");
-    systemInfoMethod = env->GetStaticMethodID(activityClass, "systemInfo", "()[B");
-    openUrlMethod = env->GetStaticMethodID(activityClass, "openUrl", "(J[B)V");
-    vibrateMethod = env->GetStaticMethodID(activityClass, "vibrate", "(J)V");
-    setClipboardMethod = env->GetStaticMethodID(activityClass, "setClipboard", "([B)V");
-    clipboardMethod = env->GetStaticMethodID(activityClass, "clipboard", "()[B");
-    networkRequirementMethod = env->GetStaticMethodID(activityClass, "networkRequirement", "()[B");
-    developmentServerMethod = env->GetStaticMethodID(activityClass, "developmentServer", "()[B");
-    showDialogMethod = env->GetStaticMethodID(dialogsClass, "show", "(J[B[B)V");
-    cancelDialogMethod = env->GetStaticMethodID(dialogsClass, "cancel", "(J)V");
-    openScreenMethod = env->GetStaticMethodID(screensClass, "open", "(J[B[B[B[[B[BZ)V");
-    cancelScreenMethod = env->GetStaticMethodID(screensClass, "cancel", "(J)V");
+    dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B)V");
+    cancelMethod = findMethod(*env, bridgeClass, "cancel", "(J)V");
+    setAppRunningMethod = findMethod(*env, bridgeClass, "setAppRunning", "(Z)V");
+    reportErrorMethod = findMethod(*env, pluginsClass, "reportError", "([B)V");
+    editMethod = findMethod(*env, editorClass, "edit", "([B)V");
+    finishMethod = findMethod(*env, editorClass, "finish", "()V");
+    lockOrientationMethod = findMethod(*env, activityClass, "lockOrientation", "(I)V");
+    captureBackMethod = findMethod(*env, activityClass, "captureBack", "(Z)V");
+    systemInfoMethod = findMethod(*env, activityClass, "systemInfo", "()[B");
+    openUrlMethod = findMethod(*env, activityClass, "openUrl", "(J[B)V");
+    vibrateMethod = findMethod(*env, activityClass, "vibrate", "(J)V");
+    setClipboardMethod = findMethod(*env, activityClass, "setClipboard", "([B)V");
+    clipboardMethod = findMethod(*env, activityClass, "clipboard", "()[B");
+    networkRequirementMethod = findMethod(*env, activityClass, "networkRequirement", "()[B");
+    developmentServerMethod = findMethod(*env, activityClass, "developmentServer", "()[B");
+    showDialogMethod = findMethod(*env, dialogsClass, "show", "(J[B[B)V");
+    cancelDialogMethod = findMethod(*env, dialogsClass, "cancel", "(J)V");
+    openScreenMethod = findMethod(*env, screensClass, "open", "(J[B[B[B[[B[BZ)V");
+    cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
+    const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, idsMethod}) {
+        if (method == nullptr) {
+            return JNI_ERR;
+        }
+    }
 
     // The plugins load when the process starts, before any activity loads this library, so their list is final here.
-    const auto ids = static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, env->GetStaticMethodID(pluginsClass, "ids", "()[B")));
+    const auto ids = static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, idsMethod));
     if (!clearException(*env, "dev.haylen.HaylenPlugins.ids")) {
         plugins = core::Json::parse(toString(*env, ids)).get<std::vector<std::string>>();
         env->DeleteLocalRef(ids);
@@ -94,7 +100,25 @@ jint JavaBridge::load(JavaVM* vm) {
 
 jclass JavaBridge::findClass(JNIEnv& env, const char* name) {
     const jclass found = env.FindClass(name);
-    return found != nullptr ? static_cast<jclass>(env.NewGlobalRef(found)) : nullptr;
+    if (found == nullptr) {
+        env.ExceptionDescribe();
+        env.ExceptionClear();
+        core::Log::error("The Java class \"{}\" of the haylen library is missing, so the engine cannot start. Keep the classes of the library in the rules of R8.", name);
+        return nullptr;
+    }
+    const auto global = static_cast<jclass>(env.NewGlobalRef(found));
+    env.DeleteLocalRef(found);
+    return global;
+}
+
+jmethodID JavaBridge::findMethod(JNIEnv& env, jclass owner, const char* name, const char* signature) {
+    const jmethodID found = env.GetStaticMethodID(owner, name, signature);
+    if (found == nullptr) {
+        env.ExceptionDescribe();
+        env.ExceptionClear();
+        core::Log::error("The static Java method \"{}\" of the haylen library is missing, so the engine cannot start. Keep the classes of the library in the rules of R8.", name);
+    }
+    return found;
 }
 
 void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
@@ -346,17 +370,25 @@ std::vector<std::vector<std::byte>> JavaBridge::toBuffers(JNIEnv& env, jobjectAr
     return copies;
 }
 
+// Java may run out of memory for an array, which leaves `OutOfMemoryError` pending, so the exception is cleared and the call fails in C++ before any other call into Java.
 jbyteArray JavaBridge::toBytes(JNIEnv& env, std::string_view text) {
     const jbyteArray bytes = env.NewByteArray(static_cast<jsize>(text.size()));
+    if (bytes == nullptr) {
+        clearException(env, "NewByteArray");
+        throw std::runtime_error("Java has no memory for an array of " + std::to_string(text.size()) + " bytes.");
+    }
     env.SetByteArrayRegion(bytes, 0, static_cast<jsize>(text.size()), reinterpret_cast<const jbyte*>(text.data()));
     return bytes;
 }
 
 jobjectArray JavaBridge::toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers) {
     const jobjectArray arrays = env.NewObjectArray(static_cast<jsize>(buffers.size()), byteArrayClass, nullptr);
+    if (arrays == nullptr) {
+        clearException(env, "NewObjectArray");
+        throw std::runtime_error("Java has no memory for a list of " + std::to_string(buffers.size()) + " buffers.");
+    }
     for (std::size_t index = 0; index < buffers.size(); ++index) {
-        const jbyteArray array = env.NewByteArray(static_cast<jsize>(buffers[index].size()));
-        env.SetByteArrayRegion(array, 0, static_cast<jsize>(buffers[index].size()), reinterpret_cast<const jbyte*>(buffers[index].data()));
+        const jbyteArray array = toBytes(env, std::string_view(reinterpret_cast<const char*>(buffers[index].data()), buffers[index].size()));
         env.SetObjectArrayElement(arrays, static_cast<jsize>(index), array);
         env.DeleteLocalRef(array);
     }

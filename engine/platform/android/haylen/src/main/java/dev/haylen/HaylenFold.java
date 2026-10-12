@@ -28,7 +28,7 @@ final class HaylenFold implements Consumer<WindowLayoutInfo> {
         tracker.removeWindowLayoutInfoListener(this);
     }
 
-    // The bounds are in the coordinates of the window, which the surface of the app fills from edge to edge, so they are framebuffer pixels. A window that no fold crosses has none.
+    // The bounds are in the pixels of the window, which the surface of the app fills from edge to edge, and the engine turns them into framebuffer pixels. A window that no fold crosses has none.
     @Override
     public void accept(WindowLayoutInfo info) {
         for (DisplayFeature feature : info.getDisplayFeatures()) {

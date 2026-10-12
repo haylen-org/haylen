@@ -66,7 +66,7 @@ public final class HaylenScreen {
         try {
             payload = HaylenPayload.encode(result);
         } catch (JSONException error) {
-            end(false, HaylenBridge.encodeFailure("The screen \"" + name + "\" ended with a value that is not JSON: " + error.getMessage(), null, null), HaylenPayload.NO_BUFFERS);
+            end(false, HaylenBridge.encodeFailure("The screen \"" + name + "\" ended with a value that is not JSON: " + HaylenBridge.reason(error), null, null), HaylenPayload.NO_BUFFERS);
             return;
         }
         end(true, payload.json, payload.buffers);

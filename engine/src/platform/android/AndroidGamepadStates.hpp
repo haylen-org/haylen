@@ -1,9 +1,12 @@
 #pragma once
 
 #include <array>
+#include <bitset>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string>
 
 #include "haylen/input/GamepadButton.hpp"
 #include "haylen/input/GamepadState.hpp"
@@ -33,19 +36,24 @@ class AndroidGamepadStates final {
     // Centers the sticks, the triggers and the hat of every controller, whose next motion event brings their position back. Android sends motion events only to the window with the focus, so a stick released while another window has it would keep its last value otherwise, while the releases of buttons still arrive.
     void releaseAxes();
 
-    // Frees the slot of a controller that Android removed.
+    // Connects a controller that Android added, with its name, before its first event, and frees the slot of one that Android removed.
+    void add(std::int32_t device, std::string name);
     void remove(std::int32_t device);
 
     void copyTo(std::span<input::GamepadState> states) const;
 
   private:
-    static void apply(input::GamepadState& state, const Motion& motion);
+    // The buttons of the directional pad in the order of the bits of a hat: left, right, up and down.
+    static constexpr std::array<input::GamepadButton, 4> kDirections{input::GamepadButton::DpadLeft, input::GamepadButton::DpadRight, input::GamepadButton::DpadUp, input::GamepadButton::DpadDown};
 
-    // Returns the state of the controller, which takes the first free slot with its first event, or null while every slot is taken.
-    [[nodiscard]] input::GamepadState* claim(std::int32_t device);
+    void apply(std::size_t slot, const Motion& motion);
+
+    // Returns the slot of the controller, which takes the first free slot with its first event, or nothing while every slot is taken.
+    [[nodiscard]] std::optional<std::size_t> claim(std::int32_t device);
 
     std::array<std::optional<std::int32_t>, input::Input::kMaxGamepads> devices{};
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
+    std::array<std::bitset<4>, input::Input::kMaxGamepads> hats{};
 };
 
 } // namespace haylen::platform

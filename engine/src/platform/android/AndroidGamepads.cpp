@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <utility>
 
 #include "sokol_app.h"
 
@@ -40,6 +41,11 @@ bool AndroidGamepads::handleEvent(const void* source) {
 void AndroidGamepads::poll(std::span<input::GamepadState> states) {
     const std::scoped_lock lock(mutex);
     controllers.copyTo(states);
+}
+
+void AndroidGamepads::add(std::int32_t device, std::string name) {
+    const std::scoped_lock lock(mutex);
+    controllers.add(device, std::move(name));
 }
 
 void AndroidGamepads::remove(std::int32_t device) {

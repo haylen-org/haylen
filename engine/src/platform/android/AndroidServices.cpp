@@ -99,7 +99,7 @@ void Services::watchWindow() {}
 void Services::updateWindow() {}
 
 math::Insets Services::getSafeAreaInsets() {
-    return AndroidActivity::getSafeAreaInsets();
+    return AndroidActivity::toFramebuffer(AndroidActivity::getSafeAreaInsets());
 }
 
 bool Services::hasPointerDevice() noexcept {
@@ -119,7 +119,11 @@ void Services::lockOrientation(Orientation value) {
 }
 
 std::optional<Fold> Services::getFold() {
-    return AndroidActivity::getFold();
+    std::optional<Fold> fold = AndroidActivity::getFold();
+    if (fold) {
+        fold->bounds = AndroidActivity::toFramebuffer(fold->bounds);
+    }
+    return fold;
 }
 
 void Services::endSplashScreen(float fadeOutSeconds) {
@@ -262,6 +266,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenNetwork_nativeNetwork(JNIEnv*, jcla
     haylen::platform::SokolRuntime::postEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = online == JNI_TRUE});
 }
 
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerAdded(JNIEnv* env, jclass, jint device, jbyteArray name) {
+    haylen::platform::AndroidGamepads::add(device, haylen::platform::JavaBridge::toString(*env, name));
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerRemoved(JNIEnv*, jclass, jint device) {
     haylen::platform::AndroidGamepads::remove(device);
 }
@@ -279,13 +287,7 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclas
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {
-    using haylen::platform::Fold;
-    if (present != JNI_TRUE) {
-        haylen::platform::AndroidActivity::setFold(std::nullopt);
-        return;
-    }
-    const haylen::math::Rect bounds = haylen::math::Rect::fromMinMax({static_cast<float>(left), static_cast<float>(top)}, {static_cast<float>(right), static_cast<float>(bottom)});
-    haylen::platform::AndroidActivity::setFold(Fold{.bounds = bounds, .axis = vertical == JNI_TRUE ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = halfOpened == JNI_TRUE ? Fold::State::HalfOpened : Fold::State::Flat, .separating = separating == JNI_TRUE, .occluding = occluding == JNI_TRUE});
+    haylen::platform::AndroidActivity::receiveFold({.present = present == JNI_TRUE, .left = left, .top = top, .right = right, .bottom = bottom, .vertical = vertical == JNI_TRUE, .halfOpened = halfOpened == JNI_TRUE, .separating = separating == JNI_TRUE, .occluding = occluding == JNI_TRUE});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jclass, jboolean present, jint level, jint scale, jint status) {
@@ -309,7 +311,7 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeDismissed(JNIEnv*, jc
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeFailed(JNIEnv* env, jclass, jlong id, jbyteArray code, jbyteArray message) {
-    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.failure = haylen::platform::DialogResult::Failure{.code = haylen::platform::DialogResult::codeFromName(haylen::platform::JavaBridge::toString(*env, code)).value(), .message = haylen::platform::JavaBridge::toString(*env, message)}});
+    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.failure = haylen::platform::AndroidDialogJson::readFailure(haylen::platform::JavaBridge::toString(*env, code), haylen::platform::JavaBridge::toString(*env, message))});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenScreen_nativeFinish(JNIEnv* env, jclass, jlong id, jboolean ok, jbyteArray json, jobjectArray buffers) {

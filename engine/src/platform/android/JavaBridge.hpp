@@ -91,7 +91,9 @@ class JavaBridge final {
     [[nodiscard]] static jbyteArray toBytes(JNIEnv& env, std::string_view text);
     [[nodiscard]] static jobjectArray toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers);
 
+    // Return a global reference to the class, or the static method, and log an engine error that names it when it is missing.
     [[nodiscard]] static jclass findClass(JNIEnv& env, const char* name);
+    [[nodiscard]] static jmethodID findMethod(JNIEnv& env, jclass owner, const char* name, const char* signature);
 
     static bool clearException(JNIEnv& env, std::string_view method);
 

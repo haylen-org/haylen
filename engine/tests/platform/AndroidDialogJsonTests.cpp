@@ -23,4 +23,10 @@ TEST(AndroidDialogJsonTest, ReadsTheCopiesOfThePickedFiles) {
     EXPECT_TRUE(AndroidDialogJson::readFiles("[]").empty());
 }
 
+TEST(AndroidDialogJsonTest, ReadsFailuresByTheNameOfTheirCode) {
+    const DialogResult::Failure failure = AndroidDialogJson::readFailure("unsupported", "The device has no picker.");
+    EXPECT_EQ(failure.code, DialogResult::Code::Unsupported);
+    EXPECT_EQ(failure.message, "The device has no picker.");
+}
+
 } // namespace haylen::platform

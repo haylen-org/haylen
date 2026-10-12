@@ -27,10 +27,10 @@ math::Vec2 SokolHost::getFramebufferSize() const noexcept {
     return {sapp_widthf(), sapp_heightf()};
 }
 
-// Sokol reports one pixel per point on Android, where the activity reports the density of the display instead.
+// Sokol reports the framebuffer pixels per window pixel on Android, where the activity reports the window pixels per point, the density of the display.
 float SokolHost::getDpiScale() const noexcept {
 #if defined(__ANDROID__)
-    return AndroidActivity::getDensity();
+    return AndroidActivity::getDensity() * sapp_dpi_scale();
 #else
     return sapp_dpi_scale();
 #endif
@@ -271,8 +271,13 @@ void SokolHost::cancelPlatformCall(std::uint64_t id) {
     Services::cancel(id);
 }
 
+// The views of Android plugins reserve edges in window pixels.
 math::Insets SokolHost::getReservedInsets() const {
+#if defined(__ANDROID__)
+    return AndroidActivity::toFramebuffer(getNativeViews().getReservedInsets());
+#else
     return getNativeViews().getReservedInsets();
+#endif
 }
 
 bool SokolHost::isAppCovered() const {

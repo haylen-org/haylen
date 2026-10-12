@@ -283,7 +283,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | The audio focus, which another app takes for a call, an alarm or its own sound. |
 | `audioRouteChanged` | The AAudio stream that the system moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The night mode of the configuration and the battery broadcast, as [haylen.system](lua-api/system.md#platforms) describes. |
-| `gamepadConnected`, `gamepadDisconnected` | The input devices of GameActivity, the remote of an Android TV included. |
+| `gamepadConnected`, `gamepadDisconnected` | The input devices that Android adds and removes, with the name of each controller, and a controller whose first event comes before Android tells of it. The remote of an Android TV reports the directional pad as keys, so it is no gamepad. |
 
 ### Web
 

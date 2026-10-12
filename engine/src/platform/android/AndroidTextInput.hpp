@@ -22,9 +22,6 @@ class AndroidTextInput final : public TextInput {
         return editing;
     }
 
-    // Lets the field being edited go, as the back key does, and returns whether a field was being edited.
-    static bool dismiss();
-
     // Entries of the Java side, which reach the running app on its next frame. Positions arrive in window pixels.
     static void receiveEdit(JNIEnv& env, jlong field, jlong revision, jbyteArray text, jint selectionStart, jint selectionEnd, jint compositionStart, jint compositionEnd);
     static void receiveAction(jlong field, jint action);
@@ -32,7 +29,6 @@ class AndroidTextInput final : public TextInput {
 
   private:
     static bool editing;
-    static std::uint64_t editedField;
 };
 
 } // namespace haylen::platform

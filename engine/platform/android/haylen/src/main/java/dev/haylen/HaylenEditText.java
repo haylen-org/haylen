@@ -34,7 +34,8 @@ final class HaylenEditText extends EditText {
     private static final int[] RETURN_KEYS = {EditorInfo.IME_ACTION_UNSPECIFIED, EditorInfo.IME_ACTION_DONE, EditorInfo.IME_ACTION_GO, EditorInfo.IME_ACTION_NEXT, EditorInfo.IME_ACTION_SEARCH, EditorInfo.IME_ACTION_SEND};
     private static final int[] CAPITALIZATIONS = {0, InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, InputType.TYPE_TEXT_FLAG_CAP_WORDS, InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS};
 
-    private static HaylenEditText current;
+    // The field that edits, which the main thread sets and the frame thread reads.
+    private static volatile HaylenEditText current;
 
     private final InputMethodManager methods;
     private long field;

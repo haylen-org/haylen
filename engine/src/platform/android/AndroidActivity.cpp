@@ -2,6 +2,8 @@
 
 #include "sokol_app.h"
 
+#include "sokol_app.h"
+
 namespace haylen::platform {
 
 std::mutex& AndroidActivity::mutex = *new std::mutex();
@@ -22,12 +24,27 @@ void AndroidActivity::setSafeAreaInsets(const math::Insets& value) {
     safeAreaInsets = value;
 }
 
+math::Insets AndroidActivity::toFramebuffer(const math::Insets& value) noexcept {
+    const float scale = sapp_dpi_scale();
+    return {.left = value.left * scale, .top = value.top * scale, .right = value.right * scale, .bottom = value.bottom * scale};
+}
+
+math::Rect AndroidActivity::toFramebuffer(const math::Rect& value) noexcept {
+    const float scale = sapp_dpi_scale();
+    return {value.x * scale, value.y * scale, value.width * scale, value.height * scale};
+}
+
 math::Insets AndroidActivity::getSafeAreaInsets() {
     const std::scoped_lock lock(mutex);
     return safeAreaInsets;
 }
 
-void AndroidActivity::setFold(std::optional<Fold> value) {
+void AndroidActivity::receiveFold(const FoldReport& report) {
+    std::optional<Fold> value;
+    if (report.present) {
+        const math::Rect bounds = math::Rect::fromMinMax({static_cast<float>(report.left), static_cast<float>(report.top)}, {static_cast<float>(report.right), static_cast<float>(report.bottom)});
+        value = Fold{.bounds = bounds, .axis = report.vertical ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = report.halfOpened ? Fold::State::HalfOpened : Fold::State::Flat, .separating = report.separating, .occluding = report.occluding};
+    }
     const std::scoped_lock lock(mutex);
     fold = value;
 }

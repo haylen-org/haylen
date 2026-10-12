@@ -29,6 +29,7 @@
 #include "haylen/platform/apple/HaylenMain.h"
 #include "platform/apple/AppleRuntime.hpp"
 #elif defined(__ANDROID__)
+#include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidGlesVersion.hpp"
 #include "platform/android/AndroidInputEvents.hpp"
@@ -297,7 +298,13 @@ void SokolRuntime::onFrame(void* data) {
     if (MemoryWarning::take()) {
         runtime.engine->handleEvent({.type = Event::Type::LowMemory});
     }
-    for (const Event& event : takePostedEvents()) {
+    for (Event& event : takePostedEvents()) {
+#if defined(__ANDROID__)
+        // The on-screen keyboard of Android arrives from the UI thread in window pixels.
+        if (event.type == Event::Type::KeyboardChanged) {
+            event.keyboardFrame = AndroidActivity::toFramebuffer(event.keyboardFrame);
+        }
+#endif
         runtime.deliver(event);
     }
     runtime.engine->frame(sapp_frame_duration());

@@ -24,6 +24,10 @@ std::vector<DialogResult::File> AndroidDialogJson::readFiles(std::string_view js
     return files;
 }
 
+DialogResult::Failure AndroidDialogJson::readFailure(std::string_view code, std::string message) {
+    return {.code = DialogResult::codeFromName(code).value(), .message = std::move(message)};
+}
+
 std::vector<std::string> AndroidDialogJson::getExtensions(const std::vector<DialogRequest::Filter>& filters) {
     std::vector<std::string> extensions;
     for (const DialogRequest::Filter& filter : filters) {

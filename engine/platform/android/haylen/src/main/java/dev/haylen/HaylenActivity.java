@@ -5,7 +5,6 @@ import android.app.ActivityManager;
 import android.app.UiModeManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
@@ -103,6 +102,9 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         };
         getOnBackPressedDispatcher().addCallback(this, backCallback);
         getSystemService(InputManager.class).registerInputDeviceListener(this, null);
+        for (int deviceId : InputDevice.getDeviceIds()) {
+            onInputDeviceAdded(deviceId);
+        }
         followNetwork();
         HaylenPlugins.checkLoaded(getApplication());
 
@@ -222,7 +224,17 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     }
 
     @Override
-    public void onInputDeviceAdded(int deviceId) {}
+    // A controller connects as soon as Android adds it, with its name, while remotes and keyboards stay keys.
+    public void onInputDeviceAdded(int deviceId) {
+        InputDevice device = InputDevice.getDevice(deviceId);
+        if (device == null) {
+            return;
+        }
+        int sources = device.getSources();
+        if ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) {
+            nativeControllerAdded(deviceId, device.getName().getBytes(StandardCharsets.UTF_8));
+        }
+    }
 
     @Override
     public void onInputDeviceRemoved(int deviceId) {
@@ -295,7 +307,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             try {
                 activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(address)));
                 nativeUrlOpened(request, true);
-            } catch (ActivityNotFoundException error) {
+            } catch (RuntimeException error) {
+                // No app takes the url, or Android refuses it, such as a file url that would leave the app.
                 nativeUrlOpened(request, false);
             }
         });
@@ -435,6 +448,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     }
 
     private static native void nativeSafeArea(int left, int top, int right, int bottom);
+
+    private static native void nativeControllerAdded(int deviceId, byte[] name);
 
     private static native void nativeControllerRemoved(int deviceId);
 

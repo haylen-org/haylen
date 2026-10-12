@@ -11,7 +11,6 @@
 namespace haylen::platform {
 
 bool AndroidTextInput::editing = false;
-std::uint64_t AndroidTextInput::editedField = kKeyboardField;
 
 // The window counts pixels of the screen, while the framebuffer may be smaller when the app turns high DPI off. The options travel as the numbers of their enums.
 void AndroidTextInput::edit(const Field& value) {
@@ -22,20 +21,11 @@ void AndroidTextInput::edit(const Field& value) {
     };
     JavaBridge::editText(json.dump(-1, ' ', false, core::Json::error_handler_t::replace));
     editing = value.id != kKeyboardField;
-    editedField = value.id;
 }
 
 void AndroidTextInput::finish() {
     JavaBridge::finishText();
     editing = false;
-}
-
-bool AndroidTextInput::dismiss() {
-    if (!editing) {
-        return false;
-    }
-    SokolRuntime::postEvent({.type = Event::Type::TextAction, .textEdit = {.field = editedField}, .textAction = Action::Dismissed});
-    return true;
 }
 
 void AndroidTextInput::receiveEdit(JNIEnv& env, jlong field, jlong revision, jbyteArray text, jint selectionStart, jint selectionEnd, jint compositionStart, jint compositionEnd) {
@@ -46,9 +36,9 @@ void AndroidTextInput::receiveAction(jlong field, jint action) {
     SokolRuntime::postEvent({.type = Event::Type::TextAction, .textEdit = {.field = static_cast<std::uint64_t>(field)}, .textAction = static_cast<Action>(action)});
 }
 
+// The frame arrives in window pixels, which the runtime turns into framebuffer pixels on the frame thread.
 void AndroidTextInput::receiveKeyboard(jint x, jint y, jint width, jint height) {
-    const float scale = sapp_dpi_scale();
-    SokolRuntime::postEvent({.type = Event::Type::KeyboardChanged, .keyboardFrame = {static_cast<float>(x) * scale, static_cast<float>(y) * scale, static_cast<float>(width) * scale, static_cast<float>(height) * scale}});
+    SokolRuntime::postEvent({.type = Event::Type::KeyboardChanged, .keyboardFrame = {static_cast<float>(x), static_cast<float>(y), static_cast<float>(width), static_cast<float>(height)}});
 }
 
 } // namespace haylen::platform

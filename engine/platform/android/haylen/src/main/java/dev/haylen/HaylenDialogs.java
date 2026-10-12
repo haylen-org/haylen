@@ -118,7 +118,7 @@ final class HaylenDialogs {
                 fail(id, "unsupported", "This device has no app that picks documents, as Android TV devices often lack one.");
             } catch (JSONException | RuntimeException error) {
                 picking = null;
-                fail(id, "failed", "The dialog failed to show: " + error.getMessage());
+                fail(id, "failed", "The dialog failed to show: " + HaylenBridge.reason(error));
             }
         });
     }
@@ -198,7 +198,7 @@ final class HaylenDialogs {
                 }
                 nativeFiles(current.id, HaylenBridge.utf8(copies.toString()));
             } catch (IOException | JSONException | RuntimeException error) {
-                fail(current.id, "failed", "The picked files could not be copied: " + error.getMessage());
+                fail(current.id, "failed", "The picked files could not be copied: " + HaylenBridge.reason(error));
             }
         });
     }
@@ -223,7 +223,7 @@ final class HaylenDialogs {
                 output.flush();
                 nativeSaved(current.id, HaylenBridge.utf8(displayName(resolver, uri)));
             } catch (IOException | RuntimeException error) {
-                fail(current.id, "failed", "The file could not be saved: " + error.getMessage());
+                fail(current.id, "failed", "The file could not be saved: " + HaylenBridge.reason(error));
             }
         });
     }
