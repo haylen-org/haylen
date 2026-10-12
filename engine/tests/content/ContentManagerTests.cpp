@@ -350,7 +350,7 @@ class ContentPackTest : public ContentManagerTest {
     }
 };
 
-TEST_F(ContentPackTest, StartsWithoutAPackThatIsNotInstalledAndReadsOneThatIs) {
+TEST_F(ContentPackTest, StartsWithoutAPackThatIsNotInstalledAndReadsOneThatArrives) {
     run(shipped.getPath() / "app");
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << "A pack never holds back the start.";
     EXPECT_FALSE(engine->getContent().isLocal("expansion/island.json"));
@@ -358,6 +358,12 @@ TEST_F(ContentPackTest, StartsWithoutAPackThatIsNotInstalledAndReadsOneThatIs) {
     engine->getAssets().loadAsync("json", "expansion/island.json", [&failure](const std::shared_ptr<void>&, std::string error) { failure = std::move(error); });
     ASSERT_TRUE(frameUntil([&failure] { return !failure.empty(); }));
     EXPECT_NE(failure.find("no server"), std::string::npos) << failure;
+
+    // A store delivers the pack while the app runs, and its assets load from the folder it installed them into.
+    EXPECT_THROW(engine->getContent().addPackFolder(shipped.getPath() / "missing"), std::runtime_error);
+    engine->getContent().addPackFolder(shipped.getPath() / "packs" / "expansion");
+    EXPECT_TRUE(engine->getContent().isLocal("expansion/island.json"));
+    EXPECT_EQ(engine->getAssets().json("expansion/island.json")["palms"], 7);
 
     // The store installs the pack into the folder of packs next to the app, which the runtime reads with the release.
     auto files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{io::Package::openDirectory(shipped.getPath() / "app"), io::Package::openDirectory(shipped.getPath() / "packs" / "expansion")});

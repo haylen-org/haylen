@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -103,7 +104,16 @@ class ReleasePackage final : public io::Package {
     // Whether every chunk of a file of the package is on the device. Throws `std::runtime_error` for a file that does not exist.
     [[nodiscard]] bool isLocal(std::string_view path) const;
 
+    // Reads shards also from a folder where a store installed the shards of a pack while the app runs, so the assets of the pack load from then on. A shard is verified against its manifest like any other, so a folder never brings content that the release does not name. Throws `std::runtime_error` for a path that is no folder.
+    void addPackFolder(const std::filesystem::path& folder);
+
   private:
+    // The folders that stores installed packs into, which every shard set of the release reads from.
+    struct PackFolders {
+        std::mutex mutex;
+        std::vector<std::shared_ptr<const io::Package>> folders;
+    };
+
     [[nodiscard]] std::shared_ptr<const Content> load(std::vector<std::uint8_t> manifestBytes, Manifest::Domain domain) const;
     [[nodiscard]] std::shared_ptr<const io::Package> getDomain(std::string_view path) const;
 
@@ -111,6 +121,7 @@ class ReleasePackage final : public io::Package {
     void recover();
 
     std::shared_ptr<const io::Package> files;
+    std::shared_ptr<PackFolders> packs = std::make_shared<PackFolders>();
     std::shared_ptr<const KeyRing> keys;
     std::vector<VerifyingKey> trusted;
     Compatibility compatibility;

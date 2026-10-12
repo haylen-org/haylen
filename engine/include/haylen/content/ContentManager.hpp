@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -108,6 +109,9 @@ class ContentManager final {
 
     // Whether every byte of an asset, by its path relative to `content`, is on the device and readable now, so loading it never waits. On the web the bytes that the browser keeps become readable once a load reads them in.
     [[nodiscard]] bool isLocal(std::string_view path) const;
+
+    // Reads the shards of a pack from a folder where a store installed them while the app runs, such as an asset pack that a store delivered on demand, so its assets load from then on. In development the folder of the app holds every pack, so it does nothing. Throws `std::runtime_error` for a path that is no folder.
+    void addPackFolder(const std::filesystem::path& folder);
 
     // Brings the assets that the device lacks, by their paths relative to `content`, and calls back once all of them are on the device. Throws `std::invalid_argument` for an asset that does not exist.
     void acquire(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done);

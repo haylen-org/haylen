@@ -71,6 +71,18 @@ if not content.isLocal('world/asia/maps/tokyo.tmj') then
 end
 ```
 
+### content.addPackFolder(path)
+
+Reads the shards of a pack from a folder where a store installed them while the app runs, so the assets of the pack load from then on, without a restart. A native plugin of a store that delivers packs on request, such as an asset pack that a store downloads when the player buys an expansion, calls it with the folder the store reports. Every shard is checked against the signed manifest of the release, so a folder never brings content that the release does not name. In development the folder of the app holds every pack, so the call does nothing. A path that is no folder raises `The pack folder "<path>" does not exist.`
+
+```lua
+local content = require('haylen.content')
+
+-- The plugin of the store answers with the folder of the pack it installed.
+content.addPackFolder(folder)
+print(content.isLocal('expansion/island.json'))
+```
+
 ### content.stats()
 
 Returns counters of the content for debugging: `generation`, `catalogFiles`, the files the content holds, `storedRecords` and `storedBytes`, what the local store of downloads holds, `downloadedBytes` and `requests` since the app started, `resumedRecords`, the downloads that went on from where an earlier one stopped, and `pendingDownloads`, which is `1` while anything downloads.

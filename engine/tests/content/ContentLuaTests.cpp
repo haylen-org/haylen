@@ -72,6 +72,7 @@ TEST_F(ContentLuaTest, ExplainsWhatDevelopmentCannotDo) {
     EXPECT_NE(fixture.lua("return content.prefetch('missing')").find("The asset group \"missing\" is not defined."), std::string::npos);
     EXPECT_NE(fixture.lua("return content.prefetch({'levels/forest.json'}, nil, {surprise = true})").find("Unknown option \"surprise\"."), std::string::npos);
     EXPECT_NE(fixture.lua("return content.prefetch({'levels/none.json'})").find("does not exist"), std::string::npos);
+    EXPECT_EQ(fixture.lua("content.addPackFolder('/no/such/folder') return 'The folder holds every pack.'"), "The folder holds every pack.");
 }
 
 } // namespace haylen::content

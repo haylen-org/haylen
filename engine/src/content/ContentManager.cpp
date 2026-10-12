@@ -70,6 +70,12 @@ bool ContentManager::isLocal(std::string_view path) const {
     return release->isLocal(toPackagePath(path));
 }
 
+void ContentManager::addPackFolder(const std::filesystem::path& folder) {
+    if (release) {
+        release->addPackFolder(folder);
+    }
+}
+
 bool ContentManager::hasServer() const noexcept {
     return settings.updates.has_value() || !release->getRemoteAddress().empty();
 }

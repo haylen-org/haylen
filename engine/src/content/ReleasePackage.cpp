@@ -3,6 +3,7 @@
 #include <monocypher.h>
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 #include "haylen/content/Error.hpp"
@@ -81,13 +82,36 @@ std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<
 
     auto catalog = std::make_shared<const Catalog>(manifest->decryptCatalog(*keys));
     // clang-format off
-    auto shards = std::make_shared<const ShardSet>(manifest->getEnvelope().shards, keys, [releaseFiles = files](const ShardReference& reference) -> std::unique_ptr<io::PackageReader> {
+    auto shards = std::make_shared<const ShardSet>(manifest->getEnvelope().shards, keys, [releaseFiles = files, packFolders = packs](const ShardReference& reference) -> std::unique_ptr<io::PackageReader> {
         const std::string name = reference.getFileName();
-        return releaseFiles->exists(name) ? releaseFiles->openReader(name) : nullptr;
+        if (releaseFiles->exists(name)) {
+            return releaseFiles->openReader(name);
+        }
+        std::scoped_lock lock(packFolders->mutex);
+        for (const std::shared_ptr<const io::Package>& folder : packFolders->folders) {
+            if (folder->exists(name)) {
+                return folder->openReader(name);
+            }
+        }
+        return nullptr;
     }, domain == Manifest::Domain::Content ? store : nullptr);
     // clang-format on
     auto package = std::make_shared<const HpakPackage>(std::string(getManifestFile(domain)), catalog, shards);
     return std::make_shared<const Content>(Content{.manifest = std::move(manifest), .catalog = std::move(catalog), .shards = std::move(shards), .package = std::move(package)});
+}
+
+void ReleasePackage::addPackFolder(const std::filesystem::path& folder) {
+    if (!std::filesystem::is_directory(folder)) {
+        throw std::runtime_error("The pack folder \"" + folder.generic_string() + "\" does not exist.");
+    }
+    {
+        std::scoped_lock lock(packs->mutex);
+        packs->folders.push_back(io::Package::openDirectory(folder));
+    }
+
+    // The shards that were missing before may be in the new folder, and the content shipped with the app shares the shard files with downloaded content.
+    getContent()->shards->forgetMissing();
+    bundled->shards->forgetMissing();
 }
 
 void ReleasePackage::recover() {
