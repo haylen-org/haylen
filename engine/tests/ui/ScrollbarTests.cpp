@@ -487,7 +487,6 @@ TEST_F(ScrollbarTest, KeepsTheGapForBarsDrawnWithThemeImages) {
         {"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + R"(]}]}
     ]})");
     // clang-format on
-    frames(5);
     // The renderer names the texture of a draw on its first quad, so the quads after it belong to the same image.
     std::vector<math::Rect> thumbs;
     std::vector<math::Rect> grooves;
@@ -505,6 +504,11 @@ TEST_F(ScrollbarTest, KeepsTheGapForBarsDrawnWithThemeImages) {
         });
     });
     // clang-format on
+
+    // The images of the theme load on the worker threads, so the frames go on until the bars draw with them, and then one more frame draws them in place.
+    ASSERT_TRUE(getFixture().frameUntil([&] { return !thumbs.empty() && !grooves.empty(); }));
+    thumbs.clear();
+    grooves.clear();
     frames();
     renderer.removeCanvasOverlay(overlay);
     ASSERT_FALSE(thumbs.empty());
