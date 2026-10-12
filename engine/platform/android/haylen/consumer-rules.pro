@@ -41,10 +41,10 @@
     static void cancel(long);
 }
 
+# The HTTP transport of Varn resolves its Kotlin classes, their fields and methods by name.
 -keep class com.varn.VarnHttp { *; }
--keep class com.varn.VarnHttp$Response { *; }
--keep class com.varn.VarnHttp$ChunkSink { *; }
--keep class com.varn.NativeChunkSink { *; }
+-keep class com.varn.VarnHttp$Outcome { *; }
+-keep class com.varn.NativeExchange { *; }
 
 -keepclasseswithmembernames class dev.haylen.**, com.varn.** {
     native <methods>;
