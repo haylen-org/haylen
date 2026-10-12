@@ -359,18 +359,22 @@ timers[#timers + 1] = timer.every(1, function() end)
 tween.to(target, 10, {x = 100}, {tag = 'module'})
 debug.addMonitor('module', function() return 1 end)
 ui.mount(ui.label{text = 'Module'})
+require('haylen.platform').on('app.ping', function() pings = pings + 1 end)
 return {}
 )";
     start({{"source/hud.lua", module}, {"source/main.lua", R"(
 local events = require('haylen.events')
 bus = require('haylen.signal').new('bus')
-timers, target, unmounted = {}, {x = 0}, 0
+timers, target, unmounted, pings = {}, {x = 0}, 0, 0
 events.on('guiUnmounted', function() unmounted = unmounted + 1 end)
 require('hud')
 )"}});
     fixture->frames(2);
     edit({{"source/hud.lua", module + "-- Edited.\n"}});
     fixture->frames(2);
+    fixture->engine().getPlatform().emit("app.ping", "{}");
+    fixture->frames(1);
+    EXPECT_EQ(lua("return pings"), "1");
     EXPECT_EQ(lua("return bus.size"), "1");
     EXPECT_EQ(lua("local timer = require('haylen.timer') return tostring(timer.active(timers[1])) .. ' ' .. tostring(timer.active(timers[2]))"), "false true");
     EXPECT_EQ(lua("return #require('haylen.debug').monitors()"), "1");

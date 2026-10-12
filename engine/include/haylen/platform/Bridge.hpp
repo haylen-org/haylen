@@ -92,7 +92,8 @@ class Bridge final {
     // Fails a pending call with the code `cancelled` at the next pump and tells native code, and returns `false` when the call already settled.
     bool cancel(std::uint64_t id);
 
-    core::Connection on(const std::string& event, std::function<void(const Payload&)> listener);
+    // Listens to a native event until the connection ends, or until the owner, when one is given, is destroyed.
+    core::Connection on(const std::string& event, std::function<void(const Payload&)> listener, std::weak_ptr<const void> owner = {});
 
     // Thread-safe entry points for native code, which move the buffers into the queue of the bridge without copying them. A failed call carries a message string or an object with `message`, `code` and `data`. JSON that refers to a buffer it lacks fails the call with the code `invalidBytes`, and drops the event with an error in the log. An event that nothing listens to is dropped, unless it is retained: then it waits until a listener of its name connects, which receives the waiting events in order at the next pump.
     void resolve(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers = {});

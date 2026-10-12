@@ -60,6 +60,15 @@ TEST(PlatformLuaTest, SubscribesToNativeEvents) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return #links"), "1");
 
+    // A listener ends with its owner.
+    fixture.runLua("owned = {} platform.on('app.link', function(payload) links[#links + 1] = payload.url end, {owner = owned}) owned = nil collectgarbage()");
+    fixture.frames(1);
+    fixture.engine().getPlatform().emit("app.link", R"({"url": "island://c"})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return #links"), "1");
+    EXPECT_NE(fixture.lua("platform.on('app.link', function() end, {owner = 1})").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.on('app.link', function() end, {priority = 1})").find("Unknown option \"priority\""), std::string::npos);
+
     fixture.runLua("platform.on('app.crash', function() error('listener failed') end)");
     fixture.engine().getPlatform().emit("app.crash", "{}");
     fixture.frames(1);
@@ -127,6 +136,7 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
     EXPECT_EQ(fixture.lua("return given:cancel()"), "false");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 
+    EXPECT_EQ(fixture.lua("return platform.call('store.slow', nil, {}).done"), "false");
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 0})").find("positive number of seconds"), std::string::npos);
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 'soon'})").find("timeout"), std::string::npos);
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {deadline = 1})").find("deadline"), std::string::npos);

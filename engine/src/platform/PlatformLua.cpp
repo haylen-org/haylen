@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -22,6 +23,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "lua/Owners.hpp"
 #include "platform/StreamsLua.hpp"
 #include "varn/async/Promise.h"
 
@@ -45,12 +47,14 @@ void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIn
     if (!lua_isnoneornil(L, optionsIndex)) {
         luaL_checktype(L, optionsIndex, LUA_TTABLE);
         lua::Table::checkFields(L, optionsIndex, {kCallOptions});
-        double seconds = 0.0;
+        std::optional<double> seconds;
         lua::Table::readField(L, optionsIndex, "timeout", seconds);
-        if (!std::isfinite(seconds) || seconds <= 0.0) {
+        if (seconds && (!std::isfinite(*seconds) || *seconds <= 0.0)) {
             throw std::invalid_argument("The timeout of a platform call is a positive number of seconds.");
         }
-        timeout = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(seconds));
+        if (seconds) {
+            timeout = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(*seconds));
+        }
     }
 
     auto pending = std::make_shared<Call>();
@@ -82,22 +86,38 @@ Bridge::Callback PlatformLua::settle(std::shared_ptr<Call> pending) {
     // clang-format on
 }
 
+// A listener without an owner belongs to the default owner, so a module that listens at its top level stops listening when it reloads.
 void PlatformLua::pushConnection(lua_State* L, const std::string& event, int listenerIndex) {
-    core::Engine& owner = lua::Runtime::getEngine(L);
     luaL_checktype(L, listenerIndex, LUA_TFUNCTION);
-    auto function = std::make_shared<lua::Reference>(L, listenerIndex);
+    const int optionsIndex = listenerIndex + 1;
+    int owner = 0;
+    if (!lua_isnoneornil(L, optionsIndex)) {
+        luaL_checktype(L, optionsIndex, LUA_TTABLE);
+        lua::Table::checkFields(L, optionsIndex, {kListenerOptions});
+        if (lua_getfield(L, optionsIndex, "owner") != LUA_TNIL) {
+            owner = lua_gettop(L);
+        }
+    }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
+    }
+    const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
+    auto function = std::make_shared<lua::Owners::Function>(L, listenerIndex, owner);
+    lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    core::Connection connection = owner.getPlatform().on(event, [function](const Bridge::Payload& payload) {
-        lua_State* main = function->getState();
+    core::Connection connection = lua::Runtime::getEngine(L).getPlatform().on(event, [function, main](const Bridge::Payload& payload) {
         lua::Runtime::runReporting(main, [&] {
-            function->push(main);
-            pushPayload(main, payload);
-            lua::Runtime::protectedCall(main, 1, 0);
+            if (function->push(main)) {
+                pushPayload(main, payload);
+                lua::Runtime::protectedCall(main, 1, 0);
+            }
         });
-    });
+    }, lifetime);
     // clang-format on
-
+    if (owner != 0) {
+        lua::Owners::add(L, owner, connection);
+    }
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
 }
 
@@ -205,7 +225,7 @@ int PlatformLua::pendingCallCount(lua_State* L) {
     return 1;
 }
 
-// Subscribes to native events with `on(name, function(payload))` and returns a connection with a `disconnect` method.
+// Subscribes to native events with `on(name, function(payload), {owner})` and returns a connection with a `disconnect` method.
 int PlatformLua::on(lua_State* L) {
     pushConnection(L, lua::Stack::read<std::string>(L, 1), 2);
     return 1;

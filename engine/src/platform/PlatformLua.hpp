@@ -39,6 +39,7 @@ class PlatformLua final {
   private:
     static constexpr const char* kErrorType = "haylen.PlatformError";
     static constexpr std::array<std::string_view, 1> kCallOptions{"timeout"};
+    static constexpr std::array<std::string_view, 1> kListenerOptions{"owner"};
     static constexpr std::array<std::string_view, 2> kEmitOptions{"retain", "batched"};
     static constexpr std::array<std::string_view, 3> kScreenOptions{"state", "opaque", "timeout"};
 
@@ -51,7 +52,7 @@ class PlatformLua final {
     // Starts a call of the method with the parameters and options at the given stack indexes, and pushes the call.
     static void pushCall(lua_State* L, const std::string& method, int paramsIndex, int optionsIndex);
 
-    // Connects the listener at the given stack index to the native event, and pushes the connection.
+    // Connects the listener at the given stack index to the native event, with the owner of the options at the next index or the default owner, and pushes the connection.
     static void pushConnection(lua_State* L, const std::string& event, int listenerIndex);
 
     [[nodiscard]] static bool cancelBridgeCall(lua_State* L, std::uint64_t id);

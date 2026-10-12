@@ -97,12 +97,12 @@ bool Bridge::cancel(std::uint64_t id) {
     return true;
 }
 
-core::Connection Bridge::on(const std::string& event, std::function<void(const Payload&)> listener) {
+core::Connection Bridge::on(const std::string& event, std::function<void(const Payload&)> listener, std::weak_ptr<const void> owner) {
     auto& signal = signals[event];
     if (!signal) {
         signal = std::make_unique<core::Signal<const Payload&>>();
     }
-    return signal->connect(std::move(listener));
+    return signal->connect(std::move(listener), {.owner = std::move(owner)});
 }
 
 void Bridge::resolve(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers) {

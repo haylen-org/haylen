@@ -79,7 +79,7 @@ The engine covers the app before the platform shows the screen and keeps it cove
 | --- | --- |
 | `platform.call(method, params, options)` | Calls a method and returns a call. `call:await()` inside a coroutine returns the result, or `nil` and the error, a table with `message`, `code` and `data` that reads as its message. `options.timeout` gives up after that many seconds, and `call:cancel()` gives up at once. |
 | `platform.send(method, params)` | Calls a method whose answer nobody needs. It creates no call and drops the answer. |
-| `platform.on(event, listener)` | Calls `listener(payload)` for every native event of that name, or once per frame with the list of the batched ones, and returns a connection with `disconnect()`. The first listener of a name also receives the retained events that wait for it. |
+| `platform.on(event, listener, options)` | Calls `listener(payload)` for every native event of that name, or once per frame with the list of the batched ones, and returns a connection with `disconnect()`. The listener ends with the `owner` of the options, or with the module that registered it at its top level when it reloads. The first listener of a name also receives the retained events that wait for it. |
 | `platform.bytes(data)` | Marks a string that crosses the bridge as bytes. |
 | `platform.plugin(id)` | Returns the handle of a plugin of the app, whose `call`, `send` and `on` put the id of the plugin in front of the name, and whose `openScreen` opens a [screen](#screens) of the plugin. |
 | `platform.screenShowing()` | Returns whether the screen of a plugin shows, whichever app of the process opened it. |

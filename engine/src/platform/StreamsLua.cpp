@@ -81,6 +81,9 @@ int StreamsLua::on(lua_State* L) {
             owner = lua_gettop(L);
         }
     }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
+    }
     const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);

@@ -228,7 +228,7 @@ A module of the app whose first name part is the id of a plugin could never load
 | `handle.native` | Whether the native part of the plugin runs on this platform. |
 | `handle:call(method, params, options)` | Calls `<id>.<method>` and returns a platform call, which a coroutine awaits. |
 | `handle:send(method, params)` | Calls `<id>.<method>` when nothing needs its answer, without a call object. |
-| `handle:on(event, listener)` | Listens to the event `<id>.<event>` and returns a connection. |
+| `handle:on(event, listener, options)` | Listens to the event `<id>.<event>` and returns a connection, which ends with the `owner` of the options. |
 | `handle:videoStream(name)`, `handle:audioStream(name)` | The video or audio [stream](#streams) `name` that the native part opened, or `nil` until it opens it. |
 | `handle:openScreen(name, params, options)` | Opens the [screen](#plugin-screens) `name` of the plugin, which covers the app until it ends, and returns a platform call that its result settles. |
 

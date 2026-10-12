@@ -60,9 +60,9 @@ local platform = require('haylen.platform')
 platform.send('analytics.logEvent', {name = 'levelStart', level = 3})
 ```
 
-### platform.on(event, listener)
+### platform.on(event, listener, options)
 
-Calls `listener(payload)` every time native code sends the event named `event`, with the payload converted from JSON and its bytes as strings. Native code that marks its events batched, such as the readings of a sensor, calls the listener once per frame with the list of the payloads of that frame, in order. Returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. A listener stays connected when the connection object is garbage collected. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace. Events that no listener waits for are dropped, except retained ones.
+Calls `listener(payload)` every time native code sends the event named `event`, with the payload converted from JSON and its bytes as strings. The optional `options.owner` ties the listener to an owner, like the listeners of [haylen.events](events.md#owners), and a listener without one belongs to the module that registers it at its top level, so a [hot reload](hotReload.md) of the module ends it. An unknown option raises `Unknown option "<key>".`. Native code that marks its events batched, such as the readings of a sensor, calls the listener once per frame with the list of the payloads of that frame, in order. Returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. A listener stays connected when the connection object is garbage collected. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace. Events that no listener waits for are dropped, except retained ones.
 
 Native code retains an event that may come before the app listens, such as the deep link or the notification that opened the app, or purchases that finished while it was closed. A retained event that nothing listens to waits, up to 32 per name with the oldest dropped first, and the first listener of its name receives the waiting events in order at the start of the next frame, before any newer event of that name. A retained batch waits as the list of its frame. Events wait in the running app, so a restarted app starts with none.
 
@@ -284,7 +284,7 @@ end)
 | `handle.native` | Whether the native part of the plugin runs on this platform, read anew every time, since a native library may declare it later. |
 | `handle:call(method, params, options)` | The same as `platform.call(id .. '.' .. method, params, options)`. |
 | `handle:send(method, params)` | The same as `platform.send(id .. '.' .. method, params)`. |
-| `handle:on(event, listener)` | The same as `platform.on(id .. '.' .. event, listener)`. |
+| `handle:on(event, listener, options)` | The same as `platform.on(id .. '.' .. event, listener, options)`. |
 | `handle:videoStream(name)` | The [video stream](#video-streams) `name` that the native part of the plugin opened, or `nil` until it opens it. The engine keeps its texture current from then on, until the app stops. |
 | `handle:audioStream(name)` | The [audio stream](#audio-streams) `name` that the native part of the plugin opened, or `nil` until it opens it. |
 | `handle:openScreen(name, params, options)` | Opens the [screen](#screens) `name` of the plugin, which covers the app until it ends, and returns a call that the result of the screen settles. |
@@ -394,7 +394,7 @@ The native part of a plugin, such as a camera or a video decoder, pushes frames 
 | `stream.width`, `stream.height` | The size of the frame the texture shows, or the size the stream opened with before the first frame. |
 | `stream.frameCount` | How many frames the texture received, which leaves out the frames that newer ones replaced before a frame of the app. |
 | `stream.timestamp` | The timestamp of the frame the texture shows, in the seconds of the native part. |
-| `stream:on('frame', listener, options)` | Calls `listener(timestamp)` whenever the texture receives a frame, and returns a connection. `options.owner` ties the listener to an owner, like the listeners of [haylen.events](events.md#owners). Another event name raises `Unknown video stream event '<name>'. Video streams report frame.`. |
+| `stream:on('frame', listener, options)` | Calls `listener(timestamp)` whenever the texture receives a frame, and returns a connection. `options.owner` ties the listener to an owner, like the listeners of [haylen.events](events.md#owners), and a listener without one belongs to the module that registers it at its top level. Another event name raises `Unknown video stream event "<name>". Video streams report "frame".`. |
 
 Streams belong to the process, like the native code that pushes into them, so a stream outlives an app that restarts, and the next app receives the newest frame again. The [plugin guide](../plugins.md#streams) describes how native code pushes frames on each platform.
 
