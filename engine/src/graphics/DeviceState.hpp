@@ -29,8 +29,11 @@ struct DeviceState {
     std::uint32_t nextTextureId = 1;
     sg_pixel_format offscreenFormat = SG_PIXELFORMAT_RGBA8;
 
-    // The dynamic textures whose pixels changed since the last upload.
+    // The dynamic textures whose pixels changed since the last upload, the ones the last upload sent, and the list an upload walks, which the uploads swap so none of them allocates once they have grown.
     std::vector<std::weak_ptr<TextureResource>> changedTextures;
+    std::vector<std::weak_ptr<TextureResource>> uploadedTextures;
+    std::vector<std::weak_ptr<TextureResource>> uploadingTextures;
+    std::uint64_t uploads = 0;
 
     // Returns the sampler that every texture with the options shares, creating it on first use.
     [[nodiscard]] sg_sampler getSampler(Texture::Options options);

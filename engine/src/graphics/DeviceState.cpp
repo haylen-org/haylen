@@ -96,7 +96,8 @@ Texture DeviceState::createDynamicTexture(int width, int height, sg_pixel_format
 }
 
 void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels) {
-    if (resource->staged.empty()) {
+    if (!resource->pending) {
+        resource->pending = true;
         changedTextures.push_back(resource);
     }
     resource->staged.assign(pixels.begin(), pixels.end());

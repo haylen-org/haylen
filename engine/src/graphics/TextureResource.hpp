@@ -33,8 +33,10 @@ struct TextureResource {
     // The submission of the 2D renderer that last kept the texture alive until it ends, which keeps it once however many draws use it.
     std::uint64_t retainEpoch = 0;
 
-    // A dynamic texture changes in place, and keeps the pixels it received since the last upload until the device sends them.
+    // A dynamic texture changes in place, and keeps the pixels it received since the last upload until the device sends them. The staging memory stays while the texture changes every frame, such as a video, and goes after a frame without a change.
     bool dynamic = false;
+    bool pending = false;
+    std::uint64_t uploadedAt = 0;
     std::vector<std::uint8_t> staged;
     std::weak_ptr<ResourceGraveyard> graveyard;
     debug::TrackedObject tracked;

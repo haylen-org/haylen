@@ -17,6 +17,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -158,6 +159,35 @@ TEST(DeviceTest, ReportsAFullTexturePool) {
     textures.clear();
     device.collectGarbage();
     EXPECT_TRUE(device.createTexture(pixel).isValid());
+}
+
+// A dynamic texture that changes every frame, such as a video, keeps its staging memory, so frames that update it allocate no more than frames that do not, and a texture that stops changing gives the memory back.
+TEST(DeviceTest, UpdatesDynamicTexturesEveryFrameWithoutAllocating) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics::Texture texture = device.createDynamicTexture(64, 64, math::Color::white());
+    const std::vector<std::uint8_t> pixels(std::size_t{64} * 64 * 4, 128);
+    // clang-format off
+    const auto measure = [&](bool update) {
+        const test::AllocationTracker tracker;
+        for (int frame = 0; frame < 3; ++frame) {
+            if (update) {
+                device.updateTexture(texture, pixels);
+            }
+            fixture.frames(1);
+        }
+        return tracker.getTotal();
+    };
+    // clang-format on
+    for (int frame = 0; frame < 3; ++frame) {
+        device.updateTexture(texture, pixels);
+        fixture.frames(1);
+    }
+
+    const std::size_t updated = measure(true);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().uploadedBytes, pixels.size());
+    EXPECT_EQ(updated, measure(false));
+    EXPECT_EQ(texture.getResource()->staged.capacity(), 0U);
 }
 
 TEST(DeviceTest, ReportsAFullPipelinePool) {

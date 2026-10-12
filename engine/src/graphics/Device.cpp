@@ -137,7 +137,9 @@ void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t>
 // Sokol takes one update of an image per frame, holding its whole mip level, so every texture uploads the last pixels it received.
 std::size_t Device::uploadTextures() {
     std::size_t bytes = 0;
-    for (const std::weak_ptr<TextureResource>& changed : std::exchange(state->changedTextures, {})) {
+    ++state->uploads;
+    std::swap(state->changedTextures, state->uploadingTextures);
+    for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
         const std::shared_ptr<TextureResource> resource = changed.lock();
         if (!resource) {
             continue;
@@ -146,8 +148,19 @@ std::size_t Device::uploadTextures() {
         data.mip_levels[0] = {.ptr = resource->staged.data(), .size = resource->staged.size()};
         sg_update_image(resource->image, &data);
         bytes += resource->staged.size();
-        resource->staged = {};
+        resource->pending = false;
+        resource->uploadedAt = state->uploads;
     }
+
+    // A texture that changed for the upload before but not for this one gives its staging memory back.
+    for (const std::weak_ptr<TextureResource>& uploaded : state->uploadedTextures) {
+        const std::shared_ptr<TextureResource> resource = uploaded.lock();
+        if (resource && !resource->pending && resource->uploadedAt != state->uploads) {
+            resource->staged = std::vector<std::uint8_t>();
+        }
+    }
+    std::swap(state->uploadedTextures, state->uploadingTextures);
+    state->uploadingTextures.clear();
     return bytes;
 }
 
