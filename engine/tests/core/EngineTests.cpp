@@ -218,8 +218,23 @@ TEST(AppConfigTest, ReadsEveryField) {
     }
 }
 
+// The description, the company and the copyright that desktops and installers show follow the name of the app until it gives its own.
+TEST(AppConfigTest, ThePublisherFollowsTheNameUntilTheAppGivesItsOwn) {
+    const core::AppConfig named = core::AppConfig::fromJson(core::Json{{"name", "Tiny Island"}});
+    EXPECT_EQ(named.description, "Tiny Island");
+    EXPECT_EQ(named.company, "Tiny Island");
+    EXPECT_EQ(named.copyright, "Copyright \xC2\xA9 Tiny Island");
+
+    const core::AppConfig published = core::AppConfig::fromJson(core::Json{{"name", "Tiny Island"}, {"description", "Sail between islands."}, {"company", "Harbor Games"}});
+    EXPECT_EQ(published.description, "Sail between islands.");
+    EXPECT_EQ(published.copyright, "Copyright \xC2\xA9 Harbor Games");
+    EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"copyright", "Copyright 2026 Harbor Games"}}).copyright, "Copyright 2026 Harbor Games");
+    EXPECT_EQ(published.toJson().at("company"), "Harbor Games");
+    EXPECT_EQ(core::AppConfig::fromJson(core::Json::object()).toJson().at("copyright"), core::AppConfig{}.copyright);
+}
+
 TEST(AppConfigTest, RejectsInvalidValues) {
-    for (const char* document : {R"([])", R"({"name": 3})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})", R"({"splash": {"darkBackground": ""}})", R"({"splash": {"duration": -1}})", R"({"splash": {"fadeOut": "slow"}})"}) {
+    for (const char* document : {R"([])", R"({"name": 3})", R"({"company": 3})", R"({"description": false})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})", R"({"splash": {"darkBackground": ""}})", R"({"splash": {"duration": -1}})", R"({"splash": {"fadeOut": "slow"}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
     try {

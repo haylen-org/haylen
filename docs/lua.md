@@ -35,6 +35,9 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `name` | string | `"Haylen App"` | Display name of the app. |
 | `identifier` | string | `"dev.haylen.app"` | Unique reverse-domain id. It names the folder where `haylen.storage` and `haylen.preferences` keep their files. |
 | `version` | string | `"1.0.0"` | Version of the app. |
+| `description` | string | The value of `name` | One sentence about the app, which the Windows and Linux templates give the executable, the desktop entry, the AppStream metainfo and the packages. |
+| `company` | string | The value of `name` | The person or company that publishes the app, in the same places. |
+| `copyright` | string | `"Copyright © <company>"` | The copyright notice of the app, which the Windows executable and the installer show. |
 | `window.title` | string | The value of `name` | Window title. |
 | `window.width`, `window.height` | integer | `1280`, `720` | Initial window size. |
 | `window.fullscreen` | boolean | `false` | Starts fullscreen. |

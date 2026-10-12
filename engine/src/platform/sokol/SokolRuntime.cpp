@@ -112,6 +112,8 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     desc.high_dpi = config.window.highDpi;
     desc.fullscreen = config.window.fullscreen;
     desc.window_title = config.window.title.c_str();
+    // Linux desktops find the desktop entry of the app by the class of its window, which the Linux template names after the identifier.
+    desc.desktop.app_id = config.identifier.c_str();
     desc.enable_clipboard = true;
     desc.clipboard_size = 64 * 1024;
     desc.logger.func = slog_func;

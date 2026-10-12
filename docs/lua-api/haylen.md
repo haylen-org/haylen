@@ -48,6 +48,9 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `name` | string | `'Haylen App'` | Display name of the app. |
 | `identifier` | string | `'dev.haylen.app'` | Unique id, which also names the storage folder. |
 | `version` | string | `'1.0.0'` | Version of the app. |
+| `description` | string | The value of `name` | One sentence about the app, which desktops and installers show. |
+| `company` | string | The value of `name` | The person or company that publishes the app. |
+| `copyright` | string | `'Copyright © <company>'` | The copyright notice of the app. |
 | `window.title` | string | The value of `name` | Initial window title. |
 | `window.width` | integer | `1280` | Initial window width. |
 | `window.height` | integer | `720` | Initial window height. |

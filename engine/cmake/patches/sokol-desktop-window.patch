@@ -1,4 +1,4 @@
-Adds desktop window options to sokol_app: borderless, topmost, unfocusable and taskbar-less windows that open at a given position with those options already in effect, sapp_set_window_focusable() to change the focus behavior while the app runs, per-pixel transparency on D3D11 through a DirectComposition swapchain with premultiplied alpha, and 32-bit ARGB visuals for transparent windows on X11 with GLX and EGL. Quitting through performClose: is replaced because borderless macOS windows have no close button.
+Adds desktop window options to sokol_app: borderless, topmost, unfocusable and taskbar-less windows that open at a given position with those options already in effect, the class of X11 windows that desktops match with the desktop entry of the application, sapp_set_window_focusable() to change the focus behavior while the app runs, per-pixel transparency on D3D11 through a DirectComposition swapchain with premultiplied alpha, and 32-bit ARGB visuals for transparent windows on X11 with GLX and EGL. Windows take the icon of the executable. Quitting through performClose: is replaced because borderless macOS windows have no close button.
 
 --- a/sokol_app.h
 +++ b/sokol_app.h
@@ -22,11 +22,10 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  
      STEP BY STEP
      ============
-@@ -905,7 +909,40 @@
-     any time (either because the browser had rejected switching into fullscreen,
+@@ -906,7 +910,46 @@
      or the user leaves fullscreen via Esc), this means that the result
      of sapp_is_fullscreen() may change also without calling sapp_toggle_fullscreen()!
-+
+ 
 +
 +    DESKTOP WINDOW OPTIONS
 +    ======================
@@ -45,14 +44,20 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +        .desktop.has_position   - the top left corner of the content area
 +                                  opens at .desktop.x and .desktop.y instead
 +                                  of the window being centered
-+
++        .desktop.app_id         - on X11, the class of the window, by which
++                                  desktops find the desktop entry of the
++                                  application
+ 
 +    The position has the same units as sapp_desc.width and sapp_desc.height,
 +    with the origin at the top left corner of the primary screen and y
 +    growing downward, on macOS too.
 +
++    On Windows, the window takes the first icon of the executable, the icon
++    that the shell shows for the application, when the executable has one.
++
 +    To let the window take the focus again, or to keep it from taking the
 +    focus while the application runs, call:
- 
++
 +        sapp_set_window_focusable(bool focusable)
 +
 +    Together with SAPP_COMPOSITEMODE_PREMULTIPLIED, these options create
@@ -60,10 +65,11 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    Transparency needs D3D11 on Windows, and a compositing window manager
 +    with a 32-bit ARGB visual on Linux. When those are missing, sokol-app
 +    fails with an error instead of creating an opaque window.
- 
++
      WINDOW ICON SUPPORT
      ===================
-@@ -1745,6 +1782,13 @@
+     Some sokol_app.h backends allow to change the window icon programmatically:
+@@ -1745,6 +1788,13 @@
      _SAPP_LOGITEM_XMACRO(WIN32_D3D11_GET_IDXGIFACTORY_FAILED, "could not obtain IDXGIFactory object") \
      _SAPP_LOGITEM_XMACRO(WIN32_D3D11_GET_IDXGIADAPTER_FAILED, "could not obtain IDXGIAdapter object") \
      _SAPP_LOGITEM_XMACRO(WIN32_D3D11_QUERY_INTERFACE_IDXGIDEVICE1_FAILED, "could not obtain IDXGIDevice1 interface") \
@@ -77,7 +83,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _SAPP_LOGITEM_XMACRO(WIN32_REGISTER_RAW_INPUT_DEVICES_FAILED_MOUSE_LOCK, "RegisterRawInputDevices() failed (on mouse lock)") \
      _SAPP_LOGITEM_XMACRO(WIN32_REGISTER_RAW_INPUT_DEVICES_FAILED_MOUSE_UNLOCK, "RegisterRawInputDevices() failed (on mouse unlock)") \
      _SAPP_LOGITEM_XMACRO(WIN32_GET_RAW_INPUT_DATA_FAILED, "GetRawInputData() failed") \
-@@ -1756,6 +1800,7 @@
+@@ -1756,6 +1806,7 @@
      _SAPP_LOGITEM_XMACRO(LINUX_GLX_VERSION_TOO_LOW, "GLX version too low (need at least 1.3)") \
      _SAPP_LOGITEM_XMACRO(LINUX_GLX_NO_GLXFBCONFIGS, "glXGetFBConfigs() returned no configs") \
      _SAPP_LOGITEM_XMACRO(LINUX_GLX_NO_SUITABLE_GLXFBCONFIG, "failed to find a suitable GLXFBConfig") \
@@ -85,7 +91,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _SAPP_LOGITEM_XMACRO(LINUX_GLX_GET_VISUAL_FROM_FBCONFIG_FAILED, "glXGetVisualFromFBConfig failed") \
      _SAPP_LOGITEM_XMACRO(LINUX_GLX_REQUIRED_EXTENSIONS_MISSING, "GLX extensions ARB_create_context and ARB_create_context_profile missing") \
      _SAPP_LOGITEM_XMACRO(LINUX_GLX_CREATE_CONTEXT_FAILED, "Failed to create GL context via glXCreateContextAttribsARB") \
-@@ -1766,6 +1811,7 @@
+@@ -1766,6 +1817,7 @@
      _SAPP_LOGITEM_XMACRO(LINUX_EGL_GET_DISPLAY_FAILED, "eglGetDisplay() failed") \
      _SAPP_LOGITEM_XMACRO(LINUX_EGL_INITIALIZE_FAILED, "eglInitialize() failed") \
      _SAPP_LOGITEM_XMACRO(LINUX_EGL_NO_CONFIGS, "eglChooseConfig() returned no configs") \
@@ -93,7 +99,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _SAPP_LOGITEM_XMACRO(LINUX_EGL_NO_NATIVE_VISUAL, "eglGetConfigAttrib() for EGL_NATIVE_VISUAL_ID failed") \
      _SAPP_LOGITEM_XMACRO(LINUX_EGL_GET_VISUAL_INFO_FAILED, "XGetVisualInfo() failed") \
      _SAPP_LOGITEM_XMACRO(LINUX_EGL_CREATE_WINDOW_SURFACE_FAILED, "eglCreateWindowSurface() failed") \
-@@ -2064,6 +2110,16 @@
+@@ -2064,6 +2116,17 @@
  typedef struct sapp_android_desc {
      bool (*native_event_cb)(const void* native_event);
  } sapp_android_desc;
@@ -106,11 +112,12 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    bool has_position;          // if true, the window opens at x and y instead of centered
 +    int x;                      // left edge of the content area, from the left edge of the primary screen
 +    int y;                      // top edge of the content area, from the top edge of the primary screen
++    const char* app_id;         // on X11, the class of the window, by which desktops find the desktop entry of the application
 +} sapp_desktop_desc;
  
  typedef struct sapp_desc {
      void (*init_cb)(void);                  // these are the user-provided callbacks without user data
-@@ -2105,6 +2161,7 @@
+@@ -2105,6 +2168,7 @@
      sapp_html5_desc html5;
      sapp_ios_desc ios;
      sapp_android_desc android;
@@ -118,7 +125,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  } sapp_desc;
  
  /* HTML5 specific: request and response structs for
-@@ -2206,6 +2263,8 @@
+@@ -2206,6 +2270,8 @@
  SOKOL_APP_API_DECL bool sapp_is_fullscreen(void);
  /* toggle fullscreen mode */
  SOKOL_APP_API_DECL void sapp_toggle_fullscreen(void);
@@ -127,20 +134,21 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  /* show or hide the mouse cursor */
  SOKOL_APP_API_DECL void sapp_show_mouse(bool show);
  /* show or hide the mouse cursor */
-@@ -2547,8 +2606,12 @@
+@@ -2547,9 +2613,13 @@
          #endif
          #include <d3d11.h>
          #include <dxgi.h>
 +        #include <dxgi1_2.h>
          // DXGI_SWAP_EFFECT_FLIP_DISCARD is only defined in newer Windows SDKs, so don't depend on it
          #define _SAPP_DXGI_SWAP_EFFECT_FLIP_DISCARD (4)
-+    #endif
+     #endif
 +    #ifndef WS_EX_NOREDIRECTIONBITMAP
 +        #define WS_EX_NOREDIRECTIONBITMAP (0x00200000L)
-     #endif
++    #endif
      #ifndef WM_MOUSEHWHEEL /* see https://github.com/floooh/sokol/issues/138 */
          #define WM_MOUSEHWHEEL (0x020E)
-@@ -2915,6 +2978,45 @@
+     #endif
+@@ -2915,7 +2985,46 @@
  #endif // _SAPP_EMSCRIPTEN
  
  #if defined(SOKOL_D3D11) && defined(_SAPP_WIN32)
@@ -167,7 +175,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    HRESULT (STDMETHODCALLTYPE* SetRoot)(_sapp_dcomp_target_t* self, _sapp_dcomp_visual_t* visual);
 +} _sapp_dcomp_target_vtbl_t;
 +struct _sapp_dcomp_target_t { const _sapp_dcomp_target_vtbl_t* lpVtbl; };
-+typedef struct {
+ typedef struct {
 +    void* QueryInterface;
 +    void* AddRef;
 +    ULONG (STDMETHODCALLTYPE* Release)(_sapp_dcomp_visual_t* self);
@@ -183,10 +191,11 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +} _sapp_dcomp_visual_vtbl_t;
 +struct _sapp_dcomp_visual_t { const _sapp_dcomp_visual_vtbl_t* lpVtbl; };
 +
- typedef struct {
++typedef struct {
      ID3D11Device* device;
      ID3D11DeviceContext* device_context;
-@@ -2927,6 +3029,10 @@
+     ID3D11Texture2D* rt;
+@@ -2927,6 +3036,10 @@
      DXGI_SWAP_CHAIN_DESC swap_chain_desc;
      IDXGISwapChain* swap_chain;
      IDXGIDevice1* dxgi_device;
@@ -197,7 +206,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  } _sapp_d3d11_t;
  #endif
  
-@@ -3298,6 +3404,7 @@
+@@ -3298,6 +3411,7 @@
      sapp_desc desc;
      bool valid;
      bool fullscreen;            // current(!) fullscreen state
@@ -205,7 +214,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      bool first_frame;
      bool init_called;
      bool cleanup_called;
-@@ -3634,6 +3741,7 @@
+@@ -3634,6 +3748,7 @@
      _sapp.desc.window_title = _sapp.window_title;
      _sapp.dpi_scale = 1.0f;
      _sapp.fullscreen = _sapp.desc.fullscreen;
@@ -213,7 +222,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _sapp.mouse.shown = true;
      _sapp_timing_init(&_sapp.timing);
  }
-@@ -6187,7 +6295,10 @@
+@@ -6187,7 +6302,10 @@
      [[_sapp.macos.view openGLContext] flushBuffer];
      #endif
      if (_sapp.quit_requested || _sapp.quit_ordered) {
@@ -225,7 +234,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      }
  }
  
-@@ -6195,17 +6306,25 @@
+@@ -6195,17 +6313,25 @@
  - (void)applicationDidFinishLaunching:(NSNotification*)aNotification {
      _SOKOL_UNUSED(aNotification);
      // NOTE: keep activationPolicy in front of window creation (see https://github.com/floooh/sokol/issues/1500)
@@ -257,7 +266,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _sapp.macos.window = [[_sapp_macos_window alloc]
          initWithContentRect:window_rect
          styleMask:style
-@@ -6220,6 +6339,10 @@
+@@ -6220,6 +6346,10 @@
          _sapp.macos.window.backgroundColor = [NSColor clearColor];
          _sapp.macos.window.hasShadow = NO;
      }
@@ -268,7 +277,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _sapp.macos.win_dlg = [[_sapp_macos_window_delegate alloc] init];
      _sapp.macos.window.delegate = _sapp.macos.win_dlg;
      #if defined(SOKOL_METAL)
-@@ -6231,12 +6354,20 @@
+@@ -6231,11 +6361,19 @@
      #endif
      _sapp.macos.window.contentView = _sapp.macos.view;
      [_sapp.macos.window makeFirstResponder:_sapp.macos.view];
@@ -280,17 +289,16 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      if (_sapp.fullscreen) {
          /* ^^^ on GL, this already toggles a rendered frame, so set the valid flag before */
          [_sapp.macos.window toggleFullScreen:self];
-     }
++    }
 +    if (!_sapp.focusable) {
 +        // show the window without activating the application
 +        [_sapp.macos.window orderFrontRegardless];
 +        _sapp_macos_update_dimensions();
 +        return;
-+    }
+     }
      [NSApp activateIgnoringOtherApps:YES];
      [_sapp.macos.window makeKeyAndOrderFront:nil];
-     _sapp_macos_update_dimensions();
-@@ -6378,6 +6509,15 @@
+@@ -6378,6 +6516,15 @@
      return self;
  }
  
@@ -306,7 +314,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
      return NSDragOperationCopy;
  }
-@@ -6419,6 +6559,13 @@
+@@ -6419,6 +6566,13 @@
  }
  @end
  
@@ -320,7 +328,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  @implementation _sapp_macos_view
  #if defined(SOKOL_GLCORE)
  - (void)timerFired:(id)sender {
-@@ -6462,6 +6609,15 @@
+@@ -6462,6 +6616,15 @@
  - (BOOL)isOpaque {
      return _sapp.desc.composite_mode == SAPP_COMPOSITEMODE_OPAQUE;
  }
@@ -336,7 +344,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  - (BOOL)canBecomeKeyView {
      return YES;
  }
-@@ -6509,6 +6665,7 @@
+@@ -6509,6 +6672,7 @@
      }
  }
  - (void)mouseDown:(NSEvent*)event {
@@ -344,7 +352,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _sapp_gl_make_current();
      _sapp_macos_mouse_update_from_nsevent(event, false);
      _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_LEFT, _sapp_macos_mods(event));
-@@ -6521,6 +6678,7 @@
+@@ -6521,6 +6685,7 @@
      _sapp.macos.mouse_buttons &= ~(1<<SAPP_MOUSEBUTTON_LEFT);
  }
  - (void)rightMouseDown:(NSEvent*)event {
@@ -352,7 +360,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _sapp_gl_make_current();
      _sapp_macos_mouse_update_from_nsevent(event, false);
      _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_RIGHT, _sapp_macos_mods(event));
-@@ -6533,6 +6691,7 @@
+@@ -6533,6 +6698,7 @@
      _sapp.macos.mouse_buttons &= ~(1<<SAPP_MOUSEBUTTON_RIGHT);
  }
  - (void)otherMouseDown:(NSEvent*)event {
@@ -360,34 +368,35 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _sapp_gl_make_current();
      _sapp_macos_mouse_update_from_nsevent(event, false);
      if (2 == event.buttonNumber) {
-@@ -8781,6 +8940,11 @@
+@@ -8781,7 +8947,12 @@
  static const IID _sapp_IID_ID3D11Texture2D = { 0x6f15aaf2,0xd208,0x4e89, {0x9a,0xb4,0x48,0x95,0x35,0xd3,0x4f,0x9c} };
  static const IID _sapp_IID_IDXGIDevice1    = { 0x77db970f,0x6276,0x48ba, {0xba,0x28,0x07,0x01,0x43,0xb4,0x39,0x2c} };
  static const IID _sapp_IID_IDXGIFactory    = { 0x7b7166ec,0x21c7,0x44ae, {0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69} };
 +static const IID _sapp_IID_IDXGIFactory2   = { 0x50c83a1c,0xe072,0x4c48, {0x87,0xb0,0x36,0x30,0xfa,0x36,0xa6,0xd0} };
 +static const IID _sapp_IID_IDCompositionDevice = { 0xc37ea93a,0xe7aa,0x450d, {0xb1,0x6f,0x97,0x46,0xcb,0x04,0x07,0xf3} };
-+
+ 
 +#define _SAPP_DCOMP_RELEASE(obj) if (obj) { (obj)->lpVtbl->Release(obj); obj=0; }
 +typedef HRESULT (WINAPI* _sapp_dcomp_create_device_t)(IDXGIDevice* dxgi_device, REFIID iid, void** device);
- 
++
  static inline HRESULT _sapp_dxgi_GetBuffer(IDXGISwapChain* self, UINT Buffer, REFIID riid, void** ppSurface) {
      #if defined(__cplusplus)
-@@ -8875,6 +9039,14 @@
-         return self->MakeWindowAssociation(WindowHandle, Flags);
-     #else
-         return self->lpVtbl->MakeWindowAssociation(self, WindowHandle, Flags);
-+    #endif
-+}
-+
+         return self->GetBuffer(Buffer, riid, ppSurface);
+@@ -8878,6 +9049,14 @@
+     #endif
+ }
+ 
 +static inline HRESULT _sapp_dxgi_CreateSwapChainForComposition(IDXGIFactory2* self, IUnknown* pDevice, const DXGI_SWAP_CHAIN_DESC1* pDesc, IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
 +    #if defined(__cplusplus)
 +        return self->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
 +    #else
 +        return self->lpVtbl->CreateSwapChainForComposition(self, pDevice, pDesc, pRestrictToOutput, ppSwapChain);
-     #endif
- }
- 
-@@ -8911,10 +9083,112 @@
++    #endif
++}
++
+ _SOKOL_PRIVATE DXGI_FORMAT _sapp_d3d11_swapchain_color_format(void) {
+     if (_sapp.desc.hdr) {
+         return DXGI_FORMAT_R16G16B16A16_FLOAT;
+@@ -8911,10 +9090,112 @@
          case SAPP_PIXELFORMAT_DEPTH: return DXGI_FORMAT_D32_FLOAT;
          case SAPP_PIXELFORMAT_DEPTH_STENCIL: return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
          default: SOKOL_UNREACHABLE; return DXGI_FORMAT_UNKNOWN;
@@ -407,12 +416,12 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    HRESULT hr = create_device((IDXGIDevice*)_sapp.d3d11.dxgi_device, _sapp_win32_refiid(_sapp_IID_IDCompositionDevice), (void**)&_sapp.d3d11.dcomp_device);
 +    if (!SUCCEEDED(hr) || !_sapp.d3d11.dcomp_device) {
 +        _SAPP_PANIC(WIN32_DCOMP_CREATE_DEVICE_FAILED);
-     }
++    }
 +    _sapp_dcomp_device_t* device = _sapp.d3d11.dcomp_device;
 +    hr = device->lpVtbl->CreateTargetForHwnd(device, _sapp.win32.hwnd, TRUE, &_sapp.d3d11.dcomp_target);
 +    if (SUCCEEDED(hr)) {
 +        hr = device->lpVtbl->CreateVisual(device, &_sapp.d3d11.dcomp_visual);
-+    }
+     }
 +    if (SUCCEEDED(hr)) {
 +        hr = _sapp.d3d11.dcomp_visual->lpVtbl->SetContent(_sapp.d3d11.dcomp_visual, (IUnknown*)_sapp.d3d11.swap_chain);
 +    }
@@ -500,7 +509,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      DXGI_SWAP_CHAIN_DESC* sc_desc = &_sapp.d3d11.swap_chain_desc;
      sc_desc->BufferDesc.Width = (UINT)_sapp.framebuffer_width;
      sc_desc->BufferDesc.Height = (UINT)_sapp.framebuffer_height;
-@@ -9008,6 +9282,13 @@
+@@ -9008,6 +9289,13 @@
  }
  
  _SOKOL_PRIVATE void _sapp_d3d11_destroy_device_and_swapchain(void) {
@@ -514,7 +523,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      _SAPP_SAFE_RELEASE(_sapp.d3d11.swap_chain);
      _SAPP_SAFE_RELEASE(_sapp.d3d11.dxgi_device);
      _SAPP_SAFE_RELEASE(_sapp.d3d11.device_context);
-@@ -9469,8 +9750,37 @@
+@@ -9469,8 +9757,37 @@
          #endif
      }
      return false;
@@ -525,8 +534,8 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +        return WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_SYSMENU | WS_MINIMIZEBOX;
 +    }
 +    return WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
- }
- 
++}
++
 +_SOKOL_PRIVATE DWORD _sapp_win32_ex_style(void) {
 +    DWORD ex_style = _sapp.desc.desktop.skip_taskbar ? WS_EX_TOOLWINDOW : (WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
 +    if (_sapp.desc.desktop.topmost) {
@@ -542,8 +551,8 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    }
 +    #endif
 +    return ex_style;
-+}
-+
+ }
+ 
 +_SOKOL_PRIVATE void _sapp_win32_set_focusable(bool focusable) {
 +    const LONG_PTR ex_style = GetWindowLongPtrW(_sapp.win32.hwnd, GWL_EXSTYLE);
 +    SetWindowLongPtrW(_sapp.win32.hwnd, GWL_EXSTYLE, focusable ? (ex_style & ~(LONG_PTR)WS_EX_NOACTIVATE) : (ex_style | WS_EX_NOACTIVATE));
@@ -552,7 +561,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  _SOKOL_PRIVATE void _sapp_win32_set_fullscreen(bool fullscreen, UINT swp_flags) {
      HMONITOR monitor = MonitorFromWindow(_sapp.win32.hwnd, MONITOR_DEFAULTTONEAREST);
      _SAPP_STRUCT(MONITORINFO, minfo);
-@@ -9480,13 +9790,13 @@
+@@ -9480,13 +9797,13 @@
      const int monitor_w = mr.right - mr.left;
      const int monitor_h = mr.bottom - mr.top;
  
@@ -568,7 +577,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
          rect = _sapp.win32.stored_window_rect;
      } else {
          GetWindowRect(_sapp.win32.hwnd, &_sapp.win32.stored_window_rect);
-@@ -9981,6 +10291,11 @@
+@@ -9981,6 +10298,11 @@
                  break;
              case WM_KILLFOCUS:
                  _sapp_win32_app_event(SAPP_EVENTTYPE_UNFOCUSED);
@@ -580,7 +589,31 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
                  break;
              case WM_SETCURSOR:
                  if (LOWORD(lParam) == HTCLIENT) {
-@@ -10168,11 +10483,19 @@
+@@ -10154,13 +10476,22 @@
+     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+ }
+ 
++// the first icon group of the executable is the icon of the application, as the shell shows it
++_SOKOL_PRIVATE BOOL CALLBACK _sapp_win32_load_app_icon(HMODULE module, LPCWSTR type, LPWSTR name, LONG_PTR icon) {
++    _SOKOL_UNUSED(type);
++    *(HICON*)icon = LoadIconW(module, name);
++    return FALSE;
++}
++
+ _SOKOL_PRIVATE void _sapp_win32_create_window(void) {
++    HICON app_icon = 0;
++    EnumResourceNamesW(GetModuleHandleW(NULL), (LPCWSTR) RT_GROUP_ICON, _sapp_win32_load_app_icon, (LONG_PTR) &app_icon);
+     _SAPP_STRUCT(WNDCLASSW, wndclassw);
+     wndclassw.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+     wndclassw.lpfnWndProc = (WNDPROC) _sapp_win32_wndproc;
+     wndclassw.hInstance = GetModuleHandleW(NULL);
+     wndclassw.hCursor = LoadCursor(NULL, IDC_ARROW);
+-    wndclassw.hIcon = LoadIcon(NULL, IDI_WINLOGO);
++    wndclassw.hIcon = app_icon ? app_icon : LoadIcon(NULL, IDI_WINLOGO);
+     wndclassw.lpszClassName = L"SOKOLAPP";
+     RegisterClassW(&wndclassw);
+ 
+@@ -10168,11 +10499,19 @@
         windowed-mode window will always be created first (however in hidden
         mode, so that no windowed-mode window pops up before the fullscreen window)
      */
@@ -602,7 +635,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      const bool use_default_width = 0 == _sapp.window_width;
      const bool use_default_height = 0 == _sapp.window_height;
      AdjustWindowRectEx(&rect, win_style, FALSE, win_ex_style);
-@@ -10185,8 +10508,8 @@
+@@ -10185,8 +10524,8 @@
          L"SOKOLAPP",                // lpClassName
          _sapp.window_title_wide,    // lpWindowName
          win_style,                  // dwStyle
@@ -613,7 +646,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
          use_default_width ? CW_USEDEFAULT : win_width, // nWidth
          use_default_height ? CW_USEDEFAULT : win_height, // nHeight (NOTE: if width is CW_USEDEFAULT, height is actually ignored)
          NULL,                       // hWndParent
-@@ -10208,7 +10531,7 @@
+@@ -10208,7 +10547,7 @@
          _sapp_win32_set_fullscreen(_sapp.fullscreen, SWP_HIDEWINDOW);
          _sapp_win32_update_dimensions();
      }
@@ -622,7 +655,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      DragAcceptFiles(_sapp.win32.hwnd, 1);
  }
  
-@@ -12794,6 +13117,16 @@
+@@ -12794,6 +13133,16 @@
      int value;
      _sapp.glx.GetFBConfigAttrib(_sapp.x11.display, fbconfig, attrib, &value);
      return value;
@@ -639,7 +672,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  }
  
  _SOKOL_PRIVATE GLXFBConfig _sapp_glx_choosefbconfig(void) {
-@@ -12819,6 +13152,7 @@
+@@ -12819,6 +13168,7 @@
  
      usable_configs = (_sapp_gl_fbconfig*) _sapp_malloc_clear((size_t)native_count * sizeof(_sapp_gl_fbconfig));
      usable_count = 0;
@@ -647,18 +680,18 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      for (i = 0;  i < native_count;  i++) {
          const GLXFBConfig n = native_configs[i];
          _sapp_gl_fbconfig* u = usable_configs + usable_count;
-@@ -12834,6 +13168,10 @@
+@@ -12833,6 +13183,10 @@
+             if (trust_window_bit) {
                  continue;
              }
-         }
++        }
 +        /* Transparent windows only consider GLXFBConfigs with a 32-bit ARGB visual */
 +        if (wants_alpha && !_sapp_glx_has_argb_visual(n)) {
 +            continue;
-+        }
+         }
          u->red_bits = _sapp_glx_attrib(n, GLX_RED_SIZE);
          u->green_bits = _sapp_glx_attrib(n, GLX_GREEN_SIZE);
-         u->blue_bits = _sapp_glx_attrib(n, GLX_BLUE_SIZE);
-@@ -12881,6 +13219,9 @@
+@@ -12881,6 +13235,9 @@
      desired.srgb_capable = wants_srgb;
  
      closest = _sapp_gl_choose_fbconfig(&desired, usable_configs, usable_count);
@@ -668,7 +701,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      GLXFBConfig result = 0;
      if (closest) {
          result = (GLXFBConfig) closest->handle;
-@@ -13277,9 +13618,42 @@
+@@ -13277,9 +13634,42 @@
          (unsigned char*)icon_data,
          long_count);
      _sapp_free(icon_data);
@@ -711,7 +744,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
  _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual_or_null, int depth) {
      Visual* visual = visual_or_null;
      if (0 == visual_or_null) {
-@@ -13308,10 +13682,13 @@
+@@ -13308,10 +13698,13 @@
      if (0 == _sapp.window_height) {
          x11_window_height = (display_height * 4) / 5;
      }
@@ -726,7 +759,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
                                       (uint32_t)x11_window_width,
                                       (uint32_t)x11_window_height,
                                       0,     /* border width */
-@@ -13333,8 +13710,14 @@
+@@ -13333,8 +13726,22 @@
      XSizeHints* hints = XAllocSizeHints();
      hints->flags = PWinGravity;
      hints->win_gravity = CenterGravity;
@@ -737,15 +770,22 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    }
      XSetWMNormalHints(_sapp.x11.display, _sapp.x11.window, hints);
      XFree(hints);
++    if (_sapp.desc.desktop.app_id) {
++        // the class must be set before the window maps, when window managers read it
++        XClassHint* class_hint = XAllocClassHint();
++        class_hint->res_name = (char*) _sapp.desc.desktop.app_id;
++        class_hint->res_class = (char*) _sapp.desc.desktop.app_id;
++        XSetClassHint(_sapp.x11.display, _sapp.x11.window, class_hint);
++        XFree(class_hint);
++    }
 +    _sapp_x11_init_desktop_options();
  
      // announce support for drag'n'drop
      if (_sapp.drop.enabled) {
-@@ -14105,6 +14488,23 @@
- }
+@@ -14106,6 +14513,23 @@
  
  #if defined(_SAPP_EGL)
-+
+ 
 +_SOKOL_PRIVATE bool _sapp_egl_has_argb_visual(EGLConfig config) {
 +    EGLint visual_id;
 +    if (!eglGetConfigAttrib(_sapp.egl.display, config, EGL_NATIVE_VISUAL_ID, &visual_id)) {
@@ -762,10 +802,11 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    XFree(visual_info);
 +    return argb;
 +}
- 
++
  _SOKOL_PRIVATE void _sapp_egl_init(void) {
      #if defined(SOKOL_GLCORE)
-@@ -14164,6 +14564,19 @@
+         if (!eglBindAPI(EGL_OPENGL_API)) {
+@@ -14164,6 +14588,19 @@
      }
  
      EGLConfig config = egl_configs[0];
@@ -785,7 +826,7 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
      for (int i = 0; i < config_count; ++i) {
          EGLConfig c = egl_configs[i];
          EGLint r, g, b, a, d, s, n;
-@@ -14178,7 +14591,8 @@
+@@ -14178,7 +14615,8 @@
              (a == alpha_size) &&
              (d == depth_size) &&
              (s == stencil_size) &&
@@ -795,10 +836,12 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
          {
              config = c;
              break;
-@@ -14594,6 +15008,15 @@
-     return _sapp.fullscreen;
- }
+@@ -14592,6 +15030,15 @@
  
+ SOKOL_API_IMPL bool sapp_is_fullscreen(void) {
+     return _sapp.fullscreen;
++}
++
 +SOKOL_API_IMPL void sapp_set_window_focusable(bool focusable) {
 +    _sapp.focusable = focusable;
 +    #if defined(_SAPP_WIN32)
@@ -806,8 +849,6 @@ Adds desktop window options to sokol_app: borderless, topmost, unfocusable and t
 +    #elif defined(_SAPP_LINUX)
 +    _sapp_x11_set_focusable(focusable);
 +    #endif
-+}
-+
+ }
+ 
  SOKOL_API_IMPL void sapp_toggle_fullscreen(void) {
-     #if defined(_SAPP_MACOS)
-     _sapp_macos_toggle_fullscreen();

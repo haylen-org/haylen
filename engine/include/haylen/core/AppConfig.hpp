@@ -90,6 +90,9 @@ struct AppConfig {
     std::string name = "Haylen App";
     std::string identifier = "dev.haylen.app";
     std::string version = "1.0.0";
+    std::string description = "Haylen App";
+    std::string company = "Haylen App";
+    std::string copyright = "Copyright \xC2\xA9 Haylen App";
     Window window{};
     math::Vec2 designSize{1920.0F, 1080.0F};
     graphics::Viewport::ScalingPolicy scaling = graphics::Viewport::ScalingPolicy::Expand;
