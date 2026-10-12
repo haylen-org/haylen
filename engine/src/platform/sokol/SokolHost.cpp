@@ -15,6 +15,10 @@
 #elif defined(__ANDROID__)
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/JavaBridge.hpp"
+#elif defined(__APPLE__)
+#include <TargetConditionals.h>
+
+#include "platform/apple/AppleClipboard.hpp"
 #endif
 
 namespace haylen::platform {
@@ -89,12 +93,25 @@ void SokolHost::setKeyboardVisible(bool value) {
     input.edit({.id = TextInput::kKeyboardField, .revision = ++keyboardRevision, .bounds = corner, .caret = corner, .options = {.capitalization = TextInput::Capitalization::None, .autocorrect = false}});
 }
 
+// The library `sokol_app` keeps the clipboard of iOS, Mac Catalyst and Android inside the app, so the runtime uses the clipboard of the system there.
 void SokolHost::setClipboard(std::string_view value) {
+#if defined(__APPLE__) && TARGET_OS_IOS
+    AppleClipboard::set(value);
+#elif defined(__ANDROID__)
+    JavaBridge::setClipboard(value);
+#else
     sapp_set_clipboard_string(std::string(value).c_str());
+#endif
 }
 
 std::string SokolHost::getClipboard() const {
+#if defined(__APPLE__) && TARGET_OS_IOS
+    return AppleClipboard::get();
+#elif defined(__ANDROID__)
+    return JavaBridge::getClipboard();
+#else
     return sapp_get_clipboard_string();
+#endif
 }
 
 void SokolHost::requestQuit() {

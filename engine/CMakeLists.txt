@@ -691,6 +691,7 @@ if(APPLE)
   set(HAYLEN_APPLE_SOURCES
     src/platform/apple/AppleBattery.mm
     src/platform/apple/AppleBridge.mm
+    src/platform/apple/AppleClipboard.mm
     src/platform/apple/AppleDesktop.mm
     src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleGamepads.mm

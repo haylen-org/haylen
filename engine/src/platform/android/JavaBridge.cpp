@@ -30,6 +30,8 @@ jmethodID JavaBridge::captureBackMethod = nullptr;
 jmethodID JavaBridge::systemInfoMethod = nullptr;
 jmethodID JavaBridge::openUrlMethod = nullptr;
 jmethodID JavaBridge::vibrateMethod = nullptr;
+jmethodID JavaBridge::setClipboardMethod = nullptr;
+jmethodID JavaBridge::clipboardMethod = nullptr;
 jmethodID JavaBridge::networkRequirementMethod = nullptr;
 jmethodID JavaBridge::developmentServerMethod = nullptr;
 jclass JavaBridge::dialogsClass = nullptr;
@@ -70,6 +72,8 @@ jint JavaBridge::load(JavaVM* vm) {
     systemInfoMethod = env->GetStaticMethodID(activityClass, "systemInfo", "()[B");
     openUrlMethod = env->GetStaticMethodID(activityClass, "openUrl", "(J[B)V");
     vibrateMethod = env->GetStaticMethodID(activityClass, "vibrate", "(J)V");
+    setClipboardMethod = env->GetStaticMethodID(activityClass, "setClipboard", "([B)V");
+    clipboardMethod = env->GetStaticMethodID(activityClass, "clipboard", "()[B");
     networkRequirementMethod = env->GetStaticMethodID(activityClass, "networkRequirement", "()[B");
     developmentServerMethod = env->GetStaticMethodID(activityClass, "developmentServer", "()[B");
     showDialogMethod = env->GetStaticMethodID(dialogsClass, "show", "(J[B[B)V");
@@ -170,6 +174,25 @@ std::string JavaBridge::getSystemInfo() {
     std::string json = toString(env, bytes);
     env.DeleteLocalRef(bytes);
     return json;
+}
+
+void JavaBridge::setClipboard(std::string_view text) {
+    JNIEnv& env = getEnv();
+    const jbyteArray bytes = toBytes(env, text);
+    env.CallStaticVoidMethod(activityClass, setClipboardMethod, bytes);
+    env.DeleteLocalRef(bytes);
+    clearException(env, "dev.haylen.HaylenActivity.setClipboard");
+}
+
+std::string JavaBridge::getClipboard() {
+    JNIEnv& env = getEnv();
+    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, clipboardMethod));
+    if (clearException(env, "dev.haylen.HaylenActivity.clipboard")) {
+        return {};
+    }
+    std::string text = toString(env, bytes);
+    env.DeleteLocalRef(bytes);
+    return text;
 }
 
 std::string JavaBridge::getNetworkRequirement() {

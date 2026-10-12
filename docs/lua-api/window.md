@@ -196,7 +196,7 @@ window.lockOrientation('any')
 
 ### window.clipboard()
 
-Returns the text on the system clipboard, or an empty string when it holds no text. The engine reserves 64 KiB for clipboard text.
+Returns the text on the system clipboard, or an empty string when it holds no text. iOS shows its notice that the app pasted, Android gives the clipboard only to the app with the focus, and an Apple TV, which has no clipboard, keeps the text inside the app. Browsers give a page the text that the person pastes into it, so the function returns the text of the last paste of the page. The engine reserves 64 KiB for clipboard text on macOS, Windows, Linux, the Apple TV and the web.
 
 ```lua
 local window = require('haylen.window')
@@ -209,7 +209,7 @@ end
 
 ### window.setClipboard(text)
 
-Puts `text` on the system clipboard.
+Puts `text` on the system clipboard, which an Apple TV keeps inside the app. Browsers let a page write the clipboard only shortly after an input of the person, such as a click or a key.
 
 ```lua
 local window = require('haylen.window')

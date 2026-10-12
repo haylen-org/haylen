@@ -3,6 +3,8 @@ package dev.haylen;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.app.UiModeManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -297,6 +299,22 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
                 nativeUrlOpened(request, false);
             }
         });
+    }
+
+    // Called from the frame thread of the engine, which puts text on the clipboard of the system.
+    static void setClipboard(byte[] text) {
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity != null) {
+            activity.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("text", new String(text, StandardCharsets.UTF_8)));
+        }
+    }
+
+    // Called from the frame thread of the engine, which reads the text on the clipboard of the system, empty when it holds none or Android keeps it from an app without the focus.
+    static byte[] clipboard() {
+        HaylenActivity activity = HaylenBridge.activity();
+        ClipData clip = activity != null ? activity.getSystemService(ClipboardManager.class).getPrimaryClip() : null;
+        CharSequence text = clip != null && clip.getItemCount() > 0 ? clip.getItemAt(0).coerceToText(activity) : "";
+        return text.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     // Called from the frame thread of the engine. Devices without a vibrator do nothing, and so does an app without the permission `VIBRATE`, which the log tells once.

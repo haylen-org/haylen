@@ -63,6 +63,10 @@ class JavaBridge final {
 
     static void vibrate(std::int64_t milliseconds);
 
+    // The clipboard of the system, which the frame thread reads and writes.
+    static void setClipboard(std::string_view text);
+    [[nodiscard]] static std::string getClipboard();
+
     // Shows the dialog that the JSON of `AndroidDialogJson` describes, with the data of a save as bytes, and the Java side answers through the dialog relay. A dialog that Java never took fails at once.
     static void showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data);
     static void cancelDialog(std::uint64_t id);
@@ -110,6 +114,8 @@ class JavaBridge final {
     static jmethodID systemInfoMethod;
     static jmethodID openUrlMethod;
     static jmethodID vibrateMethod;
+    static jmethodID setClipboardMethod;
+    static jmethodID clipboardMethod;
     static jmethodID networkRequirementMethod;
     static jmethodID developmentServerMethod;
     static jclass dialogsClass;
