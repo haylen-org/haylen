@@ -156,6 +156,9 @@ std::vector<std::vector<std::byte>> NativeApi::copyBuffers(const HaylenNativeBuf
 void NativeApi::emit(const char* event, const char* payloadJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount, int flags) {
     // clang-format off
     guard("emit", [&] {
+        if (event == nullptr || *event == '\0') {
+            throw std::invalid_argument("An event needs a name.");
+        }
         BridgeRelay::emit(event, payloadJson != nullptr ? payloadJson : "null", copyBuffers(buffers, bufferCount), {.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0});
     });
     // clang-format on
@@ -220,16 +223,20 @@ std::size_t NativeApi::pushAudioFrames(HaylenNativeAudioStream* stream, const vo
     // clang-format on
 }
 
-void NativeApi::registerHandler(const char* method, HaylenNativeHandler handler, HaylenNativeCancel cancel, void* user) {
+void NativeApi::registerHandler(const char* method, HaylenNativeHandler handler, HaylenNativeCancel canceller, void* user) {
+    if (method == nullptr || *method == '\0') {
+        core::Log::error("A native library registered a handler without a method name.");
+        return;
+    }
     const std::scoped_lock lock(mutex);
     if (handler == nullptr) {
         handlers.erase(method);
         return;
     }
-    handlers.insert_or_assign(method, Handler{.handler = handler, .cancel = cancel, .user = user});
+    handlers.insert_or_assign(method, Handler{.handler = handler, .cancel = canceller, .user = user});
 }
 
-void NativeApi::registerScreen(const char* plugin, const char* name, HaylenNativeScreenOpener open, HaylenNativeScreenCancel cancel, void* user) {
+void NativeApi::registerScreen(const char* plugin, const char* name, HaylenNativeScreenOpener open, HaylenNativeScreenCancel canceller, void* user) {
     if (plugin == nullptr || *plugin == '\0' || name == nullptr || *name == '\0') {
         core::Log::error("A native library registered a screen without its plugin or its name.");
         return;
@@ -239,7 +246,7 @@ void NativeApi::registerScreen(const char* plugin, const char* name, HaylenNativ
         screens.erase(getScreenKey(plugin, name));
         return;
     }
-    screens.insert_or_assign(getScreenKey(plugin, name), ScreenHandler{.open = open, .cancel = cancel, .user = user});
+    screens.insert_or_assign(getScreenKey(plugin, name), ScreenHandler{.open = open, .cancel = canceller, .user = user});
 }
 
 void NativeApi::finishScreen(std::uint64_t screen, int ok, const char* resultJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount) {

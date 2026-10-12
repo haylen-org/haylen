@@ -205,7 +205,7 @@ NativeSignature::Parameter NativeSignature::parseParameter(std::span<const std::
 
     if (tokens[position] == "[") {
         const std::string& bound = tokens[position + 1];
-        if (tokens[position + 2] != "]" || bound.empty() || !(std::isdigit(static_cast<unsigned char>(bound.front())) != 0 || isIdentifier(bound))) {
+        if (bound.empty() || tokens[position + 2] != "]" || !(std::isdigit(static_cast<unsigned char>(bound.front())) != 0 || isIdentifier(bound))) {
             throw std::invalid_argument(label + " of the native callback declaration needs a count or the name of a length parameter between \"[\" and \"]\".");
         }
         position += 3;

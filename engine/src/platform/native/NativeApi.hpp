@@ -68,7 +68,7 @@ class NativeApi final {
 
     static void emit(const char* event, const char* payloadJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount, int flags);
     static void resolve(std::uint64_t call, int ok, const char* resultJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount);
-    static void registerHandler(const char* method, HaylenNativeHandler handler, HaylenNativeCancel cancel, void* user);
+    static void registerHandler(const char* method, HaylenNativeHandler handler, HaylenNativeCancel canceller, void* user);
     static void log(int level, const char* text);
     static void registerPlugin(const char* id);
     static void registerErrorHandler(HaylenNativeErrorHandler handler, void* user);
@@ -76,7 +76,7 @@ class NativeApi final {
     static void pushVideoFrame(HaylenNativeVideoStream* stream, const void* pixels, int width, int height, int stride, double timestamp);
     static HaylenNativeAudioStream* openAudioStream(const char* plugin, const char* name, int sampleRate, int channels, int format, int capacityFrames);
     static std::size_t pushAudioFrames(HaylenNativeAudioStream* stream, const void* samples, std::size_t frames);
-    static void registerScreen(const char* plugin, const char* name, HaylenNativeScreenOpener open, HaylenNativeScreenCancel cancel, void* user);
+    static void registerScreen(const char* plugin, const char* name, HaylenNativeScreenOpener open, HaylenNativeScreenCancel canceller, void* user);
     static void finishScreen(std::uint64_t screen, int ok, const char* resultJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount);
     static int getWindow(HaylenNativeWindow* target);
     static void coverApp();

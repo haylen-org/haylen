@@ -3,16 +3,19 @@
 #include <lua.hpp>
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -307,6 +310,21 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     EXPECT_EQ(fixture.lua("return givenUp"), "timeout cancelled true false true");
     EXPECT_EQ(fixture.lua("return cancelled[1] == timedId and cancelled[2] == givenId"), "true");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST_F(NativeLuaTest, RefusesEventsAndHandlersWithoutNames) {
+    std::vector<std::string> lines;
+    // clang-format off
+    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level, std::string_view line) { lines.emplace_back(line); });
+    // clang-format on
+    const HaylenNativeApi& api = NativeApi::get();
+    api.emit(nullptr, "{}", nullptr, 0, 0);
+    api.emit("", "{}", nullptr, 0, 0);
+    api.registerHandler(nullptr, [](void*, std::uint64_t, const char*, const char*, const HaylenNativeBuffer*, std::size_t) {}, nullptr, nullptr);
+    core::Log::removeListener(listener);
+    ASSERT_EQ(lines.size(), 3U);
+    EXPECT_NE(lines[0].find("The native library call \"emit\" failed: An event needs a name."), std::string::npos);
+    EXPECT_NE(lines[2].find("A native library registered a handler without a method name."), std::string::npos);
 }
 
 TEST_F(NativeLuaTest, ExchangesBytesBatchesAndStreamsWithLibraries) {

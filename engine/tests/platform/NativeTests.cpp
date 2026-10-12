@@ -78,6 +78,7 @@ TEST_F(NativeSignatureTest, RejectsWhatACallbackCannotReceive) {
     EXPECT_NE(failureOf("void (const uint8_t data[size], double size)").find("must name an integer parameter"), std::string::npos);
     EXPECT_NE(failureOf("void (const uint8_t data[missing])").find("must name an integer parameter"), std::string::npos);
     EXPECT_NE(failureOf("void (const uint8_t data[])").find("needs a count"), std::string::npos);
+    EXPECT_NE(failureOf("void (uint8_t data[").find("needs a count"), std::string::npos);
     EXPECT_NE(failureOf("void (long double value)").find("unknown type \"long double\""), std::string::npos);
     EXPECT_NE(failureOf("void (int value) extra").find("continues after its parameters"), std::string::npos);
     EXPECT_NE(failureOf("void (int value; int other)").find("unexpected character \";\""), std::string::npos);

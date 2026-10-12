@@ -59,7 +59,7 @@ class NativeCallback final {
     NativeCallback(NativeSignature value, Thread mode, Link target);
 
     // Runs on the thread of native code with the arguments as libffi passes them.
-    static void invoke(void* data, void** arguments);
+    static void invoke(void* data, void** arguments) noexcept;
 
     [[nodiscard]] static std::int64_t readInteger(const void* argument, const NativeSignature::Parameter& parameter);
 

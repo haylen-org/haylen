@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/core/Log.hpp"
 #include "platform/native/NativeCallbacks.hpp"
 
 #if !defined(__EMSCRIPTEN__)
@@ -94,11 +95,16 @@ void NativeCallback::release(const std::shared_ptr<NativeCallback>& callback) {
     retained.erase(callback.get());
 }
 
-void NativeCallback::invoke(void* data, void** arguments) {
-    const auto& callback = *static_cast<const NativeCallback*>(data);
-    std::string failure;
-    std::vector<Value> values = callback.read(arguments, failure);
-    callback.deliver(std::move(values), std::move(failure));
+// Native code called through C frames, so no exception may leave, and a failure such as running out of memory drops the call with a line in the log.
+void NativeCallback::invoke(void* data, void** arguments) noexcept {
+    try {
+        const auto& callback = *static_cast<const NativeCallback*>(data);
+        std::string failure;
+        std::vector<Value> values = callback.read(arguments, failure);
+        callback.deliver(std::move(values), std::move(failure));
+    } catch (const std::exception& error) {
+        core::Log::error("A call of a native callback was dropped: {}", error.what());
+    }
 }
 
 // Each branch widens on its own, because a conditional of a signed and an unsigned integer would convert both to unsigned.
