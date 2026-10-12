@@ -1,5 +1,7 @@
 #include "haylen/plugins/TextPlugin.hpp"
 
+#include <algorithm>
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -142,6 +144,7 @@ void TextPlugin::start(core::Engine& engine) {
 
 // Effects registered from Lua hold Lua functions, which must go before the Lua state closes.
 void TextPlugin::stop(core::Engine&) {
+    drawnTexts.clear();
     registry->clear();
     images.clear();
 }
@@ -151,6 +154,42 @@ void TextPlugin::endFrame(core::Engine&) {
     for (auto& [path, image] : images) {
         image.used = false;
     }
+    std::erase_if(drawnTexts, [](const auto& entry) { return !entry.second.used; });
+    for (auto& [hash, drawn] : drawnTexts) {
+        drawn.used = false;
+    }
+}
+
+std::size_t TextPlugin::hashDrawn(std::string_view markup, const text::RichTextOptions& options) noexcept {
+    std::size_t hash = std::hash<std::string_view>{}(markup);
+    for (const std::size_t part : {std::hash<const void*>{}(options.family.get()), std::hash<float>{}(options.size), std::hash<float>{}(options.maxWidth), std::hash<float>{}(options.scale), std::hash<std::string_view>{}(options.language)}) {
+        hash ^= part + std::size_t{0x9E3779B9U} + (hash << 6U) + (hash >> 2U);
+    }
+    return hash;
+}
+
+bool TextPlugin::isSameDrawn(const DrawnText& drawn, std::string_view markup, const text::RichTextOptions& options, std::span<const FontName> fonts) noexcept {
+    const text::RichTextOptions& kept = drawn.options;
+    const bool sameOptions = kept.family == options.family && kept.size == options.size && kept.bold == options.bold && kept.italic == options.italic && kept.color == options.color && kept.maxWidth == options.maxWidth && kept.align == options.align && kept.direction == options.direction && kept.language == options.language && kept.lineSpacing == options.lineSpacing && kept.scale == options.scale && kept.revealSpeed == options.revealSpeed && kept.underlineLinks == options.underlineLinks;
+    return sameOptions && drawn.markup == markup && std::ranges::equal(drawn.fonts, fonts);
+}
+
+text::RichText& TextPlugin::getDrawnText(std::string_view markup, const text::RichTextOptions& options, std::span<const FontName> fonts, double seconds) {
+    const std::size_t hash = hashDrawn(markup, options);
+    auto [first, last] = drawnTexts.equal_range(hash);
+    auto found = std::find_if(first, last, [&](const auto& entry) { return isSameDrawn(entry.second, markup, options, fonts); });
+    if (found == last) {
+        auto made = std::make_unique<text::RichText>(std::string(markup), options, getRegistry());
+        found = drawnTexts.emplace(hash, DrawnText{.markup = std::string(markup), .options = options, .fonts = {fonts.begin(), fonts.end()}, .text = std::move(made)});
+    }
+
+    DrawnText& drawn = found->second;
+    drawn.used = true;
+    const auto time = static_cast<float>(seconds);
+    if (time > drawn.text->getTime()) {
+        drawn.text->update(time - drawn.text->getTime());
+    }
+    return *drawn.text;
 }
 
 graphics::Texture TextPlugin::getImage(core::Engine& engine, std::string_view path) {

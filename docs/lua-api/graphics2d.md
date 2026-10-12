@@ -627,7 +627,7 @@ scene.push({
 
 ### graphics2d.drawRichText(markup, x, y, options)
 
-Draws markup once with its top-left corner at `x`, `y`, laying it out on every call. The argument `options` takes the keys of `graphics2d.newRichText`, `tint`, a `Color` that multiplies every color of the text and defaults to white, and the [draw order](#draw-order) keys, and effects follow the time the app has run. The images of `[img]` tags load once and stay loaded while frames keep drawing them, and they go back to the assets after a frame that no longer draws them. Text that stays on screen draws faster as a `RichText`.
+Draws markup with its top-left corner at `x`, `y`. The text plugin keeps the layout of every markup and options that a frame draws or measures, compared by their values, so text drawn the same way every frame lays out once and its frames allocate nothing, and it forgets the layouts a frame did not use at the end of that frame. The argument `options` takes the keys of `graphics2d.newRichText`, `tint`, a `Color` that multiplies every color of the text and defaults to white, and the [draw order](#draw-order) keys, and effects follow the time the app has run. The images of `[img]` tags load once and stay loaded while frames keep drawing them, and they go back to the assets after a frame that no longer draws them. Text whose markup changes often, such as a number that counts every frame, lays out at each change, and a `RichText` changed with `text.markup` costs the same.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

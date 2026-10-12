@@ -5,11 +5,13 @@
 #include <initializer_list>
 #include <memory>
 #include <string_view>
+#include <vector>
 
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/Effect.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextOptions.hpp"
@@ -40,8 +42,8 @@ class RichTextLua final {
     static int registerTextIcon(lua_State* L);
     static int textEffectNames(lua_State* L);
 
-    // Reads the options of rich text, where a missing family takes the default font and `fonts` maps the names of `[font]` tags to families or fonts.
-    [[nodiscard]] static text::RichTextOptions readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields = {});
+    // Reads the options of rich text, where a missing family takes the default font and `fonts` maps the names of `[font]` tags to families or fonts, which also land in `fontNames` in order of name when it is given.
+    [[nodiscard]] static text::RichTextOptions readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields = {}, std::vector<plugins::TextPlugin::FontName>* fontNames = nullptr);
     [[nodiscard]] static const std::shared_ptr<text::RichTextRegistry>& getRegistry(lua_State* L);
 
   private:
@@ -50,9 +52,12 @@ class RichTextLua final {
     static constexpr std::array<std::string_view, 2> kDrawFields{"scale", "tint"};
     static constexpr std::array<std::string_view, 1> kTintFields{"tint"};
 
+    // Returns the rich text that the text plugin keeps for the markup of an immediate draw or measure with the options at the index.
+    [[nodiscard]] static text::RichText& getDrawnText(lua_State* L, int options);
+
     // Reads the tint of a rich text draw, which multiplies every color of the text.
     [[nodiscard]] static math::Color readTint(lua_State* L, int index);
-    [[nodiscard]] static std::function<std::shared_ptr<text::FontFamily>(std::string_view)> readFonts(lua_State* L);
+    [[nodiscard]] static std::function<std::shared_ptr<text::FontFamily>(std::string_view)> readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>* fontNames);
 
     // Runs a Lua effect on one glyph, which reads and writes the fields of a glyph table and reads the attributes of its tag.
     static void runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters);

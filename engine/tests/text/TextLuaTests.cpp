@@ -9,6 +9,8 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/plugins/TextPlugin.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -101,6 +103,27 @@ TEST_F(TextLuaTest, SameFontsCompareEqual) {
 
     // Values of different types are never equal, and comparing them raises no error.
     EXPECT_EQ(lua("return tostring(font == family) .. ' ' .. tostring(target == target.texture) .. ' ' .. tostring(graphics.whiteTexture() == font)"), "false false false");
+}
+
+// Markup drawn and measured the same way every frame lays out once, so those frames allocate no more than frames without it, while its effects follow the time the app has run and markup that changes lays out anew.
+TEST_F(TextLuaTest, KeepsTheLayoutOfRichTextDrawnEveryFrame) {
+    // clang-format off
+    const auto measure = [this](const std::string& body) {
+        lua("require('haylen.scene').clear() require('haylen.scene').push({render = function() graphics2d.beginScreen() " + body + " end})");
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure("");
+    EXPECT_EQ(measure("graphics2d.drawRichText('[wave]Moving[/wave] [b]bold[/b] text', 10, 20, {size = 24, maxWidth = 400}) graphics2d.measureRichText('[b]Score[/b]', {size = 24})"), empty);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_GT(lua("return graphics2d.stats().sprites"), "0");
+
+    // Markup that changes every frame still draws, as a new layout each time.
+    EXPECT_GT(measure("frameCount = (frameCount or 0) + 1 graphics2d.drawRichText('Frame ' .. frameCount, 10, 20)"), empty);
+    EXPECT_EQ(lua("return tostring(graphics2d.measureRichText('[b]Score[/b]', {size = 24}) > 0)"), "true");
 }
 
 TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {

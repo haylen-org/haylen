@@ -31,7 +31,7 @@ const std::shared_ptr<text::RichTextRegistry>& RichTextLua::getRegistry(lua_Stat
     return lua::Runtime::getEngine(L).getPlugin<plugins::TextPlugin>().getRegistry();
 }
 
-text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields) {
+text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields, std::vector<plugins::TextPlugin::FontName>* fontNames) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     plugins::TextPlugin& plugin = engine.getPlugin<plugins::TextPlugin>();
     text::RichTextOptions options{.family = plugin.getRegistry()->getDefaultFamily(), .images = [&engine, &plugin](std::string_view path) { return plugin.getImage(engine, path); }};
@@ -40,7 +40,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
     }
     luaL_checktype(L, index, LUA_TTABLE);
     // clang-format off
-    lua::Table::readFields(L, index, kOptionFields, extraFields, [L, &options](std::string_view key) {
+    lua::Table::readFields(L, index, kOptionFields, extraFields, [L, &options, fontNames](std::string_view key) {
         if (key == "family") {
             options.family = graphics::FontLua::readFamily(L, lua_gettop(L));
         } else if (key == "size") {
@@ -68,7 +68,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
         } else if (key == "underlineLinks") {
             lua::Table::readValue(L, key, options.underlineLinks);
         } else if (key == "fonts") {
-            options.fonts = readFonts(L);
+            options.fonts = readFonts(L, fontNames);
         }
     });
     // clang-format on
@@ -76,7 +76,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
 }
 
 // Reads the table on top of the stack, which maps font names to families, into the function that rich text asks for the family of a name.
-std::function<std::shared_ptr<text::FontFamily>(std::string_view)> RichTextLua::readFonts(lua_State* L) {
+std::function<std::shared_ptr<text::FontFamily>(std::string_view)> RichTextLua::readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>* fontNames) {
     luaL_checktype(L, -1, LUA_TTABLE);
     std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fonts;
     lua_pushnil(L);
@@ -86,6 +86,9 @@ std::function<std::shared_ptr<text::FontFamily>(std::string_view)> RichTextLua::
         }
         fonts.insert_or_assign(lua::Stack::read<std::string>(L, -2), graphics::FontLua::readFamily(L, lua_gettop(L)));
         lua_pop(L, 1);
+    }
+    if (fontNames != nullptr) {
+        fontNames->assign(fonts.begin(), fonts.end());
     }
     // clang-format off
     return [fonts = std::move(fonts)](std::string_view name) -> std::shared_ptr<text::FontFamily> {
@@ -110,18 +113,22 @@ math::Color RichTextLua::readTint(lua_State* L, int index) {
     return tint;
 }
 
-// Draws markup once with `drawRichText(markup, x, y, options)`, where the options also take the tint and the draw order, and effects follow the time the app has run.
-int RichTextLua::drawRichText(lua_State* L) {
+text::RichText& RichTextLua::getDrawnText(lua_State* L, int options) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    text::RichText richText(lua::Stack::read<std::string>(L, 1), readOptions(L, 4, {lua::TypeConverter::kDrawOrderFields, kTintFields}), getRegistry(L));
-    richText.update(static_cast<float>(engine.getClock().getElapsed()));
-    engine.getRenderer2D().drawRichText(richText, {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::TypeConverter::readDrawOrder(L, 4, {kOptionFields, kTintFields}), {1.0F, 1.0F}, readTint(L, 4));
+    std::vector<plugins::TextPlugin::FontName> fonts;
+    const text::RichTextOptions read = readOptions(L, options, {lua::TypeConverter::kDrawOrderFields, kTintFields}, &fonts);
+    return engine.getPlugin<plugins::TextPlugin>().getDrawnText(lua::Stack::read<std::string_view>(L, 1), read, fonts, engine.getClock().getElapsed());
+}
+
+// Draws markup with `drawRichText(markup, x, y, options)`, where the options also take the tint and the draw order, and effects follow the time the app has run.
+int RichTextLua::drawRichText(lua_State* L) {
+    text::RichText& richText = getDrawnText(L, 4);
+    lua::Runtime::getEngine(L).getRenderer2D().drawRichText(richText, {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::TypeConverter::readDrawOrder(L, 4, {kOptionFields, kTintFields}), {1.0F, 1.0F}, readTint(L, 4));
     return 0;
 }
 
 int RichTextLua::measureRichText(lua_State* L) {
-    text::RichText richText(lua::Stack::read<std::string>(L, 1), readOptions(L, 2, {lua::TypeConverter::kDrawOrderFields, kTintFields}), getRegistry(L));
-    const math::Vec2 size = richText.getSize();
+    const math::Vec2 size = getDrawnText(L, 2).getSize();
     lua::Stack::push(L, size.x);
     lua::Stack::push(L, size.y);
     return 2;
