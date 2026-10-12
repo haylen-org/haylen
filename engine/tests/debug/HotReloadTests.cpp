@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -114,15 +115,14 @@ TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
     directory.write("content/level.json", "{}");
     io::PackageWatcher watcher(directory.getPath());
 
-    // A file that grows while the scan looks at it is still being written, so the scan leaves it for later, whether it changes or is new.
+    // A file that grows while the scan looks at it is still being written, so the scan leaves it for later, whether it changes or is new. The writer appends to the files, since a file truncated and written again can make the file system flush it when it closes and hold the writer up for longer than the scan waits.
     std::atomic<bool> writing = true;
     // clang-format off
     std::thread writer([&directory, &writing] {
-        std::string content = "{";
         while (writing) {
-            content.push_back(' ');
-            directory.write("content/level.json", content + "}");
-            directory.write("content/added.json", content + "}");
+            for (const char* file : {"content/level.json", "content/added.json"}) {
+                std::ofstream(directory.getPath() / file, std::ios::app) << ' ';
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
