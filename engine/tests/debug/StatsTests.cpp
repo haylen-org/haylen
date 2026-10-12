@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 #include <cstddef>
 #include <optional>
@@ -14,6 +16,8 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Log.hpp"
+#include "haylen/core/SceneManager.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/Stats.hpp"
 #include "haylen/debug/TrackedCount.hpp"
@@ -21,8 +25,11 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/RecordingScene.hpp"
 
 namespace haylen::debug {
 
@@ -385,6 +392,31 @@ TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
     plugin.setStatsMode(StatsDisplay::Mode::Compact);
     EXPECT_EQ(measure(), quiet);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// The overlay lists the scenes, the log at every level, the objects with their memory and the events with their listeners once their sections open.
+TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
+    std::vector<std::string> entries;
+    test::EngineFixture fixture;
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("first", entries));
+    fixture.runLua("require('haylen.events').on('tick', function() end) require('haylen.signal').new('named')");
+    for (const core::Log::Level level : {core::Log::Level::Debug, core::Log::Level::Info, core::Log::Level::Warning, core::Log::Level::Error}) {
+        core::Log::write(level, "A line of the overlay log.");
+    }
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(1024, 1024, math::Color::white()));
+    plugin.setStatsMode(StatsDisplay::Mode::Full);
+    fixture.frames(2);
+
+    // The closed sections open as a click on their headers would open them.
+    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    ImGuiWindow* window = ImGui::FindWindowByName("Haylen debug");
+    ASSERT_NE(window, nullptr);
+    window->StateStorage.SetInt(window->GetID("Objects"), 1);
+    window->StateStorage.SetInt(window->GetID("Signals and events"), 1);
+    fixture.frames(2);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
 }
 
 } // namespace haylen::debug

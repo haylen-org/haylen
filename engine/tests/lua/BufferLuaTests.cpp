@@ -75,6 +75,28 @@ TEST(SpriteLayoutTest, MovesSpriteFieldsThroughFloats) {
     EXPECT_FALSE(SpriteLayout::fieldFromName("depth").has_value());
 }
 
+// Every field a layout names reads and writes the value of the sprite it stands for.
+TEST(SpriteLayoutTest, StoresAndAppliesEveryField) {
+    std::vector<SpriteLayout::Field> fields;
+    std::vector<float> values;
+    for (int field = 0; field <= static_cast<int>(SpriteLayout::Field::SourceHeight); ++field) {
+        fields.push_back(static_cast<SpriteLayout::Field>(field));
+        values.push_back(static_cast<float>(field + 1) * 0.5F);
+    }
+    const SpriteLayout layout(fields);
+    const SpriteInstance sprite = layout.makeSprite(values, 0);
+    EXPECT_EQ(sprite.position, math::Vec2(0.5F, 1.0F));
+    EXPECT_EQ(sprite.size, math::Vec2(1.5F, 2.0F));
+    EXPECT_EQ(sprite.rotation, 2.5F);
+    EXPECT_EQ(sprite.pivot, math::Vec2(3.0F, 3.5F));
+    EXPECT_EQ(sprite.color, (math::Color{4.0F, 4.5F, 5.0F, 5.5F}));
+    EXPECT_EQ(sprite.source, (math::Rect{6.0F, 6.5F, 7.0F, 7.5F}));
+
+    std::vector<float> stored(values.size());
+    layout.store(sprite, stored, 0);
+    EXPECT_EQ(stored, values);
+}
+
 TEST(SpriteLayoutTest, UpdatesBatchesInBulk) {
     test::EngineFixture fixture;
     SpriteBatch batch(fixture.engine().getGraphics().getWhiteTexture());

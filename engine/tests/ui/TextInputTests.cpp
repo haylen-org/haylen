@@ -16,6 +16,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "support/EngineFixture.hpp"
 #include "ui/TextSession.hpp"
 
@@ -216,6 +217,25 @@ TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
     press(input::Key::B, U'b');
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(events.back(), R"(notes:change {"value":"a\nb"})");
+}
+
+// Where the UI edits the text itself, the shortcuts of copying and pasting go through the clipboard of the window.
+TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheWindow) {
+    getInput().setNative(false);
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Copy me"})");
+    focus(*gui, "name");
+    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    const input::KeyModifiers shortcut = ImGui::GetIO().ConfigMacOSXBehaviors ? input::KeyModifiers{.super = true} : input::KeyModifiers{.control = true};
+
+    press(input::Key::A, 0, shortcut);
+    press(input::Key::C, 0, shortcut);
+    EXPECT_EQ(fixture.host().getClipboard(), "Copy me");
+
+    fixture.host().setClipboard("Pasted");
+    events.clear();
+    press(input::Key::V, 0, shortcut);
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(events.back(), R"(name:change {"value":"Pasted"})");
 }
 
 // A shift press selects from the caret where it stands, also after typing moved it.

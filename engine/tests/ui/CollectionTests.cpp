@@ -161,6 +161,40 @@ TEST_F(CollectionTest, BindsOnlyNewlyVisibleItems) {
     EXPECT_EQ(source->reads, reads + 1);
 }
 
+// An item replaced with its id or with a changed field binds again in the cell it has, an item replaced with another id takes the place of the old one, and an item moved up lands at its place.
+TEST_F(CollectionTest, ReplacesUpdatesAndMovesItemsFromCpp) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    const std::shared_ptr<CountingSource> source = show(list, makeItems(20, 1, "row"));
+    const CollectionCell* cell = list.findCell(2);
+
+    std::size_t reads = source->reads;
+    source->update(2, "title", "Changed");
+    frames(2);
+    EXPECT_GT(source->reads, reads);
+    EXPECT_EQ(list.findCell(2), cell);
+    EXPECT_EQ(source->getValue(2, "title"), "Changed");
+
+    reads = source->reads;
+    source->replace(2, {.id = "i3", .type = "row", .fields = {{"title", "Same id"}}});
+    frames(2);
+    EXPECT_GT(source->reads, reads);
+    EXPECT_EQ(source->getValue(2, "title"), "Same id");
+    source->replace(3, {.id = "other", .type = "row", .fields = {{"title", "Other"}}});
+    frames(2);
+    EXPECT_EQ(source->getId(3), "other");
+
+    source->move(5, 1);
+    frames(2);
+    EXPECT_EQ(source->getId(1), "i6");
+    EXPECT_EQ(source->getId(2), "i2");
+
+    EXPECT_THROW(source->replace(30, {.id = "far"}), std::out_of_range);
+    EXPECT_THROW(source->replace(4, {.id = "i1"}), std::invalid_argument);
+    EXPECT_THROW(source->update(30, "title", "Far"), std::out_of_range);
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 TEST_F(CollectionTest, KeepsTheAnchorWhenItemsAreInsertedAbove) {
     auto gui = mountCollection(kRows);
     Collection& list = gui->getCollection("list");
