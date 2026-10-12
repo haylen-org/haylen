@@ -282,6 +282,32 @@ class LauncherTest(unittest.TestCase):
         self.assertIn("exit /b %errorlevel%", script)
 
 
+class NativeLibrariesTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.library = haylen.NativeLibrary("native_test_static", {}, self.scratch, ("ios", "tvos"), True, ("native_test_add",))
+        self.app = mock.Mock(native=[self.library], build_folder=self.scratch / "build")
+
+    def prepare(self, run_platform):
+        archive = self.scratch / "libnative_test_static.a"
+        archive.write_bytes(b"")
+        with mock.patch.object(haylen, "build_apple_native", return_value=archive):
+            return haylen.prepare_apple_native(self.app, self.scratch / "generated", run_platform, 1)
+
+    def test_static_libraries_link_only_into_the_mac_catalyst_build_of_the_ios_target(self):
+        settings = self.prepare("catalyst")
+        self.assertEqual(settings, ['HAYLEN_NATIVE_LDFLAGS_MACCATALYST_YES = "$(PROJECT_DIR)/haylen/native/ios-macosx/libnative_test_static.a"', "HAYLEN_NATIVE_LDFLAGS[sdk=macosx*] = $(HAYLEN_NATIVE_LDFLAGS_MACCATALYST_$(IS_MACCATALYST))"])
+        self.assertTrue((self.scratch / "generated" / "native" / "ios-macosx" / "libnative_test_static.a").is_file())
+        self.assertEqual(self.prepare("ios-simulator"), ['HAYLEN_NATIVE_LDFLAGS[sdk=iphonesimulator*] = "$(PROJECT_DIR)/haylen/native/ios-iphonesimulator/libnative_test_static.a"'])
+
+    def test_the_symbols_of_ios_libraries_register_on_mac_catalyst_too(self):
+        self.assertTrue(haylen.write_apple_native_symbols(self.app, self.scratch))
+        table = (self.scratch / "HaylenNativeSymbols.mm").read_text()
+        self.assertIn("#if TARGET_OS_IOS || TARGET_OS_TV\n", table)
+        self.assertIn('registerLinked("native_test_static", {{"native_test_add", reinterpret_cast<void*>(&native_test_add)}});', table)
+
+
 class RunCppTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp())

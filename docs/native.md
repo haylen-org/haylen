@@ -155,7 +155,7 @@ The `native` section of `app.json` lists the libraries an app ships, by the name
 | `files` | The prebuilt file of each platform, relative to the app folder: a `.dylib`, `.framework` or `.xcframework` on macOS, a `.framework`, `.xcframework` or, when linked statically, a `.a` on iOS and tvOS, a `.dll` on Windows, a `.so` on Linux, and on Android a folder with a subfolder of `.so` files for each ABI, the layout of `jniLibs`. An `.xcframework` gives the slice of each Apple platform. |
 | `cmake` | A folder with a `CMakeLists.txt` that defines a library target with the name of the library, built as a shared or a static library as `BUILD_SHARED_LIBS` says. The script `haylen.py` passes `HAYLEN_INCLUDE_DIR`, the folder of `haylen/platform/native/HaylenNative.h`. |
 | `platforms` | The platforms `haylen.py` builds a CMake library for, among `macos`, `ios`, `tvos`, `android`, `windows` and `linux`. |
-| `link` | Either `dynamic`, the default, or `static`, which only iOS and tvOS apps do. |
+| `link` | Either `dynamic`, the default, or `static`, which only iOS and tvOS apps do, Mac Catalyst included. |
 | `symbols` | The symbols of a static library that Lua reaches, which `haylen.py` keeps and registers. |
 
 The script `haylen.py` places each library where the app loads it:
@@ -164,7 +164,7 @@ The script `haylen.py` places each library where the app loads it:
 | --- | --- |
 | macOS and Mac Catalyst | The folder `Contents/Frameworks` of the app bundle, copied and signed by the `Embed native libraries` phase of `App.xcodeproj` with the identity of the app. The executable has `@executable_path/../Frameworks` in its runpath. |
 | iOS and tvOS, dynamic | A framework in `Frameworks` of the app bundle, embedded and signed the same way. A CMake library becomes a framework whose bundle identifier is the one of the app followed by `.native.<name>`. |
-| iOS and tvOS, static | Linked into the app through `HAYLEN_NATIVE_LDFLAGS` in `haylen/Haylen.xcconfig` of the Apple project, with `haylen/HaylenNativeSymbols.mm` generated next to it. |
+| iOS, Mac Catalyst and tvOS, static | Linked into the app through `HAYLEN_NATIVE_LDFLAGS` in `haylen/Haylen.xcconfig` of the Apple project, with `haylen/HaylenNativeSymbols.mm` generated next to it. On Mac Catalyst the setting holds only for the build of the iOS target whose `IS_MACCATALYST` is `YES`, so the macOS target, which builds with the same SDK, never links the Mac Catalyst copy. |
 | Android | The folder `haylen/jniLibs/<abi>/` of the Gradle project for `arm64-v8a`, `armeabi-v7a` and `x86_64`, the ABIs of the engine, which the app module takes as a folder of native libraries. The linker of Android finds them by name. An AAR dependency or a `jniLibs` folder of the Android project of the app works too. |
 | Windows | Next to the executable. |
 | Linux | The folder `lib/` next to the executable, whose `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
@@ -174,7 +174,7 @@ The file `project.yml` of the app never changes for its libraries: `haylen.py` w
 
 ### Static libraries on iOS and tvOS
 
-An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `haylen.py` writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and every Lua state the engine creates gets the table through `varn::runtime::Runtime::addSymbol`, so `native.load('native_test_static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names the functions Lua calls, including an `init` function.
+An iOS or tvOS app, and the Mac Catalyst build of the iOS app, may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `haylen.py` writes `haylen/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and every Lua state the engine creates gets the table through `varn::runtime::Runtime::addSymbol`, so `native.load('native_test_static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names the functions Lua calls, including an `init` function.
 
 ### Development
 

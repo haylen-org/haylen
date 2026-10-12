@@ -1060,9 +1060,9 @@ NATIVE_PLATFORMS = ("macos", "ios", "tvos", "android", "windows", "linux")
 # The slice of `APPLE_SLICES` that each Apple run platform builds, the target template and platform whose embed phase ships its libraries, and the SDK of the setting that links its static libraries.
 APPLE_NATIVE_SLICES = {"macos": "macos", "catalyst": "ios-maccatalyst", "ios": "ios", "ios-simulator": "ios-simulator", "tvos": "tvos", "tvos-simulator": "tvos-simulator"}
 APPLE_NATIVE_KEYS = {"macos": "macos-macosx", "ios-maccatalyst": "ios-macosx", "ios": "ios-iphoneos", "ios-simulator": "ios-iphonesimulator", "tvos": "tvos-appletvos", "tvos-simulator": "tvos-appletvsimulator"}
-APPLE_STATIC_SDKS = {"ios": "iphoneos", "ios-simulator": "iphonesimulator", "tvos": "appletvos", "tvos-simulator": "appletvsimulator"}
-# The condition of each platform whose apps may link native libraries statically, which keeps their symbols in the table of the app.
-APPLE_STATIC_CONDITIONS = {"ios": "(TARGET_OS_IOS && !TARGET_OS_MACCATALYST)", "tvos": "TARGET_OS_TV"}
+APPLE_STATIC_SDKS = {"ios-maccatalyst": "macosx", "ios": "iphoneos", "ios-simulator": "iphonesimulator", "tvos": "appletvos", "tvos-simulator": "appletvsimulator"}
+# The condition of each platform whose apps may link native libraries statically, which keeps their symbols in the table of the app. The iOS one holds for Mac Catalyst too.
+APPLE_STATIC_CONDITIONS = {"ios": "TARGET_OS_IOS", "tvos": "TARGET_OS_TV"}
 XCFRAMEWORK_SLICES = {"macos": ("macos", None), "ios-maccatalyst": ("ios", "maccatalyst"), "ios": ("ios", None), "ios-simulator": ("ios", "simulator"), "tvos": ("tvos", None), "tvos-simulator": ("tvos", "simulator")}
 FRAMEWORK_PLATFORMS = {"ios": "iPhoneOS", "ios-simulator": "iPhoneSimulator", "tvos": "AppleTVOS", "tvos-simulator": "AppleTVSimulator"}
 
@@ -1109,7 +1109,7 @@ class NativeLibrary:
         if link not in ("dynamic", "static"):
             raise BuildError(f'{where} links "dynamic" or "static", not "{link}".')
         if link == "static" and (not set(platforms) <= {"ios", "tvos"} or not symbols):
-            raise BuildError(f"{where} links statically, which iOS and tvOS apps do, and lists the symbols that Lua calls.")
+            raise BuildError(f"{where} links statically, which iOS, Mac Catalyst and tvOS apps do, and lists the symbols that Lua calls.")
         return NativeLibrary(name, files, cmake, platforms, link == "static", symbols)
 
     def ships_to(self, platform: str) -> bool:
@@ -1195,8 +1195,6 @@ def prepare_apple_native(app: App, generated: Path, run_platform: str, jobs: int
     for library in app.native:
         if not library.ships_to(platform):
             continue
-        if library.static and slice_name == "ios-maccatalyst":
-            raise BuildError(f'Mac Catalyst loads dynamic libraries only, so the static library "{library.name}" does not ship there.')
         source = build_apple_native(app, library, slice_name, jobs) if library.cmake else prebuilt_apple_native(library.files[platform], slice_name)
         placed = copy_into(source, folder / key)
         (linked if library.static else embedded).append(placed)
@@ -1208,7 +1206,10 @@ def prepare_apple_native(app: App, generated: Path, run_platform: str, jobs: int
     if not linked:
         return []
     flags = " ".join(f'"$(PROJECT_DIR)/{GENERATED_FOLDER}/native/{key}/{path.name}"' for path in linked)
-    return [f"HAYLEN_NATIVE_LDFLAGS[sdk={APPLE_STATIC_SDKS[slice_name]}*] = {flags}"]
+    if slice_name != "ios-maccatalyst":
+        return [f"HAYLEN_NATIVE_LDFLAGS[sdk={APPLE_STATIC_SDKS[slice_name]}*] = {flags}"]
+    # The macOS target builds with the same SDK as Mac Catalyst, so only the build of the iOS target whose `IS_MACCATALYST` is `YES` links them.
+    return [f"HAYLEN_NATIVE_LDFLAGS_MACCATALYST_YES = {flags}", "HAYLEN_NATIVE_LDFLAGS[sdk=macosx*] = $(HAYLEN_NATIVE_LDFLAGS_MACCATALYST_$(IS_MACCATALYST))"]
 
 
 def write_apple_native_symbols(app: App, generated: Path) -> bool:
