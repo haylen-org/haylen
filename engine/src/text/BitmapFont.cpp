@@ -208,8 +208,9 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
     while (offset < bytes.size()) {
         const std::uint32_t type = read(offset, 1);
         const std::size_t size = read(offset + 1, 4);
+        // The size is checked against the room left, since adding it to the start wraps around where sizes are 32 bits wide, as on the web.
         const std::size_t start = offset + 5;
-        if (start + size > bytes.size()) {
+        if (size > bytes.size() - start) {
             throw std::invalid_argument("The binary BMFont file ends in the middle of a block.");
         }
         offset = start + size;

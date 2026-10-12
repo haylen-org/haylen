@@ -123,6 +123,7 @@ TEST_F(BitmapFontTest, ReadsTextAndBinaryBmFonts) {
     EXPECT_THROW((void)BitmapFont::parse(truncated), std::invalid_argument);
     EXPECT_THROW((void)BitmapFont::parse(std::vector<std::uint8_t>{'B', 'M', 'F', 2}), std::invalid_argument);
     EXPECT_THROW((void)BitmapFont::parse(std::vector<std::uint8_t>{'B', 'M', 'F', 3, 9, 0, 0, 0, 0}), std::invalid_argument);
+    EXPECT_THROW((void)BitmapFont::parse(std::vector<std::uint8_t>{'B', 'M', 'F', 3, 3, 0xFB, 0xFF, 0xFF, 0xFF}), std::invalid_argument);
 }
 
 TEST_F(BitmapFontTest, DescribesGridsOfCells) {
