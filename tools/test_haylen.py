@@ -1,5 +1,6 @@
 """Tests of the rules of haylen.py that need no build: how it merges Info.plist keys, entitlements and privacy manifests, what it checks in a built app, when it generates App.xcodeproj again, how it prints to the terminal and how its commands read their arguments."""
 
+import argparse
 import base64
 import dataclasses
 import contextlib
@@ -415,6 +416,15 @@ class DesktopProjectTest(unittest.TestCase):
         (self.app / "app.json").write_text(json.dumps({"name": "Sky Garden", "identifier": "com.example.skygarden", "version": "1.2", "company": "Harbor Games", "website": "https://harbor.example"}))
         info = haylen.App(self.app, "linux")
         self.assertEqual((info.company, info.copyright, info.website), ("Harbor Games", "Copyright \u00a9 Harbor Games", "https://harbor.example"))
+
+    def test_a_linux_executable_takes_no_name_of_the_folders_next_to_it(self):
+        for name in ("app", "Lib"):
+            folder = self.scratch / name
+            folder.mkdir()
+            (folder / "app.json").write_text(json.dumps({"name": "Sky Garden", "identifier": "com.example.skygarden", "version": "1.2"}))
+            arguments = argparse.Namespace(platform="linux", config="Release", engine_config="Release", jobs=1)
+            with mock.patch.object(haylen, "host_name", return_value="linux"), self.assertRaisesRegex(haylen.BuildError, f'gives the executable "{name.lower()}", which is the name of a folder next to the executable of a Linux app'):
+                haylen.prepare_desktop(haylen.App(folder, "linux"), arguments)
 
     def test_new_apps_get_a_project_of_every_platform_template(self):
         self.assertTrue({"apple", "android", "web", "windows", "linux"} <= set(haylen.platform_templates()))

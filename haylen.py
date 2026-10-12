@@ -3168,6 +3168,8 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
 
 # Where the installed app keeps its executable, its package and its native libraries: next to each other on Windows, and in `lib/<executable>` on Linux, where `bin/<executable>` links to the executable.
 DESKTOP_LAYOUTS = {"windows": ("", "{executable}.exe"), "linux": ("lib/{executable}", "bin/{executable}")}
+# The folders next to the executable of a Linux app, whose names an executable without an extension cannot take.
+LINUX_APP_FOLDERS = ("app", "lib")
 # What the engine needs from the application manifest of a Windows executable, each with the text that shows it in the manifest and the snippet that adds it.
 WINDOWS_MANIFEST_NEEDS = {
     "the Common Controls of version 6, which the message dialogs of Haylen need": ("Microsoft.Windows.Common-Controls", '<dependency>\n  <dependentAssembly>\n    <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>\n  </dependentAssembly>\n</dependency>'),
@@ -3326,6 +3328,8 @@ def write_linux_entries(app: App, root: Path, generated: Path) -> None:
 def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
     """Writes the folder `haylen/` of a Windows or Linux project: `haylen.cmake`, the package as it is with the development bootstrap or the protected release with the bootstrap of the app, the native libraries of this machine, and the version resource of Windows or the completed desktop entry and AppStream metainfo of Linux."""
     require_host(args.platform)
+    if args.platform == "linux" and app.executable in LINUX_APP_FOLDERS:
+        raise BuildError(f'The app folder `{shown_path(app.folder)}` gives the executable "{app.executable}", which is the name of a folder next to the executable of a Linux app. Rename the app folder.')
     root = project_root(app, args.platform)
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the {args.platform.capitalize()} project `{shown_path(root)}`")

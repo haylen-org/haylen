@@ -155,13 +155,15 @@ jobs:
         with:
           path: .cache/cpm
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+      - name: Create the starter app
+        run: python haylen.py new build/starter
       - name: Build the packages of the starter app from the template of the platform
-        run: python haylen.py dist templates/app --platform ${{ matrix.platform }} --output build/dist
+        run: python haylen.py dist build/starter --platform ${{ matrix.platform }} --output build/dist
       - name: Check the installed app
-        run: python haylen.py check templates/app --platform ${{ matrix.platform }} --config Release
+        run: python haylen.py check build/starter --platform ${{ matrix.platform }} --config Release
       - name: Validate the desktop entry
         if: runner.os == 'Linux'
-        run: desktop-file-validate build/apps/app-*/installed/linux/share/applications/*.desktop
+        run: desktop-file-validate build/apps/starter-*/installed/linux/share/applications/*.desktop
 
   tests-project:
     runs-on: ubuntu-latest
