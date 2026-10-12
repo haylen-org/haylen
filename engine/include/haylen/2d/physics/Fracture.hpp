@@ -24,8 +24,12 @@ class Fracture final {
     // Splits a shape, given as outlines like `math::Polygon` takes them, into pieces that together cover it. Each piece is a shape of its own. Throws `std::invalid_argument` when `pieces` is below 1.
     [[nodiscard]] static std::vector<std::vector<std::vector<math::Vec2>>> split(std::span<const std::vector<math::Vec2>> shape, const Options& options);
 
-    // Replaces a body with one body per piece of its polygon shapes, which keep its type, material, filter and motion, and returns the new bodies. A body without polygon shapes stays as it is and gives no pieces. The impact point is in world units. Throws `std::logic_error` when the body was destroyed, and `std::invalid_argument` when a piece is too thin for Box2D, which leaves the body whole.
+    // Replaces a body with one body per piece of its polygon shapes, which keep its type, material, filter and motion, and returns the new bodies. Slivers thinner than the tolerance of Box2D are left out, and a body without polygon shapes or with nothing but slivers stays as it is and gives no pieces. The impact point is in world units. Throws `std::logic_error` when the body was destroyed.
     static std::vector<Body> shatter(Body body, const Options& options);
+
+  private:
+    // Returns whether Box2D can hold a convex part of at most its polygon vertex count in world units.
+    [[nodiscard]] static bool isSolid(std::span<const math::Vec2> part, float scale);
 };
 
 } // namespace haylen::physics2d

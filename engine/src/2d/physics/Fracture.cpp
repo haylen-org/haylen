@@ -3,6 +3,7 @@
 #include <box2d/box2d.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdexcept>
 
@@ -109,15 +110,21 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
     const math::Vec2 center = Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(source), scale);
     const Body::Options settings{.type = body.getType(), .position = position, .rotation = rotation, .angularVelocity = spin, .linearDamping = body.getLinearDamping(), .angularDamping = body.getAngularDamping(), .gravityScale = body.getGravityScale(), .bullet = body.isBullet()};
 
-    // A piece that Box2D cannot hold, such as a sliver thinner than its tolerance, fails the whole fracture and leaves the body whole.
+    // Cells that meet near the impact point leave slivers thinner than the tolerance of Box2D, which add nothing to the collision and are left out. A failure halfway, such as a triangulation that fails, leaves the body whole.
     std::vector<Body> fragments;
     try {
         for (const std::vector<std::vector<math::Vec2>>& piece : split(outlines, local)) {
+            std::vector<std::vector<math::Vec2>> parts = math::Polygon::decompose(piece, B2_MAX_POLYGON_VERTICES);
+            std::erase_if(parts, [scale](const std::vector<math::Vec2>& part) { return !isSolid(part, scale); });
+            if (parts.empty()) {
+                continue;
+            }
+
             const math::Vec2 offset = position + math::Geometry::centroid(piece.front()).rotated(rotation) - center;
             Body::Options placed = settings;
             placed.velocity = velocity + math::Vec2{-spin * offset.y, spin * offset.x};
             Body& fragment = fragments.emplace_back(world.createBody(placed));
-            for (const std::vector<math::Vec2>& part : math::Polygon::decompose(piece)) {
+            for (const std::vector<math::Vec2>& part : parts) {
                 fragment.addPolygon(part, material);
             }
         }
@@ -127,8 +134,19 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
         }
         throw;
     }
-    body.destroy();
+
+    if (!fragments.empty()) {
+        body.destroy();
+    }
     return fragments;
+}
+
+bool Fracture::isSolid(std::span<const math::Vec2> part, float scale) {
+    std::array<b2Vec2, B2_MAX_POLYGON_VERTICES> points{};
+    for (std::size_t index = 0; index < part.size(); ++index) {
+        points[index] = Box2DConverter::toMeters(part[index], scale);
+    }
+    return b2ComputeHull(points.data(), static_cast<int>(part.size())).count > 0;
 }
 
 } // namespace haylen::physics2d

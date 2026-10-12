@@ -2531,7 +2531,7 @@ print(terrain:isSolid({256, 256}))
 
 ### physics2d.fracture(body, options)
 
-Replaces a body with one body per piece of its polygon shapes and returns the pieces, which keep its type, material, filter and motion. The pieces are the Voronoi cells of random points inside the body, which gather around the impact point when there is one. A body without polygon shapes stays as it is and returns an empty list. A piece thinner than the tolerance of Box2D, as in a sliver less than about 0.02 meters thick, raises the error of `body:addPolygon()` and leaves the body whole.
+Replaces a body with one body per piece of its polygon shapes and returns the pieces, which keep its type, material, filter and motion. The pieces are the Voronoi cells of random points inside the body, which gather around the impact point when there is one. Cells that meet near the impact point can leave slivers thinner than the tolerance of Box2D, about 0.02 meters, which add nothing to the collision and are left out, so a fracture into many pieces never fails on them. A body without polygon shapes, or whose pieces would all be slivers, stays as it is and returns an empty list.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |

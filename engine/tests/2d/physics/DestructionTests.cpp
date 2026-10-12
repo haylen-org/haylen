@@ -207,13 +207,33 @@ TEST_F(DestructionTest, ShatteringReplacesABodyWithMovingPieces) {
     EXPECT_TRUE(round.isValid());
     EXPECT_THROW((void)Fracture::shatter(box, {}), std::logic_error);
 
-    // Pieces of a sliver are thinner than the tolerance of Box2D, so the fracture fails and leaves the sliver whole.
+    // Pieces of a sliver are thinner than the tolerance of Box2D, so the fracture gives none and leaves the sliver whole.
     Body sliver = world.createBody({.position = {0.0F, 300.0F}});
     sliver.addBox({100.0F, 0.5F});
     const std::size_t bodies = world.getBodyCount();
-    EXPECT_THROW((void)Fracture::shatter(sliver, {.pieces = 4}), std::invalid_argument);
+    EXPECT_TRUE(Fracture::shatter(sliver, {.pieces = 4}).empty());
     EXPECT_TRUE(sliver.isValid());
     EXPECT_EQ(world.getBodyCount(), bodies);
+}
+
+TEST_F(DestructionTest, ShatteringIntoManyPiecesLeavesOutOnlySlivers) {
+    // Thirty cells gathered around the impact meet in slivers thinner than the tolerance of Box2D, which the fracture leaves out instead of failing, and the pieces keep nearly all the mass, short of slivers and of dust below the minimum area.
+    for (std::uint64_t seed = 1; seed <= 40; ++seed) {
+        Body crate = world.createBody({.position = {0.0F, 0.0F}});
+        crate.addBox({80.0F, 80.0F});
+        const float mass = crate.getMass();
+        const math::Vec2 impact{static_cast<float>(seed % 7) * 3.0F - 9.0F, static_cast<float>(seed % 5) * 4.0F - 8.0F};
+        std::vector<Body> pieces;
+        ASSERT_NO_THROW(pieces = Fracture::shatter(crate, {.pieces = 30, .impact = impact, .seed = seed})) << "Seed " << seed;
+        EXPECT_FALSE(crate.isValid());
+        EXPECT_GE(pieces.size(), 20U);
+        float total = 0.0F;
+        for (Body& piece : pieces) {
+            total += piece.getMass();
+            piece.destroy();
+        }
+        EXPECT_GT(total, mass * 0.97F);
+    }
 }
 
 } // namespace haylen::physics2d
