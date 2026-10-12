@@ -311,6 +311,41 @@ TEST_F(HpakPackageTest, ReadsFromManyThreadsAtOnce) {
     EXPECT_EQ(matches, std::vector<int>(8, 6));
 }
 
+// A release of more shards than stay open serves every file from several threads at once through a bounded number of open shard files, and a shard that closed opens again when a file needs it.
+TEST_F(HpakPackageTest, KeepsABoundedNumberOfShardsOpen) {
+    std::map<std::string, std::vector<std::uint8_t>> files;
+    files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "dev.haylen.tests"})"));
+    files.emplace("source/main.lua", test::TestFiles::bytes("return {}"));
+    std::vector<std::string> parts;
+    for (std::uint32_t part = 0; part < ShardSet::kMaxOpenShards + 8; ++part) {
+        parts.push_back("parts/part_" + std::to_string(100 + part) + ".bin");
+        files.emplace("content/" + parts.back(), test::TestFiles::randomBytes(40 * 1024, part + 1));
+    }
+    release.build(io::MemoryPackage("source", files), 64 * 1024);
+    ASSERT_GE(listShards().size(), parts.size());
+    const auto counting = std::make_shared<test::CountingPackage>(release.getFiles());
+    const std::shared_ptr<io::Package> package = release.open(counting);
+
+    std::vector<std::thread> threads;
+    std::vector<std::size_t> matches(4, 0);
+    for (std::size_t thread = 0; thread < matches.size(); ++thread) {
+        // clang-format off
+        threads.emplace_back([&, thread] {
+            for (std::size_t index = 0; index < 2 * parts.size(); ++index) {
+                const std::string& part = parts[(index * (thread + 1) + thread * 5) % parts.size()];
+                matches[thread] += package->readAsset(part) == files.at("content/" + part) ? 1 : 0;
+            }
+        });
+        // clang-format on
+    }
+    for (std::thread& thread : threads) {
+        thread.join();
+    }
+    EXPECT_EQ(matches, std::vector<std::size_t>(4, 2 * parts.size()));
+    EXPECT_LE(counting->getOpenReaders(), ShardSet::kMaxOpenShards + 1);
+    EXPECT_LE(counting->getMostOpenReaders(), ShardSet::kMaxOpenShards + 1 + matches.size());
+}
+
 TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
     build(makeFiles());
     const std::vector<std::string> shards = listShards();

@@ -10,7 +10,7 @@
 
 namespace haylen::test {
 
-// Passes a package through and counts what its readers read, so tests can show which bytes of a file an operation touches.
+// Passes a package through and counts what its readers read and the readers that are open, so tests can show which bytes of a file an operation touches and how many files it holds open.
 class CountingPackage final : public io::Package {
   public:
     explicit CountingPackage(std::shared_ptr<const io::Package> innerPackage);
@@ -35,17 +35,29 @@ class CountingPackage final : public io::Package {
     [[nodiscard]] std::uint64_t getLargestRead() const noexcept {
         return counters->largest;
     }
+    [[nodiscard]] std::size_t getOpenReaders() const noexcept {
+        return counters->open;
+    }
+    [[nodiscard]] std::size_t getMostOpenReaders() const noexcept {
+        return counters->mostOpen;
+    }
     void reset() noexcept;
 
   private:
     struct Counters {
         std::atomic<std::uint64_t> bytes{0};
         std::atomic<std::uint64_t> largest{0};
+        std::atomic<std::size_t> open{0};
+        std::atomic<std::size_t> mostOpen{0};
     };
 
     class Reader final : public io::PackageReader {
       public:
         Reader(std::unique_ptr<io::PackageReader> innerReader, std::shared_ptr<Counters> sharedCounters);
+        ~Reader() override;
+
+        Reader(const Reader&) = delete;
+        Reader& operator=(const Reader&) = delete;
 
         [[nodiscard]] std::uint64_t getSize() const noexcept override {
             return inner->getSize();

@@ -15,7 +15,15 @@ void CountingPackage::reset() noexcept {
     counters->largest = 0;
 }
 
-CountingPackage::Reader::Reader(std::unique_ptr<io::PackageReader> innerReader, std::shared_ptr<Counters> sharedCounters) : inner(std::move(innerReader)), counters(std::move(sharedCounters)) {}
+CountingPackage::Reader::Reader(std::unique_ptr<io::PackageReader> innerReader, std::shared_ptr<Counters> sharedCounters) : inner(std::move(innerReader)), counters(std::move(sharedCounters)) {
+    const std::size_t open = ++counters->open;
+    std::size_t most = counters->mostOpen;
+    while (open > most && !counters->mostOpen.compare_exchange_weak(most, open)) {}
+}
+
+CountingPackage::Reader::~Reader() {
+    --counters->open;
+}
 
 std::size_t CountingPackage::Reader::read(std::uint64_t offset, std::span<std::uint8_t> target) {
     const std::size_t count = inner->read(offset, target);
