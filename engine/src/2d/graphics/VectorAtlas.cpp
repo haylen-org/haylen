@@ -63,9 +63,14 @@ void VectorAtlas::request(const graphics::VectorImage& image, int step) {
         graphics::Image raster = image.rasterize(scaleOf(step));
         queue->postToFrame([owner, id = image.getId(), step, raster = std::move(raster)] {
             const std::shared_ptr<Link> alive = owner.lock();
-            if (alive && alive->atlas != nullptr) {
-                VectorAtlas& atlas = *alive->atlas;
-                atlas.pending.erase({id, step});
+            if (alive == nullptr || alive->atlas == nullptr) {
+                return;
+            }
+            // The image may have left the atlas and come back with this step made at once meanwhile, which keeps its place.
+            VectorAtlas& atlas = *alive->atlas;
+            atlas.pending.erase({id, step});
+            const auto known = atlas.images.find(id);
+            if (known == atlas.images.end() || !known->second.contains(step)) {
                 atlas.place(id, step, raster, atlas.currentFrame);
             }
         });
@@ -129,7 +134,12 @@ void VectorAtlas::clearPage(std::size_t index, int side) {
     Page& page = pages[index];
     for (const auto& [image, step] : page.rasters) {
         const auto found = images.find(image);
-        found->second.erase(step);
+        if (found == images.end()) {
+            continue;
+        }
+        if (const auto entry = found->second.find(step); entry != found->second.end() && entry->second.page == index) {
+            found->second.erase(entry);
+        }
         if (found->second.empty()) {
             images.erase(found);
         }

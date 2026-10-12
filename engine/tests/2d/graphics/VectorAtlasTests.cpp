@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include "2d/graphics/VectorAtlas.hpp"
 #include "haylen/core/Engine.hpp"
@@ -75,6 +77,34 @@ TEST_F(VectorAtlasTest, StartsTheLeastRecentPageOverWhenFull) {
 
     // The image whose page started over makes its raster again.
     EXPECT_NE(atlas.find(images.front(), large, VectorAtlas::kMaxPages + 2).texture, rasters.front().texture);
+}
+
+// A raster that arrives from the task pool after its image left the atlas and came back with the same step keeps the place it already has, so the pages that start over later forget each raster once.
+TEST_F(VectorAtlasTest, KeepsOnePlaceForARasterThatCameBackWhileItWasMade) {
+    VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    const float large = static_cast<float>(VectorAtlas::kPageSize) * 0.06F;
+    const float larger = large * 1.5F;
+    const graphics::VectorImage image = square();
+    std::vector<graphics::VectorImage> others;
+    std::uint64_t frame = 1;
+    // clang-format off
+    const auto fillPages = [&] {
+        for (std::size_t index = 0; index < VectorAtlas::kMaxPages; ++index) {
+            others.push_back(square());
+            (void)atlas.find(others.back(), large, ++frame);
+        }
+    };
+    // clang-format on
+
+    (void)atlas.find(image, large, frame);
+    (void)atlas.find(image, larger, frame);
+    fillPages();
+    EXPECT_EQ(atlas.find(image, larger, ++frame).source.width, std::ceil(10.0F * VectorAtlas::scaleOf(VectorAtlas::stepOf(larger))));
+    ASSERT_TRUE(fixture.frameUntil([&atlas] { return atlas.getPendingCount() == 0; }));
+
+    fillPages();
+    fillPages();
+    EXPECT_TRUE(atlas.find(image, larger, ++frame).texture.isValid());
 }
 
 TEST_F(VectorAtlasTest, DrawsVectorImagesFromLua) {

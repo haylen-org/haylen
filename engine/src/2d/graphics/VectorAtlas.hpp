@@ -55,6 +55,9 @@ class VectorAtlas final {
     [[nodiscard]] std::size_t getPageCount() const noexcept {
         return pages.size();
     }
+    [[nodiscard]] std::size_t getPendingCount() const noexcept {
+        return pending.size();
+    }
 
   private:
     struct Entry {
