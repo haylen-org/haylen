@@ -11,9 +11,9 @@ namespace haylen::ui {
 
 // A press on the area takes the focus when no control of the last frame lay under the pointer, such as touch controls drawn over the game.
 void PlayArea::render(Context& context, const math::Rect& bounds) {
-    const ImGuiID id = ImGui::GetID("##play");
-    ImGui::ItemAdd(ImGuiConverter::toImRect(bounds), id);
-    context.getFocus().addPlayArea(id, bounds);
+    const ImGuiID itemId = ImGui::GetID("##play");
+    ImGui::ItemAdd(ImGuiConverter::toImRect(bounds), itemId);
+    context.getFocus().addPlayArea(itemId, bounds);
 
     const ImGuiContext& state = *GImGui;
     const bool pressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right) || ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
@@ -21,7 +21,7 @@ void PlayArea::render(Context& context, const math::Rect& bounds) {
     if (takeFocusRequest() || here) {
         Widgets::focusItem(context);
     }
-    Widgets::drawFocusRing(context, bounds, id, 0.0F);
+    Widgets::drawFocusRing(context, bounds, itemId, 0.0F);
 }
 
 } // namespace haylen::ui

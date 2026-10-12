@@ -80,8 +80,8 @@ void Collection::readProperties(PropertyReader& reader) {
             reader.fail("selected", "must be a list of item ids");
         }
         requestedSelection.emplace();
-        for (const core::Json& id : *chosen) {
-            requestedSelection->push_back(id.get<std::string>());
+        for (const core::Json& item : *chosen) {
+            requestedSelection->push_back(item.get<std::string>());
         }
     }
     reader.read("selectionFollowsFocus", selectionFollowsFocus);
@@ -156,12 +156,12 @@ void Collection::checkType(std::string_view item, std::string_view type) const {
 
 // An item that did not load yet takes the placeholder type, or no type, which draws nothing in its place.
 std::uint16_t Collection::readType(std::size_t index) const {
-    const std::string_view id = source->getId(index);
-    if (id.empty()) {
+    const std::string_view itemId = source->getId(index);
+    if (itemId.empty()) {
         return placeholderType.value_or(SizeCache::kNoType);
     }
     const std::string_view name = source->getType(index);
-    checkType(id, name);
+    checkType(itemId, name);
     return name.empty() ? 0 : *types->find(name);
 }
 
@@ -779,9 +779,9 @@ void Collection::prepare(Context& context) {
 // A vertical collection is as long as its content, within its size bounds, and a horizontal one is as tall as the tallest cell it has measured, which never shrinks while it lives.
 math::Vec2 Collection::measureContent(Context& context, float availableWidth) {
     const bool bounded = availableWidth < CommonProperties::kUnbounded;
-    auto children = getLayoutChildren();
-    if (getCount() == 0 && !children.empty()) {
-        return children.front()->measure(context, availableWidth);
+    auto placeholders = getLayoutChildren();
+    if (getCount() == 0 && !placeholders.empty()) {
+        return placeholders.front()->measure(context, availableWidth);
     }
     if (isVertical()) {
         if (bounded && types) {
@@ -872,10 +872,10 @@ void Collection::render(Context& context, const math::Rect& bounds) {
 void Collection::takeInput(Context& context) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiContext& state = *GImGui;
-    const bool hovered = ImGui::IsWindowHovered() && viewport.contains(math::Vec2{io.MousePos.x, io.MousePos.y});
+    const bool underPointer = ImGui::IsWindowHovered() && viewport.contains(math::Vec2{io.MousePos.x, io.MousePos.y});
     idle += delta;
 
-    const math::Vec2 distance = hovered && scroller->getMaximum() > 0.0 ? context.takeWheelDistance() : math::Vec2{};
+    const math::Vec2 distance = underPointer && scroller->getMaximum() > 0.0 ? context.takeWheelDistance() : math::Vec2{};
     const float wheel = isVertical() ? -distance.y : -distance.y + (rightToLeft ? distance.x : -distance.x);
     if (wheel != 0.0F) {
         scroller->jumpTo(scroller->getOffset() + static_cast<double>(wheel));
@@ -884,7 +884,7 @@ void Collection::takeInput(Context& context) {
     }
 
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        pressed = hovered;
+        pressed = underPointer;
         dragging = false;
     }
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
@@ -1227,9 +1227,9 @@ void Collection::drawLeaving(Context& context) {
 }
 
 void Collection::drawEmpty(Context& context) {
-    auto children = getLayoutChildren();
-    if (!children.empty()) {
-        children.front()->draw(context, viewport);
+    auto placeholders = getLayoutChildren();
+    if (!placeholders.empty()) {
+        placeholders.front()->draw(context, viewport);
     }
 }
 
@@ -1357,9 +1357,9 @@ void Collection::setBinder(std::string_view type, Binder binder) {
     }
 }
 
-std::optional<std::size_t> Collection::findItem(std::string_view id) const {
+std::optional<std::size_t> Collection::findItem(std::string_view itemId) const {
     for (std::size_t index = 0; source && index < source->getCount(); ++index) {
-        if (source->getId(index) == id) {
+        if (source->getId(index) == itemId) {
             return index;
         }
     }

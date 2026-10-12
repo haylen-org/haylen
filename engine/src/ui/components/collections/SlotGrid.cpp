@@ -141,10 +141,10 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
     }
 }
 
-void SlotGrid::drawContent(Context& context, const Slot& slot, const math::Rect& area, bool hovered) const {
+void SlotGrid::drawContent(Context& context, const Slot& slot, const math::Rect& area, bool slotHovered) const {
     const bool chosen = slot.id == selected;
-    const Theme::Surface surface = chosen || hovered ? Theme::Surface::SlotHighlighted : Theme::Surface::Slot;
-    Surfaces::draw(context, surface, area, context.getColor(chosen ? Theme::Color::Selection : hovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(chosen ? Theme::Color::Accent : Theme::Color::Border), context.getMetric(Theme::Metric::ControlRadius));
+    const Theme::Surface surface = chosen || slotHovered ? Theme::Surface::SlotHighlighted : Theme::Surface::Slot;
+    Surfaces::draw(context, surface, area, context.getColor(chosen ? Theme::Color::Selection : slotHovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(chosen ? Theme::Color::Accent : Theme::Color::Border), context.getMetric(Theme::Metric::ControlRadius));
     const bool leaving = dragging == slot.id || (context.getFocus().getCarried() && context.getFocus().getCarried()->source == getId() && context.getFocus().getCarried()->item == slot.id);
     if (!slot.image.empty()) {
         const math::Rect picture = area.expanded(-area.width * 0.12F);

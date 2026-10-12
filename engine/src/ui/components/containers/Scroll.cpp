@@ -92,9 +92,9 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         }
 
         // The innermost area under the pointer that can scroll takes the wheel, so one turn moves one area, and a horizontal one takes the vertical wheel too.
-        const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+        const bool underPointer = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
         const float room = horizontal ? ImGui::GetScrollMaxX() : ImGui::GetScrollMaxY();
-        const math::Vec2 distance = hovered && room > 0.0F ? context.takeWheelDistance() : math::Vec2{};
+        const math::Vec2 distance = underPointer && room > 0.0F ? context.takeWheelDistance() : math::Vec2{};
         if (!distance.isZero()) {
             if (horizontal) {
                 ImGui::SetScrollX(ImGui::GetScrollX() - distance.y - distance.x);
@@ -103,7 +103,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             }
         }
         followFinger();
-        const bool touched = (hovered && (!distance.isZero() || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
+        const bool touched = (underPointer && (!distance.isZero() || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
         idle = touched ? 0.0F : idle + context.getDeltaSeconds();
         if (snap && idle > kSnapDelay) {
             settle(context, horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY(), horizontal ? ImGui::GetScrollMaxX() : ImGui::GetScrollMaxY());

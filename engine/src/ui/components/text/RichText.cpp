@@ -106,7 +106,7 @@ void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
     const std::vector<std::string>& links = richText->getDocument().links;
     const bool takesFocus = takeFocusRequest();
     std::vector<bool> reached(links.size(), false);
-    std::optional<std::size_t> hovered;
+    std::optional<std::size_t> pointed;
 
     for (std::size_t index = 0; index < layout.links.size(); ++index) {
         const text::Layout::Area& area = layout.links[index];
@@ -118,7 +118,7 @@ void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
             Widgets::focusItem(context);
         }
         if (state.hovered) {
-            hovered = area.index;
+            pointed = area.index;
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         }
         if (state.clicked) {
@@ -126,16 +126,16 @@ void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
         }
     }
 
-    if (hovered == hoveredLink) {
+    if (pointed == hoveredLink) {
         return;
     }
     if (hoveredLink) {
         context.emit(*this, "linkHover", {{"link", links[*hoveredLink]}, {"hovered", false}});
     }
-    if (hovered) {
-        context.emit(*this, "linkHover", {{"link", links[*hovered]}, {"hovered", true}});
+    if (pointed) {
+        context.emit(*this, "linkHover", {{"link", links[*pointed]}, {"hovered", true}});
     }
-    hoveredLink = hovered;
+    hoveredLink = pointed;
 }
 
 void RichText::showHint(Context&, math::Vec2 origin) {

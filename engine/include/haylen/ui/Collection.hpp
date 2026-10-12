@@ -118,7 +118,7 @@ class Collection final : public Component {
     void checkType(std::string_view item, std::string_view type) const;
 
     [[nodiscard]] std::size_t getCount() const;
-    [[nodiscard]] std::optional<std::size_t> findItem(std::string_view id) const;
+    [[nodiscard]] std::optional<std::size_t> findItem(std::string_view itemId) const;
 
     void scrollTo(std::size_t index, const ScrollRequest& request);
     void scrollBy(double delta, bool animated);
