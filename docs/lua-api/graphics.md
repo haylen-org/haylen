@@ -305,7 +305,7 @@ print(glyph.index, glyph.advance, glyph.offset.y, glyph.source.height)
 
 ### font:glyphByIndex(index)
 
-Returns the glyph with an index that `font:shape` gave, as the same table as `font:glyph`, which is how an app draws shaped text from the atlas itself. The index of a glyph of a bitmap font is its code point. A TrueType font raises `The font has no glyph with index N.` for an index it does not have, and a glyph too large for any atlas the device allows raises `The font atlas exceeded the maximum texture size.` every time it is used.
+Returns the glyph with an index that `font:shape` gave, as the same table as `font:glyph`, which is how an app draws shaped text from the atlas itself. The index of a glyph of a bitmap font is its code point. A TrueType font raises `The font has no glyph with index N.` for an index it does not have, a glyph too large for any atlas the device allows raises `The glyph is larger than the largest font atlas the device can hold.`, and a full atlas that cannot grow raises `The font atlas exceeded the maximum texture size.` every time it is used.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

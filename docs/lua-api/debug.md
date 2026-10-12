@@ -46,7 +46,7 @@ end)
 
 ## Object counts and events
 
-The statistics count the objects of every type that were created, are alive and were destroyed. Every userdata type exported to Lua counts under its type name, such as `haylen.Sprite` or `haylen.Tween`, from the moment Lua creates the value until the garbage collector frees it. Engine resources count under their own names: `Texture` and `RenderTarget` with the bytes of their pixels, `Font`, `FontFamily`, `RichText`, `Sound` with the bytes of its samples or its encoded file, `PhysicsBody`, `PhysicsContact`, `ParticleEmitter`, `Particle`, `Gui` and `Tween`. A C++ project counts its own types with `haylen::debug::ObjectCounter` and `TrackedObject`.
+The statistics count the objects of every type that were created, are alive and were destroyed. Every userdata type exported to Lua counts under its type name, such as `haylen.Sprite` or `haylen.Tween`, from the moment Lua creates the value until the garbage collector frees it. Engine resources count under their own names: `Texture` and `RenderTarget` with the bytes of their pixels, `Font`, `FontFamily`, `RichText`, `Sound` with the bytes of its samples or its encoded file, `PhysicsBody`, `PhysicsContact`, `ParticleEmitter`, `Particle`, `Gui`, `UiCell`, `VectorImage` and `Tween`. A C++ project counts its own types with `haylen::debug::ObjectCounter` and `TrackedObject`.
 
 The call `debug.setObjectEvents(true)` also publishes `objectCreated` and `objectDestroyed` on [`haylen.events`](events.md) for every counted object, with `{type, count}`, queued for the end of the frame because objects come and go on any thread, even inside the garbage collector. The events cost time in an app that creates many objects every frame, so they start off, and `"debug": {"objectEvents": true}` in `app.json` turns them on from the start.
 
@@ -262,7 +262,7 @@ end
 
 Adds a [monitor](#monitors) named `name` that calls `fn` once per frame and shows the number it returns in the full overlay, and returns its [`Connection`](signal.md#connection). A monitor with the same name is replaced, which ends the connection of the old one. The method `connection:disconnect()` removes the monitor, and while `connection.blocked` is `true` the monitor keeps its value and history without calling `fn`.
 
-The argument `options` is an optional table. Its `owner`, a table or a userdata such as a scene, removes the monitor when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. The owner keeps `fn`, so `fn` may refer to the owner without keeping it alive. An owner of another type raises `An owner must be a table or a userdata, not <type>.`, and an unknown option raises `Unknown option "<name>"`.
+The argument `options` is an optional table. Its `owner`, a table or a userdata such as a scene, removes the monitor when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. The owner keeps `fn`, so `fn` may refer to the owner without keeping it alive. An owner of another type raises `An owner must be a table or a userdata, not <type>.`, and an unknown option raises `Unknown option "<name>".`
 
 ```lua
 local debug = require('haylen.debug')

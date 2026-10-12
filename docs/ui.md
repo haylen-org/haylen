@@ -212,6 +212,7 @@ The engine ships 64 component kinds, and `ui.kinds()` lists them. They are group
 | [Settings](lua-api/ui.md#settings) | `settingsForm`, `settingsRow`, `settingsActions` |
 | [Overlays](lua-api/ui.md#overlays) | `dialog`, `toast`, `window`, `contextMenu` |
 | [Touch controls](lua-api/ui.md#touch-controls) | `touchStick`, `touchButton` |
+| [Play areas](lua-api/ui.md#play-areas) | `playArea` |
 
 Pictures, such as the `image` of `ui.image`, `ui.icon`, `ui.avatar` and list items and the `icon` of buttons, are image files or SVG documents in the package. The UI rasterizes an SVG document on the job system for the pixels it covers on the screen, in steps a quarter of an octave apart, and draws with the nearest raster it has until the new one arrives, so icons and illustrations stay sharp on every density, at every UI scale and while they animate, from files of a few hundred bytes. The color `currentColor` paints white, so `ui.icon` tints an icon drawn with it through its `color`, toolbar and icon buttons tint it like their text, and the `iconColor` of a button tints it in every variant. The rasters that no frame drew lately go once they pass a memory budget, `ImageLibrary::kRasterBudget` in `engine/src/ui/ImageLibrary.hpp`, so a long list of pictures keeps the memory of the ones in view, and an SVG changed during hot reload shows once the app restarts. The property `radius` of `ui.image` rounds the corners of a picture, such as a photo on a card.
 

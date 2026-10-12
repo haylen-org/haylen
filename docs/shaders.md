@@ -66,7 +66,7 @@ Every source compiles eight times, once for each kind of draw and once more of e
 Each program compiles for Metal on macOS, iOS and the iOS simulator, HLSL 5 for Direct3D 11, GLSL 4.30 for desktop OpenGL, GLSL 3.00 ES for Android and WebGL2, and WGSL for WebGPU. A compile error stops the command with the file, the line and the program it happened in:
 
 ```text
-Error: The sokol-shdc tool could not compile the "sprite" program of "content/shaders/ripple.glsl":
+Error: The shader content/shaders/ripple.glsl does not compile as the "sprite" program, and "sokol-shdc" names the lines below.
 content/shaders/ripple.glsl:13:0: error: 'wave' : undeclared identifier
 ```
 

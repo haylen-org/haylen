@@ -122,7 +122,7 @@ Press [icon=confirm] to light the [glow=6 color=#FF8000]beacon[/glow]
 ]]
 ```
 
-Any other tag name runs a text effect of that name. Malformed markup raises an error that names its line and column, counted from 1, such as `Rich text markup at line 2, column 6: The tag "[/b]" closes "[i]", which is still open.`, `The tag "[b]" is never closed.`, `The value "blurple" is not a color.` or `The markup "[wiggle]" is neither a tag nor a registered text effect.`.
+Any other tag name runs a text effect of that name. Malformed markup raises an error that names its line and column, counted from 1, such as `Rich text markup at line 2, column 6: The tag "[/b]" closes "[i]", which is still open.`, `The tag "[b]" is never closed.`, `The value "blurple" is not a color. Use a name such as "red" or "#RRGGBB" or "#AARRGGBB".` or `The markup "[wiggle]" is neither a tag nor a registered text effect.`.
 
 ## Effects
 
@@ -152,7 +152,7 @@ end)
 
 ## Typewriter reveal
 
-Characters count in reading order, one per cluster, spaces included, and one per image or icon, and a list marker shows with the first character of its item. Right-to-left text appears from the right, and a mixed line reveals every run in the order it is read, whatever its place on screen. A reveal speed in characters per second, `reveal` in the options of rich text or of `ui.richText`, shows them one by one as time passes. The tag `[pause=seconds]` holds the reveal before the next character and `[speed=factor]` changes its pace inside the tag. Hidden characters keep their place, so the text never reflows while it appears, and backgrounds, underlines and strikes grow with the revealed text.
+Characters count in reading order, one per cluster, spaces included, and one per image or icon, and a list marker shows with the first character of its item. Right-to-left text appears from the right, and a mixed line reveals every run in the order it is read, whatever its place on screen. A reveal speed in characters per second, `revealSpeed` in the options of rich text or of `ui.richText`, shows them one by one as time passes. The tag `[pause=seconds]` holds the reveal before the next character and `[speed=factor]` changes its pace inside the tag. Hidden characters keep their place, so the text never reflows while it appears, and backgrounds, underlines and strikes grow with the revealed text.
 
 The properties `text.visibleCharacters` and `text.visibleRatio` read and set how much shows. Setting them moves a running reveal there, and a dialogue box skips to the end by setting `visibleCharacters` to -1 when the player presses a button while `text.revealing` is `true`.
 

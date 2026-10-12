@@ -764,7 +764,7 @@ A `UiCollection` gives a [`collection`](#uicollectionproperties) its items and s
 | Member | Meaning |
 | --- | --- |
 | `setItems(list)` | Shows the items of a Lua list, which the GUI keeps and the collection reads. Every item is a table with a non-empty string `id`, unique in the list, a `type` unless the collection declares one type, and the fields its templates bind. A second call, with the same list changed in place or with another list, compares the items by id, so the items that stay keep their measured sizes, their selection and the focus. |
-| `setPages(options)` | Shows `count` items that the function `load(first, count)` gives a page at a time, as a list of `count` items or a promise of one, such as the promise of `jobs.spawn`. The loader runs before the GUIs draw for the pages the view and its prefetch need, the items of a page on its way show the `placeholder` type, and at most `maxPages` pages stay, so the pages farthest from the view go. A second call with the same `load` keeps the pages it loaded. |
+| `setPages(options)` | Shows `count` items that the function `load(first, count)` gives a page at a time, as a list of `count` items or a promise of one, such as the promise of `jobs.spawn`. The loader runs before the GUIs draw for the pages the view and its prefetch need, the items of a page on its way show the `placeholder` type, and at most `maxPages` pages stay, 16 by default, so the pages farthest from the view go. The option `pageSize` sets the items of a page, 50 by default. A second call with the same `load` keeps the pages it loaded. |
 | `insert(index, items)` | Inserts the items of the list `items` into the list at `index`, from 1 to the count plus 1, and shows them. |
 | `remove(index, count)` | Removes `count` items, 1 by default, from `index`. |
 | `move(from, to)` | Moves one item. |
@@ -955,7 +955,7 @@ Every kind accepts these properties.
 | `maxWidth` | number | unbounded | Largest width. |
 | `minHeight` | number | `0` | Smallest height. |
 | `maxHeight` | number | unbounded | Largest height. |
-| `align` | string | depends on the kind | One of `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, a grid inside its cell, and a stack or the GUI root in both directions. Without `align`, rows center their children. Everywhere else labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars and touch controls use `start`, the busy indicator uses `center`, and every other kind stretches. |
+| `align` | string | depends on the kind | One of `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, a grid inside its cell, and a stack or the GUI root in both directions. Without `align`, rows center their children. Everywhere else labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars, rich text and touch controls use `start`, the busy indicator uses `center`, and every other kind stretches. |
 | `anchor` | string | none | Takes the node out of the layout of its parent and places it against the safe area or the screen, as [Anchors](#anchors) describes. The value `'none'` puts it back in the layout. |
 | `anchorTo` | string | `'safe'` | Area an anchored node is placed in: `'safe'` or `'screen'`. |
 | `margin` | insets | `0` | Space around the node: its parent places it that far from the nodes and edges around it, and an anchored node keeps that distance from the edges of its area. |
@@ -1101,7 +1101,7 @@ Kinds that offer choices take an `items` list. Every item is a table with a uniq
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `id` | string | required | Name of the item, unique within the list and not empty. Selection properties such as `selected` refer to it. |
+| `id` | string | required | Name of the item, unique within the list, and within the whole tree for `tree`, and not empty. Selection properties such as `selected` refer to it. |
 | `text` | text | none | Text of the item. |
 | `caption` | text | none | Second line under the text, shown by `list` and `tree`. |
 | `image` | image | none | Picture before the text, shown by `list` and `tree`. |

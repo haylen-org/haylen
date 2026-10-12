@@ -46,7 +46,7 @@ Every draw that takes an `order` table, and every option table that lists `layer
 | `visibility` | integer | `1` | Bits of the draw. A canvas whose `visibilityMask` shares no bit with them skips the draw. |
 | `blend` | string | `'alpha'` | Blend mode of the draw. |
 | `material` | Material | none | A [custom shader material](#material) that shades the pixels of the draw. Sprites, batches, static batches, nine-slices, rectangles, lines, shapes, meshes and text take materials, while image blends and metaballs raise `Image blends and metaballs do not take a material.` |
-| `partMask` | Texture | none | Recolors sprites and sprite batches by parts, as [recoloring by parts](#recoloring-by-parts) explains. Other draws ignore it. |
+| `partMask` | Texture | none | Recolors sprites and sprite batches by parts, as [recoloring by parts](#recoloring-by-parts) explains. Vector images and baked batches raise an error with it, and other draws ignore it. |
 | `normalMap` | Texture | none | In lit canvases, the normal map of a sprite, with the layout of its texture. |
 | `specular` | number | `0` | In lit canvases, the strength of the highlights of a normal-mapped sprite, scaled by the alpha of its normal map. It must be zero or positive. |
 | `shininess` | number | `32` | In lit canvases, how tight the highlights of a normal-mapped sprite are, from 1 to 255. |
@@ -224,7 +224,7 @@ scene.push({
 
 ### graphics2d.drawVector(image, x, y, options)
 
-Draws a [`VectorImage`](graphics.md#vectorimage) with its pivot at `x`, `y`, at its own size unless the options give one. The engine rasterizes the image at the scale it covers on the screen, in steps a quarter of an octave apart, so it stays sharp at any size and zoom, and keeps the rasters in a vector atlas, so many images at many sizes batch into few draw calls. The first raster of an image is made at once, and every other one on worker threads while the nearest raster draws in its place, as the [rendering guide](../rendering.md#vector-images) explains. The argument `options` takes the keys of `graphics2d.draw` but `source` and `partColors`, and a `partMask` raises `A vector image draws without a part mask.`
+Draws a [`VectorImage`](graphics.md#vectorimage) with its pivot at `x`, `y`, at its own size unless the options give one. The engine rasterizes the image at the scale it covers on the screen, in steps a quarter of an octave apart, so it stays sharp at any size and zoom, and keeps the rasters in a vector atlas, so many images at many sizes batch into few draw calls. The first raster of an image is made at once, and every other one on worker threads while the nearest raster draws in its place, as the [rendering guide](../rendering.md#vector-images) explains. The argument `options` takes the keys of `graphics2d.draw` but `source`, `partColors` and the dissolve, outline and glow keys, and a `partMask` raises `A vector image draws without a part mask.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -272,7 +272,7 @@ scene.push({
 
 ### graphics2d.drawBatch(texture, buffer, layout, order)
 
-Draws the sprites a float buffer of [`haylen.collections`](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. The argument `layout` is a sprite table, with the keys of [`SpriteBatch`](#spritebatch), that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".`. The [performance section of the Lua guide](../lua.md#performance) compares it with sprite tables.
+Draws the sprites a float buffer of [`haylen.collections`](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. The argument `layout` is a sprite table, with the keys of [`SpriteBatch`](#spritebatch) but `partColors`, that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".`. The [performance section of the Lua guide](../lua.md#performance) compares it with sprite tables.
 
 ```lua
 local collections = require('haylen.collections')
@@ -516,7 +516,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `rotation` | number | `0` | Rotation in radians. |
 | `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |
 | `pixelSnap` | boolean | `false` | Moves every line so its left edge lands on a whole pixel of the destination, centered and right-aligned lines included, and puts its baseline on a whole pixel row, which keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
-| `layer`, `depth`, `blend` | | | Draw order. |
+| `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `partMask`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded`, `distortion` | | | The [draw order](#draw-order). |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1245,8 +1245,8 @@ Returns a table with the renderer counters of the current frame. The draw counte
 | `drawCalls` | GPU draw calls. |
 | `sprites` | Quads submitted: sprites, batch sprites, glyphs and particles. |
 | `instances` | Sprite instances uploaded to the GPU. |
-| `vertices` | Mesh and shape vertices uploaded. |
-| `indices` | Mesh and shape indices uploaded. |
+| `vertices` | Mesh and polygon vertices uploaded. |
+| `indices` | Mesh and polygon indices uploaded. |
 | `lights` | Lights drawn. |
 | `occluders` | Occluders drawn. |
 | `shadows` | Shadow maps cast, one per light with shadows. |
@@ -1268,7 +1268,7 @@ scene.push({
 
 ### graphics2d.drawn()
 
-Returns the textured quads and blocks of text that the open canvas holds so far, in the order they were drawn, as a list of tables with `x`, `y`, `width` and `height`, the bounds in the coordinates of the canvas, `text`, which is `true` for a block of text, and `label`, the path of the texture of a sprite on the first quad of each draw. Every sprite and every quad of a batch or a nine-slice is one entry, a baked batch is one entry, and every text draw is one block, while plain shapes such as rectangles and lines and the draws with a distortion are left out. The bounds of a block of text reach a little past its letters, by the spread of the distance field of its glyphs. It suits checks and tools that need to know where things draw, such as the bounds the debug drawings outline. It needs an open canvas, and without one it raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`.
+Returns the textured quads and blocks of text that the open canvas holds so far, in the order they were drawn, as a list of tables with `x`, `y`, `width` and `height`, the bounds in the coordinates of the canvas, `text`, which is `true` for a block of text, and `label`, the path of the texture of a sprite on the first quad of each draw. Every sprite and every quad of a batch or a nine-slice is one entry, a baked batch is one entry, and every text draw is one block, while plain shapes such as rectangles and lines, the sprites and batches drawn with `graphics.whiteTexture()` and the draws with a distortion are left out. The bounds of a block of text reach a little past its letters, by the spread of the distance field of its glyphs. It suits checks and tools that need to know where things draw, such as the bounds the debug drawings outline. It needs an open canvas, and without one it raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1317,7 +1317,7 @@ print('the sun shines with intensity ' .. glare)
 
 ### graphics2d.newMaterial(shader, uniforms)
 
-Creates a [`Material`](#material) that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md) loads from a `.shader` file compiled by `haylen.py shaders`, as the [shader guide](../shaders.md) explains. The argument `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader "name" has no "sprite" program.`
+Creates a [`Material`](#material) that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md) loads from a `.shader` file compiled by `haylen.py shaders`, as the [shader guide](../shaders.md) explains. The argument `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader "name" has no "sprite" program. Compile it with "haylen.py shaders" from a source that includes "haylen/material.glsl".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -1517,7 +1517,7 @@ print(batch:size())
 
 ### batch:resize(count, sprite)
 
-Sets the number of sprites to `count` in one call. New sprites copy the sprite table `sprite`, or take the size of the texture without one, and sprites past `count` go away. It is the fast way to fill a large batch that a float buffer then moves.
+Sets the number of sprites to `count` in one call. New sprites copy the sprite table `sprite`, which takes the keys of [`SpriteBatch`](#spritebatch) but `partColors`, or take the size of the texture without one, and sprites past `count` go away. It is the fast way to fill a large batch that a float buffer then moves.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1530,7 +1530,7 @@ print(batch:size()) -- 10000
 
 ### batch:writeFields(buffer, fields, first)
 
-Copies the [sprite fields](#sprite-fields) named in the list `fields` from a float buffer into the sprites, from the sprite `first`, which defaults to 1, on. Each sprite takes one value for each field, in order, and the copy stops at the end of the buffer or of the batch. The other fields of the sprites keep their values, so a batch built once moves every frame with one call. A `first` past the end raises `Sprite batch index is out of range.`.
+Copies the [sprite fields](#sprite-fields) named in the list `fields` from a float buffer into the sprites, from the sprite `first`, which defaults to 1, on. Each sprite takes one value for each field, in order, and the copy stops at the end of the buffer or of the batch. The other fields of the sprites keep their values, so a batch built once moves every frame with one call. A `first` below 1 raises an error that contains `sprites are numbered from one`, a `first` more than one past the last sprite raises `Sprite batch index is out of range.`, and a `first` just past the last sprite copies nothing.
 
 ```lua
 local collections = require('haylen.collections')
