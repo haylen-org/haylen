@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <memory>
 #include <new>
 
 namespace haylen::test {
@@ -17,6 +18,12 @@ AllocationTracker::~AllocationTracker() {
 }
 
 void AllocationTracker::record(std::size_t size) noexcept {
+#if defined(_MSC_VER) && _ITERATOR_DEBUG_LEVEL != 0
+    // The checked iterators of the debug library of MSVC give every container a proxy that the library allocates on its own, so the tracker leaves out the allocations of the size of that proxy there, while the other libraries count every size.
+    if (size == sizeof(std::_Container_proxy)) {
+        return;
+    }
+#endif
     if (active != nullptr) {
         active->largest = std::max(active->largest, size);
         active->total += size;
