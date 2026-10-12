@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <string>
 #include <string_view>
 
@@ -17,6 +18,8 @@ class AssetsLua final {
     static void install(lua_State* L);
 
   private:
+    static constexpr std::array<std::string_view, 1> kPreloadOptions{"owner"};
+
     [[nodiscard]] static Manager& getAssets(lua_State* L);
     [[nodiscard]] static core::Json readOptions(lua_State* L, int index);
     [[nodiscard]] static std::string readType(lua_State* L, int typeIndex, std::string_view path);

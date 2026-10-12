@@ -13,11 +13,12 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/plugins/AssetsPlugin.hpp"
+#include "lua/Owners.hpp"
 #include "varn/async/Promise.h"
 
 namespace haylen::assets {
@@ -146,29 +147,45 @@ int AssetsLua::defineGroup(lua_State* L) {
     return 0;
 }
 
-// Starts loading a group and returns a promise that resolves with the list of failures. The optional function receives progress from 0 to 1.
+// Starts loading a group and returns a promise that resolves with the list of failures. The optional function receives progress from 0 to 1 while its owner lives, and without an `owner` it takes the default owner, which in development is the module that preloads at its top level.
 int AssetsLua::preload(lua_State* L) {
-    core::Engine& owner = lua::Runtime::getEngine(L);
+    core::Engine& engine = lua::Runtime::getEngine(L);
     const std::string name = lua::Stack::read<std::string>(L, 1);
-    auto promise = std::make_shared<varn::async::Promise>(owner.getScriptRuntime());
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TFUNCTION);
+    }
+    int owner = 0;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kPreloadOptions});
+        if (lua_getfield(L, 3, "owner") != LUA_TNIL) {
+            lua::Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
+    }
 
     Manager::GroupProgress onProgress;
     if (lua_isfunction(L, 2)) {
-        auto function = std::make_shared<lua::Reference>(L, 2);
+        if (owner == 0) {
+            owner = lua::Owners::pushDefault(L);
+        }
+        auto function = std::make_shared<lua::Owners::Function>(L, 2, owner);
+        lua_State* main = lua::Runtime::getMainThread(L);
         // clang-format off
-        onProgress = [function](float fraction) {
-            lua_State* main = function->getState();
+        onProgress = [function, main](float fraction) {
             lua::Runtime::runReporting(main, [&] {
-                function->push(main);
-                lua_pushnumber(main, fraction);
-                lua::Runtime::protectedCall(main, 1, 0);
+                if (function->push(main)) {
+                    lua_pushnumber(main, fraction);
+                    lua::Runtime::protectedCall(main, 1, 0);
+                }
             });
         };
         // clang-format on
     }
 
+    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
     // clang-format off
-    owner.getAssets().preload(name, std::move(onProgress), [promise](std::vector<std::string> errors) {
+    engine.getAssets().preload(name, std::move(onProgress), [promise](std::vector<std::string> errors) {
         promise->resolveCustom([errors = std::move(errors)](lua_State* state) { lua::Stack::push(state, errors); });
     });
     // clang-format on

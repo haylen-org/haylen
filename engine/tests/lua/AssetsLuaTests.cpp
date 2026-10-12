@@ -110,6 +110,30 @@ TEST_F(AssetsLuaTest, PreloadsGroupsWithProgress) {
     EXPECT_NE(lua("assets.unloadGroup('unknown')").find("The asset group \"unknown\" is not defined."), std::string::npos);
 }
 
+// A progress function that refers to its owner never keeps the owner alive, and it stops once the owner is gone.
+TEST_F(AssetsLuaTest, EndsTheProgressFunctionOfAPreloadWithItsOwner) {
+    // clang-format off
+    lua(R"(
+        tracker = setmetatable({}, {__mode = 'k'})
+        calls = 0
+        assets.defineGroup('world', {'images/'})
+        do
+            local level = {}
+            tracker[level] = true
+            pending = assets.preload('world', function() calls = calls + 1 level.seen = true end, {owner = level})
+        end
+        collectgarbage() collectgarbage()
+        async.spawn(function() failures = pending:await() end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(waitFor("failures ~= nil"));
+    EXPECT_EQ(lua("return #failures .. ' ' .. calls .. ' ' .. tostring(next(tracker))"), "0 0 nil");
+
+    EXPECT_EQ(lua("return select(2, pcall(assets.preload, 'world', nil, {ownr = {}}))"), "Unknown option \"ownr\".");
+    EXPECT_NE(lua("assets.preload('world', 'progress')").find("bad argument #2 to 'preload' (function expected, got string)"), std::string::npos);
+    EXPECT_NE(lua("assets.preload('world', nil, {owner = 3})").find("An owner must be a table or a userdata, not number."), std::string::npos);
+}
+
 TEST_F(AssetsLuaTest, SettlesPreloadsOfAGroupThatUnloads) {
     // clang-format off
     lua(R"(

@@ -328,9 +328,9 @@ assets.defineGroup('forest', {
 })
 ```
 
-### assets.preload(name, progress)
+### assets.preload(name, progress, options)
 
-Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `The asset group "<name>" is not defined.`, an entry without a type whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`, and an entry with invalid options raises the error of its options. The group checks every entry before it starts to load, so such an error leaves the group as it was, without the progress function of that call. When the group unloads while it loads, its promises resolve on a later frame with the one error `The asset group "<name>" was unloaded before it finished loading.`
+Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. The optional `options` table takes `owner`, a table or userdata, such as a scene, that ends the progress function when it is released or collected, like the [owners of `haylen.events`](events.md#owners), and the progress function never keeps its owner alive. Without an `owner`, the progress function takes the default owner, which in development is the module that preloads at its top level. Unknown keys raise `Unknown option "<key>".`, an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`, and a `progress` that is not a function raises a bad argument error. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `The asset group "<name>" is not defined.`, an entry without a type whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`, and an entry with invalid options raises the error of its options. The group checks every entry before it starts to load, so such an error leaves the group as it was, without the progress function of that call. When the group unloads while it loads, its promises resolve on a later frame with the one error `The asset group "<name>" was unloaded before it finished loading.`
 
 The group holds its assets until `assets.unloadGroup()`, so they stay cached even when nothing else refers to them, and later `assets.load()` calls return them at once.
 
@@ -348,7 +348,7 @@ local loading = {
         async.spawn(function()
             local failures = assets.preload('island', function(fraction)
                 self.fraction = fraction
-            end):await()
+            end, {owner = self}):await()
             for _, failure in ipairs(failures) do
                 log.warning(failure)
             end

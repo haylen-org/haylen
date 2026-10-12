@@ -581,7 +581,7 @@ print(haylen.autoloads.music == music)
 
 ## Subscription scopes
 
-A listener, a timer or a tween that outlives the thing it belongs to keeps running code for something that is gone. Owners prevent that. Every function that registers something takes an `owner` option, a table or a userdata, and ends what it registered when the owner ends: `events.on`, `signal:connect`, `socket:on`, `timer.after`, `timer.every`, every tween of `haylen.tween`, `ui.mount` and `ui.onEvent`. `scene.spawn(owner, fn)` runs a task that the owner holds, which stops for good with it, so it never resumes even when a promise it waits for settles later.
+A listener, a timer or a tween that outlives the thing it belongs to keeps running code for something that is gone. Owners prevent that. Every function that registers something takes an `owner` option, a table or a userdata, and ends what it registered when the owner ends: `events.on`, `signal:connect`, `socket:on`, `timer.after`, `timer.every`, every tween of `haylen.tween`, `ui.mount`, `ui.onEvent` and the progress function of `assets.preload`. `scene.spawn(owner, fn)` runs a task that the owner holds, which stops for good with it, so it never resumes even when a promise it waits for settles later.
 
 | Owner | Ends |
 | --- | --- |
