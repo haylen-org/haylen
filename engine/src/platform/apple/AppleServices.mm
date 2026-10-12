@@ -20,6 +20,7 @@
 #import "platform/apple/AppleDesktop.hpp"
 #import "platform/apple/AppleDialogs.hpp"
 #import "platform/apple/AppleGamepads.hpp"
+#import "platform/apple/AppleKeyboard.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
@@ -54,6 +55,9 @@ void Services::initialize() {
     dispatch_resume(pressure);
 #else
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(); }];
+#endif
+#if !TARGET_OS_OSX
+    AppleKeyboard::observe();
 #endif
 #if TARGET_OS_MACCATALYST
     CatalystInput::observe();

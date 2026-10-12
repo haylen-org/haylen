@@ -694,6 +694,7 @@ if(APPLE)
     src/platform/apple/AppleDesktop.mm
     src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleGamepads.mm
+    src/platform/apple/AppleKeyboard.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleNotifications.mm
     src/platform/apple/AppleOrientation.mm

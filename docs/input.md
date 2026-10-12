@@ -23,7 +23,7 @@ Text entry reads `input.text()`, the UTF-8 text typed in this frame, which follo
 
 On Android, hardware keyboards report their keys with modifiers and repeats and type characters, TV remotes report the directional pad as the arrow keys, select as `enter` and play and pause as `pause`, and the keys the app does not know, such as the volume keys, go on to the system. The Back button reaches the app as `escape` only while the app captures back or a text field edits, as [`window.setBackLeavesApp`](lua-api/window.md#windowsetbackleavesappenabled) describes. A view over the app that has the focus, such as a field of a plugin, takes the keys it wants first, and a key whose press went to such a view never reports its release to the app. The other way around, a key whose press the app took always reports its release to the app, also when a view took the focus in between, such as the hidden field of a text field that the press started editing, so no key stays held.
 
-The other platforms keep the same rule. On macOS the hidden field passes the release on to the view of the app, UIKit ends every press in the view it began in on iOS, iPadOS and tvOS, Mac Catalyst reads the keyboard through `GCKeyboard`, which reports every key whatever view has the focus, and the web page hands a release to `sokol_app` whenever its press reached it.
+The other platforms keep the same rule. On macOS the hidden field passes the release on to the view of the app, iOS, iPadOS, tvOS and Mac Catalyst read a hardware keyboard through `GCKeyboard`, which reports every key with its release whatever view has the focus, by its place on the keyboard and without repeats, and the web page hands a release to `sokol_app` whenever its press reached it. On those Apple platforms the TV remote and game controllers still press the arrows, `enter`, `pause` and the Menu button through UIKit, and on the Apple TV the Escape key of a keyboard is the Menu button of the remote, so it goes back the way the remote does. Typed characters and `input.text()` come from the native field of a text field there, so an app reads them while a text field or the plain keyboard of `window.setKeyboardVisible()` edits.
 
 ### Mouse
 
@@ -238,12 +238,12 @@ scene.push(setmetatable({}, Level))
 
 A press stays with the side that took it until it is released. A key held in the game keeps moving the game after Tab moved the focus to a control, and the control never sees it repeat, and a key held on a control stays with the interface after the focus moved to the play area.
 
-Input the interface answers itself never triggers an action, the same way the action map leaves mouse buttons alone while the interface owns the pointer. At the end of every frame the interface captures, for the next frame, the keys, gamepad buttons and gamepad axes of the presses it will answer:
+Input the interface answers itself never triggers an action, the same way the action map leaves a mouse button alone when the interface owned the pointer as it went down. At the end of every frame the interface captures, for the next frame, the keys, gamepad buttons and gamepad axes of the presses it will answer:
 
 - the bindings of every navigation action and Tab, while a control has the focus,
 - the `uiCancel` bindings, Escape, the east button and the Menu button of a TV remote by default, and Tab while a play area has the focus, and the `uiCancel` bindings while a popup, a combo list, a menu or a dialog is open, a control is being edited, an item is carried or the focus is inside a closable window,
 - the `uiFocus` bindings while a GUI has the focus or draws a play area,
-- every key while a text field edits, on Mac Catalyst too, where a hardware keyboard still reports keys while the native field edits,
+- every key while a text field edits, also on iOS, iPadOS, tvOS and Mac Catalyst, where a hardware keyboard still reports keys while the native field edits,
 - every key and gamepad button while a `keyCapture` listens.
 
 A key, button or axis pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone, and a captured axis holds the stick it belongs to. `input.keyCaptured(key)`, `input.gamepadButtonCaptured(button)` and `input.gamepadAxisCaptured(axis)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
