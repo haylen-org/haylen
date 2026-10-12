@@ -320,12 +320,20 @@ TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
     const std::shared_ptr<const ReleasePackage::Content> content = client->package->getContent();
     const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
     ASSERT_FALSE(missing.empty());
+    EXPECT_EQ(Downloader::measure(missing, *client->package->getStore()), 0U) << "Reading records in downloads nothing.";
     server.clearExchanges();
 
     std::optional<std::optional<Error>> fetched;
-    client->downloader->fetch(content->shards, missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); }});
+    std::uint64_t total = 0;
+    // clang-format off
+    client->downloader->fetch(content->shards, missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {
+        .onProgress = [&total](const Downloader::Progress& progress) { total = std::max(total, progress.totalBytes); },
+        .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
+    });
+    // clang-format on
     ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
     ASSERT_FALSE(*fetched);
+    EXPECT_EQ(total, 0U);
     EXPECT_EQ(server.getExchanges().size(), 0U) << "Nothing downloads that the store holds.";
     EXPECT_EQ(browser.getLoadedCount(), missing.size());
     EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));

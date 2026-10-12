@@ -39,10 +39,12 @@ std::vector<Catalog::Chunk> Downloader::findMissing(const ShardSet& shards, std:
     return missing;
 }
 
-std::uint64_t Downloader::measure(std::span<const Catalog::Chunk> chunks) noexcept {
+std::uint64_t Downloader::measure(std::span<const Catalog::Chunk> chunks, const LocalStore& store) {
     std::uint64_t bytes = 0;
     for (const Catalog::Chunk& chunk : chunks) {
-        bytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
+        if (!store.holds(chunk.storedId)) {
+            bytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
+        }
     }
     return bytes;
 }
@@ -59,7 +61,12 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
             continue;
         }
         request.waiting.insert(chunk.storedId);
-        request.progress.totalBytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
+
+        // A record that the store holds but cannot read yet, as on the web, comes in from the store instead of the network, so it downloads no byte.
+        const bool inStore = store->holds(chunk.storedId);
+        if (!inStore) {
+            request.progress.totalBytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
+        }
 
         const ShardReference& reference = shardSet->getReferences()[chunk.shard];
         auto [found, added] = wanted.try_emplace(chunk.storedId);
@@ -76,8 +83,7 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
             shard->second.keys = std::shared_ptr<const KeyRing>(shardSet, &shardSet->getKeys());
         }
 
-        // A record that the store holds but cannot read yet, as on the web, comes in from the store instead of the network.
-        if (store->holds(chunk.storedId)) {
+        if (inStore) {
             found->second.transferring = true;
             held.push_back(chunk.storedId);
             continue;
@@ -125,6 +131,9 @@ void Downloader::loadHeld(std::vector<Digest> storedIds) {
                     continue;
                 }
                 found->second.transferring = false;
+                for (const std::uint64_t id : found->second.requests) {
+                    requests.at(id).progress.totalBytes += ChunkRecord::kHeaderSize + found->second.chunk.encodedSize;
+                }
                 shards.at(found->second.shard).queued.push_back(storedId);
                 touched.insert(found->second.shard);
             }

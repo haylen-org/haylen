@@ -70,8 +70,8 @@ class Downloader final {
     // The chunks that the device holds neither in the file of their shard nor in the store, each once. It opens the shard files it looks into, so it runs away from the frame thread.
     [[nodiscard]] static std::vector<Catalog::Chunk> findMissing(const ShardSet& shards, std::span<const Catalog::Chunk> chunks);
 
-    // The bytes that downloading chunks takes: the sizes of their records.
-    [[nodiscard]] static std::uint64_t measure(std::span<const Catalog::Chunk> chunks) noexcept;
+    // The bytes that downloading chunks takes: the sizes of their records, without the ones the store holds and reads in instead, as a web page does with what an earlier visit downloaded.
+    [[nodiscard]] static std::uint64_t measure(std::span<const Catalog::Chunk> chunks, const LocalStore& store);
 
     // Brings chunks that the device lacked when `findMissing` looked, and returns the ID of the request. Chunks that the store received since are skipped.
     std::uint64_t fetch(std::shared_ptr<const ShardSet> shards, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks);

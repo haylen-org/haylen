@@ -129,7 +129,7 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
                 throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest.toHex() + "\" is not the one its channel names.");
             }
             offer->missing = Downloader::findMissing(*offer->content->shards, getChunks(*offer->content->catalog, Delivery::Required, rules));
-            offer->downloadBytes = Downloader::measure(offer->missing);
+            offer->downloadBytes = Downloader::measure(offer->missing, *releasePackage->getStore());
         } catch (const Error& error) {
             offer.reset();
             failure = error;

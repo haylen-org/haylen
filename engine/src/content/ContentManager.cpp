@@ -128,7 +128,7 @@ void ContentManager::bringRequired() {
             fail(Error(Error::Code::StoreAssetUnavailable, "The content that the app needs to start is not on the device, and the app names no server to download it from. Install the app again."));
             return;
         }
-        progress = {.totalBytes = Downloader::measure(*missing.value)};
+        progress = {.totalBytes = Downloader::measure(*missing.value, *release->getStore())};
         downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = [this](const Downloader::Progress& received) { progress = {.receivedBytes = received.receivedBytes, .totalBytes = received.totalBytes}; },
             .onComplete = [this, owner](std::optional<Error> failure) {
