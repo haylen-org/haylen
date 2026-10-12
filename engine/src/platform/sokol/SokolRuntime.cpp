@@ -201,8 +201,11 @@ bool SokolRuntime::isPaused() noexcept {
     return getCurrent().reported.isPaused();
 }
 
+// Observers of the system outlive the runtime, such as those of GameController, so an event after the cleanup of `sokol_app` goes nowhere.
 void SokolRuntime::handleEvent(const Event& event) {
-    getCurrent().deliver(event);
+    if (const std::unique_ptr<SokolRuntime>& current = getProcess().current) {
+        current->deliver(event);
+    }
 }
 
 void SokolRuntime::postEvent(Event event) {

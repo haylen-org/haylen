@@ -156,18 +156,20 @@ void AppleDialogs::showSaveFile(HaylenDialog* dialog, const DialogRequest::SaveF
     dialog.view = panel;
     const std::uint64_t id = dialog.identifier;
     NSData* data = [NSData dataWithBytes:save.data.data() length:save.data.size()];
+
+    // The file is written on a thread of its own, so a large file never holds the frames back.
     // clang-format off
     [panel beginSheetModalForWindow:(__bridge NSWindow*)sapp_macos_get_window() completionHandler:^(NSModalResponse response) {
         if (response != NSModalResponseOK) {
             answer(id, {});
             return;
         }
-        NSError* error = nil;
-        if (![data writeToURL:panel.URL options:NSDataWritingAtomic error:&error]) {
-            answer(id, makeFailure(DialogResult::Code::Failed, std::string("The file could not be written. ") + error.localizedDescription.UTF8String));
-            return;
-        }
-        answer(id, {.saved = DialogResult::File{.name = panel.URL.lastPathComponent.UTF8String, .path = panel.URL.path.UTF8String}});
+        NSURL* url = panel.URL;
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            NSError* error = nil;
+            DialogResult result = [data writeToURL:url options:NSDataWritingAtomic error:&error] ? DialogResult{.saved = DialogResult::File{.name = url.lastPathComponent.UTF8String, .path = url.path.UTF8String}} : makeFailure(DialogResult::Code::Failed, std::string("The file could not be written. ") + error.localizedDescription.UTF8String);
+            dispatch_async(dispatch_get_main_queue(), ^{ answer(id, result); });
+        });
     }];
     // clang-format on
 }
@@ -199,15 +201,15 @@ void AppleDialogs::showMessage(HaylenDialog* dialog, const DialogRequest::Messag
 
 #if TARGET_OS_TV
 void AppleDialogs::showOpenFiles(HaylenDialog* dialog, const DialogRequest::OpenFiles&) {
-    answer(dialog.identifier, makeFailure(DialogResult::Code::Unsupported, "tvOS has no document picker, so apps on a TV open no files."));
+    answer(dialog.identifier, makeFailure(DialogResult::Code::Unsupported, "The Apple TV has no document picker, so apps on a TV open no files."));
 }
 
 void AppleDialogs::showSaveFile(HaylenDialog* dialog, const DialogRequest::SaveFile&) {
-    answer(dialog.identifier, makeFailure(DialogResult::Code::Unsupported, "tvOS has no document picker, so apps on a TV save no files where the person picks."));
+    answer(dialog.identifier, makeFailure(DialogResult::Code::Unsupported, "The Apple TV has no document picker, so apps on a TV save no files where the person picks."));
 }
 
 void AppleDialogs::showOpenFolder(HaylenDialog* dialog, const DialogRequest::OpenFolder&) {
-    answer(dialog.identifier, makeFailure(DialogResult::Code::Unsupported, "tvOS has no document picker, so apps on a TV open no folders."));
+    answer(dialog.identifier, makeFailure(DialogResult::Code::Unsupported, "The Apple TV has no document picker, so apps on a TV open no folders."));
 }
 #else
 // The picker makes copies that belong to the app, which move into the folder of the dialog.
@@ -221,27 +223,36 @@ void AppleDialogs::showOpenFiles(HaylenDialog* dialog, const DialogRequest::Open
     presentPicker(dialog, picker);
 }
 
-// The picker exports a file with the data from the folder of the dialog, which the engine empties when the next app starts.
+// The picker exports a file with the data from the folder of the dialog, which the engine empties when the next app starts. The file is written on a thread of its own, so a large file never holds the frames back, and a dialog that the app cancelled meanwhile shows no picker.
 void AppleDialogs::showSaveFile(HaylenDialog* dialog, const DialogRequest::SaveFile& save) {
     const std::uint64_t id = dialog.identifier;
-    std::error_code error;
-    std::filesystem::create_directories(dialog.folder, error);
-    NSURL* file = [NSURL fileURLWithPath:@((dialog.folder / save.name).c_str())];
-    NSError* failure = nil;
-    if (error || ![[NSData dataWithBytes:save.data.data() length:save.data.size()] writeToURL:file options:NSDataWritingAtomic error:&failure]) {
-        answer(id, makeFailure(DialogResult::Code::Failed, "The data to save could not be written to a file to export. " + (error ? error.message() : std::string(failure.localizedDescription.UTF8String))));
-        return;
-    }
-
-    UIDocumentPickerViewController* picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[ file ] asCopy:YES];
+    const std::filesystem::path path = dialog.folder / save.name;
+    NSData* data = [NSData dataWithBytes:save.data.data() length:save.data.size()];
     // clang-format off
-    dialog.picked = ^(NSArray<NSURL*>* urls) {
-        [NSFileManager.defaultManager removeItemAtURL:file error:nil];
-        NSURL* saved = urls.firstObject;
-        answer(id, saved != nil ? DialogResult{.saved = DialogResult::File{.name = saved.lastPathComponent.UTF8String, .path = saved.path.UTF8String}} : DialogResult{});
-    };
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        std::error_code error;
+        std::filesystem::create_directories(path.parent_path(), error);
+        NSURL* file = [NSURL fileURLWithPath:@(path.c_str())];
+        NSError* failure = nil;
+        const bool written = !error && [data writeToURL:file options:NSDataWritingAtomic error:&failure];
+        const std::string reason = written ? std::string() : (error ? error.message() : std::string(failure.localizedDescription.UTF8String));
+        dispatch_async(dispatch_get_main_queue(), ^{
+            HaylenDialog* shown = dialogs[@(id)];
+            if (shown == nil || !written) {
+                [NSFileManager.defaultManager removeItemAtURL:file error:nil];
+                answer(id, makeFailure(DialogResult::Code::Failed, "The data to save could not be written to a file to export. " + reason));
+                return;
+            }
+            UIDocumentPickerViewController* picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[ file ] asCopy:YES];
+            shown.picked = ^(NSArray<NSURL*>* urls) {
+                [NSFileManager.defaultManager removeItemAtURL:file error:nil];
+                NSURL* saved = urls.firstObject;
+                answer(id, saved != nil ? DialogResult{.saved = DialogResult::File{.name = saved.lastPathComponent.UTF8String, .path = saved.path.UTF8String}} : DialogResult{});
+            };
+            presentPicker(shown, picker);
+        });
+    });
     // clang-format on
-    presentPicker(dialog, picker);
 }
 
 // A folder outside the app is reachable only while its security-scoped access lasts, which the session keeps.

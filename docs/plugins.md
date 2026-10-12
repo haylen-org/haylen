@@ -751,7 +751,7 @@ The engine checks its own features the same way. The manifest of the Android tem
 | `className:framework:`, `.className(_:framework:)` | `class` | `project.yml` with `- sdk: <framework>` for the dependencies of the target, such as `- sdk: UserNotifications.framework`. |
 | `entitlement:`, `.entitlement(_:)` | `entitlement` | The entitlements file of the platform with the key and `<true/>`. It counts as missing only on macOS and Mac Catalyst. |
 
-The `Info.plist` of the platform is `ios/Info.plist` on iOS and Mac Catalyst, `tvos/Info.plist` on tvOS and `macos/Info.plist` on macOS, and its entitlements file is `ios/App.entitlements`, `catalyst/App.entitlements`, `tvos/App.entitlements` or `macos/App.entitlements`, all relative to the Apple project. Swift plugins check with the `context.require` helper of the template, which throws the failure as a `HaylenFailure`:
+The `Info.plist` of the platform is `ios/Info.plist` on iOS and Mac Catalyst, `tvos/Info.plist` on tvOS and `macos/Info.plist` on macOS, and its entitlements file is `ios/App.entitlements`, `ios/Catalyst.entitlements` on Mac Catalyst, `tvos/App.entitlements` or `macos/App.entitlements`, all relative to the Apple project. Swift plugins check with the `context.require` helper of the template, which throws the failure as a `HaylenFailure`:
 
 ```swift
 context.register("pick") { (_: Empty) async throws -> Contact in

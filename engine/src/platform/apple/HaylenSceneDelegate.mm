@@ -53,20 +53,27 @@ using haylen::platform::AppleTheme;
     return [super application:application configurationForConnectingSceneSession:connectingSceneSession options:options];
 }
 
-// The library `sokol_app` creates the window here, which the overlay lies over from now on, under the launch screen until the splash ends. UIKit hands the links, the user activities and the shortcut item that open the app only to the connection options, so the plugins then receive them as they would while the app runs. The app draws in one window, so a scene that connects while the window of the app has a scene, such as a second window that the person opens on an iPad, goes away at once.
+// The library `sokol_app` creates the window here, which the overlay lies over from now on, under the launch screen until the splash ends. UIKit hands the links, the user activities and the shortcut item that open the app only to the connection options, so the plugins then receive them as they would while the app runs. The app draws in one window, so a scene that connects while the window of the app has a scene, such as a second window that the person opens on an iPad, goes away at once. The window outlives a scene of the app that disconnected, such as the Mac Catalyst window that the person closed while the process goes on, so the next scene of the app takes the window over with the app as it was.
 - (void)scene:(UIScene*)scene willConnectToSession:(UISceneSession*)session options:(UISceneConnectionOptions*)connectionOptions {
-    if (sapp_isvalid() && ((__bridge UIWindow*)sapp_ios_get_window()).windowScene != nil) {
+    UIWindow* window = sapp_isvalid() ? (__bridge UIWindow*)sapp_ios_get_window() : nil;
+    if (window.windowScene != nil) {
         if ([session.role isEqualToString:UIWindowSceneSessionRoleApplication]) {
             [UIApplication.sharedApplication requestSceneSessionDestruction:session options:nil errorHandler:nil];
         }
         return;
     }
     holdsApp = YES;
-    [super scene:scene willConnectToSession:session options:connectionOptions];
-    UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
-    [HaylenOverlayLayer.shared attachToView:window.rootViewController.view];
-    AppleSplash::cover(window);
-    AppleTheme::observe(window);
+    if (window != nil) {
+        window.windowScene = static_cast<UIWindowScene*>(scene);
+        [window makeKeyAndVisible];
+        [HaylenOverlayLayer.shared attachToView:window.rootViewController.view];
+    } else {
+        [super scene:scene willConnectToSession:session options:connectionOptions];
+        window = (__bridge UIWindow*)sapp_ios_get_window();
+        [HaylenOverlayLayer.shared attachToView:window.rootViewController.view];
+        AppleSplash::cover(window);
+        AppleTheme::observe(window);
+    }
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin scene:scene willConnectToSession:session options:connectionOptions];
     }

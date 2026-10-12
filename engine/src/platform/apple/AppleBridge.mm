@@ -80,16 +80,18 @@ void AppleBridge::cancel(std::uint64_t call) {
 void AppleBridge::emit(NSString* event, id payload, const Bridge::EmitOptions& options) {
     std::optional<Encoded> encoded = encode(payload);
     if (!encoded) {
-        core::Log::error("The native event '{}' carried a payload that is not JSON and was dropped.", event.UTF8String);
+        core::Log::error("The native event \"{}\" carried a payload that is not JSON and was dropped.", event.UTF8String);
         return;
     }
+
+    // The event reaches the bridge under the lock, so an app that stops meanwhile never drops it: it waits for the next app instead.
     @synchronized([HaylenBridge class]) {
         if (!running) {
             waiting.push_back({.event = event.UTF8String, .payload = std::move(*encoded), .options = options});
             return;
         }
+        BridgeRelay::emit(event.UTF8String, encoded->json, std::move(encoded->buffers), options);
     }
-    BridgeRelay::emit(event.UTF8String, encoded->json, std::move(encoded->buffers), options);
 }
 
 // The events reach the bridge under the lock, so an event that another thread sends meanwhile never overtakes them.

@@ -3,6 +3,7 @@
 #import <GameController/GameController.h>
 
 #include <span>
+#include <vector>
 
 #include "haylen/input/GamepadState.hpp"
 #include "platform/GamepadSlots.hpp"
@@ -16,6 +17,7 @@ class AppleGamepads final {
 
   private:
     static GamepadSlots slots;
+    static std::vector<const void*> connected;
 
     [[nodiscard]] static GCController* find(NSArray<GCController*>* controllers, const void* identity);
     static void read(GCExtendedGamepad* pad, input::GamepadState& state);

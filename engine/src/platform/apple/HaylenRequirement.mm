@@ -133,7 +133,7 @@ typedef NS_ENUM(NSInteger, HaylenRequirementKind) {
 #if TARGET_OS_OSX
     return @"macos/App.entitlements";
 #elif TARGET_OS_MACCATALYST
-    return @"catalyst/App.entitlements";
+    return @"ios/Catalyst.entitlements";
 #elif TARGET_OS_TV
     return @"tvos/App.entitlements";
 #else

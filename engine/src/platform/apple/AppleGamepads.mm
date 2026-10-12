@@ -7,11 +7,12 @@
 namespace haylen::platform {
 
 GamepadSlots AppleGamepads::slots;
+std::vector<const void*> AppleGamepads::connected;
 
-// GameController lists the connected controllers in no lasting order, so every controller stays in the slot it took when it connected.
+// GameController lists the connected controllers in no lasting order, so every controller stays in the slot it took when it connected. The list of the connected ones keeps its memory from frame to frame.
 void AppleGamepads::poll(std::span<input::GamepadState> states) {
     NSArray<GCController*>* controllers = GCController.controllers;
-    std::vector<const void*> connected;
+    connected.clear();
     for (GCController* controller in controllers) {
         if (controller.extendedGamepad != nil || controller.microGamepad != nil) {
             connected.push_back((__bridge const void*)controller);
