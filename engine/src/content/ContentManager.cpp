@@ -91,8 +91,10 @@ void ContentManager::start() {
     if (!release) {
         return;
     }
+    // The app hears of a fall back once it runs, so the listeners that its main module adds receive it.
     if (const std::optional<ReleasePackage::Recovery> recovery = release->takeRecovery()) {
-        engine.getEvents().emit(core::LifecycleEvent::kContentRecovered, {{"manifest", recovery->failed.toHex()}, {"reason", recovery->reason}});
+        const core::Json report = {{"manifest", recovery->failed.toHex()}, {"reason", recovery->reason}};
+        recoveryReport = engine.getEvents().on(core::LifecycleEvent::kAppStarted, [this, report](core::EventBus::Event&) { engine.getEvents().emit(core::LifecycleEvent::kContentRecovered, report); }, {.once = true});
     }
     if (!downloader) {
         return;

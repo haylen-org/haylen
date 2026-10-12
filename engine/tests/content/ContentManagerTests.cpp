@@ -51,7 +51,7 @@ class ContentManagerTest : public ::testing::Test {
         const std::string app = R"({"name": "Content", "identifier": "dev.haylen.tests", "content": {"updates": {"baseUrl": ")" + server.getUrl() + R"(", "enabled": false}, "delivery": [{"match": "levels/**", "mode": "onDemand"}, {"match": "music/**", "mode": "prefetch"}]}})";
         Files files;
         files.emplace("app.json", test::TestFiles::bytes(app));
-        files.emplace("source/main.lua", test::TestFiles::bytes("started = true"));
+        files.emplace("source/main.lua", test::TestFiles::bytes("started = true\nrequire('haylen.events').on('contentRecovered', function(event) recovered = event.reason end)"));
         files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));
         files.emplace("content/levels/forest.json", test::TestFiles::bytes(R"({"trees": 12})"));
         files.emplace("content/music/theme.ogg", test::TestFiles::randomBytes(300 * 1024, 3));
@@ -127,6 +127,14 @@ class ContentManagerTest : public ::testing::Test {
         const bool started = lua_toboolean(L, -1) != 0;
         lua_pop(L, 1);
         return started;
+    }
+
+    [[nodiscard]] std::string getRecovery() const {
+        lua_State* L = engine->getLuaState();
+        lua_getglobal(L, "recovered");
+        std::string reason = lua_isstring(L, -1) != 0 ? lua_tostring(L, -1) : "";
+        lua_pop(L, 1);
+        return reason;
     }
 
     test::TemporaryDirectory tree;
@@ -272,6 +280,28 @@ TEST_F(ContentManagerTest, PlaysTheContentItShipsWhenADownloadedUpdateCannotCome
     run(ship());
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
     EXPECT_EQ(engine->getAssets().text("data/config.json"), R"({"level": 1})");
+}
+
+TEST_F(ContentManagerTest, TellsTheAppThatItPlaysEarlierContentWhenTheUpdateWasDamaged) {
+    Files update = game;
+    update["content/data/config.json"] = test::TestFiles::bytes(R"({"level": 2})");
+    publish(update);
+    run(ship());
+    engine->frame(1.0 / 60.0);
+    std::optional<std::optional<Error>> downloaded;
+    engine->getContent().download({}, [&downloaded](std::optional<Error> error) { downloaded = std::move(error); });
+    ASSERT_TRUE(frameUntil([&downloaded] { return downloaded.has_value(); }));
+    engine.reset();
+
+    // The device lost the manifest of the update, so the app falls back to the content it ships and its main module hears why.
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(storeFolder.getPath() / "manifests")) {
+        std::filesystem::remove(entry.path());
+    }
+    run(ship());
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+    engine->frame(1.0 / 60.0);
+    EXPECT_EQ(engine->getContent().getGeneration(), 1U);
+    EXPECT_FALSE(getRecovery().empty());
 }
 
 TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomethingBringsThem) {

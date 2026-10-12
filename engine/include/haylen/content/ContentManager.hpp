@@ -13,6 +13,7 @@
 
 #include "haylen/content/Error.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/ScopedConnection.hpp"
 
 namespace haylen::core {
 class Engine;
@@ -154,6 +155,7 @@ class ContentManager final {
     std::unique_ptr<Updater> updater;
     std::unique_ptr<UpdateOffer> offer;
     std::shared_ptr<void> startHold;
+    core::ScopedConnection recoveryReport;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
     std::set<std::string> broughtInDevelopment;
     Status status = Status::Idle;
