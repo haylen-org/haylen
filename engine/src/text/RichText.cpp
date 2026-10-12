@@ -113,8 +113,8 @@ void RichText::resetReveal() noexcept {
 
 void RichText::update(float deltaSeconds) {
     requireIdle();
-    if (deltaSeconds < 0.0F) {
-        throw std::invalid_argument("Rich text cannot go back in time.");
+    if (!(deltaSeconds >= 0.0F && std::isfinite(deltaSeconds))) {
+        throw std::invalid_argument("Rich text moves forward by a number of seconds that is finite and not negative.");
     }
     time += deltaSeconds;
 
@@ -200,6 +200,9 @@ void RichText::setVisibleCharacters(std::size_t value) {
 }
 
 void RichText::setVisibleRatio(float value) {
+    if (std::isnan(value)) {
+        throw std::invalid_argument("The visible ratio of rich text must be a number.");
+    }
     setVisibleCharacters(static_cast<std::size_t>(std::lround(std::clamp(value, 0.0F, 1.0F) * static_cast<float>(getCharacterCount()))));
 }
 

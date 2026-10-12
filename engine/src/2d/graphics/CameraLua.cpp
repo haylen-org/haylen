@@ -1,5 +1,7 @@
 #include "2d/graphics/CameraLua.hpp"
 
+#include <cmath>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -29,14 +31,27 @@ int CameraLua::pushPoint(lua_State* L, math::Vec2 point) {
     return 2;
 }
 
+float CameraLua::readSeconds(lua_State* L, int index) {
+    const auto seconds = lua::Stack::read<float>(L, index);
+    if (!(seconds >= 0.0F && std::isfinite(seconds))) {
+        throw std::invalid_argument("A camera moves forward by a number of seconds that is finite and not negative.");
+    }
+    return seconds;
+}
+
 int CameraLua::follow(lua_State* L) {
-    lua::Userdata::check<Camera>(L, 1).follow(readPoint(L, 2), lua::Stack::read<float>(L, 4), getScreen(L));
+    lua::Userdata::check<Camera>(L, 1).follow(readPoint(L, 2), readSeconds(L, 4), getScreen(L));
+    return 0;
+}
+
+int CameraLua::update(lua_State* L) {
+    lua::Userdata::check<Camera>(L, 1).update(readSeconds(L, 2));
     return 0;
 }
 
 // Frames a list of points with `frame({{x, y}, ...}, padding, dt)`.
 int CameraLua::frame(lua_State* L) {
-    lua::Userdata::check<Camera>(L, 1).frame(lua::Stack::read<std::vector<math::Vec2>>(L, 2), lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), getScreen(L));
+    lua::Userdata::check<Camera>(L, 1).frame(lua::Stack::read<std::vector<math::Vec2>>(L, 2), lua::Stack::read<float>(L, 3), readSeconds(L, 4), getScreen(L));
     return 0;
 }
 
@@ -65,12 +80,12 @@ int CameraLua::zoomAt(lua_State* L) {
     return 0;
 }
 
-// Shakes along a direction with `shake(amount, dx, dy)`.
 int CameraLua::flash(lua_State* L) {
     lua::Userdata::check<Camera>(L, 1).flash(lua::Stack::read<math::Color>(L, 2), lua::Stack::read<float>(L, 3));
     return 0;
 }
 
+// Shakes along a direction with `shake(amount, dx, dy)`.
 int CameraLua::shake(lua_State* L) {
     lua::Userdata::check<Camera>(L, 1).shake(lua::Stack::read<float>(L, 2), readPoint(L, 3));
     return 0;
@@ -135,13 +150,32 @@ int CameraLua::getDragMargins(lua_State* L) {
     return 1;
 }
 
+int CameraLua::getDeadZone(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<Camera>(L, 1).deadZone);
+    return 1;
+}
+
+// The slack of the view comes from the dead zone and the drag margins, which take no negative values, so the view always has a range to rest in.
+int CameraLua::setDeadZone(lua_State* L) {
+    const auto value = lua::Stack::read<math::Vec2>(L, 3);
+    if (!(value.x >= 0.0F && value.y >= 0.0F)) {
+        throw std::invalid_argument("The dead zone of a camera cannot be negative.");
+    }
+    lua::Userdata::check<Camera>(L, 1).deadZone = value;
+    return 0;
+}
+
 int CameraLua::setDragMargins(lua_State* L) {
-    lua::Userdata::check<Camera>(L, 1).dragMargins = lua::Stack::read<math::Insets>(L, 3);
+    const auto value = lua::Stack::read<math::Insets>(L, 3);
+    if (!(value.left >= 0.0F && value.top >= 0.0F && value.right >= 0.0F && value.bottom >= 0.0F)) {
+        throw std::invalid_argument("The drag margins of a camera cannot be negative.");
+    }
+    lua::Userdata::check<Camera>(L, 1).dragMargins = value;
     return 0;
 }
 
 void CameraLua::install(lua_State* L) {
-    lua::ClassBuilder<Camera>(L).field<&Camera::position>("position").property("x", &getX, &setX).property("y", &getY, &setY).field<&Camera::offset>("offset").field<&Camera::anchor>("anchor").accessor<&Camera::getZoom, &Camera::setZoom>("zoom").accessor<&Camera::getMinZoom, &Camera::setMinZoom>("minZoom").accessor<&Camera::getMaxZoom, &Camera::setMaxZoom>("maxZoom").field<&Camera::rotation>("rotation").field<&Camera::ignoreRotation>("ignoreRotation").field<&Camera::viewport>("viewport").field<&Camera::limits>("limits").field<&Camera::limitSmoothing>("limitSmoothing").field<&Camera::positionSmoothing>("positionSmoothing").field<&Camera::positionSmoothingSpeed>("positionSmoothingSpeed").field<&Camera::rotationSmoothing>("rotationSmoothing").field<&Camera::rotationSmoothingSpeed>("rotationSmoothingSpeed").field<&Camera::deadZone>("deadZone").field<&Camera::dragHorizontal>("dragHorizontal").field<&Camera::dragVertical>("dragVertical").property("dragMargins", &getDragMargins, &lua::Binding::native<&setDragMargins>).field<&Camera::dragOffset>("dragOffset").field<&Camera::lookAheadTime>("lookAheadTime").field<&Camera::maxLookAhead>("maxLookAhead").field<&Camera::lookAheadSmoothingSpeed>("lookAheadSmoothingSpeed").field<&Camera::maxShakeOffset>("maxShakeOffset").field<&Camera::maxShakeAngle>("maxShakeAngle").field<&Camera::shakeFrequency>("shakeFrequency").field<&Camera::traumaDecay>("traumaDecay").accessor<&Camera::getTrauma, &Camera::setTrauma>("trauma").field<&Camera::pixelSnap>("pixelSnap").property("viewSize", &viewSize).function("follow", &follow).function("frame", &lua::Binding::native<&frame>).method<&Camera::update>("update").function("clampToLimits", &clampToLimits).function("resetSmoothing", &resetSmoothing).function("align", &align).function("snapTo", &snapTo).function("zoomAt", &lua::Binding::native<&zoomAt>).method<&Camera::addTrauma>("addTrauma").function("shake", &shake).function("flash", &lua::Binding::native<&flash>).method<&Camera::getFlash>("flashColor").method<&Camera::getShakeOffset>("shakeOffset").method<&Camera::getRenderPosition>("renderPosition").method<&Camera::getRenderRotation>("renderRotation").function("viewTransform", &viewTransform).function("visibleBounds", &visibleBounds).function("worldToScreen", &worldToScreen).function("screenToWorld", &screenToWorld).function("drawDebug", &lua::Binding::native<&drawDebug>).install();
+    lua::ClassBuilder<Camera>(L).field<&Camera::position>("position").property("x", &getX, &setX).property("y", &getY, &setY).field<&Camera::offset>("offset").field<&Camera::anchor>("anchor").accessor<&Camera::getZoom, &Camera::setZoom>("zoom").accessor<&Camera::getMinZoom, &Camera::setMinZoom>("minZoom").accessor<&Camera::getMaxZoom, &Camera::setMaxZoom>("maxZoom").field<&Camera::rotation>("rotation").field<&Camera::ignoreRotation>("ignoreRotation").field<&Camera::viewport>("viewport").field<&Camera::limits>("limits").field<&Camera::limitSmoothing>("limitSmoothing").field<&Camera::positionSmoothing>("positionSmoothing").field<&Camera::positionSmoothingSpeed>("positionSmoothingSpeed").field<&Camera::rotationSmoothing>("rotationSmoothing").field<&Camera::rotationSmoothingSpeed>("rotationSmoothingSpeed").property("deadZone", &getDeadZone, &lua::Binding::native<&setDeadZone>).field<&Camera::dragHorizontal>("dragHorizontal").field<&Camera::dragVertical>("dragVertical").property("dragMargins", &getDragMargins, &lua::Binding::native<&setDragMargins>).field<&Camera::dragOffset>("dragOffset").field<&Camera::lookAheadTime>("lookAheadTime").field<&Camera::maxLookAhead>("maxLookAhead").field<&Camera::lookAheadSmoothingSpeed>("lookAheadSmoothingSpeed").field<&Camera::maxShakeOffset>("maxShakeOffset").field<&Camera::maxShakeAngle>("maxShakeAngle").field<&Camera::shakeFrequency>("shakeFrequency").field<&Camera::traumaDecay>("traumaDecay").accessor<&Camera::getTrauma, &Camera::setTrauma>("trauma").field<&Camera::pixelSnap>("pixelSnap").property("viewSize", &viewSize).function("follow", &lua::Binding::native<&follow>).function("frame", &lua::Binding::native<&frame>).function("update", &lua::Binding::native<&update>).function("clampToLimits", &clampToLimits).function("resetSmoothing", &resetSmoothing).function("align", &align).function("snapTo", &snapTo).function("zoomAt", &lua::Binding::native<&zoomAt>).method<&Camera::addTrauma>("addTrauma").function("shake", &shake).function("flash", &lua::Binding::native<&flash>).method<&Camera::getFlash>("flashColor").method<&Camera::getShakeOffset>("shakeOffset").method<&Camera::getRenderPosition>("renderPosition").method<&Camera::getRenderRotation>("renderRotation").function("viewTransform", &viewTransform).function("visibleBounds", &visibleBounds).function("worldToScreen", &worldToScreen).function("screenToWorld", &screenToWorld).function("drawDebug", &lua::Binding::native<&drawDebug>).install();
 }
 
 } // namespace haylen::graphics2d

@@ -124,6 +124,13 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     lua("typed = graphics2d.newRichText('abcd', {revealSpeed = 20})");
     EXPECT_EQ(lua("typed:update(0.11) return typed.visibleCharacters .. ' ' .. string.format('%.2f', typed.time)"), "2 0.11");
 
+    // Time that goes back or is not finite, and a ratio that is not a number, leave the text where it was.
+    for (const char* call : {"typed:update(-1)", "typed:update(0 / 0)", "typed:update(1 / 0)"}) {
+        EXPECT_NE(lua(call).find("Rich text moves forward by a number of seconds that is finite and not negative."), std::string::npos) << call;
+    }
+    EXPECT_NE(lua("typed.visibleRatio = 0 / 0").find("The visible ratio of rich text must be a number."), std::string::npos);
+    EXPECT_EQ(lua("return typed.visibleCharacters .. ' ' .. string.format('%.2f', typed.time)"), "2 0.11");
+
     EXPECT_EQ(render("graphics2d.beginScreen() text:draw(10, 20, {layer = 1}) graphics2d.drawRichText('[wave]hello[/wave] [img=images/coin.png]', 10, 60, {size = 20, layer = 2})"), "nil");
     EXPECT_EQ(lua("return graphics2d.stats().sprites"), "9");
     EXPECT_EQ(lua("local w, h = graphics2d.measureRichText('[size=40]big[/size]', {family = font}) local small = graphics2d.measureRichText('big') return tostring(w > small) .. ' ' .. tostring(h >= 40)"), "true true");

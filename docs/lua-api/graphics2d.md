@@ -1777,9 +1777,9 @@ The methods measure the view with the screen, the visible design area of `viewpo
 | `positionSmoothingSpeed` | number | `5` | Rate of the position smoothing per second. |
 | `rotationSmoothing` | boolean | `false` | Eases the drawn rotation toward `rotation` at `rotationSmoothingSpeed`, the short way around. |
 | `rotationSmoothingSpeed` | number | `5` | Rate of the rotation smoothing per second. |
-| `deadZone` | Vec2 | `{0, 0}` | Width and height in world units of the area around the view center where the target moves without moving the view. |
+| `deadZone` | Vec2 | `{0, 0}` | Width and height in world units of the area around the view center where the target moves without moving the view. A negative value raises `The dead zone of a camera cannot be negative.` |
 | `dragHorizontal`, `dragVertical` | boolean | `false` | Let the target move inside the drag margins on that axis before the view follows. |
-| `dragMargins` | table | `{0.2, 0.2, 0.2, 0.2}` | How far the target moves from the view center on each side, in fractions of half the view, as `{left, top, right, bottom}` or `{left = 0.2, ...}`. Reading it returns a table with named fields. |
+| `dragMargins` | table | `{0.2, 0.2, 0.2, 0.2}` | How far the target moves from the view center on each side, in fractions of half the view, as `{left, top, right, bottom}` or `{left = 0.2, ...}`. Reading it returns a table with named fields, and a negative margin raises `The drag margins of a camera cannot be negative.` |
 | `dragOffset` | Vec2 | `{0, 0}` | Where the target rests on an axis that does not drag, from -1 on the right or bottom margin to 1 on the left or top margin, such as ahead of a character that faces right. |
 | `lookAheadTime` | number | `0` | Seconds of target velocity the view leads the target by. |
 | `maxLookAhead` | number | `200` | Largest look-ahead distance in world units. |
@@ -1796,7 +1796,7 @@ A render target canvas measures the view with the target instead, so for a camer
 
 ### camera:follow(x, y, dt)
 
-Moves the camera toward the target `x`, `y` for a frame of `dt` seconds. The goal of the view stays put while the target moves inside the dead zone and the drag margins, leads the target by its velocity with the look-ahead, rests at the drag offset on axes that do not drag, and the position eases toward the goal with position smoothing and stays inside the limits.
+Moves the camera toward the target `x`, `y` for a frame of `dt` seconds. The goal of the view stays put while the target moves inside the dead zone and the drag margins, leads the target by its velocity with the look-ahead, rests at the drag offset on axes that do not drag, and the position eases toward the goal with position smoothing and stays inside the limits. Like `camera:update` and `camera:frame`, it raises `A camera moves forward by a number of seconds that is finite and not negative.` for any other `dt`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2324,7 +2324,7 @@ A `RichText` is BBCode markup laid out with a font family, created by `graphics2
 | `revealSpeed` | number | read-write | Characters per second the typewriter reveal shows, 0 for everything at once. |
 | `underlineLinks` | boolean | read-write | Whether `[url]` text is underlined. |
 | `visibleCharacters` | integer | read-write | How many characters show. Setting it moves the reveal there, and a negative count shows everything. |
-| `visibleRatio` | number | read-write | The share of characters that show, from 0 to 1. |
+| `visibleRatio` | number | read-write | The share of characters that show, from 0 to 1, where values outside that range count as its ends and NaN raises `The visible ratio of rich text must be a number.` |
 | `characterCount` | integer | read | The characters of the text: one per cluster, which is a letter with its marks, a conjunct or a ligature, and one per image or icon. |
 | `revealing` | boolean | read | Whether the reveal still has characters to show. |
 | `time` | number | read | Seconds the text has run, which drives its effects. |
@@ -2346,7 +2346,7 @@ line.revealSpeed = 0
 
 ### text:update(dt)
 
-Moves the effects and the reveal `dt` seconds forward. A `[pause=seconds]` tag holds the reveal before the next character, and `[speed=factor]` reveals the text inside it faster or slower. An image that was still loading takes its room once it arrives, at the next update.
+Moves the effects and the reveal `dt` seconds forward, where a `dt` that is negative or not finite raises `Rich text moves forward by a number of seconds that is finite and not negative.` A `[pause=seconds]` tag holds the reveal before the next character, and `[speed=factor]` reveals the text inside it faster or slower. An image that was still loading takes its room once it arrives, at the next update.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

@@ -176,6 +176,14 @@ TEST_F(Graphics2DLuaTest, ControlsCameras) {
     EXPECT_EQ(lua("return tostring(camera:shakeOffset().y == 0 and camera:shakeOffset().x ~= 0)"), "true");
     EXPECT_NE(lua("camera.viewSize = {1, 1}").find("no writable property \"viewSize\""), std::string::npos);
 
+    // Seconds that are not finite or go back, and a dead zone or drag margins below zero, never reach the view, which keeps a place to rest.
+    for (const char* call : {"camera:update(0 / 0)", "camera:update(-1)", "camera:follow(0, 0, 1 / 0)", "camera:frame({{0, 0}}, 0, 0 / 0)"}) {
+        EXPECT_NE(lua(call).find("A camera moves forward by a number of seconds that is finite and not negative."), std::string::npos) << call;
+    }
+    EXPECT_NE(lua("camera.deadZone = {-20, 0}").find("The dead zone of a camera cannot be negative."), std::string::npos);
+    EXPECT_NE(lua("camera.dragMargins = {0.2, -0.1, 0.2, 0.2}").find("The drag margins of a camera cannot be negative."), std::string::npos);
+    EXPECT_EQ(lua("return tostring(camera:renderRotation() == camera:renderRotation()) .. ' ' .. camera.deadZone.x"), "true 100.0");
+
     EXPECT_EQ(lua("local a, b = graphics2d.newCamera(), graphics2d.newCamera() b.position = {100, 0} b.zoom = {4, 4} local c = graphics2d.blendCameras(a, b, 0.5) return c.x .. ' ' .. c.zoom.x"), "50.0 2.0");
     EXPECT_EQ(render("graphics2d.beginWorld(camera) camera:drawDebug({layer = 5})"), "nil");
     EXPECT_GT(std::stoi(lua("return graphics2d.stats().sprites")), 0);
