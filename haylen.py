@@ -123,7 +123,7 @@ RELEASE_SHARD_SUFFIX = ".hpak"
 # The largest protected release that the store of a content profile accepts inside an app, with the words that name the limit: the App Store limits the uncompressed size of an iOS or tvOS app, and Google Play the compressed download of the base module, whose shards are compressed already.
 STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app"), "android": (200 * 1024**2, "the 200 MB that Google Play accepts for the compressed download of the base module of an app")}
 # Symbol files, which stay with the developer and never ship.
-SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map")
+SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
 RELEASE_MATCH_MINIMUM = 16
 # The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and `sokol_app` draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
@@ -2887,14 +2887,19 @@ def read_zip_entry(archive: Path, name: str) -> bytes:
         return opened.read(name)
 
 
-RELEASE_LIBRARY_PROJECT = """# Written by haylen.py for the release build of the app: the library that HaylenActivity loads, the Lua player with the bootstrap of the app linked against the SDK of the prebuilt engine, which exports only the entry points of Java and GameActivity and keeps no symbols.
+RELEASE_LIBRARY_PROJECT = """# Written by haylen.py for the release build of the app: the library that HaylenActivity loads, the Lua player with the bootstrap of the app linked against the SDK of the prebuilt engine, which exports only the entry points of Java and GameActivity and ships no symbols, while its symbols stay in a file next to the build for crash reports.
 cmake_minimum_required(VERSION 3.28)
 project(haylen_release LANGUAGES C CXX)
 find_package(haylen REQUIRED CONFIG)
 add_library({name} SHARED {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
 target_link_libraries({name} PRIVATE haylen::runtime)
 set_target_properties({name} PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
-target_link_options({name} PRIVATE "LINKER:--version-script=${{CMAKE_CURRENT_SOURCE_DIR}}/exports.map" "LINKER:--gc-sections" "LINKER:--strip-all")
+target_link_options({name} PRIVATE "LINKER:--version-script=${{CMAKE_CURRENT_SOURCE_DIR}}/exports.map" "LINKER:--gc-sections")
+add_custom_command(TARGET {name} POST_BUILD
+  COMMAND "${{CMAKE_OBJCOPY}}" --only-keep-debug "$<TARGET_FILE:{name}>" "$<TARGET_FILE:{name}>.debug"
+  COMMAND "${{CMAKE_OBJCOPY}}" --strip-all "$<TARGET_FILE:{name}>"
+  VERBATIM
+)
 """
 # The symbols that Java and GameActivity look up in the library of an app.
 RELEASE_LIBRARY_EXPORTS = """{
@@ -2991,6 +2996,8 @@ find_package(haylen REQUIRED CONFIG)
 add_executable(haylen_release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
 target_link_libraries(haylen_release PRIVATE haylen::runtime)
 set_target_properties(haylen_release PROPERTIES OUTPUT_NAME "haylen")
+# The names of the functions stay in a symbol map next to the build for crash reports, and the site gets none.
+target_link_options(haylen_release PRIVATE --emit-symbol-map)
 """
 
 
