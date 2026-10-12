@@ -180,3 +180,25 @@ jobs:
         run: python haylen.py build --config Debug --target haylen-headless
       - name: Run every test of the test project
         run: build/linux-debug/bin/haylen-headless samples/tests --frames 60000
+
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - uses: actions/cache@v6
+        with:
+          path: .cache/cpm
+          key: cpm-release-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+      - uses: actions/cache@v6
+        with:
+          path: .tools/emsdk
+          key: emsdk-${{ hashFiles('haylen.py') }}
+      # The keys of this job are made for it and thrown away with the runner, so no secret is involved.
+      - name: Build the protected release of the test project for the web
+        run: python haylen.py prepare samples/tests --platform web --config Release
+      - name: Inspect it for anything a release never holds
+        run: python haylen.py check samples/tests --platform web --config Release
