@@ -19,7 +19,9 @@ ModuleReloader::ModuleReloader(lua_State* L, ModuleGraph& modules, const io::Pac
     replacements = Reference(L, -1);
     lua_newtable(L);
     patched = Reference(L, -1);
-    lua_pop(L, 2);
+    lua_newtable(L);
+    deferred = Reference(L, -1);
+    lua_pop(L, 3);
 }
 
 std::string_view ModuleReloader::getKind(lua_State* L, int index) noexcept {
@@ -143,6 +145,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     }
     joinVariables(previous, created, baseUpvalues);
     mergeGlobals(staging, baseGlobals);
+    mergeDeferred();
     lua_pushglobaltable(state);
     ModuleGraph::setEnvironment(state, chunk);
 
@@ -248,31 +251,12 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
     while (lua_next(state, next) != 0) {
         const int value = lua_gettop(state);
         const int key = value - 1;
-
-        // A key that is a staging table stands for the live table it merged into.
-        lua_pushvalue(state, key);
         if (lua_istable(state, key)) {
-            lua_pushvalue(state, key);
-            if (lua_rawget(state, map) != LUA_TNIL) {
-                lua_replace(state, -2);
-            } else {
-                lua_pop(state, 1);
-            }
-        }
-        const int liveKey = lua_gettop(state);
-        if (hasBase) {
-            lua_pushvalue(state, liveKey);
-            lua_rawget(state, previous);
+            defer(current, next, previous, key, field + "[]");
         } else {
-            lua_pushnil(state);
+            const std::string member = lua_type(state, key) == LUA_TSTRING ? field + "." + lua_tostring(state, key) : field + "[]";
+            mergeField(current, previous, key, value, member);
         }
-        lua_pushvalue(state, liveKey);
-        lua_rawget(state, current);
-        const std::string member = lua_type(state, key) == LUA_TSTRING ? field + "." + lua_tostring(state, key) : field + "[]";
-        pushMerged(liveKey + 1, liveKey + 2, value, member);
-        lua_pushvalue(state, liveKey);
-        lua_insert(state, -2);
-        lua_rawset(state, current);
         lua_settop(state, key);
     }
 
@@ -305,6 +289,88 @@ void ModuleReloader::mergeTable(int live, int fresh, int base, const std::string
         lua_pop(state, 1);
     }
     mergeMetatables(current, next, field);
+    lua_settop(state, map - 1);
+}
+
+void ModuleReloader::mergeField(int live, int base, int key, int value, const std::string& field) {
+    const int top = lua_gettop(state);
+    if (lua_istable(state, base)) {
+        lua_pushvalue(state, key);
+        lua_rawget(state, base);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_pushvalue(state, key);
+    lua_rawget(state, live);
+    pushMerged(top + 1, top + 2, value, field);
+    lua_pushvalue(state, key);
+    lua_insert(state, -2);
+    lua_rawset(state, live);
+    lua_settop(state, top);
+}
+
+void ModuleReloader::defer(int live, int fresh, int base, int key, const std::string& field) {
+    deferred.push(state);
+    lua_createtable(state, 0, 5);
+    for (const auto& [slot, index] : {std::pair{"live", live}, std::pair{"fresh", fresh}, std::pair{"base", base}, std::pair{"key", key}}) {
+        lua_pushvalue(state, index);
+        lua_setfield(state, -2, slot);
+    }
+    lua_pushstring(state, field.c_str());
+    lua_setfield(state, -2, "field");
+    lua_rawseti(state, -2, static_cast<lua_Integer>(lua_rawlen(state, -2)) + 1);
+    lua_pop(state, 1);
+}
+
+// Each round merges the fields whose keys merged into live tables by then, and a round that finds none merges the rest under the keys of the new load, since nothing maps them anymore. Merging a field may defer more fields, which the next rounds take.
+void ModuleReloader::mergeDeferred() {
+    luaL_checkstack(state, 12, kDepthMessage);
+    replacements.push(state);
+    const int map = lua_gettop(state);
+    bool forced = false;
+    while (true) {
+        deferred.push(state);
+        const int round = lua_gettop(state);
+        lua_newtable(state);
+        deferred = Reference(state, -1);
+        lua_pop(state, 1);
+        const auto count = static_cast<lua_Integer>(lua_rawlen(state, round));
+        if (count == 0) {
+            break;
+        }
+
+        bool merged = false;
+        for (lua_Integer index = 1; index <= count; ++index) {
+            lua_rawgeti(state, round, index);
+            const int entry = lua_gettop(state);
+            lua_getfield(state, entry, "key");
+            lua_pushvalue(state, -1);
+            const bool mapped = lua_rawget(state, map) != LUA_TNIL;
+            if (!mapped && !forced) {
+                deferred.push(state);
+                lua_pushvalue(state, entry);
+                lua_rawseti(state, -2, static_cast<lua_Integer>(lua_rawlen(state, -2)) + 1);
+                lua_settop(state, entry - 1);
+                continue;
+            }
+            if (!mapped) {
+                lua_pop(state, 1);
+                lua_pushvalue(state, -1);
+            }
+            const int liveKey = lua_gettop(state);
+            lua_getfield(state, entry, "live");
+            lua_getfield(state, entry, "base");
+            lua_getfield(state, entry, "fresh");
+            lua_pushvalue(state, entry + 1);
+            lua_rawget(state, -2);
+            lua_getfield(state, entry, "field");
+            mergeField(liveKey + 1, liveKey + 2, liveKey, liveKey + 4, lua_tostring(state, -1));
+            merged = true;
+            lua_settop(state, entry - 1);
+        }
+        forced = !merged;
+        lua_pop(state, 1);
+    }
     lua_settop(state, map - 1);
 }
 

@@ -52,6 +52,11 @@ class ModuleReloader final {
     // Leaves the value that the field keeps on the stack, from the value of the last load at `base`, the live value and the value of the new load.
     void pushMerged(int base, int live, int fresh, const std::string& field);
     void mergeTable(int live, int fresh, int base, const std::string& field);
+    void mergeField(int live, int base, int key, int value, const std::string& field);
+
+    // Keeps a field keyed by a table for after the merge of the module, when the table of the new load that keys it has merged into its live table wherever the module holds it.
+    void defer(int live, int fresh, int base, int key, const std::string& field);
+    void mergeDeferred();
     void mergeMetatables(int live, int fresh, const std::string& field);
 
     // Maps the functions of a live table that the new load replaced in the same table, such as a table kept with `hotReload.keep`, from the functions of the last load.
@@ -68,6 +73,7 @@ class ModuleReloader final {
     const io::Package& package;
     Reference replacements;
     Reference patched;
+    Reference deferred;
     std::string path;
     std::string name;
 };

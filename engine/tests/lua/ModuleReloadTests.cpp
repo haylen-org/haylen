@@ -889,6 +889,19 @@ return Level
     EXPECT_EQ(error(), "");
 }
 
+// A merge walks the list part of a table before its other fields, so the table of labels merges before the table that keys it.
+TEST_F(ModuleReloadTest, TakesEditedValuesOfTablesKeyedByTablesThatMergeAfterThem) {
+    const auto kinds = [](const std::string& label) {
+        return "local Kind = {}\nreturn {{[Kind] = '" + label + "'}, kind = Kind}";
+    };
+    start({{"source/kinds.lua", kinds("v1")}, {"source/main.lua", "kinds = require('kinds') kind = kinds.kind"}});
+    edit({{"source/kinds.lua", kinds("v2")}});
+    EXPECT_EQ(lua("local count = 0 for _ in pairs(kinds[1]) do count = count + 1 end return kinds[1][kind] .. ' ' .. count .. ' ' .. tostring(kinds.kind == kind)"), "v2 1 true");
+
+    edit({{"source/kinds.lua", kinds("v3")}});
+    EXPECT_EQ(lua("local count = 0 for _ in pairs(kinds[1]) do count = count + 1 end return kinds[1][kind] .. ' ' .. count"), "v3 1");
+}
+
 TEST_F(ModuleReloadTest, ReloadsTheOtherModulesOfASaveWithAFailedModule) {
     start({{"source/a.lua", "return {version = 1}"}, {"source/b.lua", "return {version = 1}"}, {"source/main.lua", "a = require('a') b = require('b')"}});
     edit({{"source/a.lua", "return {version ="}, {"source/b.lua", "return {version = 2}"}});
