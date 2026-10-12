@@ -1,6 +1,7 @@
 """Tests of the rules of haylen.py that need no build: how it merges Info.plist keys, entitlements and privacy manifests, what it checks in a built app, when it generates App.xcodeproj again, how it prints to the terminal and how its commands read their arguments."""
 
 import base64
+import dataclasses
 import contextlib
 import functools
 import http.client
@@ -648,6 +649,21 @@ class AndroidPluginsTest(unittest.TestCase):
         written = json.loads((assets / haylen.ANDROID_PLUGINS_FILE).read_text())
         self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "config": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "config": {"sandbox": True}}]})
 
+
+
+class CheckTest(unittest.TestCase):
+    """The check of a web site or a Windows or Linux folder looks in the build folder of the app."""
+
+    def test_checks_the_site_in_the_build_folder_of_the_app(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch).resolve() / "game"
+            app.mkdir()
+            (app / "app.json").write_text('{"name": "Game", "identifier": "com.example.game", "version": "1.0.0"}')
+            checked = []
+            target = haylen.RUN_TARGETS["web"]
+            with mock.patch.dict(haylen.RUN_TARGETS, {"web": dataclasses.replace(target, check=lambda info, root, args: checked.append(root) or [])}):
+                haylen.command_check(mock.Mock(app=str(app), platform="web", config="Release"))
+            self.assertEqual(checked, [haylen.App(app, "web").build_folder / "web"])
 
 
 class CppReleaseTest(unittest.TestCase):

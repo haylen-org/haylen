@@ -3620,7 +3620,7 @@ def command_check(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
-    root = app.build_folder / "web" if args.platform == "web" else project_root(info, target.template)
+    root = info.build_folder / "web" if args.platform == "web" else project_root(info, target.template)
     missing = target.check(info, root, args)
     report_requirements(missing)
     if missing:
