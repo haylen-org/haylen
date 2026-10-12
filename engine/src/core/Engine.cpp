@@ -148,7 +148,7 @@ void Engine::start() {
     }
 }
 
-// Every start applies the window options of app.json again, so an app that restarts from its package gets the window it asks for. The position only applies when the window opens, so a restart leaves the window where the player moved it.
+// Every start applies the window options of app.json again, so an app that restarts from its package gets the window it asks for, with the mouse, the cursor and the keyboard as a new window has them. The position only applies when the window opens, so a restart leaves the window where the player moved it.
 void Engine::applyWindowOptions() {
     EngineState& current = *state;
     const AppConfig::Window& window = current.config.window;
@@ -160,6 +160,10 @@ void Engine::applyWindowOptions() {
     host.setShowInTaskbar(window.showInTaskbar);
     host.setFocusable(window.focusable);
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
+    host.setMouseLocked(false);
+    host.setCursorVisible(true);
+    host.setCursor(platform::Window::Cursor::Default);
+    host.setKeyboardVisible(false);
 }
 
 void Engine::stop() {
@@ -828,8 +832,11 @@ void Engine::reportError(const std::exception& exception) {
         return;
     }
 
+    // The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
     const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
     current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()), !lifecycle);
+    current.host.setMouseLocked(false);
+    current.host.setCursorVisible(true);
     Log::error("{}", current.errorScreen->getReport());
     const Json report = current.errorScreen->getError().toJson();
     current.host.reportError(report);

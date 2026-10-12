@@ -29,6 +29,22 @@ TEST(WindowLuaTest, ChangesTheDesktopOptions) {
     EXPECT_NE(fixture.lua("window.setDecorated(1)").find("error: "), std::string::npos);
 }
 
+TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
+    test::EngineFixture fixture;
+    fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");
+    fixture.restart();
+    EXPECT_EQ(fixture.host().getCursor(), Window::Cursor::Default);
+    EXPECT_TRUE(fixture.host().isCursorVisible());
+    EXPECT_FALSE(fixture.host().isMouseLocked());
+    EXPECT_FALSE(fixture.host().isKeyboardVisible());
+
+    // The error screen frees the mouse, so its buttons stay within reach.
+    fixture.runLua("window = require('haylen.window') window.setCursorVisible(false) window.setMouseLocked(true)");
+    fixture.engine().reportError("The app failed.");
+    EXPECT_TRUE(fixture.host().isCursorVisible());
+    EXPECT_FALSE(fixture.host().isMouseLocked());
+}
+
 TEST(WindowLuaTest, TurnsTransparencyOffAndOn) {
     test::EngineFixture fixture({{"app.json", R"({"window": {"transparent": true}})"}});
     fixture.runLua("window = require('haylen.window')");

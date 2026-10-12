@@ -129,7 +129,7 @@ window.setCursorVisible(false)
 
 ### window.setMouseLocked(locked)
 
-Locks the mouse to the window and hides it, or releases it. While the mouse is locked its position stops changing, and relative movement is read with `input.mouseDelta()` from `haylen.input`. Browsers only grant the lock in response to a click or key press.
+Locks the mouse to the window and hides it, or releases it. While the mouse is locked its position stops changing, and relative movement is read with `input.mouseDelta()` from `haylen.input`. Browsers only grant the lock in response to a click or key press. The error screen frees and shows the mouse, and an app that restarts starts with the mouse free, the cursor shown in its default shape and the on-screen keyboard hidden.
 
 ```lua
 local window = require('haylen.window')
