@@ -10,12 +10,15 @@
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EventBus.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/UserStorage.hpp"
 #include "storage/StoredJson.hpp"
@@ -37,7 +40,13 @@ core::Json StorageLua::readStorable(lua_State* L, int index) {
 }
 
 void StorageLua::pushInfo(lua_State* L, const SaveSlots::Info& info) {
-    lua_createtable(L, 0, 3);
+    lua_createtable(L, 0, 6);
+    lua_pushinteger(L, info.version);
+    lua_setfield(L, -2, "version");
+    lua_pushinteger(L, static_cast<lua_Integer>(info.revision));
+    lua_setfield(L, -2, "revision");
+    lua::Stack::push(L, info.recovered);
+    lua_setfield(L, -2, "recovered");
     lua::Stack::push(L, info.slot);
     lua_setfield(L, -2, "slot");
     lua::Stack::push(L, info.savedAt);
@@ -93,21 +102,111 @@ int StorageLua::root(lua_State* L) {
     return 1;
 }
 
+void StorageLua::migrate(lua_State* L, const std::string& slot, int fromVersion) {
+    const int target = getSaveSlots(L).getVersion();
+    if (fromVersion > target) {
+        luaL_error(L, "The save slot \"%s\" has version %d, which is newer than the version %d this app reads.", slot.c_str(), fromVersion, target);
+    }
+    lua_getfield(L, LUA_REGISTRYINDEX, kMigrations);
+    const int migrations = lua_gettop(L);
+    for (int current = fromVersion; current < target; ++current) {
+        if (!lua_istable(L, migrations) || lua_rawgeti(L, migrations, current) != LUA_TFUNCTION) {
+            luaL_error(L, "The save slot \"%s\" has version %d and no migration reaches version %d.", slot.c_str(), fromVersion, target);
+        }
+        lua_pushvalue(L, migrations - 1);
+        lua_call(L, 1, 1);
+        lua_replace(L, migrations - 1);
+    }
+    lua_settop(L, migrations - 1);
+}
+
+void StorageLua::publishWrite(lua_State* L, const std::string& slot) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const std::optional<SaveSlots::Info> info = getSaveSlots(L).getInfo(slot);
+    engine.getEvents().emit(core::LifecycleEvent::kSaveSlotWritten, {{"slot", slot}, {"revision", info ? info->revision : 0}, {"version", info ? info->version : 0}});
+}
+
+int StorageLua::setSaveVersion(lua_State* L) {
+    getSaveSlots(L).setVersion(static_cast<int>(luaL_checkinteger(L, 1)));
+    return 0;
+}
+
+int StorageLua::saveVersion(lua_State* L) {
+    lua_pushinteger(L, getSaveSlots(L).getVersion());
+    return 1;
+}
+
+// Registers a migration with `addMigration(fromVersion, function(data) return data end)`, which turns the data of a version into the data of the next one when a slot of that version is read.
+int StorageLua::addMigration(lua_State* L) {
+    const lua_Integer from = luaL_checkinteger(L, 1);
+    luaL_checktype(L, 2, LUA_TFUNCTION);
+    if (from < 1) {
+        return luaL_error(L, "A save migration needs a version from 1 and a function.");
+    }
+    if (lua_getfield(L, LUA_REGISTRYINDEX, kMigrations) != LUA_TTABLE) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_setfield(L, LUA_REGISTRYINDEX, kMigrations);
+    }
+    lua_pushvalue(L, 2);
+    lua_rawseti(L, -2, from);
+    return 0;
+}
+
+int StorageLua::exportSlot(lua_State* L) {
+    const std::optional<std::string> bytes = getSaveSlots(L).exportSlot(lua::Stack::read<std::string_view>(L, 1));
+    if (!bytes) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushlstring(L, bytes->data(), bytes->size());
+    return 1;
+}
+
+// Takes the bytes of `exportSlot` with `importSlot(slot, bytes[, {policy = 'keepNewer'}])` and returns whether they replaced the slot.
+int StorageLua::importSlot(lua_State* L) {
+    SaveSlots::ImportPolicy policy = SaveSlots::ImportPolicy::KeepNewer;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kImportOptions});
+        std::string name;
+        lua::Table::readField(L, 3, "policy", name);
+        if (!name.empty()) {
+            const std::optional<SaveSlots::ImportPolicy> found = SaveSlots::importPolicyFromName(name);
+            if (!found) {
+                return luaL_error(L, "The policy of an imported save slot must be \"replace\" or \"keepNewer\".");
+            }
+            policy = *found;
+        }
+    }
+    const bool imported = getSaveSlots(L).importSlot(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<std::string_view>(L, 2), policy);
+    if (imported) {
+        getUserStorage(L).flush();
+    }
+    lua::Stack::push(L, imported);
+    return 1;
+}
+
 // Saves a slot with `writeSlot(slot, data[, summary])`, where the summary is a small table shown by load menus, and makes it durable at once.
 int StorageLua::writeSlot(lua_State* L) {
     const core::Json summary = lua_isnoneornil(L, 3) ? core::Json::object() : lua::JsonConverter::read(L, 3);
-    getSaveSlots(L).write(lua::Stack::read<std::string_view>(L, 1), lua::JsonConverter::read(L, 2), summary);
+    const std::string slot = lua::Stack::read<std::string>(L, 1);
+    getSaveSlots(L).write(slot, lua::JsonConverter::read(L, 2), summary);
     getUserStorage(L).flush();
+    publishWrite(L, slot);
     return 0;
 }
 
 int StorageLua::readSlot(lua_State* L) {
-    const std::optional<core::Json> data = getSaveSlots(L).read(lua::Stack::read<std::string_view>(L, 1));
-    if (!data) {
+    const std::string slot = lua::Stack::read<std::string>(L, 1);
+    std::optional<SaveSlots::Stored> stored = getSaveSlots(L).readStored(slot);
+    if (!stored) {
         lua_pushnil(L);
         return 1;
     }
-    lua::JsonConverter::push(L, *data);
+    lua::JsonConverter::push(L, stored->data);
+    migrate(L, slot, stored->info.version);
     return 1;
 }
 
@@ -247,7 +346,10 @@ int StorageLua::writeSlotAsync(lua_State* L) {
     // clang-format off
     return queue(L, true, [&slots, slot = lua::Stack::read<std::string>(L, 1), data = readStorable(L, 2), summary = std::move(summary)] {
         slots.write(slot, data, summary);
-        return Pusher([](lua_State* state) { lua_pushboolean(state, 1); });
+        return Pusher([slot](lua_State* state) {
+            publishWrite(state, slot);
+            lua_pushboolean(state, 1);
+        });
     });
     // clang-format on
 }
@@ -256,8 +358,15 @@ int StorageLua::readSlotAsync(lua_State* L) {
     SaveSlots& slots = getSaveSlots(L);
     // clang-format off
     return queue(L, false, [&slots, slot = lua::Stack::read<std::string>(L, 1)] {
-        std::optional<core::Json> data = slots.read(slot);
-        return data ? pushJson(std::move(*data)) : Pusher([](lua_State* state) { lua_pushnil(state); });
+        std::optional<SaveSlots::Stored> stored = slots.readStored(slot);
+        if (!stored) {
+            return Pusher([](lua_State* state) { lua_pushnil(state); });
+        }
+        lua::JsonConverter::validate(stored->data);
+        return Pusher([slot, data = std::move(stored->data), version = stored->info.version](lua_State* state) {
+            lua::JsonConverter::push(state, data);
+            migrate(state, slot, version);
+        });
     });
     // clang-format on
 }
@@ -292,7 +401,7 @@ int StorageLua::listSlotsAsync(lua_State* L) {
 
 int StorageLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"readText", &lua::Binding::native<&readText>}, {"writeText", &lua::Binding::native<&writeText>}, {"readJson", &lua::Binding::native<&readJson>}, {"writeJson", &lua::Binding::native<&writeJson>}, {"exists", &lua::Binding::native<&exists>}, {"remove", &lua::Binding::native<&remove>}, {"list", &lua::Binding::native<&list>}, {"flush", &lua::Binding::native<&flush>}, {"root", &lua::Binding::native<&root>}, {"writeSlot", &lua::Binding::native<&writeSlot>}, {"readSlot", &lua::Binding::native<&readSlot>}, {"slotInfo", &lua::Binding::native<&slotInfo>}, {"slotExists", &lua::Binding::native<&slotExists>}, {"removeSlot", &lua::Binding::native<&removeSlot>}, {"listSlots", &lua::Binding::native<&listSlots>}, {"readTextAsync", &lua::Binding::native<&readTextAsync>}, {"writeTextAsync", &lua::Binding::native<&writeTextAsync>}, {"readJsonAsync", &lua::Binding::native<&readJsonAsync>}, {"writeJsonAsync", &lua::Binding::native<&writeJsonAsync>}, {"removeAsync", &lua::Binding::native<&removeAsync>}, {"listAsync", &lua::Binding::native<&listAsync>}, {"writeSlotAsync", &lua::Binding::native<&writeSlotAsync>}, {"readSlotAsync", &lua::Binding::native<&readSlotAsync>}, {"slotInfoAsync", &lua::Binding::native<&slotInfoAsync>}, {"removeSlotAsync", &lua::Binding::native<&removeSlotAsync>}, {"listSlotsAsync", &lua::Binding::native<&listSlotsAsync>}, {nullptr, nullptr},
+        {"readText", &lua::Binding::native<&readText>}, {"writeText", &lua::Binding::native<&writeText>}, {"readJson", &lua::Binding::native<&readJson>}, {"writeJson", &lua::Binding::native<&writeJson>}, {"exists", &lua::Binding::native<&exists>}, {"remove", &lua::Binding::native<&remove>}, {"list", &lua::Binding::native<&list>}, {"flush", &lua::Binding::native<&flush>}, {"root", &lua::Binding::native<&root>}, {"setSaveVersion", &lua::Binding::native<&setSaveVersion>}, {"saveVersion", &saveVersion}, {"addMigration", &lua::Binding::native<&addMigration>}, {"exportSlot", &lua::Binding::native<&exportSlot>}, {"importSlot", &lua::Binding::native<&importSlot>}, {"writeSlot", &lua::Binding::native<&writeSlot>}, {"readSlot", &lua::Binding::native<&readSlot>}, {"slotInfo", &lua::Binding::native<&slotInfo>}, {"slotExists", &lua::Binding::native<&slotExists>}, {"removeSlot", &lua::Binding::native<&removeSlot>}, {"listSlots", &lua::Binding::native<&listSlots>}, {"readTextAsync", &lua::Binding::native<&readTextAsync>}, {"writeTextAsync", &lua::Binding::native<&writeTextAsync>}, {"readJsonAsync", &lua::Binding::native<&readJsonAsync>}, {"writeJsonAsync", &lua::Binding::native<&writeJsonAsync>}, {"removeAsync", &lua::Binding::native<&removeAsync>}, {"listAsync", &lua::Binding::native<&listAsync>}, {"writeSlotAsync", &lua::Binding::native<&writeSlotAsync>}, {"readSlotAsync", &lua::Binding::native<&readSlotAsync>}, {"slotInfoAsync", &lua::Binding::native<&slotInfoAsync>}, {"removeSlotAsync", &lua::Binding::native<&removeSlotAsync>}, {"listSlotsAsync", &lua::Binding::native<&listSlotsAsync>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

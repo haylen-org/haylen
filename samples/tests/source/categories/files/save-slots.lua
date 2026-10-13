@@ -20,7 +20,7 @@ end
 
 function SaveSlots:enter()
     self:frame{
-        hint = 'Change the game, pick a slot in the table and save, load or delete it. Damage a slot to see how a broken file is reported.',
+        hint = 'Change the game, pick a slot in the table and save, load or delete it. Damage a slot saved twice to see its backup take its place, and one saved once to see how a broken file is reported.',
         focus = 'day',
         content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 460, align = 'stretch', gap = 12,
@@ -103,7 +103,8 @@ function SaveSlots:refresh()
             rows[index] = {id = slot, cells = {slot, 'Damaged', '', '', ''}}
             problem = slot == self.selected and info or problem
         elseif info then
-            rows[index] = {id = slot, cells = {slot, info.summary.place, info.summary.day, info.summary.wood, readout.time(info.savedAt)}}
+            local place = info.recovered and info.summary.place .. ', from the backup' or info.summary.place
+            rows[index] = {id = slot, cells = {slot, place, info.summary.day, info.summary.wood, readout.time(info.savedAt)}}
         else
             rows[index] = {id = slot, cells = {slot, 'Empty', '', '', ''}}
         end

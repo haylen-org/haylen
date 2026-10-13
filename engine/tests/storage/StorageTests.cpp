@@ -57,6 +57,18 @@ TEST(UserStorageTest, WritesReadsListsAndRemoves) {
     EXPECT_EQ(persisted, 1);
 }
 
+TEST(UserStorageTest, RemovesStaleTemporaryFilesWhenItOpens) {
+    const test::TemporaryDirectory directory;
+    {
+        UserStorage storage(directory.getPath());
+        storage.writeText("saves/kept.json", "kept", UserStorage::Durability::Durable);
+    }
+    std::ofstream(directory.getPath() / "saves" / "kept.json.7.tmp") << "interrupted";
+    const UserStorage reopened(directory.getPath());
+    EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "saves" / "kept.json.7.tmp"));
+    EXPECT_EQ(reopened.readText("saves/kept.json"), "kept");
+}
+
 TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
     const test::TemporaryDirectory directory;
     UserStorage storage(directory.getPath());
@@ -178,6 +190,113 @@ TEST(SaveSlotsTest, RejectsBadNamesAndDamagedFiles) {
 
     saves.write("real", {{"ok", true}});
     EXPECT_GT(saves.getInfo("real")->savedAt, 1'700'000'000);
+}
+
+TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    SaveSlots saves(storage);
+    saves.write("slot-1", {{"items", core::Json::array({"axe"})}});
+    EXPECT_EQ(saves.getInfo("slot-1")->version, 1);
+    EXPECT_EQ(saves.getInfo("slot-1")->revision, 1U);
+
+    // The migrations of each version run in order, and a read never changes the stored slot.
+    saves.setVersion(3);
+    std::vector<int> ran;
+    // clang-format off
+    saves.addMigration(2, [&ran](core::Json data) {
+        ran.push_back(2);
+        data["stamina"] = 100;
+        return data;
+    });
+    saves.addMigration(1, [&ran](core::Json data) {
+        ran.push_back(1);
+        data["inventory"] = data.at("items");
+        data.erase("items");
+        return data;
+    });
+    // clang-format on
+    EXPECT_EQ(saves.read("slot-1"), (core::Json{{"inventory", core::Json::array({"axe"})}, {"stamina", 100}}));
+    EXPECT_EQ(ran, (std::vector<int>{1, 2}));
+    EXPECT_EQ(saves.getInfo("slot-1")->version, 1);
+    saves.write("slot-2", {{"stamina", 5}});
+    EXPECT_EQ(saves.getInfo("slot-2")->version, 3);
+
+    // A missing step and a slot of a newer version fail with what went wrong.
+    saves.setVersion(4);
+    std::string missing;
+    try {
+        (void)saves.read("slot-1");
+    } catch (const std::runtime_error& error) {
+        missing = error.what();
+    }
+    EXPECT_EQ(missing, "The save slot \"slot-1\" has version 1 and no migration reaches version 4.");
+    saves.setVersion(2);
+    std::string newer;
+    try {
+        (void)saves.read("slot-2");
+    } catch (const std::runtime_error& error) {
+        newer = error.what();
+    }
+    EXPECT_EQ(newer, "The save slot \"slot-2\" has version 3, which is newer than the version 2 this app reads.");
+    EXPECT_THROW(saves.setVersion(0), std::invalid_argument);
+    EXPECT_THROW(saves.addMigration(0, [](core::Json data) { return data; }), std::invalid_argument);
+}
+
+TEST(SaveSlotsTest, FallsBackToTheBackupWhenDamaged) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    SaveSlots saves(storage);
+    saves.write("slot-1", {{"day", 1}});
+    saves.write("slot-1", {{"day", 2}});
+    EXPECT_EQ(saves.getInfo("slot-1")->revision, 2U);
+    EXPECT_FALSE(saves.getInfo("slot-1")->recovered);
+
+    // A change that the checksum does not cover, such as a bit that flipped on the disk, makes the backup take the place of the slot.
+    std::string text = storage.readText("saves/slot-1.json");
+    text.replace(text.find("\"day\":2"), 7, "\"day\":9");
+    storage.writeText("saves/slot-1.json", text);
+    EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 1}}));
+    EXPECT_TRUE(saves.getInfo("slot-1")->recovered);
+    EXPECT_EQ(saves.getInfo("slot-1")->revision, 1U);
+    EXPECT_EQ(saves.list().size(), 1U) << "A backup is no slot of its own.";
+
+    // A write over a damaged slot keeps the sound backup, and a slot without a sound copy fails.
+    saves.write("slot-1", {{"day", 3}});
+    EXPECT_EQ(saves.getInfo("slot-1")->revision, 1U);
+    storage.writeText("saves/slot-1.json", "{");
+    EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 1}}));
+    storage.writeText("saves/slot-1.backup.json", "{");
+    EXPECT_THROW((void)saves.read("slot-1"), std::runtime_error);
+    EXPECT_TRUE(saves.remove("slot-1"));
+    EXPECT_FALSE(storage.exists("saves/slot-1.backup.json"));
+}
+
+TEST(SaveSlotsTest, ImportsOnlyNewerRevisionsUnlessAskedToReplace) {
+    const test::TemporaryDirectory phoneFolder;
+    const test::TemporaryDirectory tabletFolder;
+    UserStorage phoneStorage(phoneFolder.getPath());
+    UserStorage tabletStorage(tabletFolder.getPath());
+    std::int64_t now = 100;
+    SaveSlots phone(phoneStorage, "saves", [&now] { return now; });
+    SaveSlots tablet(tabletStorage, "saves", [&now] { return now; });
+
+    phone.write("slot", {{"day", 1}});
+    tablet.write("slot", {{"day", 4}});
+    tablet.write("slot", {{"day", 5}});
+    const std::string older = *phone.exportSlot("slot");
+    const std::string newer = *tablet.exportSlot("slot");
+    EXPECT_FALSE(tablet.importSlot("slot", older, SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_EQ(tablet.read("slot"), (core::Json{{"day", 5}}));
+    EXPECT_TRUE(phone.importSlot("slot", newer, SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_EQ(phone.read("slot"), (core::Json{{"day", 5}}));
+    EXPECT_TRUE(tablet.importSlot("slot", older, SaveSlots::ImportPolicy::Replace));
+    EXPECT_EQ(tablet.getInfo("slot")->revision, 1U);
+    EXPECT_TRUE(phone.importSlot("fresh", older, SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_FALSE(phone.exportSlot("none").has_value());
+    EXPECT_THROW((void)phone.importSlot("slot", "{}", SaveSlots::ImportPolicy::Replace), std::invalid_argument);
+    EXPECT_EQ(SaveSlots::importPolicyFromName("keepNewer"), SaveSlots::ImportPolicy::KeepNewer);
+    EXPECT_EQ(SaveSlots::importPolicyName(SaveSlots::ImportPolicy::Replace), "replace");
 }
 
 // A slot that is there but cannot be read fails, instead of reading as a slot that was never saved.
@@ -424,6 +543,45 @@ TEST(StorageLuaTest, KeepsBusesWhoseNamesHoldDotsApart) {
     EXPECT_EQ(fixture.lua("return audio.busVolume('voice') .. ' ' .. audio.busVolume('voice.lines') .. ' ' .. tostring(audio.busMuted('voice.lines'))"), "0.5 0.25 true");
     EXPECT_EQ(fixture.lua("return preferences.get('audio.volume')['voice.lines']"), "0.25");
     EXPECT_NE(fixture.lua("preferences.set('audio.muted', {voice = 'yes'}) preferences.apply()").find("The preference \"audio.muted\" has a value of the wrong type for the bus \"voice\"."), std::string::npos);
+}
+
+TEST(StorageLuaTest, MigratesSlotsAndMovesThemBetweenDevices) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        storage = require('haylen.storage')
+        written = {}
+        require('haylen.events').on('saveSlotWritten', function(info) written[#written + 1] = info.slot .. ':' .. info.revision .. ':' .. info.version end)
+        storage.writeSlot('slot-1', {items = {'axe'}})
+        storage.setSaveVersion(3)
+        storage.addMigration(1, function(data) data.inventory = data.items data.items = nil return data end)
+        storage.addMigration(2, function(data) data.stamina = 100 return data end)
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("local data = storage.readSlot('slot-1') return data.inventory[1] .. ' ' .. data.stamina .. ' ' .. tostring(data.items) .. ' ' .. storage.saveVersion()"), "axe 100 nil 3");
+    EXPECT_EQ(fixture.lua("local info = storage.slotInfo('slot-1') return info.version .. ' ' .. info.revision .. ' ' .. tostring(info.recovered) .. ' ' .. table.concat(written, ',')"), "1 1 false slot-1:1:1");
+
+    // clang-format off
+    fixture.runLua(R"(
+        require('async').spawn(function()
+            asyncStamina = storage.readSlotAsync('slot-1'):await().stamina
+            storage.writeSlotAsync('slot-1', {stamina = 7}):await()
+            done = true
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(done)") == "true"; }));
+    EXPECT_EQ(fixture.lua("return asyncStamina .. ' ' .. table.concat(written, ',')"), "100 slot-1:1:1,slot-1:2:3");
+
+    EXPECT_EQ(fixture.lua("local bytes = storage.exportSlot('slot-1') return tostring(storage.importSlot('copy', bytes)) .. ' ' .. tostring(storage.importSlot('copy', bytes)) .. ' ' .. tostring(storage.importSlot('copy', bytes, {policy = 'replace'})) .. ' ' .. storage.readSlot('copy').stamina"), "true false true 7");
+    EXPECT_EQ(fixture.lua("return storage.exportSlot('none')"), "nil");
+    EXPECT_NE(fixture.lua("storage.importSlot('copy', 'nonsense')").find("The imported save slot \"copy\" is damaged."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.importSlot('copy', storage.exportSlot('slot-1'), {policy = 'newest'})").find("The policy of an imported save slot must be \"replace\" or \"keepNewer\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.importSlot('copy', storage.exportSlot('slot-1'), {mode = 1})").find("Unknown option \"mode\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.setSaveVersion(4) return storage.readSlot('slot-1')").find("The save slot \"slot-1\" has version 3 and no migration reaches version 4."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.setSaveVersion(2) return storage.readSlot('slot-1')").find("has version 3, which is newer than the version 2 this app reads."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.setSaveVersion(0)").find("A save version is a whole number from 1."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.addMigration(0, print)").find("A save migration needs a version from 1 and a function."), std::string::npos);
 }
 
 TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {

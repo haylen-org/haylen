@@ -1,6 +1,9 @@
 #pragma once
 
+#include <array>
 #include <functional>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -33,6 +36,14 @@ class StorageLua final {
     // Queues work with the other storage operations on the I/O pool and pushes a promise that settles on the frame thread with what `work` returns, or rejects with what it threw. A durable operation flushes user storage before it settles.
     static int queue(lua_State* L, bool durable, std::function<Pusher()> work);
 
+    // The registry key of the table of Lua migrations, from the version each one upgrades.
+    static constexpr const char* kMigrations = "haylen.storage.migrations";
+    static constexpr std::array<std::string_view, 1> kImportOptions{"policy"};
+
+    // Runs the Lua migrations of the slot from its version to the version of the app on the data at the top of the stack, which the migrated data replaces. The migrations are plain functions that may not yield.
+    static void migrate(lua_State* L, const std::string& slot, int fromVersion);
+    static void publishWrite(lua_State* L, const std::string& slot);
+
     static int readText(lua_State* L);
     static int writeText(lua_State* L);
     static int readJson(lua_State* L);
@@ -42,6 +53,11 @@ class StorageLua final {
     static int list(lua_State* L);
     static int flush(lua_State* L);
     static int root(lua_State* L);
+    static int setSaveVersion(lua_State* L);
+    static int saveVersion(lua_State* L);
+    static int addMigration(lua_State* L);
+    static int exportSlot(lua_State* L);
+    static int importSlot(lua_State* L);
     static int writeSlot(lua_State* L);
     static int readSlot(lua_State* L);
     static int slotInfo(lua_State* L);

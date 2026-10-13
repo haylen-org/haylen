@@ -216,7 +216,7 @@ end)
 
 ## Save slots
 
-Save slots hold the progress of the app, with a small summary of each slot for a load menu. Each slot is a JSON file at `saves/<slot>.json` among the other files of the app, so `storage.list('saves')` lists them too. A slot holds the app data, a summary table for load menus and the time it was saved. Slot names use 1 to 64 letters, digits, dashes or underscores, such as `'slot-1'` or `'auto_save'`, and other names raise `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.`. Every write and remove reaches the disk at once, including the browser storage of web builds.
+Save slots hold the progress of the app, with a small summary of each slot for a load menu. Each slot is a JSON file at `saves/<slot>.json` among the other files of the app, so `storage.list('saves')` lists them too. A slot holds the app data, a summary table for load menus, the time it was saved, the save version of the app, a revision that counts the writes of the slot and a checksum of the rest. Every write keeps the previous file of the slot as its backup at `saves/<slot>.backup.json` and flushes the new file and its folder to the disk before and after it replaces the old one, so a crash, a dead battery or a forced quit leaves the old slot or the new one, and a slot that a damaged disk or an interrupted copy broke reads its backup instead, which `slotInfo().recovered` tells. Slot names use 1 to 64 letters, digits, dashes or underscores, such as `'slot-1'` or `'auto_save'`, and other names raise `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.`. Every write and remove reaches the disk at once, including the browser storage of web builds.
 
 Data and summaries are converted to JSON. Booleans, finite numbers, UTF-8 strings and tables of them are kept. A table whose keys are exactly 1 to its length becomes a list, and any other table becomes an object whose keys come back as strings, so `{[1] = 'a', [3] = 'c'}` reads back as `{['1'] = 'a', ['3'] = 'c'}`. An empty table reads back as an empty table. Functions, userdata and threads raise an error, and so do tables nested deeper than 128 levels, which includes tables that contain themselves, strings and keys that are not valid UTF-8 and numbers that are not finite, such as NaN or infinity.
 
@@ -233,7 +233,7 @@ storage.writeSlot('slot-1', game, {day = game.day, place = 'Beach'})
 
 ### storage.readSlot(slot)
 
-Returns the data of the slot, or `nil` when the slot does not exist. A file that is not a valid save raises `The save slot "<slot>" is damaged.`.
+Returns the data of the slot, or `nil` when the slot does not exist. Data of an older save version runs through the migrations of [`storage.addMigration()`](#storageaddmigrationfromversion-migration) up to the version of the app, a slot without a sound file or backup raises `The save slot "<slot>" is damaged.`, a slot of a newer version raises `The save slot "<slot>" has version <version>, which is newer than the version <version> this app reads.` and a version that no chain of migrations reaches raises `The save slot "<slot>" has version <version> and no migration reaches version <version>.`.
 
 ```lua
 local storage = require('haylen.storage')
@@ -253,6 +253,9 @@ Returns a table describing the slot, or `nil` when the slot does not exist. A da
 | `slot` | string | The slot name. |
 | `savedAt` | integer | When the slot was written, in Unix seconds. |
 | `summary` | table | The summary given to `storage.writeSlot()`. |
+| `version` | integer | The save version of the app that wrote the slot. |
+| `revision` | integer | How many times the slot was written, which cloud saves compare. |
+| `recovered` | boolean | `true` when the slot was damaged and these fields come from its backup. |
 
 ```lua
 local storage = require('haylen.storage')
@@ -260,6 +263,57 @@ local storage = require('haylen.storage')
 local info = storage.slotInfo('slot-1')
 if info then
     print(info.slot, info.savedAt, info.summary.day)
+end
+```
+
+### storage.setSaveVersion(version), storage.saveVersion()
+
+Sets the save version of the app, a whole number from 1 and 1 by default, which every write stamps and every read migrates to, and returns it. A version below 1 raises `A save version is a whole number from 1.`.
+
+```lua
+local storage = require('haylen.storage')
+
+storage.setSaveVersion(3)
+print(storage.saveVersion())
+```
+
+### storage.addMigration(fromVersion, migration)
+
+Registers the function that turns the data of a version into the data of the next one, so an update that changes the shape of the data never strands old saves. A read of an older slot runs every step in order on the frame thread, also for `storage.readSlotAsync()`, and the stored slot keeps its version until the app writes it again. A migration takes the data and returns the new data, and it may not yield. A version below 1 raises `A save migration needs a version from 1 and a function.`.
+
+```lua
+local storage = require('haylen.storage')
+
+storage.setSaveVersion(3)
+storage.addMigration(1, function(data)
+    data.inventory = data.items
+    data.items = nil
+    return data
+end)
+storage.addMigration(2, function(data)
+    data.player.stamina = 100
+    return data
+end)
+local game = storage.readSlot('slot-1')
+```
+
+### storage.exportSlot(slot), storage.importSlot(slot, bytes, options)
+
+The function `exportSlot` returns the file of a slot as a string of bytes, or `nil`, which a cloud save plugin uploads, and `importSlot` writes such bytes as a slot and returns whether it did. The option `policy` is `'keepNewer'` by default, which imports only bytes of a higher revision, or of the same revision and a later save time, than the slot of the device, so progress made on another device never disappears under an older copy, or `'replace'`, which imports them whatever the device holds. Bytes that are not a whole slot raise `The imported save slot "<slot>" is damaged.` and another policy raises `The policy of an imported save slot must be "replace" or "keepNewer".`.
+
+```lua
+local events = require('haylen.events')
+local platform = require('haylen.platform')
+local storage = require('haylen.storage')
+
+events.on('saveSlotWritten', function(info)
+    platform.plugin('cloud-saves'):call('upload', {slot = info.slot, data = platform.bytes(storage.exportSlot(info.slot))})
+end)
+
+local function downloaded(slot, bytes)
+    if storage.importSlot(slot, bytes, {policy = 'keepNewer'}) then
+        print('The cloud held newer progress.')
+    end
 end
 ```
 
@@ -276,7 +330,7 @@ print(label)
 
 ### storage.removeSlot(slot)
 
-Deletes the slot and returns `true`, or returns `false` when the slot did not exist.
+Deletes the slot with its backup and returns `true`, or returns `false` when the slot did not exist.
 
 ```lua
 local storage = require('haylen.storage')
@@ -367,7 +421,13 @@ scene.push({
 | --- | --- |
 | `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.` | The slot name is empty, too long or has other characters. |
 | `A save summary must be a JSON object.` | The summary is not a table, or it is a list. |
-| `The save slot "<slot>" is damaged.` | The slot file is not valid JSON, misses its data, summary or time, or holds a summary that is not an object or a time that is not an integer. |
+| `The save slot "<slot>" is damaged.` | The slot file and its backup are not valid JSON, miss their data, summary, time, version, revision or checksum, or their checksum does not match. |
+| `The save slot "<slot>" has version <version>, which is newer than the version <version> this app reads.` | A slot written by a newer version of the app. |
+| `The save slot "<slot>" has version <version> and no migration reaches version <version>.` | A step of the migrations is missing. |
+| `A save version is a whole number from 1.` | The function `storage.setSaveVersion()` received a version below 1. |
+| `A save migration needs a version from 1 and a function.` | The function `storage.addMigration()` received a version below 1. |
+| `The imported save slot "<slot>" is damaged.` | The function `storage.importSlot()` received bytes that are not a whole slot. |
+| `The policy of an imported save slot must be "replace" or "keepNewer".` | The function `storage.importSlot()` received another policy. |
 | `A <type> cannot be converted to JSON.` | The data or summary holds a function, userdata or thread. |
 | `A string that is not valid UTF-8 cannot be converted to JSON.` | The data or summary holds a string that is not valid UTF-8. |
 | `A key that is not valid UTF-8 cannot be converted to JSON.` | The data or summary holds a table with a key that is not valid UTF-8. |

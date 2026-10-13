@@ -565,6 +565,7 @@ The files of the package, the user folder through "haylen.storage" and Varn "fs"
 | `FIL-004` | Save slots | Saving, loading and deleting named slots with the summaries a load menu shows. |  |
 | `FIL-005` | Zip archives | Creating, listing and extracting zip archives with Varn "zip", including one shipped in the package. |  |
 | `FIL-006` | File browser | The folders and files of the user folder, with sizes, dates and a preview. |  |
+| `FIL-007` | Save versions | A slot of version 1 read by version 3 through migrations, the revision and backup of every write, a damaged slot that its backup replaces and a slot moved to another device. |  |
 
 #### Localization (LOC)
 

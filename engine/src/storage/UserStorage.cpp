@@ -8,12 +8,30 @@
 #include <system_error>
 #include <thread>
 
+#include "content/StoreFile.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/io/Path.hpp"
 
 namespace haylen::storage {
 
 UserStorage::UserStorage(std::filesystem::path folder, std::function<void()> onFlush) : root(std::move(folder)), persist(std::move(onFlush)) {
     std::filesystem::create_directories(root);
+    removeTemporaryFiles();
+}
+
+// A write that a crash interrupted leaves its temporary sibling, which nothing reads, so the storage drops them when it opens.
+void UserStorage::removeTemporaryFiles() noexcept {
+    std::error_code error;
+    std::vector<std::filesystem::path> stale;
+    for (auto iterator = std::filesystem::recursive_directory_iterator(root, error); !error && iterator != std::filesystem::recursive_directory_iterator(); iterator.increment(error)) {
+        std::error_code status;
+        if (iterator->is_regular_file(status) && iterator->path().extension() == ".tmp") {
+            stale.push_back(iterator->path());
+        }
+    }
+    for (const std::filesystem::path& file : stale) {
+        std::filesystem::remove(file, error);
+    }
 }
 
 std::filesystem::path UserStorage::resolve(std::string_view path) const {
@@ -54,32 +72,50 @@ std::string UserStorage::readText(std::string_view path) const {
 }
 
 // A failed write leaves the previous file and no temporary file behind, and its error names the relative path rather than the folder of the user.
-void UserStorage::write(std::string_view path, std::span<const std::uint8_t> bytes) {
+void UserStorage::write(std::string_view path, std::span<const std::uint8_t> bytes, Durability durability) {
     const std::filesystem::path file = resolve(path);
 
     // The data goes to a sibling file first so a crash mid-write never leaves a truncated save behind, and each write has a sibling of its own, so writes of the same file on two threads never mix.
     std::filesystem::path temporary = file;
     temporary += "." + std::to_string(++writeCount) + ".tmp";
-    if (!replace(file, temporary, bytes)) {
+    if (!replace(file, temporary, bytes, durability)) {
         std::error_code ignored;
         std::filesystem::remove(temporary, ignored);
         throw std::runtime_error("The storage file \"" + std::string(path) + "\" could not be written.");
     }
 }
 
-bool UserStorage::replace(const std::filesystem::path& file, const std::filesystem::path& temporary, std::span<const std::uint8_t> bytes) {
+// The bytes reach the disk before the file is renamed over the old one, and the rename reaches it through the folder.
+bool UserStorage::writeDurably(const std::filesystem::path& file, std::span<const std::uint8_t> bytes) {
+    try {
+        content::StoreFile written(file, content::StoreFile::Mode::Replace);
+        (void)written.append(bytes);
+        written.sync();
+        return true;
+    } catch (const content::Error&) {
+        return false;
+    }
+}
+
+bool UserStorage::replace(const std::filesystem::path& file, const std::filesystem::path& temporary, std::span<const std::uint8_t> bytes, Durability durability) {
     std::error_code error;
     std::filesystem::create_directories(file.parent_path(), error);
     if (error) {
         return false;
     }
-    std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
-    stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    if (durability == Durability::Durable) {
+        if (!writeDurably(temporary, bytes)) {
+            return false;
+        }
+    } else {
+        std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
+        stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
 
-    // Closing flushes the last buffered bytes, so only a stream that also closed cleanly may replace the file.
-    stream.close();
-    if (!stream) {
-        return false;
+        // Closing flushes the last buffered bytes, so only a stream that also closed cleanly may replace the file.
+        stream.close();
+        if (!stream) {
+            return false;
+        }
     }
 
     // Windows refuses to replace or remove a file that another thread is replacing or reading, so those steps wait for each other. Another program, such as a virus scanner or a search indexer, may also hold the file for a moment after it changes, so the replace tries again for a short while before it fails.
@@ -88,6 +124,9 @@ bool UserStorage::replace(const std::filesystem::path& file, const std::filesyst
             const std::scoped_lock lock(mutex);
             std::filesystem::rename(temporary, file, error);
         }
+        if (!error && durability == Durability::Durable) {
+            content::StoreFile::syncFolder(file.parent_path());
+        }
         if (!error || attempt == kReplaceAttempts) {
             return !error;
         }
@@ -95,8 +134,8 @@ bool UserStorage::replace(const std::filesystem::path& file, const std::filesyst
     }
 }
 
-void UserStorage::writeText(std::string_view path, std::string_view text) {
-    write(path, std::span(reinterpret_cast<const std::uint8_t*>(text.data()), text.size()));
+void UserStorage::writeText(std::string_view path, std::string_view text, Durability durability) {
+    write(path, std::span(reinterpret_cast<const std::uint8_t*>(text.data()), text.size()), durability);
 }
 
 bool UserStorage::remove(std::string_view path) {
