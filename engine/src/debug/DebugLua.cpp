@@ -11,6 +11,7 @@
 
 #include "debug/ConsoleLua.hpp"
 #include "debug/CrashLua.hpp"
+#include "debug/InspectorLua.hpp"
 #include "debug/TraceLua.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/debug/ProfileScope.hpp"
@@ -433,6 +434,7 @@ int DebugLua::open(lua_State* L) {
     ConsoleLua::addFunctions(L);
     TraceLua::addFunctions(L);
     CrashLua::addFunctions(L);
+    InspectorLua::addFunctions(L);
     return 1;
 }
 

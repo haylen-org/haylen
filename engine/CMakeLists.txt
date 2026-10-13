@@ -336,6 +336,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/ConsoleWindow.cpp
   src/debug/CrashLua.cpp
   src/debug/DebugLua.cpp
+  src/debug/Inspector.cpp
+  src/debug/InspectorLua.cpp
+  src/debug/InspectorWindow.cpp
   src/debug/Monitor.cpp
   src/debug/ObjectCounter.cpp
   src/debug/OverlayWindow.cpp

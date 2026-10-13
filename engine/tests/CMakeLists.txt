@@ -102,6 +102,7 @@ set(HAYLEN_TEST_SOURCES
   debug/DebugTests.cpp
   debug/DrawingTests.cpp
   debug/HotReloadTests.cpp
+  debug/InspectorTests.cpp
   debug/StatsTests.cpp
   debug/TraceRecorderTests.cpp
   graphics/GraphicsLuaTests.cpp

@@ -2,7 +2,7 @@
 return {
     prefix = 'DEV',
     title = 'Development',
-    description = 'Hot reload of Lua modules in place with the state of the app, their hooks and kept values, the error screen that a saved fix resumes from, assets that reload while the app runs, and the errors of every kind of code with the return to the app, the developer console, profiler traces and crash reports.',
+    description = 'Hot reload of Lua modules in place with the state of the app, their hooks and kept values, the error screen that a saved fix resumes from, assets that reload while the app runs, and the errors of every kind of code with the return to the app, the developer console, the inspector, profiler traces and crash reports.',
     tests = {
         {code = 'DEV-001', title = 'Module reload', description = 'A greeting from a module that reloads in place while a counter keeps counting.', module = 'module-reload'},
         {code = 'DEV-002', title = 'Classes', description = 'Walkers of a class that take its new methods in place, with their positions kept.', module = 'classes'},
@@ -14,5 +14,6 @@ return {
         {code = 'DEV-008', title = 'Developer console', description = 'Commands of the test with typed arguments, lines run from code with their results and errors, completions and the console window.', module = 'console'},
         {code = 'DEV-009', title = 'Profiler traces', description = 'A trace of 60 frames with the scopes of the frame, the jobs of the workers and the time of the GPU, written to user storage and counted by kind.', module = 'traces'},
         {code = 'DEV-010', title = 'Crashes and breadcrumbs', description = 'Breadcrumbs with their event, the report of the native crash that ended the last run and a button that crashes the app.', module = 'crashes'},
+        {code = 'DEV-011', title = 'Inspector', description = 'A watched table and camera listed and edited through the inspector, an edit that a setter refuses and the inspector window.', module = 'inspector'},
     },
 }

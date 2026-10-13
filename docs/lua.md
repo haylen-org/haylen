@@ -645,7 +645,7 @@ haylen_add_app(my-app CPP
 
 The template `Binding::native<&f>` wraps a function that takes the Lua state, so a C++ exception thrown inside it, such as the `std::logic_error` of a missing plugin, becomes a Lua error with the same message. The template `Binding::function<&f>` goes one step further and converts the parameters and the result of a plain C++ function or static method, so `static int clampScore(int points)` is exposed with `&haylen::lua::Binding::function<&clampScore>`.
 
-A C++ type becomes a Lua type with a `Type<T>` specialization, which names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it, and a `ClassBuilder` that fills the metatable in `installLua`. The metatable is protected like the ones of the engine, so `getmetatable` returns the type name and Lua code never reaches the finalizer. A binding that creates a userdata metatable of its own does it with `Userdata::newMetatable`, which protects it the same way.
+A C++ type becomes a Lua type with a `Type<T>` specialization, which names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it, and a `ClassBuilder` that fills the metatable in `installLua`. The metatable is protected like the ones of the engine, so `getmetatable` returns the type name and Lua code never reaches the finalizer. It also keeps the getters and setters of the properties, so the [inspector](lua-api/debug.md#inspector) lists and edits the properties of every bound type, those of plugins too. A binding that creates a userdata metatable of its own does it with `Userdata::newMetatable`, which protects it the same way.
 
 ```cpp
 namespace app {

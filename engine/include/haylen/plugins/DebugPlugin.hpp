@@ -31,11 +31,12 @@
 
 namespace haylen::debug {
 class ConsoleWindow;
-}
+class InspectorWindow;
+} // namespace haylen::debug
 
 namespace haylen::plugins {
 
-// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the overlay window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `app.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, opened by the grave accent key or a touch of four fingers, and takes lines from the development server and the web page, in development runs and wherever `app.json` turns it on.
+// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the overlay window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `app.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, opened by the grave accent key or a touch of four fingers, and takes lines from the development server and the web page, in development runs and wherever `app.json` turns it on. The inspector next to it lists and edits the values of the app, the scenes and the autoloads, and the console reaches it from a desktop or a page with `inspect` and `set`.
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
@@ -152,6 +153,12 @@ class DebugPlugin final : public Plugin {
     [[nodiscard]] bool isConsoleVisible() const noexcept {
         return consoleVisible;
     }
+    // Shows the inspector, which the console allows, so a development run or `debug.console` of `app.json` turns it on.
+    void setInspectorVisible(bool value);
+    [[nodiscard]] bool isInspectorVisible() const noexcept {
+        return inspectorVisible;
+    }
+
     void setConsoleKey(std::optional<input::Key> value) noexcept {
         consoleKey = value;
     }
@@ -230,6 +237,7 @@ class DebugPlugin final : public Plugin {
     debug::StatsDisplay statsDisplay;
     debug::Console console;
     std::unique_ptr<debug::ConsoleWindow> consoleWindow;
+    std::unique_ptr<debug::InspectorWindow> inspectorWindow;
     std::vector<core::Connection> builtInCommands;
     std::optional<input::Key> consoleKey = input::Key::GraveAccent;
     core::RingBuffer<debug::Breadcrumb> breadcrumbs{kBreadcrumbs};
@@ -244,6 +252,7 @@ class DebugPlugin final : public Plugin {
     bool development = false;
     bool consoleEnabled = false;
     bool consoleVisible = false;
+    bool inspectorVisible = false;
 };
 
 } // namespace haylen::plugins

@@ -1,6 +1,6 @@
 # haylen.debug
 
-The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, reads the frame profiler and the recent log, records traces, keeps breadcrumbs, reads the report of the last native crash and runs the developer console. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
+The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, reads the frame profiler and the recent log, records traces, keeps breadcrumbs, reads the report of the last native crash, and runs the developer console and the inspector. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
 
 ```lua
 local debug = require('haylen.debug')
@@ -64,6 +64,21 @@ A trace records a span of frames into a file in the trace event JSON format, whi
 
 The function `debug.startTrace` starts a trace, and `debug.stopTraceAsync` stops it and writes it into user storage on the I/O pool. A trace keeps at most 262144 spans in memory by default, and counts the spans it drops once it is full. Recording costs a lock per span, so a trace measures a little more than the frames take without one.
 
+## Inspector
+
+The inspector lists the values of the running app and edits them while it runs, by paths of keys from its roots:
+
+| Root | Holds |
+| --- | --- |
+| `watched` | The values that `debug.watch` exposes, held weakly, so a watched value never outlives its owner. |
+| `scenes` | The tables of the scenes on the stack, from the bottom, as [`scene.list()`](scene.md#scenelist) returns them. |
+| `autoloads` | The tables of the [autoloads](haylen.md#haylenautoloads) by name. |
+| `globals` | The global table. |
+
+A table lists its keys, at most 200 of them in order, integer keys first. An object of a bound type, such as a camera, a sprite or a body, lists the properties that its type declares, which the engine records for every type, those of plugins too. A path joins keys with dots, such as `watched.player.items.2`, where a key that reads as an integer names the item of a sequence. Numbers, booleans and strings are editable, and an edit goes through the same setter that Lua uses, with its checks, so `set watched.camera.minZoom -1` fails with the error of the camera.
+
+The inspector window shows the roots as a tree whose open nodes refresh four times per second, with fields that edit a value when Enter confirms it. It opens with `debug.setInspectorVisible(true)` or the console command `inspector`, and follows the console: it is on in development runs and with `"debug": {"console": true}` in `app.json`. The console commands `inspect` and `set` reach the same values from the terminal of `haylen run` on a phone or a TV, or from a web page through `Module.haylen.console(line)`, which is how a desktop inspects a device. Nothing of the inspector runs while its window is closed. The inspector does not pick objects on the screen or move them with handles yet.
+
 ## Crashes and breadcrumbs
 
 A breadcrumb is a step of the app that a crash report shows, such as opening a screen or buying an item, with data of the app. The engine keeps the last 100 breadcrumbs, and each one publishes `breadcrumbAdded` on [`haylen.events`](events.md), so a crash reporting or analytics plugin forwards it to its service. The engine itself sends nothing anywhere.
@@ -92,6 +107,9 @@ The engine registers these commands.
 | `timeScale [number]` | Shows the time scale, or sets it. |
 | `pause [boolean]` | Pauses the app or resumes it, or switches when the line leaves the state out. |
 | `restart` | Restarts the app. |
+| `inspect [word]` | Lists the values at a path of the [inspector](#inspector), such as `inspect watched.player`, or its roots. |
+| `set <word> <text>` | Sets the number, boolean or string at a path of the inspector, such as `set watched.player.speed 300`. |
+| `inspector [boolean]` | Shows or hides the inspector window, or switches it when the line leaves the state out. |
 | `lua <text>` | Runs Lua code and prints what it returns, such as `lua player.speed`, only in development runs. |
 
 ## Functions
@@ -694,4 +712,68 @@ local crash = debugging.lastCrash()
 if crash then
     print('The last run stopped with ' .. crash.reason .. '.')
 end
+```
+
+### debug.watch(name, value)
+
+Exposes a value under the root `watched` of the [inspector](#inspector), replacing the value with the same name. The inspector holds it weakly, so it disappears once nothing else holds it.
+
+```lua
+local debugging = require('haylen.debug')
+local scene = require('haylen.scene')
+
+scene.push({
+    enter = function(self)
+        self.player = {speed = 220, jump = 520}
+        debugging.watch('player', self.player)
+    end,
+    exit = function(self)
+        debugging.unwatch('player')
+    end,
+})
+```
+
+### debug.unwatch(name)
+
+Removes a value from the root `watched`.
+
+```lua
+local debugging = require('haylen.debug')
+
+debugging.unwatch('player')
+```
+
+### debug.inspect(path)
+
+Returns the values at a path of the [inspector](#inspector), such as `'watched.player'`, or its roots without one, each as `{key, type, value, editable, expandable}`, where `type` is the Lua type or the name of a bound type, `value` the value as text, `editable` whether the inspector edits it and `expandable` whether it holds values to list. A missing root raises `The inspector has no root "<name>". Its roots are "watched", "scenes", "autoloads" and "globals".`, and a path through a value that holds nothing raises `The value at "<path>" is of the type "<type>", which holds no "<key>".`.
+
+```lua
+local debugging = require('haylen.debug')
+
+debugging.watch('player', {speed = 220})
+for _, entry in ipairs(debugging.inspect('watched.player')) do
+    print(entry.key, entry.type, entry.value)
+end
+```
+
+### debug.setInspectorVisible(visible)
+
+Shows or hides the inspector window. Showing it while the console is off raises `The inspector is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.`.
+
+```lua
+local debugging = require('haylen.debug')
+
+if debugging.consoleEnabled() then
+    debugging.setInspectorVisible(true)
+end
+```
+
+### debug.inspectorVisible()
+
+Returns whether the inspector window shows.
+
+```lua
+local debugging = require('haylen.debug')
+
+print(debugging.inspectorVisible())
 ```

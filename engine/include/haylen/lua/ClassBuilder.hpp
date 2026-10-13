@@ -13,7 +13,7 @@
 
 namespace haylen::lua {
 
-// Builds the metatable of a bound type with methods, read-write properties and metamethods. Unknown keys raise errors. Number, `Vec2` and `Color` fields and accessors are also recorded as native properties, which tweens animate without running Lua.
+// Builds the metatable of a bound type with methods, read-write properties and metamethods. Unknown keys raise errors. Number, `Vec2` and `Color` fields and accessors are also recorded as native properties, which tweens animate without running Lua. The metatable keeps the getters of the properties under `__properties` and their setters under `__writable`, which the inspector of the debug tools reads to list and edit the properties of any bound object.
 template <Bound T> class ClassBuilder final {
   public:
     explicit ClassBuilder(lua_State* L) : state(L) {
@@ -91,6 +91,10 @@ template <Bound T> class ClassBuilder final {
     void install() {
         lua_pushcfunction(state, &collect);
         lua_setfield(state, metatable, "__gc");
+        lua_pushvalue(state, getters);
+        lua_setfield(state, metatable, "__properties");
+        lua_pushvalue(state, setters);
+        lua_setfield(state, metatable, "__writable");
 
         lua_pushvalue(state, methods);
         lua_pushvalue(state, getters);

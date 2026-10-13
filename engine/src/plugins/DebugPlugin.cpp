@@ -10,6 +10,8 @@
 
 #include "debug/ConsoleWindow.hpp"
 #include "debug/DebugLua.hpp"
+#include "debug/Inspector.hpp"
+#include "debug/InspectorWindow.hpp"
 #include "debug/OverlayWindow.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
@@ -30,7 +32,7 @@
 
 namespace haylen::plugins {
 
-DebugPlugin::DebugPlugin(bool developmentRun) : consoleWindow(std::make_unique<debug::ConsoleWindow>()), development(developmentRun) {}
+DebugPlugin::DebugPlugin(bool developmentRun) : consoleWindow(std::make_unique<debug::ConsoleWindow>()), inspectorWindow(std::make_unique<debug::InspectorWindow>()), development(developmentRun) {}
 
 DebugPlugin::~DebugPlugin() = default;
 
@@ -63,6 +65,7 @@ void DebugPlugin::stop(core::Engine& engine) {
         }
     }
     consoleVisible = false;
+    inspectorVisible = false;
     detachTrace();
     trace.reset();
     engine.getRenderer2D().removeCanvasOverlay(overlay);
@@ -306,7 +309,7 @@ void DebugPlugin::event(core::Engine&, const platform::Event& event) {
 }
 
 void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
-    if (!view.current || (statsMode != debug::StatsDisplay::Mode::Full && !consoleVisible)) {
+    if (!view.current || (statsMode != debug::StatsDisplay::Mode::Full && !consoleVisible && !inspectorVisible)) {
         return;
     }
     ui::Backend& backend = engine.getPlugin<UiPlugin>().getBackend();
@@ -328,6 +331,21 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
         ImGui::SetNextWindowBgAlpha(0.92F);
         consoleVisible = consoleWindow->draw(console);
     }
+
+    if (inspectorVisible) {
+        ImGui::SetNextWindowPos({safe.x + safe.width - std::min(560.0F, safe.width - 32.0F) - 16.0F, safe.y + 16.0F}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize({std::min(560.0F, safe.width - 32.0F), safe.height * 0.6F}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowBgAlpha(0.92F);
+        const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        inspectorVisible = inspectorWindow->draw(engine.getLuaState(), now);
+    }
+}
+
+void DebugPlugin::setInspectorVisible(bool value) {
+    if (value && !consoleEnabled) {
+        throw std::logic_error("The inspector is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
+    }
+    inspectorVisible = value;
 }
 
 void DebugPlugin::setConsoleVisible(bool value) {
@@ -423,6 +441,23 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
     builtInCommands.push_back(console.addCommand({.name = "restart", .help = "Restarts the app.", .parameters = {}, .handler = [&engine](const core::Json&) {
         engine.requestRestart();
         return std::string("The app restarts.");
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "inspect", .help = "Lists the values at a path of the inspector, such as \"watched.player\", or its roots.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
+        const std::vector<std::string> path = debug::Inspector::splitPath(arguments.empty() ? std::string_view() : arguments[0].get_ref<const std::string&>());
+        std::string text;
+        for (const debug::Inspector::Entry& entry : debug::Inspector::list(engine.getLuaState(), path)) {
+            text += std::format("{}{}  {}{}{}", text.empty() ? "" : "\n", entry.key, entry.type, entry.value.empty() ? "" : "  ", entry.value);
+        }
+        return text;
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "set", .help = "Sets the number, boolean or string at a path of the inspector, such as \"set watched.player.speed 300\".", .parameters = {{.kind = Kind::String}, {.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
+        const std::string& path = arguments[0].get_ref<const std::string&>();
+        debug::Inspector::set(engine.getLuaState(), debug::Inspector::splitPath(path), arguments[1].get_ref<const std::string&>());
+        return std::format("Set \"{}\".", path);
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "inspector", .help = "Shows or hides the inspector, or switches it when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
+        setInspectorVisible(arguments.empty() ? !inspectorVisible : arguments[0].get<bool>());
+        return std::string(inspectorVisible ? "The inspector shows." : "The inspector is hidden.");
     }}));
     if (development) {
         builtInCommands.push_back(console.addCommand({.name = "lua", .help = "Runs Lua code and prints what it returns, in development runs only.", .parameters = {{.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
