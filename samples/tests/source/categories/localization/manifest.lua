@@ -13,5 +13,6 @@ return {
         {code = 'LOC-007', title = 'Fonts per language', description = 'One font family whose fallbacks draw Japanese in every component.', module = 'fonts'},
         {code = 'LOC-008', title = 'Layout follows the text', description = 'Buttons and paragraphs that measure again when the language changes.', module = 'relayout'},
         {code = 'LOC-009', title = 'Right-to-left interface', description = 'Arabic mirrors the whole interface, and nodes with a direction of their own keep it.', module = 'direction'},
+        {code = 'LOC-010', title = 'Numbers, dates and lists', description = 'Decimals, percentages, amounts, compact numbers, dates in every style, lists and the plural and ordinal categories of ten languages.', module = 'formats'},
     },
 }

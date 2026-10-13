@@ -111,6 +111,7 @@ set(HAYLEN_TEST_SOURCES
   input/InputTests.cpp
   input/PointerEmulationTests.cpp
   io/IoTests.cpp
+  localization/FormatTests.cpp
   localization/LocalizationTests.cpp
   lua/AssetsLuaTests.cpp
   lua/BufferLuaTests.cpp

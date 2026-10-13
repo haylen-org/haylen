@@ -71,9 +71,9 @@ TEST_F(CatalogTest, FallsBackAndMergesLanguages) {
 
 TEST_F(CatalogTest, HandlesBracesAndGroupsThatLookLikePlurals) {
     Catalog catalog;
-    catalog.add("en", core::Json::parse(R"({"note": "{{literal}} {missing} {flag} {n} {oops", "odd": {"few": "a", "other": "b"}})"));
+    catalog.add("en", core::Json::parse(R"({"note": "{{literal}} {missing} {flag} {n} {oops", "odd": {"several": "a", "other": "b"}})"));
     EXPECT_EQ(catalog.getText("note", {{"flag", true}, {"n", 3}}), "{literal} {missing} true 3 {oops");
-    EXPECT_EQ(catalog.getText("odd.few"), "a");
+    EXPECT_EQ(catalog.getText("odd.several"), "a");
     EXPECT_EQ(catalog.getText("odd.other"), "b");
     EXPECT_FALSE(catalog.has("odd"));
 

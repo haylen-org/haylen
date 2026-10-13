@@ -1,4 +1,4 @@
--- A key whose table holds `zero`, `one` and `other` texts is a plural form, and the `count` argument picks the text: `zero` for 0 and `one` for 1 when the form has them, `other` for everything else. Japanese counts without a singular, so its forms have no `one` text.
+-- A key whose table holds texts of plural categories is a plural form, and the `count` argument picks the text by the plural rules of the language: `zero` for 0 when the form has it, then the category of the count when the form has it, and `other` otherwise. Japanese counts without a singular, so its forms have no `one` text.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local ui = require('haylen.ui')
@@ -18,10 +18,8 @@ local function form(forms, count)
     if count == 0 and forms.zero then
         return 'zero'
     end
-    if count == 1 and forms.one then
-        return 'one'
-    end
-    return 'other'
+    local category = localization.pluralCategory(count)
+    return forms[category] and category or 'other'
 end
 
 function Plurals:init(entry)

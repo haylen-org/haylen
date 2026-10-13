@@ -385,7 +385,12 @@ set(HAYLEN_ENGINE_SOURCES
   src/io/ZipPackage.cpp
   src/io/ZipReader.cpp
   src/localization/Catalog.cpp
+  src/localization/DateFormat.cpp
+  src/localization/ListFormat.cpp
+  src/localization/LocaleData.cpp
   src/localization/LocalizationLua.cpp
+  src/localization/NumberFormat.cpp
+  src/localization/PluralRules.cpp
   src/lua/Application.cpp
   src/lua/Autoloads.cpp
   src/lua/Binding.cpp

@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -18,7 +19,7 @@ class Catalog final {
     // The entry of a language table that declares the direction its language writes in, `leftToRight` or `rightToLeft`.
     static constexpr std::string_view kDirectionKey = "@direction";
 
-    // Adds or merges a language table. Nested objects become dotted keys, and an object with only `zero`, `one` and `other` texts, and always `other`, is a plural form. The `@direction` entry declares the direction of the language, which is left to right until a table declares otherwise.
+    // Adds or merges a language table. Nested objects become dotted keys, and an object whose keys are only plural categories, `zero`, `one`, `two`, `few`, `many` and `other`, with always `other`, is a plural form. The `@direction` entry declares the direction of the language, which is left to right until a table declares otherwise.
     void add(const std::string& name, const core::Json& table);
 
     void setLanguage(std::string_view value);
@@ -36,7 +37,7 @@ class Catalog final {
 
     [[nodiscard]] bool has(std::string_view key) const;
 
-    // Replaces `{name}` placeholders with the arguments, and `{{` and `}}` with single braces. A `count` argument picks the plural form: `zero` for 0 when present, `one` for 1 and `other` for anything else.
+    // Replaces `{name}` placeholders with the arguments, and `{{` and `}}` with single braces. A `count` argument picks the plural form by the plural rules of the language that holds the text, an `ordinal` argument of `true` picks it by the ordinal rules, a `zero` form takes a count of 0 whatever the rules say, and a form that the entry lacks falls back to `other`.
     [[nodiscard]] std::string getText(std::string_view key, const core::Json& arguments = core::Json::object()) const;
 
     // Returns the loaded language that best matches a BCP 47 tag, trying the exact tag and then the same base language, as `pt` for `pt-BR` or `pt-BR` for `pt`.
@@ -45,7 +46,7 @@ class Catalog final {
   private:
     using Table = std::map<std::string, core::Json, std::less<>>;
 
-    // A plural form holds only `zero`, `one` and `other` texts, and always `other`.
+    // A plural form holds only texts of plural categories, and always `other`.
     [[nodiscard]] static bool isPlural(const core::Json& value);
     static void flatten(const core::Json& table, const std::string& prefix, Table& entries);
     [[nodiscard]] static std::string normalizeTag(std::string_view tag);
@@ -53,7 +54,8 @@ class Catalog final {
     [[nodiscard]] static std::string formatArgument(const core::Json& value);
     [[nodiscard]] static std::string format(std::string_view pattern, const core::Json& arguments);
 
-    [[nodiscard]] const core::Json* find(std::string_view key) const;
+    // Returns the entry and the language that holds it.
+    [[nodiscard]] std::pair<const core::Json*, const std::string*> find(std::string_view key) const;
     void requireLanguage(std::string_view name) const;
 
     std::map<std::string, Table, std::less<>> tables;

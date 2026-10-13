@@ -582,6 +582,7 @@ Translated text in six languages with arguments, plurals, nested keys, a fallbac
 | `LOC-007` | Fonts per language | One font family whose fallbacks draw Japanese in every component. |  |
 | `LOC-008` | Layout follows the text | Buttons and paragraphs that measure again when the language changes. |  |
 | `LOC-009` | Right-to-left interface | Arabic mirrors the whole interface, and nodes with a direction of their own keep it. |  |
+| `LOC-010` | Numbers, dates and lists | Decimals, percentages, amounts, compact numbers, dates in every style, lists and the plural and ordinal categories of ten languages. |  |
 
 #### Native libraries (NAT)
 

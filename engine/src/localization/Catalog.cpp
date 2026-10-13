@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/localization/PluralRules.hpp"
 #include "haylen/text/Style.hpp"
 
 namespace haylen::localization {
@@ -15,7 +16,7 @@ bool Catalog::isPlural(const core::Json& value) {
         return false;
     }
     for (const auto& [form, text] : value.items()) {
-        if ((form != "zero" && form != "one" && form != "other") || !text.is_string()) {
+        if (!PluralRules::categoryFromName(form) || !text.is_string()) {
             return false;
         }
     }
@@ -150,7 +151,7 @@ text::Direction Catalog::getDirection(std::string_view name) const {
     return found != directions.end() ? found->second : text::Direction::LeftToRight;
 }
 
-const core::Json* Catalog::find(std::string_view key) const {
+std::pair<const core::Json*, const std::string*> Catalog::find(std::string_view key) const {
     for (const std::string* candidate : {&language, &fallback}) {
         const auto found = tables.find(*candidate);
         if (found == tables.end()) {
@@ -158,21 +159,21 @@ const core::Json* Catalog::find(std::string_view key) const {
         }
         const auto entry = found->second.find(key);
         if (entry != found->second.end()) {
-            return &entry->second;
+            return {&entry->second, candidate};
         }
     }
-    return nullptr;
+    return {nullptr, nullptr};
 }
 
 bool Catalog::has(std::string_view key) const {
-    return find(key) != nullptr;
+    return find(key).first != nullptr;
 }
 
 std::string Catalog::getText(std::string_view key, const core::Json& arguments) const {
     if (!arguments.is_object()) {
         throw std::invalid_argument("Localization arguments must be a JSON object.");
     }
-    const core::Json* entry = find(key);
+    const auto [entry, entryLanguage] = find(key);
     if (entry == nullptr) {
         return std::string(key);
     }
@@ -180,14 +181,18 @@ std::string Catalog::getText(std::string_view key, const core::Json& arguments) 
         return format(entry->get_ref<const std::string&>(), arguments);
     }
 
-    std::string form = "other";
+    // The rules of the language the text comes from pick the form, a `zero` form always takes a count of 0, and a form the entry lacks falls back to `other`.
+    std::string_view form = "other";
     const auto count = arguments.find("count");
     if (count != arguments.end() && count->is_number()) {
         const double value = count->get<double>();
-        if (value == 0.0 && entry->contains("zero")) {
+        const auto ordinal = arguments.find("ordinal");
+        const bool ranks = ordinal != arguments.end() && ordinal->is_boolean() && ordinal->get<bool>();
+        const PluralRules::Category category = ranks ? PluralRules::selectOrdinal(*entryLanguage, value) : PluralRules::select(*entryLanguage, value);
+        if (value == 0.0 && !ranks && entry->contains("zero")) {
             form = "zero";
-        } else if (value == 1.0 && entry->contains("one")) {
-            form = "one";
+        } else if (entry->contains(PluralRules::categoryName(category))) {
+            form = PluralRules::categoryName(category);
         }
     }
     return format(entry->at(form).get_ref<const std::string&>(), arguments);
