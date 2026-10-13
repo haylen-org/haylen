@@ -20,6 +20,16 @@ namespace haylen::audio {
 
 const Mixer::PlayOptions Mixer::kDefaultPlayOptions{};
 const Mixer::MusicOptions Mixer::kDefaultMusicOptions{};
+const std::array<std::pair<std::string_view, Mixer::Limit::Steal>, 3> Mixer::Limit::kStealNames{{{"oldest", Steal::Oldest}, {"quietest", Steal::Quietest}, {"none", Steal::None}}};
+
+std::optional<Mixer::Limit::Steal> Mixer::Limit::stealFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kStealNames, name, &std::pair<std::string_view, Steal>::first);
+    return found != kStealNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Mixer::Limit::stealName(Steal value) noexcept {
+    return std::ranges::find(kStealNames, value, &std::pair<std::string_view, Steal>::second)->first;
+}
 
 float Mixer::Spatialization::getGain(float distance) const noexcept {
     const float clamped = std::clamp(distance, minDistance, maxDistance);
@@ -173,12 +183,32 @@ void Mixer::stop(VoiceId id, float fadeOutSeconds) {
     if (voice == nullptr) {
         return;
     }
-    voice->stopped = true;
-    if (fadeOutSeconds > 0.0F) {
-        ma_sound_stop_with_fade_in_milliseconds(&voice->handle, MixerState::toMilliseconds(fadeOutSeconds));
+    state->fadeOut(*voice, fadeOutSeconds);
+}
+
+void Mixer::setLimit(const Sound& sound, const Limit& limit) {
+    if (!sound.isValid()) {
+        throw std::invalid_argument("Cannot limit an empty sound.");
+    }
+    if (!(limit.cooldown >= 0.0F) || !std::isfinite(limit.cooldown)) {
+        throw std::invalid_argument("The cooldown of a sound must be a finite number of seconds from 0.");
+    }
+    const SoundData* data = sound.getData().get();
+    if (limit.voices == 0 && limit.cooldown == 0.0F) {
+        state->limits.erase(data);
         return;
     }
-    ma_sound_stop(&voice->handle);
+    MixerState::Limited& limited = state->limits[data];
+    limited.sound = sound.getData();
+    limited.limit = limit;
+}
+
+std::optional<Mixer::Limit> Mixer::getLimit(const Sound& sound) const {
+    if (!sound.isValid()) {
+        return std::nullopt;
+    }
+    const MixerState::Limited* limited = state->findLimit(sound);
+    return limited != nullptr ? std::optional(limited->limit) : std::nullopt;
 }
 
 void Mixer::setPaused(VoiceId id, bool paused) {
@@ -420,10 +450,10 @@ std::vector<Mixer::BusStats> Mixer::getBusStats() const {
                 continue;
             }
             ++entry.voices;
-            if (ma_sound_is_playing(&voice->handle) == MA_TRUE) {
-                ++entry.playing;
-            } else if (!voice->stopped && voice->isHeld()) {
+            if (!voice->stopped && voice->isHeld()) {
                 ++entry.paused;
+            } else if (ma_sound_is_playing(&voice->handle) == MA_TRUE) {
+                ++entry.playing;
             }
         }
         stats.push_back(std::move(entry));
@@ -525,6 +555,7 @@ bool Mixer::isInterrupted() const noexcept {
 void Mixer::update(float deltaSeconds) {
     // A device that opened starts playing, and device events go out first, so the listeners that pause or resume the mixer act before the voices refresh. A listener that fails keeps neither the other events nor the voices from their update, and its failure comes out last.
     state->output.update(deltaSeconds);
+    state->clock += static_cast<double>(std::max(deltaSeconds, 0.0F));
     std::exception_ptr failure;
     for (const DeviceEvent event : state->output.takeEvents()) {
         try {

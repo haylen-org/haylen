@@ -362,14 +362,89 @@ TEST_F(MixerTest, StealsTheOldestVoiceWhenFull) {
     for (int index = 0; index < 8; ++index) {
         voices.push_back(mixer.play(sound));
     }
-    EXPECT_EQ(mixer.getVoiceCount(), 8U);
     EXPECT_TRUE(mixer.getMusic().isValid());
     EXPECT_FALSE(mixer.isActive(voices[0]));
     EXPECT_TRUE(mixer.isActive(voices[7]));
 
+    // The stolen voice fades out over the declick ramp before it leaves.
+    peak(toFrames(Mixer::kDeclickSeconds) + 1024);
+    mixer.update(1.0F / 60.0F);
+    EXPECT_EQ(mixer.getVoiceCount(), 8U);
     mixer.stopAll();
+    peak(toFrames(Mixer::kDeclickSeconds) + 1024);
     mixer.update(1.0F / 60.0F);
     EXPECT_EQ(mixer.getVoiceCount(), 0U);
+}
+
+TEST_F(MixerTest, LimitsTheVoicesOfOneSound) {
+    const Sound coin = makeTone(toFrames(1.0F));
+    const Sound other = makeTone(toFrames(1.0F));
+    mixer.setLimit(coin, {.voices = 3});
+    const Mixer::VoiceId first = mixer.play(coin, {.volume = 0.2F});
+    const Mixer::VoiceId second = mixer.play(coin, {.volume = 0.9F});
+    const Mixer::VoiceId third = mixer.play(coin, {.volume = 0.1F});
+    const Mixer::VoiceId kept = mixer.play(other);
+    const Mixer::VoiceId fourth = mixer.play(coin);
+    EXPECT_FALSE(mixer.isActive(first));
+    EXPECT_TRUE(mixer.isActive(second) && mixer.isActive(third) && mixer.isActive(fourth) && mixer.isActive(kept));
+
+    // The quietest voice of the sound goes first, and a limit that steals nothing starts nothing.
+    mixer.setLimit(coin, {.voices = 3, .steal = Mixer::Limit::Steal::Quietest});
+    const Mixer::VoiceId fifth = mixer.play(coin);
+    EXPECT_FALSE(mixer.isActive(third));
+    EXPECT_TRUE(mixer.isActive(second));
+    mixer.setLimit(coin, {.voices = 3, .steal = Mixer::Limit::Steal::None});
+    EXPECT_FALSE(mixer.isActive(mixer.play(coin)));
+    EXPECT_TRUE(mixer.isActive(fifth));
+    EXPECT_EQ(mixer.getLimit(coin)->steal, Mixer::Limit::Steal::None);
+
+    // A play within the cooldown starts nothing, and one after it plays.
+    mixer.stopAll();
+    mixer.setLimit(coin, {.cooldown = 0.03F});
+    mixer.update(0.04F);
+    EXPECT_TRUE(mixer.isActive(mixer.play(coin)));
+    EXPECT_FALSE(mixer.isActive(mixer.play(coin)));
+    mixer.update(0.04F);
+    EXPECT_TRUE(mixer.isActive(mixer.play(coin)));
+    mixer.setLimit(coin, {});
+    EXPECT_FALSE(mixer.getLimit(coin).has_value());
+    EXPECT_THROW(mixer.setLimit(Sound{}, {.voices = 1}), std::invalid_argument);
+    EXPECT_THROW(mixer.setLimit(coin, {.cooldown = -1.0F}), std::invalid_argument);
+}
+
+TEST_F(MixerTest, StealsTheLowestPriorityFirst) {
+    const Sound sound = makeTone(toFrames(1.0F));
+    std::vector<Mixer::VoiceId> voices;
+    for (int index = 0; index < 8; ++index) {
+        voices.push_back(mixer.play(sound, {.priority = index == 5 ? std::uint8_t{10} : std::uint8_t{200}}));
+    }
+    const Mixer::VoiceId important = mixer.play(sound, {.priority = 250});
+    EXPECT_FALSE(mixer.isActive(voices[5]));
+    EXPECT_TRUE(mixer.isActive(voices[0]));
+    EXPECT_TRUE(mixer.isActive(important));
+}
+
+TEST_F(MixerTest, StopsAndPausesWithoutDiscontinuities) {
+    const Mixer::VoiceId voice = mixer.play(makeSine(440.0F), {.loop = true});
+    peak(toFrames(0.1F));
+    // clang-format off
+    const auto largestStep = [this](std::size_t frames) {
+        const std::vector<float> samples = renderLeft(frames);
+        float largest = 0.0F;
+        for (std::size_t index = 1; index < samples.size(); ++index) {
+            largest = std::max(largest, std::abs(samples[index] - samples[index - 1]));
+        }
+        return largest;
+    };
+    // clang-format on
+
+    // A sine of 440 hertz at 0.5 moves less than 0.03 between two samples, and a cut far from zero would jump by up to 0.5.
+    mixer.setPaused(voice, true);
+    EXPECT_LT(largestStep(2048), 0.04F);
+    mixer.setPaused(voice, false);
+    EXPECT_LT(largestStep(2048), 0.04F);
+    mixer.stop(voice);
+    EXPECT_LT(largestStep(2048), 0.04F);
 }
 
 TEST_F(MixerTest, ManagesBusesAndRejectsInvalidUse) {
@@ -471,6 +546,13 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     fixture.runLua("audio.setListener(5, 6) audio.setSpatialization({minDistance = 10, maxDistance = 20})");
     EXPECT_EQ(fixture.lua("local x, y = audio.listener() return x .. ',' .. y"), "5.0,6.0");
 
+    EXPECT_EQ(fixture.lua("audio.setLimit(hit, {voices = 2, cooldown = 0.5, steal = 'quietest'}) local limit = audio.limit(hit) return limit.voices .. ' ' .. limit.cooldown .. ' ' .. limit.steal"), "2 0.5 quietest");
+    EXPECT_EQ(fixture.lua("local first = audio.play(hit, {priority = 255}) local second = audio.play(hit) return tostring(audio.active(first)) .. ' ' .. tostring(audio.active(second))"), "true false");
+    EXPECT_EQ(fixture.lua("audio.setLimit(hit, {}) return audio.limit(hit)"), "nil");
+    EXPECT_NE(fixture.lua("audio.setLimit(hit, {steal = 'newest'})").find("The \"steal\" of a sound limit must be \"oldest\", \"quietest\" or \"none\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.setLimit(hit, {voice = 1})").find("Unknown option \"voice\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.setLimit(hit, {cooldown = -1})").find("The cooldown of a sound must be a finite number of seconds from 0."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.play(hit, {priority = 300})").find("The priority of a voice runs from 0 to 255."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play(hit, {volumen = 1})").find("Unknown option \"volumen\""), std::string::npos);
     EXPECT_NE(fixture.lua("audio.playMusic(theme, {crossfade = 1})").find("Unknown option \"crossfade\""), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play('hit')").find("error: "), std::string::npos);

@@ -61,7 +61,9 @@ The options are `bus`, `volume`, `pitch`, `pitchVariation`, `pan`, `loop`, `fade
 - A paused voice keeps its cursor and still counts as active, while a stopped voice stops counting as active at once, even while it fades out.
 - Volumes, pitches, pans and positions must be finite numbers, and pitches above 0, so a stray `0 / 0` raises an error instead of silencing a bus and its effects for good.
 - The engine releases finished voices once per frame, and `audio.voiceCount()` counts a voice that just ended until then.
-- At most 128 voices play at once. When the limit is reached, a new voice stops the oldest voice that is not music.
+- At most 128 voices play at once. When the limit is reached, a new voice stops a voice that is not music: the one of the lowest `priority`, from 0 to 255 and 128 by default, then the quietest of those and then the oldest.
+- The function `audio.setLimit(sound, {voices, cooldown, steal})` bounds one sound: how many of its voices play at once, the seconds between two of its plays, and whether a play beyond the bound stops its oldest or quietest voice or starts nothing, so sounds that many objects trigger in one frame never stack into a blast.
+- Every stop, pause and steal fades over a few milliseconds at least, `Mixer::kDeclickSeconds`, so cutting a waveform far from zero never clicks, and a resumed voice fades in over the same ramp.
 - The function `audio.stopAll(fadeOut)` stops every voice, music included.
 
 ### Pitch variation
@@ -354,7 +356,7 @@ Browsers keep audio silent until the player interacts with the page. The runtime
 
 An app never stops because it has no audio output. A computer without an audio device, an iOS audio session that another app holds, or a web page served over plain http, where the browser offers no `AudioWorklet`, leaves the mixer without an output. The app runs as usual, the log writes one warning with the reason, and `audio.outputAvailable()` returns `false`, so an app can tell the player that its sound is off.
 
-Without an output the mixer keeps time itself. Every frame it mixes the seconds that passed and throws the samples away, so voices play to their end, loops repeat, fades and music crossfades finish, effect tails ring out, the voice limit stops the oldest voice and positional voices follow the listener, exactly as they would out loud. Time stands still for the audio while the app is in the background or an interruption holds it, as it does with an output.
+Without an output the mixer keeps time itself. Every frame it mixes the seconds that passed and throws the samples away, so voices play to their end, loops repeat, fades and music crossfades finish, effect tails ring out, the voice limit stops a voice of the lowest priority and positional voices follow the listener, exactly as they would out loud. Time stands still for the audio while the app is in the background or an interruption holds it, as it does with an output.
 
 An interruption that ends while the system still refuses the audio ends all the same: the voices resume, the engine publishes `audioResumed`, the log warns once and the app goes on without an output. Whenever the app becomes active and whenever an interruption ends, the engine tries again to open the output, without warning again, so the sound comes back as soon as the system offers it.
 

@@ -300,12 +300,13 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
 | `AUD-001` | Music | Two streamed tracks with crossfades of any length, looping or played once, started partway, paused, resumed and moved through with the cursor of their voice. |  |
-| `AUD-002` | One-shot effects | Volume, pitch, pitch variation, pan, fades and a limit of voices per sound. |  |
+| `AUD-002` | One-shot effects | Volume, pitch, pitch variation, pan, fades and the limit of voices of each sound. |  |
 | `AUD-003` | Buses | The bus tree with volumes, mutes and process modes, and what the game pause stops. |  |
 | `AUD-004` | Effects | Every filter, the delay and the reverb on a bus or on a voice, with tweened parameters. |  |
 | `AUD-005` | Positional audio | Sounds in the world around a listener that follows the camera, with fade models, panning and Doppler. |  |
 | `AUD-006` | Interruptions and lifecycle | Audio interruptions, route changes and app states as they happen, and what the background does to the sound. |  |
 | `AUD-007` | Many voices | Bursts and rain of voices up to the limit of 128, with the statistics of every bus. |  |
+| `AUD-008` | Voice limits | A hundred coins with and without the limit of their sound, a line whose priority outlasts bursts that fill every voice, and a tone that stops and resumes quickly without clicks. |  |
 
 #### Events (EVT)
 

@@ -63,6 +63,13 @@ Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index, std::span<
             lua::Table::readValue(L, key, options.processMode);
         } else if (key == "effects") {
             options.effects = readEffects(L);
+        } else if (key == "priority") {
+            int priority = 0;
+            lua::Table::readValue(L, key, priority);
+            if (priority < 0 || priority > 255) {
+                luaL_error(L, "The priority of a voice runs from 0 to 255.");
+            }
+            options.priority = static_cast<std::uint8_t>(priority);
         } else if (key == "x") {
             lua::Table::readValue(L, key, x.emplace());
         } else if (key == "y") {
@@ -160,6 +167,43 @@ int AudioLua::play(lua_State* L) {
 int AudioLua::stop(lua_State* L) {
     getMixer(L).stop(lua::Stack::read<Mixer::VoiceId>(L, 1), static_cast<float>(luaL_optnumber(L, 2, 0.0)));
     return 0;
+}
+
+// Limits a sound with `setLimit(sound, {voices = 4, cooldown = 0.03, steal = 'oldest'})`, where no voices and no cooldown remove the limit.
+int AudioLua::setLimit(lua_State* L) {
+    const Sound sound = lua::Stack::read<Sound>(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    lua::Table::checkFields(L, 2, {kLimitFields});
+    Mixer::Limit limit;
+    lua::Table::readField(L, 2, "voices", limit.voices);
+    lua::Table::readField(L, 2, "cooldown", limit.cooldown);
+    std::string steal;
+    lua::Table::readField(L, 2, "steal", steal);
+    if (!steal.empty()) {
+        const std::optional<Mixer::Limit::Steal> found = Mixer::Limit::stealFromName(steal);
+        if (!found) {
+            return luaL_error(L, "The \"steal\" of a sound limit must be \"oldest\", \"quietest\" or \"none\".");
+        }
+        limit.steal = *found;
+    }
+    getMixer(L).setLimit(sound, limit);
+    return 0;
+}
+
+int AudioLua::limit(lua_State* L) {
+    const std::optional<Mixer::Limit> found = getMixer(L).getLimit(lua::Stack::read<Sound>(L, 1));
+    if (!found) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_createtable(L, 0, 3);
+    lua_pushinteger(L, static_cast<lua_Integer>(found->voices));
+    lua_setfield(L, -2, "voices");
+    lua::Stack::push(L, found->cooldown);
+    lua_setfield(L, -2, "cooldown");
+    lua::Stack::push(L, Mixer::Limit::stealName(found->steal));
+    lua_setfield(L, -2, "steal");
+    return 1;
 }
 
 int AudioLua::pause(lua_State* L) {
@@ -495,7 +539,7 @@ int AudioLua::soundDuration(lua_State* L) {
 
 int AudioLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newSound", &lua::Binding::native<&newSound>}, {"play", &lua::Binding::native<&play>}, {"stop", &lua::Binding::native<&stop>}, {"pause", &lua::Binding::native<&pause>}, {"resume", &lua::Binding::native<&resume>}, {"paused", &lua::Binding::native<&paused>}, {"setVolume", &lua::Binding::native<&setVolume>}, {"setPitch", &lua::Binding::native<&setPitch>}, {"pitch", &lua::Binding::native<&pitch>}, {"seedVariation", &lua::Binding::native<&seedVariation>}, {"setPan", &lua::Binding::native<&setPan>}, {"setPosition", &lua::Binding::native<&setPosition>}, {"processMode", &lua::Binding::native<&processMode>}, {"active", &lua::Binding::native<&active>}, {"cursor", &lua::Binding::native<&cursor>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"stopAll", &lua::Binding::native<&stopAll>}, {"voiceCount", &voiceCount}, {"pauseAll", &pauseAll}, {"resumeAll", &resumeAll}, {"interrupted", &interrupted}, {"newEffect", &lua::Binding::native<&EffectLua::newEffect>}, {"addEffect", &lua::Binding::native<&addEffect>}, {"removeEffect", &lua::Binding::native<&removeEffect>}, {"effects", &lua::Binding::native<&effects>}, {"playMusic", &lua::Binding::native<&playMusic>}, {"stopMusic", &lua::Binding::native<&stopMusic>}, {"music", &music}, {"createBus", &lua::Binding::native<&createBus>}, {"setBusVolume", &lua::Binding::native<&setBusVolume>}, {"busVolume", &lua::Binding::native<&busVolume>}, {"setBusMuted", &lua::Binding::native<&setBusMuted>}, {"busMuted", &lua::Binding::native<&busMuted>}, {"setBusProcessMode", &lua::Binding::native<&setBusProcessMode>}, {"busProcessMode", &lua::Binding::native<&busProcessMode>}, {"addBusEffect", &lua::Binding::native<&addBusEffect>}, {"removeBusEffect", &lua::Binding::native<&removeBusEffect>}, {"busEffects", &lua::Binding::native<&busEffects>}, {"buses", &buses}, {"busStats", &lua::Binding::native<&busStats>}, {"setListener", &lua::Binding::native<&setListener>}, {"listener", &listener}, {"followCamera", &lua::Binding::native<&followCamera>}, {"setSpatialization", &lua::Binding::native<&setSpatialization>}, {"spatialization", &spatialization}, {"sampleRate", &sampleRate}, {"channels", &channels}, {"hasDevice", &hasDevice}, {"outputAvailable", &outputAvailable}, {"outputOpening", &outputOpening}, {"outputMuted", &outputMuted}, {"restartOutput", &lua::Binding::native<&restartOutput>}, {nullptr, nullptr},
+        {"newSound", &lua::Binding::native<&newSound>}, {"play", &lua::Binding::native<&play>}, {"stop", &lua::Binding::native<&stop>}, {"setLimit", &lua::Binding::native<&setLimit>}, {"limit", &lua::Binding::native<&limit>}, {"pause", &lua::Binding::native<&pause>}, {"resume", &lua::Binding::native<&resume>}, {"paused", &lua::Binding::native<&paused>}, {"setVolume", &lua::Binding::native<&setVolume>}, {"setPitch", &lua::Binding::native<&setPitch>}, {"pitch", &lua::Binding::native<&pitch>}, {"seedVariation", &lua::Binding::native<&seedVariation>}, {"setPan", &lua::Binding::native<&setPan>}, {"setPosition", &lua::Binding::native<&setPosition>}, {"processMode", &lua::Binding::native<&processMode>}, {"active", &lua::Binding::native<&active>}, {"cursor", &lua::Binding::native<&cursor>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"stopAll", &lua::Binding::native<&stopAll>}, {"voiceCount", &voiceCount}, {"pauseAll", &pauseAll}, {"resumeAll", &resumeAll}, {"interrupted", &interrupted}, {"newEffect", &lua::Binding::native<&EffectLua::newEffect>}, {"addEffect", &lua::Binding::native<&addEffect>}, {"removeEffect", &lua::Binding::native<&removeEffect>}, {"effects", &lua::Binding::native<&effects>}, {"playMusic", &lua::Binding::native<&playMusic>}, {"stopMusic", &lua::Binding::native<&stopMusic>}, {"music", &music}, {"createBus", &lua::Binding::native<&createBus>}, {"setBusVolume", &lua::Binding::native<&setBusVolume>}, {"busVolume", &lua::Binding::native<&busVolume>}, {"setBusMuted", &lua::Binding::native<&setBusMuted>}, {"busMuted", &lua::Binding::native<&busMuted>}, {"setBusProcessMode", &lua::Binding::native<&setBusProcessMode>}, {"busProcessMode", &lua::Binding::native<&busProcessMode>}, {"addBusEffect", &lua::Binding::native<&addBusEffect>}, {"removeBusEffect", &lua::Binding::native<&removeBusEffect>}, {"busEffects", &lua::Binding::native<&busEffects>}, {"buses", &buses}, {"busStats", &lua::Binding::native<&busStats>}, {"setListener", &lua::Binding::native<&setListener>}, {"listener", &listener}, {"followCamera", &lua::Binding::native<&followCamera>}, {"setSpatialization", &lua::Binding::native<&setSpatialization>}, {"spatialization", &spatialization}, {"sampleRate", &sampleRate}, {"channels", &channels}, {"hasDevice", &hasDevice}, {"outputAvailable", &outputAvailable}, {"outputOpening", &outputOpening}, {"outputMuted", &outputMuted}, {"restartOutput", &lua::Binding::native<&restartOutput>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

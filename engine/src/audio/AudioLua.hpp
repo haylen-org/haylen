@@ -45,7 +45,7 @@ namespace haylen::audio {
 // Installs `haylen.audio`, which plays sounds and music through the mixer buses, and the `Sound` class.
 class AudioLua final {
   public:
-    static constexpr std::array<std::string_view, 12> kPlayFields{"bus", "volume", "pitch", "pitchVariation", "pan", "loop", "fadeIn", "startAt", "x", "y", "processMode", "effects"};
+    static constexpr std::array<std::string_view, 13> kPlayFields{"bus", "volume", "pitch", "pitchVariation", "pan", "loop", "fadeIn", "startAt", "x", "y", "processMode", "effects", "priority"};
 
     static void install(lua_State* L);
 
@@ -53,6 +53,7 @@ class AudioLua final {
     [[nodiscard]] static Mixer::PlayOptions readPlayOptions(lua_State* L, int index, std::span<const std::string_view> fields);
 
   private:
+    static constexpr std::array<std::string_view, 3> kLimitFields{"voices", "cooldown", "steal"};
     static constexpr std::array<std::string_view, 5> kMusicFields{"bus", "volume", "fade", "loop", "startAt"};
     static constexpr std::array<std::string_view, 4> kSoundFields{"stream", "format", "sampleRate", "channels"};
     static constexpr std::array<std::string_view, 7> kSpatializationFields{"model", "minDistance", "maxDistance", "rolloff", "panDistance", "doppler", "speedOfSound"};
@@ -71,6 +72,8 @@ class AudioLua final {
 
     static int play(lua_State* L);
     static int stop(lua_State* L);
+    static int setLimit(lua_State* L);
+    static int limit(lua_State* L);
     static int pause(lua_State* L);
     static int resume(lua_State* L);
     static int paused(lua_State* L);

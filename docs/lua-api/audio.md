@@ -10,7 +10,7 @@ local audio = require('haylen.audio')
 
 Sounds are assets loaded through [`haylen.assets`](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option never reads the file whole: the sound reads its file in ranges and each voice decodes it while it plays, keeping only a bounded window of encoded bytes and about a second of decoded frames, which a protected release decrypts chunk by chunk, so music of any length plays in the same small memory, as the [audio guide](../audio.md#streamed-sounds) describes.
 
-Every call to `audio.play()` starts a new voice and returns its id, an integer, and `audio.playMusic()` returns the id of the voice of the music track. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor. Calls with the id of a voice that already finished do nothing, so an app never has to check a voice before stopping it. At most 128 voices play at once, and a new voice stops the oldest voice that is not music when the limit is reached.
+Every call to `audio.play()` starts a new voice and returns its id, an integer, and `audio.playMusic()` returns the id of the voice of the music track. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor. Calls with the id of a voice that already finished do nothing, so an app never has to check a voice before stopping it. At most 128 voices play at once. When the limit is reached, a new voice stops a voice that is not music, the one of the lowest `priority`, the quietest of those and then the oldest, and [`audio.setLimit()`](#audiosetlimitsound-limit) bounds the voices and the plays of one sound. Every stop, pause and steal fades over a few milliseconds at least, so a waveform cut far from zero never clicks.
 
 ```lua
 local assets = require('haylen.assets')
@@ -85,8 +85,9 @@ Starts a voice for the sound and returns its id. The options table is optional, 
 | `x`, `y` | number | none | World position of the voice. Giving either one makes the voice positional, and the missing one defaults to 0. |
 | `processMode` | string | `'inherit'` | One of `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. The mode `'inherit'` takes the mode of the bus. |
 | `effects` | table | none | A list of effects from `audio.newEffect` that process the voice in order before its bus. |
+| `priority` | integer | `128` | From 0 to 255. When every voice plays, a new voice stops the voice of the lowest priority first, so dialogue and interface sounds outlast sounds that matter less. |
 
-An unknown bus raises `The audio bus "<name>" does not exist.`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option "effects" must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, a `fadeIn` below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
+An unknown bus raises `The audio bus "<name>" does not exist.`, a priority outside 0 to 255 raises `The priority of a voice runs from 0 to 255.`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option "effects" must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, a `fadeIn` below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
 
 ```lua
 local assets = require('haylen.assets')
@@ -104,7 +105,7 @@ audio.play(click, {bus = 'ui', processMode = 'always', effects = {audio.newEffec
 
 ### audio.stop(voice, fadeOut)
 
-Stops a voice, fading it out over `fadeOut` seconds when given. The fade defaults to 0, and a fade below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, as it does for every fade of this module.
+Stops a voice, fading it out over `fadeOut` seconds when given. The fade defaults to 0, which still ramps the voice down over a few milliseconds so it never clicks, and its effects stay with it until the ramp ends. A fade a fade below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, as it does for every fade of this module.
 
 ```lua
 local assets = require('haylen.assets')
@@ -112,6 +113,34 @@ local audio = require('haylen.audio')
 
 local engine = audio.play(assets.load('sfx/engine.wav'), {loop = true})
 audio.stop(engine, 0.5)
+```
+
+### audio.setLimit(sound, limit)
+
+Bounds the voices and the plays of one sound with `{voices, cooldown, steal}`: how many voices of the sound play at once, 0 for no bound, the seconds of app time between two plays, 0 by default, and what a play beyond the voices does, `'oldest'` to stop the oldest voice of the sound, the default, `'quietest'` to stop the quietest one, or `'none'` to start nothing. A play that the limit refuses returns the id of a voice that already finished, so the calls that follow it do nothing. Fifty coins collected in one frame then play as a few voices instead of a deafening blast. A limit without voices and without a cooldown removes the limit, and a limit lasts while the sound exists. A bad `steal` raises `The "steal" of a sound limit must be "oldest", "quietest" or "none".` and a negative cooldown `The cooldown of a sound must be a finite number of seconds from 0.`.
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+
+local coin = assets.load('sfx/coin.wav')
+audio.setLimit(coin, {voices = 4, cooldown = 0.03, steal = 'oldest'})
+for _ = 1, 50 do
+    audio.play(coin, {pitchVariation = 0.05})
+end
+```
+
+### audio.limit(sound)
+
+Returns the limit of a sound as `{voices, cooldown, steal}`, or `nil` when it has none.
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+
+local coin = assets.load('sfx/coin.wav')
+audio.setLimit(coin, {voices = 4})
+print(audio.limit(coin).voices)
 ```
 
 ### audio.pause(voice)
@@ -931,6 +960,9 @@ end)
 | Message | Cause |
 | --- | --- |
 | `Unknown option "<key>".` | An options table has a key the call does not accept. |
+| `The priority of a voice runs from 0 to 255.` | The function `audio.play()` received a `priority` outside that range. |
+| `The "steal" of a sound limit must be "oldest", "quietest" or "none".` | The function `audio.setLimit()` received another `steal`. |
+| `The cooldown of a sound must be a finite number of seconds from 0.` | The function `audio.setLimit()` received a negative cooldown or one that is not finite. |
 | `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.` | The function `audio.newSound()` received bytes that are no sound file. |
 | `Audio data contains no samples.` | The function `audio.newSound()` received a file or raw samples that hold no sample. |
 | `Raw audio needs a sample rate and channels.` | The function `audio.newSound()` received raw samples without a `sampleRate` or `channels`. |

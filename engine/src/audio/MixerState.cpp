@@ -74,6 +74,7 @@ std::unique_ptr<MixerState::Voice> MixerState::createVoice(const Mixer::PlayOpti
     voice->bus = &bus;
     voice->processMode = options.processMode;
     voice->volume = options.volume;
+    voice->priority = options.priority;
     voice->pan = options.pan;
     voice->pitch = options.pitchVariation > 0.0F ? random.range(options.pitch - options.pitchVariation, options.pitch + options.pitchVariation) : options.pitch;
     voice->position = options.position;
@@ -82,6 +83,10 @@ std::unique_ptr<MixerState::Voice> MixerState::createVoice(const Mixer::PlayOpti
 }
 
 Mixer::VoiceId MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* source, const Mixer::PlayOptions& options) {
+    Limited* limited = voice->sound.isValid() ? findLimit(voice->sound) : nullptr;
+    if (limited != nullptr && !admits(*limited)) {
+        return voice->id;
+    }
     if (ma_sound_init_from_data_source(&engine, source, MA_SOUND_FLAG_NO_SPATIALIZATION, &voice->bus->group, &voice->handle) != MA_SUCCESS) {
         throw std::runtime_error("A voice could not be created.");
     }
@@ -98,6 +103,10 @@ Mixer::VoiceId MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* s
         getEffects(*voice).add(effect);
     }
 
+    if (limited != nullptr) {
+        makeRoomFor(*limited);
+        limited->lastPlay = clock;
+    }
     makeRoom();
     apply(*voice);
     refresh(*voice);
@@ -131,14 +140,20 @@ void MixerState::refresh(Voice& voice) {
     }
     voice.started = play;
     if (!play) {
-        ma_sound_stop(&voice.handle);
+        ma_sound_stop_with_fade_in_milliseconds(&voice.handle, toMilliseconds(Mixer::kDeclickSeconds));
         return;
     }
 
-    // Starting a sound at its end would replay it, so a voice that finished while it was held stays finished.
-    if (ma_sound_at_end(&voice.handle) == MA_FALSE) {
-        ma_sound_start(&voice.handle);
+    // Starting a sound at its end would replay it, so a voice that finished while it was held stays finished. A voice that played before comes back with the declick ramp, since its pause scheduled a stop and a fade.
+    if (ma_sound_at_end(&voice.handle) == MA_TRUE) {
+        return;
     }
+    if (voice.everStarted) {
+        ma_sound_reset_stop_time_and_fade(&voice.handle);
+        ma_sound_set_fade_in_milliseconds(&voice.handle, 0.0F, 1.0F, toMilliseconds(Mixer::kDeclickSeconds));
+    }
+    voice.everStarted = true;
+    ma_sound_start(&voice.handle);
 }
 
 void MixerState::refreshAll() {
@@ -241,16 +256,88 @@ void MixerState::spatialize(float deltaSeconds) {
     }
 }
 
-void MixerState::makeRoom() {
-    if (voices.size() < maxVoices) {
+// A voice that something holds already went quiet with its own ramp, so its stop changes nothing more.
+void MixerState::fadeOut(Voice& voice, float seconds) {
+    voice.stopped = true;
+    if (!voice.started) {
         return;
     }
-    auto oldest = std::find_if(voices.begin(), voices.end(), [](const std::unique_ptr<Voice>& voice) { return !voice->music; });
-    if (oldest == voices.end()) {
-        oldest = voices.begin();
+    ma_sound_stop_with_fade_in_milliseconds(&voice.handle, toMilliseconds(std::max(seconds, Mixer::kDeclickSeconds)));
+}
+
+MixerState::Limited* MixerState::findLimit(const Sound& sound) {
+    const auto found = limits.find(sound.getData().get());
+    if (found == limits.end()) {
+        return nullptr;
     }
-    retire(**oldest);
-    voices.erase(oldest);
+    // A limit whose sound went away belongs to no sound, even when new data takes the same address.
+    if (found->second.sound.expired()) {
+        limits.erase(found);
+        return nullptr;
+    }
+    return &found->second;
+}
+
+bool MixerState::admits(const Limited& limited) const {
+    if (limited.lastPlay && clock - *limited.lastPlay < static_cast<double>(limited.limit.cooldown)) {
+        return false;
+    }
+    if (limited.limit.voices == 0 || limited.limit.steal != Mixer::Limit::Steal::None) {
+        return true;
+    }
+    const SoundData* data = limited.sound.lock().get();
+    const auto playing = std::ranges::count_if(voices, [data](const std::unique_ptr<Voice>& voice) { return !voice->stopped && voice->sound.getData().get() == data; });
+    return static_cast<std::size_t>(playing) < limited.limit.voices;
+}
+
+void MixerState::makeRoomFor(Limited& limited) {
+    if (limited.limit.voices == 0) {
+        return;
+    }
+    const SoundData* data = limited.sound.lock().get();
+    for (;;) {
+        Voice* victim = nullptr;
+        std::size_t playing = 0;
+        for (const std::unique_ptr<Voice>& voice : voices) {
+            if (voice->stopped || voice->sound.getData().get() != data) {
+                continue;
+            }
+            ++playing;
+            const bool quieter = victim != nullptr && limited.limit.steal == Mixer::Limit::Steal::Quietest && voice->volume < victim->volume;
+            if (victim == nullptr || quieter) {
+                victim = voice.get();
+            }
+        }
+        if (playing < limited.limit.voices) {
+            return;
+        }
+        fadeOut(*victim, 0.0F);
+    }
+}
+
+void MixerState::makeRoom() {
+    for (;;) {
+        Voice* victim = nullptr;
+        std::size_t playing = 0;
+        for (const std::unique_ptr<Voice>& voice : voices) {
+            if (voice->stopped) {
+                continue;
+            }
+            ++playing;
+            if (victim == nullptr || (victim->music && !voice->music)) {
+                victim = voice.get();
+                continue;
+            }
+            const bool lower = voice->priority < victim->priority || (voice->priority == victim->priority && voice->volume < victim->volume);
+            if (voice->music == victim->music && lower) {
+                victim = voice.get();
+            }
+        }
+        if (playing < maxVoices) {
+            return;
+        }
+        fadeOut(*victim, 0.0F);
+    }
 }
 
 } // namespace haylen::audio

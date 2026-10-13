@@ -25,6 +25,7 @@ class AudioEffectTest : public MixerFixture {
         peak(toFrames(0.1F));
         const float measured = amplitudeOf(renderLeft(toFrames(0.1F)));
         mixer.stop(voice);
+        peak(toFrames(Mixer::kDeclickSeconds) + 1024);
         mixer.update(0.0F);
         return measured;
     }

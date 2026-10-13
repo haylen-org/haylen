@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "audio/Device.hpp"
@@ -69,12 +70,14 @@ struct MixerState {
         float volume = 1.0F;
         float pan = 0.0F;
         float pitch = 1.0F;
+        std::uint8_t priority = Mixer::kDefaultPriority;
         std::optional<math::Vec2> position;
         math::Vec2 lastPosition{};
         math::Vec2 velocity{};
         std::uint8_t holds = 0;
         bool processHeld = false;
         bool started = false;
+        bool everStarted = false;
         bool stopped = false;
         bool music = false;
 
@@ -90,6 +93,13 @@ struct MixerState {
         void setHold(std::uint8_t hold, bool value) noexcept {
             holds = static_cast<std::uint8_t>(value ? holds | hold : holds & ~hold);
         }
+    };
+
+    // The limit of a sound with the app time of its last play. The sound stays a weak reference, so a limit never keeps the data of a sound alive.
+    struct Limited {
+        std::weak_ptr<const SoundData> sound;
+        Mixer::Limit limit;
+        std::optional<double> lastPlay;
     };
 
     // The effects of a finished voice, which keep sounding into its bus until the end frame of the engine clock.
@@ -147,6 +157,18 @@ struct MixerState {
     // Follows the camera, measures the velocities of the listener and of positional voices over the elapsed seconds and applies their spatialization.
     void spatialize(float deltaSeconds);
 
+    // Stops the voice over the fade, at least the declick ramp.
+    void fadeOut(Voice& voice, float seconds);
+
+    [[nodiscard]] Limited* findLimit(const Sound& sound);
+
+    // Whether the limit of the sound lets a new voice play, which it refuses within its cooldown or when its voices are full and it steals none.
+    [[nodiscard]] bool admits(const Limited& limited) const;
+
+    // Stops voices of the limited sound until a new one fits, the oldest or the quietest first.
+    void makeRoomFor(Limited& limited);
+
+    // Stops voices that are not music, the lowest priority first, then the quietest and then the oldest, until a new one fits.
     void makeRoom();
 
     // The output stops reading the engine first thing in the destructor, before the voices, the buses and the engine go.
@@ -159,6 +181,8 @@ struct MixerState {
     std::vector<std::string> busOrder;
     std::vector<std::unique_ptr<Voice>> voices;
     std::vector<Tail> tails;
+    std::unordered_map<const SoundData*, Limited> limits;
+    double clock = 0.0;
     Mixer::VoiceId nextVoice = 1;
     Mixer::VoiceId musicVoice = 0;
     bool outputMuted = false;

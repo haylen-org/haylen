@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -7,6 +8,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/audio/Effect.hpp"
@@ -39,6 +41,10 @@ class Mixer final {
     using VoiceId = std::uint64_t;
 
     static constexpr float kMaxFadeSeconds = 86400.0F;
+    static constexpr std::uint8_t kDefaultPriority = 128;
+
+    // Every stop, pause and steal fades over this long at least, so a waveform cut far from zero never clicks.
+    static constexpr float kDeclickSeconds = 0.005F;
 
     // Why every voice pauses at once. Each reason holds voices on its own, so ending one pause never resumes a voice that another reason or the app still holds.
     enum class PauseReason : std::uint8_t {
@@ -64,7 +70,7 @@ class Mixer final {
         const OutputBackend* backend = nullptr;
     };
 
-    // A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where `Inherit` takes the mode of its bus, and the effects process the voice in order before its bus.
+    // A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where `Inherit` takes the mode of its bus, and the effects process the voice in order before its bus. When every voice plays, a new one stops the voice of the lowest priority, the quietest among them and then the oldest.
     struct PlayOptions {
         std::string bus = "sfx";
         float volume = 1.0F;
@@ -77,6 +83,26 @@ class Mixer final {
         std::optional<math::Vec2> position;
         core::ProcessMode processMode = core::ProcessMode::Inherit;
         std::vector<std::shared_ptr<Effect>> effects;
+        std::uint8_t priority = kDefaultPriority;
+    };
+
+    // The voices that one sound may play at once and the seconds of app time between two plays of it. A play beyond the voices stops the oldest or the quietest voice of the sound, or starts nothing with `Steal::None`, and a play within the cooldown starts nothing, returning the id of a voice that already finished.
+    struct Limit {
+        enum class Steal : std::uint8_t {
+            Oldest,
+            Quietest,
+            None,
+        };
+
+        std::size_t voices = 0;
+        float cooldown = 0.0F;
+        Steal steal = Steal::Oldest;
+
+        [[nodiscard]] static std::optional<Steal> stealFromName(std::string_view name) noexcept;
+        [[nodiscard]] static std::string_view stealName(Steal value) noexcept;
+
+      private:
+        static const std::array<std::pair<std::string_view, Steal>, 3> kStealNames;
     };
 
     struct MusicOptions {
@@ -129,12 +155,16 @@ class Mixer final {
     Mixer(const Mixer&) = delete;
     Mixer& operator=(const Mixer&) = delete;
 
-    // Starts a voice. When every voice is busy, the oldest voice that is not music stops to make room. Throws `std::invalid_argument` for an empty sound, an unknown bus, a pitch variation below 0 or not below the pitch, or a fade-in or start time that is not finite, and a call that throws stops no voice.
+    // Starts a voice. When every voice is busy, the voice that is not music with the lowest priority stops to make room, the quietest of them and then the oldest, and the limit of the sound may steal one of its own voices or start nothing. Throws `std::invalid_argument` for an empty sound, an unknown bus, a pitch variation below 0 or not below the pitch, or a fade-in or start time that is not finite, and a call that throws stops no voice.
     VoiceId play(const Sound& sound, const PlayOptions& options = kDefaultPlayOptions);
 
     // Starts a voice that plays the audio stream as its samples arrive, resampled to the mixer, and silent where they have not arrived. It takes the stream over from the voice that played it before and never ends by itself. Throws `std::invalid_argument` for an empty stream and for options with a loop, a start time, a pitch other than 1 or a pitch variation, which a live stream cannot take.
     VoiceId play(const std::shared_ptr<platform::AudioStream>& stream, const PlayOptions& options = kDefaultPlayOptions);
     void stop(VoiceId voice, float fadeOutSeconds = 0.0F);
+
+    // Limits the voices and the plays of a sound, which a limit of no voices and no cooldown removes. Throws `std::invalid_argument` for an empty sound or a cooldown that is negative or not finite.
+    void setLimit(const Sound& sound, const Limit& limit);
+    [[nodiscard]] std::optional<Limit> getLimit(const Sound& sound) const;
 
     // Pauses or resumes a voice for the app. A voice that the app paused stays paused when the engine pause or a pause of every voice ends.
     void setPaused(VoiceId voice, bool paused);

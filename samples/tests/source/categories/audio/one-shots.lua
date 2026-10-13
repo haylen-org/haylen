@@ -1,4 +1,4 @@
--- One-shot effects: a sound played with a volume, a pitch with a random variation, a pan, a fade in and a fade out, a limit of voices per sound that stops the oldest one, and every voice drawn with the pitch it got, its pan and its cursor.
+-- One-shot effects: a sound played with a volume, a pitch with a random variation, a pan, a fade in and a fade out, the limit of voices of each sound that stops the oldest one, and every voice drawn with the pitch it got, its pan and its cursor.
 local audio = require('haylen.audio')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -11,12 +11,12 @@ local Test = require('harness.test')
 
 local OneShots = haylen.class('OneShots', AudioTest)
 
-local kCode = "audio.play(sound, {volume = 0.8, pitch = 1, pitchVariation = 0.1,\n  pan = -0.5, fadeIn = 0.2, loop = false})\naudio.stop(voice, 0.3)\naudio.seedVariation(7)"
+local kCode = "audio.setLimit(sound, {voices = 4})\naudio.play(sound, {volume = 0.8, pitch = 1, pitchVariation = 0.1,\n  pan = -0.5, fadeIn = 0.2, loop = false})\naudio.stop(voice, 0.3)\naudio.seedVariation(7)"
 
 function OneShots:enter()
     self.sound = sounds.effects[1]
     self.options = {volume = 1, pitch = 1, pitchVariation = 0.1, pan = 0, fadeIn = 0}
-    self.fadeOut, self.limit, self.loop = 0.2, 4, false
+    self.fadeOut, self.limit, self.loop, self.stolen = 0.2, 4, false, 0
     self.voices = {}
     self.pointer = Pointer()
     local function slider(id, label, min, max, step)
@@ -55,6 +55,9 @@ end
 function OneShots:exit()
     OneShots.super.exit(self)
     self:stopAll()
+    for _, effect in ipairs(sounds.effects) do
+        audio.setLimit(sounds.get(effect.path), {})
+    end
 end
 
 function OneShots:stopAll()
@@ -63,24 +66,25 @@ function OneShots:stopAll()
     end
 end
 
--- Plays the chosen sound, first stopping the oldest voices of the same sound past the limit.
+-- Plays the chosen sound under the limit of its voices, which stops its oldest voice when every one of them plays.
 function OneShots:play(pan)
-    local same = {}
-    for _, voice in ipairs(self.voices) do
-        if voice.sound == self.sound and audio.active(voice.id) then
-            same[#same + 1] = voice
-        end
-    end
-    for index = 1, #same - self.limit + 1 do
-        audio.stop(same[index].id, 0.05)
-        same[index].limited = true
-    end
-
     local options = {volume = self.options.volume, pitch = self.options.pitch, pan = pan, fadeIn = self.options.fadeIn, loop = self.loop}
     -- The variation must stay below the pitch, so a low pitch narrows it.
     options.pitchVariation = math.min(self.options.pitchVariation, self.options.pitch - 0.01)
     local sound = sounds.get(self.sound.path)
+    audio.setLimit(sound, {voices = self.limit})
+    local playing = {}
+    for _, voice in ipairs(self.voices) do
+        if voice.sound == self.sound and audio.active(voice.id) then
+            playing[#playing + 1] = voice
+        end
+    end
     self.voices[#self.voices + 1] = {id = audio.play(sound, options), sound = self.sound, duration = sound.duration, pan = pan}
+    for _, voice in ipairs(playing) do
+        if not audio.active(voice.id) then
+            self.stolen = self.stolen + 1
+        end
+    end
 end
 
 function OneShots:update(dt)
@@ -98,7 +102,7 @@ function OneShots:update(dt)
         self:play(math.max(-1, math.min(1, self.pointer.worldX / self.area.width * 2 - 1)))
     end
     local last = self.voices[#self.voices]
-    self:status(string.format('Voices of the test %d, engine voices %d, last pitch %.3f', #self.voices, audio.voiceCount(), last and audio.pitch(last.id) or 0))
+    self:status(string.format('Voices of the test %d, engine voices %d, stopped by the limit %d, last pitch %.3f', #self.voices, audio.voiceCount(), self.stolen, last and audio.pitch(last.id) or 0))
 end
 
 function OneShots:renderUi()
@@ -115,15 +119,13 @@ function OneShots:draw(area)
             break
         end
         local progress = voice.duration > 0 and (audio.cursor(voice.id) % voice.duration) / voice.duration or 0
-        local color = voice.limited and Test.red or Test.accent
-        Test.caption(string.format('Voice %d, %s, pitch %.3f', voice.id, voice.sound.text:lower(), audio.pitch(voice.id)), left, y, {color = voice.limited and Test.red or Test.ink, size = 20})
-        AudioTest.bar(left + 380, y + 4, width * 0.4, 16, progress, color)
+        Test.caption(string.format('Voice %d, %s, pitch %.3f', voice.id, voice.sound.text:lower(), audio.pitch(voice.id)), left, y, {color = Test.ink, size = 20})
+        AudioTest.bar(left + 380, y + 4, width * 0.4, 16, progress, Test.accent)
         graphics2d.drawLine(panLeft, y + 12, panRight, y + 12, 2, Test.line, {layer = 1})
         graphics2d.drawCircle(panLeft + (panRight - panLeft) * (voice.pan + 1) / 2, y + 12, 9, Test.green, {layer = 2})
     end
     Test.caption('Left', panLeft, area.height - 40, {size = 18})
     Test.caption('Right', panRight, area.height - 40, {size = 18, anchor = {1, 0}})
-    Test.caption('Red voices were stopped by the limit', left, area.height - 40, {size = 18, color = Test.red})
 end
 
 return OneShots
