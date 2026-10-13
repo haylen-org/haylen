@@ -122,6 +122,7 @@ Stops the video and its sound for good. The texture keeps the last frame it show
 | Platform | Decoder |
 | --- | --- |
 | macOS, iOS, iPadOS, tvOS and Mac Catalyst | AVFoundation, through an asset reader that decodes the picture and the sound of the file, which it reads from the package by range, so a video in a zip or a protected release plays without a copy on disk. It plays what AVFoundation plays, such as H.264, HEVC and ProRes in MP4 and QuickTime files with AAC sound. |
+| Android | MediaExtractor and MediaCodec of the NDK, through a media data source that reads the file from the package by range, with the decoders of the device, such as H.264, HEVC, VP8, VP9 and AV1 in MP4, WebM and Matroska files with AAC, Opus or Vorbis sound. The picture decodes into the surface of an image reader, whose images of YUV 4:2:0 describe their planes, so the engine turns them into RGBA whatever layout the decoder of the device writes. The media data source came with Android 9, so Android 8.1 reports `error` with the code `unsupported`. |
 | Linux | Not supported. No library that decodes video ships with every distribution: GStreamer and FFmpeg come in different versions and with different codecs, and the codecs of common formats such as H.264 often come apart from them, so `video.load` reports `error` with the code `unsupported`. |
 
 ## C++

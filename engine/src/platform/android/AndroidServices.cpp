@@ -28,6 +28,7 @@
 #include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidMouseWheel.hpp"
 #include "platform/android/AndroidTextInput.hpp"
+#include "platform/android/AndroidVideoDecoder.hpp"
 #include "platform/android/JavaBridge.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/SokolHost.hpp"
@@ -179,9 +180,12 @@ void Services::announce(std::string_view text, bool interrupt) {
     JavaBridge::announce(text, interrupt);
 }
 
-// The engine plays no video files on this platform yet, as the video reference explains.
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
-    return nullptr;
+// Android 8.1 lacks the media data source that the decoder reads the package through, so it plays no video.
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+    if (!AndroidVideoDecoder::isAvailable()) {
+        return nullptr;
+    }
+    return std::make_unique<AndroidVideoDecoder>(std::move(file), path);
 }
 
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
