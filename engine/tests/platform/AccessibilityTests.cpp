@@ -42,6 +42,13 @@ TEST(AccessibilityTest, PublishesEveryChangeOfTheSettingsOnce) {
     EXPECT_TRUE(fixture.engine().getAccessibility().getSettings().screenReader);
 }
 
+TEST(AccessibilityTest, WritesElementsAsTheJsonOfTheScreenReadersOfAndroidAndTheWeb) {
+    const AccessibilityElement element{.id = 4294967295U, .parent = 7, .bounds = {10.0F, 20.5F, 30.0F, 40.0F}, .role = AccessibilityElement::Role::Switch, .label = "Music", .value = "", .hint = "Plays the songs", .states = AccessibilityElement::Checked, .actions = AccessibilityElement::Focus | AccessibilityElement::Activate};
+    EXPECT_EQ(element.toJson().dump(), R"({"actions":3,"bounds":[10.0,20.5,30.0,40.0],"hint":"Plays the songs","id":4294967295,"label":"Music","parent":7,"role":"switch","states":2,"value":""})");
+    EXPECT_EQ(AccessibilityElement::roleFromName("radioButton"), AccessibilityElement::Role::RadioButton);
+    EXPECT_FALSE(AccessibilityElement::roleFromName("robot").has_value());
+}
+
 TEST(AccessibilityLuaTest, ReadsTheSettingsAndHearsTheirChanges) {
     test::EngineFixture fixture;
     // clang-format off

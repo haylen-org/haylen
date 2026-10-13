@@ -14,6 +14,7 @@
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
+#include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
@@ -162,14 +163,21 @@ void Services::vibrate(float seconds) {
     JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
-// The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
 bool Services::isAccessibilityTreeWanted() {
-    return false;
+    return JavaBridge::isAccessibilityWanted();
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
+void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+    core::Json tree{{"focused", focused}, {"elements", core::Json::array()}};
+    for (const AccessibilityElement& element : elements) {
+        tree["elements"].push_back(element.toJson());
+    }
+    JavaBridge::updateAccessibility(tree.dump());
+}
 
-void Services::announce(std::string_view, bool) {}
+void Services::announce(std::string_view text, bool interrupt) {
+    JavaBridge::announce(text, interrupt);
+}
 
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     AndroidGamepads::rumble(index, low, high, seconds);
@@ -307,6 +315,14 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclas
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibility_nativeAccessibility(JNIEnv*, jclass, jfloat textScale, jboolean reducedMotion, jboolean highContrast, jboolean screenReader) {
     haylen::platform::SokolHost::getSystemState().setAccessibility({.textScale = textScale, .reducedMotion = reducedMotion == JNI_TRUE, .highContrast = highContrast == JNI_TRUE, .reducedTransparency = false, .screenReader = screenReader == JNI_TRUE});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibilityTree_nativeWanted(JNIEnv*, jclass, jboolean wanted) {
+    haylen::platform::JavaBridge::setAccessibilityWanted(wanted == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibilityTree_nativePerform(JNIEnv*, jclass, jlong element, jint action) {
+    haylen::platform::AccessibilityRelay::perform({.element = static_cast<std::uint64_t>(element), .action = static_cast<haylen::platform::AccessibilityElement::Action>(action)});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {

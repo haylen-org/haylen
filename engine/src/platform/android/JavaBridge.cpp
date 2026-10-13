@@ -41,6 +41,10 @@ jmethodID JavaBridge::cancelDialogMethod = nullptr;
 jclass JavaBridge::screensClass = nullptr;
 jmethodID JavaBridge::openScreenMethod = nullptr;
 jmethodID JavaBridge::cancelScreenMethod = nullptr;
+jclass JavaBridge::accessibilityClass = nullptr;
+jmethodID JavaBridge::updateAccessibilityMethod = nullptr;
+jmethodID JavaBridge::announceMethod = nullptr;
+std::atomic<bool> JavaBridge::accessibilityWanted{false};
 std::mutex& JavaBridge::urlMutex = *new std::mutex();
 std::unordered_map<std::int64_t, std::function<void(bool)>>& JavaBridge::urlCallbacks = *new std::unordered_map<std::int64_t, std::function<void(bool)>>();
 std::int64_t JavaBridge::nextUrl = 1;
@@ -59,7 +63,8 @@ jint JavaBridge::load(JavaVM* vm) {
     activityClass = findClass(*env, "dev/haylen/HaylenActivity");
     dialogsClass = findClass(*env, "dev/haylen/HaylenDialogs");
     screensClass = findClass(*env, "dev/haylen/HaylenScreens");
-    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr) {
+    accessibilityClass = findClass(*env, "dev/haylen/HaylenAccessibilityTree");
+    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr) {
         return JNI_ERR;
     }
     dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B)V");
@@ -82,8 +87,10 @@ jint JavaBridge::load(JavaVM* vm) {
     cancelDialogMethod = findMethod(*env, dialogsClass, "cancel", "(J)V");
     openScreenMethod = findMethod(*env, screensClass, "open", "(J[B[B[B[[B[BZ)V");
     cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
+    updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
+    announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -284,6 +291,22 @@ void JavaBridge::rumbleGamepad(std::int32_t device, float low, float high, std::
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, rumbleGamepadMethod, static_cast<jint>(device), static_cast<jfloat>(low), static_cast<jfloat>(high), static_cast<jlong>(milliseconds));
     clearException(env, "dev.haylen.HaylenActivity.rumbleGamepad");
+}
+
+void JavaBridge::updateAccessibility(std::string_view treeJson) {
+    JNIEnv& env = getEnv();
+    const jbyteArray tree = toBytes(env, treeJson);
+    env.CallStaticVoidMethod(accessibilityClass, updateAccessibilityMethod, tree);
+    env.DeleteLocalRef(tree);
+    clearException(env, "dev.haylen.HaylenAccessibilityTree.update");
+}
+
+void JavaBridge::announce(std::string_view text, bool interrupt) {
+    JNIEnv& env = getEnv();
+    const jbyteArray bytes = toBytes(env, text);
+    env.CallStaticVoidMethod(accessibilityClass, announceMethod, bytes, static_cast<jboolean>(interrupt ? JNI_TRUE : JNI_FALSE));
+    env.DeleteLocalRef(bytes);
+    clearException(env, "dev.haylen.HaylenAccessibilityTree.announce");
 }
 
 void JavaBridge::showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data) {

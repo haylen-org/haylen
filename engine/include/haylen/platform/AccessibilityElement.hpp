@@ -7,6 +7,7 @@
 #include <string_view>
 #include <utility>
 
+#include "haylen/core/Json.hpp"
 #include "haylen/math/Rect.hpp"
 
 namespace haylen::platform {
@@ -78,6 +79,9 @@ struct AccessibilityElement {
     [[nodiscard]] bool can(Action action) const noexcept {
         return (actions & action) != 0U;
     }
+
+    // The element as the JSON that the screen readers of Android and the web receive it in, with its role by name, its bounds as `[x, y, width, height]` and its states and actions as the bits of `State` and `Action`.
+    [[nodiscard]] core::Json toJson() const;
 
     [[nodiscard]] static std::string_view roleName(Role value) noexcept;
     [[nodiscard]] static std::optional<Role> roleFromName(std::string_view name) noexcept;

@@ -2,7 +2,15 @@
 
 #include <algorithm>
 
+#include "haylen/core/JsonNumber.hpp"
+
 namespace haylen::platform {
+
+core::Json AccessibilityElement::toJson() const {
+    return {
+        {"id", id}, {"parent", parent}, {"role", roleName(role)}, {"label", label}, {"value", value}, {"hint", hint}, {"bounds", {core::JsonNumber::fromFloat(bounds.x), core::JsonNumber::fromFloat(bounds.y), core::JsonNumber::fromFloat(bounds.width), core::JsonNumber::fromFloat(bounds.height)}}, {"states", states}, {"actions", actions},
+    };
+}
 
 std::string_view AccessibilityElement::roleName(Role value) noexcept {
     return std::ranges::find(kRoleNames, value, &std::pair<std::string_view, Role>::second)->first;

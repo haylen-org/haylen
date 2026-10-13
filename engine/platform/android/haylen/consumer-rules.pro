@@ -42,6 +42,11 @@
     static void cancel(long);
 }
 
+-keep class dev.haylen.HaylenAccessibilityTree {
+    static void update(byte[]);
+    static void announce(byte[], boolean);
+}
+
 # The HTTP transport of Varn resolves its Kotlin classes, their fields and methods by name.
 -keep class com.varn.VarnHttp { *; }
 -keep class com.varn.VarnHttp$Outcome { *; }

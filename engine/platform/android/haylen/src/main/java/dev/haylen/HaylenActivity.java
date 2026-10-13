@@ -60,6 +60,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private final HaylenSplash splash = new HaylenSplash(this);
     private final HaylenBattery battery = new HaylenBattery(this);
     private final HaylenAccessibility accessibility = new HaylenAccessibility(this);
+    private HaylenAccessibilityTree accessibilityTree;
     private HaylenRequirements requirements;
     private HaylenOverlayLayer overlays;
     private HaylenEditText editor;
@@ -86,6 +87,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeTheme(isDark(getResources().getConfiguration()));
         battery.register();
         accessibility.register();
+        accessibilityTree.reportWanted();
         fold = new HaylenFold(this);
         fold.register();
 
@@ -139,7 +141,9 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     @Override
     protected InputEnabledSurfaceView createSurfaceView() {
-        return new AppSurface();
+        AppSurface surface = new AppSurface();
+        accessibilityTree = HaylenAccessibilityTree.attach(surface);
+        return surface;
     }
 
     // A launch while the activity is on top, such as the launcher icon, arrives here and becomes its intent.
@@ -210,6 +214,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         splash.dismiss();
         battery.unregister();
         accessibility.unregister();
+        accessibilityTree.detach();
         fold.unregister();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         if (network != null) {
@@ -490,6 +495,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         AppSurface() {
             super(HaylenActivity.this);
             setDefaultFocusHighlightEnabled(false);
+        }
+
+        // Screen readers that explore by touch hover over the elements of the UI.
+        @Override
+        public boolean dispatchHoverEvent(MotionEvent event) {
+            return accessibilityTree.dispatchHoverEvent(event) || super.dispatchHoverEvent(event);
         }
 
         @Override

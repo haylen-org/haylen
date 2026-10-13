@@ -3,6 +3,7 @@
 #include <jni.h>
 #include <pthread.h>
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -17,7 +18,7 @@
 
 namespace haylen::platform {
 
-// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the native dialogs of `dev.haylen.HaylenDialogs` and the screens of plugins of `dev.haylen.HaylenScreens`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
+// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the native dialogs of `dev.haylen.HaylenDialogs`, the screens of plugins of `dev.haylen.HaylenScreens` and the elements that screen readers read of `dev.haylen.HaylenAccessibilityTree`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
 class JavaBridge final {
   public:
     // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which `JNI_OnLoad` does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or `JNI_ERR` when the APK lacks a class.
@@ -71,6 +72,16 @@ class JavaBridge final {
     // Shows the dialog that the JSON of `AndroidDialogJson` describes, with the data of a save as bytes, and the Java side answers through the dialog relay. A dialog that Java never took fails at once.
     static void showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data);
     static void cancelDialog(std::uint64_t id);
+
+    // Hands the tree of accessible elements, as the JSON of `{focused, elements}`, and the announcements of the app to the screen readers of the activity. The Java side tells whether it wants the tree, which the frame thread reads.
+    static void updateAccessibility(std::string_view treeJson);
+    static void announce(std::string_view text, bool interrupt);
+    static void setAccessibilityWanted(bool value) noexcept {
+        accessibilityWanted.store(value, std::memory_order_relaxed);
+    }
+    [[nodiscard]] static bool isAccessibilityWanted() noexcept {
+        return accessibilityWanted.load(std::memory_order_relaxed);
+    }
 
     // Opens the screen of a plugin, and the Java side ends it through the screen relay. A screen that Java never took fails at once.
     static void openScreen(const ScreenRequest& request);
@@ -128,6 +139,10 @@ class JavaBridge final {
     static jclass screensClass;
     static jmethodID openScreenMethod;
     static jmethodID cancelScreenMethod;
+    static jclass accessibilityClass;
+    static jmethodID updateAccessibilityMethod;
+    static jmethodID announceMethod;
+    static std::atomic<bool> accessibilityWanted;
 
     // The callbacks of the urls that wait for the answer of Java, by request.
     static std::mutex& urlMutex;
