@@ -12,7 +12,7 @@ namespace haylen::audio {
 
 // What a voice shares with its fills, which may outlive it. A fill writes frames at `written` and the audio thread takes them at `taken`, so each side moves only its own count. A seek of the audio thread raises `generation`, and from then on the audio thread takes nothing until a fill dropped the frames it never took, moved the decoder and set `ready` to the generation it served.
 struct ReaderSource::Feed {
-    explicit Feed(const SoundData& sound) : reader(sound.reader), channels(sound.channels), sampleRate(sound.sampleRate), length(sound.frames), capacity(std::max<std::uint64_t>(1, static_cast<std::uint64_t>(sound.sampleRate * kBufferSeconds))), ring(capacity * channels) {}
+    explicit Feed(const SoundData& sound) : reader(sound.reader), channels(sound.channels), sampleRate(sound.sampleRate), length(sound.frames), capacity(std::max<std::size_t>(1, static_cast<std::size_t>(sound.sampleRate * kBufferSeconds))), ring(capacity * channels) {}
 
     // Runs on the I/O pool, one fill at a time.
     void fill() {
@@ -41,12 +41,12 @@ struct ReaderSource::Feed {
         bool wrapped = false;
         while (!finished.load(std::memory_order_relaxed) && generation.load(std::memory_order_relaxed) == served) {
             const std::uint64_t head = written.load(std::memory_order_relaxed);
-            const std::uint64_t room = capacity - (head - taken.load(std::memory_order_acquire));
+            const std::size_t room = capacity - static_cast<std::size_t>(head - taken.load(std::memory_order_acquire));
             if (room == 0) {
                 return;
             }
-            const std::uint64_t offset = head % capacity;
-            const std::uint64_t count = std::min(room, capacity - offset);
+            const std::size_t offset = ringOffset(head);
+            const std::size_t count = std::min(room, capacity - offset);
             const std::uint64_t decoded = decoder->read(std::span(ring).subspan(offset * channels, count * channels));
             written.store(head + decoded, std::memory_order_release);
             if (decoded > 0) {
@@ -66,12 +66,12 @@ struct ReaderSource::Feed {
     }
 
     // Copies the frames that arrived, at most the count, and returns how many.
-    std::uint64_t take(float* frames, std::uint64_t count) {
+    std::size_t take(float* frames, std::size_t count) {
         const std::uint64_t start = taken.load(std::memory_order_relaxed);
-        const std::uint64_t total = std::min(count, written.load(std::memory_order_acquire) - start);
-        for (std::uint64_t copied = 0; copied < total;) {
-            const std::uint64_t offset = (start + copied) % capacity;
-            const std::uint64_t run = std::min(total - copied, capacity - offset);
+        const std::size_t total = std::min(count, static_cast<std::size_t>(written.load(std::memory_order_acquire) - start));
+        for (std::size_t copied = 0; copied < total;) {
+            const std::size_t offset = ringOffset(start + copied);
+            const std::size_t run = std::min(total - copied, capacity - offset);
             std::copy_n(ring.begin() + static_cast<std::ptrdiff_t>(offset * channels), run * channels, frames + copied * channels);
             copied += run;
         }
@@ -79,12 +79,17 @@ struct ReaderSource::Feed {
         return total;
     }
 
+    // The place in the ring of a frame of the stream. The counts of the stream take 64 bits, while the ring always fits in memory.
+    [[nodiscard]] std::size_t ringOffset(std::uint64_t frame) const noexcept {
+        return static_cast<std::size_t>(frame % capacity);
+    }
+
     std::shared_ptr<io::PackageReader> reader;
     std::unique_ptr<ReaderDecoder> decoder;
     std::uint32_t channels;
     std::uint32_t sampleRate;
     std::uint64_t length;
-    std::uint64_t capacity;
+    std::size_t capacity;
     std::vector<float> ring;
     std::atomic<std::uint64_t> written{0};
     std::atomic<std::uint64_t> taken{0};
@@ -120,7 +125,7 @@ std::function<void()> ReaderSource::takeFill() {
     // The counts move while they are read, so the free room is only an estimate, which the next frame corrects.
     const bool moved = state.ready.load(std::memory_order_acquire) != state.generation.load(std::memory_order_acquire);
     const std::uint64_t taken = state.taken.load(std::memory_order_acquire);
-    const std::uint64_t buffered = std::min(state.capacity, state.written.load(std::memory_order_acquire) - taken);
+    const std::uint64_t buffered = std::min<std::uint64_t>(state.capacity, state.written.load(std::memory_order_acquire) - taken);
     const bool room = !state.finished.load(std::memory_order_acquire) && state.capacity - buffered >= state.capacity / kFillDivisor;
     if ((!moved && !room) || state.filling.exchange(true, std::memory_order_acq_rel)) {
         return {};
@@ -133,23 +138,24 @@ ma_result ReaderSource::read(ma_data_source* source, void* frames, ma_uint64 fra
     auto& self = *static_cast<ReaderSource*>(source);
     Feed& state = *self.feed;
     auto* output = static_cast<float*>(frames);
+    const auto count = static_cast<std::size_t>(frameCount);
     *framesRead = 0;
     if (state.failed.load(std::memory_order_acquire)) {
         return MA_AT_END;
     }
 
-    ma_uint64 delivered = 0;
+    std::size_t delivered = 0;
     if (state.ready.load(std::memory_order_acquire) == state.generation.load(std::memory_order_relaxed)) {
-        delivered = state.take(output, frameCount);
+        delivered = state.take(output, count);
         const ma_uint64 moved = self.cursor.load(std::memory_order_relaxed) + delivered;
         self.cursor.store(state.looping.load(std::memory_order_relaxed) && state.length > 0 ? moved % state.length : moved, std::memory_order_relaxed);
-        if (delivered < frameCount && state.finished.load(std::memory_order_acquire) && state.written.load(std::memory_order_acquire) == state.taken.load(std::memory_order_relaxed)) {
+        if (delivered < count && state.finished.load(std::memory_order_acquire) && state.written.load(std::memory_order_acquire) == state.taken.load(std::memory_order_relaxed)) {
             *framesRead = delivered;
             return delivered == 0 ? MA_AT_END : MA_SUCCESS;
         }
     }
 
-    std::fill(output + delivered * state.channels, output + frameCount * state.channels, 0.0F);
+    std::fill(output + delivered * state.channels, output + count * state.channels, 0.0F);
     *framesRead = frameCount;
     return MA_SUCCESS;
 }

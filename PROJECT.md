@@ -1860,7 +1860,7 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [ ] Os testes `PLT-001` e `PLT-002` passam mesmo sem o plugin `platform-sample`, porque só demonstram e não conferem nada: fazer cada um conferir as respostas do plugin e falhar quando ele faltar.
 - [ ] Servidor de desenvolvimento no Mac Catalyst: uma vez logou "Socket is not connected" logo depois de conectar e reconectou em um segundo. Achar a causa no código de rede.
 
-- [ ] O build da web de 32 bits mostra avisos `-Wshorten-64-to-32` em `engine/src/audio/ReaderSource.cpp`: corrigir os tipos, porque o build tem que ser sem avisos em todas as plataformas.
+- [x] O build da web de 32 bits mostrava avisos `-Wshorten-64-to-32` em `engine/src/audio/ReaderSource.cpp`: agora a capacidade do anel e as posições dentro dele usam `std::size_t`, enquanto as contagens de frames do stream continuam em 64 bits, e os builds da web com WebGPU e WebGL2 compilam sem avisos.
 
 #### AT. Documentação
 
