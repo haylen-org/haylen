@@ -65,6 +65,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/Material.cpp
   src/2d/graphics/MaterialLua.cpp
   src/2d/graphics/MaterialResource.cpp
+  src/2d/graphics/Mesh.cpp
+  src/2d/graphics/MeshLua.cpp
   src/2d/graphics/NineSlice.cpp
   src/2d/graphics/NineSliceLua.cpp
   src/2d/graphics/Parallax.cpp
@@ -81,6 +83,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/SpriteLua.cpp
   src/2d/graphics/StaticBatchResource.cpp
   src/2d/graphics/StaticSpriteBatch.cpp
+  src/2d/graphics/Stroke.cpp
+  src/2d/graphics/StrokeBuilder.cpp
+  src/2d/graphics/StrokeLua.cpp
   src/2d/graphics/TextPainter.cpp
   src/2d/graphics/TileLayer.cpp
   src/2d/graphics/TileLayerLua.cpp

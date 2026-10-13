@@ -430,4 +430,50 @@ TEST_F(Graphics2DLuaTest, KeepsGpuPoolsSteadyAcrossFrames) {
     }
 }
 
+TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
+    // clang-format off
+    const std::string body = R"(
+        local collections = require('haylen.collections')
+        graphics2d.beginScreen()
+        graphics2d.drawStroke({0, 0, 100, 0, 100, 100}, {width = 8, join = 'round', cap = 'square', color = '#FF8000', layer = 2})
+        local points = collections.newFloatBuffer(6)
+        points:set(1, {0, 0, 50, 20, 100, 0})
+        graphics2d.drawStroke(points, {widths = {2, 10, 2}, colors = {'#FF0000', '#00FF00', '#0000FF'}, texture = hero, textureMode = 'tile', dashes = {12, 6}, dashOffset = 3, miterLimit = 2, join = 'bevel'})
+        graphics2d.drawStroke({0, 0, 10, 0, 10, 10, 0, 10}, {closed = true})
+        graphics2d.drawStroke(points, {count = 2, widths = {1, 4}})
+        grid = graphics2d.newGridMesh(hero, 4, 2, {x = 10, y = 10, width = 64, height = 32, source = {0, 0, 8, 8}})
+        rest = collections.newFloatBuffer(grid.vertexCount * 2)
+        grid:readPositions(rest)
+        bent = collections.newFloatBuffer(#rest)
+        for index = 1, #rest, 2 do
+            bent[index] = rest[index]
+            bent[index + 1] = rest[index + 1] + rest[index] * 0.5
+        end
+        grid:setPositions(bent)
+        grid:draw({layer = 1}, 100, 50, 0.25, 2, 2)
+        triangle = graphics2d.newMesh(nil, {{x = 0, y = 0}, {x = 10, y = 0, u = 1}, {x = 0, y = 10, v = 1, color = '#FF0000'}}, {1, 2, 3})
+        triangle:setVertex(2, {x = 20})
+        triangle:draw()
+    )";
+    // clang-format on
+    EXPECT_EQ(render(body), "nil");
+    EXPECT_EQ(lua("return grid.vertexCount .. ' ' .. grid.indexCount .. ' ' .. grid.bounds.width .. ' ' .. tostring(grid.texture == hero) .. ' ' .. rest[3] .. ' ' .. bent[4]"), "15 48 64.0 true 26.0 23.0");
+    EXPECT_EQ(lua("local v = triangle:vertex(2) local w = triangle:vertex(3) return v.x .. ' ' .. v.u .. ' ' .. w.color:toHex() .. ' ' .. tostring(triangle.texture)"), "20.0 1.0 #FFFF0000 nil");
+    EXPECT_EQ(lua("triangle.texture = hero triangle:setIndices({3, 2, 1}) return tostring(triangle.texture == hero) .. ' ' .. triangle.indexCount"), "true 3");
+
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0})").find("A stroke needs at least two points."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {count = 3})").find("The stroke draws 3 points of the 2 it was given."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1})").find("The points are x and y pairs, and 3 numbers leave one alone."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 'x', 1})").find("The points are a list of numbers, and entry 3 is not a number."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {join = 'sharp'})").find("join"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {thickness = 2})").find("Unknown option \"thickness\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {widths = {1}})").find("A stroke has one width for each of its 2 points, or none."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {dashes = {0}})").find("A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset."), std::string::npos);
+    EXPECT_NE(lua("grid:setPositions({1, 2}, 16)").find("The positions of a mesh come in x and y pairs for the vertices it has, 15, from the first one given."), std::string::npos);
+    EXPECT_NE(lua("triangle:vertex(4)").find("the mesh has no such vertex"), std::string::npos);
+    EXPECT_NE(lua("triangle:setIndices({1, 2})").find("A mesh lists its triangles as three indices each, and 2 is not a multiple of three."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newGridMesh(nil, 0, 1)").find("A grid mesh needs at least one column and one row and at most 1048576 cells."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newGridMesh(nil, 1, 1, {depth = 1})").find("Unknown option \"depth\"."), std::string::npos);
+}
+
 } // namespace haylen

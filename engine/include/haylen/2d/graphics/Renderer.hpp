@@ -14,6 +14,7 @@
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/DrawOrder.hpp"
 #include "haylen/2d/graphics/ImageBlend.hpp"
+#include "haylen/2d/graphics/Mesh.hpp"
 #include "haylen/2d/graphics/MeshVertex.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/PartColors.hpp"
@@ -23,11 +24,13 @@
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/SpriteLayout.hpp"
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
+#include "haylen/2d/graphics/Stroke.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/graphics/VectorImage.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/math/Transform2D.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/Style.hpp"
 
@@ -152,6 +155,12 @@ class Renderer final {
     // Draws rich text with the top-left of its block at the position, scaled from that corner and with its colors multiplied by the tint. A y-sorted canvas sorts it by the bottom of the block.
     void drawRichText(text::RichText& richText, math::Vec2 position, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
     void drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order = {});
+
+    // Draws a kept mesh with its vertices placed by the transform.
+    void drawMesh(const Mesh& mesh, const DrawOrder& order = {}, const math::Transform2D& transform = {});
+
+    // Draws a line through the points with the joins, caps, widths, colors, texture and dashes of the stroke, whose edges fade over one pixel of the destination. Throws `std::invalid_argument` for a stroke whose values cannot draw.
+    void drawStroke(std::span<const math::Vec2> points, const Stroke& stroke, const DrawOrder& order = {});
     void drawImageBlend(const ImageBlend& blend, const DrawOrder& order = {});
 
     // Lights and occluders belong to lit canvases, and a light draws in the order it was drawn over the lights before it. Disabled lights draw nothing.
@@ -233,6 +242,7 @@ class Renderer final {
     [[nodiscard]] static float lowestPoint(std::span<const math::Vec2> points) noexcept;
 
     void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order);
+    void addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform);
 
     // Runs the overlays in the open canvas and closes it.
     void finishCanvas();

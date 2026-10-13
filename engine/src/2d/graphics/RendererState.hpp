@@ -23,6 +23,7 @@
 #include "2d/graphics/Program.hpp"
 #include "2d/graphics/Shade.hpp"
 #include "2d/graphics/StaticBatchResource.hpp"
+#include "2d/graphics/StrokeBuilder.hpp"
 #include "2d/graphics/TextPainter.hpp"
 #include "2d/graphics/VectorAtlas.hpp"
 #include "2d/lighting/ShadowMap.hpp"
@@ -140,6 +141,8 @@ struct RendererState {
     std::size_t lightCapacity = 0;
 
     VectorAtlas vectors;
+
+    StrokeBuilder strokes;
 
     // Turns the layout of every text draw into instances, reusing its batches from draw to draw.
     TextPainter painter;

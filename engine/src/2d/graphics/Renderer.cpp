@@ -434,24 +434,41 @@ void Renderer::drawRichText(text::RichText& richText, math::Vec2 position, const
 }
 
 void Renderer::drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order) {
-    if (!state->accepts(order)) {
-        return;
-    }
-
-    // Render targets of backends that start at the bottom row are flipped, like sprites flip them, so meshes sample them upright.
-    const graphics::Texture& used = texture.isValid() ? texture : state->white;
-    const bool flipped = used.getResource()->flipped;
-    std::vector<GpuVertex>& packed = state->scratchVertices;
-    packed.clear();
-    for (const MeshVertex& vertex : vertices) {
-        packed.push_back({{vertex.position.x, vertex.position.y}, {vertex.uv.x, flipped ? 1.0F - vertex.uv.y : vertex.uv.y}, vertex.color.toRgba8()});
-    }
     for (const std::uint32_t index : indices) {
         if (index >= vertices.size()) {
             throw std::out_of_range("Mesh index refers to a vertex that does not exist.");
         }
     }
+    addMesh(texture, vertices, indices, order, nullptr);
+}
+
+void Renderer::drawMesh(const Mesh& mesh, const DrawOrder& order, const math::Transform2D& transform) {
+    addMesh(mesh.getTexture(), mesh.getVertices(), mesh.getIndices(), order, &transform);
+}
+
+// Render targets of backends that start at the bottom row are flipped, like sprites flip them, so meshes sample them upright.
+void Renderer::addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform) {
+    if (!state->accepts(order)) {
+        return;
+    }
+    const graphics::Texture& used = texture.isValid() ? texture : state->white;
+    const bool flipped = used.getResource()->flipped;
+    std::vector<GpuVertex>& packed = state->scratchVertices;
+    packed.clear();
+    for (const MeshVertex& vertex : vertices) {
+        const math::Vec2 position = transform != nullptr ? transform->apply(vertex.position) : vertex.position;
+        packed.push_back({{position.x, position.y}, {vertex.uv.x, flipped ? 1.0F - vertex.uv.y : vertex.uv.y}, vertex.color.toRgba8()});
+    }
     state->addMesh(used, packed, indices, order);
+}
+
+void Renderer::drawStroke(std::span<const math::Vec2> points, const Stroke& stroke, const DrawOrder& order) {
+    if (points.size() < 2 || !state->accepts(order)) {
+        return;
+    }
+    const graphics::Texture& used = stroke.texture.isValid() ? stroke.texture : state->white;
+    state->strokes.build(points, stroke, state->getPixelSize(), used.getSize(), used.getResource()->flipped);
+    state->addMesh(used, state->strokes.getVertices(), state->strokes.getIndices(), order);
 }
 
 void Renderer::drawImageBlend(const ImageBlend& blend, const DrawOrder& order) {

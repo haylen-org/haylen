@@ -8,11 +8,13 @@
 
 #include "2d/graphics/CameraLua.hpp"
 #include "2d/graphics/MaterialLua.hpp"
+#include "2d/graphics/MeshLua.hpp"
 #include "2d/graphics/NineSliceLua.hpp"
 #include "2d/graphics/ParallaxLua.hpp"
 #include "2d/graphics/RichTextLua.hpp"
 #include "2d/graphics/SpriteBatchLua.hpp"
 #include "2d/graphics/SpriteLua.hpp"
+#include "2d/graphics/StrokeLua.hpp"
 #include "2d/graphics/TileLayerLua.hpp"
 #include "2d/lighting/LightLua.hpp"
 #include "2d/lighting/OccluderLua.hpp"
@@ -406,26 +408,10 @@ int Graphics2DLua::drawPolyline(lua_State* L) {
 // Draws triangles with `drawMesh(texture or nil, {{x, y, u, v, color}, ...}, {1, 2, 3, ...}, order)`.
 int Graphics2DLua::drawMesh(lua_State* L) {
     const graphics::Texture texture = lua_isnil(L, 1) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, 1);
-    luaL_checktype(L, 2, LUA_TTABLE);
-    std::vector<MeshVertex> vertices(static_cast<std::size_t>(luaL_len(L, 2)));
-    for (std::size_t index = 0; index < vertices.size(); ++index) {
-        lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
-        luaL_checktype(L, -1, LUA_TTABLE);
-        const int vertex = lua_gettop(L);
-        lua::Table::checkFields(L, vertex, {kMeshVertexFields});
-        lua::Table::readField(L, vertex, "x", vertices[index].position.x);
-        lua::Table::readField(L, vertex, "y", vertices[index].position.y);
-        lua::Table::readField(L, vertex, "u", vertices[index].uv.x);
-        lua::Table::readField(L, vertex, "v", vertices[index].uv.y);
-        lua::Table::readField(L, vertex, "color", vertices[index].color);
-        lua_pop(L, 1);
-    }
-
-    std::vector<std::uint32_t> indices = lua::Stack::read<std::vector<std::uint32_t>>(L, 3);
-    for (std::uint32_t& index : indices) {
-        luaL_argcheck(L, index >= 1, 3, "mesh indices start at 1");
-        --index;
-    }
+    std::vector<MeshVertex> vertices;
+    std::vector<std::uint32_t> indices;
+    MeshLua::readVertices(L, 2, vertices);
+    MeshLua::readIndices(L, 3, indices);
     getRenderer(L).drawMesh(texture, vertices, indices, lua::TypeConverter::readDrawOrder(L, 4));
     return 0;
 }
@@ -636,7 +622,7 @@ int Graphics2DLua::defaultFont(lua_State* L) {
 
 int Graphics2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newSprite", &lua::Binding::native<&newSprite>}, {"newSpriteBatch", &lua::Binding::native<&newSpriteBatch>}, {"newTileLayer", &lua::Binding::native<&TileLayerLua::create>}, {"newCamera", &newCamera}, {"newNineSlice", &lua::Binding::native<&newNineSlice>}, {"newParallax", &lua::Binding::native<&newParallax>}, {"blendCameras", &blendCameras}, {"beginWorld", &lua::Binding::native<&beginWorld>}, {"beginScreen", &lua::Binding::native<&beginScreen>}, {"beginTarget", &lua::Binding::native<&beginTarget>}, {"beginCapture", &lua::Binding::native<&beginCapture>}, {"endCapture", &lua::Binding::native<&endCapture>}, {"draw", &lua::Binding::native<&draw>}, {"drawVector", &lua::Binding::native<&drawVector>}, {"drawBatch", &lua::Binding::native<&drawBatch>}, {"drawStatic", &lua::Binding::native<&drawStatic>}, {"drawRect", &lua::Binding::native<&drawRect>}, {"drawRectOutline", &lua::Binding::native<&drawRectOutline>}, {"drawLine", &lua::Binding::native<&drawLine>}, {"drawCircle", &lua::Binding::native<&drawCircle>}, {"drawRing", &lua::Binding::native<&drawRing>}, {"drawArc", &lua::Binding::native<&drawArc>}, {"drawShape", &lua::Binding::native<&drawShape>}, {"drawPolygon", &lua::Binding::native<&drawPolygon>}, {"drawPolyline", &lua::Binding::native<&drawPolyline>}, {"drawMesh", &lua::Binding::native<&drawMesh>}, {"drawText", &lua::Binding::native<&drawText>}, {"measureText", &lua::Binding::native<&measureText>}, {"drawNineSlice", &lua::Binding::native<&drawNineSlice>}, {"drawLight", &lua::Binding::native<&drawLight>}, {"drawOccluder", &lua::Binding::native<&drawOccluder>}, {"drawMetaballs", &lua::Binding::native<&drawMetaballs>}, {"newMaterial", &lua::Binding::native<&MaterialLua::newMaterial>}, {"drawImageBlend", &lua::Binding::native<&drawImageBlend>}, {"pushClip", &lua::Binding::native<&pushClip>}, {"popClip", &lua::Binding::native<&popClip>}, {"pushLayerOffset", &lua::Binding::native<&pushLayerOffset>}, {"popLayerOffset", &lua::Binding::native<&popLayerOffset>}, {"stats", &stats}, {"drawn", &lua::Binding::native<&drawn>}, {"canvasBounds", &canvasBounds}, {"canvasUnitSize", &lua::Binding::native<&canvasUnitSize>}, {"canvasLit", &lua::Binding::native<&canvasLit>}, {"capturing", &capturing}, {"lightTexture", &lightTexture}, {"hdrLighting", &hdrLighting}, {"defaultFont", &defaultFont}, {"newRichText", &lua::Binding::native<&RichTextLua::newRichText>}, {"drawRichText", &lua::Binding::native<&RichTextLua::drawRichText>}, {"measureRichText", &lua::Binding::native<&RichTextLua::measureRichText>}, {"registerTextEffect", &lua::Binding::native<&RichTextLua::registerTextEffect>}, {"registerTextIcon", &lua::Binding::native<&RichTextLua::registerTextIcon>}, {"textEffectNames", &lua::Binding::native<&RichTextLua::textEffectNames>}, {nullptr, nullptr},
+        {"newSprite", &lua::Binding::native<&newSprite>}, {"newSpriteBatch", &lua::Binding::native<&newSpriteBatch>}, {"newTileLayer", &lua::Binding::native<&TileLayerLua::create>}, {"newMesh", &lua::Binding::native<&MeshLua::create>}, {"newGridMesh", &lua::Binding::native<&MeshLua::createGrid>}, {"newCamera", &newCamera}, {"newNineSlice", &lua::Binding::native<&newNineSlice>}, {"newParallax", &lua::Binding::native<&newParallax>}, {"blendCameras", &blendCameras}, {"beginWorld", &lua::Binding::native<&beginWorld>}, {"beginScreen", &lua::Binding::native<&beginScreen>}, {"beginTarget", &lua::Binding::native<&beginTarget>}, {"beginCapture", &lua::Binding::native<&beginCapture>}, {"endCapture", &lua::Binding::native<&endCapture>}, {"draw", &lua::Binding::native<&draw>}, {"drawVector", &lua::Binding::native<&drawVector>}, {"drawBatch", &lua::Binding::native<&drawBatch>}, {"drawStatic", &lua::Binding::native<&drawStatic>}, {"drawRect", &lua::Binding::native<&drawRect>}, {"drawRectOutline", &lua::Binding::native<&drawRectOutline>}, {"drawLine", &lua::Binding::native<&drawLine>}, {"drawCircle", &lua::Binding::native<&drawCircle>}, {"drawRing", &lua::Binding::native<&drawRing>}, {"drawArc", &lua::Binding::native<&drawArc>}, {"drawShape", &lua::Binding::native<&drawShape>}, {"drawPolygon", &lua::Binding::native<&drawPolygon>}, {"drawPolyline", &lua::Binding::native<&drawPolyline>}, {"drawMesh", &lua::Binding::native<&drawMesh>}, {"drawStroke", &lua::Binding::native<&StrokeLua::drawStroke>}, {"drawText", &lua::Binding::native<&drawText>}, {"measureText", &lua::Binding::native<&measureText>}, {"drawNineSlice", &lua::Binding::native<&drawNineSlice>}, {"drawLight", &lua::Binding::native<&drawLight>}, {"drawOccluder", &lua::Binding::native<&drawOccluder>}, {"drawMetaballs", &lua::Binding::native<&drawMetaballs>}, {"newMaterial", &lua::Binding::native<&MaterialLua::newMaterial>}, {"drawImageBlend", &lua::Binding::native<&drawImageBlend>}, {"pushClip", &lua::Binding::native<&pushClip>}, {"popClip", &lua::Binding::native<&popClip>}, {"pushLayerOffset", &lua::Binding::native<&pushLayerOffset>}, {"popLayerOffset", &lua::Binding::native<&popLayerOffset>}, {"stats", &stats}, {"drawn", &lua::Binding::native<&drawn>}, {"canvasBounds", &canvasBounds}, {"canvasUnitSize", &lua::Binding::native<&canvasUnitSize>}, {"canvasLit", &lua::Binding::native<&canvasLit>}, {"capturing", &capturing}, {"lightTexture", &lightTexture}, {"hdrLighting", &hdrLighting}, {"defaultFont", &defaultFont}, {"newRichText", &lua::Binding::native<&RichTextLua::newRichText>}, {"drawRichText", &lua::Binding::native<&RichTextLua::drawRichText>}, {"measureRichText", &lua::Binding::native<&RichTextLua::measureRichText>}, {"registerTextEffect", &lua::Binding::native<&RichTextLua::registerTextEffect>}, {"registerTextIcon", &lua::Binding::native<&RichTextLua::registerTextIcon>}, {"textEffectNames", &lua::Binding::native<&RichTextLua::textEffectNames>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -647,6 +633,7 @@ void Graphics2DLua::install(lua_State* L) {
     MaterialLua::install(L);
     SpriteBatchLua::install(L);
     TileLayerLua::install(L);
+    MeshLua::install(L);
     SpriteLua::install(L);
     CameraLua::install(L);
     ParallaxLua::install(L);

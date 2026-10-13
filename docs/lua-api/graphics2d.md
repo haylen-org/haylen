@@ -493,6 +493,46 @@ scene.push({
 })
 ```
 
+### graphics2d.drawStroke(points, options)
+
+Draws a line through `points`, a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs, with joins, caps, widths and colors for each point, a texture along its length and dashes. Its edges fade over one pixel of the destination at any zoom, as [Shapes and smooth edges](../rendering.md#shapes-and-smooth-edges) explains. Points that repeat the point before them are dropped. The argument `options` is optional and also takes the keys of the [draw order](#draw-order):
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `count` | integer | every point | Number of points to draw from the start, so a buffer of a fixed size holds a line that grows. |
+| `width` | number | `1` | Width of the stroke. |
+| `widths` | list or FloatBuffer | none | One width for each point, which replaces `width` and blends along each segment, such as a brush stroke or a tapered rope. |
+| `color` | Color | white | Color of the stroke. |
+| `colors` | list of Color | none | One color for each point, blended along each segment. |
+| `join` | string | `'miter'` | How segments meet: `'miter'`, `'round'` or `'bevel'`. |
+| `cap` | string | `'butt'` | How the ends look: `'butt'`, `'round'` or `'square'`, which reaches half the width past the end. |
+| `miterLimit` | number | `4` | A miter longer than this many widths becomes a bevel. It must be 1 or more. |
+| `closed` | boolean | `false` | Joins the last point to the first, without caps. A stroke of two points never closes. |
+| `texture` | Texture | white | Image drawn along the stroke, from its left edge at the top of the image to its right edge at the bottom. |
+| `textureMode` | string | `'stretch'` | The value `'stretch'` spans the image once over the whole length, and `'tile'` repeats it every `textureLength`, which takes a texture whose `wrap` is `'repeat'`. |
+| `textureLength` | number | `0` | Length one copy of the image covers in tile mode, or the width times the aspect of the image when 0. |
+| `dashes` | list or FloatBuffer | none | Lengths drawn and left out in turn, repeated along the stroke, where a list of an odd count repeats twice. A dash of length 0 draws the dot of a round or square cap. |
+| `dashOffset` | number | `0` | Distance into the dash pattern where the stroke starts. |
+
+Fewer than two points raise `A stroke needs at least two points.`, a `count` past the points given raises `The stroke draws n points of the m it was given.`, an odd count of numbers raises `The points are x and y pairs, and n numbers leave one alone.`, `widths` or `colors` of another count raise `A stroke has one width for each of its n points, or none.`, a negative width or texture length or a miter limit under 1 raises `A stroke needs widths and a texture length of zero or more and a miter limit of 1 or more.`, a pattern without length raises `A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset.`, and a pattern that would cut the stroke into more than 65536 dashes raises `A dash pattern makes more than 65536 dashes along the stroke.`
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local rope = assets.texture('effects/rope.png', {wrap = 'repeat'})
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawStroke({100, 500, 300, 420, 500, 520, 700, 440}, {width = 12, join = 'round', cap = 'round', color = '#FF40C0FF'})
+        graphics2d.drawStroke({100, 200, 400, 120, 700, 200}, {width = 16, texture = rope, textureMode = 'tile', layer = 1})
+        graphics2d.drawStroke({100, 300, 700, 300}, {widths = {2, 20}, colors = {'#FFFFFF00', '#FFFFFFFF'}, dashes = {24, 12}, cap = 'round'})
+    end,
+})
+```
+
 ### graphics2d.drawText(font, text, x, y, style)
 
 Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. The character `\n` starts a new line, and so do `\r`, `\r\n`, which counts as one, and the other paragraph separators of Unicode, such as U+2029. Tabs and other control characters draw nothing and take no room. Lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. The argument `style` is optional, and a `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`:
@@ -1158,6 +1198,14 @@ Creates a [`TileLayer`](#tilelayer), a grid of cells that code fills, such as a 
 
 Other keys raise `Unknown option "name".`, no texture raises `A tile layer needs at least one texture.`, and a size outside the ranges raises `A tile layer needs a positive cell size and a chunk size from 1 to 256 cells.`
 
+### graphics2d.newMesh(texture, vertices, indices)
+
+Creates a [`Mesh`](#mesh) that keeps its triangles in C++ between draws, with the vertices and indices that [`graphics2d.drawMesh`](#graphics2ddrawmeshtexture-vertices-indices-order) takes. The argument `texture` can be `nil` for solid colors. A count of indices that is not a multiple of three raises `A mesh lists its triangles as three indices each, and n is not a multiple of three.`, and an index past the last vertex raises `Mesh index refers to a vertex that does not exist.`
+
+### graphics2d.newGridMesh(texture, columns, rows, options)
+
+Creates a [`Mesh`](#mesh) of `columns` by `rows` cells, the start of a free-form deformation such as a waving flag or a squashed jelly. The optional `options` are `x`, `y`, `width` and `height`, the area the grid covers, which defaults to the size of the texture at the origin, and `source`, the `Rect` of the texture the grid shows, which defaults to the whole texture. Vertices count row by row from the top left, `columns + 1` to a row. Fewer than one column or row or more than 1048576 cells raise `A grid mesh needs at least one column and one row and at most 1048576 cells.`
+
 ### graphics2d.blendCameras(from, to, amount)
 
 Returns a new `Camera` between the views of `from` and `to`, where `amount` 0 gives the view of `from` and 1 the view of `to`. Position, offset, rotation and viewport move in a straight line, and the zoom changes at a steady rate. The result takes the other settings of `to`. Tween `amount` for a smooth cut between two cameras, such as from the player to a boss.
@@ -1761,6 +1809,62 @@ scene.push({
     render = function(self)
         graphics2d.beginScreen()
         graphics2d.drawStatic(baked)
+    end,
+})
+```
+
+## Mesh
+
+A `Mesh` keeps a texture, its vertices and its triangles between draws. A deformation reads the rest positions once with `mesh:readPositions` and writes the moved ones every frame with `mesh:setPositions`, one call each across the Lua boundary, and a draw copies the vertices into the streaming buffer of the renderer without building anything again.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `vertexCount` | integer | Number of vertices, read-only. |
+| `indexCount` | integer | Number of indices, three to a triangle, read-only. |
+| `bounds` | Rect | Rectangle around every vertex, read-only. |
+| `texture` | Texture or nil | Image the mesh draws, `nil` for solid colors. |
+
+### mesh:setPositions(positions, first) and mesh:readPositions(buffer, first)
+
+Moves the vertices from the vertex `first`, which defaults to 1, to the x and y pairs of `positions`, a [`FloatBuffer`](collections.md#float-buffers) or a list of numbers, and copies the positions of as many vertices as `buffer` holds pairs into it. Pairs past the last vertex raise `The positions of a mesh come in x and y pairs for the vertices it has, n, from the first one given.`
+
+### mesh:setVertex(index, vertex) and mesh:vertex(index)
+
+Changes the fields a table gives of one vertex, from `x`, `y`, `u`, `v` and `color`, and returns a table of all of them. A vertex the mesh lacks raises `the mesh has no such vertex`.
+
+### mesh:setIndices(indices)
+
+Replaces the triangles with a list of vertex numbers counted from 1, three to a triangle.
+
+### mesh:draw(order, x, y, rotation, scaleX, scaleY)
+
+Draws the mesh into the active canvas with an optional [draw order](#draw-order), its vertices placed by a position, a rotation in radians and a scale, which change nothing in the mesh.
+
+```lua
+local assets = require('haylen.assets')
+local collections = require('haylen.collections')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local flag = graphics2d.newGridMesh(assets.texture('ui/flag.png'), 16, 4, {x = 0, y = 0, width = 256, height = 128})
+local rest = collections.newFloatBuffer(flag.vertexCount * 2)
+flag:readPositions(rest)
+local moved = collections.newFloatBuffer(#rest)
+local time = 0
+
+scene.push({
+    update = function(self, dt)
+        time = time + dt
+        for index = 1, #rest, 2 do
+            local x = rest[index]
+            moved[index] = x
+            moved[index + 1] = rest[index + 1] + math.sin(time * 4 + x * 0.05) * x * 0.06
+        end
+        flag:setPositions(moved)
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        flag:draw({layer = 1}, 200, 150)
     end,
 })
 ```

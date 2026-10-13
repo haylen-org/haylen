@@ -25,7 +25,6 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 18> kPostProcessFields{"tint", "saturation", "brightness", "contrast", "vignetteStrength", "vignetteRadius", "vignetteSoftness", "fade", "distortion", "chromaticAberration", "pixelate", "blur", "bloomStrength", "bloomThreshold", "bloomRadius", "colorLut", "colorLutStrength", "materials"};
     static constexpr std::array<std::string_view, 4> kMetaballFields{"color", "outlineColor", "outlineWidth", "threshold"};
     static constexpr std::array<std::string_view, 4> kDrawFields{"scaleX", "scaleY", "partColors", "effect"};
-    static constexpr std::array<std::string_view, 5> kMeshVertexFields{"x", "y", "u", "v", "color"};
     static constexpr std::array<std::string_view, 4> kNineSliceFields{"source", "borders", "pieces", "fill"};
     static constexpr std::array<std::string_view, 8> kShapeFields{"radius", "rotation", "startAngle", "sweep", "color", "borderWidth", "borderColor", "softness"};
     static constexpr std::array<std::string_view, 14> kVectorFields{"x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
