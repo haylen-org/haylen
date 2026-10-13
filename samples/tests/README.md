@@ -291,6 +291,7 @@ Path finding, spatial queries, procedural generation, geometry and game AI, each
 | `ALG-024` | Utility AI | Villagers that weigh hunger, energy and fun with response curves. |  |
 | `ALG-025` | Influence maps | Two armies spread their threat over a map and read it to advance or retreat. |  |
 | `ALG-026` | Ray casts without physics | Rays against segments, rectangles, circles, polygons, chains, grids and spatial trees, with bounces and fans. |  |
+| `ALG-027` | Overlap boxes | Fighters of two teams on a belt of depth rows whose punch boxes reach the other team within a depth band, with rests after every hit, without physics. |  |
 
 #### Audio (AUD)
 

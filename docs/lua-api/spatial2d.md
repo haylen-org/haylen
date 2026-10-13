@@ -1,6 +1,6 @@
 # haylen.spatial2d
 
-The module `haylen.spatial2d` finds things in space quickly. It offers four structures that store Lua values by their bounds or positions and answer area, circle, point, ray and nearest-neighbor queries without testing every entity: a spatial hash, a quadtree, a dynamic AABB tree and a k-d tree. It also offers the classic grid algorithms of 2D games on a grid of integer cells: ray casts and walks across cells, Bresenham lines and circles, a symmetric field of view, visibility polygons, flood fills, connected regions and union-find. Screen picking turns the cursor or a touch into world points, rays and the values under them.
+The module `haylen.spatial2d` finds things in space quickly. It offers four structures that store Lua values by their bounds or positions and answer area, circle, point, ray and nearest-neighbor queries without testing every entity: a spatial hash, a quadtree, a dynamic AABB tree and a k-d tree. It also offers the classic grid algorithms of 2D games on a grid of integer cells: ray casts and walks across cells, Bresenham lines and circles, a symmetric field of view, visibility polygons, flood fills, connected regions and union-find. Screen picking turns the cursor or a touch into world points, rays and the values under them, and an overlap world finds the boxes that reach each other for games that resolve their own hits without physics.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -537,3 +537,133 @@ islands:unite(1, 2)
 islands:reset(50)
 print(islands.size, islands.setCount, islands:connected(1, 2)) -- 50 50 false
 ```
+
+## OverlapWorld
+
+An overlap world keeps entities that each show one set of boxes, such as the body, hit and grab boxes of a frame of a fighter, and lists the pairs of boxes that reach each other every fixed step, for games that resolve their own hits without physics bodies. A box reaches another when its `mask` shares a bit with the `layers` of the other, their rectangles overlap and their entities stand within the sum of the `depth` reaches of the boxes, so a world of depth rows, such as a belt of a brawler, keeps fighters on far rows apart, and a world with every depth at 0 is plain 2D. Teams and kinds of attacks are bits of `layers` and `mask` that the app chooses, so the world holds no rule of combat. Box rectangles are relative to the origin of an entity that faces right, and a mirrored entity places the box `x, y, width, height` at `-x - width, y`. Contacts come in the order the entities were added, then by box, whatever moved and whatever the broad phase, so results repeat in replays. Entities, sets and boxes count from 1.
+
+### spatial2d.newOverlapWorld(options)
+
+Creates a world with `{kinds, touching, cellSize}`: the names of the kinds of boxes, at most 256, which `debugDraw` colors, whether touching edges count as an overlap, `true` by default, and a cell size above 0, 0 by default, that finds candidate pairs through a spatial hash for worlds of many entities instead of testing every pair. A negative cell size raises `The cell size of an overlap world must be 0 or positive.`.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld({kinds = {'body', 'hit', 'grab'}, cellSize = 128})
+```
+
+### world:defineSet(boxes)
+
+Defines a set of boxes once, such as the boxes of one frame of an animation, and returns its id. Each box is `{kind, x, y, width, height, layers, mask, depth}`, with `layers` 1, `mask` 0 and `depth` 0 by default, so a box reaches nothing until it has a mask. A box without a positive size raises `A box needs a positive width and height.`, an unknown kind raises `The box kind "<kind>" is not one of the kinds of the overlap world.` and bits that are not an integer of 32 bits raise `The "<field>" of a box is an integer of 32 bits.`.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld({kinds = {'body', 'hit'}})
+local punching = world:defineSet({
+    {kind = 'body', x = -18, y = -78, width = 36, height = 78, layers = 1, depth = 12},
+    {kind = 'hit', x = 12, y = -62, width = 34, height = 14, mask = 1},
+})
+```
+
+### world:add(), world:remove(entity), world:clear()
+
+The method `add` creates an entity without boxes and returns its id, `remove` deletes one and frees its id for a later `add`, which then comes last in the order of contacts, and `clear` removes every entity and rest while the sets stay.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld()
+local hero = world:add()
+world:remove(hero)
+print(world.entityCount)
+```
+
+### world:place(entity, x, y, depth, facing, set)
+
+Shows the set at a position and a depth, mirrored when `facing` is negative, or no boxes with the set 0. An unknown entity raises `The overlap world has no entity <id>.` and an unknown set `The overlap world has no box set <id>.`.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld()
+local standing = world:defineSet({{x = -18, y = -78, width = 36, height = 78}})
+local hero = world:add()
+world:place(hero, 200, 0, 420, -1, standing)
+```
+
+### world:placeAll(buffer, first)
+
+Places entities from groups of six numbers of a [float buffer](collections.md), `entity, x, y, depth, facing, set`, from the value at the position `first`, 1 by default, to the end of the buffer, so a step places any number of entities in one call.
+
+```lua
+local collections = require('haylen.collections')
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld()
+local set = world:defineSet({{width = 10, height = 10, mask = 1}})
+local first, second = world:add(), world:add()
+local placements = collections.newFloatBuffer(12)
+placements:set(1, {first, 0, 0, 0, 1, set, second, 5, 0, 0, -1, set})
+world:placeAll(placements)
+```
+
+### world:contacts(buffer)
+
+Finds every contact and writes groups of eight numbers into the float buffer, `source, sourceBox, target, targetBox` and the `x, y, width, height` of the overlap, as many as fit, and returns the count of every contact. Without a buffer it returns a list of tables `{source, sourceBox, target, targetBox, overlap}` instead, which suits small worlds. A resting pair yields no contact.
+
+```lua
+local collections = require('haylen.collections')
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld({kinds = {'body', 'hit'}})
+local standing = world:defineSet({{kind = 'body', x = -18, y = -78, width = 36, height = 78}})
+local punching = world:defineSet({{kind = 'hit', x = 12, y = -62, width = 34, height = 14, mask = 1}})
+local hero, rival = world:add(), world:add()
+world:place(hero, 200, 0, 0, 1, punching)
+world:place(rival, 236, 0, 0, -1, standing)
+local contacts = collections.newFloatBuffer(8 * 64)
+local count = world:contacts(contacts)
+for index = 0, math.min(count, 64) - 1 do
+    local base = index * 8
+    print(contacts[base + 1], contacts[base + 3], contacts[base + 7])
+end
+```
+
+### world:rest(source, target, ticks), world:resting(source, target), world:step()
+
+The method `rest` keeps the boxes of the source from reaching the target for that many steps, as a hit that lands once in a window or a rest between hits does, and 0 ends a rest, `resting` tells whether a rest holds, and `step` counts every rest down by one step.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld()
+local hero, rival = world:add(), world:add()
+world:rest(hero, rival, 7)
+world:step()
+print(world:resting(hero, rival))
+```
+
+### world:debugDraw(order)
+
+Outlines every placed box with a color for each kind in the active canvas, with the draw order keys of [graphics2d](graphics2d.md).
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+local spatial2d = require('haylen.spatial2d')
+
+local world = spatial2d.newOverlapWorld({kinds = {'body', 'hit'}})
+local camera = graphics2d.newCamera()
+
+scene.push({
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        world:debugDraw({layer = 100})
+    end,
+})
+```
+
+### world.entityCount
+
+The number of entities, read only.

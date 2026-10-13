@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include "2d/spatial/GridLua.hpp"
+#include "2d/spatial/OverlapWorldLua.hpp"
 #include "2d/spatial/SpatialIndexLua.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/spatial/ScreenPicker.hpp"
@@ -36,12 +37,14 @@ int Spatial2DLua::open(lua_State* L) {
     lua::Binding::newModule(L, functions);
     SpatialIndexLua::addFunctions(L);
     GridLua::addFunctions(L);
+    OverlapWorldLua::addFunctions(L);
     return 1;
 }
 
 void Spatial2DLua::install(lua_State* L) {
     SpatialIndexLua::install(L);
     GridLua::install(L);
+    OverlapWorldLua::install(L);
     lua::Binding::preload(L, "haylen.spatial2d", &open);
 }
 

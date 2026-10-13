@@ -30,5 +30,6 @@ return {
         {code = 'ALG-024', title = 'Utility AI', description = 'Villagers that weigh hunger, energy and fun with response curves.', module = 'utility'},
         {code = 'ALG-025', title = 'Influence maps', description = 'Two armies spread their threat over a map and read it to advance or retreat.', module = 'influence'},
         {code = 'ALG-026', title = 'Ray casts without physics', description = 'Rays against segments, rectangles, circles, polygons, chains, grids and spatial trees, with bounces and fans.', module = 'raycasts'},
+        {code = 'ALG-027', title = 'Overlap boxes', description = 'Fighters of two teams on a belt of depth rows whose punch boxes reach the other team within a depth band, with rests after every hit, without physics.', module = 'overlap-boxes'},
     },
 }

@@ -190,6 +190,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/spatial/GridRay.cpp
   src/2d/spatial/HashGrid.cpp
   src/2d/spatial/KdTree.cpp
+  src/2d/spatial/OverlapWorld.cpp
+  src/2d/spatial/OverlapWorldLua.cpp
   src/2d/spatial/QuadTree.cpp
   src/2d/spatial/Spatial2DLua.cpp
   src/2d/spatial/SpatialIndexLua.cpp

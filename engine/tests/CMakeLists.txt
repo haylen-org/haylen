@@ -44,6 +44,7 @@ set(HAYLEN_TEST_SOURCES
   2d/procedural/Procedural2DTests.cpp
   2d/procedural/TilingTests.cpp
   2d/spatial/GridAlgorithmTests.cpp
+  2d/spatial/OverlapWorldTests.cpp
   2d/spatial/Spatial2DTests.cpp
   2d/tiled/MapQueryTests.cpp
   2d/tiled/TileCollisionTests.cpp
