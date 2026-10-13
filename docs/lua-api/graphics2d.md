@@ -889,6 +889,49 @@ scene.push({
 })
 ```
 
+### graphics2d.beginGroup(options) and graphics2d.endGroup()
+
+Draws everything between the two calls into an image of the active canvas, which then draws as one, so overlapping parts of a character, a panel or an effect fade together instead of showing each other through. The group sorts its draws among themselves like a canvas of its own and draws its image with premultiplied alpha at the place its options give among the draws of the canvas, unlit and without post-processing of its own in a canvas that has them. The clips of the canvas apply to the image and not to the draws inside, which start without clips. The argument `options` is optional and also takes the keys of the [draw order](#draw-order) but `material`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `opacity` | number | `1` | Opacity of the whole image, from 0 to 1. |
+
+Groups and masks nest, and a canvas that ends, or a frame, closes the groups and masks it left open. An opacity outside 0 to 1 raises `A group needs an opacity from 0 to 1.`, and `graphics2d.endGroup()` without an open group raises `The "endGroup" call has no matching "beginGroup".`
+
+### graphics2d.pushMask(drawShape, options) and graphics2d.popMask()
+
+Calls `drawShape` at once to draw the shape of a mask with any draws, such as circles, sprites, text or meshes, and then draws everything until `graphics2d.popMask()` only inside that shape, or outside it with `mode = 'outside'`, through the coverage of the shape, so soft and smooth edges stay soft, as for round avatars, reveals, fog of war and shaped panels. The masked draws composite as one image like a group. The argument `options` is optional and takes `mode`, `'inside'` (the default) or `'outside'`, and the keys of the [draw order](#draw-order) but `material`. A call to `graphics2d.popMask()` without an open mask raises `The "popMask" call has no matching "pushMask" whose shape ended with "endMaskShape".` In C++, `Renderer::pushMask(mode, order)` begins the shape, `Renderer::endMaskShape()` ends it and `Renderer::popMask()` ends the content.
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local portrait = assets.texture('ui/portrait.png')
+local camera = graphics2d.newCamera()
+local fade = 1
+
+scene.push({
+    update = function(self, dt)
+        fade = math.max(0, fade - dt * 0.2)
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.pushMask(function()
+            graphics2d.drawCircle(120, 120, 64, '#FFFFFF')
+        end)
+        graphics2d.draw(portrait, 120, 120)
+        graphics2d.popMask()
+
+        graphics2d.beginGroup({opacity = fade, layer = 1})
+        graphics2d.drawCircle(300, 120, 50, '#FF8040')
+        graphics2d.drawCircle(340, 120, 50, '#FF8040')
+        graphics2d.endGroup()
+    end,
+})
+```
+
 ### graphics2d.pushLayerOffset(offset)
 
 Adds `offset` to the layer of every following draw of the active canvas until `graphics2d.popLayerOffset`. Nested offsets add up, and a new canvas starts without offsets. It lets a group of draws that sets its own layers, such as a character with its shadow and its name, move to another layer as a whole. Calling it without an active canvas raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`
@@ -1016,13 +1059,13 @@ Draws the textures `from` and `to` over `rect`, mixed through a pattern that `pr
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `pattern` | string | `'dissolve'` | The pattern `'dissolve'` switches cells in random order with a soft edge, `'pixelate'` breaks `from` into growing blocks and brings `to` back out of them, `'radial'` sweeps a hand clockwise from twelve o'clock, `'iris'` closes a circle on `from` to the color and opens it on `to`, and `'pageTurn'` curls `from` away like a page. |
+| `pattern` | string | `'dissolve'` | The pattern `'dissolve'` switches cells in random order with a soft edge, `'pixelate'` breaks `from` into growing blocks and brings `to` back out of them, `'radial'` sweeps a hand clockwise from twelve o'clock, `'iris'` closes a circle on `from` to the color and opens it on `to`, `'pageTurn'` curls `from` away like a page, and `'mask'` shows `from` where `to` is opaque, or where it is transparent when `reversed`, taking from `from` whole at 0 to masked at 1. |
 | `progress` | number | `0` | From 0 to 1. |
 | `center` | Vec2 | `{0.5, 0.5}` | Center of `'radial'` and `'iris'`, from `{0, 0}` at the top-left of the rectangle to `{1, 1}` at its bottom-right. |
 | `cellSize` | number | `1` | Size of the dissolve cells in pixels of `from`. |
 | `blockSize` | number | `48` | Size of the largest pixelate blocks in pixels of `from`. |
 | `color` | Color | `'#FF000000'` | The color the iris passes through. |
-| `reversed` | boolean | `false` | Sweeps the radial pattern counterclockwise. |
+| `reversed` | boolean | `false` | Sweeps the radial pattern counterclockwise, and shows `from` outside the mask of the `'mask'` pattern. |
 | `angle` | number | `0` | Direction in radians the page turn moves toward, where 0 points right and `math.pi / 2` points down. |
 
 ```lua

@@ -10,12 +10,14 @@
 #include <utility>
 #include <vector>
 
+#include "2d/graphics/BlendDraw.hpp"
 #include "2d/graphics/Canvas.hpp"
 #include "2d/graphics/Capture.hpp"
 #include "2d/graphics/Command.hpp"
 #include "2d/graphics/DrawItem.hpp"
 #include "2d/graphics/GpuInstance.hpp"
 #include "2d/graphics/GpuVertex.hpp"
+#include "2d/graphics/GroupScope.hpp"
 #include "2d/graphics/LightDraw.hpp"
 #include "2d/graphics/LightInstance.hpp"
 #include "2d/graphics/LitTargets.hpp"
@@ -93,7 +95,7 @@ struct RendererState {
     std::vector<GpuVertex> vertices;
     std::vector<std::uint32_t> indices;
     std::vector<std::uint32_t> uploadIndices;
-    std::vector<ImageBlend> blends;
+    std::vector<BlendDraw> blends;
     std::vector<DrawItem> items;
     std::vector<Command> commands;
     std::vector<Canvas> canvases;
@@ -111,6 +113,13 @@ struct RendererState {
     std::vector<lighting2d::ShadowMap::Segment> segments;
     std::vector<MetaballDraw> metaballs;
     std::vector<LitTargets> litTargets;
+
+    // The open groups and masks from the outermost, the clips and layer offsets of the canvases they draw over, and the images they draw into, which frames reuse by their order.
+    std::vector<GroupScope> groups;
+    std::vector<std::uint32_t> savedClips;
+    std::vector<int> savedLayerOffsets;
+    std::vector<graphics::RenderTarget> groupTargets;
+    std::size_t groupTargetsUsed = 0;
     std::vector<graphics::RenderTarget> fields;
     std::vector<std::shared_ptr<graphics::TextureResource>> retained;
     std::vector<std::shared_ptr<StaticBatchResource>> retainedBatches;
@@ -185,6 +194,9 @@ struct RendererState {
     // Keeps the texture or the baked batch alive until the frame is submitted.
     void retain(const graphics::Texture& texture);
     void retain(const std::shared_ptr<StaticBatchResource>& batch);
+
+    // Returns the next image of the groups of the frame, with the size of the pass of a canvas.
+    [[nodiscard]] std::size_t acquireGroupTarget(math::Vec2 size);
 
     void openCanvas(Canvas next);
     void closeCanvas();

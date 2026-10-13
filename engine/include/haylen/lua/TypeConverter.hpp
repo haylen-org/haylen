@@ -91,7 +91,7 @@ class TypeConverter final {
     template <typename T, std::size_t Size> using NameTable = std::array<std::pair<std::string_view, T>, Size>;
 
     static const NameTable<graphics2d::Renderer::SortMode, 3> kSortModes;
-    static const NameTable<graphics2d::ImageBlend::Pattern, 5> kBlendPatterns;
+    static const NameTable<graphics2d::ImageBlend::Pattern, 6> kBlendPatterns;
     static const NameTable<graphics2d::SceneTransition::Kind, 24> kTransitions;
     static const NameTable<graphics2d::SceneTransition::Direction, 8> kDirections;
     static const NameTable<input::InputDevice, 3> kDevices;

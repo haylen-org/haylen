@@ -485,7 +485,7 @@ void Renderer::drawImageBlend(const ImageBlend& blend, const DrawOrder& order) {
     DrawItem& item = state->addItem(Program::ImageBlend, order, blend.from.getResource().get(), blend.area.getBottom());
     item.first = static_cast<std::uint32_t>(state->blends.size());
     item.count = 1;
-    state->blends.push_back(blend);
+    state->blends.push_back({.blend = blend, .origin = blend.area.getMin(), .rows = {blend.area.width, 0.0F}, .columns = {0.0F, blend.area.height}});
 }
 
 void Renderer::drawLight(const lighting2d::Light& light) {
@@ -670,7 +670,164 @@ Renderer::CanvasKind Renderer::getCanvasKind() const {
 }
 
 // The flash of the camera covers what the canvas holds, then the overlays run on a copy of their list, so one may add or remove overlays, and the canvas closes even when one of them fails.
+std::optional<Renderer::MaskMode> Renderer::maskModeFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kMaskModeNames, name, &std::pair<std::string_view, MaskMode>::first);
+    return found != kMaskModeNames.end() ? std::optional<MaskMode>(found->second) : std::nullopt;
+}
+
+std::string_view Renderer::maskModeName(MaskMode value) noexcept {
+    const auto found = std::ranges::find(kMaskModeNames, value, &std::pair<std::string_view, MaskMode>::second);
+    return found != kMaskModeNames.end() ? found->first : std::string_view{};
+}
+
+// The canvas of a group shares the view and the options of the canvas it draws over, without a clear color, lighting or post-processing, and renders into an image with the pixel size of its pass.
+void Renderer::openGroup(GroupScope scope) {
+    const Canvas& parent = state->getCanvas();
+    Canvas next{.kind = Canvas::Kind::Target, .options = parent.options, .viewSize = parent.viewSize, .view = parent.view};
+    next.options.clear = math::Color::transparent();
+    next.options.ambientLight.reset();
+    next.options.postProcess.reset();
+    scope.target = state->acquireGroupTarget(state->getPassRect(parent).getSize());
+    next.target = state->groupTargets[scope.target];
+
+    scope.parent = state->canvases.size() - 1;
+    scope.itemStart = state->items.size();
+    scope.metaballStart = state->metaballs.size();
+    scope.clipStart = state->savedClips.size();
+    scope.layerOffsetStart = state->savedLayerOffsets.size();
+    scope.layerOffset = state->layerOffset;
+    state->savedClips.insert(state->savedClips.end(), state->clipStack.begin(), state->clipStack.end());
+    state->savedLayerOffsets.insert(state->savedLayerOffsets.end(), state->layerOffsets.begin(), state->layerOffsets.end());
+    state->groups.push_back(std::move(scope));
+    state->openCanvas(std::move(next));
+}
+
+// The draws and metaballs of a group and of the groups inside it move ahead of those of the canvas it drew over, which keeps the draws of every canvas in one run, and its canvas moves ahead of that canvas, so its image renders first.
+graphics::Texture Renderer::closeGroup() {
+    const GroupScope& scope = state->groups.back();
+    state->closeCanvas();
+    std::vector<Canvas>& canvases = state->canvases;
+    Canvas& parent = canvases[scope.parent];
+    const std::size_t itemsBefore = scope.itemStart - parent.itemBegin;
+    const std::size_t itemsMoved = state->items.size() - scope.itemStart;
+    const std::size_t metaballsBefore = scope.metaballStart - parent.metaballBegin;
+    const std::size_t metaballsMoved = state->metaballs.size() - scope.metaballStart;
+    const auto itemBegin = state->items.begin() + static_cast<std::ptrdiff_t>(parent.itemBegin);
+    std::rotate(itemBegin, itemBegin + static_cast<std::ptrdiff_t>(itemsBefore), state->items.end());
+    const auto metaballBegin = state->metaballs.begin() + static_cast<std::ptrdiff_t>(parent.metaballBegin);
+    std::rotate(metaballBegin, metaballBegin + static_cast<std::ptrdiff_t>(metaballsBefore), state->metaballs.end());
+
+    for (std::size_t index = parent.itemBegin; index < state->items.size(); ++index) {
+        DrawItem& item = state->items[index];
+        if (item.program == Program::Metaball) {
+            item.first = item.first >= scope.metaballStart ? item.first - static_cast<std::uint32_t>(metaballsBefore) : item.first + static_cast<std::uint32_t>(metaballsMoved);
+        }
+    }
+    for (std::size_t index = scope.parent + 1; index < canvases.size(); ++index) {
+        canvases[index].itemBegin -= itemsBefore;
+        canvases[index].itemEnd -= itemsBefore;
+        canvases[index].metaballBegin -= metaballsBefore;
+        canvases[index].metaballEnd -= metaballsBefore;
+    }
+    parent.itemBegin += itemsMoved;
+    parent.metaballBegin += metaballsMoved;
+    const auto parentPlace = canvases.begin() + static_cast<std::ptrdiff_t>(scope.parent);
+    std::rotate(parentPlace, parentPlace + 1, canvases.end());
+
+    state->clipStack.assign(state->savedClips.begin() + static_cast<std::ptrdiff_t>(scope.clipStart), state->savedClips.end());
+    state->layerOffsets.assign(state->savedLayerOffsets.begin() + static_cast<std::ptrdiff_t>(scope.layerOffsetStart), state->savedLayerOffsets.end());
+    state->savedClips.resize(scope.clipStart);
+    state->savedLayerOffsets.resize(scope.layerOffsetStart);
+    state->layerOffset = scope.layerOffset;
+    state->canvasOpen = true;
+    return state->groupTargets[scope.target].getTexture();
+}
+
+// The image covers the view of the canvas, so its corners follow the view however it turns or stretches.
+void Renderer::composite(const GroupScope& scope, const graphics::Texture& image) {
+    DrawOrder order = scope.order;
+    order.blend = graphics::BlendMode::Type::Premultiplied;
+    if (!state->accepts(order)) {
+        return;
+    }
+    const Canvas& canvas = state->getCanvas();
+    const math::Transform2D inverse = canvas.view.getInverse();
+    const math::Vec2 origin = inverse.apply(math::Vec2{});
+    const math::Vec2 rows = inverse.applyVector({canvas.viewSize.x, 0.0F});
+    const math::Vec2 columns = inverse.applyVector({0.0F, canvas.viewSize.y});
+    const bool masked = scope.shape.isValid();
+    const ImageBlend blend{.pattern = ImageBlend::Pattern::Mask, .from = image, .to = masked ? scope.shape : state->white, .progress = masked ? 1.0F : 0.0F, .reversed = scope.outside};
+    state->retain(blend.from);
+    state->retain(blend.to);
+    const float bottom = std::max({origin.y, origin.y + rows.y, origin.y + columns.y, origin.y + rows.y + columns.y});
+    DrawItem& item = state->addItem(Program::ImageBlend, order, image.getResource().get(), bottom);
+    item.first = static_cast<std::uint32_t>(state->blends.size());
+    item.count = 1;
+    state->blends.push_back({.blend = blend, .origin = origin, .rows = rows, .columns = columns, .opacity = scope.opacity});
+}
+
+void Renderer::beginGroup(const GroupOptions& options) {
+    if (!(options.opacity >= 0.0F && options.opacity <= 1.0F)) {
+        throw std::invalid_argument("A group needs an opacity from 0 to 1.");
+    }
+    openGroup({.stage = GroupScope::Stage::Group, .opacity = options.opacity, .order = options.order});
+}
+
+void Renderer::endGroup() {
+    if (state->groups.empty() || state->groups.back().stage != GroupScope::Stage::Group) {
+        throw std::logic_error("The \"endGroup\" call has no matching \"beginGroup\".");
+    }
+    const GroupScope scope = state->groups.back();
+    const graphics::Texture image = closeGroup();
+    state->groups.pop_back();
+    composite(scope, image);
+}
+
+void Renderer::pushMask(MaskMode mode, const DrawOrder& order) {
+    openGroup({.stage = GroupScope::Stage::MaskShape, .outside = mode == MaskMode::Outside, .order = order});
+}
+
+void Renderer::endMaskShape() {
+    if (state->groups.empty() || state->groups.back().stage != GroupScope::Stage::MaskShape) {
+        throw std::logic_error("The \"endMaskShape\" call has no matching \"pushMask\".");
+    }
+    GroupScope scope = state->groups.back();
+    scope.shape = closeGroup();
+    state->groups.pop_back();
+    scope.stage = GroupScope::Stage::MaskContent;
+    openGroup(std::move(scope));
+}
+
+void Renderer::popMask() {
+    if (state->groups.empty() || state->groups.back().stage != GroupScope::Stage::MaskContent) {
+        throw std::logic_error("The \"popMask\" call has no matching \"pushMask\" whose shape ended with \"endMaskShape\".");
+    }
+    const GroupScope scope = state->groups.back();
+    const graphics::Texture image = closeGroup();
+    state->groups.pop_back();
+    composite(scope, image);
+}
+
+void Renderer::closeGroups() {
+    while (!state->groups.empty()) {
+        switch (state->groups.back().stage) {
+        case GroupScope::Stage::Group:
+            endGroup();
+            break;
+        case GroupScope::Stage::MaskShape:
+            endMaskShape();
+            break;
+        case GroupScope::Stage::MaskContent:
+            popMask();
+            break;
+        }
+    }
+}
+
 void Renderer::finishCanvas() {
+    if (state->canvasOpen) {
+        closeGroups();
+    }
     if (state->canvasOpen && state->canvases.back().flash.a > 0.0F) {
         const math::Color flash = state->canvases.back().flash;
         state->canvases.back().flash = math::Color::transparent();

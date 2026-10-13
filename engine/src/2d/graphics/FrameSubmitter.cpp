@@ -812,7 +812,8 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
 }
 
 void FrameSubmitter::drawImageBlend(const Command& command, const Matrix& matrix) {
-    const ImageBlend& blend = state.blends[command.first];
+    const BlendDraw& draw = state.blends[command.first];
+    const ImageBlend& blend = draw.blend;
     const graphics::TextureResource& from = *blend.from.getResource();
     const graphics::TextureResource& to = *blend.to.getResource();
 
@@ -825,19 +826,24 @@ void FrameSubmitter::drawImageBlend(const Command& command, const Matrix& matrix
 
     blend_blend_vs_params_t vertex{};
     std::copy(matrix.begin(), matrix.end(), vertex.view_projection);
-    vertex.area[0] = blend.area.x;
-    vertex.area[1] = blend.area.y;
-    vertex.area[2] = blend.area.width;
-    vertex.area[3] = blend.area.height;
+    vertex.placement[0] = draw.origin.x;
+    vertex.placement[1] = draw.origin.y;
+    vertex.placement[2] = draw.rows.x;
+    vertex.placement[3] = draw.rows.y;
+    vertex.columns[0] = draw.columns.x;
+    vertex.columns[1] = draw.columns.y;
     vertex.premultiply = RendererState::expectsPremultiplied(command.blend) ? 1.0F : 0.0F;
     sg_apply_uniforms(UB_blend_blend_vs_params, SG_RANGE(vertex));
 
     const float flips = (from.flipped ? 1.0F : 0.0F) + (to.flipped ? 2.0F : 0.0F);
+    const float rows = draw.rows.getLength();
+    const float columns = draw.columns.getLength();
     const blend_blend_fs_params_t fragment{
         .settings = {static_cast<float>(blend.pattern), blend.progress, blend.reversed ? 1.0F : 0.0F, blend.angle},
         .shape = {blend.center.x, blend.center.y, blend.cellSize, blend.blockSize},
         .color = {blend.color.r, blend.color.g, blend.color.b, blend.color.a},
-        .image = {static_cast<float>(from.width), static_cast<float>(from.height), blend.area.height > 0.0F ? blend.area.width / blend.area.height : 1.0F, flips},
+        .image = {static_cast<float>(from.width), static_cast<float>(from.height), columns > 0.0F ? rows / columns : 1.0F, flips},
+        .fade = {draw.opacity, 0.0F, 0.0F, 0.0F},
     };
     sg_apply_uniforms(UB_blend_blend_fs_params, SG_RANGE(fragment));
     sg_draw(0, 4, 1);

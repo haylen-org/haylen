@@ -22,6 +22,8 @@ struct ImageBlend {
         Iris,
         // The first image curls away like a page turned toward the angle and uncovers the second image.
         PageTurn,
+        // The first image shows where the second image covers, or where it does not when reversed, as the progress goes from the whole first image to the masked one.
+        Mask,
     };
 
     Pattern pattern = Pattern::Dissolve;

@@ -58,6 +58,7 @@ struct Layout;
 
 namespace haylen::graphics2d {
 
+struct GroupScope;
 struct RendererState;
 
 // Records 2D draw commands into canvases during a frame and submits them to the GPU at the end of the frame.
@@ -92,6 +93,18 @@ class Renderer final {
     };
 
     // How `drawMetaballs` shows the surface where its soft circles meet: the fill color, and an outline in the band of the field just above the threshold. The field adds up to 1 at the center of a lone circle, whose surface reaches the radius at the default threshold.
+    // Whether the content of a mask draws inside its shape or outside it.
+    enum class MaskMode : std::uint8_t {
+        Inside,
+        Outside,
+    };
+
+    // How a group draws once it ends: the opacity of the whole image and its place among the draws of its canvas.
+    struct GroupOptions {
+        float opacity = 1.0F;
+        DrawOrder order{};
+    };
+
     struct MetaballStyle {
         math::Color color = math::Color::white();
         math::Color outlineColor = math::Color::transparent();
@@ -204,6 +217,18 @@ class Renderer final {
     void pushClip(const math::Rect& rect);
     void popClip();
 
+    // Draws what follows until `endGroup` into an image of the open canvas, which then draws as one with the opacity and the draw order of the options, so overlapping parts fade together. A group sorts its draws among themselves like a canvas of its own and composites with premultiplied alpha, unlit and without post-processing of its own, and a canvas that ends closes the groups and masks it has open.
+    void beginGroup(const GroupOptions& options);
+    void endGroup();
+
+    // Records what follows until `endMaskShape` as the shape of a mask, drawn with anything, and draws what follows from there until `popMask` only inside the shape or outside it, through the coverage of the shape, soft edges included, as one image with the draw order. Masks and groups nest.
+    void pushMask(MaskMode mode = MaskMode::Inside, const DrawOrder& order = {});
+    void endMaskShape();
+    void popMask();
+
+    [[nodiscard]] static std::optional<MaskMode> maskModeFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view maskModeName(MaskMode value) noexcept;
+
     // Adds the offset to the layer of the following draws of the current canvas until popped. Nested offsets add up.
     void pushLayerOffset(int offset);
     void popLayerOffset();
@@ -243,6 +268,16 @@ class Renderer final {
 
     void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order);
     void addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform);
+
+    static constexpr std::array<std::pair<std::string_view, MaskMode>, 2> kMaskModeNames{{{"inside", MaskMode::Inside}, {"outside", MaskMode::Outside}}};
+
+    // Opens the canvas of a group over the open canvas, and closes it again, moving its draws ahead of those of the canvas it drew over, which then opens again, and returns its image.
+    void openGroup(GroupScope scope);
+    graphics::Texture closeGroup();
+    void composite(const GroupScope& scope, const graphics::Texture& image);
+
+    // Ends every group and mask the open canvas has.
+    void closeGroups();
 
     // Runs the overlays in the open canvas and closes it.
     void finishCanvas();

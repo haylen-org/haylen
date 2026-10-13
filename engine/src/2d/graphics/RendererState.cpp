@@ -139,6 +139,20 @@ void RendererState::openCanvas(Canvas next) {
     ++stats.canvases;
 }
 
+std::size_t RendererState::acquireGroupTarget(math::Vec2 size) {
+    const int width = std::max(1, static_cast<int>(std::lround(size.x)));
+    const int height = std::max(1, static_cast<int>(std::lround(size.y)));
+    const std::size_t index = groupTargetsUsed++;
+    if (groupTargets.size() <= index) {
+        groupTargets.resize(index + 1);
+    }
+    graphics::RenderTarget& target = groupTargets[index];
+    if (!target.isValid() || target.getWidth() != width || target.getHeight() != height) {
+        target = device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
+    }
+    return index;
+}
+
 void RendererState::closeCanvas() {
     if (!canvasOpen) {
         return;
@@ -166,6 +180,13 @@ void RendererState::resetFrame() noexcept {
     indices.clear();
     uploadIndices.clear();
     blends.clear();
+    groups.clear();
+    savedClips.clear();
+    savedLayerOffsets.clear();
+
+    // Images past what this frame used go back to the device.
+    groupTargets.resize(groupTargetsUsed);
+    groupTargetsUsed = 0;
     items.clear();
     commands.clear();
     canvases.clear();

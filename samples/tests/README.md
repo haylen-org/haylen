@@ -73,6 +73,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-013` | Recoloring by parts | One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call. |  |
 | `SPR-014` | Tile layers | An endless world of tiles kept by chunks that stream in around the camera and bake only when their cells change. |  |
 | `SPR-015` | Strokes and meshes | Lines drawn with the pointer and stroked with joins, caps, widths, colors, dashes and a tiled texture, and a kept mesh that waves in place. |  |
+| `SPR-016` | Groups and masks | A round portrait and a shaped card drawn through masks, fog of war cut open around the pointer and shapes that fade as one group. |  |
 
 #### Animation (ANI)
 

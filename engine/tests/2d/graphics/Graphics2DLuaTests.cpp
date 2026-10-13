@@ -476,4 +476,34 @@ TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
     EXPECT_NE(lua("graphics2d.newGridMesh(nil, 1, 1, {depth = 1})").find("Unknown option \"depth\"."), std::string::npos);
 }
 
+TEST_F(Graphics2DLuaTest, DrawsGroupsAndMasks) {
+    // clang-format off
+    const std::string body = R"(
+        graphics2d.beginWorld(graphics2d.newCamera())
+        graphics2d.beginGroup({opacity = 0.5, layer = 2})
+        graphics2d.drawRect({0, 0, 20, 20}, '#FF0000')
+        graphics2d.pushMask(function()
+            graphics2d.drawCircle(10, 10, 8, '#FFFFFF')
+            graphics2d.draw(hero, 10, 10)
+        end, {mode = 'outside', layer = 1})
+        graphics2d.drawRect({0, 0, 20, 20}, '#00FF00')
+        graphics2d.popMask()
+        graphics2d.endGroup()
+        graphics2d.pushMask(function() graphics2d.drawCircle(0, 0, 4, '#FFFFFF') end)
+        graphics2d.drawImageBlend(hero, hero, {0, 0, 16, 8}, {pattern = 'mask', progress = 1, reversed = true})
+        graphics2d.popMask()
+    )";
+    // clang-format on
+    EXPECT_EQ(render(body), "nil");
+    EXPECT_EQ(lua("return graphics2d.stats().canvases"), "6");
+
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.endGroup()").find("The \"endGroup\" call has no matching \"beginGroup\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popMask()").find("The \"popMask\" call has no matching \"pushMask\" whose shape ended with \"endMaskShape\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.beginGroup({alpha = 1})").find("Unknown option \"alpha\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.beginGroup({opacity = 3})").find("A group needs an opacity from 0 to 1."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() end, {mode = 'around'})").find("around"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(5)").find("function expected"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() error('Shape failed.') end)").find("Shape failed."), std::string::npos);
+}
+
 } // namespace haylen

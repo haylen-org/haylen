@@ -65,6 +65,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/Material.cpp
   src/2d/graphics/MaterialLua.cpp
   src/2d/graphics/MaterialResource.cpp
+  src/2d/graphics/GroupLua.cpp
   src/2d/graphics/Mesh.cpp
   src/2d/graphics/MeshLua.cpp
   src/2d/graphics/NineSlice.cpp
