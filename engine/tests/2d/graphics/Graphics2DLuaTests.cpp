@@ -314,7 +314,7 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
 }
 
 TEST_F(Graphics2DLuaTest, BuildsNineSlices) {
-    EXPECT_EQ(render("graphics2d.beginScreen() local slice = graphics2d.newNineSlice(hero, {source = {0, 0, 16, 8}, borders = {2, 2, 2, 2}, fill = 'tile'}) graphics2d.drawNineSlice(slice, {0, 0, 100, 40}, '#FFFFFF', {layer = 1}, 2)"), "nil");
+    EXPECT_EQ(render("graphics2d.beginScreen() local slice = graphics2d.newNineSlice(hero, {source = {0, 0, 16, 8}, borders = {2, 2, 2, 2}, fill = 'tile'}) graphics2d.drawNineSlice(slice, {0, 0, 100, 40}, '#FFFFFF', {layer = 1, borderScale = 2})"), "nil");
     EXPECT_GT(std::stoi(lua("return graphics2d.stats().sprites")), 9);
 
     lua("slice = graphics2d.newNineSlice(hero, {borders = {1, 2, 3, 1}})");
@@ -450,7 +450,7 @@ TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
             bent[index + 1] = rest[index + 1] + rest[index] * 0.5
         end
         grid:setPositions(bent)
-        grid:draw({layer = 1}, 100, 50, 0.25, 2, 2)
+        grid:draw(100, 50, {layer = 1, rotation = 0.25, scaleX = 2, scaleY = 2})
         triangle = graphics2d.newMesh(nil, {{x = 0, y = 0}, {x = 10, y = 0, u = 1}, {x = 0, y = 10, v = 1, color = '#FF0000'}}, {1, 2, 3})
         triangle:setVertex(2, {x = 20})
         triangle:draw()

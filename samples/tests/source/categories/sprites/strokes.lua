@@ -100,7 +100,7 @@ function Strokes:draw(area)
     graphics2d.drawStroke(ribbon, {widths = {2, 28, 18, 2}, colors = {'#FFFFD54F', '#FFFF7043', '#FFAB47BC', '#FF29B6F6'}, join = 'round', cap = 'round', layer = 1})
     local rope = {width * 0.1, height * 0.92, width * 0.3, height * 0.85 + math.sin(self.time) * 20, width * 0.55, height * 0.92}
     graphics2d.drawStroke(rope, {width = 14, texture = self.tiles, textureMode = 'tile', join = 'round', layer = 1})
-    self.flag:draw({layer = 1}, width * 0.66, height * 0.1, 0, 3, 3)
+    self.flag:draw(width * 0.66, height * 0.1, {layer = 1, scaleX = 3, scaleY = 3})
 end
 
 return Strokes

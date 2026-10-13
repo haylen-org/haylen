@@ -16,7 +16,7 @@ Charts.header = 52
 Charts.padding = 16
 
 function Charts.panel(slice, rect)
-    graphics2d.drawNineSlice(slice, rect, nil, {layer = 0}, 0.5)
+    graphics2d.drawNineSlice(slice, rect, nil, {layer = 0, borderScale = 0.5})
 end
 
 local function inner(rect)

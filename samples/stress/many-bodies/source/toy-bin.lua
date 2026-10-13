@@ -225,7 +225,7 @@ end
 function ToyBin:draw(planks)
     local x, y = self.bin:renderTransform()
     for _, rect in ipairs(self.planks) do
-        graphics2d.drawNineSlice(planks, {rect.x + x, rect.y + y, rect.width, rect.height}, nil, {layer = 3}, 0.6)
+        graphics2d.drawNineSlice(planks, {rect.x + x, rect.y + y, rect.width, rect.height}, nil, {layer = 3, borderScale = 0.6})
     end
     if #self.bodies > 0 then
         self.batch:draw(ToyBin.order)

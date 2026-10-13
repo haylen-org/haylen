@@ -14,7 +14,7 @@ EdgeCases.view = {1500, 860}
 EdgeCases.tiny = {{24, 18}, {12, 60}, {90, 10}, {6, 6}}
 EdgeCases.code = [[
 local frame = graphics2d.newNineSlice(sheet, {pieces = pieces, fill = 'tile'})
-graphics2d.drawNineSlice(frame, {10.3, 20.6, 203.3, 131.9}, nil, nil, 2.7)
+graphics2d.drawNineSlice(frame, {10.3, 20.6, 203.3, 131.9}, nil, {borderScale = 2.7})
 local quads = frame:layout({0, 0, 24, 18}, 2.7)  -- Borders shrink until they meet.]]
 
 -- Builds a sheet of three by three pieces of `size` texels with magenta gaps of `gap` texels: a blue center and yellow borders that darken toward their outer side, so stretched and tiled pieces look different. Returns the texture and the nine regions row by row.
@@ -109,22 +109,22 @@ function EdgeCases:draw()
     local column = 480
     local x, y = 30 + drift, 30 + drift
 
-    graphics2d.drawNineSlice(self.stretched, {x, y, 151.7 + 40 * math.sin(self.time), 77.2 + 30 * math.cos(self.time * 0.8)}, nil, nil, scale)
+    graphics2d.drawNineSlice(self.stretched, {x, y, 151.7 + 40 * math.sin(self.time), 77.2 + 30 * math.cos(self.time * 0.8)}, nil, {borderScale = scale})
     Test.caption('Stretched at a border scale of 2.7', 30, y + 130, {color = Test.ink})
 
-    graphics2d.drawNineSlice(self.tiled, {x + column, y, 203.3 + 50 * math.sin(self.time * 0.7), 131.9}, nil, nil, scale)
+    graphics2d.drawNineSlice(self.tiled, {x + column, y, 203.3 + 50 * math.sin(self.time * 0.7), 131.9}, nil, {borderScale = scale})
     Test.caption('Tiled at sizes off the tile grid', 30 + column, y + 150, {color = Test.ink})
 
     local left = x + column * 2
     for _, size in ipairs(EdgeCases.tiny) do
-        graphics2d.drawNineSlice(self.tiled, {left, y, size[1], size[2]}, nil, nil, scale)
+        graphics2d.drawNineSlice(self.tiled, {left, y, size[1], size[2]}, nil, {borderScale = scale})
         left = left + size[1] + 24
     end
     Test.caption('Smaller than their borders', 30 + column * 2, y + 150, {color = Test.ink})
 
     local lower = y + 210
-    graphics2d.drawNineSlice(self.stretched, {x, lower, 240, 120}, nil, nil, scale)
-    graphics2d.drawNineSlice(self.sharp, {x + 270, lower, 240, 120}, nil, nil, scale / 2)
+    graphics2d.drawNineSlice(self.stretched, {x, lower, 240, 120}, nil, {borderScale = scale})
+    graphics2d.drawNineSlice(self.sharp, {x + 270, lower, 240, 120}, nil, {borderScale = scale / 2})
     Test.caption('A sheet of 8 texel pieces and one of 16 at half the border scale', 30, lower + 130, {color = Test.ink})
 
     self.results:draw(layout, lower + 180)

@@ -117,7 +117,7 @@ function Immediate:button(id, rect, text)
     if over then
         self.cursor = 'pointingHand'
     end
-    graphics2d.drawNineSlice(self.slice, rect, self.active == id and '#FFB0B0B0' or over and '#FFFFE0C0' or '#FFFFFFFF', nil, 2)
+    graphics2d.drawNineSlice(self.slice, rect, self.active == id and '#FFB0B0B0' or over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 2})
     self:ring(id, rect)
     local width, height = graphics2d.measureText(nil, text, {size = Immediate.size})
     self:label(text, rect[1] + (rect[3] - width) / 2, rect[2] + (rect[4] - height) / 2)

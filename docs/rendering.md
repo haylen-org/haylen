@@ -276,7 +276,7 @@ The engine embeds Roboto Medium from Dear ImGui as its default font, which `grap
 
 A `NineSlice` (`engine/include/haylen/2d/graphics/NineSlice.hpp`) is a texture with nine source rectangles, row by row from the top-left corner. The method `NineSlice::fromBorders` cuts one source rectangle with fixed borders, and `NineSlice::fromPieces` takes nine separate rectangles, such as the pieces that an atlas packs apart. In Lua, `graphics2d.newNineSlice(texture, {borders = ...})` or `{pieces = ...}` builds one.
 
-The method `NineSlice::layout(area, borderScale, patches)`, `slice:layout(rect, borderScale)` in Lua, cuts an area into the quads of the frame, and `drawNineSlice(slice, area, color, order, borderScale)` draws them:
+The method `NineSlice::layout(area, borderScale, patches)`, `slice:layout(rect, borderScale)` in Lua, cuts an area into the quads of the frame, and `Renderer::drawNineSlice(slice, area, color, order, borderScale)`, `graphics2d.drawNineSlice(slice, rect, color, options)` in Lua with `borderScale` among its options, draws them:
 
 - Each border is the width of the widest piece of its side column, or the height of the tallest piece of its side row, so separate pieces of different sizes, such as the ones an atlas packs, keep their corners whole.
 - The corners keep their size times `borderScale`. When the area is narrower or shorter than the scaled borders of an axis, those borders shrink in proportion until they meet, and the pieces between them draw nothing.

@@ -142,13 +142,27 @@ int MeshLua::setIndices(lua_State* L) {
 }
 
 // Draws with `draw(order, x, y, rotation, scaleX, scaleY)`, which place the vertices without changing them.
+// Draws the mesh with `mesh:draw(x, y, options)`, whose options hold the rotation, the scale and the draw order.
 int MeshLua::draw(lua_State* L) {
     const Mesh& mesh = lua::Userdata::check<Mesh>(L, 1);
-    const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 2);
-    const math::Vec2 position{static_cast<float>(luaL_optnumber(L, 3, 0.0)), static_cast<float>(luaL_optnumber(L, 4, 0.0))};
-    const auto rotation = static_cast<float>(luaL_optnumber(L, 5, 0.0));
-    const math::Vec2 scale{static_cast<float>(luaL_optnumber(L, 6, 1.0)), static_cast<float>(luaL_optnumber(L, 7, 1.0))};
-    lua::Runtime::getEngine(L).getRenderer2D().drawMesh(mesh, order, math::Transform2D::compose(position, rotation, scale));
+    const math::Vec2 position{static_cast<float>(luaL_optnumber(L, 2, 0.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0))};
+    float rotation = 0.0F;
+    math::Vec2 scale{1.0F, 1.0F};
+    if (!lua_isnoneornil(L, 4)) {
+        luaL_checktype(L, 4, LUA_TTABLE);
+        // clang-format off
+        lua::Table::readFields(L, 4, kDrawFields, {lua::TypeConverter::kDrawOrderFields}, [L, &rotation, &scale](std::string_view key) {
+            if (key == "rotation") {
+                lua::Table::readValue(L, key, rotation);
+            } else if (key == "scaleX") {
+                lua::Table::readValue(L, key, scale.x);
+            } else if (key == "scaleY") {
+                lua::Table::readValue(L, key, scale.y);
+            }
+        });
+        // clang-format on
+    }
+    lua::Runtime::getEngine(L).getRenderer2D().drawMesh(mesh, lua::TypeConverter::readDrawOrder(L, 4, {kDrawFields}), math::Transform2D::compose(position, rotation, scale));
     return 0;
 }
 

@@ -20,7 +20,7 @@ Resizable.actions = {actions = {
     Pointer.actions[2],
 }}
 Resizable.code = [[
-graphics2d.drawNineSlice(frame, panel, '#FFFFFFFF', nil, scale)  -- The variable "panel" is the rectangle the pointer edits.
+graphics2d.drawNineSlice(frame, panel, '#FFFFFFFF', {borderScale = scale})  -- The variable "panel" is the rectangle the pointer edits.
 graphics2d.pushClip(inner)  graphics2d.drawText(nil, text, inner.x, inner.y, {maxWidth = inner.width})  graphics2d.popClip()]]
 
 function Resizable:init(entry)
@@ -113,7 +113,7 @@ end
 
 function Resizable:draw(area)
     local panel = self.panel
-    graphics2d.drawNineSlice(self.slice, panel, '#FFFFFFFF', nil, self.scale)
+    graphics2d.drawNineSlice(self.slice, panel, '#FFFFFFFF', {borderScale = self.scale})
 
     local inset = Resizable.border * self.scale
     local inner = {x = panel.x + inset, y = panel.y + inset, width = panel.width - inset * 2, height = panel.height - inset * 2}

@@ -730,9 +730,9 @@ local graphics2d = require('haylen.graphics2d')
 print(table.concat(graphics2d.textEffectNames(), ', '))
 ```
 
-### graphics2d.drawNineSlice(slice, rect, color, order, borderScale)
+### graphics2d.drawNineSlice(slice, rect, color, options)
 
-Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along their length and the center fills the rest, and every piece samples only its own texels, so linear filtering never bleeds the gaps of an atlas into a frame. The argument `color` defaults to white. The argument `borderScale` multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is narrower or shorter than the borders of an axis, they shrink in proportion until they meet, and a `rect` without a positive width and height draws nothing. The [rendering guide](../rendering.md#nine-slices) gives every rule, and [`slice:layout`](#slicelayoutrect-borderscale) returns the quads a draw makes.
+Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along their length and the center fills the rest, and every piece samples only its own texels, so linear filtering never bleeds the gaps of an atlas into a frame. The argument `color` defaults to white. The argument `options` is optional and takes the [draw order](#draw-order) keys and `borderScale`, which multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is narrower or shorter than the borders of an axis, they shrink in proportion until they meet, and a `rect` without a positive width and height draws nothing. The [rendering guide](../rendering.md#nine-slices) gives every rule, and [`slice:layout`](#slicelayoutrect-borderscale) returns the quads a draw makes.
 
 ```lua
 local assets = require('haylen.assets')
@@ -744,7 +744,7 @@ local banner = graphics2d.newNineSlice(assets.texture('ui/banner.png'), {borders
 scene.push({
     renderUi = function(self)
         graphics2d.beginScreen()
-        graphics2d.drawNineSlice(banner, {660, 200, 600, 400}, '#FFFFFFFF', {layer = 1}, 0.75)
+        graphics2d.drawNineSlice(banner, {660, 200, 600, 400}, '#FFFFFFFF', {layer = 1, borderScale = 0.75})
     end,
 })
 ```
@@ -1897,9 +1897,9 @@ Changes the fields a table gives of one vertex, from `x`, `y`, `u`, `v` and `col
 
 Replaces the triangles with a list of vertex numbers counted from 1, three to a triangle.
 
-### mesh:draw(order, x, y, rotation, scaleX, scaleY)
+### mesh:draw(x, y, options)
 
-Draws the mesh into the active canvas with an optional [draw order](#draw-order), its vertices placed by a position, a rotation in radians and a scale, which change nothing in the mesh.
+Draws the mesh into the active canvas with its vertices moved to `x`, `y`, which default to 0, without changing the mesh. The argument `options` is optional and takes `rotation` in radians, `scaleX` and `scaleY`, which default to 0, 1 and 1, and the [draw order](#draw-order) keys.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1925,7 +1925,7 @@ scene.push({
     end,
     render = function(self)
         graphics2d.beginScreen()
-        flag:draw({layer = 1}, 200, 150)
+        flag:draw(200, 150, {layer = 1})
     end,
 })
 ```

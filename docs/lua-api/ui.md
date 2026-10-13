@@ -266,7 +266,7 @@ scene.push({
         local panel = ui.themeSurface('panel')
         if panel then
             graphics2d.beginScreen()
-            graphics2d.drawNineSlice(panel.slice, {100, 100, 400, 240}, panel.tint, nil, panel.scale)
+            graphics2d.drawNineSlice(panel.slice, {100, 100, 400, 240}, panel.tint, {borderScale = panel.scale})
         end
     end,
 })

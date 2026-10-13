@@ -444,9 +444,19 @@ int Graphics2DLua::measureText(lua_State* L) {
     return 2;
 }
 
+// Draws a nine-slice with `drawNineSlice(slice, rect, color, options)`, whose options hold the border scale and the draw order.
 int Graphics2DLua::drawNineSlice(lua_State* L) {
     const math::Color color = lua_isnoneornil(L, 3) ? math::Color::white() : lua::Stack::read<math::Color>(L, 3);
-    getRenderer(L).drawNineSlice(lua::Userdata::check<NineSlice>(L, 1), lua::Stack::read<math::Rect>(L, 2), color, lua::TypeConverter::readDrawOrder(L, 4), static_cast<float>(luaL_optnumber(L, 5, 1.0)));
+    float borderScale = 1.0F;
+    if (!lua_isnoneornil(L, 4)) {
+        luaL_checktype(L, 4, LUA_TTABLE);
+        // clang-format off
+        lua::Table::readFields(L, 4, kNineSliceDrawFields, {lua::TypeConverter::kDrawOrderFields}, [L, &borderScale](std::string_view key) {
+            lua::Table::readValue(L, key, borderScale);
+        });
+        // clang-format on
+    }
+    getRenderer(L).drawNineSlice(lua::Userdata::check<NineSlice>(L, 1), lua::Stack::read<math::Rect>(L, 2), color, lua::TypeConverter::readDrawOrder(L, 4, {kNineSliceDrawFields}), borderScale);
     return 0;
 }
 

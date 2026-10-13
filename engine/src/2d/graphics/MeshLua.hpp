@@ -40,6 +40,7 @@ class MeshLua final {
     static void readIndices(lua_State* L, int index, std::vector<std::uint32_t>& indices);
 
   private:
+    static constexpr std::array<std::string_view, 3> kDrawFields{"rotation", "scaleX", "scaleY"};
     static constexpr std::array<std::string_view, 5> kGridFields{"x", "y", "width", "height", "source"};
 
     static int setPositions(lua_State* L);

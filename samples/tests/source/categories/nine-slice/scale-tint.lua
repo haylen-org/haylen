@@ -16,8 +16,8 @@ ScaleTint.tints = {
     {id = 'ghost', text = 'Ghost', color = '#80FFFFFF'},
 }
 ScaleTint.code = [[
-graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FFFFFFFF', nil, 0.5)  -- Borders at half their size.
-graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FF7FCBF2', {layer = 1}, 2)  -- Tinted, borders twice as large.]]
+graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FFFFFFFF', {borderScale = 0.5})  -- Borders at half their size.
+graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FF7FCBF2', {layer = 1, borderScale = 2})  -- Tinted, borders twice as large.]]
 
 function ScaleTint:enter()
     self.slice = graphics2d.newNineSlice(assets.texture('nine-slice/panel.png', {filter = 'linear'}), {borders = {28, 28, 28, 28}})
@@ -52,10 +52,10 @@ function ScaleTint:draw(area)
     local width = (area.width - 50) / #ScaleTint.scales - 20
     for index, scale in ipairs(ScaleTint.scales) do
         local x = 30 + (index - 1) * (width + 20)
-        graphics2d.drawNineSlice(self.slice, {x, 30, width, 150}, ScaleTint.tints[index].color, nil, scale)
+        graphics2d.drawNineSlice(self.slice, {x, 30, width, 150}, ScaleTint.tints[index].color, {borderScale = scale})
         Test.caption('Scale ' .. scale .. ', ' .. ScaleTint.tints[index].text:lower(), x + width / 2, 206, {size = 22, anchor = {0.5, 0.5}})
     end
-    graphics2d.drawNineSlice(self.slice, {30, 250, area.width - 60, area.height - 280}, self.tint, nil, self.scale)
+    graphics2d.drawNineSlice(self.slice, {30, 250, area.width - 60, area.height - 280}, self.tint, {borderScale = self.scale})
 end
 
 return ScaleTint

@@ -117,7 +117,7 @@ function Atlases:draw(area)
         Test.caption('Tag "' .. tag .. '"', x, area.height * 0.72 + 80, {size = 22, anchor = {0.5, 0.5}})
     end
     local bubble = {column + column / 2 - 110, area.height * 0.47, 220, 90}
-    graphics2d.drawNineSlice(self.bubble, bubble, '#FFFFFFFF', nil, 2)
+    graphics2d.drawNineSlice(self.bubble, bubble, '#FFFFFFFF', {borderScale = 2})
     graphics2d.drawText(nil, 'A slice!', bubble[1] + 110, bubble[2] + 38, {size = 28, color = '#FF1B1E2B', anchor = {0.5, 0.5}, layer = 1})
 
     local cells = {}
