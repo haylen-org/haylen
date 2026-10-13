@@ -2127,18 +2127,18 @@ def apple_colorset(color: tuple[int, int, int, int], dark: tuple[int, int, int, 
 
 
 def write_apple_splash(app: App, generated: Path) -> None:
-    """Writes `Splash.xcassets`, whose `splash_logo` image, the logo of the app or the vector logo of the engine, and `splash_background` color, with its dark variant when `app.json` gives one, the launch screens of iOS and tvOS show."""
+    """Writes `Splash.xcassets`, whose `splash-logo` image, the logo of the app or the vector logo of the engine, and `splash-background` color, with its dark variant when `app.json` gives one, the launch screens of iOS and tvOS show."""
     catalog = generated / "Splash.xcassets"
     shutil.rmtree(catalog, ignore_errors=True)
     source = app.splash_logo or ENGINE_LOGO
-    filename = f"splash_logo{source.suffix.lower()}"
-    (catalog / "splash_logo.imageset").mkdir(parents=True)
-    shutil.copy2(source, catalog / "splash_logo.imageset" / filename)
+    filename = f"splash-logo{source.suffix.lower()}"
+    (catalog / "splash-logo.imageset").mkdir(parents=True)
+    shutil.copy2(source, catalog / "splash-logo.imageset" / filename)
     image = {"images": [{"filename": filename, "idiom": "universal"}], "info": {"author": "xcode", "version": 1}}
     if source.suffix.lower() == ".svg":
         image["properties"] = {"preserves-vector-representation": True}
-    write_if_changed(catalog / "splash_logo.imageset" / "Contents.json", json.dumps(image, indent=2) + "\n")
-    write_if_changed(catalog / "splash_background.colorset" / "Contents.json", json.dumps(apple_colorset(app.background, app.dark_background), indent=2) + "\n")
+    write_if_changed(catalog / "splash-logo.imageset" / "Contents.json", json.dumps(image, indent=2) + "\n")
+    write_if_changed(catalog / "splash-background.colorset" / "Contents.json", json.dumps(apple_colorset(app.background, app.dark_background), indent=2) + "\n")
     write_if_changed(catalog / "Contents.json", json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2) + "\n")
 
 

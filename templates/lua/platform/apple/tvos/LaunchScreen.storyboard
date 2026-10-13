@@ -14,12 +14,12 @@
                         <rect key="frame" x="0.0" y="0.0" width="1920" height="1080"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="splash_logo" translatesAutoresizingMaskIntoConstraints="NO" id="logo">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="splash-logo" translatesAutoresizingMaskIntoConstraints="NO" id="logo">
                                 <rect key="frame" x="780" y="360" width="360" height="360"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="safe"/>
-                        <color key="backgroundColor" name="splash_background"/>
+                        <color key="backgroundColor" name="splash-background"/>
                         <constraints>
                             <constraint firstItem="logo" firstAttribute="centerX" secondItem="safe" secondAttribute="centerX" id="centerX"/>
                             <constraint firstItem="logo" firstAttribute="centerY" secondItem="safe" secondAttribute="centerY" id="centerY"/>
@@ -36,8 +36,8 @@
         </scene>
     </scenes>
     <resources>
-        <image name="splash_logo" width="512" height="512"/>
-        <namedColor name="splash_background">
+        <image name="splash-logo" width="512" height="512"/>
+        <namedColor name="splash-background">
             <color red="0.063" green="0.078" blue="0.094" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>
     </resources>
