@@ -29,6 +29,7 @@
 #include "haylen/platform/TextInput.hpp"
 #include "input/ActionMapLua.hpp"
 #include "input/CommandBufferLua.hpp"
+#include "input/InputRecordingLua.hpp"
 
 namespace haylen::input {
 
@@ -471,12 +472,14 @@ int InputLua::open(lua_State* L) {
     lua::Binding::newModule(L, functions);
     ActionMapLua::addFunctions(L);
     CommandBufferLua::addFunctions(L);
+    InputRecordingLua::addFunctions(L);
     return 1;
 }
 
 void InputLua::install(lua_State* L) {
     ActionMapLua::install(L);
     CommandBufferLua::install(L);
+    InputRecordingLua::install(L);
     lua::Binding::preload(L, "haylen.input", &open);
 }
 

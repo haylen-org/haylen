@@ -293,6 +293,35 @@ int MathLua::randomShuffle(lua_State* L) {
     return 1;
 }
 
+// Returns the state as a string of 32 bytes, the four words of the generator in little-endian order, so it compares, stores and travels like any string.
+int MathLua::randomState(lua_State* L) {
+    const std::array<std::uint64_t, 4>& state = lua::Userdata::check<Random>(L, 1).getState();
+    std::array<char, kRandomStateSize> bytes{};
+    for (std::size_t word = 0; word < state.size(); ++word) {
+        for (std::size_t byte = 0; byte < 8; ++byte) {
+            bytes[word * 8 + byte] = static_cast<char>((state[word] >> (byte * 8)) & 0xFFU);
+        }
+    }
+    lua_pushlstring(L, bytes.data(), bytes.size());
+    return 1;
+}
+
+int MathLua::randomSetState(lua_State* L) {
+    Random& self = lua::Userdata::check<Random>(L, 1);
+    const std::string_view bytes = lua::Stack::read<std::string_view>(L, 2);
+    if (bytes.size() != kRandomStateSize) {
+        return luaL_error(L, "A random state needs %d bytes.", static_cast<int>(kRandomStateSize));
+    }
+    std::array<std::uint64_t, 4> state{};
+    for (std::size_t word = 0; word < state.size(); ++word) {
+        for (std::size_t byte = 0; byte < 8; ++byte) {
+            state[word] |= static_cast<std::uint64_t>(static_cast<unsigned char>(bytes[word * 8 + byte])) << (byte * 8);
+        }
+    }
+    self.setState(state);
+    return 0;
+}
+
 int MathLua::noiseNew(lua_State* L) {
     lua::Userdata::emplace<Noise2D>(L, static_cast<std::uint64_t>(luaL_optinteger(L, 1, 0)));
     return 1;
@@ -448,7 +477,7 @@ void MathLua::installClasses(lua_State* L) {
 
     lua::ClassBuilder<Transform2D>(L).field<&Transform2D::a>("a").field<&Transform2D::b>("b").field<&Transform2D::c>("c").field<&Transform2D::d>("d").field<&Transform2D::tx>("tx").field<&Transform2D::ty>("ty").function("apply", &lua::Binding::function<&transformApply>).function("applyVector", &lua::Binding::function<&transformApplyVector>).method<&Transform2D::getDeterminant>("determinant").method<&Transform2D::getTranslation>("translation").function("inverse", &lua::Binding::function<&transformInverse>).meta("__mul", &transformMultiply).install();
 
-    lua::ClassBuilder<Random>(L).function("nextFloat", &lua::Binding::function<&randomNextFloat>).function("range", &lua::Binding::function<&randomRange>).function("integer", &lua::Binding::function<&randomInteger>).function("chance", &lua::Binding::function<&randomChance>).function("reseed", &lua::Binding::function<&randomReseed>).function("weightedIndex", &lua::Binding::native<&randomWeightedIndex>).function("shuffle", &randomShuffle).install();
+    lua::ClassBuilder<Random>(L).function("nextFloat", &lua::Binding::function<&randomNextFloat>).function("range", &lua::Binding::function<&randomRange>).function("integer", &lua::Binding::function<&randomInteger>).function("chance", &lua::Binding::function<&randomChance>).function("reseed", &lua::Binding::function<&randomReseed>).function("weightedIndex", &lua::Binding::native<&randomWeightedIndex>).function("shuffle", &randomShuffle).function("state", &randomState).function("setState", &lua::Binding::native<&randomSetState>).install();
 
     lua::ClassBuilder<Noise2D>(L).function("perlin", &lua::Binding::function<&noisePerlin>).function("simplex", &lua::Binding::function<&noiseSimplex>).function("fractal", &lua::Binding::function<&noiseFractal>).function("worley", &lua::Binding::native<&noiseWorley>).function("warp", &lua::Binding::native<&noiseWarp>).install();
 

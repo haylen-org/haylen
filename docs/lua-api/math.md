@@ -1683,6 +1683,33 @@ random:reseed(1)
 print(random:nextFloat() == first) -- true
 ```
 
+### random:state()
+
+Returns the whole state of the generator as a string of 32 bytes, which a replay, a save or the data of an [input recording](input.md#recordings) keeps to draw the same numbers again from that point.
+
+```lua
+local m = require('haylen.math')
+
+local random = m.random(7)
+local saved = random:state()
+local first = random:integer(1, 6)
+random:setState(saved)
+print(random:integer(1, 6) == first) -- true
+```
+
+### random:setState(state)
+
+Restores a state that `random:state()` returned. A string of another length raises `A random state needs 32 bytes.`, and 32 zero bytes raise `A random state cannot be all zeros.`.
+
+```lua
+local m = require('haylen.math')
+
+local random = m.random(3)
+local copy = m.random(0)
+copy:setState(random:state())
+print(copy:nextFloat() == random:nextFloat()) -- true
+```
+
 ## Noise2D
 
 Seeded gradient noise created with `m.noise`. The functions `perlin`, `simplex` and `fractal` return values between `-1` and `1` that change smoothly with the coordinates, `worley` returns distances and a region value and `warp` returns coordinates. Features are about one unit apart, so scale world coordinates down before sampling.

@@ -106,6 +106,7 @@ set(HAYLEN_TEST_SOURCES
   graphics/VectorImageTests.cpp
   input/CommandBufferTests.cpp
   input/GestureTests.cpp
+  input/InputRecordingTests.cpp
   input/InputTests.cpp
   input/PointerEmulationTests.cpp
   io/IoTests.cpp
@@ -235,7 +236,7 @@ gtest_discover_tests(haylen_tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzer of the content formats runs their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats and of input recordings run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen_content_fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen_content_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -243,4 +244,10 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen_content_fuzzer PRIVATE haylen::engine haylen::headless haylen_stb haylen_monocypher)
   target_link_options(haylen_content_fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen_content_fuzzer)
+
+  add_executable(haylen_input_fuzzer fuzz/InputRecordingFuzzer.cpp)
+  set_target_properties(haylen_input_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen_input_fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen_input_fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen_input_fuzzer)
 endif()

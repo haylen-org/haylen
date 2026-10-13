@@ -23,6 +23,13 @@ void Random::reseed(std::uint64_t seed) noexcept {
     }
 }
 
+void Random::setState(const std::array<std::uint64_t, 4>& value) {
+    if (value == std::array<std::uint64_t, 4>{}) {
+        throw std::invalid_argument("A random state cannot be all zeros.");
+    }
+    state = value;
+}
+
 std::uint64_t Random::nextU64() noexcept {
     const std::uint64_t result = std::rotl(state[1] * 5U, 7) * 9U;
     const std::uint64_t shifted = state[1] << 17U;

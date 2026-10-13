@@ -24,6 +24,7 @@ class MathLua final {
     static void install(lua_State* L);
 
   private:
+    static constexpr std::size_t kRandomStateSize = 32;
     static constexpr std::array<std::string_view, 8> kPoissonFields{"area", "minimumDistance", "maximumDistance", "attempts", "random", "seed", "accept", "distance"};
 
     [[nodiscard]] static bool isWholeValue(lua_State* L);
@@ -76,6 +77,8 @@ class MathLua final {
     static void randomReseed(Random& self, lua_Integer seed);
     static int randomWeightedIndex(lua_State* L);
     static int randomShuffle(lua_State* L);
+    static int randomState(lua_State* L);
+    static int randomSetState(lua_State* L);
 
     static int noiseNew(lua_State* L);
     [[nodiscard]] static float noisePerlin(Noise2D& self, float x, float y);

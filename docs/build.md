@@ -206,7 +206,7 @@ haylen clean
 | `HAYLEN_ENABLE_COVERAGE` | off | Instrument the engine and tests with LLVM coverage. Requires Clang. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the engine targets, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
 | `HAYLEN_BUILD_TOOLS` | on at the top level | Desktop hosts only: build the content tool `haylen-content` and its library `haylen_content_tool`, which the tests link too. |
-| `HAYLEN_BUILD_FUZZERS` | off | Build `haylen_content_fuzzer`, the libFuzzer target of the parsers of the content formats, and instrument every target for it with AddressSanitizer. Requires a Clang that links libFuzzer, which Apple Clang does not ship. |
+| `HAYLEN_BUILD_FUZZERS` | off | Build `haylen_content_fuzzer` and `haylen_input_fuzzer`, the libFuzzer targets of the parsers of the content formats and of input recordings, and instrument every target for it with AddressSanitizer. Requires a Clang that links libFuzzer, which Apple Clang does not ship. |
 
 The workspace `CMakeLists.txt` at the repository root adds `engine/` and turns the player, the tests and the benchmark on. Shaders in `engine/shaders` are compiled by `sokol-shdc` at build time for GLSL 4.30, GLSL 3.00 ES, HLSL 5, Metal for macOS, iOS and the simulator and WGSL, and the runtime picks the variant of the active backend. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every compile runs from `engine/shaders/include`, the shader library that app shaders include too.
 

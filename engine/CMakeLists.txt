@@ -362,6 +362,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/input/GestureRecognizer.cpp
   src/input/Input.cpp
   src/input/InputLua.cpp
+  src/input/InputPlayback.cpp
+  src/input/InputRecording.cpp
+  src/input/InputRecordingLua.cpp
   src/input/PointerEmulation.cpp
   src/input/VirtualInput.cpp
   src/io/CompositePackage.cpp

@@ -340,6 +340,7 @@ The keyboard, the mouse, touches, gestures, gamepads, the action map, remapping,
 | `INP-010` | Fixed steps | Presses counted in frames and in fixed steps at several time scales, where step edges count each press once, and a jump buffer that catches a press made just before landing. |  |
 | `INP-011` | Players | A seat for the keyboard and touch and one for each of eight gamepads, each with an action map that reads only its own devices, joined with the start button of its gamepad. |  |
 | `INP-012` | Commands | A command buffer that types runs, a jump attack and specials from keys, gamepads and touch buttons that a sliding thumb presses in turn, with the kept command, its age, the facing and a freeze like hit stop. |  |
+| `INP-013` | Replay | A run recorded on fixed steps with the state of its random generator and replayed in place of the devices, with a hash of every step that shows the replay matches. |  |
 
 #### Physics (PHY)
 

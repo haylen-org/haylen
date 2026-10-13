@@ -1374,6 +1374,151 @@ commands:update(0)
 print(commands.tick)
 ```
 
+## Recordings
+
+A recording keeps the buttons of every player on every fixed step of a run, as masks whose bit `n - 1` holds the button `n`, with the identifier and the fixed rate of the app and data of the app, such as the states of its random generators. A playback hands the steps back in place of the devices, which makes replays, ghosts, attract modes, automated playtests on the headless player and the reproduction of bug reports. A replay reproduces a run when the app reads input only through the masks, seeds every generator it uses from the recording and steps its simulation in `fixedUpdate`. An optional hash of the state of the app on each step tells the step where a replay first diverges. Steps that repeat the same masks cost one entry, so a minute of play takes a few hundred bytes.
+
+### input.newRecorder(options)
+
+Creates a recording with `{buttons, players, data}`: the names of up to 32 buttons, from 1 to 16 players, 1 by default, and a string of the app, empty by default, such as the state of a random generator. Errors include `An input recording needs from 1 to 32 buttons.`, `An input recording needs from 1 to 16 players.` and `Unknown option "<key>".`.
+
+```lua
+local input = require('haylen.input')
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+local buttons = {'left', 'right', 'jump'}
+local random = m.random(42)
+local recorder = input.newRecorder({buttons = buttons, players = 1, data = random:state()})
+
+scene.push({
+    fixedUpdate = function(self, step)
+        recorder:write(1, input.actions())
+        recorder:advance()
+    end,
+})
+```
+
+### recording:write(player, maskOrMap)
+
+Sets the buttons of a player for the step that `advance` closes: an integer mask, or an action map whose actions named like the buttons give their step state. A player outside the recording raises `The input recording has players from 1 to <n>.`.
+
+```lua
+local input = require('haylen.input')
+
+local recorder = input.newRecorder({buttons = {'left', 'right'}, players = 2})
+recorder:write(1, 0x1)
+recorder:write(2, input.actions())
+recorder:advance()
+```
+
+### recording:advance(hash)
+
+Closes the step with the masks written for it, 0 for a player without one, and with an optional integer hash of 32 bits of the state of the app, such as `world:stateHash()` of a physics world, which a playback compares to find where a replay diverges.
+
+```lua
+local input = require('haylen.input')
+
+local recorder = input.newRecorder({buttons = {'jump'}})
+recorder:write(1, 1)
+recorder:advance(12345)
+print(recorder.steps)
+```
+
+### recording:bytes()
+
+Returns the recording as a string of bytes, which a file under [`storage.root()`](storage.md), a save or a request to a server keeps.
+
+```lua
+local input = require('haylen.input')
+
+local recorder = input.newRecorder({buttons = {'jump'}})
+recorder:advance()
+local bytes = recorder:bytes()
+print(#bytes)
+```
+
+### input.loadRecording(bytes)
+
+Reads the bytes of `recording:bytes()`. Bytes that are not a whole recording raise `The input recording is malformed: <reason>.`, a recording of another app raises `The recording belongs to another app.`, and one made at another fixed rate raises `The recording was made at <rate> fixed steps a second, and the app runs at <rate>.`, since its steps would mean other times.
+
+```lua
+local input = require('haylen.input')
+
+local recorder = input.newRecorder({buttons = {'jump'}})
+recorder:advance()
+local copy = input.loadRecording(recorder:bytes())
+print(copy.steps, copy.players, copy.buttons[1], copy.data)
+```
+
+### recording.steps, recording.players, recording.buttons, recording.data
+
+The number of steps, the number of players, the list of button names and the data of the recording, read only.
+
+```lua
+local input = require('haylen.input')
+
+local recorder = input.newRecorder({buttons = {'left', 'right'}, players = 2, data = 'level 3'})
+print(recorder.steps, recorder.players, #recorder.buttons, recorder.data)
+```
+
+### input.newPlayback(recording)
+
+Creates a playback of a recording that stands before its first step.
+
+```lua
+local input = require('haylen.input')
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+local function replay(bytes)
+    local playback = input.newPlayback(input.loadRecording(bytes))
+    local random = m.random(0)
+    random:setState(playback.data)
+    scene.push({
+        fixedUpdate = function(self, step)
+            if playback.finished then
+                return
+            end
+            local mask = playback:mask(1)
+            self.jumping = mask & 0x4 ~= 0
+            playback:advance()
+        end,
+    })
+end
+```
+
+### playback:mask(player), playback:hash(), playback:advance(), playback:seek(step)
+
+The method `mask` returns the buttons of a player on the current step, 0 once the playback finished, `hash` returns the hash of the step or `nil`, `advance` moves to the next step and `seek` moves to a step from 0 to the number of steps, where a step outside raises `The playback has steps from 0 to <n>.`.
+
+```lua
+local input = require('haylen.input')
+
+local recorder = input.newRecorder({buttons = {'jump'}})
+for step = 1, 3 do
+    recorder:write(1, step % 2)
+    recorder:advance(step)
+end
+local playback = input.newPlayback(recorder)
+playback:seek(2)
+print(playback:mask(1), playback:hash())
+```
+
+### playback.step, playback.steps, playback.finished, playback.data
+
+The steps played so far, the number of steps, whether every step was played and the data of the recording, read only.
+
+```lua
+local input = require('haylen.input')
+
+local recorder = input.newRecorder({buttons = {'jump'}, data = 'seed 9'})
+recorder:advance()
+local playback = input.newPlayback(recorder)
+playback:advance()
+print(playback.step, playback.steps, playback.finished, playback.data)
+```
+
 ## Virtual controls
 
 Virtual buttons and sticks are named inputs that code or on-screen controls write and the action map reads through `virtual:` and `virtualStick:` bindings. The `touchButton` and `touchStick` components of [`haylen.ui`](ui.md) write them from their `action` property, and an app can write them itself for custom controls. Values written during a frame reach the actions at the start of the next frame.

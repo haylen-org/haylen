@@ -15,6 +15,12 @@ class Random final {
 
     void reseed(std::uint64_t seed) noexcept;
 
+    // The whole state of the generator, which a replay restores to draw the same numbers again. Throws `std::invalid_argument` for a state of zeros, which would draw only zeros.
+    [[nodiscard]] const std::array<std::uint64_t, 4>& getState() const noexcept {
+        return state;
+    }
+    void setState(const std::array<std::uint64_t, 4>& value);
+
     [[nodiscard]] std::uint64_t nextU64() noexcept;
     [[nodiscard]] std::uint32_t nextU32() noexcept;
     [[nodiscard]] float nextFloat() noexcept;
