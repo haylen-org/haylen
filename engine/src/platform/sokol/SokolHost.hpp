@@ -79,6 +79,8 @@ class SokolHost final : public Host {
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
+    void guardCrashes(const std::filesystem::path& report) override;
+    void setCrashContext(std::string_view json) override;
     [[nodiscard]] std::string getNetworkRequirement() const override;
     void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override;
     void cancelDialog(std::uint64_t id) override;

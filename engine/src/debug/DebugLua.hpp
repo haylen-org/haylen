@@ -19,7 +19,6 @@ class DebugLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<const char*, 4> kLevelNames{"debug", "info", "warning", "error"};
     static constexpr std::array<std::string_view, 1> kOwnerFields{"owner"};
 
     [[nodiscard]] static plugins::DebugPlugin& getPlugin(lua_State* L);

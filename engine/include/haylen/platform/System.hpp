@@ -3,6 +3,7 @@
 #include <array>
 #include <bitset>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -51,6 +52,10 @@ class System final {
 
     // Stops every gamepad that rumbles, which the engine does when the app loses the focus or stops.
     void stopRumbles();
+
+    // Captures the native crashes of the process into the report file, where the platform catches them, with the JSON object of the context that the frame thread publishes last.
+    void guardCrashes(const std::filesystem::path& report);
+    void setCrashContext(std::string_view json);
 
     // Delivers the answers the platform gave since the last pump and publishes the changes of the theme and the battery. The engine calls it at the start of every frame.
     void pump();

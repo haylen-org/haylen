@@ -53,6 +53,14 @@ void System::vibrate(float seconds) {
     host.vibrate(seconds);
 }
 
+void System::guardCrashes(const std::filesystem::path& report) {
+    host.guardCrashes(report);
+}
+
+void System::setCrashContext(std::string_view json) {
+    host.setCrashContext(json);
+}
+
 void System::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     if (index >= input::Input::kMaxGamepads) {
         throw std::invalid_argument("A rumble needs a gamepad from 1 to " + std::to_string(input::Input::kMaxGamepads) + ".");

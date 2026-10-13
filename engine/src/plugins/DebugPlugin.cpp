@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <chrono>
 #include <format>
 #include <stdexcept>
 #include <utility>
@@ -21,8 +22,11 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/System.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/storage/UserStorage.hpp"
 #include "platform/ConsoleRelay.hpp"
+#include "platform/CrashGuard.hpp"
 
 namespace haylen::plugins {
 
@@ -34,6 +38,9 @@ void DebugPlugin::start(core::Engine& engine) {
     owner = &engine;
     consoleEnabled = development || engine.getConfig().debug.console;
     addBuiltInCommands(engine);
+    readLastCrash(engine);
+    engine.getSystem().guardCrashes(engine.getStorage().getRoot() / kCrashReportFile);
+    breadcrumbsChanged = true;
     listener = core::Log::addListener([this](core::Log::Level level, std::string_view line) { record(level, line); });
     statsMode = engine.getConfig().debug.stats;
     setObjectEvents(engine.getConfig().debug.objectEvents);
@@ -148,6 +155,60 @@ void DebugPlugin::record(core::Log::Level level, std::string_view line) {
     while (lines.size() > kLogLines) {
         lines.pop_front();
     }
+    logChanged = true;
+}
+
+void DebugPlugin::addBreadcrumb(std::string message, core::Json data) {
+    const double time = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+    owner->getEvents().post(std::string(core::LifecycleEvent::kBreadcrumbAdded), {{"message", message}, {"data", data}, {"time", time}});
+    breadcrumbs.push({.time = time, .message = std::move(message), .data = std::move(data)});
+    breadcrumbsChanged = true;
+}
+
+// A report that a crash left reads once, so the next start without a crash finds none.
+void DebugPlugin::readLastCrash(core::Engine& engine) {
+    lastCrash = nullptr;
+    storage::UserStorage& files = engine.getStorage();
+    if (!files.exists(kCrashReportFile)) {
+        return;
+    }
+    core::Json report = core::Json::parse(files.readText(kCrashReportFile), nullptr, false);
+    files.remove(kCrashReportFile);
+    if (report.is_object() && report.contains("reason") && report.at("reason").is_string()) {
+        lastCrash = std::move(report);
+    }
+}
+
+// The context only changes with a breadcrumb or a log line, so a frame without them builds nothing.
+void DebugPlugin::publishCrashContext(core::Engine& engine) {
+    core::Json recent = core::Json::array();
+    const std::size_t first = breadcrumbs.size() > kReportBreadcrumbs ? breadcrumbs.size() - kReportBreadcrumbs : 0;
+    for (std::size_t index = first; index < breadcrumbs.size(); ++index) {
+        recent.push_back({{"time", breadcrumbs[index].time}, {"message", cut(breadcrumbs[index].message)}, {"data", breadcrumbs[index].data}});
+    }
+    core::Json log = core::Json::array();
+    {
+        const std::scoped_lock lock(linesMutex);
+        const std::size_t start = lines.size() > kReportLogLines ? lines.size() - kReportLogLines : 0;
+        for (std::size_t index = start; index < lines.size(); ++index) {
+            log.push_back({{"level", std::string(kLevelNames[static_cast<std::size_t>(lines[index].level)])}, {"text", cut(lines[index].text)}});
+        }
+    }
+    const core::AppConfig& config = engine.getConfig();
+    core::Json context = {{"app", {{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}}}, {"breadcrumbs", std::move(recent)}, {"log", std::move(log)}};
+    std::string text = context.dump(-1, ' ', false, core::Json::error_handler_t::replace);
+    if (text.size() > platform::CrashGuard::kContextSize) {
+        context.erase("log");
+        for (core::Json& breadcrumb : context.at("breadcrumbs")) {
+            breadcrumb.erase("data");
+        }
+        text = context.dump(-1, ' ', false, core::Json::error_handler_t::replace);
+    }
+    engine.getSystem().setCrashContext(text);
+}
+
+std::string DebugPlugin::cut(std::string_view text) {
+    return std::string(text.substr(0, kReportTextSize));
 }
 
 std::vector<debug::LogLine> DebugPlugin::getRecentLog() const {
@@ -422,6 +483,9 @@ void DebugPlugin::renderOverlay(core::Engine& engine) {
 // The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy, kept in a member like the copy of the drawers, and skips the ones removed meanwhile.
 void DebugPlugin::endFrame(core::Engine& engine) {
     lastRendering = engine.getRenderer2D().getStats();
+    if (logChanged.exchange(false) || std::exchange(breadcrumbsChanged, false)) {
+        publishCrashContext(engine);
+    }
     if (tracing) {
         // The GPU reports a frame once it finished it, so a time that did not change belongs to a frame the trace already holds.
         if (const std::optional<double> gpu = engine.getGraphics().getGpuFrameSeconds(); gpu && *gpu != lastGpuSeconds) {

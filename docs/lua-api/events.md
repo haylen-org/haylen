@@ -203,6 +203,7 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `audioRouteChanged` | The audio output moved to another device, such as headphones that were unplugged. | None. |
 | `audioUnlocked` | A browser let the audio output play after the first interaction with the page. | None. |
 | `saveSlotWritten` | The function `storage.writeSlot()` or `storage.writeSlotAsync()` wrote a slot, which a cloud save plugin uploads. | `slot`, `revision` and `version`. |
+| `breadcrumbAdded` | The function `debug.addBreadcrumb()` added a breadcrumb, which a crash reporting or analytics plugin forwards to its service. | `message`, `data` and `time`, the seconds since 1970. |
 | `keyboardShown` | The on-screen keyboard appeared or changed its frame, such as when a suggestion bar shows. | The table `{x, y, width, height}`, the area it covers in design units, like `viewport.safeRect()`. |
 | `keyboardHidden` | The on-screen keyboard went away. | None. |
 | `networkOnline`, `networkOffline` | The device gained or lost its network, where the platform reports it: browsers, Android with the permission `android.permission.ACCESS_NETWORK_STATE`, and Apple platforms, macOS included. The first report publishes the state the app starts in, usually on its first frame, and [`haylen.networkState()`](haylen.md#haylennetworkstate) returns the last state at any time. | None. |

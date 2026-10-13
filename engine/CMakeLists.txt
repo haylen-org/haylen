@@ -334,6 +334,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/Console.cpp
   src/debug/ConsoleLua.cpp
   src/debug/ConsoleWindow.cpp
+  src/debug/CrashLua.cpp
   src/debug/DebugLua.cpp
   src/debug/Monitor.cpp
   src/debug/ObjectCounter.cpp
@@ -738,6 +739,7 @@ haylen_enable_coverage(haylen_engine)
 
 # Portable pieces of the runtime, which the tests link without an app entry point. The readers of the platform folders compile everywhere, so every host tests them.
 add_library(haylen_platform STATIC
+  src/platform/CrashGuard.cpp
   src/platform/GamepadSlots.cpp
   src/platform/GamepadVendors.cpp
   src/platform/KeyboardTranslator.cpp

@@ -141,6 +141,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidDialogJsonTests.cpp
   platform/AndroidGamepadStatesTests.cpp
   platform/AndroidGlesVersionTests.cpp
+  platform/CrashGuardTests.cpp
   platform/DevelopmentConnectionTests.cpp
   platform/DialogsTests.cpp
   platform/FoldTests.cpp

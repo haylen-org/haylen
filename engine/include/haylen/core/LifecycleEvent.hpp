@@ -63,6 +63,7 @@ class LifecycleEvent final {
     static constexpr std::string_view kAudioRouteChanged = "audioRouteChanged";
     static constexpr std::string_view kAudioUnlocked = "audioUnlocked";
     static constexpr std::string_view kSaveSlotWritten = "saveSlotWritten";
+    static constexpr std::string_view kBreadcrumbAdded = "breadcrumbAdded";
 
     static constexpr std::string_view kKeyboardShown = "keyboardShown";
     static constexpr std::string_view kKeyboardHidden = "keyboardHidden";

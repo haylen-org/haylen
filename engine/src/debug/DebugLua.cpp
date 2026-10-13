@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "debug/ConsoleLua.hpp"
+#include "debug/CrashLua.hpp"
 #include "debug/TraceLua.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/debug/ProfileScope.hpp"
@@ -415,7 +416,7 @@ int DebugLua::recentLog(lua_State* L) {
     lua_createtable(L, static_cast<int>(lines.size() - first), 0);
     for (std::size_t index = first; index < lines.size(); ++index) {
         lua_createtable(L, 0, 2);
-        lua_pushstring(L, kLevelNames[static_cast<std::size_t>(lines[index].level)]);
+        lua::Stack::push(L, plugins::DebugPlugin::kLevelNames[static_cast<std::size_t>(lines[index].level)]);
         lua_setfield(L, -2, "level");
         lua::Stack::push(L, lines[index].text);
         lua_setfield(L, -2, "text");
@@ -431,6 +432,7 @@ int DebugLua::open(lua_State* L) {
     lua::Binding::newModule(L, functions);
     ConsoleLua::addFunctions(L);
     TraceLua::addFunctions(L);
+    CrashLua::addFunctions(L);
     return 1;
 }
 

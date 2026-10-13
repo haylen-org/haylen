@@ -1,6 +1,6 @@
 # haylen.debug
 
-The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, reads the frame profiler and the recent log, and runs the developer console. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
+The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, reads the frame profiler and the recent log, records traces, keeps breadcrumbs, reads the report of the last native crash and runs the developer console. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
 
 ```lua
 local debug = require('haylen.debug')
@@ -63,6 +63,12 @@ The engine measures every frame in named scopes: `scripts` for promises, corouti
 A trace records a span of frames into a file in the trace event JSON format, which the profilers of browsers and trace viewers open, so the work of each frame shows on a timeline. It holds a lane for each thread: `frame` with every frame and every profiler scope nested as they ran, a lane for each worker of the task pool and the I/O pool with the jobs it ran as `job` and `ioJob`, and a `gpu` lane with the time the GPU took for each frame, as `gpuFrame`, where the backend measures it, which Metal does on macOS, iOS, tvOS and Mac Catalyst. The other backends, Direct3D 11, OpenGL, OpenGL ES, WebGL 2 and WebGPU, leave the `gpu` lane empty. A GPU span ends when the frame thread learns that the GPU finished, a frame or two after the frame it measures, so its length is exact while its place on the timeline is late.
 
 The function `debug.startTrace` starts a trace, and `debug.stopTraceAsync` stops it and writes it into user storage on the I/O pool. A trace keeps at most 262144 spans in memory by default, and counts the spans it drops once it is full. Recording costs a lock per span, so a trace measures a little more than the frames take without one.
+
+## Crashes and breadcrumbs
+
+A breadcrumb is a step of the app that a crash report shows, such as opening a screen or buying an item, with data of the app. The engine keeps the last 100 breadcrumbs, and each one publishes `breadcrumbAdded` on [`haylen.events`](events.md), so a crash reporting or analytics plugin forwards it to its service. The engine itself sends nothing anywhere.
+
+The engine captures native crashes, which no Lua error handler sees, such as a fault in a plugin, a driver or the engine: fatal signals on macOS, iOS, iPadOS, tvOS, Mac Catalyst, Linux and Android, and unhandled exceptions on Windows. The crash writes a small report into the user storage of the app, with its reason, the last 30 breadcrumbs, the last 20 log lines and the name, identifier and version of the app, and goes on to the system and the crash handlers that were there before, so the crash reporters of the system and of plugins still receive it. The next start of the app reads the report once with `debug.lastCrash()`. The report is prepared at the end of each frame that added a breadcrumb or logged a line, so the crash writes text that exists already. Browsers have no native crashes, since a fault of WebAssembly ends as a JavaScript error, which reaches the page through `onError`, so the web never has a report. Errors of Lua scripts go to the [error screen](../lua.md#errors-and-stack-traces), not to crash reports.
 
 ## Console
 
@@ -653,4 +659,39 @@ async.spawn(function()
     local trace = debugging.stopTraceAsync('traces/level.json'):await()
     print('Wrote ' .. trace.spans .. ' spans to ' .. trace.path)
 end)
+```
+
+### debug.addBreadcrumb(message, data)
+
+Adds a [breadcrumb](#crashes-and-breadcrumbs) with an optional table of JSON values, and publishes `breadcrumbAdded`. Data that JSON cannot hold, such as a function, raises an error.
+
+```lua
+local debugging = require('haylen.debug')
+
+debugging.addBreadcrumb('Opened the shop.', {items = 12})
+```
+
+### debug.breadcrumbs()
+
+Returns the kept breadcrumbs, oldest first, each as `{time, message, data}`, where `time` is the seconds since 1970.
+
+```lua
+local debugging = require('haylen.debug')
+
+for _, crumb in ipairs(debugging.breadcrumbs()) do
+    print(os.date('%H:%M:%S', math.floor(crumb.time)) .. ' ' .. crumb.message)
+end
+```
+
+### debug.lastCrash()
+
+Returns the report of the native crash that ended the last run of the app, or `nil`. A report is `{reason, context}`, where `reason` is `'segmentationFault'`, `'busError'`, `'illegalInstruction'`, `'arithmeticError'`, `'abort'` or `'trap'` on the platforms with signals, and `'accessViolation'`, `'stackOverflow'`, `'illegalInstruction'`, `'divideByZero'`, `'breakpoint'` or `'exception'` on Windows. The `context` holds `app` with `name`, `identifier` and `version`, `breadcrumbs` as `{time, message, data}` and `log` as `{level, text}`, cut to fit 32 KiB. The engine removes the report once it read it, so the start after holds none.
+
+```lua
+local debugging = require('haylen.debug')
+
+local crash = debugging.lastCrash()
+if crash then
+    print('The last run stopped with ' .. crash.reason .. '.')
+end
 ```

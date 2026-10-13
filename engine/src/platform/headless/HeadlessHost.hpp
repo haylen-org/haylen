@@ -236,6 +236,13 @@ class HeadlessHost final : public Host {
     void cancelScreen(std::uint64_t id) override {
         cancelledScreens.push_back(id);
     }
+    void guardCrashes(const std::filesystem::path& report) override {
+        crashReport = report;
+    }
+    void setCrashContext(std::string_view json) override {
+        crashContext = json;
+    }
+
     [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {
         return developmentSession.get();
     }
@@ -366,6 +373,14 @@ class HeadlessHost final : public Host {
         return cancelledScreens;
     }
 
+    // The report file and the context that the engine handed the crash guard, which the headless platform never installs.
+    [[nodiscard]] const std::filesystem::path& getCrashReport() const noexcept {
+        return crashReport;
+    }
+    [[nodiscard]] const std::string& getCrashContext() const noexcept {
+        return crashContext;
+    }
+
   private:
     std::filesystem::path dataDirectory;
     math::Vec2 framebufferSize;
@@ -388,6 +403,8 @@ class HeadlessHost final : public Host {
     std::vector<std::uint64_t> cancelledDialogs;
     std::vector<ScreenRequest> screenRequests;
     std::vector<std::uint64_t> cancelledScreens;
+    std::filesystem::path crashReport;
+    std::string crashContext;
     std::unique_ptr<DevelopmentSession> developmentSession;
     const audio::OutputBackend* audioOutput = nullptr;
     bool opensUrls = true;

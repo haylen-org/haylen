@@ -554,6 +554,7 @@ Hot reload while the project runs in development, with "haylen run samples/tests
 | `DEV-007` | Errors and recovery | Errors of scene hooks, tasks, timers, tweens, signals, events, native events, platform answers, asset loads, sockets and buttons on the error screen with their stack, and the return to the app. |  |
 | `DEV-008` | Developer console | Commands of the test with typed arguments, lines run from code with their results and errors, completions and the console window. |  |
 | `DEV-009` | Profiler traces | A trace of 60 frames with the scopes of the frame, the jobs of the workers and the time of the GPU, written to user storage and counted by kind. |  |
+| `DEV-010` | Crashes and breadcrumbs | Breadcrumbs with their event, the report of the native crash that ended the last run and a button that crashes the app. |  |
 
 #### Files and storage (FIL)
 

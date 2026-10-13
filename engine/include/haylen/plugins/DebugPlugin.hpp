@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -14,7 +16,10 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Connection.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/core/RingBuffer.hpp"
+#include "haylen/debug/Breadcrumb.hpp"
 #include "haylen/debug/Console.hpp"
 #include "haylen/debug/LogLine.hpp"
 #include "haylen/debug/Monitor.hpp"
@@ -34,10 +39,17 @@ namespace haylen::plugins {
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
+    // The names of the log levels in the recent log and in the reports of crashes, by the order of `core::Log::Level`.
+    static constexpr std::array<std::string_view, 4> kLevelNames{"debug", "info", "warning", "error"};
     static constexpr std::string_view kBoundsDrawing = "bounds";
     static constexpr float kBoundsLabelSize = 12.0F;
     static constexpr math::Color kBoundsColor = math::Color{1.0F, 0.62F, 0.18F, 1.0F};
     static constexpr std::size_t kConsoleTouches = 4;
+    static constexpr std::size_t kBreadcrumbs = 100;
+    static constexpr std::size_t kReportBreadcrumbs = 30;
+    static constexpr std::size_t kReportLogLines = 20;
+    static constexpr std::size_t kReportTextSize = 256;
+    static constexpr std::string_view kCrashReportFile = "crash-report.json";
 
     // Draws a drawing into the open canvas, whose kind the renderer tells.
     using Drawer = std::function<void(graphics2d::Renderer& renderer)>;
@@ -117,6 +129,17 @@ class DebugPlugin final : public Plugin {
         return tracing;
     }
 
+    // Adds a breadcrumb that the report of a crash carries, and publishes `breadcrumbAdded` for the plugins that forward breadcrumbs to their services.
+    void addBreadcrumb(std::string message, core::Json data);
+    [[nodiscard]] const core::RingBuffer<debug::Breadcrumb>& getBreadcrumbs() const noexcept {
+        return breadcrumbs;
+    }
+
+    // The report of the native crash that ended the last run of the app, as `{reason, context}` with the breadcrumbs and log lines of its context, or null.
+    [[nodiscard]] const core::Json& getLastCrash() const noexcept {
+        return lastCrash;
+    }
+
     [[nodiscard]] debug::Console& getConsole() noexcept {
         return console;
     }
@@ -178,6 +201,9 @@ class DebugPlugin final : public Plugin {
     void addBuiltInCommands(core::Engine& engine);
     void runRelayedLines();
     void detachTrace();
+    void readLastCrash(core::Engine& engine);
+    void publishCrashContext(core::Engine& engine);
+    [[nodiscard]] static std::string cut(std::string_view text);
     [[nodiscard]] static std::string runLua(core::Engine& engine, const std::string& chunk);
 
     // Draws the drawings that are on into the canvas that is about to close.
@@ -206,6 +232,10 @@ class DebugPlugin final : public Plugin {
     std::unique_ptr<debug::ConsoleWindow> consoleWindow;
     std::vector<core::Connection> builtInCommands;
     std::optional<input::Key> consoleKey = input::Key::GraveAccent;
+    core::RingBuffer<debug::Breadcrumb> breadcrumbs{kBreadcrumbs};
+    core::Json lastCrash;
+    std::atomic<bool> logChanged = false;
+    bool breadcrumbsChanged = false;
     std::shared_ptr<debug::TraceRecorder> trace;
     std::optional<int> traceFramesLeft;
     double lastGpuSeconds = 0.0;

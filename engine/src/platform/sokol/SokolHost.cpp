@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 
+#include "platform/CrashGuard.hpp"
 #include "platform/Services.hpp"
 #include "sokol_glue.h"
 #include "sokol_log.h"
@@ -321,6 +322,14 @@ void SokolHost::vibrate(float seconds) {
 
 void SokolHost::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     Services::rumbleGamepad(index, low, high, seconds);
+}
+
+void SokolHost::guardCrashes(const std::filesystem::path& report) {
+    CrashGuard::install(report);
+}
+
+void SokolHost::setCrashContext(std::string_view json) {
+    CrashGuard::setContext(json);
 }
 
 // Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.

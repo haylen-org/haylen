@@ -84,6 +84,12 @@ class Host : public Window {
     // Dismisses a screen that the app gave up, where the platform can, which still ends it through `ScreenRelay::finish` once it is gone.
     virtual void cancelScreen(std::uint64_t id) = 0;
 
+    // Captures the native crashes of the process from now on into the report file, replacing the file of an earlier app of the process, where the platform catches them.
+    virtual void guardCrashes(const std::filesystem::path& report) = 0;
+
+    // Publishes the JSON object that the report of a crash carries as its context.
+    virtual void setCrashContext(std::string_view json) = 0;
+
     // The development session of a process that plays an app while it is being made, or null for every app that ships. It outlives the apps that restart on the host.
     [[nodiscard]] virtual DevelopmentSession* getDevelopmentSession() const noexcept = 0;
 };
