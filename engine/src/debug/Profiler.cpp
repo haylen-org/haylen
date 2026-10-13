@@ -19,17 +19,15 @@ double Profiler::getSteadySeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-void Profiler::beginFrame() {
+void Profiler::beginFrame(double shownSeconds) {
     current.clear();
     open.clear();
-    const double now = clock();
-    if (begun) {
-        intervals[nextInterval] = static_cast<float>((now - frameStart) * 1000.0);
+    if (shownSeconds > 0.0) {
+        intervals[nextInterval] = static_cast<float>(shownSeconds * 1000.0);
         nextInterval = (nextInterval + 1) % intervals.size();
         intervalCount = std::min(intervalCount + 1, intervals.size());
     }
-    begun = true;
-    frameStart = now;
+    frameStart = clock();
     inFrame = true;
 }
 

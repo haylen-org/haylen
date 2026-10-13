@@ -273,7 +273,7 @@ void Engine::frame(double frameSeconds) {
     // Plugins that start during the frame join the next one, and the loops reach the plugins by index, since the registry grows when one starts.
     const std::size_t plugins = current.plugins.size();
     debug::Profiler& profiler = current.profiler;
-    profiler.beginFrame();
+    profiler.beginFrame(frameSeconds);
     current.lifecycleFailed = false;
 
     try {

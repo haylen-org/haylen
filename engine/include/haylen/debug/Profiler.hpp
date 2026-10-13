@@ -12,7 +12,7 @@
 
 namespace haylen::debug {
 
-// Measures named CPU scopes on the frame thread. Scopes with the same name under the same parent add up within a frame, and a short history of frame times feeds graphs. A frame time is the work between `beginFrame` and `endFrame`, while the frame rate comes from the time between the starts of the frames, which also holds the wait for the display.
+// Measures named CPU scopes on the frame thread. Scopes with the same name under the same parent add up within a frame, and a short history of frame times feeds graphs. A frame time is the work between `beginFrame` and `endFrame`, while the frame rate comes from the intervals at which the display showed the frames, which the platform reports and which hold the wait for the display and the frames it missed.
 class Profiler final {
   public:
     // Returns the current time in seconds. Without one, the profiler reads the steady clock.
@@ -20,7 +20,8 @@ class Profiler final {
 
     explicit Profiler(std::size_t historySize = 240, Clock source = {});
 
-    void beginFrame();
+    // Starts a frame that the display showed `shownSeconds` after the one before, where zero records no interval, such as for the first frame.
+    void beginFrame(double shownSeconds);
     void endFrame();
 
     void beginScope(std::string_view name);
@@ -81,7 +82,6 @@ class Profiler final {
     std::size_t intervalCount = 0;
     double frameStart = 0.0;
     double lastFrameMilliseconds = 0.0;
-    bool begun = false;
     bool inFrame = false;
 };
 

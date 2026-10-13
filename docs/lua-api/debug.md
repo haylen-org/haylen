@@ -259,7 +259,7 @@ Returns a snapshot of the engine statistics as a table with these fields. Render
 
 | Field | Contents |
 | --- | --- |
-| `frame` | `fps` over the recent frames, from the time between their starts, the work of the frames as `milliseconds` of the last frame, `average`, `minimum` and `maximum` over the recent frames and `onePercentLow`, the average of the slowest one percent of them, all in milliseconds, and `fixedSteps` of the current frame. |
+| `frame` | `fps` over the recent frames, from the intervals at which the display showed them, the work of the frames as `milliseconds` of the last frame, `average`, `minimum` and `maximum` over the recent frames and `onePercentLow`, the average of the slowest one percent of them, all in milliseconds, and `fixedSteps` of the current frame. |
 | `eventLoop` | The last poll of the event loop of Varn: its `budget` in milliseconds, a quarter of the frame time between 1 and 8, `ran`, whether any job, timer or socket callback ran, `pending`, whether work remains, and `idle`, the milliseconds the loop can wait before it has work of its own, which is `0` when the budget ended the poll with work still ready and `-1` when only sockets, workers or the platform can bring work. |
 | `rendering` | `drawCalls`, `passes`, `canvases`, `sprites`, `instances`, `vertices`, `indices`, `lights`, `occluders`, `shadows`, `textureSwitches` and `uploadedBytes`. |
 | `memory` | Bytes of `lua`, the Lua heap, and the estimated bytes of `textures`, `targets` for render targets, and `sounds`. |
@@ -376,7 +376,7 @@ Returns the measurements of the last finished frame as a table. Before the first
 | --- | --- | --- |
 | `milliseconds` | number | Work of the last frame, from the start of its update to the end of its rendering, in milliseconds. |
 | `average` | number | Average work of the recent frames, in milliseconds. |
-| `fps` | number | Frames per second over the recent frames, from the time between their starts, which also holds the wait for the display, or `0` before the second frame. |
+| `fps` | number | Frames per second that the display showed over the recent frames, from the intervals the platform reports for the frames it shows: the display link on Apple platforms, the timestamps of `requestAnimationFrame` on the web, the Choreographer on Android and the time between presented frames on the desktops. They hold the wait for the display and the frames it missed, unlike the work of the frames, or `0` before the second frame. |
 | `gpuMilliseconds` | number or `nil` | Time the GPU took for the last frame it finished, which lags a frame or two behind, where the backend measures it, which Metal does. It is `nil` on the other backends and before the GPU finished a frame. |
 | `scopes` | list | Scopes of the last frame, parents before their children. |
 

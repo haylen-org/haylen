@@ -42,7 +42,7 @@ TEST_F(TraceRecorderTest, WritesNestedScopesWithALanePerThread) {
     trace->nameThread("frame");
     profiler.setTraceRecorder(trace);
 
-    profiler.beginFrame();
+    profiler.beginFrame(0.0);
     profiler.beginScope("update");
     now += 0.002;
     profiler.beginScope("physics");
@@ -52,7 +52,7 @@ TEST_F(TraceRecorderTest, WritesNestedScopesWithALanePerThread) {
     now += 0.001;
     profiler.endFrame();
     profiler.setTraceRecorder(nullptr);
-    profiler.beginFrame();
+    profiler.beginFrame(0.0);
     profiler.endFrame();
 
     std::thread worker([&trace] { trace->record("job", TraceRecorder::now(), TraceRecorder::now() + 0.0005); });

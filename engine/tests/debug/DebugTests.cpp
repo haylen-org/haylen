@@ -29,7 +29,7 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
     double now = 0.0;
     Profiler profiler(4, [&now] { return now; });
 
-    profiler.beginFrame();
+    profiler.beginFrame(0.0);
     now = 0.001;
     profiler.beginScope("update");
     now = 0.003;
@@ -64,7 +64,7 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
 
 TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
     Profiler profiler;
-    profiler.beginFrame();
+    profiler.beginFrame(0.0);
     {
         const ProfileScope outer(profiler, "outer");
         profiler.beginScope("left open");
@@ -88,7 +88,7 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
     EXPECT_TRUE(profiler.getFrameHistory().empty());
 
     for (int frame = 1; frame <= 6; ++frame) {
-        profiler.beginFrame();
+        profiler.beginFrame(0.0);
         now += 0.001 * frame;
         profiler.endFrame();
     }
@@ -99,7 +99,7 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
     EXPECT_NEAR(profiler.getAverageFrameMilliseconds(), 4.5, 1e-4);
 
     // A scope an error left open closes with the frame.
-    profiler.beginFrame();
+    profiler.beginFrame(0.0);
     profiler.beginScope("broken");
     now += 0.002;
     profiler.endFrame();
@@ -111,17 +111,16 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
     EXPECT_THROW(Profiler(0), std::invalid_argument);
 }
 
-// The frame rate counts the time between the starts of the frames, which holds the wait for the display that the work of a frame leaves out, and reading it allocates nothing.
-TEST(ProfilerTest, MeasuresTheFrameRateFromTheStartsOfTheFrames) {
+// The frame rate counts the intervals at which the display showed the frames, which hold the wait for the display and the frames it missed that the work of a frame leaves out, and reading it allocates nothing.
+TEST(ProfilerTest, MeasuresTheFrameRateFromTheFramesTheDisplayShowed) {
     double now = 0.0;
     Profiler profiler(8, [&now] { return now; });
-    profiler.beginFrame();
+    profiler.beginFrame(0.0);
     EXPECT_EQ(profiler.getFramesPerSecond(), 0.0);
     for (int frame = 0; frame < 20; ++frame) {
         now += 0.002;
         profiler.endFrame();
-        now += 0.0146667;
-        profiler.beginFrame();
+        profiler.beginFrame(frame % 4 == 0 ? 2.0 / 60.0 : 1.0 / 60.0);
     }
     now += 0.002;
     profiler.endFrame();
@@ -130,14 +129,14 @@ TEST(ProfilerTest, MeasuresTheFrameRateFromTheStartsOfTheFrames) {
     const double rate = profiler.getFramesPerSecond();
     const double work = profiler.getAverageFrameMilliseconds();
     EXPECT_EQ(tracker.getTotal(), 0U);
-    EXPECT_NEAR(rate, 60.0, 0.01);
+    EXPECT_NEAR(rate, 8.0 / (10.0 / 60.0), 0.01);
     EXPECT_NEAR(work, 2.0, 1e-4);
 }
 
 // A script closes only the scopes it opened, so closing one too many leaves the scope of the engine around it open.
 TEST(ProfilerTest, KeepsTheScopesOfTheEngineFromScripts) {
     Profiler profiler;
-    profiler.beginFrame();
+    profiler.beginFrame(0.0);
     profiler.beginScope("update");
     profiler.beginScriptScope("enemies");
     profiler.endScriptScope();
