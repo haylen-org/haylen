@@ -32,7 +32,7 @@ class Scrollbar;
 class Scroller;
 class SizeCache;
 
-// Shows any number of items of several types in a list or a grid that scrolls along one axis. It builds a few cells from the templates of its types, binds them to the items in view and reuses them as the player scrolls, so its cost follows the visible items, not the item count. Its one child, such as an empty state, shows while it has no items. Indices count from zero in C++ and from one in its events.
+// Shows any number of items of several types in a list or a grid that scrolls along one axis. It builds a few cells from the templates of its types, binds them to the items in view and reuses them as the player scrolls, so its cost follows the visible items, not the item count. A reorderable collection lets the player drag an item or carry it with accept to another place and reports the move, which the app makes. Its one child, such as an empty state, shows while it has no items. Indices count from zero in C++ and from one in its events.
 class Collection final : public Component {
   public:
     enum class Axis : std::uint8_t {
@@ -184,6 +184,13 @@ class Collection final : public Component {
         std::size_t last = 0;
     };
 
+    // An item the pointer lifted to reorder it, with where the pointer holds it.
+    struct Lift {
+        std::size_t index = 0;
+        std::string item;
+        math::Vec2 grab;
+    };
+
     class FlagScope;
 
     static constexpr int kMaxLanes = 64;
@@ -197,6 +204,7 @@ class Collection final : public Component {
     static constexpr float kSlideSpeed = 14.0F;
     static constexpr float kFadeSpeed = 6.0F;
     static constexpr float kScrollbarFade = 0.4F;
+    static constexpr float kAutoScrollSpeed = 1600.0F;
     static constexpr std::size_t kNotReported = std::numeric_limits<std::size_t>::max();
 
     static constexpr std::array<std::pair<std::string_view, Axis>, 2> kAxes{{{"vertical", Axis::Vertical}, {"horizontal", Axis::Horizontal}}};
@@ -251,6 +259,19 @@ class Collection final : public Component {
 
     void takeInput(Context& context);
     void finishDrag(Context& context);
+
+    // Lifts the pressed item once the mouse drags it or a finger holds it, scrolls while the lifted item nears an end of the view, and reports where it lands.
+    [[nodiscard]] bool takeLift(Context& context);
+    void followLift(Context& context);
+    void finishLift(Context& context);
+    [[nodiscard]] std::optional<std::size_t> findItemAt(math::Vec2 point) const;
+
+    // Picks the focused item up or drops the carried one when accept presses an interactive cell of a reorderable collection, and returns whether it did.
+    [[nodiscard]] bool takeCarry(Context& context, const CollectionCell& cell);
+    [[nodiscard]] std::optional<std::size_t> findCellIndex(std::string_view item) const;
+    bool drawLifted(Context& context, ImGuiID reveal);
+    void drawDropMark(Context& context, const math::Rect& target, bool before) const;
+    void drawCarryMarks(Context& context, const CollectionCell& cell, const math::Rect& rect, ImGuiID item) const;
     void takePaging(Context& context);
     void requestScroll(std::size_t index, ScrollRequest request);
     void refreshRange();
@@ -298,6 +319,7 @@ class Collection final : public Component {
     bool refreshing = false;
     int endThreshold = 5;
     bool animateChanges = true;
+    bool reorderable = false;
 
     const ComponentRegistry* registry = nullptr;
     std::unique_ptr<CellTypes> types;
@@ -346,6 +368,9 @@ class Collection final : public Component {
     std::optional<PendingScroll> pendingScroll;
     bool pressed = false;
     bool dragging = false;
+    std::string pressCandidate;
+    std::string lastPressed;
+    std::optional<Lift> lift;
     float idle = 0.0F;
     bool moving = false;
 

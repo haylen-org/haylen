@@ -2535,6 +2535,7 @@ A vertical collection is as long as its content within its size bounds, like `sc
 | `refreshing` | boolean | `false` | Shows the busy indicator at the start. A pull sets it, and the app sets it to `false` with `gui:set` when the refresh ends. |
 | `endThreshold` | integer from 0 to 10000 | `5` | Items from either end at which `endReached` and `startReached` report. |
 | `animateChanges` | boolean | `true` | Slides the items that a change moves, fades in the items it inserts and fades out the items it removes, for the items in view. |
+| `reorderable` | boolean | `false` | Lets the player move items to other places, as [reordering](#reordering) describes. |
 
 The common properties apply too. The property `focusWrap` along the axis wraps the focus from the last item to the first and back, even when they do not show, and `focusScope` keeps the focus inside the collection.
 
@@ -2583,9 +2584,15 @@ An item whose bound value a part does not accept stops the app when its cell bin
 | `scrollEnd` | `offset`, `item` | Scrolling by the player or a `scrollTo` came to rest, with the first item in view whole. |
 | `endReached`, `startReached` | `count` | The items in view came within `endThreshold` items of the end or the start, once per item count, so an app appends a page at a time. |
 | `refresh` | none | A pull at the start went past the theme `refreshDistance` and let go. |
+| `dragStart` | `item`, `index` | The player lifted an item of a reorderable collection with the pointer or picked it up with accept. |
+| `reorder` | `item`, `from`, `to` | The player dropped the item that was at `from` on the place `to` of a reorderable collection, where `list:move(event.from, event.to)` makes the move. |
 | the event of a part | its values, `part`, `cell` | A part of a cell reported it, such as `click` of a button or `change` of a toggle, with the name of the part as `part` and the item it shows as `cell`, a table with `item`, `index` and `type`. |
 
 Indices count from 1. Every event of a part arrives on the collection, so a handler such as `onClick` on the collection answers the buttons of every cell and tells them apart by `event.part` and `event.cell.item`.
+
+#### Reordering
+
+A collection with `reorderable = true` lets the player move its items, and reports each move as `reorder` without changing the items, so the app moves the item in its data, usually with `list:move(event.from, event.to)`, and the other items slide to their new places. The mouse lifts an item it drags past a few units, and a finger lifts an item it holds still for the theme `longPressDuration`, since a finger that moves at once scrolls. The lifted item follows the pointer above the other cells, along the axis of a list and freely in a grid, a bar in the gap marks where it lands, and the view scrolls while it nears an end. The keyboard, gamepads and remotes move the items of interactive cells: accept on the item pressed last picks it up, so the first accept presses an item and the second one picks it up, the focus moves to another item, and accept there drops it, while accept on the carried item or `uiCancel` puts it back. The pointer starts a lift from any part of a cell, also from a control inside it, which then does not report its press.
 
 #### Examples
 

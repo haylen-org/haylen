@@ -91,6 +91,7 @@ void Collection::readProperties(PropertyReader& reader) {
     reader.read("refreshing", refreshing);
     reader.read("endThreshold", endThreshold, 0, 10000);
     reader.read("animateChanges", animateChanges);
+    reader.read("reorderable", reorderable);
 }
 
 void Collection::compile(const ComponentRegistry& components) {
@@ -320,6 +321,14 @@ void Collection::remapIndices(const CollectionSource::Change& change, std::size_
 
     if (pendingFocus) {
         pendingFocus = mapIndex(*pendingFocus, change);
+    }
+    if (lift) {
+        const std::optional<std::size_t> index = mapIndex(lift->index, change);
+        if (index) {
+            lift->index = *index;
+        } else {
+            lift.reset();
+        }
     }
     if (pendingScroll) {
         const std::optional<std::size_t> index = mapIndex(pendingScroll->index, change);
@@ -667,7 +676,7 @@ void Collection::releaseOutside(const Range& window, std::optional<std::size_t> 
     const std::size_t keepLast = layout->getFirstIndex(std::min(lastLine + 2, lines)) - 1;
     // clang-format off
     std::erase_if(cells, [&](const std::shared_ptr<CollectionCell>& cell) {
-        const bool kept = (cell->index >= keepFirst && cell->index <= keepLast) || cell->index == sticky || cell->index == pendingFocus;
+        const bool kept = (cell->index >= keepFirst && cell->index <= keepLast) || cell->index == sticky || cell->index == pendingFocus || (lift && cell->index == lift->index);
         if (!kept) {
             release(cell);
         }
@@ -831,6 +840,9 @@ void Collection::render(Context& context, const math::Rect& bounds) {
         if (pendingFocus && *pendingFocus < getCount()) {
             bindRange(*pendingFocus, *pendingFocus, false);
         }
+        if (lift) {
+            bindRange(lift->index, lift->index, false);
+        }
         measureCells(context);
         ensureArranged();
         restoreHold();
@@ -886,12 +898,24 @@ void Collection::takeInput(Context& context) {
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         pressed = underPointer;
         dragging = false;
+        pressCandidate.clear();
     }
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        if (lift) {
+            finishLift(context);
+        }
         if (dragging) {
             finishDrag(context);
         }
         pressed = false;
+        pressCandidate.clear();
+        return;
+    }
+    if (lift) {
+        followLift(context);
+        return;
+    }
+    if (reorderable && pressed && !dragging && takeLift(context)) {
         return;
     }
     if (!pressed || io.MouseSource != ImGuiMouseSource_TouchScreen) {
@@ -917,6 +941,158 @@ void Collection::takeInput(Context& context) {
     const float step = isVertical() ? -io.MouseDelta.y : (rightToLeft ? io.MouseDelta.x : -io.MouseDelta.x);
     scroller->drag(step, delta);
     idle = 0.0F;
+}
+
+// The mouse lifts an item it drags past a small distance, and a finger lifts the item it holds still for a long press, since a finger that moves at once scrolls.
+bool Collection::takeLift(Context& context) {
+    const ImGuiIO& io = ImGui::GetIO();
+    const std::optional<std::size_t> index = pressCandidate.empty() ? std::nullopt : findCellIndex(pressCandidate);
+    if (!index) {
+        return false;
+    }
+    const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
+    const float distance = std::sqrt(moved.x * moved.x + moved.y * moved.y);
+    const bool touch = io.MouseSource == ImGuiMouseSource_TouchScreen;
+    const bool lifting = touch ? distance < kDragSlop && io.MouseDownDuration[0] >= context.getMetric(Theme::Metric::LongPressDuration) : distance >= kDragSlop;
+    if (!lifting) {
+        return false;
+    }
+    const CollectionCell& cell = *findCell(*index);
+    lift = Lift{.index = *index, .item = cell.item, .grab = math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y} - cell.placed.getMin()};
+    pressCandidate.clear();
+    pendingScroll.reset();
+    if (GImGui->ActiveId != 0) {
+        ImGui::ClearActiveID();
+    }
+    context.emit(*this, "dragStart", {{"item", lift->item}, {"index", lift->index + 1}});
+    return true;
+}
+
+// The view scrolls while the lifted item lies near one of its ends, faster the closer it gets.
+void Collection::followLift(Context& context) {
+    const ImVec2 pointer = ImGui::GetIO().MousePos;
+    const float main = getMainLength();
+    const float position = isVertical() ? pointer.y - viewport.y : (rightToLeft ? viewport.getRight() - pointer.x : pointer.x - viewport.x);
+    const float edge = std::min(main * 0.25F, context.getMetric(Theme::Metric::ListRowHeight));
+    float speed = 0.0F;
+    if (edge > 0.0F && position < edge) {
+        speed = -(1.0F - std::max(position, 0.0F) / edge);
+    } else if (edge > 0.0F && position > main - edge) {
+        speed = 1.0F - std::max(main - position, 0.0F) / edge;
+    }
+    if (speed != 0.0F) {
+        scroller->jumpTo(scroller->getOffset() + static_cast<double>(speed * kAutoScrollSpeed * delta));
+        idle = 0.0F;
+    }
+}
+
+void Collection::finishLift(Context& context) {
+    const ImVec2 pointer = ImGui::GetIO().MousePos;
+    const std::optional<std::size_t> target = findItemAt({pointer.x, pointer.y});
+    const Lift lifted = *std::exchange(lift, std::nullopt);
+    if (target && *target != lifted.index) {
+        context.emit(*this, "reorder", {{"item", lifted.item}, {"from", lifted.index + 1}, {"to", *target + 1}});
+    }
+}
+
+// Returns the item of the line under a point whose slot the point lies before across the axis, or the last item of the line.
+std::optional<std::size_t> Collection::findItemAt(math::Vec2 point) const {
+    if (getCount() == 0) {
+        return std::nullopt;
+    }
+    const float along = isVertical() ? point.y - viewport.y : (rightToLeft ? viewport.getRight() - point.x : point.x - viewport.x);
+    const std::size_t line = sizes->findLine(getViewStart() + static_cast<double>(along));
+    const std::size_t first = layout->getFirstIndex(line);
+    const std::size_t last = layout->getFirstIndex(line + 1) - 1;
+    for (std::size_t index = first; index < last; ++index) {
+        const math::Rect rect = getItemRect(index);
+        const bool before = isVertical() ? (rightToLeft ? point.x > rect.x : point.x < rect.getRight()) : point.y < rect.getBottom();
+        if (before) {
+            return index;
+        }
+    }
+    return last;
+}
+
+// Accept picks the item pressed last up, and accept on another item drops the carried item there, or on the carried item puts it back.
+bool Collection::takeCarry(Context& context, const CollectionCell& cell) {
+    FocusNavigator& focus = context.getFocus();
+    const std::optional<FocusNavigator::Carry>& carried = focus.getCarried();
+    if (carried && carried->source == getId()) {
+        if (carried->item != cell.item) {
+            if (const std::optional<std::size_t> from = findItem(carried->item)) {
+                context.emit(*this, "reorder", {{"item", carried->item}, {"from", *from + 1}, {"to", cell.index + 1}});
+            }
+        }
+        focus.dropCarried();
+        return true;
+    }
+    if (carried || lastPressed != cell.item) {
+        return false;
+    }
+    focus.carry({.source = getId(), .item = cell.item, .image = {}});
+    context.emit(*this, "dragStart", {{"item", cell.item}, {"index", cell.index + 1}});
+    return true;
+}
+
+std::optional<std::size_t> Collection::findCellIndex(std::string_view item) const {
+    const auto found = std::ranges::find(cells, item, [](const std::shared_ptr<CollectionCell>& cell) -> std::string_view { return cell->item; });
+    return found != cells.end() ? std::optional<std::size_t>((*found)->index) : std::nullopt;
+}
+
+// The lifted item follows the pointer above the other cells, along the axis of a list and freely in a grid, with a mark where it would land.
+bool Collection::drawLifted(Context& context, ImGuiID reveal) {
+    CollectionCell* cell = findCell(lift->index);
+    if (cell == nullptr || cell->waiting) {
+        return false;
+    }
+    const ImVec2 pointer = ImGui::GetIO().MousePos;
+    if (const std::optional<std::size_t> target = findItemAt({pointer.x, pointer.y}); target && *target != lift->index) {
+        drawDropMark(context, getItemRect(*target), *target < lift->index);
+    }
+    math::Rect rect = getItemRect(lift->index);
+    if (arrangement == Arrangement::Grid || !isVertical()) {
+        rect.x = pointer.x - lift->grab.x;
+    }
+    if (arrangement == Arrangement::Grid || isVertical()) {
+        rect.y = pointer.y - lift->grab.y;
+    }
+    const float radius = context.getMetric(Theme::Metric::CellRadius);
+    Surfaces::fill(context, rect, context.getColor(Theme::Color::Raised), radius);
+    const bool focused = drawCell(context, *cell, rect.translated(math::Vec2{} - cell->slide), reveal);
+    Surfaces::outline(context, rect, context.getColor(Theme::Color::Accent), radius, context.getMetric(Theme::Metric::FocusWidth));
+    return focused;
+}
+
+// The mark is a bar in the gap on the side of the target the item lands on: across the axis of a list, and along it between the lanes of a grid.
+void Collection::drawDropMark(Context& context, const math::Rect& target, bool before) const {
+    const float width = context.getMetric(Theme::Metric::FocusWidth);
+    const float half = gapLength * 0.5F + width * 0.5F;
+    const math::Color color = context.getColor(Theme::Color::Accent);
+    const bool acrossAxis = arrangement == Arrangement::Linear;
+    if (acrossAxis == isVertical()) {
+        const float y = before ? target.y - half : target.getBottom() + half - width;
+        Surfaces::fill(context, {target.x, y, target.width, width}, color, width * 0.5F);
+        return;
+    }
+    const bool startSide = before != rightToLeft;
+    const float x = startSide ? target.x - half : target.getRight() + half - width;
+    Surfaces::fill(context, {x, target.y, width, target.height}, color, width * 0.5F);
+}
+
+// The carried item shows an outline, and the focused item a mark on the side the carried item would land on.
+void Collection::drawCarryMarks(Context& context, const CollectionCell& cell, const math::Rect& rect, ImGuiID item) const {
+    const std::string& carried = context.getFocus().getCarried()->item;
+    if (carried == cell.item) {
+        Surfaces::outline(context, rect, context.getColor(Theme::Color::Accent), context.getMetric(Theme::Metric::CellRadius), context.getMetric(Theme::Metric::FocusWidth));
+        return;
+    }
+    if (GImGui->NavId != item) {
+        return;
+    }
+    if (const std::optional<std::size_t> from = findCellIndex(carried)) {
+        drawDropMark(context, rect, cell.index < *from);
+    }
 }
 
 // A pull past the refresh distance at the start of a refreshable list asks the app to refresh it.
@@ -1053,7 +1229,7 @@ void Collection::drawCells(Context& context, const Range& window, std::optional<
     const ImGuiID reveal = context.getFocus().getReveal();
     bool focusDrawn = false;
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
-        if (cell->index >= window.first && cell->index <= window.last && cell->index != sticky && !cell->waiting) {
+        if (cell->index >= window.first && cell->index <= window.last && cell->index != sticky && !cell->waiting && (!lift || cell->index != lift->index)) {
             focusDrawn = drawCell(context, *cell, getItemRect(cell->index), reveal) || focusDrawn;
         }
     }
@@ -1076,10 +1252,13 @@ void Collection::drawCells(Context& context, const Range& window, std::optional<
         }
     }
     // The item that waits for the focus takes it wherever it lies, and the next direction brings it into view.
-    if (pendingFocus && (*pendingFocus < window.first || *pendingFocus > window.last) && *pendingFocus != sticky) {
+    if (pendingFocus && (*pendingFocus < window.first || *pendingFocus > window.last) && *pendingFocus != sticky && (!lift || *pendingFocus != lift->index)) {
         if (CollectionCell* cell = findCell(*pendingFocus); cell != nullptr && !cell->waiting) {
             focusDrawn = drawCell(context, *cell, getItemRect(cell->index), reveal) || focusDrawn;
         }
+    }
+    if (lift) {
+        focusDrawn = drawLifted(context, reveal) || focusDrawn;
     }
     drawProxy(context, focusDrawn, reveal);
 }
@@ -1103,6 +1282,7 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
             const float radius = context.getMetric(Theme::Metric::CellRadius);
             ImGui::SetNextItemAllowOverlap();
             const Widgets::Interaction state = Widgets::interact(context, rect, radius, "##cell");
+            const ImGuiID item = ImGui::GetItemID();
             const bool chosen = selection != Selection::None && selected[index] != 0;
             if (context.getSurface(Theme::Surface::Cell) != nullptr) {
                 Surfaces::draw(context, Theme::Surface::Cell, rect, context.getColor(Theme::Color::Raised), std::nullopt, radius);
@@ -1112,12 +1292,20 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
                 const Theme::Color color = chosen ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
                 Surfaces::draw(context, surface, rect, context.getColor(color), std::nullopt, radius);
             }
-            clicked = state.clicked;
+            clicked = state.clicked && !(reorderable && GImGui->NavActivatePressedId == item && takeCarry(context, cell));
+            if (reorderable && focus.getCarried() && focus.getCarried()->source == getId()) {
+                drawCarryMarks(context, cell, rect, item);
+            }
         }
         drawFaded(context, cell, rect);
         focus.leaveCell();
     }
     ImGui::PopID();
+    // The item a press starts on is the one a drag lifts, which the press of a control inside its cell does not hide.
+    const math::Vec2 pointer{ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y};
+    if (reorderable && !lift && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && rect.contains(pointer) && viewport.contains(pointer)) {
+        pressCandidate = cell.item;
+    }
 
     if (clicked) {
         press(context, index);
@@ -1150,6 +1338,7 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
 
 // A press selects the item as the selection mode says and reports it, again when the item already was selected.
 void Collection::press(Context& context, std::size_t index) {
+    lastPressed = source->getId(index);
     core::Json values{{"item", source->getId(index)}, {"index", index + 1}};
     if (selection == Selection::Single) {
         for (std::size_t other = 0; other < selected.size(); ++other) {
@@ -1295,6 +1484,11 @@ void Collection::noticeHiddenCells(Context& context) {
 }
 
 void Collection::drawingStopped(Context& context) {
+    lift.reset();
+    FocusNavigator& focus = context.getFocus();
+    if (focus.getCarried() && focus.getCarried()->source == getId()) {
+        focus.dropCarried();
+    }
     for (const std::shared_ptr<CollectionCell>& cell : leaving) {
         cell->opacity = 1.0F;
         types->release(cell);

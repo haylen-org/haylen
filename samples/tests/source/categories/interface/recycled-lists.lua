@@ -59,7 +59,7 @@ end
 
 function RecycledLists:enter()
     self:frame{
-        hint = 'Scroll with the wheel, the scrollbar or a finger, which flings the lists. Arrows, the directional pad and remotes move between items, Page Up, Page Down, Home, End and the shoulder buttons page, and Enter or the south button selects tiles. The "More" link of a shell opens its menu.',
+        hint = 'Scroll with the wheel, the scrollbar or a finger, which flings the lists. Arrows, the directional pad and remotes move between items, Page Up, Page Down, Home, End and the shoulder buttons page, and Enter or the south button selects tiles. Drag a row, or press it twice with Enter or the south button, to move it. The "More" link of a shell opens its menu.',
         focus = 'list',
         content = {self:columns()},
     }
@@ -84,7 +84,7 @@ function RecycledLists:columns()
                 ui.button{id = 'shuffle', text = 'Shuffle', onClick = function() self:shuffle() end},
                 ui.button{id = 'jump', text = 'Go to item 150', onClick = function() self.list:scrollTo(150, {align = 'center'}) end},
             },
-            ui.collection{id = 'list', grow = 1, gap = 8, focusAlign = 'nearest', types = {
+            ui.collection{id = 'list', grow = 1, gap = 8, focusAlign = 'nearest', reorderable = true, types = {
                 header = {template = ui.sectionTitle{part = 'title', bind = {text = 'title'}}, sticky = true, interactive = false},
                 note = {template = ui.label{part = 'title', bind = {text = 'title'}}},
                 entry = {template = ui.row{gap = 16,
@@ -94,6 +94,10 @@ function RecycledLists:columns()
                 switch = {template = ui.settingsRow{part = 'row', bind = {label = 'title'}, ui.toggle{part = 'on', bind = {checked = 'on'}}}},
             },
                 onSelect = function(event) self.last = ' Pressed "' .. event.item .. '".' end,
+                onReorder = function(event)
+                    self.list:move(event.from, event.to)
+                    self.last = string.format(' Dragged "%s" from place %d to place %d.', event.item, event.from, event.to)
+                end,
                 onChange = function(event) self.last = string.format(' The switch of "%s" is %s in its item.', event.cell.item, self.rows[event.cell.index].on and 'on' or 'off') end,
             },
         }),

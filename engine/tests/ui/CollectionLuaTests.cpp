@@ -40,6 +40,27 @@ class CollectionLuaTest : public ::testing::Test {
         fixture.frames(1);
     }
 
+    // Presses the mouse in the middle of a row of the list, from 1, moves it in steps to the middle of another row and lets go.
+    void dragRow(int from, int to) {
+        const float top = std::stof(fixture.lua("return gui:bounds('list').y"));
+        const float left = std::stof(fixture.lua("return gui:bounds('list').x"));
+        // clang-format off
+        const auto send = [&](platform::Event::Type type, float row) {
+            platform::Event event;
+            event.type = type;
+            event.position = getEngine().getViewport().toFramebuffer(math::Vec2{left + 100.0F, top + 60.0F * row - 30.0F});
+            getEngine().handleEvent(event);
+            fixture.frames(1);
+        };
+        // clang-format on
+        send(platform::Event::Type::MouseMove, static_cast<float>(from));
+        send(platform::Event::Type::MouseDown, static_cast<float>(from));
+        for (int step = 1; step <= 8; ++step) {
+            send(platform::Event::Type::MouseMove, static_cast<float>(from) + static_cast<float>(to - from) * static_cast<float>(step) / 8.0F);
+        }
+        send(platform::Event::Type::MouseUp, static_cast<float>(to));
+    }
+
     void key(input::Key code) {
         for (const platform::Event::Type type : {platform::Event::Type::KeyDown, platform::Event::Type::KeyUp}) {
             platform::Event event;
@@ -335,6 +356,26 @@ TEST_F(CollectionLuaTest, OpensTheContextMenuOfAPartAndTellsWhereACellDrew) {
     EXPECT_NE(fixture.lua("list:cellOf(1):command('title', 'open')").find("The component kind \"label\" does not answer the command \"open\"."), std::string::npos);
     EXPECT_NE(fixture.lua("list:cellOf(1):command('nothing', 'open')").find("The template of the type \"row\" has no part named \"nothing\"."), std::string::npos);
     EXPECT_NE(fixture.lua("list:cellOf(1):bounds('nothing')").find("The template of the type \"row\" has no part named \"nothing\"."), std::string::npos);
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
+TEST_F(CollectionLuaTest, ReportsTheMovesOfAReorderableCollection) {
+    mountRows(30, ", reorderable = true, onReorder = function(event) moved = event.item .. ' ' .. event.from .. ' ' .. event.to list:move(event.from, event.to) end, onDragStart = function(event) lifted = event.item .. ' ' .. event.index end, onSelect = function(event) picked = event.item end");
+    dragRow(2, 5);
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return lifted .. ', ' .. moved .. ', ' .. items[5].id .. ', ' .. tostring(picked)"), "i2 2, i2 2 5, i2, nil");
+
+    // The keyboard presses an item, picks it up with a second press and drops it on another item.
+    fixture.runLua("list:focus(1)");
+    fixture.frames(2);
+    key(input::Key::Enter);
+    EXPECT_EQ(fixture.lua("return picked"), "i1");
+    key(input::Key::Enter);
+    EXPECT_EQ(fixture.lua("return lifted"), "i1 1");
+    key(input::Key::Down);
+    key(input::Key::Down);
+    key(input::Key::Enter);
+    EXPECT_EQ(fixture.lua("return moved .. ', ' .. items[3].id"), "i1 1 3, i1");
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
