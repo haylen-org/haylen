@@ -25,6 +25,7 @@
 #include "platform/windows/WindowsRumble.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
+#include "platform/windows/WindowsVideoDecoder.hpp"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -228,9 +229,8 @@ void Services::updateAccessibility(std::span<const AccessibilityElement>, std::u
 
 void Services::announce(std::string_view, bool) {}
 
-// The engine plays no video files on this platform yet, as the video reference explains.
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
-    return nullptr;
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+    return std::make_unique<WindowsVideoDecoder>(std::move(file), path);
 }
 
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
