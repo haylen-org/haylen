@@ -23,6 +23,7 @@
 #include "haylen/platform/Theme.hpp"
 #include "haylen/platform/native/HaylenNative.h"
 #include "io/OverlayPackage.hpp"
+#include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/ConsoleRelay.hpp"
 #include "platform/DevelopmentSession.hpp"
@@ -412,6 +413,10 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_network(int online) {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_theme(int dark) {
     haylen::platform::WebPage::setTheme(dark != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_accessibility_action(double element, int action) {
+    haylen::platform::AccessibilityRelay::perform({.element = static_cast<std::uint64_t>(element), .action = static_cast<haylen::platform::AccessibilityElement::Action>(action)});
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_accessibility(double textScale, int reducedMotion, int highContrast, int reducedTransparency) {

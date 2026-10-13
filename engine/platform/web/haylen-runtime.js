@@ -568,6 +568,195 @@ Module.haylen = Module.haylen || {};
         };
     };
 
+    // The mirror of the UI for screen readers: a layer over the canvas that nothing shows, where every element of the UI is an element of the page with its ARIA role, name, value and states, placed where the app draws it, and two live regions that say the announcements of the app. Activating, focusing or adjusting an element of the mirror asks the engine for the same action through `haylen_web_accessibility_action`, and a focus that moves in the UI moves along in the mirror while the focus of the page is in it.
+    haylen.accessibility = (function () {
+        const states = { disabled: 1, checked: 2, selected: 4, focused: 8, expanded: 16, busy: 32 };
+        const actions = { focus: 1, activate: 2, increment: 4, decrement: 8 };
+        const roles = {
+            group: "group",
+            text: null,
+            heading: "heading",
+            image: "img",
+            button: "button",
+            checkBox: "checkbox",
+            switch: "switch",
+            radioGroup: "radiogroup",
+            radioButton: "radio",
+            tabList: "tablist",
+            tab: "tab",
+            slider: "slider",
+            textField: "textbox",
+            comboBox: "combobox",
+            progressBar: "progressbar",
+            list: "list",
+            dialog: "dialog",
+            alert: "alert",
+            playArea: "application",
+        };
+        const mirror = { layer: null, polite: null, assertive: null, nodes: new Map(), elements: [], focused: 0 };
+
+        const act = (id, action) => Module._haylen_web_accessibility_action(id, action);
+
+        const createLayer = () => {
+            const layer = document.createElement("div");
+            layer.id = "haylen-accessibility";
+            layer.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;opacity:0;z-index:1;";
+            for (const live of ["polite", "assertive"]) {
+                const region = document.createElement("div");
+                region.setAttribute("aria-live", live);
+                region.setAttribute("aria-atomic", "true");
+                region.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;";
+                layer.appendChild(region);
+                mirror[live] = region;
+            }
+            Module.canvas.after(layer);
+            mirror.layer = layer;
+            const resizes = new ResizeObserver(place);
+            resizes.observe(Module.canvas);
+            window.addEventListener("resize", place);
+            window.addEventListener("scroll", place, true);
+            return layer;
+        };
+
+        const createNode = (element) => {
+            const node = document.createElement("div");
+            node.style.cssText = "position:absolute;margin:0;padding:0;overflow:hidden;";
+            node.addEventListener("click", () => {
+                if (node.haylenActions & actions.activate) {
+                    act(node.haylenId, actions.activate);
+                }
+            });
+            node.addEventListener("focus", () => {
+                if (node.haylenActions & actions.focus && node.haylenId !== mirror.focused) {
+                    act(node.haylenId, actions.focus);
+                }
+            });
+            node.addEventListener("keydown", (event) => {
+                const up = event.key === "ArrowUp" || event.key === "ArrowRight";
+                const down = event.key === "ArrowDown" || event.key === "ArrowLeft";
+                if ((up && node.haylenActions & actions.increment) || (down && node.haylenActions & actions.decrement)) {
+                    act(node.haylenId, up ? actions.increment : actions.decrement);
+                    event.preventDefault();
+                    event.stopPropagation();
+                } else if ((event.key === "Enter" || event.key === " ") && node.haylenActions & actions.activate) {
+                    act(node.haylenId, actions.activate);
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            });
+            node.haylenId = element.id;
+            return node;
+        };
+
+        const setAttribute = (node, name, value) => {
+            if (value === null || value === undefined || value === "") {
+                node.removeAttribute(name);
+            } else if (node.getAttribute(name) !== String(value)) {
+                node.setAttribute(name, String(value));
+            }
+        };
+
+        // The roles of ARIA for the roles of the engine, where a text is plain text of the page and a text field holds its text.
+        const describe = (node, element) => {
+            const role = roles[element.role];
+            setAttribute(node, "role", role);
+            node.haylenActions = element.actions;
+            const named = role !== null;
+            setAttribute(node, "aria-label", named ? element.label : null);
+            const text = named ? (element.role === "textField" ? element.value : "") : element.label;
+            if (node.firstChild === null || node.firstChild.nodeType !== Node.TEXT_NODE) {
+                node.insertBefore(document.createTextNode(text), node.firstChild);
+            } else if (node.firstChild.data !== text) {
+                node.firstChild.data = text;
+            }
+            setAttribute(node, "aria-level", element.role === "heading" ? 2 : null);
+            setAttribute(node, "aria-valuetext", element.role === "slider" || element.role === "progressBar" ? element.value : null);
+            setAttribute(node, "aria-description", element.hint);
+            const checkable = element.role === "checkBox" || element.role === "switch" || element.role === "radioButton";
+            setAttribute(node, "aria-checked", checkable ? String((element.states & states.checked) !== 0) : null);
+            setAttribute(node, "aria-selected", element.role === "tab" ? String((element.states & states.selected) !== 0) : null);
+            setAttribute(node, "aria-pressed", element.role === "button" && element.states & states.selected ? "true" : null);
+            setAttribute(node, "aria-expanded", element.states & states.expanded ? "true" : null);
+            setAttribute(node, "aria-disabled", element.states & states.disabled ? "true" : null);
+            setAttribute(node, "aria-busy", element.states & states.busy ? "true" : null);
+            setAttribute(node, "tabindex", element.actions & actions.focus ? -1 : null);
+        };
+
+        // Places every element in CSS pixels inside its parent, from its bounds in canvas pixels.
+        const place = () => {
+            const layer = mirror.layer;
+            if (!layer) {
+                return;
+            }
+            const box = Module.canvas.getBoundingClientRect();
+            layer.style.left = box.left + "px";
+            layer.style.top = box.top + "px";
+            layer.style.width = box.width + "px";
+            layer.style.height = box.height + "px";
+            const scale = Module.canvas.width > 0 ? box.width / Module.canvas.width : 1;
+            const byId = new Map(mirror.elements.map((element) => [element.id, element]));
+            for (const element of mirror.elements) {
+                const node = mirror.nodes.get(element.id);
+                const parent = byId.get(element.parent);
+                const originX = parent ? parent.bounds[0] : 0;
+                const originY = parent ? parent.bounds[1] : 0;
+                node.style.left = (element.bounds[0] - originX) * scale + "px";
+                node.style.top = (element.bounds[1] - originY) * scale + "px";
+                node.style.width = element.bounds[2] * scale + "px";
+                node.style.height = element.bounds[3] * scale + "px";
+            }
+        };
+
+        const update = (json) => {
+            const tree = JSON.parse(json);
+            const layer = mirror.layer || createLayer();
+            const kept = new Map();
+            for (const element of tree.elements) {
+                const node = mirror.nodes.get(element.id) || createNode(element);
+                describe(node, element);
+                kept.set(element.id, node);
+            }
+            for (const [id, node] of mirror.nodes) {
+                if (!kept.has(id)) {
+                    node.remove();
+                }
+            }
+
+            // Every element goes into its parent in the order screen readers read them.
+            for (const element of tree.elements) {
+                const parent = kept.get(element.parent) || layer;
+                const node = kept.get(element.id);
+                if (node.parentNode !== parent || node.nextSibling !== null) {
+                    parent.appendChild(node);
+                }
+            }
+            mirror.nodes = kept;
+            mirror.elements = tree.elements;
+            place();
+
+            if (tree.focused !== mirror.focused) {
+                mirror.focused = tree.focused;
+                const node = kept.get(tree.focused);
+                if (node && layer.contains(document.activeElement)) {
+                    node.focus({ preventScroll: true });
+                }
+            }
+        };
+
+        // Clearing the region before the text makes screen readers say a text that repeats.
+        const announce = (text, interrupt) => {
+            const layer = mirror.layer || createLayer();
+            const region = interrupt ? mirror.assertive : mirror.polite;
+            region.textContent = "";
+            setTimeout(() => {
+                region.textContent = text;
+            }, 50);
+            return layer;
+        };
+
+        return { update, announce };
+    })();
+
     // Native dialogs of the engine: messages in the overlay layer, the file picker of the browser, and its save picker or a download. Each answers once through `haylen_web_resolve_dialog`, unless the app gave it up, which closes a message, while a picker of the browser stays open and its answer goes nowhere.
     const dialogs = { open: new Map(), styled: false };
     const kDialogSteps = { Tab: 1, ArrowRight: 1, ArrowLeft: -1 };

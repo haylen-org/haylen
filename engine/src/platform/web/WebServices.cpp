@@ -99,6 +99,14 @@ EM_JS(int, haylen_js_open_url, (const char* url), {
     return Module.haylen.openUrl(UTF8ToString(url)) ? 1 : 0;
 });
 
+EM_JS(void, haylen_js_update_accessibility, (const char* tree), {
+    Module.haylen.accessibility.update(UTF8ToString(tree));
+});
+
+EM_JS(void, haylen_js_announce, (const char* text, int interrupt), {
+    Module.haylen.accessibility.announce(UTF8ToString(text), interrupt > 0);
+});
+
 EM_JS(void, haylen_js_vibrate, (float seconds), {
     Module.haylen.vibrate(seconds);
 });
@@ -297,14 +305,22 @@ void Services::vibrate(float seconds) {
     haylen_js_vibrate(seconds);
 }
 
-// The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
+// Browsers never tell whether a screen reader runs, so the page keeps its mirror of the UI current all the time.
 bool Services::isAccessibilityTreeWanted() {
-    return false;
+    return true;
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
+void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+    core::Json tree{{"focused", focused}, {"elements", core::Json::array()}};
+    for (const AccessibilityElement& element : elements) {
+        tree["elements"].push_back(element.toJson());
+    }
+    haylen_js_update_accessibility(tree.dump().c_str());
+}
 
-void Services::announce(std::string_view, bool) {}
+void Services::announce(std::string_view text, bool interrupt) {
+    haylen_js_announce(std::string(text).c_str(), interrupt ? 1 : 0);
+}
 
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     haylen_js_rumble_gamepad(static_cast<int>(index), low, high, seconds);
