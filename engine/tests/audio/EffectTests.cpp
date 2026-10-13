@@ -13,6 +13,7 @@
 #include "audio/MixerFixture.hpp"
 #include "haylen/audio/Delay.hpp"
 #include "haylen/audio/Filter.hpp"
+#include "haylen/audio/Limiter.hpp"
 #include "haylen/audio/Reverb.hpp"
 
 namespace haylen::audio {
@@ -216,6 +217,20 @@ TEST_F(AudioEffectTest, DelayRepeatsTheInputAfterItsTime) {
     EXPECT_THROW(Delay({.maxTime = 0.0F}), std::invalid_argument);
     EXPECT_THROW(Delay({.time = 3.0F, .maxTime = 20.0F}), std::invalid_argument);
     EXPECT_EQ(Delay({.time = 0.2F, .feedback = 0.0F}).getTail(), 0.2F);
+}
+
+TEST_F(AudioEffectTest, LimiterKeepsPeaksUnderTheThreshold) {
+    for (int index = 0; index < 4; ++index) {
+        mixer.play(makeTone(toFrames(1.0F), 0.9F), {.loop = true});
+    }
+    EXPECT_GT(settledPeak(1024), 1.5F);
+
+    const auto limiter = std::make_shared<Limiter>(Limiter::Settings{.threshold = 0.8F, .release = 0.05F});
+    mixer.addBusEffect("master", limiter);
+    EXPECT_LE(settledPeak(toFrames(0.2F)), 0.8F + 1e-5F);
+    EXPECT_GT(limiter->getReduction(), 0.5F);
+    EXPECT_THROW(Limiter({.threshold = 0.0F}), std::invalid_argument);
+    EXPECT_THROW(limiter->setRelease(-1.0F), std::invalid_argument);
 }
 
 TEST_F(AudioEffectTest, MovedEffectsForgetTheirEarlierInput) {

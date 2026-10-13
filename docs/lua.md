@@ -69,6 +69,8 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `lifecycle.muteOnFocusLoss` | boolean | `false` | Mutes the output while the app is not active. |
 | `audio.iosSession` | string | `"ambient"` | Category of the audio session on iOS and tvOS: `"ambient"`, `"soloAmbient"` or `"playback"`, described in the [audio guide](audio.md#sessions-and-interruptions). |
 | `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. Other sessions reject `true`. |
+| `audio.latency` | string | `"balanced"` | How the output trades latency for power: `"low"`, `"balanced"` or `"powerSaving"`. |
+| `audio.limiter` | boolean | `true` | Puts a limiter on the `master` bus, so the mix never clips. |
 | `input.mouseAsTouch` | boolean | `false` | Makes the mouse act as a finger from the start, as [`input.setMouseAsTouch`](lua-api/input.md#inputsetmouseastouchenabled) describes. |
 | `input.touchAsMouse` | boolean | `false` | Makes a finger act as the mouse from the start, as [`input.setTouchAsMouse`](lua-api/input.md#inputsettouchasmouseenabled) describes. |
 | `input.scrollSpeed` | number | `1` | Multiplies every scroll of the wheels and the trackpads from the start, as [`input.setScrollSpeed`](lua-api/input.md#inputsetscrollspeedspeed) describes. A value that is not positive raises `The "input.scrollSpeed" value in "app.json" must be a positive number.` |

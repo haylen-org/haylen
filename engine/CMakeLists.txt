@@ -232,7 +232,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/EffectNode.cpp
   src/audio/Filter.cpp
   src/audio/Freeverb.cpp
+  src/audio/Limiter.cpp
   src/audio/MemoryDecoder.cpp
+  src/audio/OutputSettings.cpp
   src/audio/Mixer.cpp
   src/audio/MixerState.cpp
   src/audio/ReaderDecoder.cpp

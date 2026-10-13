@@ -14,6 +14,7 @@
 
 #include "core/EmbeddedFiles.hpp"
 #include "core/EngineState.hpp"
+#include "haylen/audio/Limiter.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/Log.hpp"
@@ -42,7 +43,11 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.graphics = std::make_unique<graphics::Device>(host.getGraphicsSetup());
     audio::Mixer::Setup audioSetup = host.getAudioSetup();
     audioSetup.session = current.config.audioSession;
+    audioSetup.latency = current.config.audioOutput.latency;
     current.audio = std::make_unique<audio::Mixer>(audioSetup, *current.jobs);
+    if (current.config.audioOutput.limiter) {
+        current.audio->addBusEffect("master", std::make_shared<audio::Limiter>(audio::Limiter::Settings{}));
+    }
     // clang-format off
     current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); });
     // clang-format on

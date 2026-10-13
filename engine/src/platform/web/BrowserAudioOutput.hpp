@@ -27,6 +27,7 @@ class BrowserAudioOutput final {
     static ma_result uninitDevice(ma_device* device);
     static ma_result startDevice(ma_device* device);
     static ma_result stopDevice(ma_device* device);
+    static bool isLocked(ma_device* device);
 };
 
 } // namespace haylen::audio

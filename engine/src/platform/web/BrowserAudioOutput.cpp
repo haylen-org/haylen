@@ -19,6 +19,10 @@ EM_JS(void, haylen_js_audio_stop, (void* device), {
     Module.haylen.audio.stop(device);
 });
 
+EM_JS(int, haylen_js_audio_locked, (void* device), {
+    return Module.haylen.audio.locked(device) ? 1 : 0;
+});
+
 EM_JS(void, haylen_js_audio_close, (void* device), {
     Module.haylen.audio.close(device);
 });
@@ -26,7 +30,11 @@ EM_JS(void, haylen_js_audio_close, (void* device), {
 
 namespace haylen::audio {
 
-const OutputBackend BrowserAudioOutput::kBackend{.initContext = &BrowserAudioOutput::initContext, .refusal = "browsers offer \"AudioWorklet\" only to pages served over \"https\" or from \"localhost\""};
+const OutputBackend BrowserAudioOutput::kBackend{.initContext = &BrowserAudioOutput::initContext, .refusal = "browsers offer \"AudioWorklet\" only to pages served over \"https\" or from \"localhost\"", .isLocked = &BrowserAudioOutput::isLocked};
+
+bool BrowserAudioOutput::isLocked(ma_device* device) {
+    return haylen_js_audio_locked(device) != 0;
+}
 
 ma_result BrowserAudioOutput::initContext(ma_context*, const ma_context_config*, ma_backend_callbacks* callbacks) {
     if (haylen_js_audio_supported() == 0) {

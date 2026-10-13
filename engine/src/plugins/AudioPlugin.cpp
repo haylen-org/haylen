@@ -1,6 +1,7 @@
 #include "plugins/AudioPlugin.hpp"
 
 #include <memory>
+#include <utility>
 
 #include "audio/AudioLua.hpp"
 #include "audio/SoundData.hpp"
@@ -50,6 +51,14 @@ void AudioPlugin::start(core::Engine& engine) {
         }
     });
     // clang-format on
+}
+
+// Browsers keep the output locked until the user interacts with the page, so an app can show a sound hint until it plays.
+void AudioPlugin::update(core::Engine& engine, float) {
+    const audio::Mixer::OutputState current = engine.getAudio().getOutputState();
+    if (std::exchange(outputState, current) == audio::Mixer::OutputState::Locked && current == audio::Mixer::OutputState::Running) {
+        engine.getEvents().emit(core::LifecycleEvent::kAudioUnlocked);
+    }
 }
 
 void AudioPlugin::stop(core::Engine& engine) {

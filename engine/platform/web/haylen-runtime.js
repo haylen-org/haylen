@@ -1594,6 +1594,12 @@ Module.haylen = Module.haylen || {};
         Module._free(output.scratch);
     };
 
+    // Whether the output that the engine started waits for the user, as browsers keep a context suspended until the first tap, click or key.
+    audio.locked = function (device) {
+        const output = audio.outputs.get(device);
+        return output !== undefined && output.started && output.context.state !== "running";
+    };
+
     // Describes the output of the app for `onStats`, which is unavailable while the app runs without sound.
     audio.stats = function () {
         const [output] = audio.outputs.values();

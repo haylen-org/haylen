@@ -399,11 +399,11 @@ scene.push({
 
 ## Effects
 
-Effects process the sound of a bus or of a voice, in the order they were added. The function `audio.newEffect` creates them as [`Filter`](#filter), [`Delay`](#delay) and [`Reverb`](#reverb) values whose parameters are properties, which change at any time and which tweens animate. An effect processes one bus or one voice at a time, and a voice lets its effects ring out after it ends before they are free again. An effect that moves to another bus or voice starts there without the echoes or reverb it held before.
+Effects process the sound of a bus or of a voice, in the order they were added. The function `audio.newEffect` creates them as [`Filter`](#filter), [`Delay`](#delay), [`Reverb`](#reverb) and [`Limiter`](#limiter) values whose parameters are properties, which change at any time and which tweens animate. An effect processes one bus or one voice at a time, and a voice lets its effects ring out after it ends before they are free again. An effect that moves to another bus or voice starts there without the echoes or reverb it held before.
 
 ### audio.newEffect(kind, options)
 
-Creates an effect. The argument `kind` is one of `'lowpass'`, `'highpass'`, `'bandpass'`, `'notch'`, `'peak'`, `'lowShelf'`, `'highShelf'`, `'delay'` and `'reverb'`, and the options table is optional. An unknown kind raises `The audio effect must be "lowpass", "highpass", "bandpass", "notch", "peak", "lowShelf", "highShelf", "delay" or "reverb", not "<kind>".`, unknown options raise `Unknown option "<key>".`, and values out of range raise the errors of the property they set.
+Creates an effect. The argument `kind` is one of `'lowpass'`, `'highpass'`, `'bandpass'`, `'notch'`, `'peak'`, `'lowShelf'`, `'highShelf'`, `'delay'`, `'reverb'` and `'limiter'`, and the options table is optional. An unknown kind raises `The audio effect must be "lowpass", "highpass", "bandpass", "notch", "peak", "lowShelf", "highShelf", "delay", "reverb" or "limiter", not "<kind>".`, unknown options raise `Unknown option "<key>".`, and values out of range raise the errors of the property they set.
 
 | Kind | Options |
 | --- | --- |
@@ -411,6 +411,7 @@ Creates an effect. The argument `kind` is one of `'lowpass'`, `'highpass'`, `'ba
 | `'peak'`, `'lowShelf'`, `'highShelf'` | `cutoff` (1000), `q` (0.7071) and `gain` in decibels (0). |
 | `'delay'` | `time` in seconds (0.25), `maxTime` in seconds (1, at most 10), `feedback` (0.4), `wet` (0.5) and `dry` (1). |
 | `'reverb'` | `roomSize` (0.5), `damping` (0.5), `width` (1), `wet` (0.33) and `dry` (1). |
+| `'limiter'` | `threshold` from above 0 to 1 (0.9) and `release` in seconds from 0 to 10 (0.1). |
 
 ```lua
 local audio = require('haylen.audio')
@@ -494,6 +495,28 @@ audio.addBusEffect('music', audio.newEffect('lowpass', {cutoff = 2000}))
 for _, effect in ipairs(audio.busEffects('music')) do
     print(effect.kind, effect.cutoff)
 end
+```
+
+### Limiter
+
+A limiter keeps every sample under its `threshold`, so thirty explosions at once never clip and crackle. Its gain drops at once to fit a peak and comes back toward 1 over the `release` in seconds. The engine puts one with the defaults on the `master` bus of every app unless the `app.json` key `audio.limiter` is `false`, and `audio.busEffects('master')[1]` returns it.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `threshold` | number | read and write | The highest level of a sample, from above 0 to 1, 0.9 by default. |
+| `release` | number | read and write | Seconds over which the gain recovers after a peak, from 0 to 10, 0.1 by default. |
+| `reduction` | number | read | How far the gain dropped in the last block, from 0 to 1, for meters. |
+| `attached` | boolean | read | Whether a bus or a voice uses the limiter. |
+| `tail` | number | read | Always 0, since a limiter keeps nothing sounding. |
+
+```lua
+local audio = require('haylen.audio')
+
+local master = audio.busEffects('master')[1]
+master.threshold = 0.8
+local sfxLimiter = audio.newEffect('limiter', {threshold = 0.7, release = 0.05})
+audio.addBusEffect('sfx', sfxLimiter)
+print(sfxLimiter.reduction)
 ```
 
 ## Music
@@ -802,6 +825,32 @@ if audio.hasDevice() and not audio.outputAvailable() then
 end
 ```
 
+### audio.outputState()
+
+Returns what the output does: `'running'` while it plays, `'locked'` while a browser waits for the first tap, click or key before it plays the page, so an app can show a sound hint, `'suspended'` while the app is in the background or an interruption holds the sound, and `'unavailable'` without an output, as [`audio.outputAvailable()`](#audiooutputavailable) tells. The event `audioUnlocked` tells when a locked output starts to play.
+
+```lua
+local audio = require('haylen.audio')
+local events = require('haylen.events')
+
+if audio.outputState() == 'locked' then
+    print('Tap to turn the sound on.')
+end
+events.on('audioUnlocked', function()
+    print('The sound is on.')
+end)
+```
+
+### audio.outputLatency()
+
+Returns the seconds that the buffers of the audio device hold between the mix and the speaker, 0 without an output. The `app.json` key `audio.latency` trades it for power: `'low'` asks for short periods and the low latency mode of AAudio on Android, `'balanced'`, the default, keeps the default of the platform, and `'powerSaving'` asks for long periods that wake the processor less often. Browsers keep the output of the page 50 milliseconds ahead of the speaker, whatever the key says.
+
+```lua
+local audio = require('haylen.audio')
+
+print(string.format('The output latency is %.1f milliseconds.', audio.outputLatency() * 1000))
+```
+
 ### audio.outputOpening()
 
 Returns `true` while the system opens the audio device. The engine opens it on a thread of its own when the app starts and whenever it opens it again, and the app plays sound from the first frame after the device opened, so a device that takes long to answer never holds the frames back. A device that does not answer within 3 seconds of frames, such as the audio service of an iOS simulator that hangs, makes the log write one warning, and the app runs without sound until the system opens the device, which the log tells too. Browsers open the output of the page at once, so it is never opening there.
@@ -943,6 +992,7 @@ The engine publishes these events on [`haylen.events`](events.md) for audio.
 | `audioInterrupted` | The system took the audio: a phone call, an alarm, Siri or another Android app with the audio focus. Every voice is paused and `audio.interrupted()` returns `true`. |
 | `audioResumed` | The interruption ended while the app is active, or the app became active after it ended. The voices resume, and the audio session is active again unless the system still refuses the audio, which `audio.outputAvailable()` tells. |
 | `audioRouteChanged` | The output moved to another device, such as headphones that were unplugged. |
+| `audioUnlocked` | A browser let the output play after the first tap, click or key on the page. |
 
 ```lua
 local events = require('haylen.events')
@@ -986,7 +1036,9 @@ end)
 | `The inverse and exponential audio models need a minimum distance above 0.` | The function `audio.setSpatialization()` chose one of these models with a minimum distance of 0. |
 | `The audio rolloff and Doppler factor cannot be negative.` | The function `audio.setSpatialization()` received a negative `rolloff` or `doppler`. |
 | `The audio pan distance and speed of sound must be positive.` | The function `audio.setSpatialization()` received a `panDistance` or `speedOfSound` of 0 or less. |
-| `The audio effect must be "lowpass", "highpass", "bandpass", "notch", "peak", "lowShelf", "highShelf", "delay" or "reverb", not "<kind>".` | The function `audio.newEffect()` received an unknown kind. |
+| `The audio effect must be "lowpass", "highpass", "bandpass", "notch", "peak", "lowShelf", "highShelf", "delay", "reverb" or "limiter", not "<kind>".` |
+| `A limiter threshold must be above 0 and at most 1.` | A limiter received another threshold. |
+| `A limiter release must be from 0 to 10 seconds.` | A limiter received another release. | The function `audio.newEffect()` received an unknown kind. |
 | `The audio effect already processes another bus or voice.` | An effect was added while it is still on a bus or a voice, or still rings out after its voice ended. |
 | `The option "effects" must be a list of audio effects.` | The function `audio.play()` received an `effects` value that is not a list of effects. |
 | `A filter cutoff must be a positive frequency.` | A filter received a cutoff of 0 or less. |

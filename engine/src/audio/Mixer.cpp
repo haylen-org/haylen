@@ -18,6 +18,7 @@
 
 namespace haylen::audio {
 
+const std::array<std::pair<std::string_view, Mixer::OutputState>, 4> Mixer::kOutputStateNames{{{"running", OutputState::Running}, {"locked", OutputState::Locked}, {"suspended", OutputState::Suspended}, {"unavailable", OutputState::Unavailable}}};
 const Mixer::PlayOptions Mixer::kDefaultPlayOptions{};
 const Mixer::MusicOptions Mixer::kDefaultMusicOptions{};
 const std::array<std::pair<std::string_view, Mixer::Limit::Steal>, 3> Mixer::Limit::kStealNames{{{"oldest", Steal::Oldest}, {"quietest", Steal::Quietest}, {"none", Steal::None}}};
@@ -614,6 +615,25 @@ bool Mixer::isOutputAvailable() const noexcept {
 
 bool Mixer::isOutputOpening() const noexcept {
     return state->output.isOpening();
+}
+
+Mixer::OutputState Mixer::getOutputState() const noexcept {
+    const Device& output = state->output;
+    if (!output.hasDevice() || !output.isAvailable() || output.isOpening()) {
+        return OutputState::Unavailable;
+    }
+    if (output.isSuspended()) {
+        return OutputState::Suspended;
+    }
+    return output.isLocked() ? OutputState::Locked : OutputState::Running;
+}
+
+std::string_view Mixer::outputStateName(OutputState value) noexcept {
+    return std::ranges::find(kOutputStateNames, value, &std::pair<std::string_view, OutputState>::second)->first;
+}
+
+float Mixer::getOutputLatency() const noexcept {
+    return state->output.getLatency();
 }
 
 void Mixer::render(std::span<float> samples) {

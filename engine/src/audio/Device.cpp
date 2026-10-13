@@ -182,6 +182,10 @@ std::optional<std::string_view> Device::initialize(Connection& target, const Mix
     config.pUserData = &target;
     config.noPreSilencedOutputBuffer = MA_TRUE;
     config.noClip = MA_TRUE;
+    config.performanceProfile = setup.latency == OutputSettings::Latency::PowerSaving ? ma_performance_profile_conservative : ma_performance_profile_low_latency;
+    if (setup.latency == OutputSettings::Latency::Low) {
+        config.periodSizeInMilliseconds = kLowLatencyPeriodMilliseconds;
+    }
     config.aaudio.usage = ma_aaudio_usage_game;
     config.aaudio.contentType = ma_aaudio_content_type_sonification;
     if (const ma_result result = ma_device_init(&target.context, &config, &target.device); result != MA_SUCCESS) {
@@ -189,6 +193,19 @@ std::optional<std::string_view> Device::initialize(Connection& target, const Mix
         return ma_result_description(result);
     }
     return std::nullopt;
+}
+
+bool Device::isLocked() const noexcept {
+    return connection != nullptr && setup.backend != nullptr && setup.backend->isLocked != nullptr && setup.backend->isLocked(&connection->device);
+}
+
+float Device::getLatency() const noexcept {
+    if (connection == nullptr) {
+        return 0.0F;
+    }
+    const ma_device& device = connection->device;
+    const ma_uint32 rate = device.playback.internalSampleRate;
+    return rate > 0 ? static_cast<float>(device.playback.internalPeriodSizeInFrames * device.playback.internalPeriods) / static_cast<float>(rate) : 0.0F;
 }
 
 void Device::close(Connection& target) noexcept {

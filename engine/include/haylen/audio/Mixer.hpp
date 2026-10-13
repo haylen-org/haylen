@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "haylen/audio/Effect.hpp"
+#include "haylen/audio/OutputSettings.hpp"
 #include "haylen/audio/Session.hpp"
 #include "haylen/audio/Sound.hpp"
 #include "haylen/core/ProcessMode.hpp"
@@ -52,6 +53,14 @@ class Mixer final {
         Interruption,
     };
 
+    // What the output does: it plays while it runs, it waits for the user to interact with the page while it is locked, which browsers do before the first tap, click or key, it holds its sound while the app is in the background or an interruption holds it, and it is unavailable without a device, while the device opens and when the system refuses it.
+    enum class OutputState : std::uint8_t {
+        Running,
+        Locked,
+        Suspended,
+        Unavailable,
+    };
+
     // What the audio device or the platform reports. Calls, alarms and Siri interrupt the audio on iOS, the audio focus does on Android, and the route changes when the output moves, such as when headphones are unplugged.
     enum class DeviceEvent : std::uint8_t {
         InterruptionBegan,
@@ -67,6 +76,7 @@ class Mixer final {
         std::uint32_t channels = 2;
         std::size_t maxVoices = 128;
         Session session{};
+        OutputSettings::Latency latency = OutputSettings::Latency::Balanced;
         const OutputBackend* backend = nullptr;
     };
 
@@ -269,6 +279,11 @@ class Mixer final {
 
     // Tells whether the system is still opening the audio device, which happens on a thread of its own when the mixer starts and when an interruption ends, so a device that answers slowly or never never stalls the frames.
     [[nodiscard]] bool isOutputOpening() const noexcept;
+    [[nodiscard]] OutputState getOutputState() const noexcept;
+    [[nodiscard]] static std::string_view outputStateName(OutputState value) noexcept;
+
+    // The seconds that the buffers of the open device hold between the mix and the speaker, 0 without a device.
+    [[nodiscard]] float getOutputLatency() const noexcept;
 
     // Mixes the next frames into interleaved samples, or silence while the output is stopped. Only a mixer without a device that keeps no time renders this way, which tests and offline tools use.
     void render(std::span<float> samples);
@@ -276,6 +291,7 @@ class Mixer final {
     core::Signal<DeviceEvent> deviceEventReceived;
 
   private:
+    static const std::array<std::pair<std::string_view, OutputState>, 4> kOutputStateNames;
     static const PlayOptions kDefaultPlayOptions;
     static const MusicOptions kDefaultMusicOptions;
 

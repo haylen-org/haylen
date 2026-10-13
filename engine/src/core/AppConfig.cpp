@@ -325,7 +325,17 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("audio")) {
         const Json& audioJson = document.at("audio");
-        JsonValidator::requireKnownKeys(audioJson, {"iosSession", "mixWithOthers"}, "the \"audio\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(audioJson, {"iosSession", "mixWithOthers", "latency", "limiter"}, "the \"audio\" section of \"app.json\"");
+        if (audioJson.contains("latency")) {
+            std::string latency;
+            readValue(audioJson, "latency", latency);
+            const std::optional<audio::OutputSettings::Latency> found = audio::OutputSettings::latencyFromName(latency);
+            if (!found) {
+                throw std::invalid_argument("The \"audio.latency\" value \"" + latency + "\" in \"app.json\" is unknown. It is \"low\", \"balanced\" or \"powerSaving\".");
+            }
+            config.audioOutput.latency = *found;
+        }
+        readValue(audioJson, "limiter", config.audioOutput.limiter);
         if (audioJson.contains("iosSession")) {
             std::string category;
             readValue(audioJson, "iosSession", category);
@@ -460,7 +470,7 @@ Json AppConfig::toJson() const {
         contentJson["updates"] = {{"baseUrl", content.updates->baseUrl}, {"channel", content.updates->channel}, {"enabled", content.updates->enabled}};
     }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
     };
 }
 

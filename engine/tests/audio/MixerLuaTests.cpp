@@ -100,7 +100,7 @@ TEST_F(MixerLuaTest, CreatesAndWiresEffects) {
     fixture->runLua("audio.removeEffect(voice, shelf) audio.addEffect(voice, lowpass)");
     EXPECT_EQ(fixture->lua("local list = audio.effects(voice) return #list .. ' ' .. tostring(list[2] == lowpass)"), "2 true");
 
-    EXPECT_NE(fixture->lua("audio.newEffect('chorus')").find("The audio effect must be \"lowpass\", \"highpass\", \"bandpass\", \"notch\", \"peak\", \"lowShelf\", \"highShelf\", \"delay\" or \"reverb\", not \"chorus\"."), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.newEffect('chorus')").find("The audio effect must be \"lowpass\", \"highpass\", \"bandpass\", \"notch\", \"peak\", \"lowShelf\", \"highShelf\", \"delay\", \"reverb\" or \"limiter\", not \"chorus\"."), std::string::npos);
     EXPECT_NE(fixture->lua("audio.newEffect('lowpass', {gain = 3})").find("Unknown option \"gain\""), std::string::npos);
     EXPECT_NE(fixture->lua("audio.newEffect('delay', {time = 5})").find("A delay time must be between 0"), std::string::npos);
     EXPECT_NE(fixture->lua("lowpass.gain = 2").find("Only peak and shelf filters have a gain."), std::string::npos);
@@ -147,6 +147,18 @@ TEST_F(MixerLuaTest, SpatializesAndFollowsCameras) {
     fixture->frames(1);
     EXPECT_EQ(fixture->lua("local x = audio.listener() return x"), "300.0");
     EXPECT_NE(fixture->lua("audio.followCamera(hit)").find("haylen.Camera expected"), std::string::npos);
+}
+
+TEST(MixerOutputLuaTest, GuardsTheMasterBusWithALimiterUnlessAppJsonTurnsItOff) {
+    {
+        test::EngineFixture fixture;
+        EXPECT_EQ(fixture.lua("local audio = require('haylen.audio') local limiter = audio.busEffects('master')[1] return string.format('%.2f %.2f %.2f ', limiter.threshold, limiter.release, limiter.reduction) .. audio.outputState() .. ' ' .. audio.outputLatency()"), "0.90 0.10 0.00 unavailable 0.0");
+        EXPECT_EQ(fixture.lua("local limiter = require('haylen.audio').newEffect('limiter', {threshold = 0.5, release = 0.2}) limiter.threshold = 0.7 return limiter.threshold > 0.69"), "true");
+        EXPECT_NE(fixture.lua("require('haylen.audio').newEffect('limiter', {threshold = 2})").find("A limiter threshold must be above 0 and at most 1."), std::string::npos);
+        EXPECT_NE(fixture.lua("require('haylen.audio').newEffect('limiter', {knee = 2})").find("Unknown option \"knee\"."), std::string::npos);
+    }
+    test::EngineFixture plain({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "audio": {"limiter": false, "latency": "low"}})"}});
+    EXPECT_EQ(plain.lua("return #require('haylen.audio').busEffects('master')"), "0");
 }
 
 } // namespace haylen::audio

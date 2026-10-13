@@ -24,9 +24,13 @@ int EffectLua::newEffect(lua_State* L) {
         newReverb(L);
         return 1;
     }
+    if (kind == "limiter") {
+        newLimiter(L);
+        return 1;
+    }
     const std::optional<Filter::Kind> filter = lua::EnumNames<Filter::Kind>::fromName(kind);
     if (!filter) {
-        throw std::invalid_argument("The audio effect must be \"lowpass\", \"highpass\", \"bandpass\", \"notch\", \"peak\", \"lowShelf\", \"highShelf\", \"delay\" or \"reverb\", not \"" + std::string(kind) + "\".");
+        throw std::invalid_argument("The audio effect must be \"lowpass\", \"highpass\", \"bandpass\", \"notch\", \"peak\", \"lowShelf\", \"highShelf\", \"delay\", \"reverb\" or \"limiter\", not \"" + std::string(kind) + "\".");
     }
     newFilter(L, *filter);
     return 1;
@@ -70,6 +74,21 @@ void EffectLua::newReverb(lua_State* L) {
     lua::Userdata::emplace<Reverb>(L, std::make_shared<Reverb>(settings));
 }
 
+void EffectLua::newLimiter(lua_State* L) {
+    Limiter::Settings settings;
+    if (lua_istable(L, 2)) {
+        lua::Table::checkFields(L, 2, {kLimiterFields});
+        lua::Table::readField(L, 2, "threshold", settings.threshold);
+        lua::Table::readField(L, 2, "release", settings.release);
+    }
+    lua::Userdata::emplace<Limiter>(L, std::make_shared<Limiter>(settings));
+}
+
+int EffectLua::reduction(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<Limiter>(L, 1).getReduction());
+    return 1;
+}
+
 std::shared_ptr<Effect> EffectLua::test(lua_State* L, int index) {
     if (lua::Userdata::test<Filter>(L, index) != nullptr) {
         return lua::Userdata::checkShared<Filter>(L, index);
@@ -79,6 +98,9 @@ std::shared_ptr<Effect> EffectLua::test(lua_State* L, int index) {
     }
     if (lua::Userdata::test<Reverb>(L, index) != nullptr) {
         return lua::Userdata::checkShared<Reverb>(L, index);
+    }
+    if (lua::Userdata::test<Limiter>(L, index) != nullptr) {
+        return lua::Userdata::checkShared<Limiter>(L, index);
     }
     return nullptr;
 }
@@ -104,6 +126,10 @@ void EffectLua::push(lua_State* L, const std::shared_ptr<Effect>& effect) {
         lua::Stack::push(L, std::move(reverb));
         return;
     }
+    if (auto limiter = std::dynamic_pointer_cast<Limiter>(effect)) {
+        lua::Stack::push(L, std::move(limiter));
+        return;
+    }
     throw std::invalid_argument("The audio effect has no Lua class.");
 }
 
@@ -126,6 +152,7 @@ void EffectLua::install(lua_State* L) {
     lua::ClassBuilder<Filter>(L).property("kind", &filterKind).accessor<&Filter::getCutoff, &Filter::setCutoff>("cutoff").accessor<&Filter::getQ, &Filter::setQ>("q").accessor<&Filter::getGain, &Filter::setGain>("gain").property("attached", &attached<Filter>).property("tail", &tail<Filter>).meta("__eq", &lua::Userdata::equal<Filter>).install();
     lua::ClassBuilder<Delay>(L).accessor<&Delay::getTime, &Delay::setTime>("time").property("maxTime", &lua::Binding::method<&Delay::getMaxTime>).accessor<&Delay::getFeedback, &Delay::setFeedback>("feedback").accessor<&Delay::getWet, &Delay::setWet>("wet").accessor<&Delay::getDry, &Delay::setDry>("dry").property("attached", &attached<Delay>).property("tail", &tail<Delay>).meta("__eq", &lua::Userdata::equal<Delay>).install();
     lua::ClassBuilder<Reverb>(L).accessor<&Reverb::getRoomSize, &Reverb::setRoomSize>("roomSize").accessor<&Reverb::getDamping, &Reverb::setDamping>("damping").accessor<&Reverb::getWidth, &Reverb::setWidth>("width").accessor<&Reverb::getWet, &Reverb::setWet>("wet").accessor<&Reverb::getDry, &Reverb::setDry>("dry").property("attached", &attached<Reverb>).property("tail", &tail<Reverb>).meta("__eq", &lua::Userdata::equal<Reverb>).install();
+    lua::ClassBuilder<Limiter>(L).accessor<&Limiter::getThreshold, &Limiter::setThreshold>("threshold").accessor<&Limiter::getRelease, &Limiter::setRelease>("release").property("reduction", &reduction).property("attached", &attached<Limiter>).property("tail", &tail<Limiter>).meta("__eq", &lua::Userdata::equal<Limiter>).install();
 }
 
 } // namespace haylen::audio

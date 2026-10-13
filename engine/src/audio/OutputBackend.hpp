@@ -8,6 +8,9 @@ namespace haylen::audio {
 struct OutputBackend {
     ma_result (*initContext)(ma_context* context, const ma_context_config* config, ma_backend_callbacks* callbacks) = nullptr;
     const char* refusal = "";
+
+    // Whether the output of a device waits for the user before it plays, where the platform keeps sound locked, or null where it never does.
+    bool (*isLocked)(ma_device* device) = nullptr;
 };
 
 } // namespace haylen::audio

@@ -10,6 +10,7 @@
 
 #include "haylen/audio/Delay.hpp"
 #include "haylen/audio/Filter.hpp"
+#include "haylen/audio/Limiter.hpp"
 #include "haylen/audio/Reverb.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
@@ -29,6 +30,11 @@ template <> struct Type<audio::Delay> {
 template <> struct Type<audio::Reverb> {
     static constexpr const char* name = "haylen.Reverb";
     using Storage = std::shared_ptr<audio::Reverb>;
+};
+
+template <> struct Type<audio::Limiter> {
+    static constexpr const char* name = "haylen.Limiter";
+    using Storage = std::shared_ptr<audio::Limiter>;
 };
 
 template <> struct EnumNames<audio::Filter::Kind> {
@@ -61,7 +67,7 @@ class EffectLua final {
   public:
     static void install(lua_State* L);
 
-    // Creates an effect with `newEffect(kind, options)`, where the kind names a filter, `'delay'` or `'reverb'`.
+    // Creates an effect with `newEffect(kind, options)`, where the kind names a filter, `'delay'`, `'reverb'` or `'limiter'`.
     static int newEffect(lua_State* L);
 
     // Returns the effect of any effect class at the index, or null for another value.
@@ -76,10 +82,13 @@ class EffectLua final {
     static constexpr std::array<std::string_view, 3> kGainFilterFields{"cutoff", "q", "gain"};
     static constexpr std::array<std::string_view, 5> kDelayFields{"time", "maxTime", "feedback", "wet", "dry"};
     static constexpr std::array<std::string_view, 5> kReverbFields{"roomSize", "damping", "width", "wet", "dry"};
+    static constexpr std::array<std::string_view, 2> kLimiterFields{"threshold", "release"};
 
     static void newFilter(lua_State* L, Filter::Kind kind);
     static void newDelay(lua_State* L);
     static void newReverb(lua_State* L);
+    static void newLimiter(lua_State* L);
+    static int reduction(lua_State* L);
 
     static int filterKind(lua_State* L);
 

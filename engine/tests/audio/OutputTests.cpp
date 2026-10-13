@@ -139,12 +139,18 @@ class AudioOutputTest : public MixerFixture {
         return getLines(core::Log::Level::Warning);
     }
 
+    static bool isLocked(ma_device*) {
+        return locked;
+    }
+
     static inline std::atomic<bool> accepting = false;
+    static inline std::atomic<bool> locked = false;
     static inline bool answering = true;
     static inline std::mutex gateMutex;
     static inline std::condition_variable gate;
     static inline std::atomic<int> closedDevices = 0;
     static constexpr OutputBackend kBackend{.initContext = &initContext, .refusal = "the test refuses the audio"};
+    static constexpr OutputBackend kLockingBackend{.initContext = &initContext, .refusal = "the test refuses the audio", .isLocked = &isLocked};
 
     std::mutex linesMutex;
     std::vector<std::pair<core::Log::Level, std::string>> lines;
@@ -194,6 +200,36 @@ TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
     play(refused, 0.5F);
     EXPECT_NEAR(refused.getCursor(night), cursor + 0.5F, 0.01F);
     EXPECT_EQ(getWarnings().size(), 1U);
+}
+
+TEST_F(AudioOutputTest, ReportsTheStateAndTheLatencyOfTheOutput) {
+    accepting = true;
+    locked = true;
+    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .backend = &kLockingBackend}, jobs);
+    ASSERT_TRUE(settle(output));
+    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Locked);
+    EXPECT_NEAR(output.getOutputLatency(), 512.0F / static_cast<float>(kRate), 1e-6F);
+    locked = false;
+    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Running);
+    output.suspend();
+    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Suspended);
+    output.resume();
+    EXPECT_EQ(Mixer::outputStateName(output.getOutputState()), "running");
+    EXPECT_EQ(mixer.getOutputState(), Mixer::OutputState::Unavailable);
+    EXPECT_EQ(mixer.getOutputLatency(), 0.0F);
+}
+
+TEST_F(AudioOutputTest, PublishesTheUnlockOfTheOutput) {
+    accepting = true;
+    locked = true;
+    test::EngineFixture fixture({}, nullptr, {.audioOutput = &kLockingBackend});
+    fixture.runLua("audio = require('haylen.audio') unlocked = 0 require('haylen.events').on('audioUnlocked', function() unlocked = unlocked + 1 end)");
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return audio.outputState() .. ' ' .. unlocked"), "locked 0");
+    locked = false;
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return audio.outputState() .. ' ' .. unlocked .. ' ' .. tostring(audio.outputLatency() > 0)"), "running 1 true");
 }
 
 TEST_F(AudioOutputTest, OpensTheOutputOnceTheSystemOffersIt) {

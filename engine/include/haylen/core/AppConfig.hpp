@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/audio/OutputSettings.hpp"
 #include "haylen/audio/Session.hpp"
 #include "haylen/content/Delivery.hpp"
 #include "haylen/core/Json.hpp"
@@ -131,8 +132,9 @@ struct AppConfig {
     Splash splash{};
     Lifecycle lifecycle{};
 
-    // How the app shares sound with the system and other apps, from the `audio` object with `iosSession` and `mixWithOthers`.
+    // How the app shares sound with the system and other apps, from the `audio` object with `iosSession` and `mixWithOthers`, and how its output plays, with `latency` and `limiter`.
     audio::Session audioSession{};
+    audio::OutputSettings audioOutput{};
     Input input{};
 
     // How large the interface draws, from the `ui` object with `scaleMode` and `scale`.

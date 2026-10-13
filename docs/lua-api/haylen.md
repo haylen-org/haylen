@@ -84,6 +84,8 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `lifecycle.muteOnFocusLoss` | boolean | `false` | Whether the output is muted while the app is not active. |
 | `audio.iosSession` | string | `'ambient'` | Category of the audio session on iOS and tvOS: `'ambient'`, `'soloAmbient'` or `'playback'`, described in the [audio guide](../audio.md#sessions-and-interruptions). |
 | `audio.mixWithOthers` | boolean | `false` | Whether the `'playback'` session plays along with other apps. |
+| `audio.latency` | string | `'balanced'` | How the output trades latency for power: `'low'`, `'balanced'` or `'powerSaving'`, as [`audio.outputLatency`](audio.md#audiooutputlatency) describes. |
+| `audio.limiter` | boolean | `true` | Whether a [limiter](audio.md#limiter) on the `master` bus keeps the mix from clipping. |
 | `debug.stats` | string | `'off'` | Debug statistics the app starts with: `'off'`, `'compact'` or `'full'`, see [`haylen.debug`](debug.md). |
 | `debug.objectEvents` | boolean | `false` | Whether every counted object publishes `objectCreated` and `objectDestroyed`, see [`haylen.debug`](debug.md#object-counts-and-events). |
 | `debug.safeArea` | string or table | absent | The safe area simulated instead of the one of the device, present only when `app.json` sets it, see [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue). |

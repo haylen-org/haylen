@@ -262,6 +262,10 @@ end)
 
 Haylen writes its effects as its own miniaudio nodes instead of using the filter and delay nodes of miniaudio. The nodes of miniaudio change their parameters by rewriting their coefficients from the calling thread while the audio thread reads them, and their delay cannot change its time. The effects of Haylen keep their parameters in atomic values that the audio thread picks up on its next block, and the delay glides to a new time, which bends the pitch of its repeats like a tape delay instead of clicking.
 
+## Loudness and latency
+
+Many loud sounds at once add up above full scale and crackle, so the engine puts a limiter on the `master` bus of every app, which keeps every sample under 0.9 and recovers over 0.1 seconds after a peak. The `app.json` key `audio.limiter` set to `false` leaves it out, and `audio.newEffect('limiter', {threshold, release})` makes more of them for any bus or voice. The key `audio.latency` trades the time from a tap to its sound for power, `'low'`, `'balanced'` or `'powerSaving'`, and `audio.outputLatency()` reports the seconds the device buffers. Browsers keep sound locked until the first tap, click or key on the page, which `audio.outputState()` reports as `'locked'` until the event `audioUnlocked`, so a web app can show a hint to turn the sound on.
+
 ## Positional audio
 
 A voice becomes positional when `audio.play` receives `x` or `y`, or when `audio.setPosition` moves it. The listener is a point in the world, at `0, 0` until `audio.setListener(x, y)` moves it or `audio.followCamera(camera)` ties it to a camera. The engine refreshes every positional voice once per frame, after the scenes update, so moving the listener or the voices in `update` is enough.

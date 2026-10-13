@@ -21,6 +21,9 @@ class Device final {
     // The seconds of frames that an opening waits for the system before the log says that the output does not answer.
     static constexpr float kAnswerSeconds = 3.0F;
 
+    // The period of the device at low latency, which takes the lead over the default of the platform.
+    static constexpr ma_uint32 kLowLatencyPeriodMilliseconds = 5;
+
     explicit Device(const Mixer::Setup& value);
     ~Device();
 
@@ -73,6 +76,15 @@ class Device final {
     [[nodiscard]] bool isSilent() const noexcept {
         return running && (setup.device ? !started : setup.keepsTime);
     }
+
+    // Whether the output that runs waits for the user before it plays, as the backend of the host reports.
+    [[nodiscard]] bool isLocked() const noexcept;
+    [[nodiscard]] bool isSuspended() const noexcept {
+        return suspended || interrupted;
+    }
+
+    // The seconds of the periods of the open device, 0 without one.
+    [[nodiscard]] float getLatency() const noexcept;
 
     // Queues an event from any thread.
     void report(Mixer::DeviceEvent event);

@@ -120,6 +120,8 @@ class AudioLua final {
     static int hasDevice(lua_State* L);
     static int outputAvailable(lua_State* L);
     static int outputOpening(lua_State* L);
+    static int outputState(lua_State* L);
+    static int outputLatency(lua_State* L);
     static int outputMuted(lua_State* L);
     static int restartOutput(lua_State* L);
 

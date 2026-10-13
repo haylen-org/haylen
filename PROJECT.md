@@ -1811,6 +1811,7 @@ Checklist:
 - [x] Mundo de sobreposição de caixas sem física (`spatial2d.newOverlapWorld`) para jogos que resolvem os próprios golpes: conjuntos de caixas por quadro, espelhamento pela direção, faixa de profundidade, camadas e máscaras, descanso entre pares, ordem estável de contatos, grade de hash opcional e buffers de floats para posicionar e ler contatos. Testado no `OverlapWorldTest`, no `OverlapWorldLuaTest` e no teste `ALG-027`.
 - [x] Limite de vozes por som e prioridades (`AUD-02` e `AUD-03` da pesquisa): `audio.setLimit(sound, {voices, cooldown, steal})`, a opção `priority` de `audio.play`, o roubo de vozes pela menor prioridade, a mais baixa e a mais antiga, e uma rampa de alguns milissegundos em toda parada, pausa e roubo para nunca estalar. Testado no `MixerTest`, no `AudioLuaTest` e nos testes `AUD-002` e `AUD-008`.
 - [x] Pontos de loop (`AUD-04`): `loopStart` e `loopEnd` em `audio.play` e `audio.playMusic` tocam a introdução uma vez e repetem o resto sem emenda, também em sons em streaming. Testado no `StreamedSoundTest` e no teste `AUD-001`.
+- [x] Limitador e saída de áudio (`AUD-01`, `AUD-05` e `AUD-08`): o efeito `'limiter'`, um limitador no barramento `master` por padrão (`audio.limiter` do `app.json`), a chave `audio.latency` com `audio.outputLatency()`, e `audio.outputState()` com o evento `audioUnlocked` para o áudio que o navegador trava até o primeiro toque. Testado no `AudioEffectTest`, no `AudioOutputTest`, no `MixerOutputLuaTest` e no teste `AUD-009`.
 
 #### AS. Sistema de conteúdo (`CONTENT_SYSTEM_IMPLEMENTATION.md`)
 

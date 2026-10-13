@@ -307,6 +307,7 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 | `AUD-006` | Interruptions and lifecycle | Audio interruptions, route changes and app states as they happen, and what the background does to the sound. |  |
 | `AUD-007` | Many voices | Bursts and rain of voices up to the limit of 128, with the statistics of every bus. |  |
 | `AUD-008` | Voice limits | A hundred coins with and without the limit of their sound, a line whose priority outlasts bursts that fill every voice, and a tone that stops and resumes quickly without clicks. |  |
+| `AUD-009` | Loudness and output | Thirty explosions with the limiter of the master bus on and off, its threshold and the gain it takes away, and the state and latency of the output with the unlock of a browser. |  |
 
 #### Events (EVT)
 
