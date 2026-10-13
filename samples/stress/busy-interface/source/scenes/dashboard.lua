@@ -203,11 +203,11 @@ function Dashboard:fillLists(count)
     local generation = (self.listGeneration or 0) + 1
     self.listGeneration = generation
     self:spawn(function()
-        local vessels, failure = jobs.spawn(self.port.vessels, self.port, count):await()
+        local vessels, failure = jobs.spawn(function() return self.port:vessels(count) end, {owner = self}):await()
         if not vessels then
             error(failure, 0)
         end
-        local containers, problem = jobs.spawn(self.port.containers, self.port, count):await()
+        local containers, problem = jobs.spawn(function() return self.port:containers(count) end, {owner = self}):await()
         if not containers then
             error(problem, 0)
         end

@@ -107,7 +107,7 @@ function Chunks:build(chunkX, chunkY)
         if not points then
             error(failure, 0)
         end
-        local fields, problem = jobs.spawn(terrain.build, terrain, chunkX, chunkY, points):await()
+        local fields, problem = jobs.spawn(function() return terrain:build(chunkX, chunkY, points) end, {owner = self.owner}):await()
         if not fields then
             error(problem, 0)
         end

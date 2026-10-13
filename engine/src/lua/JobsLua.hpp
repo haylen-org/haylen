@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 struct lua_State;
 
 namespace haylen::plugins {
@@ -17,6 +19,8 @@ class JobsLua final {
     [[nodiscard]] static bool isCheckpoint(lua_State* job, int results);
 
   private:
+    static constexpr std::string_view kSpawnFields[] = {"owner"};
+
     // Its address marks the yields that come from `jobs.checkpoint`.
     inline static char checkpointKey = 0;
 

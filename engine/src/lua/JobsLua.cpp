@@ -12,6 +12,8 @@
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
+#include "lua/Owners.hpp"
 #include "plugins/JobsPlugin.hpp"
 
 namespace haylen::lua {
@@ -24,11 +26,25 @@ bool JobsLua::isCheckpoint(lua_State* job, int results) {
     return results == 1 && lua_touserdata(job, -1) == &checkpointKey;
 }
 
-// Runs `fn(...)` as a job with `spawn(fn, ...)` and returns a promise for the first value `fn` returns.
+// Runs `fn` as a job with `spawn(fn, options)` and returns a promise for the first value `fn` returns. A job without an `owner` belongs to the default owner.
 int JobsLua::spawn(lua_State* L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
+    int owner = 0;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        Table::checkFields(L, 2, {kSpawnFields});
+        if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
+            Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
+    }
+    if (owner == 0) {
+        owner = Owners::pushDefault(L);
+    }
+
     const Promise promise(Runtime::getEngine(L));
-    getPlugin(L).spawn(L, lua_gettop(L) - 1, promise);
+    lua_pushvalue(L, 1);
+    getPlugin(L).spawn(L, owner, promise);
     promise.push(L);
     return 1;
 }

@@ -6,6 +6,7 @@
 
 #include "haylen/lua/Runtime.hpp"
 #include "lua/JobsLua.hpp"
+#include "lua/Owners.hpp"
 #include "varn/async/Promise.h"
 
 namespace haylen::plugins {
@@ -18,21 +19,19 @@ void JobsPlugin::installLua(core::Engine&, lua_State* L) {
     lua::JobsLua::install(L);
 }
 
-void JobsPlugin::spawn(lua_State* L, int arguments, lua::Promise promise) {
+void JobsPlugin::spawn(lua_State* L, int owner, lua::Promise promise) {
     lua_State* thread = lua_newthread(L);
     lua::Reference reference(L, -1);
     lua_pop(L, 1);
+    lua_pushvalue(L, -1);
+    lua_xmove(L, thread, 1);
 
-    // The function and its arguments are the last values on the stack, and the new coroutine starts with copies of them, so both stacks need room for all of them.
-    if (lua_checkstack(L, arguments + 1) == 0 || lua_checkstack(thread, arguments + 1) == 0) {
-        throw std::runtime_error("A job cannot start with that many arguments.");
+    Job job{.thread = std::move(reference), .state = thread, .promise = std::move(promise)};
+    if (owner != 0) {
+        job.ownership = std::make_shared<Ownership>();
+        lua::Owners::add(L, owner, core::Connection(job.ownership));
     }
-    const int top = lua_gettop(L);
-    for (int index = top - arguments; index <= top; ++index) {
-        lua_pushvalue(L, index);
-    }
-    lua_xmove(L, thread, arguments + 1);
-    jobs.push_back({.thread = std::move(reference), .state = thread, .promise = std::move(promise), .arguments = arguments});
+    jobs.push_back(std::move(job));
 }
 
 void JobsPlugin::setBudget(std::chrono::microseconds value) {
@@ -66,9 +65,14 @@ void JobsPlugin::update(core::Engine&, float) {
 
 bool JobsPlugin::resume(Job& job) {
     lua_State* main = job.thread.getState();
+    if (job.ownership && !job.ownership->isConnected()) {
+        job.promise.rejectHandled("The job ended with its owner.");
+        return false;
+    }
+
     int results = 0;
     current = job.state;
-    const int status = lua_resume(job.state, main, std::exchange(job.arguments, 0), &results);
+    const int status = lua_resume(job.state, main, 0, &results);
     current = nullptr;
 
     // A job that waits for anything else ends there like a cancelled task of Varn, so a promise it waits for never resumes its code.

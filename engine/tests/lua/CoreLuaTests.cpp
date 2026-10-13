@@ -320,15 +320,15 @@ TEST(JobsLuaTest, SplitsLongWorkAcrossFrames) {
         async = require('async')
         jobs.setBudget(1)
         progress, other, result = 0, 0, nil
-        local sum = jobs.spawn(function(limit)
+        local sum = jobs.spawn(function()
             local total = 0
-            for i = 1, limit do
+            for i = 1, 300000 do
                 total = total + i
                 progress = i
                 jobs.checkpoint()
             end
             return total
-        end, 300000)
+        end)
         jobs.spawn(function() for i = 1, 300000 do other = i jobs.checkpoint() end end)
         async.spawn(function() result = sum:await() end)
     )");
@@ -394,26 +394,38 @@ TEST(JobsLuaTest, CountsTheJobThatRuns) {
     EXPECT_EQ(fixture.lua("return counted[1] .. ' ' .. counted[2] .. ' ' .. jobs.runningCount()"), "2 1 0");
 }
 
-TEST(JobsLuaTest, StartsWithMoreArgumentsThanTheMinimumStack) {
+// A job never resumes once its owner ended, and its promise rejects without stopping the app.
+TEST(JobsLuaTest, EndsWithItsOwner) {
     test::EngineFixture fixture;
     // clang-format off
     fixture.runLua(R"(
-        local values = {}
-        for i = 1, 300 do values[i] = i end
-        require('async').spawn(function()
-            result = require('haylen.jobs').spawn(function(...) return select('#', ...) + select(300, ...) end, table.unpack(values)):await()
-        end)
+        jobs = require('haylen.jobs')
+        async = require('async')
+        scene = require('haylen.scene')
+        steps = 0
+        level = {}
+        scene.push(level)
+        local work = jobs.spawn(function()
+            while true do
+                steps = steps + 1
+                jobs.checkpoint()
+            end
+        end, {owner = level})
+        async.spawn(function() outcome = select(2, work:await()) end)
     )");
     // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(result)") != "nil"; }));
-    EXPECT_EQ(fixture.lua("return result"), "600");
-}
+    fixture.frames(2);
+    EXPECT_NE(fixture.lua("return steps"), "0");
+    fixture.runLua("scene.pop()");
+    fixture.frames(2);
+    const std::string steps = fixture.lua("return steps");
+    fixture.frames(3);
+    EXPECT_EQ(fixture.lua("return steps"), steps);
+    EXPECT_EQ(fixture.lua("return outcome .. ' ' .. jobs.runningCount()"), "The job ended with its owner. 0");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 
-// The job starts with copies of its arguments, so arguments that fill more than half of the Lua stack cannot start one.
-TEST(JobsLuaTest, RefusesMoreArgumentsThanTheStackHolds) {
-    test::EngineFixture fixture;
-    EXPECT_EQ(fixture.lua("local values = {} for i = 1, 600000 do values[i] = i end return select(2, pcall(require('haylen.jobs').spawn, function() end, table.unpack(values)))"), "A job cannot start with that many arguments.");
-    EXPECT_EQ(fixture.lua("return require('haylen.jobs').runningCount()"), "0");
+    EXPECT_EQ(fixture.lua("return select(2, pcall(jobs.spawn, function() end, {ownr = level}))"), "Unknown option \"ownr\".");
+    EXPECT_NE(fixture.lua("return select(2, pcall(jobs.spawn, function() end, {owner = 4}))").find("An owner must be a table or a userdata"), std::string::npos);
 }
 
 TEST(SignalLuaTest, ConnectsEmitsAndDisconnects) {

@@ -4,6 +4,7 @@
 #include <deque>
 #include <memory>
 
+#include "haylen/core/Connection.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/plugins/Plugin.hpp"
@@ -21,7 +22,8 @@ class JobsPlugin final : public Plugin {
     void update(core::Engine& engine, float deltaSeconds) override;
     void installLua(core::Engine& engine, lua_State* L) override;
 
-    void spawn(lua_State* L, int arguments, lua::Promise promise);
+    // Starts the function on top of the stack as a job, which ends with the owner at `owner` when the index is not 0.
+    void spawn(lua_State* L, int owner, lua::Promise promise);
     void setBudget(std::chrono::microseconds value);
     [[nodiscard]] std::chrono::microseconds getBudget() const noexcept {
         return budget;
@@ -35,11 +37,29 @@ class JobsPlugin final : public Plugin {
     [[nodiscard]] bool isOutOfTime(lua_State* L) const;
 
   private:
+    // Ends the job of an owner that ended, before its next turn.
+    class Ownership final : public core::Connection::Link {
+      public:
+        void disconnect() override {
+            connected = false;
+        }
+        [[nodiscard]] bool isConnected() const noexcept override {
+            return connected;
+        }
+        void setBlocked(bool) override {}
+        [[nodiscard]] bool isBlocked() const noexcept override {
+            return false;
+        }
+
+      private:
+        bool connected = true;
+    };
+
     struct Job {
         lua::Reference thread;
         lua_State* state = nullptr;
         lua::Promise promise;
-        int arguments = 0;
+        std::shared_ptr<Ownership> ownership;
     };
 
     [[nodiscard]] bool resume(Job& job);
