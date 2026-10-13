@@ -810,6 +810,7 @@ if(APPLE)
     src/platform/apple/AppleSystem.mm
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/AppleTheme.mm
+    src/platform/apple/AppleVideoDecoder.mm
     src/platform/apple/CatalystInput.mm
     src/platform/apple/CatalystWindow.mm
     src/platform/apple/HaylenAccessibilityElement.mm
@@ -834,6 +835,7 @@ if(APPLE)
     src/platform/apple/HaylenTextEditor.mm
     src/platform/apple/HaylenTextField.mm
     src/platform/apple/HaylenTextView.mm
+    src/platform/apple/HaylenVideoLoader.mm
     src/platform/apple/HaylenThemeView.mm
     src/platform/apple/HaylenVideoStream.mm
   )

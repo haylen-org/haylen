@@ -9,9 +9,9 @@ option(HAYLEN_PROTECTED_RELEASE "Ships the package of every app as its protected
 set(HAYLEN_CONTENT_TOOL "" CACHE FILEPATH "The content tool of the host, haylen-content, which builds protected releases. Empty uses the haylen-content target of the build.")
 
 # The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which haylen.py links them into the projects of Lua apps.
-# Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
-set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa CoreGraphics QuartzCore Metal MetalKit GameController AudioToolbox CoreAudio Network CoreVideo IOKit UniformTypeIdentifiers)
-set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio Network CoreVideo UniformTypeIdentifiers)
+# Mac Catalyst reads the battery of the Mac from the power sources of IOKit, and every Apple platform decodes videos with AVFoundation and CoreMedia.
+set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
+set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
 set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
 

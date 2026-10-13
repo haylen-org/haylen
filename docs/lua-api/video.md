@@ -121,6 +121,7 @@ Stops the video and its sound for good. The texture keeps the last frame it show
 
 | Platform | Decoder |
 | --- | --- |
+| macOS, iOS, iPadOS, tvOS and Mac Catalyst | AVFoundation, through an asset reader that decodes the picture and the sound of the file, which it reads from the package by range, so a video in a zip or a protected release plays without a copy on disk. It plays what AVFoundation plays, such as H.264, HEVC and ProRes in MP4 and QuickTime files with AAC sound. |
 | Linux | Not supported. No library that decodes video ships with every distribution: GStreamer and FFmpeg come in different versions and with different codecs, and the codecs of common formats such as H.264 often come apart from them, so `video.load` reports `error` with the code `unsupported`. |
 
 ## C++

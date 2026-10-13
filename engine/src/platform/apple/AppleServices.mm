@@ -32,6 +32,7 @@
 #import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleTextInput.hpp"
+#import "platform/apple/AppleVideoDecoder.hpp"
 #import "platform/apple/CatalystInput.hpp"
 #import "platform/apple/CatalystWindow.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
@@ -284,9 +285,8 @@ void Services::announce(std::string_view text, bool interrupt) {
     [HaylenAccessibilityView.shared announce:[[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding] interrupt:interrupt];
 }
 
-// The engine plays no video files on this platform yet, as the video reference explains.
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
-    return nullptr;
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+    return std::make_unique<AppleVideoDecoder>(std::move(file), path);
 }
 
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
