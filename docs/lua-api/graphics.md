@@ -180,7 +180,7 @@ Decodes the bytes of a PNG, JPG, TGA, BMP or GIF file into an [`Image`](#image),
 
 ### graphics.readTarget(target) and graphics.captureScreen()
 
-Return a promise of an [`Image`](#image) of the pixels of the render target `target` as the current frame renders it, or of everything the screen shows of the next frame the app renders, the interface and the debug overlay included. The GPU copies the pixels after the frame is submitted without the frame thread waiting for it, where the backend allows, as the [rendering guide](../rendering.md#reading-pixels-back) describes, and the task pool turns them into straight colors with the top row first, so the promise settles a frame or more later. An image saves as a PNG file with `image:encodePngAsync()` and [`storage.writeTextAsync`](storage.md).
+Return a promise of an [`Image`](#image) of the pixels of the render target `target` as the current frame renders it, or of everything the screen shows of the next frame the app renders, the interface and the debug overlay included. The GPU copies the pixels after the frame is submitted without the frame thread waiting for it, where the backend allows, as the [rendering guide](../graphics/rendering.md#reading-pixels-back) describes, and the task pool turns them into straight colors with the top row first, so the promise settles a frame or more later. An image saves as a PNG file with `image:encodePngAsync()` and [`storage.writeTextAsync`](storage.md).
 
 ```lua
 local async = require('async')
@@ -244,7 +244,7 @@ A `Texture` is a shared handle to a GPU image. The function `assets.texture(path
 | `wrap` | string | read | Addressing mode, `'clamp'`, `'repeat'` or `'mirror'`. |
 | `mipmaps` | boolean | read | Whether the texture keeps smaller copies of its image. |
 
-A texture with the `'linear'` filter loaded from a file has the colors of its visible pixels bled into the transparent pixels around them while it decodes, as the [rendering guide](../rendering.md#textures-and-atlases) explains.
+A texture with the `'linear'` filter loaded from a file has the colors of its visible pixels bled into the transparent pixels around them while it decodes, as the [rendering guide](../graphics/rendering.md#textures-and-atlases) explains.
 
 ```lua
 local assets = require('haylen.assets')
@@ -522,7 +522,7 @@ end
 
 ## Shader
 
-A `Shader` is a custom shader that `haylen.py shaders` compiled from annotated GLSL for every backend the engine runs on, loaded with `assets.shader(path)` or `assets.load(path)` from a `.shader` file. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../shaders.md) explains how to write one. The engine creates the GPU program of the active backend the first time a draw needs it.
+A `Shader` is a custom shader that `haylen.py shaders` compiled from annotated GLSL for every backend the engine runs on, loaded with `assets.shader(path)` or `assets.load(path)` from a `.shader` file. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../graphics/shaders.md) explains how to write one. The engine creates the GPU program of the active backend the first time a draw needs it.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |

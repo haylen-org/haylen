@@ -1,6 +1,6 @@
 # haylen.animation2d
 
-The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads TexturePacker and Aseprite atlases with their tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI.
+The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads TexturePacker and Aseprite atlases with their tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI. The [animation guide](../2d/animation.md) explains which player suits which need.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -838,7 +838,7 @@ Returns an [`AtlasBuilder`](#atlasbuilder), which packs images and whole atlases
 
 ## AtlasBuilder
 
-An `AtlasBuilder` collects frames and packs them into one texture, so sprites that drew from many textures draw from one and batch together, as the [rendering guide](../rendering.md#textures-and-atlases) explains. Packing trims transparent borders, keeping where each frame sat in its untrimmed frame for its pivot, shares one place between frames that show the same pixels, pads and extrudes every frame and bleeds the colors of a `'linear'` atlas into its transparent pixels.
+An `AtlasBuilder` collects frames and packs them into one texture, so sprites that drew from many textures draw from one and batch together, as the [rendering guide](../graphics/rendering.md#textures-and-atlases) explains. Packing trims transparent borders, keeping where each frame sat in its untrimmed frame for its pivot, shares one place between frames that show the same pixels, pads and extrudes every frame and bleeds the colors of a `'linear'` atlas into its transparent pixels.
 
 | Property | Type | Meaning |
 | --- | --- | --- |

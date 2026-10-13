@@ -1,6 +1,6 @@
 # haylen.net
 
-The module `haylen.net` opens WebSocket connections to `ws://` and `wss://` servers and encodes and decodes MessagePack. Use it for real-time multiplayer, chat, live events and any server that pushes messages to the app. For plain HTTP requests use Varn's `http` module, whose timeouts the [Lua guide](../lua.md#asynchronous-code) explains, and for raw TCP use Varn's `socket` module. The [networking guide](../networking.md) tells what each platform offers and what the browser refuses.
+The module `haylen.net` opens WebSocket connections to `ws://` and `wss://` servers and encodes and decodes MessagePack. Use it for real-time multiplayer, chat, live events and any server that pushes messages to the app. For plain HTTP requests use Varn's `http` module, whose timeouts the [Lua guide](../core/lua.md#asynchronous-code) explains, and for raw TCP use Varn's `socket` module. The [networking guide](../network/networking.md) tells what each platform offers and what the browser refuses.
 
 ```lua
 local net = require('haylen.net')
@@ -102,7 +102,7 @@ Starts connecting to `url` and returns a `haylen.WebSocket` in the `connecting` 
 | `protocols` | list of strings | none | Subprotocols offered to the server in the `Sec-WebSocket-Protocol` header. The property `socket.protocol` tells which one the server picked. |
 | `maxMessageSize` | integer | `16777216` | Largest message in bytes the socket accepts from the server, from `1` to `2147483647`, which is 16 MiB by default. On native builds a larger message reports `error` with `The server sent a WebSocket message larger than the maximum of <size> bytes.` and ends the connection with code `1009`. In the browser the limits of the browser apply instead. |
 | `connectTimeout` | number | `10` | Seconds an attempt may take to open before it fails with code `1006`, on every platform, above `0` and at most `3600`. A socket that reconnects gives every attempt this time. |
-| `owner` | table or userdata | none | Closes the socket with code `1000` when the owner ends, such as a scene when it unloads, as [subscription scopes](../lifecycle.md#subscription-scopes) describe. |
+| `owner` | table or userdata | none | Closes the socket with code `1000` when the owner ends, such as a scene when it unloads, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. |
 | `reconnect` | boolean or table | `false` | The value `true` turns [reconnection](#reconnection) on with the defaults below, and a table turns it on with the settings it changes. |
 
 | Reconnect key | Type | Default | Meaning |
@@ -187,7 +187,7 @@ A `haylen.WebSocket` is the socket `net.connectWebSocket` returns. Reading a mem
 
 ### socket:on(event, listener, options)
 
-Calls `listener` every time the socket reports `event` and returns a `haylen.Connection`, whose `disconnect()` method stops the listener and whose `connected` property is `true` until then. The argument `options` may hold an `owner`, a table or a userdata such as a scene, and the listener ends with it, as [subscription scopes](../lifecycle.md#subscription-scopes) describe. Without an `owner`, a listener that a module registers at its top level in development belongs to the module, so a [reload](hotReload.md) of the module ends it. An unknown option raises `Unknown option "<name>".`. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace. An unknown event raises `Unknown WebSocket event "<event>". Sockets report "open", "message", "pong", "disconnect", "reconnecting", "close" and "error".`.
+Calls `listener` every time the socket reports `event` and returns a `haylen.Connection`, whose `disconnect()` method stops the listener and whose `connected` property is `true` until then. The argument `options` may hold an `owner`, a table or a userdata such as a scene, and the listener ends with it, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. Without an `owner`, a listener that a module registers at its top level in development belongs to the module, so a [reload](hotReload.md) of the module ends it. An unknown option raises `Unknown option "<name>".`. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace. An unknown event raises `Unknown WebSocket event "<event>". Sockets report "open", "message", "pong", "disconnect", "reconnecting", "close" and "error".`.
 
 | Event | Listener arguments | Meaning |
 | --- | --- | --- |

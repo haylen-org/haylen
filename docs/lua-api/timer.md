@@ -15,7 +15,7 @@ The functions `timer.after` and `timer.every` take an optional options table, an
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `owner` | table or userdata | `nil` | Cancels the timer when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. The owner keeps the callback, so the callback may refer to the owner without keeping it alive. |
-| `processMode` | string | `'inherit'` | One of `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. A timer that inherits follows the mode of its owner every frame, so it changes along with the owner, and without an owner it counts as `'pausable'`. The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the modes. |
+| `processMode` | string | `'inherit'` | One of `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. A timer that inherits follows the mode of its owner every frame, so it changes along with the owner, and without an owner it counts as `'pausable'`. The [lifecycle guide](../core/lifecycle.md#pause-and-process-modes) explains the modes. |
 | `unscaled` | boolean | `false` | Counts real time, ignoring the time scale. |
 | `count` | integer | `-1` | For `timer.every` only. Stops after that many calls, or repeats until the timer is cancelled when it is negative. |
 

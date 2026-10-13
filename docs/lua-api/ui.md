@@ -465,7 +465,7 @@ print('A control of 64 units spans ' .. 64 * scale .. ' design units and ' .. 64
 
 ### ui.setDirection(direction)
 
-Sets the direction of the whole UI: `'leftToRight'`, the default, `'rightToLeft'`, or `'auto'`, which follows the direction the current language of [`haylen.localization`](localization.md#localizationdirection) declares, so picking Arabic mirrors every GUI from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.
+Sets the direction of the whole UI: `'leftToRight'`, the default, `'rightToLeft'`, or `'auto'`, which follows the direction the current language of [`haylen.localization`](localization.md#localizationdirectionlanguage) declares, so picking Arabic mirrors every GUI from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.
 
 ```lua
 local localization = require('haylen.localization')
@@ -955,7 +955,7 @@ Lua has no separate empty list, so an empty table converts to an empty JSON obje
 | theme color | The name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. |
 | length | A non-negative number, or `'auto'` to let the content decide. |
 | insets | One number for every side, `{vertical, horizontal}`, or `{top, right, bottom, left}`. Every value is non-negative. |
-| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`, or the name of an image made at run time, which starts with `@` and which [`ui.setImage`](#uisetimagename-source) gives. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, toolbar and icon buttons tint them like their text, and the `iconColor` of a button tints them in every variant. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
+| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`, or the name of an image made at run time, which starts with `@` and which [`ui.setImage`](#uisetimagename-source-and-uiremoveimagename) gives. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, toolbar and icon buttons tint them like their text, and the `iconColor` of a button tints them in every variant. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
 | tone | `'neutral'`, `'accent'`, `'success'`, `'warning'`, `'danger'` or `'information'`. |
 | variant | One of `'default'`, `'primary'`, `'destructive'`, `'toolbar'`, `'icon'` or `'link'`, described under [button](#uibuttonproperties). |
 | items | A list of [items](#items). |
@@ -1035,7 +1035,7 @@ ui.mount(ui.stack{
 
 ## Right-to-left interfaces
 
-Every text of every component is shaped and ordered for display by the text layout of the engine, so labels, buttons, fields, lists, tables, tooltips and rich text show Arabic, Hebrew, Persian, Urdu, Hindi, Thai and every other script their font role covers, and each paragraph reads in the direction of its first strong letter. The [text guide](../text.md#scripts-and-directions) explains shaping and directions.
+Every text of every component is shaped and ordered for display by the text layout of the engine, so labels, buttons, fields, lists, tables, tooltips and rich text show Arabic, Hebrew, Persian, Urdu, Hindi, Thai and every other script their font role covers, and each paragraph reads in the direction of its first strong letter. The [text guide](../graphics/text.md#scripts-and-directions) explains shaping and directions.
 
 The direction of the layout is separate from the direction of each text. The call `ui.setDirection('rightToLeft')` or a node with `direction = 'rightToLeft'` mirrors the layout inside it:
 
@@ -1060,7 +1060,7 @@ ui.mount(ui.card{gap = 16,
 
 ## Focus and navigation
 
-Buttons, choices, inputs, list rows, slots and the other interactive parts of a GUI take the keyboard, gamepad and remote focus. The UI moves it with the navigation actions of [`haylen.input`](input.md#the-action-map), which the app remaps by defining an action with the same name in its action map, while the others keep their built-in bindings.
+Buttons, choices, inputs, list rows, slots and the other interactive parts of a GUI take the keyboard, gamepad and remote focus. The UI moves it with the navigation actions of [`haylen.input`](input.md#action-map), which the app remaps by defining an action with the same name in its action map, while the others keep their built-in bindings.
 
 | Action | Built-in bindings | Use |
 | --- | --- | --- |
@@ -1615,7 +1615,7 @@ ui.mount(ui.column{
 
 ### ui.richText(properties)
 
-Text written in the BBCode markup of the [text guide](../text.md#markup), with bold, italic, colors, outlines, shadows, glows, lists, rules, tables, inline images and icons, links, hints, animated effects and a typewriter reveal. The 2D renderer draws it inside the clip of the UI, from the family of its theme font role, so a font registered as a family with `ui.addFont` gives it real bold and italic faces and fallback fonts. The `[font=name]` tags name fonts registered with `ui.addFont`, `[img=path]` images load through the UI like `ui.image`, and `[icon=name]` shows icons registered with `graphics2d.registerTextIcon`. Links are focusable items that the pointer, the keyboard and gamepads activate, and hints show as tooltips. The [transforms](#guitransformid) of the node and of the nodes around it scale, fade and tint its text like the rest of the UI.
+Text written in the BBCode markup of the [text guide](../graphics/text.md#markup), with bold, italic, colors, outlines, shadows, glows, lists, rules, tables, inline images and icons, links, hints, animated effects and a typewriter reveal. The 2D renderer draws it inside the clip of the UI, from the family of its theme font role, so a font registered as a family with `ui.addFont` gives it real bold and italic faces and fallback fonts. The `[font=name]` tags name fonts registered with `ui.addFont`, `[img=path]` images load through the UI like `ui.image`, and `[icon=name]` shows icons registered with `graphics2d.registerTextIcon`. Links are focusable items that the pointer, the keyboard and gamepads activate, and hints show as tooltips. The [transforms](#guitransformid) of the node and of the nodes around it scale, fade and tint its text like the rest of the UI.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1947,7 +1947,7 @@ ui.mount(ui.segmentedControl{
 
 A one-line text entry. Typing reports `change` and Enter, or the return key of the on-screen keyboard, reports `submit`, both with the text as `value`. It can take the focus.
 
-The focused field edits through the native text input of the platform, which opens the on-screen keyboard on phones, tablets, TVs and mobile browsers and brings input methods, autocorrection, dictation and native paste everywhere. The keyboard options below choose that keyboard. While the input method composes text, as Japanese and Chinese input do, the field underlines the composing text. When the on-screen keyboard would cover the focused field, the whole UI moves up until the field shows above it. The [text input guide](../text-input.md) describes what each platform does.
+The focused field edits through the native text input of the platform, which opens the on-screen keyboard on phones, tablets, TVs and mobile browsers and brings input methods, autocorrection, dictation and native paste everywhere. The keyboard options below choose that keyboard. While the input method composes text, as Japanese and Chinese input do, the field underlines the composing text. When the on-screen keyboard would cover the focused field, the whole UI moves up until the field shows above it. The [text input guide](../ui/text-input.md) describes what each platform does.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2140,7 +2140,7 @@ end})
 
 ### ui.keyCapture(properties)
 
-A field that shows an [action map binding](input.md#bindings) and, once pressed, listens for the next key, mouse button, gamepad button or gamepad axis and takes it as its binding, which a controls screen hands to `input.defineAction`. A binding it takes reports `change` with the binding string as `value`, such as `'key:w'`, `'mouse:right'`, `'button:south'` or `'axis:leftX+'`. Sticks and triggers count once they travel well away from where they rested when listening started. While it listens it keeps every input from the rest of the UI, and a binding of `cancelWith` stops it and reports `cancel`. It takes the focus, and accept starts listening.
+A field that shows an [action map binding](input.md#action-map) and, once pressed, listens for the next key, mouse button, gamepad button or gamepad axis and takes it as its binding, which a controls screen hands to `input.defineAction`. A binding it takes reports `change` with the binding string as `value`, such as `'key:w'`, `'mouse:right'`, `'button:south'` or `'axis:leftX+'`. Sticks and triggers count once they travel well away from where they rested when listening started. While it listens it keeps every input from the rest of the UI, and a binding of `cancelWith` stops it and reports `cancel`. It takes the focus, and accept starts listening.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2464,7 +2464,7 @@ end})
 
 ### ui.collection(properties)
 
-Shows any number of items of several types in a vertical or horizontal list or in a grid that scrolls along one axis. It builds cells from the templates of its types, binds them to the items in view and reuses them as the player scrolls, so its cost follows the visible items, not the item count, and a list of a hundred thousand items costs about what a list of a hundred does. The app gives it its items through the [`UiCollection`](#uicollection) that [`gui:collection(id)`](#guicollectionid) returns, as a Lua list with `setItems` or in pages with `setPages`. Its one child, such as an `emptyState`, shows while it has no items. The [long lists guide](../ui.md#long-lists) explains how it works and what it costs.
+Shows any number of items of several types in a vertical or horizontal list or in a grid that scrolls along one axis. It builds cells from the templates of its types, binds them to the items in view and reuses them as the player scrolls, so its cost follows the visible items, not the item count, and a list of a hundred thousand items costs about what a list of a hundred does. The app gives it its items through the [`UiCollection`](#uicollection) that [`gui:collection(id)`](#guicollectionid) returns, as a Lua list with `setItems` or in pages with `setPages`. Its one child, such as an `emptyState`, shows while it has no items. The [long lists guide](../ui/ui.md#long-lists) explains how it works and what it costs.
 
 A vertical collection is as long as its content within its size bounds, like `scroll`, so it needs a `height`, a `maxHeight` or `grow` to scroll, and it fills the width it gets. A horizontal collection needs a `width` or `grow` along a row, and it is as tall as its `height`, or as the tallest cell it has measured, which never shrinks while it lives. The wheel scrolls the collection under the pointer, a horizontal one with the vertical wheel too, a finger drags it along its axis and flings it when it lets go, past its ends with resistance, the [scroll bar](#scroll-bars) in its lane on the end edge drags and pages it, and the focus scrolls the item that takes it into view. The cells leave the lane from the frame after the items grew longer than the view, and a horizontal collection adds the lane to its height. Mouse dragging of the content stays off, as in the lists of desktop platforms.
 
@@ -2870,7 +2870,7 @@ ui.mount(ui.contextMenu{
 
 ### ui.playArea(properties)
 
-The part of a screen where the game shows, as a place the focus can go, such as the space a level leaves between its controls. It draws nothing but the focus ring and has no properties of its own, so it uses `width`, `height` or `grow`. While it has the focus, the directions, accept and menu of the keyboard, gamepads and TV remotes reach the action map of the app instead of moving the focus or pressing a control, while cancel still reaches the `onCancel` handlers of the GUI and Tab and `uiFocus` move the focus to the controls of the GUI and back. It never takes the pointer: a click or a touch on it gives it the focus and reaches the game too, which reads `mouse:` bindings and touches as usual, unless a control drawn over it, such as a touch button, takes the press. It reports `focus` and `blur` like every node, and `gui:bounds(id)` tells where it lies, so a camera can draw the world inside it. The [input guide](../input.md#who-owns-the-keyboard-and-the-gamepad) explains the whole model.
+The part of a screen where the game shows, as a place the focus can go, such as the space a level leaves between its controls. It draws nothing but the focus ring and has no properties of its own, so it uses `width`, `height` or `grow`. While it has the focus, the directions, accept and menu of the keyboard, gamepads and TV remotes reach the action map of the app instead of moving the focus or pressing a control, while cancel still reaches the `onCancel` handlers of the GUI and Tab and `uiFocus` move the focus to the controls of the GUI and back. It never takes the pointer: a click or a touch on it gives it the focus and reaches the game too, which reads `mouse:` bindings and touches as usual, unless a control drawn over it, such as a touch button, takes the press. It reports `focus` and `blur` like every node, and `gui:bounds(id)` tells where it lies, so a camera can draw the world inside it. The [input guide](../input/input.md#who-owns-the-keyboard-and-the-gamepad) explains the whole model.
 
 ```lua
 local input = require('haylen.input')

@@ -8,7 +8,7 @@ local tween = require('haylen.tween')
 
 ## How tweens run
 
-The engine advances tweens once per frame, after timers and before the scene update, and fixed-step tweens with the fixed updates of physics. Each tween runs by its process mode, as the [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains, on scaled time by default, so `haylen.setTimeScale` slows it down, or on real time with `unscaled = true`. Updating thousands of tweens allocates nothing.
+The engine advances tweens once per frame, after timers and before the scene update, and fixed-step tweens with the fixed updates of physics. Each tween runs by its process mode, as the [lifecycle guide](../core/lifecycle.md#pause-and-process-modes) explains, on scaled time by default, so `haylen.setTimeScale` slows it down, or on real time with `unscaled = true`. Updating thousands of tweens allocates nothing.
 
 A tween reads its start values when it first renders, after its delay, so a delayed tween continues from wherever the fields are at that moment. Every frame it writes the new values: fields of tables and objects by plain assignment, and properties of engine objects, such as the position of a sprite, the zoom of a camera or the color of a light, natively without running any Lua. A tween holds its target weakly and stops before it writes again once the target is garbage collected or the engine object behind it is released. An error raised by a callback, or by a target that refuses an assignment, stops the app and shows the error screen.
 

@@ -1,6 +1,6 @@
 # haylen.assets
 
-Loads the files of the app package: textures, fonts, shaders, sounds, JSON data, sprite atlases, particle effects and Tiled maps. Use it to load an asset right away, to load one in the background with a promise, and to preload named groups of assets behind a loading screen. The [loading guide](../loading.md) explains how these loads work with autoloads, scenes, the delivery of content that downloads and the caches of a release.
+Loads the files of the app package: textures, fonts, shaders, sounds, JSON data, sprite atlases, particle effects and Tiled maps. Use it to load an asset right away, to load one in the background with a promise, and to preload named groups of assets behind a loading screen. The [loading guide](../content/loading.md) explains how these loads work with autoloads, scenes, the delivery of content that downloads and the caches of a release.
 
 ```lua
 local assets = require('haylen.assets')
@@ -20,7 +20,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `font` | `.ttf`, `.otf` | Font from [`haylen.graphics`](graphics.md). | The option `bakeSize` is the em size the glyphs are baked at in the distance field atlas (default `48`). The option `spread` is how far the distance field reaches past a glyph, in pixels at the bake size (default `8`). The option `atlasSize` is the starting side of the glyph atlas in pixels, which grows as new glyphs are used (default `512`). |
 | `bitmapFont` | `.fnt` | Bitmap Font from a BMFont file in its text or binary format, whose page images sit next to it. | The `filter` and `wrap` of its page textures. |
 | `gridFont` | None, so load an image with the type `'gridFont'` | Bitmap Font from an image of equal cells. | The options `characters`, `cellWidth` and `cellHeight`, which it needs, and `spacing`, `margin`, `advance`, `lineHeight` and `baseline`, like `graphics.newGridFont` from [`haylen.graphics`](graphics.md), plus the `filter` and `wrap` of its texture. |
-| `shader` | `.shader` | Shader from [`haylen.graphics`](graphics.md), compiled by `haylen.py shaders` as the [shader guide](../shaders.md) explains. | None. |
+| `shader` | `.shader` | Shader from [`haylen.graphics`](graphics.md), compiled by `haylen.py shaders` as the [shader guide](../graphics/shaders.md) explains. | None. |
 | `vectorImage` | `.svg` | VectorImage from [`haylen.graphics`](graphics.md#vectorimage), an SVG document that draws sharp at any size. | None. |
 | `json` | `.json` | Plain Lua table, with objects as string keyed tables and arrays as sequences. | None. |
 | `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [`haylen.audio`](audio.md). | The option `stream` reads the file in ranges while it plays instead of decoding it whole (default `false`). |
@@ -39,7 +39,7 @@ Assets are cached by type, path and options. Loading the same asset again return
 
 ### assets.load(path, type, options)
 
-Loads an asset synchronously and returns it. The type is optional and comes from the file extension when it is `nil`. Options are optional. A synchronous load never waits for a download, so an asset that [downloads later](../content.md#delivery) and is not on the device yet raises `The asset "<path>" is not on the device yet, since it downloads when the app asks for it. Load it with "loadAsync" or a preload group, which bring it first.`, as do `assets.json`, `assets.text` and `assets.bytes`. A file whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`, and an unknown type raises `The asset type "<type>" does not exist.`
+Loads an asset synchronously and returns it. The type is optional and comes from the file extension when it is `nil`. Options are optional. A synchronous load never waits for a download, so an asset that [downloads later](../content/content.md#delivery) and is not on the device yet raises `The asset "<path>" is not on the device yet, since it downloads when the app asks for it. Load it with "loadAsync" or a preload group, which bring it first.`, as do `assets.json`, `assets.text` and `assets.bytes`. A file whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`, and an unknown type raises `The asset type "<type>" does not exist.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -92,7 +92,7 @@ scene.push({
 
 ### assets.shader(path)
 
-Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. On Metal the programs of the shader start compiling on worker threads as soon as the file is read, and a scene that loads its shaders with `assets.loadAsync` or a preload group in its `load` hook gives them the time of its loading, as [shader load time](../shaders.md#load-time) explains. A file that is not a compiled shader raises `The shader file is malformed: ` followed by the problem, or `The shader file is malformed, and the JSON reader reported "<reason>".` when it is not valid JSON. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
+Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. On Metal the programs of the shader start compiling on worker threads as soon as the file is read, and a scene that loads its shaders with `assets.loadAsync` or a preload group in its `load` hook gives them the time of its loading, as [shader load time](../graphics/shaders.md#load-time) explains. A file that is not a compiled shader raises `The shader file is malformed: ` followed by the problem, or `The shader file is malformed, and the JSON reader reported "<reason>".` when it is not valid JSON. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
 
 ```lua
 local assets = require('haylen.assets')
@@ -171,7 +171,7 @@ end
 
 Starts loading an asset in the background and returns a promise. The type and options work as in `assets.load()`. An asset that is not on the device yet downloads first, as [`haylen.content`](content.md) brings it, and a failed download rejects the promise with its message. Reading and decoding run on worker threads, and GPU resources are created on the frame thread within the [upload budget](#assetssetuploadbudgetseconds) of each frame, so the app keeps running smoothly while large files load.
 
-Promises come from Varn's `async` module. Call `:await()` on a promise inside a coroutine started with `async.spawn()`. The coroutine pauses until the asset is ready and resumes during a later frame. The method `:await()` returns the asset on success and returns `nil` and the error message on failure instead of raising, so check the first value. A load whose promise nothing awaits or catches stops the app when it fails, as an [unobserved rejection](../lua.md#asynchronous-code) does. An unknown type or invalid options still raise at once, when `assets.loadAsync()` is called.
+Promises come from Varn's `async` module. Call `:await()` on a promise inside a coroutine started with `async.spawn()`. The coroutine pauses until the asset is ready and resumes during a later frame. The method `:await()` returns the asset on success and returns `nil` and the error message on failure instead of raising, so check the first value. A load whose promise nothing awaits or catches stops the app when it fails, as an [unobserved rejection](../core/lua.md#asynchronous-code) does. An unknown type or invalid options still raise at once, when `assets.loadAsync()` is called.
 
 ```lua
 local async = require('async')
@@ -508,7 +508,7 @@ scene.push({
 
 ### Hot reload of assets
 
-While an app runs in development, a changed file reloads the assets read from it. Textures, shaders and JSON update in place, so every sprite that uses a texture shows the new pixels and `assets.json` returns the new data even while a preload group holds it, and each updated asset publishes `assetReloaded`. The other types leave the cache, so the next load reads the new file, and a live asset of such a type, such as a sound, a sprite atlas, a particle effect, a map or a vector image, publishes `assetChanged` with its type and path, so the app loads it again where it uses it. A changed font file restarts the app, because the text and the UI bake their fonts into atlases. The [Lua guide](../lua.md#hot-reload) describes the rest of hot reload.
+While an app runs in development, a changed file reloads the assets read from it. Textures, shaders and JSON update in place, so every sprite that uses a texture shows the new pixels and `assets.json` returns the new data even while a preload group holds it, and each updated asset publishes `assetReloaded`. The other types leave the cache, so the next load reads the new file, and a live asset of such a type, such as a sound, a sprite atlas, a particle effect, a map or a vector image, publishes `assetChanged` with its type and path, so the app loads it again where it uses it. A changed font file restarts the app, because the text and the UI bake their fonts into atlases. The [Lua guide](../core/lua.md#hot-reload) describes the rest of hot reload.
 
 ```lua
 local assets = require('haylen.assets')

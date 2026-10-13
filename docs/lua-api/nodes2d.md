@@ -1,6 +1,6 @@
 # haylen.nodes2d
 
-The module `haylen.nodes2d` keeps a retained tree of 2D nodes. Each node has a local transform relative to its parent, so children follow their parents, such as a turret on a tank, a sword in a hand or a bar over a unit, and a color, a visibility and a layer that its descendants inherit. A node shows at most one thing: a sprite, a block of text, a nine-slice frame or particles. The tree updates every world transform in one pass and draws every node in one call, leaving out the nodes outside the view, so a scene of thousands of composed objects costs two calls from Lua per frame. Subtrees load from `.prefab` files and from descriptions, and save back to descriptions.
+The module `haylen.nodes2d` keeps a retained tree of 2D nodes. Each node has a local transform relative to its parent, so children follow their parents, such as a turret on a tank, a sword in a hand or a bar over a unit, and a color, a visibility and a layer that its descendants inherit. A node shows at most one thing: a sprite, a block of text, a nine-slice frame or particles. The tree updates every world transform in one pass and draws every node in one call, leaving out the nodes outside the view, so a scene of thousands of composed objects costs two calls from Lua per frame. Subtrees load from `.prefab` files and from descriptions, and save back to descriptions. The [nodes guide](../2d/nodes.md) explains when to use a tree and how it works with the other modules.
 
 ```lua
 local nodes2d = require('haylen.nodes2d')
@@ -269,7 +269,7 @@ print(tree.size)
 
 ### tree:writeTransforms(nodes, buffer)
 
-Sets the `x`, `y` and `rotation` of each node of the list `nodes` from three values of the [`FloatBuffer`](collections.md#floatbuffer), in order, which moves many nodes in one call. A buffer with fewer than three values for each node raises `The values hold three floats for each node: x, y and rotation.`.
+Sets the `x`, `y` and `rotation` of each node of the list `nodes` from three values of the [`FloatBuffer`](collections.md#float-buffers), in order, which moves many nodes in one call. A buffer with fewer than three values for each node raises `The values hold three floats for each node: x, y and rotation.`.
 
 ### tree:readTransforms(nodes, buffer)
 

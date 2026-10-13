@@ -1,4 +1,4 @@
--- The events that come from the platform, and why each platform never sends some of them, as the tables of "docs/lifecycle.md" describe.
+-- The events that come from the platform, and why each platform never sends some of them, as the tables of "docs/core/lifecycle.md" describe.
 local sources = {}
 
 sources.events = {

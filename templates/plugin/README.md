@@ -1,6 +1,6 @@
 # {{TITLE}}
 
-A Haylen plugin that echoes messages through the native code of every platform. Its Lua API is the same on every platform, and `docs/plugins.md` of the Haylen repository explains how plugins work.
+A Haylen plugin that echoes messages through the native code of every platform. Its Lua API is the same on every platform, and `docs/platform/plugins.md` of the Haylen repository explains how plugins work.
 
 ## Installation
 

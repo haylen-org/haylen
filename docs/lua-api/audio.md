@@ -1,6 +1,6 @@
 # haylen.audio
 
-Sound effects, music and mixing. Use it to play loaded sounds as voices, crossfade music tracks, group sounds into buses for volume sliders and effects, let the game pause stop the right sounds, and place sounds in the world so they fade, pan and shift with distance and motion. The [audio guide](../audio.md) explains the concepts behind these functions.
+Sound effects, music and mixing. Use it to play loaded sounds as voices, crossfade music tracks, group sounds into buses for volume sliders and effects, let the game pause stop the right sounds, and place sounds in the world so they fade, pan and shift with distance and motion. The [audio guide](../audio/audio.md) explains the concepts behind these functions.
 
 ```lua
 local audio = require('haylen.audio')
@@ -8,7 +8,7 @@ local audio = require('haylen.audio')
 
 ## Sounds and voices
 
-Sounds are assets loaded through [`haylen.assets`](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option never reads the file whole: the sound reads its file in ranges and each voice decodes it while it plays, keeping only a bounded window of encoded bytes and about a second of decoded frames, which a protected release decrypts chunk by chunk, so music of any length plays in the same small memory, as the [audio guide](../audio.md#streamed-sounds) describes.
+Sounds are assets loaded through [`haylen.assets`](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option never reads the file whole: the sound reads its file in ranges and each voice decodes it while it plays, keeping only a bounded window of encoded bytes and about a second of decoded frames, which a protected release decrypts chunk by chunk, so music of any length plays in the same small memory, as the [audio guide](../audio/audio.md#streamed-sounds) describes.
 
 Every call to `audio.play()` starts a new voice and returns its id, an integer, and `audio.playMusic()` returns the id of the voice of the music track. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor. Calls with the id of a voice that already finished do nothing, so an app never has to check a voice before stopping it. At most 128 voices play at once. When the limit is reached, a new voice stops a voice that is not music, the one of the lowest `priority`, the quietest of those and then the oldest, and [`audio.setLimit()`](#audiosetlimitsound-limit) bounds the voices and the plays of one sound. Every stop, pause and steal fades over a few milliseconds at least, so a waveform cut far from zero never clicks.
 
@@ -691,7 +691,7 @@ end
 
 ## Positional audio
 
-A positional voice fades with its distance to the listener, pans by its horizontal offset and, with a Doppler factor, shifts its pitch while it and the listener approach or move apart. The engine refreshes every positional voice once per frame, after the scenes update, and measures velocities from the movement between frames. The [audio guide](../audio.md#positional-audio) explains the models.
+A positional voice fades with its distance to the listener, pans by its horizontal offset and, with a Doppler factor, shifts its pitch while it and the listener approach or move apart. The engine refreshes every positional voice once per frame, after the scenes update, and measures velocities from the movement between frames. The [audio guide](../audio/audio.md#positional-audio) explains the models.
 
 ### audio.setListener(x, y)
 
@@ -870,7 +870,7 @@ The engine pauses the output while the app is suspended and resumes it afterward
 
 ### audio.outputMuted()
 
-Returns `true` while the engine silences the output, which it does while a [cover](../lifecycle.md#covered-by-native-ui) of a plugin lasts and, with `muteOnFocusLoss`, while the app is not active. The silence comes after every bus, so `audio.busMuted` keeps reporting the mute the app set, which the app can still change and save meanwhile.
+Returns `true` while the engine silences the output, which it does while a [cover](../core/lifecycle.md#covered-by-native-ui) of a plugin lasts and, with `muteOnFocusLoss`, while the app is not active. The silence comes after every bus, so `audio.busMuted` keeps reporting the mute the app set, which the app can still change and save meanwhile.
 
 ```lua
 local audio = require('haylen.audio')

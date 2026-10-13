@@ -1,6 +1,6 @@
 # Platform Sample
 
-A local plugin of the [test project](../../README.md) with the native code of the tests `PLT-001`, Native events, and `PLT-002`, Custom handler: Objective-C on Apple platforms, Java on Android and JavaScript on the web answer its methods and send its events through the [platform bridge](../../../../docs/platform-bridge.md). The project lists it in its `app.json` with no parameters, and `haylen.py` builds it into the project of each platform as the [plugin guide](../../../../docs/plugins.md) describes.
+A local plugin of the [test project](../../README.md) with the native code of the tests `PLT-001`, Native events, and `PLT-002`, Custom handler: Objective-C on Apple platforms, Java on Android and JavaScript on the web answer its methods and send its events through the [platform bridge](../../../../docs/platform/platform-bridge.md). The project lists it in its `app.json` with no parameters, and `haylen.py` builds it into the project of each platform as the [plugin guide](../../../../docs/platform/plugins.md) describes.
 
 ## Lua API
 

@@ -1,6 +1,6 @@
 # haylen.procedural2d
 
-The module `haylen.procedural2d` generates 2D content: it scatters objects over areas, grows caves, dungeons and mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tiles by their neighbors at run time. Everything is deterministic: the same options and seed always give the same result. Large generations have asynchronous versions that run on the worker threads of the engine and return a promise.
+The module `haylen.procedural2d` generates 2D content: it scatters objects over areas, grows caves, dungeons and mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tiles by their neighbors at run time. Everything is deterministic: the same options and seed always give the same result. Large generations have asynchronous versions that run on the worker threads of the engine and return a promise. The [procedural generation guide](../2d/procedural.md) explains how generation stays reproducible and reaches the other modules.
 
 ```lua
 local procedural = require('haylen.procedural2d')

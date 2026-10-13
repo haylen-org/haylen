@@ -82,7 +82,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `lifecycle.pauseOnBackground` | boolean | `true` | Whether the app halts in the background, see `haylen.lifecycle()`. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Whether the app halts while its window has no focus. |
 | `lifecycle.muteOnFocusLoss` | boolean | `false` | Whether the output is muted while the app is not active. |
-| `audio.iosSession` | string | `'ambient'` | Category of the audio session on iOS and tvOS: `'ambient'`, `'soloAmbient'` or `'playback'`, described in the [audio guide](../audio.md#sessions-and-interruptions). |
+| `audio.iosSession` | string | `'ambient'` | Category of the audio session on iOS and tvOS: `'ambient'`, `'soloAmbient'` or `'playback'`, described in the [audio guide](../audio/audio.md#sessions-and-interruptions). |
 | `audio.mixWithOthers` | boolean | `false` | Whether the `'playback'` session plays along with other apps. |
 | `audio.latency` | string | `'balanced'` | How the output trades latency for power: `'low'`, `'balanced'` or `'powerSaving'`, as [`audio.outputLatency`](audio.md#audiooutputlatency) describes. |
 | `audio.limiter` | boolean | `true` | Whether a [limiter](audio.md#limiter) on the `master` bus keeps the mix from clipping. |
@@ -91,11 +91,11 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `debug.safeArea` | string or table | absent | The safe area simulated instead of the one of the device, present only when `app.json` sets it, see [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue). |
 | `debug.fold` | string or table | absent | The fold simulated instead of the one of the device, present only when `app.json` sets it, see [`window.setFoldSimulation`](window.md#windowsetfoldsimulationvalue). |
 | `debug.showSafeArea` | boolean | `false` | Whether the debug view of the safe area shows from the start, see [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible). |
-| `content.updates` | table | absent | The server of the content of a release, present only when `app.json` sets it, with `baseUrl`, `channel`, `'stable'` by default, and `enabled`, `true` by default, see the [content guide](../content.md#delivery). |
+| `content.updates` | table | absent | The server of the content of a release, present only when `app.json` sets it, with `baseUrl`, `channel`, `'stable'` by default, and `enabled`, `true` by default, see the [content guide](../content/content.md#delivery). |
 | `content.delivery` | list of tables | `{}` | The rules that deliver assets later than the start of the app, each with `match`, a pattern of paths relative to `content/`, and either `mode`, `'required'`, `'prefetch'` or `'onDemand'`, or `pack`, the name of a pack that a store delivers on its own, where the first rule that matches decides, see [`haylen.content`](content.md). |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
-| `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for `haylen.py`, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
-| `plugins` | table | `{}` | The plugins of the app by id with the parameter values that `app.json` gives them, see the [plugin guide](../plugins.md). The field [`platform.plugin(id).config`](platform.md#plugin-handles) adds the defaults of their parameters. |
+| `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for `haylen.py`, see the [native code guide](../platform/native.md#packaging-libraries-with-an-app). |
+| `plugins` | table | `{}` | The plugins of the app by id with the parameter values that `app.json` gives them, see the [plugin guide](../platform/plugins.md). The field [`platform.plugin(id).config`](platform.md#plugin-handles) adds the defaults of their parameters. |
 
 ```lua
 local haylen = require('haylen')
@@ -121,7 +121,7 @@ end
 
 ### haylen.class
 
-The class helper for app-wide Lua classes, with inheritance, an `init` constructor, `super`, `is` checks and mixins. The [Lua guide](../lua.md#classes) describes it.
+The class helper for app-wide Lua classes, with inheritance, an `init` constructor, `super`, `is` checks and mixins. The [Lua guide](../core/lua.md#classes) describes it.
 
 ```lua
 local haylen = require('haylen')
@@ -293,7 +293,7 @@ print('paused:', haylen.paused()) -- paused: false
 
 ### haylen.setPaused(paused)
 
-Pauses or unpauses the game. Scenes, autoloads, timers and tweens in the `'pausable'` process mode stop, those in `'whenPaused'` start, and fixed steps stop accumulating. The scenes that the change stops or starts get `paused` or `unpaused`, and the change publishes the `paused` or `unpaused` event of [`haylen.events`](events.md). The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the process modes.
+Pauses or unpauses the game. Scenes, autoloads, timers and tweens in the `'pausable'` process mode stop, those in `'whenPaused'` start, and fixed steps stop accumulating. The scenes that the change stops or starts get `paused` or `unpaused`, and the change publishes the `paused` or `unpaused` event of [`haylen.events`](events.md). The [lifecycle guide](../core/lifecycle.md#pause-and-process-modes) explains the process modes.
 
 ```lua
 local haylen = require('haylen')
@@ -313,7 +313,7 @@ require('haylen.timer').after(0.5, function() print('paused:', haylen.paused()) 
 
 ### haylen.appState()
 
-Returns where the app stands with the platform: `'active'` in the foreground with the focus, `'inactive'` while visible without the focus, interrupted by the system, such as by a phone call, or covered by native UI of a plugin, and `'background'` while hidden. The [lifecycle guide](../lifecycle.md#app-states) explains what the engine does in each state.
+Returns where the app stands with the platform: `'active'` in the foreground with the focus, `'inactive'` while visible without the focus, interrupted by the system, such as by a phone call, or covered by native UI of a plugin, and `'background'` while hidden. The [lifecycle guide](../core/lifecycle.md#app-states) explains what the engine does in each state.
 
 ```lua
 local haylen = require('haylen')
@@ -325,7 +325,7 @@ end
 
 ### haylen.appCovered()
 
-Returns `true` while native UI of a plugin covers the app, such as a full screen ad, a consent form, a sign-in sheet, a purchase dialog or a [screen](platform.md#screens) of a plugin. A covered app is `'inactive'`, halted and muted, whatever the lifecycle options say, and it comes back as it was once the last cover ends, as the [lifecycle guide](../lifecycle.md#covered-by-native-ui) explains.
+Returns `true` while native UI of a plugin covers the app, such as a full screen ad, a consent form, a sign-in sheet, a purchase dialog or a [screen](platform.md#screens) of a plugin. A covered app is `'inactive'`, halted and muted, whatever the lifecycle options say, and it comes back as it was once the last cover ends, as the [lifecycle guide](../core/lifecycle.md#covered-by-native-ui) explains.
 
 ```lua
 local events = require('haylen.events')
@@ -395,7 +395,7 @@ haylen.setLifecycle({pauseOnFocusLoss = false, muteOnFocusLoss = false})
 
 ### haylen.autoload(name, module)
 
-Loads `module` as an autoload, calls its `start` and returns its table. An autoload lives for the whole app, gets the callbacks the [lifecycle guide](../lifecycle.md#autoloads) lists and is kept in `haylen.autoloads` under `name`. With one argument, the name is the last part of the module in camel case, so `haylen.autoload('state.player-data')` names it `playerData`. Autoloads listed in the `autoload` field of `app.json` load before `source/main.lua` runs.
+Loads `module` as an autoload, calls its `start` and returns its table. An autoload lives for the whole app, gets the callbacks the [lifecycle guide](../core/lifecycle.md#autoloads) lists and is kept in `haylen.autoloads` under `name`. With one argument, the name is the last part of the module in camel case, so `haylen.autoload('state.player-data')` names it `playerData`. Autoloads listed in the `autoload` field of `app.json` load before `source/main.lua` runs.
 
 Adding the same module under the same name again returns the autoload that exists, so a module that adds an autoload at its top level runs again unchanged when it [reloads](hotReload.md), and what `start` registers without an `owner` lives as long as the autoload instead of ending with that reload. The module must return a table, a name can only be taken once for one module and a table can only be one autoload, otherwise the call raises `The autoload module "<module>" must return a table.`, `An autoload named "<name>" already exists.` or `The module "<module>" is already the autoload "<name>".`
 
@@ -427,7 +427,7 @@ Stops the app and asks the platform to close it. No further frames run. On Andro
 
 A status that is not such an integer raises `The option "status" of "quit" is invalid: <reason>.`, with the reason `expected a non-negative integer` below 0, `integer out of range` above 255 and `number has no integer representation` for a fraction.
 
-On macOS, Windows and Linux the process exits with the status, in the player `haylen` as in a built app, and so does the [headless player](../testing.md#the-test-project), which exits with 1 instead when an error was reported. A process whose window closes, such as through its close button or Command+Q, exits with 0, and one whose engine could not start exits with 1. iOS, tvOS, Mac Catalyst, Android and the web have no exit status for an app, so they ignore it.
+On macOS, Windows and Linux the process exits with the status, in the player `haylen` as in a built app, and so does the [headless player](../tools/testing.md#the-test-project), which exits with 1 instead when an error was reported. A process whose window closes, such as through its close button or Command+Q, exits with 0, and one whose engine could not start exits with 1. iOS, tvOS, Mac Catalyst, Android and the web have no exit status for an app, so they ignore it.
 
 ```lua
 local haylen = require('haylen')

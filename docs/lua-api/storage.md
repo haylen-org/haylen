@@ -154,7 +154,7 @@ saveAndPersist({day = 5})
 
 ### storage.root()
 
-Returns the absolute path of the storage folder, with `/` as the separator. Varn's `fs` module reads and writes files asynchronously on the I/O pool, and paths built from the root reach the same files as `haylen.storage`. The paths of `fs` are not confined to the folder, so build them from the root instead of passing paths from the player. The [Lua guide](../lua.md#disk-access) compares both ways.
+Returns the absolute path of the storage folder, with `/` as the separator. Varn's `fs` module reads and writes files asynchronously on the I/O pool, and paths built from the root reach the same files as `haylen.storage`. The paths of `fs` are not confined to the folder, so build them from the root instead of passing paths from the player. The [Lua guide](../core/lua.md#disk-access) compares both ways.
 
 ```lua
 local async = require('async')

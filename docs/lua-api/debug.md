@@ -18,7 +18,7 @@ The engine shows its statistics in one of three modes.
 | `'compact'` | Three lines in the bottom left corner of the safe area: frames per second and the last frame time, draw calls and vertices, and GPU instances. The 2D renderer draws them above everything else, including scene transitions and the error screen, so they work in every app, with or without UI. The numbers change four times per second, so they stay readable, and the frames between allocate nothing. |
 | `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the budget of the poll of the event loop with whether work ran and what it waits for, the profiler scopes of the last frame, the scenes of the stack from the bottom up with their names, states and process modes and whether the scenes below them keep rendering, a checkbox for every [drawing](#drawings), the rendering statistics, the memory of Lua, textures, render targets and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
 
-F3 cycles through `off`, `compact` and `full`, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
+F3 cycles through `off`, `compact` and `full`, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../core/lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
 
 ## Drawings
 
@@ -30,7 +30,7 @@ Drawings show what the app draws and simulates over every canvas it draws, in th
 | `'bounds'` | An outline around every sprite, sprite of a batch, nine-slice piece and baked batch, named after the path of the texture the assets loaded it from, and a fainter outline around every text block, in every canvas. |
 | Any other name | The drawers that the app or a plugin adds with [`debug.addDrawer`](#debugadddrawername-fn-options). |
 
-F4 turns every drawing off while any is on, and otherwise turns on every drawing the engine and the app know, `debug.setDrawKey` picks another key, and `debug.setDrawing` switches one drawing from Lua. The setting `"debug": {"drawings": ["physics", "bounds"]}` in `app.json` starts the app with drawings on, as the [Lua guide](../lua.md#appjson) lists. The statistics key wins when an app gives both the same key.
+F4 turns every drawing off while any is on, and otherwise turns on every drawing the engine and the app know, `debug.setDrawKey` picks another key, and `debug.setDrawing` switches one drawing from Lua. The setting `"debug": {"drawings": ["physics", "bounds"]}` in `app.json` starts the app with drawings on, as the [Lua guide](../core/lua.md#appjson) lists. The statistics key wins when an app gives both the same key.
 
 ```lua
 local debug = require('haylen.debug')
@@ -83,7 +83,7 @@ The inspector window shows the roots as a tree whose open nodes refresh four tim
 
 A breadcrumb is a step of the app that a crash report shows, such as opening a screen or buying an item, with data of the app. The engine keeps the last 100 breadcrumbs, and each one publishes `breadcrumbAdded` on [`haylen.events`](events.md), so a crash reporting or analytics plugin forwards it to its service. The engine itself sends nothing anywhere.
 
-The engine captures native crashes, which no Lua error handler sees, such as a fault in a plugin, a driver or the engine: fatal signals on macOS, iOS, iPadOS, tvOS, Mac Catalyst, Linux and Android, and unhandled exceptions on Windows. The crash writes a small report into the user storage of the app, with its reason, the last 30 breadcrumbs, the last 20 log lines and the name, identifier and version of the app, and goes on to the system and the crash handlers that were there before, so the crash reporters of the system and of plugins still receive it. The next start of the app reads the report once with `debug.lastCrash()`. The report is prepared at the end of each frame that added a breadcrumb or logged a line, so the crash writes text that exists already. Browsers have no native crashes, since a fault of WebAssembly ends as a JavaScript error, which reaches the page through `onError`, so the web never has a report. Errors of Lua scripts go to the [error screen](../lua.md#errors-and-stack-traces), not to crash reports.
+The engine captures native crashes, which no Lua error handler sees, such as a fault in a plugin, a driver or the engine: fatal signals on macOS, iOS, iPadOS, tvOS, Mac Catalyst, Linux and Android, and unhandled exceptions on Windows. The crash writes a small report into the user storage of the app, with its reason, the last 30 breadcrumbs, the last 20 log lines and the name, identifier and version of the app, and goes on to the system and the crash handlers that were there before, so the crash reporters of the system and of plugins still receive it. The next start of the app reads the report once with `debug.lastCrash()`. The report is prepared at the end of each frame that added a breadcrumb or logged a line, so the crash writes text that exists already. Browsers have no native crashes, since a fault of WebAssembly ends as a JavaScript error, which reaches the page through `onError`, so the web never has a report. Errors of Lua scripts go to the [error screen](../core/lua.md#errors-and-stack-traces), not to crash reports.
 
 ## Console
 
@@ -94,7 +94,7 @@ The console window lists the output, the line being typed, the commands as butto
 The console is on in development runs, and `"debug": {"console": true}` in `app.json` turns it on in any other run. While it is off, it neither opens nor runs lines from outside the app, and the app still registers and runs its own commands with `debug.runCommand`. Lines also arrive from outside the app:
 
 - In a Debug run of `haylen run` on a device, a simulator, an emulator or the browser, every line typed in the terminal goes to the connected apps through the development server, and their results print there.
-- A web page runs a line with `Module.haylen.console(line)`, as the [runtime API](../build.md#runtime-api) describes.
+- A web page runs a line with `Module.haylen.console(line)`, as the [runtime API](../tools/build.md#runtime-api) describes.
 
 The engine registers these commands.
 

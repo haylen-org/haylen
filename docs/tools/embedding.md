@@ -1,0 +1,250 @@
+# Embedding the engine
+
+The `engine/` folder is a standalone CMake project that other projects consume as a library. A project adds it with `add_subdirectory`, with CPM or with `find_package(haylen)` against a prebuilt SDK, and all three ways give it the same targets and the same CMake function. This guide covers the three ways, `haylen_add_app` and an app written only in C++. The [build guide](build.md) covers the platform toolchains, and the [Lua guide](../core/lua.md#extending-the-engine-from-c) shows how a C++ project adds Lua modules.
+
+## What a project gets
+
+| Name | Kind | Purpose |
+| --- | --- | --- |
+| `haylen::engine` | Library target | The whole C++ API and every Lua binding. Its include folder is `engine/include`, and it carries the C++20 requirement to every target that links it. In browser builds it also carries `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`, because Lua errors unwind as C++ exceptions and yields jump back to their resume with `longjmp`, both native to WebAssembly. |
+| `haylen::runtime` | Library target | The Sokol app entry point, the platform host and the platform services. Linking it turns an executable into a Haylen app, whose sources must define `haylen::core::Application::create()`. In a source build it is an object library, so the entry points always reach the final binary. |
+| `haylen_add_app` | CMake function | Builds the app of one package for the current platform. |
+
+When the engine is not the top-level project, its player, tests and benchmarks are off, because `HAYLEN_BUILD_PLAYER`, `HAYLEN_BUILD_TESTS` and `HAYLEN_BUILD_BENCHMARKS` default to `PROJECT_IS_TOP_LEVEL`. These cache variables also shape a source build.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `HAYLEN_SOKOL_SHDC` | Empty | Path to the `sokol-shdc` executable that compiles the engine shaders. A source build fails without it. The command `haylen tools` downloads the pinned version into `.tools/` of a Haylen checkout. |
+| `HAYLEN_RENDER_BACKEND` | `AUTO` | `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
+| `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer, or `THREAD` for ThreadSanitizer. |
+| `HAYLEN_BUILD_SDK` | `OFF` | Adds the `haylen_sdk` target and the install rules of the SDK. |
+
+The engine needs CMake 3.28 or newer and a C++20 compiler, and it downloads its dependencies with CPM. When the engine bootstraps CPM itself, as it does under `add_subdirectory`, it keeps the sources in `CPM_SOURCE_CACHE` when that variable is set and in `.cache/cpm` of the top-level project otherwise.
+
+## add_subdirectory
+
+A project that keeps a Haylen checkout, for example as a Git submodule, adds the engine folder directly.
+
+```cmake
+cmake_minimum_required(VERSION 3.28...4.4)
+
+project(my_app LANGUAGES C CXX)
+
+add_subdirectory(external/haylen/engine haylen)
+
+haylen_add_app(my-app
+  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+```
+
+```sh
+cmake -S . -B build -G Ninja -DHAYLEN_SOKOL_SHDC=/path/to/sokol-shdc
+cmake --build build
+```
+
+## CPM
+
+With [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake), the engine is a package like any other. The engine sits in the `engine` folder of the repository, so a package fetched from Git names that folder with `SOURCE_SUBDIR`.
+
+```cmake
+cmake_minimum_required(VERSION 3.28...4.4)
+
+project(my_app LANGUAGES C CXX)
+
+include(cmake/CPM.cmake)
+CPMAddPackage(
+  NAME haylen
+  GIT_REPOSITORY <repository url>
+  GIT_TAG <tag or commit>
+  SOURCE_SUBDIR engine
+)
+
+haylen_add_app(my-app
+  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+```
+
+A local checkout works the same way with `CPMAddPackage(NAME haylen SOURCE_DIR "<checkout>/engine")`, which is how `samples/cpp/embedding` does it. The engine reuses the CPM that the project already included, and `HAYLEN_SOKOL_SHDC` is passed on the command line as in the previous section.
+
+## find_package and the SDK
+
+The SDK is a prebuilt engine for one platform and one graphics backend. It needs neither the engine sources nor `sokol-shdc`, because the shaders are already compiled into it.
+
+```sh
+haylen sdk --platform macos --config Release
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--platform` | The host | `macos`, `linux`, `windows`, `web` (WebGPU) or `web-webgl2`. |
+| `--config` | `Release` | `Debug`, `Release` or `RelWithDebInfo`. |
+| `--output` | `build/sdk/haylen-<platform>-<config>` | Install prefix of the SDK. |
+| `--jobs` | The processor count minus one | Parallel build jobs. |
+
+The command configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `HAYLEN_BUILD_SDK=ON`, builds the `haylen_sdk` target and installs the `haylen_sdk` component. Every static library the engine links, such as Varn, Lua and Box2D, is merged into one `haylen` library, and the runtime into `haylen_runtime`.
+
+| Installed path | Contents |
+| --- | --- |
+| `lib/` | The `haylen` and `haylen_runtime` static libraries, such as `libhaylen.a` and `libhaylen_runtime.a`. Linux distributions where `GNUInstallDirs` picks `lib64/` use that folder instead. |
+| `lib/cmake/haylen/` | `haylen-config.cmake` and `haylen-config-version.cmake`. |
+| `include/` | The public engine headers, the generated `haylen/core/Version.hpp`, the nlohmann/json, Dear ImGui and Lua headers that they include, and the Dear ImGui configuration of the engine in `haylen/ui/ImGuiConfig.hpp` with the `haylen/ui/ImGuiAssert.hpp` it includes. |
+| `share/haylen/` | The function `haylen_add_app` and its helper script, the web shell and runtime script, the Apple templates, `LuaPlayer.cpp` and, in Apple SDKs, `AppleMain.cpp`. |
+
+A project then finds the SDK like any installed package.
+
+```cmake
+cmake_minimum_required(VERSION 3.28...4.4)
+
+project(my_app LANGUAGES C CXX)
+
+find_package(haylen REQUIRED)
+
+haylen_add_app(my-app
+  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+```
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/path/to/haylen-macos-release
+```
+
+The package config imports `haylen::engine` and `haylen::runtime`, defines `haylen_add_app` and sets `HAYLEN_PLATFORM`, `HAYLEN_BACKEND` and `HAYLEN_DESKTOP` to the values the SDK was built with. Its version file accepts requests for the same major and minor version. A web SDK is used from a project configured with Emscripten's `emcmake`. Android, iOS and tvOS projects add the engine from source through `add_subdirectory`, as the [build guide](build.md) describes.
+
+## haylen_add_app
+
+The file `engine/cmake/haylen-app.cmake` defines the function that builds an app.
+
+```cmake
+haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJECT <folder>] [WEB_SHELL <file>])
+```
+
+| Argument | Meaning |
+| --- | --- |
+| `<target>` | Name of the executable, or of the shared library on Android. |
+| `PACKAGE` | The package folder, which holds `app.json`, `source/` and `content/`. Its `app.json` must set `name`, `identifier` and `version`, which become the display name, the bundle identifier and the version of the app, so the app and the runtime always agree. Configuration fails when one is missing. |
+| `SOURCES` | Source files of the app. |
+| `CPP` | The sources define `haylen::core::Application::create()`. Without it the function adds `LuaPlayer.cpp`, whose application runs `source/main.lua`, so a Lua app needs no sources at all. |
+| `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in`, `tvos/LaunchScreen.storyboard` and `PrivacyInfo.xcprivacy`. The default is `engine/platform/apple`, whose privacy manifest declares the APIs with required reasons that the engine calls, as the [distribution guide](distribution.md#privacy-manifest) lists them. |
+| `WEB_SHELL` | HTML shell of the browser build. The default is `engine/platform/web/shell.html`. |
+
+The function links `haylen::runtime`, which brings the system libraries of the platform, and deploys the package into the app of each platform. On Apple platforms those are the system frameworks of `HAYLEN_APPLE_FRAMEWORKS_MACOS`, `_IOS`, `_MACCATALYST` and `_TVOS` in `engine/cmake/haylen-app.cmake`, the lists that the Apple artifacts publish as `haylen-frameworks.json` for the projects of Lua apps, so C++ apps and Lua apps link the same frameworks. On Apple platforms it also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because `sokol_app` leaves `main` to the app there. Only `app.json`, `source/` and `content/` are deployed, so platform projects, notes and build files can share the package folder.
+
+| Platform | Result |
+| --- | --- |
+| Windows and Linux | An executable in `bin/<target>/` of the build tree, and a `SYNC_PACKAGE-<target>` target that creates an `app` folder next to it with links to `app.json`, `source/` and `content/` of the package folder, so edited files show up without a rebuild. Windows builds are GUI apps whose Visual Studio debugger starts in that folder. |
+| macOS, iOS, tvOS and Mac Catalyst | An app bundle in `bin/<target>/`, or in `bin/` with the Xcode generator, with the package files under `Resources/app` and the privacy manifest of `APPLE_PROJECT` among its resources. Apps for iOS and tvOS target version 16.3, like the engine. |
+| Web | The page `<target>.html` with the shell, and the package preloaded at `/app` in the virtual file system. |
+| Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. The command `haylen.py run-cpp --platform android` prepares that project, `platform/android` of the package folder or a copy of the Android template, as the [distribution guide](distribution.md#the-android-project) describes. |
+
+### Protected releases
+
+The cache variable `HAYLEN_PROTECTED_RELEASE`, off by default, makes every app of the project ship its [protected release](../content/content.md) instead of the package as it is, exactly like the release builds of Lua apps: the Lua modules as bytecode and every asset encrypted in shards, which the app opens with the bootstrap that the build compiles into it, so a C++ app and a Lua app read their content through the same code. `haylen.py run-cpp --config Release` turns it on, and any other configuration turns it off.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `HAYLEN_PROTECTED_RELEASE` | `OFF` | Ships the protected release of each app, with its bootstrap compiled in. |
+| `HAYLEN_CONTENT_TOOL` | Empty | The content tool of the host, `haylen-content`. Empty uses the `haylen-content` target of the build, which exists when the engine builds its tools for this machine, so a project that builds for another platform names the one of the desktop artifacts, as `run-cpp` does. |
+
+The build runs the content tool on the package with the keys of the app from its [key folder](../content/content.md#key-folders), which it creates on the machine of the developer the first time, with a warning to back it up, and never in continuous integration, where `HAYLEN_KEYS_DIR` names the folders it receives. Each build reuses the shards of the release before it, writes the release into `haylen-release/<target>/` of the build tree with the bootstrap next to it, and rebuilds them when a file of the package changes. The profile follows the platform, `apple`, `android`, `web`, `windows` or `linux`, and the build number the version, 1.2.3 being 1002003.
+
+| Platform | What ships |
+| --- | --- |
+| Windows and Linux | The release in `app/` next to the executable, copied after each build. |
+| macOS, iOS, tvOS and Mac Catalyst | The release in `Resources/app` of the bundle, or `app` at the root of an iOS or tvOS bundle, copied before the bundle is signed. |
+| Web | The manifests and the app domain preloaded at `/app`, and the whole release in `app/` next to the page, from which the content streams by range into the [content store of the browser](../content/content.md#the-web). |
+| Android | The release in `bin/<target>/release.txt`, which `run-cpp` places in the assets of the Android project instead of the package. |
+
+An app with a content server in `app.json` ships only what its required content needs, and the shards of named packs stay in `haylen-release/<target>/packs/`, as the [delivery guide](../content/content.md#delivery) explains. `run-cpp --config Release` inspects the built app before it launches and stops when it holds Lua text, a file of the package as it is, symbol files or a key in any form.
+
+## An app written in C++
+
+The command `haylen new <folder> --kind cpp` creates a C++ app from the [C++ template](distribution.md#cpp): a CMake project that adds the engine from the folder that `HAYLEN_ENGINE_SOURCE` names, or from an installed SDK when the variable is empty, and builds the target `main` from its sources, with the [bridge example](distribution.md#the-bridge-example) of the templates and the Android project and web page code that it shares with Lua apps. `haylen run-cpp <folder>` builds and runs it on every platform this machine reaches, and passes `HAYLEN_ENGINE_SOURCE` itself.
+
+```cmake
+set(HAYLEN_ENGINE_SOURCE "" CACHE PATH "The engine folder of a Haylen checkout. Empty finds an installed SDK with find_package.")
+if(HAYLEN_ENGINE_SOURCE)
+  add_subdirectory("${HAYLEN_ENGINE_SOURCE}" haylen)
+else()
+  find_package(haylen REQUIRED)
+endif()
+
+set(sources src/App.cpp)
+if(APPLE)
+  list(APPEND sources src/AppBridge.mm)
+  set_source_files_properties(src/AppBridge.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
+endif()
+
+haylen_add_app(main CPP
+  SOURCES ${sources}
+  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+```
+
+The sample `samples/cpp/embedding` is an app project of its own that uses no Lua. Its `CMakeLists.txt` adds the engine in the mode chosen by the `CPP_EMBEDDING_MODE` cache variable (`subdirectory`, `cpm` or `package`) from the checkout named by `HAYLEN_ENGINE_SOURCE`, and builds the app with the `CPP` option.
+
+```cmake
+haylen_add_app(main CPP
+  SOURCES src/EmbeddingApp.cpp
+  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+```
+
+The sample folder is also its package, which holds only `app.json` since the application never runs Lua, so `CMakeLists.txt` and `src/` next to it are never deployed. The file `src/EmbeddingApp.cpp` defines the application in a namespace of the project, with the scene it pushes nested inside it, and `Application::create()`.
+
+```cpp
+namespace embedding {
+
+// An app of its own project that runs the whole engine: its scene draws a square that circles the middle of the safe area.
+class EmbeddingApp final : public haylen::core::Application {
+  public:
+    void start(haylen::core::Engine& engine) override {
+        engine.getScenes().push(std::make_shared<OrbitScene>());
+    }
+
+  private:
+    class OrbitScene final : public haylen::core::Scene {
+      public:
+        void update(haylen::core::Engine&, float deltaSeconds) override {
+            angle += deltaSeconds;
+        }
+
+        void renderUi(haylen::core::Engine& engine) override {
+            haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+            const haylen::math::Rect safe = engine.getViewport().getSafeRect();
+            const haylen::math::Vec2 center = safe.getCenter() + haylen::math::Vec2{std::cos(angle), std::sin(angle)} * 200.0F;
+            renderer.beginScreen();
+            renderer.drawRect(haylen::math::Rect::fromCenter(center, {96.0F, 96.0F}), haylen::math::Color::fromHex(0xF2B84BFFU));
+            renderer.drawText(*engine.getDefaultFont(), "Haylen from a C++ project", safe.getMin() + haylen::math::Vec2{48.0F, 48.0F}, {.size = 48.0F});
+        }
+
+      private:
+        float angle = 0.0F;
+    };
+};
+
+} // namespace embedding
+
+std::unique_ptr<haylen::core::Application> haylen::core::Application::create() {
+    return std::make_unique<embedding::EmbeddingApp>();
+}
+```
+
+The class `core::Application` has three hooks. The hook `configure(AppConfig&)` runs before the window exists and may change the configuration read from `app.json`, `start(Engine&)` runs once the engine is ready, and `stop(Engine&)` runs when the app ends. The class `core::Engine` gives access to every service, such as `getRenderer2D()`, `getScenes()`, `getAssets()`, `getAudio()`, `getInput()`, `getActions()`, `getTimers()`, `getTweens()`, `getJobs()` and `getPlatform()`, and `core::Scene` has the same callbacks as a Lua scene. A C++ app can still run Lua by delegating to a `lua::Application`, as the [Lua guide](../core/lua.md#extending-the-engine-from-c) shows.
+
+## Plugins of an app
+
+An app that compiles the engine extends it with plugins of its own, which use the same `haylen::plugins::Plugin` interface as the built-in ones: `getName`, `start`, `stop`, `installLua`, `event`, `beginFrame`, `fixedUpdate`, `update`, `render`, `renderUi`, `renderOverlay` and `endFrame`, all on the frame thread, and `packageChanged`, which hears the package paths that changed while the app runs in development, so a plugin rebuilds what it built from files outside the asset cache. The call `engine.addPlugin(std::make_unique<MyPlugin>())` adds one, and a plugin added while the engine runs, such as from `Application::start`, gets `start` and `installLua` at once and the `pluginStarted` event, so its Lua module exists before `source/main.lua` runs when the application adds it first and then delegates to a `lua::Application`. The call `engine.getPlugin<MyPlugin>()` finds it again, for example from a Lua binding through `lua::Runtime::getEngine(L)`.
+
+A plugin is the place for native code that the app compiles itself: a C++ SDK pumped from `update`, bridge handlers registered in `start` with `engine.getPlatform().registerHandler`, and a Lua module installed in `installLua` with the binding toolkit, whose `Binding::preload` adds the module to the Varn runtime of the engine and refuses a name that a module of Varn or of another plugin already has. The [Lua guide](../core/lua.md#extending-the-engine-from-c) has a complete plugin with a Lua module and the application that adds it, and the [native code guide](../platform/native.md) compares plugins with the bridge and with native libraries called through FFI, which need no compiled engine.
+
+## Checking the three modes
+
+The option `--check-consumers` of `haylen.py sdk` builds `engine/tests/consumer`, a CMake project of its own with a small C++ app, the way another repository consumes the engine, after it builds and installs the SDK of the host.
+
+```sh
+haylen sdk --check-consumers
+haylen sdk --check-consumers subdirectory cpm
+haylen sdk --check-consumers package
+```
+
+The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`, and each way builds in `build/consumers/<mode>-<config>`, with `--config` defaulting to `Release`. The `package` way points `CMAKE_PREFIX_PATH` at the SDK that the command installed. The CI workflow runs `python haylen.py sdk --config Release --check-consumers package` on macOS, Linux and Windows, as the [testing guide](testing.md#continuous-integration) describes.

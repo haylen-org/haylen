@@ -18,7 +18,7 @@ Starts `fn` as a job and returns a Varn promise. The job begins on the next engi
 | --- | --- | --- | --- |
 | `owner` | table or userdata | the [default owner](events.md#owners) | Ends the job when the owner ends, before its next turn, so its code never runs again for an owner that is gone, and its promise rejects with `The job ended with its owner.` without stopping the app. |
 
-Wait for the result with `:await()` inside `async.spawn` from Varn's `async` module. It returns the value, or `nil` and the error message when the job failed. A job whose promise nothing awaits or catches stops the app with its error when it fails, as an [unobserved rejection](../lua.md#asynchronous-code) does, and a job whose failure does not matter catches it with `promise:catch(fn)`. The argument `fn` must be a function, otherwise the call raises `bad argument #1 to 'spawn' (function expected, got nil)` or the equivalent for the given type.
+Wait for the result with `:await()` inside `async.spawn` from Varn's `async` module. It returns the value, or `nil` and the error message when the job failed. A job whose promise nothing awaits or catches stops the app with its error when it fails, as an [unobserved rejection](../core/lua.md#asynchronous-code) does, and a job whose failure does not matter catches it with `promise:catch(fn)`. The argument `fn` must be a function, otherwise the call raises `bad argument #1 to 'spawn' (function expected, got nil)` or the equivalent for the given type.
 
 ```lua
 local jobs = require('haylen.jobs')

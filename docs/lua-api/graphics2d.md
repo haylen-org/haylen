@@ -16,7 +16,7 @@ World canvases look through a camera, into the camera viewport or across the who
 
 ### Captures
 
-The function `graphics2d.beginCapture(target)` sends the world and screen canvases that begin until `graphics2d.endCapture()` into a render target instead of the screen, lit and post-processed canvases included. The visible area covers the whole target, so a target with the pixel size of the viewport holds the frame exactly as the screen would show it, ready to be drawn as a texture, blended or kept. Scene transitions use captures to render the scenes before and after a change into their own images, as the [scene reference](scene.md#both-scenes-stay-alive) explains. A capture renders once the canvases before its end have their offscreen passes, and before any later canvas, so a canvas that draws the captured texture shows the frame it holds.
+The function `graphics2d.beginCapture(target)` sends the world and screen canvases that begin until `graphics2d.endCapture()` into a render target instead of the screen, lit and post-processed canvases included. The visible area covers the whole target, so a target with the pixel size of the viewport holds the frame exactly as the screen would show it, ready to be drawn as a texture, blended or kept. Scene transitions use captures to render the scenes before and after a change into their own images, as the [scene reference](scene.md#effects-that-show-both-scenes) explains. A capture renders once the canvases before its end have their offscreen passes, and before any later canvas, so a canvas that draws the captured texture shows the frame it holds.
 
 ### Coordinates and angles
 
@@ -224,7 +224,7 @@ scene.push({
 
 ### graphics2d.drawVector(image, x, y, options)
 
-Draws a [`VectorImage`](graphics.md#vectorimage) with its pivot at `x`, `y`, at its own size unless the options give one. The engine rasterizes the image at the scale it covers on the screen, in steps a quarter of an octave apart, so it stays sharp at any size and zoom, and keeps the rasters in a vector atlas, so many images at many sizes batch into few draw calls. The first raster of an image is made at once, and every other one on worker threads while the nearest raster draws in its place, as the [rendering guide](../rendering.md#vector-images) explains. The argument `options` takes the keys of `graphics2d.draw` but `source`, `partColors` and the dissolve, outline and glow keys, and a `partMask` raises `A vector image draws without a part mask.`
+Draws a [`VectorImage`](graphics.md#vectorimage) with its pivot at `x`, `y`, at its own size unless the options give one. The engine rasterizes the image at the scale it covers on the screen, in steps a quarter of an octave apart, so it stays sharp at any size and zoom, and keeps the rasters in a vector atlas, so many images at many sizes batch into few draw calls. The first raster of an image is made at once, and every other one on worker threads while the nearest raster draws in its place, as the [rendering guide](../graphics/rendering.md#vector-images) explains. The argument `options` takes the keys of `graphics2d.draw` but `source`, `partColors` and the dissolve, outline and glow keys, and a `partMask` raises `A vector image draws without a part mask.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -272,7 +272,7 @@ scene.push({
 
 ### graphics2d.drawBatch(texture, buffer, layout, order)
 
-Draws the sprites a float buffer of [`haylen.collections`](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. The argument `layout` is a sprite table, with the keys of [`SpriteBatch`](#spritebatch) but `partColors`, that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".`. The [performance section of the Lua guide](../lua.md#performance) compares it with sprite tables.
+Draws the sprites a float buffer of [`haylen.collections`](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. The argument `layout` is a sprite table, with the keys of [`SpriteBatch`](#spritebatch) but `partColors`, that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".`. The [performance section of the Lua guide](../core/lua.md#performance) compares it with sprite tables.
 
 ```lua
 local collections = require('haylen.collections')
@@ -351,7 +351,7 @@ scene.push({
 
 ### graphics2d.drawCircle(x, y, radius, color, order)
 
-Fills a circle centered on `x`, `y`. Circles, rings, arcs and [shapes](#graphics2ddrawshaperect-options) draw as one quad each, whose edge the shader covers exactly, so it fades over one pixel of the screen or of the render target at any radius, zoom and density, as the [rendering guide](../rendering.md#shapes-and-smooth-edges) explains. A radius of 0 or less draws nothing.
+Fills a circle centered on `x`, `y`. Circles, rings, arcs and [shapes](#graphics2ddrawshaperect-options) draw as one quad each, whose edge the shader covers exactly, so it fades over one pixel of the screen or of the render target at any radius, zoom and density, as the [rendering guide](../graphics/rendering.md#shapes-and-smooth-edges) explains. A radius of 0 or less draws nothing.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -495,7 +495,7 @@ scene.push({
 
 ### graphics2d.drawStroke(points, options)
 
-Draws a line through `points`, a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs, with joins, caps, widths and colors for each point, a texture along its length and dashes. Its edges fade over one pixel of the destination at any zoom, as [Shapes and smooth edges](../rendering.md#shapes-and-smooth-edges) explains. Points that repeat the point before them are dropped. The argument `options` is optional and also takes the keys of the [draw order](#draw-order):
+Draws a line through `points`, a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs, with joins, caps, widths and colors for each point, a texture along its length and dashes. Its edges fade over one pixel of the destination at any zoom, as [Shapes and smooth edges](../graphics/rendering.md#shapes-and-smooth-edges) explains. Points that repeat the point before them are dropped. The argument `options` is optional and also takes the keys of the [draw order](#draw-order):
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -535,7 +535,7 @@ scene.push({
 
 ### graphics2d.drawText(font, text, x, y, style)
 
-Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. The character `\n` starts a new line, and so do `\r`, `\r\n`, which counts as one, and the other paragraph separators of Unicode, such as U+2029. Tabs and other control characters draw nothing and take no room. Lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. The argument `style` is optional, and a `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`:
+Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. The character `\n` starts a new line, and so do `\r`, `\r\n`, which counts as one, and the other paragraph separators of Unicode, such as U+2029. Tabs and other control characters draw nothing and take no room. Lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../graphics/text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. The argument `style` is optional, and a `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -622,7 +622,7 @@ scene.push({
 
 ### graphics2d.newRichText(markup, options)
 
-Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn every frame with `text:draw(x, y, options)`. The [text guide](../text.md#markup) lists every tag. The argument `options` is optional:
+Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn every frame with `text:draw(x, y, options)`. The [text guide](../graphics/text.md#markup) lists every tag. The argument `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -732,7 +732,7 @@ print(table.concat(graphics2d.textEffectNames(), ', '))
 
 ### graphics2d.drawNineSlice(slice, rect, color, options)
 
-Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along their length and the center fills the rest, and every piece samples only its own texels, so linear filtering never bleeds the gaps of an atlas into a frame. The argument `color` defaults to white. The argument `options` is optional and takes the [draw order](#draw-order) keys and `borderScale`, which multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is narrower or shorter than the borders of an axis, they shrink in proportion until they meet, and a `rect` without a positive width and height draws nothing. The [rendering guide](../rendering.md#nine-slices) gives every rule, and [`slice:layout`](#slicelayoutrect-borderscale) returns the quads a draw makes.
+Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along their length and the center fills the rest, and every piece samples only its own texels, so linear filtering never bleeds the gaps of an atlas into a frame. The argument `color` defaults to white. The argument `options` is optional and takes the [draw order](#draw-order) keys and `borderScale`, which multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is narrower or shorter than the borders of an axis, they shrink in proportion until they meet, and a `rect` without a positive width and height draws nothing. The [rendering guide](../graphics/rendering.md#nine-slices) gives every rule, and [`slice:layout`](#slicelayoutrect-borderscale) returns the quads a draw makes.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1437,7 +1437,7 @@ print('the sun shines with intensity ' .. glare)
 
 ### graphics2d.newMaterial(shader, uniforms)
 
-Creates a [`Material`](#material) that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md) loads from a `.shader` file compiled by `haylen.py shaders`, as the [shader guide](../shaders.md) explains. The argument `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader "name" has no "sprite" program. Compile it with "haylen.py shaders" from a source that includes "haylen/material.glsl".`
+Creates a [`Material`](#material) that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md) loads from a `.shader` file compiled by `haylen.py shaders`, as the [shader guide](../graphics/shaders.md) explains. The argument `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader "name" has no "sprite" program. Compile it with "haylen.py shaders" from a source that includes "haylen/material.glsl".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -1932,7 +1932,7 @@ scene.push({
 
 ## CameraRig
 
-A `CameraRig` directs a camera through zones and along a rail, as the [rendering guide](../rendering.md#cameras-and-parallax) explains. A zone gives the camera its own limits, zoom and offset while the target is inside it, and the camera eases into a zone it enters. A rail is a line the camera follows the target along.
+A `CameraRig` directs a camera through zones and along a rail, as the [rendering guide](../graphics/rendering.md#cameras-and-parallax) explains. A zone gives the camera its own limits, zoom and offset while the target is inside it, and the camera eases into a zone it enters. A rail is a line the camera follows the target along.
 
 | Property | Type | Meaning |
 | --- | --- | --- |
@@ -1988,7 +1988,7 @@ scene.push({
 
 ## PixelCanvas
 
-A `PixelCanvas` renders pixel art at a low resolution and draws it scaled up, scrolling smoothly while every pixel stays whole, as the [rendering guide](../rendering.md#cameras-and-parallax) explains.
+A `PixelCanvas` renders pixel art at a low resolution and draws it scaled up, scrolling smoothly while every pixel stays whole, as the [rendering guide](../graphics/rendering.md#cameras-and-parallax) explains.
 
 | Property | Type | Meaning |
 | --- | --- | --- |
@@ -2593,7 +2593,7 @@ end
 
 ## Material
 
-A `Material` shades draws with a custom shader and holds values for the uniforms and textures of the shader, which it sets by the names the shader declares them with. The function `graphics2d.newMaterial` creates it, and the `material` key of a [draw order](#draw-order), of a sprite and of the `materials` of a post-process applies it. A draw copies the values when it is made. The [shader guide](../shaders.md) explains how to write and compile shaders.
+A `Material` shades draws with a custom shader and holds values for the uniforms and textures of the shader, which it sets by the names the shader declares them with. The function `graphics2d.newMaterial` creates it, and the `material` key of a [draw order](#draw-order), of a sprite and of the `materials` of a post-process applies it. A draw copies the values when it is made. The [shader guide](../graphics/shaders.md) explains how to write and compile shaders.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -2643,7 +2643,7 @@ print(shine:get('speed'), shine:get('glint'), shine.shader.name)
 
 ## RichText
 
-A `RichText` is BBCode markup laid out with a font family, created by `graphics2d.newRichText`. It caches its layout for its width and scale, runs its effects and its typewriter reveal as `text:update(dt)` advances, and draws the moment it has reached. The [text guide](../text.md) explains the markup, the effects and the reveal.
+A `RichText` is BBCode markup laid out with a font family, created by `graphics2d.newRichText`. It caches its layout for its width and scale, runs its effects and its typewriter reveal as `text:update(dt)` advances, and draws the moment it has reached. The [text guide](../graphics/text.md) explains the markup, the effects and the reveal.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |

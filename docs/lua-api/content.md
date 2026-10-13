@@ -6,7 +6,7 @@ The module `haylen.content` tells which content the app plays and which of its a
 local content = require('haylen.content')
 ```
 
-The [content guide](../content.md) describes how content reaches the device: `required` assets are on the device before the app starts, `prefetch` assets download in the background once it runs, and `onDemand` assets download only when the app asks for them, as the `content` section of `app.json` decides. The [loading guide](../loading.md) shows with complete examples how deliveries, preload groups, scene loads and the packages of each store work together.
+The [content guide](../content/content.md) describes how content reaches the device: `required` assets are on the device before the app starts, `prefetch` assets download in the background once it runs, and `onDemand` assets download only when the app asks for them, as the `content` section of `app.json` decides. The [loading guide](../content/loading.md) shows with complete examples how deliveries, preload groups, scene loads and the packages of each store work together.
 
 ## Development and releases
 
@@ -40,7 +40,7 @@ Returns the last failure as a table, or `nil`:
 
 | Field | Meaning |
 | --- | --- |
-| `code` | The kind of failure, such as `'networkOffline'`, `'networkTimeout'`, `'insufficientStorage'`, `'rangeUnsupported'`, `'manifestIncompatible'` or `'manifestRollbackRejected'`, as the [content guide](../content.md#errors) lists them. |
+| `code` | The kind of failure, such as `'networkOffline'`, `'networkTimeout'`, `'insufficientStorage'`, `'rangeUnsupported'`, `'manifestIncompatible'` or `'manifestRollbackRejected'`, as the [content guide](../content/content.md#errors) lists them. |
 | `message` | The sentence that explains it. |
 | `retryable` | Whether trying again may succeed without a new build of the app, such as once the network comes back or room is freed. |
 | `httpStatus` | The status the server answered, when the failure was one. |

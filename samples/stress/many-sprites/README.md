@@ -42,7 +42,7 @@ The simulation modes decide how many fish move each frame:
 | Staggered | The odd fish move in one frame and the even fish in the next, each by the time of two frames, which halves the Lua work and still looks smooth. |
 | Frozen | Nothing moves and nothing is handed over, so the frame holds only what drawing costs. |
 
-The hand-over modes decide how the sprites reach the renderer, the fast paths of the [performance section of the Lua guide](../../../docs/lua.md#performance):
+The hand-over modes decide how the sprites reach the renderer, the fast paths of the [performance section of the Lua guide](../../../docs/core/lua.md#performance):
 
 | Mode | What runs |
 | --- | --- |

@@ -49,7 +49,7 @@ An app is a package: a folder or a zip file with `app.json`, its Lua modules und
 
 ## Platforms
 
-macOS, Windows, Linux, iOS and iPadOS, Mac Catalyst, tvOS, Android phones, tablets and TVs from one APK, and the web with WebGPU or WebGL2. visionOS runs the iPad app. The [distribution guide](docs/distribution.md#platform-support) lists the minimum versions and how each platform runs.
+macOS, Windows, Linux, iOS and iPadOS, Mac Catalyst, tvOS, Android phones, tablets and TVs from one APK, and the web with WebGPU or WebGL2. visionOS runs the iPad app. The [distribution guide](docs/tools/distribution.md#platform-support) lists the minimum versions and how each platform runs.
 
 ## Quick start
 
@@ -88,10 +88,12 @@ scene.push({
 
 ## Documentation
 
-- [Lua API reference](docs/lua-api.md), the [Lua guide](docs/lua.md) and the [lifecycle](docs/lifecycle.md)
-- [Architecture](docs/architecture.md), [building the engine](docs/build.md), [distributing apps](docs/distribution.md), [loading and delivering content](docs/loading.md), [protected content](docs/content.md) and [using the engine from C++](docs/embedding.md)
-- [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [physics](docs/physics.md), [particles](docs/particles.md), [Tiled maps](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop windows](docs/desktop.md)
-- [Networking](docs/networking.md), [plugins](docs/plugins.md), [native code](docs/native.md), the [platform bridge](docs/platform-bridge.md) and [testing](docs/testing.md)
+The [documentation index](docs/README.md) follows the modules of the engine, with the guides and the Lua reference of each one:
+
+- [Core](docs/README.md#core): the [architecture](docs/core/architecture.md), the [lifecycle](docs/core/lifecycle.md) and the [Lua guide](docs/core/lua.md)
+- [Graphics](docs/README.md#graphics) and the [2D modules](docs/README.md#2d): rendering, shaders, text, nodes, animation, particles, lighting, physics, Tiled maps, navigation, spatial queries and procedural generation
+- [UI](docs/README.md#ui), [audio](docs/README.md#audio), [input](docs/README.md#input), [platform](docs/README.md#platform), [network](docs/README.md#network) and [content](docs/README.md#content)
+- [Tools](docs/README.md#tools): building the engine, distributing apps, embedding the engine in C++ projects, testing and the [API policy](docs/api-policy.md)
 
 ## License
 

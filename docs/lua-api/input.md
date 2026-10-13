@@ -122,7 +122,7 @@ scene.push({
 
 ### input.keyCaptured(key)
 
-Returns `true` while the current press of a key belongs to the interface of [`haylen.ui`](ui.md), such as the Escape that closes a combo list or a key typed into a text field, as the [input guide](../input.md#ui-and-gameplay-input) lists. The press stays with the interface until the key is released, and meanwhile `key:` bindings of the [action map](#action-map) read it as up. The raw keyboard functions keep reporting the key.
+Returns `true` while the current press of a key belongs to the interface of [`haylen.ui`](ui.md), such as the Escape that closes a combo list or a key typed into a text field, as the [input guide](../input/input.md#ui-and-gameplay-input) lists. The press stays with the interface until the key is released, and meanwhile `key:` bindings of the [action map](#action-map) read it as up. The raw keyboard functions keep reporting the key.
 
 ```lua
 local input = require('haylen.input')

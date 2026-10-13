@@ -2,7 +2,7 @@
 
 Taskbar Quest is a small game written in Lua on top of Haylen that lives on the desktop. A tiny hero walks along a transparent strip just above the taskbar, or the Dock on macOS, and fights the slimes and mushrooms that sprout ahead of it. Defeated enemies drop coins that fly to the gold counter, and the gold buys a sharper sword and healing potions. When the hero falls, it rests for a moment and gets up again.
 
-The game shows the desktop windows of the engine. The strip has no title bar, lets the desktop show through its transparent pixels, stays above the other windows, never takes the keyboard from the app you are typing in, and lets every click through except over the hero, the enemies, the coins, the ground, the grip and the buttons, whose regions it gives the window every frame. The [desktop guide](../../../docs/desktop.md) explains these windows, and the [window reference](../../../docs/lua-api/window.md#desktop-windows) lists every function.
+The game shows the desktop windows of the engine. The strip has no title bar, lets the desktop show through its transparent pixels, stays above the other windows, never takes the keyboard from the app you are typing in, and lets every click through except over the hero, the enemies, the coins, the ground, the grip and the buttons, whose regions it gives the window every frame. The [desktop guide](../../../docs/platform/desktop.md) explains these windows, and the [window reference](../../../docs/lua-api/window.md#desktop-windows) lists every function.
 
 ## What to try
 

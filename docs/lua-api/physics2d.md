@@ -1,6 +1,6 @@
 # haylen.physics2d
 
-Rigid body physics built on Box2D. Use it for anything that must collide, bounce, stack, hang from joints or be found with ray casts, shape casts and area queries, from platformer characters to falling crates and trigger zones. On top of bodies and joints it builds ropes, bridges, ragdolls, vehicles seen from the side and from above, character movers that climb slopes and steps, grabbers that drag bodies with a mouse or a finger, force fields, one-way platforms and conveyors, explosions, destructible terrain, fractures and particle fluids. Worlds step on several threads of the job system, draw their bodies smoothly between fixed steps and predict the flight of thrown bodies. The [physics guide](../physics.md) explains units, stepping, threads, sleeping and tuning in depth, with the solutions to common problems.
+Rigid body physics built on Box2D. Use it for anything that must collide, bounce, stack, hang from joints or be found with ray casts, shape casts and area queries, from platformer characters to falling crates and trigger zones. On top of bodies and joints it builds ropes, bridges, ragdolls, vehicles seen from the side and from above, character movers that climb slopes and steps, grabbers that drag bodies with a mouse or a finger, force fields, one-way platforms and conveyors, explosions, destructible terrain, fractures and particle fluids. Worlds step on several threads of the job system, draw their bodies smoothly between fixed steps and predict the flight of thrown bodies. The [physics guide](../2d/physics.md) explains units, stepping, threads, sleeping and tuning in depth, with the solutions to common problems.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -23,7 +23,7 @@ Mass comes from the density of the shapes, in kilograms per square meter, and th
 | `maxMotorTorque`, `breakTorque`, `constraintTorque` | Same as a torque | Limits and reports of revolute, wheel and motor joints. |
 | `maxSpeed`, `contactPushSpeed`, `restitutionThreshold`, `hitThreshold`, `sleepThreshold` | Units per second | Speeds of the world and of its bodies. |
 
-So the same numbers give the same motion at every `pixelsPerMeter`, which only decides how large a meter is for the tuning of the solver, for the mass of a shape and for the default speeds and tolerances. The [physics guide](../physics.md#units-and-scale) explains how to choose it.
+So the same numbers give the same motion at every `pixelsPerMeter`, which only decides how large a meter is for the tuning of the solver, for the mass of a shape and for the default speeds and tolerances. The [physics guide](../2d/physics.md#units-and-scale) explains how to choose it.
 
 ## Stepping the world
 
@@ -2681,7 +2681,7 @@ Draws the particles as metaballs on the current canvas straight from the arrays 
 | --- | --- | --- | --- |
 | `size` | integer | read | Number of particles. |
 | `radius` | number | read | Radius of the particles. |
-| `stepMilliseconds` | number | read | Time the fluid took in the last step, in milliseconds. The [physics guide](../physics.md#performance) lists what fluids of several sizes cost. |
+| `stepMilliseconds` | number | read | Time the fluid took in the last step, in milliseconds. The [physics guide](../2d/physics.md#performance) lists what fluids of several sizes cost. |
 
 ## Tiled collision
 

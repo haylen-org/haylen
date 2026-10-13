@@ -1,6 +1,6 @@
 # haylen.scene
 
-The module `haylen.scene` manages the stack of scenes that make up the app, such as the title screen, a level, a pause menu or a dialog. A scene is a Lua table with optional hooks. Every scene loads before it enters, asynchronously when it needs to, and unloads after it exits, and every change of the stack runs through one pipeline: the transition covers the current scene, the next scene loads, optionally behind a loading view, enters, and the transition reveals it. Only the top scene receives input and updates, when its process mode lets it run, while scenes below a transparent scene keep rendering, which is how overlays such as pause menus work. The [lifecycle guide](../lifecycle.md) explains the whole pipeline with its order of hooks and events, the pause and the process modes.
+The module `haylen.scene` manages the stack of scenes that make up the app, such as the title screen, a level, a pause menu or a dialog. A scene is a Lua table with optional hooks. Every scene loads before it enters, asynchronously when it needs to, and unloads after it exits, and every change of the stack runs through one pipeline: the transition covers the current scene, the next scene loads, optionally behind a loading view, enters, and the transition reveals it. Only the top scene receives input and updates, when its process mode lets it run, while scenes below a transparent scene keep rendering, which is how overlays such as pause menus work. The [lifecycle guide](../core/lifecycle.md) explains the whole pipeline with its order of hooks and events, the pause and the process modes.
 
 ```lua
 local scene = require('haylen.scene')
@@ -8,7 +8,7 @@ local scene = require('haylen.scene')
 
 ## Scene tables
 
-A scene is any table. The engine looks up its hooks by name every time it calls them, so methods inherited through a metatable or [`haylen.class`](../lua.md#classes) work, and every hook receives the scene table as `self`. All hooks are optional.
+A scene is any table. The engine looks up its hooks by name every time it calls them, so methods inherited through a metatable or [`haylen.class`](../core/lua.md#classes) work, and every hook receives the scene table as `self`. All hooks are optional.
 
 | Field | Called | Arguments |
 | --- | --- | --- |
@@ -92,7 +92,7 @@ The hook `load` receives a context, a `haylen.SceneLoad` userdata, which lives u
 | `context:progress(value, message)` | Reports the progress of the work the scene does itself, from 0 to 1, with an optional message for the loading view. A value outside that range raises `A load progress runs from 0 to 1.` |
 | `context:preload(groups)` | Loads one [preload group of `haylen.assets`](assets.md#preload-groups), or a list of them, and holds the load until they loaded. It returns a promise that resolves with `true` once all of them loaded. An asset that fails fails the load, and the promise rejects with the error. Calling it once the load is over raises `The scene load is over.` |
 
-The progress of the load, which loading views receive and `scene.loadProgress` returns, is the mean of the progress the scene reports and of the progress of each group it preloads. Heavy work stays in the background, since the asset manager decodes on the worker pools and creates the GPU resources of the decoded assets within the [upload budget](assets.md#assetssetuploadbudgetseconds) of each frame. A group whose assets are not on the device yet downloads them first, so a scene loads content that arrives later the same way, as the [loading guide](../loading.md#scenes) describes.
+The progress of the load, which loading views receive and `scene.loadProgress` returns, is the mean of the progress the scene reports and of the progress of each group it preloads. Heavy work stays in the background, since the asset manager decodes on the worker pools and creates the GPU resources of the decoded assets within the [upload budget](assets.md#assetssetuploadbudgetseconds) of each frame. A group whose assets are not on the device yet downloads them first, so a scene loads content that arrives later the same way, as the [loading guide](../content/loading.md#scenes) describes.
 
 ```lua
 local scene = require('haylen.scene')
@@ -709,7 +709,7 @@ scene.push(profile)
 
 ## Scene
 
-The table `scene.Scene` is a class of [`haylen.class`](../lua.md#classes) to build scenes on. Its instances have two methods: `self:listen(source, fn, options)`, which calls `scene.listen` with the scene as the owner, and `self:spawn(fn)`, which calls `scene.spawn` with the scene as the owner.
+The table `scene.Scene` is a class of [`haylen.class`](../core/lua.md#classes) to build scenes on. Its instances have two methods: `self:listen(source, fn, options)`, which calls `scene.listen` with the scene as the owner, and `self:spawn(fn)`, which calls `scene.spawn` with the scene as the owner.
 
 ```lua
 local haylen = require('haylen')
