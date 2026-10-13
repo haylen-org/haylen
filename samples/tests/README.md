@@ -612,6 +612,7 @@ HTTP requests with Varn "http" and WebSockets with "haylen.net" against public e
 | `NET-008` | Local WebSocket | A large message, bytes that wait to be sent, a dropped connection that comes back, a connect timeout, a refused port and a socket that closes with its owner, against a server inside the app. | web |
 | `NET-009` | Local HTTP | A large upload, a response over its limit, many requests at once, a deadline of the app and a request that ends with its owner, against a server inside the app. | web, android |
 | `NET-010` | Local sockets | A large TCP stream with sends that wait for the peer, a silent peer, a refused port and a burst of UDP datagrams, on 127.0.0.1. | web |
+| `NET-011` | MessagePack | A match state encoded and decoded on the frame thread, a large message decoded off the frame thread and broken messages that are refused. |  |
 
 #### Platform (PLT)
 

@@ -312,6 +312,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/core/JsonValidator.cpp
   src/core/LoadingView.cpp
   src/core/Log.cpp
+  src/core/MessagePack.cpp
   src/core/PropertyTrack.cpp
   src/core/PropertyTween.cpp
   src/core/Scene.cpp
@@ -439,6 +440,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/SpringLua.cpp
   src/math/Transform2D.cpp
   src/math/WeightedChoice.cpp
+  src/net/MessagePackLua.cpp
   src/net/NetLua.cpp
   src/net/SocketLink.cpp
   src/net/WebSocket.cpp

@@ -141,8 +141,11 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
         lua_pushlstring(L, text.data(), text.size());
         return;
     }
-    case core::Json::value_t::binary:
-        throw std::invalid_argument(kBinary);
+    case core::Json::value_t::binary: {
+        const core::Json::binary_t& bytes = value.get_binary();
+        lua_pushlstring(L, reinterpret_cast<const char*>(bytes.data()), bytes.size());
+        return;
+    }
     case core::Json::value_t::array:
         lua_createtable(L, static_cast<int>(value.size()), 0);
         for (std::size_t element = 0; element < value.size(); ++element) {
@@ -170,9 +173,6 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
 void JsonConverter::validateNested(const core::Json& value, int depth) {
     if (depth > kMaxDepth) {
         throw std::invalid_argument(kTooDeep);
-    }
-    if (value.is_binary()) {
-        throw std::invalid_argument(kBinary);
     }
     if (value.is_structured()) {
         for (const core::Json& element : value) {

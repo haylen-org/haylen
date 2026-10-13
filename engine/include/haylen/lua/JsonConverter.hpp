@@ -14,7 +14,7 @@ namespace haylen::lua {
 // Converts between JSON and plain Lua values.
 class JsonConverter final {
   public:
-    // Pushes JSON as plain Lua values: objects become tables with string keys and arrays become sequences. Throws when the value cannot be represented or, like `read`, when it is nested more than 128 levels deep, which files such as saves could otherwise use to exhaust the native stack.
+    // Pushes JSON as plain Lua values: objects become tables with string keys, arrays become sequences and binary values become strings of their bytes. Throws when the value cannot be represented or, like `read`, when it is nested more than 128 levels deep, which files such as saves could otherwise use to exhaust the native stack.
     static void push(lua_State* L, const core::Json& value);
 
     // Throws `std::invalid_argument` when `push` would refuse the value, without a Lua state, so native code can check a value on any thread before it reaches Lua.
@@ -32,7 +32,6 @@ class JsonConverter final {
   private:
     static constexpr int kMaxDepth = 128;
     static constexpr const char* kTooDeep = "JSON value is nested too deeply to push to Lua.";
-    static constexpr const char* kBinary = "Binary JSON values cannot be converted to Lua.";
 
     [[nodiscard]] static bool isSequence(lua_State* L, int table);
     [[nodiscard]] static std::string objectKey(lua_State* L, int index);

@@ -90,6 +90,7 @@ set(HAYLEN_TEST_SOURCES
   content/UpdaterTests.cpp
   core/ContainerTests.cpp
   core/CoreTests.cpp
+  core/MessagePackTests.cpp
   core/EngineTests.cpp
   core/ErrorReportTests.cpp
   core/ErrorScreenTests.cpp
@@ -238,7 +239,7 @@ gtest_discover_tests(haylen_tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats and of input recordings run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings and of MessagePack run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen_content_fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen_content_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -252,4 +253,10 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen_input_fuzzer PRIVATE haylen::engine)
   target_link_options(haylen_input_fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen_input_fuzzer)
+
+  add_executable(haylen_messagepack_fuzzer fuzz/MessagePackFuzzer.cpp)
+  set_target_properties(haylen_messagepack_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen_messagepack_fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen_messagepack_fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen_messagepack_fuzzer)
 endif()

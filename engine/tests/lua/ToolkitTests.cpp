@@ -396,7 +396,7 @@ TEST(PromiseTest, RejectsValuesThatLuaCannotHold) {
     binary.resolve(core::Json{{"payload", core::Json::binary({1, 2})}});
     shallow.resolve(core::Json::parse(std::string(100, '[') + std::string(100, ']')));
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #results") == "3"; }));
-    EXPECT_EQ(fixture.lua("return table.concat(results, ' | ')"), "JSON value is nested too deeply to push to Lua. | Binary JSON values cannot be converted to Lua. | table");
+    EXPECT_EQ(fixture.lua("return table.concat(results, ' | ')"), "JSON value is nested too deeply to push to Lua. | table | table");
 }
 
 TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {
@@ -636,7 +636,11 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
         EXPECT_THROW((void)JsonConverter::read(L, -1), std::invalid_argument) << invalid;
         lua_settop(L, 0);
     }
-    EXPECT_THROW(JsonConverter::push(L, core::Json::binary({1, 2})), std::invalid_argument);
+    JsonConverter::push(L, core::Json::binary({1, 2}));
+    std::size_t length = 0;
+    const char* text = lua_tolstring(L, -1, &length);
+    EXPECT_EQ(std::string_view(text, length), std::string_view("\x01\x02", 2));
+    lua_settop(L, 0);
 
     const auto nested = [](int levels) { return core::Json::parse(std::string(static_cast<std::size_t>(levels), '[') + std::string(static_cast<std::size_t>(levels), ']')); };
     JsonConverter::push(L, nested(100));

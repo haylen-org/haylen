@@ -17,6 +17,7 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
 #include "lua/Owners.hpp"
+#include "net/MessagePackLua.hpp"
 #include "net/SocketLink.hpp"
 
 namespace haylen::net {
@@ -233,6 +234,7 @@ int NetLua::open(lua_State* L) {
         {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
+    MessagePackLua::addFunctions(L);
     return 1;
 }
 

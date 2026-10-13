@@ -23,5 +23,6 @@ return {
         {code = 'NET-010', title = 'Local sockets', description = 'A large TCP stream with sends that wait for the peer, a silent peer, a refused port and a burst of UDP datagrams, on 127.0.0.1.', module = 'local-sockets',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'headless'},
             unsupported = {web = 'Browsers open no raw TCP or UDP sockets, so the browser build of Varn has no "socket" module.'}},
+        {code = 'NET-011', title = 'MessagePack', description = 'A match state encoded and decoded on the frame thread, a large message decoded off the frame thread and broken messages that are refused.', module = 'message-pack'},
     },
 }

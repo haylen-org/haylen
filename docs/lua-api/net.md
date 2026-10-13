@@ -1,6 +1,6 @@
 # haylen.net
 
-The module `haylen.net` opens WebSocket connections to `ws://` and `wss://` servers. Use it for real-time multiplayer, chat, live events and any server that pushes messages to the app. For plain HTTP requests use Varn's `http` module, whose timeouts the [Lua guide](../lua.md#asynchronous-code) explains, and for raw TCP use Varn's `socket` module. The [networking guide](../networking.md) tells what each platform offers and what the browser refuses.
+The module `haylen.net` opens WebSocket connections to `ws://` and `wss://` servers and encodes and decodes MessagePack. Use it for real-time multiplayer, chat, live events and any server that pushes messages to the app. For plain HTTP requests use Varn's `http` module, whose timeouts the [Lua guide](../lua.md#asynchronous-code) explains, and for raw TCP use Varn's `socket` module. The [networking guide](../networking.md) tells what each platform offers and what the browser refuses.
 
 ```lua
 local net = require('haylen.net')
@@ -140,6 +140,45 @@ local net = require('haylen.net')
 
 net.connectWebSocket('ws://127.0.0.1:8080/chat')
 print(net.openSocketCount())
+```
+
+### net.encodeMessagePack(value)
+
+Encodes a Lua value as MessagePack and returns its bytes as a string. The value follows the rules of JSON values in Lua: tables with consecutive integer keys from 1 become arrays, other tables become maps with string keys, and a `haylen.Bytes` value becomes a MessagePack binary value. Functions, userdata other than bytes, cyclic tables and tables nested deeper than 128 levels raise an error.
+
+```lua
+local net = require('haylen.net')
+
+local bytes = net.encodeMessagePack({tick = 812, players = {{id = 1, x = 40.5}}})
+socket:sendBinary(bytes)
+```
+
+### net.decodeMessagePack(bytes)
+
+Decodes one MessagePack value from a string of bytes on the frame thread and returns it as a Lua value. Maps become tables, arrays become sequences, `nil` becomes a missing value as with JSON, and binary values become strings. The bytes must hold exactly one value. A message that ends early, holds bytes after its value, uses extension types, claims more items than its bytes hold or nests deeper than 128 levels raises an error that starts with `The bytes are not valid MessagePack:` and says what is wrong, such as `The bytes are not valid MessagePack: bytes follow its value.`. The decoder checks every size and count before it allocates, so hostile bytes never make it reserve more memory than the message holds.
+
+```lua
+local net = require('haylen.net')
+
+socket:on('message', function(data, binary)
+    if binary then
+        print(net.decodeMessagePack(data).tick)
+    end
+end)
+```
+
+### net.decodeMessagePackAsync(bytes)
+
+Decodes like `net.decodeMessagePack` on the task pool, so a large message never holds up a frame, and returns a promise that resolves with the value on the frame thread or rejects with the same message. The engine copies the bytes before the call returns, so the app may change or drop them at once. The web build runs the task when the frame polls its event loop, since the browser build is single-threaded.
+
+```lua
+local async = require('async')
+local net = require('haylen.net')
+
+async.spawn(function()
+    local replay = net.decodeMessagePackAsync(bytes):await()
+    print(#replay.frames)
+end)
 ```
 
 ## WebSocket
