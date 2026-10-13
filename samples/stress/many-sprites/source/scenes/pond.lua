@@ -61,10 +61,10 @@ function Pond:load(context)
     context:progress(0, 'Drawing the fish')
     self.fishTexture = raster('sprites/fish.svg')
     context:progress(0.5, 'Drawing the pond')
-    self.floorTexture = raster('pond/pond_floor.svg')
+    self.floorTexture = raster('pond/pond-floor.svg')
     self.lightTexture = raster('pond/caustics.svg')
-    self.pad = assets.vectorImage('pond/lily_pad.svg')
-    self.blossom = assets.vectorImage('pond/lily_blossom.svg')
+    self.pad = assets.vectorImage('pond/lily-pad.svg')
+    self.blossom = assets.vectorImage('pond/lily-blossom.svg')
 end
 
 function Pond:enter()

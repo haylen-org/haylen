@@ -92,8 +92,8 @@ Every image of the sample is vector art made for it with scripts as SVG, rasteri
 | Light | From the top left: a lighter band along the upper side of every fish and a darker one below it, highlights on the top left of the pebbles and the pads, and a soft shadow of `#06222B` at about 30 percent toward the bottom right under every fish, pad and blossom. |
 | Palette | Water `#1A5961` with sand patches `#20666C` and hollows `#155058`, pebbles from `#245E63` to `#4D8C83` with highlights `#8CC3B5`, weeds `#2F8A63`. Ember fish `#F26B3A` with cream spots `#FFF1D6` and peach fins `#FFB38A`, silver fish `#8FA6BC` with a slate stripe `#4F6A85`, jade fish `#26B39A` with gold fins and stripe `#F2C14E`. Pads `#4FA34A` with veins `#3B8337` and gloss `#9AD982`, blossoms `#F7B8CF` and `#FFE3EE` around a gold heart `#F2C14E`. The light is white. |
 | Fish | `content/sprites/fish.svg`: one strip of 24 cells of 64 by 40 units, three species of eight frames each, facing right, whose rear body and tail swing through a sine of 22 degrees. It rasterizes into a texture of 3072 by 80 pixels, and every fish draws at 26 by 16 design units. |
-| Pond | `content/pond/pond_floor.svg` and `content/pond/caustics.svg`: seamless tiles of 256 units, rasterized at twice their size. Parallax layers repeat the floor at 256 units and the light at 320 and 460 units, drifting and drawn additive at about 10 and 14 percent. |
-| Lily pads | `content/pond/lily_pad.svg` of 128 units and `content/pond/lily_blossom.svg` of 64 units, drawn as vector images at 130 to 240 design units, a blossom at 45 percent of its pad. |
+| Pond | `content/pond/pond-floor.svg` and `content/pond/caustics.svg`: seamless tiles of 256 units, rasterized at twice their size. Parallax layers repeat the floor at 256 units and the light at 320 and 460 units, drifting and drawn additive at about 10 and 14 percent. |
+| Lily pads | `content/pond/lily-pad.svg` of 128 units and `content/pond/lily-blossom.svg` of 64 units, drawn as vector images at 130 to 240 design units, a blossom at 45 percent of its pad. |
 
 ## Package layout
 

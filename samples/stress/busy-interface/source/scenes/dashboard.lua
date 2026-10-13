@@ -47,9 +47,9 @@ function Dashboard:load(context)
     end
     self.panelTexture = texture
     self.icons = {
-        throughput = assets.vectorImage('dashboard/icon_moves.svg'),
-        berthChart = assets.vectorImage('dashboard/icon_berths.svg'),
-        cranes = assets.vectorImage('dashboard/icon_share.svg'),
+        throughput = assets.vectorImage('dashboard/icon-moves.svg'),
+        berthChart = assets.vectorImage('dashboard/icon-berths.svg'),
+        cranes = assets.vectorImage('dashboard/icon-share.svg'),
     }
 end
 

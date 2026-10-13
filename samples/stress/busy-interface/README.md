@@ -73,7 +73,7 @@ The art of the sample is vector art made for it as SVG. The logo is an SVG pictu
 | Light | Flat, without shadows inside the screen. A brighter accent marks the live parts: the line, the latest point and the icons. |
 | Palette | Window `#0F141C`, panels `#141B25`, cards `#1B2430`, text `#E6ECF2` and `#8A9AAD`, accent blue `#3C9BE0`, success green `#35B37E`, warning amber `#E8A93A`, danger red `#E5534B`, and a chart palette of blue, green, amber, red, lilac `#A87FE0`, teal `#4FC9C4`, orange `#F07E4C` and steel `#9BB4CC`. |
 | Logo | `content/dashboard/logo.svg`: a crane over a container on a blue tile of 64 units with corners of 14, drawn at 52 design units. |
-| Icons | `content/dashboard/icon_moves.svg`, `icon_berths.svg` and `icon_share.svg`: line icons of 24 units in `currentColor`, tinted with the accent at 24 design units. |
+| Icons | `content/dashboard/icon-moves.svg`, `icon-berths.svg` and `icon-share.svg`: line icons of 24 units in `currentColor`, tinted with the accent at 24 design units. |
 | Panel | `content/dashboard/panel.svg`: a card of 64 units with corners of 12, rasterized into 128 pixels and drawn as a nine-slice with borders of 28 pixels at half scale. |
 
 ## Package layout
