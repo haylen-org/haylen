@@ -1782,6 +1782,50 @@ local height = noise:fractal(wx / 200, wy / 200)
 print(height)
 ```
 
+### noise:sampleGrid(options)
+
+Samples a whole grid of noise in one call and returns the values in a [`haylen.FloatBuffer`](collections.md#collectionsnewfloatbuffersize-value), row after row, so the value of the column `column` and the row `row`, both from 0, sits at index `row * columns + column + 1`. The workers of the task pool sample bands of rows at once, and no Lua runs per sample, so a map of a quarter million tiles costs one call instead of a quarter million.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `columns`, `rows` | integer from 1 to 16384 | required | The size of the grid, at most 16777216 samples. |
+| `kind` | string | `'fractal'` | One of `'perlin'`, `'simplex'`, `'fractal'` or `'worley'`, which samples the nearest distance of `worley`. |
+| `x`, `y` | number | `0` | Where the first sample lies. |
+| `step` | number or vector | `1` | How far apart the samples lie, the same on both axes or `{x, y}`. |
+| `octaves` | integer from 1 to 16 | `4` | Layers of a fractal grid. |
+| `lacunarity`, `gain` | number | `2`, `0.5` | The frequency and strength factors of each layer of a fractal grid. |
+| `into` | `FloatBuffer` | new | A buffer of at least `columns * rows` floats to write into, so a grid sampled every frame allocates nothing. |
+
+It raises `The option "columns" is required.`, `The option "columns" must be a whole number from 1 to 16384.`, the same for `rows`, `The grid holds <count> samples, more than the limit of 16777216.`, `The option "kind" must be "perlin", "simplex", "fractal" or "worley".`, `The option "octaves" must be a whole number from 1 to 16.`, `The buffer of "into" holds <size> floats, fewer than the <count> samples of the grid.` and `Unknown option "<key>".`.
+
+```lua
+local m = require('haylen.math')
+
+local noise = m.noise(42)
+local heights = noise:sampleGrid({columns = 256, rows = 256, step = 1 / 32, octaves = 5})
+local water = 0
+for index = 1, #heights do
+    if heights[index] < 0 then
+        water = water + 1
+    end
+end
+print(water)
+```
+
+### noise:sampleGridAsync(options)
+
+Samples a grid like `sampleGrid` on the task pool while the frames go on, and returns a promise of a new `FloatBuffer`. It takes the options of `sampleGrid` except `into` and raises the same errors.
+
+```lua
+local async = require('async')
+local m = require('haylen.math')
+
+async.spawn(function()
+    local moisture = m.noise(7):sampleGridAsync({columns = 1024, rows = 1024, kind = 'simplex', step = 0.01}):await()
+    print(#moisture)
+end)
+```
+
 ## Polygon operations
 
 The table `m.polygon` combines, grows, simplifies and splits shapes with Clipper2. A shape is a list of outlines, each a list of points, and any single outline is also accepted as a shape. One outline alone is filled in either winding, and an outline wound opposite to the outline around it is a hole. Results always wind outer outlines so that `m.polygonSignedArea` is positive and holes so that it is negative, and they keep three decimal places.

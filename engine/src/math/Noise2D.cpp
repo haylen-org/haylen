@@ -132,6 +132,35 @@ Noise2D::Cellular Noise2D::worley(float x, float y) const noexcept {
     return result;
 }
 
+std::optional<Noise2D::Kind> Noise2D::kindFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kKinds, name, &std::pair<std::string_view, Kind>::first);
+    return found != kKinds.end() ? std::optional<Kind>(found->second) : std::nullopt;
+}
+
+float Noise2D::sample(Kind kind, float x, float y, int octaves, float lacunarity, float gain) const noexcept {
+    switch (kind) {
+    case Kind::Perlin:
+        return perlin(x, y);
+    case Kind::Simplex:
+        return simplex(x, y);
+    case Kind::Worley:
+        return worley(x, y).nearest;
+    case Kind::Fractal:
+        break;
+    }
+    return fractal(x, y, octaves, lacunarity, gain);
+}
+
+void Noise2D::sampleRows(const Grid& grid, std::size_t firstRow, std::size_t lastRow, std::span<float> values) const noexcept {
+    for (std::size_t row = firstRow; row < lastRow; ++row) {
+        const float y = grid.origin.y + grid.step.y * static_cast<float>(row);
+        float* line = values.data() + row * grid.columns;
+        for (std::size_t column = 0; column < grid.columns; ++column) {
+            line[column] = sample(grid.kind, grid.origin.x + grid.step.x * static_cast<float>(column), y, grid.octaves, grid.lacunarity, grid.gain);
+        }
+    }
+}
+
 Vec2 Noise2D::warp(float x, float y, float amplitude, float frequency, int octaves) const noexcept {
     const float sampleX = x * frequency;
     const float sampleY = y * frequency;

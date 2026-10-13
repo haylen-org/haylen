@@ -2,8 +2,12 @@
 
 #include <algorithm>
 
+#include "core/FloatBufferLua.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -355,6 +359,102 @@ int MathLua::noiseWarp(lua_State* L) {
     return 2;
 }
 
+// A grid needs its columns and rows, and its other options take the defaults of `Noise2D::Grid`.
+Noise2D::Grid MathLua::readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<core::FloatBuffer>& into) {
+    luaL_checktype(L, 2, LUA_TTABLE);
+    if (intoAllowed) {
+        lua::Table::checkFields(L, 2, {kGridFields});
+    } else {
+        lua::Table::checkFields(L, 2, {std::span<const std::string_view>(kGridFields).first(kGridFields.size() - 1)});
+    }
+    Noise2D::Grid grid;
+    std::string kind = "fractal";
+    lua::Table::readField(L, 2, "kind", kind);
+    const std::optional<Noise2D::Kind> named = Noise2D::kindFromName(kind);
+    if (!named) {
+        luaL_error(L, "The option \"kind\" must be \"perlin\", \"simplex\", \"fractal\" or \"worley\".");
+    }
+    grid.kind = *named;
+    for (const char* side : {"columns", "rows"}) {
+        lua_getfield(L, 2, side);
+        if (lua_isnil(L, -1)) {
+            luaL_error(L, "The option \"%s\" is required.", side);
+        }
+        if (!lua_isinteger(L, -1) || lua_tointeger(L, -1) < 1 || lua_tointeger(L, -1) > static_cast<lua_Integer>(kMaxGridSide)) {
+            luaL_error(L, "The option \"%s\" must be a whole number from 1 to %d.", side, static_cast<int>(kMaxGridSide));
+        }
+        (side[0] == 'c' ? grid.columns : grid.rows) = static_cast<std::size_t>(lua_tointeger(L, -1));
+        lua_pop(L, 1);
+    }
+    if (grid.columns * grid.rows > kMaxGridSamples) {
+        luaL_error(L, "The grid holds %d samples, more than the limit of %d.", static_cast<int>(grid.columns * grid.rows), static_cast<int>(kMaxGridSamples));
+    }
+    lua::Table::readField(L, 2, "x", grid.origin.x);
+    lua::Table::readField(L, 2, "y", grid.origin.y);
+    lua_getfield(L, 2, "step");
+    if (lua_type(L, -1) == LUA_TNUMBER) {
+        const auto step = static_cast<float>(lua_tonumber(L, -1));
+        grid.step = {step, step};
+    } else if (!lua_isnil(L, -1)) {
+        lua::Table::readValue(L, "step", grid.step);
+    }
+    lua_pop(L, 1);
+    lua::Table::readField(L, 2, "octaves", grid.octaves);
+    if (grid.octaves < 1 || grid.octaves > 16) {
+        luaL_error(L, "The option \"octaves\" must be a whole number from 1 to 16.");
+    }
+    lua::Table::readField(L, 2, "lacunarity", grid.lacunarity);
+    lua::Table::readField(L, 2, "gain", grid.gain);
+    if (intoAllowed) {
+        lua_getfield(L, 2, "into");
+        if (!lua_isnil(L, -1)) {
+            into = lua::Userdata::checkShared<core::FloatBuffer>(L, -1);
+            if (into->size() < grid.columns * grid.rows) {
+                luaL_error(L, "The buffer of \"into\" holds %d floats, fewer than the %d samples of the grid.", static_cast<int>(into->size()), static_cast<int>(grid.columns * grid.rows));
+            }
+        }
+        lua_pop(L, 1);
+    }
+    return grid;
+}
+
+// Samples a grid on the workers of the task pool, a band of rows each, and returns the buffer of `into` or a new one.
+int MathLua::noiseSampleGrid(lua_State* L) {
+    const Noise2D& noise = lua::Userdata::check<Noise2D>(L, 1);
+    std::shared_ptr<core::FloatBuffer> into;
+    const Noise2D::Grid grid = readGrid(L, true, into);
+    if (!into) {
+        into = std::make_shared<core::FloatBuffer>(grid.columns * grid.rows);
+    }
+    const std::span<float> values = into->getValues();
+    const std::size_t grain = std::max<std::size_t>(1, kGridGrain / grid.columns);
+    // clang-format off
+    lua::Runtime::getEngine(L).getJobs().parallelFor(0, grid.rows, grain, [&noise, &grid, values](std::size_t first, std::size_t last) {
+        noise.sampleRows(grid, first, last, values);
+    });
+    // clang-format on
+    lua::Userdata::emplace<core::FloatBuffer>(L, std::move(into));
+    return 1;
+}
+
+// Samples a grid on the task pool with a copy of the noise, so the promise resolves with a new buffer while the frame goes on.
+int MathLua::noiseSampleGridAsync(lua_State* L) {
+    const Noise2D noise = lua::Userdata::check<Noise2D>(L, 1);
+    std::shared_ptr<core::FloatBuffer> unused;
+    const Noise2D::Grid grid = readGrid(L, false, unused);
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const lua::Promise promise(engine);
+    // clang-format off
+    engine.getJobs().post([promise, noise, grid] {
+        auto buffer = std::make_shared<core::FloatBuffer>(grid.columns * grid.rows);
+        noise.sampleRows(grid, 0, grid.rows, buffer->getValues());
+        promise.resolveWith([buffer](lua_State* state) { lua::Userdata::emplace<core::FloatBuffer>(state, buffer); });
+    });
+    // clang-format on
+    promise.push(L);
+    return 1;
+}
+
 int MathLua::clampValue(lua_State* L) {
     const auto value = lua::Stack::read<float>(L, 1);
     const auto minimum = lua::Stack::read<float>(L, 2);
@@ -479,7 +579,7 @@ void MathLua::installClasses(lua_State* L) {
 
     lua::ClassBuilder<Random>(L).function("nextFloat", &lua::Binding::function<&randomNextFloat>).function("range", &lua::Binding::function<&randomRange>).function("integer", &lua::Binding::function<&randomInteger>).function("chance", &lua::Binding::function<&randomChance>).function("reseed", &lua::Binding::function<&randomReseed>).function("weightedIndex", &lua::Binding::native<&randomWeightedIndex>).function("shuffle", &randomShuffle).function("state", &randomState).function("setState", &lua::Binding::native<&randomSetState>).install();
 
-    lua::ClassBuilder<Noise2D>(L).function("perlin", &lua::Binding::function<&noisePerlin>).function("simplex", &lua::Binding::function<&noiseSimplex>).function("fractal", &lua::Binding::function<&noiseFractal>).function("worley", &lua::Binding::native<&noiseWorley>).function("warp", &lua::Binding::native<&noiseWarp>).install();
+    lua::ClassBuilder<Noise2D>(L).function("perlin", &lua::Binding::function<&noisePerlin>).function("simplex", &lua::Binding::function<&noiseSimplex>).function("fractal", &lua::Binding::function<&noiseFractal>).function("worley", &lua::Binding::native<&noiseWorley>).function("warp", &lua::Binding::native<&noiseWarp>).function("sampleGrid", &lua::Binding::native<&noiseSampleGrid>).function("sampleGridAsync", &lua::Binding::native<&noiseSampleGridAsync>).install();
 
     lua::ClassBuilder<EasingCurve>(L).meta("__call", &lua::Binding::native<&curveCall>).install();
 
