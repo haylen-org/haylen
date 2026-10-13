@@ -160,7 +160,7 @@ templates/
   cpp/                    The layer of C++ apps: the CMake project that compiles the engine with haylen_add_app, its sources and its Objective-C bridge handler.
   plugin/                 The skeleton of a native plugin that haylen.py plugin new copies, with the .gitignore, .editorconfig and .clang-format of a plugin repository.
 tools/                    The PNG reader and writer of the tools that draw sample art, and test_haylen.py, the tests of the rules of haylen.py.
-docs/                     The index of the docs, the guides in one folder per engine module, the Lua API reference in lua-api/ and the API policy.
+docs/                     The index of the docs, the guides in one folder per engine module, the Lua API reference in lua-api/, the API policy and the guide to installers in CI.
 extras/images/            Brand images: the vertical and horizontal logos, the symbol, and the logo variants with a white wordmark for dark backgrounds.
 ```
 
@@ -286,7 +286,7 @@ These rules apply to every text the project writes: code comments, documentation
 ## Documentation
 
 - Every change updates the docs it affects in the same change.
-- The docs are organized by engine module. `docs/README.md` is their one index, with a section per module that lists its guides and its reference pages. Guides live in the folder of their module, `docs/core/`, `docs/graphics/`, `docs/2d/`, `docs/ui/`, `docs/audio/`, `docs/input/`, `docs/platform/`, `docs/network/`, `docs/content/` and `docs/tools/`, and every module of `docs/2d/` has its own guide, so a 3D module gets its own folder next to them. The page that spans modules, `docs/api-policy.md`, stays at the root of `docs/`.
+- The docs are organized by engine module. `docs/README.md` is their one index, with a section per module that lists its guides and its reference pages. Guides live in the folder of their module, `docs/core/`, `docs/graphics/`, `docs/2d/`, `docs/ui/`, `docs/audio/`, `docs/input/`, `docs/platform/`, `docs/network/`, `docs/content/` and `docs/tools/`, and every module of `docs/2d/` has its own guide, so a 3D module gets its own folder next to them. The pages that span modules, `docs/api-policy.md` and `docs/ci-installers.md`, stay at the root of `docs/`.
 - Every Lua module has a reference page in `docs/lua-api/<module>.md` with the complete API, the options, defaults and error messages, and a runnable example of every capability, which the section of its module in `docs/README.md` lists.
 - The guides explain the architecture, the lifecycle, the build, distribution, embedding, testing and each system in depth. `docs/tools/testing.md` describes the test support, `docs/tools/distribution.md` the commands, templates and platform support, `docs/core/architecture.md` the libraries, source layout, plugins, frame and threads, and `docs/2d/physics.md` the physics system, its common problems and its performance.
 - Markdown prose is never hard-wrapped. One paragraph is one line.

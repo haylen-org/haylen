@@ -929,7 +929,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - [x] **docs/platform/platform-bridge.md** e **docs/platform/native.md**: protocolo JSON, handlers nativos, bibliotecas nativas pelo FFI e integração com SDKs.
 - [x] **docs/README.md** e **docs/lua-api/<modulo>.md**: referência completa de cada módulo Lua com exemplos executáveis, com uma página para `haylen`, `scene`, `events`, `signal`, `timer`, `tween`, `jobs`, `collections`, `log`, `graphics`, `graphics2d`, `animation2d`, `particles2d`, `lighting2d`, `viewport`, `window`, `tiled`, `physics2d`, `navigation2d`, `spatial2d`, `procedural2d`, `ai`, `math`, `input`, `ui`, `imgui`, `audio`, `localization`, `assets`, `storage`, `preferences`, `platform`, `native`, `net` e `debug`.
 - [x] **docs/2d/nodes.md**, **docs/2d/animation.md**, **docs/2d/lighting.md**, **docs/2d/navigation.md**, **docs/2d/spatial.md** e **docs/2d/procedural.md**: um guia por módulo 2D, além de física, partículas e Tiled.
-- [x] **docs/api-policy.md**: a política de API estável.
+- [x] **docs/api-policy.md** e **docs/ci-installers.md**: a política de API estável e o workflow de instaladores de todas as plataformas.
 
 ## 12. Fases de trabalho
 
@@ -1887,4 +1887,4 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 #### AT. Documentação
 
 - [x] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro. Os guias ficam numa pasta por módulo (`docs/core`, `docs/graphics`, `docs/2d`, `docs/ui`, `docs/audio`, `docs/input`, `docs/platform`, `docs/network`, `docs/content`, `docs/tools`), o índice único é `docs/README.md` com os guias e as referências de cada módulo, cada módulo 2D ganhou o seu guia (nós, animação, luz, navegação, espacial e geração procedural), e um verificador de links não acha nenhum link quebrado.
-- [ ] Guia de um workflow do GitHub Actions que compila o app com instalador para todas as plataformas (macOS assinado e notarizado, Windows, Linux, iOS, tvOS, Android e web), com os secrets nomeados como o dono usa e como gerar cada um.
+- [x] Guia de um workflow do GitHub Actions que compila o app com instalador para todas as plataformas (macOS assinado e notarizado, Windows, Linux, iOS, tvOS, Android e web), com os secrets nomeados como o dono usa e como gerar cada um. Está em `docs/ci-installers.md`, com DMG notarizado, pacote da Mac App Store, `.ipa` de iOS e tvOS, App Bundle assinado, instaladores de Windows e Linux e o site, e o workflow passa no `actionlint` com o `shellcheck`.

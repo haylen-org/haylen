@@ -93,7 +93,7 @@ The [documentation index](docs/README.md) follows the modules of the engine, wit
 - [Core](docs/README.md#core): the [architecture](docs/core/architecture.md), the [lifecycle](docs/core/lifecycle.md) and the [Lua guide](docs/core/lua.md)
 - [Graphics](docs/README.md#graphics) and the [2D modules](docs/README.md#2d): rendering, shaders, text, nodes, animation, particles, lighting, physics, Tiled maps, navigation, spatial queries and procedural generation
 - [UI](docs/README.md#ui), [audio](docs/README.md#audio), [input](docs/README.md#input), [platform](docs/README.md#platform), [network](docs/README.md#network) and [content](docs/README.md#content)
-- [Tools](docs/README.md#tools): building the engine, distributing apps, embedding the engine in C++ projects, testing and the [API policy](docs/api-policy.md)
+- [Tools](docs/README.md#tools): building the engine, distributing apps, [installers in CI](docs/ci-installers.md), embedding the engine in C++ projects, testing and the [API policy](docs/api-policy.md)
 
 ## License
 
