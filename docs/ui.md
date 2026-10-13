@@ -371,7 +371,7 @@ local graphics = require('haylen.graphics')
 local localization = require('haylen.localization')
 local ui = require('haylen.ui')
 
-ui.addFont('world', graphics.newFontFamily({regular = assets.font('fonts/body.ttf'), fallbacks = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf')}}))
+ui.addFont('world', graphics.newFontFamily({regular = assets.font('fonts/body.ttf'), fallbacks = {assets.font('fonts/noto-sans-arabic-regular.ttf'), assets.font('fonts/noto-sans-devanagari-regular.ttf')}}))
 local role = {font = 'world'}
 ui.setTheme(ui.addTheme({name = 'world', fonts = {body = role, caption = role, button = role, heading = role, title = role}}, 'dark'))
 ui.setDirection('auto')

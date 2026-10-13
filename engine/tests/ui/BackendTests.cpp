@@ -270,7 +270,7 @@ TEST_F(BackendTest, DrawsChildWindowsBetweenTheItemsAroundThem) {
 
 // Every face of a font draws the characters it lacks from the fallbacks, whose em squares match the em square of the face, and a style the font has no face for draws with the regular face.
 TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
-    ImFont* regular = backend.addFont("story", {.regular = readFont("default"), .bold = readFont("crimson_text_bold.ttf"), .fallbacks = {readFont("mplus_1p_regular.ttf"), readFont("noto_sans_symbols_2_regular.ttf")}});
+    ImFont* regular = backend.addFont("story", {.regular = readFont("default"), .bold = readFont("crimson-text-bold.ttf"), .fallbacks = {readFont("mplus-1p-regular.ttf"), readFont("noto-sans-symbols-2-regular.ttf")}});
     EXPECT_EQ(backend.getFont("story"), regular);
     EXPECT_NE(backend.getFont("story", true), regular);
     EXPECT_EQ(backend.getFont("story", true, true), backend.getFont("story", true));

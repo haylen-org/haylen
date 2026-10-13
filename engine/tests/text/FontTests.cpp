@@ -168,7 +168,7 @@ TEST_F(FontFileTest, RejectsTablesOutsideTheFile) {
 
 // A CFF charstring may draw lines before its first move, which start a contour at the origin. The one of the ampersand becomes two lines of 500 units that the end of the charstring closes into a triangle.
 TEST_F(FontFileTest, ReadsOutlinesThatDrawBeforeTheirFirstMove) {
-    std::vector<std::uint8_t> data = read("fira_sans_regular.otf");
+    std::vector<std::uint8_t> data = read("fira-sans-regular.otf");
     const stbtt_fontinfo info = open(data);
     const int glyph = stbtt_FindGlyphIndex(&info, '&');
 
@@ -197,7 +197,7 @@ TEST_F(FontFileTest, ReadsOutlinesThatDrawBeforeTheirFirstMove) {
 
 // The inside of a distance field covers the pixels the glyph covers, for the quadratic curves of TrueType outlines and the cubic curves of CFF outlines alike.
 TEST_F(FontFileTest, BuildsDistanceFieldsFromWholeOutlines) {
-    for (const std::string_view name : {"default", "fira_sans_regular.otf", "crimson_text_regular.ttf"}) {
+    for (const std::string_view name : {"default", "fira-sans-regular.otf", "crimson-text-regular.ttf"}) {
         const std::vector<std::uint8_t> data = read(name);
         const stbtt_fontinfo info = open(data);
         const float scale = stbtt_ScaleForMappingEmToPixels(&info, 64.0F);
@@ -235,7 +235,7 @@ TEST_F(FontFileTest, BuildsDistanceFieldsFromWholeOutlines) {
 // Every face sizes by its em square, so a fallback font draws at the size of the face around it, and the line metrics are those of the font at that size.
 TEST_F(FontFileTest, SizesEveryFaceByItsEm) {
     test::EngineFixture fixture;
-    for (const std::string_view name : {"default", "noto_sans_symbols_2_regular.ttf", "fira_sans_regular.otf"}) {
+    for (const std::string_view name : {"default", "noto-sans-symbols-2-regular.ttf", "fira-sans-regular.otf"}) {
         const std::vector<std::uint8_t> data = read(name);
         const stbtt_fontinfo info = open(data);
         int ascent = 0;
@@ -244,14 +244,14 @@ TEST_F(FontFileTest, SizesEveryFaceByItsEm) {
         stbtt_GetFontVMetrics(&info, &ascent, &descent, &gap);
         int advance = 0;
         int bearing = 0;
-        const int glyph = stbtt_FindGlyphIndex(&info, name == "noto_sans_symbols_2_regular.ttf" ? 0x2600 : 'M');
+        const int glyph = stbtt_FindGlyphIndex(&info, name == "noto-sans-symbols-2-regular.ttf" ? 0x2600 : 'M');
         stbtt_GetGlyphHMetrics(&info, glyph, &advance, &bearing);
         const float em = stbtt_ScaleForMappingEmToPixels(&info, 100.0F);
 
         TrueTypeFont font(fixture.engine().getGraphics(), data);
         EXPECT_NEAR(font.getAscent(100.0F), static_cast<float>(ascent) * em, 0.01F) << name;
         EXPECT_NEAR(font.getLineHeight(100.0F), static_cast<float>(ascent - descent + gap) * em, 0.01F) << name;
-        EXPECT_NEAR(font.measure(name == "noto_sans_symbols_2_regular.ttf" ? "\xE2\x98\x80" : "M", {.size = 100.0F}).x, static_cast<float>(advance) * em, 0.01F) << name;
+        EXPECT_NEAR(font.measure(name == "noto-sans-symbols-2-regular.ttf" ? "\xE2\x98\x80" : "M", {.size = 100.0F}).x, static_cast<float>(advance) * em, 0.01F) << name;
     }
 }
 

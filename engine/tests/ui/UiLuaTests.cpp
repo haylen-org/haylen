@@ -462,7 +462,7 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
 
 // Labels and every other text component draw with the faces of the family of their role, bold where the role asks for it, and take the characters the face lacks from the fallbacks, while rich text of a role lines up with them.
 TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
-    test::EngineFixture fixture({{"content/fonts/cjk.ttf", readTestFont("mplus_1p_regular.ttf")}, {"content/fonts/bold.ttf", readTestFont("crimson_text_bold.ttf")}});
+    test::EngineFixture fixture({{"content/fonts/cjk.ttf", readTestFont("mplus-1p-regular.ttf")}, {"content/fonts/bold.ttf", readTestFont("crimson-text-bold.ttf")}});
     // clang-format off
     fixture.runLua(R"(
         assets = require('haylen.assets')

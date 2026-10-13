@@ -394,7 +394,7 @@ Shapes `text` as one run and returns its glyphs in visual order, each as a table
 ```lua
 local assets = require('haylen.assets')
 
-local arabic = assets.font('fonts/noto_sans_arabic_regular.ttf')
+local arabic = assets.font('fonts/noto-sans-arabic-regular.ttf')
 for _, glyph in ipairs(arabic:shape('لا سلام', {size = 32, language = 'ar'})) do
     print(glyph.index, glyph.cluster, glyph.advance)
 end
@@ -500,7 +500,7 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
-local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/noto_sans_hebrew_regular.ttf')}})
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/noto-sans-hebrew-regular.ttf')}})
 print(family:measure('Shalom שלום', {size = 32}))
 ```
 
@@ -513,7 +513,7 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
-local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/noto_sans_devanagari_regular.ttf')}})
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/noto-sans-devanagari-regular.ttf')}})
 local layout = family:layout('Hindi हिन्दी', {size = 32})
 for _, quad in ipairs(layout.quads) do
     print(quad.font == family.regular, quad.position.x)

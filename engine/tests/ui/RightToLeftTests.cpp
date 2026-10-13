@@ -38,7 +38,7 @@ class RightToLeftTest : public ::testing::Test {
     }
 
     test::UiFixture ui;
-    std::shared_ptr<text::FontFamily> family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = ui.getEngine().getDefaultFont(), .fallbacks = {load("noto_sans_hebrew_regular.ttf"), load("noto_sans_devanagari_regular.ttf")}});
+    std::shared_ptr<text::FontFamily> family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = ui.getEngine().getDefaultFont(), .fallbacks = {load("noto-sans-hebrew-regular.ttf"), load("noto-sans-devanagari-regular.ttf")}});
 };
 
 } // namespace

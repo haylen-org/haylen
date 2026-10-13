@@ -589,7 +589,7 @@ local scene = require('haylen.scene')
 
 local family = graphics.newFontFamily({
     regular = graphics2d.defaultFont(),
-    fallbacks = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf')},
+    fallbacks = {assets.font('fonts/noto-sans-arabic-regular.ttf'), assets.font('fonts/noto-sans-devanagari-regular.ttf')},
 })
 
 scene.push({

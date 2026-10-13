@@ -195,7 +195,7 @@ TEST_F(StreamedSoundTest, DecodesThroughAWindowOfTheFile) {
 }
 
 TEST_F(StreamedSoundTest, StreamsEveryCompressedFormatLikeItsDecodedSound) {
-    for (const std::string name : {"tone.ogg", "tone.mp3", "tone_without_header.mp3", "tone.flac"}) {
+    for (const std::string name : {"tone.ogg", "tone.mp3", "tone-without-header.mp3", "tone.flac"}) {
         SCOPED_TRACE(name);
         const std::vector<std::uint8_t> file = readTestFile(name);
         ASSERT_FALSE(file.empty());

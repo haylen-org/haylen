@@ -27,11 +27,11 @@ namespace {
 class ShapingTest : public ::testing::Test {
   protected:
     ShapingTest() {
-        arabic = load("noto_sans_arabic_regular.ttf");
-        hebrew = load("noto_sans_hebrew_regular.ttf");
-        devanagari = load("noto_sans_devanagari_regular.ttf");
-        thai = load("noto_sans_thai_regular.ttf");
-        japanese = load("mplus_1p_regular.ttf");
+        arabic = load("noto-sans-arabic-regular.ttf");
+        hebrew = load("noto-sans-hebrew-regular.ttf");
+        devanagari = load("noto-sans-devanagari-regular.ttf");
+        thai = load("noto-sans-thai-regular.ttf");
+        japanese = load("mplus-1p-regular.ttf");
         family = std::make_shared<FontFamily>(FontFamily::Faces{.regular = fixture.engine().getDefaultFont(), .fallbacks = {arabic, hebrew, devanagari, thai, japanese}});
     }
 
@@ -290,7 +290,7 @@ TEST_F(ShapingTest, RevealsInReadingOrder) {
 // Plain layouts are cached by text and by the style fields that change them, so the same text in another color lays out once.
 // The kerning of the font pulls pairs such as "AV" together, and an emoji sequence joined by zero-width joiners stays one character whatever glyphs the font has for it.
 TEST_F(ShapingTest, KernsPairsAndKeepsEmojiSequencesWhole) {
-    const std::shared_ptr<Font> fira = load("fira_sans_regular.otf");
+    const std::shared_ptr<Font> fira = load("fira-sans-regular.otf");
     const Style style{.size = 48.0F};
     const float pair = fira->layout("AV", style)->size.x;
     EXPECT_LT(pair, fira->layout("A", style)->size.x + fira->layout("V", style)->size.x - 1.0F);

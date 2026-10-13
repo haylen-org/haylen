@@ -64,7 +64,7 @@ local graphics2d = require('haylen.graphics2d')
 
 local family = graphics.newFontFamily({
     regular = graphics2d.defaultFont(),
-    fallbacks = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_hebrew_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf'), assets.font('fonts/noto_sans_thai_regular.ttf')},
+    fallbacks = {assets.font('fonts/noto-sans-arabic-regular.ttf'), assets.font('fonts/noto-sans-hebrew-regular.ttf'), assets.font('fonts/noto-sans-devanagari-regular.ttf'), assets.font('fonts/noto-sans-thai-regular.ttf')},
 })
 
 graphics2d.drawText(family, 'السعر 42 دولارًا (USD)', 1000, 100, {size = 32, anchor = {1, 0}})
