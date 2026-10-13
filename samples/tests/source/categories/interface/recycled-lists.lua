@@ -168,7 +168,8 @@ end
 function RecycledLists:update(dt)
     RecycledLists.super.update(self, dt)
     local cells = debug.stats().objects.UiCell or {alive = 0, created = 0}
-    local _, id, item, part = ui.focused()
+    local focus = ui.focused() or {}
+    local id, item, part = focus.id, focus.item, focus.part
     local first, last = self.list:visibleRange()
     local focus = item and string.format('"%s" of "%s"%s', item, id, part and (' on "' .. part .. '"') or '') or tostring(id)
     self:status(string.format('Rows %d, in view %s to %s. Cells alive %d, created %d. Focus %s.%s', self.list.count, tostring(first), tostring(last), cells.alive, cells.created, focus, self.last))

@@ -45,22 +45,19 @@ local function sceneName(value)
     return (tostring(value):match('^[^:]+'))
 end
 
--- Writes the value of an engine event in a few words: a scene, the scenes of a transition phase or the fields of a table.
+-- Writes the table of an engine event in a few words: a scene, a GUI, the scenes of a transition phase or the fields of the table.
 local function describe(value)
     if value == nil then
         return ''
-    end
-    if type(value) == 'userdata' then
-        return sceneName(value)
     end
     if value.from ~= nil or value.to ~= nil then
         return 'from ' .. sceneName(value.from) .. ' to ' .. sceneName(value.to)
     end
     if value.scene ~= nil then
-        return sceneName(value.scene) .. ': ' .. tostring(value.error)
+        return sceneName(value.scene) .. (value.error and ': ' .. value.error or '')
     end
-    if getmetatable(value) then
-        return sceneName(value)
+    if value.gui ~= nil then
+        return sceneName(value.gui)
     end
     local fields = {}
     for key, field in pairs(value) do

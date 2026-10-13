@@ -46,7 +46,7 @@ Builds a GUI from the node table `tree`, shows it and returns its [`Gui`](#gui).
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
-A placement other than `safe` or `screen` raises `The "placement" option must be "safe" or "screen".`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named "spaceship".` or `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. Mounting publishes the `guiMounted` event of [`haylen.events`](events.md) with the GUI.
+A placement other than `safe` or `screen` raises `The "placement" option must be "safe" or "screen".`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named "spaceship".` or `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. Mounting publishes the `guiMounted` event of [`haylen.events`](events.md) with the table `{gui}`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -332,7 +332,7 @@ scene.push({
 
 ### ui.focused()
 
-Returns the [`Gui`](#gui) and the node id that hold the keyboard, gamepad and remote focus, or `nil` when no mounted GUI holds it. A focused node without an id returns the GUI alone. Inside a cell of a [`collection`](#uicollectionproperties) the node id is the id of the collection, followed by the id of the item and the part of the template that holds the focus, which is `nil` for a cell that takes the focus as a whole. The [focus guide](#focus-and-navigation) explains how the focus moves.
+Returns a table that tells what holds the keyboard, gamepad and remote focus, or `nil` when no mounted GUI holds it. Its field `gui` is the [`Gui`](#gui) and `id` the id of the focused node, which is `nil` for a node without an id. Inside a cell of a [`collection`](#uicollectionproperties), `id` is the id of the collection, `item` the id of the item and `part` the part of the template that holds the focus, which is `nil` for a cell that takes the focus as a whole. The [focus guide](#focus-and-navigation) explains how the focus moves.
 
 ```lua
 local scene = require('haylen.scene')
@@ -346,9 +346,9 @@ local menu = ui.mount(ui.column{
 
 scene.push({
     update = function(self, dt)
-        local gui, id = ui.focused()
-        if gui == menu then
-            menu:set('hint', {text = id == 'quit' and 'Leave the island' or 'Start a new run'})
+        local focus = ui.focused()
+        if focus and focus.gui == menu then
+            menu:set('hint', {text = focus.id == 'quit' and 'Leave the island' or 'Start a new run'})
         end
     end,
 })
@@ -659,7 +659,7 @@ end})
 
 ### gui:unmount()
 
-Removes the GUI from the screen and forgets its handlers. Returns `true` when the GUI was mounted and `false` when it was already unmounted. An unmounted GUI still answers `get`, `has` and `bounds`, while `set` and `replaceChildren` raise `The GUI is not mounted.`. Unmounting publishes the `guiUnmounted` event of [`haylen.events`](events.md) with the GUI, and then ends every listener, timer and tween that has the GUI as its `owner`.
+Removes the GUI from the screen and forgets its handlers. Returns `true` when the GUI was mounted and `false` when it was already unmounted. An unmounted GUI still answers `get`, `has` and `bounds`, while `set` and `replaceChildren` raise `The GUI is not mounted.`. Unmounting publishes the `guiUnmounted` event of [`haylen.events`](events.md) with the table `{gui}`, and then ends every listener, timer and tween that has the GUI as its `owner`.
 
 ```lua
 local events = require('haylen.events')

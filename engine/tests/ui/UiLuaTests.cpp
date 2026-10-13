@@ -116,8 +116,8 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatGuisOwn) {
         events = require('haylen.events')
         timer = require('haylen.timer')
         heard = {}
-        events.on('guiMounted', function(gui) mounted = gui end)
-        events.on('guiUnmounted', function(gui) heard[#heard + 1] = 'unmounted ' .. tostring(gui == hud) end)
+        events.on('guiMounted', function(event) mounted = event.gui end)
+        events.on('guiUnmounted', function(event) heard[#heard + 1] = 'unmounted ' .. tostring(event.gui == hud) end)
         hud = ui.mount(ui.label{text = 'Day 1'})
         ticks = 0
         timer.every(0.01, function() ticks = ticks + 1 end, {owner = hud})
@@ -132,7 +132,7 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatGuisOwn) {
     EXPECT_EQ(fixture.lua("return ticks"), ticks);
     EXPECT_NE(ticks, "0");
 
-    // GUIs mounted from C++ reach C++ listeners with their pointer and Lua listeners with `nil`.
+    // GUIs mounted from C++ reach C++ listeners with their pointer and Lua listeners with a table without a GUI.
     plugins::UiPlugin& plugin = getEngine().getPlugin<plugins::UiPlugin>();
     std::shared_ptr<Gui> received;
     const core::ScopedConnection listener = getEngine().getEvents().on(core::LifecycleEvent::kGuiMounted, [&](core::EventBus::Event& event) { received = *event.get<std::shared_ptr<Gui>>(); });
@@ -638,14 +638,14 @@ TEST_F(UiLuaTest, NavigatesTheFocusAndHearsCancel) {
     )");
     // clang-format on
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("local gui, id = ui.focused() return tostring(gui == screen) .. ' ' .. id .. ' ' .. tostring(ui.focusRingVisible())"), "true play false");
+    EXPECT_EQ(fixture.lua("local focus = ui.focused() return tostring(focus.gui == screen) .. ' ' .. focus.id .. ' ' .. tostring(ui.focusRingVisible())"), "true play false");
 
     key(input::Key::Down);
     key(input::Key::Down);
     key(input::Key::Up);
     key(input::Key::Escape);
     fixture.frames(2);
-    EXPECT_EQ(fixture.lua("local _, id = ui.focused() return id .. ' ' .. tostring(ui.focusRingVisible())"), "quit true");
+    EXPECT_EQ(fixture.lua("return ui.focused().id .. ' ' .. tostring(ui.focusRingVisible())"), "quit true");
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "focus play, blur play, focus quit, cancel screen");
 
     fixture.runLua("ui.clearFocus()");

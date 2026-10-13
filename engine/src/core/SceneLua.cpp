@@ -156,13 +156,19 @@ SceneManager::Completion SceneLua::pushCompletion(lua_State* L, int options) {
     // clang-format on
 }
 
-// Pushes the table of a Lua scene, or `false` for a scene pushed from C++, so positions in lists stay aligned. Lua listeners of scene events receive the same value.
+// Pushes the table of a Lua scene, or `false` for a scene pushed from C++, so positions in lists stay aligned.
 void SceneLua::pushScene(lua_State* L, const Scene& scene) {
     if (const auto* scripted = dynamic_cast<const lua::ScriptedScene*>(&scene)) {
         scripted->pushTable(L);
         return;
     }
     lua_pushboolean(L, 0);
+}
+
+void SceneLua::pushSceneEvent(lua_State* L, const Scene& scene) {
+    lua_createtable(L, 0, 1);
+    pushScene(L, scene);
+    lua_setfield(L, -2, "scene");
 }
 
 void SceneLua::pushTransfer(lua_State* L, const SceneManager::Transfer& transfer) {
@@ -443,7 +449,7 @@ int SceneLua::open(lua_State* L) {
 }
 
 void SceneLua::install(lua_State* L) {
-    EventsLua::addPayload<Scene>(&pushScene);
+    EventsLua::addPayload<Scene>(&pushSceneEvent);
     EventsLua::addPayload<SceneManager::Transfer>(&pushTransfer);
     EventsLua::addPayload<SceneManager::LoadFailure>(&pushLoadFailure);
     lua::ClassBuilder<SceneLoad>(L).function("progress", &lua::Binding::native<&loadProgress>).function("preload", &lua::Binding::native<&loadPreload>).property("params", &lua::Binding::native<&loadParams>).install();

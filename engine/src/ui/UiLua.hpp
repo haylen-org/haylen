@@ -54,6 +54,7 @@ class UiLua final {
     static void listenToEvents(lua_State* L, Gui& gui, std::string_view id, int events);
     static void pushEventTable(lua_State* L, const Gui& gui, const Event& event);
     static void pushGui(lua_State* L, const std::shared_ptr<Gui>& gui);
+    static void pushGuiEvent(lua_State* L, const std::shared_ptr<Gui>& gui);
     [[nodiscard]] static Gui& checkGui(lua_State* L);
 
     static int mount(lua_State* L);

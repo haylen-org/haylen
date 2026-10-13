@@ -163,7 +163,7 @@ collectgarbage()
 
 ## Engine events
 
-The engine publishes these events on the bus. Events with data pass it to listeners as one table, events of scenes and GUIs pass the scene table or the GUI, and the other events pass nothing. A scene pushed from C++ arrives as `false`, also inside the tables of the transition phases, and a GUI mounted from C++ arrives as `nil`.
+The engine publishes these events on the bus. Events with data pass it to listeners as one table, so a later version adds fields to it without changing what listeners already read, and the other events pass nothing. A scene pushed from C++ arrives as `false` in the field `scene` and in the tables of the transition phases, and a GUI mounted from C++ leaves the field `gui` empty.
 
 | Event | When | Value |
 | --- | --- | --- |
@@ -177,13 +177,13 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `appError` | An error stopped the app and the error screen shows, delivered at the end of the frame like a queued event. | The table `{message, file, line, traceback, frames}` of the error, the report the web page receives in `onError`. |
 | `appRecovered` | The app goes back from the error screen, through the `Back to the app` button of a [recoverable](haylen.md#haylensetrecoverablerecoverable) app or `haylen.recover()`, at the start of the next frame, before it updates again. | The table of the error, like `appError`. |
 | `paused`, `unpaused` | The function `haylen.setPaused` changed the pause of the game. | None. |
-| `sceneLoading`, `sceneLoaded` | A scene started loading, or its load finished. | The scene. |
+| `sceneLoading`, `sceneLoaded` | A scene started loading, or its load finished. | The table `{scene}`. |
 | `sceneLoadFailed` | The load of a scene failed, right before the scene unloads. | The table `{scene, error}`, with the message of the error. |
-| `sceneEntered`, `sceneExited` | A scene entered or left the stack. | The scene. |
-| `sceneUnloaded` | A scene unloaded, after it exited, after its load failed or when its preload was cancelled. | The scene. |
-| `scenePaused`, `sceneResumed` | A scene was covered by a pushed scene, or is on top again. | The scene. |
-| `sceneExitTransitionStarted` | A change started to take the top scene off the screen. | The scene. |
-| `sceneEnterTransitionFinished` | A change ended and its transition finished, on the top scene after it. | The scene. |
+| `sceneEntered`, `sceneExited` | A scene entered or left the stack. | `{scene}` |
+| `sceneUnloaded` | A scene unloaded, after it exited, after its load failed or when its preload was cancelled. | `{scene}` |
+| `scenePaused`, `sceneResumed` | A scene was covered by a pushed scene, or is on top again. | `{scene}` |
+| `sceneExitTransitionStarted` | A change started to take the top scene off the screen. | `{scene}` |
+| `sceneEnterTransitionFinished` | A change ended and its transition finished, on the top scene after it. | `{scene}` |
 | `sceneCoverStarted`, `sceneCoverFinished` | The cover of an effect that covers the screen started, or reached full cover. | The table `{from, to}`, the top scenes before and after the change. |
 | `sceneHoldStarted`, `sceneHoldFinished` | The covered screen started to wait for the next scene, or stopped waiting. | `{from, to}` |
 | `sceneRevealStarted`, `sceneRevealFinished` | The effect started or finished showing the scenes after the change, which is the whole effect for effects that show both scenes. | The table `{from, to}`, where `to` is the scene the change put or left on top. |
@@ -197,13 +197,13 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `windowSafeAreaChanged` | The safe area moved, for example after a rotation or when a native view of a plugin reserved or released an edge of the screen. | The table `{x, y, width, height}`, the same rectangle as `viewport.safeRect()`. |
 | `windowMoved` | The desktop window moved, dragged by the player, placed by the app or moved by the system. A move publishes each new position once. | The table `{x, y}`, the top left corner of `window.frame()` of [`haylen.window`](window.md#desktop-windows) in desktop points. |
 | `windowMonitorsChanged` | A monitor connected, disconnected or changed, or its work area changed, such as when the taskbar moved. The function `window.monitors()` returns the new list. | None. |
-| `guiMounted`, `guiUnmounted` | A GUI of [`haylen.ui`](ui.md) was mounted or unmounted. | The GUI. |
+| `guiMounted`, `guiUnmounted` | A GUI of [`haylen.ui`](ui.md) was mounted or unmounted. | The table `{gui}`. |
 | `gamepadConnected`, `gamepadDisconnected` | A gamepad was plugged in or removed. Gamepads that are connected when the app starts are announced on its first frame. | The table `{gamepad, name}`, where `gamepad` counts from 1 like [`haylen.input`](input.md). |
 | `audioInterrupted`, `audioResumed` | The system took the audio, such as for a phone call, and every voice paused, or gave it back while the app is active and the voices resumed, as [`haylen.audio`](audio.md#events) explains. | None. |
 | `audioRouteChanged` | The audio output moved to another device, such as headphones that were unplugged. | None. |
 | `audioUnlocked` | A browser let the audio output play after the first interaction with the page. | None. |
-| `saveSlotWritten` | The function `storage.writeSlot()` or `storage.writeSlotAsync()` wrote a slot, which a cloud save plugin uploads. | `slot`, `revision` and `version`. |
-| `breadcrumbAdded` | The function `debug.addBreadcrumb()` added a breadcrumb, which a crash reporting or analytics plugin forwards to its service. | `message`, `data` and `time`, the seconds since 1970. |
+| `saveSlotWritten` | The function `storage.writeSlot()` or `storage.writeSlotAsync()` wrote a slot, which a cloud save plugin uploads. | The table `{slot, revision, version}`. |
+| `breadcrumbAdded` | The function `debug.addBreadcrumb()` added a breadcrumb, which a crash reporting or analytics plugin forwards to its service. | The table `{message, data, time}`, where `time` counts the seconds since 1970. |
 | `keyboardShown` | The on-screen keyboard appeared or changed its frame, such as when a suggestion bar shows. | The table `{x, y, width, height}`, the area it covers in design units, like `viewport.safeRect()`. |
 | `keyboardHidden` | The on-screen keyboard went away. | None. |
 | `networkOnline`, `networkOffline` | The device gained or lost its network, where the platform reports it: browsers, Android with the permission `android.permission.ACCESS_NETWORK_STATE`, and Apple platforms, macOS included. The first report publishes the state the app starts in, usually on its first frame, and [`haylen.networkState()`](haylen.md#haylennetworkstate) returns the last state at any time. | None. |
@@ -235,8 +235,8 @@ events.on('windowSafeAreaChanged', function(safe)
     print('lay out the HUD inside', safe.x, safe.y, safe.width, safe.height)
 end)
 
-events.on('sceneEntered', function(entered)
-    print('entered ' .. tostring(entered.name))
+events.on('sceneEntered', function(event)
+    print('entered ' .. tostring(event.scene.name))
 end)
 
 events.on('assetUnloaded', function(asset)

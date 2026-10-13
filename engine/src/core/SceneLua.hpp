@@ -27,6 +27,7 @@ class SceneLua final {
     // Returns the completion of a change or a preload, which calls the `onComplete` of the options at index, when there are some, and settles the promise it pushes onto the stack.
     [[nodiscard]] static SceneManager::Completion pushCompletion(lua_State* L, int options);
     static void pushScene(lua_State* L, const Scene& scene);
+    static void pushSceneEvent(lua_State* L, const Scene& scene);
     static void pushTransfer(lua_State* L, const SceneManager::Transfer& transfer);
     static void pushLoadFailure(lua_State* L, const SceneManager::LoadFailure& failure);
 

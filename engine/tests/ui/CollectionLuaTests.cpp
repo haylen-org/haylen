@@ -127,7 +127,7 @@ TEST_F(CollectionLuaTest, ReadsItsStateThroughProperties) {
     fixture.runLua("list:scrollBy(60, {animated = false}) list:focus('i7')");
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("return list.scrollOffset .. ' ' .. list.focusedItem"), "180.0 i7");
-    EXPECT_EQ(fixture.lua("local gui, id, item, part = ui.focused() return id .. ' ' .. item .. ' ' .. tostring(part)"), "list i7 nil");
+    EXPECT_EQ(fixture.lua("local focus = ui.focused() return focus.id .. ' ' .. focus.item .. ' ' .. tostring(focus.part)"), "list i7 nil");
 
     fixture.runLua("state = list:saveState() list.scrollOffset = 3000 list:restoreState(state)");
     fixture.frames(4);

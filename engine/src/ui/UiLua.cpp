@@ -391,7 +391,7 @@ int UiLua::mount(lua_State* L) {
     return 1;
 }
 
-// Pushes the userdata of a GUI for Lua listeners of the GUI events, or `nil` for a GUI mounted from C++.
+// Pushes the userdata of a GUI, or `nil` for a GUI mounted from C++.
 void UiLua::pushGui(lua_State* L, const std::shared_ptr<Gui>& gui) {
     pushRoot(L);
     if (lua_rawgetp(L, -1, gui.get()) == LUA_TTABLE) {
@@ -401,6 +401,12 @@ void UiLua::pushGui(lua_State* L, const std::shared_ptr<Gui>& gui) {
     }
     lua_replace(L, -3);
     lua_pop(L, 1);
+}
+
+void UiLua::pushGuiEvent(lua_State* L, const std::shared_ptr<Gui>& gui) {
+    lua_createtable(L, 0, 1);
+    pushGui(L, gui);
+    lua_setfield(L, -2, "gui");
 }
 
 // Handlers change only after the GUI accepted the properties, so a failed set leaves them as they were.
@@ -806,7 +812,7 @@ int UiLua::usingKeyboard(lua_State* L) {
     return 1;
 }
 
-// Returns the GUI and the node id that hold the focus with `focused()`, or `nil` when no mounted GUI holds it. A focused node without an id returns the GUI alone.
+// Returns the table `{gui, id, item, part}` of what holds the focus with `focused()`, or `nil` when no mounted GUI holds it.
 int UiLua::focused(lua_State* L) {
     plugins::UiPlugin& plugin = getPlugin(L);
     const std::shared_ptr<Gui> gui = plugin.findMounted(plugin.getFocus().getFocusedGui());
@@ -814,22 +820,18 @@ int UiLua::focused(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
-    pushGui(L, gui);
+
     const FocusNavigator& focus = plugin.getFocus();
-    if (focus.getFocusedName().empty()) {
-        return 1;
+    lua_createtable(L, 0, 4);
+    pushGui(L, gui);
+    lua_setfield(L, -2, "gui");
+    for (const auto& [key, value] : {std::pair{"id", focus.getFocusedName()}, std::pair{"item", focus.getFocusedItem()}, std::pair{"part", focus.getFocusedPart()}}) {
+        if (!value.empty()) {
+            lua::Stack::push(L, value);
+            lua_setfield(L, -2, key);
+        }
     }
-    lua::Stack::push(L, focus.getFocusedName());
-    if (focus.getFocusedItem().empty()) {
-        return 2;
-    }
-    lua::Stack::push(L, focus.getFocusedItem());
-    if (focus.getFocusedPart().empty()) {
-        lua_pushnil(L);
-    } else {
-        lua::Stack::push(L, focus.getFocusedPart());
-    }
-    return 4;
+    return 1;
 }
 
 int UiLua::focusOwner(lua_State* L) {
@@ -933,7 +935,7 @@ int UiLua::open(lua_State* L) {
 void UiLua::install(lua_State* L) {
     lua_newtable(L);
     lua_setfield(L, LUA_REGISTRYINDEX, kHandlersKey);
-    core::EventsLua::addPayload<std::shared_ptr<Gui>>(&pushGui);
+    core::EventsLua::addPayload<std::shared_ptr<Gui>>(&pushGuiEvent);
     TransformLua::install(L);
     CollectionLua::install(L);
     lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("sharedFocus", &guiSharedFocus, &lua::Binding::native<&guiSetSharedFocus>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).function("collection", &lua::Binding::native<&guiCollection>).install();

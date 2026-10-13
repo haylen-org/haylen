@@ -255,7 +255,7 @@ TEST(SceneLuaTest, LoadsThatPreloadNothingOrABrokenGroup) {
 TEST(SceneLuaTest, ShowsScenesPushedFromCppAsFalse) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
-    fixture.runLua("scene = require('haylen.scene') require('haylen.events').on('sceneEntered', function(entered) heard = entered end)");
+    fixture.runLua("scene = require('haylen.scene') require('haylen.events').on('sceneEntered', function(event) heard = event.scene end)");
     fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("native", log));
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(heard) .. ' ' .. tostring(scene.list()[1]) .. ' ' .. tostring(scene.at(1)) .. ' ' .. tostring(scene.top())"), "false false false nil");

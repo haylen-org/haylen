@@ -99,9 +99,9 @@ end
 -- Shows where the focus is, whether its ring shows and which device the player used last.
 function FocusNavigation:update(dt)
     FocusNavigation.super.update(self, dt)
-    local _, id = ui.focused()
+    local focus = ui.focused()
     local device = window.hasPointerDevice() and input.lastDevice() or 'remote'
-    self:status(string.format('Focus on "%s", ring %s, last device "%s".%s', tostring(id), ui.focusRingVisible() and 'shown' or 'hidden', device, self.last))
+    self:status(string.format('Focus on "%s", ring %s, last device "%s".%s', tostring(focus and focus.id), ui.focusRingVisible() and 'shown' or 'hidden', device, self.last))
 end
 
 return FocusNavigation

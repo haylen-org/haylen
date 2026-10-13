@@ -102,7 +102,7 @@ TEST(EventsLuaTest, ReceivesEngineLifecycleEvents) {
         scene = require('haylen.scene')
         log = {}
         for _, name in ipairs({'paused', 'unpaused', 'appInactive', 'appActive', 'appBackground', 'windowResized', 'sceneEntered', 'sceneExited', 'sceneEnterTransitionFinished'}) do
-            events.on(name, function(payload) log[#log + 1] = name .. (type(payload) == 'table' and (payload.width and (' ' .. payload.width) or (payload == menu and ' menu' or ' table')) or '') end)
+            events.on(name, function(payload) log[#log + 1] = name .. (type(payload) == 'table' and (payload.width and (' ' .. payload.width) or (payload.scene == menu and ' menu' or ' table')) or '') end)
         end
         menu = {}
         scene.push(menu)
