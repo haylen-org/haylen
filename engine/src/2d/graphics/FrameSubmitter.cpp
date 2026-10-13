@@ -1,6 +1,7 @@
 #include "2d/graphics/FrameSubmitter.hpp"
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cmath>
 #include <numeric>
@@ -647,6 +648,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     sg_apply_bindings(&bindings);
 
     const float stageFlag = stage == Stage::Whole ? 0.0F : (stage == Stage::First ? 1.0F : 2.0F);
+    const std::array<std::array<float, 3>, 3> vision = post.getColorVisionMatrix();
     const composite_composite_fs_params_t params{
         .tint = {post.tint.r, post.tint.g, post.tint.b, post.tint.a},
         .fade = {post.fade.r, post.fade.g, post.fade.b, post.fade.a},
@@ -655,6 +657,9 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
         .flags = {lit ? 1.0F : 0.0F, sg_query_features().origin_top_left ? 0.0F : 1.0F, stageFlag, distorts ? 1.0F : 0.0F},
         .view = {canvas.viewSize.x, canvas.viewSize.y, post.distortion, post.chromaticAberration},
         .shape = {post.pixelate, grades ? post.colorLut.getSize().y : 0.0F, 0.0F, 0.0F},
+        .vision_red = {vision[0][0], vision[0][1], vision[0][2], 0.0F},
+        .vision_green = {vision[1][0], vision[1][1], vision[1][2], 0.0F},
+        .vision_blue = {vision[2][0], vision[2][1], vision[2][2], 0.0F},
     };
     sg_apply_uniforms(UB_composite_composite_fs_params, SG_RANGE(params));
     sg_draw(0, 3, 1);

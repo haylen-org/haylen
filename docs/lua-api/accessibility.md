@@ -118,6 +118,8 @@ The engine follows the settings on its own where it can, and leaves the rest to 
 - The UI scales its text with `textScale` until the app sets a scale with [`ui.setTextScale`](ui.md#uisettextscalescale), draws the high contrast theme of its theme with `highContrast` and draws the surfaces of its theme opaque with `reducedTransparency`, as [accessibility settings](../ui/ui.md#accessibility-settings) of the UI guide describes.
 - Tweens and scene transitions that opt in with their `reducedMotion` option shorten or skip their motion with `reducedMotion`, as the options of [tweens](tween.md#options) and [transitions](scene.md) describe, while the others keep their motion, since only the app knows which motion carries meaning.
 
+- The post-processing of world canvases shows how players with a deficiency of color vision see the app, or corrects for it, with the options `colorVision` and `correctColorVision` of [`haylen.graphics2d`](graphics2d.md#graphics2dbeginworldcamera-options), which an app offers as a setting of its own.
+
 ```lua
 local scene = require('haylen.scene')
 local tween = require('haylen.tween')

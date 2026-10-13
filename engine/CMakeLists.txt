@@ -79,6 +79,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/PixelCanvasLua.cpp
   src/2d/graphics/ParallaxLua.cpp
   src/2d/graphics/PolygonMesh.cpp
+  src/2d/graphics/PostProcess.cpp
   src/2d/graphics/Renderer.cpp
   src/2d/graphics/RendererState.cpp
   src/2d/graphics/RichTextLua.cpp

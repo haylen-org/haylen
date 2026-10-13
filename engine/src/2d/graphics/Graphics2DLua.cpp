@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -86,6 +87,16 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
         lua::Table::readField(L, post, "bloomRadius", process.bloomRadius);
         lua::Table::readField(L, post, "colorLut", process.colorLut);
         lua::Table::readField(L, post, "colorLutStrength", process.colorLutStrength);
+        if (lua_getfield(L, post, "colorVision") != LUA_TNIL) {
+            const auto name = lua::Stack::read<std::string_view>(L, -1);
+            const auto found = std::ranges::find(PostProcess::kColorVisionNames, name, &std::pair<std::string_view, PostProcess::ColorVision>::first);
+            if (found == PostProcess::kColorVisionNames.end()) {
+                luaL_error(L, "The color vision \"%s\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\".", std::string(name).c_str());
+            }
+            process.colorVision = found->second;
+        }
+        lua_pop(L, 1);
+        lua::Table::readField(L, post, "correctColorVision", process.correctColorVision);
         lua::Table::readField(L, post, "materials", process.materials);
         options.postProcess = process;
     }

@@ -18,6 +18,9 @@ layout(binding=0) uniform composite_fs_params {
     vec4 flags;
     vec4 view;
     vec4 shape;
+    vec4 vision_red;
+    vec4 vision_green;
+    vec4 vision_blue;
 };
 layout(binding=0) uniform texture2D scene_texture;
 layout(binding=1) uniform texture2D light_texture;
@@ -111,6 +114,9 @@ void main() {
     if (grading.w > 0.0 && alpha > 0.0) {
         color = mix(color, graded(color / alpha) * alpha, grading.w);
     }
+
+    // The rows of the matrix of the color vision option, which shows or corrects a deficiency of color vision.
+    color = max(vec3(dot(vision_red.rgb, color), dot(vision_green.rgb, color), dot(vision_blue.rgb, color)), vec3(0.0));
 
     // Vignette: x is strength, y is inner radius and z is softness.
     float distance_to_center = length(uv - 0.5) * 1.41421356;
