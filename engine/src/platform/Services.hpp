@@ -24,13 +24,15 @@
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/TextInput.hpp"
+#include "haylen/platform/VideoDecoder.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/native/HaylenNative.h"
 #include "platform/WindowStyle.hpp"
 
 namespace haylen::io {
 class Package;
-}
+class PackageReader;
+} // namespace haylen::io
 
 namespace haylen::platform {
 
@@ -119,6 +121,9 @@ class Services final {
     [[nodiscard]] static bool isAccessibilityTreeWanted();
     static void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused);
     static void announce(std::string_view text, bool interrupt);
+
+    // Opens a decoder of a video file with the decoder of the platform, from any thread, as `Host::openVideo` describes.
+    [[nodiscard]] static std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path);
 
     // Runs the motors of a gamepad as `Host::rumbleGamepad` describes.
     static void rumbleGamepad(std::size_t index, float low, float high, float seconds);

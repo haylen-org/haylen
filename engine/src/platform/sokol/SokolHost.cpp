@@ -336,6 +336,10 @@ void SokolHost::announce(std::string_view text, bool interrupt) {
     Services::announce(text, interrupt);
 }
 
+std::unique_ptr<VideoDecoder> SokolHost::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+    return Services::openVideo(std::move(file), path);
+}
+
 void SokolHost::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     Services::rumbleGamepad(index, low, high, seconds);
 }

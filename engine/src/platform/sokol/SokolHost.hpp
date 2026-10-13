@@ -80,6 +80,7 @@ class SokolHost final : public Host {
     [[nodiscard]] bool isAccessibilityTreeWanted() const override;
     void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override;
     void announce(std::string_view text, bool interrupt) override;
+    [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override;
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;

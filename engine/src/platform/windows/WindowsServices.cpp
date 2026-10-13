@@ -228,6 +228,11 @@ void Services::updateAccessibility(std::span<const AccessibilityElement>, std::u
 
 void Services::announce(std::string_view, bool) {}
 
+// The engine plays no video files on this platform yet, as the video reference explains.
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
+    return nullptr;
+}
+
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     WindowsRumble::start(index, low, high, seconds);
 }

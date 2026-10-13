@@ -10,6 +10,7 @@
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/plugins/VideoPlugin.hpp"
 #include "platform/Host.hpp"
 #include "plugins/Animation2DPlugin.hpp"
 #include "plugins/AudioPlugin.hpp"
@@ -32,7 +33,7 @@
 
 namespace haylen::plugins {
 
-void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host& host) {
+void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host) {
     registry.add(std::make_unique<CorePlugin>());
     registry.add(std::make_unique<JobsPlugin>());
     registry.add(std::make_unique<InputPlugin>());
@@ -43,6 +44,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host&
     registry.add(std::make_unique<Animation2DPlugin>());
     registry.add(std::make_unique<Particles2DPlugin>());
     registry.add(std::make_unique<AudioPlugin>());
+    registry.add(std::make_unique<VideoPlugin>(host));
     registry.add(std::make_unique<Physics2DPlugin>());
     registry.add(std::make_unique<TiledPlugin>());
     registry.add(std::make_unique<Nodes2DPlugin>());

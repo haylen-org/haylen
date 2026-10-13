@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
@@ -22,7 +23,12 @@
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
+#include "haylen/platform/VideoDecoder.hpp"
 #include "haylen/platform/Window.hpp"
+
+namespace haylen::io {
+class PackageReader;
+}
 
 namespace haylen::platform {
 
@@ -70,6 +76,9 @@ class Host : public Window {
 
     // Hands the platform the tree of accessible elements whenever it changed, with the id of the element that holds the focus or 0. The platform copies what it keeps and answers the actions of screen readers through `AccessibilityRelay::perform`, from any thread.
     virtual void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) = 0;
+
+    // Opens a decoder of the video file that the reader reads, which the engine calls on a worker of the I/O pool, so several may open at once. Returns null where the platform has no decoder of video files, and throws `std::runtime_error` for a file the platform cannot decode.
+    [[nodiscard]] virtual std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) = 0;
 
     // Asks the screen reader to say a text, after what it says now or interrupting it, where the platform has a screen reader.
     virtual void announce(std::string_view text, bool interrupt) = 0;

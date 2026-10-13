@@ -12,7 +12,7 @@ class PluginRegistry;
 class BuiltInPlugins final {
   public:
     // Adds them in dependency order, so each one starts after the plugins it uses, with what they need to know about the platform.
-    static void registerAll(PluginRegistry& registry, const platform::Host& host);
+    static void registerAll(PluginRegistry& registry, platform::Host& host);
 };
 
 } // namespace haylen::plugins

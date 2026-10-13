@@ -40,8 +40,17 @@ TEST_F(AudioStreamTest, PlaysAsAVoiceResampledAndSilentWhereSamplesAreMissing) {
     EXPECT_FALSE(mixer.isActive(voice));
 
     EXPECT_THROW(mixer.play(stream, {.loop = true}), std::invalid_argument);
-    EXPECT_THROW(mixer.play(stream, {.pitch = 2.0F}), std::invalid_argument);
+    EXPECT_THROW(mixer.play(stream, {.pitch = 2.0F, .pitchVariation = 0.5F}), std::invalid_argument);
     EXPECT_THROW(mixer.play(std::shared_ptr<platform::AudioStream>{}), std::invalid_argument);
+}
+
+TEST_F(AudioStreamTest, ReadsFasterAtAHigherPitch) {
+    auto stream = std::make_shared<platform::AudioStream>(kRate, 1, platform::AudioStream::Format::Float32, kRate);
+    stream->push(std::vector<float>(toFrames(0.5F), 0.5F));
+    const Mixer::VoiceId voice = mixer.play(stream, {.pitch = 2.0F});
+    (void)renderLeft(toFrames(0.1F));
+    EXPECT_NEAR(static_cast<double>(stream->getBufferedFrames()), static_cast<double>(toFrames(0.3F)), static_cast<double>(toFrames(0.02F)));
+    EXPECT_FLOAT_EQ(mixer.getPitch(voice), 2.0F);
 }
 
 TEST_F(AudioStreamTest, HandsTheStreamToTheNewestVoice) {

@@ -179,6 +179,11 @@ void Services::announce(std::string_view text, bool interrupt) {
     JavaBridge::announce(text, interrupt);
 }
 
+// The engine plays no video files on this platform yet, as the video reference explains.
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
+    return nullptr;
+}
+
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     AndroidGamepads::rumble(index, low, high, seconds);
 }

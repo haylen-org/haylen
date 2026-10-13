@@ -369,6 +369,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/TextureResource.cpp
   src/graphics/VectorImage.cpp
   src/graphics/VectorImageResource.cpp
+  src/graphics/Video.cpp
+  src/graphics/VideoLua.cpp
   src/graphics/Viewport.cpp
   src/input/ActionMap.cpp
   src/input/ActionMapLua.cpp
@@ -527,6 +529,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/TextPlugin.cpp
   src/plugins/TiledPlugin.cpp
   src/plugins/UiPlugin.cpp
+  src/plugins/VideoPlugin.cpp
   src/storage/Preferences.cpp
   src/storage/PreferencesLua.cpp
   src/storage/SaveSlots.cpp

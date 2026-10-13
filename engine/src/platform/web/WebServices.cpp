@@ -322,6 +322,11 @@ void Services::announce(std::string_view text, bool interrupt) {
     haylen_js_announce(std::string(text).c_str(), interrupt ? 1 : 0);
 }
 
+// The engine plays no video files on this platform yet, as the video reference explains.
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
+    return nullptr;
+}
+
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     haylen_js_rumble_gamepad(static_cast<int>(index), low, high, seconds);
 }

@@ -237,6 +237,11 @@ class HeadlessHost final : public Host {
     void announce(std::string_view text, bool interrupt) override {
         announcements.push_back({.text = std::string(text), .interrupt = interrupt});
     }
+
+    // The headless platform has no decoder of video files until a test gives it one.
+    [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override {
+        return videoOpener ? videoOpener(std::move(file), path) : nullptr;
+    }
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override {
         vibrations.push_back(seconds);
@@ -316,6 +321,12 @@ class HeadlessHost final : public Host {
     }
     void setAccessibilitySettings(const AccessibilitySettings& value) {
         systemState.setAccessibility(value);
+    }
+
+    // Decodes the video files of the apps that open videos from now on, from a worker of the I/O pool, the way the decoder of a platform does.
+    using VideoOpener = std::function<std::unique_ptr<VideoDecoder>(std::shared_ptr<io::PackageReader> file, std::string_view path)>;
+    void setVideoOpener(VideoOpener value) {
+        videoOpener = std::move(value);
     }
 
     // Whether the headless platform wants the tree of accessible elements, as a platform does while a screen reader runs.
@@ -441,6 +452,7 @@ class HeadlessHost final : public Host {
     std::vector<AccessibilityTree> accessibilityTrees;
     std::vector<Announcement> announcements;
     bool accessibilityWanted = false;
+    VideoOpener videoOpener;
     std::vector<DialogCall> dialogCalls;
     std::vector<std::uint64_t> cancelledDialogs;
     std::vector<ScreenRequest> screenRequests;

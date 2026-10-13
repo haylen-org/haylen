@@ -179,6 +179,11 @@ void Services::updateAccessibility(std::span<const AccessibilityElement>, std::u
 
 void Services::announce(std::string_view, bool) {}
 
+// Linux has no decoder of video files that every distribution ships, as the video reference explains.
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
+    return nullptr;
+}
+
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     LinuxGamepads::rumble(index, low, high, seconds);
 }

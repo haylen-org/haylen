@@ -173,7 +173,7 @@ class Mixer final {
     // Starts a voice. When every voice is busy, the voice that is not music with the lowest priority stops to make room, the quietest of them and then the oldest, and the limit of the sound may steal one of its own voices or start nothing. Throws `std::invalid_argument` for an empty sound, an unknown bus, a pitch variation below 0 or not below the pitch, or a fade-in or start time that is not finite, and a call that throws stops no voice.
     VoiceId play(const Sound& sound, const PlayOptions& options = kDefaultPlayOptions);
 
-    // Starts a voice that plays the audio stream as its samples arrive, resampled to the mixer, and silent where they have not arrived. It takes the stream over from the voice that played it before and never ends by itself. Throws `std::invalid_argument` for an empty stream and for options with a loop, a start time, a pitch other than 1 or a pitch variation, which a live stream cannot take.
+    // Starts a voice that plays the audio stream as its samples arrive, resampled to the mixer, and silent where they have not arrived. It takes the stream over from the voice that played it before and never ends by itself. A pitch other than 1 reads the stream faster or slower, which suits a producer that keeps ahead of the voice, such as the sound of a video. Throws `std::invalid_argument` for an empty stream and for options with a loop, a start time or a pitch variation, which a live stream cannot take.
     VoiceId play(const std::shared_ptr<platform::AudioStream>& stream, const PlayOptions& options = kDefaultPlayOptions);
     void stop(VoiceId voice, float fadeOutSeconds = 0.0F);
 

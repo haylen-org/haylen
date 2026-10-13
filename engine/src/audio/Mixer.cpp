@@ -188,8 +188,8 @@ Mixer::VoiceId Mixer::play(const std::shared_ptr<platform::AudioStream>& stream,
     if (!stream) {
         throw std::invalid_argument("Cannot play an empty audio stream.");
     }
-    if (options.loop || options.startAt != 0.0F || options.pitch != 1.0F || options.pitchVariation != 0.0F || options.loopStart != 0.0F || options.loopEnd) {
-        throw std::invalid_argument("A stream plays as its samples arrive, so its voice takes no loop, start time, pitch or pitch variation.");
+    if (options.loop || options.startAt != 0.0F || options.pitchVariation != 0.0F || options.loopStart != 0.0F || options.loopEnd) {
+        throw std::invalid_argument("A stream plays as its samples arrive, so its voice takes no loop, start time or pitch variation.");
     }
     requirePlayOptions(options);
     std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);

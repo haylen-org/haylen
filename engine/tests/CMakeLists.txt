@@ -111,6 +111,7 @@ set(HAYLEN_TEST_SOURCES
   graphics/GraphicsTests.cpp
   graphics/ShaderTests.cpp
   graphics/VectorImageTests.cpp
+  graphics/VideoTests.cpp
   input/CommandBufferTests.cpp
   input/GestureTests.cpp
   input/InputRecordingTests.cpp
@@ -171,6 +172,7 @@ set(HAYLEN_TEST_SOURCES
   support/ContentServer.cpp
   support/CountingPackage.cpp
   support/EngineFixture.cpp
+  support/FakeVideoDecoder.cpp
   support/ReleaseFixture.cpp
   support/TemporaryDirectory.cpp
   support/TestFiles.cpp
