@@ -20,7 +20,7 @@ A decoded sound is decoded when its asset loads, on worker threads when it loads
     "groups": {
         "gameplay": [
             "audio/effects/",
-            "audio/ambient/fire_loop.ogg",
+            "audio/ambient/fire-loop.ogg",
             {"path": "audio/music/day.mp3", "options": {"stream": true}}
         ]
     }
@@ -51,7 +51,7 @@ The function `audio.play(sound, options)` starts a voice and returns its id, an 
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 
-local crackle = audio.play(assets.load('audio/ambient/fire_loop.ogg'), {bus = 'ambience', loop = true, fadeIn = 1, volume = 0.7})
+local crackle = audio.play(assets.load('audio/ambient/fire-loop.ogg'), {bus = 'ambience', loop = true, fadeIn = 1, volume = 0.7})
 audio.stop(crackle, 0.5)
 ```
 
@@ -72,7 +72,7 @@ Sounds that repeat, such as footsteps, hits and clicks, sound mechanical when ev
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 
-audio.play(assets.load('audio/effects/footstep_1.ogg'), {volume = 0.35, pitchVariation = 0.08})
+audio.play(assets.load('audio/effects/footstep-1.ogg'), {volume = 0.35, pitchVariation = 0.08})
 ```
 
 ## Buses
@@ -384,7 +384,7 @@ A table describes every effect by name with its bus, its recordings and an optio
 local effects = {
     click = {bus = 'ui', files = {'ui/click.ogg'}},
     chop = {bus = 'sfx', files = {'effects/chop.ogg', 'effects/wood_hit_1.ogg', 'effects/wood_hit_2.ogg', 'effects/wood_hit_3.ogg'}},
-    footstep = {bus = 'sfx', files = {'effects/footstep_1.ogg', 'effects/footstep_2.ogg', 'effects/footstep_3.ogg', 'effects/footstep_4.ogg'}, volume = 0.35},
+    footstep = {bus = 'sfx', files = {'effects/footstep-1.ogg', 'effects/footstep-2.ogg', 'effects/footstep-3.ogg', 'effects/footstep-4.ogg'}, volume = 0.35},
     dawn = {bus = 'ui', files = {'jingles/dawn.ogg'}},
 }
 ```

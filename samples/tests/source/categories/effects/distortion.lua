@@ -1,4 +1,4 @@
--- Heat haze and shock rings: draws with a `distortion` bend the image of a canvas with post-processing instead of drawing colors. Small rising blobs of the library effect `heat_haze` shimmer above a campfire, a press sends a ring of `shockwave_distortion` across the landscape from the cursor, the shield of a robot ripples with `shield_ripple_distortion`, and a glass bubble with a sharp rim follows the cursor.
+-- Heat haze and shock rings: draws with a `distortion` bend the image of a canvas with post-processing instead of drawing colors. Small rising blobs of the library effect `heat-haze` shimmer above a campfire, a press sends a ring of `shockwave-distortion` across the landscape from the cursor, the shield of a robot ripples with `shield-ripple-distortion`, and a glass bubble with a sharp rim follows the cursor.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -24,16 +24,16 @@ function Distortion:init(entry)
     Distortion.super.init(self, entry)
     self.scenery = Scenery()
     self.robot = assets.texture('sprites/images/hero.png', {filter = 'linear'})
-    self.bubble = ParticleTest.library('hard_dot')
-    self.campfire = Distortion.newSystem('fire/campfire_realistic')
-    self.haze = Distortion.newSystem('fire/heat_haze')
+    self.bubble = ParticleTest.library('hard-dot')
+    self.campfire = Distortion.newSystem('fire/campfire-realistic')
+    self.haze = Distortion.newSystem('fire/heat-haze')
     self.campfire.position, self.haze.position = Distortion.fire, {Distortion.fire[1], Distortion.fire[2] - 140}
     self.campfire.scale = 2
-    self.shield = Distortion.newSystem('scifi/shield_ripple_distortion')
+    self.shield = Distortion.newSystem('scifi/shield-ripple-distortion')
     self.shield.position = Distortion.shield
     self.rings = {}
     for index = 1, Distortion.rings do
-        self.rings[index] = Distortion.newSystem('explosions/shockwave_distortion')
+        self.rings[index] = Distortion.newSystem('explosions/shockwave-distortion')
         self.rings[index].emitting = false
     end
     self.nextRing = 1

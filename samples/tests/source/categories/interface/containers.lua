@@ -46,7 +46,7 @@ function Containers:columns()
         ui.column{grow = 1, gap = 24,
             layout.section('Component "stack"', {
                 ui.stack{height = 220,
-                    ui.image{image = 'interface/images/landscape_dusk.png', fit = 'cover', align = 'stretch'},
+                    ui.image{image = 'interface/images/landscape-dusk.png', fit = 'cover', align = 'stretch'},
                     ui.label{text = 'Over the picture', font = 'heading', align = 'center', color = 'onAccent', outline = '#FF000000', outlineWidth = 3},
                     ui.badge{text = 'Top right', tone = 'accent', solid = true, align = 'end'},
                 },
@@ -59,7 +59,7 @@ function Containers:columns()
                     self:set('status', {text = 'The tabs picked "' .. event.item .. '".'})
                 end,
                     ui.label{text = 'Find the lighthouse before the third night.'},
-                    ui.image{image = 'interface/images/landscape_day.png', height = 140, fit = 'contain'},
+                    ui.image{image = 'interface/images/landscape-day.png', height = 140, fit = 'contain'},
                     ui.label{text = 'Disabled tabs cannot be picked.'},
                 },
             }),

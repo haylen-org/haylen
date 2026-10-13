@@ -24,7 +24,7 @@ end
 fs.mkdir(folder .. '/out'):await()
 zip.extract(pack, folder .. '/out'):await()]]},
     {'Unsafe archives', [[
-local bytes = assets.bytes('varn/unsafe_archive.zip')
+local bytes = assets.bytes('varn/unsafe-archive.zip')
 fs.writeFile(folder .. '/unsafe.zip', bytes):await()
 for _, entry in ipairs(zip.list(folder .. '/unsafe.zip'):await()) do
     print(entry.name, entry.unsafe)
@@ -94,7 +94,7 @@ end
 
 -- An archive of the package lives inside the package, so the test copies its bytes to the storage folder, where the files of "zip" live. The listing marks the entry that extracting refuses, and the refusal comes before any entry is written, the safe one before it included.
 function Zip:unsafeArchive(folder)
-    local bytes = assets.bytes('varn/unsafe_archive.zip')
+    local bytes = assets.bytes('varn/unsafe-archive.zip')
     fs.writeFile(folder .. '/unsafe.zip', bytes):await()
     local unsafe = {}
     for _, entry in ipairs(zip.list(folder .. '/unsafe.zip'):await() or {}) do

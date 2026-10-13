@@ -19,7 +19,7 @@ Engine.keys = {'key:j', 'key:k', 'key:up', 'key:enter'}
 
 function Engine:init(entry)
     Engine.super.init(self, entry)
-    self.music = assets.load('preferences/audio/music_loop.wav')
+    self.music = assets.load('preferences/audio/music-loop.wav')
     self.click = assets.load('preferences/audio/click.wav')
     self.clickTime = 0
 end

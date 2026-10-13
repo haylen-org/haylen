@@ -46,7 +46,7 @@ end
 -- A picture wider than its box, shown with one fit over a panel that marks the box.
 function Indicators:fit(fit, tint)
     return ui.column{gap = 4, align = 'center',
-        ui.stack{width = 150, height = 110, ui.panel{align = 'stretch'}, ui.image{image = 'interface/images/landscape_day.png', fit = fit, tint = tint, align = 'stretch'}},
+        ui.stack{width = 150, height = 110, ui.panel{align = 'stretch'}, ui.image{image = 'interface/images/landscape-day.png', fit = fit, tint = tint, align = 'stretch'}},
         ui.label{text = tint and 'Fit "' .. fit .. '"\nWith a tint' or 'Fit "' .. fit .. '"', font = 'caption'},
     }
 end
@@ -87,7 +87,7 @@ function Indicators:columns()
                 ui.row{gap = 12, self:fit('contain'), self:fit('cover'), self:fit('fill', '#FFFFC080')},
             }),
             layout.section('Component "avatar"', {
-                ui.row{gap = 16, ui.avatar{name = 'Ana Souza'}, ui.avatar{image = 'interface/images/avatar_ana.png'}, ui.avatar{image = 'interface/images/avatar_leo.png', size = 96}, ui.avatar{name = 'Leo', size = 48}},
+                ui.row{gap = 16, ui.avatar{name = 'Ana Souza'}, ui.avatar{image = 'interface/images/avatar-ana.png'}, ui.avatar{image = 'interface/images/avatar-leo.png', size = 96}, ui.avatar{name = 'Leo', size = 48}},
             }),
         },
     }

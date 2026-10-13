@@ -136,8 +136,8 @@ def parallax(folder: Path) -> None:
     builder.add(
         builder.image("sky", "../images/sky.png", 16, 384, repeatx=True, parallaxx=0, parallaxy=0),
         builder.image("clouds", "../images/clouds.png", 320, 160, repeatx=True, repeaty=True, parallaxx=0.15, parallaxy=0.15, opacity=0.8),
-        builder.image("far hills", "../images/hills_far.png", 640, 200, repeatx=True, parallaxx=0.3, parallaxy=1, offsety=110, tintcolor="#ff9fb0c8"),
-        builder.image("near hills", "../images/hills_near.png", 640, 160, repeatx=True, parallaxx=0.6, parallaxy=1, offsety=170),
+        builder.image("far hills", "../images/hills-far.png", 640, 200, repeatx=True, parallaxx=0.3, parallaxy=1, offsety=110, tintcolor="#ff9fb0c8"),
+        builder.image("near hills", "../images/hills-near.png", 640, 160, repeatx=True, parallaxx=0.6, parallaxy=1, offsety=170),
         builder.tiles("ground", ground),
         builder.tiles("front", front, parallaxx=1.4, parallaxy=1),
     )
@@ -180,10 +180,10 @@ def world(folder: Path) -> None:
                 return gid(t.WATER if value < 0.5 else (t.SAND if value < 0.58 else t.GRASS))
 
             island.add(island.tiles("ground", cell))
-            island.save(folder / f"island_{x}_{y}.tmj")
+            island.save(folder / f"island-{x}-{y}.tmj")
     save({
         "type": "world",
         "maps": [{"fileName": "castle.tmj", "x": -640, "y": 0, "width": 640, "height": 384}],
-        "patterns": [{"regexp": "island_(\\d+)_(\\d+)\\.tmj", "multiplierX": 640, "multiplierY": 384, "offsetX": 0, "offsetY": 0, "mapWidth": 640, "mapHeight": 384}],
+        "patterns": [{"regexp": "island-(\\d+)-(\\d+)\\.tmj", "multiplierX": 640, "multiplierY": 384, "offsetX": 0, "offsetY": 0, "mapWidth": 640, "mapHeight": 384}],
         "onlyShowAdjacentMaps": False,
     }, folder / "overworld.world")

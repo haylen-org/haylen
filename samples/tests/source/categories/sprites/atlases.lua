@@ -9,14 +9,14 @@ local Test = require('harness.test')
 
 local Atlases = haylen.class('Atlases', SpriteTest)
 
-Atlases.icons = {'gem_red.png', 'gem_green.png', 'gem_blue.png', 'star.png', 'heart.png'}
+Atlases.icons = {'gem-red.png', 'gem-green.png', 'gem-blue.png', 'star.png', 'heart.png'}
 Atlases.tags = {'idle', 'hop', 'splat'}
 Atlases.runCells = {9, 10, 11, 12, 13, 14, 15, 16}
 Atlases.titles = {'Hash atlas, trimmed frames', 'Array atlas, tags and a slice', 'Grid sheet'}
 
 Atlases.code = [[
-local gems = assets.load('sprites/atlases/gems.json', 'atlas')  gems:apply(sprite, 'gem_red.png')
-local coin = gems:animationFromFrames({'coin_0.png', 'coin_1.png', ...}, {framesPerSecond = 10})
+local gems = assets.load('sprites/atlases/gems.json', 'atlas')  gems:apply(sprite, 'gem-red.png')
+local coin = gems:animationFromFrames({'coin-0.png', 'coin-1.png', ...}, {framesPerSecond = 10})
 local slime = assets.load('sprites/atlases/slime.json', 'atlas')  animator:add('hop', slime:animation('hop'))  local bubble = slime:slice('bubble')
 local run = animation2d.fromGrid(assets.texture('sprites/sheets/walker.png'), {frameWidth = 64, frameHeight = 64, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12})]]
 
@@ -41,7 +41,7 @@ function Atlases:enter()
     end
     local coinFrames = {}
     for index = 0, 5 do
-        coinFrames[#coinFrames + 1] = 'coin_' .. index .. '.png'
+        coinFrames[#coinFrames + 1] = 'coin-' .. index .. '.png'
     end
     self.players = {coin = Atlases.player(self.gems.texture, 'spin', self.gems:animationFromFrames(coinFrames, {framesPerSecond = 10}))}
     for _, tag in ipairs(Atlases.tags) do
@@ -68,7 +68,7 @@ function Atlases:update(dt)
         entry.animator:update(dt)
         entry.animator:apply(entry.sprite)
     end
-    local frame = self.gems:frame('coin_' .. (self.players.coin.animator.frame - 1) .. '.png')
+    local frame = self.gems:frame('coin-' .. (self.players.coin.animator.frame - 1) .. '.png')
     self:status(string.format('Coin frame %d: %.0f x %.0f of %.0f x %.0f at offset %.0f, %.0f   Walker cell %d', self.players.coin.animator.frame, frame.source.width, frame.source.height, frame.originalSize.x, frame.originalSize.y, frame.offset.x, frame.offset.y, Atlases.runCells[self.players.walker.animator.frame]))
 end
 

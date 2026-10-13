@@ -8,7 +8,7 @@ local Test = require('harness.test')
 
 local Prefetch = haylen.class('Prefetch', Test)
 
-Prefetch.paths = {'delivery/prefetched/track_1.json', 'delivery/prefetched/track_2.json', 'delivery/prefetched/track_3.json'}
+Prefetch.paths = {'delivery/prefetched/track-1.json', 'delivery/prefetched/track-2.json', 'delivery/prefetched/track-3.json'}
 
 function Prefetch:enter()
     self:frame{

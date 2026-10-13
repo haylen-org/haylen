@@ -12,7 +12,7 @@ local Test = require('harness.test')
 
 local LoadTime = haylen.class('LoadTime', Test)
 
-LoadTime.names = {'blur', 'crt', 'dissolve', 'flash', 'grading', 'hologram', 'live', 'outline', 'palette', 'pixelate', 'rainbow', 'texture_map', 'wave'}
+LoadTime.names = {'blur', 'crt', 'dissolve', 'flash', 'grading', 'hologram', 'live', 'outline', 'palette', 'pixelate', 'rainbow', 'texture-map', 'wave'}
 LoadTime.code = [[
 local shader = assets.loadAsync('shaders/wave.shader'):await()
 local material = graphics2d.newMaterial(shader, {amplitude = 0.02})

@@ -1,5 +1,5 @@
 {
-    "texture": "../textures/soft_dot.png",
+    "texture": "../textures/soft-dot.png",
     "filter": "linear",
     "rate": 3,
     "prewarm": 10,

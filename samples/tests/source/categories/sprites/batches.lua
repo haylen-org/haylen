@@ -7,7 +7,7 @@ local SpriteTest = require('categories.sprites.sprite-test')
 
 local Batches = haylen.class('Batches', SpriteTest)
 
-Batches.icons = {'gem_red.png', 'gem_green.png', 'gem_blue.png', 'star.png', 'heart.png'}
+Batches.icons = {'gem-red.png', 'gem-green.png', 'gem-blue.png', 'star.png', 'heart.png'}
 Batches.spacing = 40
 
 Batches.code = [[

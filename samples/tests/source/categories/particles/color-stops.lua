@@ -19,7 +19,7 @@ function ColorStops:init(entry)
     ColorStops.super.init(self, entry)
     self.stop = 0.6
     self.tintMode = 'random'
-    local dot = ParticleTest.library('soft_dot')
+    local dot = ParticleTest.library('soft-dot')
     local column = {texture = dot, rate = 22, lifetime = 3.2, speed = ColorStops.rise / 3.2, spread = 0, startSize = 46, endSize = 46, colors = ColorStops.colors, layer = 2}
     self.columns = {}
     for index, spec in ipairs({{label = 'Spread evenly'}, {label = 'At "colorTimes"', times = true}, {label = 'Held with "steps"', times = true, steps = true}}) do
@@ -32,7 +32,7 @@ function ColorStops:init(entry)
     self.emitters = {self.columns[1].emitter, self.columns[2].emitter, self.columns[3].emitter}
     self:placeStops()
 
-    self.confetti = particles2d.newEmitter({texture = ParticleTest.library('confetti_sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'loopRandomStart', frameRate = 12, rate = 70, duration = 2.5, loop = true, lifetime = {2.6, 3.4}, speed = {700, 1000}, spread = 0.6, gravity = {0, 560}, damping = 1.4, startSize = {22, 30}, endSize = {22, 30}, spin = {-5, 5}, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.85, 1}, tints = ColorStops.tints, tintMode = self.tintMode, shape = 'cone', shapeSize = {20, 0}, maxParticles = 512, layer = 3, seed = 194})
+    self.confetti = particles2d.newEmitter({texture = ParticleTest.library('confetti-sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'loopRandomStart', frameRate = 12, rate = 70, duration = 2.5, loop = true, lifetime = {2.6, 3.4}, speed = {700, 1000}, spread = 0.6, gravity = {0, 560}, damping = 1.4, startSize = {22, 30}, endSize = {22, 30}, spin = {-5, 5}, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.85, 1}, tints = ColorStops.tints, tintMode = self.tintMode, shape = 'cone', shapeSize = {20, 0}, maxParticles = 512, layer = 3, seed = 194})
     self.confetti.x, self.confetti.y = 520, 420
     self.emitters[4] = self.confetti
 end

@@ -65,7 +65,7 @@ function Buttons:columns()
         ui.column{grow = 1, gap = 24,
             layout.section('Component "imageButton"', {
                 ui.row{gap = 24,
-                    ui.imageButton{image = 'interface/images/sign.png', hoverImage = 'interface/images/sign_hover.png', pressedImage = 'interface/images/sign_pressed.png', text = 'Start', onClick = self:pressed('the sign')},
+                    ui.imageButton{image = 'interface/images/sign.png', hoverImage = 'interface/images/sign-hover.png', pressedImage = 'interface/images/sign-pressed.png', text = 'Start', onClick = self:pressed('the sign')},
                     ui.imageButton{image = 'interface/images/sign.png', scale = 1.5, text = 'Big', onClick = self:pressed('the big sign')},
                     ui.imageButton{image = 'interface/icons/potion.png', scale = 3, tint = '#FFB0FFB0', tooltip = 'Tinted, without hover or pressed pictures', onClick = self:pressed('the potion')},
                 },

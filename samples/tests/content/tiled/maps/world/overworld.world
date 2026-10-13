@@ -11,7 +11,7 @@
  ],
  "patterns": [
   {
-   "regexp": "island_(\\d+)_(\\d+)\\.tmj",
+   "regexp": "island-(\\d+)-(\\d+)\\.tmj",
    "multiplierX": 640,
    "multiplierY": 384,
    "offsetX": 0,

@@ -16,9 +16,9 @@ function language.setup()
     localization.loadFolder(language.folder)
     localization.setFallback('en')
     if not language.family then
-        local japanese = assets.font('fonts/mplus_1p_regular.ttf')
-        local arabic = assets.font('fonts/noto_sans_arabic_regular.ttf')
-        local devanagari = assets.font('fonts/noto_sans_devanagari_regular.ttf')
+        local japanese = assets.font('fonts/mplus-1p-regular.ttf')
+        local arabic = assets.font('fonts/noto-sans-arabic-regular.ttf')
+        local devanagari = assets.font('fonts/noto-sans-devanagari-regular.ttf')
         language.family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {japanese, arabic, devanagari}})
         ui.addFont('text', language.family)
     end

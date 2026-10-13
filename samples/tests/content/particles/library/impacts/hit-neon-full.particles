@@ -1,0 +1,6 @@
+{
+    "emitters": [
+        {"name": "ring", "effect": "../explosions/shockwave-ring.particles", "scale": 0.25, "overrides": {"colors": ["#FFFF30C0", "#0030F0FF"]}},
+        {"name": "sparks", "effect": "../impacts/hit-neon.particles"}
+    ]
+}

@@ -56,9 +56,9 @@ function WindowsPages:columns()
         ui.column{grow = 2, gap = 24,
             layout.section('Component "carousel"', {
                 ui.carousel{height = 230, loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
-                    page('interface/images/landscape_day.png', 'Day'),
-                    page('interface/images/landscape_dusk.png', 'Dusk'),
-                    page('interface/images/landscape_night.png', 'Night'),
+                    page('interface/images/landscape-day.png', 'Day'),
+                    page('interface/images/landscape-dusk.png', 'Dusk'),
+                    page('interface/images/landscape-night.png', 'Night'),
                 },
             }),
             layout.section('Component "scroll" with snapping', {

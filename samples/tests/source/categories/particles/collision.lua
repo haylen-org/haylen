@@ -26,10 +26,10 @@ function Collision:init(entry)
     self.bounce = 0.5
     self.white = graphics.whiteTexture()
 
-    self.sparks = particles2d.newEmitter({texture = ParticleTest.library('spark_streak'), rate = 90, lifetime = {1.8, 2.6}, speed = {300, 650}, direction = 1.5708, spread = 1.8, gravity = {0, 1200}, startSize = 12, endSize = 6, alignToVelocity = true, stretch = 0.02, colors = {'#FFFFFFE0', '#FFFFB040', '#FFFF6020', '#00A02000'}, collision = self:floorCollision(), blend = 'additive', maxParticles = 512, layer = 2, seed = 231})
+    self.sparks = particles2d.newEmitter({texture = ParticleTest.library('spark-streak'), rate = 90, lifetime = {1.8, 2.6}, speed = {300, 650}, direction = 1.5708, spread = 1.8, gravity = {0, 1200}, startSize = 12, endSize = 6, alignToVelocity = true, stretch = 0.02, colors = {'#FFFFFFE0', '#FFFFB040', '#FFFF6020', '#00A02000'}, collision = self:floorCollision(), blend = 'additive', maxParticles = 512, layer = 2, seed = 231})
     self.sparks.x, self.sparks.y = -640, Collision.spout
 
-    self.balls = particles2d.newEmitter({texture = ParticleTest.library('hard_dot'), rate = 6, lifetime = {6, 8}, speed = {300, 600}, spread = m.tau, gravity = {0, 500}, startSize = 26, endSize = 26, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.05, 0.9, 1}, tints = {'#FFFF8080', '#FFFFD060', '#FF80E0A0', '#FF80B0FF', '#FFD090FF'}, collision = {type = 'bounds', area = Collision.area, bounce = 0.9}, maxParticles = 64, layer = 2, seed = 232})
+    self.balls = particles2d.newEmitter({texture = ParticleTest.library('hard-dot'), rate = 6, lifetime = {6, 8}, speed = {300, 600}, spread = m.tau, gravity = {0, 500}, startSize = 26, endSize = 26, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.05, 0.9, 1}, tints = {'#FFFF8080', '#FFFFD060', '#FF80E0A0', '#FF80B0FF', '#FFD090FF'}, collision = {type = 'bounds', area = Collision.area, bounce = 0.9}, maxParticles = 64, layer = 2, seed = 232})
 
     self.world = physics2d.newWorld()
     self.round = self.world:createBody({type = 'static', x = 540, y = -170})

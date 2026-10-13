@@ -17,19 +17,19 @@ function SubEmitters:init(entry)
     SubEmitters.super.init(self, entry)
     self.inheritColor = true
     self.cometDrag = 0.2
-    local dot, spark = ParticleTest.library('soft_dot'), ParticleTest.library('hard_dot')
+    local dot, spark = ParticleTest.library('soft-dot'), ParticleTest.library('hard-dot')
 
     local splash = {texture = spark, lifetime = {0.25, 0.45}, speed = {80, 220}, direction = -1.5708, spread = 2.2, gravity = {0, 900}, startSize = {5, 8}, endSize = 2, colors = {'#E0C0D8F8', '#00C0D8F8'}, maxParticles = 512, layer = 3}
-    self.rain = particles2d.newEmitter({texture = ParticleTest.library('rain_streak'), rate = 70, lifetime = 3, speed = {900, 1050}, direction = 1.5708, spread = 0.02, startSize = 40, endSize = 40, colors = {'#B0B0C8F0'}, shape = 'rectangle', shapeSize = {230, 4}, collision = {type = 'floor', y = SubEmitters.ground + 500, result = 'die'}, subEmitters = {{effect = splash, trigger = 'death', count = {3, 5}}}, maxParticles = 256, layer = 2, seed = 291})
+    self.rain = particles2d.newEmitter({texture = ParticleTest.library('rain-streak'), rate = 70, lifetime = 3, speed = {900, 1050}, direction = 1.5708, spread = 0.02, startSize = 40, endSize = 40, colors = {'#B0B0C8F0'}, shape = 'rectangle', shapeSize = {230, 4}, collision = {type = 'floor', y = SubEmitters.ground + 500, result = 'die'}, subEmitters = {{effect = splash, trigger = 'death', count = {3, 5}}}, maxParticles = 256, layer = 2, seed = 291})
     self.rain.x, self.rain.y = -680, -500
 
-    self.crackle = {texture = ParticleTest.library('star_4point'), lifetime = {0.15, 0.35}, speed = {20, 120}, spread = m.tau, startSize = {10, 18}, endSize = 0, colors = {'#FFFFFFFF', '#00FFFFFF'}, blend = 'additive', maxParticles = 512, layer = 5}
+    self.crackle = {texture = ParticleTest.library('star-4point'), lifetime = {0.15, 0.35}, speed = {20, 120}, spread = m.tau, startSize = {10, 18}, endSize = 0, colors = {'#FFFFFFFF', '#00FFFFFF'}, blend = 'additive', maxParticles = 512, layer = 5}
     self.stars = {texture = dot, lifetime = {0.9, 1.3}, speed = {160, 380}, spread = m.tau, gravity = {0, 220}, damping = 1.2, startSize = {14, 20}, endSize = 4, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, blend = 'additive', subEmitters = {{effect = self.crackle, trigger = 'death', count = {1, 3}, probability = 0.6}}, maxParticles = 1024, layer = 4}
     self.rockets = particles2d.newEmitter({texture = dot, rate = 1.2, lifetime = {1, 1.2}, speed = {720, 840}, direction = -1.5708, spread = 0.35, gravity = {0, 420}, startSize = 16, endSize = 12, colors = {'#FFFFFFFF'}, tints = {'#FFFF5070', '#FFFFD040', '#FF50E080', '#FF50A0FF', '#FFD070FF'}, blend = 'additive', subEmitters = self:rocketSubEmitters(), maxParticles = 16, layer = 3, seed = 292})
     self.rockets.x, self.rockets.y = 0, SubEmitters.ground
 
-    local dust = {texture = ParticleTest.library('smoke_puff'), lifetime = {0.6, 1}, speed = {30, 90}, direction = -1.5708, spread = 2.4, startSize = {20, 30}, endSize = {60, 90}, rotation = {0, m.tau}, colors = {'#A0B09070', '#00806040'}, maxParticles = 256, layer = 2}
-    self.debris = particles2d.newEmitter({texture = ParticleTest.library('debris_sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'random', rate = 0, bursts = {{time = 0, count = {10, 14}}}, duration = 2.2, loop = true, lifetime = {2, 2.6}, speed = {350, 650}, direction = -1.5708, spread = 1.2, gravity = {0, 1100}, startSize = {24, 40}, endSizeScale = 1, rotation = {0, m.tau}, spin = {-6, 6}, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.85, 1}, collision = {type = 'floor', y = 60, bounce = 0.35, friction = 0.5, lifeLoss = 0.1}, subEmitters = {{effect = dust, trigger = 'collision', count = {1, 2}, inheritVelocity = 0.1}}, maxParticles = 128, layer = 3, seed = 293})
+    local dust = {texture = ParticleTest.library('smoke-puff'), lifetime = {0.6, 1}, speed = {30, 90}, direction = -1.5708, spread = 2.4, startSize = {20, 30}, endSize = {60, 90}, rotation = {0, m.tau}, colors = {'#A0B09070', '#00806040'}, maxParticles = 256, layer = 2}
+    self.debris = particles2d.newEmitter({texture = ParticleTest.library('debris-sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'random', rate = 0, bursts = {{time = 0, count = {10, 14}}}, duration = 2.2, loop = true, lifetime = {2, 2.6}, speed = {350, 650}, direction = -1.5708, spread = 1.2, gravity = {0, 1100}, startSize = {24, 40}, endSizeScale = 1, rotation = {0, m.tau}, spin = {-6, 6}, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.85, 1}, collision = {type = 'floor', y = 60, bounce = 0.35, friction = 0.5, lifeLoss = 0.1}, subEmitters = {{effect = dust, trigger = 'collision', count = {1, 2}, inheritVelocity = 0.1}}, maxParticles = 128, layer = 3, seed = 293})
     self.debris.x, self.debris.y = 680, SubEmitters.ground - 60
 
     self.comets = particles2d.newEmitter({texture = dot, rate = 0.5, lifetime = 4, speed = {460, 520}, direction = 0.1, spread = 0.1, startSize = 28, endSize = 22, colors = {'#FFFFF0D0'}, blend = 'additive', subEmitters = self:cometSubEmitters(), maxParticles = 8, layer = 3, seed = 294})
@@ -45,7 +45,7 @@ end
 
 -- The comets leave dust while they live, which keeps the share of their velocity of the slider.
 function SubEmitters:cometSubEmitters()
-    return {{effect = {texture = ParticleTest.library('sparkle_sheet'), frameGrid = {columns = 4, rows = 1}, lifetime = {0.6, 1}, speed = {0, 30}, spread = m.tau, startSize = {12, 20}, endSize = 0, colors = {'#FFFFE0A0', '#00FF8040'}, blend = 'additive', maxParticles = 1024, layer = 2}, trigger = 'alive', rate = 60, inheritVelocity = self.cometDrag}}
+    return {{effect = {texture = ParticleTest.library('sparkle-sheet'), frameGrid = {columns = 4, rows = 1}, lifetime = {0.6, 1}, speed = {0, 30}, spread = m.tau, startSize = {12, 20}, endSize = 0, colors = {'#FFFFE0A0', '#00FF8040'}, blend = 'additive', maxParticles = 1024, layer = 2}, trigger = 'alive', rate = 60, inheritVelocity = self.cometDrag}}
 end
 
 function SubEmitters:enter()

@@ -28,7 +28,7 @@ end
 local kModes = {{id = 'inherit', text = 'Mode "inherit"'}, {id = 'pausable', text = 'Mode "pausable"'}, {id = 'whenPaused', text = 'Mode "whenPaused"'}, {id = 'always', text = 'Mode "always"'}, {id = 'disabled', text = 'Mode "disabled"'}}
 local kPulses = {
     {bus = 'sfx', paths = {'audio/effects/chop.ogg'}, every = 1.3},
-    {bus = 'footsteps', paths = {'audio/effects/footstep_1.ogg', 'audio/effects/footstep_2.ogg', 'audio/effects/footstep_3.ogg', 'audio/effects/footstep_4.ogg'}, every = 0.4},
+    {bus = 'footsteps', paths = {'audio/effects/footstep-1.ogg', 'audio/effects/footstep-2.ogg', 'audio/effects/footstep-3.ogg', 'audio/effects/footstep-4.ogg'}, every = 0.4},
     {bus = 'ui', paths = {'audio/ui/click.ogg'}, every = 1.1},
 }
 
@@ -44,7 +44,7 @@ function Buses:enter()
     self:readStats()
 
     audio.playMusic(sounds.track(sounds.tracks[2].path), {fade = 1, volume = 0.6})
-    self.fire = audio.play(sounds.get('audio/ambient/fire_loop.ogg'), {bus = 'ambience', loop = true, fadeIn = 1})
+    self.fire = audio.play(sounds.get('audio/ambient/fire-loop.ogg'), {bus = 'ambience', loop = true, fadeIn = 1})
     -- A pulse plays only while its bus processes, so the pause does not pile up voices that start held.
     for _, pulse in ipairs(kPulses) do
         local count = 0

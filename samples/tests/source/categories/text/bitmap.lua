@@ -31,7 +31,7 @@ function Bitmap:draw(area)
     local native = pixel.nativeSize
 
     local x, y = 24, 24
-    Test.caption('The file "haylen_pixel.fnt", text format, at 1, 2, 3 and 4 times its native size', x, y, {size = 22, color = Test.accent})
+    Test.caption('The file "haylen-pixel.fnt", text format, at 1, 2, 3 and 4 times its native size', x, y, {size = 22, color = Test.accent})
     y = y + 34
     for scale = 1, 4 do
         graphics2d.drawText(pixel, Bitmap.line, x, y, {size = native * scale})
@@ -43,14 +43,14 @@ function Bitmap:draw(area)
     graphics2d.drawText(pixel, 'Shadow', x + 620, y, {size = native * 5, shadowOffset = {5, 5}, shadowColor = '#FF4C7DFF'})
 
     x, y = area.width * 0.52, 24
-    Test.caption('The file "haylen_pixel_gold.fnt", binary format, colors kept', x, y, {size = 22, color = Test.accent})
+    Test.caption('The file "haylen-pixel-gold.fnt", binary format, colors kept', x, y, {size = 22, color = Test.accent})
     graphics2d.drawText(gold, 'GAME OVER', x, y + 40, {size = native * 6})
     graphics2d.drawText(gold, 'High score', x, y + 130, {size = native * 4})
     graphics2d.drawText(gold, 'Tinted', x + 420, y + 130, {size = native * 4, color = '#FF80C0FF'})
     graphics2d.drawRichText('[b]Bold[/b] and [i]italic[/i] are synthesized', x, y + 210, {family = self.pixelFamily, size = native * 3})
 
     local panelY = area.height * 0.5
-    Test.caption('The image "lcd_digits.png" as a grid font of 12 by 20 cells', x, panelY, {size = 22, color = Test.accent})
+    Test.caption('The image "lcd-digits.png" as a grid font of 12 by 20 cells', x, panelY, {size = 22, color = Test.accent})
     graphics2d.drawRect({x, panelY + 36, 560, 270}, '#FF0B1A10')
     local time = haylen.elapsed()
     graphics2d.drawText(lcd, string.format('%02d:%04.1f', math.floor(time / 60), time % 60), x + 30, panelY + 56, {size = 60})

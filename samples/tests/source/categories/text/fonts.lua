@@ -6,26 +6,26 @@ local fonts = {}
 
 -- The files with the options they load with. Lilita One bakes a wider distance field, so its outlines, glows and blurs reach further.
 fonts.files = {
-    crimson = {'fonts/crimson_text_regular.ttf'},
-    crimsonBold = {'fonts/crimson_text_bold.ttf'},
-    crimsonItalic = {'fonts/crimson_text_italic.ttf'},
-    crimsonBoldItalic = {'fonts/crimson_text_bold_italic.ttf'},
-    fira = {'fonts/fira_sans_regular.otf'},
-    lilita = {'fonts/lilita_one_regular.ttf', {bakeSize = 64, spread = 16}},
-    mono = {'fonts/space_mono_regular.ttf'},
-    cjk = {'fonts/mplus_1p_regular.ttf'},
-    symbols = {'fonts/noto_sans_symbols_2_regular.ttf'},
-    arabic = {'fonts/noto_sans_arabic_regular.ttf'},
-    hebrew = {'fonts/noto_sans_hebrew_regular.ttf'},
-    devanagari = {'fonts/noto_sans_devanagari_regular.ttf'},
-    thai = {'fonts/noto_sans_thai_regular.ttf'},
-    pixel = {'text/haylen_pixel.fnt', {filter = 'nearest'}},
-    pixelGold = {'text/haylen_pixel_gold.fnt', {filter = 'nearest'}},
+    crimson = {'fonts/crimson-text-regular.ttf'},
+    crimsonBold = {'fonts/crimson-text-bold.ttf'},
+    crimsonItalic = {'fonts/crimson-text-italic.ttf'},
+    crimsonBoldItalic = {'fonts/crimson-text-bold-italic.ttf'},
+    fira = {'fonts/fira-sans-regular.otf'},
+    lilita = {'fonts/lilita-one-regular.ttf', {bakeSize = 64, spread = 16}},
+    mono = {'fonts/space-mono-regular.ttf'},
+    cjk = {'fonts/mplus-1p-regular.ttf'},
+    symbols = {'fonts/noto-sans-symbols-2-regular.ttf'},
+    arabic = {'fonts/noto-sans-arabic-regular.ttf'},
+    hebrew = {'fonts/noto-sans-hebrew-regular.ttf'},
+    devanagari = {'fonts/noto-sans-devanagari-regular.ttf'},
+    thai = {'fonts/noto-sans-thai-regular.ttf'},
+    pixel = {'text/haylen-pixel.fnt', {filter = 'nearest'}},
+    pixelGold = {'text/haylen-pixel-gold.fnt', {filter = 'nearest'}},
 }
 
 function fonts.load(name)
     if name == 'lcd' then
-        return assets.load('text/lcd_digits.png', 'gridFont', {characters = '0123456789:.-', cellWidth = 12, cellHeight = 20, advance = 13, baseline = 19, filter = 'nearest'})
+        return assets.load('text/lcd-digits.png', 'gridFont', {characters = '0123456789:.-', cellWidth = 12, cellHeight = 20, advance = 13, baseline = 19, filter = 'nearest'})
     end
     local file = fonts.files[name]
     return assets.font(file[1], file[2])

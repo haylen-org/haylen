@@ -1,0 +1,7 @@
+{
+    "emitters": [
+        {"name": "ripple", "effect": "../water/ripple-ring.particles"},
+        {"name": "splash", "effect": "../water/splash-big.particles"},
+        {"name": "bubbles", "effect": "../bubbles/underwater-rising.particles", "overrides": {"rate": 0, "bursts": [{"time": 0, "count": 12}], "duration": 0.05, "prewarm": 0}}
+    ]
+}

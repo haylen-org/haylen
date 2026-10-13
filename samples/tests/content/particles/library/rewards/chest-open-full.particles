@@ -1,0 +1,8 @@
+{
+    "emitters": [
+        {"name": "rays", "effect": "../ui/level-up-rays.particles", "scale": 0.6},
+        {"name": "glow", "effect": "../rewards/chest-open-glow.particles"},
+        {"name": "coins", "effect": "../rewards/coin-burst.particles", "delay": 0.2},
+        {"name": "sparkle", "effect": "../rewards/pickup-sparkle.particles"}
+    ]
+}

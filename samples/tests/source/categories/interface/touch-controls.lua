@@ -18,10 +18,10 @@ TouchControls.actions = {actions = {
     {name = 'aim', type = 'vector', up = {'key:up'}, down = {'key:down'}, left = {'key:left'}, right = {'key:right'}, bindings = {'stick:right', 'virtualStick:aim'}},
 }}
 TouchControls.art = {
-    stickBase = {image = 'interface/touch/stick_base.png', filter = 'linear'},
-    stickKnob = {image = 'interface/touch/stick_knob.png', filter = 'linear'},
-    touchButton = {image = 'interface/touch/touch_button.png', filter = 'linear'},
-    touchButtonPressed = {image = 'interface/touch/touch_button_pressed.png', filter = 'linear'},
+    stickBase = {image = 'interface/touch/stick-base.png', filter = 'linear'},
+    stickKnob = {image = 'interface/touch/stick-knob.png', filter = 'linear'},
+    touchButton = {image = 'interface/touch/touch-button.png', filter = 'linear'},
+    touchButtonPressed = {image = 'interface/touch/touch-button-pressed.png', filter = 'linear'},
 }
 
 function TouchControls:init(entry)

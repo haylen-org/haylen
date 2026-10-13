@@ -39,8 +39,8 @@
         "slotSize": 96
     },
     "fontFiles": {
-        "lilitaOne": "fonts/lilita_one_regular.ttf",
-        "firaSans": "fonts/fira_sans_regular.otf"
+        "lilitaOne": "fonts/lilita-one-regular.ttf",
+        "firaSans": "fonts/fira-sans-regular.otf"
     },
     "fonts": {
         "title": {

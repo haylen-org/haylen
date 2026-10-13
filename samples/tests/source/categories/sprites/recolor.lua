@@ -13,13 +13,13 @@ Recolor.view = {1800, 1000}
 Recolor.crowd = 120
 Recolor.palette = {'#FFE04848', '#FF3FA34D', '#FF3D6FD9', '#FFE8C547', '#FF8A4FC9', '#FFF08A30', '#FF2BB5B0', '#FF5A3A28', '#FF30343C', '#FFF2F0E8', '#FFD9577F', '#FF7FB33F'}
 Recolor.code = [[
-local hero = graphics2d.newSprite(assets.texture('sprites/images/outfit_base.png'), {partMask = assets.texture('sprites/images/outfit_mask.png')})
+local hero = graphics2d.newSprite(assets.texture('sprites/images/outfit-base.png'), {partMask = assets.texture('sprites/images/outfit-mask.png')})
 hero.partColors = {red = '#FF8A4FC9', green = '#FFF08A30', blue = '#FF30343C', yellow = '#FF5A3A28'}
 crowd:draw({partMask = mask})  -- Every sprite of the batch keeps its own part colors.]]
 
 function Recolor:enter()
-    self.base = assets.texture('sprites/images/outfit_base.png', {filter = 'linear'})
-    self.mask = assets.texture('sprites/images/outfit_mask.png', {filter = 'linear'})
+    self.base = assets.texture('sprites/images/outfit-base.png', {filter = 'linear'})
+    self.mask = assets.texture('sprites/images/outfit-mask.png', {filter = 'linear'})
     self.random = m.random(11)
     self.outfits = {}
     for index = 1, 8 do

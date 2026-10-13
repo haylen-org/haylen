@@ -13,8 +13,8 @@ local Stress = haylen.class('Stress', AudioTest)
 
 local kLimit = 128
 local kBuses = {'sfx', 'ui', 'ambience'}
-local kShort = {'audio/effects/chop.ogg', 'audio/effects/hit_1.ogg', 'audio/effects/footstep_1.ogg', 'audio/ui/click.ogg', 'audio/effects/wood_pickup.ogg'}
-local kLong = {'audio/effects/explosion.ogg', 'audio/generated/pluck_loop.wav', 'audio/ambient/fire_loop.ogg'}
+local kShort = {'audio/effects/chop.ogg', 'audio/effects/hit-1.ogg', 'audio/effects/footstep-1.ogg', 'audio/ui/click.ogg', 'audio/effects/wood-pickup.ogg'}
+local kLong = {'audio/effects/explosion.ogg', 'audio/generated/pluck-loop.wav', 'audio/ambient/fire-loop.ogg'}
 
 function Stress:enter()
     self.history = collections.newRingBuffer(360)

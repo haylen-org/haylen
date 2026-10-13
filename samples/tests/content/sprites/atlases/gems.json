@@ -1,6 +1,6 @@
 {
  "frames": {
-  "gem_red.png": {
+  "gem-red.png": {
    "frame": {
     "x": 2,
     "y": 2,
@@ -20,7 +20,7 @@
     "h": 48
    }
   },
-  "gem_green.png": {
+  "gem-green.png": {
    "frame": {
     "x": 40,
     "y": 2,
@@ -40,7 +40,7 @@
     "h": 48
    }
   },
-  "gem_blue.png": {
+  "gem-blue.png": {
    "frame": {
     "x": 82,
     "y": 2,
@@ -100,7 +100,7 @@
     "h": 48
    }
   },
-  "coin_0.png": {
+  "coin-0.png": {
    "frame": {
     "x": 40,
     "y": 45,
@@ -120,7 +120,7 @@
     "h": 48
    }
   },
-  "coin_1.png": {
+  "coin-1.png": {
    "frame": {
     "x": 80,
     "y": 45,
@@ -140,7 +140,7 @@
     "h": 48
    }
   },
-  "coin_2.png": {
+  "coin-2.png": {
    "frame": {
     "x": 116,
     "y": 45,
@@ -160,7 +160,7 @@
     "h": 48
    }
   },
-  "coin_3.png": {
+  "coin-3.png": {
    "frame": {
     "x": 140,
     "y": 45,
@@ -180,7 +180,7 @@
     "h": 48
    }
   },
-  "coin_4.png": {
+  "coin-4.png": {
    "frame": {
     "x": 152,
     "y": 45,
@@ -200,7 +200,7 @@
     "h": 48
    }
   },
-  "coin_5.png": {
+  "coin-5.png": {
    "frame": {
     "x": 2,
     "y": 95,

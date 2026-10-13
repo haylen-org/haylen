@@ -1,20 +1,20 @@
--- The sounds of the audio tests, which `tools/audio/generate_content.py` synthesizes: short effects decoded into memory and music streamed from its file, all in the `audio` preload group that every audio test waits for.
+-- The sounds of the audio tests, which `tools/audio/generate-content.py` synthesizes: short effects decoded into memory and music streamed from its file, all in the `audio` preload group that every audio test waits for.
 local assets = require('haylen.assets')
 
 local sounds = {}
 
 sounds.effects = {
     {id = 'chop', text = 'Chop', path = 'audio/effects/chop.ogg'},
-    {id = 'hit', text = 'Hit', path = 'audio/effects/hit_1.ogg'},
-    {id = 'footstep', text = 'Footstep', path = 'audio/effects/footstep_1.ogg'},
-    {id = 'swing', text = 'Swing', path = 'audio/effects/swing_1.wav'},
-    {id = 'pickup', text = 'Pickup', path = 'audio/effects/wood_pickup.ogg'},
+    {id = 'hit', text = 'Hit', path = 'audio/effects/hit-1.ogg'},
+    {id = 'footstep', text = 'Footstep', path = 'audio/effects/footstep-1.ogg'},
+    {id = 'swing', text = 'Swing', path = 'audio/effects/swing-1.wav'},
+    {id = 'pickup', text = 'Pickup', path = 'audio/effects/wood-pickup.ogg'},
     {id = 'explosion', text = 'Explosion', path = 'audio/effects/explosion.ogg'},
 }
 
 sounds.tracks = {
-    {id = 'calm', text = 'Calm loop', path = 'audio/music/calm_loop.mp3'},
-    {id = 'lively', text = 'Lively loop', path = 'audio/music/lively_loop.mp3'},
+    {id = 'calm', text = 'Calm loop', path = 'audio/music/calm-loop.mp3'},
+    {id = 'lively', text = 'Lively loop', path = 'audio/music/lively-loop.mp3'},
 }
 
 sounds.stream = {stream = true}

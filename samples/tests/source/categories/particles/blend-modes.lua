@@ -9,7 +9,7 @@ local BlendModes = haylen.class('BlendModes', ParticleTest)
 
 BlendModes.modes = {'alpha', 'additive', 'multiply', 'screen', 'premultiplied'}
 BlendModes.straight = {texture = 'soft', colors = {'#FFFF9040', '#80FF5020', '#00FF2010'}}
-BlendModes.premultiplied = {texture = 'soft_premultiplied', colors = {'#FFFF9040', '#80802810', '#00000000'}}
+BlendModes.premultiplied = {texture = 'soft-premultiplied', colors = {'#FFFF9040', '#80802810', '#00000000'}}
 
 function BlendModes:init(entry)
     BlendModes.super.init(self, entry)

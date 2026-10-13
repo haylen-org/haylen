@@ -34,7 +34,7 @@ function ShaderTest.pattern()
 end
 
 function ShaderTest.ramp(name)
-    return assets.texture('shaders/images/ramp_' .. name .. '.png', {filter = 'linear'})
+    return assets.texture('shaders/images/ramp-' .. name .. '.png', {filter = 'linear'})
 end
 
 function ShaderTest.material(name, uniforms)

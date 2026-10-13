@@ -1,0 +1,11 @@
+{
+    "emitters": [
+        {"name": "smoke", "effect": "../explosions/explosion-smoke.particles", "delay": 0.05},
+        {"name": "debris", "effect": "../explosions/debris-chunks.particles"},
+        {"name": "fireball", "effect": "../explosions/fireball-realistic.particles"},
+        {"name": "shockwave", "effect": "../explosions/shockwave-ring.particles"},
+        {"name": "bend", "effect": "../explosions/shockwave-distortion.particles"},
+        {"name": "flash", "effect": "../explosions/flash-white.particles"},
+        {"name": "sparks", "effect": "../explosions/explosion-sparks.particles"}
+    ]
+}

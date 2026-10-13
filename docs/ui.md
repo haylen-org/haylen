@@ -477,7 +477,7 @@ The switch of the settings screen shows how the surfaces work together. Off, it 
         "track": {"image": "ui/track.png", "slice": 28, "scale": 0.93, "padding": 5, "filter": "linear"},
         "trackFill": {"image": "ui/track_fill.png", "slice": 16, "scale": 1.3, "colorize": true, "filter": "linear"},
         "knob": {"image": "ui/knob.png", "colorize": true, "filter": "linear"},
-        "touchButtonPressed": {"image": "ui/touch_button_pressed.png", "filter": "linear"}
+        "touchButtonPressed": {"image": "ui/touch-button-pressed.png", "filter": "linear"}
     }
 }
 ```
@@ -521,8 +521,8 @@ The theme surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPress
 
 ```lua
 local art = {
-    stickBase = {image = 'ui/stick_base.png', filter = 'linear'},
-    stickKnob = {image = 'ui/stick_knob.png', filter = 'linear'},
+    stickBase = {image = 'ui/stick-base.png', filter = 'linear'},
+    stickKnob = {image = 'ui/stick-knob.png', filter = 'linear'},
 }
 ui.touchStick{action = 'move', mode = 'following', radius = 130, width = 600, height = 420, style = {surfaces = art}}
 ```

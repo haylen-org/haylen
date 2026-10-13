@@ -21,9 +21,9 @@ function MovingEmitters:init(entry)
     self.time = 0
     self.shipX, self.shipY = 0, 0
     self.speed = 0
-    local dot = ParticleTest.library('soft_dot')
+    local dot = ParticleTest.library('soft-dot')
 
-    self.exhaust = particles2d.newEmitter({texture = ParticleTest.library('flame_soft'), rate = 140, lifetime = {0.5, 0.8}, speed = {260, 340}, direction = 1.5708, spread = 0.25, inheritVelocity = self.inherit, startSize = {44, 56}, endSize = 6, colors = {'#FFFFFFE0', '#FFFFB040', '#C0FF5020', '#00602010'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 271})
+    self.exhaust = particles2d.newEmitter({texture = ParticleTest.library('flame-soft'), rate = 140, lifetime = {0.5, 0.8}, speed = {260, 340}, direction = 1.5708, spread = 0.25, inheritVelocity = self.inherit, startSize = {44, 56}, endSize = 6, colors = {'#FFFFFFE0', '#FFFFB040', '#C0FF5020', '#00602010'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 271})
     self.plain = particles2d.newEmitter({texture = dot, rate = 60, lifetime = 1.2, speed = 0, startSize = 26, endSize = 4, colors = {'#FFFFB040', '#00FF6020'}, blend = 'additive', maxParticles = 256, layer = 2, seed = 272})
     self.spaced = particles2d.newEmitter({texture = dot, rate = 0, rateOverDistance = 0.25, lifetime = 1.2, speed = 0, startSize = 26, endSize = 4, colors = {'#FF60E0FF', '#002080FF'}, blend = 'additive', maxParticles = 2048, layer = 2, seed = 273})
     self.emitters = {self.exhaust, self.plain, self.spaced}

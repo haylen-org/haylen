@@ -20,9 +20,9 @@ function TurbulenceAttractors:init(entry)
     self.strength = 260
     self.frequency = 0.004
     self.pull = 2800
-    self.smoke = particles2d.newEmitter({texture = ParticleTest.library('smoke_sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'random', rate = 14, prewarm = 4, lifetime = {4, 5}, speed = {90, 120}, spread = 0.2, turbulence = self:turbulence(), startSize = {50, 70}, endSize = {200, 260}, rotation = {0, m.tau}, spin = {-0.4, 0.4}, colors = {'#00D0D0D8', '#A0B0B0B8', '#00909098'}, maxParticles = 128, layer = 2, seed = 221})
+    self.smoke = particles2d.newEmitter({texture = ParticleTest.library('smoke-sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'random', rate = 14, prewarm = 4, lifetime = {4, 5}, speed = {90, 120}, spread = 0.2, turbulence = self:turbulence(), startSize = {50, 70}, endSize = {200, 260}, rotation = {0, m.tau}, spin = {-0.4, 0.4}, colors = {'#00D0D0D8', '#A0B0B0B8', '#00909098'}, maxParticles = 128, layer = 2, seed = 221})
     self.smoke.x, self.smoke.y = -500, 300
-    self.coins = particles2d.newEmitter({texture = ParticleTest.library('coin_sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'loopRandomStart', frameRate = 12, rate = 5, lifetime = 4, speed = {450, 750}, spread = 1.4, damping = 1.2, startSize = 44, endSize = 44, attractors = self:attractors(), maxParticles = 256, layer = 3, seed = 222})
+    self.coins = particles2d.newEmitter({texture = ParticleTest.library('coin-sheet'), frameGrid = {columns = 4, rows = 1}, frameMode = 'loopRandomStart', frameRate = 12, rate = 5, lifetime = 4, speed = {450, 750}, spread = 1.4, damping = 1.2, startSize = 44, endSize = 44, attractors = self:attractors(), maxParticles = 256, layer = 3, seed = 222})
     self.coins.x, self.coins.y = 530, 360
     self.emitters = {self.smoke, self.coins}
 end

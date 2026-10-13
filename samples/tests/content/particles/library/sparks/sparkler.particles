@@ -1,5 +1,5 @@
 {
-    "texture": "../textures/hard_dot.png",
+    "texture": "../textures/hard-dot.png",
     "filter": "linear",
     "rate": 220,
     "maxParticles": 256,

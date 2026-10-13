@@ -177,7 +177,7 @@ def build() -> tuple[Canvas, dict]:
             "controlHeight": 72, "controlRadius": 8, "panelPadding": 20, "choiceSize": 40, "sliderTrackHeight": 24, "sliderKnobSize": 32,
             "toggleWidth": 80, "toggleHeight": 40, "progressHeight": 28, "focusWidth": 4, "slotSize": 96,
         },
-        "fontFiles": {"lilitaOne": "fonts/lilita_one_regular.ttf", "firaSans": "fonts/fira_sans_regular.otf"},
+        "fontFiles": {"lilitaOne": "fonts/lilita-one-regular.ttf", "firaSans": "fonts/fira-sans-regular.otf"},
         "fonts": {
             "title": {"font": "lilitaOne", "size": 60}, "heading": {"font": "lilitaOne", "size": 40},
             "button": {"font": "lilitaOne", "size": 28}, "body": {"font": "firaSans", "size": 30},

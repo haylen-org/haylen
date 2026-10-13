@@ -37,10 +37,10 @@ function Positional:enter()
     audio.followCamera(self.world)
 
     self.emitters = {
-        {name = 'Campfire', x = -700, y = -350, color = Test.warm, voice = audio.play(sounds.get('audio/ambient/fire_loop.ogg'), {bus = 'ambience', loop = true, x = -700, y = -350})},
-        {name = 'Campfire', x = 950, y = 450, color = Test.warm, voice = audio.play(sounds.get('audio/ambient/fire_loop.ogg'), {bus = 'ambience', loop = true, x = 950, y = 450, startAt = 0.4})},
+        {name = 'Campfire', x = -700, y = -350, color = Test.warm, voice = audio.play(sounds.get('audio/ambient/fire-loop.ogg'), {bus = 'ambience', loop = true, x = -700, y = -350})},
+        {name = 'Campfire', x = 950, y = 450, color = Test.warm, voice = audio.play(sounds.get('audio/ambient/fire-loop.ogg'), {bus = 'ambience', loop = true, x = 950, y = 450, startAt = 0.4})},
         {name = 'Woodcutter', x = 250, y = -800, color = Test.green},
-        {name = 'Hum', x = kOrbit, y = 0, color = Test.violet, voice = audio.play(sounds.get('audio/generated/hum_loop.wav'), {loop = true, volume = 0.5, x = kOrbit, y = 0})},
+        {name = 'Hum', x = kOrbit, y = 0, color = Test.violet, voice = audio.play(sounds.get('audio/generated/hum-loop.wav'), {loop = true, volume = 0.5, x = kOrbit, y = 0})},
     }
     local cutter = self.emitters[3]
     timer.every(1.4, function()

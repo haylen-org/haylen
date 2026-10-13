@@ -74,15 +74,15 @@ function PostProcessing:init(entry)
             self.luts[grade.id] = PostProcessing.lut(grade.grade)
         end
     end
-    self.campfire = PostProcessing.newSystem('fire/campfire_realistic')
+    self.campfire = PostProcessing.newSystem('fire/campfire-realistic')
     self.campfire.position = {-560, Scenery.ground - 30}
     self.campfire.scale = 2
-    self.neon = PostProcessing.newSystem('fire/neon_flame')
+    self.neon = PostProcessing.newSystem('fire/neon-flame')
     self.neon.position = {560, Scenery.ground - 30}
     self.neon.scale = 2
-    self.torch = PostProcessing.newSystem('fire/torch_flame')
+    self.torch = PostProcessing.newSystem('fire/torch-flame')
     self.torch.scale = 2
-    self.burst = PostProcessing.newSystem('explosions/explosion_neon')
+    self.burst = PostProcessing.newSystem('explosions/explosion-neon')
     self.burst.emitting = false
     self.systems = {self.campfire, self.neon, self.torch, self.burst}
     self.enabled = true

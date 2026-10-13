@@ -27,7 +27,7 @@ function ShapesDirections:init(entry)
     self.mode = 'outward'
     self.angle = 0
     self.thickness = 0
-    local dot = ParticleTest.library('soft_dot')
+    local dot = ParticleTest.library('soft-dot')
     self.emitters = {}
     self.labels = {}
     for index, shape in ipairs(ShapesDirections.shapes) do

@@ -103,7 +103,7 @@ A file whose only key is `emitters` describes a composite effect: a list of emit
 ```json
 {
     "emitters": [
-        {"name": "smoke", "effect": "../smoke/explosion_smoke.particles", "delay": 0.05},
+        {"name": "smoke", "effect": "../smoke/explosion-smoke.particles", "delay": 0.05},
         {"name": "fireball", "effect": "fireball.particles"},
         {"name": "ring", "effect": "shockwave.particles", "overrides": {"colors": ["#FFFF30C0", "#0040F0FF"]}},
         {"name": "flash", "effect": "flash.particles", "scale": 0.5}
@@ -354,7 +354,7 @@ local scene = require('haylen.scene')
 
 local camera = graphics2d.newCamera()
 local leaves = particles2d.newEmitter({
-    texture = assets.texture('effects/leaf_sheet.png', {filter = 'linear'}),
+    texture = assets.texture('effects/leaf-sheet.png', {filter = 'linear'}),
     frameGrid = {columns = 4, rows = 1},
     frameMode = 'loopRandomStart',
     frameRate = 6,

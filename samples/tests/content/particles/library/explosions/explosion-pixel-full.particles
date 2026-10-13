@@ -1,0 +1,7 @@
+{
+    "emitters": [
+        {"name": "smoke", "effect": "../smoke/smoke-puff-pixel.particles", "delay": 0.15},
+        {"name": "blast", "effect": "../explosions/explosion-pixel.particles"},
+        {"name": "debris", "effect": "../explosions/explosion-pixel-debris.particles"}
+    ]
+}

@@ -78,7 +78,7 @@ function Effects:start()
         audio.playMusic(sounds.track(sounds.tracks[2].path), {fade = 0.5, volume = 0.8})
     else
         audio.stopMusic(0.5)
-        self.voice = audio.play(sounds.get('audio/generated/pluck_loop.wav'), {loop = true, volume = 0.8})
+        self.voice = audio.play(sounds.get('audio/generated/pluck-loop.wav'), {loop = true, volume = 0.8})
     end
 end
 
