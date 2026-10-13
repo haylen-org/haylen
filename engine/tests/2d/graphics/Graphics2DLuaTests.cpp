@@ -506,4 +506,48 @@ TEST_F(Graphics2DLuaTest, DrawsGroupsAndMasks) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() error('Shape failed.') end)").find("Shape failed."), std::string::npos);
 }
 
+TEST_F(Graphics2DLuaTest, DirectsCamerasThroughZonesAndRailsAndScrollsPixelCanvases) {
+    // clang-format off
+    fixture.runLua(R"(
+        camera = graphics2d.newCamera()
+        rig = graphics2d.newCameraRig({limits = {0, 0, 3000, 1000}, blendTime = 0, zones = {
+            {name = 'cave', area = {0, 0, 500, 400}, zoom = 2, offset = {0, -10}},
+            {name = 'peak', area = {400, 0, 300, 300}, limits = {400, -200, 300, 500}, priority = 1},
+        }})
+        rig:update(camera, 100, 100, 1 / 60)
+        first = rig.zone .. ' ' .. camera.zoom.x .. ' ' .. camera.offset.y
+        rig:update(camera, 450, 100, 1 / 60)
+        second = rig.zone .. ' ' .. camera.limits.y
+        rig:setRail({0, 500, 3000, 500})
+        rig:update(camera, 1500, 900, 1 / 60)
+        local x, y = rig:project(10, 20)
+        third = tostring(rig.zone) .. ' ' .. camera.y .. ' ' .. x .. ',' .. y .. ' ' .. rig.zoneCount
+        rig:addZone({name = 'shore', area = {0, 0, 10, 10}})
+        rig:removeZone('cave')
+        rig:clearZones()
+        rig.blendTime = 0.25
+        pixels = graphics2d.newPixelCanvas(160, 90, {smooth = true})
+        camera.x, camera.y = 0.5, 0.25
+        require('haylen.scene').push({render = function()
+            pixels:begin(camera, {clear = '#FF000000'})
+            graphics2d.drawRect({0, 0, 8, 8}, '#FFFFFF')
+            graphics2d.beginScreen()
+            pixels:draw(0, 0, 640, 360, {layer = 1})
+        end})
+    )");
+    // clang-format on
+    fixture.frames(1);
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(lua("return first .. ' | ' .. second .. ' | ' .. third .. ' | ' .. rig.zoneCount .. ' ' .. rig.blendTime"), "cave 2.0 -10.0 | peak -200.0 | nil 500.0 10.0,500.0 2 | 0 0.25");
+    EXPECT_EQ(lua("local x, y = pixels:fraction() return pixels.width .. 'x' .. pixels.height .. ' ' .. pixels.texture.width .. ' ' .. x .. ' ' .. y"), "160x90 162 -0.5 0.25");
+
+    EXPECT_NE(lua("graphics2d.newCameraRig({zones = {{name = 'x', area = {0, 0, 0, 0}}}})").find("A camera zone needs a name and an area of a positive size."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newCameraRig({speed = 1})").find("Unknown option \"speed\"."), std::string::npos);
+    EXPECT_NE(lua("rig:addZone({name = 'x', area = {0, 0, 1, 1}, size = 3})").find("Unknown option \"size\"."), std::string::npos);
+    EXPECT_NE(lua("rig:setRail({1, 2})").find("A camera rail needs two points or more"), std::string::npos);
+    EXPECT_NE(lua("rig.blendTime = -1").find("A camera rig needs a blend time of zero or more and a positive zoom."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newPixelCanvas(0, 90)").find("A pixel canvas needs a width and a height of one pixel or more."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newPixelCanvas(10, 10, {crisp = true})").find("Unknown option \"crisp\"."), std::string::npos);
+}
+
 } // namespace haylen

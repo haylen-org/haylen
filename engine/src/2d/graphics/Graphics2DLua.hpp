@@ -19,6 +19,8 @@ class Graphics2DLua final {
   public:
     static void install(lua_State* L);
 
+    [[nodiscard]] static Renderer::CanvasOptions readCanvasOptions(lua_State* L, int index);
+
   private:
     static constexpr std::array<std::string_view, 6> kCanvasFields{"sort", "order", "visibilityMask", "ambientLight", "clear", "postProcess"};
     static constexpr std::array<std::string_view, 8> kImageBlendFields{"pattern", "progress", "center", "cellSize", "blockSize", "color", "reversed", "angle"};
@@ -33,7 +35,6 @@ class Graphics2DLua final {
 
     // Returns the font at the index, or the default font of the engine where the argument is nil.
     [[nodiscard]] static text::Font& fontArgument(lua_State* L, int index);
-    [[nodiscard]] static Renderer::CanvasOptions readCanvasOptions(lua_State* L, int index);
 
     // Assigns every field of the options table at index to the userdata on top of the stack through its properties, so each one is validated like a later assignment.
     static void assignFields(lua_State* L, int options);

@@ -59,6 +59,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/animation/StateGraphPlayer.cpp
   src/2d/graphics/Camera.cpp
   src/2d/graphics/CameraLua.cpp
+  src/2d/graphics/CameraRig.cpp
+  src/2d/graphics/CameraRigLua.cpp
   src/2d/graphics/DrawItem.cpp
   src/2d/graphics/FrameSubmitter.cpp
   src/2d/graphics/GpuInstance.cpp
@@ -73,6 +75,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/NineSlice.cpp
   src/2d/graphics/NineSliceLua.cpp
   src/2d/graphics/Parallax.cpp
+  src/2d/graphics/PixelCanvas.cpp
+  src/2d/graphics/PixelCanvasLua.cpp
   src/2d/graphics/ParallaxLua.cpp
   src/2d/graphics/PolygonMesh.cpp
   src/2d/graphics/Renderer.cpp

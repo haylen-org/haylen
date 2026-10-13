@@ -2,7 +2,7 @@
 return {
     prefix = 'CAM',
     title = 'Camera',
-    description = 'The 2D camera following, framing, shaking, turning and splitting the view, with parallax, pixel snap, picking and debug drawing.',
+    description = 'The 2D camera following, framing, shaking, turning and splitting the view, with parallax, pixel snap, picking, debug drawing, zones, rails and pixel canvases.',
     tests = {
         {code = 'CAM-001', title = 'Dead zone and drag margins', description = 'Following a walker that moves freely inside a dead zone or inside drag margins.', module = 'follow'},
         {code = 'CAM-002', title = 'Smoothing and look-ahead', description = 'Position smoothing and a view that leads the walker by its velocity.', module = 'smoothing'},
@@ -18,5 +18,7 @@ return {
         {code = 'CAM-012', title = 'Pixel snap', description = 'Pixel art with and without snapping the view to whole pixels.', module = 'pixel-snap'},
         {code = 'CAM-013', title = 'Screen to world', description = 'Picking objects under the pointer in a zoomed and rotated view.', module = 'picking'},
         {code = 'CAM-014', title = 'Debug drawing', description = 'The view, the limits and the drag box drawn from a zoomed-out camera.', module = 'debug'},
+        {code = 'CAM-015', title = 'Zones and rails', description = 'A camera rig that takes the limits, zoom and offset of the zone the walker is in, and follows along a rail.', module = 'zones'},
+        {code = 'CAM-016', title = 'Pixel canvas', description = 'A low-resolution canvas scaled up that scrolls in whole pixels or smoothly by the part of a pixel.', module = 'pixel-canvas'},
     },
 }

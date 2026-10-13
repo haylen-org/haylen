@@ -97,7 +97,7 @@ Retained trees of 2D nodes with parenting, culling, prefabs and saved descriptio
 
 #### Camera (CAM)
 
-The 2D camera following, framing, shaking, turning and splitting the view, with parallax, pixel snap, picking and debug drawing. The tests are in `source/categories/camera/`.
+The 2D camera following, framing, shaking, turning and splitting the view, with parallax, pixel snap, picking, debug drawing, zones, rails and pixel canvases. The tests are in `source/categories/camera/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -115,6 +115,8 @@ The 2D camera following, framing, shaking, turning and splitting the view, with 
 | `CAM-012` | Pixel snap | Pixel art with and without snapping the view to whole pixels. |  |
 | `CAM-013` | Screen to world | Picking objects under the pointer in a zoomed and rotated view. |  |
 | `CAM-014` | Debug drawing | The view, the limits and the drag box drawn from a zoomed-out camera. |  |
+| `CAM-015` | Zones and rails | A camera rig that takes the limits, zoom and offset of the zone the walker is in, and follows along a rail. |  |
+| `CAM-016` | Pixel canvas | A low-resolution canvas scaled up that scrolls in whole pixels or smoothly by the part of a pixel. |  |
 
 #### Text and fonts (TXT)
 

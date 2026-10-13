@@ -12,13 +12,14 @@ class CameraLua final {
   public:
     static void install(lua_State* L);
 
-  private:
     [[nodiscard]] static math::Rect getScreen(lua_State* L);
-    [[nodiscard]] static math::Vec2 readPoint(lua_State* L, int index);
-    static int pushPoint(lua_State* L, math::Vec2 point);
 
     // Reads the seconds a camera moves forward by, which are finite and not negative.
     [[nodiscard]] static float readSeconds(lua_State* L, int index);
+
+  private:
+    [[nodiscard]] static math::Vec2 readPoint(lua_State* L, int index);
+    static int pushPoint(lua_State* L, math::Vec2 point);
 
     static int follow(lua_State* L);
     static int update(lua_State* L);

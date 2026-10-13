@@ -1249,6 +1249,24 @@ Creates a [`Mesh`](#mesh) that keeps its triangles in C++ between draws, with th
 
 Creates a [`Mesh`](#mesh) of `columns` by `rows` cells, the start of a free-form deformation such as a waving flag or a squashed jelly. The optional `options` are `x`, `y`, `width` and `height`, the area the grid covers, which defaults to the size of the texture at the origin, and `source`, the `Rect` of the texture the grid shows, which defaults to the whole texture. Vertices count row by row from the top left, `columns + 1` to a row. Fewer than one column or row or more than 1048576 cells raise `A grid mesh needs at least one column and one row and at most 1048576 cells.`
 
+### graphics2d.newCameraRig(options)
+
+Creates a [`CameraRig`](#camerarig). The table `options` is optional:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `limits` | Rect | none | The limits of the camera outside every zone. |
+| `zoom` | number or Vec2 | `1` | The zoom of the camera outside every zone. |
+| `blendTime` | number | `0.5` | Seconds the camera takes to ease into a zone it enters. |
+| `zones` | list | none | Zones to add, as `rig:addZone` takes them. |
+| `rail` | list or FloatBuffer | none | The points of the rail as `x1, y1, x2, y2, ...`. |
+
+A negative blend time or a zoom that is not positive raises `A camera rig needs a blend time of zero or more and a positive zoom.`
+
+### graphics2d.newPixelCanvas(width, height, options)
+
+Creates a [`PixelCanvas`](#pixelcanvas) of `width` by `height` pixels. The option `smooth`, `true` by default, shifts the image by the part of a pixel the camera lies between. A size under one pixel raises `A pixel canvas needs a width and a height of one pixel or more.`
+
 ### graphics2d.blendCameras(from, to, amount)
 
 Returns a new `Camera` between the views of `from` and `to`, where `amount` 0 gives the view of `from` and 1 the view of `to`. Position, offset, rotation and viewport move in a straight line, and the zoom changes at a steady rate. The result takes the other settings of `to`. Tween `amount` for a smooth cut between two cameras, such as from the player to a boss.
@@ -1908,6 +1926,106 @@ scene.push({
     render = function(self)
         graphics2d.beginScreen()
         flag:draw({layer = 1}, 200, 150)
+    end,
+})
+```
+
+## CameraRig
+
+A `CameraRig` directs a camera through zones and along a rail, as the [rendering guide](../rendering.md#cameras-and-parallax) explains. A zone gives the camera its own limits, zoom and offset while the target is inside it, and the camera eases into a zone it enters. A rail is a line the camera follows the target along.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `zone` | string or nil | The name of the zone the target is in, read-only. |
+| `zoneCount` | integer | The number of zones, read-only. |
+| `blendTime` | number | Seconds the camera takes to ease into a zone. |
+
+### rig:addZone(zone)
+
+Adds a zone, in place of the zone of the same name, from a table with `name`, `area`, a `Rect`, `limits`, the area by default, `zoom`, a number or a `Vec2`, `offset`, a `Vec2`, and `priority`, `0` by default, where a zone of higher priority wins where zones overlap. A zone without a name or an area of a positive size raises `A camera zone needs a name and an area of a positive size.`
+
+### rig:removeZone(name) and rig:clearZones()
+
+Removes one zone or every zone.
+
+### rig:setRail(points)
+
+Sets the rail from `x1, y1, x2, y2, ...` or a float buffer, and `nil` takes it away. A single point raises `A camera rail needs two points or more, or none to take it away.`
+
+### rig:project(x, y)
+
+Returns the point of the rail nearest to `x`, `y`, or the point itself without a rail.
+
+### rig:update(camera, x, y, dt)
+
+Picks the zone of the target `x`, `y`, eases the limits, zoom and offset of `camera` toward it, and follows the target, or its point on the rail, with `camera:follow`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+camera.positionSmoothing = true
+camera.limitSmoothing = true
+local rig = graphics2d.newCameraRig({limits = {0, 0, 4000, 1200}, zones = {
+    {name = 'cave', area = {0, 0, 900, 600}, zoom = 1.5},
+    {name = 'arena', area = {1800, 0, 1200, 900}, zoom = 0.75, offset = {0, -80}},
+}})
+local player = {x = 100, y = 300}
+
+scene.push({
+    update = function(self, dt)
+        player.x = player.x + 120 * dt
+        rig:update(camera, player.x, player.y, dt)
+        camera:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        graphics2d.drawCircle(player.x, player.y, 20, '#FFFFD040')
+    end,
+})
+```
+
+## PixelCanvas
+
+A `PixelCanvas` renders pixel art at a low resolution and draws it scaled up, scrolling smoothly while every pixel stays whole, as the [rendering guide](../rendering.md#cameras-and-parallax) explains.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `width`, `height` | integer | Size in pixels, read-only. |
+| `texture` | Texture | The image, one pixel larger on every side, read-only. |
+
+### canvas:begin(camera, options)
+
+Begins a render target canvas of the image through `camera` at whole pixels, with the options of [`graphics2d.beginTarget`](#graphics2dbegintargettarget-camera-options). The viewport of the camera is left out.
+
+### canvas:draw(x, y, width, height, order)
+
+Draws the image over the rectangle of the open canvas, such as the screen, with an optional [draw order](#draw-order).
+
+### canvas:fraction()
+
+Returns the part of a pixel, on each axis, the camera lay between at the last `begin`, which the draw shifts the image by.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local pixels = graphics2d.newPixelCanvas(320, 180)
+local camera = graphics2d.newCamera()
+
+scene.push({
+    update = function(self, dt)
+        camera.x = camera.x + 7 * dt
+    end,
+    render = function(self)
+        pixels:begin(camera, {clear = '#FF101418'})
+        graphics2d.drawRect({0, 0, 16, 16}, '#FFFFD040')
+    end,
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        local area = graphics2d.canvasBounds()
+        pixels:draw(area.x, area.y, area.width, area.height)
     end,
 })
 ```
