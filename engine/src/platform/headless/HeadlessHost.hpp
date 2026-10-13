@@ -214,6 +214,9 @@ class HeadlessHost final : public Host {
     [[nodiscard]] Battery getBattery() const override {
         return systemState.getBattery();
     }
+    [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override {
+        return systemState.getAccessibility();
+    }
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override {
         vibrations.push_back(seconds);
@@ -284,12 +287,15 @@ class HeadlessHost final : public Host {
         systemInfo = std::move(value);
     }
 
-    // Change the theme and the battery from any thread, the way platform services report them. The engine publishes the change at its next frame.
+    // Change the theme, the battery and the accessibility settings from any thread, the way platform services report them. The engine publishes the change at its next frame.
     void setTheme(Theme value) {
         systemState.setTheme(value);
     }
     void setBattery(const Battery& value) {
         systemState.setBattery(value);
+    }
+    void setAccessibilitySettings(const AccessibilitySettings& value) {
+        systemState.setAccessibility(value);
     }
 
     // Whether the headless system finds an app for the urls the engine opens, which it answers at once.

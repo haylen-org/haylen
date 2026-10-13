@@ -3,6 +3,7 @@
 #if TARGET_OS_OSX
 #include <cstdlib>
 
+#import "platform/apple/AppleAccessibility.hpp"
 #import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleTheme.hpp"
@@ -10,6 +11,7 @@
 #include "platform/sokol/SokolRuntime.hpp"
 #include "sokol_app.h"
 
+using haylen::platform::AppleAccessibility;
 using haylen::platform::AppleNotifications;
 using haylen::platform::ApplePlugins;
 using haylen::platform::AppleTheme;
@@ -17,10 +19,11 @@ using haylen::platform::SokolRuntime;
 
 @implementation HaylenAppDelegate
 
-// The main menu comes first, as an app that loads it from a nib has it. Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, and apps that do not link UserNotifications leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes.
+// The main menu comes first, as an app that loads it from a nib has it. Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, and apps that do not link UserNotifications leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes, and so does the state of VoiceOver, which no notification announces.
 - (void)applicationWillFinishLaunching:(NSNotification*)notification {
     [self installMainMenu];
     [NSApp addObserver:self forKeyPath:@"effectiveAppearance" options:NSKeyValueObservingOptionInitial context:nil];
+    [NSWorkspace.sharedWorkspace addObserver:self forKeyPath:@"voiceOverEnabled" options:NSKeyValueObservingOptionNew context:nil];
     ApplePlugins::load();
     AppleNotifications::observe(self);
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
@@ -29,6 +32,10 @@ using haylen::platform::SokolRuntime;
 }
 
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id>*)change context:(void*)context {
+    if (object == NSWorkspace.sharedWorkspace) {
+        AppleAccessibility::report();
+        return;
+    }
     AppleTheme::report(NSApp.effectiveAppearance);
 }
 

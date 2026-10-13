@@ -138,6 +138,7 @@ set(HAYLEN_TEST_SOURCES
   math/UtilityTests.cpp
   math/VectorTests.cpp
   net/WebSocketTests.cpp
+  platform/AccessibilityTests.cpp
   platform/AndroidBatteryStatusTests.cpp
   platform/AndroidDeviceInfoTests.cpp
   platform/AndroidDialogJsonTests.cpp

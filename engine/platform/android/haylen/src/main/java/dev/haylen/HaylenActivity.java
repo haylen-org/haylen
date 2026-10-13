@@ -59,6 +59,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     private final HaylenSplash splash = new HaylenSplash(this);
     private final HaylenBattery battery = new HaylenBattery(this);
+    private final HaylenAccessibility accessibility = new HaylenAccessibility(this);
     private HaylenRequirements requirements;
     private HaylenOverlayLayer overlays;
     private HaylenEditText editor;
@@ -84,6 +85,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(getResources().getConfiguration()));
         battery.register();
+        accessibility.register();
         fold = new HaylenFold(this);
         fold.register();
 
@@ -169,6 +171,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeDensity(configuration.densityDpi / (float) DisplayMetrics.DENSITY_DEFAULT);
         nativeOrientation(configuration.orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(configuration));
+        accessibility.report();
         overlays.refresh();
         HaylenPlugins.configurationChanged(configuration);
     }
@@ -206,6 +209,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenDialogs.activityDestroyed();
         splash.dismiss();
         battery.unregister();
+        accessibility.unregister();
         fold.unregister();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         if (network != null) {

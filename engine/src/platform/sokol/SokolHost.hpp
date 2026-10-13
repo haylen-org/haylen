@@ -76,6 +76,7 @@ class SokolHost final : public Host {
     [[nodiscard]] SystemInfo getSystemInfo() const override;
     [[nodiscard]] Theme getTheme() const override;
     [[nodiscard]] Battery getBattery() const override;
+    [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override;
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
@@ -98,7 +99,7 @@ class SokolHost final : public Host {
     // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.
     [[nodiscard]] static NativeViews& getNativeViews() noexcept;
 
-    // The theme and the battery that the platform services report from any thread, at initialize and whenever the system changes them. They belong to the process, so every app that starts hears the last report.
+    // The theme, the battery and the accessibility settings that the platform services report from any thread, at initialize and whenever the system changes them. They belong to the process, so every app that starts hears the last report.
     [[nodiscard]] static SystemState& getSystemState() noexcept;
 
     // Records the options the window opens with, before it exists, so the options the engine applies when the app starts find the window as it already is.

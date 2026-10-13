@@ -17,8 +17,8 @@
 #include "platform/linux/LinuxDialogs.hpp"
 #include "platform/linux/LinuxGamepads.hpp"
 #include "platform/linux/LinuxGlib.hpp"
+#include "platform/linux/LinuxSettings.hpp"
 #include "platform/linux/LinuxSystem.hpp"
-#include "platform/linux/LinuxTheme.hpp"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -30,7 +30,7 @@ std::string_view Services::getName() noexcept {
 void Services::initialize() {
     LinuxGamepads::scan();
     LinuxSystem::watchBattery();
-    LinuxTheme::observe();
+    LinuxSettings::observe();
 }
 
 void Services::shutdown() noexcept {

@@ -312,6 +312,10 @@ Battery SokolHost::getBattery() const {
     return getSystemState().getBattery();
 }
 
+AccessibilitySettings SokolHost::getAccessibilitySettings() const {
+    return getSystemState().getAccessibility();
+}
+
 void SokolHost::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
     Services::openUrl(std::string(url), std::move(callback));
 }

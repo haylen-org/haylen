@@ -196,6 +196,11 @@ void WebPage::setBattery(double level, bool charging, bool full) {
     SokolHost::getSystemState().setBattery(battery);
 }
 
+// The browser tells nothing about screen readers, so the page never reports one.
+void WebPage::setAccessibility(double textScale, bool reducedMotion, bool highContrast, bool reducedTransparency) {
+    SokolHost::getSystemState().setAccessibility({.textScale = static_cast<float>(textScale), .reducedMotion = reducedMotion, .highContrast = highContrast, .reducedTransparency = reducedTransparency, .screenReader = false});
+}
+
 void WebPage::resolveDialog(double id, const char* json) {
     DialogRelay::resolve(static_cast<std::uint64_t>(id), WebDialogJson::readAnswer(json));
 }
@@ -407,6 +412,10 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_network(int online) {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_theme(int dark) {
     haylen::platform::WebPage::setTheme(dark != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_accessibility(double textScale, int reducedMotion, int highContrast, int reducedTransparency) {
+    haylen::platform::WebPage::setAccessibility(textScale, reducedMotion != 0, highContrast != 0, reducedTransparency != 0);
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_battery(double level, int charging, int full) {

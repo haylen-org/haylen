@@ -33,7 +33,7 @@ class Package;
 
 namespace haylen::platform {
 
-// Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build. The platform reports the theme and the battery of the device through `SokolHost::getSystemState`, from any thread, when it initializes and whenever the system changes them.
+// Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build. The platform reports the theme, the battery and the accessibility settings of the device through `SokolHost::getSystemState`, from any thread, when it initializes and whenever the system changes them.
 class Services final {
   public:
     [[nodiscard]] static std::string_view getName() noexcept;

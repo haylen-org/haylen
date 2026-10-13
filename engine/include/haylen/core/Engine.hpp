@@ -25,6 +25,7 @@ class Runtime;
 }
 
 namespace haylen::platform {
+class Accessibility;
 class Bridge;
 class Dialogs;
 class Host;
@@ -180,6 +181,7 @@ class Engine final {
     [[nodiscard]] content::ContentManager& getContent() noexcept;
     [[nodiscard]] platform::Bridge& getPlatform() noexcept;
     [[nodiscard]] platform::System& getSystem() noexcept;
+    [[nodiscard]] platform::Accessibility& getAccessibility() noexcept;
     [[nodiscard]] platform::Dialogs& getDialogs() noexcept;
     [[nodiscard]] platform::Screens& getScreens() noexcept;
     [[nodiscard]] plugins::PluginRegistry& getPlugins() noexcept;

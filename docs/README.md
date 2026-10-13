@@ -108,6 +108,7 @@ Platform covers the window and the device, the services every platform offers an
 | [Plugins](platform/plugins.md) | Native plugins: the package, `plugin.json`, their Lua API, requirements, the Apple, Android and web parts and the demo plugin. |
 | [`haylen.window`](lua-api/window.md) | Window size, fullscreen, title, cursor, on-screen keyboard and clipboard, and on desktops frameless, transparent, always-on-top and click-through windows with their frame and monitors. |
 | [`haylen.system`](lua-api/system.md) | What the device and its operating system are, the theme and the battery with their changes, opening urls and vibrating. |
+| [`haylen.accessibility`](lua-api/accessibility.md) | The accessibility settings of the system with their changes: text scale, reduced motion, high contrast, reduced transparency and screen readers. |
 | [`haylen.dialogs`](lua-api/dialogs.md) | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. |
 | [`haylen.platform`](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and purchases, with bytes next to the JSON, typed errors, timeouts, cancellation, calls without answers, retained and batched events, the handles of the plugins of the app and the video and audio streams of their native parts. |
 | [`haylen.native`](lua-api/native.md) | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. |

@@ -40,10 +40,24 @@ void WindowsSystem::openUrl(const std::string& url, std::function<void(bool open
 
 // Windows versions without the setting show light apps.
 void WindowsSystem::reportTheme() {
-    DWORD light = 1;
-    DWORD size = sizeof(light);
-    const LSTATUS status = RegGetValueW(HKEY_CURRENT_USER, kPersonalizeKey, L"AppsUseLightTheme", RRF_RT_REG_DWORD, nullptr, &light, &size);
-    SokolHost::getSystemState().setTheme(status == ERROR_SUCCESS && light == 0 ? Theme::Dark : Theme::Light);
+    SokolHost::getSystemState().setTheme(readUserNumber(kPersonalizeKey, L"AppsUseLightTheme", 1) == 0 ? Theme::Dark : Theme::Light);
+}
+
+// The text size of the accessibility settings is a percentage from 100 to 225, and turning off the animations of Windows clears the client area animations.
+void WindowsSystem::reportAccessibility() {
+    HIGHCONTRASTW contrast{.cbSize = static_cast<UINT>(sizeof(HIGHCONTRASTW))};
+    const bool highContrast = SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0) != FALSE && (contrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
+    BOOL animations = TRUE;
+    SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);
+    BOOL screenReader = FALSE;
+    SystemParametersInfoW(SPI_GETSCREENREADER, 0, &screenReader, 0);
+    SokolHost::getSystemState().setAccessibility({
+        .textScale = static_cast<float>(readUserNumber(kAccessibilityKey, L"TextScaleFactor", 100)) / 100.0F,
+        .reducedMotion = animations == FALSE,
+        .highContrast = highContrast,
+        .reducedTransparency = readUserNumber(kPersonalizeKey, L"EnableTransparency", 1) == 0,
+        .screenReader = screenReader != FALSE,
+    });
 }
 
 void WindowsSystem::reportBattery() {
@@ -51,6 +65,12 @@ void WindowsSystem::reportBattery() {
     if (GetSystemPowerStatus(&status)) {
         SokolHost::getSystemState().setBattery(WindowsPowerStatus::toBattery(status.ACLineStatus, status.BatteryFlag, status.BatteryLifePercent));
     }
+}
+
+std::uint32_t WindowsSystem::readUserNumber(const wchar_t* key, const wchar_t* name, std::uint32_t missing) {
+    DWORD value = 0;
+    DWORD size = sizeof(value);
+    return RegGetValueW(HKEY_CURRENT_USER, key, name, RRF_RT_REG_DWORD, nullptr, &value, &size) == ERROR_SUCCESS ? value : missing;
 }
 
 // Reads the real version from `ntdll`, because `GetVersionEx` reports an older one to applications without a compatibility manifest.

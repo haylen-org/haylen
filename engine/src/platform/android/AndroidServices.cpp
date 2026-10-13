@@ -296,6 +296,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclas
     haylen::platform::SokolHost::getSystemState().setTheme(dark == JNI_TRUE ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
 }
 
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibility_nativeAccessibility(JNIEnv*, jclass, jfloat textScale, jboolean reducedMotion, jboolean highContrast, jboolean screenReader) {
+    haylen::platform::SokolHost::getSystemState().setAccessibility({.textScale = textScale, .reducedMotion = reducedMotion == JNI_TRUE, .highContrast = highContrast == JNI_TRUE, .reducedTransparency = false, .screenReader = screenReader == JNI_TRUE});
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {
     haylen::platform::AndroidActivity::receiveFold({.present = present == JNI_TRUE, .left = left, .top = top, .right = right, .bottom = bottom, .vertical = vertical == JNI_TRUE, .halfOpened = halfOpened == JNI_TRUE, .separating = separating == JNI_TRUE, .occluding = occluding == JNI_TRUE});
 }

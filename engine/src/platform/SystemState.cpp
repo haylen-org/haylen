@@ -22,4 +22,14 @@ Battery SystemState::getBattery() const {
     return battery;
 }
 
+void SystemState::setAccessibility(const AccessibilitySettings& value) {
+    const std::scoped_lock lock(mutex);
+    accessibility = value;
+}
+
+AccessibilitySettings SystemState::getAccessibility() const {
+    const std::scoped_lock lock(mutex);
+    return accessibility;
+}
+
 } // namespace haylen::platform

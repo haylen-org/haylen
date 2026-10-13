@@ -18,6 +18,7 @@
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/io/Package.hpp"
 #include "io/CompositePackage.hpp"
+#import "platform/apple/AppleAccessibility.hpp"
 #import "platform/apple/AppleBattery.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleDesktop.hpp"
@@ -52,6 +53,7 @@ std::string_view Services::getName() noexcept {
 void Services::initialize() {
     AppleNetwork::observe();
     AppleBattery::observe();
+    AppleAccessibility::observe();
 #if TARGET_OS_OSX
     // AppKit sends apps no memory warnings, so the runtime follows the memory pressure of the system.
     static dispatch_source_t pressure = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0, DISPATCH_MEMORYPRESSURE_WARN | DISPATCH_MEMORYPRESSURE_CRITICAL, dispatch_get_main_queue());

@@ -103,7 +103,7 @@ print(haylen.lifecycle().pauseOnFocusLoss, haylen.halted())
 
 Low memory warnings publish `appLowMemory` after the engine has dropped every asset that nothing holds anymore, which is the moment to unload preload groups and caches the app can rebuild. A request to close the window publishes `appQuitRequested`, which also comes from Quit in the menu of a Mac app, Command+Q and the Dock, as the [desktop guide](../platform/desktop.md#menus-and-quitting) describes, and `haylen.quit()` ends the app.
 
-The device and its screen publish their changes too. `keyboardShown` and `keyboardHidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](../ui/text-input.md) explains. `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `systemThemeChanged` and `batteryChanged` follow the light or dark colors of the system and the battery, once per change, as [haylen.system](../lua-api/system.md#events) describes. `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](../lua-api/window.md) describes, and `windowFoldChanged` follows the fold of foldable and dual-screen devices, its posture and the segments of the window on each side of it, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. `windowSafeAreaChanged` follows the safe area of [haylen.viewport](../lua-api/viewport.md#viewportsaferect), which is the safe area of the device widened, edge by edge, by the edges that native views of plugins reserve, such as a banner at the bottom, so UI anchored to the safe area moves out of their way on its own. On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` the monitors and their work areas, as the [desktop guide](../platform/desktop.md) describes.
+The device and its screen publish their changes too. `keyboardShown` and `keyboardHidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](../ui/text-input.md) explains. `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `systemThemeChanged` and `batteryChanged` follow the light or dark colors of the system and the battery, once per change, as [haylen.system](../lua-api/system.md#events) describes, and `accessibilitySettingsChanged` follows the text scale, reduced motion, contrast, transparency and screen reader of the system, as [haylen.accessibility](../lua-api/accessibility.md#events) describes. `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](../lua-api/window.md) describes, and `windowFoldChanged` follows the fold of foldable and dual-screen devices, its posture and the segments of the window on each side of it, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. `windowSafeAreaChanged` follows the safe area of [haylen.viewport](../lua-api/viewport.md#viewportsaferect), which is the safe area of the device widened, edge by edge, by the edges that native views of plugins reserve, such as a banner at the bottom, so UI anchored to the safe area moves out of their way on its own. On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` the monitors and their work areas, as the [desktop guide](../platform/desktop.md) describes.
 
 ```lua
 local events = require('haylen.events')
@@ -161,6 +161,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | Never, because macOS does not interrupt the audio of apps. |
 | `audioRouteChanged` | A change of the default output device of Core Audio, such as headphones plugged in. |
 | `systemThemeChanged`, `batteryChanged` | The appearance of the app and the power sources of the Mac, as [haylen.system](../lua-api/system.md#platforms) describes. |
+| `accessibilitySettingsChanged` | The display options of the accessibility settings and the state of VoiceOver, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
 ### Windows
@@ -180,6 +181,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | Never, because Windows does not interrupt the audio of apps. |
 | `audioRouteChanged` | A change of the default output device of WASAPI. |
 | `systemThemeChanged`, `batteryChanged` | The app theme of the personalization settings and the power status of the system, as [haylen.system](../lua-api/system.md#platforms) describes. |
+| `accessibilitySettingsChanged` | The accessibility settings and the transparency effects of the personalization settings, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | XInput. |
 
 ### Linux
@@ -199,6 +201,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | Never, because Linux does not interrupt the audio of apps. |
 | `audioRouteChanged` | A stream that PulseAudio, or PipeWire through it, moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The color scheme of the settings portal and the power supplies of the system, as [haylen.system](../lua-api/system.md#platforms) describes. |
+| `accessibilitySettingsChanged` | The appearance settings of the settings portal and the text scaling factor of the GNOME interface settings, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The joystick devices under `/dev/input`. |
 
 ### iOS and iPadOS
@@ -221,6 +224,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session, such as a phone call, an alarm or Siri. |
 | `audioRouteChanged` | The route changes of the audio session, such as headphones unplugged. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the battery of the device, as [haylen.system](../lua-api/system.md#platforms) describes. |
+| `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
 ### tvOS
@@ -241,6 +245,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session. |
 | `audioRouteChanged` | The route changes of the audio session. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app, and never `batteryChanged`, since a TV runs on mains power. |
+| `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController, the Siri Remote included. |
 
 ### Mac Catalyst
@@ -261,6 +266,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session, which the Mac rarely sends. |
 | `audioRouteChanged` | The route changes of the audio session. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the power sources of the Mac, as [haylen.system](../lua-api/system.md#platforms) describes. |
+| `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
 ### Android
@@ -283,6 +289,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | The audio focus, which another app takes for a call, an alarm or its own sound. |
 | `audioRouteChanged` | The AAudio stream that the system moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The night mode of the configuration and the battery broadcast, as [haylen.system](../lua-api/system.md#platforms) describes. |
+| `accessibilitySettingsChanged` | The font scale of the configuration, the animator duration scale, the contrast of the UI mode and touch exploration, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The input devices that Android adds and removes, with the name of each controller, and a controller whose first event comes before Android tells of it. The remote of an Android TV reports the directional pad as keys, so it is no gamepad. |
 
 ### Web
@@ -305,6 +312,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `audioInterrupted`, `audioResumed` | Never, because browsers suspend the audio of the page without telling it why, and the runtime resumes it at the next tap, click or key, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. |
 | `audioRouteChanged` | Never, because the audio output of the page follows the output of the browser without telling the page. |
 | `systemThemeChanged`, `batteryChanged` | The `prefers-color-scheme` media query and the Battery Status API, as [haylen.system](../lua-api/system.md#platforms) describes. |
+| `accessibilitySettingsChanged` | The media queries of reduced motion, contrast and transparency and the default font size of the browser, as [haylen.accessibility](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The Gamepad API, once a button of the gamepad is pressed. |
 
 ## Assets, connections and objects

@@ -457,6 +457,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/net/NetLua.cpp
   src/net/SocketLink.cpp
   src/net/WebSocket.cpp
+  src/platform/Accessibility.cpp
+  src/platform/AccessibilityLua.cpp
+  src/platform/AccessibilitySettings.cpp
   src/platform/AppPlugin.cpp
   src/platform/AudioStream.cpp
   src/platform/Battery.cpp
@@ -779,6 +782,7 @@ set(HAYLEN_RUNTIME_SOURCES
 )
 if(APPLE)
   set(HAYLEN_APPLE_SOURCES
+    src/platform/apple/AppleAccessibility.mm
     src/platform/apple/AppleBattery.mm
     src/platform/apple/AppleBridge.mm
     src/platform/apple/AppleClipboard.mm
@@ -833,7 +837,7 @@ elseif(ANDROID)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp)
 else()
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxTheme.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()
 
 add_library(haylen_runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})

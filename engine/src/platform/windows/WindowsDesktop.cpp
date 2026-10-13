@@ -228,6 +228,8 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"ImmersiveColorSet") {
             WindowsSystem::reportTheme();
         }
+        // The accessibility settings change with several of the settings that Windows announces, so every announcement reads them again.
+        WindowsSystem::reportAccessibility();
         break;
     case WM_POWERBROADCAST:
         if (wParam == PBT_APMPOWERSTATUSCHANGE) {

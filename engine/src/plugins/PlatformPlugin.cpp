@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "haylen/core/Engine.hpp"
+#include "platform/AccessibilityLua.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/DialogsLua.hpp"
@@ -30,6 +31,7 @@ void PlatformPlugin::installLua(core::Engine&, lua_State* L) {
     platform::PlatformLua::install(L);
     platform::SystemLua::install(L);
     platform::DialogsLua::install(L);
+    platform::AccessibilityLua::install(L);
 }
 
 // The listeners of a frame may start watching more streams, which wait for the next frame.

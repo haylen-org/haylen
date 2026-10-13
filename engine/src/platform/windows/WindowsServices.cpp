@@ -36,6 +36,7 @@ std::string_view Services::getName() noexcept {
 void Services::initialize() {
     WindowsDesktop::initialize();
     WindowsSystem::reportTheme();
+    WindowsSystem::reportAccessibility();
     WindowsSystem::reportBattery();
 }
 

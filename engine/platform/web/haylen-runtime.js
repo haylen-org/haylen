@@ -7,8 +7,15 @@ Module.haylen = Module.haylen || {};
     const handlers = new Map();
     const levels = ["debug", "info", "warning", "error"];
 
-    // The system services of the engine: what the browser tells about the device, its color scheme and its battery, a url opened in a new tab and the vibration of phones whose browser offers it. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
-    const device = { details: {}, battery: null, darkScheme: matchMedia("(prefers-color-scheme: dark)") };
+    // The system services of the engine: what the browser tells about the device, its color scheme, its accessibility preferences and its battery, a url opened in a new tab and the vibration of phones whose browser offers it. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
+    const device = {
+        details: {},
+        battery: null,
+        darkScheme: matchMedia("(prefers-color-scheme: dark)"),
+        reducedMotion: matchMedia("(prefers-reduced-motion: reduce)"),
+        highContrast: matchMedia("(prefers-contrast: more)"),
+        reducedTransparency: matchMedia("(prefers-reduced-transparency: reduce)"),
+    };
 
     const readDevice = () => {
         const agent = navigator.userAgentData;
@@ -37,6 +44,16 @@ Module.haylen = Module.haylen || {};
 
     const reportTheme = () => {
         Module._haylen_web_theme(device.darkScheme.matches ? 1 : 0);
+    };
+
+    // The text scale is the default font size of the browser, which the user sets in its preferences, over the usual 16 pixels. Browsers without the media queries of reduced transparency report no preference.
+    const reportAccessibility = () => {
+        const probe = document.createElement("div");
+        probe.style.cssText = "position:absolute;visibility:hidden;font-size:medium";
+        document.body.appendChild(probe);
+        const fontSize = parseFloat(getComputedStyle(probe).fontSize) || 16;
+        probe.remove();
+        Module._haylen_web_accessibility(fontSize / 16, device.reducedMotion.matches ? 1 : 0, device.highContrast.matches ? 1 : 0, device.reducedTransparency.matches ? 1 : 0);
     };
 
     // A browser that cannot read the battery reports a full one on mains power, which is also how it reports a device without a battery.
@@ -1687,7 +1704,7 @@ Module.haylen = Module.haylen || {};
         }
     });
 
-    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the color scheme and the battery reach the app when it starts and whenever they change.
+    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the color scheme, the accessibility preferences and the battery reach the app when it starts and whenever they change.
     Module.postRun.push(function () {
         Module.canvas.addEventListener("pointerup", focusTapped, true);
         document.addEventListener("selectionchange", () => {
@@ -1709,6 +1726,10 @@ Module.haylen = Module.haylen || {};
         reportNetwork();
         reportTheme();
         device.darkScheme.addEventListener("change", reportTheme);
+        reportAccessibility();
+        for (const query of [device.reducedMotion, device.highContrast, device.reducedTransparency]) {
+            query.addEventListener("change", reportAccessibility);
+        }
         if (device.battery) {
             reportBattery();
             for (const type of ["levelchange", "chargingchange", "chargingtimechange"]) {

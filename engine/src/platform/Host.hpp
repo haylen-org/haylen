@@ -15,6 +15,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/math/Insets.hpp"
+#include "haylen/platform/AccessibilitySettings.hpp"
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
@@ -59,6 +60,9 @@ class Host : public Window {
     // The theme and the battery as the platform last reported them, which the engine reads once per frame.
     [[nodiscard]] virtual Theme getTheme() const = 0;
     [[nodiscard]] virtual Battery getBattery() const = 0;
+
+    // The accessibility settings as the platform last reported them, which the engine reads once per frame to publish `accessibilitySettingsChanged`.
+    [[nodiscard]] virtual AccessibilitySettings getAccessibilitySettings() const = 0;
 
     // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with whether an app took the url.
     virtual void openUrl(std::string_view url, std::function<void(bool opened)> callback) = 0;
