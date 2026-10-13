@@ -716,6 +716,8 @@ The page of `run --platform web` connects to the development server that `haylen
 
 The Debug configuration of `run` with any other platform starts the same development server, alone on the port of `--port`, 8000 by default, once the app is built, and launches the app with `--dev-server` and its address, so every file saved in the app reloads in it the way it does in the player and in the pages. The manifest of the server holds the files of the package that the build placed in the project, in `haylen/app` of the Apple project and `haylen/assets/app` of the Android project, so the app catches up on what changed while it was built. The server stops when the launch ends, such as when the app quits or Ctrl+C stops the streamed log.
 
+While the development server of `run` runs in an interactive terminal, with the web platform or any other, every line typed in the terminal goes to the connected apps as a line of their [developer console](lua-api/debug.md#console), and the terminal prints the result of each app, so commands run on a phone or a TV from the computer.
+
 | Platform | How the app reaches the server |
 | --- | --- |
 | `android` | `adb reverse` forwards the port of the device, emulator or phone, to this machine, so the app connects to `127.0.0.1`. The address travels as the extra `dev.haylen.developmentServer` of the launch intent, and the forward goes when the launch ends. |

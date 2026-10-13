@@ -9,6 +9,7 @@
 #include <string_view>
 #include <vector>
 
+#include "debug/ConsoleLua.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/debug/ProfileScope.hpp"
 #include "haylen/debug/Profiler.hpp"
@@ -422,6 +423,7 @@ int DebugLua::open(lua_State* L) {
         {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
+    ConsoleLua::addFunctions(L);
     return 1;
 }
 

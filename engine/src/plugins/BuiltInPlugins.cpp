@@ -50,7 +50,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host&
     registry.add(std::make_unique<Navigation2DPlugin>());
     registry.add(std::make_unique<LocalizationPlugin>());
     registry.add(std::make_unique<StoragePlugin>());
-    registry.add(std::make_unique<DebugPlugin>());
+    registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession() != nullptr));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<UiPlugin>());
     registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement()));

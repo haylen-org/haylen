@@ -279,6 +279,7 @@ The web build is the same runtime controlled by the page. `engine/platform/web/h
 | `restart()` | Starts the last playing app again, which reloads every script. |
 | `stop()` | Ends the app and leaves an empty screen. |
 | `setPaused(paused)`, `pause()`, `resume()`, `paused()` | Pause the app on its last frame. The engine sees a pause as a suspend. |
+| `console(line)` | Runs a line of the developer console in the app and resolves with `{ok, output}` after the next frame. |
 | `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | The page side of the platform bridge, where `ArrayBuffer` and `Uint8Array` values cross as bytes. `options.retain` keeps an event for the first listener of its name, `options.batched` sends it in the list of its frame, and events sent before the first app starts wait for it. |
 | `createPluginContext(id, config)`, `nativePlugins()` | The context of the web module of a plugin, with its overlay over the canvas, the covers of the app and its video and audio streams, as the [plugin guide](plugins.md#web-modules) describes, and the ids of the plugins that have one. |
 | `onLog(level, line)` | Receives every log line of the engine and the app. |

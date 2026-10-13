@@ -1138,6 +1138,25 @@ Module.haylen = Module.haylen || {};
         Module._haylen_web_restart();
     };
 
+    // Runs a line of the developer console in the running app and resolves with `{ok, output}` once the next frame ran it. Apps run lines in development and when "debug.console" of "app.json" turns the console on.
+    const consoleCalls = new Map();
+    let nextConsoleCall = 1;
+    haylen.console = function (line) {
+        const id = nextConsoleCall++;
+        return new Promise((resolve) => {
+            consoleCalls.set(id, resolve);
+            callEngine("haylen_web_console", null, ["number", "string"], [id, String(line)]);
+        });
+    };
+
+    haylen.reportConsoleResult = function (id, ok, output) {
+        const resolve = consoleCalls.get(id);
+        consoleCalls.delete(id);
+        if (resolve) {
+            resolve({ ok, output });
+        }
+    };
+
     haylen.stop = function () {
         Module._haylen_web_stop();
     };

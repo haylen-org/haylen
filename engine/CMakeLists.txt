@@ -331,6 +331,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/core/TweenProperty.cpp
   src/core/TweenValue.cpp
   src/core/Utf8.cpp
+  src/debug/Console.cpp
+  src/debug/ConsoleLua.cpp
+  src/debug/ConsoleWindow.cpp
   src/debug/DebugLua.cpp
   src/debug/Monitor.cpp
   src/debug/ObjectCounter.cpp
@@ -449,6 +452,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/Battery.cpp
   src/platform/Bridge.cpp
   src/platform/BridgeRelay.cpp
+  src/platform/ConsoleRelay.cpp
   src/platform/DevelopmentConnection.cpp
   src/platform/DevelopmentSession.cpp
   src/platform/DialogRelay.cpp

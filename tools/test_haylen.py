@@ -964,6 +964,21 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertEqual([file["path"] for file in foreign["files"]], ["app.json", "source/level.lua", "source/main.lua"])
         self.assertIsNone(server.catch_up({"type": "hello", "session": server.session, "revision": server.revision}))
 
+    def test_console_lines_reach_every_app_and_their_results_print(self):
+        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        sent = []
+        client = mock.Mock(send=lambda opcode, payload: sent.append((opcode, json.loads(payload))) or True)
+        self.assertEqual(server.send_line("gold 50"), 0)
+        server.clients.append(client)
+        server.read_lines(io.StringIO("gold 50\n\n  help  \n"))
+        self.assertEqual(sent, [(haylen.WEBSOCKET_TEXT, {"type": "console", "id": 2, "line": "gold 50"}), (haylen.WEBSOCKET_TEXT, {"type": "console", "id": 3, "line": "help"})])
+        output = io.StringIO()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
+            server.receive(client, {"type": "consoleResult", "id": 2, "ok": True, "output": "Gold 50"})
+            server.receive(client, {"type": "consoleResult", "id": 3, "ok": False, "output": "There is no command."})
+        self.assertIn("Gold 50", output.getvalue())
+        self.assertIn("There is no command.", output.getvalue())
+
     def test_connections_need_the_token_and_receive_every_batch(self):
         server = haylen.DevelopmentServer(self.folder, self.manifest)
         handler = functools.partial(type("Handler", (haylen.WebHandler,), {"development": server, "log_message": lambda *arguments: None}), directory=self.scratch.name)

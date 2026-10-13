@@ -16,6 +16,9 @@
         "scaling": "expand"
     },
     "clearColor": "#FF101418",
+    "debug": {
+        "console": true
+    },
     "autoload": ["categories.events.player-data"],
     "content": {
         "delivery": [

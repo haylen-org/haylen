@@ -1,6 +1,6 @@
 # haylen.debug
 
-The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, and reads the frame profiler and the recent log. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
+The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, reads the frame profiler and the recent log, and runs the developer console. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
 
 ```lua
 local debug = require('haylen.debug')
@@ -57,6 +57,30 @@ A monitor is a function the engine calls once per frame to sample a number the a
 ## Profiler
 
 The engine measures every frame in named scopes: `scripts` for promises, coroutines and platform replies, `fixedUpdate`, `update`, `render` and `submit`. App scopes nest inside the scope that is running, so a scope opened in the `update` callback of a scene sits under `update` at depth 1. Scopes with the same name under the same parent add up within a frame, and their `calls` count how often they ran. Scopes left open, for example by an error, close with the scope around them, or at the end of the frame. Scopes opened outside a frame, such as at the top level of `source/main.lua`, are not recorded.
+
+## Console
+
+The developer console runs commands that the engine, plugins and the app register, typed as one line such as `gold 50` or `say "Hello there"`. Words are separated by spaces, double quotes keep spaces inside one word, and a backslash keeps the next character as it is. Each command declares the kinds of its arguments, and the console checks and converts them before the command runs, so a command receives integers, numbers, booleans and strings, never text it has to parse.
+
+The console window lists the output, the line being typed, the commands as buttons and the history, with Tab for completion and the arrows for the history. It opens with the grave accent key, which `debug.setConsoleKey` changes, with a touch of four fingers at once, or with `debug.setConsoleVisible(true)`. A command without arguments runs from its button, and a command with arguments puts its name on the line, where the on-screen keyboard of a phone or a TV types the rest, and the window works with a gamepad or a remote through the navigation of the interface. Nothing of the console runs while it is closed.
+
+The console is on in development runs, and `"debug": {"console": true}` in `app.json` turns it on in any other run. While it is off, it neither opens nor runs lines from outside the app, and the app still registers and runs its own commands with `debug.runCommand`. Lines also arrive from outside the app:
+
+- In a Debug run of `haylen run` on a device, a simulator, an emulator or the browser, every line typed in the terminal goes to the connected apps through the development server, and their results print there.
+- A web page runs a line with `Module.haylen.console(line)`, as the [runtime API](../build.md#runtime-api) describes.
+
+The engine registers these commands.
+
+| Command | Meaning |
+| --- | --- |
+| `help [word]` | Lists the commands with how to type them, or shows one. |
+| `clear` | Clears the output of the console. |
+| `stats <word>` | Shows the statistics as `off`, `compact` or `full`. |
+| `draw <word> [boolean]` | Turns a [debug drawing](#drawings) on or off, or the other way when the line leaves the state out. |
+| `timeScale [number]` | Shows the time scale, or sets it. |
+| `pause [boolean]` | Pauses the app or resumes it, or switches when the line leaves the state out. |
+| `restart` | Restarts the app. |
+| `lua <text>` | Runs Lua code and prints what it returns, such as `lua player.speed`, only in development runs. |
 
 ## Functions
 
@@ -442,4 +466,139 @@ for _, line in ipairs(debug.recentLog(5)) do
         print(line.text)
     end
 end
+```
+
+### debug.addCommand(name, fn, options)
+
+Adds a command to the console and returns its [`Connection`](signal.md#connection), replacing the command with the same name. `name` is one word without spaces or quotes. When the command runs, `fn` receives its arguments, converted to their kinds, and returns the text to print as a string or a number, or nothing. An error that `fn` raises fails the command with its message instead of stopping the app, and a value of another type fails it with `A console command returns a string, a number or nothing.`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `help` | string | `''` | The text that `help` and the window show next to the command. |
+| `args` | list of strings | `{}` | The kinds of the arguments: `'integer'`, `'number'`, `'string'` for one word, `'boolean'` for `true` or `false`, and `'text'` for the rest of the line as it was typed, which comes last. A `?` after a kind, such as `'integer?'`, makes the argument optional, and optional arguments come last. |
+| `owner` | table or userdata | the default owner | Removes the command when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. |
+
+An unknown kind raises `The argument kind "colour" is unknown. It is "integer", "number", "string", "boolean" or "text", with "?" after it for an optional argument.`, a name with spaces raises `The command name "two words" is not one word. Name a command with letters, digits and symbols without spaces or quotes.`, and an unknown option raises `Unknown option "<key>".`.
+
+When a line gives an argument of the wrong kind, leaves out a required one or gives too many, the command fails without running, with messages such as `The command "gold" needs an integer as its first argument, not "fifty". Type it as "gold <integer>".` and `The command "gold" takes 1 argument. Type it as "gold <integer>".`.
+
+```lua
+local debugging = require('haylen.debug')
+local scene = require('haylen.scene')
+
+scene.push({
+    enter = function(self)
+        self.gold = 0
+        debugging.addCommand('gold', function(amount)
+            self.gold = self.gold + amount
+            return 'Gold ' .. self.gold
+        end, {help = 'Adds gold to the player.', args = {'integer'}, owner = self})
+    end,
+})
+```
+
+### debug.removeCommand(name)
+
+Removes a command and returns whether it existed.
+
+```lua
+local debugging = require('haylen.debug')
+
+debugging.removeCommand('gold')
+```
+
+### debug.runCommand(line)
+
+Runs a line as the console does, prints it and its output in the console and records it in the history, and returns whether it worked and what it printed. A line that names no command returns `false` and `There is no command "silver". Type "help" to list the commands.`, and a quote that is not closed returns `false` and `The line has a quote that is not closed.`. The app runs its commands this way whether the console is on or off, such as from a cheat menu of its own.
+
+```lua
+local debugging = require('haylen.debug')
+
+local ok, output = debugging.runCommand('gold 50')
+print(ok, output)
+```
+
+### debug.commands()
+
+Returns every command in order of name, each as `{name, help, usage}`, where `usage` shows how to type it, such as `gold <integer> [word]`.
+
+```lua
+local debugging = require('haylen.debug')
+
+for _, command in ipairs(debugging.commands()) do
+    print(command.usage .. '  ' .. command.help)
+end
+```
+
+### debug.completeCommand(line)
+
+Returns the lines that complete a partial line: the names of the commands that start with its only word, each followed by a space when the command takes arguments, and `true` and `false` for a boolean argument.
+
+```lua
+local debugging = require('haylen.debug')
+
+print(table.concat(debugging.completeCommand('ti'), ', '))
+```
+
+### debug.commandHistory()
+
+Returns the last 100 lines that ran, oldest first, without repeating a line that ran twice in a row.
+
+```lua
+local debugging = require('haylen.debug')
+
+local history = debugging.commandHistory()
+print(history[#history])
+```
+
+### debug.setConsoleVisible(visible)
+
+Opens or closes the console window. Opening it while the console is off raises `The console is off outside development runs. Set "debug.console" to true in "app.json" to turn it on.`.
+
+```lua
+local debugging = require('haylen.debug')
+
+if debugging.consoleEnabled() then
+    debugging.setConsoleVisible(true)
+end
+```
+
+### debug.consoleVisible()
+
+Returns whether the console window shows.
+
+```lua
+local debugging = require('haylen.debug')
+
+print(debugging.consoleVisible())
+```
+
+### debug.consoleEnabled()
+
+Returns whether the console is on, which a development run or `debug.console` in `app.json` decides.
+
+```lua
+local debugging = require('haylen.debug')
+
+print(debugging.consoleEnabled())
+```
+
+### debug.setConsoleKey(key)
+
+Picks the [key](input.md#key-names) that opens and closes the console, or turns the shortcut off with `nil`. It is `'graveAccent'` by default.
+
+```lua
+local debugging = require('haylen.debug')
+
+debugging.setConsoleKey('f1')
+```
+
+### debug.consoleKey()
+
+Returns the key that opens the console, or `nil` when the shortcut is off.
+
+```lua
+local debugging = require('haylen.debug')
+
+print(debugging.consoleKey())
 ```

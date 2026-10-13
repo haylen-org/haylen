@@ -347,6 +347,7 @@ Only a page that sets `Module.haylen.development` runs in development, which the
 | `applyChanges()` | Applies every file that `setFile` and `removeFile` changed since its last call, as one batch at the start of the next frame. A page in development reloads them the way [hot reload](lua.md#hot-reload) applies saved files: assets and Lua modules in place, and `app.json` or `source/main.lua` with a restart. Any other page restarts the app with them. |
 | `run()` | Starts the package from `source/main.lua`, replacing the running app. |
 | `restart()` | Starts the last playing app again from its package, which reloads every script. |
+| `console(line)` | Runs a line of the [developer console](lua-api/debug.md#console) in the running app and returns a promise of `{ok, output}`, which resolves once the next frame ran the line. An app outside development without `debug.console` in `app.json` answers with `ok` set to `false` and the reason. |
 | `stop()` | Ends the app and leaves an empty canvas until the next start. |
 | `setPaused(paused)`, `pause()`, `resume()` | Pauses or resumes the app. A paused app keeps its last frame and sees the pause as a suspend. |
 | `paused()` | Returns whether the app is paused. |

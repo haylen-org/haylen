@@ -378,7 +378,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("debug")) {
         const Json& debugJson = document.at("debug");
-        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "safeArea", "fold", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
         std::string stats;
         readValue(debugJson, "stats", stats);
         if (!stats.empty()) {
@@ -393,6 +393,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
             throw std::invalid_argument("The \"debug.drawings\" list in \"app.json\" has an empty drawing name.");
         }
         readValue(debugJson, "objectEvents", config.debug.objectEvents);
+        readValue(debugJson, "console", config.debug.console);
         if (debugJson.contains("safeArea")) {
             try {
                 config.debug.safeArea = platform::SafeAreaSimulation::fromJson(debugJson.at("safeArea"));
@@ -443,7 +444,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 }
 
 Json AppConfig::toJson() const {
-    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
+    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }

@@ -98,6 +98,7 @@ set(HAYLEN_TEST_SOURCES
   core/SceneManagerTests.cpp
   core/SignalTests.cpp
   core/TweenTests.cpp
+  debug/ConsoleTests.cpp
   debug/DebugTests.cpp
   debug/DrawingTests.cpp
   debug/HotReloadTests.cpp

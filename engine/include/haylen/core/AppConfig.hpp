@@ -72,7 +72,7 @@ struct AppConfig {
         float scrollSpeed = 1.0F;
     };
 
-    // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, the safe area to simulate instead of the one of the device, whether the safe area shows over the app, and how a changed Lua module applies while the app runs in development.
+    // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, whether the developer console works outside development, the safe area to simulate instead of the one of the device, whether the safe area shows over the app, and how a changed Lua module applies while the app runs in development.
     struct Debug {
         // A changed module reloads in place with the state of the app, or restarts the app. Changes that cannot apply in place restart it either way.
         enum class Reload : std::uint8_t {
@@ -83,6 +83,7 @@ struct AppConfig {
         debug::StatsDisplay::Mode stats = debug::StatsDisplay::Mode::Off;
         std::vector<std::string> drawings;
         bool objectEvents = false;
+        bool console = false;
         std::optional<platform::SafeAreaSimulation> safeArea;
         std::optional<platform::FoldSimulation> fold;
         bool showSafeArea = false;

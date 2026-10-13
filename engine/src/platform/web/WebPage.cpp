@@ -24,6 +24,7 @@
 #include "haylen/platform/native/HaylenNative.h"
 #include "io/OverlayPackage.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/ConsoleRelay.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
@@ -52,6 +53,10 @@ EM_JS(void, haylen_js_reloaded, (const char* json), {
 
 EM_JS(void, haylen_js_set_fullscreen, (int value), {
     Module.haylen.setFullscreen(value !== 0);
+});
+
+EM_JS(void, haylen_js_console_result, (double id, int ok, const char* output), {
+    Module.haylen.reportConsoleResult(id, ok !== 0, UTF8ToString(output));
 });
 
 EM_JS(char*, haylen_js_canvas_selector, (), {
@@ -209,6 +214,10 @@ void WebPage::resolve(double call, bool ok, const char* json, const std::uint32_
     BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok, json, readBuffers(buffers, count));
 }
 
+void WebPage::runConsoleLine(double id, const char* line) {
+    ConsoleRelay::submit(line, [id](const debug::Console::Result& result) { haylen_js_console_result(id, result.ok ? 1 : 0, result.output.c_str()); });
+}
+
 void WebPage::emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
     BridgeRelay::emit(event, json, readBuffers(buffers, count), {.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0});
 }
@@ -358,6 +367,10 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_remove_file(const char* path) {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_run_files() {
     haylen::platform::WebPage::runFiles();
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_console(double id, const char* line) {
+    haylen::platform::WebPage::runConsoleLine(id, line);
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_restart() {

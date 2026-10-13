@@ -10,6 +10,7 @@
 #include "haylen/io/PackageWatcher.hpp"
 #include "haylen/io/Path.hpp"
 #include "io/OverlayPackage.hpp"
+#include "platform/ConsoleRelay.hpp"
 #include "platform/DevelopmentSession.hpp"
 
 namespace haylen::platform {
@@ -59,6 +60,10 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
         core::Log::error("The shader \"{}\" did not compile: {}", readText(message, "path"), readText(message, "message"));
         return;
     }
+    if (type == "console") {
+        submitLine(message);
+        return;
+    }
     if (type != "files" || !isBatch(message)) {
         core::Log::warning("The development server sent a message that this engine does not know.");
         return;
@@ -68,6 +73,18 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
     if (batch.at("files").empty()) {
         apply();
     }
+}
+
+// The developer types a line of the console on the machine that runs the development server, and the result goes back with the identifier of the line.
+void DevelopmentConnection::submitLine(const core::Json& message) {
+    core::Json id = message.contains("id") ? message.at("id") : core::Json();
+    // clang-format off
+    ConsoleRelay::submit(readText(message, "line"), [this, id = std::move(id)](const debug::Console::Result& result) {
+        if (socket->getState() == net::WebSocket::State::Open) {
+            socket->send(core::Json{{"type", "consoleResult"}, {"id", id}, {"ok", result.ok}, {"output", result.output}}.dump());
+        }
+    });
+    // clang-format on
 }
 
 std::string DevelopmentConnection::readText(const core::Json& message, const char* key) {

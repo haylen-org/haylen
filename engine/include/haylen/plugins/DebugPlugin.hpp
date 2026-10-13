@@ -15,6 +15,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/debug/Console.hpp"
 #include "haylen/debug/LogLine.hpp"
 #include "haylen/debug/Monitor.hpp"
 #include "haylen/debug/Stats.hpp"
@@ -22,18 +23,30 @@
 #include "haylen/input/Key.hpp"
 #include "haylen/plugins/Plugin.hpp"
 
+namespace haylen::debug {
+class ConsoleWindow;
+}
+
 namespace haylen::plugins {
 
-// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the overlay window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `app.json` names the drawings the app starts with.
+// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the overlay window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `app.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, opened by the grave accent key or a touch of four fingers, and takes lines from the development server and the web page, in development runs and wherever `app.json` turns it on.
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
     static constexpr std::string_view kBoundsDrawing = "bounds";
     static constexpr float kBoundsLabelSize = 12.0F;
     static constexpr math::Color kBoundsColor = math::Color{1.0F, 0.62F, 0.18F, 1.0F};
+    static constexpr std::size_t kConsoleTouches = 4;
 
     // Draws a drawing into the open canvas, whose kind the renderer tells.
     using Drawer = std::function<void(graphics2d::Renderer& renderer)>;
+
+    // A development run turns the console on whatever `app.json` says, and offers the command `lua`.
+    explicit DebugPlugin(bool developmentRun);
+    ~DebugPlugin() override;
+
+    DebugPlugin(const DebugPlugin&) = delete;
+    DebugPlugin& operator=(const DebugPlugin&) = delete;
 
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "debug";
@@ -41,6 +54,7 @@ class DebugPlugin final : public Plugin {
     void start(core::Engine& engine) override;
     void stop(core::Engine& engine) override;
     void event(core::Engine& engine, const platform::Event& event) override;
+    void beginFrame(core::Engine& engine, float deltaSeconds) override;
     void renderUi(core::Engine& engine, const core::SceneView& view) override;
     void renderOverlay(core::Engine& engine) override;
     void endFrame(core::Engine& engine) override;
@@ -93,6 +107,25 @@ class DebugPlugin final : public Plugin {
     // The latest printed lines, oldest first, from any thread that logged.
     [[nodiscard]] std::vector<debug::LogLine> getRecentLog() const;
 
+    [[nodiscard]] debug::Console& getConsole() noexcept {
+        return console;
+    }
+
+    // Whether the console opens and runs the lines of the development server and the web page, which a development run and the setting `debug.console` of `app.json` allow. The app runs its own commands either way.
+    [[nodiscard]] bool isConsoleEnabled() const noexcept {
+        return consoleEnabled;
+    }
+    void setConsoleVisible(bool value);
+    [[nodiscard]] bool isConsoleVisible() const noexcept {
+        return consoleVisible;
+    }
+    void setConsoleKey(std::optional<input::Key> value) noexcept {
+        consoleKey = value;
+    }
+    [[nodiscard]] std::optional<input::Key> getConsoleKey() const noexcept {
+        return consoleKey;
+    }
+
   private:
     // A registered monitor and the link of its connection, which ends once the monitor is removed or replaced.
     struct MonitorEntry final : core::Connection::Link {
@@ -132,6 +165,9 @@ class DebugPlugin final : public Plugin {
     };
 
     void record(core::Log::Level level, std::string_view line);
+    void addBuiltInCommands(core::Engine& engine);
+    void runRelayedLines();
+    [[nodiscard]] static std::string runLua(core::Engine& engine, const std::string& chunk);
 
     // Draws the drawings that are on into the canvas that is about to close.
     void drawOverlay(core::Engine& engine, graphics2d::Renderer& renderer);
@@ -155,7 +191,14 @@ class DebugPlugin final : public Plugin {
     std::optional<input::Key> drawKey = input::Key::F4;
     debug::StatsDisplay::Mode statsMode = debug::StatsDisplay::Mode::Off;
     debug::StatsDisplay statsDisplay;
+    debug::Console console;
+    std::unique_ptr<debug::ConsoleWindow> consoleWindow;
+    std::vector<core::Connection> builtInCommands;
+    std::optional<input::Key> consoleKey = input::Key::GraveAccent;
     bool objectEvents = false;
+    bool development = false;
+    bool consoleEnabled = false;
+    bool consoleVisible = false;
 };
 
 } // namespace haylen::plugins

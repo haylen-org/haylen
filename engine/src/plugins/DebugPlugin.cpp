@@ -3,23 +3,35 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <format>
+#include <stdexcept>
 #include <utility>
 
+#include "debug/ConsoleWindow.hpp"
 #include "debug/DebugLua.hpp"
 #include "debug/OverlayWindow.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
+#include "haylen/core/FrameClock.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/SceneView.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/Profiler.hpp"
+#include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "platform/ConsoleRelay.hpp"
 
 namespace haylen::plugins {
 
+DebugPlugin::DebugPlugin(bool developmentRun) : consoleWindow(std::make_unique<debug::ConsoleWindow>()), development(developmentRun) {}
+
+DebugPlugin::~DebugPlugin() = default;
+
 void DebugPlugin::start(core::Engine& engine) {
     owner = &engine;
+    consoleEnabled = development || engine.getConfig().debug.console;
+    addBuiltInCommands(engine);
     listener = core::Log::addListener([this](core::Log::Level level, std::string_view line) { record(level, line); });
     statsMode = engine.getConfig().debug.stats;
     setObjectEvents(engine.getConfig().debug.objectEvents);
@@ -27,7 +39,21 @@ void DebugPlugin::start(core::Engine& engine) {
     overlay = engine.getRenderer2D().addCanvasOverlay([this, &engine](graphics2d::Renderer& renderer) { drawOverlay(engine, renderer); });
 }
 
+// The commands of Lua hold functions of the Lua state, which closes after the plugins stop.
 void DebugPlugin::stop(core::Engine& engine) {
+    for (core::Connection& command : std::exchange(builtInCommands, {})) {
+        command.disconnect();
+    }
+    std::vector<std::string> names;
+    for (const debug::Console::Command* command : console.getCommands()) {
+        names.push_back(command->name);
+    }
+    for (const std::string& name : names) {
+        if (name != "help") {
+            console.removeCommand(name);
+        }
+    }
+    consoleVisible = false;
     engine.getRenderer2D().removeCanvasOverlay(overlay);
     setObjectEvents(false);
     core::Log::removeListener(listener);
@@ -185,6 +211,12 @@ std::vector<std::shared_ptr<debug::Monitor>> DebugPlugin::getMonitors() const {
 }
 
 void DebugPlugin::event(core::Engine&, const platform::Event& event) {
+    const bool consoleKeyDown = event.type == platform::Event::Type::KeyDown && !event.repeat && consoleKey && event.key == *consoleKey;
+    const bool consoleTouch = event.type == platform::Event::Type::TouchBegan && event.touchCount == kConsoleTouches;
+    if (consoleEnabled && (consoleKeyDown || consoleTouch)) {
+        setConsoleVisible(!consoleVisible);
+        return;
+    }
     if (event.type != platform::Event::Type::KeyDown || event.repeat) {
         return;
     }
@@ -209,19 +241,136 @@ void DebugPlugin::event(core::Engine&, const platform::Event& event) {
 }
 
 void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
-    if (!view.current || statsMode != debug::StatsDisplay::Mode::Full) {
+    if (!view.current || (statsMode != debug::StatsDisplay::Mode::Full && !consoleVisible)) {
         return;
     }
     ui::Backend& backend = engine.getPlugin<UiPlugin>().getBackend();
     backend.makeCurrent();
-
     const math::Rect safe = backend.getSafeRect();
-    ImGui::SetNextWindowPos({safe.x + 16.0F, safe.y + 16.0F}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize({720.0F, std::min(860.0F, safe.height - 32.0F)}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowBgAlpha(0.9F);
-    if (!debug::OverlayWindow::draw(engine, captureStats(engine), getMonitors(), getRecentLog())) {
-        statsMode = debug::StatsDisplay::Mode::Off;
+
+    if (statsMode == debug::StatsDisplay::Mode::Full) {
+        ImGui::SetNextWindowPos({safe.x + 16.0F, safe.y + 16.0F}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize({720.0F, std::min(860.0F, safe.height - 32.0F)}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowBgAlpha(0.9F);
+        if (!debug::OverlayWindow::draw(engine, captureStats(engine), getMonitors(), getRecentLog())) {
+            statsMode = debug::StatsDisplay::Mode::Off;
+        }
     }
+
+    if (consoleVisible) {
+        ImGui::SetNextWindowPos({safe.x + 16.0F, safe.y + safe.height * 0.4F}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize({std::min(900.0F, safe.width - 32.0F), safe.height * 0.6F - 16.0F}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowBgAlpha(0.92F);
+        consoleVisible = consoleWindow->draw(console);
+    }
+}
+
+void DebugPlugin::setConsoleVisible(bool value) {
+    if (value && !consoleEnabled) {
+        throw std::logic_error("The console is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on.");
+    }
+    if (value && !consoleVisible) {
+        consoleWindow->focusLine();
+    }
+    consoleVisible = value;
+}
+
+void DebugPlugin::beginFrame(core::Engine&, float) {
+    runRelayedLines();
+}
+
+void DebugPlugin::runRelayedLines() {
+    for (const platform::ConsoleRelay::Request& request : platform::ConsoleRelay::take()) {
+        if (!consoleEnabled) {
+            request.reply({.ok = false, .output = "The console is off outside development runs. Set \"debug.console\" to true in \"app.json\" to turn it on."});
+            continue;
+        }
+        request.reply(console.run(request.line));
+    }
+}
+
+void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
+    using Kind = debug::Console::Kind;
+    // clang-format off
+    builtInCommands.push_back(console.addCommand({.name = "clear", .help = "Clears the output of the console.", .parameters = {}, .handler = [this](const core::Json&) {
+        console.clearOutput();
+        return std::string();
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "stats", .help = "Shows the statistics as \"off\", \"compact\" or \"full\".", .parameters = {{.kind = Kind::String}}, .handler = [this](const core::Json& arguments) {
+        const std::string& name = arguments[0].get_ref<const std::string&>();
+        const std::optional<debug::StatsDisplay::Mode> mode = debug::StatsDisplay::modeFromName(name);
+        if (!mode) {
+            throw std::invalid_argument(std::format("The statistics mode \"{}\" is unknown. It is \"off\", \"compact\" or \"full\".", name));
+        }
+        statsMode = *mode;
+        return std::format("The statistics are \"{}\".", name);
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "draw", .help = "Turns a debug drawing on or off, or the other way when the line leaves the state out.", .parameters = {{.kind = Kind::String}, {.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
+        const std::string& name = arguments[0].get_ref<const std::string&>();
+        const bool enabled = arguments.size() > 1 ? arguments[1].get<bool>() : !isDrawing(name);
+        setDrawing(name, enabled);
+        return std::format("The drawing \"{}\" is {}.", name, enabled ? "on" : "off");
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "timeScale", .help = "Shows the time scale, or sets it.", .parameters = {{.kind = Kind::Number, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
+        if (!arguments.empty()) {
+            engine.getClock().setTimeScale(arguments[0].get<double>());
+        }
+        return std::format("The time scale is {:g}.", engine.getClock().getTimeScale());
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "pause", .help = "Pauses the app or resumes it, or switches when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
+        engine.setPaused(arguments.empty() ? !engine.isPaused() : arguments[0].get<bool>());
+        return std::string(engine.isPaused() ? "The app is paused." : "The app runs.");
+    }}));
+    builtInCommands.push_back(console.addCommand({.name = "restart", .help = "Restarts the app.", .parameters = {}, .handler = [&engine](const core::Json&) {
+        engine.requestRestart();
+        return std::string("The app restarts.");
+    }}));
+    if (development) {
+        builtInCommands.push_back(console.addCommand({.name = "lua", .help = "Runs Lua code and prints what it returns, in development runs only.", .parameters = {{.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
+            return runLua(engine, arguments[0].get_ref<const std::string&>());
+        }}));
+    }
+    // clang-format on
+}
+
+// The code runs as an expression first, so `player.speed` prints its value, and as statements when it is not one.
+std::string DebugPlugin::runLua(core::Engine& engine, const std::string& chunk) {
+    lua_State* L = engine.getLuaState();
+    const int top = lua_gettop(L);
+    const std::string expression = "return " + chunk;
+    if (luaL_loadbufferx(L, expression.data(), expression.size(), "=console", "t") != LUA_OK) {
+        lua_pop(L, 1);
+        if (luaL_loadbufferx(L, chunk.data(), chunk.size(), "=console", "t") != LUA_OK) {
+            std::string message = lua_tostring(L, -1);
+            lua_settop(L, top);
+            throw std::invalid_argument(message);
+        }
+    }
+    lua::Runtime::protectedCall(L, 0, LUA_MULTRET);
+
+    std::string text;
+    for (int index = top + 1; index <= lua_gettop(L); ++index) {
+        if (index > top + 1) {
+            text += "  ";
+        }
+        switch (lua_type(L, index)) {
+        case LUA_TNIL:
+            text += "nil";
+            break;
+        case LUA_TBOOLEAN:
+            text += lua_toboolean(L, index) != 0 ? "true" : "false";
+            break;
+        case LUA_TNUMBER:
+        case LUA_TSTRING:
+            text += lua_tostring(L, index);
+            break;
+        default:
+            text += std::format("{}: {}", luaL_typename(L, index), lua_topointer(L, index));
+            break;
+        }
+    }
+    lua_settop(L, top);
+    return text;
 }
 
 void DebugPlugin::renderOverlay(core::Engine& engine) {

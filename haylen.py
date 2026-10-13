@@ -3141,6 +3141,12 @@ def development_address(platform_name: str, host: str, port: int, token: str) ->
     return listen, f"ws://{reached}:{port}{DEVELOPMENT_PATH}?token={token}"
 
 
+def start_console_input(development: DevelopmentServer) -> None:
+    """Reads the lines the developer types in an interactive terminal and sends them to the developer console of the connected apps."""
+    if sys.stdin.isatty():
+        threading.Thread(target=development.read_lines, args=(sys.stdin,), daemon=True).start()
+
+
 class DevelopmentHandler(http.server.BaseHTTPRequestHandler):
     """Serves the development path alone, for apps that run outside a browser."""
 
@@ -3174,9 +3180,10 @@ def device_development(app: App, package: Path, args: argparse.Namespace, device
     threading.Thread(target=server.serve_forever, daemon=True).start()
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
+    start_console_input(development)
     if device is not None:
         run([adb(), "-s", device, "reverse", f"tcp:{args.port}", f"tcp:{args.port}"])
-    terminal.info("The app runs in development, and every file saved in the app reloads in it.")
+    terminal.info("The app runs in development, and every file saved in the app reloads in it. Lines typed here run in its developer console.")
     try:
         yield ["--dev-server", address]
     finally:
@@ -3196,7 +3203,8 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
     development = start_web_development(app, site)
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
-    terminal.info("The page runs in development, and every file saved in the app reloads in the open pages.")
+    start_console_input(development)
+    terminal.info("The page runs in development, and every file saved in the app reloads in the open pages. Lines typed here run in their developer console.")
     try:
         serve(site, args.host, args.port, args.coep, args.coop, args.open, development)
     finally:
@@ -4598,6 +4606,7 @@ class DevelopmentServer:
         self.clients: list[DevelopmentClient] = []
         self.lock = threading.Lock()
         self.files = self.snapshot()
+        self.lines = 0
 
     @staticmethod
     def hash_files(folder: Path, paths) -> dict[str, str]:
@@ -4734,9 +4743,38 @@ class DevelopmentServer:
                 self.receive(client, json.loads(text))
         self.drop(client)
 
+    def send_line(self, line: str) -> int:
+        """Sends a line of the developer console to every connected app, which runs it and answers with its result, and returns how many apps it reached."""
+        with self.lock:
+            self.lines += 1
+            message = json.dumps({"type": "console", "id": self.lines, "line": line}).encode()
+            clients = list(self.clients)
+        reached = 0
+        for client in clients:
+            if client.send(WEBSOCKET_TEXT, message):
+                reached += 1
+            else:
+                self.drop(client)
+        if reached == 0:
+            terminal.warning("No app is connected to the development server, so the line ran nowhere.")
+        return reached
+
+    def read_lines(self, stream) -> None:
+        """Sends every line the developer types in the terminal to the connected apps as a line of their developer console, until the input ends."""
+        for line in stream:
+            if line.strip():
+                self.send_line(line.strip())
+
     def receive(self, client: DevelopmentClient, message: dict) -> None:
         if message.get("type") == "report":
             self.report(message)
+            return
+        if message.get("type") == "consoleResult":
+            output = str(message.get("output", ""))
+            if message.get("ok"):
+                terminal.success(output or "The line ran.")
+            else:
+                terminal.error(output or "The line failed.")
             return
         if message.get("type") != "hello":
             return
