@@ -7,6 +7,7 @@
 #import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleTheme.hpp"
+#import "platform/apple/HaylenAccessibilityView.h"
 #import "platform/apple/HaylenOverlayLayer.h"
 #include "platform/sokol/SokolRuntime.hpp"
 #include "sokol_app.h"
@@ -39,10 +40,12 @@ using haylen::platform::SokolRuntime;
     AppleTheme::report(NSApp.effectiveAppearance);
 }
 
-// The library `sokol_app` creates the window here, which the overlay lies over from now on.
+// The library `sokol_app` creates the window here, which the elements of screen readers and the overlay lie over from now on.
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
     [super applicationDidFinishLaunching:notification];
-    [HaylenOverlayLayer.shared attachToView:((__bridge NSWindow*)sapp_macos_get_window()).contentView];
+    NSView* content = ((__bridge NSWindow*)sapp_macos_get_window()).contentView;
+    [HaylenAccessibilityView.shared attachToView:content];
+    [HaylenOverlayLayer.shared attachToView:content];
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin applicationDidFinishLaunching:notification];
     }

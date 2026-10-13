@@ -104,6 +104,8 @@ The UI of [`haylen.ui`](ui.md) draws itself, so the engine describes it to scree
 
 | Platform | Screen readers |
 | --- | --- |
+| macOS | VoiceOver and every assistive technology of AppKit, such as Accessibility Inspector, through a view over the view of the app that serves the elements as `NSAccessibilityElement` objects with the roles, values and actions of AppKit. The engine builds the tree once an assistive technology asked the view for its elements or VoiceOver runs, and announcements go through `NSAccessibilityAnnouncementRequestedNotification`. |
+| iOS, iPadOS, tvOS and Mac Catalyst | VoiceOver, Switch Control and the accessibility audits of Xcode, through a view over the view of the app whose accessibility elements are `UIAccessibilityElement` objects with the traits of UIKit, where sliders and steppers are adjustable and a play area allows direct interaction, so a game takes its touches while VoiceOver runs. The engine builds the tree once an assistive technology asked the view for its elements, VoiceOver or Switch Control runs, and announcements go through `UIAccessibilityAnnouncementNotification`. |
 | Windows | Not supported yet. Windows reads apps through UI Automation, whose providers are COM objects that a window serves for every element, and the engine does not serve them yet. |
 | Linux | Not supported yet. Linux reads apps through AT-SPI, a protocol of the accessibility bus of D-Bus that an app serves for every element, and the engine does not serve it yet. |
 

@@ -34,6 +34,7 @@
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/CatalystInput.hpp"
 #import "platform/apple/CatalystWindow.hpp"
+#import "platform/apple/HaylenAccessibilityView.h"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
 #include "sokol_app.h"
@@ -271,14 +272,17 @@ void Services::vibrate(float) {
     AppleSystem::vibrate();
 }
 
-// The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
 bool Services::isAccessibilityTreeWanted() {
-    return false;
+    return HaylenAccessibilityView.shared.wanted;
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
+void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+    [HaylenAccessibilityView.shared updateElements:elements focused:focused];
+}
 
-void Services::announce(std::string_view, bool) {}
+void Services::announce(std::string_view text, bool interrupt) {
+    [HaylenAccessibilityView.shared announce:[[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding] interrupt:interrupt];
+}
 
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     AppleGamepads::rumble(index, low, high, seconds);

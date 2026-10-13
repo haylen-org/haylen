@@ -6,6 +6,7 @@
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleTheme.hpp"
+#import "platform/apple/HaylenAccessibilityView.h"
 #import "platform/apple/HaylenOverlayLayer.h"
 #import "platform/apple/HaylenScreenSceneDelegate.h"
 #include "sokol_app.h"
@@ -66,10 +67,12 @@ using haylen::platform::AppleTheme;
     if (window != nil) {
         window.windowScene = static_cast<UIWindowScene*>(scene);
         [window makeKeyAndVisible];
+        [HaylenAccessibilityView.shared attachToView:window.rootViewController.view];
         [HaylenOverlayLayer.shared attachToView:window.rootViewController.view];
     } else {
         [super scene:scene willConnectToSession:session options:connectionOptions];
         window = (__bridge UIWindow*)sapp_ios_get_window();
+        [HaylenAccessibilityView.shared attachToView:window.rootViewController.view];
         [HaylenOverlayLayer.shared attachToView:window.rootViewController.view];
         AppleSplash::cover(window);
         AppleTheme::observe(window);

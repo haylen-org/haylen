@@ -808,6 +808,8 @@ if(APPLE)
     src/platform/apple/AppleTheme.mm
     src/platform/apple/CatalystInput.mm
     src/platform/apple/CatalystWindow.mm
+    src/platform/apple/HaylenAccessibilityElement.mm
+    src/platform/apple/HaylenAccessibilityView.mm
     src/platform/apple/HaylenAppDelegate.mm
     src/platform/apple/HaylenAudioStream.mm
     src/platform/apple/HaylenBridge.mm
