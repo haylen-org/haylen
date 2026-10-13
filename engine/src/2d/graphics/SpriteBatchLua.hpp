@@ -31,9 +31,10 @@ class SpriteBatchLua final {
     // Reads a list of field names at index, such as `{'x', 'y', 'rotation'}`, into a layout over the template sprite.
     [[nodiscard]] static SpriteLayout readLayout(lua_State* L, int index, const SpriteInstance& sprite = {});
 
-  private:
+    // Pushes a sprite as the table `batch:get` returns.
     static void pushSpriteInstance(lua_State* L, const SpriteInstance& sprite, const PartColors& colors);
 
+  private:
     // Gives the sprite at an index of the batch the part colors of a sprite table that has them.
     static void readPartColors(lua_State* L, int table, SpriteBatch& batch, std::size_t index);
     [[nodiscard]] static std::size_t checkIndex(lua_State* L, int index, const SpriteBatch& batch);

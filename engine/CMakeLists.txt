@@ -42,6 +42,8 @@ include(haylen-dependencies)
 include(haylen-embed)
 
 set(HAYLEN_ENGINE_SOURCES
+  src/2d/animation/AnimatedBatch.cpp
+  src/2d/animation/AnimatedBatchLua.cpp
   src/2d/animation/Animation.cpp
   src/2d/animation/Animation2DLua.cpp
   src/2d/animation/Animator.cpp
@@ -897,6 +899,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-node-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
   set_target_properties(haylen-node-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-node-benchmark)
+
+  # The animation benchmark times animated batches and crowds animated from Lua on the CPU, inside an engine on the headless host.
+  add_executable(haylen-animation-benchmark bench/AnimationBenchmark.cpp)
+  target_include_directories(haylen-animation-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-animation-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-animation-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-animation-benchmark)
 
   # The Lua benchmark runs the bunnymark package in bench/lua-benchmark on the headless host, which times what Lua costs to update and draw many sprites through tables and through float buffers.
   add_executable(haylen-lua-benchmark bench/LuaBenchmark.cpp)

@@ -162,6 +162,34 @@ scene.push({
 })
 ```
 
+### animation2d.newAnimatedBatch(texture, animations)
+
+Creates an [`AnimatedBatch`](#animatedbatch) of `texture` that plays the animations of the table `animations`, which maps names to `Animation` values of that texture. The animations all count seconds or all count ticks. An animation of another texture or without frames raises `An animation of an animated batch needs a name, at least one frame and the texture of the batch.`, and a mix of seconds and ticks raises `The animations of an animated batch all count seconds or all count ticks.`.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local atlas = assets.load('units/villager.json', 'atlas')
+local crowd = animation2d.newAnimatedBatch(atlas.texture, {walk = atlas:animation('walk'), idle = atlas:animation('idle')})
+for index = 1, 2000 do
+    crowd:add({x = math.random(0, 4000), y = math.random(0, 3000), animation = index % 3 == 0 and 'idle' or 'walk', speed = 0.8 + math.random() * 0.4})
+end
+local camera = graphics2d.newCamera()
+
+scene.push({
+    update = function(self, dt)
+        crowd:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera, {sort = 'y'})
+        crowd:draw({layer = 1})
+    end,
+})
+```
+
 ## Animation
 
 An `Animation` is a value that holds a texture, a list of frames with their durations and a loop mode. The method `animator:add` stores a copy, so changing an animation afterwards does not change the animator.
@@ -442,6 +470,91 @@ end
 animator:play('attack')
 ```
 
+## AnimatedBatch
+
+An `AnimatedBatch` is a [sprite batch](graphics2d.md#spritebatch) whose sprites each play an animation of a shared set with their own time, speed and scale, advanced in C++, so a crowd of thousands of animated sprites costs one call to update and one to draw. Every update writes the source, the size and the pivot of the frame each sprite shows, mirrored where the sprite flips, and the batch draws in one call. Batches of 4096 sprites or more advance on the worker pool. Sprites are numbered from 1, and removing one renumbers the sprites after it.
+
+### batch:add(sprite)
+
+Adds a sprite and returns its number. The table takes the keys of a [sprite batch sprite](graphics2d.md#sprite-fields), whose `source`, `width`, `height`, `pivotX` and `pivotY` the animation sets, and `animation`, the name of the animation it plays from its start, the first by name without one, `speed` (default 1), `scaleX` and `scaleY` (default 1), which scale the frames, and `partColors`. An unknown animation raises `The animation "<name>" does not exist in this animated batch.`.
+
+### batch:set(index, fields)
+
+Changes the keys of `add` that `fields` gives. A new `animation` plays from its start unless the sprite already plays it.
+
+### batch:get(index)
+
+Returns the sprite as the table of `batch:get` of a sprite batch, with `animation`, `speed`, `scaleX`, `scaleY`, `frame`, counted from 1, and `time`.
+
+### batch:play(index, name, restart)
+
+Switches a sprite to the animation `name` from its start, unless it plays it already and `restart` is not `true`.
+
+### batch:animation(index) and batch:frame(index)
+
+Return the name of the animation of a sprite and the frame it shows, counted from 1.
+
+### batch:remove(index), batch:clear(), batch:reserve(count) and batch:size()
+
+Remove a sprite, remove every sprite, make room for a number of sprites and return the number of sprites. An index outside the batch raises `sprite index out of range`.
+
+### batch:animationNames()
+
+Returns the names of the animations of the batch.
+
+### batch:writeFields(buffer, fields, first) and batch:readFields(buffer, fields, first)
+
+Move the fields of many sprites from and into a float buffer in one call, as [`batch:writeFields`](graphics2d.md#batchwritefieldsbuffer-fields-first) of a sprite batch does.
+
+### batch:update(dt) and batch:step(ticks)
+
+Advance every sprite by `dt` seconds, or by `ticks` whole steps, 1 by default, for animations that count ticks, times its speed. A batch of the other unit raises `The animations of the animated batch count ticks, so it advances with "step".` or `The animations of the animated batch count seconds, so it cannot step by ticks.`.
+
+### batch:finished()
+
+Returns the numbers of the sprites whose one-shot animation ended in the last update.
+
+### batch:on(event, listener, options)
+
+Listens to `'finish'`, which calls the listener once per update with the list of the sprites whose one-shot animation ended in it, and returns a `Connection`. The table `options` takes `owner`, and without one the listener takes the default owner.
+
+### batch:draw(order)
+
+Draws every sprite in one call with the [draw order](graphics2d.md#draw-order) keys of `order`.
+
+The property `texture` returns the texture of the batch.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local atlas = assets.load('units/soldier.json', 'atlas')
+local army = animation2d.newAnimatedBatch(atlas.texture, {march = atlas:animation('march'), fall = atlas:animation('fall')})
+for index = 1, 500 do
+    army:add({x = (index % 25) * 40, y = (index // 25) * 40, animation = 'march'})
+end
+
+scene.push({
+    enter = function(self)
+        army:on('finish', function(fallen)
+            for _, index in ipairs(fallen) do
+                army:set(index, {color = '#80FFFFFF'})
+            end
+        end, {owner = self})
+        army:play(7, 'fall')
+    end,
+    update = function(self, dt)
+        army:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        army:draw()
+    end,
+})
+```
+
 ## SpriteAtlas
 
 A `SpriteAtlas` holds the named frames, animations and nine-slices of an atlas loaded with `assets.load(path, 'atlas')`.
@@ -585,3 +698,14 @@ local atlas = assets.load('ui/hero.json', 'atlas')
 local blink = atlas:animationFromFrames({'hero 1', 'hero 2', 'hero 1'}, {framesPerSecond = 6, loop = 'once'})
 print(blink.duration)
 ```
+
+## Performance
+
+An animated batch advances its sprites in C++, so a crowd costs one call from Lua per frame instead of an `update` and an `apply` per unit. The command `haylen bench --suite animation` measures it on the headless host, on an Apple M5 Pro in Release with 15 workers:
+
+| Scene | Average ms per frame |
+| --- | --- |
+| Animated batch of 100,000 sprites, one thread | 0.930 |
+| Animated batch of 100,000 sprites, job system | 0.191 |
+| 2,000 units with one animator each, updated and applied from Lua | 0.232 |
+| 2,000 units of one animated batch, updated from Lua | 0.017 |

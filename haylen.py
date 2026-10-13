@@ -146,7 +146,7 @@ COPY_IGNORED = shutil.ignore_patterns(".DS_Store", ".git", "build", ".gradle", "
 # Engine files that never reach an artifact, so editing them keeps the artifacts fresh.
 ENGINE_HASH_SKIPPED = {"tests", "bench", "build", ".cxx", ".gradle", ".kotlin", ".DS_Store"}
 # The benchmarks of `haylen.py bench` that are plain executables on the CPU, by suite.
-CPU_BENCHMARKS = {"core": "haylen-core-benchmark", "algorithms": "haylen-algorithm-benchmark", "procedural": "haylen-procedural-benchmark", "physics": "haylen-physics-benchmark", "ui": "haylen-ui-benchmark", "render": "haylen-render-benchmark", "particles": "haylen-particle-benchmark", "content": "haylen-content-benchmark", "nodes": "haylen-node-benchmark"}
+CPU_BENCHMARKS = {"core": "haylen-core-benchmark", "algorithms": "haylen-algorithm-benchmark", "procedural": "haylen-procedural-benchmark", "physics": "haylen-physics-benchmark", "ui": "haylen-ui-benchmark", "render": "haylen-render-benchmark", "particles": "haylen-particle-benchmark", "content": "haylen-content-benchmark", "nodes": "haylen-node-benchmark", "animation": "haylen-animation-benchmark"}
 
 # The slices of `Haylen.xcframework` and the architectures each one joins with lipo.
 APPLE_SLICES = {
@@ -4931,7 +4931,7 @@ def build_parser() -> argparse.ArgumentParser:
     formatter.set_defaults(handler=command_format)
 
     bench = commands.add_parser("bench", help="Build and run a benchmark of the engine in Release on this machine.")
-    bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content or node benchmark on the CPU or the Lua bunnymark on the CPU.")
+    bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "animation", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content, node or animation benchmark on the CPU or the Lua bunnymark on the CPU.")
     add_jobs_option(bench)
     bench.set_defaults(handler=command_bench)
 
