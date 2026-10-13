@@ -313,9 +313,13 @@ The method `tiled::MapRenderer::draw(renderer, view, order)`, which Lua calls as
 - Animated tiles stay out of the baked batches and are drawn every frame with the frame that matches the map time, which `map:update(dt)` advances.
 - With a camera, a region is drawn only when its bounds, shifted by the layer's parallax, intersect the area the active canvas shows, which is the visible design area for world canvases and the target size for render target canvases. Tile objects are culled one by one, image layers that repeat draw only the copies that cover the visible area, and other image layers draw whole. Without a camera nothing is culled.
 - Parallax shifts a layer by the distance between the camera position and the map's parallax origin, times one minus the parallax factor, through the offset of `drawStatic`, so parallax never rebakes.
-- The method `map:setTile` drops the baked batches of its layer, and the whole layer bakes again on its next draw.
+- The method `map:setTile` drops the baked batch of the region of its cell, which bakes again on its next draw, and the methods that build maps at run time, such as `map:fill`, drop the baked batches of their layer.
 - Every layer uses the given draw order with its blend replaced by the layer's blend mode. Later layers cover earlier ones because they are recorded later, and `map:drawLayer(name, camera, order)` lets the app draw its own sprites between layers.
 - The option `MapRenderer::DrawOptions::ysort`, `{ysort = true}` in Lua, bakes tile layers into rows of cells that stand on the same y, a row of an orthogonal map or a diagonal of an isometric one, split every 32 columns for culling, and draws object layers object by object. Each row and object gets the y it stands on as its depth and as its sort point, so entities in the same layer of a canvas that sorts by y or by depth pass behind and in front of map objects. The `ysort` bake is kept apart from the regular one, so a map can draw one layer both ways.
+
+## Tile layers
+
+The class `graphics2d::TileLayer`, `graphics2d.newTileLayer` in Lua, draws a grid of cells that code builds. It keeps its cells in chunks of a fixed size in a hash map keyed by the chunk coordinates, so a world can grow in every direction and costs nothing where it has no cells. A chunk bakes into one `StaticSpriteBatch` for each texture its cells use on the first draw after one of its cells changed, and a draw sorts the chunks row by row from the top only when chunks come or go, culls them with `Renderer::getCanvasBounds` and records one static draw for each baked batch in view. Setting cells allocates only when a chunk is created, and a frame that draws what the frame before drew allocates nothing.
 
 ## Cameras and parallax
 
@@ -363,7 +367,7 @@ A slot is freed when the last handle to its object goes away, and the object is 
 - Every light with shadows casts its shadow map on the CPU from the occluder edges within its reach, spread over the task pool. Keep occluders simple, with one edge per face of an object, and give shadows only to the lights that need them.
 - Text rasterizes new glyphs on the frame thread and uploads the atlas again. Sokol updates a texture as a whole and at most once per frame, so a font atlas or a page of the vector atlas that gained rasters uploads entirely, once in that frame, and frames that add nothing upload nothing. A dynamic texture keeps a copy of its new pixels until the upload, and keeps that memory while it changes every frame, such as a video, so its updates allocate nothing, then gives it back after a frame without a change. Measure the strings a scene shows while it loads, with `graphics2d.measureText` or `Font::measure`, so the glyphs exist before the first frame. Shadows double the glyph quads, and each font breaks batches with the others.
 - Clip rectangles split batches, so scroll areas and clipped panels cost a draw call each.
-- The method `map:setTile` rebakes the whole layer. Keep tiles that change often in a small layer of their own.
+- The method `map:setTile` bakes the region of its cell again. Grids that change cells every frame draw best as a `TileLayer`, whose chunks are smaller and bake only when they change, or keep the cells that change in a small layer of their own.
 - Recording draws in their final order, for example layer by layer from the lowest, lets the renderer upload instances without copying them into draw order.
 - Measure in Release builds, because Debug builds run without optimizations and with the Sokol validation layer.
 

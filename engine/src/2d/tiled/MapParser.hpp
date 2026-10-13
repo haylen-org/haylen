@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -8,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/tiled/Layer.hpp"
@@ -30,6 +32,9 @@ class MapParser final {
     // Resolves a path relative to the file in `directory`, keeping an empty path empty.
     [[nodiscard]] static std::string resolve(std::string_view directory, std::string_view relative);
 
+    // Names a blend mode as the `mode` of a Tiled layer, and throws `std::invalid_argument` for a mode Tiled lacks.
+    [[nodiscard]] static std::string_view blendModeName(graphics::BlendMode::Type value);
+
   private:
     // Cells are indexed with `int` and their data takes four bytes each, so a layer holds as many cells as both allow.
     static constexpr std::size_t kMaxCells = std::min<std::size_t>(std::numeric_limits<int>::max(), std::numeric_limits<std::size_t>::max() / 4);
@@ -41,6 +46,9 @@ class MapParser final {
     [[nodiscard]] static std::vector<std::uint8_t> inflate(const std::vector<std::uint8_t>& compressed, bool gzip, std::size_t expected);
     [[nodiscard]] static std::vector<std::uint32_t> readTileData(const core::Json& layer, const core::Json& data, std::size_t cells);
     [[nodiscard]] static std::optional<math::Color> readOptionalColor(const core::Json& object, const char* key);
+    // The blend modes of Tiled layers by the names of the Tiled format.
+    static const std::array<std::pair<std::string_view, graphics::BlendMode::Type>, 4> kBlendModes;
+
     [[nodiscard]] static graphics::BlendMode::Type readBlendMode(const std::string& mode, std::string_view layer);
     [[nodiscard]] static core::Json resolveValue(std::string_view type, core::Json value, std::string_view directory);
     [[nodiscard]] static Properties readProperties(const core::Json& owner, std::string_view directory);

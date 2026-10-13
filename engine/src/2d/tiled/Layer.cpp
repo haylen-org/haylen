@@ -1,5 +1,6 @@
 #include "haylen/2d/tiled/Layer.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace haylen::tiled {
@@ -31,6 +32,13 @@ std::uint32_t Layer::getGid(int column, int row) const noexcept {
         }
     }
     return 0;
+}
+
+bool Layer::contains(int column, int row) const noexcept {
+    if (chunks.empty()) {
+        return column >= 0 && row >= 0 && column < width && row < height;
+    }
+    return std::ranges::any_of(chunks, [column, row](const Chunk& chunk) { return column >= chunk.x && row >= chunk.y && column < chunk.x + chunk.width && row < chunk.y + chunk.height; });
 }
 
 void Layer::setGid(int column, int row, std::uint32_t value) {

@@ -82,6 +82,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/StaticBatchResource.cpp
   src/2d/graphics/StaticSpriteBatch.cpp
   src/2d/graphics/TextPainter.cpp
+  src/2d/graphics/TileLayer.cpp
+  src/2d/graphics/TileLayerLua.cpp
   src/2d/graphics/VectorAtlas.cpp
   src/2d/lighting/LightFlicker.cpp
   src/2d/lighting/Light.cpp
@@ -183,10 +185,12 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/spatial/VisibilityPolygon.cpp
   src/2d/tiled/Layer.cpp
   src/2d/tiled/Map.cpp
+  src/2d/tiled/MapBuilderLua.cpp
   src/2d/tiled/MapParser.cpp
   src/2d/tiled/MapQuery.cpp
   src/2d/tiled/MapQueryLua.cpp
   src/2d/tiled/MapRenderer.cpp
+  src/2d/tiled/MapWriter.cpp
   src/2d/tiled/Object.cpp
   src/2d/tiled/ObjectFactories.cpp
   src/2d/tiled/Properties.cpp

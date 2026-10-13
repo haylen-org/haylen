@@ -17,5 +17,6 @@ return {
         {code = 'SPR-011', title = 'Text', description = 'Sizes, colors, outlines, shadows, alignment, wrapping, anchors, rotation and measuring.', module = 'text'},
         {code = 'SPR-012', title = 'Vector images', description = 'SVG icons in many sizes, a swarm of hundreds that turn and an icon that grows, rasterized on worker threads into an atlas.', module = 'vector-images'},
         {code = 'SPR-013', title = 'Recoloring by parts', description = 'One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call.', module = 'recolor'},
+        {code = 'SPR-014', title = 'Tile layers', description = 'An endless world of tiles kept by chunks that stream in around the camera and bake only when their cells change.', module = 'tile-layers'},
     },
 }

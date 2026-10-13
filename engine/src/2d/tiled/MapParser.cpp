@@ -16,6 +16,8 @@
 
 namespace haylen::tiled {
 
+const std::array<std::pair<std::string_view, graphics::BlendMode::Type>, 4> MapParser::kBlendModes{{{"normal", graphics::BlendMode::Type::Alpha}, {"add", graphics::BlendMode::Type::Additive}, {"multiply", graphics::BlendMode::Type::Multiply}, {"screen", graphics::BlendMode::Type::Screen}}};
+
 Map MapParser::parse(const core::Json& document, std::string_view file, const Map::JsonReader& reader) {
     Map result;
     result.path = io::Path::normalize(file);
@@ -175,19 +177,19 @@ std::optional<math::Color> MapParser::readOptionalColor(const core::Json& object
 
 // Tiled offers every Qt composition mode, and the ones fixed-function GPU blending cannot reproduce are rejected.
 graphics::BlendMode::Type MapParser::readBlendMode(const std::string& mode, std::string_view layer) {
-    if (mode == "normal") {
-        return graphics::BlendMode::Type::Alpha;
+    const auto found = std::ranges::find(kBlendModes, mode, &std::pair<std::string_view, graphics::BlendMode::Type>::first);
+    if (found == kBlendModes.end()) {
+        throw std::invalid_argument("The Tiled layer \"" + std::string(layer) + "\" uses the blend mode \"" + mode + "\", which Haylen cannot draw. Layers can use \"normal\", \"add\", \"multiply\" or \"screen\".");
     }
-    if (mode == "add") {
-        return graphics::BlendMode::Type::Additive;
+    return found->second;
+}
+
+std::string_view MapParser::blendModeName(graphics::BlendMode::Type value) {
+    const auto found = std::ranges::find(kBlendModes, value, &std::pair<std::string_view, graphics::BlendMode::Type>::second);
+    if (found == kBlendModes.end()) {
+        throw std::invalid_argument("A Tiled layer blends with \"normal\", \"add\", \"multiply\" or \"screen\", not \"" + std::string(graphics::BlendMode::name(value)) + "\".");
     }
-    if (mode == "multiply") {
-        return graphics::BlendMode::Type::Multiply;
-    }
-    if (mode == "screen") {
-        return graphics::BlendMode::Type::Screen;
-    }
-    throw std::invalid_argument("The Tiled layer \"" + std::string(layer) + "\" uses the blend mode \"" + mode + "\", which Haylen cannot draw. Layers can use \"normal\", \"add\", \"multiply\" or \"screen\".");
+    return found->first;
 }
 
 // Resolves file values against the content folder, including the file items of lists and of lists nested in them.

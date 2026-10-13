@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/2d/graphics/Camera.hpp"
@@ -14,6 +15,7 @@
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/2d/tiled/MapRenderer.hpp"
+#include "haylen/2d/tiled/MapWriter.hpp"
 #include "haylen/2d/tiled/ObjectFactories.hpp"
 #include "haylen/2d/tiled/World.hpp"
 #include "haylen/assets/Manager.hpp"
@@ -1013,6 +1015,140 @@ TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
 
     EXPECT_EQ(fixture.lua("return string.format('%X %X %X %X %X', tiled.flipHorizontal, tiled.flipVertical, tiled.flipDiagonal, tiled.rotateHexagonal, tiled.flagMask)"), "80000000 40000000 20000000 10000000 F0000000");
     EXPECT_EQ(fixture.lua("return tiled.tileId(5 | tiled.flipHorizontal | tiled.flipDiagonal) .. ' ' .. tiled.tileId(7)"), "5 7");
+}
+
+TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
+    const tiled::Map original = tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
+    const core::Json written = tiled::MapWriter::write(original, "maps/copies/island.tmj");
+    EXPECT_EQ(written.at("tilesets")[0].at("image"), "../images/terrain.png");
+    EXPECT_FALSE(written.at("tilesets")[0].contains("source"));
+
+    // The copy embeds its tilesets and resolves its templates, so reading it back reads no other file.
+    // clang-format off
+    const tiled::Map copy = tiled::Map::parse(written, "maps/copies/island.tmj", [](const std::string& path) -> core::Json {
+        throw std::runtime_error("The file \"" + path + "\" was read unexpectedly.");
+    });
+    // clang-format on
+    EXPECT_EQ(copy.type, original.type);
+    EXPECT_EQ(copy.getPixelBounds(), original.getPixelBounds());
+    EXPECT_EQ(copy.backgroundColor, original.backgroundColor);
+    EXPECT_EQ(copy.properties.getString("title", ""), "Island");
+    EXPECT_EQ(copy.properties.find("spawn")->value.at("kind"), "goblin");
+    EXPECT_EQ(copy.properties.find("loot")->value[3].at("value")[1].at("value"), "maps/gem.png");
+
+    ASSERT_EQ(copy.tilesets.size(), original.tilesets.size());
+    for (std::size_t index = 0; index < copy.tilesets.size(); ++index) {
+        const tiled::Tileset& from = *original.tilesets[index].tileset;
+        const tiled::Tileset& to = *copy.tilesets[index].tileset;
+        EXPECT_EQ(copy.tilesets[index].firstGid, original.tilesets[index].firstGid);
+        EXPECT_EQ(to.image, from.image);
+        EXPECT_EQ(to.tileCount, from.tileCount);
+        EXPECT_EQ(to.wangSets.size(), from.wangSets.size());
+    }
+    EXPECT_EQ(copy.tilesets[1].tileset->findTile(0)->image, "maps/props/tree.png");
+    EXPECT_EQ(copy.tilesets[0].tileset->findTile(2)->animation.size(), 2U);
+    EXPECT_EQ(copy.tilesets[0].tileset->wangSets.front().tiles.front().wangId, original.tilesets[0].tileset->wangSets.front().tiles.front().wangId);
+
+    for (const std::string_view name : {"ground", "decor", "inner"}) {
+        EXPECT_EQ(copy.findLayer(name)->gids, original.findLayer(name)->gids) << name;
+        EXPECT_EQ(copy.findLayer(name)->id, original.findLayer(name)->id) << name;
+    }
+    EXPECT_EQ(copy.findLayer("group")->opacity, 0.5F);
+    EXPECT_EQ(copy.findLayer("sky")->image, "maps/backgrounds/sky.png");
+    EXPECT_EQ(copy.findLayer("sky")->parallax, math::Vec2(0.5F, 0.5F));
+
+    const tiled::Layer& things = *copy.findLayer("things");
+    const tiled::Layer& before = *original.findLayer("things");
+    ASSERT_EQ(things.objects.size(), before.objects.size());
+    for (std::size_t index = 0; index < things.objects.size(); ++index) {
+        EXPECT_EQ(things.objects[index].shape, before.objects[index].shape) << index;
+        EXPECT_EQ(things.objects[index].position, before.objects[index].position) << index;
+        EXPECT_EQ(things.objects[index].points.size(), before.objects[index].points.size()) << index;
+        EXPECT_EQ(things.objects[index].gid, before.objects[index].gid) << index;
+    }
+    EXPECT_EQ(things.objects[8].name, "big rock");
+    EXPECT_TRUE(things.objects[8].properties.getBool("hard", false));
+
+    const tiled::Map infinite = tiled::Map::parse(tiled::MapWriter::write(tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader()), "maps/infinite.tmj"), "maps/infinite.tmj", reader());
+    EXPECT_TRUE(infinite.infinite);
+    EXPECT_EQ(infinite.findLayer("ground")->getGid(-1, 1), 4U);
+    EXPECT_EQ(infinite.findLayer("ground")->getGid(1, 0), 6U);
+}
+
+TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {
+    test::EngineFixture fixture(packageFiles());
+    // clang-format off
+    fixture.runLua(R"(
+        tiled = require('haylen.tiled')
+        spatial2d = require('haylen.spatial2d')
+        graphics2d = require('haylen.graphics2d')
+        camera = graphics2d.newCamera()
+        camera.anchor = 'topLeft'
+        map = tiled.newMapRenderer(tiled.newMap({width = 8, height = 4, tileWidth = 16, tileHeight = 16, backgroundColor = '#FF203040'}))
+        first = map:addTileset({name = 'terrain', image = 'maps/images/terrain.png', tileWidth = 16, tileHeight = 16, wangSets = {
+            {name = 'grass', type = 'corner', colors = {'grass'}, tiles = {
+                {tile = 0, wangId = {0, 1, 0, 1, 0, 1, 0, 1}},
+                {tile = 1, wangId = {0, 0, 0, 1, 0, 0, 0, 0}},
+                {tile = 2, wangId = {0, 0, 0, 0, 0, 1, 0, 0}},
+                {tile = 3, wangId = {0, 1, 0, 0, 0, 0, 0, 0}},
+                {tile = 4, wangId = {0, 0, 0, 0, 0, 0, 0, 1}},
+            }},
+        }})
+        map:addLayer({name = 'ground'})
+        map:addLayer({name = 'things', kind = 'object'})
+        grid = spatial2d.newCellGrid(2, 2, 3)
+        grid:set(0, 0, -1)
+        map:fill('ground', grid, first, 5, 2)
+        require('haylen.scene').push({render = function()
+            graphics2d.beginWorld(camera)
+            map:draw(camera)
+        end})
+    )");
+    // clang-format on
+    fixture.frames(1);
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(fixture.lua("return first .. ' ' .. map:tile('ground', 5, 2) .. ' ' .. map:tile('ground', 6, 2) .. ' ' .. map:tile('ground', 6, 3) .. ' ' .. #map:layers() .. ' ' .. map.width"), "1 0 4 4 2 8");
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 3U);
+
+    // Painting a corner terrain gives the cell the full tile and the neighbours the tiles of the corners they share, and erasing empties them.
+    fixture.runLua("map:paintTerrain('ground', 'grass', 2, 1, 1)");
+    EXPECT_EQ(fixture.lua("return map:tile('ground', 2, 1) .. ' ' .. map:tile('ground', 1, 0) .. ' ' .. map:tile('ground', 3, 0) .. ' ' .. map:tile('ground', 1, 2) .. ' ' .. map:tile('ground', 3, 2)"), "1 2 3 4 5");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 12U);
+    fixture.runLua("map:paintTerrain('ground', 'grass', 2, 1, 0)");
+    EXPECT_EQ(fixture.lua("return map:tile('ground', 2, 1) .. ' ' .. map:tile('ground', 1, 0) .. ' ' .. map:tile('ground', 3, 2)"), "0 0 0");
+    EXPECT_EQ(fixture.lua("map:paintTerrain('ground', 'grass', 0, 0, 1) local painted = map:tile('ground', 0, 0) map:paintTerrain('ground', 'grass', 0, 0, 0) return painted .. ' ' .. map:tile('ground', 1, 1)"), "1 0");
+
+    // The JSON of the map holds the tileset with its path relative to the file and the cells row by row.
+    EXPECT_EQ(fixture.lua("local j = map:toJson('maps/built.tmj') return j.tilesets[1].image .. ' ' .. j.layers[1].name .. ' ' .. j.layers[1].data[23] .. ' ' .. j.layers[2].type .. ' ' .. j.width"), "images/terrain.png ground 4 objectgroup 8");
+
+    // An infinite map takes and drops chunks of cells.
+    // clang-format off
+    EXPECT_EQ(fixture.lua(R"(
+        local open = tiled.newMapRenderer(tiled.newMap({infinite = true, tileWidth = 16, tileHeight = 16}))
+        local gid = open:addTileset({name = 'terrain', texture = require('haylen.assets').texture('maps/images/terrain.png'), tileWidth = 16, tileHeight = 16})
+        open:addLayer({name = 'ground'})
+        open:setChunk('ground', -16, 0, grid, gid)
+        local before = open:tile('ground', -15, 1)
+        open:removeChunk('ground', -16, 0)
+        return before .. ' ' .. open:tile('ground', -15, 1) .. ' ' .. open:toJson().tilesets[1].image
+    )"), "4 0 maps/images/terrain.png");
+    // clang-format on
+
+    EXPECT_NE(fixture.lua("tiled.newMap({width = 0, height = 4, tileWidth = 16, tileHeight = 16})").find("A map needs a positive tile size, and a finite map a positive width and height in cells."), std::string::npos);
+    EXPECT_NE(fixture.lua("tiled.newMap({width = 4, height = 4, tileWidth = 16, tileHeight = 16, orientation = 'round'})").find("A map has the orientation"), std::string::npos);
+    EXPECT_NE(fixture.lua("tiled.newMap({width = 4, height = 4, tileWidth = 16, tileHeight = 16, depth = 2})").find("Unknown option \"depth\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:addTileset({name = 'none', tileWidth = 16, tileHeight = 16})").find("A tileset needs the package path of its \"image\" or a \"texture\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:addTileset({image = 'maps/images/terrain.png', tileWidth = 16, tileHeight = 16, wangSets = {{name = 'w', type = 'round'}}})").find("A Wang set has the type \"corner\", \"edge\" or \"mixed\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:addLayer({name = 'ground'})").find("A layer of a map needs a name of its own, and \"ground\" is empty or taken."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:addLayer({name = 'sky', kind = 'image'})").find("A layer built in code has the kind \"tile\" or \"object\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:fill('ground', spatial2d.newCellGrid(1, 1, 100), first)").find("The tile \"101\" belongs to no tileset of the map."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:setChunk('ground', 0, 0, grid, first)").find("Only the tile layers of an infinite map have chunks."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:paintTerrain('ground', 'sand', 0, 0, 1)").find("No tileset of the map has the Wang set \"sand\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:paintTerrain('ground', 'grass', 0, 0, 2)").find("The Wang set \"grass\" has the colors 1 to 1, and 0 erases."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:fill('things', grid, first)").find("The map has no tile layer named \"things\"."), std::string::npos);
+    EXPECT_EQ(fixture.lua("map:removeLayer('things') return #map:layers()"), "1");
+    EXPECT_NE(fixture.lua("map:removeLayer('things')").find("The map has no layer named \"things\" at its top level."), std::string::npos);
 }
 
 } // namespace haylen

@@ -65,6 +65,9 @@ struct Layer {
 
     // Returns the global tile id at a cell, including flip flags, or zero outside the layer.
     [[nodiscard]] std::uint32_t getGid(int column, int row) const noexcept;
+
+    // Tells whether a cell lies inside the layer, or inside one of its chunks on an infinite map.
+    [[nodiscard]] bool contains(int column, int row) const noexcept;
     void setGid(int column, int row, std::uint32_t value);
 };
 

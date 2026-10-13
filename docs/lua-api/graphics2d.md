@@ -1147,6 +1147,17 @@ scene.push({
 })
 ```
 
+### graphics2d.newTileLayer(textures, options)
+
+Creates a [`TileLayer`](#tilelayer), a grid of cells that code fills, such as a generated cave or a streamed world, drawn from static batches baked by chunks of cells. The argument `textures` is a texture or a list of them, and `options` is an optional table:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `cellWidth`, `cellHeight` | number | `32` | Size of a cell in world units, which must be positive. |
+| `chunkSize` | integer | `32` | Cells along each side of a chunk, from 1 to 256. |
+
+Other keys raise `Unknown option "name".`, no texture raises `A tile layer needs at least one texture.`, and a size outside the ranges raises `A tile layer needs a positive cell size and a chunk size from 1 to 256 cells.`
+
 ### graphics2d.blendCameras(from, to, amount)
 
 Returns a new `Camera` between the views of `from` and `to`, where `amount` 0 gives the view of `from` and 1 the view of `to`. Position, offset, rotation and viewport move in a straight line, and the zoom changes at a steady rate. The result takes the other settings of `to`. Tween `amount` for a smooth cut between two cameras, such as from the player to a boss.
@@ -1750,6 +1761,66 @@ scene.push({
     render = function(self)
         graphics2d.beginScreen()
         graphics2d.drawStatic(baked)
+    end,
+})
+```
+
+## TileLayer
+
+A `TileLayer` shows a frame in each of its cells, a region of one of its textures named by an id from 1, where 0 is an empty cell. Cells are kept in chunks of `chunkSize` by `chunkSize` cells in a hash map, so negative cells work and a sparse or endless world costs memory only where cells were set. Each chunk bakes into one static batch for each texture its cells use the first time it draws after one of its cells changed, so changing a cell bakes only its chunk again, and a draw leaves out the chunks outside the area the active canvas shows. Chunks draw row by row from the top. Maps made in the Tiled editor use [`haylen.tiled`](tiled.md) instead, which adds orientations, animated tiles, objects and collision.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `chunkCount` | integer | Chunks that hold at least one cell, read-only. |
+| `batchCount` | integer | Static batches the baked chunks hold, read-only. |
+
+### layer:defineFrame(id, frame)
+
+Defines or redefines the frame `id`, from 1 to 1048576, with the table `{texture, source, width, height, offsetX, offsetY}`: `texture` is the position of a texture in the list of the layer, which defaults to 1, `source` the `Rect` of the frame in that texture, `width` and `height` the size it draws at, which defaults to the size of `source`, and `offsetX`, `offsetY` move it from the top-left corner of its cell, so a tall tree stands on its cell. Redefining a frame bakes the chunks that show it again. An id outside the range raises `A frame of a tile layer has an id from 1 to 1048576, not id.`, and a missing texture raises `A frame of a tile layer uses one of its n textures.`
+
+### layer:setCell(column, row, id) and layer:cell(column, row)
+
+Sets the frame of a cell, where 0 empties it, and returns the frame of a cell, 0 for an empty one. A chunk that loses its last cell is removed. A frame that was never defined raises `The tile layer has no frame id.`
+
+### layer:setCells(column, row, width, buffer)
+
+Sets the cells of a rectangle whose top-left cell is `column`, `row` from a [`FloatBuffer`](collections.md#float-buffers) of frame ids in rows of `width` cells, which fills a large area with one call across the Lua boundary. A buffer that is not whole rows raises `The frames of a rectangle of a tile layer come in whole rows of its width.`
+
+### layer:clear()
+
+Empties every cell.
+
+### layer:draw(order, offsetX, offsetY)
+
+Draws the chunks in view into the active canvas with an optional [draw order](#draw-order), moved by an offset in world units, which also gives the layer parallax.
+
+```lua
+local assets = require('haylen.assets')
+local collections = require('haylen.collections')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local layer = graphics2d.newTileLayer(assets.texture('tiles/cave.png'), {cellWidth = 16, cellHeight = 16, chunkSize = 32})
+layer:defineFrame(1, {source = {0, 0, 16, 16}})
+layer:defineFrame(2, {source = {16, 0, 16, 16}})
+
+local ids = collections.newFloatBuffer(256 * 256)
+for index = 1, #ids do
+    ids[index] = math.random() < 0.4 and 1 or 2
+end
+layer:setCells(-128, -128, 256, ids)
+
+local camera = graphics2d.newCamera()
+scene.push({
+    update = function(self, dt)
+        camera.x = camera.x + 60 * dt
+        if math.random() < 0.1 then
+            layer:setCell(math.random(-128, 127), math.random(-128, 127), 0)
+        end
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        layer:draw({layer = 1})
     end,
 })
 ```

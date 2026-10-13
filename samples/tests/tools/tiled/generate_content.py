@@ -23,6 +23,7 @@ CONTENT = Path(__file__).resolve().parents[2] / "content" / "tiled"
 def write_art() -> None:
     art.terrain().save(CONTENT / "tiles" / "terrain.png")
     art.props().save(CONTENT / "tiles" / "props.png")
+    art.shore().save(CONTENT / "tiles" / "shore.png")
     art.diamond_tiles().save(CONTENT / "tiles" / "diamonds.png")
     art.hex_tiles().save(CONTENT / "tiles" / "hexagons.png")
     art.sky().save(CONTENT / "images" / "sky.png")

@@ -1,6 +1,7 @@
 #include "haylen/2d/tiled/MapRenderer.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <span>
 #include <stdexcept>
@@ -10,6 +11,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/2d/tiled/MapQuery.hpp"
+#include "haylen/2d/tiled/MapWriter.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/text/Font.hpp"
 
@@ -215,6 +217,209 @@ void MapRenderer::setTile(std::string_view layer, int column, int row, std::uint
         collision.setCell(column, row, collisionCell(body, column, row, gid, collision.getOrigin(), collision.getFilter()));
         collision.update();
     }
+}
+
+Layer& MapRenderer::requireTileLayer(std::string_view name) {
+    Layer* found = map.findLayer(name);
+    if (found == nullptr || found->kind != Layer::Kind::Tile) {
+        throw std::invalid_argument("The map has no tile layer named \"" + std::string(name) + "\".");
+    }
+    return *found;
+}
+
+std::uint32_t MapRenderer::nextLayerId() const noexcept {
+    std::uint32_t highest = 0;
+    // clang-format off
+    const auto visit = [&highest](const auto& self, const std::vector<Layer>& layers) -> void {
+        for (const Layer& layer : layers) {
+            highest = std::max(highest, layer.id);
+            self(self, layer.layers);
+        }
+    };
+    // clang-format on
+    visit(visit, map.layers);
+    return highest + 1;
+}
+
+void MapRenderer::invalidate(const Layer& layer, int left, int top, int width, int height) {
+    caches.erase({layer.id, false});
+    caches.erase({layer.id, true});
+    std::erase_if(collisions, [](const TileCollision& collision) { return !collision.getBody().isValid(); });
+    for (TileCollision& collision : collisions) {
+        if (collision.getLayerId() != layer.id) {
+            continue;
+        }
+        physics2d::Body body = collision.getBody();
+        for (int row = top; row < top + height; ++row) {
+            for (int column = left; column < left + width; ++column) {
+                collision.setCell(column, row, collisionCell(body, column, row, layer.getGid(column, row), collision.getOrigin(), collision.getFilter()));
+            }
+        }
+        collision.update();
+    }
+}
+
+std::uint32_t MapRenderer::addTileset(std::shared_ptr<Tileset> tileset) {
+    if (!tileset || !(tileset->tileSize.x > 0.0F && tileset->tileSize.y > 0.0F) || tileset->tileCount <= 0) {
+        throw std::invalid_argument("A tileset needs a positive tile size and at least one tile.");
+    }
+    std::uint32_t firstGid = 1;
+    for (const Map::TilesetReference& reference : map.tilesets) {
+        firstGid = std::max(firstGid, reference.firstGid + static_cast<std::uint32_t>(reference.tileset->tileCount));
+    }
+    map.tilesets.push_back({firstGid, std::move(tileset)});
+    return firstGid;
+}
+
+Layer& MapRenderer::addLayer(Layer layer) {
+    if (layer.name.empty() || map.findLayer(layer.name) != nullptr) {
+        throw std::invalid_argument("A layer of a map needs a name of its own, and \"" + layer.name + "\" is empty or taken.");
+    }
+    layer.id = nextLayerId();
+    if (layer.kind == Layer::Kind::Tile && !map.infinite) {
+        layer.width = map.width;
+        layer.height = map.height;
+        layer.gids.assign(static_cast<std::size_t>(map.width) * static_cast<std::size_t>(map.height), 0U);
+    }
+    map.layers.push_back(std::move(layer));
+    return map.layers.back();
+}
+
+void MapRenderer::removeLayer(std::string_view name) {
+    const auto found = std::ranges::find(map.layers, name, &Layer::name);
+    if (found == map.layers.end()) {
+        throw std::invalid_argument("The map has no layer named \"" + std::string(name) + "\" at its top level.");
+    }
+    caches.erase({found->id, false});
+    caches.erase({found->id, true});
+    objectOrders.erase(found->id);
+    const std::uint32_t id = found->id;
+    std::erase_if(collisions, [id](const TileCollision& collision) { return collision.getLayerId() == id; });
+    map.layers.erase(found);
+}
+
+void MapRenderer::fill(std::string_view name, const spatial2d::CellGrid& grid, std::uint32_t firstGid, int column, int row) {
+    Layer& layer = requireTileLayer(name);
+    for (int y = 0; y < grid.getHeight(); ++y) {
+        for (int x = 0; x < grid.getWidth(); ++x) {
+            const std::int32_t value = grid[{x, y}];
+            const std::uint32_t gid = value < 0 ? 0U : firstGid + static_cast<std::uint32_t>(value);
+            if (gid != 0 && map.findTileset(gid) == nullptr) {
+                throw std::invalid_argument("The tile \"" + std::to_string(gid) + "\" belongs to no tileset of the map.");
+            }
+            layer.setGid(column + x, row + y, gid);
+        }
+    }
+    invalidate(layer, column, row, grid.getWidth(), grid.getHeight());
+}
+
+void MapRenderer::setChunk(std::string_view name, int column, int row, const spatial2d::CellGrid& grid, std::uint32_t firstGid) {
+    Layer& layer = requireTileLayer(name);
+    if (!map.infinite) {
+        throw std::invalid_argument("Only the tile layers of an infinite map have chunks.");
+    }
+    Layer::Chunk chunk{.x = column, .y = row, .width = grid.getWidth(), .height = grid.getHeight()};
+    for (const std::int32_t value : grid.getValues()) {
+        const std::uint32_t gid = value < 0 ? 0U : firstGid + static_cast<std::uint32_t>(value);
+        if (gid != 0 && map.findTileset(gid) == nullptr) {
+            throw std::invalid_argument("The tile \"" + std::to_string(gid) + "\" belongs to no tileset of the map.");
+        }
+        chunk.gids.push_back(gid);
+    }
+    std::erase_if(layer.chunks, [column, row](const Layer::Chunk& existing) { return existing.x == column && existing.y == row; });
+    layer.chunks.push_back(std::move(chunk));
+    invalidate(layer, column, row, grid.getWidth(), grid.getHeight());
+}
+
+void MapRenderer::removeChunk(std::string_view name, int column, int row) {
+    Layer& layer = requireTileLayer(name);
+    const auto found = std::ranges::find_if(layer.chunks, [column, row](const Layer::Chunk& chunk) { return chunk.x == column && chunk.y == row; });
+    if (found == layer.chunks.end()) {
+        return;
+    }
+    const Layer::Chunk removed = std::move(*found);
+    layer.chunks.erase(found);
+    invalidate(layer, removed.x, removed.y, removed.width, removed.height);
+}
+
+// The cell takes the color on every corner and edge, its neighbours on the corners and edges they share with it, and each of the nine cells takes the tile of the set whose colors match the most, among the corners for a corner set, the edges for an edge set and both for a mixed one.
+void MapRenderer::paintTerrain(std::string_view name, std::string_view wangSet, int column, int row, int color) {
+    Layer& layer = requireTileLayer(name);
+    const Map::TilesetReference* owner = nullptr;
+    const WangSet* set = nullptr;
+    for (const Map::TilesetReference& reference : map.tilesets) {
+        for (const WangSet& candidate : reference.tileset->wangSets) {
+            if (candidate.name == wangSet) {
+                owner = &reference;
+                set = &candidate;
+            }
+        }
+    }
+    if (set == nullptr) {
+        throw std::invalid_argument("No tileset of the map has the Wang set \"" + std::string(wangSet) + "\".");
+    }
+    if (color < 0 || static_cast<std::size_t>(color) > set->colors.size()) {
+        throw std::invalid_argument("The Wang set \"" + std::string(wangSet) + "\" has the colors 1 to " + std::to_string(set->colors.size()) + ", and 0 erases.");
+    }
+    const bool corners = set->kind != "edge";
+    const bool edges = set->kind != "corner";
+    const auto paintedVertex = [column, row](int x, int y) { return (x == column || x == column + 1) && (y == row || y == row + 1); };
+
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            const int x = column + dx;
+            const int y = row + dy;
+            if (!layer.contains(x, y)) {
+                continue;
+            }
+            std::array<std::uint8_t, 8> wang{};
+            const std::uint32_t gid = Map::tileId(layer.getGid(x, y));
+            if (gid >= owner->firstGid) {
+                const auto known = std::ranges::find(set->tiles, gid - owner->firstGid, &WangSet::Tile::tileId);
+                if (known != set->tiles.end()) {
+                    wang = known->wangId;
+                }
+            }
+            const auto value = static_cast<std::uint8_t>(color);
+            if (corners) {
+                const std::array<std::pair<int, std::array<int, 2>>, 4> vertices{{{1, {x + 1, y}}, {3, {x + 1, y + 1}}, {5, {x, y + 1}}, {7, {x, y}}}};
+                for (const auto& [index, vertex] : vertices) {
+                    if (paintedVertex(vertex[0], vertex[1])) {
+                        wang[static_cast<std::size_t>(index)] = value;
+                    }
+                }
+            }
+            if (edges) {
+                const bool center = dx == 0 && dy == 0;
+                const std::array<std::pair<int, bool>, 4> shared{{{0, center || (dx == 0 && dy == 1)}, {2, center || (dx == -1 && dy == 0)}, {4, center || (dx == 0 && dy == -1)}, {6, center || (dx == 1 && dy == 0)}}};
+                for (const auto& [index, touches] : shared) {
+                    if (touches) {
+                        wang[static_cast<std::size_t>(index)] = value;
+                    }
+                }
+            }
+
+            std::uint32_t chosen = 0;
+            int best = -1;
+            for (const WangSet::Tile& tile : set->tiles) {
+                int score = 0;
+                for (std::size_t index = 0; index < 8; ++index) {
+                    const bool counted = index % 2 == 1 ? corners : edges;
+                    score += counted && tile.wangId[index] == wang[index] ? 1 : 0;
+                }
+                if (score > best) {
+                    best = score;
+                    chosen = owner->firstGid + tile.tileId;
+                }
+            }
+            const bool empty = std::ranges::all_of(wang, [](std::uint8_t entry) { return entry == 0; });
+            setTile(name, x, y, empty ? 0U : chosen);
+        }
+    }
+}
+
+core::Json MapRenderer::toJson(std::string_view file) const {
+    return MapWriter::write(map, file);
 }
 
 void MapRenderer::setLayerVisible(std::string_view layer, bool visible) {

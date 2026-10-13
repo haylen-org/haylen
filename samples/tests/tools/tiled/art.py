@@ -193,6 +193,27 @@ def terrain() -> Canvas:
     return canvas
 
 
+def shore() -> Canvas:
+    """Four rows of four 32 pixel tiles of water with a sand rim for a corner Wang set, where the bits of the tile number are the corners under water: 1 top right, 2 bottom right, 4 bottom left and 8 top left."""
+    canvas = Canvas(4 * TILE, 4 * TILE)
+    deep, shallow, sand, crest = rgb("#2f6fb0"), rgb("#4a90d0"), rgb("#e3cf8f"), rgb("#cfe8ff", 150)
+    for tile in range(1, 16):
+        x, y = (tile % 4) * TILE, (tile // 4) * TILE
+        top_right, bottom_right, bottom_left, top_left = (float(bool(tile & bit)) for bit in (1, 2, 4, 8))
+        for row in range(TILE):
+            for column in range(TILE):
+                u, v = (column + 0.5) / TILE, (row + 0.5) / TILE
+                field = (top_left * (1 - u) + top_right * u) * (1 - v) + (bottom_left * (1 - u) + bottom_right * u) * v
+                if field > 0.62:
+                    color = deep if field > 0.85 else shallow
+                    if (row + round(math.sin((x + column) / 5) * 1.5)) % 8 == 0:
+                        color = crest
+                    canvas.put(x + column, y + row, color)
+                elif field > 0.42:
+                    canvas.put(x + column, y + row, shade(sand, 0.92 if field > 0.55 else 1.0))
+    return canvas
+
+
 def props() -> Canvas:
     """Three props of 32 by 64 pixels: a round tree, a pine and a lamp post."""
     canvas = Canvas(3 * TILE, 2 * TILE)

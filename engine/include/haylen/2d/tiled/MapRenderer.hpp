@@ -18,12 +18,14 @@
 #include "haylen/2d/physics/Body.hpp"
 #include "haylen/2d/physics/CollisionFilter.hpp"
 #include "haylen/2d/physics/Shape.hpp"
+#include "haylen/2d/spatial/CellGrid.hpp"
 #include "haylen/2d/tiled/Layer.hpp"
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/2d/tiled/Object.hpp"
 #include "haylen/2d/tiled/Tile.hpp"
 #include "haylen/2d/tiled/TileCollision.hpp"
 #include "haylen/2d/tiled/Tileset.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
@@ -70,6 +72,22 @@ class MapRenderer final {
     [[nodiscard]] std::uint32_t getTile(std::string_view layer, int column, int row) const;
     void setTile(std::string_view layer, int column, int row, std::uint32_t gid);
     void setLayerVisible(std::string_view layer, bool visible);
+
+    // Builds the map at run time: a tileset joins after the tilesets the map has and returns its first global tile id, a layer joins on top with a new id and, for tile layers of finite maps, the size of the map, and removing a layer drops what it baked.
+    std::uint32_t addTileset(std::shared_ptr<Tileset> tileset);
+    Layer& addLayer(Layer layer);
+    void removeLayer(std::string_view name);
+
+    // Sets the cells of a rectangle of a tile layer from a grid, where each value plus `firstGid` becomes the global tile id of its cell and negative values leave cells empty, and bakes the layer again on its next draw. A chunk of an infinite map takes the place of the chunk it covers, and an empty grid area removes nothing.
+    void fill(std::string_view layer, const spatial2d::CellGrid& grid, std::uint32_t firstGid, int column = 0, int row = 0);
+    void setChunk(std::string_view layer, int column, int row, const spatial2d::CellGrid& grid, std::uint32_t firstGid);
+    void removeChunk(std::string_view layer, int column, int row);
+
+    // Paints the terrain color of a Wang set, counted from 1 or 0 to erase, on a cell, and gives the cell and its eight neighbours the tiles of the set whose corners and edges match their new colors best.
+    void paintTerrain(std::string_view layer, std::string_view wangSet, int column, int row, int color);
+
+    // Describes the map as the Tiled JSON of a file at the package path, which the loader and the Tiled editor read back.
+    [[nodiscard]] core::Json toJson(std::string_view file) const;
 
     void update(float deltaSeconds) noexcept;
 
@@ -150,6 +168,12 @@ class MapRenderer final {
     [[nodiscard]] static bool isFullCell(const Object& object, math::Vec2 tileSize) noexcept;
     [[nodiscard]] static Inherited inherit(const Inherited& parent, const Layer& layer) noexcept;
     [[nodiscard]] static RegionKey regionOf(int column, int row, float ground, bool rows) noexcept;
+
+    [[nodiscard]] Layer& requireTileLayer(std::string_view name);
+
+    // Drops what a layer baked, so it bakes again on its next draw, and gives the collision built from it the cells of a rectangle again.
+    void invalidate(const Layer& layer, int left, int top, int width, int height);
+    [[nodiscard]] std::uint32_t nextLayerId() const noexcept;
 
     // Bottom-left corner where a cell places its tile image.
     [[nodiscard]] math::Vec2 cellAnchor(int column, int row) const noexcept;

@@ -71,6 +71,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-011` | Text | Sizes, colors, outlines, shadows, alignment, wrapping, anchors, rotation and measuring. |  |
 | `SPR-012` | Vector images | SVG icons in many sizes, a swarm of hundreds that turn and an icon that grows, rasterized on worker threads into an atlas. |  |
 | `SPR-013` | Recoloring by parts | One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call. |  |
+| `SPR-014` | Tile layers | An endless world of tiles kept by chunks that stream in around the camera and bake only when their cells change. |  |
 
 #### Animation (ANI)
 
@@ -403,7 +404,7 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 
 #### Tiled (TLD)
 
-Tiled maps of every orientation with their layers, objects, properties, collision, spawning, y sorting, ray casts and worlds. The tests are in `source/categories/tiled/`.
+Tiled maps of every orientation with their layers, objects, properties, collision, spawning, y sorting, ray casts, worlds and maps built in code. The tests are in `source/categories/tiled/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -420,6 +421,7 @@ Tiled maps of every orientation with their layers, objects, properties, collisio
 | `TLD-011` | Ray casts | Rays against the cells of a tile layer and the shapes of an object layer, without physics. |  |
 | `TLD-012` | Worlds | A world file that places listed maps and maps found by a file name pattern. |  |
 | `TLD-013` | Digging the collision | Walls dug and built with tile changes while balls bounce, with the merged collision loops traced again around each change. |  |
+| `TLD-014` | Maps built in code | A map made in code with ground filled from a grid, water painted with a corner Wang set and its Tiled JSON. |  |
 
 #### Tween (TWN)
 

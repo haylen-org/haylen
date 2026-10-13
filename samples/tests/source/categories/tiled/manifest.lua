@@ -2,7 +2,7 @@
 return {
     prefix = 'TLD',
     title = 'Tiled',
-    description = 'Tiled maps of every orientation with their layers, objects, properties, collision, spawning, y sorting, ray casts and worlds.',
+    description = 'Tiled maps of every orientation with their layers, objects, properties, collision, spawning, y sorting, ray casts, worlds and maps built in code.',
     tests = {
         {code = 'TLD-001', title = 'Orientations', description = 'Orthogonal, isometric, staggered, hexagonal and oblique maps, with the cell under the pointer.', module = 'orientations'},
         {code = 'TLD-002', title = 'Infinite maps', description = 'A map stored in chunks that reach negative cells, panned with the pointer, the keys or a stick.', module = 'infinite'},
@@ -17,5 +17,6 @@ return {
         {code = 'TLD-011', title = 'Ray casts', description = 'Rays against the cells of a tile layer and the shapes of an object layer, without physics.', module = 'raycasts'},
         {code = 'TLD-012', title = 'Worlds', description = 'A world file that places listed maps and maps found by a file name pattern.', module = 'worlds'},
         {code = 'TLD-013', title = 'Digging the collision', description = 'Walls dug and built with tile changes while balls bounce, with the merged collision loops traced again around each change.', module = 'digging'},
+        {code = 'TLD-014', title = 'Maps built in code', description = 'A map made in code with ground filled from a grid, water painted with a corner Wang set and its Tiled JSON.', module = 'built-map'},
     },
 }

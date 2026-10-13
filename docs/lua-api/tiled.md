@@ -109,6 +109,30 @@ scene.push({
 })
 ```
 
+### tiled.newMap(options)
+
+Creates an empty `Map` for maps that code builds, such as generated dungeons, which `tiled.newMapRenderer` turns into a playable map that gains tilesets, layers and cells through [Building maps at run time](#building-maps-at-run-time).
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `width`, `height` | integer | `0` | Size of a finite map in cells, which must be positive. |
+| `tileWidth`, `tileHeight` | number | `0` | Size of a cell in pixels, which must be positive. |
+| `orientation` | string | `'orthogonal'` | One of `'orthogonal'`, `'isometric'`, `'staggered'`, `'hexagonal'` and `'oblique'`. |
+| `renderOrder` | string | `'right-down'` | One of `'right-down'`, `'right-up'`, `'left-down'` and `'left-up'`. |
+| `infinite` | boolean | `false` | Makes tile layers hold chunks, which `map:setChunk` adds, instead of one grid of the map size. |
+| `staggerAxis`, `staggerIndex` | string | `'y'`, `'odd'` | The axis `'x'` or `'y'` and the cells `'odd'` or `'even'` that staggered and hexagonal maps shift. |
+| `hexSideLength` | number | `0` | Length of the flat side of a hexagonal cell. |
+| `backgroundColor` | Color | none | The background color the map describes. |
+
+A finite map without a positive size or a tile size that is not positive raises `A map needs a positive tile size, and a finite map a positive width and height in cells.`, and an unknown orientation or render order raises `A map has the orientation "orthogonal", "isometric", "staggered", "hexagonal" or "oblique" and the render order "right-down", "right-up", "left-down" or "left-up".`
+
+```lua
+local tiled = require('haylen.tiled')
+
+local map = tiled.newMapRenderer(tiled.newMap({width = 64, height = 40, tileWidth = 16, tileHeight = 16}))
+print(map.width, map.pixelBounds.width)
+```
+
 ## MapRenderer
 
 | Property | Type | Access | Meaning |
@@ -547,6 +571,71 @@ for _, outline in ipairs(map:objectOutlines('collision')) do
 end
 local path = mesh:findPath(area.x + 64, area.y + 64, right - 64, bottom - 64, 12)
 print(path and #path)
+```
+
+## Building maps at run time
+
+A map made with `tiled.newMap`, or loaded from a file, changes through the methods below, so a generator or a level editor builds it in code and saves it as Tiled JSON that the loader and the Tiled editor read back. Every method that changes cells drops the baked batches of its layer, which bake again on the next draw, and keeps the collision that `map:buildCollision` built in step. For a grid that changes every frame without the features of Tiled maps, a [`TileLayer`](graphics2d.md#tilelayer) of `haylen.graphics2d` bakes only the chunks that change.
+
+### map:addTileset(options)
+
+Adds a tileset after the tilesets of the map and returns its first global tile id, the gid of its tile 0. The tiles are cut from the image in rows from the top left, and the image gives the number of columns and tiles.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `name` | string | `''` | Name of the tileset. |
+| `image` | string | none | Package path of the image, loaded through the asset cache with `filter` and `wrap` like `assets.texture`. |
+| `texture` | Texture | none | A texture to use instead of `image`, which keeps the path it was loaded from when the map is saved. |
+| `tileWidth`, `tileHeight` | number | `0` | Size of a tile in pixels, which must be positive. |
+| `margin`, `spacing` | integer | `0` | Pixels around the tiles and between them. |
+| `tileCount` | integer | from the image | Number of tiles, fewer than the image holds. |
+| `offsetX`, `offsetY` | number | `0` | Pixels every tile image moves when it draws. |
+| `wangSets` | table | none | Terrain sets for `map:paintTerrain`, a list of `{name, type, colors, tiles}`, where `type` is `'corner'`, `'edge'` or `'mixed'`, `colors` lists the names of the colors from 1, and `tiles` lists `{tile, wangId}` with the local tile id and the eight colors of its edges and corners, clockwise from the top edge, as Tiled stores them. |
+
+A tileset without an image or a texture raises `A tileset needs the package path of its "image" or a "texture".`, and a Wang tile without eight colors raises `A tile of a Wang set needs "wangId", the eight colors of its edges and corners from the top clockwise.`
+
+### map:addLayer(options)
+
+Adds a layer on top of the others. A tile layer of a finite map takes the size of the map with every cell empty, and a tile layer of an infinite map starts without chunks. The options are `name`, which must be new, `kind`, which is `'tile'` (the default) or `'object'`, and `visible`, `opacity`, `offsetX`, `offsetY`, `parallaxX`, `parallaxY`, `tint` and `blend` with the meanings of [`map:layer`](#maplayername). A name that is empty or taken raises `A layer of a map needs a name of its own, and "name" is empty or taken.`
+
+### map:removeLayer(name)
+
+Removes a layer of the top level with what it baked and the collision built from it. An unknown name raises `The map has no layer named "name" at its top level.`
+
+### map:fill(layer, grid, firstGid, column, row)
+
+Sets the cells of a rectangle of a tile layer from a [`CellGrid`](spatial2d.md) of `haylen.spatial2d`, whose top-left cell goes to `column`, `row`, which default to 0. Each value plus `firstGid`, which defaults to 1, becomes the global tile id of its cell, and negative values empty their cells, so a generator writes local tile ids into a grid and fills the layer in one call. On an infinite map the cells must lie in its chunks. A gid that no tileset holds raises `The tile "gid" belongs to no tileset of the map.`
+
+### map:setChunk(layer, column, row, grid, firstGid) and map:removeChunk(layer, column, row)
+
+Puts a chunk of the size of `grid` at the cell `column`, `row` of a tile layer of an infinite map, in place of the chunk that starts at that cell, with the values read like `map:fill`, and removes it again, so a streamed world adds the chunks near the player and drops the far ones. A finite map raises `Only the tile layers of an infinite map have chunks.`
+
+### map:paintTerrain(layer, wangSet, column, row, color)
+
+Paints the color `color` of the Wang set named `wangSet`, counted from 1, on a cell, and 0 erases it. The cell takes the color on all its corners and edges, its eight neighbours take it on the corners and edges they share with the cell, and each of the nine cells takes the tile of the set that matches its new colors best, among the corners for a `'corner'` set, the edges for an `'edge'` set and both for a `'mixed'` one. A cell left with no color becomes empty, and neighbours outside the layer are left out. An unknown set raises `No tileset of the map has the Wang set "name".`, and a color outside the set raises `The Wang set "name" has the colors 1 to n, and 0 erases.`
+
+### map:toJson(path)
+
+Returns the map as a table of Tiled JSON for a file at the package path `path`, which defaults to the path the map was loaded from. Tilesets are embedded, templates are resolved into their objects, and every image and file property is written relative to the folder of `path`. The module `json` of Varn turns the table into text, which [`haylen.storage`](storage.md) saves.
+
+```lua
+local json = require('json')
+local spatial2d = require('haylen.spatial2d')
+local tiled = require('haylen.tiled')
+
+local map = tiled.newMapRenderer(tiled.newMap({width = 32, height = 32, tileWidth = 16, tileHeight = 16}))
+local first = map:addTileset({name = 'cave', image = 'maps/images/cave.png', tileWidth = 16, tileHeight = 16, wangSets = {
+    {name = 'rock', type = 'corner', colors = {'rock'}, tiles = {{tile = 0, wangId = {0, 1, 0, 1, 0, 1, 0, 1}}}},
+}})
+map:addLayer({name = 'ground'})
+
+local grid = spatial2d.newCellGrid(32, 32, -1)
+for column = 0, 31 do
+    grid:set(column, 31, 0)
+end
+map:fill('ground', grid, first)
+map:paintTerrain('ground', 'rock', 10, 20, 1)
+print(json.encode(map:toJson('maps/cave.tmj')))
 ```
 
 ## Placing the maps of a world
