@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "2d/animation/AnimatedBatchLua.hpp"
+#include "2d/animation/StateGraphLua.hpp"
 #include "2d/nodes/Nodes2DLua.hpp"
 #include "haylen/2d/animation/Animation.hpp"
 #include "haylen/2d/animation/Animator.hpp"
@@ -528,7 +529,7 @@ int Animation2DLua::atlasAnimationFromFrames(lua_State* L) {
 
 int Animation2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"fromGrid", &lua::Binding::native<&fromGrid>}, {"fromFrames", &lua::Binding::native<&fromFrames>}, {"newAnimator", &newAnimator}, {"newAnimatedBatch", &lua::Binding::native<&AnimatedBatchLua::create>}, {nullptr, nullptr},
+        {"fromGrid", &lua::Binding::native<&fromGrid>}, {"fromFrames", &lua::Binding::native<&fromFrames>}, {"newAnimator", &newAnimator}, {"newAnimatedBatch", &lua::Binding::native<&AnimatedBatchLua::create>}, {"newStateGraph", &lua::Binding::native<&StateGraphLua::create>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -542,6 +543,7 @@ void Animation2DLua::install(lua_State* L) {
     lua::ClassBuilder<SpriteAtlas>(L).property("texture", &atlasTexture).function("hasFrame", &atlasHasFrame).function("hasAnimation", &atlasHasAnimation).function("hasSlice", &atlasHasSlice).function("frame", &lua::Binding::native<&atlasFrame>).function("frameNames", &atlasFrameNames).function("animationNames", &atlasAnimationNames).function("sliceNames", &atlasSliceNames).function("animation", &lua::Binding::native<&atlasAnimation>).function("slice", &lua::Binding::native<&atlasSlice>).function("source", &lua::Binding::native<&atlasSource>).function("apply", &lua::Binding::native<&atlasApply>).function("animationFromFrames", &lua::Binding::native<&atlasAnimationFromFrames>).meta("__eq", &lua::Userdata::equal<SpriteAtlas>).install();
 
     AnimatedBatchLua::install(L);
+    StateGraphLua::install(L);
     lua::Binding::preload(L, "haylen.animation2d", &open);
 }
 

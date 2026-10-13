@@ -44,6 +44,9 @@ class Animator final {
 
     void stop() noexcept;
 
+    // Moves the current animation to a time and shows its frame there, without callbacks, such as when a character turns and keeps the step it was on.
+    void seek(float value);
+
     // Advances an animation that counts seconds, or one that counts ticks by whole ticks. Each throws `std::logic_error` for an animation of the other kind.
     void update(float deltaSeconds);
     void step(std::uint32_t ticks);

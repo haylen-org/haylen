@@ -48,6 +48,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/animation/Animation2DLua.cpp
   src/2d/animation/Animator.cpp
   src/2d/animation/SpriteAtlas.cpp
+  src/2d/animation/StateGraph.cpp
+  src/2d/animation/StateGraphLua.cpp
+  src/2d/animation/StateGraphPlayer.cpp
   src/2d/graphics/Camera.cpp
   src/2d/graphics/CameraLua.cpp
   src/2d/graphics/DrawItem.cpp

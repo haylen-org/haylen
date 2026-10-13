@@ -190,6 +190,60 @@ scene.push({
 })
 ```
 
+### animation2d.newStateGraph(description)
+
+Creates a [`StateGraph`](#stategraph) from a description table, or from the package path of a JSON file with the same keys, checked once:
+
+| Key | Meaning |
+| --- | --- |
+| `parameters` | Parameters by name with their starting value: a number, a boolean, `'trigger'`, or a vector such as `{0, 1}`. |
+| `states` | States by name, each with `animation`, the animation it plays, or `directions`, a table from `right`, `down`, `left` and `up`, plus `downRight`, `downLeft`, `upLeft` and `upRight` for eight directions, to the animation of each, with `by`, the vector parameter that picks one. |
+| `initial` | The state a player starts in, the first state by name without one. |
+| `transitions` | A list of transitions, tried in order, each with `to`, the state it enters, `from`, a state or `'any'` (the default) for every other state, `when`, a condition, `exitTime`, the share of one pass of the animation of the state that must have played (0 by default), `atEnd = true`, which is an exit time of 1, and `fade`, the seconds a skeleton crossfades. |
+
+A condition compares parameters with numbers with `==`, `~=`, `<`, `<=`, `>` and `>=`, reads a boolean or a trigger alone, reads the parts of a vector as `name.x` and `name.y`, and joins them with `and`, `or`, `not` and parentheses, such as `'speed > 0.1 and not crouching'`. A transition fires on an update of the player when it starts from the current state, or from any other state, its exit time has passed and its condition holds, and the first one that may fire wins, consuming the triggers its condition reads. A directional state picks the direction whose sector holds the angle of its vector, in screen coordinates where `{0, 1}` points down, keeps it while the vector stays within a quarter of half a sector past the sector, which avoids flicker on the diagonals, and keeps it while the vector is zero, and a turn keeps the time of the animation. Errors name what is wrong, such as `The transition 2 goes to the unknown state "jump".`, `The condition "speed >" of the transition 1 ends too early.` and `The directions of the state "walk" name the four straight directions, or all eight.`.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local graph = animation2d.newStateGraph({
+    parameters = {speed = 0, attack = 'trigger', facing = {0, 1}},
+    states = {
+        idle = {directions = {down = 'idleDown', up = 'idleUp', left = 'idleLeft', right = 'idleRight'}, by = 'facing'},
+        run = {directions = {down = 'runDown', up = 'runUp', left = 'runLeft', right = 'runRight'}, by = 'facing'},
+        slash = {animation = 'slash'},
+    },
+    transitions = {
+        {from = 'idle', to = 'run', when = 'speed > 0.1'},
+        {from = 'run', to = 'idle', when = 'speed <= 0.1'},
+        {from = 'any', to = 'slash', when = 'attack'},
+        {from = 'slash', to = 'idle', atEnd = true},
+    },
+})
+local atlas = assets.load('units/hero.json', 'atlas')
+local animator = animation2d.newAnimator()
+for _, name in ipairs(atlas:animationNames()) do
+    animator:add(name, atlas:animation(name))
+end
+local player = graph:newPlayer(animator)
+
+scene.push({
+    update = function(self, dt)
+        local x, y = input.vector('move')
+        player:set('speed', math.sqrt(x * x + y * y))
+        player:set('facing', {x, y})
+        if input.pressed('attack') then
+            player:trigger('attack')
+        end
+        player:update(dt)
+        animator:update(dt)
+    end,
+})
+```
+
 ## Animation
 
 An `Animation` is a value that holds a texture, a list of frames with their durations and a loop mode. The method `animator:add` stores a copy, so changing an animation afterwards does not change the animator.
@@ -551,6 +605,67 @@ scene.push({
     render = function(self)
         graphics2d.beginScreen()
         army:draw()
+    end,
+})
+```
+
+## StateGraph
+
+A `StateGraph` is a checked description of states, made by `animation2d.newStateGraph`, which any number of players share. Its read-only property `states` lists the names of its states, and `parameters` maps the name of each parameter to its kind, `'number'`, `'boolean'`, `'trigger'` or `'vector'`.
+
+### graph:newPlayer(target, options)
+
+Returns a `StateGraphPlayer` that runs the graph on an `Animator`, or on a sprite of an `AnimatedBatch`, whose number the table `options` gives as `sprite`. The player starts in the initial state and plays its animation. A target without an animation a state plays raises `The state graph plays the animation "<name>", which its target lacks.`, and a batch without `sprite` raises `A state graph player of an animated batch needs the number of one of its sprites in "sprite".`.
+
+## StateGraphPlayer
+
+A `StateGraphPlayer` keeps the parameter values and the state of one character. It switches the animations of its target and never advances it, so the app updates its animator or batch as usual. Parameters are stored by index and conditions are evaluated in C++, so only state changes reach Lua.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `state` | string | read | The current state. |
+| `stateTime` | number | read | The time the state has lasted, from the `dt` of the updates. |
+| `animation` | string | read | The animation the state plays, the one of the current direction in a directional state. |
+
+### player:set(name, value) and player:get(name)
+
+Set and read a parameter by the kind it has: a number, a boolean, a vector as a `Vec2` or a table of two numbers, or `true` to set a trigger. A parameter the graph lacks raises `The state graph has no parameter "<name>".`.
+
+### player:trigger(name)
+
+Sets a trigger, which stays set until a transition whose condition reads it fires.
+
+### player:update(dt)
+
+Turns a directional state to the direction of its vector and takes at most one transition.
+
+### player:enter(state)
+
+Enters a state at once, from its start. A state the graph lacks raises `The state graph has no state "<name>".`.
+
+### player:on(event, listener, options)
+
+Listens to `'stateChanged'`, which calls the listener with the state left and the state entered, and returns a `Connection`. The table `options` takes `owner`, and without one the listener takes the default owner.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local scene = require('haylen.scene')
+
+local graph = animation2d.newStateGraph('animation/villager.graph.json')
+local atlas = assets.load('units/villager.json', 'atlas')
+local crowd = animation2d.newAnimatedBatch(atlas.texture, {idle = atlas:animation('idle'), walk = atlas:animation('walk')})
+crowd:add({x = 100, y = 100})
+local villager = graph:newPlayer(crowd, {sprite = 1})
+
+scene.push({
+    enter = function(self)
+        villager:on('stateChanged', function(from, to) print(from .. ' to ' .. to) end, {owner = self})
+        villager:set('moving', true)
+    end,
+    update = function(self, dt)
+        villager:update(dt)
+        crowd:update(dt)
     end,
 })
 ```

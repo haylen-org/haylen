@@ -62,6 +62,14 @@ void Animator::queue(std::string_view name) {
     pending.emplace_back(name);
 }
 
+void Animator::seek(float value) {
+    if (current.empty()) {
+        return;
+    }
+    time = value;
+    frame = getAnimation(current).frameAt(time);
+}
+
 void Animator::stop() noexcept {
     playing = false;
 }

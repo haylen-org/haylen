@@ -112,6 +112,19 @@ float AnimatedBatch::getTime(std::size_t index) const {
     return states[index].time;
 }
 
+void AnimatedBatch::seek(std::size_t index, float value) {
+    check(index);
+    State& state = states[index];
+    state.time = value;
+    state.frame = static_cast<std::uint32_t>(animations[state.animation].frameAt(value));
+    show(index);
+}
+
+float AnimatedBatch::getCycleDuration(std::size_t index) const {
+    check(index);
+    return animations[states[index].animation].getCycleDuration();
+}
+
 float AnimatedBatch::getSpeed(std::size_t index) const {
     check(index);
     return states[index].speed;

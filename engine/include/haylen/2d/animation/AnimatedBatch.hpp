@@ -55,6 +55,12 @@ class AnimatedBatch final {
     [[nodiscard]] const std::string& getAnimation(std::size_t index) const;
     [[nodiscard]] std::size_t getFrame(std::size_t index) const;
     [[nodiscard]] float getTime(std::size_t index) const;
+
+    // Moves a sprite to a time of its animation and shows its frame there.
+    void seek(std::size_t index, float value);
+
+    // The length of one full pass of the animation of a sprite.
+    [[nodiscard]] float getCycleDuration(std::size_t index) const;
     [[nodiscard]] float getSpeed(std::size_t index) const;
     void setSpeed(std::size_t index, float value);
     [[nodiscard]] math::Vec2 getScale(std::size_t index) const;
