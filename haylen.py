@@ -41,10 +41,10 @@ BUILD_ROOT = ROOT / "build"
 TOOLS_DIR = ROOT / ".tools"
 ENGINE_DIR = ROOT / "engine"
 TEMPLATES_DIR = ROOT / "templates"
-APP_TEMPLATE = TEMPLATES_DIR / "app"
+# The templates of apps come in layers: `common` holds what every kind of app shares, and the folder of each kind what only that kind has, the package and the platform projects under `platform/<name>`. A new app or platform project takes the files of `common` first and then those of its kind, whose file replaces a common file of the same path.
+COMMON_TEMPLATE = TEMPLATES_DIR / "common"
+APP_KINDS = {"lua": "Lua", "cpp": "C++"}
 PLUGIN_TEMPLATE = TEMPLATES_DIR / "plugin"
-# Every folder here is the project template of one platform, which `haylen.py new` and `platform add` copy into `platform/<name>` of an app.
-PLATFORM_TEMPLATES_DIR = TEMPLATES_DIR / "platform"
 # The folder that haylen.py writes inside a platform project, and the only one it writes there.
 GENERATED_FOLDER = "haylen"
 ARTIFACTS_DIR = BUILD_ROOT / "artifacts"
@@ -52,7 +52,7 @@ ENGINE_BUILDS_DIR = BUILD_ROOT / "engine"
 APPS_DIR = BUILD_ROOT / "apps"
 CPP_BUILDS_DIR = BUILD_ROOT / "cpp"
 ANDROID_LIBRARY_PROJECT = ENGINE_DIR / "platform" / "android"
-ENGINE_LOGO = PLATFORM_TEMPLATES_DIR / "web" / "haylen-logo.svg"
+ENGINE_LOGO = ENGINE_DIR / "platform" / "web" / "haylen-logo.svg"
 # The web runtime loads the AudioWorklet processor of its audio output from next to its script, so every web build ships it beside the `.js` and `.wasm` files.
 WEB_AUDIO_WORKLET = "haylen-audio-worklet.js"
 # The worker of the content store of a web page, which keeps downloaded content in the private file system of the origin.
@@ -1924,8 +1924,38 @@ def command_shaders(args: argparse.Namespace) -> None:
     terminal.success(f"The {len(shader_sources(folder))} shaders of `{shown_path(folder)}` are up to date.")
 
 
-def platform_templates() -> list[str]:
-    return sorted(path.name for path in PLATFORM_TEMPLATES_DIR.iterdir() if path.is_dir())
+def app_kind(folder: Path) -> str:
+    """Tells a C++ app, whose folder is also the CMake project that compiles it, from a Lua app."""
+    return "cpp" if (folder / "CMakeLists.txt").is_file() else "lua"
+
+
+def template_layers(kind: str) -> list[Path]:
+    return [COMMON_TEMPLATE, TEMPLATES_DIR / kind]
+
+
+def platform_layers(kind: str, template: str) -> list[Path]:
+    return [layer / "platform" / template for layer in template_layers(kind)]
+
+
+def platform_templates(kind: str | None = None) -> list[str]:
+    """Lists the platform templates of a kind of app, the folders under `platform` of its layers, or of every kind."""
+    layers = template_layers(kind) if kind else [COMMON_TEMPLATE, *(TEMPLATES_DIR / name for name in APP_KINDS)]
+    return sorted({path.name for layer in layers if (layer / "platform").is_dir() for path in (layer / "platform").iterdir() if path.is_dir()})
+
+
+def layered_files(layers: list[Path]) -> dict[str, Path]:
+    """Lists the files of template layers by their path inside a layer, in the order of the layers, so the file of a later layer replaces the file of the same path in an earlier one."""
+    files: dict[str, Path] = {}
+    for layer in layers:
+        if layer.is_dir():
+            files |= project_files(layer)
+    return dict(sorted(files.items()))
+
+
+def copy_files(files: dict[str, Path], destination: Path) -> None:
+    for name, source in files.items():
+        (destination / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination / name)
 
 
 # Platform projects: `platform/<template>` of an app belongs to the developer, and haylen.py builds it in place while it writes only its folder `haylen/`. An app without that folder uses a copy of the template that haylen.py keeps in the build folder of the app.
@@ -1941,11 +1971,11 @@ def file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def tree_hash(folder: Path) -> str:
-    """Hashes the relative paths and the contents of every file in a folder."""
+def files_hash(files: dict[str, Path]) -> str:
+    """Hashes the relative paths and the contents of files."""
     digest = hashlib.sha256()
-    for path in sorted(path for path in folder.rglob("*") if path.is_file() and path.name != ".DS_Store"):
-        digest.update(path.relative_to(folder).as_posix().encode() + b"\0" + path.read_bytes())
+    for name, path in sorted(files.items()):
+        digest.update(name.encode() + b"\0" + path.read_bytes())
     return digest.hexdigest()
 
 
@@ -1965,15 +1995,16 @@ def is_owned(root: Path) -> bool:
 
 
 def project_root(app: App, template: str) -> Path:
-    """Returns the project that haylen.py builds for an app with a platform template: `platform/<template>` of the app when it exists, or else the copy of the template in the build folder of the app, which haylen.py makes again whenever the template changed."""
+    """Returns the project that haylen.py builds for an app with a platform template: `platform/<template>` of the app when it exists, or else the copy of the layers of the template for the kind of the app in the build folder of the app, which haylen.py makes again whenever the template changed."""
     own = app.folder / "platform" / template
     if own.is_dir():
         return own
     copy = app.build_folder / template
-    stamp = tree_hash(PLATFORM_TEMPLATES_DIR / template)
+    files = layered_files(platform_layers(app_kind(app.folder), template))
+    stamp = files_hash(files)
     if read_state(copy).get("template") != stamp:
         shutil.rmtree(copy, ignore_errors=True)
-        shutil.copytree(PLATFORM_TEMPLATES_DIR / template, copy, symlinks=True, ignore=COPY_IGNORED)
+        copy_files(files, copy)
         write_state(copy, {"template": stamp})
     return copy
 
@@ -2402,7 +2433,7 @@ def generate_apple_project(app: App, root: Path, forced: bool) -> None:
     state = read_state(root)
     current = file_hash(project) if project.is_file() else None
     if not forced:
-        template = file_hash(PLATFORM_TEMPLATES_DIR / "apple" / "App.xcodeproj" / "project.pbxproj")
+        template = file_hash(layered_files(platform_layers(app_kind(app.folder), "apple"))["App.xcodeproj/project.pbxproj"])
         action = apple_project_action(includes_generated(apple_spec(root)), state.get("xcodegen", {}), inputs, current, template)
         if action == "keep":
             return
@@ -3037,7 +3068,7 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
     site = app.build_folder / "web"
     terminal.step(f"Preparing the site `{shown_path(site)}`")
     shutil.rmtree(site, ignore_errors=True)
-    shutil.copytree(own if own.is_dir() else PLATFORM_TEMPLATES_DIR / "web", site, ignore=COPY_IGNORED)
+    copy_files(project_files(own) if own.is_dir() else layered_files(platform_layers(app_kind(app.folder), "web")), site)
     release = None
     if args.config == "Release":
         release = build_release_web(app, site, args)
@@ -3545,7 +3576,7 @@ class RunTarget:
     check: Callable[[App, Path, argparse.Namespace], list[Requirement]] | None
 
 
-# A new platform is a folder under `templates/platform` and an entry here.
+# A new platform is a folder under `platform` of a template layer and an entry here.
 RUN_TARGETS = {
     "macos": RunTarget("apple", "apple", "macos", prepare_apple_run, run_apple, check_apple),
     "catalyst": RunTarget("apple", "apple", "catalyst", prepare_apple_run, run_apple, check_apple),
@@ -3612,17 +3643,18 @@ def command_xcodegen(args: argparse.Namespace) -> None:
 
 
 def generate_template_project(args: argparse.Namespace) -> None:
-    """Generates `App.xcodeproj` of the Apple template again, in a copy with the folder `haylen/` of the starter app, which links no plugins and no native libraries, like every app whose project keeps the committed one."""
+    """Generates `App.xcodeproj` of the Apple template of Lua apps again, in a new starter app with the folder `haylen/`, which links no plugins and no native libraries, like every app whose project keeps the committed one."""
     ensure_artifacts("apple", args.engine_config, args.jobs)
-    template = PLATFORM_TEMPLATES_DIR / "apple"
-    with tempfile.TemporaryDirectory() as scratch:
-        copy = Path(scratch) / "apple"
-        shutil.copytree(template, copy, symlinks=True, ignore=COPY_IGNORED)
-        prepare_apple(App(APP_TEMPLATE, "macos"), copy, "macos", "Debug", args.engine_config, args.jobs)
-        terminal.step(f"Generating `{shown_path(template / 'App.xcodeproj')}` from \"project.yml\"")
-        run([ensure_xcodegen(), "generate", "--quiet", "--spec", copy / "project.yml"], cwd=copy)
-        shutil.rmtree(template / "App.xcodeproj")
-        shutil.copytree(copy / "App.xcodeproj", template / "App.xcodeproj", ignore=shutil.ignore_patterns("xcuserdata", ".DS_Store"))
+    template = TEMPLATES_DIR / "lua" / "platform" / "apple"
+    starter = BUILD_ROOT / "templates" / "lua"
+    shutil.rmtree(starter, ignore_errors=True)
+    copy_files(layered_files(template_layers("lua")), starter)
+    copy = starter / "platform" / "apple"
+    prepare_apple(App(starter, "macos"), copy, "macos", "Debug", args.engine_config, args.jobs)
+    terminal.step(f"Generating `{shown_path(template / 'App.xcodeproj')}` from \"project.yml\"")
+    run([ensure_xcodegen(), "generate", "--quiet", "--spec", copy / "project.yml"], cwd=copy)
+    shutil.rmtree(template / "App.xcodeproj")
+    shutil.copytree(copy / "App.xcodeproj", template / "App.xcodeproj", ignore=shutil.ignore_patterns("xcuserdata", ".DS_Store"))
     terminal.success(f"Generated `{shown_path(template / 'App.xcodeproj')}` from `{shown_path(template / 'project.yml')}`.")
 
 
@@ -3639,12 +3671,12 @@ def command_check(args: argparse.Namespace) -> None:
     terminal.success(f'The app built for "{args.platform}" has everything the engine and its plugins need.')
 
 
-def copy_template(template: str, destination: Path) -> None:
-    shutil.copytree(PLATFORM_TEMPLATES_DIR / template, destination, symlinks=True, ignore=COPY_IGNORED)
+def copy_template(kind: str, template: str, destination: Path) -> None:
+    copy_files(layered_files(platform_layers(kind, template)), destination)
 
 
 def command_new(args: argparse.Namespace) -> None:
-    """Creates an app from the starter app and a copy of every platform template, which the developer owns from then on."""
+    """Creates an app of a kind from the layers of its template, the starter app with a project of every platform, which the developer owns from then on."""
     folder = Path(args.folder).expanduser().resolve()
     if folder.exists() and any(folder.iterdir()):
         raise BuildError(f"The folder `{shown_path(folder)}` already exists and is not empty. Name a new folder or an empty one.")
@@ -3657,7 +3689,7 @@ def command_new(args: argparse.Namespace) -> None:
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+", identifier):
         raise BuildError(f'The identifier "{identifier}" is not a reverse domain identifier such as "com.example.game".')
 
-    shutil.copytree(APP_TEMPLATE, folder, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".DS_Store"))
+    copy_files(layered_files(template_layers(args.kind)), folder)
     document = json.loads((folder / "app.json").read_text(encoding="utf-8"))
     document.update({"name": name, "identifier": identifier, "orientation": args.orientation})
     document["window"]["title"] = name
@@ -3666,35 +3698,48 @@ def command_new(args: argparse.Namespace) -> None:
         for section in (document["window"], document["design"]):
             section["width"], section["height"] = section["height"], section["width"]
     (folder / "app.json").write_text(json.dumps(document, indent=4) + "\n", encoding="utf-8")
-    for template in platform_templates():
-        copy_template(template, folder / "platform" / template)
-    terminal.success(f'Created the app "{name}" with the identifier "{identifier}" in `{shown_path(folder)}`.')
-    terminal.info(f'Run it with "{TOOL} run {shown_path(folder)}".')
+    terminal.success(f'Created the {APP_KINDS[args.kind]} app "{name}" with the identifier "{identifier}" in `{shown_path(folder)}`.')
+    terminal.info(f'Run it with "{TOOL} {"run-cpp" if args.kind == "cpp" else "run"} {shown_path(folder)}".')
 
 
 def command_platform_add(args: argparse.Namespace) -> None:
-    """Creates the project of a platform template in `platform/<template>` of an app, which the developer owns from then on."""
+    """Creates the project of a platform template in `platform/<template>` of an app from the layers of the template for its kind, which the developer owns from then on."""
     app = resolve_app(args.app)
+    kind = require_platform_template(app, args.template)
     destination = app / "platform" / args.template
     if destination.exists():
         raise BuildError(f'The app already has the project `{shown_path(destination)}`. Compare it with the template with "{TOOL} platform diff {shown_path(app)} --template {args.template}".')
-    copy_template(args.template, destination)
+    copy_template(kind, args.template, destination)
     terminal.success(f'Created `{shown_path(destination)}` from the "{args.template}" template.')
 
 
+def require_platform_template(app: Path, template: str) -> str:
+    """Returns the kind of an app, and stops when its kind has no template of the platform."""
+    kind = app_kind(app)
+    if template not in platform_templates(kind):
+        raise BuildError(f"The {APP_KINDS[kind]} apps have no \"{template}\" template. Their platform templates are {', '.join(f'"{name}"' for name in platform_templates(kind))}.")
+    return kind
+
+
 def project_files(folder: Path) -> dict[str, Path]:
-    """Lists the files of a platform project that belong to it, leaving out the generated folder, build outputs and the state of Xcode for each person."""
-    skipped = {GENERATED_FOLDER, ".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin", "xcuserdata"}
-    return {path.relative_to(folder).as_posix(): path for path in folder.rglob("*") if path.is_file() and not skipped.intersection(path.relative_to(folder).parts)}
+    """Lists the files of a platform project that belong to it, leaving out the generated folder at its root, build outputs and the state of Xcode for each person."""
+    skipped = {".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin", "xcuserdata"}
+    files = {}
+    for path in folder.rglob("*"):
+        parts = path.relative_to(folder).parts
+        if path.is_file() and parts[0] != GENERATED_FOLDER and not skipped.intersection(parts):
+            files[path.relative_to(folder).as_posix()] = path
+    return files
 
 
 def command_platform_diff(args: argparse.Namespace) -> None:
     """Shows how the project of a platform in an app differs from the current template, without changing anything, so the developer adopts what they want of the template."""
     app = resolve_app(args.app)
+    kind = require_platform_template(app, args.template)
     project = app / "platform" / args.template
     if not project.is_dir():
         raise BuildError(f'The app `{shown_path(app)}` has no "{args.template}" project. Create it with "{TOOL} platform add {shown_path(app)} {args.template}".')
-    template = project_files(PLATFORM_TEMPLATES_DIR / args.template)
+    template = layered_files(platform_layers(kind, args.template))
     own = project_files(project)
     differences = 0
     for path in sorted(template.keys() | own.keys()):
@@ -3753,7 +3798,7 @@ def command_android_key(args: argparse.Namespace) -> None:
         raise BuildError(f'The Android project already has a {args.kind} key in `{shown_path(existing[0])}`. Keep it, since an app signed with another key cannot update the installed one, or replace it with "--force".')
     tool = keytool()
     if not root.is_dir():
-        copy_template("android", root)
+        copy_template(app_kind(app), "android", root)
         terminal.success(f'Created `{shown_path(root)}` from the "android" template.')
     for path in existing:
         path.unlink()
@@ -3907,8 +3952,10 @@ def command_plugin_new(args: argparse.Namespace) -> None:
 CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES if name != "macos"), "android"]
 
 
-def cpp_target(project: Path, requested: str | None) -> str:
-    return requested or project.name
+def cpp_engine_options() -> list[str]:
+    """The options that hand a C++ app project the engine of this checkout, which the project adds from "HAYLEN_ENGINE_SOURCE", with the compiler of its shaders and the dependency cache of the engine builds, instead of a download of every dependency into the folder of the project."""
+    cache = os.environ.get("CPM_SOURCE_CACHE", str(ROOT / ".cache" / "cpm"))
+    return [f"-DHAYLEN_ENGINE_SOURCE={ENGINE_DIR.as_posix()}", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCPM_SOURCE_CACHE={cache}"]
 
 
 def command_run_cpp(args: argparse.Namespace) -> None:
@@ -3918,21 +3965,22 @@ def command_run_cpp(args: argparse.Namespace) -> None:
     project = Path(args.project).expanduser().resolve()
     if not (project / "CMakeLists.txt").is_file():
         raise BuildError(f'The path `{shown_path(project)}` is not a CMake project, because it holds no "CMakeLists.txt". Name the folder of a project that adds the engine and calls "haylen_add_app".')
-    target = cpp_target(project, args.target)
+    target = args.target
     folder = CPP_BUILDS_DIR / build_folder_name(project)
 
     if args.platform == "web":
         site = bundle_web(project, target, args.config, folder, args.jobs, cpp_release_options(args))
         if args.config == "Release":
             stop_on_release_problems(cpp_release_problems(cpp_release_app(folder / f"web-{args.config.lower()}", target), site, "app"))
-        serve(site, args.host, args.port, args.coep, args.coop, args.open)
+        if not args.build_only:
+            serve(site, args.host, args.port, args.coep, args.coop, args.open)
     elif args.platform == "android":
         run_cpp_android(project, target, folder, args)
     elif args.platform in APPLE_NATIVE_SLICES and args.platform != "macos":
         run_cpp_apple(project, target, folder, args)
     else:
         directory = folder / f"{host_name()}-{args.config.lower()}"
-        command = ["cmake", "-S", project, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
+        command = ["cmake", "-S", project, "-B", directory, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
         if host_name() != "windows" or shutil.which("ninja"):
             command += ["-G", "Ninja"]
         if host_name() == "macos":
@@ -3945,8 +3993,9 @@ def command_run_cpp(args: argparse.Namespace) -> None:
             app = cpp_release_app(directory, target)
             bundle = next((parent for parent in executable.parents if parent.suffix == ".app"), None)
             stop_on_release_problems(cpp_release_problems(app, bundle, "Contents/Resources/app") if bundle else cpp_release_problems(app, executable.parent, "app"))
-        terminal.step(f'Running "{target}"')
-        run([executable])
+        if not args.build_only:
+            terminal.step(f'Running "{target}"')
+            run([executable])
 
 
 def cpp_release_options(args: argparse.Namespace) -> list[str]:
@@ -3976,7 +4025,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
     directory = folder / f"{args.platform}-{args.config.lower()}"
     generator = "Ninja" if args.platform == "catalyst" else "Xcode"
-    command = ["cmake", "-S", project, "-B", directory, "-G", generator, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args)]
+    command = ["cmake", "-S", project, "-B", directory, "-G", generator, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args)]
     if device:
         command.append(f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}")
     terminal.step(f'Building the target "{target}" for "{args.platform}" in `{shown_path(directory)}`')
@@ -3988,6 +4037,8 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     bundle = next((directory / "bin").glob(f"**/{target}.app"))
     if args.config == "Release":
         stop_on_release_problems(cpp_release_problems(cpp_release_app(directory, target), bundle, "Contents/Resources/app" if args.platform == "catalyst" else "app"))
+    if args.build_only:
+        return
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
     launch_apple(bundle, args, simulator, [])
 
@@ -4000,7 +4051,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
         raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {', '.join(f'"{name}"' for name in ANDROID_ABIS)}. Use a device or an emulator of one of those.")
     directory = folder / f"android-{abi}-{args.config.lower()}"
     terminal.step(f'Building the target "{target}" for "{abi}" in `{shown_path(directory)}`')
-    run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi), *cpp_release_options(args)])
+    run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi), *cpp_release_options(args)])
     run(["cmake", "--build", directory, "--target", target, "--parallel", str(args.jobs)])
 
     # The activity, the bridge and the other Java classes come from the `haylen` library of the artifacts, while the app brings the engine in its own library, and a release build brings the part of its protected release that ships.
@@ -4015,7 +4066,8 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     requirements = check_android(app, root, args)
     report_requirements([requirement for requirement in requirements if requirement.advice != RELEASE_ADVICE])
     stop_on_release_problems(requirements)
-    launch_android(apk, args, device, [])
+    if not args.build_only:
+        launch_android(apk, args, device, [])
 
 
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
@@ -4028,7 +4080,7 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, 
         terminal.step(f'Building the target "{target}" for "{platform_name}" in `{shown_path(directory)}`')
         if options is not None or not (directory / "CMakeCache.txt").exists():
             renderer = "WGPU" if platform_name == "web" else "GLES3"
-            run([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}", *(options or [])])
+            run([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}", *(options or [])])
         run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
         built = directory / "bin" / target
         destination = output / backend
@@ -4755,6 +4807,7 @@ def build_parser() -> argparse.ArgumentParser:
     new.add_argument("--name", help="Display name, from the folder name by default.")
     new.add_argument("--identifier", help='Reverse domain identifier, "com.example.<folder>" by default.')
     new.add_argument("--orientation", default="landscape", choices=["landscape", "portrait", "any"], help='Orientation of the app, "landscape" by default.')
+    new.add_argument("--kind", default="lua", choices=list(APP_KINDS), help='Kind of the app: "lua", whose code is Lua, or "cpp", a CMake project whose C++ code compiles the engine. "lua" by default.')
     new.set_defaults(handler=command_new)
 
     plugin = commands.add_parser("plugin", help="Add plugins to an app, remove them, list them or create a plugin.")
@@ -4836,10 +4889,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_cpp = commands.add_parser("run-cpp", help="Build and run a C++ app project, which compiles the engine through CMake.")
     run_cpp.add_argument("project", nargs="?", help='The folder of a CMake project that adds the engine and calls "haylen_add_app", relative to the current folder or absolute.')
     run_cpp.add_argument("--platform", default=host_name(), choices=CPP_RUN_PLATFORMS, help="The platform to build and run on, this machine by default.")
-    run_cpp.add_argument("--target", help='The "haylen_add_app" target, named like the project folder by default.')
+    run_cpp.add_argument("--target", default="main", help='The "haylen_add_app" target, "main" by default, as the C++ template names it.')
     run_cpp.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
     run_cpp.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the project, "Debug" by default.')
     run_cpp.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the "haylen" Android library whose Java classes Android apps use.')
+    run_cpp.add_argument("--build-only", action="store_true", help="Build and check the app without launching it, such as in continuous integration.")
     add_jobs_option(run_cpp)
     add_web_server_options(run_cpp, 8000)
     run_cpp.set_defaults(handler=command_run_cpp)

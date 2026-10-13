@@ -67,7 +67,12 @@ haylen run ~/apps/my-app
 haylen run ~/apps/my-app --platform web
 ```
 
-The command `new` writes a starter app with a project of every platform, and `run` opens it in the desktop player with hot reload, or builds it for a platform with `--platform`, such as `ios-simulator`, `android` or `web`.
+The command `new` writes a starter app with a project of every platform, and `run` opens it in the desktop player with hot reload, or builds it for a platform with `--platform`, such as `ios-simulator`, `android` or `web`. An app written in C++ starts the same way and compiles the engine itself:
+
+```sh
+haylen new ~/apps/my-cpp-app --kind cpp
+haylen run-cpp ~/apps/my-cpp-app --platform ios-simulator
+```
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

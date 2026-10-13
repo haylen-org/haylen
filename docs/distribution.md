@@ -1,6 +1,6 @@
 # Distributing apps
 
-A Haylen app is a package: `app.json`, the Lua modules under `source/` and the assets under `content/`. The engine is compiled once into prebuilt artifacts for every platform, and the project of each platform, which starts as a copy of a template in `templates/platform/`, belongs to the developer. `haylen.py` writes the name, identifier, version, orientation and splash screen of `app.json`, the package and the plugins of the app into one generated folder of that project, builds the project where it is and launches it. A Lua app never compiles the engine, and the same package runs on every platform.
+A Haylen app is a package: `app.json`, the Lua modules under `source/` and the assets under `content/`. The engine is compiled once into prebuilt artifacts for every platform, and the project of each platform, which starts as a copy of the template of its platform, belongs to the developer. `haylen.py` writes the name, identifier, version, orientation and splash screen of `app.json`, the package and the plugins of the app into one generated folder of that project, builds the project where it is and launches it. A Lua app never compiles the engine, and the same package runs on every platform.
 
 This guide covers the commands, the engine artifacts, the templates, the platform projects and their generated folder, the check of a built app, the privacy manifest, native libraries, splash screens, the web loader, the local web server and the platforms Haylen supports. The [plugin guide](plugins.md) covers plugins, which add native capabilities to apps, the [build guide](build.md) covers building the engine itself and the [embedding guide](embedding.md) covers C++ projects that compile the engine through CMake.
 
@@ -14,7 +14,15 @@ haylen run ~/apps/my-game --platform android
 haylen run ~/apps/my-game --platform web
 ```
 
-`new` creates the app from the starter app and copies every platform template into its `platform/` folder, where the projects belong to the developer. `run` without `--platform` starts the desktop player of this machine in development mode, which reloads edited scripts and assets. With `--platform` it builds the engine artifacts when they are missing or stale, prepares the project of the platform, builds it, checks what the built app lacks and launches it on a simulator, an emulator, a device, this Mac or a local web server, and streams the output of the app.
+The command `new` creates the app from the starter app and copies every platform template into its `platform/` folder, where the projects belong to the developer. The command `run` without `--platform` starts the desktop player of this machine in development mode, which reloads edited scripts and assets. With `--platform` it builds the engine artifacts when they are missing or stale, prepares the project of the platform, builds it, checks what the built app lacks and launches it on a simulator, an emulator, a device, this Mac or a local web server, and streams the output of the app.
+
+A C++ app is a CMake project that compiles the engine. The option `--kind cpp` of `new` creates one, and `run-cpp` builds and runs it:
+
+```sh
+haylen new ~/apps/my-cpp-game --kind cpp
+haylen run-cpp ~/apps/my-cpp-game
+haylen run-cpp ~/apps/my-cpp-game --platform android
+```
 
 ## Commands
 
@@ -23,9 +31,9 @@ The file `haylen` at the root of the repository, a shell script for macOS and Li
 | Command | Purpose |
 | --- | --- |
 | `engine [--platform apple\|android\|web\|desktop\|all] [--config]` | Builds the prebuilt engine artifacts into `build/artifacts/`. |
-| `new <folder> [--name] [--identifier] [--orientation]` | Creates an app from `templates/app` with a project of every platform template of `templates/platform` under `platform/`. |
-| `platform add <app> <template>` | Creates `platform/<template>` of an app from the template of a platform. |
-| `platform diff <app> --template` | Shows how `platform/<template>` of an app differs from the current template, without changing anything. |
+| `new <folder> [--kind lua\|cpp] [--name] [--identifier] [--orientation]` | Creates a Lua or C++ app from the layers of its [template](#templates), with a project of every platform template under `platform/`. |
+| `platform add <app> <template>` | Creates `platform/<template>` of an app from the template of a platform for the kind of the app. |
+| `platform diff <app> --template` | Shows how `platform/<template>` of an app differs from the current template for the kind of the app, without changing anything. |
 | `run <app> [--platform] [--device] [--config] [--engine-config]` | Runs an app, in the desktop player by default or built for a platform. |
 | `prepare <app> --platform [--config] [--engine-config]` | Writes the folder `haylen/` of the project of a platform and nothing else, or the site of the web, with the package as it is or, with `--config Release`, with the protected release of the app. |
 | `xcodegen [app] [--platform] [--config] [--template]` | Writes `haylen/` of the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, or generates the project of the Apple template. |
@@ -33,7 +41,7 @@ The file `haylen` at the root of the repository, a shell script for macOS and Li
 | `dist <app> --platform windows\|linux [-o] [--engine-config]` | Builds the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the `.deb` and the AppImage of Linux. |
 | `android-key <app> [--release\|--debug] [--alias] [--password] [--dname] [--force]` | Creates the upload key of release builds, or a debug key, in `platform/android/keystore/` of an app, with its certificate and the properties that sign its builds. |
 | `steam <app> --platform macos\|windows\|linux --app-id <id> --depot <name>=<id> [--branch] [--output]` | Builds the release of an app for a desktop platform and stages its Steam depots, one for the app and one for each pack, with the build scripts of `steamcmd`. |
-| `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
+| `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config] [--build-only]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
 | `content build\|verify\|inspect\|diff\|publish\|compact\|keys <app> ...` | Builds, verifies, inspects, compares, publishes and compacts the protected releases of an app, and shows or rotates its keys, as the [content guide](content.md#the-content-tool) describes. |
 | `shaders <app> [--force]` | Compiles the shaders under `content/shaders/` of an app into `.shader` files. |
@@ -58,9 +66,10 @@ Builds the artifacts of one platform, or of every platform with `--platform all`
 
 ```sh
 haylen new ~/apps/space-race --orientation portrait
+haylen new ~/apps/space-race-cpp --kind cpp
 ```
 
-Copies `templates/app` into the folder with its `.gitignore`, `.editorconfig` and `.clang-format`, writes the name, identifier and orientation into its `app.json`, turns the window and design resolution upright for `portrait`, and copies every folder of `templates/platform`, today `apple`, `android`, `linux`, `web` and `windows`, into `platform/<platform>` of the app. Those projects belong to the developer, who edits them as the company wants, and haylen.py builds them where they are and writes only their `haylen/` folder, as [platform projects](#platform-projects) describes. The name defaults to the folder name in title case, the identifier to `com.example.<folder>` and the orientation to `landscape`. The folder must not exist or must be empty.
+Copies the [template](#templates) of the kind of app that `--kind` names, `lua` by default or `cpp`, into the folder: first `templates/common`, then `templates/lua` or `templates/cpp`, whose files replace the common files of the same path. The app gets its package, its `.gitignore`, `.editorconfig` and `.clang-format`, and the project of every platform template of its kind under `platform/<platform>`: `apple`, `android`, `linux`, `web` and `windows` for a Lua app, and `android` and `web` for a C++ app, whose CMake project builds the other platforms itself. Then it writes the name, identifier and orientation into `app.json` and turns the window and design resolution upright for `portrait`. The projects belong to the developer, who edits them as the company wants, and haylen.py builds them where they are and writes only their `haylen/` folder, as [platform projects](#platform-projects) describes. The name defaults to the folder name in title case, the identifier to `com.example.<folder>` and the orientation to `landscape`. The folder must not exist or must be empty.
 
 ### run
 
@@ -98,7 +107,7 @@ haylen run-cpp ~/apps/my-cpp-game --platform catalyst
 haylen run-cpp ~/apps/my-cpp-game --platform android --device emulator-5554
 ```
 
-Configures the CMake project in the folder it names, relative to the current folder or absolute, which adds the engine and calls `haylen_add_app`, as the [embedding guide](embedding.md) shows, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is named after the project folder unless `--target` names another one. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes. `--config Release` ships the protected release of the app, built with the content tool of the desktop artifacts, and inspects the built app before it launches, as the [embedding guide](embedding.md#protected-releases) describes.
+Configures the CMake project in the folder it names, relative to the current folder or absolute, which adds the engine and calls `haylen_add_app`, as the [embedding guide](embedding.md) shows, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is `main`, the name that the [C++ template](#cpp) gives it, unless `--target` names another one. The command hands the project the engine of this checkout in `HAYLEN_ENGINE_SOURCE`, the shader compiler in `HAYLEN_SOKOL_SHDC` and the dependency cache of the engine builds in `CPM_SOURCE_CACHE`, so a project anywhere on the machine compiles the engine without downloading its dependencies again. With `--build-only` it builds and checks the app without launching it, as continuous integration does on Windows and Linux. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes. `--config Release` ships the protected release of the app, built with the content tool of the desktop artifacts, and inspects the built app before it launches, as the [embedding guide](embedding.md#protected-releases) describes.
 
 | Platform | Build | Launch |
 | --- | --- | --- |
@@ -166,7 +175,7 @@ haylen platform add ~/apps/my-game android
 haylen platform diff ~/apps/my-game --template apple
 ```
 
-`platform add` creates `platform/<template>/` of an app from the template of the platform, for an app whose folder has none, which then builds that project instead of the copy that haylen.py keeps. `platform diff` compares `platform/<template>/` of an app with the current template and prints the files that only one of them has and a unified diff of every text file that differs, leaving out `haylen/`, build outputs and the state of Xcode for each person, so the developer adopts what they want of a newer template. It changes nothing.
+The command `platform add` creates `platform/<template>/` of an app from the template of the platform, the common layer and the layer of the kind of the app, for an app whose folder has none, which then builds that project instead of the copy that haylen.py keeps. A folder that holds `CMakeLists.txt` is a C++ app, and any other a Lua app, and a template that the kind lacks, such as `apple` for a C++ app, stops the command with the templates the kind has. The command `platform diff` compares `platform/<template>/` of an app with the same layered template and prints the files that only one of them has and a unified diff of every text file that differs, leaving out `haylen/`, build outputs and the state of Xcode for each person, so the developer adopts what they want of a newer template. It changes nothing.
 
 ### prepare
 
@@ -356,32 +365,64 @@ The web artifacts are the `haylen` player built for WebGPU and for WebGL2, each 
 
 ```text
 templates/
-  app/                The starter app package of haylen.py new, with the .gitignore, .editorconfig and .clang-format of an app project.
+  common/             What every kind of app shares: app.json, the logo, the .gitignore, .editorconfig and .clang-format of an app, and the platform projects that both kinds build.
+    platform/
+      android/        Gradle project that depends on the haylen library, with the Kotlin handler of the bridge example.
+      web/app.js      Page code of the app, with the JavaScript handler of the bridge example.
+  lua/                The Lua app: its starter code and the platform projects that only Lua apps build.
+    source/main.lua   The starter app, which calls the bridge example.
+    platform/
+      apple/          XcodeGen project with targets for iOS and iPadOS with Mac Catalyst, tvOS and macOS, with the Swift handler of the bridge example.
+      web/            Loading page with the logo, the progress bar, the backend choice and the error screen.
+      windows/        CMake project of the Windows executable with its icon, version, manifest, signing and Inno Setup installer.
+      linux/          CMake project of the Linux executable with its desktop entry, icons, AppStream metainfo, `.deb` and AppImage.
+  cpp/                The C++ app, a CMake project that compiles the engine.
+    CMakeLists.txt    Adds the engine and builds the app with haylen_add_app.
+    src/App.cpp       The starter app, which calls the bridge example and answers it on Windows and Linux.
+    src/AppBridge.mm  The Objective-C handler of the bridge example on Apple platforms.
   plugin/             The starter plugin of haylen.py plugin new, with the .gitignore, .editorconfig and .clang-format of a plugin repository.
-  platform/
-    apple/            XcodeGen project with targets for iOS and iPadOS with Mac Catalyst, tvOS and macOS.
-    android/          Gradle project that depends on the haylen library.
-    web/              Loading page with the logo, the progress bar, the backend choice and the error screen.
-    windows/          CMake project of the Windows executable with its icon, version, manifest, signing and Inno Setup installer.
-    linux/            CMake project of the Linux executable with its desktop entry, icons, AppStream metainfo, `.deb` and AppImage.
 ```
 
-The tool `haylen.py` finds the platform templates by folder. A new platform is a folder under `templates/platform/` and a run target in `haylen.py`, the `RUN_TARGETS` table that names, for each `--platform`, the template of its project, the engine artifacts it needs and the functions that prepare, build and launch it and check what the built app lacks. Apps mirror the same shape with their `platform/<platform>/` folders.
+The templates of apps are layers. The folder `common` holds what every kind of app shares, and `lua` and `cpp` what only their kind has. An app or a platform project takes the files of `common` first and then those of its kind, and a file of the kind replaces the common file of the same path, while a common file that the kind lacks stays, so no file repeats between the layers. The command `new` copies both layers whole, and `platform add`, `platform diff` and the copies that haylen.py keeps for apps without a project of a platform take `platform/<template>/` of both layers. The platform templates of a kind are the folders under `platform/` of its layers.
 
-### app
+The tool `haylen.py` finds the platform templates by folder. A new platform is a folder under `platform/` of a layer and a run target in `haylen.py`, the `RUN_TARGETS` table that names, for each `--platform`, the template of its project, the engine artifacts it needs and the functions that prepare, build and launch it and check what the built app lacks. Apps mirror the same shape with their `platform/<platform>/` folders.
 
-`app.json`, `source/main.lua` and `content/logo.png`, the Haylen symbol on a transparent background, which is also the splash logo of the app: a scene with the logo, the name of the app, a line with the engine version and platform, a button and a label that counts the presses. The button starts with the focus, so gamepads and TV remotes can press it. It runs on every platform.
+### common
 
-Next to them are the files that the repository of an app keeps at its root. `.gitignore` keeps out what an app never commits: the build outputs in `build/` and `dist/`, the CPM cache in `.cache/`, the folder `haylen/` of every platform project, the files of Finder and of the editors, the local settings and caches of Gradle, Kotlin and the Android build of C++ code, and the state of Xcode for each person. `.editorconfig` sets the style of text files, and `.clang-format` holds the C, C++ and Objective-C style of the engine for the code of the app, of its platform projects and of its plugins. None of them is part of the package.
+The file `app.json` and `content/logo.png`, the Haylen symbol on a transparent background, which is also the splash logo of the app, are the package that both kinds share, and the Android project and the page code of the web are the platform files that both kinds build the same way.
+
+Next to them are the files that the repository of an app keeps at its root. The file `.gitignore` keeps out what an app never commits: the build outputs in `build/` and `dist/`, the CPM cache in `.cache/`, the folder `haylen/` of every platform project, the files of Finder and of the editors, the local settings and caches of Gradle, Kotlin and the Android build of C++ code, and the state of Xcode for each person. The file `.editorconfig` sets the style of text files, and `.clang-format` holds the C, C++ and Objective-C style of the engine for the code of the app, of its platform projects and of its plugins. None of them is part of the package.
+
+### lua
+
+The file `source/main.lua` is a scene with the logo, the name of the app, a line with the engine version and platform, a button, a label that counts the presses and a line with the answer of the [bridge example](#the-bridge-example). The button starts with the focus, so gamepads and TV remotes can press it. It runs on every platform.
+
+### cpp
+
+The folder of a C++ app is its CMake project and its package at once, since `haylen_add_app` deploys only `app.json`, `source/` and `content/`. Its `CMakeLists.txt` adds the engine folder that `HAYLEN_ENGINE_SOURCE` names, which `run-cpp` passes, or an installed SDK through `find_package` when the variable is empty, as the [embedding guide](embedding.md) describes, and builds the target `main` with the `CPP` option from `src/App.cpp`, with `src/AppBridge.mm` on Apple platforms and with `platform/web/app.js` linked into the runtime script with `--pre-js` on the web. The target is not named `app`, because iOS and tvOS bundles keep the package in a folder of that name next to the executable. Its scene draws the logo, the name of the app and the answer of the [bridge example](#the-bridge-example) with the renderer of the engine, and the app runs no Lua. Android builds through `platform/android` of the common layer, as [run-cpp](#run-cpp) describes, and `haylen_add_app` makes the apps of the other platforms itself.
+
+### The bridge example
+
+Both templates ship a working call of the [platform bridge](platform-bridge.md). The app calls the method `app.greet` with its kind, `Lua` or `C++`, as the name, the native code of the platform answers with a greeting that names its language, and it sends the event `app.greeted` with the count of greetings so far, which the app shows next to the answer.
+
+| Platform | Lua app | C++ app |
+| --- | --- | --- |
+| macOS, iOS, iPadOS, Mac Catalyst, tvOS | Swift, in `platform/apple/source/AppBridge.swift`, which the function `main` of `main.mm` registers. | Objective-C, in `src/AppBridge.mm`, which registers in `+load`. |
+| Android | Kotlin, in `onCreate` of `App` in `platform/android/app/src/main/kotlin/dev/haylen/app/App.kt`. | The same Kotlin. |
+| Web | JavaScript, in `Module.preRun` of `platform/web/app.js`. | The same JavaScript, linked with `--pre-js`. |
+| Windows, Linux | No native handler, so the call fails with the code `noHandler` and the app shows its message. | C++, in `registerDesktopHandlers` of `src/App.cpp`, whose engine handler answers there. |
+
+The Lua side is `Home:greet` of `source/main.lua`, which listens with `platform.on` and calls with `platform.call` inside `scene.spawn`, both owned by the scene. The C++ side is `HomeScene::enter` of `src/App.cpp`, which listens with `Bridge::on` and calls with `Bridge::call`. The desktop player of `haylen run` holds no native code of the app, so there the call fails with `noHandler` too. To replace the example with real code, rename the method and the event in the app and in each handler and change what they do, keep the files where they are, since the projects already build and register them, and add more handlers next to them with the APIs that the [platform bridge guide](platform-bridge.md) describes for each language. An app that needs no native code deletes the handlers and the call.
 
 ### apple
 
 ```text
-templates/platform/apple/
+templates/lua/platform/apple/
   project.yml                     XcodeGen spec, which includes haylen/project.yml and gives each target its template from it.
   App.xcodeproj                   The project generated from project.yml with the haylen/ folder of an app without plugins or native libraries, always committed next to it.
   App.xcconfig                    Includes haylen/Haylen.xcconfig, and the settings after the include win.
   source/main.mm                  Calls haylen_main, after the native bridge handlers of the app register.
+  source/AppBridge.swift          The Swift handler of the bridge example.
   source/HaylenBridgeAsync.swift  Registers Swift handlers of the bridge and of plugin contexts written as async functions with Codable parameters and results, and sends events with Encodable payloads.
   source/HaylenBridging.h         Makes HaylenBridge.h, HaylenPlugin.h and HaylenNotificationPlugin.h visible to the Swift files of the app and its plugins.
   ios/                            Info.plist, LaunchScreen.storyboard and Assets.xcassets with the app icon.
@@ -398,14 +439,14 @@ The asset catalogs carry the Haylen icons, the gradient symbol on the navy `#071
 ### android
 
 ```text
-templates/platform/android/
+templates/common/platform/android/
   settings.gradle.kts         Reads haylen/haylen.properties: the engine repository, the plugin modules in haylen/plugins, the engine version of the modules and their build folder.
   build.gradle.kts            Android Gradle Plugin 9.4.1 for apps and libraries, and the Gradle plugins of the plugins on the build classpath.
   gradle.properties           Gradle settings.
   gradle/wrapper/             Gradle 9.8.0 for Android Studio.
   app/build.gradle.kts        The app module, which depends on dev.haylen:haylen, which brings GameActivity, AppCompat, the activity library and core, and on the plugin modules, applies the Gradle plugins of the plugins and has no C++.
   app/src/main/AndroidManifest.xml
-  app/src/main/kotlin/dev/haylen/app/App.kt  The application class, where the native bridge handlers of the app register before the first activity starts.
+  app/src/main/kotlin/dev/haylen/app/App.kt  The application class, where the native bridge handlers of the app register before the first activity starts, with the handler of the bridge example.
   app/src/main/res/           Adaptive launcher icon with its monochrome layer and Android TV banner.
 ```
 
@@ -416,18 +457,18 @@ The resources are vector drawables of the Haylen brand. The adaptive launcher ic
 ### web
 
 ```text
-templates/platform/web/
+templates/lua/platform/web/
   index.html        The canvas and the splash with the logo, the progress bar and the status line.
   loader.css        Styles of the page and the splash.
   loader.js         Checks the browser, picks the backend, downloads with progress, loads the plugins and starts the runtime.
-  app.js            Page code of the app, where its bridge handlers register, empty in the template.
-  haylen-logo.svg   The Haylen symbol, which haylen.py copies as the splash logo of an app that names none.
+templates/common/platform/web/
+  app.js            Page code of the app, where its bridge handlers register, with the handler of the bridge example.
 ```
 
 ### windows
 
 ```text
-templates/platform/windows/
+templates/lua/platform/windows/
   CMakeLists.txt          Includes haylen/haylen.cmake, builds the executable in the Windows subsystem, installs it with the package and the native libraries, signs release builds and describes the installer.
   signing.cmake           Signs a file with signtool and a time stamp, with the certificate that the environment names.
   resources/app.rc        The icon, the version resource and the application manifest of the executable.
@@ -442,7 +483,7 @@ The project installs the executable with the package in `app/` and the native li
 ### linux
 
 ```text
-templates/platform/linux/
+templates/lua/platform/linux/
   CMakeLists.txt              Includes haylen/haylen.cmake, builds the executable, installs it with the desktop entry, the AppStream metainfo and the icons, and describes the .deb and the AppImage.
   resources/app.desktop       The keys of the desktop entry that belong to the developer, such as its categories.
   resources/app.metainfo.xml  The elements of the AppStream metainfo that belong to the developer, such as the licenses and the content rating.
@@ -462,7 +503,7 @@ The metainfo of the template declares the `CC0-1.0` license for the metadata its
 
 ## Platform projects
 
-The project of a platform belongs to the developer. It is `platform/<template>/` of the app when that folder exists, and haylen.py builds it where it is. An app without that folder uses a copy of the template that haylen.py keeps in the build folder of the app, `build/apps/<app>-<hash>/<template>/`, named after the app folder and the start of the SHA-256 hash of its absolute path, so apps in folders with the same name never share projects, and makes again whenever the template changes. A file that the developer deletes stays deleted, and a newer template reaches a project only when the developer adopts it, which [`platform diff`](#platform) helps with.
+The project of a platform belongs to the developer. It is `platform/<template>/` of the app when that folder exists, and haylen.py builds it where it is. An app without that folder uses a copy of the layers of the template for the kind of the app, which haylen.py keeps in the build folder of the app, `build/apps/<app>-<hash>/<template>/`, named after the app folder and the start of the SHA-256 hash of its absolute path, so apps in folders with the same name never share projects, and makes again whenever the template changes. A file that the developer deletes stays deleted, and a newer template reaches a project only when the developer adopts it, which [`platform diff`](#platform) helps with.
 
 The tool `haylen.py` writes one folder inside a project, `haylen/`, which the `.gitignore` of the app ignores, and never edits `project.yml`, `project.pbxproj`, the Gradle scripts, the manifests, the `Info.plist` files or the entitlements of the developer. The files of the project reach what it writes through a few visible lines, which the developer may delete to take over. Build products go to the build folder of the app, outside the project: Xcode builds into `xcode/`, Gradle into `gradle/`, with its project cache in `gradle-cache/`, and CMake into `cmake/<platform>-<config>/`.
 
@@ -515,7 +556,7 @@ Next to it, `assets/app/` holds the package with `haylen-package-index.json`, th
 
 ### The web site
 
-The files of `platform/web/` of the app, or of the template, go as they are into the site in the build folder of the app, `build/apps/<app>-<hash>/web/`, and haylen.py writes next to them `config.json`, the package, `app.zip` in development or the protected release in `app/` with `--config Release`, the splash logo, the web modules of the plugins in `plugins/` and the WebGPU and WebGL2 runtimes. Nothing is written into `platform/web/`, and a file that the developer deletes stays out of the site.
+The files of `platform/web/` of the app, or of the layers of the template, go as they are into the site in the build folder of the app, `build/apps/<app>-<hash>/web/`, and haylen.py writes next to them `config.json`, the package, `app.zip` in development or the protected release in `app/` with `--config Release`, the splash logo, the web modules of the plugins in `plugins/` and the WebGPU and WebGL2 runtimes. Nothing is written into `platform/web/`, and a file that the developer deletes stays out of the site.
 
 ### Windows and Linux
 
@@ -665,7 +706,7 @@ The runtime ends the launch screen after the first frame that the app drew once 
 | Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the `Theme.Haylen.Splash` theme of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while `sokol_app` draws only once the activity resumed and its surface exists, so `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon, which stays until the runtime ends the splash through `nativeFramePresented` and then fades out over the seconds of `nativeFadeOut`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
 | Web | The page shows the logo over the background with the progress bar until the runtime ends the splash through `Module.haylen.onSplashEnded`, which fades it out. |
 
-The tool `haylen.py` writes the logo into the `splash_logo` image set of `haylen/Splash.xcassets` of the Apple project, as `templates/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved when the app names none, and the background into its `splash_background` color set, with the dark background as its dark appearance, which the launch screens of iOS and tvOS find in the catalogs of their target. On Android it writes the background into `haylen/res/values/haylen_splash.xml`, the dark background into `haylen/res/values-night/haylen_splash.xml`, and copies the logo to `haylen/res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images. On the web it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`, and writes both backgrounds into `config.json`.
+The tool `haylen.py` writes the logo into the `splash_logo` image set of `haylen/Splash.xcassets` of the Apple project, as `engine/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved when the app names none, and the background into its `splash_background` color set, with the dark background as its dark appearance, which the launch screens of iOS and tvOS find in the catalogs of their target. On Android it writes the background into `haylen/res/values/haylen_splash.xml`, the dark background into `haylen/res/values-night/haylen_splash.xml`, and copies the logo to `haylen/res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images. On the web it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`, and writes both backgrounds into `config.json`.
 
 ## Development mode
 

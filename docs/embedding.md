@@ -158,10 +158,32 @@ An app with a content server in `app.json` ships only what its required content 
 
 ## An app written in C++
 
+The command `haylen new <folder> --kind cpp` creates a C++ app from the [C++ template](distribution.md#cpp): a CMake project that adds the engine from the folder that `HAYLEN_ENGINE_SOURCE` names, or from an installed SDK when the variable is empty, and builds the target `main` from its sources, with the [bridge example](distribution.md#the-bridge-example) of the templates and the Android project and web page code that it shares with Lua apps. `haylen run-cpp <folder>` builds and runs it on every platform this machine reaches, and passes `HAYLEN_ENGINE_SOURCE` itself.
+
+```cmake
+set(HAYLEN_ENGINE_SOURCE "" CACHE PATH "The engine folder of a Haylen checkout. Empty finds an installed SDK with find_package.")
+if(HAYLEN_ENGINE_SOURCE)
+  add_subdirectory("${HAYLEN_ENGINE_SOURCE}" haylen)
+else()
+  find_package(haylen REQUIRED)
+endif()
+
+set(sources src/App.cpp)
+if(APPLE)
+  list(APPEND sources src/AppBridge.mm)
+  set_source_files_properties(src/AppBridge.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
+endif()
+
+haylen_add_app(main CPP
+  SOURCES ${sources}
+  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+```
+
 The sample `samples/cpp/embedding` is an app project of its own that uses no Lua. Its `CMakeLists.txt` adds the engine in the mode chosen by the `CPP_EMBEDDING_MODE` cache variable (`subdirectory`, `cpm` or `package`) from the checkout named by `HAYLEN_ENGINE_SOURCE`, and builds the app with the `CPP` option.
 
 ```cmake
-haylen_add_app(embedding CPP
+haylen_add_app(main CPP
   SOURCES src/EmbeddingApp.cpp
   PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
 )

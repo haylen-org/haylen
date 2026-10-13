@@ -18,7 +18,7 @@ else()
   message(FATAL_ERROR "The variable \"CPP_EMBEDDING_MODE\" is \"subdirectory\", \"cpm\" or \"package\", not \"${CPP_EMBEDDING_MODE}\".")
 endif()
 
-haylen_add_app(embedding CPP
+haylen_add_app(main CPP
   SOURCES src/EmbeddingApp.cpp
   PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
 )

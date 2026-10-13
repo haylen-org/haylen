@@ -384,6 +384,20 @@ class RunCppTest(unittest.TestCase):
         self.assertEqual(mocks[-1].call_args.args[2:], ("emulator-5554", []))
 
 
+    def test_a_build_only_run_builds_the_app_of_this_machine_without_launching_it(self):
+        (self.scratch / "project").mkdir()
+        (self.scratch / "project" / "CMakeLists.txt").write_text("")
+        executable = self.scratch / "app"
+        for options, launched in (([], True), (["--build-only"], False)):
+            args = haylen.build_parser().parse_args(["run-cpp", str(self.scratch / "project"), *options])
+            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+                haylen.command_run_cpp(args)
+            self.assertEqual([executable] in [call.args[0] for call in run.call_args_list], launched)
+            self.assertIn(f"-DHAYLEN_ENGINE_SOURCE={haylen.ENGINE_DIR.as_posix()}", run.call_args_list[0].args[0])
+            self.assertIn("--target", run.call_args_list[1].args[0])
+            self.assertEqual(run.call_args_list[1].args[0][run.call_args_list[1].args[0].index("--target") + 1], "main")
+
+
 class ConsumerArgumentTest(unittest.TestCase):
     def test_the_consumer_check_builds_the_listed_ways_or_every_way(self):
         parser = haylen.build_parser()
@@ -435,6 +449,93 @@ class AndroidKeyTest(unittest.TestCase):
         self.assertEqual(lines[1:], ["storeFile=release.jks", "storePassword=pa=ss\\u2713", "keyAlias=upload", "keyPassword=pa=ss\\u2713"])
 
 
+class TemplateLayersTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.output = io.StringIO()
+        quiet = mock.patch.object(haylen, "terminal", haylen.Terminal(self.output, io.StringIO(), {}))
+        quiet.start()
+        self.addCleanup(quiet.stop)
+
+    def use_layers(self, files: dict[str, str]) -> None:
+        templates = self.scratch / "templates"
+        for name, text in files.items():
+            (templates / name).parent.mkdir(parents=True, exist_ok=True)
+            (templates / name).write_text(text)
+        layers = mock.patch.multiple(haylen, TEMPLATES_DIR=templates, COMMON_TEMPLATE=templates / "common")
+        layers.start()
+        self.addCleanup(layers.stop)
+
+    def new_app(self, name: str, *options: str) -> Path:
+        haylen.command_new(haylen.build_parser().parse_args(["new", str(self.scratch / name), *options]))
+        return self.scratch / name
+
+    def test_the_common_layer_comes_first_and_the_file_of_a_kind_replaces_the_common_one(self):
+        self.use_layers({"common/notes.txt": "common", "common/content/logo.png": "logo", "lua/notes.txt": "lua", "lua/source/main.lua": "lua", "cpp/src/App.cpp": "cpp"})
+        files = haylen.layered_files(haylen.template_layers("lua"))
+        self.assertEqual(list(files), ["content/logo.png", "notes.txt", "source/main.lua"])
+        self.assertEqual({name: path.read_text() for name, path in files.items()}, {"content/logo.png": "logo", "notes.txt": "lua", "source/main.lua": "lua"})
+        self.assertEqual({name: path.read_text() for name, path in haylen.layered_files(haylen.template_layers("cpp")).items()}, {"content/logo.png": "logo", "notes.txt": "common", "src/App.cpp": "cpp"})
+
+    def test_a_platform_project_takes_the_layers_of_the_kind_of_its_app(self):
+        self.use_layers({"common/platform/web/app.js": "common", "common/platform/android/App.kt": "common", "lua/platform/web/index.html": "lua", "lua/platform/apple/project.yml": "lua", "cpp/platform/web/app.js": "cpp"})
+        self.assertEqual(haylen.platform_templates("lua"), ["android", "apple", "web"])
+        self.assertEqual(haylen.platform_templates("cpp"), ["android", "web"])
+        self.assertEqual(haylen.platform_templates(), ["android", "apple", "web"])
+        lua, cpp = self.scratch / "lua-app", self.scratch / "cpp-app"
+        for app in (lua, cpp):
+            app.mkdir()
+            (app / "app.json").write_text("{}")
+        (cpp / "CMakeLists.txt").write_text("")
+        for app in (lua, cpp):
+            haylen.command_platform_add(haylen.build_parser().parse_args(["platform", "add", str(app), "web"]))
+        self.assertEqual({name: path.read_text() for name, path in haylen.project_files(lua / "platform" / "web").items()}, {"app.js": "common", "index.html": "lua"})
+        self.assertEqual({name: path.read_text() for name, path in haylen.project_files(cpp / "platform" / "web").items()}, {"app.js": "cpp"})
+        with self.assertRaisesRegex(haylen.BuildError, 'The C\\+\\+ apps have no "apple" template. Their platform templates are "android", "web".'):
+            haylen.command_platform_add(haylen.build_parser().parse_args(["platform", "add", str(cpp), "apple"]))
+
+        # An app without a project of its own builds a copy of the layers, made again whenever a layer changes.
+        info = mock.Mock(folder=cpp, build_folder=self.scratch / "build")
+        root = haylen.project_root(info, "android")
+        self.assertEqual((root / "App.kt").read_text(), "common")
+        (self.scratch / "templates" / "cpp" / "platform" / "android").mkdir(parents=True)
+        (self.scratch / "templates" / "cpp" / "platform" / "android" / "App.kt").write_text("cpp")
+        self.assertEqual((haylen.project_root(info, "android") / "App.kt").read_text(), "cpp")
+
+    def test_each_kind_of_app_starts_from_its_layers_over_the_common_one(self):
+        for kind in haylen.APP_KINDS:
+            app = self.new_app(f"{kind}-app", "--kind", kind)
+            expected = haylen.layered_files(haylen.template_layers(kind))
+            self.assertEqual(sorted(haylen.project_files(app)), sorted(expected))
+            self.assertEqual(haylen.app_kind(app), kind)
+            self.assertTrue(all((app / name).read_bytes() == path.read_bytes() for name, path in expected.items() if name != "app.json"))
+        self.assertEqual(haylen.platform_templates("lua"), ["android", "apple", "linux", "web", "windows"])
+        self.assertEqual(haylen.platform_templates("cpp"), ["android", "web"])
+        self.assertTrue((self.scratch / "lua-app" / "source" / "main.lua").is_file())
+        self.assertFalse((self.scratch / "cpp-app" / "source").exists())
+        self.assertTrue((self.scratch / "cpp-app" / "src" / "App.cpp").is_file())
+        self.assertTrue((self.scratch / "cpp-app" / "platform" / "android" / "settings.gradle.kts").is_file())
+        self.assertIn('Run it with "haylen run-cpp', self.output.getvalue())
+        self.assertEqual(json.loads((self.scratch / "cpp-app" / "app.json").read_text())["name"], "Cpp App")
+
+    def test_no_file_of_a_kind_copies_the_common_file_it_replaces(self):
+        common = haylen.project_files(haylen.COMMON_TEMPLATE)
+        for kind in haylen.APP_KINDS:
+            for name, path in haylen.project_files(haylen.TEMPLATES_DIR / kind).items():
+                self.assertFalse(name in common and common[name].read_bytes() == path.read_bytes(), f"The file {name} of the {kind} template repeats the common one.")
+
+    def test_platform_diff_compares_every_file_of_the_project_with_the_layered_template(self):
+        app = self.new_app("game")
+        handler = app / "platform" / "android" / "app" / "src" / "main" / "kotlin" / "dev" / "haylen" / "app" / "App.kt"
+        handler.write_text(handler.read_text() + "// A change of the developer.\n")
+        (app / "platform" / "android" / "haylen").mkdir()
+        (app / "platform" / "android" / "haylen" / "haylen.properties").write_text("generated")
+        haylen.command_platform_diff(haylen.build_parser().parse_args(["platform", "diff", str(app), "--template", "android"]))
+        self.assertIn("+// A change of the developer.", self.output.getvalue())
+        self.assertIn('differs from the "android" template in 1 files.', self.output.getvalue())
+
+
 class DesktopProjectTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp()).resolve()
@@ -460,13 +561,9 @@ class DesktopProjectTest(unittest.TestCase):
             with mock.patch.object(haylen, "host_name", return_value="linux"), self.assertRaisesRegex(haylen.BuildError, f'gives the executable "{name.lower()}", which is the name of a folder next to the executable of a Linux app'):
                 haylen.prepare_desktop(haylen.App(folder, "linux"), arguments)
 
-    def test_new_apps_get_a_project_of_every_platform_template(self):
-        self.assertTrue({"apple", "android", "web", "windows", "linux"} <= set(haylen.platform_templates()))
+    def test_the_desktop_platforms_build_the_projects_of_their_templates(self):
         self.assertEqual({name: target.template for name, target in haylen.RUN_TARGETS.items() if name in ("windows", "linux")}, {"windows": "windows", "linux": "linux"})
-        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
-            haylen.command_new(haylen.build_parser().parse_args(["new", str(self.scratch / "fresh")]))
-        for template in haylen.platform_templates():
-            self.assertEqual(sorted(haylen.project_files(self.scratch / "fresh" / "platform" / template)), sorted(haylen.project_files(haylen.PLATFORM_TEMPLATES_DIR / template)))
+        self.assertTrue({"windows", "linux"} <= set(haylen.platform_templates("lua")))
 
     def test_the_installed_app_stays_apart_from_the_copy_of_the_template(self):
         info = haylen.App(self.app, "linux")
@@ -558,7 +655,7 @@ class DesktopProjectTest(unittest.TestCase):
         return bytes(header + resources)
 
     def test_the_manifest_of_a_windows_executable_selects_what_the_engine_needs(self):
-        manifest = (haylen.PLATFORM_TEMPLATES_DIR / "windows" / "resources" / "app.manifest").read_bytes()
+        manifest = haylen.layered_files(haylen.platform_layers("lua", "windows"))["resources/app.manifest"].read_bytes()
         self.assertEqual(haylen.windows_resources(self.executable(manifest), haylen.WINDOWS_MANIFEST_RESOURCE), [manifest])
         self.assertEqual(haylen.windows_resources(b"not an executable", haylen.WINDOWS_MANIFEST_RESOURCE), [])
 

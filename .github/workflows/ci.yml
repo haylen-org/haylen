@@ -164,6 +164,10 @@ jobs:
       - name: Validate the desktop entry
         if: runner.os == 'Linux'
         run: desktop-file-validate build/apps/starter-*/installed/linux/share/applications/*.desktop
+      - name: Create the starter C++ app
+        run: python haylen.py new build/starter-cpp --kind cpp
+      - name: Build the starter C++ app from the C++ template
+        run: python haylen.py run-cpp build/starter-cpp --build-only
 
   tests-project:
     runs-on: ubuntu-latest

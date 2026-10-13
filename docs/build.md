@@ -265,10 +265,10 @@ haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJE
 | `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in` and `tvos/LaunchScreen.storyboard`. Defaults to `engine/platform/apple`. |
 | `WEB_SHELL` | HTML shell of the web page. Defaults to `engine/platform/web/shell.html`. |
 
-The C++ sample `samples/cpp/embedding` is such a project, and `haylen run-cpp samples/cpp/embedding` builds and runs it from the root of the repository:
+The C++ sample `samples/cpp/embedding` is such a project, like every app that `haylen new --kind cpp` creates from the [C++ template](distribution.md#cpp), and `haylen run-cpp samples/cpp/embedding` builds and runs it from the root of the repository:
 
 ```cmake
-haylen_add_app(embedding CPP
+haylen_add_app(main CPP
   SOURCES src/EmbeddingApp.cpp
   PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
 )
@@ -312,15 +312,15 @@ A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and
 build/cpp/embedding-<hash>/web/
   index.html              The target's shell, with engine/platform/web/backend-picker.html in place of {{{ SCRIPT }}}.
   haylen-logo.svg         The icon of the default shell.
-  webgpu/                 embedding.js, embedding.wasm and embedding.data built for WebGPU, next to haylen-audio-worklet.js.
+  webgpu/                 main.js, main.wasm and main.data built for WebGPU, next to haylen-audio-worklet.js.
   webgl2/                 The same files built for WebGL2.
 ```
 
-The backend picker runs the WebGPU build when `navigator.gpu` returns an adapter and the WebGL2 build otherwise, by pointing `Module.locateFile` at the chosen folder and loading `<backend>/<target>.js`. `?backend=webgpu` or `?backend=webgl2` forces one of them, and `?package=<url>` names a zipped package to download. Because the page is the target's own shell, everything a custom `WEB_SHELL` adds, such as page handlers for the [platform bridge](platform-bridge.md#web), works in the bundle as well. `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
+The backend picker runs the WebGPU build when `navigator.gpu` returns an adapter and the WebGL2 build otherwise, by pointing `Module.locateFile` at the chosen folder and loading `<backend>/<target>.js`. `?backend=webgpu` or `?backend=webgl2` forces one of them, and `?package=<url>` names a zipped package to download. Because the page is the target's own shell, everything a custom `WEB_SHELL` adds, such as page handlers for the [platform bridge](platform-bridge.md#web), works in the bundle as well, as do the handlers of a script that the target links with `--pre-js`, such as `platform/web/app.js` of the C++ template. `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
 
 ### Page setup
 
-A page defines `Module` before it loads the runtime script. `templates/platform/web/loader.js` is the reference for pages of Lua apps and `engine/platform/web/shell.html` for C++ apps:
+A page defines `Module` before it loads the runtime script. `templates/lua/platform/web/loader.js` is the reference for pages of Lua apps and `engine/platform/web/shell.html` for C++ apps:
 
 | Field | Meaning |
 | --- | --- |
@@ -385,13 +385,13 @@ async function play(files) {
 
 - `engine/platform/android` is the Gradle project of the Haylen Android libraries. Its module `haylen` is the `haylen` library (namespace `dev.haylen`), which holds `HaylenActivity`, a GameActivity, `HaylenBridge`, the plugin API, `HaylenRequirements`, `HaylenPluginProvider`, `HaylenLinkActivity`, the AppCompat splash themes and the R8 rules for the classes C++ calls by name. Its manifest declares only the OpenGL ES 3 requirement, with no permission and no component, and it packages the `libhaylen.so` of arm64-v8a, armeabi-v7a and x86_64 from `-PhaylenNativeLibraries`, which `haylen.py` builds with the engine CMake project. Its `copyVarnTransport` task copies Varn's `VarnHttp.kt` from `-PhaylenVarnSourceDir` into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport of Varn's Android library runs in the app. The modules `haylen-plugins` and `haylen-links` hold only a manifest, which declares `HaylenPluginProvider` for plugin modules and the exported `HaylenLinkActivity` for plugins of links and notifications, and `haylen-coroutines` holds `HaylenCoroutines` with its dependency on `kotlinx-coroutines-android`. Each of them depends on `haylen` as an API. `haylen.py engine --platform android` passes the libraries, that folder and the Maven repository as `-PhaylenMavenDir`, and the root `build.gradle.kts` publishes every module there as `dev.haylen:<module>` at the engine version.
 - The Java classes of GameActivity must match its native side in `libhaylen.so`, so the library depends on `androidx.games:games-activity` 4.4.2, strictly, the version that `engine/cmake/haylen-dependencies.cmake` pins, and on the AndroidX libraries that GameActivity leaves to apps, AppCompat 1.8.0, the activity library 1.13.0 and core 1.19.1, as APIs. A version change updates the pin, the library and the template together.
-- `templates/platform/android` is the Gradle project of an app, without C++, which depends on `dev.haylen:haylen` from that repository and gets GameActivity, AppCompat, the activity library and core from it. Its manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` of the network, the network events and vibration, which an app deletes when it does not use them, and `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. `haylen.py run --platform android` writes the package and the settings of an app into its folder `haylen/`, builds it where it is and installs it, as the [distribution guide](distribution.md#the-android-project) describes.
+- `templates/common/platform/android` is the Gradle project of an app, without C++, which depends on `dev.haylen:haylen` from that repository and gets GameActivity, AppCompat, the activity library and core from it. Its manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` of the network, the network events and vibration, which an app deletes when it does not use them, and `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. `haylen.py run --platform android` writes the package and the settings of an app into its folder `haylen/`, builds it where it is and installs it, as the [distribution guide](distribution.md#the-android-project) describes.
 
 Gradle finds the Android SDK through `ANDROID_HOME` or a `local.properties` file, as in any Android project. Release builds of apps are minified with R8 and signed with the upload key of the app, which `haylen.py android-key` creates, as the [distribution guide](distribution.md#android-key) describes.
 
 ## iOS, tvOS and Mac Catalyst
 
-`haylen configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `haylen.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
+`haylen configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `haylen.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/lua/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
 
 C++ apps built with `haylen_add_app` target iOS 16.3 on iPhone and iPad and tvOS 16.3, with automatic code signing, because the engine needs the C++ library of those releases, and macOS apps macOS 14.0, the first release with the display link of `NSView` that `sokol_app` draws with. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources. The iOS template lists the supported orientations through `@HAYLEN_ORIENTATIONS@` and `@HAYLEN_ORIENTATIONS_IPAD@`, which `haylen_add_app` fills from `orientation` in `app.json`: `landscape` allows both landscape sides, `portrait` allows portrait (and upside down on iPad) and `any` allows all of them. The macOS template ends its dictionary with `@HAYLEN_UI_ELEMENT@`, which `haylen_add_app` fills with `LSUIElement` when `window.showInTaskbar` is `false` in `app.json`, so the app never shows a Dock icon. Pass `APPLE_PROJECT` to `haylen_add_app` to use templates of your own with the same layout and placeholders. macOS apps use the same mechanism with `engine/platform/apple/mac/Info.plist.in`.
 
