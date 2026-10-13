@@ -1,6 +1,7 @@
 #include "haylen/2d/animation/SpriteAtlas.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -27,7 +28,50 @@ SpriteFrame SpriteAtlas::readFrame(const Document& entry) {
     if (entry.contains("duration")) {
         frame.duration = entry.at("duration").get<float>() / 1000.0F;
     }
+
+    // The user data of a frame names its events, separated by commas.
+    const std::string data = entry.value("data", std::string());
+    std::size_t begin = 0;
+    while (begin < data.size()) {
+        const std::size_t end = std::min(data.find(',', begin), data.size());
+        const std::size_t first = data.find_first_not_of(' ', begin);
+        if (first < end) {
+            frame.events.push_back(data.substr(first, data.find_last_not_of(' ', end - 1) - first + 1));
+        }
+        begin = end + 1;
+    }
     return frame;
+}
+
+// A key of a slice holds from its frame until the frame of the next key, the last key until the last frame, and a key without an area hides the slice. A slice whose user data is `point` marks a point at the pivot of each key, or at the middle of its bounds, and every other slice marks a box, whose key pivot also becomes the pivot of the frames it covers.
+void SpriteAtlas::readFrameSlice(const Document& slice) {
+    const std::string name = slice.at("name").get<std::string>();
+    const bool point = slice.value("data", std::string()) == "point";
+    const Document& keys = slice.at("keys");
+    for (std::size_t index = 0; index < keys.size(); ++index) {
+        const Document& key = keys.at(index);
+        const auto first = key.value("frame", std::size_t{0});
+        const std::size_t end = index + 1 < keys.size() ? keys.at(index + 1).value("frame", frameOrder.size()) : frameOrder.size();
+        if (first >= frameOrder.size() || end > frameOrder.size() || end < first) {
+            throw std::out_of_range("The slice \"" + name + "\" has a key for a frame that does not exist.");
+        }
+        const math::Rect bounds = readRect(key.at("bounds"));
+        if (bounds.width <= 0.0F || bounds.height <= 0.0F) {
+            continue;
+        }
+        const std::optional<math::Vec2> pivot = key.contains("pivot") ? std::optional(bounds.getMin() + math::Vec2{key.at("pivot").at("x").get<float>(), key.at("pivot").at("y").get<float>()}) : std::nullopt;
+        for (std::size_t place = first; place < end; ++place) {
+            SpriteFrame& frame = frames.at(frameOrder[place]);
+            if (point) {
+                frame.points.push_back({.name = name, .position = pivot.value_or(bounds.getCenter())});
+                continue;
+            }
+            frame.boxes.push_back({.name = name, .area = bounds});
+            if (pivot) {
+                frame.pivot = pivot;
+            }
+        }
+    }
 }
 
 Animation::Loop SpriteAtlas::readTagLoop(const Document& tag) {
@@ -70,6 +114,28 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
     }
 
     const Document meta = document.value("meta", Document::object());
+
+    // Slices come first, so the frames that tags copy carry their boxes, points and pivots.
+    for (const Document& slice : meta.value("slices", Document::array())) {
+        const Document& key = slice.at("keys").at(0);
+        if (!key.contains("center")) {
+            atlas.readFrameSlice(slice);
+            continue;
+        }
+
+        // The bounds of a slice key are relative to the untrimmed canvas of the frame the key names, whose trimmed pixels sit somewhere in the packed texture.
+        const std::string name = slice.at("name").get<std::string>();
+        const SpriteFrame& frame = atlas.frames.at(atlas.frameOrder.at(key.value("frame", std::size_t{0})));
+        const math::Rect bounds = readRect(key.at("bounds"));
+        const math::Rect center = readRect(key.at("center"));
+        if (!math::Rect{frame.offset.x, frame.offset.y, frame.source.width, frame.source.height}.contains(bounds)) {
+            throw std::invalid_argument("The slice \"" + name + "\" reaches past the pixels its frame keeps in the atlas. Keep the slice inside the opaque pixels of the frame or export the atlas without trimming.");
+        }
+        const math::Rect source{frame.source.x - frame.offset.x + bounds.x, frame.source.y - frame.offset.y + bounds.y, bounds.width, bounds.height};
+        const math::Insets borders{.left = center.x, .top = center.y, .right = bounds.width - center.getRight(), .bottom = bounds.height - center.getBottom()};
+        atlas.slices.insert_or_assign(name, graphics2d::NineSlice::fromBorders(atlas.texture, source, borders));
+    }
+
     for (const Document& tag : meta.value("frameTags", Document::array())) {
         const auto from = tag.at("from").get<std::size_t>();
         const auto to = tag.at("to").get<std::size_t>();
@@ -86,25 +152,6 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
             std::reverse(animation.frames.begin(), animation.frames.end());
         }
         atlas.animations.insert_or_assign(tag.at("name").get<std::string>(), std::move(animation));
-    }
-
-    for (const Document& slice : meta.value("slices", Document::array())) {
-        const Document& key = slice.at("keys").at(0);
-        if (!key.contains("center")) {
-            continue;
-        }
-
-        // The bounds of a slice key are relative to the untrimmed canvas of the frame the key names, whose trimmed pixels sit somewhere in the packed texture.
-        const std::string name = slice.at("name").get<std::string>();
-        const SpriteFrame& frame = atlas.frames.at(atlas.frameOrder.at(key.value("frame", std::size_t{0})));
-        const math::Rect bounds = readRect(key.at("bounds"));
-        const math::Rect center = readRect(key.at("center"));
-        if (!math::Rect{frame.offset.x, frame.offset.y, frame.source.width, frame.source.height}.contains(bounds)) {
-            throw std::invalid_argument("The slice \"" + name + "\" reaches past the pixels its frame keeps in the atlas. Keep the slice inside the opaque pixels of the frame or export the atlas without trimming.");
-        }
-        const math::Rect source{frame.source.x - frame.offset.x + bounds.x, frame.source.y - frame.offset.y + bounds.y, bounds.width, bounds.height};
-        const math::Insets borders{.left = center.x, .top = center.y, .right = bounds.width - center.getRight(), .bottom = bounds.height - center.getBottom()};
-        atlas.slices.insert_or_assign(name, graphics2d::NineSlice::fromBorders(atlas.texture, source, borders));
     }
     return atlas;
 }

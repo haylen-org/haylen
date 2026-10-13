@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace haylen::animation2d {
 
@@ -53,15 +56,38 @@ Animation Animation::fromGrid(graphics::Texture image, const GridOptions& option
             throw std::out_of_range("A grid animation refers to a cell outside the texture.");
         }
         const math::Vec2 origin = options.margin + math::Vec2{static_cast<float>(cell % columns) * step.x, static_cast<float>(cell / columns) * step.y};
-        animation.frames.push_back({.source = {origin.x, origin.y, options.frameSize.x, options.frameSize.y}, .originalSize = options.frameSize, .duration = 1.0F / options.framesPerSecond});
+        animation.frames.push_back({.source = {origin.x, origin.y, options.frameSize.x, options.frameSize.y}, .originalSize = options.frameSize, .duration = 1.0F / options.framesPerSecond, .ticks = options.ticksPerFrame});
     }
     return animation;
 }
 
+void Animation::validate() const {
+    const bool ticked = countsTicks();
+    for (const SpriteFrame& frame : frames) {
+        if ((frame.ticks > 0) != ticked) {
+            throw std::invalid_argument("Every frame of an animation counts ticks, or none does.");
+        }
+        if (!ticked && !(frame.duration > 0.0F && std::isfinite(frame.duration))) {
+            throw std::invalid_argument("A frame lasts a positive number of seconds.");
+        }
+    }
+}
+
+void Animation::addEvent(std::size_t frame, std::string name) {
+    if (frame >= frames.size()) {
+        throw std::out_of_range("The animation has no frame " + std::to_string(frame + 1) + ".");
+    }
+    frames[frame].events.push_back(std::move(name));
+}
+
+float Animation::getLength(std::size_t frame) const noexcept {
+    return frames[frame].ticks > 0 ? static_cast<float>(frames[frame].ticks) : frames[frame].duration;
+}
+
 float Animation::getDuration() const noexcept {
     float total = 0.0F;
-    for (const SpriteFrame& frame : frames) {
-        total += frame.duration;
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        total += getLength(index);
     }
     return total;
 }
@@ -72,30 +98,30 @@ float Animation::getCycleDuration() const noexcept {
         return total;
     }
     // The way back skips the two end frames so they do not show twice in a row.
-    return total + std::max(0.0F, total - frames.front().duration - frames.back().duration);
+    return total + std::max(0.0F, total - getLength(0) - getLength(frames.size() - 1));
 }
 
-std::size_t Animation::frameAt(float seconds) const noexcept {
+std::size_t Animation::frameAt(float time) const noexcept {
     const float total = getDuration();
     if (frames.size() <= 1 || total <= 0.0F) {
         return 0;
     }
 
-    float time = std::max(0.0F, seconds);
+    float local = std::max(0.0F, time);
     bool reversed = false;
     switch (loop) {
     case Loop::Once:
-        if (time >= total) {
+        if (local >= total) {
             return frames.size() - 1;
         }
         break;
     case Loop::Loop:
-        time = std::fmod(time, total);
+        local = std::fmod(local, total);
         break;
     case Loop::PingPong:
-        time = std::fmod(time, getCycleDuration());
-        if (time >= total) {
-            time -= total;
+        local = std::fmod(local, getCycleDuration());
+        if (local >= total) {
+            local -= total;
             reversed = true;
         }
         break;
@@ -103,21 +129,46 @@ std::size_t Animation::frameAt(float seconds) const noexcept {
 
     if (reversed) {
         for (std::size_t index = frames.size() - 2; index > 0; --index) {
-            if (time < frames[index].duration) {
+            if (local < getLength(index)) {
                 return index;
             }
-            time -= frames[index].duration;
+            local -= getLength(index);
         }
         return 1;
     }
 
     for (std::size_t index = 0; index < frames.size(); ++index) {
-        if (time < frames[index].duration) {
+        if (local < getLength(index)) {
             return index;
         }
-        time -= frames[index].duration;
+        local -= getLength(index);
     }
     return frames.size() - 1;
+}
+
+// The frames of one pass follow each other in a known order, forward and on ping-pong animations back, so the next change is the end of the frame the time falls in, which shows the next frame of the order.
+Animation::Change Animation::getNextChange(float time) const noexcept {
+    const float cycle = getCycleDuration();
+    const std::size_t count = frames.size();
+    if (count <= 1 || cycle <= 0.0F) {
+        return {.time = std::numeric_limits<float>::infinity(), .frame = 0};
+    }
+    const float clamped = std::max(0.0F, time);
+    if (loop == Loop::Once && clamped >= getDuration() - getLength(count - 1)) {
+        return {.time = std::numeric_limits<float>::infinity(), .frame = count - 1};
+    }
+
+    const float start = loop == Loop::Once ? 0.0F : std::floor(clamped / cycle) * cycle;
+    const std::size_t steps = loop == Loop::PingPong ? count * 2 - 2 : count;
+    const auto frameOf = [count](std::size_t step) { return step < count ? step : count * 2 - 2 - step; };
+    float end = start;
+    for (std::size_t step = 0; step < steps; ++step) {
+        end += getLength(frameOf(step));
+        if (end > clamped) {
+            return {.time = end, .frame = step + 1 < steps ? frameOf(step + 1) : 0};
+        }
+    }
+    return {.time = start + cycle, .frame = frameOf(1)};
 }
 
 } // namespace haylen::animation2d

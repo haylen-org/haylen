@@ -1,6 +1,6 @@
 # haylen.animation2d
 
-The module `haylen.animation2d` plays frame animations on sprites. It cuts animations from sprite sheet grids or from lists of rectangles, reads TexturePacker and Aseprite atlases with their tags and nine-slices, and drives named animations with an animator that reports frame changes and finished animations. Use it for characters, effects and animated UI.
+The module `haylen.animation2d` plays frame animations on sprites. It cuts animations from sprite sheet grids or from lists of frames, reads TexturePacker and Aseprite atlases with their tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -28,11 +28,50 @@ The JSON file supports these fields:
 | `frames[].rotated` | Must be absent or `false`. Rotated frames raise `Rotated atlas frames are not supported. Disable rotation in the packer.` |
 | `frames[].spriteSourceSize`, `frames[].sourceSize` | Trim data. When both are present, the frame remembers where the trimmed rectangle sits inside the original frame, so pivots stay stable while the animation plays. |
 | `frames[].duration` | Frame duration in milliseconds, as Aseprite writes it. Frames without it last 100 milliseconds. |
+| `frames[].data` | The user data of the frame, which names its [events](#frame-data) separated by commas, such as `"swing, whoosh"`. |
 | `meta.image` | Required path of the image, relative to the JSON file. |
 | `meta.frameTags` | Aseprite tags, each with `name`, `from` and `to` (frame positions counted from 0), `direction` and `repeat`. Every tag becomes an animation with the durations of its frames. |
-| `meta.slices` | Aseprite slices. Slices whose first key has a `center` become nine-slices. Their `bounds` are relative to the frame at the position given by the key's `frame`, which defaults to 0. |
+| `meta.slices` | Aseprite slices. Slices whose first key has a `center` become nine-slices. Their `bounds` are relative to the frame at the position given by the key's `frame`, which defaults to 0. Every other slice becomes [frame data](#frame-data): a box named after the slice on the frames its keys cover, or a point when the user data `data` of the slice is `"point"`. |
 
 Tag directions `forward` and `reverse` loop, and `pingpong` and `pingpong_reverse` play back and forth. A `repeat` of `"1"` plays the tag once. An absent `repeat` or `"0"` loops forever, and larger counts raise `The Aseprite tag "name" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.` Other errors are `The direction of an Aseprite tag must be "forward", "reverse", "pingpong" or "pingpong_reverse", not "name".` and `An Aseprite tag refers to frames that do not exist.` Both layouts keep their frames in file order, so a tag counts the same positions Aseprite does, even when frames named `hero 0` to `hero 11` would sort differently by name.
+
+## Frame data
+
+Every frame of an animation holds, in pixels of its untrimmed frame:
+
+- `pivot`, the point the frame stands on, which `animator:apply` gives the sprite in place of `pivotX` and `pivotY`.
+- `boxes`, named rectangles such as hitboxes and hurtboxes, which [`animator:box`](#animatorboxname-sprite) places in the world.
+- `points`, named points such as a hand or a muzzle, which [`animator:point`](#animatorpointname-sprite) places in the world.
+- `events`, names that [`animator.onEvent`](#animatoroneventname-event-frame) receives when the animation enters the frame.
+- `ticks`, the length of the frame in fixed steps, for animations that advance with [`animator:step`](#animatorstepticks) so their frames end exactly on steps. Every frame of an animation counts ticks or none does, which otherwise raises `Every frame of an animation counts ticks, or none does.`.
+
+Atlases read frame data from their slices and frames. A slice key holds from its frame until the frame of the next key, the last key until the last frame, and a key with an empty `bounds` hides the slice from its frame on. A box slice marks the `bounds` of each key as its box, and the `pivot` of a key, relative to its bounds, becomes the pivot of the frames it covers. A point slice marks the `pivot` of each key, or the middle of its bounds. `animation2d.fromFrames` takes frame data as tables, `anim:addEvent` adds events in code, and `anim:frameData`, `atlas:frame` and `animator:box` read it back.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local atlas = assets.load('fighters/brawler.json', 'atlas')
+local fighter = graphics2d.newSprite(atlas.texture, {x = 400, y = 500, flipHorizontal = true})
+local animator = animation2d.newAnimator()
+animator:add('punch', atlas:animation('punch'))
+animator.onEvent = function(name, event, frame)
+    if event == 'swing' then
+        local hitbox = animator:box('hit', fighter)
+        print(frame, hitbox and hitbox.width)
+    end
+end
+animator:play('punch')
+
+scene.push({
+    update = function(self, dt)
+        animator:update(dt)
+        animator:apply(fighter)
+    end,
+})
+```
 
 ## Loop modes
 
@@ -59,6 +98,7 @@ Cuts an `Animation` from a grid of equally sized cells in `texture`. Cells are n
 | `loop` | string | `'loop'` | Loop mode. |
 | `margin` | Vec2 | `{0, 0}` | Empty pixels around the whole grid, as `{x, y}`. |
 | `spacing` | Vec2 | `{0, 0}` | Empty pixels between cells, as `{x, y}`. |
+| `ticksPerFrame` | integer | `0` | When above 0, every frame lasts this many ticks and the animation advances with `animator:step`. |
 
 Errors: `framesPerSecond must be positive`, `A grid animation needs a texture, a positive frame size and a positive frame rate.`, `The frame size does not fit the texture.` and `A grid animation refers to a cell outside the texture.`
 
@@ -73,7 +113,7 @@ print(idle.frameCount, slash.duration)
 
 ### animation2d.fromFrames(texture, frames, options)
 
-Builds an `Animation` from a list of source rectangles in `texture`. The argument `options` is optional and accepts `framesPerSecond` (default 10) and `loop` (default `'loop'`). An empty list raises `expected at least one frame`.
+Builds an `Animation` from a list of frames in `texture`. A frame is a source rectangle, or a table with `source`, the rectangle, and its [frame data](#frame-data): `pivot` (`{x, y}`), `duration` in seconds, `ticks`, `boxes` (a list of `{name, x, y, width, height}`), `points` (a list of `{name, x, y}`) and `events` (a list of names). The argument `options` is optional and accepts `framesPerSecond` (default 10), which gives the frames without a `duration` theirs, and `loop` (default `'loop'`). An empty list raises `expected at least one frame`, and a key a frame table does not know raises `Unknown option "<key>".`
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -85,6 +125,13 @@ local fire = animation2d.fromFrames(assets.texture('effects/fire.png'), {
     {128, 0, 64, 64},
     {192, 0, 64, 64},
 }, {framesPerSecond = 8, loop = 'pingPong'})
+
+local punch = animation2d.fromFrames(assets.texture('fighters/brawler.png'), {
+    {source = {0, 0, 240, 240}, pivot = {117, 237}, ticks = 2},
+    {source = {240, 0, 240, 240}, pivot = {111, 237}, ticks = 3, events = {'swing'}, boxes = {{name = 'hit', x = 150, y = 60, width = 100, height = 40}}},
+    {source = {480, 0, 240, 240}, pivot = {111, 237}, ticks = 4},
+}, {loop = 'once'})
+print(fire.frameCount, punch.countsTicks)
 ```
 
 ### animation2d.newAnimator()
@@ -121,8 +168,9 @@ An `Animation` is a value that holds a texture, a list of frames with their dura
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `duration` | number | read | Length of one pass in seconds, the sum of the frame durations. |
-| `cycleDuration` | number | read | Length of one full cycle in seconds. It equals `duration`, except on ping-pong animations, whose cycle also covers the way back without repeating the end frames. |
+| `duration` | number | read | Length of one pass in seconds, the sum of the frame durations, or in ticks for an animation that counts them. |
+| `cycleDuration` | number | read | Length of one full cycle in seconds or ticks. It equals `duration`, except on ping-pong animations, whose cycle also covers the way back without repeating the end frames. |
+| `countsTicks` | boolean | read | Whether the frames count ticks, so the animation advances with `animator:step`. |
 | `frameCount` | integer | read | Number of frames. |
 | `texture` | Texture | read | Texture the frames come from. |
 | `loop` | string | read and write | Loop mode. |
@@ -131,9 +179,27 @@ An `Animation` is a value that holds a texture, a list of frames with their dura
 
 Returns the source `Rect` of frame `index`, counting from 1. An index outside the animation raises `frame index out of range`.
 
-### anim:frameAt(seconds)
+### anim:frameAt(time)
 
-Returns the frame number, counting from 1, that the animation shows `seconds` after it starts, following its loop mode.
+Returns the frame number, counting from 1, that the animation shows `time` seconds, or ticks, after it starts, following its loop mode.
+
+### anim:frameData(index)
+
+Returns the frame `index`, counting from 1, as a table with `source`, `offset`, `originalSize`, `duration`, `ticks`, `pivot` (a `Vec2`, absent without one), `boxes`, `points` and `events`, in the shape `fromFrames` takes them. An index outside the animation raises `frame index out of range`.
+
+### anim:addEvent(index, name)
+
+Adds the event `name` to the frame `index`, counting from 1, which an animator that plays the animation reports with `onEvent`. An animator keeps the copy it received, so add events before `animator:add`.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+
+local walk = animation2d.fromGrid(assets.texture('sprites/knight/run.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
+walk:addEvent(2, 'step')
+walk:addEvent(6, 'step')
+print(walk:frameData(2).events[1], walk:frameData(1).source.width)
+```
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -161,7 +227,8 @@ An `Animator` plays named animations and applies the current frame to sprites. I
 | `queuedCount` | integer | read | Number of animations waiting in the queue. |
 | `speed` | number | read and write | Playback speed multiplier. Defaults to 1. |
 | `pivotX`, `pivotY` | number | read and write | Pivot that `apply` gives sprites, as a fraction of the untrimmed frame. Default to 0.5. |
-| `onFrame` | function or nil | read and write | Called when the frame changes. |
+| `onFrame` | function or nil | read and write | Called for every frame the animation enters. |
+| `onEvent` | function or nil | read and write | Called for every event of a frame the animation enters. |
 | `onFinish` | function or nil | read and write | Called when a one-shot animation ends. |
 
 ### animator:add(name, anim)
@@ -249,11 +316,32 @@ animator:clearQueue()
 
 ### animator:update(dt)
 
-Advances the current animation by `dt` seconds times `speed`, calls `onFrame` and `onFinish`, and starts the next queued animation when the current pass ends. Errors raised by the callbacks propagate out of `update`.
+Advances the current animation by `dt` seconds times `speed`, calls `onFrame` and `onEvent` for every frame it enters, in order, even the frames a long update passes, and `onFinish`, and starts the next queued animation when the current pass ends. The events of the first frame run with the first update after an animation starts. A looping animation that a single update moves more than two cycles reports only the frames of its last two cycles. A callback that plays another animation stops the reports of the old one. Errors raised by the callbacks propagate out of `update`, and an animation that counts ticks raises `The animation "<name>" counts ticks, so it advances with "step".`.
+
+### animator:step(ticks)
+
+Advances an animation that counts ticks by `ticks` whole steps, 1 by default, times `speed`, with the same callbacks as `update`, so a game on a fixed step plays its frames exactly. An animation that counts seconds raises `The animation "<name>" counts seconds, so it cannot step by ticks.`.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local scene = require('haylen.scene')
+
+local sheet = assets.texture('fighters/brawler.png')
+local animator = animation2d.newAnimator()
+animator:add('jab', animation2d.fromGrid(sheet, {frameWidth = 240, frameHeight = 240, cells = {1, 2, 3}, ticksPerFrame = 2, loop = 'once'}))
+animator:play('jab')
+
+scene.push({
+    fixedUpdate = function(self, step)
+        animator:step(1)
+    end,
+})
+```
 
 ### animator:apply(sprite)
 
-Sets the texture, source, width, height and pivot of `sprite` from the current frame. The pivot follows `pivotX` and `pivotY` in the untrimmed frame, so trimmed atlas frames stay in place. Position, scale, rotation, color and flips stay untouched. Without a current animation it does nothing.
+Sets the texture, source, width, height and pivot of `sprite`, or of the sprite a [`Node`](nodes2d.md#node) shows, from the current frame. The pivot is the pivot of the frame, or `pivotX` and `pivotY` in the untrimmed frame, so trimmed atlas frames stay in place, and it mirrors where the sprite flips, so a flipped character stays on its feet. Position, scale, rotation, color and flips stay untouched. Without a current animation it does nothing.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -281,13 +369,53 @@ scene.push({
 })
 ```
 
+### animator:box(name, sprite)
+
+Returns the box `name` of the current frame as a `Rect` in the coordinates of the sprite, a `Sprite` or a `Node` that shows one, placed, sized, scaled, turned and flipped as the sprite draws, or `nil` when the frame has no such box. A turned box returns the rectangle around its corners.
+
+### animator:point(name, sprite)
+
+Returns the `x` and `y` of the point `name` of the current frame placed through the sprite, or `nil` when the frame has no such point.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local atlas = assets.load('units/archer.json', 'atlas')
+local archer = graphics2d.newSprite(atlas.texture, {x = 300, y = 400})
+local animator = animation2d.newAnimator()
+animator:add('shoot', atlas:animation('shoot'))
+animator:play('shoot')
+
+scene.push({
+    update = function(self, dt)
+        animator:update(dt)
+        animator:apply(archer)
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        archer:draw()
+        local x, y = animator:point('muzzle', archer)
+        if x then
+            graphics2d.drawCircle(x, y, 4, '#FFFFE040')
+        end
+    end,
+})
+```
+
 ## Events
 
 Callbacks are assigned to the animator's properties and run inside `animator:update`. Assign `nil` to remove one, and assigning anything other than a function or `nil` raises an error. A callback that captures its own animator does not keep it alive forever.
 
 ### animator.onFrame(name, frame)
 
-Called with the animation name and the new frame number, counting from 1, each time the shown frame changes. It is not called for the first frame when an animation starts.
+Called with the animation name and the frame number, counting from 1, for every frame the animation enters, in order. It is not called for the first frame when an animation starts.
+
+### animator.onEvent(name, event, frame)
+
+Called with the animation name, the event name and the frame number, counting from 1, for every event of every frame the animation enters, in order, including the first frame on the first update after the animation starts.
 
 ### animator.onFinish(name)
 
@@ -373,13 +501,18 @@ Describes the frame `name` with a table of these fields. An unknown name raises 
 | `offset` | Vec2 | Where the trimmed rectangle starts inside the original frame. It is zero for untrimmed frames. |
 | `originalSize` | Vec2 | Size of the frame before trimming. |
 | `duration` | number | Frame duration in seconds. |
+| `ticks` | integer | 0, since atlas frames count seconds. |
+| `pivot` | Vec2 or nil | The pivot that a box slice gives the frame. |
+| `boxes` | table | The boxes of the frame, each `{name, x, y, width, height}`. |
+| `points` | table | The points of the frame, each `{name, x, y}`. |
+| `events` | table | The events of the frame. |
 
 ```lua
 local assets = require('haylen.assets')
 
 local atlas = assets.load('ui/hero.json', 'atlas')
 local frame = atlas:frame('hero 0')
-print(frame.source.width, frame.offset.x, frame.originalSize.x, frame.duration)
+print(frame.source.width, frame.offset.x, frame.originalSize.x, frame.duration, #frame.boxes, #frame.events)
 ```
 
 ### atlas:animation(name)

@@ -14,7 +14,7 @@
 
 namespace haylen::animation2d {
 
-// Frames packed into one texture by TexturePacker or Aseprite. Aseprite frame tags become animations and slices with a nine-slice center become nine-slices.
+// Frames packed into one texture by a sprite sheet packer or a pixel art editor. Frame tags become animations, slices with a nine-slice center become nine-slices, and the other slices become the boxes, points and pivots of the frames their keys cover, while the user data of a frame names its events.
 class SpriteAtlas final {
   public:
     // Reads the hash and array JSON layouts. The document keeps its keys in file order, because Aseprite tags count frames by their position in the file. Rotated frames and tags that repeat a fixed number of times above one are rejected.
@@ -50,6 +50,7 @@ class SpriteAtlas final {
     [[nodiscard]] static math::Rect readRect(const Document& value);
     [[nodiscard]] static SpriteFrame readFrame(const Document& entry);
     [[nodiscard]] static Animation::Loop readTagLoop(const Document& tag);
+    void readFrameSlice(const Document& slice);
 
     graphics::Texture texture;
     std::map<std::string, SpriteFrame, std::less<>> frames;

@@ -1,5 +1,6 @@
 set(HAYLEN_TEST_SOURCES
   2d/animation/Animation2DTests.cpp
+  2d/animation/FrameDataTests.cpp
   2d/graphics/CameraTests.cpp
   2d/graphics/Graphics2DLuaTests.cpp
   2d/graphics/NineSliceTests.cpp

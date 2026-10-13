@@ -1,0 +1,145 @@
+{
+    "frames": [
+        {
+            "filename": "punch 0",
+            "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 96,
+                "h": 96
+            },
+            "duration": 120
+        },
+        {
+            "filename": "punch 1",
+            "frame": {
+                "x": 96,
+                "y": 0,
+                "w": 96,
+                "h": 96
+            },
+            "duration": 120
+        },
+        {
+            "filename": "punch 2",
+            "frame": {
+                "x": 192,
+                "y": 0,
+                "w": 96,
+                "h": 96
+            },
+            "duration": 120,
+            "data": "swing"
+        },
+        {
+            "filename": "punch 3",
+            "frame": {
+                "x": 288,
+                "y": 0,
+                "w": 96,
+                "h": 96
+            },
+            "duration": 200
+        }
+    ],
+    "meta": {
+        "image": "fighter.png",
+        "size": {
+            "w": 384,
+            "h": 96
+        },
+        "frameTags": [
+            {
+                "name": "punch",
+                "from": 0,
+                "to": 3,
+                "direction": "forward"
+            }
+        ],
+        "slices": [
+            {
+                "name": "body",
+                "keys": [
+                    {
+                        "frame": 0,
+                        "bounds": {
+                            "x": 30,
+                            "y": 8,
+                            "w": 34,
+                            "h": 84
+                        },
+                        "pivot": {
+                            "x": 18,
+                            "y": 84
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "hit",
+                "keys": [
+                    {
+                        "frame": 2,
+                        "bounds": {
+                            "x": 76,
+                            "y": 34,
+                            "w": 20,
+                            "h": 20
+                        }
+                    },
+                    {
+                        "frame": 3,
+                        "bounds": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 0,
+                            "h": 0
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "hand",
+                "data": "point",
+                "keys": [
+                    {
+                        "frame": 0,
+                        "bounds": {
+                            "x": 60,
+                            "y": 42,
+                            "w": 4,
+                            "h": 4
+                        }
+                    },
+                    {
+                        "frame": 1,
+                        "bounds": {
+                            "x": 67,
+                            "y": 42,
+                            "w": 4,
+                            "h": 4
+                        }
+                    },
+                    {
+                        "frame": 2,
+                        "bounds": {
+                            "x": 85,
+                            "y": 42,
+                            "w": 4,
+                            "h": 4
+                        }
+                    },
+                    {
+                        "frame": 3,
+                        "bounds": {
+                            "x": 74,
+                            "y": 42,
+                            "w": 4,
+                            "h": 4
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+}

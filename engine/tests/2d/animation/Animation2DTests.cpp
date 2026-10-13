@@ -119,7 +119,7 @@ TEST_F(AnimatorTest, PlaysAnimationsAndReportsProgress) {
     animator.update(1.0F);
     EXPECT_TRUE(animator.isFinished());
     EXPECT_FALSE(animator.isPlaying());
-    EXPECT_EQ(events, (std::vector<std::string>{"run:1", "attack:2", "attack:3", "attack:done"}));
+    EXPECT_EQ(events, (std::vector<std::string>{"run:1", "attack:1", "attack:2", "attack:3", "attack:done"}));
 
     graphics2d::Sprite sprite;
     animator.apply(sprite);
