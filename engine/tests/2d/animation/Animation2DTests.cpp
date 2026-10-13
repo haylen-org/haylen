@@ -90,6 +90,17 @@ TEST_F(AnimationTest, CutsGridsAndPicksFramesOverTime) {
     EXPECT_EQ(animation2d::Animation::loopName(animation2d::Animation::Loop::Once), "once");
 }
 
+// A time that rounding puts at the end of a pass still gets a later change, so an animator that walks the changes never stops at it.
+TEST_F(AnimationTest, FindsALaterChangeAtTheRoundedEndOfAPass) {
+    Animation animation;
+    animation.frames.resize(2);
+    for (SpriteFrame& frame : animation.frames) {
+        frame.duration = 1.0F / 5.0F;
+    }
+    const float time = 84000 * 0.0001F;
+    EXPECT_GT(animation.getNextChange(time).time, time);
+}
+
 TEST_F(AnimatorTest, PlaysAnimationsAndReportsProgress) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));

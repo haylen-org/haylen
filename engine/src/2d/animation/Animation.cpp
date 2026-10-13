@@ -158,17 +158,21 @@ Animation::Change Animation::getNextChange(float time) const noexcept {
         return {.time = std::numeric_limits<float>::infinity(), .frame = count - 1};
     }
 
-    const float start = loop == Loop::Once ? 0.0F : std::floor(clamped / cycle) * cycle;
+    // Rounding can place the time at the end of the pass that the division picks, so the change then comes from the pass after it, and a change is always later than the time.
+    float start = loop == Loop::Once ? 0.0F : std::floor(clamped / cycle) * cycle;
     const std::size_t steps = loop == Loop::PingPong ? count * 2 - 2 : count;
     const auto frameOf = [count](std::size_t step) { return step < count ? step : count * 2 - 2 - step; };
-    float end = start;
-    for (std::size_t step = 0; step < steps; ++step) {
-        end += getLength(frameOf(step));
-        if (end > clamped) {
-            return {.time = end, .frame = step + 1 < steps ? frameOf(step + 1) : 0};
+    for (int pass = 0; pass < 2; ++pass) {
+        float end = start;
+        for (std::size_t step = 0; step < steps; ++step) {
+            end += getLength(frameOf(step));
+            if (end > clamped) {
+                return {.time = end, .frame = step + 1 < steps ? frameOf(step + 1) : 0};
+            }
         }
+        start = end;
     }
-    return {.time = start + cycle, .frame = frameOf(1)};
+    return {.time = std::nextafter(clamped, std::numeric_limits<float>::infinity()), .frame = frameOf(1)};
 }
 
 } // namespace haylen::animation2d
