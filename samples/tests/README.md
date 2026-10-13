@@ -337,6 +337,7 @@ The keyboard, the mouse, touches, gestures, gamepads, the action map, remapping,
 | `INP-007` | Remapping | Rebinding the controls with key captures, kept in the preferences for the next launch. |  |
 | `INP-008` | Touch controls | A touch stick in its fixed, floating and following modes and touch buttons that drive virtual inputs of the action map. |  |
 | `INP-009` | Character | A small platformer hero that every device moves at the same time, with prompts for the last device. |  |
+| `INP-010` | Fixed steps | Presses counted in frames and in fixed steps at several time scales, where step edges count each press once, and a jump buffer that catches a press made just before landing. |  |
 
 #### Physics (PHY)
 

@@ -310,6 +310,7 @@ void Engine::frame(double frameSeconds) {
             const auto step = static_cast<float>(current.clock.getFixedStep());
             while (current.clock.consumeFixedStep()) {
                 const debug::ProfileScope scope(profiler, "fixedUpdate");
+                current.actions.beginStep(step);
                 current.scenes->fixedUpdate(current.clock);
                 current.tweens.fixedUpdate(current.clock);
                 for (std::size_t index = 0; index < plugins; ++index) {

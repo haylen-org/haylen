@@ -8,7 +8,7 @@ local input = require('haylen.input')
 
 ## Frame timing
 
-The engine updates device state and the action map once at the start of every frame from the events that arrived before it. States such as `keyPressed`, `mouseReleased`, `gamepadPressed` and the action `pressed` stay `true` for that whole frame, in every scene callback, and are `false` again on the next frame. Read edges in `update`, because `fixedUpdate` can run zero or several times in one frame. Positions are in design coordinates, the coordinate space set by `design` in `app.json`.
+The engine updates device state and the action map once at the start of every frame from the events that arrived before it. States such as `keyPressed`, `mouseReleased`, `gamepadPressed` and the action `pressed` stay `true` for that whole frame, in every scene callback, and are `false` again on the next frame. Read frame edges in `update`, because `fixedUpdate` can run zero or several times in one frame, and read actions in `fixedUpdate` with the step functions [`input.stepPressed()`](#inputsteppressedaction), [`input.stepReleased()`](#inputstepreleasedaction) and [`input.stepDown()`](#inputstepdownaction), which give each press to exactly one fixed step. Positions are in design coordinates, the coordinate space set by `design` in `app.json`.
 
 ## Keyboard
 
@@ -793,12 +793,12 @@ Bindings are strings with a source and a name.
 
 Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released for a press the interface took, as [`input.pointerCaptured()`](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [`input.keyCaptured()`](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [`haylen.scene`](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
 
-An action map document is a table or a JSON file with an `actions` list. Each action has `name`, `type` and the binding lists its type uses.
+An action map document is a table or a JSON file with an `actions` list. Each action has `name`, `type` and the binding lists its type uses, and an optional `buffer` in seconds, 0 by default, which keeps a press available to [`input.consumePress()`](#inputconsumepressaction) for that long after the first fixed step that saw it. A buffer that is not a number from 0 raises `The buffer of an action must be a number of seconds from 0.`.
 
 ```json
 {
   "actions": [
-    {"name": "jump", "type": "button", "bindings": ["key:space", "key:w", "button:south", "virtual:jump"]},
+    {"name": "jump", "type": "button", "bindings": ["key:space", "key:w", "button:south", "virtual:jump"], "buffer": 0.12},
     {"name": "throttle", "type": "axis", "positive": ["key:up", "axis:rightTrigger+"], "negative": ["key:down", "axis:leftTrigger+"]},
     {"name": "move", "type": "vector", "up": ["key:w"], "down": ["key:s"], "left": ["key:a", "key:left"], "right": ["key:d", "key:right"], "bindings": ["stick:left", "virtualStick:move"]}
   ]
@@ -987,6 +987,76 @@ scene.push({
 })
 ```
 
+### input.stepPressed(action)
+
+Returns `true` in the fixed step that first comes after the action went down. Every press reaches exactly one step, also when its frame runs no step or several steps, so a simulation in `fixedUpdate` never misses a press or sees it twice. A press and a release that arrive before the same step count as a press in that step and a release in the next one.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    attacks = 0,
+    fixedUpdate = function(self, step)
+        if input.stepPressed('attack') then
+            self.attacks = self.attacks + 1
+        end
+    end,
+})
+```
+
+### input.stepReleased(action)
+
+Returns `true` in the fixed step that first comes after the action went up.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    fixedUpdate = function(self, step)
+        if input.stepReleased('jump') and self.rising then
+            self.velocity = self.velocity * 0.5
+        end
+    end,
+})
+```
+
+### input.stepDown(action)
+
+Returns `true` while the action is down in the current fixed step, and also in the step after a press that was released before any step saw it, so a tap shorter than a step still holds the action for one step.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    charge = 0,
+    fixedUpdate = function(self, step)
+        self.charge = input.stepDown('fire') and self.charge + step or 0
+    end,
+})
+```
+
+### input.consumePress(action)
+
+Returns `true` once for each press of the action and takes the press, so the next call returns `false` until the action goes down again. A press stays available from its frame until the end of the first fixed step after it, plus the `buffer` of the action beyond that step, measured in fixed steps, which is the usual jump buffer. It works in `update` and in `fixedUpdate`, and input that a scene change holds back drops the press.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+input.defineAction({name = 'jump', type = 'button', bindings = {'key:space', 'button:south'}, buffer = 0.12})
+
+scene.push({
+    fixedUpdate = function(self, step)
+        if self.grounded and input.consumePress('jump') then
+            self.velocity = -520
+        end
+    end,
+})
+```
+
 ### input.setGamepadIndex(index)
 
 Makes gamepad bindings read only the gamepad at `index`, from 1 to 4, which suits local multiplayer. Passing `nil` reads every gamepad again.
@@ -1146,7 +1216,7 @@ scene.push({
 | `Expected the action map to be a JSON object.` | An action map document is not a table with string keys. |
 | `Expected an action to be a JSON object.` | An entry of the `actions` list is not a table with string keys. |
 | `Unknown key "<key>" in the action map.` | An action map document has a key other than `actions`. |
-| `Unknown key "<key>" in an action.` | An action has a key other than `name`, `type` and the binding lists. |
+| `Unknown key "<key>" in an action.` | An action has a key other than `name`, `type`, `buffer` and the binding lists. |
 | `The action map needs a list of actions.` | An action map document has no `actions` list. |
 | `An action needs a name and a type.` | An action lacks a string `name` or `type`. |
 | `The type of an action must be "button", "axis" or "vector", not "<type>".` | An action type is not `button`, `axis` or `vector`. |
@@ -1155,3 +1225,4 @@ scene.push({
 | `The <type> action "<name>" does not read "<list>".` | An action has a binding list its type never reads. |
 | `The vector action "<name>" takes only sticks in "bindings", not "<binding>".` | The `bindings` of a vector action hold something other than a stick. |
 | `The action name "<name>" is used by more than one action.` | Two actions of an action map document have the same name. |
+| `The buffer of an action must be a number of seconds from 0.` | The `buffer` of an action is not a number or is negative. |

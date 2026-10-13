@@ -7,6 +7,7 @@
 #include <tuple>
 #include <utility>
 
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/input/Controls.hpp"
 #include "haylen/input/Input.hpp"
@@ -118,7 +119,7 @@ std::string_view ActionMap::Action::typeName(Type value) noexcept {
 }
 
 ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
-    core::JsonValidator::requireKnownKeys(json, {"name", "type", "bindings", "positive", "negative", "up", "down", "left", "right"}, "an action");
+    core::JsonValidator::requireKnownKeys(json, {"name", "type", "bindings", "positive", "negative", "up", "down", "left", "right", "buffer"}, "an action");
     const auto nameField = json.find("name");
     const auto typeField = json.find("type");
     if (nameField == json.end() || !nameField->is_string() || typeField == json.end() || !typeField->is_string()) {
@@ -127,6 +128,14 @@ ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
     const std::optional<Type> actionType = typeFromName(typeField->get<std::string>());
     if (!actionType) {
         throw std::invalid_argument("The type of an action must be \"button\", \"axis\" or \"vector\", not \"" + typeField->get<std::string>() + "\".");
+    }
+
+    float buffer = 0.0F;
+    if (const auto bufferField = json.find("buffer"); bufferField != json.end()) {
+        if (!bufferField->is_number() || !std::isfinite(bufferField->get<double>()) || bufferField->get<double>() < 0.0) {
+            throw std::invalid_argument("The buffer of an action must be a number of seconds from 0.");
+        }
+        buffer = bufferField->get<float>();
     }
 
     return {
@@ -139,6 +148,7 @@ ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
         .down = parseBindings(json, "down"),
         .left = parseBindings(json, "left"),
         .right = parseBindings(json, "right"),
+        .buffer = buffer,
     };
 }
 
@@ -151,6 +161,9 @@ core::Json ActionMap::Action::toJson() const {
         if (!list->empty()) {
             json[field] = saveBindings(*list);
         }
+    }
+    if (buffer > 0.0F) {
+        json["buffer"] = core::JsonNumber::fromFloat(buffer);
     }
     return json;
 }
@@ -380,6 +393,53 @@ void ActionMap::update(const Input& input, const VirtualInput& virtualInput, boo
         state.down = active && !state.held;
         state.pressed = state.down && !wasDown;
         state.released = !state.down && wasDown;
+        trackStepEdges(state, blocked);
+    }
+}
+
+// Frames without a fixed step keep their edges for the next step, and a second press before any step collapses into the first one.
+void ActionMap::trackStepEdges(State& state, bool blocked) noexcept {
+    if (blocked) {
+        state.pendingPress = false;
+        state.pendingRelease = false;
+        state.releaseAfterPress = false;
+        state.buffered = false;
+        return;
+    }
+    if (state.pressed) {
+        if (state.releaseAfterPress) {
+            state.pendingRelease = false;
+            state.releaseAfterPress = false;
+        }
+        state.pendingPress = true;
+        state.buffered = true;
+        state.bufferStepped = false;
+        state.bufferAge = 0.0F;
+    }
+    if (state.released) {
+        state.pendingRelease = true;
+        state.releaseAfterPress = state.pendingPress;
+    }
+}
+
+void ActionMap::beginStep(float stepSeconds) noexcept {
+    for (State& state : actions) {
+        state.stepPressed = state.pendingPress;
+        state.stepDown = state.down || state.pendingPress;
+        if (state.pendingPress && state.releaseAfterPress) {
+            state.stepReleased = false;
+            state.releaseAfterPress = false;
+        } else {
+            state.stepReleased = state.pendingRelease;
+            state.pendingRelease = false;
+        }
+        state.pendingPress = false;
+
+        if (state.buffered && state.bufferStepped) {
+            state.bufferAge += stepSeconds;
+            state.buffered = state.bufferAge <= state.action.buffer + kBufferTolerance;
+        }
+        state.bufferStepped = state.buffered;
     }
 }
 
@@ -474,6 +534,26 @@ float ActionMap::getValue(std::string_view name) const noexcept {
 math::Vec2 ActionMap::getVector(std::string_view name) const noexcept {
     const State* state = find(name);
     return state == nullptr ? math::Vec2{} : state->vector;
+}
+
+bool ActionMap::isStepPressed(std::string_view name) const noexcept {
+    const State* state = find(name);
+    return state != nullptr && state->stepPressed;
+}
+
+bool ActionMap::isStepReleased(std::string_view name) const noexcept {
+    const State* state = find(name);
+    return state != nullptr && state->stepReleased;
+}
+
+bool ActionMap::isStepDown(std::string_view name) const noexcept {
+    const State* state = find(name);
+    return state != nullptr && state->stepDown;
+}
+
+bool ActionMap::consumePress(std::string_view name) noexcept {
+    const auto found = std::find_if(actions.begin(), actions.end(), [name](const State& state) { return state.action.name == name; });
+    return found != actions.end() && std::exchange(found->buffered, false);
 }
 
 } // namespace haylen::input

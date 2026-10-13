@@ -8,7 +8,9 @@ This guide explains both levels, the virtual controls that on-screen touch contr
 
 The engine updates device state, gamepads, gestures and the action map once at the start of every frame from the events that arrived before it. Edge states such as `input.keyPressed`, `input.mouseReleased`, `input.gamepadPressed` and the action `input.pressed` stay true for that whole frame, in every scene callback, and are false again on the next frame.
 
-- Read edges in `update`. `fixedUpdate` can run zero or several times in one frame, so a press read there can be missed or seen twice.
+- Read frame edges in `update`. `fixedUpdate` can run zero or several times in one frame, so a frame edge read there can be missed or seen twice.
+- Read actions in `fixedUpdate` with `input.stepPressed`, `input.stepReleased` and `input.stepDown`. The engine moves the edges that arrived since the previous fixed step into the step state at the start of every step, so each press reaches exactly one step, the first one after it, whatever the frame rate, and a tap shorter than a step still holds the action for one step. What a step sees never depends on the frame rate, which simulations, replays and tick-exact games need.
+- `input.consumePress(action)` returns `true` once per press, in `update` or in `fixedUpdate`, and the `buffer` of an action keeps a press available for that many seconds of fixed steps, which is the usual jump buffer: a jump pressed just before landing still jumps.
 - Keys, modifier keys and mouse buttons held when the window loses focus or the app is suspended are released in that frame, and touches and gestures in progress are cancelled without producing taps or swipes, so a player never comes back to a stuck key.
 - A key that goes down and up again within one frame still counts as pressed by the actions bound to it.
 - Positions are in design coordinates, the space set by `design` in `app.json`. See [Rendering](rendering.md) for how design coordinates map to the screen.

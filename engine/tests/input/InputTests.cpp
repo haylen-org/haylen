@@ -546,6 +546,98 @@ TEST_F(ActionMapTest, GivesAKeyPressedAgainWithinAFrameToTheSideThatHoldsItNow) 
     EXPECT_TRUE(actions.isPressed("back"));
 }
 
+TEST_F(ActionMapTest, DeliversEachPressToExactlyOneFixedStep) {
+    ActionMap actions;
+    actions.define({.name = "jump", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("virtual:jump")}});
+    Input input;
+    VirtualInput virtualInput;
+    // clang-format off
+    const auto frame = [&](bool down) {
+        virtualInput.setButton("jump", down);
+        actions.update(input, virtualInput, false);
+    };
+    // clang-format on
+
+    // A press in a frame that runs no step reaches the first step of the next frame, and only that one.
+    frame(true);
+    EXPECT_FALSE(actions.isStepPressed("jump"));
+    frame(true);
+    actions.beginStep(1.0F / 30.0F);
+    EXPECT_TRUE(actions.isStepPressed("jump"));
+    EXPECT_TRUE(actions.isStepDown("jump"));
+    actions.beginStep(1.0F / 30.0F);
+    EXPECT_FALSE(actions.isStepPressed("jump"));
+    EXPECT_TRUE(actions.isStepDown("jump"));
+
+    // A tap within one frame holds the action for one step and releases it in the next one.
+    frame(false);
+    actions.beginStep(1.0F / 30.0F);
+    EXPECT_TRUE(actions.isStepReleased("jump"));
+    frame(true);
+    frame(false);
+    actions.beginStep(1.0F / 30.0F);
+    EXPECT_TRUE(actions.isStepPressed("jump"));
+    EXPECT_TRUE(actions.isStepDown("jump"));
+    EXPECT_FALSE(actions.isStepReleased("jump"));
+    actions.beginStep(1.0F / 30.0F);
+    EXPECT_FALSE(actions.isStepDown("jump"));
+    EXPECT_TRUE(actions.isStepReleased("jump"));
+    actions.beginStep(1.0F / 30.0F);
+    EXPECT_FALSE(actions.isStepReleased("jump"));
+
+    // Blocked input drops the edges that no step saw yet.
+    frame(true);
+    actions.update(input, virtualInput, true);
+    actions.beginStep(1.0F / 30.0F);
+    EXPECT_FALSE(actions.isStepPressed("jump"));
+    EXPECT_FALSE(actions.isStepDown("missing"));
+}
+
+TEST_F(ActionMapTest, ConsumesEachPressOnceWithinItsBuffer) {
+    ActionMap actions;
+    actions.load(core::Json::parse(R"({"actions": [{"name": "jump", "type": "button", "bindings": ["virtual:jump"], "buffer": 0.1}, {"name": "fire", "type": "button", "bindings": ["virtual:fire"]}]})"));
+    EXPECT_EQ(actions.save().at("actions").at(0).at("buffer"), 0.1);
+    EXPECT_FALSE(actions.save().at("actions").at(1).contains("buffer"));
+    Input input;
+    VirtualInput virtualInput;
+    virtualInput.setButton("jump", true);
+    virtualInput.setButton("fire", true);
+    actions.update(input, virtualInput, false);
+
+    // A press waits for the first step after it, and the buffer keeps it for its seconds of steps beyond that one.
+    constexpr float kStep = 1.0F / 60.0F;
+    actions.beginStep(kStep);
+    actions.beginStep(kStep);
+    EXPECT_FALSE(actions.consumePress("fire"));
+    for (int step = 0; step < 5; ++step) {
+        actions.beginStep(kStep);
+    }
+    EXPECT_TRUE(actions.consumePress("jump"));
+    EXPECT_FALSE(actions.consumePress("jump"));
+
+    virtualInput.clear();
+    actions.update(input, virtualInput, false);
+    virtualInput.setButton("jump", true);
+    actions.update(input, virtualInput, false);
+    for (int step = 0; step < 8; ++step) {
+        actions.beginStep(kStep);
+    }
+    EXPECT_FALSE(actions.consumePress("jump"));
+
+    // clang-format off
+    const auto message = [&actions](const char* document) {
+        try {
+            actions.load(core::Json::parse(document));
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+        return std::string();
+    };
+    // clang-format on
+    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button", "buffer": -1}]})"), "The buffer of an action must be a number of seconds from 0.");
+    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button", "buffer": "long"}]})"), "The buffer of an action must be a number of seconds from 0.");
+}
+
 TEST_F(ActionMapTest, RejectsInvalidDocuments) {
     ActionMap actions;
     EXPECT_THROW(actions.load(core::Json::parse(R"({"actions": [{"name": "a", "type": "trigger"}]})")), std::invalid_argument);

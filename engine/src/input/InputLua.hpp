@@ -94,6 +94,10 @@ class InputLua final {
     static int actionReleased(lua_State* L);
     static int actionValue(lua_State* L);
     static int actionVector(lua_State* L);
+    static int stepDown(lua_State* L);
+    static int stepPressed(lua_State* L);
+    static int stepReleased(lua_State* L);
+    static int consumePress(lua_State* L);
     static int setGamepadIndex(lua_State* L);
     static int setVirtualButton(lua_State* L);
     static int setVirtualStick(lua_State* L);

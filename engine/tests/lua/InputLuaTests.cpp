@@ -356,4 +356,35 @@ TEST_F(InputLuaTest, DefinesActionsOneByOne) {
     EXPECT_NE(lua("input.defineAction({name = 'x', type = 'button', hold = true})").find("Unknown key \"hold\" in an action."), std::string::npos);
 }
 
+TEST(InputStepLuaTest, CountsEveryPressOnceInFixedSteps) {
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "fixedRate": 30})"}});
+    // clang-format off
+    fixture.runLua(R"(
+        input = require('haylen.input')
+        local scene = require('haylen.scene')
+        input.loadActions({actions = {{name = 'attack', type = 'button', bindings = {'key:f'}, buffer = 0.1}}})
+        attacks, held, consumed = 0, 0, 0
+        scene.push({fixedUpdate = function()
+            if input.stepPressed('attack') then attacks = attacks + 1 end
+            if input.stepDown('attack') then held = held + 1 end
+        end})
+    )");
+    // clang-format on
+
+    // Taps at 120 frames a second reach one step of 30 a second each, and a tap in a slow frame that runs several steps reaches only the first. The first frame enters the scene, which holds input back.
+    fixture.frames(1, 0.0);
+    core::Engine& engine = fixture.engine();
+    for (int tap = 0; tap < 3; ++tap) {
+        engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = Key::F});
+        engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = Key::F});
+        fixture.frames(5, 1.0 / 120.0);
+    }
+    EXPECT_EQ(fixture.lua("return attacks .. ' ' .. held"), "3 3");
+    engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = Key::F});
+    fixture.frames(1, 1.0 / 10.0);
+    EXPECT_EQ(fixture.lua("return attacks .. ' ' .. held"), "4 6");
+    EXPECT_EQ(fixture.lua("return input.consumePress('attack') and not input.consumePress('attack')"), "true");
+    EXPECT_EQ(fixture.lua("return input.stepReleased('attack')"), "false");
+}
+
 } // namespace haylen::input

@@ -13,5 +13,6 @@ return {
         {code = 'INP-007', title = 'Remapping', description = 'Rebinding the controls with key captures, kept in the preferences for the next launch.', module = 'remap'},
         {code = 'INP-008', title = 'Touch controls', description = 'A touch stick in its fixed, floating and following modes and touch buttons that drive virtual inputs of the action map.', module = 'virtual'},
         {code = 'INP-009', title = 'Character', description = 'A small platformer hero that every device moves at the same time, with prompts for the last device.', module = 'character'},
+        {code = 'INP-010', title = 'Fixed steps', description = 'Presses counted in frames and in fixed steps at several time scales, where step edges count each press once, and a jump buffer that catches a press made just before landing.', module = 'steps'},
     },
 }
