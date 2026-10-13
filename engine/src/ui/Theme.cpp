@@ -12,6 +12,7 @@
 
 #include "haylen/core/JsonValidator.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/ImageLibrary.hpp"
 #include "ui/Scrollbar.hpp"
 
 namespace haylen::ui {
@@ -78,9 +79,15 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
         }
         options.filter = *filter;
     }
-    const graphics::Texture texture = loadTexture(value.at("image").get<std::string>(), options);
-
+    // An SVG document rasters while it draws, at the pixels its borders cover, so it loads no texture here.
+    const std::string& path = value.at("image").get_ref<const std::string&>();
     Image image;
+    const graphics::Texture texture = ImageLibrary::isVector(path) ? graphics::Texture{} : loadTexture(path, options);
+    if (ImageLibrary::isVector(path)) {
+        image.vector = path;
+        image.whole = !value.contains("pieces") && !value.contains("source");
+        image.borders = value.contains("slice") ? readInsets(value.at("slice"), "The slice of " + context) : math::Insets{};
+    }
     if (value.contains("pieces")) {
         const core::Json& pieces = value.at("pieces");
         if (!pieces.is_array() || pieces.size() != 9) {
@@ -91,7 +98,7 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
             rects[index] = readRect(pieces[index], "Each piece of " + context);
         }
         image.slice = graphics2d::NineSlice::fromPieces(texture, rects);
-    } else {
+    } else if (!image.whole) {
         const math::Rect source = value.contains("source") ? readRect(value.at("source"), "The source of " + context) : math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y};
         const math::Insets borders = value.contains("slice") ? readInsets(value.at("slice"), "The slice of " + context) : math::Insets{};
         image.slice = graphics2d::NineSlice::fromBorders(texture, source, borders);

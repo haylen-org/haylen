@@ -1,4 +1,4 @@
--- SVG documents as the pictures of components, rasterized for the pixels they cover so they stay sharp at every size and UI scale, buttons that tint their icons and pictures with rounded corners.
+-- SVG documents as the pictures of components, rasterized for the pixels they cover so they stay sharp at every size and UI scale, buttons that tint their icons, pictures with rounded corners and theme surfaces drawn from an SVG document.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -61,6 +61,13 @@ function SvgPictures:columns()
                 ui.avatar{image = SvgPictures.picture('heart'), size = 96},
             }}),
             layout.section('List rows', {ui.list{id = 'rows', items = items}}),
+            layout.section('Surfaces', {ui.row{gap = 16, wrap = true, style = {surfaces = {
+                panel = {image = SvgPictures.picture('frame'), slice = 28, padding = 18},
+                button = {image = SvgPictures.picture('frame'), slice = 28, scale = 0.5, padding = 6},
+            }},
+                ui.panel{id = 'framed', width = 260, ui.label{text = 'A panel framed by an SVG document', wrap = true, color = 'onAccent'}},
+                ui.button{id = 'framedButton', text = 'Framed button'},
+            }}),
         },
     }
 end

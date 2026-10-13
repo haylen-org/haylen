@@ -9,6 +9,7 @@
 #include <imgui_internal.h>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
@@ -185,6 +186,28 @@ TEST_F(ImageLibraryTest, PlacesTheIconOfAButtonAboveItsLabelOrWithTheContentAtTh
     EXPECT_THROW(gui->set("tab", {{"iconPlacement", "bottom"}}), std::invalid_argument);
     EXPECT_THROW(gui->set("tab", {{"justify", "spaceBetween"}}), std::invalid_argument);
     EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
+TEST_F(ImageLibraryTest, PaintsThemeSurfacesWithSvgDocuments) {
+    getUi().setTheme(getUi().addTheme(getEngine(), core::Json::parse(R"({"name": "vector", "surfaces": {"panel": {"image": "icons/square.svg", "slice": 20, "scale": 2, "padding": 8}}})"), "dark"));
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "panel", "id": "box", "width": 400, "height": 300, "children": [{"kind": "label", "id": "inside", "text": "Inside"}]}]})");
+
+    // The raster covers the pixels of the borders at their scale, and the frame draws with it.
+    const float pixels = 2.0F * getUi().getBackend().getDensity().x;
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getContext().getImageAtScale("icons/square.svg", pixels).isValid(); }));
+    frames(2);
+    getUi().getBackend().makeCurrent();
+    const ImTextureID raster = getContext().getTextureReference(getContext().getImageAtScale("icons/square.svg", pixels)).GetTexID();
+    const ImVector<ImDrawCmd>& commands = ImGui::FindWindowByName("##haylen-guis")->DrawList->CmdBuffer;
+    EXPECT_TRUE(std::any_of(commands.begin(), commands.end(), [raster](const ImDrawCmd& command) { return command.TexRef._TexID == raster; }));
+    EXPECT_GE(getBounds(*gui, "inside").x - getBounds(*gui, "box").x, 8.0F);
+    EXPECT_EQ(getFixture().lua("local panel = require('haylen.ui').themeSurface('panel') return panel.vector .. ' ' .. tostring(panel.slice ~= nil) .. ' ' .. string.format('%.2f', panel.scale * panel.slice.texture.width / 100)"), "icons/square.svg true 2.00");
+    EXPECT_EQ(getEngine().getError(), nullptr);
+
+    // Borders that do not fit inside the document stop the app once it loaded.
+    getUi().setTheme(getUi().addTheme(getEngine(), core::Json::parse(R"({"name": "wide", "surfaces": {"panel": {"image": "icons/square.svg", "slice": 60}}})"), "dark"));
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getEngine().getError() != nullptr; }));
+    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The borders of a nine-slice must fit inside its source rectangle"), std::string::npos);
 }
 
 TEST_F(ImageLibraryTest, ReportsSvgDocumentsThatFailToLoad) {

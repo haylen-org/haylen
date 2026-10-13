@@ -6,6 +6,7 @@
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/ui/PropertyReader.hpp"
+#include "ui/ImageLibrary.hpp"
 
 namespace haylen::ui {
 
@@ -97,7 +98,7 @@ void Style::readFonts(Style& style, const core::Json& section, const std::string
     }
 }
 
-// A surface waits for its texture, so the image is made and kept once the loader hands over a texture that arrived.
+// A surface waits for its texture, so the image is made and kept once the loader hands over a texture that arrived. An SVG surface rasters while it draws and waits for nothing.
 const Theme::Image* Style::findSurface(Theme::Surface role, const Theme::TextureLoader& loadTexture) const {
     const std::optional<Surface>& surface = surfaces[static_cast<std::size_t>(role)];
     if (!surface || surface->definition.is_null()) {
@@ -108,7 +109,8 @@ const Theme::Image* Style::findSurface(Theme::Surface role, const Theme::Texture
         if (const auto filter = surface->definition.find("filter"); filter != surface->definition.end() && filter->is_string()) {
             options.filter = graphics::Texture::filterFromName(filter->get_ref<const std::string&>()).value_or(options.filter);
         }
-        if (!loadTexture(surface->definition.at("image").get_ref<const std::string&>(), options).isValid()) {
+        const std::string& path = surface->definition.at("image").get_ref<const std::string&>();
+        if (!ImageLibrary::isVector(path) && !loadTexture(path, options).isValid()) {
             return nullptr;
         }
         surface->image = Theme::readImage(surface->definition, surface->context, loadTexture);

@@ -23,19 +23,47 @@ void Surfaces::drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rec
 
 // The frame draws through the 2D renderer at its place among the ImGui draws of the window, so its pieces lay out and sample like every other nine-slice, and the transform of the node moves them like the vertices around them.
 void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const math::Rect& bounds, math::Color fill) {
-    if (!image.slice.isValid() || bounds.isEmpty()) {
+    if (bounds.isEmpty()) {
         return;
     }
-
     const Context::Reshape shape = context.getReshape();
+    const bool vector = !image.vector.empty();
+    const Frame raster = vector ? rasterSlice(context, image) : Frame{};
+    const graphics2d::NineSlice& slice = vector ? raster.slice : image.slice;
+    if (!slice.isValid()) {
+        return;
+    }
     const math::Color tinted = (image.colorize ? image.tint * fill : image.tint) * shape.color;
     const math::Color color = tinted.withAlpha(tinted.a * ImGui::GetStyle().Alpha);
 
     // The command of the draw carries the texture of the frame, so the draw list of the window tells which image it shows where, like its other commands.
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.PushTexture(context.getTextureReference(image.slice.texture));
-    context.getBackend().addNineSlice(image.slice, bounds, image.scale, shape.scale, shape.offset, color);
+    list.PushTexture(context.getTextureReference(slice.texture));
+    context.getBackend().addNineSlice(slice, bounds, vector ? raster.scale : image.scale, shape.scale, shape.offset, color);
     list.PopTexture();
+}
+
+// An SVG surface takes the raster that covers the pixels of its borders on the screen, with its regions moved from the units of the document to the pixels of the raster and the border scale that keeps their size, so its corners stay sharp at every scale and density.
+Surfaces::Frame Surfaces::rasterSlice(Context& context, const Theme::Image& image) {
+    const Context::Reshape shape = context.getReshape();
+    const math::Vec2 natural = context.getImageSize(image.vector);
+    if (natural.x <= 0.0F || natural.y <= 0.0F) {
+        return {};
+    }
+    const math::Vec2 density = context.getBackend().getDensity();
+    const float pixels = image.scale * std::max(std::fabs(shape.scale.x) * density.x, std::fabs(shape.scale.y) * density.y);
+    graphics::Texture texture = context.getImageAtScale(image.vector, pixels);
+    if (!texture.isValid()) {
+        return {};
+    }
+    const math::Vec2 ratio = texture.getSize() / natural;
+    graphics2d::NineSlice slice = image.whole ? graphics2d::NineSlice::fromBorders({}, {0.0F, 0.0F, natural.x, natural.y}, image.borders) : image.slice;
+    for (math::Rect& piece : slice.pieces) {
+        piece = {piece.x * ratio.x, piece.y * ratio.y, piece.width * ratio.x, piece.height * ratio.y};
+    }
+    slice.texture = std::move(texture);
+    slice.fill = image.slice.fill;
+    return {.slice = std::move(slice), .scale = image.scale / ratio.x};
 }
 
 // The border runs inside the edge of the surface, so it never reaches past its bounds and follows its corners exactly.

@@ -5,17 +5,17 @@
 
 #include <imgui.h>
 
+#include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/ui/Context.hpp"
 #include "haylen/ui/Theme.hpp"
 
 namespace haylen::ui {
-
-class Context;
 
 // Paints theme surfaces, shapes and pictures. A surface uses the theme image when the theme has one, and otherwise a rounded rectangle in the flat colors, drawn like every curve of the UI as a shape whose edges fade over one pixel of the screen.
 class Surfaces final {
@@ -46,6 +46,15 @@ class Surfaces final {
     [[nodiscard]] static math::Insets getFrame(Context& context, Theme::Surface role);
     static void drawNineSlice(Context& context, const Theme::Image& image, const math::Rect& bounds, math::Color fill);
     static void drawImage(Context& context, const graphics::Texture& texture, const math::Rect& bounds, math::Color tint = math::Color::white(), math::Rect source = {}, float radius = 0.0F);
+
+    // A nine-slice ready to draw and the scale of its borders.
+    struct Frame {
+        graphics2d::NineSlice slice;
+        float scale = 1.0F;
+    };
+
+    // Returns the nine-slice of an SVG surface from the raster that covers the pixels of its borders under the transforms around it, or an empty slice while the raster loads.
+    [[nodiscard]] static Frame rasterSlice(Context& context, const Theme::Image& image);
 
   private:
     static void drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, ImU32 color, float radius);

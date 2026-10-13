@@ -40,6 +40,7 @@
 #include "ui/CollectionLua.hpp"
 #include "ui/ImageLibrary.hpp"
 #include "ui/MountLink.hpp"
+#include "ui/Surfaces.hpp"
 #include "ui/TransformLua.hpp"
 
 namespace haylen::lua {
@@ -739,11 +740,22 @@ int UiLua::themeSurface(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
-    lua_createtable(L, 0, 5);
-    lua::Stack::push(L, image->slice);
-    lua_setfield(L, -2, "slice");
-    lua::Stack::push(L, image->scale);
-    lua_setfield(L, -2, "scale");
+    lua_createtable(L, 0, 6);
+    if (image->vector.empty()) {
+        lua::Stack::push(L, image->slice);
+        lua_setfield(L, -2, "slice");
+        lua::Stack::push(L, image->scale);
+        lua_setfield(L, -2, "scale");
+    } else if (const Surfaces::Frame raster = Surfaces::rasterSlice(getPlugin(L).getContext(), *image); raster.slice.isValid()) {
+        lua::Stack::push(L, raster.slice);
+        lua_setfield(L, -2, "slice");
+        lua::Stack::push(L, raster.scale);
+        lua_setfield(L, -2, "scale");
+    }
+    if (!image->vector.empty()) {
+        lua::Stack::push(L, image->vector);
+        lua_setfield(L, -2, "vector");
+    }
     lua::Stack::push(L, std::vector<float>{image->padding.top, image->padding.right, image->padding.bottom, image->padding.left});
     lua_setfield(L, -2, "padding");
     lua::Stack::push(L, image->tint);

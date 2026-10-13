@@ -254,7 +254,7 @@ print(ui.themeImageFilter())
 
 ### ui.themeSurface(surface)
 
-Returns the image the active theme paints a [surface](#theme-surfaces) with, or `nil` when the theme paints it with flat colors. The table holds `slice`, a `haylen.NineSlice` for `graphics2d.drawNineSlice`, `scale`, `padding` as `{top, right, bottom, left}`, `tint`, a `haylen.Color`, and `colorize`. An unknown surface raises `The theme has no surface named "<surface>".`
+Returns the image the active theme paints a [surface](#theme-surfaces) with, or `nil` when the theme paints it with flat colors. The table holds `slice`, a `haylen.NineSlice` for `graphics2d.drawNineSlice`, `scale`, `padding` as `{top, right, bottom, left}`, `tint`, a `haylen.Color`, and `colorize`. A surface drawn from an SVG document also holds its path as `vector`, and its `slice` and `scale` come from the raster that covers its borders on the screen at this moment, without `slice` while that raster loads. An unknown surface raises `The theme has no surface named "<surface>".`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -3269,7 +3269,7 @@ A surface image is an object with these keys.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `image` | string | required | Texture path relative to the package `content/` folder. |
+| `image` | string | required | Texture path relative to the package `content/` folder, or an SVG document, which the UI rasters for the pixels its borders cover on the screen at every scale and density, so its corners stay sharp. The regions of an SVG document are in its own units, `source` defaults to the whole document, and it draws with the `imageFilter` of the theme instead of `filter`. |
 | `source` | `[x, y, width, height]` | whole texture | Region of the texture that holds the frame. |
 | `slice` | insets | `0` | Border sizes cut from `source`, as one, two or four numbers like padding. |
 | `pieces` | list of nine `[x, y, width, height]` | none | The nine regions given one by one instead of `source` and `slice`, in reading order: top left, top, top right, left, center, right, bottom left, bottom and bottom right. |
@@ -3280,7 +3280,7 @@ A surface image is an object with these keys.
 | `filter` | string | `'nearest'` | Texture filter, `'nearest'` or `'linear'`. |
 | `fill` | string | `'stretch'` | Either `'stretch'` or `'tile'` for the edges and the center. |
 
-A surface image raises `The image of the theme surface "<name>" must be a path.`, `The filter of the theme surface "<name>" must be "nearest" or "linear".`, `The fill of the theme surface "<name>" must be "stretch" or "tile".`, `The "colorize" of the theme surface "<name>" must be "true" or "false".`, `The pieces of the theme surface "<name>" must hold nine rectangles.`, `The source of the theme surface "<name>" must be four numbers: x, y, width and height.` or `The tiled edges and center of the theme surface "<name>" must each be at least 1 unit wide and tall at its scale.` for invalid values, and the `scale`, `padding`, `slice` and `tint` raise the same errors as theme metrics and colors.
+Borders of an SVG surface that do not fit inside the document stop the app once the document loaded, with `The borders of a nine-slice must fit inside its source rectangle, with the left and right borders at most its width and the top and bottom borders at most its height.` A surface image raises `The image of the theme surface "<name>" must be a path.`, `The filter of the theme surface "<name>" must be "nearest" or "linear".`, `The fill of the theme surface "<name>" must be "stretch" or "tile".`, `The "colorize" of the theme surface "<name>" must be "true" or "false".`, `The pieces of the theme surface "<name>" must hold nine rectangles.`, `The source of the theme surface "<name>" must be four numbers: x, y, width and height.` or `The tiled edges and center of the theme surface "<name>" must each be at least 1 unit wide and tall at its scale.` for invalid values, and the `scale`, `padding`, `slice` and `tint` raise the same errors as theme metrics and colors.
 
 ```json
 {

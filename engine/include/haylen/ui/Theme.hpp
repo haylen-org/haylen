@@ -192,13 +192,16 @@ class Theme final {
         bool italic = false;
     };
 
-    // A nine-slice image drawn in place of a flat surface. Borders keep their texture size times the scale, and the padding moves content away from thick borders.
+    // A nine-slice image drawn in place of a flat surface. Borders keep their texture size times the scale, and the padding moves content away from thick borders. An SVG document takes the place of the texture through `vector`, with its regions in the units of the document, and the whole document cut by `borders` when `whole` is set, since its size is known only once it loads.
     struct Image {
         graphics2d::NineSlice slice;
         float scale = 1.0F;
         math::Insets padding;
         math::Color tint = math::Color::white();
         bool colorize = false;
+        std::string vector;
+        math::Insets borders;
+        bool whole = false;
     };
 
     // Loads a texture for a theme image from a path relative to the package `content/` folder.
