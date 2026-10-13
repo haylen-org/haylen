@@ -1806,6 +1806,7 @@ Checklist:
 - [x] Mapas de ações por jogador: `input.newActionMap` com os dispositivos de cada jogador (teclado, mouse, um gamepad ou nenhum, controles virtuais com prefixo), até oito gamepads, `input.findGamepadPress` para entrar com o próprio gamepad e `map:stepButtons` com um número por jogador e passo. Testado no `ActionMapTest`, no `InputLuaTest` e no teste `INP-011`.
 - [x] Buffer de comandos: `input.newCommandBuffer` transforma os botões de cada passo num comando guardado (toque único, acorde, toque duplo e sequências com limite de passos, prioridade, tempo de vida em passos, congelamento e direção de frente e de trás). Testado no `CommandBufferTest`, no `CommandBufferLuaTest` e no teste `INP-012`.
 - [x] Botões de toque que pressionam quando o dedo desliza sobre eles: a propriedade `slideIn` do `ui.touchButton`. Testado no `ComponentTest` e no teste `INP-012`.
+- [x] Vibração de gamepads com dois motores (`input.rumble`) e o rótulo dos botões de face de cada família de controle (`input.gamepadLabels`: letras, letras trocadas ou formas), nomeados pelo layout, em todas as plataformas (motor de hápticos do controle na Apple, vibradores do dispositivo no Android, XInput no Windows, force feedback no Linux e Gamepad API na web). Testado no `InputLuaTest`, no `GamepadVendorsTest` e no teste `INP-005`.
 
 #### AS. Sistema de conteúdo (`CONTENT_SYSTEM_IMPLEMENTATION.md`)
 

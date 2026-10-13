@@ -27,12 +27,15 @@ class AndroidGamepads final {
 
     static void poll(std::span<input::GamepadState> states);
 
-    // Gives a controller that Android adds its slot and its name, and frees the slot of one that Android removes.
-    static void add(std::int32_t device, std::string name);
+    // Gives a controller that Android adds its slot, its name and the labels of the vendor id of its maker, and frees the slot of one that Android removes.
+    static void add(std::int32_t device, std::string name, std::uint16_t vendor);
     static void remove(std::int32_t device);
 
     // Centers the sticks and the triggers of every controller when the window of the app loses the focus, on the frame thread in order with the input events.
     static void releaseAxes();
+
+    // Runs the vibrators of the controller in a slot, which Android gives controllers that have them.
+    static void rumble(std::size_t slot, float low, float high, float seconds);
 
   private:
     static std::mutex& mutex;

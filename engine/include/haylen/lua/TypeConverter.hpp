@@ -38,6 +38,7 @@
 #include "haylen/graphics/VectorImage.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Controls.hpp"
+#include "haylen/input/GamepadLabels.hpp"
 #include "haylen/input/InputDevice.hpp"
 #include "haylen/input/TouchPhase.hpp"
 #include "haylen/lua/Converter.hpp"
@@ -95,6 +96,7 @@ class TypeConverter final {
     static const NameTable<graphics2d::SceneTransition::Kind, 24> kTransitions;
     static const NameTable<graphics2d::SceneTransition::Direction, 8> kDirections;
     static const NameTable<input::InputDevice, 3> kDevices;
+    static const NameTable<input::GamepadLabels, 4> kGamepadLabels;
     static const NameTable<input::TouchPhase, 5> kPhases;
     static const NameTable<platform::Event::Type, 29> kEvents;
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
@@ -479,6 +481,15 @@ template <> struct EnumNames<input::InputDevice> {
     }
     static std::string_view name(input::InputDevice value) {
         return TypeConverter::toName(TypeConverter::kDevices, value);
+    }
+};
+
+template <> struct EnumNames<input::GamepadLabels> {
+    static std::optional<input::GamepadLabels> fromName(std::string_view name) {
+        return TypeConverter::fromTable(TypeConverter::kGamepadLabels, name);
+    }
+    static std::string_view name(input::GamepadLabels value) {
+        return TypeConverter::toName(TypeConverter::kGamepadLabels, value);
     }
 };
 

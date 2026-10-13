@@ -18,9 +18,11 @@ import android.hardware.input.InputManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CombinedVibration;
 import android.os.LocaleList;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.InputDevice;
@@ -232,7 +234,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
         int sources = device.getSources();
         if ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) {
-            nativeControllerAdded(deviceId, device.getName().getBytes(StandardCharsets.UTF_8));
+            nativeControllerAdded(deviceId, device.getName().getBytes(StandardCharsets.UTF_8), device.getVendorId());
         }
     }
 
@@ -346,6 +348,55 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
+    // Called from the frame thread of the engine with the low and the high frequency motors of a controller from 0 to 1, where both at 0 stop it. A controller with two vibrators gets one motor on each, one with a single vibrator gets the stronger motor, and a controller without one, or an app without the permission `VIBRATE`, which the log tells once, does nothing.
+    static void rumbleGamepad(int deviceId, float low, float high, long milliseconds) {
+        HaylenActivity activity = HaylenBridge.activity();
+        InputDevice device = InputDevice.getDevice(deviceId);
+        if (activity == null || device == null) {
+            return;
+        }
+        if (!activity.requirements.isGranted(Manifest.permission.VIBRATE)) {
+            activity.requirements.report(HaylenRequirements.Requirement.permission(Manifest.permission.VIBRATE), Log.WARN, "\"input.rumble\" does nothing");
+            return;
+        }
+        boolean stop = low <= 0.0f && high <= 0.0f;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            VibratorManager manager = device.getVibratorManager();
+            int[] ids = manager.getVibratorIds();
+            if (ids.length == 0) {
+                return;
+            }
+            if (stop) {
+                manager.cancel();
+                return;
+            }
+            CombinedVibration.ParallelCombination combination = CombinedVibration.startParallel();
+            float first = ids.length > 1 ? low : Math.max(low, high);
+            if (first > 0.0f) {
+                combination.addVibrator(ids[0], oneShot(milliseconds, first));
+            }
+            if (ids.length > 1 && high > 0.0f) {
+                combination.addVibrator(ids[1], oneShot(milliseconds, high));
+            }
+            manager.vibrate(combination.combine());
+            return;
+        }
+        Vibrator vibrator = device.getVibrator();
+        if (!vibrator.hasVibrator()) {
+            return;
+        }
+        if (stop) {
+            vibrator.cancel();
+            return;
+        }
+        vibrator.vibrate(oneShot(milliseconds, Math.max(low, high)));
+    }
+
+    // Android takes amplitudes from 1 to 255, so a weak motor still turns at the lowest one.
+    private static VibrationEffect oneShot(long milliseconds, float intensity) {
+        return VibrationEffect.createOneShot(Math.max(1, milliseconds), Math.max(1, Math.round(intensity * 255.0f)));
+    }
+
     // Called from the frame thread of the engine when an app starts, with the sentence that the network errors of the engine end with while the app lacks the permission `INTERNET`, or nothing.
     static byte[] networkRequirement() {
         HaylenActivity activity = HaylenBridge.activity();
@@ -449,7 +500,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     private static native void nativeSafeArea(int left, int top, int right, int bottom);
 
-    private static native void nativeControllerAdded(int deviceId, byte[] name);
+    private static native void nativeControllerAdded(int deviceId, byte[] name, int vendorId);
 
     private static native void nativeControllerRemoved(int deviceId);
 

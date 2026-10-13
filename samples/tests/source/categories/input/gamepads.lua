@@ -1,4 +1,4 @@
--- Gamepads: a live card for each of the four gamepads with its sticks, triggers, shoulders, d-pad and face buttons, the connect and disconnect events, and the dead zone that every stick and axis shares.
+-- Gamepads: a live card for each of the eight gamepads with its sticks, triggers, shoulders, d-pad and face buttons labeled as the gamepad labels them, the connect and disconnect events, rumbles of both motors, and the dead zone that every stick and axis shares.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -15,16 +15,23 @@ local kPad = {dpadUp = {0, -1}, dpadDown = {0, 1}, dpadLeft = {-1, 0}, dpadRight
 local kFlash = 0.3
 local kHoldToLeave = 1
 local kIdle = '#FF3A4258'
+local kPads = 8
+local kLabels = {
+    letters = {south = 'A', east = 'B', west = 'X', north = 'Y'},
+    swappedLetters = {south = 'B', east = 'A', west = 'Y', north = 'X'},
+    shapes = {south = 'Cross', east = 'Circle', west = 'Square', north = 'Triangle'},
+}
+local kRumbles = {{id = 'low', text = 'Low motor', low = 1, high = 0}, {id = 'high', text = 'High motor', low = 0, high = 1}, {id = 'both', text = 'Both motors', low = 0.7, high = 0.7}}
 
 function Gamepads:enter()
     self.defaultDeadzone = input.gamepadDeadzone()
     self.flashes = {}
-    for index = 1, 4 do
+    for index = 1, kPads do
         self.flashes[index] = {}
     end
     self.hold = 0
     self.journal = Journal(24)
-    for index = 1, 4 do
+    for index = 1, kPads do
         if input.gamepadConnected(index) then
             self.journal:add('Gamepad ' .. index .. ' already connected: ' .. input.gamepadName(index), Test.muted)
         end
@@ -32,17 +39,34 @@ function Gamepads:enter()
     self:listen('gamepadConnected', function(pad) self.journal:add('Event "gamepadConnected" for gamepad ' .. pad.gamepad .. ': ' .. pad.name, Test.green) end)
     self:listen('gamepadDisconnected', function(pad) self.journal:add('Event "gamepadDisconnected" for gamepad ' .. pad.gamepad .. ': ' .. pad.name, Test.red) end)
     self:frame({
-        hint = 'Plug in up to four gamepads. A browser shows a gamepad once one of its buttons is pressed. A tap on the B button shows on the card, and holding it for a second goes back.',
+        hint = 'Plug in up to eight gamepads. A browser shows a gamepad once one of its buttons is pressed. A tap on the B button shows on the card, and holding it for a second goes back.',
         play = true,
         controls = {
             ui.formField{label = 'Dead zone of every stick and axis', ui.slider{id = 'deadzone', min = 0, max = 0.9, step = 0.05, value = self.defaultDeadzone, showValue = true, onChange = function(event)
                 input.setGamepadDeadzone(event.value)
             end}},
             ui.label{text = 'Movement inside the dead zone reads 0 and does not make the gamepad the last device. The rest is rescaled to the full range, and sticks apply it to their radius, which keeps diagonals smooth.', color = 'textMuted', font = 'caption'},
+            ui.sectionTitle{text = 'Rumble every connected gamepad'},
+            ui.row{gap = 8, children = self:rumbleButtons()},
             ui.sectionTitle{text = 'Reading gamepads'},
-            ui.label{font = 'monospace', text = "input.gamepadConnected(2)\ninput.gamepadName(2)\ninput.gamepadDown('south', 2)\ninput.gamepadAxis('leftTrigger', 2)\ninput.gamepadStick('left', 2)\ninput.setGamepadDeadzone(0.2)"},
+            ui.label{font = 'monospace', text = "input.gamepadConnected(2)\ninput.gamepadName(2)\ninput.gamepadLabels(2)\ninput.rumble(2, {low = 0.7, high = 0.7, seconds = 0.4})\ninput.gamepadDown('south', 2)\ninput.gamepadAxis('leftTrigger', 2)\ninput.gamepadStick('left', 2)\ninput.setGamepadDeadzone(0.2)"},
         },
     })
+end
+
+function Gamepads:rumbleButtons()
+    local buttons = {}
+    for _, rumble in ipairs(kRumbles) do
+        buttons[#buttons + 1] = ui.button{id = rumble.id, text = rumble.text, onClick = function()
+            for index = 1, kPads do
+                if input.gamepadConnected(index) then
+                    input.rumble(index, {low = rumble.low, high = rumble.high, seconds = 0.4})
+                end
+            end
+            self.journal:add('Rumble of the ' .. rumble.text:lower() .. ' for 0.4 seconds.', Test.accent)
+        end}
+    end
+    return buttons
 end
 
 function Gamepads:exit()
@@ -52,7 +76,7 @@ end
 
 -- The east button is the cancel of the UI, so a tap on it shows on the card and holding it for a second goes back.
 function Gamepads:eastDown()
-    for index = 1, 4 do
+    for index = 1, kPads do
         if input.gamepadConnected(index) and input.gamepadDown('east', index) then
             return true
         end
@@ -69,7 +93,7 @@ end
 function Gamepads:update(dt)
     Gamepads.super.update(self, dt)
     local connected = 0
-    for index = 1, 4 do
+    for index = 1, kPads do
         if input.gamepadConnected(index) then
             connected = connected + 1
             local flashes = self.flashes[index]
@@ -101,6 +125,10 @@ end
 function Gamepads:drawButton(index, button, x, y, radius)
     local color = input.gamepadDown(button, index) and Test.accent or kIdle
     graphics2d.drawCircle(x, y, radius, color, {layer = 2})
+    local labels = kLabels[input.gamepadLabels(index)]
+    if labels and labels[button] then
+        Test.caption(labels[button]:sub(1, 2), x, y, {anchor = {0.5, 0.5}, size = math.max(10, radius * 0.9), color = Test.ink, layer = 3})
+    end
     if (self.flashes[index][button] or 0) > 0 then
         graphics2d.drawRing(x, y, radius + 4, 3, Test.warm, {layer = 3})
     end
@@ -117,7 +145,10 @@ function Gamepads:drawPad(index, rect)
     local connected = input.gamepadConnected(index)
     graphics2d.drawRect(rect, connected and '#FF1F2433' or '#FF1A1E28')
     graphics2d.drawRectOutline(rect, 2, connected and Test.line or '#FF22273A', {layer = 1})
-    Test.caption(string.format('Gamepad %d, %s', index, connected and input.gamepadName(index) or 'not connected'), x + 16, y + 12, {color = connected and Test.ink or Test.muted})
+    Test.caption(string.format('Gamepad %d, %s', index, connected and input.gamepadName(index) or 'not connected'), x + 16, y + 12, {color = connected and Test.ink or Test.muted, maxWidth = w - 32})
+    if connected then
+        Test.caption('Labels "' .. input.gamepadLabels(index) .. '"', x + 16, y + 34, {size = 15})
+    end
     if not connected then
         return
     end
@@ -142,10 +173,10 @@ function Gamepads:drawPad(index, rect)
 end
 
 function Gamepads:draw(area)
-    local width = area.width * 0.72
-    local w, h = (width - 36) / 2, (area.height - 36) / 2
-    for index = 1, 4 do
-        local column, row = (index - 1) % 2, (index - 1) // 2
+    local width = area.width * 0.76
+    local w, h = (width - 60) / 4, (area.height - 36) / 2
+    for index = 1, kPads do
+        local column, row = (index - 1) % 4, (index - 1) // 4
         self:drawPad(index, {12 + column * (w + 12), 12 + row * (h + 12), w, h})
     end
 

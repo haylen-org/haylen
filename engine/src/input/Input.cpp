@@ -135,6 +135,7 @@ void Input::updateGamepads(std::span<const GamepadState> states) {
         const GamepadState& source = index < states.size() ? states[index] : kDisconnectedGamepad;
         GamepadState& state = gamepads[index];
         state.connected = source.connected;
+        state.labels = source.labels;
         state.buttons = source.buttons;
         state.axes = source.axes;
         if (state.name != source.name) {

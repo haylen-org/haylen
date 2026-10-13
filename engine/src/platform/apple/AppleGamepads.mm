@@ -1,13 +1,39 @@
 #import "platform/apple/AppleGamepads.hpp"
 
+#import <objc/runtime.h>
+
+#include <algorithm>
 #include <vector>
 
 #import "platform/apple/AppleRemote.hpp"
+
+// The methods of CoreHaptics that a rumble calls, with `id` in place of its types, since the engine reaches the framework through GameController without linking it.
+@protocol HaylenHapticEngine <NSObject>
+
+- (BOOL)startAndReturnError:(NSError**)error;
+- (id)createPlayerWithPattern:(id)pattern error:(NSError**)error;
+
+@end
+
+@protocol HaylenHapticPattern <NSObject>
+
+- (id)initWithDictionary:(NSDictionary*)pattern error:(NSError**)error;
+
+@end
+
+@protocol HaylenHapticPlayer <NSObject>
+
+- (BOOL)startAtTime:(NSTimeInterval)time error:(NSError**)error;
+- (BOOL)stopAtTime:(NSTimeInterval)time error:(NSError**)error;
+
+@end
 
 namespace haylen::platform {
 
 GamepadSlots AppleGamepads::slots;
 std::vector<const void*> AppleGamepads::connected;
+char AppleGamepads::engineKey = 0;
+char AppleGamepads::playerKey = 0;
 
 // GameController lists the connected controllers in no lasting order, so every controller stays in the slot it took when it connected. The list of the connected ones keeps its memory from frame to frame.
 void AppleGamepads::poll(std::span<input::GamepadState> states) {
@@ -38,6 +64,63 @@ void AppleGamepads::poll(std::span<input::GamepadState> states) {
             continue;
         }
         read(controller.extendedGamepad, state);
+        state.labels = getLabels(controller.extendedGamepad);
+    }
+}
+
+// The symbol of the bottom face button names the label printed on it.
+input::GamepadLabels AppleGamepads::getLabels(GCExtendedGamepad* pad) {
+    NSString* symbol = pad.buttonA.sfSymbolsName;
+    if ([symbol hasPrefix:@"a."]) {
+        return input::GamepadLabels::Letters;
+    }
+    if ([symbol hasPrefix:@"b."]) {
+        return input::GamepadLabels::SwappedLetters;
+    }
+    if ([symbol hasPrefix:@"xmark"]) {
+        return input::GamepadLabels::Shapes;
+    }
+    return input::GamepadLabels::Unknown;
+}
+
+void AppleGamepads::rumble(std::size_t slot, float low, float high, float seconds) {
+    GCController* controller = find(GCController.controllers, slots.getController(slot));
+    Class patternClass = NSClassFromString(@"CHHapticPattern");
+    if (controller == nil || controller.haptics == nil || patternClass == nil) {
+        return;
+    }
+    id<HaylenHapticPlayer> previous = objc_getAssociatedObject(controller, &playerKey);
+    [previous stopAtTime:0 error:nil];
+    objc_setAssociatedObject(controller, &playerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    const float intensity = std::max(low, high);
+    if (intensity <= 0.0F) {
+        return;
+    }
+
+    id<HaylenHapticEngine> engine = objc_getAssociatedObject(controller, &engineKey);
+    if (engine == nil) {
+        engine = (id<HaylenHapticEngine>)[controller.haptics createEngineWithLocality:GCHapticsLocalityDefault];
+        if (engine == nil) {
+            return;
+        }
+        objc_setAssociatedObject(controller, &engineKey, engine, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    NSDictionary* event = @{
+        @"EventType" : @"HapticContinuous",
+        @"Time" : @0,
+        @"EventDuration" : @(seconds),
+        @"EventParameters" : @[ @{@"ParameterID" : @"HapticIntensity",
+                                  @"ParameterValue" : @(intensity)},
+                                @{@"ParameterID" : @"HapticSharpness",
+                                  @"ParameterValue" : @(high / (low + high))} ],
+    };
+    id<HaylenHapticPattern> pattern = [(id<HaylenHapticPattern>)[patternClass alloc] initWithDictionary:@{@"Pattern" : @[ @{@"Event" : event} ]} error:nil];
+    if (pattern == nil || ![engine startAndReturnError:nil]) {
+        return;
+    }
+    id<HaylenHapticPlayer> player = [engine createPlayerWithPattern:pattern error:nil];
+    if ([player startAtTime:0 error:nil]) {
+        objc_setAssociatedObject(controller, &playerKey, player, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 }
 

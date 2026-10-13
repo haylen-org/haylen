@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -18,6 +19,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/GamepadVendors.hpp"
 #include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebStoreFiles.hpp"
@@ -99,6 +101,10 @@ EM_JS(int, haylen_js_open_url, (const char* url), {
 
 EM_JS(void, haylen_js_vibrate, (float seconds), {
     Module.haylen.vibrate(seconds);
+});
+
+EM_JS(void, haylen_js_rumble_gamepad, (int index, float low, float high, float seconds), {
+    Module.haylen.rumbleGamepad(index, low, high, seconds);
 });
 
 EM_JS(void, haylen_js_show_dialog, (double id, const char* json, const uint8_t* data, int size), {
@@ -213,6 +219,8 @@ void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
         constexpr std::array<std::pair<int, input::GamepadButton>, 15> kButtons{{{0, input::GamepadButton::South}, {1, input::GamepadButton::East}, {2, input::GamepadButton::West}, {3, input::GamepadButton::North}, {4, input::GamepadButton::LeftShoulder}, {5, input::GamepadButton::RightShoulder}, {8, input::GamepadButton::Back}, {9, input::GamepadButton::Start}, {10, input::GamepadButton::LeftStick}, {11, input::GamepadButton::RightStick}, {12, input::GamepadButton::DpadUp}, {13, input::GamepadButton::DpadDown}, {14, input::GamepadButton::DpadLeft}, {15, input::GamepadButton::DpadRight}, {16, input::GamepadButton::Guide}}};
         state.connected = true;
         state.name = pad.id;
+        const std::optional<std::uint16_t> vendor = GamepadVendors::findInBrowserId(pad.id);
+        state.labels = vendor ? GamepadVendors::getLabels(*vendor) : input::GamepadLabels::Unknown;
         for (const auto& [source, button] : kButtons) {
             state.buttons[static_cast<std::size_t>(button)] = source < pad.numButtons && pad.digitalButton[source] != 0;
         }
@@ -287,6 +295,10 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 
 void Services::vibrate(float seconds) {
     haylen_js_vibrate(seconds);
+}
+
+void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    haylen_js_rumble_gamepad(static_cast<int>(index), low, high, seconds);
 }
 
 // The page shows the dialog in the frame that asked for it, and titles that are not UTF-8 reach it replaced.

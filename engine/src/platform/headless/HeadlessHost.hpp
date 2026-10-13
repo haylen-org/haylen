@@ -30,6 +30,14 @@ class HeadlessHost final : public Host {
         std::vector<std::vector<std::byte>> buffers;
     };
 
+    // A rumble of a gamepad that the engine asked for.
+    struct Rumble {
+        std::size_t index = 0;
+        float low = 0.0F;
+        float high = 0.0F;
+        float seconds = 0.0F;
+    };
+
     // A native dialog the engine asked for, with the folder where the platform would keep copies of picked files.
     struct DialogCall {
         std::uint64_t id = 0;
@@ -210,6 +218,9 @@ class HeadlessHost final : public Host {
     void vibrate(float seconds) override {
         vibrations.push_back(seconds);
     }
+    void rumbleGamepad(std::size_t index, float low, float high, float seconds) override {
+        rumbles.push_back({.index = index, .low = low, .high = high, .seconds = seconds});
+    }
     [[nodiscard]] std::string getNetworkRequirement() const override {
         return networkRequirement;
     }
@@ -334,6 +345,9 @@ class HeadlessHost final : public Host {
     [[nodiscard]] const std::vector<std::string>& getOpenedUrls() const noexcept {
         return openedUrls;
     }
+    [[nodiscard]] const std::vector<Rumble>& getRumbles() const noexcept {
+        return rumbles;
+    }
     [[nodiscard]] const std::vector<float>& getVibrations() const noexcept {
         return vibrations;
     }
@@ -368,6 +382,7 @@ class HeadlessHost final : public Host {
     SystemState systemState;
     std::vector<std::string> openedUrls;
     std::vector<float> vibrations;
+    std::vector<Rumble> rumbles;
     std::string networkRequirement;
     std::vector<DialogCall> dialogCalls;
     std::vector<std::uint64_t> cancelledDialogs;

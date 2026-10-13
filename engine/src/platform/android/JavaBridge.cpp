@@ -30,6 +30,7 @@ jmethodID JavaBridge::captureBackMethod = nullptr;
 jmethodID JavaBridge::systemInfoMethod = nullptr;
 jmethodID JavaBridge::openUrlMethod = nullptr;
 jmethodID JavaBridge::vibrateMethod = nullptr;
+jmethodID JavaBridge::rumbleGamepadMethod = nullptr;
 jmethodID JavaBridge::setClipboardMethod = nullptr;
 jmethodID JavaBridge::clipboardMethod = nullptr;
 jmethodID JavaBridge::networkRequirementMethod = nullptr;
@@ -72,6 +73,7 @@ jint JavaBridge::load(JavaVM* vm) {
     systemInfoMethod = findMethod(*env, activityClass, "systemInfo", "()[B");
     openUrlMethod = findMethod(*env, activityClass, "openUrl", "(J[B)V");
     vibrateMethod = findMethod(*env, activityClass, "vibrate", "(J)V");
+    rumbleGamepadMethod = findMethod(*env, activityClass, "rumbleGamepad", "(IFFJ)V");
     setClipboardMethod = findMethod(*env, activityClass, "setClipboard", "([B)V");
     clipboardMethod = findMethod(*env, activityClass, "clipboard", "()[B");
     networkRequirementMethod = findMethod(*env, activityClass, "networkRequirement", "()[B");
@@ -81,7 +83,7 @@ jint JavaBridge::load(JavaVM* vm) {
     openScreenMethod = findMethod(*env, screensClass, "open", "(J[B[B[B[[B[BZ)V");
     cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -276,6 +278,12 @@ void JavaBridge::vibrate(std::int64_t milliseconds) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, vibrateMethod, static_cast<jlong>(milliseconds));
     clearException(env, "dev.haylen.HaylenActivity.vibrate");
+}
+
+void JavaBridge::rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds) {
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(activityClass, rumbleGamepadMethod, static_cast<jint>(device), static_cast<jfloat>(low), static_cast<jfloat>(high), static_cast<jlong>(milliseconds));
+    clearException(env, "dev.haylen.HaylenActivity.rumbleGamepad");
 }
 
 void JavaBridge::showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data) {

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "haylen/input/Controls.hpp"
+#include "haylen/input/GamepadLabels.hpp"
 
 namespace haylen::input {
 
@@ -11,6 +12,7 @@ namespace haylen::input {
 struct GamepadState {
     bool connected = false;
     std::string name;
+    GamepadLabels labels = GamepadLabels::Unknown;
     std::array<bool, Controls::kGamepadButtonCount> buttons{};
     std::array<float, Controls::kGamepadAxisCount> axes{};
 };

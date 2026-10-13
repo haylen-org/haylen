@@ -29,6 +29,8 @@ class InputLua final {
 
   private:
     static constexpr std::array<std::string_view, 12> kTextFieldOptions{"text", "selectionStart", "selectionEnd", "x", "y", "width", "height", "keyboard", "returnKey", "autocapitalize", "autocorrect", "maxLength"};
+    static constexpr std::array<std::string_view, 3> kRumbleOptions{"low", "high", "seconds"};
+    static constexpr float kRumbleSeconds = 0.2F;
     static constexpr std::array<std::string_view, 8> kGestureFields{"tapMaxDuration", "tapMaxMovement", "doubleTapInterval", "doubleTapDistance", "longPressDuration", "swipeMinDistance", "swipeMaxDuration", "mouse"};
 
     [[nodiscard]] static Input& getInput(lua_State* L);
@@ -63,6 +65,8 @@ class InputLua final {
     static int gestureSettings(lua_State* L);
     static int gamepadConnected(lua_State* L);
     static int gamepadName(lua_State* L);
+    static int gamepadLabels(lua_State* L);
+    static int rumble(lua_State* L);
     static int gamepadDown(lua_State* L);
     static int gamepadPressed(lua_State* L);
     static int gamepadReleased(lua_State* L);

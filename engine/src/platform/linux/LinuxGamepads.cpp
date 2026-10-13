@@ -1,12 +1,20 @@
 #include "platform/linux/LinuxGamepads.hpp"
 
 #include <fcntl.h>
+#include <linux/input.h>
 #include <linux/joystick.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cerrno>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <limits>
 #include <string>
+
+#include "platform/GamepadVendors.hpp"
 
 namespace haylen::platform {
 
@@ -26,17 +34,84 @@ void LinuxGamepads::scan() {
         }
         std::array<char, 128> label{};
         ioctl(joystick.descriptor, JSIOCGNAME(label.size()), label.data());
-        joystick.state = {.connected = true, .name = label.data()};
+        joystick.state = {.connected = true, .name = label.data(), .labels = readLabels(index)};
     }
+}
+
+std::string LinuxGamepads::getDeviceFolder(std::size_t slot) {
+    return "/sys/class/input/js" + std::to_string(slot) + "/device";
+}
+
+input::GamepadLabels LinuxGamepads::readLabels(std::size_t slot) {
+    std::ifstream file(getDeviceFolder(slot) + "/id/vendor");
+    unsigned int vendor = 0;
+    if (!(file >> std::hex >> vendor) || vendor > std::numeric_limits<std::uint16_t>::max()) {
+        return input::GamepadLabels::Unknown;
+    }
+    return GamepadVendors::getLabels(static_cast<std::uint16_t>(vendor));
+}
+
+// The event device of a controller sits next to its joystick node in the folder of the device.
+int LinuxGamepads::openFeedback(std::size_t slot) {
+    std::error_code error;
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getDeviceFolder(slot), error)) {
+        const std::string name = entry.path().filename().string();
+        if (name.starts_with("event")) {
+            return ::open(("/dev/input/" + name).c_str(), O_RDWR | O_NONBLOCK | O_CLOEXEC);
+        }
+    }
+    return -1;
+}
+
+void LinuxGamepads::close(Joystick& joystick) noexcept {
+    for (const int descriptor : {joystick.descriptor, joystick.feedback}) {
+        if (descriptor >= 0) {
+            ::close(descriptor);
+        }
+    }
+    joystick = {};
 }
 
 void LinuxGamepads::release() noexcept {
     for (Joystick& joystick : joysticks) {
-        if (joystick.descriptor >= 0) {
-            close(joystick.descriptor);
-        }
-        joystick = {};
+        close(joystick);
     }
+}
+
+void LinuxGamepads::rumble(std::size_t slot, float low, float high, float seconds) {
+    if (slot >= joysticks.size() || joysticks[slot].descriptor < 0) {
+        return;
+    }
+    Joystick& joystick = joysticks[slot];
+    if (joystick.feedback < 0) {
+        joystick.feedback = openFeedback(slot);
+        if (joystick.feedback < 0) {
+            return;
+        }
+    }
+
+    if ((joystick.effect >= 0 && !play(joystick.feedback, joystick.effect, false)) || (low <= 0.0F && high <= 0.0F)) {
+        return;
+    }
+    ff_effect effect{};
+    effect.type = FF_RUMBLE;
+    effect.id = static_cast<std::int16_t>(joystick.effect);
+    effect.u.rumble.strong_magnitude = static_cast<std::uint16_t>(std::lround(low * 65535.0F));
+    effect.u.rumble.weak_magnitude = static_cast<std::uint16_t>(std::lround(high * 65535.0F));
+    effect.replay.length = static_cast<std::uint16_t>(std::clamp(std::lround(seconds * 1000.0F), 1L, 65535L));
+    if (ioctl(joystick.feedback, EVIOCSFF, &effect) < 0) {
+        return;
+    }
+    joystick.effect = effect.id;
+    play(joystick.feedback, effect.id, true);
+}
+
+bool LinuxGamepads::play(int descriptor, int effect, bool started) {
+    input_event event{};
+    event.type = EV_FF;
+    event.code = static_cast<std::uint16_t>(effect);
+    event.value = started ? 1 : 0;
+    return write(descriptor, &event, sizeof(event)) == static_cast<ssize_t>(sizeof(event));
 }
 
 void LinuxGamepads::poll(std::span<input::GamepadState> states) {
@@ -62,8 +137,7 @@ void LinuxGamepads::poll(std::span<input::GamepadState> states) {
             if (count < 0 && errno == EAGAIN) {
                 break;
             }
-            close(joystick.descriptor);
-            joystick = {};
+            close(joystick);
         }
         states[index] = joystick.state;
     }

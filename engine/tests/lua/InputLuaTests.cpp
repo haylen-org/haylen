@@ -428,4 +428,32 @@ TEST_F(InputLuaTest, GivesEachPlayerAnActionMapWithItsOwnDevices) {
     EXPECT_EQ(fixture.engine().getActionMaps().size(), before - 1);
 }
 
+TEST_F(InputLuaTest, RumblesGamepadsAndNamesTheirFaceButtons) {
+    GamepadState pad{.connected = true, .name = "Pad", .labels = GamepadLabels::Shapes};
+    fixture.host().setGamepad(1, pad);
+    fixture.frames(1);
+    EXPECT_EQ(lua("return input.gamepadLabels(2) .. ' ' .. input.gamepadLabels(1)"), "shapes unknown");
+
+    EXPECT_EQ(lua("input.rumble(2, {low = 0.6, high = 0.3, seconds = 0.5}) input.rumble(3) return 'ok'"), "ok");
+    const auto& rumbles = fixture.host().getRumbles();
+    ASSERT_EQ(rumbles.size(), 2U);
+    EXPECT_EQ(rumbles[0].index, 1U);
+    EXPECT_FLOAT_EQ(rumbles[0].low, 0.6F);
+    EXPECT_FLOAT_EQ(rumbles[0].high, 0.3F);
+    EXPECT_FLOAT_EQ(rumbles[0].seconds, 0.5F);
+    EXPECT_FLOAT_EQ(rumbles[1].seconds, 0.2F);
+
+    // Losing the focus stops every gamepad that rumbled.
+    fixture.engine().handleEvent({.type = platform::Event::Type::FocusLost});
+    ASSERT_EQ(rumbles.size(), 4U);
+    EXPECT_EQ(rumbles[2].index, 1U);
+    EXPECT_EQ(rumbles[2].low + rumbles[2].high, 0.0F);
+    EXPECT_EQ(rumbles[3].index, 2U);
+
+    EXPECT_NE(lua("input.rumble(1, {low = 2})").find("The motors of a rumble run from 0 to 1."), std::string::npos);
+    EXPECT_NE(lua("input.rumble(1, {seconds = 0})").find("A rumble lasts a positive number of seconds."), std::string::npos);
+    EXPECT_NE(lua("input.rumble(1, {strong = 1})").find("Unknown option \"strong\"."), std::string::npos);
+    EXPECT_NE(lua("input.rumble(9)").find("gamepad index out of range"), std::string::npos);
+}
+
 } // namespace haylen::input

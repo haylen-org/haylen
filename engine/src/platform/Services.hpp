@@ -114,6 +114,9 @@ class Services final {
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     static void vibrate(float seconds);
 
+    // Runs the motors of a gamepad as `Host::rumbleGamepad` describes.
+    static void rumbleGamepad(std::size_t index, float low, float high, float seconds);
+
     // Shows a native dialog and answers it exactly once through `DialogRelay::resolve` with the same id, from any thread. Picked files that have no path of their own are copied into `folder`, which the platform creates when it needs it.
     static void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder);
 

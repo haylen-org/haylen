@@ -25,10 +25,15 @@ void AndroidGamepadStates::releaseAxes() {
     }
 }
 
-void AndroidGamepadStates::add(std::int32_t device, std::string name) {
+void AndroidGamepadStates::add(std::int32_t device, std::string name, input::GamepadLabels labels) {
     if (const std::optional<std::size_t> slot = claim(device)) {
         gamepads[*slot].name = std::move(name);
+        gamepads[*slot].labels = labels;
     }
+}
+
+std::optional<std::int32_t> AndroidGamepadStates::getDevice(std::size_t slot) const noexcept {
+    return slot < devices.size() ? devices[slot] : std::nullopt;
 }
 
 void AndroidGamepadStates::remove(std::int32_t device) {

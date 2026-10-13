@@ -116,6 +116,7 @@ Engine::~Engine() {
     current.screens.reset();
     current.platform.reset();
     current.dialogs.reset();
+    current.system->stopRumbles();
     current.system.reset();
     current.runtime->stop();
     current.jobs->discardQueued();
@@ -665,6 +666,7 @@ void Engine::releaseHeldInput() {
     current.pointerEmulation.releaseAll();
     current.gestures.cancel();
     current.virtualInput.clear();
+    current.system->stopRumbles();
 }
 
 void Engine::refreshForegroundState() {

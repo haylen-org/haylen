@@ -319,6 +319,10 @@ void SokolHost::vibrate(float seconds) {
     Services::vibrate(seconds);
 }
 
+void SokolHost::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    Services::rumbleGamepad(index, low, high, seconds);
+}
+
 // Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.
 std::string SokolHost::getNetworkRequirement() const {
 #if defined(__ANDROID__)

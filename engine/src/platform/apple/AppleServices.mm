@@ -269,6 +269,10 @@ void Services::vibrate(float) {
     AppleSystem::vibrate();
 }
 
+void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    AppleGamepads::rumble(index, low, high, seconds);
+}
+
 void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
     AppleDialogs::show(id, request, folder);
 }

@@ -468,6 +468,35 @@ local input = require('haylen.input')
 print(input.gamepadName(1))
 ```
 
+### input.gamepadLabels(index)
+
+Returns how the gamepad labels its face buttons, so prompts show what the player sees on them: `'letters'` with A at the bottom and B on the right, `'swappedLetters'` with B at the bottom and A on the right, `'shapes'`, or `'unknown'`, also for a gamepad that is not connected. Bindings keep naming the buttons by their place, so `button:south` is the bottom button whatever its label. Apple platforms read the symbol of the bottom button, Windows reads only gamepads with letters, and Android, Linux and browsers tell the labels from the vendor of the gamepad, which leaves gamepads of other makers `'unknown'`.
+
+```lua
+local input = require('haylen.input')
+
+local prompts = {letters = 'A', swappedLetters = 'B', shapes = 'Cross', unknown = 'South'}
+print('Press ' .. prompts[input.gamepadLabels(1)] .. ' to jump.')
+```
+
+### input.rumble(index, options)
+
+Runs the motors of a gamepad with `{low, high, seconds}`: the low and the high frequency motors from 0 to 1, 0 by default, for the seconds, 0.2 by default. Both motors at 0 stop the gamepad, a new rumble replaces the one that runs, and the engine stops every gamepad when the app loses the focus or stops. Intensities outside 0 to 1 raise `The motors of a rumble run from 0 to 1.`, seconds that are not positive raise `A rumble lasts a positive number of seconds.`, and an unknown key raises `Unknown option "<key>".`.
+
+| Platform | Rumble |
+| --- | --- |
+| iOS, iPadOS, tvOS, Mac Catalyst and macOS | The haptics engine of the controller plays one continuous event, whose intensity follows the stronger motor and whose sharpness the share of the high frequency motor. |
+| Android | The vibrators of the controller, one motor on each when it has two and the stronger motor on one, with the permission `VIBRATE` of the template. |
+| Windows | Both motors of XInput controllers. |
+| Linux | The force feedback of the event device of the controller, where the user may write it, which the rules of most distributions allow for the user at the computer. |
+| Web | The dual rumble of the Gamepad API, in browsers that offer it. |
+
+```lua
+local input = require('haylen.input')
+
+input.rumble(1, {low = 0.8, high = 0.3, seconds = 0.25})
+```
+
 ### input.gamepadDown(button, index)
 
 Returns `true` while the button is held.
@@ -1504,6 +1533,8 @@ scene.push({
 | `expected left or right` | The function `input.gamepadStick()` received another side. It comes inside a bad argument error. |
 | `Unknown option "<key>".` | The function `input.setGestureSettings()` received an unknown field. |
 | `The gamepad dead zone must be at least 0 and below 1.` | The function `input.setGamepadDeadzone()` received a value outside that range. |
+| `The motors of a rumble run from 0 to 1.` | The `low` or `high` of `input.rumble()` is outside 0 to 1. |
+| `A rumble lasts a positive number of seconds.` | The `seconds` of `input.rumble()` are not positive. |
 | `The press threshold must be above 0 and at most 1.` | The function `input.setPressThreshold()` received a value outside that range. |
 | `Expected the action map to be a JSON object.` | An action map document is not a table with string keys. |
 | `Expected an action to be a JSON object.` | An entry of the `actions` list is not a table with string keys. |

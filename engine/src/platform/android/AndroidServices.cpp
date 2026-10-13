@@ -162,6 +162,10 @@ void Services::vibrate(float seconds) {
     JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
+void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    AndroidGamepads::rumble(index, low, high, seconds);
+}
+
 // Script texts may hold bytes that are not UTF-8, which reach the dialog replaced instead of failing it.
 void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
     const auto show = [id](const core::Json& dialog, std::span<const std::uint8_t> data) { JavaBridge::showDialog(id, dialog.dump(-1, ' ', false, core::Json::error_handler_t::replace), data); };
@@ -272,8 +276,8 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenNetwork_nativeNetwork(JNIEnv*, jcla
     haylen::platform::SokolRuntime::postEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = online == JNI_TRUE});
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerAdded(JNIEnv* env, jclass, jint device, jbyteArray name) {
-    haylen::platform::AndroidGamepads::add(device, haylen::platform::JavaBridge::toString(*env, name));
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerAdded(JNIEnv* env, jclass, jint device, jbyteArray name, jint vendor) {
+    haylen::platform::AndroidGamepads::add(device, haylen::platform::JavaBridge::toString(*env, name), static_cast<std::uint16_t>(vendor));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerRemoved(JNIEnv*, jclass, jint device) {

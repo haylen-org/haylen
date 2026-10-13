@@ -27,6 +27,7 @@
     static byte[] systemInfo();
     static void openUrl(long, byte[]);
     static void vibrate(long);
+    static void rumbleGamepad(int, float, float, long);
     static byte[] networkRequirement();
     static byte[] developmentServer();
 }

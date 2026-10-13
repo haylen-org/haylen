@@ -64,10 +64,13 @@ TEST_F(AndroidGamepadStatesTest, ReleasesTheAxesOfEveryControllerWhenTheWindowLo
 
 TEST_F(AndroidGamepadStatesTest, ConnectsAControllerThatAndroidAddsBeforeItsFirstEvent) {
     AndroidGamepadStates controllers;
-    controllers.add(12, "Wireless Controller");
+    controllers.add(12, "Wireless Controller", input::GamepadLabels::Shapes);
     States states = read(controllers);
     EXPECT_TRUE(states[0].connected);
     EXPECT_EQ(states[0].name, "Wireless Controller");
+    EXPECT_EQ(states[0].labels, input::GamepadLabels::Shapes);
+    EXPECT_EQ(controllers.getDevice(0), 12);
+    EXPECT_FALSE(controllers.getDevice(1).has_value());
 
     // Its events keep the slot and the name.
     controllers.press(12, input::GamepadButton::South, true);

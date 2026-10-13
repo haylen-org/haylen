@@ -36,11 +36,14 @@ class AndroidGamepadStates final {
     // Centers the sticks, the triggers and the hat of every controller, whose next motion event brings their position back. Android sends motion events only to the window with the focus, so a stick released while another window has it would keep its last value otherwise, while the releases of buttons still arrive.
     void releaseAxes();
 
-    // Connects a controller that Android added, with its name, before its first event, and frees the slot of one that Android removed.
-    void add(std::int32_t device, std::string name);
+    // Connects a controller that Android added, with its name and the labels of its face buttons, before its first event, and frees the slot of one that Android removed.
+    void add(std::int32_t device, std::string name, input::GamepadLabels labels);
     void remove(std::int32_t device);
 
     void copyTo(std::span<input::GamepadState> states) const;
+
+    // The device of Android in a gamepad slot, or none.
+    [[nodiscard]] std::optional<std::int32_t> getDevice(std::size_t slot) const noexcept;
 
   private:
     // The buttons of the directional pad in the order of the bits of a hat: left, right, up and down.

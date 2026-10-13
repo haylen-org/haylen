@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <bitset>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -11,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/input/Input.hpp"
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
@@ -44,6 +46,12 @@ class System final {
     // Vibrates the device for the given seconds where it can vibrate. Throws `std::invalid_argument` unless the seconds are positive.
     void vibrate(float seconds);
 
+    // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble. Throws `std::invalid_argument` for a gamepad outside `input::Input::kMaxGamepads`, an intensity outside 0 to 1 or seconds that are not positive.
+    void rumbleGamepad(std::size_t index, float low, float high, float seconds);
+
+    // Stops every gamepad that rumbles, which the engine does when the app loses the focus or stops.
+    void stopRumbles();
+
     // Delivers the answers the platform gave since the last pump and publishes the changes of the theme and the battery. The engine calls it at the start of every frame.
     void pump();
 
@@ -68,6 +76,7 @@ class System final {
     SystemInfo info;
     Theme theme;
     Battery battery;
+    std::bitset<input::Input::kMaxGamepads> rumbling;
     std::uint64_t nextUrl = 1;
     std::unordered_map<std::uint64_t, std::function<void(bool)>> pending;
     std::shared_ptr<Inbox> inbox = std::make_shared<Inbox>();

@@ -170,6 +170,10 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 
 void Services::vibrate(float) {}
 
+void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    LinuxGamepads::rumble(index, low, high, seconds);
+}
+
 // Picked files are files of the computer, which the app reads where they are.
 void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path&) {
     LinuxDialogs::show(id, request);

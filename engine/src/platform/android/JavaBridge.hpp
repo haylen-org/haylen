@@ -62,6 +62,7 @@ class JavaBridge final {
     static void answerUrl(std::int64_t request, bool opened);
 
     static void vibrate(std::int64_t milliseconds);
+    static void rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds);
 
     // The clipboard of the system, which the frame thread reads and writes.
     static void setClipboard(std::string_view text);
@@ -116,6 +117,7 @@ class JavaBridge final {
     static jmethodID systemInfoMethod;
     static jmethodID openUrlMethod;
     static jmethodID vibrateMethod;
+    static jmethodID rumbleGamepadMethod;
     static jmethodID setClipboardMethod;
     static jmethodID clipboardMethod;
     static jmethodID networkRequirementMethod;

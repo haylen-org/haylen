@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
@@ -50,6 +51,29 @@ void System::vibrate(float seconds) {
         throw std::invalid_argument("A vibration lasts a positive number of seconds.");
     }
     host.vibrate(seconds);
+}
+
+void System::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    if (index >= input::Input::kMaxGamepads) {
+        throw std::invalid_argument("A rumble needs a gamepad from 1 to " + std::to_string(input::Input::kMaxGamepads) + ".");
+    }
+    if (!(low >= 0.0F && low <= 1.0F) || !(high >= 0.0F && high <= 1.0F)) {
+        throw std::invalid_argument("The motors of a rumble run from 0 to 1.");
+    }
+    if (!std::isfinite(seconds) || seconds <= 0.0F) {
+        throw std::invalid_argument("A rumble lasts a positive number of seconds.");
+    }
+    rumbling.set(index);
+    host.rumbleGamepad(index, low, high, seconds);
+}
+
+void System::stopRumbles() {
+    for (std::size_t index = 0; index < rumbling.size(); ++index) {
+        if (rumbling.test(index)) {
+            host.rumbleGamepad(index, 0.0F, 0.0F, 0.0F);
+        }
+    }
+    rumbling.reset();
 }
 
 void System::pump() {

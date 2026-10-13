@@ -61,6 +61,22 @@ Module.haylen = Module.haylen || {};
         }
     };
 
+    // Plays a rumble with both motors on the gamepad of the Gamepad API at the index, where the browser and the gamepad offer it, and stops it when both motors are 0.
+    haylen.rumbleGamepad = function (index, low, high, seconds) {
+        const pad = navigator.getGamepads ? navigator.getGamepads()[index] : null;
+        const actuator = pad ? pad.vibrationActuator : null;
+        if (!actuator) {
+            return;
+        }
+        if (low <= 0 && high <= 0) {
+            if (actuator.reset) {
+                actuator.reset().catch(function () {});
+            }
+            return;
+        }
+        actuator.playEffect("dual-rumble", {duration: Math.max(1, Math.round(seconds * 1000)), strongMagnitude: low, weakMagnitude: high}).catch(function () {});
+    };
+
     // Registers an async handler for a platform method. It receives the parsed params and a context with the id of the call and a signal that aborts when the app cancels the call or its timeout passes, and it returns any JSON value. A thrown error fails the call with its message and its code and data, or with the code `exception` when it has no code.
     haylen.register = function (method, handler) {
         handlers.set(method, handler);

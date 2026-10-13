@@ -3,9 +3,13 @@
 #include <android/input.h>
 
 #include <algorithm>
+#include <cmath>
 #include <initializer_list>
+#include <optional>
 #include <utility>
 
+#include "platform/GamepadVendors.hpp"
+#include "platform/android/JavaBridge.hpp"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -43,9 +47,20 @@ void AndroidGamepads::poll(std::span<input::GamepadState> states) {
     controllers.copyTo(states);
 }
 
-void AndroidGamepads::add(std::int32_t device, std::string name) {
+void AndroidGamepads::add(std::int32_t device, std::string name, std::uint16_t vendor) {
     const std::scoped_lock lock(mutex);
-    controllers.add(device, std::move(name));
+    controllers.add(device, std::move(name), GamepadVendors::getLabels(vendor));
+}
+
+void AndroidGamepads::rumble(std::size_t slot, float low, float high, float seconds) {
+    std::optional<std::int32_t> device;
+    {
+        const std::scoped_lock lock(mutex);
+        device = controllers.getDevice(slot);
+    }
+    if (device) {
+        JavaBridge::rumbleGamepad(*device, low, high, std::lround(seconds * 1000.0F));
+    }
 }
 
 void AndroidGamepads::remove(std::int32_t device) {

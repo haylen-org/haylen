@@ -15,6 +15,7 @@
 #include "haylen/platform/Bridge.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/GamepadSlots.hpp"
+#include "platform/GamepadVendors.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/ReportedState.hpp"
@@ -246,6 +247,21 @@ TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
     for (std::size_t slot = 0; slot < input::Input::kMaxGamepads; ++slot) {
         EXPECT_EQ(slots.getController(slot), nullptr);
     }
+}
+
+TEST(GamepadVendorsTest, LabelsTheFaceButtonsByTheVendorOfTheGamepad) {
+    EXPECT_EQ(GamepadVendors::getLabels(0x045E), input::GamepadLabels::Letters);
+    EXPECT_EQ(GamepadVendors::getLabels(0x054C), input::GamepadLabels::Shapes);
+    EXPECT_EQ(GamepadVendors::getLabels(0x057E), input::GamepadLabels::SwappedLetters);
+    EXPECT_EQ(GamepadVendors::getLabels(0x1234), input::GamepadLabels::Unknown);
+
+    // Browsers write the vendor inside the name or in front of it.
+    EXPECT_EQ(GamepadVendors::findInBrowserId("Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)"), 0x054C);
+    EXPECT_EQ(GamepadVendors::findInBrowserId("45e-28e-Controller"), 0x045E);
+    EXPECT_EQ(GamepadVendors::findInBrowserId("057e-2009-Pro Controller"), 0x057E);
+    EXPECT_FALSE(GamepadVendors::findInBrowserId("Generic Gamepad").has_value());
+    EXPECT_FALSE(GamepadVendors::findInBrowserId("Pad-One-Two").has_value());
+    EXPECT_FALSE(GamepadVendors::findInBrowserId("Vendor: zz").has_value());
 }
 
 TEST(BridgeTest, KeepsTheMessageCodeAndDataOfEveryFailure) {

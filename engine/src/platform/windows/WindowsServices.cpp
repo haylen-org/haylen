@@ -22,6 +22,7 @@
 #include "platform/ScreenRelay.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsDialogs.hpp"
+#include "platform/windows/WindowsRumble.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
 #include "sokol_app.h"
@@ -140,6 +141,7 @@ bool Services::hasPointerDevice() noexcept {
 }
 
 void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
+    WindowsRumble::update();
     const auto stick = [](SHORT value) { return value < 0 ? static_cast<float>(value) / 32768.0F : static_cast<float>(value) / 32767.0F; };
     for (std::size_t index = 0; index < gamepads.size(); ++index) {
         input::GamepadState& state = gamepads[index];
@@ -151,7 +153,8 @@ void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
 
         const XINPUT_GAMEPAD& pad = reading.Gamepad;
         state.connected = true;
-        state.name = "Xbox Controller";
+        state.name = "XInput Controller";
+        state.labels = input::GamepadLabels::Letters;
         const auto set = [&state, &pad](input::GamepadButton button, WORD mask) { state.buttons[static_cast<std::size_t>(button)] = (pad.wButtons & mask) != 0; };
         set(input::GamepadButton::South, XINPUT_GAMEPAD_A);
         set(input::GamepadButton::East, XINPUT_GAMEPAD_B);
@@ -214,6 +217,10 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 }
 
 void Services::vibrate(float) {}
+
+void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    WindowsRumble::start(index, low, high, seconds);
+}
 
 // Picked files are files of the computer, which the app reads where they are.
 void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path&) {

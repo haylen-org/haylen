@@ -66,6 +66,9 @@ class Host : public Window {
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     virtual void vibrate(float seconds) = 0;
 
+    // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble, and does nothing elsewhere. Zero intensities stop the gamepad.
+    virtual void rumbleGamepad(std::size_t index, float low, float high, float seconds) = 0;
+
     // The sentence that engine-owned network errors end with while the project of the app lacks what network access needs on this platform, such as the permission `INTERNET` that an Android app does not declare, or an empty text. The engine reads it when an app starts.
     [[nodiscard]] virtual std::string getNetworkRequirement() const = 0;
 
