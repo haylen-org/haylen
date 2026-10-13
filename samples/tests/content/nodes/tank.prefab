@@ -1,0 +1,13 @@
+{
+    "name": "tank",
+    "sprite": {"texture": "nodes/parts.png", "filter": "linear", "source": [0, 0, 112, 56]},
+    "children": [
+        {"name": "rear", "x": -34, "y": 24, "sprite": {"texture": "nodes/parts.png", "filter": "linear", "source": [173, 17, 24, 24]}},
+        {"name": "front", "x": 34, "y": 24, "sprite": {"texture": "nodes/parts.png", "filter": "linear", "source": [173, 17, 24, 24]}},
+        {"name": "turret", "y": -18, "sprite": {"texture": "nodes/parts.png", "filter": "linear", "source": [112, 0, 60, 40]}, "children": [
+            {"name": "barrel", "x": 18, "y": -2, "layer": -1, "sprite": {"texture": "nodes/parts.png", "filter": "linear", "source": [172, 0, 64, 16], "pivotX": 0.05}},
+            {"name": "flag", "x": -20, "y": -16, "sprite": {"texture": "nodes/parts.png", "filter": "linear", "source": [200, 18, 46, 44], "pivotX": 0.1, "pivotY": 1}}
+        ]},
+        {"name": "label", "y": -64, "text": {"text": "Tank", "size": 20, "anchor": [0.5, 1], "outlineWidth": 2}}
+    ]
+}

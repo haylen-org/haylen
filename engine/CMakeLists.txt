@@ -98,6 +98,11 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/navigation/Navigation2DLua.cpp
   src/2d/navigation/SteeringAgent.cpp
   src/2d/navigation/Wanderer.cpp
+  src/2d/nodes/Node.cpp
+  src/2d/nodes/Nodes2DLua.cpp
+  src/2d/nodes/NodeSerializer.cpp
+  src/2d/nodes/NodeTree.cpp
+  src/2d/nodes/Prefab.cpp
   src/2d/particles/Effect.cpp
   src/2d/particles/Emitter.cpp
   src/2d/particles/ImageShape.cpp
@@ -445,6 +450,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/NativePlugin.cpp
   src/plugins/Navigation2DPlugin.cpp
   src/plugins/NetPlugin.cpp
+  src/plugins/Nodes2DPlugin.cpp
   src/plugins/Particles2DPlugin.cpp
   src/plugins/Physics2DPlugin.cpp
   src/plugins/PlatformPlugin.cpp
@@ -884,6 +890,13 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-particle-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
   set_target_properties(haylen-particle-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-particle-benchmark)
+
+  # The node benchmark times the update and the draw of large node trees on the CPU, inside an engine on the headless host.
+  add_executable(haylen-node-benchmark bench/NodeBenchmark.cpp)
+  target_include_directories(haylen-node-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-node-benchmark PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-node-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-node-benchmark)
 
   # The Lua benchmark runs the bunnymark package in bench/lua-benchmark on the headless host, which times what Lua costs to update and draw many sprites through tables and through float buffers.
   add_executable(haylen-lua-benchmark bench/LuaBenchmark.cpp)

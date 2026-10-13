@@ -1786,6 +1786,20 @@ Checklist:
 - [ ] Pesquisar os dois jogos de alto desempenho do dono (o clone de MMORPG 2D e o jogo de luta 2D) e listar o que eles usam em baixo nível (desenho em lote, atlas, paletas, camadas, câmeras, rede, input), conferindo que a engine faz tudo, e implementando o que faltar, sem citar os jogos.
 - [ ] Pesquisar os conceitos, recursos e módulos 2D que ainda faltam na engine e implementar os que fazem sentido.
 - [ ] Pesquisar os problemas mais comuns de quem faz jogos e apps 2D e dar uma solução da engine e um teste para cada um.
+- [x] Árvore de nós 2D com transformações, parentesco, cores, visibilidade e camadas herdadas, culling, prefabs e salvar e carregar descrições. O módulo `haylen.nodes2d` (`nodes2d::NodeTree`) guarda os nós em arrays contíguos na ordem do percurso, atualiza só os nós alterados e seus descendentes numa passada (em paralelo no `JobSystem` a partir de 4096 nós), desenha numa chamada só juntando sprites vizinhos num lote e deixando de fora o que está fora da vista, segue corpos da física com interpolação, tem propriedades nativas para tweens, arquivos `.prefab` e `nodes2d.save`. No `haylen bench --suite nodes`, 100 mil nós atualizam em 0,21 ms no `JobSystem` e desenham em 2,4 ms. Testado em `NodeTreeTests` e no teste `NOD-001` do projeto de testes, conferido no player desktop.
+- [ ] Dados por frame nas animações (eventos, pontos, caixas, pivô e duração em ticks), lidos dos slices do atlas.
+- [ ] Lotes de sprites animados que avançam em C++, sem uma chamada de Lua por unidade.
+- [ ] Grafo de estados de animação com parâmetros, transições, conjuntos direcionais e camadas.
+- [ ] Animação esquelética e por recortes com ossos, skins, cinemática inversa e mistura.
+- [ ] Mapas de tiles criados em tempo de execução e camadas de tiles em chunks para mapas gerados e transmitidos.
+- [ ] Traços com junções, pontas, texturas e largura variável.
+- [ ] Máscaras e recorte por stencil, e grupos compostos com opacidade.
+- [ ] Malhas retidas e deformáveis.
+- [ ] Imagens de CPU no Lua, atlas de texturas em tempo de execução, lotes com várias texturas e dados por sprite, mipmaps, texturas comprimidas onde os backends suportam e sangramento de cor das texturas lineares.
+- [ ] Tiny Island empacotado em atlas, com chamadas de desenho e tempo de frame medidos antes e depois.
+- [ ] Zonas e trilhos de câmera, e canvases de baixa resolução com rolagem suave abaixo do pixel.
+- [ ] Captura de tela para imagem e arquivo, com leitura de pixels fora da thread do frame onde o backend permite.
+- [ ] Imagens da UI a partir de texturas e render targets.
 
 #### AS. Sistema de conteúdo (`CONTENT_SYSTEM_IMPLEMENTATION.md`)
 

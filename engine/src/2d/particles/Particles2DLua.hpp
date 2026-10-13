@@ -9,13 +9,34 @@
 #include "haylen/2d/particles/EmitterConfig.hpp"
 #include "haylen/2d/particles/Trail.hpp"
 #include "haylen/lua/Table.hpp"
+#include "haylen/lua/Type.hpp"
 
 struct lua_State;
 
 namespace haylen::particles2d {
 
 struct Effect;
+class Emitter;
 class ImageShape;
+class System;
+
+} // namespace haylen::particles2d
+
+namespace haylen::lua {
+
+template <> struct Type<particles2d::Emitter> {
+    static constexpr const char* name = "haylen.ParticleEmitter";
+    using Storage = std::shared_ptr<particles2d::Emitter>;
+};
+
+template <> struct Type<particles2d::System> {
+    static constexpr const char* name = "haylen.ParticleSystem";
+    using Storage = std::shared_ptr<particles2d::System>;
+};
+
+} // namespace haylen::lua
+
+namespace haylen::particles2d {
 
 // Installs `haylen.particles2d` with the `ParticleEmitter`, `ParticleEffect`, `ParticleSystem`, `Trail` and `ImageShape` classes. Emitter options and effect files share the same fields.
 class Particles2DLua final {

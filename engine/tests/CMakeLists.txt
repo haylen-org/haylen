@@ -12,6 +12,7 @@ set(HAYLEN_TEST_SOURCES
   2d/graphics/VectorAtlasTests.cpp
   2d/lighting/Lighting2DTests.cpp
   2d/navigation/CrowdTests.cpp
+  2d/nodes/NodeTreeTests.cpp
   2d/navigation/NavMeshTests.cpp
   2d/navigation/Navigation2DTests.cpp
   2d/navigation/NavigationLuaTests.cpp

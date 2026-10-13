@@ -21,6 +21,7 @@
 #include "plugins/JobsPlugin.hpp"
 #include "plugins/NativePlugin.hpp"
 #include "plugins/Navigation2DPlugin.hpp"
+#include "plugins/Nodes2DPlugin.hpp"
 #include "plugins/Particles2DPlugin.hpp"
 #include "plugins/Physics2DPlugin.hpp"
 #include "plugins/PlatformPlugin.hpp"
@@ -43,6 +44,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host&
     registry.add(std::make_unique<AudioPlugin>());
     registry.add(std::make_unique<Physics2DPlugin>());
     registry.add(std::make_unique<TiledPlugin>());
+    registry.add(std::make_unique<Nodes2DPlugin>());
     registry.add(std::make_unique<Spatial2DPlugin>());
     registry.add(std::make_unique<Procedural2DPlugin>());
     registry.add(std::make_unique<Navigation2DPlugin>());

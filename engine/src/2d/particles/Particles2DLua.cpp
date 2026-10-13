@@ -28,19 +28,9 @@
 
 namespace haylen::lua {
 
-template <> struct Type<particles2d::Emitter> {
-    static constexpr const char* name = "haylen.ParticleEmitter";
-    using Storage = std::shared_ptr<particles2d::Emitter>;
-};
-
 template <> struct Type<particles2d::Effect> {
     static constexpr const char* name = "haylen.ParticleEffect";
     using Storage = std::shared_ptr<particles2d::Effect>;
-};
-
-template <> struct Type<particles2d::System> {
-    static constexpr const char* name = "haylen.ParticleSystem";
-    using Storage = std::shared_ptr<particles2d::System>;
 };
 
 template <> struct Type<particles2d::Trail> {

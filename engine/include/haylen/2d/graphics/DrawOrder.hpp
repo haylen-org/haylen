@@ -32,6 +32,8 @@ struct DrawOrder {
 
     // A draw with a distortion above 0 bends the image of its canvas instead of drawing colors: its coverage, times the distortion, adds up in the distortion map of the canvas, and the composite moves every pixel down the slope of that map. Only canvases with lighting or post-processing have the map, and other canvases skip such draws.
     float distortion = 0.0F;
+
+    [[nodiscard]] bool operator==(const DrawOrder&) const noexcept = default;
 };
 
 } // namespace haylen::graphics2d

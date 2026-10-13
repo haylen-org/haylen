@@ -33,7 +33,7 @@ The menu lists the categories by section with their prefixes and the number of t
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
 | `content/<category>/` | The assets of each category, and `content/fonts/` the open-license fonts that several categories share, each next to its license. |
 | `plugins/` | `native-demo`, the plugin that exercises every capability of native plugins, `native-sample` and `platform-sample` with the platform handlers of the Native and Platform tests, and `native-test`, which answers the test library in the browser and holds the CMake project of that library in `native/`. |
-| `tools/` | The generators of the art of the Interface and Text categories, of the sounds of the Audio category and of the maps of the Tiled category. |
+| `tools/` | The generators of the art of the Interface, Nodes and Text categories, of the sounds of the Audio category and of the maps of the Tiled category. |
 
 A manifest returns the `prefix`, the `title` and the `description` of its category and its `tests`. Each test has a `code`, a `title`, a `description` and the `module` of its file, and a test that does not run everywhere lists the `platforms` it runs on and, in `unsupported`, the reason for each other platform, from `macos`, `windows`, `linux`, `ios`, `tvos`, `android`, `web` and `headless`. The catalog checks every manifest when the project starts.
 
@@ -71,6 +71,14 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-011` | Text | Sizes, colors, outlines, shadows, alignment, wrapping, anchors, rotation and measuring. |  |
 | `SPR-012` | Vector images | SVG icons in many sizes, a swarm of hundreds that turn and an icon that grows, rasterized on worker threads into an atlas. |  |
 | `SPR-013` | Recoloring by parts | One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call. |  |
+
+#### Nodes (NOD)
+
+Retained trees of 2D nodes with parenting, culling, prefabs and saved descriptions. The tests are in `source/categories/nodes/`.
+
+| Code | Test | What it shows | Unsupported on |
+| --- | --- | --- | --- |
+| `NOD-001` | Node tree | A column of tanks from one prefab whose turrets aim at the pointer and whose wheels turn, culled as the camera pans, added, destroyed, hidden and saved. |  |
 
 #### Camera (CAM)
 

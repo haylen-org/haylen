@@ -199,6 +199,10 @@ scene.push({
 })
 ```
 
+## Node trees
+
+A `nodes2d::NodeTree` (`engine/include/haylen/2d/nodes/NodeTree.hpp`) keeps composed objects as a retained tree, as the [`haylen.nodes2d` reference](lua-api/nodes2d.md) describes. Its draw walks the nodes in tree order, leaves out the nodes whose world bounds miss the area the canvas shows, and gathers neighbouring sprite nodes of one texture and draw order into one `drawBatch`, so a tree of many sprites of an atlas costs a few draw items however deep it is. Text, frames and particles draw through the usual functions of the renderer, frames as one batch of their pieces, each turned with its node.
+
 ## Lighting
 
 A world or render target canvas becomes lit when it receives `ambientLight`. Its scene pass renders into four targets of the pixel size of the canvas at once, with pipelines of four color attachments and the lit programs, which write through `haylen_output` of the shader library:

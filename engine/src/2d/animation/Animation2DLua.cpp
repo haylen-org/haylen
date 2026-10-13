@@ -4,10 +4,12 @@
 #include <string>
 #include <vector>
 
+#include "2d/nodes/Nodes2DLua.hpp"
 #include "haylen/2d/animation/Animation.hpp"
 #include "haylen/2d/animation/Animator.hpp"
 #include "haylen/2d/animation/SpriteAtlas.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
+#include "haylen/2d/nodes/Node.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -173,8 +175,16 @@ int Animation2DLua::animatorUpdate(lua_State* L) {
     return 0;
 }
 
+// Applies the frame to a sprite, or to the sprite a node shows.
 int Animation2DLua::animatorApply(lua_State* L) {
-    lua::Userdata::check<Animator>(L, 1).apply(lua::Userdata::check<graphics2d::Sprite>(L, 2));
+    const Animator& animator = lua::Userdata::check<Animator>(L, 1);
+    if (nodes2d::Node* node = lua::Userdata::test<nodes2d::Node>(L, 2)) {
+        graphics2d::Sprite sprite = node->getSprite();
+        animator.apply(sprite);
+        node->setSprite(sprite);
+        return 0;
+    }
+    animator.apply(lua::Userdata::check<graphics2d::Sprite>(L, 2));
     return 0;
 }
 

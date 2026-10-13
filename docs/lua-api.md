@@ -22,6 +22,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | --- | --- |
 | [`haylen.graphics`](lua-api/graphics.md) | Textures from pixels, colors or the bytes of image files, render targets, TrueType and bitmap fonts, font families, custom shaders and the GPU backend. |
 | [`haylen.graphics2d`](lua-api/graphics2d.md) | Canvases, captures, draw order with y sorting and visibility, cameras with viewports, smoothing, drag margins and shake, parallax layers, sprites, sprite batches, shapes, meshes, text shaped in every script and ordered in both directions, rich text with effects and a typewriter reveal, nine-slices, image blends, metaballs, materials with custom shaders, lit canvases with normal maps, lights and occluders. |
+| [`haylen.nodes2d`](lua-api/nodes2d.md) | Retained trees of 2D nodes with transforms, colors, visibility and layers that subtrees inherit, culled drawing in one call, prefabs, saving to descriptions, nodes that follow bodies and native properties for tweens. |
 | [`haylen.animation2d`](lua-api/animation2d.md) | Frame animations from grids and atlases, and animators that play them on sprites. |
 | [`haylen.particles2d`](lua-api/particles2d.md) | Particle emitters, composite systems, trails and `.particles` effect files. |
 | [`haylen.lighting2d`](lua-api/lighting2d.md) | Point, spot and directional lights with blend modes, masks and shadows, occluders from outlines, physics bodies and Tiled maps, light queries and flame flicker. |
