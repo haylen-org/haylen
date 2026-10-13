@@ -44,6 +44,7 @@ Some settings that `app.json` gives the whole project change at run time, so the
 - The orientation tests unlock the orientation with `window.lockOrientation('any')` and lock it to landscape again, and the fold test restores the fold simulation it found.
 - The design resolution test changes the design size and the scaling with `viewport.setDesignSize` and `viewport.setScaling` and restores 1920 by 1080 with `expand`.
 - The safe area tests simulate the safe areas of devices with `viewport.setSafeAreaSimulation` and restore the simulation they found.
+- The screen reader test turns on the tree of accessible elements with `accessibility.setTreeEnabled` and restores the value it found.
 - The window, lifecycle and preferences tests restore the fullscreen mode, the lifecycle options, the bus volumes, the language and the theme they change.
 
 No test needs a setting that only `app.json` can give.
@@ -503,6 +504,16 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-030` | Shared focus | A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll. |  |
 | `GUI-031` | Smooth curves | Every curved component and shape in the design and physical scales, next to the pixels of their edges magnified, which fade over one pixel of the screen at every scale. |  |
 | `GUI-032` | Images made at run time | A minimap rendered into a render target every frame, a portrait composed in code and a vector image built in code, shown by images, icons, buttons and list items. |  |
+
+#### Accessibility (ACC)
+
+The accessibility settings of the system and what follows them, the elements that screen readers read with their actions and announcements, and the deficiencies of color vision. The tests are in `source/categories/accessibility/`.
+
+| Code | Test | What it shows | Unsupported on |
+| --- | --- | --- | --- |
+| `ACC-001` | Accessibility settings | The text scale, reduced motion, high contrast, reduced transparency and screen reader of the system, live, with the UI and the motion that follow them. |  |
+| `ACC-002` | Screen reader elements | The elements a screen reader reads of a form, with their roles, labels, values and states, actions performed the way a screen reader asks for them, and announcements. |  |
+| `ACC-003` | Color vision | Colors that tell things apart, as protanopia, deuteranopia and tritanopia see them, and corrected for each. |  |
 
 #### Orientation (ORI)
 
