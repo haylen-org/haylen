@@ -59,7 +59,7 @@ end
 
 function RecycledLists:enter()
     self:frame{
-        hint = 'Scroll with the wheel, the scrollbar or a finger, which flings the lists. Arrows, the directional pad and remotes move between items, Page Up, Page Down, Home, End and the shoulder buttons page, and Enter or the south button selects tiles.',
+        hint = 'Scroll with the wheel, the scrollbar or a finger, which flings the lists. Arrows, the directional pad and remotes move between items, Page Up, Page Down, Home, End and the shoulder buttons page, and Enter or the south button selects tiles. The "More" link of a shell opens its menu.',
         focus = 'list',
         content = {self:columns()},
     }
@@ -111,9 +111,16 @@ function RecycledLists:columns()
                 end},
             }),
             layout.section('Horizontal shelf', {
-                ui.collection{id = 'shelf', axis = 'horizontal', height = 120, gap = 12, snap = 'item', rememberFocus = true, types = {
-                    shell = {template = ui.card{width = 180, ui.label{part = 'title', bind = {text = 'title'}}}},
-                }},
+                ui.collection{id = 'shelf', axis = 'horizontal', height = 140, gap = 12, snap = 'item', rememberFocus = true, types = {
+                    shell = {template = ui.card{width = 180, gap = 4,
+                        ui.label{part = 'title', bind = {text = 'title'}},
+                        ui.contextMenu{part = 'menu', items = {{id = 'polish', text = 'Polish'}, {id = 'sell', text = 'Sell'}}, ui.button{part = 'more', text = 'More', variant = 'link'}},
+                    }},
+                }, onClick = function(event)
+                    self.gui:collection('shelf'):cellOf(event.cell.item):command('menu', 'open')
+                end, onSelect = function(event)
+                    self.last = string.format(' The menu of "%s" picked "%s".', event.cell.item, event.item)
+                end},
             }),
         },
     }
@@ -171,8 +178,12 @@ function RecycledLists:update(dt)
     local focus = ui.focused() or {}
     local id, item, part = focus.id, focus.item, focus.part
     local first, last = self.list:visibleRange()
+    local shelf = self.gui:collection('shelf')
+    local card = shelf:cellOf(1) and shelf:cellOf(1):bounds()
+    local place = card and string.format(' The first shell draws at %d, %d.', card.x, card.y) or ''
+
     local focus = item and string.format('"%s" of "%s"%s', item, id, part and (' on "' .. part .. '"') or '') or tostring(id)
-    self:status(string.format('Rows %d, in view %s to %s. Cells alive %d, created %d. Focus %s.%s', self.list.count, tostring(first), tostring(last), cells.alive, cells.created, focus, self.last))
+    self:status(string.format('Rows %d, in view %s to %s. Cells alive %d, created %d. Focus %s.%s%s', self.list.count, tostring(first), tostring(last), cells.alive, cells.created, focus, place, self.last))
 end
 
 return RecycledLists

@@ -891,10 +891,12 @@ A `UiCell` is a cell of a collection while it shows one item, which a binder rec
 | --- | --- |
 | `set(part, properties)` | Changes properties of a part of this cell, checked like `gui:set`. The part takes its template values again before the cell shows another item. |
 | `transform(part)` | Returns the [`UiTransform`](#guitransformid) of a part, which a new transform replaces before the cell shows another item, so a tween on it stops with the item. |
+| `command(part, name, arguments)` | Sends a [command](#guicommandid-name-arguments) to a part, the way `gui:command` sends one to a node, such as `'open'` to a `contextMenu` of the cell, whose `select` then arrives on the collection with `part` and `cell`. |
+| `bounds(part)` | Returns where the cell drew in the last frame, or the part `part` of it when given, as a table with `x`, `y`, `width` and `height` in the design coordinates of screen canvases like `gui:bounds`, or `nil` when it did not draw then, such as a cell bound ahead of the view. An app draws into a cell with it, such as a route under a row on a screen canvas. |
 | `item`, `index`, `type` | Read-only id, index and type of the item the cell shows. |
 | `bound` | Read-only, `true` while the cell shows the item it was handed out for. |
 
-An unknown part raises `The template of the type "<type>" has no part named "<part>".`, and a `set` with `kind`, `id`, `children`, `part` or `bind` raises `The "set" method of a cell changes properties only, so it takes an object without "kind", "id", "children", "part" or "bind".`.
+An unknown part raises `The template of the type "<type>" has no part named "<part>".`, a command the part does not answer raises the error of `gui:command`, and a `set` with `kind`, `id`, `children`, `part` or `bind` raises `The "set" method of a cell changes properties only, so it takes an object without "kind", "id", "children", "part" or "bind".`.
 
 ```lua
 local tween = require('haylen.tween')

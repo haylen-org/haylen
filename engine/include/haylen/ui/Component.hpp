@@ -151,6 +151,11 @@ class Component {
         return drawnBounds;
     }
 
+    // The frame of the UI the component last drew in, zero before it drew.
+    [[nodiscard]] std::uint64_t getDrawnFrame() const noexcept {
+        return drawnFrame;
+    }
+
     // The transform the node draws with, which the transform handles of Lua share so tweens animate it natively.
     [[nodiscard]] const std::shared_ptr<Transform>& getTransform() const noexcept {
         return transform;

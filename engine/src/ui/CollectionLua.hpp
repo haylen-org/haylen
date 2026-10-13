@@ -101,6 +101,8 @@ class CollectionLua final {
 
     static int cellSet(lua_State* L);
     static int cellTransform(lua_State* L);
+    static int cellCommand(lua_State* L);
+    static int cellBounds(lua_State* L);
     static int cellItem(lua_State* L);
     static int cellIndex(lua_State* L);
     static int cellType(lua_State* L);

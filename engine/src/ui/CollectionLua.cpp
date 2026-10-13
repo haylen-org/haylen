@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -12,10 +13,12 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
+#include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/CollectionCell.hpp"
+#include "haylen/ui/Context.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "lua/StackScope.hpp"
 #include "ui/LuaItemSource.hpp"
@@ -574,6 +577,26 @@ int CollectionLua::cellTransform(lua_State* L) {
     return 1;
 }
 
+int CollectionLua::cellCommand(lua_State* L) {
+    CollectionCell& cell = checkCell(L);
+    const core::Json arguments = lua_isnoneornil(L, 4) ? core::Json::object() : lua::JsonConverter::read(L, 4);
+    cell.command(lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getContext(), lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<std::string_view>(L, 3), arguments);
+    return 0;
+}
+
+// Returns where the cell or a part of it drew in the last frame, in the design coordinates of screen canvases like `gui:bounds`, or `nil`.
+int CollectionLua::cellBounds(lua_State* L) {
+    CollectionCell& cell = checkCell(L);
+    const Context& context = lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getContext();
+    const std::optional<math::Rect> bounds = cell.getBounds(context, lua_isnoneornil(L, 2) ? std::nullopt : std::optional<std::string_view>(lua::Stack::read<std::string_view>(L, 2)));
+    if (!bounds || bounds->isEmpty()) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua::Stack::push(L, context.toDesign(*bounds));
+    return 1;
+}
+
 int CollectionLua::cellItem(lua_State* L) {
     lua::Stack::push(L, checkCell(L).getItem());
     return 1;
@@ -600,7 +623,7 @@ void CollectionLua::install(lua_State* L) {
     lua_newtable(L);
     lua_setfield(L, LUA_REGISTRYINDEX, kValuesKey);
     lua::ClassBuilder<Handle>(L).function("setItems", &lua::Binding::native<&setItems>).function("setPages", &lua::Binding::native<&setPages>).function("insert", &lua::Binding::native<&insert>).function("remove", &lua::Binding::native<&remove>).function("move", &lua::Binding::native<&move>).function("replace", &lua::Binding::native<&replace>).function("reload", &lua::Binding::native<&reload>).function("setBinder", &lua::Binding::native<&setBinder>).function("scrollTo", &lua::Binding::native<&scrollTo>).function("scrollBy", &lua::Binding::native<&scrollBy>).function("focus", &lua::Binding::native<&focus>).function("indexOf", &lua::Binding::native<&indexOf>).function("cellOf", &lua::Binding::native<&cellOf>).function("visibleRange", &lua::Binding::native<&visibleRange>).function("saveState", &lua::Binding::native<&saveState>).function("restoreState", &lua::Binding::native<&restoreState>).property("count", &lua::Binding::native<&count>).property("scrollOffset", &lua::Binding::native<&scrollOffset>, &lua::Binding::native<&setScrollOffset>).property("contentLength", &lua::Binding::native<&contentLength>).property("viewportLength", &lua::Binding::native<&viewportLength>).property("focusedItem", &lua::Binding::native<&focusedItem>).property("selected", &lua::Binding::native<&selected>).install();
-    lua::ClassBuilder<CellHandle>(L).function("set", &lua::Binding::native<&cellSet>).function("transform", &lua::Binding::native<&cellTransform>).property("item", &lua::Binding::native<&cellItem>).property("index", &lua::Binding::native<&cellIndex>).property("type", &lua::Binding::native<&cellType>).property("bound", &cellBound).install();
+    lua::ClassBuilder<CellHandle>(L).function("set", &lua::Binding::native<&cellSet>).function("transform", &lua::Binding::native<&cellTransform>).function("command", &lua::Binding::native<&cellCommand>).function("bounds", &lua::Binding::native<&cellBounds>).property("item", &lua::Binding::native<&cellItem>).property("index", &lua::Binding::native<&cellIndex>).property("type", &lua::Binding::native<&cellType>).property("bound", &cellBound).install();
 }
 
 } // namespace haylen::ui

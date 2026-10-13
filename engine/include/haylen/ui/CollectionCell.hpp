@@ -20,6 +20,7 @@
 namespace haylen::ui {
 
 class CellTemplate;
+class Context;
 
 // One cell of a collection: a tree of components built from the template of a type, which shows one item at a time and moves on to another item when the collection reuses it. Its parts are the nodes of the template that name themselves with `part`. Cells count themselves as `UiCell` in the debug statistics.
 class CollectionCell final : public std::enable_shared_from_this<CollectionCell> {
@@ -44,6 +45,12 @@ class CollectionCell final : public std::enable_shared_from_this<CollectionCell>
 
     // Returns the transform of a part, which a new one replaces before the cell shows another item, so a tween on it stops with the item.
     [[nodiscard]] const std::shared_ptr<Transform>& getTransform(std::string_view part);
+
+    // Sends a command to a part, such as `open` to a context menu, the way `Gui::command` sends one to a node. Throws for an unknown part or a command the part does not answer.
+    void command(Context& context, std::string_view part, std::string_view name, const core::Json& arguments);
+
+    // Returns where the cell, or a part of it when one is named, drew in the last frame of the UI, in UI coordinates, or nothing when it did not draw then, such as a cell bound ahead of the view. Throws for an unknown part.
+    [[nodiscard]] std::optional<math::Rect> getBounds(const Context& context, std::optional<std::string_view> part = std::nullopt) const;
 
     // The id of the item the cell shows, empty for an item that did not load yet.
     [[nodiscard]] const std::string& getItem() const noexcept {

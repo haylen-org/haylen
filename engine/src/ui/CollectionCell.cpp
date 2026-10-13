@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "haylen/ui/Context.hpp"
 #include "ui/components/collections/CellTemplate.hpp"
 
 namespace haylen::ui {
@@ -29,6 +30,18 @@ void CollectionCell::set(std::string_view part, const core::Json& properties) {
 
 const std::shared_ptr<Transform>& CollectionCell::getTransform(std::string_view part) {
     return type.getTransform(*this, requirePart(part));
+}
+
+void CollectionCell::command(Context& context, std::string_view part, std::string_view name, const core::Json& arguments) {
+    nodes[requirePart(part)]->command(context, name, arguments);
+}
+
+std::optional<math::Rect> CollectionCell::getBounds(const Context& context, std::optional<std::string_view> part) const {
+    const Component& node = part ? *nodes[requirePart(*part)] : *root;
+    if (node.getDrawnFrame() == 0 || node.getDrawnFrame() + 1 < context.getFrame()) {
+        return std::nullopt;
+    }
+    return node.getBounds();
 }
 
 std::string_view CollectionCell::getType() const noexcept {

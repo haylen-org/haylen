@@ -7,6 +7,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/input/Key.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -37,6 +38,16 @@ class CollectionLuaTest : public ::testing::Test {
             fixture.frames(1);
         }
         fixture.frames(1);
+    }
+
+    void key(input::Key code) {
+        for (const platform::Event::Type type : {platform::Event::Type::KeyDown, platform::Event::Type::KeyUp}) {
+            platform::Event event;
+            event.type = type;
+            event.key = code;
+            getEngine().handleEvent(event);
+            fixture.frames(1);
+        }
     }
 
     core::Engine& getEngine() {
@@ -293,6 +304,38 @@ TEST_F(CollectionLuaTest, HandsBindersCellsThatGoStaleWithTheirItem) {
     EXPECT_EQ(fixture.lua("return tostring(first.bound)"), "false");
     EXPECT_NE(fixture.lua("return first.item").find("This cell no longer shows the item \"i1\"."), std::string::npos);
     EXPECT_NE(fixture.lua("first:set('title', {text = 'x'})").find("This cell no longer shows the item \"i1\"."), std::string::npos);
+}
+
+TEST_F(CollectionLuaTest, OpensTheContextMenuOfAPartAndTellsWhereACellDrew) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        rows = {}
+        for i = 1, 30 do rows[i] = {id = 'r' .. i, title = 'Row ' .. i} end
+        picked = 'none'
+        gui = ui.mount(ui.column{ui.collection{id = 'list', height = 600, gap = 0, prefetch = 0, types = {row = {template = ui.row{height = 60,
+            ui.label{part = 'title', bind = {text = 'title'}, grow = 1},
+            ui.contextMenu{part = 'menu', items = {{id = 'share', text = 'Share'}, {id = 'delete', text = 'Delete'}}, ui.button{part = 'more', text = 'More'}},
+        }}}, onSelect = function(event) picked = event.part .. ' ' .. event.item .. ' ' .. event.cell.item end}}, {placement = 'screen'})
+        list = gui:collection('list')
+        list:setItems(rows)
+    )");
+    // clang-format on
+    fixture.frames(3);
+    fixture.runLua("list:cellOf(2):command('menu', 'open')");
+    fixture.frames(2);
+    key(input::Key::Enter);
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return picked"), "menu share r2");
+
+    // A cell draws below the one before it, and a part inside its cell.
+    EXPECT_EQ(fixture.lua("local area, first, second = gui:bounds('list'), list:cellOf(1):bounds(), list:cellOf(2):bounds() return string.format('%d %d %d', first.y - area.y, second.y - first.y, first.height)"), "0 60 60");
+    EXPECT_EQ(fixture.lua("local cell, more = list:cellOf(2):bounds(), list:cellOf(2):bounds('more') return tostring(more.x >= cell.x and more.y >= cell.y and more.x + more.width <= cell.x + cell.width + 0.5)"), "true");
+
+    EXPECT_NE(fixture.lua("list:cellOf(1):command('title', 'open')").find("The component kind \"label\" does not answer the command \"open\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("list:cellOf(1):command('nothing', 'open')").find("The template of the type \"row\" has no part named \"nothing\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("list:cellOf(1):bounds('nothing')").find("The template of the type \"row\" has no part named \"nothing\"."), std::string::npos);
+    EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
 TEST_F(CollectionLuaTest, WritesPlayerValuesBackBeforeTheHandlersRun) {
