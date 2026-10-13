@@ -519,6 +519,12 @@ class TemplateLayersTest(unittest.TestCase):
         self.assertIn('Run it with "haylen run-cpp', self.output.getvalue())
         self.assertEqual(json.loads((self.scratch / "cpp-app" / "app.json").read_text())["name"], "Cpp App")
 
+    def test_the_commands_of_platform_projects_send_a_cpp_app_to_run_cpp(self):
+        app = self.new_app("game", "--kind", "cpp")
+        for arguments in (["run", str(app)], ["prepare", str(app), "--platform", "web"], ["dist", str(app), "--platform", "linux"], ["xcodegen", str(app)], ["steam", str(app), "--platform", "linux", "--app-id", "1", "--depot", "linux=2"]):
+            with self.assertRaisesRegex(haylen.BuildError, 'is a C\\+\\+ app, whose CMake project builds it for every platform. Run it with "haylen run-cpp'):
+                haylen.build_parser().parse_args(arguments).handler(haylen.build_parser().parse_args(arguments))
+
     def test_no_file_of_a_kind_copies_the_common_file_it_replaces(self):
         common = haylen.project_files(haylen.COMMON_TEMPLATE)
         for kind in haylen.APP_KINDS:

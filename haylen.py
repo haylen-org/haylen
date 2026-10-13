@@ -949,6 +949,14 @@ def resolve_app(value: str | None) -> Path:
     return folder
 
 
+def resolve_lua_app(value: str | None) -> Path:
+    """Returns the folder of a Lua app, the kind of app that the commands of the platform projects build, and stops with the command of C++ apps for the folder of a C++ app."""
+    folder = resolve_app(value)
+    if app_kind(folder) == "cpp":
+        raise BuildError(f'The app `{shown_path(folder)}` is a C++ app, whose CMake project builds it for every platform. Run it with "{TOOL} run-cpp {shown_path(folder)}".')
+    return folder
+
+
 def parse_color(text: str) -> tuple[int, int, int, int]:
     """Reads `#RRGGBB` or `#AARRGGBB` like the engine and returns red, green, blue and alpha."""
     digits = text.removeprefix("#")
@@ -3529,7 +3537,7 @@ def ensure_inno_setup() -> Path:
 
 def command_dist(args: argparse.Namespace) -> None:
     """Builds the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the `.deb` and the AppImage of Linux, which the CPack configuration of the project describes."""
-    app = resolve_app(args.app)
+    app = resolve_lua_app(args.app)
     compile_app_shaders(app)
     args.config = "Release"
     info = App(app, RUN_TARGETS[args.platform].plugins)
@@ -3592,7 +3600,7 @@ RUN_TARGETS = {
 
 
 def command_run(args: argparse.Namespace) -> None:
-    app = resolve_app(args.app)
+    app = resolve_lua_app(args.app)
     compile_app_shaders(app)
     if args.platform is None:
         # The player of this machine runs the package folder in development mode, which reloads edited files, while changed shaders compile again in the background.
@@ -3620,7 +3628,7 @@ def command_run(args: argparse.Namespace) -> None:
 
 def command_prepare(args: argparse.Namespace) -> None:
     """Writes the generated folder `haylen/` of the project of a platform, or the folder of the site or the desktop app, and nothing else, so the project builds in Xcode, Android Studio or its own tools."""
-    app = resolve_app(args.app)
+    app = resolve_lua_app(args.app)
     compile_app_shaders(app)
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
@@ -3633,7 +3641,7 @@ def command_xcodegen(args: argparse.Namespace) -> None:
     if args.template:
         generate_template_project(args)
         return
-    app = resolve_app(args.app)
+    app = resolve_lua_app(args.app)
     info = App(app, RUN_TARGETS[args.platform].plugins)
     ensure_artifacts("apple", args.engine_config, args.jobs)
     root = project_root(info, "apple")
@@ -4330,7 +4338,7 @@ def write_steam_scripts(output: Path, app_id: str, description: str, depots: dic
 
 def command_steam(args: argparse.Namespace) -> None:
     """Builds the release of an app for a desktop platform and lays it out for SteamPipe in `build/apps/<app>-<hash>/steam/`: the depot of the platform with the app and its protected release, a depot for every named pack whose shards install into `packs/` next to the executable or the bundle, and the build scripts of steamcmd."""
-    app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
+    app = App(resolve_lua_app(args.app), RUN_TARGETS[args.platform].plugins)
     args.config = "Release"
     depots = steam_depot_ids(args, [args.platform, *app.content_packs])
     output = Path(args.output).resolve() if args.output else app.build_folder / "steam"
