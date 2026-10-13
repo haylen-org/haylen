@@ -166,16 +166,16 @@ void Downloader::indexShard(Shard& shard) {
             if (owner.expired()) {
                 return;
             }
-            Shard& shard = shards.at(reference.shardId);
+            Shard& indexed = shards.at(reference.shardId);
             if (index) {
-                shard.index = index;
-                plan(shard);
+                indexed.index = index;
+                plan(indexed);
                 pump();
                 return;
             }
 
             // The header comes first, since it says where the index lies at the end of the shard.
-            fetchRange(shard.url, 0, ShardHeader::kSize, [this, reference](std::vector<std::uint8_t> header, std::optional<Error> failure) {
+            fetchRange(indexed.url, 0, ShardHeader::kSize, [this, reference](std::vector<std::uint8_t> header, std::optional<Error> failure) {
                 if (failure) {
                     failShard(reference.shardId, *failure);
                     return;
@@ -187,12 +187,12 @@ void Downloader::indexShard(Shard& shard) {
                     failShard(reference.shardId, error);
                     return;
                 }
-                fetchRange(shards.at(reference.shardId).url, parsed->indexOffset, parsed->indexSize, [this, reference, header = std::move(header)](std::vector<std::uint8_t> index, std::optional<Error> indexFailure) mutable {
+                fetchRange(shards.at(reference.shardId).url, parsed->indexOffset, parsed->indexSize, [this, reference, header = std::move(header)](std::vector<std::uint8_t> indexBytes, std::optional<Error> indexFailure) mutable {
                     if (indexFailure) {
                         failShard(reference.shardId, *indexFailure);
                         return;
                     }
-                    header.insert(header.end(), index.begin(), index.end());
+                    header.insert(header.end(), indexBytes.begin(), indexBytes.end());
                     receiveIndex(reference.shardId, std::move(header));
                 });
             });
@@ -221,9 +221,9 @@ void Downloader::receiveIndex(const Digest& shardId, std::vector<std::uint8_t> b
                 failShard(shardId, *failure);
                 return;
             }
-            Shard& shard = shards.at(shardId);
-            shard.index = index;
-            plan(shard);
+            Shard& indexed = shards.at(shardId);
+            indexed.index = index;
+            plan(indexed);
             pump();
         });
     });

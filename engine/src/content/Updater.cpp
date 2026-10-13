@@ -175,10 +175,10 @@ void Updater::install(const UpdateOffer& offer, std::function<void(const Downloa
             }
             download = downloader.fetch(offer.content->shards, offer.missing, [this](const ShardReference& pack) { return locate(pack); }, {
                 .onProgress = std::move(progress),
-                .onComplete = [this, offer, done = std::move(done)](std::optional<Error> failure) mutable {
+                .onComplete = [this, offer, done = std::move(done)](std::optional<Error> downloadFailure) mutable {
                     download.reset();
-                    if (failure) {
-                        done(std::move(failure));
+                    if (downloadFailure) {
+                        done(std::move(downloadFailure));
                         return;
                     }
                     commit(offer, std::move(done));

@@ -163,7 +163,7 @@ class ContentBenchmark final {
     static void findFiles(const io::Package& package) {
         std::size_t found = 0;
         for (int index = 0; index < kSmallFiles; ++index) {
-            found += package.exists("content/items/item_" + std::to_string(index) + ".bin") ? 1 : 0;
+            found += package.exists("content/items/item_" + std::to_string(index) + ".bin") ? 1U : 0U;
         }
         if (found != static_cast<std::size_t>(kSmallFiles)) {
             std::fprintf(stderr, "The catalog lost files.\n");
