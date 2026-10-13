@@ -287,6 +287,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 215. Regra: os samples usam o mínimo de imagens, só o suficiente para ficarem bons. O Codex fica para onde a arte faz diferença (jogos, nine-slice, temas de UI e interface), e no resto entram SVG e primitivas, sem uma imagem por produto nos apps de exemplo, para não encher o repositório de imagens.
 216. Apagar todos os simuladores do iOS e emuladores do Android que os agentes criaram, usar só os padrões que já existem e resetá-los, porque ficaram com muitos samples instalados.
 217. Um comando `haylen` na raiz do repositório, para Windows, Linux e macOS, que chama o `haylen.py`, para que com a raiz no `PATH` baste digitar `haylen run` ou qualquer outro comando.
+218. A arte do Tiny Island é o padrão: todos os outros lugares (samples, projeto de testes, temas de UI e templates) seguem o mesmo estilo, a mesma forma de desenhar, as mesmas proporções e o mesmo polimento.
 
 ## 3. Regras
 
@@ -943,7 +944,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 217 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 218 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -954,9 +955,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 217: decisões e checklist
+## 14. Pedidos 51 a 218: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 217 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 218 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1833,6 +1834,7 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [x] Rolagem pelo trackpad e pela roda do mouse com a velocidade das plataformas: deltas de precisão do trackpad tratados como pixels, a roda em linhas, uma sensibilidade configurável pelo tema e pelo `app.json`, e testes. A causa: o `sokol_app` dividia os pontos do trackpad por 10 no macOS e por 100 na web sem distinguir da roda, contava cada linha da web como 1,33 passo, e a UI multiplicava cada unidade por `controlHeight` nas coleções e por cinco tamanhos de fonte no `scroll` vertical do ImGui, então um gesto de trackpad de 10 pontos rolava 64 a 140 unidades. Um patch do sokol (`sokol-scroll-units.patch`) entrega os pontos de precisão com `scroll_precise` e a roda em passos em todas as plataformas, o Android passa a rolar pela roda e pelo touchpad (`AMOTION_EVENT_ACTION_SCROLL`), a UI rola os pontos do trackpad como pontos e cada passo da roda pela métrica `scrollLine` do tema (64), o `scroll`, o `dialog` e os popups tomam a roda eles mesmos, e `input.scrollSpeed` no `app.json` e `input.setScrollSpeed()` multiplicam tudo. Testado em `WheelTest`, `CollectionTest`, `InputTest`, `InputLuaTest`, `ErrorScreenTest` e no `INP-002`.
 - [~] Samples com o mínimo de imagens: regra no `AGENTS.md`, o Codex só onde a arte faz diferença, SVG e primitivas no resto, e os apps de exemplo sem uma imagem por produto. A regra está no `AGENTS.md`, e falta refazer os apps de exemplo com ela.
 - [x] Simuladores e emuladores: os criados pelos agentes apagados, os padrões resetados, e a regra de usar só os padrões no `AGENTS.md`. Os criados pelos agentes já não existiam, os 12 simuladores padrão desligados foram apagados (erase), e o iPhone e o emulador Android que estavam abertos só tinham apps de outro projeto do dono, então ficaram como estavam. A regra diz que as conferências usam só os aparelhos que já existem, não criam nem apagam nenhum e desinstalam o que instalam.
+- [ ] A arte do Tiny Island é o padrão de todo o repositório: a regra está no `AGENTS.md`, e o tema de imagens, a arte refeita dos samples de estresse, as texturas de partículas, as imagens dos apps de exemplo e a arte do projeto de testes seguem o guia de estilo do `samples/games/tiny-island/README.md`.
 - [x] Comando `haylen` na raiz (script para macOS e Linux, e `haylen.cmd` para Windows) que repassa tudo ao `haylen.py`, documentado no `README.md` e no guia de distribuição, com teste. Funciona de qualquer pasta e por link, a ajuda e as mensagens da ferramenta dizem `haylen <comando>`, e os docs, os READMEs e o `AGENTS.md` usam `haylen` no lugar de `python3 haylen.py`, testado no `LauncherTest`.
 
 - [ ] Os testes `PLT-001` e `PLT-002` passam mesmo sem o plugin `platform-sample`, porque só demonstram e não conferem nada: fazer cada um conferir as respostas do plugin e falhar quando ele faltar.
