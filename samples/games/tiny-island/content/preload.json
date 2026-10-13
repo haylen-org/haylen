@@ -8,9 +8,9 @@
         ],
         "menu": [
             {"path": "maps/island.tmj", "options": {"filter": "linear"}},
-            {"path": "effects/campfire_flames.particles", "options": {"filter": "linear"}},
-            {"path": "effects/campfire_embers.particles", "options": {"filter": "linear"}},
-            {"path": "effects/campfire_smoke.particles", "options": {"filter": "linear"}},
+            {"path": "effects/campfire-flames.particles", "options": {"filter": "linear"}},
+            {"path": "effects/campfire-embers.particles", "options": {"filter": "linear"}},
+            {"path": "effects/campfire-smoke.particles", "options": {"filter": "linear"}},
             {"path": "audio/music/menu.mp3", "options": {"stream": true}}
         ],
         "gameplay": [
@@ -23,10 +23,10 @@
             {"path": "effects/flames.particles", "options": {"filter": "linear"}},
             "audio/effects/",
             "audio/jingles/",
-            "audio/ambient/fire_loop.ogg",
+            "audio/ambient/fire-loop.ogg",
             {"path": "audio/ambient/night.ogg", "options": {"stream": true}},
             {"path": "audio/music/day.mp3", "options": {"stream": true}},
-            {"path": "audio/music/game_over.mp3", "options": {"stream": true}}
+            {"path": "audio/music/game-over.mp3", "options": {"stream": true}}
         ]
     }
 }

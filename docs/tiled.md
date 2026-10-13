@@ -165,7 +165,7 @@ end
 
 ## The Tiny Island map
 
-The island lives in `samples/games/tiny-island/content/maps/` as `island.tmj` and three external tilesets. The tool `samples/games/tiny-island/tools/generate_island_map.py` writes all of them from seeded noise, and they open and edit in Tiled 1.12. The file `samples/games/tiny-island/source/systems/island.lua` loads the map with the `linear` filter, because the art is painted in high definition, and gives the rest of the game what it needs from it.
+The island lives in `samples/games/tiny-island/content/maps/` as `island.tmj` and three external tilesets. The tool `samples/games/tiny-island/tools/generate-island-map.py` writes all of them from seeded noise, and they open and edit in Tiled 1.12. The file `samples/games/tiny-island/source/systems/island.lua` loads the map with the `linear` filter, because the art is painted in high definition, and gives the rest of the game what it needs from it.
 
 The map is orthogonal, 56 by 36 cells of 64 pixels, with the water color `#2fb3c4` as its background color, which matches the `clearColor` in `app.json` so the sea fills the screen around the map.
 
@@ -227,13 +227,13 @@ end
 ### Regenerating the map
 
 ```sh
-python3 samples/games/tiny-island/tools/generate_island_map.py
+python3 samples/games/tiny-island/tools/generate-island-map.py
 ```
 
 The tool of the sample writes `island.tmj`, `terrain.tsj`, `foam.tsj` and `decorations.tsj` into the `content/maps` folder of the sample that holds it, with the default seed `20260927`, or of the package that `--package` names. The tilesets use the images and atlases in `content/world/` of the package, and the generator stops with a message when one is missing. The same seed always gives the same island. Another island comes from a seed of its own:
 
 ```sh
-python3 samples/games/tiny-island/tools/generate_island_map.py --seed 7
+python3 samples/games/tiny-island/tools/generate-island-map.py --seed 7
 ```
 
 Regenerating overwrites the four files, including any edit made to them in Tiled. The game reads whatever `island.tmj` holds, so a hand-edited island works as long as it keeps the layer names and object classes above.

@@ -20,7 +20,7 @@ function campfire.new(world, x, y)
     local self = setmetatable({world = world, x = x, y = y, fuel = fire.startFuel}, campfire)
     self.radius = radiusFor(self.fuel)
     self.flame = flame.new(x, y)
-    self.crackle = sound.loop('ambient/fire_loop.ogg', 0.7)
+    self.crackle = sound.loop('ambient/fire-loop.ogg', 0.7)
     self.crackling = true
     self:buildBarrier()
     return self

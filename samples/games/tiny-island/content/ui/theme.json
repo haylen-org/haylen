@@ -2,7 +2,7 @@
     "name": "tinyIsland",
     "imageFilter": "linear",
     "fontFiles": {
-        "lilita": "fonts/lilita_one_regular.ttf"
+        "lilita": "fonts/lilita-one-regular.ttf"
     },
     "fonts": {
         "body": {"font": "lilita", "size": 30},
@@ -66,25 +66,25 @@
         "banner": {"image": "ui/ribbon.png", "slice": [0, 175, 0, 175], "scale": 0.55, "padding": [12, 110, 30, 110], "filter": "linear"},
         "button": {"image": "ui/button.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
         "buttonHover": {"image": "ui/button.png", "slice": [44, 56, 40, 56], "scale": 0.7, "tint": "#FFE4EAFF", "filter": "linear"},
-        "buttonPressed": {"image": "ui/button_pressed.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
-        "buttonPrimary": {"image": "ui/button_primary.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
-        "buttonPrimaryHover": {"image": "ui/button_primary.png", "slice": [44, 56, 40, 56], "scale": 0.7, "tint": "#FFE4EEFF", "filter": "linear"},
-        "buttonPrimaryPressed": {"image": "ui/button_primary_pressed.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
-        "buttonDestructive": {"image": "ui/button_danger.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
-        "buttonDestructiveHover": {"image": "ui/button_danger.png", "slice": [44, 56, 40, 56], "scale": 0.7, "tint": "#FFFFE8E6", "filter": "linear"},
-        "buttonDestructivePressed": {"image": "ui/button_danger_pressed.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
+        "buttonPressed": {"image": "ui/button-pressed.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
+        "buttonPrimary": {"image": "ui/button-primary.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
+        "buttonPrimaryHover": {"image": "ui/button-primary.png", "slice": [44, 56, 40, 56], "scale": 0.7, "tint": "#FFE4EEFF", "filter": "linear"},
+        "buttonPrimaryPressed": {"image": "ui/button-primary-pressed.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
+        "buttonDestructive": {"image": "ui/button-danger.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
+        "buttonDestructiveHover": {"image": "ui/button-danger.png", "slice": [44, 56, 40, 56], "scale": 0.7, "tint": "#FFFFE8E6", "filter": "linear"},
+        "buttonDestructivePressed": {"image": "ui/button-danger-pressed.png", "slice": [44, 56, 40, 56], "scale": 0.7, "filter": "linear"},
         "field": {"image": "ui/check.png", "slice": 26, "scale": 0.7, "padding": [4, 12, 4, 12], "filter": "linear"},
         "fieldFocused": {"image": "ui/check.png", "slice": 26, "scale": 0.7, "padding": [4, 12, 4, 12], "tint": "#FFC9D6FF", "filter": "linear"},
         "check": {"image": "ui/check.png", "filter": "linear"},
-        "checkChecked": {"image": "ui/check_checked.png", "filter": "linear"},
+        "checkChecked": {"image": "ui/check-checked.png", "filter": "linear"},
         "track": {"image": "ui/track.png", "slice": 28, "scale": 0.93, "padding": 5, "filter": "linear"},
-        "trackFill": {"image": "ui/track_fill.png", "slice": 16, "scale": 1.3, "colorize": true, "filter": "linear"},
+        "trackFill": {"image": "ui/track-fill.png", "slice": 16, "scale": 1.3, "colorize": true, "filter": "linear"},
         "knob": {"image": "ui/knob.png", "colorize": true, "filter": "linear"},
-        "stickBase": {"image": "ui/stick_base.png", "tint": "#B4FFFFFF", "filter": "linear"},
-        "stickKnob": {"image": "ui/stick_knob.png", "filter": "linear"},
-        "touchButton": {"image": "ui/touch_button.png", "tint": "#E6FFFFFF", "filter": "linear"},
-        "touchButtonPressed": {"image": "ui/touch_button_pressed.png", "filter": "linear"},
+        "stickBase": {"image": "ui/stick-base.png", "tint": "#B4FFFFFF", "filter": "linear"},
+        "stickKnob": {"image": "ui/stick-knob.png", "filter": "linear"},
+        "touchButton": {"image": "ui/touch-button.png", "tint": "#E6FFFFFF", "filter": "linear"},
+        "touchButtonPressed": {"image": "ui/touch-button-pressed.png", "filter": "linear"},
         "tab": {"image": "ui/button.png", "slice": [44, 56, 40, 56], "scale": 0.6, "filter": "linear"},
-        "tabSelected": {"image": "ui/button_primary.png", "slice": [44, 56, 40, 56], "scale": 0.6, "filter": "linear"}
+        "tabSelected": {"image": "ui/button-primary.png", "slice": [44, 56, 40, 56], "scale": 0.6, "filter": "linear"}
     }
 }

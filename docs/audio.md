@@ -383,7 +383,7 @@ A table describes every effect by name with its bus, its recordings and an optio
 ```lua
 local effects = {
     click = {bus = 'ui', files = {'ui/click.ogg'}},
-    chop = {bus = 'sfx', files = {'effects/chop.ogg', 'effects/wood_hit_1.ogg', 'effects/wood_hit_2.ogg', 'effects/wood_hit_3.ogg'}},
+    chop = {bus = 'sfx', files = {'effects/chop.ogg', 'effects/wood-hit-1.ogg', 'effects/wood-hit-2.ogg', 'effects/wood-hit-3.ogg'}},
     footstep = {bus = 'sfx', files = {'effects/footstep-1.ogg', 'effects/footstep-2.ogg', 'effects/footstep-3.ogg', 'effects/footstep-4.ogg'}, volume = 0.35},
     dawn = {bus = 'ui', files = {'jingles/dawn.ogg'}},
 }

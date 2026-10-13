@@ -9,25 +9,25 @@ local effects = {
     confirm = {bus = 'ui', files = {'ui/confirm.ogg'}},
     back = {bus = 'ui', files = {'ui/back.ogg'}},
     error = {bus = 'ui', files = {'ui/error.ogg'}},
-    chop = {bus = 'sfx', files = {'effects/chop.ogg', 'effects/wood_hit_1.ogg', 'effects/wood_hit_2.ogg', 'effects/wood_hit_3.ogg'}},
-    treeFall = {bus = 'sfx', files = {'effects/tree_fall.ogg'}},
-    pickup = {bus = 'sfx', files = {'effects/wood_pickup.ogg'}, volume = 0.7},
-    feed = {bus = 'sfx', files = {'effects/fire_feed.ogg'}},
+    chop = {bus = 'sfx', files = {'effects/chop.ogg', 'effects/wood-hit-1.ogg', 'effects/wood-hit-2.ogg', 'effects/wood-hit-3.ogg'}},
+    treeFall = {bus = 'sfx', files = {'effects/tree-fall.ogg'}},
+    pickup = {bus = 'sfx', files = {'effects/wood-pickup.ogg'}, volume = 0.7},
+    feed = {bus = 'sfx', files = {'effects/fire-feed.ogg'}},
     explosion = {bus = 'sfx', files = {'effects/explosion.ogg'}},
-    swing = {bus = 'sfx', files = {'effects/swing_1.wav', 'effects/swing_2.wav', 'effects/swing_3.wav'}, volume = 0.6},
+    swing = {bus = 'sfx', files = {'effects/swing-1.wav', 'effects/swing-2.wav', 'effects/swing-3.wav'}, volume = 0.6},
     arrow = {bus = 'sfx', files = {'effects/arrow.wav'}, volume = 0.6},
-    hit = {bus = 'sfx', files = {'effects/hit_1.ogg', 'effects/hit_2.ogg', 'effects/hit_3.ogg'}},
+    hit = {bus = 'sfx', files = {'effects/hit-1.ogg', 'effects/hit-2.ogg', 'effects/hit-3.ogg'}},
     guard = {bus = 'sfx', files = {'effects/guard.ogg'}},
-    playerHurt = {bus = 'sfx', files = {'effects/player_hurt.ogg'}},
-    enemyHurt = {bus = 'sfx', files = {'effects/enemy_hurt.ogg'}, volume = 0.6},
-    enemyDie = {bus = 'sfx', files = {'effects/enemy_die.ogg'}},
+    playerHurt = {bus = 'sfx', files = {'effects/player-hurt.ogg'}},
+    enemyHurt = {bus = 'sfx', files = {'effects/enemy-hurt.ogg'}, volume = 0.6},
+    enemyDie = {bus = 'sfx', files = {'effects/enemy-die.ogg'}},
     heal = {bus = 'sfx', files = {'effects/heal.wav'}},
-    footstep = {bus = 'sfx', files = {'effects/footstep_1.ogg', 'effects/footstep_2.ogg', 'effects/footstep_3.ogg', 'effects/footstep_4.ogg'}, volume = 0.35},
+    footstep = {bus = 'sfx', files = {'effects/footstep-1.ogg', 'effects/footstep-2.ogg', 'effects/footstep-3.ogg', 'effects/footstep-4.ogg'}, volume = 0.35},
     dawn = {bus = 'ui', files = {'jingles/dawn.ogg'}},
     dusk = {bus = 'ui', files = {'jingles/dusk.ogg'}},
 }
 
-local music = {menu = 'music/menu.mp3', day = 'music/day.mp3', gameOver = 'music/game_over.mp3', night = 'ambient/night.ogg'}
+local music = {menu = 'music/menu.mp3', day = 'music/day.mp3', gameOver = 'music/game-over.mp3', night = 'ambient/night.ogg'}
 
 local function load(file)
     return assets.load('audio/' .. file)

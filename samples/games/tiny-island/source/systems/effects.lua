@@ -15,7 +15,7 @@ local bursts = {'sparks', 'chips', 'dust', 'smoke', 'embers', 'wool', 'flames'}
 local animations = {slash = 16, thrust = 16, explosion = 16, hit = 22, splash = 14}
 
 function effects.new()
-    local self = setmetatable({emitters = {}, clips = {}, playing = {}, numbers = {}, font = assets.font('fonts/lilita_one_regular.ttf')}, effects)
+    local self = setmetatable({emitters = {}, clips = {}, playing = {}, numbers = {}, font = assets.font('fonts/lilita-one-regular.ttf')}, effects)
     for _, name in ipairs(bursts) do
         self.emitters[name] = particles2d.newEmitter(assets.load('effects/' .. name .. '.particles', nil, art.options))
     end

@@ -16,9 +16,9 @@ flame.glow = m.color('#FFFFB870')
 
 -- Each layer of the effect rises from its own height above the logs, and draws in front of the stones.
 local layers = {
-    {effect = 'effects/campfire_smoke.particles', lift = 70},
-    {effect = 'effects/campfire_flames.particles', lift = 22},
-    {effect = 'effects/campfire_embers.particles', lift = 34},
+    {effect = 'effects/campfire-smoke.particles', lift = 70},
+    {effect = 'effects/campfire-flames.particles', lift = 22},
+    {effect = 'effects/campfire-embers.particles', lift = 34},
 }
 
 function flame.new(x, y)

@@ -788,7 +788,7 @@ Cada ataque tem o seu efeito de sprite e de partículas e o seu som: o arco do g
 
 ### 9.4 Mapa
 
-- Gerado por `samples/games/tiny-island/tools/generate_island_map.py` e salvo como `samples/games/tiny-island/content/maps/island.tmj`, editável no Tiled.
+- Gerado por `samples/games/tiny-island/tools/generate-island-map.py` e salvo como `samples/games/tiny-island/content/maps/island.tmj`, editável no Tiled.
 - Camadas: água (imagem repetida), espuma animada na costa, areia, grama, trilhas de terra, sombra, penhasco de pedra e platô, todas em corner tiles com bordas suaves, decorações (arbustos, pedras, capim, flores, cogumelos, conchas, troncos na praia, pedras na água e nuvens em parallax) e objetos.
 - Objetos: posição da fogueira, posição inicial do jogador, regiões selvagens (`wilds`) onde nascem árvores e ovelhas, pontos de spawn de inimigos na costa e colisões da borda da ilha e dos penhascos.
 
