@@ -735,7 +735,7 @@ knight:play('walk', {track = 1})
 
 scene.push({
     enter = function(self)
-        knight:on('event', function(name) if name == 'step' then print('Footstep.') end end, {owner = self})
+        knight:on('event', function(event) if event.name == 'step' then print('Footstep.') end end, {owner = self})
     end,
     update = function(self, dt)
         if input.pressed('attack') then
@@ -802,7 +802,7 @@ Draws the slots in draw order with the [draw order](graphics2d.md#draw-order) ke
 
 ### skeleton:on(event, listener, options)
 
-Listens to `'event'`, which calls the listener with the name, the track counted from 1, the animation, the text and the number of every event the tracks pass, and returns a `Connection`. The table `options` takes `owner`, and without one the listener takes the default owner.
+Listens to `'event'`, which calls the listener with the table `{name, track, animation, text, number}` of every event the tracks pass, where `track` counts from 1, and returns a `Connection`. The table `options` takes `owner`, and without one the listener takes the default owner.
 
 ```lua
 local animation2d = require('haylen.animation2d')

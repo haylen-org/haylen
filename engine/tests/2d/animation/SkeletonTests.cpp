@@ -224,7 +224,7 @@ TEST_F(SkeletonLuaTest, LoadsPlaysAndDrawsSkeletonsFromLua) {
         local data = assets.load('hero.skeleton')
         hero = animation2d.newSkeleton(data, {x = 200, y = 300, skin = 'sword'})
         heard = {}
-        hero:on('event', function(name, track, animation, text, number) heard[#heard + 1] = name .. track .. animation .. text .. number end, {owner = hero})
+        hero:on('event', function(event) heard[#heard + 1] = event.name .. event.track .. event.animation .. event.text .. event.number end, {owner = hero})
         hero:play('wave', {track = 1})
         hero:update(0.6)
         local bone = hero:bone('lower')

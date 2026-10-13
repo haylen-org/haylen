@@ -17,7 +17,7 @@ Skeletons.code = [[
 local puppet = animation2d.newSkeleton(assets.load('animation/puppet.skeleton'))
 puppet:crossFade('walk', 0.25, {track = 1})  puppet:play('wave', {track = 2})
 puppet:setIkTarget('reach', x, y)  puppet.skin = 'royal'
-puppet:on('event', function(name, track, animation, text) ... end)]]
+puppet:on('event', function(event) print(event.name, event.track, event.animation, event.text) end)]]
 
 function Skeletons:enter()
     self.data = assets.load('animation/puppet.skeleton', 'skeleton', {filter = 'linear'})
@@ -27,7 +27,7 @@ function Skeletons:enter()
     self.walking = false
     self.aiming = false
     self.history = {}
-    self.puppet:on('event', function(name, track, animation, text) self:record(string.format('Event "%s" of "%s" on track %d, the %s foot', name, animation, track, text)) end, {owner = self})
+    self.puppet:on('event', function(event) self:record(string.format('Event "%s" of "%s" on track %d, the %s foot', event.name, event.animation, event.track, event.text)) end, {owner = self})
     self.row = {}
     for index = 1, 4 do
         local small = animation2d.newSkeleton(self.data, {skin = index % 2 == 0 and 'royal' or 'default', scaleX = 0.9, scaleY = 0.9})

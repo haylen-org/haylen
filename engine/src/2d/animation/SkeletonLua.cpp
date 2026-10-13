@@ -309,15 +309,21 @@ int SkeletonLua::on(lua_State* L) {
             if (!function->push(state)) {
                 return;
             }
+            lua_createtable(state, 0, 5);
             lua::Stack::push(state, fired.name);
+            lua_setfield(state, -2, "name");
             lua::Stack::push(state, fired.track + 1);
+            lua_setfield(state, -2, "track");
             lua::Stack::push(state, fired.animation);
+            lua_setfield(state, -2, "animation");
             lua::Stack::push(state, fired.text);
+            lua_setfield(state, -2, "text");
             lua::Stack::push(state, fired.number);
+            lua_setfield(state, -2, "number");
             if (reported) {
-                lua::Runtime::protectedCall(state, 5, 0);
+                lua::Runtime::protectedCall(state, 1, 0);
             } else {
-                lua_call(state, 5, 0);
+                lua_call(state, 1, 0);
             }
         };
         if (updating != nullptr) {
