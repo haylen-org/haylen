@@ -1,6 +1,6 @@
 # haylen.accessibility
 
-`haylen.accessibility` follows the accessibility settings of the system: how large the user wants text, whether they want less motion, higher contrast or less transparency, and whether a screen reader runs. Use it to calm the motion of an app, to pick a theme with stronger colors and to describe more aloud when a screen reader runs.
+`haylen.accessibility` follows the accessibility settings of the system, how large the user wants text, whether they want less motion, higher contrast or less transparency and whether a screen reader runs, and opens the UI to screen readers, which read the elements of every GUI aloud and act on them. Use it to calm the motion of an app, to pick a theme with stronger colors, to announce what changed and to check what a screen reader reads.
 
 ```lua
 local accessibility = require('haylen.accessibility')
@@ -34,6 +34,78 @@ local function slideIn(panel)
     tween.to(panel, 0.4, {x = 0}, {ease = 'outCubic'})
 end
 ```
+
+### accessibility.announce(text, options)
+
+Asks the screen reader to say a text, such as a change that shows nowhere a reader moves to, after what it says now. The option `interrupt`, `false` by default, makes it stop what it says and say the text at once. Where no screen reader runs, nothing is said. An empty text raises `An announcement needs a text.` and an unknown option raises `Unknown option "<key>".`.
+
+```lua
+local accessibility = require('haylen.accessibility')
+
+accessibility.announce('Level 3 is ready.')
+accessibility.announce('Game over.', {interrupt = true})
+```
+
+### accessibility.elements()
+
+Returns the elements of the [screen reader tree](#screen-readers) of the last frame, in the order a screen reader moves through them, as a list of tables. The UI builds the tree only while a screen reader asks for it or `accessibility.setTreeEnabled(true)` turned it on, and the list is empty before the first frame that built it.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | integer | The element, which stays the same while its node stays where it is. |
+| `parent` | integer | The element that holds it, or `0` at the top. |
+| `role` | string | What the element is: `'group'`, `'text'`, `'heading'`, `'image'`, `'button'`, `'checkBox'`, `'switch'`, `'radioGroup'`, `'radioButton'`, `'tabList'`, `'tab'`, `'slider'`, `'textField'`, `'comboBox'`, `'progressBar'`, `'list'`, `'dialog'`, `'alert'` or `'playArea'`. |
+| `label` | string | What the screen reader says the element is. |
+| `value` | string | What the element holds, such as the number of a slider or the text of a field. |
+| `hint` | string | What the element does, which screen readers say after a pause. |
+| `bounds` | `Rect` | Where the element lies, in design units. |
+| `disabled`, `checked`, `selected`, `focused`, `expanded`, `busy` | boolean | The states of the element. |
+| `actions` | list of strings | What a screen reader can do with it: `'focus'`, `'activate'`, `'increment'` and `'decrement'`. |
+
+```lua
+local accessibility = require('haylen.accessibility')
+
+accessibility.setTreeEnabled(true)
+for _, element in ipairs(accessibility.elements()) do
+    print(element.role, element.label, element.value)
+end
+```
+
+### accessibility.focused()
+
+Returns the id of the element that holds the focus in the last tree, or `nil`.
+
+### accessibility.perform(id, action)
+
+Asks an element for an action the way a screen reader does: `'focus'` moves the focus of the UI to it, `'activate'` presses it as the accept button does, and `'increment'` and `'decrement'` raise or lower a slider, a stepper or a segmented control. The UI performs it at its next frame, and an element that is no longer there ignores it. Tests use it to drive the UI as a screen reader would. An unknown action raises `The accessibility action "<action>" is unknown. It is "focus", "activate", "increment" or "decrement".`.
+
+```lua
+local accessibility = require('haylen.accessibility')
+
+for _, element in ipairs(accessibility.elements()) do
+    if element.label == 'Play' then
+        accessibility.perform(element.id, 'activate')
+    end
+end
+```
+
+### accessibility.setTreeEnabled(enabled) and accessibility.treeEnabled()
+
+Turns on the building of the tree in every frame, also while no screen reader asks for it, such as for tests and tools, and tells whether it is on. It starts off.
+
+## Screen readers
+
+The UI of [`haylen.ui`](ui.md) draws itself, so the engine describes it to screen readers: while a screen reader asks for it, the GUIs build a tree of elements as they draw, and the engine hands it to the platform whenever it changes, so a menu that stays as it is costs nothing beyond the drawing.
+
+- Every kind of component describes itself with its role, label, value and state: a `button` is a button labeled by its text, a `toggle` a switch that is checked or not, a `slider` a slider with its value, a `textField` a text field with its text, a `secretField` one with a bullet for each character, a `progress` a progress bar with its percentage, a `label` and a `richText` text without their markup, a `pageHeader` and a `sectionTitle` headings, an `alert` and a `toast` alerts, a `dialog` and a `window` dialogs, and a `list`, a `table`, a `tree` and a `slotGrid` lists. The options of a `radioGroup`, the tabs of `tabs`, the rows of a `list`, the headers of an `accordion` and the buttons of a `dialog` are elements of their own.
+- Containers are no elements, so their children join the element around them, and an `image` or an `icon` is decorative until it has a label.
+- The [common properties](ui.md#common-properties) `accessibilityLabel`, `accessibilityHint`, `accessibilityRole` and `accessibilityHidden` give a node the label, the hint and the role screen readers say instead of what its kind describes, or leave it and its children out. A node with a label or a role of its own is an element even when its kind is not, such as a `card` that stands for one thing. A disabled node is disabled for screen readers too, and a tooltip is its hint unless it has one of its own.
+- The focus stays in step: the element of the control that holds the focus of the UI holds the focus of the screen reader, and a screen reader that moves its focus to an element, presses it or adjusts it moves the focus of the UI there, so the player who listens and the one who looks share one focus.
+
+| Platform | Screen readers |
+| --- | --- |
+| Windows | Not supported yet. Windows reads apps through UI Automation, whose providers are COM objects that a window serves for every element, and the engine does not serve them yet. |
+| Linux | Not supported yet. Linux reads apps through AT-SPI, a protocol of the accessibility bus of D-Bus that an app serves for every element, and the engine does not serve it yet. |
 
 ## What follows the settings
 
@@ -80,7 +152,7 @@ Every platform reports every change while the app runs. On Linux the engine reac
 
 ## C++
 
-`platform::Accessibility`, which `engine.getAccessibility()` returns, holds the settings as `platform::AccessibilitySettings` with `getSettings()` and publishes `accessibilitySettingsChanged`. The platform reports the settings through `SokolHost::getSystemState()` from any thread, and the host hands the engine the last report once per frame through `Host::getAccessibilitySettings()`.
+`platform::Accessibility`, which `engine.getAccessibility()` returns, holds the settings as `platform::AccessibilitySettings` with `getSettings()` and publishes `accessibilitySettingsChanged`. The platform reports the settings through `SokolHost::getSystemState()` from any thread, and the host hands the engine the last report once per frame through `Host::getAccessibilitySettings()`. It also holds the last tree of `platform::AccessibilityElement` records with `getElements()` and `getFocused()`, says announcements with `announce(text, interrupt)`, queues the actions of screen readers with `perform(request)` from any thread and turns the tree on with `setTreeEnabled`. The UI builds the tree in `ui::AccessibilityTree`, which components join through `Component::describe` and parts of components through `addPart`, and the platform receives it through `Host::updateAccessibility` and answers through `AccessibilityRelay::perform`.
 
 ```cpp
 const haylen::platform::AccessibilitySettings& settings = engine.getAccessibility().getSettings();

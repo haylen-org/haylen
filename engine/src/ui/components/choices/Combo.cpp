@@ -57,4 +57,12 @@ void Combo::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+bool Combo::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::ComboBox;
+    const int index = ChoiceItem::indexOf(items, selected);
+    element.value.assign(index >= 0 ? context.getText(items[static_cast<std::size_t>(index)].text) : context.getText(placeholder));
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

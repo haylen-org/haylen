@@ -271,6 +271,15 @@ void Services::vibrate(float) {
     AppleSystem::vibrate();
 }
 
+// The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
+bool Services::isAccessibilityTreeWanted() {
+    return false;
+}
+
+void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
+
+void Services::announce(std::string_view, bool) {}
+
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     AppleGamepads::rumble(index, low, high, seconds);
 }

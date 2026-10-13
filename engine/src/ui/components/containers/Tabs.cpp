@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
@@ -43,6 +44,7 @@ void Tabs::render(Context& context, const math::Rect& bounds) {
         ImGui::PushID(static_cast<int>(index));
         ImGui::BeginDisabled(!item.enabled);
         const Widgets::Interaction state = Widgets::interact(context, tab, context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##tab");
+        context.getAccessibility().addPart(ImGui::GetItemID(), tab, platform::AccessibilityElement::Role::Tab, context.getText(item.text), (current ? platform::AccessibilityElement::Selected : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
         ImGui::EndDisabled();
         ImGui::PopID();
 
@@ -82,6 +84,11 @@ int Tabs::getSelectedIndex() const {
 Component* Tabs::getSelectedChild() const {
     const int index = getSelectedIndex();
     return index >= 0 && static_cast<std::size_t>(index) < getChildren().size() ? getChildren()[static_cast<std::size_t>(index)].get() : nullptr;
+}
+
+bool Tabs::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::TabList;
+    return true;
 }
 
 } // namespace haylen::ui

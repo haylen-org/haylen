@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "haylen/core/Signal.hpp"
+#include "haylen/platform/Accessibility.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/text/FontFamily.hpp"
@@ -156,6 +157,10 @@ class UiPlugin final : public Plugin {
     // Builds the theme the UI draws from the chosen theme and the accessibility settings, and applies it.
     void applyTheme(bool highContrast, bool reducedTransparency);
     void collectGuis(core::Engine& engine, const core::SceneView& view);
+
+    // Performs an action that a screen reader asked of an element of the last frame, and hands the elements of this frame to the platform.
+    void perform(const platform::Accessibility::Request& request);
+    void publishAccessibility(core::Engine& engine);
     void deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event);
     void deliverAtOnce(ui::Gui& gui, const ui::Event& event);
     void prepareGuis();
@@ -189,6 +194,7 @@ class UiPlugin final : public Plugin {
     std::vector<const Mounted*> drawnGuis;
     std::vector<const ui::Gui*> shownGuis;
     std::vector<std::shared_ptr<ui::Gui>> preparing;
+    std::vector<platform::Accessibility::Request> accessibilityRequests;
     std::uint64_t nextOrder = 0;
     std::unique_ptr<ui::ImageLibrary> images;
     std::map<std::string, std::string, std::less<>> fontPaths;

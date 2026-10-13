@@ -167,4 +167,10 @@ void Toast::drawFrame(Context& context, const Notice& notice, const math::Rect& 
     Typography::drawParagraph(context, Theme::Font::Body, inner, context.getColor(Theme::Color::OnTooltip), message, Alignment::Start);
 }
 
+bool Toast::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Alert;
+    element.label.assign(context.getText(text));
+    return open;
+}
+
 } // namespace haylen::ui

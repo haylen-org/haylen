@@ -55,4 +55,12 @@ void Chip::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+bool Chip::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Button;
+    element.label.assign(context.getText(text));
+    element.states = selected ? platform::AccessibilityElement::Selected : 0;
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

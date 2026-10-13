@@ -20,6 +20,7 @@ class Toast final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "toast";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
     void command(Context& context, std::string_view name, const core::Json& arguments) override;
 

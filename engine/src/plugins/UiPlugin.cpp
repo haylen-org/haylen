@@ -155,6 +155,56 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     const text::Direction resolved = direction == text::Direction::Auto ? (known ? catalog.getDirection(catalog.getLanguage()) : text::Direction::LeftToRight) : direction;
     context->setBaseWriting(resolved, catalog.getLanguage());
     focus.update(navigation, engine.getInput().getLastDevice(), engine.getWindow().hasPointerDevice());
+
+    // The actions of screen readers reach the elements of the last frame, which the tree forgets once it starts the elements of this one.
+    platform::Accessibility& accessibility = engine.getAccessibility();
+    ui::AccessibilityTree& tree = context->getAccessibility();
+    accessibility.takeRequests(accessibilityRequests);
+    for (const platform::Accessibility::Request& request : accessibilityRequests) {
+        perform(request);
+    }
+    tree.setEnabled(accessibility.isTreeWanted());
+    tree.beginFrame();
+}
+
+void UiPlugin::perform(const platform::Accessibility::Request& request) {
+    using Element = platform::AccessibilityElement;
+    const std::optional<ImGuiID> target = context->getAccessibility().findTarget(request.element);
+    if (!target) {
+        return;
+    }
+    const ui::FocusDirection increase = context->isRightToLeft() ? ui::FocusDirection::Left : ui::FocusDirection::Right;
+    const ui::FocusDirection decrease = context->isRightToLeft() ? ui::FocusDirection::Right : ui::FocusDirection::Left;
+    switch (request.action) {
+    case Element::Focus:
+        (void)focus.focusTarget(*target);
+        break;
+    case Element::Activate:
+        (void)focus.pressTarget(*target);
+        break;
+    case Element::Increment:
+        (void)focus.stepTarget(*target, increase);
+        break;
+    case Element::Decrement:
+        (void)focus.stepTarget(*target, decrease);
+        break;
+    }
+}
+
+// The tree goes to the platform in framebuffer pixels, which screen readers outline on the screen.
+void UiPlugin::publishAccessibility(core::Engine& engine) {
+    ui::AccessibilityTree& tree = context->getAccessibility();
+    if (!tree.isEnabled()) {
+        return;
+    }
+    tree.endFrame(backend->getImGuiContext()->NavId);
+    const graphics::Viewport& viewport = engine.getViewport();
+    for (platform::AccessibilityElement& element : tree.getElements()) {
+        const math::Vec2 min = viewport.toFramebuffer(backend->toDesign(element.bounds.getMin()));
+        const math::Vec2 max = viewport.toFramebuffer(backend->toDesign(element.bounds.getMax()));
+        element.bounds = math::Rect::fromMinMax(min, max);
+    }
+    engine.getAccessibility().publish(tree.getElements(), tree.getFocused());
 }
 
 void UiPlugin::update(core::Engine& engine, float) {
@@ -293,6 +343,7 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
     }
     ImGui::End();
     focus.endDraw();
+    publishAccessibility(engine);
     if (safeAreaVisible) {
         drawSafeArea();
     }

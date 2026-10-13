@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
@@ -149,6 +150,17 @@ void Stepper::step(Context& context, int direction) {
             return;
         }
     }
+}
+
+bool Stepper::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Slider;
+    if (items.empty()) {
+        AccessibilityTree::appendNumber(element.value, value, decimals);
+    } else if (const int index = ChoiceItem::indexOf(items, selected); index >= 0) {
+        element.value.assign(context.getText(items[static_cast<std::size_t>(index)].text));
+    }
+    element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
+    return true;
 }
 
 } // namespace haylen::ui

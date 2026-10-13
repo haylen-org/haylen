@@ -189,4 +189,12 @@ void KeyCapture::finish(Context& context, const std::string& binding) {
     context.emit(*this, "change", {{"value", value}});
 }
 
+bool KeyCapture::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Button;
+    element.label.assign(context.getText(capturing ? prompt : placeholder));
+    element.value.assign(value);
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

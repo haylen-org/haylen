@@ -77,6 +77,9 @@ class SokolHost final : public Host {
     [[nodiscard]] Theme getTheme() const override;
     [[nodiscard]] Battery getBattery() const override;
     [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override;
+    [[nodiscard]] bool isAccessibilityTreeWanted() const override;
+    void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override;
+    void announce(std::string_view text, bool interrupt) override;
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;

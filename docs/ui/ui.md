@@ -410,6 +410,10 @@ A theme file has these keys.
 
 Unknown keys, roles, metrics and surfaces are errors, so a typo in a theme file never goes unnoticed.
 
+### Screen readers
+
+The GUIs describe themselves to the screen readers of each platform: every control, text and heading becomes an element with its role, label, value and state, the focus of the screen reader and the focus of the UI stay in step, and screen readers press and adjust controls through the same paths as the keyboard and gamepads. The common properties `accessibilityLabel`, `accessibilityHint`, `accessibilityRole` and `accessibilityHidden` say what a kind cannot know, such as the name of an icon button, and [`haylen.accessibility`](../lua-api/accessibility.md#screen-readers) lists what each kind says and where each platform reads it.
+
 ### Accessibility settings
 
 The UI follows the [accessibility settings](../lua-api/accessibility.md) of the system on its own. While the system asks for higher contrast, it draws the high contrast theme that the chosen theme names, and the engine ships `darkHighContrast` and `lightHighContrast`, with white or black text, borders of full contrast and a yellow or deep blue focus ring. While the system asks for reduced transparency, it draws the colors `window`, `panel`, `raised` and `tooltip` of the theme opaque. Its text scales with the text size of the system, so every font role grows and the controls around the text grow with it, until the app sets a scale of its own with [`ui.setTextScale`](../lua-api/ui.md#uisettextscalescale). The function `ui.theme()` keeps returning the theme the app chose, and `ui.themeColor` and the other readers of the theme return what the UI draws.

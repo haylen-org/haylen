@@ -19,6 +19,7 @@ class Window final : public Linear {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "window";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     [[nodiscard]] bool isFloating() const noexcept override {

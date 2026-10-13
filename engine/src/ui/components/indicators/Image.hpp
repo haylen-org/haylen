@@ -19,6 +19,7 @@ class Image final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "image";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     [[nodiscard]] Alignment getDefaultAlignment() const noexcept override {

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <string>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
@@ -56,6 +57,12 @@ void EmptyState::render(Context& context, const math::Rect& bounds) {
         y += gap;
         Typography::drawParagraph(context, Theme::Font::Body, {bounds.x, y, bounds.width, bounds.getBottom() - y}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Center);
     }
+}
+
+bool EmptyState::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Text;
+    AccessibilityTree::appendParts(element.label, {context.getText(title), context.getText(message)});
+    return true;
 }
 
 } // namespace haylen::ui

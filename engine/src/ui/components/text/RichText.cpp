@@ -151,4 +151,26 @@ void RichText::showHint(Context&, math::Vec2 origin) {
     }
 }
 
+// Screen readers read the text of the markup without its tags, where the escapes "[lb]" and "[rb]" read as brackets.
+bool RichText::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Text;
+    const std::string_view markup = context.getText(text);
+    for (std::size_t index = 0; index < markup.size(); ++index) {
+        if (markup[index] != '[') {
+            element.label.push_back(markup[index]);
+            continue;
+        }
+        const std::size_t end = markup.find(']', index);
+        if (end == std::string_view::npos) {
+            break;
+        }
+        const std::string_view tag = markup.substr(index + 1, end - index - 1);
+        if (tag == "lb" || tag == "rb") {
+            element.label.push_back(tag == "lb" ? '[' : ']');
+        }
+        index = end;
+    }
+    return true;
+}
+
 } // namespace haylen::ui

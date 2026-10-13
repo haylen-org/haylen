@@ -90,6 +90,14 @@ void Component::readCommon(PropertyReader& reader) {
         common.cursor = cursor;
     }
     readFocus(reader);
+    reader.read("accessibilityLabel", common.accessibilityLabel);
+    reader.read("accessibilityHint", common.accessibilityHint);
+    reader.read("accessibilityHidden", common.accessibilityHidden);
+    if (reader.has("accessibilityRole")) {
+        platform::AccessibilityElement::Role role = platform::AccessibilityElement::Role::Group;
+        reader.readChoice<platform::AccessibilityElement::Role>("accessibilityRole", role, platform::AccessibilityElement::kRoleNames);
+        common.accessibilityRole = role;
+    }
 }
 
 // A node with a theme or a style measures and draws itself and its children with them.
@@ -215,6 +223,10 @@ void Component::draw(Context& context, const math::Rect& layout) {
     drawId = ImGui::GetID("##node");
     FocusNavigator& focus = context.getFocus();
     focus.enter(*this, drawId, bounds);
+    AccessibilityTree& accessibility = context.getAccessibility();
+    if (accessibility.isEnabled()) {
+        accessibility.enter(context, *this, drawId, bounds);
+    }
     for (const std::string_view notice : focus.takeNotices(drawId)) {
         context.emit(*this, std::string(notice));
     }
@@ -267,6 +279,9 @@ void Component::draw(Context& context, const math::Rect& layout) {
     }
     if (styled) {
         context.popStyle();
+    }
+    if (accessibility.isEnabled()) {
+        accessibility.leave(focus);
     }
     focus.leave();
     ImGui::PopID();

@@ -56,4 +56,10 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+bool ColorField::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Button;
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

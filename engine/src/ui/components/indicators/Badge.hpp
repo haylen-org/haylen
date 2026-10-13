@@ -16,6 +16,7 @@ class Badge final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "badge";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     [[nodiscard]] Alignment getDefaultAlignment() const noexcept override {

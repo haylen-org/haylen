@@ -45,4 +45,10 @@ void Image::render(Context& context, const math::Rect& bounds) {
     Surfaces::drawImage(context, texture, bounds, tint, {(natural.x - visible.x) * 0.5F * pixels.x, (natural.y - visible.y) * 0.5F * pixels.y, visible.x * pixels.x, visible.y * pixels.y}, radius);
 }
 
+// An image is decorative until the app gives it a label.
+bool Image::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Image;
+    return false;
+}
+
 } // namespace haylen::ui

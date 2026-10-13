@@ -20,4 +20,10 @@ void BusyIndicator::render(Context& context, const math::Rect& bounds) {
     Widgets::spinner(context, bounds.getCenter(), std::min(bounds.width, bounds.height) * 0.45F, context.getColor(color.value_or(Theme::Color::Accent)));
 }
 
+bool BusyIndicator::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::ProgressBar;
+    element.states = platform::AccessibilityElement::Busy;
+    return true;
+}
+
 } // namespace haylen::ui

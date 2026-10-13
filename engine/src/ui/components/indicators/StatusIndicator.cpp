@@ -31,4 +31,10 @@ float StatusIndicator::getDotSize(Context& context) {
     return context.getFontSize(Theme::Font::Caption) * 0.5F;
 }
 
+bool StatusIndicator::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Text;
+    element.label.assign(context.getText(text));
+    return !element.label.empty();
+}
+
 } // namespace haylen::ui

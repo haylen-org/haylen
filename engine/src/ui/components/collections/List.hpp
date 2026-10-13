@@ -17,6 +17,7 @@ class List final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "list";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     [[nodiscard]] bool isFocusable() const noexcept override {

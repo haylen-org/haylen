@@ -22,6 +22,7 @@ class Dialog final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "dialog";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
     [[nodiscard]] std::size_t getChildLimit() const noexcept override {
         return kUnlimitedChildren;
     }

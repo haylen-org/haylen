@@ -24,4 +24,10 @@ void Icon::render(Context& context, const math::Rect& bounds) {
     Surfaces::drawImage(context, context.getImage(image, square.getSize()), square, color ? context.getColor(*color) : math::Color::white());
 }
 
+// An icon is decorative until the app gives it a label.
+bool Icon::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Image;
+    return false;
+}
+
 } // namespace haylen::ui

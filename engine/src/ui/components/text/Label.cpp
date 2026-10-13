@@ -54,4 +54,10 @@ void Label::render(Context& context, const math::Rect& bounds) {
     Typography::drawParagraph(context, font, block, context.getColor(color.value_or(Theme::Color::Text)), shown, textAlign, outline, outlineWidth);
 }
 
+bool Label::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Text;
+    element.label.assign(context.getText(text));
+    return true;
+}
+
 } // namespace haylen::ui

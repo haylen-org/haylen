@@ -18,6 +18,7 @@ class Icon final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "icon";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     [[nodiscard]] Alignment getDefaultAlignment() const noexcept override {

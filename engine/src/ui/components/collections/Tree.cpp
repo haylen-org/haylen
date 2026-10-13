@@ -135,4 +135,10 @@ void Tree::toggle(Context& context, const ChoiceItem& item) {
     context.emit(*this, "toggle", {{"item", item.id}, {"expanded", open}});
 }
 
+bool Tree::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::List;
+    element.value.assign(selected);
+    return true;
+}
+
 } // namespace haylen::ui

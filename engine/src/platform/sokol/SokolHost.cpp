@@ -324,6 +324,18 @@ void SokolHost::vibrate(float seconds) {
     Services::vibrate(seconds);
 }
 
+bool SokolHost::isAccessibilityTreeWanted() const {
+    return Services::isAccessibilityTreeWanted();
+}
+
+void SokolHost::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+    Services::updateAccessibility(elements, focused);
+}
+
+void SokolHost::announce(std::string_view text, bool interrupt) {
+    Services::announce(text, interrupt);
+}
+
 void SokolHost::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     Services::rumbleGamepad(index, low, high, seconds);
 }

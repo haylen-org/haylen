@@ -5,6 +5,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Widgets.hpp"
@@ -52,6 +53,7 @@ void List::render(Context& context, const math::Rect& bounds) {
         ImGui::BeginDisabled(!item.enabled);
         const Widgets::Interaction state = ListRow::draw(context, area, item.id == selected);
         const ImGuiID row = ImGui::GetItemID();
+        context.getAccessibility().addPart(row, area, platform::AccessibilityElement::Role::Button, context.getText(item.text), (item.id == selected ? platform::AccessibilityElement::Selected : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
         const bool activated = GImGui->NavActivatePressedId == row;
         if (item.id == focused) {
             Widgets::focusItem(context);
@@ -82,6 +84,11 @@ void List::render(Context& context, const math::Rect& bounds) {
 
 void List::drawingStopped(Context& context) {
     DragAndDrop::dropCarriedFrom(context, *this);
+}
+
+bool List::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::List;
+    return true;
 }
 
 } // namespace haylen::ui

@@ -14,6 +14,7 @@ class PlayArea final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "playArea";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     [[nodiscard]] bool isFocusable() const noexcept override {

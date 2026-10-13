@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numbers>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
@@ -80,6 +81,14 @@ void CircularProgress::drawCooldown(Context& context, math::Vec2 center, float r
     constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0F;
     const float start = -std::numbers::pi_v<float> * 0.5F + kTwoPi * (1.0F - value);
     Surfaces::drawShape(context, {.bounds = square, .radii = {radius, radius, radius, radius}, .startAngle = start, .sweep = kTwoPi * value, .color = context.getColor(Theme::Color::Overlay)});
+}
+
+bool CircularProgress::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::ProgressBar;
+    element.label.assign(context.getText(text));
+    AccessibilityTree::appendNumber(element.value, static_cast<double>(value) * 100.0, 0);
+    element.value.push_back('%');
+    return true;
 }
 
 } // namespace haylen::ui

@@ -24,6 +24,7 @@
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/Insets.hpp"
+#include "haylen/platform/Accessibility.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -1280,6 +1281,11 @@ TEST_F(ComponentAssetTest, DrawsFramesWithoutAllocating) {
     EXPECT_EQ(getEngine().getError(), nullptr);
     EXPECT_GT(getBounds(*gui, "header").height, 0.0F);
     EXPECT_EQ(measure(), empty);
+
+    // The elements that screen readers read build every frame without allocating once they settled.
+    fixture.host().setAccessibilityTreeWanted(true);
+    EXPECT_EQ(measure(), empty);
+    EXPECT_GT(getEngine().getAccessibility().getElements().size(), 30U);
 }
 
 TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {

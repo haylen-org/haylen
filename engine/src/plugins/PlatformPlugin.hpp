@@ -8,7 +8,7 @@
 
 namespace haylen::plugins {
 
-// Connects the replies and events of native code and the answers of native dialogs to the app while it runs, keeps the textures of the video streams that the app draws current at the start of every frame, and installs `haylen.platform`, `haylen.system`, `haylen.dialogs` and `haylen.accessibility`.
+// Connects the replies and events of native code, the answers of native dialogs and the actions of screen readers to the app while it runs, keeps the textures of the video streams that the app draws current at the start of every frame, and installs `haylen.platform`, `haylen.system`, `haylen.dialogs` and `haylen.accessibility`.
 class PlatformPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

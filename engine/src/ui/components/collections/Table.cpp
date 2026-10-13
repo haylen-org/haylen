@@ -158,4 +158,10 @@ float Table::getFlexibleWidth(float total) const {
     return flexible > 0 ? std::max(0.0F, total - fixed) / static_cast<float>(flexible) : 0.0F;
 }
 
+bool Table::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::List;
+    element.value.assign(selected);
+    return true;
+}
+
 } // namespace haylen::ui

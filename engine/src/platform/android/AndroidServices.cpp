@@ -162,6 +162,15 @@ void Services::vibrate(float seconds) {
     JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
+// The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
+bool Services::isAccessibilityTreeWanted() {
+    return false;
+}
+
+void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
+
+void Services::announce(std::string_view, bool) {}
+
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     AndroidGamepads::rumble(index, low, high, seconds);
 }

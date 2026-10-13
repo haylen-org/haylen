@@ -15,6 +15,9 @@ class Scrollbar;
 
 // The value, placeholder, length limit and keyboard options every text entry shares. The value the player types stays in the component, so a later patch of other properties keeps it.
 class TextEntry : public Component {
+  public:
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
+
   protected:
     [[nodiscard]] bool isFocusable() const noexcept override {
         return true;

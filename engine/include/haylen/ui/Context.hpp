@@ -20,6 +20,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/Direction.hpp"
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Event.hpp"
 #include "haylen/ui/Style.hpp"
@@ -167,6 +168,10 @@ class Context final {
     [[nodiscard]] Backend& getBackend() const noexcept {
         return backend;
     }
+    // The elements that screen readers read, which the components add as they draw while the tree is enabled.
+    [[nodiscard]] AccessibilityTree& getAccessibility() noexcept {
+        return accessibility;
+    }
     [[nodiscard]] FocusNavigator& getFocus() const noexcept {
         return focus;
     }
@@ -279,6 +284,7 @@ class Context final {
     double time = 0.0;
     float deltaSeconds = 0.0F;
     float textScale = 1.0F;
+    AccessibilityTree accessibility;
 };
 
 } // namespace haylen::ui

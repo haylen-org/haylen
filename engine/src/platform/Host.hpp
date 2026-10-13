@@ -15,6 +15,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/math/Insets.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/AccessibilitySettings.hpp"
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/DialogRequest.hpp"
@@ -63,6 +64,15 @@ class Host : public Window {
 
     // The accessibility settings as the platform last reported them, which the engine reads once per frame to publish `accessibilitySettingsChanged`.
     [[nodiscard]] virtual AccessibilitySettings getAccessibilitySettings() const = 0;
+
+    // Whether the platform wants the tree of accessible elements, such as while a screen reader runs or since an assistive technology first asked for the elements of the window, which the engine reads once per frame.
+    [[nodiscard]] virtual bool isAccessibilityTreeWanted() const = 0;
+
+    // Hands the platform the tree of accessible elements whenever it changed, with the id of the element that holds the focus or 0. The platform copies what it keeps and answers the actions of screen readers through `AccessibilityRelay::perform`, from any thread.
+    virtual void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) = 0;
+
+    // Asks the screen reader to say a text, after what it says now or interrupting it, where the platform has a screen reader.
+    virtual void announce(std::string_view text, bool interrupt) = 0;
 
     // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with whether an app took the url.
     virtual void openUrl(std::string_view url, std::function<void(bool opened)> callback) = 0;

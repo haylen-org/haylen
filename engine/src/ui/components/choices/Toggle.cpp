@@ -23,4 +23,12 @@ void Toggle::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+bool Toggle::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Switch;
+    element.label.assign(context.getText(text));
+    element.states = checked ? platform::AccessibilityElement::Checked : 0;
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

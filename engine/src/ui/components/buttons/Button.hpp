@@ -12,6 +12,7 @@ class Button final : public ButtonBase {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "button";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     void readMore(PropertyReader& reader) override;

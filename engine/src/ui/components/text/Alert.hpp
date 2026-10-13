@@ -15,6 +15,7 @@ class Alert final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "alert";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
   protected:
     void readProperties(PropertyReader& reader) override;

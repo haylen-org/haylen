@@ -38,6 +38,17 @@ class HeadlessHost final : public Host {
         float seconds = 0.0F;
     };
 
+    // A tree of accessible elements the engine handed the platform.
+    struct AccessibilityTree {
+        std::vector<AccessibilityElement> elements;
+        std::uint64_t focused = 0;
+    };
+
+    struct Announcement {
+        std::string text;
+        bool interrupt = false;
+    };
+
     // A native dialog the engine asked for, with the folder where the platform would keep copies of picked files.
     struct DialogCall {
         std::uint64_t id = 0;
@@ -217,6 +228,15 @@ class HeadlessHost final : public Host {
     [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override {
         return systemState.getAccessibility();
     }
+    [[nodiscard]] bool isAccessibilityTreeWanted() const override {
+        return accessibilityWanted;
+    }
+    void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override {
+        accessibilityTrees.push_back({.elements = {elements.begin(), elements.end()}, .focused = focused});
+    }
+    void announce(std::string_view text, bool interrupt) override {
+        announcements.push_back({.text = std::string(text), .interrupt = interrupt});
+    }
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override {
         vibrations.push_back(seconds);
@@ -296,6 +316,19 @@ class HeadlessHost final : public Host {
     }
     void setAccessibilitySettings(const AccessibilitySettings& value) {
         systemState.setAccessibility(value);
+    }
+
+    // Whether the headless platform wants the tree of accessible elements, as a platform does while a screen reader runs.
+    void setAccessibilityTreeWanted(bool value) noexcept {
+        accessibilityWanted = value;
+    }
+
+    // The trees of accessible elements and the announcements the engine handed the headless platform, in order.
+    [[nodiscard]] const std::vector<AccessibilityTree>& getAccessibilityTrees() const noexcept {
+        return accessibilityTrees;
+    }
+    [[nodiscard]] const std::vector<Announcement>& getAnnouncements() const noexcept {
+        return announcements;
     }
 
     // Whether the headless system finds an app for the urls the engine opens, which it answers at once.
@@ -405,6 +438,9 @@ class HeadlessHost final : public Host {
     std::vector<float> vibrations;
     std::vector<Rumble> rumbles;
     std::string networkRequirement;
+    std::vector<AccessibilityTree> accessibilityTrees;
+    std::vector<Announcement> announcements;
+    bool accessibilityWanted = false;
     std::vector<DialogCall> dialogCalls;
     std::vector<std::uint64_t> cancelledDialogs;
     std::vector<ScreenRequest> screenRequests;

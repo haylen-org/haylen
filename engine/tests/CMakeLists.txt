@@ -180,6 +180,7 @@ set(HAYLEN_TEST_SOURCES
   text/RichTextMarkupTests.cpp
   text/ShapingTests.cpp
   text/TextLuaTests.cpp
+  ui/AccessibilityTreeTests.cpp
   ui/AnchorTests.cpp
   ui/BackendTests.cpp
   ui/CollectionDiffTests.cpp

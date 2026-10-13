@@ -458,7 +458,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/net/SocketLink.cpp
   src/net/WebSocket.cpp
   src/platform/Accessibility.cpp
+  src/platform/AccessibilityElement.cpp
   src/platform/AccessibilityLua.cpp
+  src/platform/AccessibilityRelay.cpp
   src/platform/AccessibilitySettings.cpp
   src/platform/AppPlugin.cpp
   src/platform/AudioStream.cpp
@@ -545,6 +547,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/text/Segmenter.cpp
   src/text/Style.cpp
   src/text/TrueTypeFont.cpp
+  src/ui/AccessibilityTree.cpp
   src/ui/Anchor.cpp
   src/ui/Backend.cpp
   src/ui/Component.cpp

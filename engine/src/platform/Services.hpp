@@ -16,6 +16,7 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/Monitor.hpp"
@@ -113,6 +114,11 @@ class Services final {
 
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     static void vibrate(float seconds);
+
+    // Exposes the tree of accessible elements to the screen readers of the platform and says announcements, as `Host::isAccessibilityTreeWanted`, `Host::updateAccessibility` and `Host::announce` describe. A platform without a screen reader interface never wants the tree and ignores both.
+    [[nodiscard]] static bool isAccessibilityTreeWanted();
+    static void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused);
+    static void announce(std::string_view text, bool interrupt);
 
     // Runs the motors of a gamepad as `Host::rumbleGamepad` describes.
     static void rumbleGamepad(std::size_t index, float low, float high, float seconds);

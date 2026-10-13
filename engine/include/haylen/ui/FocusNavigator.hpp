@@ -91,6 +91,14 @@ class FocusNavigator final {
     [[nodiscard]] std::size_t getTargetCount() const noexcept {
         return building.targets.size();
     }
+    [[nodiscard]] ImGuiID getTargetId(std::size_t index) const noexcept {
+        return building.targets[index].id;
+    }
+
+    // Act on a target of the last frame as a screen reader asks, after `update` and before the GUIs draw: give it the focus, press it as accept does, or hand it a direction it uses itself, such as right to raise a slider. Each returns whether the target is there.
+    bool focusTarget(ImGuiID item);
+    bool pressTarget(ImGuiID item);
+    bool stepTarget(ImGuiID item, FocusDirection direction);
 
     // Returns the focused target among the targets registered since `first`, or nothing.
     [[nodiscard]] std::optional<ImGuiID> findFocusedSince(std::size_t first) const;

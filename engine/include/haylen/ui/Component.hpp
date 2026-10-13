@@ -17,6 +17,7 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/ui/Alignment.hpp"
@@ -74,6 +75,12 @@ class Component {
 
         // The shape of the mouse cursor while it is over the node.
         std::optional<platform::Window::Cursor> cursor;
+
+        // What screen readers say of the node instead of what its kind describes, and whether they leave the node and its children out.
+        TextValue accessibilityLabel;
+        TextValue accessibilityHint;
+        std::optional<platform::AccessibilityElement::Role> accessibilityRole;
+        bool accessibilityHidden = false;
     };
 
     // The events every kind reports, each only for the nodes that listen to it, since telling them apart costs a check every frame.
@@ -165,6 +172,10 @@ class Component {
 
     // Whether the control uses a direction itself while it has the focus, such as a slider that changes its value with left and right, so the direction does not move the focus.
     [[nodiscard]] virtual bool usesFocusDirection(FocusDirection) const noexcept {
+        return false;
+    }
+    // Describes the node to screen readers with its role, label, value, states and actions, and returns whether its kind is an element of its own. Containers leave it alone, so their children join the element around them.
+    [[nodiscard]] virtual bool describe(Context&, platform::AccessibilityElement&) const {
         return false;
     }
     [[nodiscard]] bool isListening(Notice notice) const noexcept {

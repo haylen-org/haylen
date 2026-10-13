@@ -5,6 +5,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "platform/AccessibilityLua.hpp"
+#include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/DialogsLua.hpp"
@@ -16,9 +17,11 @@ namespace haylen::plugins {
 void PlatformPlugin::start(core::Engine& engine) {
     platform::BridgeRelay::attach(engine.getPlatform());
     platform::DialogRelay::attach(engine.getDialogs());
+    platform::AccessibilityRelay::attach(engine.getAccessibility());
 }
 
 void PlatformPlugin::stop(core::Engine& engine) {
+    platform::AccessibilityRelay::detach(engine.getAccessibility());
     platform::DialogRelay::detach(engine.getDialogs());
     platform::BridgeRelay::detach(engine.getPlatform());
     for (const std::shared_ptr<platform::VideoStream>& stream : videoStreams) {

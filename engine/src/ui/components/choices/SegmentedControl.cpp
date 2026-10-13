@@ -122,4 +122,13 @@ void SegmentedControl::select(Context& context, int index) {
     context.emit(*this, "change", {{"value", selected}});
 }
 
+bool SegmentedControl::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::RadioGroup;
+    if (const int index = ChoiceItem::indexOf(items, selected); index >= 0) {
+        element.value.assign(context.getText(items[static_cast<std::size_t>(index)].text));
+    }
+    element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
+    return true;
+}
+
 } // namespace haylen::ui

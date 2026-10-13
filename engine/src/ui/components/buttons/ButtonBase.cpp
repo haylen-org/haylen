@@ -29,4 +29,11 @@ bool ButtonBase::drawButton(Context& context, const math::Rect& bounds, bool che
     return clicked;
 }
 
+bool ButtonBase::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Button;
+    element.label.assign(context.getText(text));
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

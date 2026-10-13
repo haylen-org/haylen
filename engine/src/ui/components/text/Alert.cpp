@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
@@ -54,6 +55,12 @@ void Alert::render(Context& context, const math::Rect& bounds) {
         y += height;
     }
     Typography::drawParagraph(context, Theme::Font::Body, {inner.x, y, inner.width, inner.getBottom() - y}, context.getColor(Theme::Color::Text), context.getText(message), Alignment::Start);
+}
+
+bool Alert::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Alert;
+    AccessibilityTree::appendParts(element.label, {context.getText(title), context.getText(message)});
+    return true;
 }
 
 } // namespace haylen::ui

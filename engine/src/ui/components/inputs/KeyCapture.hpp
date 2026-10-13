@@ -22,6 +22,7 @@ class KeyCapture final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "keyCapture";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
     // Writes a binding for people, such as Left Shift for `key:leftShift`.
     [[nodiscard]] static std::string describe(std::string_view binding);

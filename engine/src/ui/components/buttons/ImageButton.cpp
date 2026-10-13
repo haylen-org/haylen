@@ -42,4 +42,11 @@ void ImageButton::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+bool ImageButton::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Button;
+    element.label.assign(context.getText(text));
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

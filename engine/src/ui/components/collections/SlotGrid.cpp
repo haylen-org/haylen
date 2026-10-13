@@ -160,4 +160,10 @@ void SlotGrid::drawingStopped(Context& context) {
     DragAndDrop::dropCarriedFrom(context, *this);
 }
 
+bool SlotGrid::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::List;
+    element.value.assign(selected);
+    return true;
+}
+
 } // namespace haylen::ui

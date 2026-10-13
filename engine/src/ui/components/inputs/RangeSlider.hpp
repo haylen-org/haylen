@@ -14,6 +14,7 @@ class RangeSlider final : public Component {
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "rangeSlider";
     }
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
     [[nodiscard]] bool usesFocusDirection(FocusDirection direction) const noexcept override {
         return direction == FocusDirection::Left || direction == FocusDirection::Right;
     }

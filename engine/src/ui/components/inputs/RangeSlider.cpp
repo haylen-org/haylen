@@ -8,6 +8,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "ui/ImGuiConverter.hpp"
@@ -159,6 +160,15 @@ void RangeSlider::drawKnob(Context& context, const math::Rect& bounds, float x, 
         const float outer = knob * 0.5F + 4.0F + width * 0.5F;
         Surfaces::outline(context, math::Rect::fromCenter(area.getCenter(), {outer * 2.0F, outer * 2.0F}), context.getColor(Theme::Color::Focus), outer, width);
     }
+}
+
+bool RangeSlider::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Slider;
+    AccessibilityTree::appendNumber(element.value, low, decimals);
+    element.value.append(" - ");
+    AccessibilityTree::appendNumber(element.value, high, decimals);
+    element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
+    return true;
 }
 
 } // namespace haylen::ui

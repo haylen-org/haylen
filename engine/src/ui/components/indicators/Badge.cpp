@@ -30,4 +30,10 @@ void Badge::render(Context& context, const math::Rect& bounds) {
     Typography::drawAligned(context, Theme::Font::Caption, bounds.inset(Surfaces::getPadding(context, Theme::Surface::Badge)), context.getColor(solid ? colors.ink : colors.text), context.getText(text), Alignment::Center);
 }
 
+bool Badge::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Text;
+    element.label.assign(context.getText(text));
+    return !element.label.empty();
+}
+
 } // namespace haylen::ui

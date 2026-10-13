@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 
+#include "haylen/core/Utf8.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/TextEditor.hpp"
 
@@ -45,6 +46,21 @@ void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::
     if (result.submitted) {
         context.emit(*this, "submit", {{"value", value}});
     }
+}
+
+// A secret field reads one bullet for every character it holds, never the characters.
+bool TextEntry::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::TextField;
+    element.label.assign(context.getText(placeholder));
+    if (getKind() == "secretField") {
+        for (std::size_t count = core::Utf8::countCodePoints(value); count > 0; --count) {
+            element.value.append("\u2022");
+        }
+    } else {
+        element.value.assign(value);
+    }
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
 }
 
 } // namespace haylen::ui

@@ -146,4 +146,10 @@ void Window::close(Context& context) {
     context.emit(*this, "close");
 }
 
+bool Window::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Dialog;
+    element.label.assign(context.getText(title));
+    return open;
+}
+
 } // namespace haylen::ui

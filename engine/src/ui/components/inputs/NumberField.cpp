@@ -76,4 +76,11 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+bool NumberField::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::TextField;
+    element.value.assign(text);
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

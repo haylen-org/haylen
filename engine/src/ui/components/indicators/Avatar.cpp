@@ -52,4 +52,10 @@ std::string Avatar::getInitials(std::string_view fullName) {
     return letters;
 }
 
+bool Avatar::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Image;
+    element.label.assign(context.getText(name));
+    return !element.label.empty();
+}
+
 } // namespace haylen::ui

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <optional>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -50,6 +51,13 @@ void Slider::render(Context& context, const math::Rect& bounds) {
     if (showValue) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), Typography::formatNumber(value, decimals), Alignment::End);
     }
+}
+
+bool Slider::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Slider;
+    AccessibilityTree::appendNumber(element.value, value, decimals);
+    element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
+    return true;
 }
 
 } // namespace haylen::ui

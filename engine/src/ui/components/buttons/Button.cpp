@@ -14,4 +14,12 @@ void Button::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+bool Button::describe(Context& context, platform::AccessibilityElement& element) const {
+    (void)ButtonBase::describe(context, element);
+    if (checked) {
+        element.states |= platform::AccessibilityElement::Selected;
+    }
+    return true;
+}
+
 } // namespace haylen::ui

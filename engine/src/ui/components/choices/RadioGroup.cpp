@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Widgets.hpp"
 #include "ui/components/ChoiceItem.hpp"
@@ -43,6 +44,7 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);
         const bool picked = Widgets::radio(context, option, item.id == selected, text, "##option");
+        context.getAccessibility().addPart(ImGui::GetItemID(), option, platform::AccessibilityElement::Role::RadioButton, text, (item.id == selected ? platform::AccessibilityElement::Checked : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
         if (!focused.empty() && item.id == focused) {
             Widgets::focusItem(context);
         }
@@ -62,6 +64,11 @@ std::string RadioGroup::getFocusTarget() const {
     }
     const auto enabled = std::ranges::find_if(items, [](const ChoiceItem& item) { return item.enabled; });
     return enabled != items.end() ? enabled->id : std::string();
+}
+
+bool RadioGroup::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::RadioGroup;
+    return true;
 }
 
 } // namespace haylen::ui

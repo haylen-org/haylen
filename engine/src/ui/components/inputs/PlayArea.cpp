@@ -24,4 +24,10 @@ void PlayArea::render(Context& context, const math::Rect& bounds) {
     Widgets::drawFocusRing(context, bounds, itemId, 0.0F);
 }
 
+bool PlayArea::describe(Context&, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::PlayArea;
+    element.actions = platform::AccessibilityElement::Activate;
+    return true;
+}
+
 } // namespace haylen::ui

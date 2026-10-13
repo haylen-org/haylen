@@ -18,4 +18,10 @@ void SectionTitle::render(Context& context, const math::Rect& bounds) {
     Typography::drawParagraph(context, Theme::Font::Heading, bounds, context.getColor(Theme::Color::Text), context.getText(text), Alignment::Start);
 }
 
+bool SectionTitle::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Heading;
+    element.label.assign(context.getText(text));
+    return true;
+}
+
 } // namespace haylen::ui

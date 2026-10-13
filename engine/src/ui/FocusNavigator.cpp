@@ -664,6 +664,41 @@ void FocusNavigator::apply(const Target& target) {
     focusedBounds = target.bounds;
 }
 
+bool FocusNavigator::focusTarget(ImGuiID item) {
+    const Target* target = find(drawn, item);
+    if (target == nullptr) {
+        return false;
+    }
+    ringVisible = true;
+    apply(*target);
+    return true;
+}
+
+bool FocusNavigator::pressTarget(ImGuiID item) {
+    const Target* target = find(drawn, item);
+    if (target == nullptr) {
+        return false;
+    }
+    ringVisible = true;
+    apply(*target);
+    activate(*target);
+    return true;
+}
+
+bool FocusNavigator::stepTarget(ImGuiID item, FocusDirection direction) {
+    const Target* target = find(drawn, item);
+    if (target == nullptr) {
+        return false;
+    }
+    ringVisible = true;
+    apply(*target);
+    const Node& node = drawn.nodes[target->node];
+    if ((node.usedDirections & toBit(direction)) != 0) {
+        pendingDirection = {node.id, direction};
+    }
+    return true;
+}
+
 // Activation happens the way ImGui activates an item from the keyboard, preferring text input, so a text field starts editing.
 void FocusNavigator::activate(const Target& target) {
     ImGuiContext& g = *GImGui;

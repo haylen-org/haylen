@@ -1015,6 +1015,10 @@ Every kind accepts these properties.
 | `theme` | string | inherited | Name of a registered theme the node and every node inside it draw with, whatever the active theme, such as a light card in a dark screen. A name that is not registered stops the app with `The UI has no theme named "<name>".` when the node draws. |
 | `style` | table | none | Values that replace those of the theme for the node and every node inside it, as described in [Styles](#styles). Setting it again replaces the whole style, and an empty table goes back to the theme. |
 | `cursor` | string | none | Shape of the mouse cursor while it is over the node: `'default'`, `'arrow'`, `'iBeam'`, `'crosshair'`, `'pointingHand'`, `'resizeHorizontal'`, `'resizeVertical'`, `'resizeDiagonalDown'`, `'resizeDiagonalUp'`, `'resizeAll'` or `'notAllowed'`. The innermost node under the pointer with a cursor wins. |
+| `accessibilityLabel` | text | none | What screen readers say the node is, instead of what its kind describes, such as the name of an icon button. A node with a label is an element of the [screen reader tree](accessibility.md#screen-readers) even when its kind is not. |
+| `accessibilityHint` | text | the tooltip | What screen readers say the node does, after a pause. |
+| `accessibilityRole` | string | from the kind | What screen readers say the node is, one of the roles of [`accessibility.elements`](accessibility.md#accessibilityelements), such as `'heading'` for a label that titles a section. |
+| `accessibilityHidden` | boolean | `false` | Leaves the node and every node inside it out of what screen readers read, such as decoration that repeats a text. |
 
 ```lua
 local ui = require('haylen.ui')

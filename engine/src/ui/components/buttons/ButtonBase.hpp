@@ -15,6 +15,9 @@ namespace haylen::ui {
 
 // The text, icon with its tint and variant every button-like kind shares.
 class ButtonBase : public Component {
+  public:
+    [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
+
   protected:
     [[nodiscard]] Alignment getDefaultAlignment() const noexcept override {
         return Alignment::Start;

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "haylen/math/Insets.hpp"
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
@@ -50,6 +51,12 @@ math::Insets PageHeader::getInsets(Context& context) const {
     const float x = context.getMetric(Theme::Metric::PanelPadding);
     const float y = context.getMetric(Theme::Metric::ControlPaddingY);
     return {image.left + x, image.top + y, image.right + x, image.bottom + y};
+}
+
+bool PageHeader::describe(Context& context, platform::AccessibilityElement& element) const {
+    element.role = platform::AccessibilityElement::Role::Heading;
+    AccessibilityTree::appendParts(element.label, {context.getText(title), context.getText(caption)});
+    return true;
 }
 
 } // namespace haylen::ui
