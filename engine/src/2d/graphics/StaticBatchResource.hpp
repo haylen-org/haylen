@@ -5,14 +5,18 @@
 #include <memory>
 
 #include "graphics/ResourceGraveyard.hpp"
+#include "haylen/debug/ObjectCounter.hpp"
+#include "haylen/debug/TrackedObject.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Rect.hpp"
 #include "sokol_gfx.h"
 
 namespace haylen::graphics2d {
 
-// The instance buffer behind a static sprite batch, buried in the device graveyard when the last handle goes away.
+// The instance buffer behind a static sprite batch, buried in the device graveyard when the last handle goes away. Batches count themselves with the bytes of their buffer as `StaticSpriteBatch` in the debug statistics.
 struct StaticBatchResource {
+    static debug::ObjectCounter& counter;
+
     sg_buffer buffer{};
     std::size_t count = 0;
     graphics::Texture texture;
@@ -21,6 +25,7 @@ struct StaticBatchResource {
 
     // The submission of the renderer that last kept the batch alive until it ends.
     std::uint64_t retainEpoch = 0;
+    debug::TrackedObject tracked{counter};
 
     StaticBatchResource() = default;
     StaticBatchResource(const StaticBatchResource&) = delete;

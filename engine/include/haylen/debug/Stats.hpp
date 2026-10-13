@@ -30,11 +30,13 @@ class Stats final {
         std::uint32_t fixedSteps = 0;
     };
 
-    // Bytes of Lua memory and estimated bytes of GPU and audio memory.
+    // Bytes of Lua memory and estimated bytes of GPU and audio memory, where `batches` holds the instance buffers of static sprite batches and `buffers` the vertex, index and instance buffers the renderer streams its batches through every frame.
     struct Memory {
         std::size_t lua = 0;
         std::int64_t textures = 0;
         std::int64_t targets = 0;
+        std::int64_t batches = 0;
+        std::int64_t buffers = 0;
         std::int64_t sounds = 0;
     };
 

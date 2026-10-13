@@ -9,8 +9,11 @@
 #include <string_view>
 #include <vector>
 
+#include "2d/graphics/GpuInstance.hpp"
 #include "graphics/Gpu.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/SpriteInstance.hpp"
+#include "haylen/2d/graphics/StaticSpriteBatch.hpp"
 #include "haylen/2d/particles/Emitter.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/AppConfig.hpp"
@@ -186,6 +189,27 @@ TEST(StatsTest, CapturesFramesCountersAndMemory) {
     EXPECT_GT(stats.memory.textures, 0);
     EXPECT_EQ(stats.pools.size(), 6U);
     EXPECT_FALSE(stats.objects.empty());
+}
+
+// Static batches report the bytes of their instance buffers, and the renderer the bytes of the buffers it streams batches through.
+TEST(StatsTest, ReportsTheGpuMemoryOfBatches) {
+    test::EngineFixture fixture;
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    const std::int64_t before = plugin.captureStats(fixture.engine()).memory.batches;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4));
+    std::vector<graphics2d::SpriteInstance> sprites(1000);
+    graphics2d::StaticSpriteBatch batch = fixture.engine().getRenderer2D().createStaticBatch(texture, sprites);
+    fixture.runLua("local g = require('haylen.graphics2d') require('haylen.scene').push({render = function() g.beginScreen() g.drawRect({0, 0, 10, 10}, '#FFFFFFFF') end})");
+    fixture.frames(2);
+
+    const Stats stats = plugin.captureStats(fixture.engine());
+    EXPECT_EQ(stats.memory.batches - before, static_cast<std::int64_t>(1000 * sizeof(graphics2d::GpuInstance)));
+    EXPECT_GT(stats.memory.buffers, 0);
+    EXPECT_EQ(fixture.lua("local memory = require('haylen.debug').stats().memory return tostring(memory.batches > 0 and memory.buffers > 0)"), "true");
+
+    batch = {};
+    fixture.frames(2);
+    EXPECT_EQ(plugin.captureStats(fixture.engine()).memory.batches, before);
 }
 
 TEST(StatsTest, SamplesMonitorsEveryFrame) {

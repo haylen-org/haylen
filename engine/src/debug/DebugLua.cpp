@@ -203,13 +203,17 @@ void DebugLua::pushStats(lua_State* L, const Stats& snapshot) {
     lua_setfield(L, -2, "uploadedBytes");
     lua_setfield(L, -2, "rendering");
 
-    lua_createtable(L, 0, 4);
+    lua_createtable(L, 0, 6);
     lua::Stack::push(L, snapshot.memory.lua);
     lua_setfield(L, -2, "lua");
     lua::Stack::push(L, snapshot.memory.textures);
     lua_setfield(L, -2, "textures");
     lua::Stack::push(L, snapshot.memory.targets);
     lua_setfield(L, -2, "targets");
+    lua::Stack::push(L, snapshot.memory.batches);
+    lua_setfield(L, -2, "batches");
+    lua::Stack::push(L, snapshot.memory.buffers);
+    lua_setfield(L, -2, "buffers");
     lua::Stack::push(L, snapshot.memory.sounds);
     lua_setfield(L, -2, "sounds");
     lua_setfield(L, -2, "memory");

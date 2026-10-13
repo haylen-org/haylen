@@ -91,7 +91,7 @@ void OverlayWindow::drawRendering(const graphics2d::Renderer::Stats& rendering) 
 }
 
 void OverlayWindow::drawResources(const Stats& stats) {
-    ImGui::TextWrapped("Lua %s, textures %s, render targets %s, sounds %s", formatBytes(static_cast<std::int64_t>(stats.memory.lua)).c_str(), formatBytes(stats.memory.textures).c_str(), formatBytes(stats.memory.targets).c_str(), formatBytes(stats.memory.sounds).c_str());
+    ImGui::TextWrapped("Lua %s, textures %s, render targets %s, static batches %s, render buffers %s, sounds %s", formatBytes(static_cast<std::int64_t>(stats.memory.lua)).c_str(), formatBytes(stats.memory.textures).c_str(), formatBytes(stats.memory.targets).c_str(), formatBytes(stats.memory.batches).c_str(), formatBytes(stats.memory.buffers).c_str(), formatBytes(stats.memory.sounds).c_str());
     const Stats::Counts& counts = stats.counts;
     ImGui::TextWrapped("Scenes %zu, tweens %zu, timers %zu, voices %zu, sockets %zu", counts.scenes, counts.tweens, counts.timers, counts.voices, counts.sockets);
     ImGui::TextWrapped("Assets cached %zu, loading %zu", counts.assetsCached, counts.assetsPending);

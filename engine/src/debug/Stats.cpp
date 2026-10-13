@@ -67,6 +67,8 @@ Stats Stats::capture(core::Engine& engine, const graphics2d::Renderer::Stats& la
     // clang-format on
     stats.memory.textures = bytesOf("Texture");
     stats.memory.targets = bytesOf("RenderTarget");
+    stats.memory.batches = bytesOf("StaticSpriteBatch");
+    stats.memory.buffers = bytesOf("RendererBuffers");
     stats.memory.sounds = bytesOf("Sound");
 
     stats.counts.scenes = engine.getScenes().size();

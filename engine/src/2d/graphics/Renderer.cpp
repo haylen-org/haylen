@@ -963,6 +963,7 @@ StaticSpriteBatch Renderer::createStaticBatch(const graphics::Texture& texture, 
     auto resource = std::make_shared<StaticBatchResource>();
     resource->buffer = graphics::Gpu::makeBuffer(desc);
     resource->count = sprites.size();
+    resource->tracked.setBytes(packed.size() * sizeof(GpuInstance));
     resource->texture = texture;
     resource->bounds = bounds;
     resource->graveyard = state->device.getState().graveyard;

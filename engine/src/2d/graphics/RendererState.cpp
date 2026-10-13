@@ -37,6 +37,8 @@
 
 namespace haylen::graphics2d {
 
+debug::ObjectCounter& RendererState::bufferCounter = *new debug::ObjectCounter("RendererBuffers", debug::ObjectCounter::Kind::Native);
+
 std::uint64_t RendererState::submissions = 0;
 const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc};
 const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc};
@@ -719,7 +721,10 @@ void RendererState::ensureBuffer(sg_buffer& buffer, std::size_t& capacity, std::
     if (buffer.id != SG_INVALID_ID) {
         device.getState().graveyard->buryBuffer(buffer);
     }
-    capacity = std::max<std::size_t>(needed + needed / 2, 1024);
+    const std::size_t grown = std::max<std::size_t>(needed + needed / 2, 1024);
+    bufferBytes += (grown - capacity) * elementSize;
+    buffersTracked.setBytes(bufferBytes);
+    capacity = grown;
 
     sg_buffer_desc desc{};
     desc.size = capacity * elementSize;

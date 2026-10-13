@@ -35,6 +35,8 @@
 #include "haylen/2d/graphics/ImageBlend.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
+#include "haylen/debug/ObjectCounter.hpp"
+#include "haylen/debug/TrackedObject.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -148,6 +150,11 @@ struct RendererState {
     std::size_t indexCapacity = 0;
     sg_buffer lightBuffer{};
     std::size_t lightCapacity = 0;
+
+    // The streaming buffers above count as one `RendererBuffers` object with their bytes in the debug statistics.
+    static debug::ObjectCounter& bufferCounter;
+    std::size_t bufferBytes = 0;
+    debug::TrackedObject buffersTracked{bufferCounter};
 
     VectorAtlas vectors;
 
