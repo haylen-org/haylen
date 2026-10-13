@@ -487,7 +487,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-005` | Text fields | Text fields with every keyboard and return key, secret fields, text areas and filter fields. |  |
 | `GUI-006` | Pickers | Combos, color fields, number fields and sliders. |  |
 | `GUI-007` | Indicators | Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars. |  |
-| `GUI-008` | Collections | Lists with draggable rows, trees and tables. |  |
+| `GUI-008` | Collections | Lists with draggable rows that draw only the rows in view, trees and tables. |  |
 | `GUI-009` | Settings | A settings screen built from a settings form, rows and actions. |  |
 | `GUI-010` | Overlays | Dialogs, toasts, tooltips, popovers and context menus. |  |
 | `GUI-011` | Game controls | Steppers, segmented controls, range sliders and key capture fields that rebind actions of the action map. |  |

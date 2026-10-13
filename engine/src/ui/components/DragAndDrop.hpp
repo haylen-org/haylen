@@ -25,8 +25,8 @@ class DragAndDrop final {
         std::optional<std::pair<std::string, std::string>> dropped;
     };
 
-    // Runs after the item of an entry is drawn: offers it to the pointer as a drag source, takes pointer drops on it, and picks up or drops carried items when the player activates it with accept.
-    [[nodiscard]] static Result handle(Context& context, const Component& component, std::string_view entry, std::string_view image, const math::Rect& bounds);
+    // Runs after the item of an entry is drawn: offers it to the pointer as a drag source, takes pointer drops on it, and picks up or drops carried items when the player activates it with accept, unless `carries` leaves that accept to the component.
+    [[nodiscard]] static Result handle(Context& context, const Component& component, std::string_view entry, std::string_view image, const math::Rect& bounds, bool carries = true);
 
     // Draws the picture of a carried item over the focused entry, so the player sees what moves.
     static void drawCarried(Context& context, ImGuiID item, const math::Rect& bounds);

@@ -1,4 +1,4 @@
--- A list with pictures and captions, a draggable list the player reorders, a tree that opens and closes and a table with fixed and shared columns.
+-- A list with pictures and captions, a long draggable list the player chooses rows of and reorders, a tree that opens and closes and a table with fixed and shared columns.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -10,11 +10,14 @@ local Collections = haylen.class('Collections', Test)
 function Collections:init(entry)
     Collections.super.init(self, entry)
     self.quests = {'Light the beacon', 'Chop ten trees', 'Build a raft', 'Catch a fish', 'Find the key'}
+    for index = 1, 195 do
+        self.quests[#self.quests + 1] = string.format('Chart the reef %d', index)
+    end
 end
 
 function Collections:enter()
     self:frame{
-        hint = 'Pick rows with a click, a tap or Enter. Drag a quest onto another to reorder the list, or carry it with Enter or the south button, move with the arrows and drop it with Enter again.',
+        hint = 'Pick rows with a click, a tap or Enter. Drag a quest onto another to reorder the list of 200 quests, which draws only the rows in view, or choose it with Enter or the south button, pick it up with a second press, move with the arrows and drop it with Enter again.',
         focus = 'saves',
         content = {self:columns()},
     }
@@ -61,7 +64,9 @@ function Collections:columns()
             ui.list{id = 'saves', items = saves, selected = 'slot1', onSelect = function(event) self:report('The list selected "' .. event.item .. '".') end},
             ui.divider{},
             ui.label{text = 'Draggable', color = 'textMuted'},
-            ui.list{id = 'quests', draggable = true, items = self:questItems(), onDrop = function(event) self:reorder(event) end},
+            ui.scroll{height = 320, ui.list{id = 'quests', draggable = true, items = self:questItems(), onDrop = function(event) self:reorder(event) end, onSelect = function(event)
+                self:report('The draggable list chose "' .. event.item .. '". Press again to pick it up.')
+            end}},
         }),
         layout.section('Component "tree"', {grow = 1,
             ui.tree{items = tree, expanded = {'tools', 'food'}, onSelect = function(event)

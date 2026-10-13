@@ -357,6 +357,56 @@ TEST_F(GameComponentTest, DragsAndCarriesItemsBetweenSlotsAndLists) {
     EXPECT_FALSE(getUi().getFocus().getCarried().has_value());
 }
 
+TEST_F(GameComponentTest, ChoosesTheRowsOfADraggableListBeforeCarryingThem) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "list", "id": "queue", "draggable": true, "items": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}, {"id": "c", "text": "C"}]}]})");
+    focus(*gui, "queue");
+    key(input::Key::Enter);
+    EXPECT_EQ(findLastEvent("select").value, (core::Json{{"item", "a"}}));
+    EXPECT_FALSE(getUi().getFocus().getCarried().has_value());
+
+    // Accept on the chosen row picks it up, and accept on another row drops it there.
+    key(input::Key::Enter);
+    ASSERT_TRUE(getUi().getFocus().getCarried().has_value());
+    EXPECT_EQ(findLastEvent("dragStart").value, (core::Json{{"item", "a"}}));
+    key(input::Key::Down);
+    key(input::Key::Enter);
+    EXPECT_EQ(findLastEvent("drop").value, (core::Json{{"item", "b"}, {"source", "queue"}, {"sourceItem", "a"}}));
+    EXPECT_EQ(count("select"), 1U);
+}
+
+TEST_F(GameComponentTest, DrawsAndRegistersOnlyTheRowsOfAListInView) {
+    // clang-format off
+    const auto targets = [this](int rows) {
+        core::Json items = core::Json::array();
+        for (int index = 0; index < rows; ++index) {
+            items.push_back({{"id", "i" + std::to_string(index)}, {"text", "Row " + std::to_string(index)}});
+        }
+        auto gui = mount(core::Json{{"kind", "scroll"}, {"id", "box"}, {"height", 300}, {"align", "start"}, {"children", {{{"kind", "list"}, {"id", "list"}, {"draggable", true}, {"items", items}}}}}.dump());
+        frames(2);
+        const std::size_t count = getUi().getFocus().getTargetCount();
+        getUi().unmount(*gui);
+        return count;
+    };
+    // clang-format on
+    EXPECT_EQ(targets(20), targets(2000));
+
+    // The focus walks past the rows in view, which come into view as it reaches them.
+    core::Json items = core::Json::array();
+    for (int index = 0; index < 2000; ++index) {
+        items.push_back({{"id", "i" + std::to_string(index)}, {"text", "Row " + std::to_string(index)}});
+    }
+    auto gui = mount(core::Json{{"kind", "scroll"}, {"height", 300}, {"align", "start"}, {"children", {{{"kind", "list"}, {"id", "list"}, {"items", items}}}}}.dump());
+    focus(*gui, "list");
+    key(input::Key::Down);
+    key(input::Key::Enter);
+    const int start = std::stoi(findLastEvent("select").value.at("item").get<std::string>().substr(1));
+    for (int step = 0; step < 30; ++step) {
+        key(input::Key::Down);
+    }
+    key(input::Key::Enter);
+    EXPECT_EQ(findLastEvent("select").value, (core::Json{{"item", "i" + std::to_string(start + 30)}}));
+}
+
 TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "keyCapture", "id": "jump", "value": "key:space"}]})");
     click(gui->find("jump")->getBounds().getCenter());

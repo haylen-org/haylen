@@ -12,7 +12,7 @@
 
 namespace haylen::ui {
 
-DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& component, std::string_view entry, std::string_view image, const math::Rect& bounds) {
+DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& component, std::string_view entry, std::string_view image, const math::Rect& bounds, bool carries) {
     Result result;
     const ImGuiContext& state = *GImGui;
     const ImGuiID item = state.LastItemData.ID;
@@ -46,7 +46,7 @@ DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& compo
     FocusNavigator& focus = context.getFocus();
     const std::optional<FocusNavigator::Carry>& carried = focus.getCarried();
     result.hovering = result.hovering || (carried && state.NavId == item);
-    if (item == 0 || state.NavActivatePressedId != item) {
+    if (item == 0 || state.NavActivatePressedId != item || !carries) {
         return result;
     }
     if (!carried) {

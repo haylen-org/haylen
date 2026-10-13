@@ -11,7 +11,7 @@ return {
         {code = 'GUI-005', title = 'Text fields', description = 'Text fields with every keyboard and return key, secret fields, text areas and filter fields.', module = 'text-fields'},
         {code = 'GUI-006', title = 'Pickers', description = 'Combos, color fields, number fields and sliders.', module = 'pickers'},
         {code = 'GUI-007', title = 'Indicators', description = 'Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars.', module = 'indicators'},
-        {code = 'GUI-008', title = 'Collections', description = 'Lists with draggable rows, trees and tables.', module = 'collections'},
+        {code = 'GUI-008', title = 'Collections', description = 'Lists with draggable rows that draw only the rows in view, trees and tables.', module = 'collections'},
         {code = 'GUI-009', title = 'Settings', description = 'A settings screen built from a settings form, rows and actions.', module = 'settings'},
         {code = 'GUI-010', title = 'Overlays', description = 'Dialogs, toasts, tooltips, popovers and context menus.', module = 'overlays'},
         {code = 'GUI-011', title = 'Game controls', description = 'Steppers, segmented controls, range sliders and key capture fields that rebind actions of the action map.', module = 'game-controls'},

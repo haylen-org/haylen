@@ -2377,9 +2377,9 @@ ui.mount(ui.row{
 
 ### ui.list(properties)
 
-Rows of items, as tall as the theme `listRowHeight` metric, with an optional picture and caption. Pressing a row selects it and reports `select` with the item id as `item`. Pressing the selected row reports it again. The rows take the focus.
+Rows of items, as tall as the theme `listRowHeight` metric, with an optional picture and caption. Pressing a row selects it and reports `select` with the item id as `item`. Pressing the selected row reports it again. The rows take the focus. Only the rows in the view of the scroll around the list, one row on each side of them and the focused row draw and take part in navigation, so a list of thousands of rows costs what its view shows, and the focus still walks past the view, which follows it.
 
-A draggable list moves rows the way a [slot grid](#uislotgridproperties) moves slots: the pointer drags a row onto a row or a slot of any list or slot grid, and the keyboard, gamepads and remotes carry it with accept. It reports `dragStart` and `drop` like a slot grid, and accept carries rows instead of selecting them.
+A draggable list moves rows the way a [slot grid](#uislotgridproperties) moves slots: the pointer drags a row onto a row or a slot of any list or slot grid, and the keyboard, gamepads and remotes carry it with accept. It reports `dragStart` and `drop` like a slot grid. Accept on a row that is not selected selects it and reports `select`, and accept on the selected row picks it up, so players without a pointer both choose rows and carry them. While a row is carried, accept on another row drops it there, and accept on the carried row or `uiCancel` puts it back.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
