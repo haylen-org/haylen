@@ -91,6 +91,49 @@ Animation::Loop SpriteAtlas::readTagLoop(const Document& tag) {
     return direction.starts_with("pingpong") ? Animation::Loop::PingPong : Animation::Loop::Loop;
 }
 
+SpriteAtlas SpriteAtlas::assemble(graphics::Texture image, std::vector<std::pair<std::string, SpriteFrame>> frameList, std::vector<std::pair<std::string, Animation>> animationList) {
+    if (!image.isValid()) {
+        throw std::invalid_argument("A sprite atlas needs its texture.");
+    }
+    SpriteAtlas atlas;
+    atlas.texture = std::move(image);
+    for (auto& [name, frame] : frameList) {
+        if (!atlas.frames.emplace(name, std::move(frame)).second) {
+            throw std::invalid_argument("The atlas has the frame \"" + name + "\" twice.");
+        }
+        atlas.frameOrder.push_back(name);
+    }
+    for (auto& [name, animation] : animationList) {
+        animation.texture = atlas.texture;
+        if (!atlas.animations.emplace(name, std::move(animation)).second) {
+            throw std::invalid_argument("The atlas has the animation \"" + name + "\" twice.");
+        }
+    }
+    return atlas;
+}
+
+SpriteAtlas SpriteAtlas::subset(std::string_view prefix) const {
+    SpriteAtlas result;
+    result.texture = texture;
+    for (const std::string& name : frameOrder) {
+        if (name.starts_with(prefix)) {
+            result.frames.emplace(name.substr(prefix.size()), frames.find(name)->second);
+            result.frameOrder.push_back(name.substr(prefix.size()));
+        }
+    }
+    for (const auto& [name, animation] : animations) {
+        if (name.starts_with(prefix)) {
+            result.animations.emplace(name.substr(prefix.size()), animation);
+        }
+    }
+    for (const auto& [name, slice] : slices) {
+        if (name.starts_with(prefix)) {
+            result.slices.emplace(name.substr(prefix.size()), slice);
+        }
+    }
+    return result;
+}
+
 SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image) {
     if (!image.isValid()) {
         throw std::invalid_argument("A sprite atlas needs its texture.");

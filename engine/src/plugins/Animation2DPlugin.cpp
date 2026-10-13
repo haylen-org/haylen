@@ -43,7 +43,7 @@ void Animation2DPlugin::start(core::Engine& engine) {
             auto decoded = std::make_shared<DecodedAtlas>();
             decoded->document = nlohmann::ordered_json::parse(request.bytes.begin(), request.bytes.end());
             decoded->imagePath = io::Path::join(io::Path::directory(request.path), animation2d::SpriteAtlas::imagePath(decoded->document));
-            decoded->image = graphics::Image::decode(request.package->readAsset(decoded->imagePath));
+            decoded->image = graphics::Image::decodeFor(request.package->readAsset(decoded->imagePath), assets::Manager::textureOptionsFromJson(request.options));
             return decoded;
         },
         .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
@@ -70,7 +70,7 @@ void Animation2DPlugin::start(core::Engine& engine) {
             const std::vector<std::uint8_t> atlasBytes = request.package->readAsset(decoded->atlasPath);
             decoded->atlas.document = nlohmann::ordered_json::parse(atlasBytes.begin(), atlasBytes.end());
             decoded->atlas.imagePath = io::Path::join(io::Path::directory(decoded->atlasPath), animation2d::SpriteAtlas::imagePath(decoded->atlas.document));
-            decoded->atlas.image = graphics::Image::decode(request.package->readAsset(decoded->atlas.imagePath));
+            decoded->atlas.image = graphics::Image::decodeFor(request.package->readAsset(decoded->atlas.imagePath), assets::Manager::textureOptionsFromJson(request.options));
             return decoded;
         },
         .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {

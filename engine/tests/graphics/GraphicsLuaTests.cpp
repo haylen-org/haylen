@@ -65,4 +65,58 @@ TEST(GraphicsLuaTest, UpdatesDynamicTextures) {
     EXPECT_NE(fixture.lua("graphics.newTexture(1, 1):update(string.char(1, 2, 3, 4))").find("Only a dynamic texture changes its pixels in place."), std::string::npos);
 }
 
+// Images keep pixels on the CPU, decode and blit on the task pool, pack into atlases and become textures, and work on the pool never sees what Lua changes later.
+TEST(GraphicsLuaTest, EditsImagesAndPacksThemIntoAtlases) {
+    const std::vector<std::uint8_t> png = test::TestFiles::pngImage(6, 4, 0x336699FFU);
+    test::EngineFixture fixture({{"content/images/tile.png", std::string(png.begin(), png.end())}});
+    lua_pushlstring(fixture.lua(), reinterpret_cast<const char*>(png.data()), png.size());
+    lua_setglobal(fixture.lua(), "png");
+    // clang-format off
+    fixture.runLua(R"(
+        graphics = require('haylen.graphics')
+        animation2d = require('haylen.animation2d')
+        assets = require('haylen.assets')
+        async = require('async')
+        canvas = graphics.newImage(16, 8)
+        canvas:fill('#FF0000', {0, 0, 4, 4})
+        tile = assets.load('images/tile.png', 'image')
+        canvas:blit(tile, 8, 2, {source = {0, 0, 4, 4}})
+        canvas:setPixel(15, 7, '#8000FF00')
+        canvas:blit(canvas, 12, 0, {source = {0, 0, 2, 2}, blend = true})
+        async.spawn(function()
+            local decoded = graphics.decodeImageAsync(png):await()
+            local stamped = canvas:blitAsync(decoded, 0, 4):await()
+            canvas:setPixel(0, 4, '#FFFFFF')
+            local builder = animation2d.newAtlasBuilder()
+            builder:add('canvas', stamped)
+            builder:add('corner', stamped, {0, 0, 4, 4})
+            local atlas = builder:buildAsync({padding = 2, extrude = 1, filter = 'linear', mipmaps = true}):await()
+            done = decoded.width .. ' ' .. stamped:pixel(0, 4):toHex() .. ' ' .. canvas:pixel(0, 4):toHex() .. ' ' .. builder.count .. ' ' .. atlas:frame('corner').source.width .. ' ' .. tostring(atlas.texture.mipmaps)
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return done") != "nil" || fixture.engine().getError() != nullptr; }));
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(fixture.lua("return done"), "6 #FF336699 #FFFFFFFF 2 4.0 true");
+    EXPECT_EQ(fixture.lua("return canvas.width .. 'x' .. canvas.height .. ' ' .. canvas:pixel(1, 1):toHex() .. ' ' .. canvas:pixel(9, 3):toHex() .. ' ' .. canvas:pixel(13, 1):toHex()"), "16x8 #FFFF0000 #FF336699 #FFFF0000");
+    EXPECT_EQ(fixture.lua("local area = canvas:visibleArea() return area.width .. ' ' .. tostring(graphics.newImage(2, 2):visibleArea())"), "16.0 nil");
+    EXPECT_EQ(fixture.lua("local part = canvas:crop({8, 2, 4, 4}) part:setPixel(0, 0, '#000000') return part.width .. ' ' .. canvas:pixel(8, 2):toHex() .. ' ' .. graphics.decodeImage(png).height"), "4 #FF336699 4");
+    EXPECT_EQ(fixture.lua("local copy = tile:clone() copy:fill('#000000') return assets.load('images/tile.png', 'image'):pixel(0, 0):toHex() .. ' ' .. copy:pixel(0, 0):toHex()"), "#FF336699 #FF000000");
+    EXPECT_EQ(fixture.lua("tile:fill('#000000') return assets.load('images/tile.png', 'image'):pixel(0, 0):toHex()"), "#FF336699");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(canvas, {filter = 'linear', mipmaps = true}) return t.width .. ' ' .. tostring(t.mipmaps) .. ' ' .. tostring(graphics.newTexture(2, 2).mipmaps)"), "16 true false");
+    EXPECT_EQ(fixture.lua("local builder = animation2d.newAtlasBuilder() builder:add('a', canvas) builder:add('b', tile) local atlas = builder:build({trim = false}) return atlas:frame('a').source.width .. ' ' .. #atlas:frameNames() .. ' ' .. #atlas:subset('b'):frameNames()"), "16.0 2 1");
+    EXPECT_EQ(fixture.lua("canvas:bleed() return canvas:pixel(15, 0).a"), "0.0");
+
+    EXPECT_NE(fixture.lua("graphics.newImage(0, 4)").find("An image needs a width and a height of one pixel or more."), std::string::npos);
+    EXPECT_NE(fixture.lua("canvas:crop({10, 4, 8, 8})").find("is not inside the image of 16 by 8 pixels."), std::string::npos);
+    EXPECT_NE(fixture.lua("canvas:blit(tile, 0, 0, {mode = 'add'})").find("Unknown option \"mode\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.decodeImage('not an image')").find("The image could not be decoded"), std::string::npos);
+    EXPECT_NE(fixture.lua("animation2d.newAtlasBuilder():build()").find("An atlas needs at least one image."), std::string::npos);
+    EXPECT_NE(fixture.lua("local b = animation2d.newAtlasBuilder() b:add('a', canvas) b:add('a', canvas)").find("The atlas has the frame \"a\" twice."), std::string::npos);
+    EXPECT_NE(fixture.lua("local b = animation2d.newAtlasBuilder() b:add('a', canvas) b:build({maxSize = 8})").find("need more room than a texture of 8 pixels."), std::string::npos);
+    EXPECT_NE(fixture.lua("local b = animation2d.newAtlasBuilder() b:add('a', canvas) b:build({padding = 1, extrude = 1})").find("An atlas needs a padding of zero or more"), std::string::npos);
+    EXPECT_NE(fixture.lua("local b = animation2d.newAtlasBuilder() b:add('a', canvas) b:build({rotate = true})").find("Unknown option \"rotate\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newTexture(canvas, {dynamic = true})").find("Unknown option \"dynamic\"."), std::string::npos);
+}
+
 } // namespace haylen::graphics

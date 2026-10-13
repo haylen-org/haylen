@@ -4,6 +4,7 @@ local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
+local art = require('systems.art')
 local backdrop = require('systems.backdrop')
 local preferences = require('systems.preferences')
 local sound = require('systems.sound')
@@ -20,6 +21,7 @@ end
 -- Loads what the menus draw and builds the island at dusk from it, unless the screen before handed its island over.
 function menu:load(context)
     context:preload({'boot', 'menu'}):await()
+    art.pack()
     self.backdrop = self.backdrop or backdrop.new()
 end
 

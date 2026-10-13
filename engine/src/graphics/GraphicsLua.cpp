@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "graphics/FontLua.hpp"
+#include "graphics/ImageLua.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/graphics/Device.hpp"
@@ -38,6 +39,11 @@ int GraphicsLua::newRenderTarget(lua_State* L) {
 int GraphicsLua::newTexture(lua_State* L) {
     if (lua_type(L, 1) == LUA_TSTRING) {
         pushImageTexture(L);
+        return 1;
+    }
+    if (const Image* image = lua::Userdata::test<Image>(L, 1)) {
+        const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 2);
+        lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createTexture(*image, options));
         return 1;
     }
     const int width = lua::Stack::read<int>(L, 1);
@@ -71,7 +77,7 @@ void GraphicsLua::pushImageTexture(lua_State* L) {
         lua::Table::readField(L, 2, "dynamic", dynamic);
     }
     const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 2, {kImageTextureFields});
-    const Image image = Image::decode({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()});
+    const Image image = Image::decodeFor({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()}, options);
     Device& device = lua::Runtime::getEngine(L).getGraphics();
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
 }
@@ -111,6 +117,11 @@ int GraphicsLua::textureHeight(lua_State* L) {
 
 int GraphicsLua::textureFilter(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<Texture>(L, 1).getOptions().filter);
+    return 1;
+}
+
+int GraphicsLua::textureMipmaps(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<Texture>(L, 1).getOptions().mipmaps);
     return 1;
 }
 
@@ -224,14 +235,15 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
 
 int GraphicsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"newVectorImage", &lua::Binding::native<&newVectorImage>}, {"whiteTexture", &whiteTexture}, {"backendName", &backendName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
+        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"newVectorImage", &lua::Binding::native<&newVectorImage>}, {"newImage", &lua::Binding::native<&ImageLua::create>}, {"decodeImage", &lua::Binding::native<&ImageLua::decode>}, {"decodeImageAsync", &lua::Binding::native<&ImageLua::decodeAsync>}, {"whiteTexture", &whiteTexture}, {"backendName", &backendName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
 }
 
 void GraphicsLua::install(lua_State* L) {
-    lua::ClassBuilder<Texture>(L).function("update", &lua::Binding::native<&updateTexture>).property("width", &textureWidth).property("height", &textureHeight).property("filter", &textureFilter).property("wrap", &textureWrap).meta("__eq", &lua::Userdata::equal<Texture>).install();
+    ImageLua::install(L);
+    lua::ClassBuilder<Texture>(L).function("update", &lua::Binding::native<&updateTexture>).property("width", &textureWidth).property("height", &textureHeight).property("filter", &textureFilter).property("wrap", &textureWrap).property("mipmaps", &textureMipmaps).meta("__eq", &lua::Userdata::equal<Texture>).install();
     lua::ClassBuilder<RenderTarget>(L).property("width", &targetWidth).property("height", &targetHeight).property("texture", &targetTexture).meta("__eq", &lua::Userdata::equal<RenderTarget>).install();
     lua::ClassBuilder<Shader>(L).property("name", &shaderName).property("uniforms", &shaderUniforms).property("textures", &shaderTextures).meta("__eq", &lua::Userdata::equal<Shader>).install();
     lua::ClassBuilder<VectorImage>(L).property("width", &vectorWidth).property("height", &vectorHeight).function("rasterize", &lua::Binding::native<&rasterizeVector>).meta("__eq", &lua::Userdata::equal<VectorImage>).install();

@@ -64,10 +64,11 @@ Texture Device::createTexture(const Image& image, Texture::Options options) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
 
     auto resource = std::make_shared<TextureResource>();
-    const DeviceState::ImageViews created = DeviceState::createImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), "haylen-texture");
+    std::size_t bytes = 0;
+    const DeviceState::ImageViews created = DeviceState::createTextureImage(image, options.mipmaps, bytes);
     resource->image = created.image;
     resource->view = created.view;
-    resource->tracked.setBytes(DeviceState::getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8));
+    resource->tracked.setBytes(bytes);
     resource->sampler = state->getSampler(options);
     resource->width = image.getWidth();
     resource->height = image.getHeight();
@@ -88,6 +89,9 @@ const Texture& Device::getWhiteTexture() const noexcept {
 
 RenderTarget Device::createRenderTarget(int width, int height, Texture::Options options) {
     validateSize(width, height, getMaxTextureSize());
+    if (options.mipmaps) {
+        throw std::invalid_argument("A render target has no mipmaps.");
+    }
     return state->createRenderTarget(width, height, state->offscreenFormat, options);
 }
 
@@ -96,13 +100,14 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
     const std::shared_ptr<TextureResource>& resource = texture.getResource();
 
     // The old image is released only once the new one exists, so a failed creation leaves the texture intact. A dynamic texture stays dynamic, and its new pixels reach the GPU with the next upload.
-    const DeviceState::ImageViews created = resource->dynamic ? DeviceState::createDynamicImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8) : DeviceState::createImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), "haylen-texture");
+    std::size_t bytes = DeviceState::getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8);
+    const DeviceState::ImageViews created = resource->dynamic ? DeviceState::createDynamicImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8) : DeviceState::createTextureImage(image, resource->options.mipmaps, bytes);
     state->graveyard->bury(resource->image, resource->view);
     resource->image = created.image;
     resource->view = created.view;
     resource->width = image.getWidth();
     resource->height = image.getHeight();
-    resource->tracked.setBytes(DeviceState::getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8));
+    resource->tracked.setBytes(bytes);
     if (resource->dynamic) {
         state->stagePixels(resource, image.getPixels());
     }
@@ -110,6 +115,9 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
 
 Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
+    if (options.mipmaps) {
+        throw std::invalid_argument("A texture that changes in place has no mipmaps.");
+    }
     return state->createDynamicTexture(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), options);
 }
 

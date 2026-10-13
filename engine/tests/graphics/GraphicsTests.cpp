@@ -47,6 +47,98 @@ TEST(ImageTest, CreatesDecodesAndEditsPixels) {
     EXPECT_THROW(graphics::Image(std::numeric_limits<int>::max(), std::numeric_limits<int>::max()), std::invalid_argument);
 }
 
+TEST(ImageTest, FillsBlitsCropsAndExtrudesAreas) {
+    const math::Color red = math::Color::fromHex(0xFF0000FFU);
+    const math::Color blue = math::Color::fromHex(0x0000FFFFU);
+    graphics::Image image(8, 8);
+    image.fill({-2, -2, 4, 4}, red);
+    EXPECT_EQ(image.getPixel(1, 1), red);
+    EXPECT_EQ(image.getPixel(2, 2), math::Color::transparent());
+
+    // A blit clips to both images, and blending mixes the straight colors by alpha.
+    graphics::Image stamp(4, 4, blue.withAlpha(0.5F));
+    image.blit(stamp, {0, 0, 4, 4}, 6, -2);
+    EXPECT_EQ(image.getPixel(7, 1).toRgba8(), stamp.getPixel(0, 0).toRgba8());
+    EXPECT_EQ(image.getPixel(5, 1), math::Color::transparent());
+    image.blit(stamp, {0, 0, 1, 1}, 1, 1, graphics::Image::BlitMode::Blend);
+    const math::Color mixed = image.getPixel(1, 1);
+    EXPECT_NEAR(mixed.r, 0.5F, 0.01F);
+    EXPECT_NEAR(mixed.b, 0.5F, 0.01F);
+    EXPECT_NEAR(mixed.a, 1.0F, 0.01F);
+    image.blit(image, {0, 0, 2, 2}, 1, 0);
+    EXPECT_EQ(image.getPixel(1, 0), red);
+
+    const graphics::Image corner = image.crop({0, 0, 2, 2});
+    EXPECT_EQ(corner.getWidth(), 2);
+    EXPECT_EQ(corner.getPixel(0, 0), red);
+    EXPECT_THROW((void)image.crop({6, 6, 4, 4}), std::out_of_range);
+
+    graphics::Image sheet(10, 10);
+    sheet.fill({3, 3, 4, 4}, red);
+    sheet.setPixel(6, 6, blue);
+    sheet.extrude({3, 3, 4, 4}, 2);
+    EXPECT_EQ(sheet.getPixel(1, 3), red);
+    EXPECT_EQ(sheet.getPixel(8, 8), blue);
+    EXPECT_EQ(sheet.getPixel(0, 0), math::Color::transparent());
+    EXPECT_EQ(sheet.getVisibleArea(), (graphics::Image::Area{1, 1, 8, 8}));
+    EXPECT_EQ(graphics::Image(3, 3).getVisibleArea(), graphics::Image::Area{});
+}
+
+TEST(ImageTest, BleedsColorsIntoTransparentPixelsAndHalvesByAlpha) {
+    graphics::Image image(6, 1);
+    image.setPixel(0, 0, math::Color::fromHex(0xFF0000FFU));
+    image.setPixel(5, 0, math::Color::fromHex(0x0000FFFFU));
+    image.bleed();
+    EXPECT_EQ(image.getPixels()[4 * 1 + 0], 255);
+    EXPECT_EQ(image.getPixels()[4 * 1 + 3], 0);
+    EXPECT_EQ(image.getPixels()[4 * 4 + 2], 255);
+    EXPECT_EQ(image.getPixels()[4 * 4 + 3], 0);
+
+    // Bleeding reaches a few pixels around what shows.
+    graphics::Image strip(12, 1, math::Color::fromRgba8(0, 0, 0, 0));
+    strip.setPixel(0, 0, math::Color::fromHex(0xFFFFFFFFU));
+    strip.bleed();
+    EXPECT_EQ(strip.getPixels()[4 * graphics::Image::kBleedReach], 255);
+    EXPECT_EQ(strip.getPixels()[4 * (graphics::Image::kBleedReach + 1)], 0);
+
+    // A pixel that shows keeps its color in the smaller level, whatever color its transparent neighbours hold.
+    graphics::Image pair(2, 2, math::Color::fromRgba8(255, 255, 255, 0));
+    pair.setPixel(0, 0, math::Color::fromHex(0xFF0000FFU));
+    const graphics::Image half = pair.halved();
+    EXPECT_EQ(half.getWidth(), 1);
+    EXPECT_EQ(half.getPixels()[0], 255);
+    EXPECT_EQ(half.getPixels()[1], 0);
+    EXPECT_EQ(half.getPixels()[3], 64);
+
+    graphics::Image square(16, 4);
+    square.buildMipmaps();
+    ASSERT_EQ(square.getMipmaps().size(), 4U);
+    EXPECT_EQ(square.getMipmaps()[1].getWidth(), 4);
+    EXPECT_EQ(square.getMipmaps()[3].getWidth(), 1);
+    EXPECT_EQ(square.getMipmaps()[3].getHeight(), 1);
+    square.setPixel(0, 0, math::Color::white());
+    EXPECT_TRUE(square.getMipmaps().empty());
+
+    // Decoding for a linear texture bleeds, and decoding for mipmaps makes them.
+    const std::vector<std::uint8_t> png = test::TestFiles::pngImage(4, 4, 0xFF0000FFU);
+    EXPECT_EQ(graphics::Image::decodeFor(png, {.mipmaps = true}).getMipmaps().size(), 2U);
+}
+
+TEST(DeviceTest, MakesTexturesWithMipmaps) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics::Texture made = device.createTexture(graphics::Image(32, 8), {.filter = graphics::Texture::Filter::Linear, .mipmaps = true});
+    EXPECT_TRUE(made.getOptions().mipmaps);
+    graphics::Image decoded(16, 16);
+    decoded.buildMipmaps();
+    EXPECT_EQ(device.createTexture(decoded, {.mipmaps = true}).getWidth(), 16);
+    device.replaceTexture(made, graphics::Image(4, 4));
+    EXPECT_EQ(made.getWidth(), 4);
+    EXPECT_EQ(device.createTexture(graphics::Image(1, 1), {.mipmaps = true}).getWidth(), 1);
+    EXPECT_THROW((void)device.createDynamicTexture(graphics::Image(4, 4), {.mipmaps = true}), std::invalid_argument);
+    EXPECT_THROW((void)device.createRenderTarget(4, 4, {.mipmaps = true}), std::invalid_argument);
+}
+
 TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();

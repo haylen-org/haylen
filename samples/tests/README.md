@@ -74,6 +74,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-014` | Tile layers | An endless world of tiles kept by chunks that stream in around the camera and bake only when their cells change. |  |
 | `SPR-015` | Strokes and meshes | Lines drawn with the pointer and stroked with joins, caps, widths, colors, dashes and a tiled texture, and a kept mesh that waves in place. |  |
 | `SPR-016` | Groups and masks | A round portrait and a shaped card drawn through masks, fog of war cut open around the pointer and shapes that fade as one group. |  |
+| `SPR-017` | Images and runtime atlases | A badge composed from images off the frame thread, sprites drawn from separate textures or one atlas packed at run time, and mipmaps. |  |
 
 #### Animation (ANI)
 

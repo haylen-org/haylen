@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/2d/animation/AtlasBuilder.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
@@ -60,6 +61,7 @@ class RenderBenchmark final {
         measureText(engine);
         measureRichText(engine);
         measureInterface(engine);
+        measurePacking();
         const bool failed = engine.getError() != nullptr;
         engine.stop();
         return failed ? 1 : 0;
@@ -145,6 +147,41 @@ class RenderBenchmark final {
             });
             // clang-format on
         }
+
+        // The same alternating sprites cut from one atlas that packs the four images at run time.
+        animation2d::AtlasBuilder builder;
+        for (std::size_t index = 0; index < textures.size(); ++index) {
+            builder.add(std::to_string(index), std::make_shared<graphics::Image>(32, 32, math::Color{0.25F * static_cast<float>(index + 1), 0.5F, 0.8F, 1.0F}));
+        }
+        animation2d::AtlasBuilder::Packed packed = builder.pack({});
+        graphics::Texture image = engine.getGraphics().createTexture(packed.image);
+        const animation2d::SpriteAtlas atlas = animation2d::AtlasBuilder::finish(std::move(packed), image);
+        // clang-format off
+        measure(engine, "Sprites, 10000 alternating 4 atlas frames", [&atlas, &camera](core::Engine& current) {
+            graphics2d::Renderer& renderer = current.getRenderer2D();
+            renderer.beginWorld(camera);
+            for (int index = 0; index < 10000; ++index) {
+                const math::Rect source = atlas.getFrame(atlas.getFrameNames()[static_cast<std::size_t>(index) % 4]).source;
+                renderer.draw({.texture = atlas.getTexture(), .source = source, .position = {static_cast<float>(index % 100) * 19.0F - 950.0F, static_cast<float>(index / 100) * 10.0F - 500.0F}, .size = {16.0F, 16.0F}, .rotation = static_cast<float>(index) * 0.01F});
+            }
+        });
+        // clang-format on
+    }
+
+    // Packs 400 images of 8 to 72 pixels a side, trimmed, padded and extruded, as a game packs its art when it starts.
+    static void measurePacking() {
+        animation2d::AtlasBuilder builder;
+        for (int index = 0; index < 400; ++index) {
+            const int width = 8 + (index * 37) % 65;
+            const int height = 8 + (index * 53) % 65;
+            auto image = std::make_shared<graphics::Image>(width, height);
+            image->fill({1, 1, width - 2, height - 2}, math::Color::white());
+            builder.add(std::to_string(index), std::move(image));
+        }
+        const auto start = std::chrono::steady_clock::now();
+        const animation2d::AtlasBuilder::Packed packed = builder.pack({.texture = {.filter = graphics::Texture::Filter::Linear}});
+        const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        std::printf("Packing 400 images into a linear atlas of %d by %d pixels: %.2f ms\n", packed.image.getWidth(), packed.image.getHeight(), milliseconds);
     }
 
     static void measureShapes(core::Engine& engine) {

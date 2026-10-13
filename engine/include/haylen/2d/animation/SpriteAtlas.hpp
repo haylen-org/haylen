@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/animation/Animation.hpp"
@@ -19,6 +20,12 @@ class SpriteAtlas final {
   public:
     // Reads the hash and array JSON layouts. The document keeps its keys in file order, because Aseprite tags count frames by their position in the file. Rotated frames and tags that repeat a fixed number of times above one are rejected.
     [[nodiscard]] static SpriteAtlas parse(const nlohmann::ordered_json& document, graphics::Texture image);
+
+    // Builds an atlas from frames and animations in the order given, such as those an atlas builder packs. Throws `std::invalid_argument` without a texture or for a name given twice.
+    [[nodiscard]] static SpriteAtlas assemble(graphics::Texture image, std::vector<std::pair<std::string, SpriteFrame>> frameList, std::vector<std::pair<std::string, Animation>> animationList);
+
+    // Returns the frames and animations whose names start with the prefix, named without it, over the same texture, such as one character of an atlas that packs many.
+    [[nodiscard]] SpriteAtlas subset(std::string_view prefix) const;
 
     // Returns the image path stored in the document, relative to the document itself.
     [[nodiscard]] static std::string imagePath(const nlohmann::ordered_json& document);

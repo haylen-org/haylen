@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "graphics/ResourceGraveyard.hpp"
+#include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "sokol_gfx.h"
@@ -39,7 +40,11 @@ struct DeviceState {
     [[nodiscard]] sg_sampler getSampler(Texture::Options options);
 
     // Creates an image and the view that samples it.
-    [[nodiscard]] static ImageViews createImage(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, const char* label);
+    // Creates the image of a texture, with its mipmaps when asked for, and counts the bytes they hold.
+    [[nodiscard]] static ImageViews createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes);
+
+    // Creates an immutable image with its pixels and, when given, the pixels of its smaller mip levels.
+    [[nodiscard]] static ImageViews createImage(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, const char* label, std::span<const Image> mipmaps = {});
 
     // Creates an image whose pixels change in place and the view that samples it. Its pixels arrive with the next upload.
     [[nodiscard]] static ImageViews createDynamicImage(int width, int height, sg_pixel_format format);

@@ -74,7 +74,7 @@ core::Json Manager::fontOptionsToJson(const text::TrueTypeFont::Options& options
 }
 
 graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& options) {
-    core::JsonValidator::requireKnownOptions(options, {"filter", "wrap"}, "texture options");
+    core::JsonValidator::requireKnownOptions(options, {"filter", "wrap", "mipmaps"}, "texture options");
     graphics::Texture::Options result;
     if (options.contains("filter")) {
         const core::Json& value = options.at("filter");
@@ -92,11 +92,18 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
         }
         result.wrap = *wrap;
     }
+    if (options.contains("mipmaps")) {
+        const core::Json& value = options.at("mipmaps");
+        if (!value.is_boolean()) {
+            throw std::invalid_argument("The texture option \"mipmaps\" must be true or false, not " + describe(value) + ".");
+        }
+        result.mipmaps = value.get<bool>();
+    }
     return result;
 }
 
 core::Json Manager::textureOptionsToJson(graphics::Texture::Options options) {
-    return {{"filter", graphics::Texture::filterName(options.filter)}, {"wrap", graphics::Texture::wrapName(options.wrap)}};
+    return {{"filter", graphics::Texture::filterName(options.filter)}, {"wrap", graphics::Texture::wrapName(options.wrap)}, {"mipmaps", options.mipmaps}};
 }
 
 Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphics::Device& graphicsDevice, core::EventBus& eventBus) : package(contentPackage), jobs(jobSystem), device(graphicsDevice), publisher(std::make_shared<Publisher>(eventBus)) {
@@ -106,7 +113,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
         .extensions = {".png", ".jpg", ".jpeg", ".tga", ".bmp", ".gif"},
         .normalize = [](const core::Json& options) { return textureOptionsToJson(textureOptionsFromJson(options)); },
         .decode = [](Request& request) -> std::shared_ptr<void> {
-            return std::make_shared<graphics::Image>(graphics::Image::decode(request.bytes));
+            return std::make_shared<graphics::Image>(graphics::Image::decodeFor(request.bytes, textureOptionsFromJson(request.options)));
         },
         .finalize = [this](std::shared_ptr<void> decoded, const Request& request) -> std::shared_ptr<void> {
             const graphics::Image& image = *std::static_pointer_cast<graphics::Image>(decoded);
@@ -115,8 +122,21 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             return texture;
         },
         .reload = [this](const std::shared_ptr<void>& asset, Request& request) {
-            device.replaceTexture(graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(asset)), graphics::Image::decode(request.bytes));
+            device.replaceTexture(graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(asset)), graphics::Image::decodeFor(request.bytes, textureOptionsFromJson(request.options)));
         },
+    });
+    // An image file read into pixels on the CPU, decoded on the worker pool, which the app composes and packs before it becomes a texture.
+    registerType({
+        .name = "image",
+        .extensions = {},
+        .normalize = [](const core::Json& options) {
+            core::JsonValidator::requireKnownOptions(options, {}, "image options");
+            return core::Json::object();
+        },
+        .decode = [](Request& request) -> std::shared_ptr<void> {
+            return std::make_shared<graphics::Image>(graphics::Image::decode(request.bytes));
+        },
+        .finalize = [](std::shared_ptr<void> decoded, const Request&) { return decoded; },
     });
     registerType({
         .name = "font",

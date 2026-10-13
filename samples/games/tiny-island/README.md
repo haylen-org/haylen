@@ -73,7 +73,7 @@ Every image of the game is made for it and generated with the `codex` command li
 | Effects | Slash, thrust, fireball, explosion, hit and splash animations, the particles of fire, embers, smoke, dust, sparks, wood chips and wool, and the projectiles, packed into `content/effects/effects.png`. |
 | Interface | Nine-slice buttons in normal and pressed states, the panel, the ribbon, the track, fill and knob of bars, sliders and the switch, check boxes, touch controls, icons of 128 pixels, class portraits of 256 pixels and the logo, in `content/ui/`. |
 
-Every image is smoothed when the screen scales it: sprites, atlases, particles and the map load with the `linear` filter, the theme surfaces set `"filter": "linear"` and the theme sets `"imageFilter": "linear"` for the pictures of the UI.
+When the menu loads, `systems/art.lua` packs the atlases of the characters, the props and the effects into one texture with the runtime atlas builder of the engine, on the task pool, and every entity takes its atlas back by its path with `atlas:subset`, so the sprites of the island draw from one texture and batch together. Every image is smoothed when the screen scales it: sprites, atlases, particles and the map load with the `linear` filter, the theme surfaces set `"filter": "linear"` and the theme sets `"imageFilter": "linear"` for the pictures of the UI.
 
 ## Package layout
 

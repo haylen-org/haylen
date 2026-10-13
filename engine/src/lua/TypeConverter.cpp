@@ -505,6 +505,8 @@ graphics::Texture::Options TypeConverter::readTextureOptions(lua_State* L, int i
             Table::readValue(L, key, options.filter);
         } else if (key == "wrap") {
             Table::readValue(L, key, options.wrap);
+        } else {
+            Table::readValue(L, key, options.mipmaps);
         }
     });
     // clang-format on

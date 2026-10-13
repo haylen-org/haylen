@@ -1,4 +1,4 @@
--- The art of the game: an atlas per character with one tagged animation per move, and the atlases of the props and the effects.
+-- The art of the game: an atlas per character with one tagged animation per move, and the atlases of the props and the effects, all packed into one texture when the menu loads, so the sprites of the island draw from one texture and batch together.
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
@@ -20,8 +20,39 @@ local characters = {
     sheep = {scale = 0.8, pivotY = 146 / 160},
 }
 
+-- The atlases the packed texture holds, each under its path as a prefix.
+local packedAtlases = {'world/props', 'effects/effects', 'characters/warrior', 'characters/archer', 'characters/lancer', 'characters/mage', 'characters/sheep', 'characters/imp', 'characters/brute', 'characters/thrower', 'characters/bomber'}
+local packed
+local subsets = {}
+
+-- Returns what a promise gives, or raises its failure.
+local function awaited(promise)
+    local value, failure = promise:await()
+    if value == nil then
+        error(failure, 0)
+    end
+    return value
+end
+
+-- Packs every atlas into one texture on the task pool the first time a coroutine calls it, reading the atlases and their images without blocking, and lets their own textures go once they are packed.
+function art.pack()
+    if packed then
+        return
+    end
+    local builder = animation2d.newAtlasBuilder()
+    for _, path in ipairs(packedAtlases) do
+        local atlas = awaited(assets.loadAsync(path .. '.json', 'atlas', art.options))
+        builder:addAtlas(path .. '/', atlas, awaited(assets.loadAsync(path .. '.png', 'image')))
+    end
+    packed = awaited(builder:buildAsync({padding = 4, extrude = 2, filter = 'linear'}))
+    assets.releaseUnused()
+end
+
+-- Returns one of the packed atlases, named as it was in its own file.
 function art.atlas(path)
-    return assets.load(path, 'atlas', art.options)
+    local name = path:gsub('%.json$', '')
+    subsets[name] = subsets[name] or packed:subset(name .. '/')
+    return subsets[name]
 end
 
 function art.texture(path)

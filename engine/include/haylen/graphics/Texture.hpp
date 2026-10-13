@@ -31,6 +31,9 @@ class Texture final {
         Filter filter = Filter::Nearest;
         Wrap wrap = Wrap::Clamp;
 
+        // Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, with linear blending between them when the filter is linear.
+        bool mipmaps = false;
+
         [[nodiscard]] constexpr bool operator==(const Options&) const noexcept = default;
     };
 

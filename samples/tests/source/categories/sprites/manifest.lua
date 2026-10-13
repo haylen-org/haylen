@@ -20,5 +20,6 @@ return {
         {code = 'SPR-014', title = 'Tile layers', description = 'An endless world of tiles kept by chunks that stream in around the camera and bake only when their cells change.', module = 'tile-layers'},
         {code = 'SPR-015', title = 'Strokes and meshes', description = 'Lines drawn with the pointer and stroked with joins, caps, widths, colors, dashes and a tiled texture, and a kept mesh that waves in place.', module = 'strokes'},
         {code = 'SPR-016', title = 'Groups and masks', description = 'A round portrait and a shaped card drawn through masks, fog of war cut open around the pointer and shapes that fade as one group.', module = 'groups-masks'},
+        {code = 'SPR-017', title = 'Images and runtime atlases', description = 'A badge composed from images off the frame thread, sprites drawn from separate textures or one atlas packed at run time, and mipmaps.', module = 'atlases-runtime'},
     },
 }

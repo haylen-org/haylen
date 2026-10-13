@@ -20,10 +20,10 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 
 | Module | Purpose |
 | --- | --- |
-| [`haylen.graphics`](lua-api/graphics.md) | Textures from pixels, colors or the bytes of image files, render targets, TrueType and bitmap fonts, font families, custom shaders and the GPU backend. |
+| [`haylen.graphics`](lua-api/graphics.md) | Textures from pixels, colors, images or the bytes of image files, with mipmaps, images on the CPU that decode and blit off the frame thread, render targets, TrueType and bitmap fonts, font families, custom shaders and the GPU backend. |
 | [`haylen.graphics2d`](lua-api/graphics2d.md) | Canvases, captures, draw order with y sorting and visibility, cameras with viewports, smoothing, drag margins and shake, parallax layers, sprites, sprite batches, tile layers baked by chunks, strokes with joins, caps, textures, widths and dashes, kept meshes that deform in place, groups that fade as one image, masks of any shape, shapes, meshes, text shaped in every script and ordered in both directions, rich text with effects and a typewriter reveal, nine-slices, image blends, metaballs, materials with custom shaders, lit canvases with normal maps, lights and occluders. |
 | [`haylen.nodes2d`](lua-api/nodes2d.md) | Retained trees of 2D nodes with transforms, colors, visibility and layers that subtrees inherit, culled drawing in one call, prefabs, saving to descriptions, nodes that follow bodies and native properties for tweens. |
-| [`haylen.animation2d`](lua-api/animation2d.md) | Frame animations from grids and atlases, and animators that play them on sprites. |
+| [`haylen.animation2d`](lua-api/animation2d.md) | Frame animations from grids and atlases with frame data, animators, animated sprite batches, state graphs, skeletal and cutout animation, and atlases packed at run time. |
 | [`haylen.particles2d`](lua-api/particles2d.md) | Particle emitters, composite systems, trails and `.particles` effect files. |
 | [`haylen.lighting2d`](lua-api/lighting2d.md) | Point, spot and directional lights with blend modes, masks and shadows, occluders from outlines, physics bodies and Tiled maps, light queries and flame flicker. |
 | [`haylen.viewport`](lua-api/viewport.md) | The design resolution and scaling policy, which change while the app runs, the visible area, the safe area and the edges that native views reserve. |

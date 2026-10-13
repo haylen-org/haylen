@@ -329,6 +329,12 @@ The method `tiled::MapRenderer::draw(renderer, view, order)`, which Lua calls as
 
 The class `graphics2d::TileLayer`, `graphics2d.newTileLayer` in Lua, draws a grid of cells that code builds. It keeps its cells in chunks of a fixed size in a hash map keyed by the chunk coordinates, so a world can grow in every direction and costs nothing where it has no cells. A chunk bakes into one `StaticSpriteBatch` for each texture its cells use on the first draw after one of its cells changed, and a draw sorts the chunks row by row from the top only when chunks come or go, culls them with `Renderer::getCanvasBounds` and records one static draw for each baked batch in view. Setting cells allocates only when a chunk is created, and a frame that draws what the frame before drew allocates nothing.
 
+## Textures and atlases
+
+A texture made with the `linear` filter samples the pixels around each point, so the color of the transparent pixels next to what shows bleeds into its edges, often as a dark or bright fringe. The decoding of every image for a linear texture, on the worker pool, therefore gives the transparent pixels up to `graphics::Image::kBleedReach` pixels around what shows the color of the nearest pixel that shows, keeping their alpha at zero. The texture option `mipmaps` keeps smaller copies of the image down to one pixel, made at decoding, which a texture drawn smaller than its size samples instead of skipping pixels, and they average each block of pixels by alpha, so transparent pixels never darken them. Render targets and textures that change in place have no mipmaps. Compressed texture formats stay out, because no format decodes on every backend of the engine: desktop GPUs read BC, mobile GPUs read ETC2 and ASTC, and WebGPU and WebGL2 offer each only where the device has it, so a compressed release would need a copy for every family of devices.
+
+Separate textures split batches, as the [render benchmark](#render-benchmark) shows. The class `animation2d::AtlasBuilder`, `animation2d.newAtlasBuilder` in Lua, packs images, areas of images and the frames of whole atlases with their animations into one texture at run time. It trims transparent borders and remembers where each frame sat, shares one place between frames that show the same pixels, places the frames tallest first on a skyline at the lowest place that fits, tries every power of two width up to the largest size and keeps the one with the smallest square, repeats the edges of each frame into its padding and bleeds the result. Packing is plain work on `graphics::Image` values, so `builder:buildAsync` runs it on the task pool and only makes the texture on the frame thread, and `atlas:subset(prefix)` hands each packed atlas back under its own names. Tiny Island packs its characters, props and effects this way when its menu loads, which takes a frame of 2,535 sprites on an M5 Pro from 136 draw calls with 121 texture switches to 44 draw calls with 30, which remain for the map, the water, the particles and the interface. The frame time of the run moved within the noise of the machine, between 2 and 8 milliseconds of CPU in both cases, since the frame thread of that frame spends little on draw calls.
+
 ## Cameras and parallax
 
 The class `graphics2d::Camera` works like this: its position is the point the view shows, and `follow` moves it toward a target through the dead zone, the per-side drag margins with their drag offset, the look-ahead from the target velocity, position smoothing and limits with optional limit smoothing. The method `update` advances the trauma shake, whose frequency, direction and amount are settings, the flash, which every world canvas of the camera draws over what it holds as it closes, and the rotation smoothing. The zoom has two axes and limits, `zoomAt` zooms around a screen point for pinch and wheel input, `frame` keeps several targets in view, `Camera::blend` returns a view between two cameras for smooth cuts, and `drawDebug` draws the view, the limits and the drag box. A camera with a `viewport` draws into that rectangle of the screen, which is how one frame draws split screens and minimaps with several cameras, and every canvas of a viewport clips to it.
@@ -419,15 +425,16 @@ These are the numbers of an Apple M5 Pro in Release:
 
 | Scene | Frame ms | Draw calls | Instances | Uploaded KB | Allocations | Allocated KB |
 | --- | --- | --- | --- | --- | --- | --- |
-| 10,000 sprites in runs of 4 textures | 0.407 | 4 | 10,000 | 468.8 | 4 | 0.25 |
-| 10,000 sprites alternating 4 textures | 0.634 | 10,000 | 10,000 | 468.8 | 4 | 0.25 |
-| 3,000 circles, panels and lines | 0.218 | 2,000 | 3,000 | 140.6 | 4 | 0.25 |
-| 200 labels that stay | 0.130 | 1 | 4,892 | 229.3 | 4 | 0.25 |
-| 200 labels that change every frame | 1.275 | 1 | 4,090 | 189.7 | 7,001 | 3,179 |
-| 20 rich text blocks with a wave | 0.063 | 1 | 1,440 | 67.5 | 4 | 0.25 |
-| A screen of 40 interface components | 0.052 | 48 | 514 | 24.1 | 4 | 0.25 |
+| 10,000 sprites in runs of 4 textures | 0.275 | 4 | 10,000 | 468.8 | 0 | 0 |
+| 10,000 sprites alternating 4 textures | 0.438 | 10,000 | 10,000 | 468.8 | 0 | 0 |
+| 10,000 sprites alternating 4 frames of a runtime atlas | 0.289 | 1 | 10,000 | 468.8 | 0 | 0 |
+| 3,000 circles, panels and lines | 0.133 | 2,000 | 3,000 | 140.6 | 0 | 0 |
+| 200 labels that stay | 0.074 | 1 | 4,892 | 229.3 | 0 | 0 |
+| 200 labels that change every frame | 0.741 | 1 | 4,090 | 191.7 | 7,000 | 3,204 |
+| 20 rich text blocks with a wave | 0.032 | 1 | 1,440 | 67.5 | 0 | 0 |
+| A screen of 40 interface components | 0.026 | 48 | 514 | 24.1 | 0 | 0 |
 
-The few allocations of every scene come from the frame loop of the engine around the drawing. Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost, while text that changes every frame lays out again, which is the one drawing that allocates, so a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, and alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains.
+Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost, while text that changes every frame lays out again, which is the one drawing that allocates, so a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, while the same sprites cut from one atlas that `animation2d::AtlasBuilder` packs at run time draw in one, and alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains. The suite also packs 400 images of 8 to 72 pixels a side into one linear atlas, trimmed, padded, extruded and bled, which takes 5.8 ms on one worker and gives an atlas of 1024 by 685 pixels.
 
 ## Using the renderer from C++
 

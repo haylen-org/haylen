@@ -73,7 +73,7 @@ class TypeConverter final {
     static constexpr std::array<std::string_view, 14> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded", "distortion"};
     static constexpr std::array<std::string_view, 8> kSpriteEffectFields{"dissolve", "dissolveEdge", "dissolveSize", "dissolveColor", "outlineWidth", "outlineColor", "glowSize", "glowColor"};
     static constexpr std::array<std::string_view, 18> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "direction", "language", "pixelSnap"};
-    static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
+    static constexpr std::array<std::string_view, 3> kTextureOptionFields{"filter", "wrap", "mipmaps"};
     static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     // Option readers accept `nil` for the defaults and reject keys outside their own fields and the extra fields the caller reads from the same table.

@@ -1,0 +1,57 @@
+#pragma once
+
+#include <array>
+#include <memory>
+#include <string_view>
+
+#include "haylen/graphics/Image.hpp"
+#include "haylen/lua/Type.hpp"
+
+struct lua_State;
+
+namespace haylen::lua {
+
+template <> struct Type<graphics::Image> {
+    static constexpr const char* name = "haylen.Image";
+    using Storage = std::shared_ptr<graphics::Image>;
+};
+
+} // namespace haylen::lua
+
+namespace haylen::graphics {
+
+// Installs the `Image` class of `haylen.graphics`, pixels on the CPU. An image that work on the task pool still reads is copied before Lua changes it, so that work never sees a change, and Lua never waits for it.
+class ImageLua final {
+  public:
+    static void install(lua_State* L);
+
+    // Creates an image with `graphics.newImage(width, height, fill)`.
+    static int create(lua_State* L);
+
+    // Decodes the bytes of an image file with `graphics.decodeImage(bytes)`, and on the task pool with `graphics.decodeImageAsync(bytes)`, which returns a promise of the image.
+    static int decode(lua_State* L);
+    static int decodeAsync(lua_State* L);
+
+    // Returns the image at the index as one Lua may change.
+    [[nodiscard]] static Image& checkWritable(lua_State* L, int index);
+
+    static void push(lua_State* L, Image image);
+
+  private:
+    static constexpr std::array<std::string_view, 2> kBlitFields{"source", "blend"};
+
+    [[nodiscard]] static Image::Area readArea(lua_State* L, int index, const Image& image);
+    static int pixel(lua_State* L);
+    static int setPixel(lua_State* L);
+    static int fill(lua_State* L);
+    static int blit(lua_State* L);
+    static int blitAsync(lua_State* L);
+    static int crop(lua_State* L);
+    static int bleed(lua_State* L);
+    static int visibleArea(lua_State* L);
+    static int clone(lua_State* L);
+    static int width(lua_State* L);
+    static int height(lua_State* L);
+};
+
+} // namespace haylen::graphics

@@ -52,11 +52,18 @@ void TiledPlugin::start(core::Engine& engine) {
             const io::Package& package = *request.package;
             const auto reader = [&package](const std::string& path) { return core::Json::parse(package.readAssetText(path)); };
             auto decoded = std::make_shared<DecodedMap>();
+            const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(request.options);
             decoded->map = tiled::Map::parse(core::Json::parse(request.bytes.begin(), request.bytes.end()), request.path, reader);
             for (const tiled::Map::Image& entry : decoded->map.getImages()) {
                 DecodedImage image{.image = graphics::Image::decode(package.readAsset(entry.path)), .keyed = entry.transparentColor.has_value()};
                 if (entry.transparentColor) {
                     applyColorKey(image.image, *entry.transparentColor);
+                }
+                if (options.filter == graphics::Texture::Filter::Linear) {
+                    image.image.bleed();
+                }
+                if (options.mipmaps) {
+                    image.image.buildMipmaps();
                 }
                 decoded->images.emplace(entry.path, std::move(image));
             }

@@ -91,6 +91,7 @@ class Animation2DLua final {
     static int atlasSource(lua_State* L);
     static int atlasApply(lua_State* L);
     static int atlasAnimationFromFrames(lua_State* L);
+    static int atlasSubset(lua_State* L);
 
     static int open(lua_State* L);
 };

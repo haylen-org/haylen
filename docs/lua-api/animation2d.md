@@ -832,6 +832,57 @@ scene.push({
 
 A [state graph](#stategraph) drives a track of a skeleton with `graph:newPlayer(skeleton, {track = 1})`, crossfading by the `fade` of each transition, and players on several tracks of one skeleton make layers, such as legs that walk on one track while the arms aim on another.
 
+### animation2d.newAtlasBuilder()
+
+Returns an [`AtlasBuilder`](#atlasbuilder), which packs images and whole atlases into one texture at run time.
+
+## AtlasBuilder
+
+An `AtlasBuilder` collects frames and packs them into one texture, so sprites that drew from many textures draw from one and batch together, as the [rendering guide](../rendering.md#textures-and-atlases) explains. Packing trims transparent borders, keeping where each frame sat in its untrimmed frame for its pivot, shares one place between frames that show the same pixels, pads and extrudes every frame and bleeds the colors of a `'linear'` atlas into its transparent pixels.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `count` | integer | Frames added so far, read-only. |
+
+### builder:add(name, image, area)
+
+Adds an [`Image`](graphics.md#image), or an area of it, as the frame `name`. A name given twice raises `The atlas has the frame "name" twice.`, and an area outside the image raises `The area of the frame "name" of an atlas is not inside its image.`
+
+### builder:addAtlas(prefix, atlas, image)
+
+Adds every frame of a `SpriteAtlas` with its pivot, boxes, points and events, and every animation of it, each named with `prefix` in front, cut from `image`, the pixels of its texture, such as `assets.loadAsync('hero.png', 'image')` gives. An image of another size than the texture raises `The image of an atlas added to an atlas builder has the size of the texture of the atlas.`
+
+### builder:build(options) and builder:buildAsync(options)
+
+Packs the frames into a `SpriteAtlas`, on the frame thread, or on the task pool with a promise of the atlas, where only the texture is made on the frame thread and frames added meanwhile stay out. The table `options` is optional:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `padding` | integer | `2` | Pixels between frames and around the edges. |
+| `extrude` | integer | `1` | Pixels each frame repeats its edges outward, at most half the padding. |
+| `maxSize` | integer | `4096` | Largest width and height, at most `graphics.maxTextureSize()`. |
+| `trim` | boolean | `true` | Leaves out the transparent borders of every frame. |
+| `filter`, `wrap`, `mipmaps` | | | The options of the texture, as `graphics.newTexture` takes them. |
+
+No frames raise `An atlas needs at least one image.`, a negative padding or an extrusion over half the padding raises `An atlas needs a padding of zero or more, an extrusion of at most half the padding and a positive largest size.`, and frames that need more room raise `The images of the atlas need more room than a texture of n pixels.`
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local async = require('async')
+
+async.spawn(function()
+    local builder = animation2d.newAtlasBuilder()
+    for _, name in ipairs({'knight', 'archer'}) do
+        local atlas = assets.loadAsync('units/' .. name .. '.json', 'atlas', {filter = 'linear'}):await()
+        builder:addAtlas(name .. '/', atlas, assets.loadAsync('units/' .. name .. '.png', 'image'):await())
+    end
+    local packed = builder:buildAsync({padding = 4, extrude = 2, filter = 'linear'}):await()
+    local knight = packed:subset('knight/')
+    print(#packed:frameNames(), knight:animation('run').frameCount)
+end)
+```
+
 ## SpriteAtlas
 
 A `SpriteAtlas` holds the named frames, animations and nine-slices of an atlas loaded with `assets.load(path, 'atlas')`.
@@ -963,6 +1014,10 @@ local atlas = assets.load('ui/hero.json', 'atlas')
 local sprite = graphics2d.newSprite(atlas.texture, {x = 300, y = 200})
 atlas:apply(sprite, 'hero 0')
 ```
+
+### atlas:subset(prefix)
+
+Returns a `SpriteAtlas` of the frames, animations and slices whose names start with `prefix`, named without it, over the same texture, such as one character of an atlas that [`AtlasBuilder`](#atlasbuilder) packed with many.
 
 ### atlas:animationFromFrames(names, options)
 

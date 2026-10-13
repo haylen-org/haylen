@@ -30,6 +30,7 @@ Creates a `Texture` from code. The table `options` is optional:
 | `dynamic` | boolean | `false` | Makes a texture whose pixels change in place with [`texture:update(pixels)`](#textureupdatepixels), such as a minimap drawn by code. |
 | `filter` | string | `'nearest'` | The `'nearest'` or `'linear'` sampling. |
 | `wrap` | string | `'clamp'` | The `'clamp'`, `'repeat'` or `'mirror'` addressing. |
+| `mipmaps` | boolean | `false` | Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, blended between them with the `'linear'` filter. A dynamic texture raises `A texture that changes in place has no mipmaps.` |
 
 Sizes of 0 or less raise `Texture dimensions must be positive.` and sizes above [`graphics.maxTextureSize()`](#graphicsmaxtexturesize) raise `Texture dimensions exceed the device limit.`, and a filled texture checks its size before it makes any pixel.
 
@@ -165,6 +166,53 @@ local atlas = graphics.newRenderTarget(size, size)
 print(atlas.width, graphics.maxTextureSize())
 ```
 
+### graphics.newTexture(image, options)
+
+Creates a `Texture` from an [`Image`](#image), with the options `filter`, `wrap` and `mipmaps` of `graphics.newTexture`. Unlike textures loaded from files, it takes the pixels as they are, so call `image:bleed()` first for a `'linear'` texture whose transparent edges should not darken.
+
+### graphics.newImage(width, height, fill)
+
+Creates an [`Image`](#image) of the size, every pixel `fill`, transparent by default. A size under one pixel raises `An image needs a width and a height of one pixel or more.`
+
+### graphics.decodeImage(bytes) and graphics.decodeImageAsync(bytes)
+
+Decodes the bytes of a PNG, JPG, TGA, BMP or GIF file into an [`Image`](#image), on the frame thread, or on the task pool with a promise of the image. The `image` asset type of [`haylen.assets`](assets.md) loads images of the package the same way, with `assets.loadAsync(path, 'image')` off the frame thread. Bytes that are no image raise `The image could not be decoded, and the decoder reported "reason".`
+
+## Image
+
+An `Image` holds RGBA pixels on the CPU, for art that code makes, composes or packs before it becomes a texture, such as generated portraits, decals stamped into a map or the images of a [runtime atlas](animation2d.md#atlasbuilder). Areas are rectangles of whole pixels, `{x, y, width, height}` or a `Rect`. An image that work on the task pool still reads is copied before Lua changes it, so `blitAsync` and `builder:buildAsync` never see a later change and Lua never waits for them, and images of the asset cache stay as they were loaded.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `width`, `height` | integer | Size in pixels, read-only. |
+
+| Method | Meaning |
+| --- | --- |
+| `image:pixel(x, y)` | Returns the `Color` of a pixel, transparent outside the image. |
+| `image:setPixel(x, y, color)` | Sets a pixel, and does nothing outside the image. |
+| `image:fill(color, area)` | Fills the part of the area inside the image, the whole image without an area. |
+| `image:blit(source, x, y, options)` | Copies the image `source`, or the area `options.source` of it, to `x`, `y`, clipped to both images, replacing the pixels it covers, or blending over them by alpha with `options.blend = true`. Other keys raise `Unknown option "name".` |
+| `image:blitAsync(source, x, y, options)` | Returns a promise of a copy of the image with the blit done, both made on the task pool, while the image stays as it is. |
+| `image:crop(area)` | Returns a new image of the area, which raises `The area x, y, w by h is not inside the image of w by h pixels.` outside it. |
+| `image:bleed()` | Gives the transparent pixels around what shows the color of the nearest pixel that shows, which keeps the edges of a `'linear'` texture from darkening. |
+| `image:visibleArea()` | Returns the `Rect` around every pixel that shows, or `nil`. |
+| `image:clone()` | Returns a copy. |
+
+```lua
+local assets = require('haylen.assets')
+local async = require('async')
+local graphics = require('haylen.graphics')
+
+async.spawn(function()
+    local badge = graphics.newImage(128, 128)
+    badge:fill('#FF2E7D32', {8, 8, 112, 112})
+    local icon = assets.loadAsync('icons/star.png', 'image'):await()
+    badge = badge:blitAsync(icon, 32, 32, {blend = true}):await()
+    local texture = graphics.newTexture(badge, {filter = 'linear', mipmaps = true})
+    print(texture.width, texture.mipmaps)
+end)
+```
+
 ## Texture
 
 A `Texture` is a shared handle to a GPU image. The function `assets.texture(path, options)` from [`haylen.assets`](assets.md) loads one from the package, where `options` accepts the same `filter` and `wrap` keys as `graphics.newTexture` and the same image loaded with the same options returns the same texture. Other textures come from `graphics.newTexture`, `graphics.whiteTexture`, `target.texture`, `atlas.texture` and `animation.texture`. Two texture values compare equal with `==` when they refer to the same GPU image.
@@ -175,6 +223,9 @@ A `Texture` is a shared handle to a GPU image. The function `assets.texture(path
 | `height` | integer | read | Height in pixels. |
 | `filter` | string | read | Sampling filter, `'nearest'` or `'linear'`. |
 | `wrap` | string | read | Addressing mode, `'clamp'`, `'repeat'` or `'mirror'`. |
+| `mipmaps` | boolean | read | Whether the texture keeps smaller copies of its image. |
+
+A texture with the `'linear'` filter loaded from a file has the colors of its visible pixels bled into the transparent pixels around them while it decodes, as the [rendering guide](../rendering.md#textures-and-atlases) explains.
 
 ```lua
 local assets = require('haylen.assets')

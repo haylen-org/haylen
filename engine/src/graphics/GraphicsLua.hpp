@@ -30,6 +30,7 @@ class GraphicsLua final {
     static int textureHeight(lua_State* L);
     static int textureFilter(lua_State* L);
     static int textureWrap(lua_State* L);
+    static int textureMipmaps(lua_State* L);
 
     static int targetTexture(lua_State* L);
     static int targetWidth(lua_State* L);

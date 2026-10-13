@@ -45,6 +45,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/animation/AnimatedBatch.cpp
   src/2d/animation/AnimatedBatchLua.cpp
   src/2d/animation/Animation.cpp
+  src/2d/animation/AtlasBuilder.cpp
+  src/2d/animation/AtlasBuilderLua.cpp
   src/2d/animation/Animation2DLua.cpp
   src/2d/animation/Animator.cpp
   src/2d/animation/Skeleton.cpp
@@ -333,6 +335,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/FontLua.cpp
   src/graphics/Gpu.cpp
   src/graphics/GraphicsLua.cpp
+  src/graphics/ImageLua.cpp
   src/graphics/Image.cpp
   src/graphics/RenderTarget.cpp
   src/graphics/RenderTargetResource.cpp

@@ -4,11 +4,13 @@
 #include <utility>
 
 #include "assets/AssetsLua.hpp"
+#include "graphics/ImageLua.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
 
 namespace haylen::plugins {
 
@@ -16,6 +18,9 @@ AssetsPlugin::AssetsPlugin() {
     // clang-format off
     registerLuaPusher("texture", [](lua_State* L, const std::shared_ptr<void>& asset) {
         lua::Stack::push(L, graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(asset)));
+    });
+    registerLuaPusher("image", [](lua_State* L, const std::shared_ptr<void>& asset) {
+        lua::Userdata::emplace<graphics::Image>(L, std::static_pointer_cast<graphics::Image>(asset));
     });
     registerLuaPusher("font", [](lua_State* L, const std::shared_ptr<void>& asset) {
         lua::Stack::push(L, std::static_pointer_cast<text::Font>(asset));

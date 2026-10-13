@@ -22,7 +22,7 @@ sg_wrap DeviceState::toWrap(Texture::Wrap wrap) noexcept {
 }
 
 std::uint8_t DeviceState::samplerKey(Texture::Options options) noexcept {
-    return static_cast<std::uint8_t>(static_cast<unsigned>(options.filter) | (static_cast<unsigned>(options.wrap) << 1U));
+    return static_cast<std::uint8_t>(static_cast<unsigned>(options.filter) | (static_cast<unsigned>(options.wrap) << 1U) | (options.mipmaps ? 8U : 0U));
 }
 
 sg_sampler DeviceState::getSampler(Texture::Options options) {
@@ -34,6 +34,7 @@ sg_sampler DeviceState::getSampler(Texture::Options options) {
     sg_sampler_desc desc{};
     desc.min_filter = options.filter == Texture::Filter::Nearest ? SG_FILTER_NEAREST : SG_FILTER_LINEAR;
     desc.mag_filter = desc.min_filter;
+    desc.mipmap_filter = options.mipmaps ? desc.min_filter : SG_FILTER_NEAREST;
     desc.wrap_u = toWrap(options.wrap);
     desc.wrap_v = toWrap(options.wrap);
     desc.label = "haylen-sampler";
@@ -42,12 +43,16 @@ sg_sampler DeviceState::getSampler(Texture::Options options) {
     return sampler;
 }
 
-DeviceState::ImageViews DeviceState::createImage(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, const char* label) {
+DeviceState::ImageViews DeviceState::createImage(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, const char* label, std::span<const Image> mipmaps) {
     sg_image_desc imageDesc{};
     imageDesc.width = width;
     imageDesc.height = height;
     imageDesc.pixel_format = format;
+    imageDesc.num_mipmaps = static_cast<int>(mipmaps.size()) + 1;
     imageDesc.data.mip_levels[0] = {.ptr = pixels.data(), .size = pixels.size()};
+    for (std::size_t level = 0; level < mipmaps.size(); ++level) {
+        imageDesc.data.mip_levels[level + 1] = {.ptr = mipmaps[level].getPixels().data(), .size = mipmaps[level].getPixels().size()};
+    }
     imageDesc.label = label;
 
     ImageViews result;
@@ -58,6 +63,25 @@ DeviceState::ImageViews DeviceState::createImage(int width, int height, sg_pixel
     viewDesc.label = label;
     result.view = sg_make_view(&viewDesc);
     return result;
+}
+
+// Mipmaps an image brings from its decoding are taken as they are, and the others are made here.
+DeviceState::ImageViews DeviceState::createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes) {
+    bytes = getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8);
+    if (!mipmaps) {
+        return createImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), "haylen-texture");
+    }
+    Image levels;
+    std::span<const Image> made = image.getMipmaps();
+    if (made.empty() && (image.getWidth() > 1 || image.getHeight() > 1)) {
+        levels = image;
+        levels.buildMipmaps();
+        made = levels.getMipmaps();
+    }
+    for (const Image& level : made) {
+        bytes += level.getPixels().size();
+    }
+    return createImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), "haylen-texture", made);
 }
 
 DeviceState::ImageViews DeviceState::createDynamicImage(int width, int height, sg_pixel_format format) {

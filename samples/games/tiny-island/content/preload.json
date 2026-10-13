@@ -8,23 +8,12 @@
         ],
         "menu": [
             {"path": "maps/island.tmj", "options": {"filter": "linear"}},
-            {"path": "world/props.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "effects/effects.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/warrior.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/archer.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/lancer.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/mage.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/sheep.json", "type": "atlas", "options": {"filter": "linear"}},
             {"path": "effects/campfire_flames.particles", "options": {"filter": "linear"}},
             {"path": "effects/campfire_embers.particles", "options": {"filter": "linear"}},
             {"path": "effects/campfire_smoke.particles", "options": {"filter": "linear"}},
             {"path": "audio/music/menu.mp3", "options": {"stream": true}}
         ],
         "gameplay": [
-            {"path": "characters/imp.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/brute.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/thrower.json", "type": "atlas", "options": {"filter": "linear"}},
-            {"path": "characters/bomber.json", "type": "atlas", "options": {"filter": "linear"}},
             {"path": "effects/sparks.particles", "options": {"filter": "linear"}},
             {"path": "effects/chips.particles", "options": {"filter": "linear"}},
             {"path": "effects/dust.particles", "options": {"filter": "linear"}},

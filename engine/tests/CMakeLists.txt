@@ -1,5 +1,6 @@
 set(HAYLEN_TEST_SOURCES
   2d/animation/AnimatedBatchTests.cpp
+  2d/animation/AtlasBuilderTests.cpp
   2d/animation/Animation2DTests.cpp
   2d/animation/FrameDataTests.cpp
   2d/animation/SkeletonTests.cpp

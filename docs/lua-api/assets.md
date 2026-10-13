@@ -16,7 +16,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 
 | Type | Extensions | Lua value | Options |
 | --- | --- | --- | --- |
-| `texture` | `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.gif` | Texture from [`haylen.graphics`](graphics.md). | The option `filter` is `'nearest'` (default) or `'linear'`. The option `wrap` is `'clamp'` (default), `'repeat'` or `'mirror'`. |
+| `texture` | `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.gif` | Texture from [`haylen.graphics`](graphics.md). | The option `filter` is `'nearest'` (default) or `'linear'`. The option `wrap` is `'clamp'` (default), `'repeat'` or `'mirror'`. The option `mipmaps` is `false` (default) or `true`. |
 | `font` | `.ttf`, `.otf` | Font from [`haylen.graphics`](graphics.md). | The option `bakeSize` is the em size the glyphs are baked at in the distance field atlas (default `48`). The option `spread` is how far the distance field reaches past a glyph, in pixels at the bake size (default `8`). The option `atlasSize` is the starting side of the glyph atlas in pixels, which grows as new glyphs are used (default `512`). |
 | `bitmapFont` | `.fnt` | Bitmap Font from a BMFont file in its text or binary format, whose page images sit next to it. | The `filter` and `wrap` of its page textures. |
 | `gridFont` | None, so load an image with the type `'gridFont'` | Bitmap Font from an image of equal cells. | The options `characters`, `cellWidth` and `cellHeight`, which it needs, and `spacing`, `margin`, `advance`, `lineHeight` and `baseline`, like `graphics.newGridFont` from [`haylen.graphics`](graphics.md), plus the `filter` and `wrap` of its texture. |
@@ -24,6 +24,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `vectorImage` | `.svg` | VectorImage from [`haylen.graphics`](graphics.md#vectorimage), an SVG document that draws sharp at any size. | None. |
 | `json` | `.json` | Plain Lua table, with objects as string keyed tables and arrays as sequences. | None. |
 | `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [`haylen.audio`](audio.md). | The option `stream` reads the file in ranges while it plays instead of decoding it whole (default `false`). |
+| `image` | None, so load it with the type `'image'` | An `Image` of pixels on the CPU from [`haylen.graphics`](graphics.md#image). | None. |
 | `atlas` | None, so load it with the type `'atlas'` | A `SpriteAtlas` from [`haylen.animation2d`](animation2d.md). | The `filter` and `wrap` of its texture. |
 | `skeleton` | `.skeleton` | `SkeletonData` from [`haylen.animation2d`](animation2d.md#skeletons), with the atlas the file names. | The `filter` and `wrap` of its atlas texture. |
 | `prefab` | `.prefab` | `Prefab` from [`haylen.nodes2d`](nodes2d.md#prefab), checked on a worker thread. | None. |
