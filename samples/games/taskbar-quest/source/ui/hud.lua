@@ -18,13 +18,13 @@ function hud.new(owner, actions)
             ui.row{
                 gap = 8,
                 minHeight = 44,
-                ui.icon{id = 'coin', image = 'images/icon_coin.png'},
+                ui.icon{id = 'coin', image = 'images/icon-coin.png'},
                 ui.label{id = 'gold', text = 0, font = 'button', minWidth = 40},
-                ui.icon{image = 'images/icon_skull.png'},
+                ui.icon{image = 'images/icon-skull.png'},
                 ui.label{id = 'defeated', text = 0, font = 'button', minWidth = 40},
-                ui.icon{image = 'images/icon_sword.png'},
+                ui.icon{image = 'images/icon-sword.png'},
                 ui.label{id = 'level', text = 1, font = 'button', minWidth = 24},
-                ui.icon{image = 'images/icon_heart.png'},
+                ui.icon{image = 'images/icon-heart.png'},
                 ui.progress{id = 'health', tone = 'success', width = 150},
             },
         },
@@ -35,10 +35,10 @@ function hud.new(owner, actions)
             ui.row{
                 gap = 6,
                 focusable = false,
-                ui.button{id = 'sword', icon = 'images/icon_sword.png', onClick = actions.sword},
-                ui.button{id = 'potion', icon = 'images/icon_potion.png', onClick = actions.potion},
+                ui.button{id = 'sword', icon = 'images/icon-sword.png', onClick = actions.sword},
+                ui.button{id = 'potion', icon = 'images/icon-potion.png', onClick = actions.potion},
                 ui.button{id = 'mode', onClick = actions.mode},
-                ui.button{id = 'quit', icon = 'images/icon_close.png', variant = 'icon', tooltip = 'Quit', onClick = actions.quit},
+                ui.button{id = 'quit', icon = 'images/icon-close.png', variant = 'icon', tooltip = 'Quit', onClick = actions.quit},
             },
         },
     }, {owner = owner})
@@ -67,7 +67,7 @@ function hud:refresh(quest, strip)
     self:show('potion', canDrink, {text = config.shop.potion .. 'g', enabled = canDrink, tooltip = 'A potion heals ' .. config.shop.heal .. ' for ' .. config.shop.potion .. ' gold'})
     self:show('mode', strip, {
         text = strip and 'Window' or 'Strip',
-        icon = strip and 'images/icon_window.png' or 'images/icon_strip.png',
+        icon = strip and 'images/icon-window.png' or 'images/icon-strip.png',
         tooltip = strip and 'Show the quest in a normal window' or 'Send the quest back above the taskbar',
     })
 end
