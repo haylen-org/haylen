@@ -24,6 +24,7 @@
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebStoreFiles.hpp"
 #include "platform/web/WebTextInput.hpp"
+#include "platform/web/WebVideoDecoder.hpp"
 #include "sokol_app.h"
 
 // The page side lives in `platform/web/haylen-runtime.js`, which defines `Module.haylen` before the runtime starts.
@@ -322,9 +323,8 @@ void Services::announce(std::string_view text, bool interrupt) {
     haylen_js_announce(std::string(text).c_str(), interrupt ? 1 : 0);
 }
 
-// The engine plays no video files on this platform yet, as the video reference explains.
-std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
-    return nullptr;
+std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
+    return std::make_unique<WebVideoDecoder>(*file, path);
 }
 
 void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {

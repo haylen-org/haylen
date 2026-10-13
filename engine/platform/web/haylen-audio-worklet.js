@@ -1,4 +1,4 @@
-// AudioWorklet processor of the audio output of the Haylen web runtime, which `haylen-runtime.js` loads from next to its script.
+// AudioWorklet processors of the Haylen web runtime, which `haylen-runtime.js` loads from next to its script: the audio output and the tap of the sound of videos.
 // The page mixes on its own thread and posts blocks of interleaved samples, which the processor keeps in a ring buffer and plays one render quantum at a time. It answers with the frames it played since its last answer and the buffers of the blocks it copied, which the page fills again, and it counts the render quanta that found the buffer empty.
 
 class HaylenAudioProcessor extends AudioWorkletProcessor {
@@ -72,3 +72,35 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor("haylen-audio", HaylenAudioProcessor);
+
+// Hands the sound of a video element back to the page as interleaved stereo blocks of 1024 frames, which the page passes to the mixer of the engine. It outputs silence, so the element is heard only through the engine.
+class HaylenVideoTapProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        this.block = new Float32Array(1024 * 2);
+        this.filled = 0;
+    }
+
+    process(inputs, outputs) {
+        const input = inputs[0];
+        if (input.length > 0) {
+            const left = input[0];
+            const right = input.length > 1 ? input[1] : input[0];
+            for (let index = 0; index < left.length; ++index) {
+                this.block[this.filled++] = left[index];
+                this.block[this.filled++] = right[index];
+                if (this.filled === this.block.length) {
+                    this.port.postMessage(this.block, [this.block.buffer]);
+                    this.block = new Float32Array(1024 * 2);
+                    this.filled = 0;
+                }
+            }
+        }
+        for (const channel of outputs[0]) {
+            channel.fill(0);
+        }
+        return true;
+    }
+}
+
+registerProcessor("haylen-video-tap", HaylenVideoTapProcessor);

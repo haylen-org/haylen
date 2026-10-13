@@ -1706,6 +1706,155 @@ Module.haylen = Module.haylen || {};
     const audio = { outputs: new Map() };
     haylen.audio = audio;
 
+    // The videos of the engine, which `WebVideoDecoder.cpp` drives: each plays in a video element that nothing shows, made from the bytes of its file, which the engine hands over in pieces. The element keeps the clock, the engine copies its newest picture through a canvas into wasm memory, and its sound leaves the element through a `MediaElementAudioSourceNode` of the context of the audio output into the processor `haylen-video-tap` of `haylen-audio-worklet.js`, which hands the samples back to the page for the mixer of the engine. A browser that refuses to play sound before the user interacted with the page plays the video muted until the next tap, click or key.
+    haylen.video = (function () {
+        const videos = new Map();
+        let nextId = 1;
+
+        const begin = () => {
+            const id = nextId++;
+            videos.set(id, { parts: [], element: null, url: "", canvas: null, context: null, shownTime: -1, error: "", tap: null, samples: [], waitingForUser: false });
+            return id;
+        };
+
+        const append = (id, pointer, length) => {
+            videos.get(id).parts.push(Module.HEAPU8.slice(pointer, pointer + length));
+        };
+
+        // The sound joins the context of the audio output of the engine, or the video plays without sound while the app has none.
+        const connectSound = (video) => {
+            const [output] = audio.outputs.values();
+            if (!output || !output.node) {
+                return;
+            }
+            const context = output.context;
+            const source = context.createMediaElementSource(video.element);
+            const tap = new AudioWorkletNode(context, "haylen-video-tap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: "explicit" });
+            const silence = context.createGain();
+            silence.gain.value = 0;
+            tap.port.onmessage = (event) => video.samples.push(event.data);
+            source.connect(tap);
+            tap.connect(silence);
+            silence.connect(context.destination);
+            video.tap = { source, tap, silence };
+        };
+
+        const open = (id, type) => {
+            const video = videos.get(id);
+            video.url = URL.createObjectURL(new Blob(video.parts, { type }));
+            video.parts = [];
+            const element = document.createElement("video");
+            element.playsInline = true;
+            element.preload = "auto";
+            element.addEventListener("error", () => {
+                video.error = element.error ? element.error.message || "The browser could not play the video." : "The browser could not play the video.";
+            });
+            element.src = video.url;
+            video.element = element;
+            connectSound(video);
+        };
+
+        // The engine reads what the element knows as JSON, with a width of 0 until the metadata arrived.
+        const info = (id) => {
+            const { element, error } = videos.get(id);
+            const ready = element.readyState >= HTMLMediaElement.HAVE_METADATA;
+            const [output] = audio.outputs.values();
+            return JSON.stringify({ width: ready ? element.videoWidth : 0, height: ready ? element.videoHeight : 0, duration: ready && Number.isFinite(element.duration) ? element.duration : 0, sampleRate: output ? output.context.sampleRate : 0, error });
+        };
+
+        const control = (id, playing, rate) => {
+            const video = videos.get(id);
+            video.element.playbackRate = rate;
+            if (!playing) {
+                video.element.pause();
+                return;
+            }
+            video.element.play().catch((error) => {
+                if (error.name !== "NotAllowedError") {
+                    return;
+                }
+                video.element.muted = true;
+                video.waitingForUser = true;
+                video.element.play().catch(() => {});
+            });
+        };
+
+        // A frame is new once the time of the element moved since the last one the engine took. The answer is 0 while no new frame shows, 1 for a frame, 2 at the end and 3 for an error.
+        const frame = (id, pointer, width, height) => {
+            const video = videos.get(id);
+            const element = video.element;
+            if (video.error) {
+                return 3;
+            }
+            if (element.ended && element.currentTime === video.shownTime) {
+                return 2;
+            }
+            if (element.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || element.currentTime === video.shownTime || width <= 0 || height <= 0) {
+                return 0;
+            }
+            if (!video.canvas || video.canvas.width !== width || video.canvas.height !== height) {
+                video.canvas = new OffscreenCanvas(width, height);
+                video.context = video.canvas.getContext("2d", { willReadFrequently: true });
+            }
+            video.context.drawImage(element, 0, 0, width, height);
+            Module.HEAPU8.set(video.context.getImageData(0, 0, width, height).data, pointer);
+            video.shownTime = element.currentTime;
+            return 1;
+        };
+
+        // Copies the oldest samples that the processor handed over into wasm memory, at most `capacity` of them, and returns how many it copied.
+        const takeSound = (id, pointer, capacity) => {
+            const video = videos.get(id);
+            let copied = 0;
+            while (video.samples.length > 0 && copied < capacity) {
+                const block = video.samples[0];
+                const count = Math.min(block.length, capacity - copied);
+                Module.HEAPF32.set(block.subarray(0, count), pointer / Float32Array.BYTES_PER_ELEMENT + copied);
+                copied += count;
+                if (count === block.length) {
+                    video.samples.shift();
+                } else {
+                    video.samples[0] = block.subarray(count);
+                }
+            }
+            return copied;
+        };
+
+        const seek = (id, seconds) => {
+            const video = videos.get(id);
+            video.element.currentTime = seconds;
+            video.shownTime = -1;
+            video.samples = [];
+        };
+
+        const close = (id) => {
+            const video = videos.get(id);
+            videos.delete(id);
+            video.element.pause();
+            video.element.removeAttribute("src");
+            video.element.load();
+            if (video.tap) {
+                video.tap.source.disconnect();
+                video.tap.tap.disconnect();
+                video.tap.silence.disconnect();
+            }
+            URL.revokeObjectURL(video.url);
+        };
+
+        // Videos that the browser muted until the user interacted with the page play their sound from the first tap, click or key.
+        const unlock = () => {
+            for (const video of videos.values()) {
+                if (video.waitingForUser) {
+                    video.waitingForUser = false;
+                    video.element.muted = false;
+                }
+            }
+        };
+
+        return { begin, append, open, info, control, frame, takeSound, seek, close, unlock, time: (id) => videos.get(id).element.currentTime };
+    })();
+
+
     // Browsers offer AudioWorklet only to pages served over https or from localhost, and some keep the `AudioWorkletNode` constructor elsewhere while their contexts have no `audioWorklet`. Such pages run without sound, and the engine logs why.
     audio.supported = function () {
         return typeof AudioContext !== "undefined" && typeof AudioWorkletNode !== "undefined" && "audioWorklet" in AudioContext.prototype;
@@ -1840,6 +1989,7 @@ Module.haylen = Module.haylen || {};
         if (document.visibilityState !== "visible" || haylen.paused()) {
             return;
         }
+        haylen.video.unlock();
         for (const output of audio.outputs.values()) {
             if (output.started) {
                 resumeAudio(output);
