@@ -341,6 +341,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/Profiler.cpp
   src/debug/Stats.cpp
   src/debug/StatsDisplay.cpp
+  src/debug/TraceLua.cpp
+  src/debug/TraceRecorder.cpp
   src/graphics/BlendMode.cpp
   src/graphics/Device.cpp
   src/graphics/DeviceState.cpp

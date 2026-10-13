@@ -259,6 +259,15 @@ std::string_view Device::getBackendName() const noexcept {
     return "unknown";
 }
 
+std::optional<double> Device::getGpuFrameSeconds() const noexcept {
+    const sg_backend backend = sg_query_backend();
+    if (backend != SG_BACKEND_METAL_MACOS && backend != SG_BACKEND_METAL_IOS && backend != SG_BACKEND_METAL_SIMULATOR) {
+        return std::nullopt;
+    }
+    const std::uint64_t nanoseconds = sg_mtl_gpu_frame_nanoseconds();
+    return nanoseconds == 0 ? std::nullopt : std::optional<double>(static_cast<double>(nanoseconds) * 1e-9);
+}
+
 std::string Device::getAdapterName() const {
     return GpuAdapter::getName();
 }

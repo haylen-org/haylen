@@ -10,10 +10,12 @@
 #include <vector>
 
 #include "debug/ConsoleLua.hpp"
+#include "debug/TraceLua.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/debug/ProfileScope.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/debug/Stats.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -346,7 +348,7 @@ int DebugLua::monitors(lua_State* L) {
     return 1;
 }
 
-// Returns the last finished frame as `{milliseconds, average, fps, scopes = {{name, milliseconds, calls, depth}}}`.
+// Returns the last finished frame as `{milliseconds, average, fps, gpuMilliseconds, scopes = {{name, milliseconds, calls, depth}}}`.
 int DebugLua::frame(lua_State* L) {
     const Profiler& profiler = lua::Runtime::getEngine(L).getProfiler();
     const double average = profiler.getAverageFrameMilliseconds();
@@ -357,6 +359,10 @@ int DebugLua::frame(lua_State* L) {
     lua_setfield(L, -2, "average");
     lua::Stack::push(L, profiler.getFramesPerSecond());
     lua_setfield(L, -2, "fps");
+    if (const std::optional<double> gpu = lua::Runtime::getEngine(L).getGraphics().getGpuFrameSeconds()) {
+        lua::Stack::push(L, *gpu * 1000.0);
+        lua_setfield(L, -2, "gpuMilliseconds");
+    }
 
     const std::vector<ProfileSample>& samples = profiler.getLastFrame();
     lua_createtable(L, static_cast<int>(samples.size()), 0);
@@ -424,6 +430,7 @@ int DebugLua::open(lua_State* L) {
     };
     lua::Binding::newModule(L, functions);
     ConsoleLua::addFunctions(L);
+    TraceLua::addFunctions(L);
     return 1;
 }
 

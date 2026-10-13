@@ -6,11 +6,16 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace varn::runtime {
 class Runtime;
+}
+
+namespace haylen::debug {
+class TraceRecorder;
 }
 
 namespace haylen::core {
@@ -67,6 +72,9 @@ class JobSystem final {
         return workerCount;
     }
 
+    // Records every job that a worker runs from now on into the recorder as a span named `job` or `ioJob` on the lane of its thread, until it is set to null.
+    void setTraceRecorder(std::shared_ptr<debug::TraceRecorder> value);
+
   private:
     struct ParallelRange;
     struct Queue;
@@ -75,13 +83,14 @@ class JobSystem final {
     static constexpr std::size_t kChunksPerWorker = 4;
 
     [[nodiscard]] static std::string describe(const std::exception_ptr& error);
-    [[nodiscard]] std::function<void()> guardWorker(std::function<void()> work);
-    [[nodiscard]] std::function<void()> enqueue(std::function<void()> work);
+    [[nodiscard]] std::function<void()> guardWorker(std::function<void()> work, std::string_view name, std::shared_ptr<debug::TraceRecorder> recorder);
+    [[nodiscard]] std::function<void()> enqueue(std::function<void()> work, std::string_view name);
 
     varn::runtime::Runtime& runtime;
     ErrorHandler onError;
     std::size_t workerCount;
     std::shared_ptr<Queue> queue;
+    std::shared_ptr<debug::TraceRecorder> tracer;
 };
 
 } // namespace haylen::core

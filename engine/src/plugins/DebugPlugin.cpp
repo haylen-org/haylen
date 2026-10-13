@@ -13,10 +13,12 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/FrameClock.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/SceneView.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/Profiler.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -54,6 +56,8 @@ void DebugPlugin::stop(core::Engine& engine) {
         }
     }
     consoleVisible = false;
+    detachTrace();
+    trace.reset();
     engine.getRenderer2D().removeCanvasOverlay(overlay);
     setObjectEvents(false);
     core::Log::removeListener(listener);
@@ -275,7 +279,11 @@ void DebugPlugin::setConsoleVisible(bool value) {
     consoleVisible = value;
 }
 
+// A trace of a number of frames stops at the start of the next frame, since the profiler records the end of the last one after the plugins end their frame.
 void DebugPlugin::beginFrame(core::Engine&, float) {
+    if (tracing && traceFramesLeft && *traceFramesLeft <= 0) {
+        detachTrace();
+    }
     runRelayedLines();
 }
 
@@ -287,6 +295,36 @@ void DebugPlugin::runRelayedLines() {
         }
         request.reply(console.run(request.line));
     }
+}
+
+void DebugPlugin::startTrace(std::optional<int> frames, std::size_t capacity) {
+    if (tracing) {
+        throw std::logic_error("A trace is already recording. Stop it with \"debug.stopTraceAsync\" before starting another.");
+    }
+    if (frames && *frames < 1) {
+        throw std::invalid_argument("A trace records at least 1 frame.");
+    }
+    trace = std::make_shared<debug::TraceRecorder>(capacity);
+    trace->nameThread("frame");
+    owner->getProfiler().setTraceRecorder(trace);
+    owner->getJobs().setTraceRecorder(trace);
+    traceFramesLeft = frames;
+    lastGpuSeconds = 0.0;
+    tracing = true;
+}
+
+std::shared_ptr<debug::TraceRecorder> DebugPlugin::stopTrace() {
+    detachTrace();
+    return std::exchange(trace, nullptr);
+}
+
+void DebugPlugin::detachTrace() {
+    if (!tracing) {
+        return;
+    }
+    owner->getProfiler().setTraceRecorder(nullptr);
+    owner->getJobs().setTraceRecorder(nullptr);
+    tracing = false;
 }
 
 void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
@@ -384,6 +422,16 @@ void DebugPlugin::renderOverlay(core::Engine& engine) {
 // The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy, kept in a member like the copy of the drawers, and skips the ones removed meanwhile.
 void DebugPlugin::endFrame(core::Engine& engine) {
     lastRendering = engine.getRenderer2D().getStats();
+    if (tracing) {
+        // The GPU reports a frame once it finished it, so a time that did not change belongs to a frame the trace already holds.
+        if (const std::optional<double> gpu = engine.getGraphics().getGpuFrameSeconds(); gpu && *gpu != lastGpuSeconds) {
+            trace->recordGpu("gpuFrame", debug::TraceRecorder::now(), *gpu);
+            lastGpuSeconds = *gpu;
+        }
+        if (traceFramesLeft) {
+            --*traceFramesLeft;
+        }
+    }
     std::vector<std::shared_ptr<MonitorEntry>> snapshot = std::exchange(monitorSnapshot, {});
     snapshot.assign(monitors.begin(), monitors.end());
     for (const std::shared_ptr<MonitorEntry>& entry : snapshot) {

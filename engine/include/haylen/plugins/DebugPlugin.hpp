@@ -20,6 +20,7 @@
 #include "haylen/debug/Monitor.hpp"
 #include "haylen/debug/Stats.hpp"
 #include "haylen/debug/StatsDisplay.hpp"
+#include "haylen/debug/TraceRecorder.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/plugins/Plugin.hpp"
 
@@ -107,6 +108,15 @@ class DebugPlugin final : public Plugin {
     // The latest printed lines, oldest first, from any thread that logged.
     [[nodiscard]] std::vector<debug::LogLine> getRecentLog() const;
 
+    // Starts recording the scopes and frames of the profiler, the jobs of the workers and the time of the GPU into a new trace, for a number of frames or until it stops. Starting while a trace records throws `std::logic_error`.
+    void startTrace(std::optional<int> frames, std::size_t capacity);
+
+    // Stops recording and returns the trace, or null when no trace was started since the last stop.
+    std::shared_ptr<debug::TraceRecorder> stopTrace();
+    [[nodiscard]] bool isTracing() const noexcept {
+        return tracing;
+    }
+
     [[nodiscard]] debug::Console& getConsole() noexcept {
         return console;
     }
@@ -167,6 +177,7 @@ class DebugPlugin final : public Plugin {
     void record(core::Log::Level level, std::string_view line);
     void addBuiltInCommands(core::Engine& engine);
     void runRelayedLines();
+    void detachTrace();
     [[nodiscard]] static std::string runLua(core::Engine& engine, const std::string& chunk);
 
     // Draws the drawings that are on into the canvas that is about to close.
@@ -195,6 +206,10 @@ class DebugPlugin final : public Plugin {
     std::unique_ptr<debug::ConsoleWindow> consoleWindow;
     std::vector<core::Connection> builtInCommands;
     std::optional<input::Key> consoleKey = input::Key::GraveAccent;
+    std::shared_ptr<debug::TraceRecorder> trace;
+    std::optional<int> traceFramesLeft;
+    double lastGpuSeconds = 0.0;
+    bool tracing = false;
     bool objectEvents = false;
     bool development = false;
     bool consoleEnabled = false;

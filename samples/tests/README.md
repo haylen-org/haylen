@@ -553,6 +553,7 @@ Hot reload while the project runs in development, with "haylen run samples/tests
 | `DEV-006` | Assets | JSON and the texts of a language that reload in place, with the asset events of each save. |  |
 | `DEV-007` | Errors and recovery | Errors of scene hooks, tasks, timers, tweens, signals, events, native events, platform answers, asset loads, sockets and buttons on the error screen with their stack, and the return to the app. |  |
 | `DEV-008` | Developer console | Commands of the test with typed arguments, lines run from code with their results and errors, completions and the console window. |  |
+| `DEV-009` | Profiler traces | A trace of 60 frames with the scopes of the frame, the jobs of the workers and the time of the GPU, written to user storage and counted by kind. |  |
 
 #### Files and storage (FIL)
 

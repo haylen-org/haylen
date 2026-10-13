@@ -41,6 +41,9 @@ void Profiler::endFrame() {
     // Scopes left open by an error close at the end of the frame, so one failure never skews the next frame.
     const double now = clock();
     endScopesTo(0);
+    if (tracer) {
+        tracer->record("frame", frameStart, now);
+    }
     lastFrameMilliseconds = (now - frameStart) * 1000.0;
     history[next] = static_cast<float>(lastFrameMilliseconds);
     next = (next + 1) % history.size();
@@ -84,7 +87,12 @@ void Profiler::endScope() {
     }
     const OpenScope scope = open.back();
     open.pop_back();
-    current[static_cast<std::size_t>(scope.sample)].milliseconds += (clock() - scope.start) * 1000.0;
+    const double end = clock();
+    ProfileSample& sample = current[static_cast<std::size_t>(scope.sample)];
+    sample.milliseconds += (end - scope.start) * 1000.0;
+    if (tracer) {
+        tracer->record(sample.name, scope.start, end);
+    }
 }
 
 void Profiler::endScopesTo(std::size_t depth) noexcept {

@@ -58,6 +58,12 @@ A monitor is a function the engine calls once per frame to sample a number the a
 
 The engine measures every frame in named scopes: `scripts` for promises, coroutines and platform replies, `fixedUpdate`, `update`, `render` and `submit`. App scopes nest inside the scope that is running, so a scope opened in the `update` callback of a scene sits under `update` at depth 1. Scopes with the same name under the same parent add up within a frame, and their `calls` count how often they ran. Scopes left open, for example by an error, close with the scope around them, or at the end of the frame. Scopes opened outside a frame, such as at the top level of `source/main.lua`, are not recorded.
 
+## Traces
+
+A trace records a span of frames into a file in the trace event JSON format, which the profilers of browsers and trace viewers open, so the work of each frame shows on a timeline. It holds a lane for each thread: `frame` with every frame and every profiler scope nested as they ran, a lane for each worker of the task pool and the I/O pool with the jobs it ran as `job` and `ioJob`, and a `gpu` lane with the time the GPU took for each frame, as `gpuFrame`, where the backend measures it, which Metal does on macOS, iOS, tvOS and Mac Catalyst. The other backends, Direct3D 11, OpenGL, OpenGL ES, WebGL 2 and WebGPU, leave the `gpu` lane empty. A GPU span ends when the frame thread learns that the GPU finished, a frame or two after the frame it measures, so its length is exact while its place on the timeline is late.
+
+The function `debug.startTrace` starts a trace, and `debug.stopTraceAsync` stops it and writes it into user storage on the I/O pool. A trace keeps at most 262144 spans in memory by default, and counts the spans it drops once it is full. Recording costs a lock per span, so a trace measures a little more than the frames take without one.
+
 ## Console
 
 The developer console runs commands that the engine, plugins and the app register, typed as one line such as `gold 50` or `say "Hello there"`. Words are separated by spaces, double quotes keep spaces inside one word, and a backslash keeps the next character as it is. Each command declares the kinds of its arguments, and the console checks and converts them before the command runs, so a command receives integers, numbers, booleans and strings, never text it has to parse.
@@ -347,6 +353,7 @@ Returns the measurements of the last finished frame as a table. Before the first
 | `milliseconds` | number | Work of the last frame, from the start of its update to the end of its rendering, in milliseconds. |
 | `average` | number | Average work of the recent frames, in milliseconds. |
 | `fps` | number | Frames per second over the recent frames, from the time between their starts, which also holds the wait for the display, or `0` before the second frame. |
+| `gpuMilliseconds` | number or `nil` | Time the GPU took for the last frame it finished, which lags a frame or two behind, where the backend measures it, which Metal does. It is `nil` on the other backends and before the GPU finished a frame. |
 | `scopes` | list | Scopes of the last frame, parents before their children. |
 
 Every scope is a table with these fields.
@@ -601,4 +608,49 @@ Returns the key that opens the console, or `nil` when the shortcut is off.
 local debugging = require('haylen.debug')
 
 print(debugging.consoleKey())
+```
+
+### debug.startTrace(options)
+
+Starts recording a [trace](#traces). Starting while a trace records raises `A trace is already recording. Stop it with "debug.stopTraceAsync" before starting another.`, and an unknown option raises `Unknown option "<key>".`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `frames` | integer | none | Stops recording after this many frames, while the trace waits for `debug.stopTraceAsync` to write it. Without it, the trace records until it stops. Fewer than 1 raises `A trace records at least 1 frame.`. |
+| `capacity` | integer | `262144` | The most spans the trace keeps. Fewer than 1 raises `A trace holds at least 1 span.`. |
+
+```lua
+local debugging = require('haylen.debug')
+local timer = require('haylen.timer')
+
+debugging.startTrace({frames = 300})
+timer.after(6, function()
+    debugging.stopTraceAsync('traces/menu.json')
+end)
+```
+
+### debug.tracing()
+
+Returns whether a trace records, which turns `false` once a trace of a number of frames recorded them.
+
+```lua
+local debugging = require('haylen.debug')
+
+print(debugging.tracing())
+```
+
+### debug.stopTraceAsync(path)
+
+Stops the trace and writes it to the file `path` of [user storage](storage.md), on the I/O pool, and returns a promise that resolves with `{path, spans, dropped}`, the number of spans written and the number the full trace dropped, or rejects with the error of the write. Calling it without a trace raises `No trace is recording. Start one with "debug.startTrace".`. The file is JSON, which the profilers of browsers and trace viewers open.
+
+```lua
+local async = require('async')
+local debugging = require('haylen.debug')
+
+debugging.startTrace()
+async.spawn(function()
+    async.sleep(5000):await()
+    local trace = debugging.stopTraceAsync('traces/level.json'):await()
+    print('Wrote ' .. trace.spans .. ' spans to ' .. trace.path)
+end)
 ```

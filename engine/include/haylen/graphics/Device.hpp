@@ -67,6 +67,9 @@ class Device final {
 
     [[nodiscard]] std::string_view getBackendName() const noexcept;
 
+    // The seconds the GPU took for the last frame that it finished, which lags the frame that runs by a frame or two, or nothing where the backend does not measure it. Metal measures it, and the other backends do not.
+    [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept;
+
     // The name of the GPU the device runs on, as its backend reports it: the name of the Metal device, the description of the DXGI adapter behind Direct3D 11, the `GL_RENDERER` string of OpenGL and WebGL 2, and the adapter info of WebGPU. It is empty where the backend reports none, such as the dummy backend of tests.
     [[nodiscard]] std::string getAdapterName() const;
     [[nodiscard]] int getMaxTextureSize() const noexcept;

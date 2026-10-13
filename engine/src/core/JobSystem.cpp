@@ -8,6 +8,7 @@
 #include <thread>
 #include <unordered_map>
 
+#include "haylen/debug/TraceRecorder.hpp"
 #include "varn/runtime/Runtime.h"
 
 namespace haylen::core {
@@ -65,25 +66,35 @@ std::string JobSystem::describe(const std::exception_ptr& error) {
 }
 
 // Varn drops exceptions that escape a job, so every job is wrapped to hand its failure to the frame thread instead.
-std::function<void()> JobSystem::guardWorker(std::function<void()> work) {
+std::function<void()> JobSystem::guardWorker(std::function<void()> work, std::string_view name, std::shared_ptr<debug::TraceRecorder> recorder) {
     // clang-format off
-    return [this, work = std::move(work)] {
+    return [this, work = std::move(work), name, recorder = std::move(recorder)] {
+        const double start = recorder ? debug::TraceRecorder::now() : 0.0;
         try {
             work();
         } catch (...) {
             postToFrame([this, message = describe(std::current_exception())] { onError(message); });
         }
+        if (recorder) {
+            recorder->record(name, start, debug::TraceRecorder::now());
+        }
     };
     // clang-format on
 }
 
+void JobSystem::setTraceRecorder(std::shared_ptr<debug::TraceRecorder> value) {
+    const std::scoped_lock lock(queue->mutex);
+    tracer = std::move(value);
+}
+
 // The pool job only names the work, so the work stays with the job system until a worker takes it.
-std::function<void()> JobSystem::enqueue(std::function<void()> work) {
+// The recorder is read under the lock that setting it takes, since workers post jobs too.
+std::function<void()> JobSystem::enqueue(std::function<void()> work, std::string_view name) {
     std::uint64_t id = 0;
     {
         const std::scoped_lock lock(queue->mutex);
         id = queue->next++;
-        queue->jobs.emplace(id, guardWorker(std::move(work)));
+        queue->jobs.emplace(id, guardWorker(std::move(work), name, tracer));
     }
 
     // clang-format off
@@ -104,11 +115,11 @@ std::function<void()> JobSystem::enqueue(std::function<void()> work) {
 }
 
 void JobSystem::post(std::function<void()> work) {
-    runtime.taskPool().post(enqueue(std::move(work)));
+    runtime.taskPool().post(enqueue(std::move(work), "job"));
 }
 
 void JobSystem::postIo(std::function<void()> work) {
-    runtime.ioPool().post(enqueue(std::move(work)));
+    runtime.ioPool().post(enqueue(std::move(work), "ioJob"));
 }
 
 void JobSystem::discardQueued() noexcept {

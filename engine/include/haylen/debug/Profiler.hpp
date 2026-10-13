@@ -2,10 +2,13 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/debug/ProfileSample.hpp"
+#include "haylen/debug/TraceRecorder.hpp"
 
 namespace haylen::debug {
 
@@ -48,6 +51,14 @@ class Profiler final {
     // Frame times of the history, oldest first.
     [[nodiscard]] std::vector<float> getFrameHistory() const;
 
+    // Records every scope that closes and every frame into the recorder, until it is set to null.
+    void setTraceRecorder(std::shared_ptr<TraceRecorder> value) noexcept {
+        tracer = std::move(value);
+    }
+    [[nodiscard]] const std::shared_ptr<TraceRecorder>& getTraceRecorder() const noexcept {
+        return tracer;
+    }
+
   private:
     struct OpenScope {
         int sample = 0;
@@ -58,6 +69,7 @@ class Profiler final {
     [[nodiscard]] static double getSteadySeconds();
 
     Clock clock;
+    std::shared_ptr<TraceRecorder> tracer;
     std::vector<ProfileSample> current;
     std::vector<ProfileSample> finished;
     std::vector<OpenScope> open;
