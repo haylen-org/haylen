@@ -232,7 +232,9 @@ void Collection::applyChange(const CollectionSource::Change& change) {
         break;
     case Kind::Changed:
         for (std::size_t index = change.index; index < change.index + change.count; ++index) {
-            sizes->setType(index, readType(index));
+            const std::uint16_t type = readType(index);
+            layoutDirty = layoutDirty || type != sizes->getType(index);
+            sizes->setType(index, type);
         }
         break;
     case Kind::Replaced: {
@@ -252,11 +254,73 @@ void Collection::applyChange(const CollectionSource::Change& change) {
                 noteEntering(index, 1);
             }
         }
+        layoutDirty = true;
         break;
     }
     }
     remapIndices(change, before);
-    layoutDirty = true;
+    if (!layoutDirty && change.kind != Kind::Changed) {
+        arrangeChange(change);
+    }
+}
+
+// The sticky items, the spans and the lines follow an insertion, a removal or a move from the first item it changed, so the lines before it stay as they are.
+void Collection::arrangeChange(const CollectionSource::Change& change) {
+    using Kind = CollectionSource::Change::Kind;
+    const std::size_t first = change.kind == Kind::Moved ? std::min(change.index, change.target) : change.index;
+    const auto isSticky = [this](std::size_t index) { return sizes->getType(index) != SizeCache::kNoType && types->get(sizes->getType(index)).isSticky(); };
+    const auto from = std::ranges::lower_bound(stickyItems, first);
+    if (change.kind == Kind::Inserted) {
+        for (auto entry = from; entry != stickyItems.end(); ++entry) {
+            *entry += change.count;
+        }
+        auto position = from;
+        for (std::size_t index = change.index; index < change.index + change.count; ++index) {
+            if (isSticky(index)) {
+                position = std::next(stickyItems.insert(position, index));
+            }
+        }
+    } else if (change.kind == Kind::Removed) {
+        const auto removed = std::ranges::lower_bound(stickyItems, change.index + change.count);
+        const auto kept = stickyItems.erase(from, removed);
+        for (auto entry = kept; entry != stickyItems.end(); ++entry) {
+            *entry -= change.count;
+        }
+    } else {
+        const std::size_t last = std::max(change.index, change.target);
+        stickyItems.erase(from, std::ranges::upper_bound(stickyItems, last));
+        auto position = std::ranges::lower_bound(stickyItems, first);
+        for (std::size_t index = first; index <= last; ++index) {
+            if (isSticky(index)) {
+                position = std::next(stickyItems.insert(position, index));
+            }
+        }
+    }
+
+    if (!spans.empty()) {
+        const auto start = spans.begin() + static_cast<std::ptrdiff_t>(change.index);
+        if (change.kind == Kind::Inserted) {
+            spans.insert(start, change.count, 1);
+            for (std::size_t index = change.index; index < change.index + change.count; ++index) {
+                spans[index] = sizes->getType(index) == SizeCache::kNoType ? 1 : types->get(sizes->getType(index)).getSpan();
+            }
+        } else if (change.kind == Kind::Removed) {
+            spans.erase(start, start + static_cast<std::ptrdiff_t>(change.count));
+        } else if (change.index < change.target) {
+            std::rotate(start, start + 1, spans.begin() + static_cast<std::ptrdiff_t>(change.target) + 1);
+        } else {
+            std::rotate(spans.begin() + static_cast<std::ptrdiff_t>(change.target), start, start + 1);
+        }
+    }
+
+    const std::size_t count = sizes->size();
+    if (count == 0) {
+        layoutDirty = true;
+        return;
+    }
+    layout->arrange({.count = count, .crossLength = std::max(0.0F, crossLength), .gap = gapLength, .lanes = laneCount, .spans = spans}, first);
+    sizes->arrangeFrom(*layout, gapLength, layout->getLine(std::min(first, count - 1)));
+    scroller->setMaximum(getContentLength() - getMainLength());
 }
 
 std::optional<std::size_t> Collection::mapIndex(std::size_t index, const CollectionSource::Change& change) const {

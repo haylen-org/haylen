@@ -9,6 +9,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/platform/Event.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::ui {
@@ -107,6 +108,23 @@ TEST_F(CollectionLuaTest, ChangesTheListAndTheCollectionTogether) {
     fixture.runLua("table.insert(items, 1, {id = 'head', title = 'Head'}) list:setItems(items)");
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return list.count .. ' ' .. list:indexOf('head')"), "101 1");
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
+// A reload or a replacement checks the ids it adds, never a copy of every id, and arranges the lines from the item it changed.
+TEST_F(CollectionLuaTest, ReloadsAndReplacesItemsAtTheCostOfTheItemsItChanges) {
+    mountRows(100000);
+    {
+        const test::AllocationTracker tracker;
+        fixture.runLua("items[50000].title = 'Changed' list:reload(50000) list:replace(60000, {id = 'other', title = 'Other'}) list:remove(70000)");
+        EXPECT_LT(tracker.getLargest(), std::size_t{64} * 1024U);
+    }
+    EXPECT_NE(fixture.lua("list:replace(1, {id = 'i2', title = 'Twice'})").find("The items of the collection \"list\" use the id \"i2\" more than once."), std::string::npos);
+    EXPECT_NE(fixture.lua("list:insert(1, {{id = 'other'}})").find("The items of the collection \"list\" use the id \"other\" more than once."), std::string::npos);
+    fixture.runLua("list:replace(1, {id = 'i1', title = 'Same'}) list:insert(1, {{id = 'i70000', title = 'Back'}})");
+    fixture.runLua("list:scrollTo(60001, {animated = false})");
+    fixture.frames(3);
+    EXPECT_EQ(fixture.lua("return list.count .. ' ' .. list:indexOf('other') .. ' ' .. list:cellOf('other').item"), "100000 60001 other");
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 

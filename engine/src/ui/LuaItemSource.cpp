@@ -34,15 +34,6 @@ std::pair<std::string, std::uint16_t> LuaItemSource::readItem(lua_State* L, int 
     return {std::move(id), internType(type)};
 }
 
-void LuaItemSource::checkIds(const std::vector<std::string>& added, std::size_t first, std::size_t last) const {
-    std::vector<std::string_view> all;
-    all.reserve(ids.size() - (last - first) + added.size());
-    all.insert(all.end(), ids.begin(), ids.begin() + static_cast<std::ptrdiff_t>(first));
-    all.insert(all.end(), added.begin(), added.end());
-    all.insert(all.end(), ids.begin() + static_cast<std::ptrdiff_t>(last), ids.end());
-    CollectionDiff::checkUnique(all, collection.getId());
-}
-
 void LuaItemSource::assign(lua_State* L, int list) {
     const int table = lua_absindex(L, list);
     const auto count = static_cast<std::size_t>(lua_rawlen(L, table));
@@ -58,6 +49,7 @@ void LuaItemSource::assign(lua_State* L, int list) {
     const CollectionDiff::Result result = CollectionDiff::compare(before, after, collection.getId());
 
     CollectionLua::setValue(L, gui, collection, "items", table);
+    known.assign(after);
     ids = std::move(nextIds);
     types = std::move(nextTypes);
     changed.emit({.kind = Change::Kind::Replaced, .index = 0, .count = ids.size(), .target = 0, .previous = result.previous});
@@ -74,7 +66,11 @@ void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
         std::tie(newIds[offset], newTypes[offset]) = readItem(L, -1, index + offset + 1);
         lua_pop(L, 1);
     }
-    checkIds(newIds, index, index);
+    const std::vector<std::string_view> addedIds(newIds.begin(), newIds.end());
+    known.check(addedIds, {}, collection.getId());
+    for (const std::string_view id : addedIds) {
+        known.add(id);
+    }
 
     pushList(L);
     const int list = lua_gettop(L);
@@ -108,6 +104,9 @@ void LuaItemSource::remove(lua_State* L, std::size_t index, std::size_t count) {
         lua_rawseti(L, list, position);
     }
     lua_pop(L, 1);
+    for (std::size_t offset = 0; offset < removed; ++offset) {
+        known.remove(ids[index + offset]);
+    }
     const auto first = static_cast<std::ptrdiff_t>(index);
     ids.erase(ids.begin() + first, ids.begin() + first + static_cast<std::ptrdiff_t>(removed));
     types.erase(types.begin() + first, types.begin() + first + static_cast<std::ptrdiff_t>(removed));
@@ -140,34 +139,39 @@ void LuaItemSource::move(lua_State* L, std::size_t from, std::size_t to) {
     changed.emit({.kind = Change::Kind::Moved, .index = from, .count = 1, .target = to});
 }
 
-// An item that keeps its id changes in place and keeps its cell, and an item with another id takes the place of the one it replaces.
+// An item that keeps its id changes in place and keeps its cell, and an item with another id leaves while the new one comes in at its place.
 void LuaItemSource::replace(lua_State* L, std::size_t index, int item) {
     auto [id, type] = readItem(L, item, index + 1);
-    checkIds({id}, index, index + 1);
+    const std::string_view added[] = {id};
+    const std::string_view leaving[] = {ids[index]};
+    known.check(added, leaving, collection.getId());
     pushList(L);
     lua_pushvalue(L, item);
     lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     lua_pop(L, 1);
 
     const bool same = ids[index] == id;
+    known.remove(ids[index]);
+    known.add(id);
     ids[index] = std::move(id);
     types[index] = type;
     if (same) {
         changed.emit({.kind = Change::Kind::Changed, .index = index, .count = 1});
         return;
     }
-    std::vector<std::size_t> previous(ids.size());
-    for (std::size_t position = 0; position < previous.size(); ++position) {
-        previous[position] = position == index ? Change::kNew : position;
-    }
-    changed.emit({.kind = Change::Kind::Replaced, .index = 0, .count = ids.size(), .target = 0, .previous = previous});
+    changed.emit({.kind = Change::Kind::Removed, .index = index, .count = 1});
+    changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = 1});
 }
 
 void LuaItemSource::reload(lua_State* L, std::size_t index) {
     pushItem(L, index);
     auto [id, type] = readItem(L, -1, index + 1);
     lua_pop(L, 1);
-    checkIds({id}, index, index + 1);
+    const std::string_view added[] = {id};
+    const std::string_view leaving[] = {ids[index]};
+    known.check(added, leaving, collection.getId());
+    known.remove(ids[index]);
+    known.add(id);
     ids[index] = std::move(id);
     types[index] = type;
     changed.emit({.kind = Change::Kind::Changed, .index = index, .count = 1});

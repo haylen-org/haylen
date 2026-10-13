@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -10,9 +11,14 @@
 
 namespace haylen::ui {
 
+class CollectionIds;
+
 // A collection source over items kept in C++, for apps written in C++ and for tests. Every change reports itself, so the collection showing the items follows it.
 class CollectionItems : public CollectionSource {
   public:
+    CollectionItems();
+    ~CollectionItems() override;
+
     struct Item {
         std::string id;
         std::string type;
@@ -45,10 +51,13 @@ class CollectionItems : public CollectionSource {
     // Throws for an index past `limit`, which is the item count or one more for the place after the last item.
     void checkIndex(std::size_t index, std::size_t limit) const;
 
-    // Throws for an id the items would hold twice once `added` takes the place of the items from `first` to `last`.
+    // Throws for an id the items would hold twice once `added` takes the place of the items from `first` to `last`. It costs the items it adds, not the items there are.
     void checkIds(const std::vector<Item>& added, std::size_t first, std::size_t last) const;
 
     std::vector<Item> items;
+
+    // The ids of the items, so a change checks only the ids it adds.
+    std::unique_ptr<CollectionIds> known;
 };
 
 } // namespace haylen::ui

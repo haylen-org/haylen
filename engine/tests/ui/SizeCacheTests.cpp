@@ -94,6 +94,61 @@ TEST_F(SizeCacheTest, KeepsOffsetsAfterInsertingAndErasingLines) {
     }
 }
 
+// Arranging from the first changed line gives the offsets that arranging every line gives, for changes anywhere in a list and in a grid.
+TEST_F(SizeCacheTest, ArrangesFromTheFirstChangedLineLikeEveryLine) {
+    std::mt19937 random(11);
+    std::uniform_int_distribution<int> lengthOf(20, 140);
+    std::vector<float> lengths(3000);
+    for (float& value : lengths) {
+        value = static_cast<float>(lengthOf(random));
+    }
+    measureAll(lengths);
+    GridLayout grid;
+    for (int round = 0; round < 60; ++round) {
+        const bool useGrid = round % 2 == 1;
+        CollectionLayout& active = useGrid ? static_cast<CollectionLayout&>(grid) : layout;
+        // clang-format off
+        const auto arrangeWith = [&](std::size_t first) {
+            active.arrange({.count = sizes.size(), .crossLength = 100.0F, .gap = 4.0F, .lanes = 3}, first);
+            sizes.arrangeFrom(active, 4.0F, active.getLine(std::min(first, sizes.size() - 1)));
+        };
+        // clang-format on
+        active.arrange({.count = sizes.size(), .crossLength = 100.0F, .gap = 4.0F, .lanes = 3}, 0);
+        sizes.arrange(active, 4.0F);
+
+        std::uniform_int_distribution<std::size_t> place(0, sizes.size() - 1);
+        const std::size_t first = place(random);
+        if (round % 3 == 0) {
+            sizes.insert(first, std::vector<std::uint16_t>(5, 0));
+        } else if (round % 3 == 1) {
+            sizes.erase(first, std::min<std::size_t>(4, sizes.size() - first));
+        } else {
+            const std::size_t other = place(random);
+            sizes.move(first, other);
+            arrangeWith(std::min(first, other));
+            ASSERT_FALSE(sizes.needsArrange());
+            continue;
+        }
+        arrangeWith(first);
+        ASSERT_FALSE(sizes.needsArrange());
+
+        // The offsets of every line match those of a cache arranged in full from the same items.
+        SizeCache full;
+        full.setEstimates(std::vector<float>{kEstimate}, kFallback);
+        full.assign(std::vector<std::uint16_t>(sizes.size(), 0));
+        full.arrange(active, 4.0F);
+        for (std::size_t index = 0; index < sizes.size(); ++index) {
+            if (sizes.isMeasured(index)) {
+                full.measure(index, sizes.getItemLength(index));
+            }
+        }
+        for (std::size_t line = 0; line < active.getLineCount(); ++line) {
+            ASSERT_NEAR(sizes.getLineOffset(line), full.getLineOffset(line), 0.01) << round << " " << line;
+        }
+        ASSERT_NEAR(sizes.getTotal(), full.getTotal(), 0.01);
+    }
+}
+
 TEST_F(SizeCacheTest, KeepsMeasuredLengthsThroughAReorder) {
     measureAll({10.0F, 20.0F, 30.0F});
     sizes.remap(std::vector<std::size_t>{2, SizeCache::kNew, 0}, std::vector<std::uint16_t>{0, 0, 0});

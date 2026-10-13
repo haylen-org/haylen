@@ -573,6 +573,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/collections/CellTemplate.cpp
   src/ui/components/collections/CellTypes.cpp
   src/ui/components/collections/CollectionDiff.cpp
+  src/ui/components/collections/CollectionIds.cpp
   src/ui/components/collections/GridLayout.cpp
   src/ui/components/collections/LinearLayout.cpp
   src/ui/components/collections/List.cpp

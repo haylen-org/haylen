@@ -19,12 +19,14 @@ void SizeCache::setEstimates(std::span<const float> declared, float fallbackLeng
         item.counted = false;
     }
     arranged = false;
+    estimatesMoved = true;
 }
 
 void SizeCache::setFixedLength(std::uint16_t type, std::optional<float> value) {
     if (estimates[type].fixed != value) {
         estimates[type].fixed = value;
         arranged = false;
+        estimatesMoved = true;
     }
 }
 
@@ -124,6 +126,7 @@ void SizeCache::relearn(Estimate& estimate) noexcept {
     if (std::fabs(mean - estimate.learned) >= kLearningStep) {
         estimate.learned = mean;
         arranged = false;
+        estimatesMoved = true;
     }
 }
 
@@ -212,6 +215,21 @@ void SizeCache::arrange(const CollectionLayout& value, float gapLength) {
     }
     build();
     arranged = true;
+    estimatesMoved = false;
+}
+
+void SizeCache::arrangeFrom(const CollectionLayout& value, float gapLength, std::size_t firstLine) {
+    if (estimatesMoved || layout != &value || gap != gapLength || tree.empty()) {
+        arrange(value, gapLength);
+        return;
+    }
+    lines.resize(layout->getLineCount());
+    const std::size_t first = std::min(firstLine, lines.size());
+    for (std::size_t line = first; line < lines.size(); ++line) {
+        lines[line] = measureLine(line) + gap;
+    }
+    buildFrom(first);
+    arranged = true;
 }
 
 // The tree holds at every position the sum of the lines its lowest set bit covers, built in one pass that adds each node to its parent.
@@ -222,6 +240,24 @@ void SizeCache::build() {
         const std::size_t parent = (line + 1) + ((line + 1) & (~(line + 1) + 1));
         if (parent < tree.size()) {
             tree[parent] += tree[line + 1];
+        }
+    }
+}
+
+// The positions after the first line start from their own line and gather their children in one pass, as `build` does, where the children before the first line are the positions a prefix sum up to it visits, whose sums stay valid.
+void SizeCache::buildFrom(std::size_t firstLine) {
+    tree.resize(lines.size() + 1);
+    for (std::size_t position = firstLine + 1; position < tree.size(); ++position) {
+        tree[position] = lines[position - 1];
+    }
+    for (std::size_t position = firstLine; position > 0; position -= position & (~position + 1)) {
+        if (const std::size_t parent = position + (position & (~position + 1)); parent < tree.size()) {
+            tree[parent] += tree[position];
+        }
+    }
+    for (std::size_t position = firstLine + 1; position < tree.size(); ++position) {
+        if (const std::size_t parent = position + (position & (~position + 1)); parent < tree.size()) {
+            tree[parent] += tree[position];
         }
     }
 }

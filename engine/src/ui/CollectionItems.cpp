@@ -1,10 +1,12 @@
 #include "haylen/ui/CollectionItems.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
 #include "ui/components/collections/CollectionDiff.hpp"
+#include "ui/components/collections/CollectionIds.hpp"
 
 namespace haylen::ui {
 
@@ -14,21 +16,23 @@ void CollectionItems::checkIndex(std::size_t index, std::size_t limit) const {
     }
 }
 
+CollectionItems::CollectionItems() : known(std::make_unique<CollectionIds>()) {}
+
+CollectionItems::~CollectionItems() = default;
+
 // Items that did not load yet have no id, so only the ids that exist must be unique.
 void CollectionItems::checkIds(const std::vector<Item>& added, std::size_t first, std::size_t last) const {
-    std::vector<std::string_view> ids;
-    ids.reserve(items.size() - (last - first) + added.size());
-    // clang-format off
-    const auto collect = [&ids](const Item& item) {
-        if (!item.id.empty()) {
-            ids.emplace_back(item.id);
-        }
-    };
-    // clang-format on
-    std::for_each(items.begin(), items.begin() + static_cast<std::ptrdiff_t>(first), collect);
-    std::ranges::for_each(added, collect);
-    std::for_each(items.begin() + static_cast<std::ptrdiff_t>(last), items.end(), collect);
-    CollectionDiff::checkUnique(ids, {});
+    std::vector<std::string_view> addedIds;
+    addedIds.reserve(added.size());
+    for (const Item& item : added) {
+        addedIds.emplace_back(item.id);
+    }
+    std::vector<std::string_view> leaving;
+    leaving.reserve(last - first);
+    for (std::size_t index = first; index < last; ++index) {
+        leaving.emplace_back(items[index].id);
+    }
+    known->check(addedIds, leaving, {});
 }
 
 void CollectionItems::assign(std::vector<Item> value) {
@@ -43,6 +47,7 @@ void CollectionItems::assign(std::vector<Item> value) {
         after.emplace_back(item.id);
     }
     const CollectionDiff::Result result = CollectionDiff::compare(before, after, {});
+    known->assign(after);
     items = std::move(value);
     changed.emit({.kind = Change::Kind::Replaced, .index = 0, .count = items.size(), .target = 0, .previous = result.previous});
 }
@@ -51,6 +56,9 @@ void CollectionItems::insert(std::size_t index, std::vector<Item> added) {
     checkIndex(index, items.size() + 1);
     checkIds(added, index, index);
     const std::size_t count = added.size();
+    for (const Item& item : added) {
+        known->add(item.id);
+    }
     items.insert(items.begin() + static_cast<std::ptrdiff_t>(index), std::make_move_iterator(added.begin()), std::make_move_iterator(added.end()));
     changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = count});
 }
@@ -58,6 +66,9 @@ void CollectionItems::insert(std::size_t index, std::vector<Item> added) {
 void CollectionItems::remove(std::size_t index, std::size_t count) {
     checkIndex(index, items.size());
     const std::size_t removed = std::min(count, items.size() - index);
+    for (std::size_t offset = 0; offset < removed; ++offset) {
+        known->remove(items[index + offset].id);
+    }
     const auto first = items.begin() + static_cast<std::ptrdiff_t>(index);
     items.erase(first, first + static_cast<std::ptrdiff_t>(removed));
     changed.emit({.kind = Change::Kind::Removed, .index = index, .count = removed});
@@ -76,22 +87,21 @@ void CollectionItems::move(std::size_t from, std::size_t to) {
     changed.emit({.kind = Change::Kind::Moved, .index = from, .count = 1, .target = to});
 }
 
-// An item that keeps its id changes in place, and one with another id takes the place of the item it replaces.
+// An item that keeps its id changes in place, and one with another id comes in while the item it replaces leaves.
 void CollectionItems::replace(std::size_t index, Item value) {
     checkIndex(index, items.size());
     const std::vector<Item> added{value};
     checkIds(added, index, index + 1);
     const bool same = items[index].id == value.id;
+    known->remove(items[index].id);
+    known->add(value.id);
     items[index] = std::move(value);
     if (same) {
         changed.emit({.kind = Change::Kind::Changed, .index = index, .count = 1});
         return;
     }
-    std::vector<std::size_t> previous(items.size());
-    for (std::size_t position = 0; position < previous.size(); ++position) {
-        previous[position] = position == index ? Change::kNew : position;
-    }
-    changed.emit({.kind = Change::Kind::Replaced, .index = 0, .count = items.size(), .target = 0, .previous = previous});
+    changed.emit({.kind = Change::Kind::Removed, .index = index, .count = 1});
+    changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = 1});
 }
 
 void CollectionItems::update(std::size_t index, std::string_view field, core::Json value) {

@@ -59,6 +59,9 @@ class SizeCache final {
     // Computes the length of every line of the layout, the longest of its items plus the gap after it.
     void arrange(const CollectionLayout& layout, float gap);
 
+    // Computes the lines again from a line on, after items were inserted, removed or moved there, and keeps the lines before it, so a change near the end, such as items appended, costs the lines it touches. It arranges every line when an estimate moved since the lines were arranged.
+    void arrangeFrom(const CollectionLayout& layout, float gap, std::size_t firstLine);
+
     // Whether the items changed or an estimate moved since the lines were arranged.
     [[nodiscard]] bool needsArrange() const noexcept {
         return !arranged;
@@ -101,6 +104,9 @@ class SizeCache final {
 
     [[nodiscard]] float measureLine(std::size_t line) const noexcept;
     void build();
+
+    // Rebuilds the positions of the tree after a line, keeping the positions up to it.
+    void buildFrom(std::size_t firstLine);
     void add(std::size_t line, double delta) noexcept;
     void learn(Item& item, float length);
     void forget(const Item& item) noexcept;
@@ -115,6 +121,9 @@ class SizeCache final {
     bool arranged = false;
     std::vector<float> lines;
     std::vector<double> tree;
+
+    // Whether an estimate moved since the lines were arranged, which changes the lines of items not measured yet anywhere.
+    bool estimatesMoved = false;
 };
 
 } // namespace haylen::ui

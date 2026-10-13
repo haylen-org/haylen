@@ -236,6 +236,7 @@ class Collection final : public Component {
     void applyChange(const CollectionSource::Change& change);
     [[nodiscard]] std::optional<std::size_t> mapIndex(std::size_t index, const CollectionSource::Change& change) const;
     void remapIndices(const CollectionSource::Change& change, std::size_t before);
+    void arrangeChange(const CollectionSource::Change& change);
     void resolveSelection();
 
     void updateGeometry(Context& context, float cross);

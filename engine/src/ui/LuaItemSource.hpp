@@ -9,6 +9,7 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/ui/CollectionSource.hpp"
+#include "ui/components/collections/CollectionIds.hpp"
 
 struct lua_State;
 
@@ -17,7 +18,7 @@ namespace haylen::ui {
 class Collection;
 class Gui;
 
-// The items of the Lua list that `collection:setItems` gives a collection. The GUI keeps the list for the collection, and the source caches the id and the type of every item, so binding reads only the fields it binds, with raw table access that runs no Lua code. The methods that change the items change the list too, so the app and the collection always see the same items.
+// The items of the Lua list that `collection:setItems` gives a collection. The GUI keeps the list for the collection, and the source caches the id and the type of every item, so binding reads only the fields it binds, with raw table access that runs no Lua code. The methods that change the items change the list too, so the app and the collection always see the same items, and they check only the ids they add, so a change costs the items it touches and the shift of the list, as `table.insert` does.
 class LuaItemSource final : public CollectionSource {
   public:
     LuaItemSource(lua_State* L, const Gui& owner, Collection& shown);
@@ -52,14 +53,13 @@ class LuaItemSource final : public CollectionSource {
     [[nodiscard]] std::pair<std::string, std::uint16_t> readItem(lua_State* L, int table, std::size_t position);
     [[nodiscard]] std::uint16_t internType(std::string_view type);
 
-    // Throws for an id the items would hold twice once `added` takes the place of the items from `first` to `last`.
-    void checkIds(const std::vector<std::string>& added, std::size_t first, std::size_t last) const;
     void pushList(lua_State* L) const;
 
     lua_State* state;
     const Gui& gui;
     Collection& collection;
     std::vector<std::string> ids;
+    CollectionIds known;
     std::vector<std::uint16_t> types;
     std::vector<std::string> typeNames;
 };

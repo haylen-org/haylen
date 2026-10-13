@@ -329,7 +329,7 @@ The command `haylen bench --suite ui` runs the UI benchmark, `engine/bench/UiBen
 | Grid | Fling | 0.088 | 0.481 | 817 | 683 | 93 | 37 |
 | Grid | Rest | 0.067 | 0.318 | 0 | 0 | 0 | 35 |
 
-A frame at rest binds nothing, calls no binder and creates no cell, and the engine tests check that it calls no Lua and that the collection allocates nothing in it. A frame while flinging binds only the items that enter the window, and the cells stay bounded by the window, its prefetch and the pools of the types. The components inside the cells keep their own costs, since every visible container measures its children every frame, so cells of few parts keep long lists cheapest.
+A change of the items costs the items it touches. The methods `reload` and `replace` check only the ids they add against a set of the ids the collection holds, rebind only their items and leave the lines as they are while the type of the item stays, and `insert`, `remove` and `move` arrange the lines again only from the first item they change, so appending a page to a list of a hundred thousand items costs the items of the page. The one part that grows with the items after a change is the shift of the Lua list itself, which `table.insert` makes the same way. A frame at rest binds nothing, calls no binder and creates no cell, and the engine tests check that it calls no Lua and that the collection allocates nothing in it. A frame while flinging binds only the items that enter the window, and the cells stay bounded by the window, its prefetch and the pools of the types. The components inside the cells keep their own costs, since every visible container measures its children every frame, so cells of few parts keep long lists cheapest.
 
 ## Text and translations
 

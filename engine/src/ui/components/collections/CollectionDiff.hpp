@@ -28,6 +28,9 @@ class CollectionDiff final {
     // Throws for the first id that repeats, the way `compare` does.
     static void checkUnique(std::span<const std::string_view> ids, std::string_view collection);
 
+    // Throws the error of an id that repeats among the items of `collection`, or among items of no collection when it is empty.
+    [[noreturn]] static void failRepeated(std::string_view id, std::string_view collection);
+
   private:
     static constexpr std::size_t kEmpty = std::numeric_limits<std::size_t>::max();
 
@@ -47,8 +50,6 @@ class CollectionDiff final {
         std::vector<std::size_t> slots;
         std::size_t mask = 0;
     };
-
-    [[noreturn]] static void failRepeated(std::string_view id, std::string_view collection);
 };
 
 } // namespace haylen::ui
