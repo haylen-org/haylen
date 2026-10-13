@@ -24,7 +24,7 @@ my-app/
         init.lua       Loaded with require('admob').
 ```
 
-Lua files use `dash-case` names, and asset files and folders use lowercase `snake_case`. The command `haylen package my-app -o my-app.zip` zips `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of a folder, with `app.json` at the root of the archive. The desktop player runs either form with `haylen my-app` or `haylen my-app.zip`, and the [distribution guide](distribution.md) shows how to run a package on every platform and in the browser.
+Lua files use `dash-case` names, and asset files and folders use lowercase names with dashes, such as `audio/fire-loop.ogg`. The command `haylen package my-app -o my-app.zip` zips `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of a folder, with `app.json` at the root of the archive. The desktop player runs either form with `haylen my-app` or `haylen my-app.zip`, and the [distribution guide](distribution.md) shows how to run a package on every platform and in the browser.
 
 ## app.json
 

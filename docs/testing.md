@@ -217,7 +217,7 @@ The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`
 python3 -m unittest discover -s tools -p "test_*.py"
 ```
 
-The module `tools/test_haylen.py` tests the rules of `haylen.py` that need no build with the `unittest` module of Python: how it merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, how `check` decides that a built app holds what a plugin needs, how it escapes the values of `haylen.properties`, when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation, how its terminal output marks reserved expressions, paths and URLs with and without color, how `run` reads the app folder it names, and how `sdk --check-consumers` and `android-key` read their options.
+The module `tools/test_haylen.py` tests the rules of `haylen.py` that need no build with the `unittest` module of Python: how it merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, how `check` decides that a built app holds what a plugin needs, how it escapes the values of `haylen.properties`, when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation, how its terminal output marks reserved expressions, paths and URLs with and without color, how `run` reads the app folder it names, how `sdk --check-consumers` and `android-key` read their options, and that every tracked file and folder of the repository uses dashes where nothing requires an underscore.
 
 ## Continuous integration
 

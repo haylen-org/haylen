@@ -175,6 +175,30 @@ class TextFileTest(unittest.TestCase):
         self.assertEqual([node.lineno for node in calls if not any(keyword.arg == "encoding" for keyword in node.keywords)], [])
 
 
+class FileNameTest(unittest.TestCase):
+    def test_tracked_files_use_dashes_where_nothing_requires_underscores(self):
+        root = Path(__file__).resolve().parent.parent
+        files = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True).stdout.splitlines()
+        imported = set()
+        for name in files:
+            if name.endswith(".py"):
+                for node in ast.walk(ast.parse((root / name).read_text(encoding="utf-8"))):
+                    if isinstance(node, ast.Import):
+                        imported.update(alias.name.split(".")[0] for alias in node.names)
+                    elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                        imported.add(node.module.split(".")[0])
+
+        def allowed(name: str) -> bool:
+            # Android resource names allow only letters, digits and underscores, and Python imports modules and discovers tests by names that are identifiers.
+            folder, separator, _ = name.partition("/src/main/res/")
+            if separator:
+                return "_" not in folder
+            path = Path(name)
+            return path.suffix == ".py" and "_" not in path.parent.as_posix() and (path.stem in imported or path.name.startswith("test_"))
+
+        self.assertEqual([name for name in files if "_" in name and not allowed(name)], [], "These tracked files and folders use underscores where their names take dashes.")
+
+
 class TerminalStream(io.StringIO):
     """A stream that answers like a terminal."""
 

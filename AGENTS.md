@@ -97,7 +97,7 @@ This file is binding for every change. It describes the project as it is and the
 - Lua modules of 2D subsystems end with `2d`, such as `haylen.graphics2d`, `haylen.physics2d` and `haylen.animation2d`, so a future 3D module never conflicts. Dimension-agnostic modules keep plain names, such as `haylen.graphics` for textures, render targets, fonts and shaders, and `haylen.tiled` keeps its name because Tiled maps are 2D by nature.
 - C and C++ source files (`.h`, `.hpp`, `.c`, `.cpp`, `.mm`) use `PascalCase` named after their class, for example `FrameClock.hpp` and `Renderer.cpp`. Lua files use `dash-case`, for example `main-menu.lua`, and every package keeps `source/main.lua` as its entry point. Lua modules are required with the same name, for example `require("scenes.main-menu")`.
 - CMake module files use `dash-case`, for example `haylen-dependencies.cmake`. Sample folders use `dash-case`, for example `samples/games/tiny-island`.
-- All folders are lowercase. Asset files and folders use lowercase `snake_case`.
+- All folders are lowercase. File and folder names, assets among them, use dashes and never underscores, such as `docs/platform-bridge.md` and `content/audio/fire-loop.ogg`. An underscore appears only where a name must be an identifier or a platform requires it: Python modules that other files import and the tests that `unittest` discovers by `test_*.py`, while a script run only as a command takes dashes, and Android resources under `res/`, whose names allow only letters, digits and underscores. The tests of `tools/test_haylen.py` fail on any other tracked file or folder with an underscore and name it.
 
 ## Code organization
 
