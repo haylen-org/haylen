@@ -74,10 +74,20 @@ void StoreFile::sync() {
     }
 }
 
+// A handle that only appends may not move the end of its file, so the end moves through a handle of its own that writes.
 void StoreFile::truncate(std::uint64_t size) {
+    HANDLE writer = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (writer == INVALID_HANDLE_VALUE) {
+        fail("truncate");
+    }
+
     LARGE_INTEGER position{};
     position.QuadPart = static_cast<LONGLONG>(size);
-    if (!SetFilePointerEx(handle, position, nullptr, FILE_BEGIN) || !SetEndOfFile(handle)) {
+    const bool truncated = SetFilePointerEx(writer, position, nullptr, FILE_BEGIN) && SetEndOfFile(writer);
+    const DWORD code = GetLastError();
+    CloseHandle(writer);
+    if (!truncated) {
+        SetLastError(code);
         fail("truncate");
     }
 }
