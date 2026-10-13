@@ -89,6 +89,7 @@ set(HAYLEN_TEST_SOURCES
   content/ShardTests.cpp
   content/UpdaterTests.cpp
   core/ContainerTests.cpp
+  conversation/ConversationTests.cpp
   core/CoreTests.cpp
   core/MessagePackTests.cpp
   core/EngineTests.cpp

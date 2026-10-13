@@ -292,6 +292,10 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/StoreFiles.cpp
   src/content/UpdateScreen.cpp
   src/content/Updater.cpp
+  src/conversation/Conversation.cpp
+  src/conversation/ConversationLua.cpp
+  src/conversation/ConversationState.cpp
+  src/conversation/Expression.cpp
   src/core/AppConfig.cpp
   src/core/Application.cpp
   src/core/ClassLua.cpp
@@ -494,6 +498,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/AudioPlugin.cpp
   src/plugins/BuiltInPlugins.cpp
   src/plugins/ContentPlugin.cpp
+  src/plugins/ConversationPlugin.cpp
   src/plugins/CorePlugin.cpp
   src/plugins/DebugPlugin.cpp
   src/plugins/Graphics2DPlugin.cpp

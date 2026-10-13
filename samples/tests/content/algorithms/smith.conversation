@@ -1,0 +1,30 @@
+{
+    "variables": {"gold": 30, "metSmith": false, "swords": 0},
+    "nodes": {
+        "greeting": {
+            "steps": [
+                {"speaker": "Smith", "text": "Welcome to the forge, traveler. You carry {gold} coins.", "if": "not metSmith"},
+                {"speaker": "Smith", "text": ["Back again? You carry {gold} coins.", "Still here? {gold} coins left.", "The fire is hot today. {gold} coins on you."], "if": "metSmith"},
+                {"command": "wave", "arguments": {"hand": "left"}},
+                {"set": {"metSmith": true}}
+            ],
+            "choices": [
+                {"text": "Buy a sword for 10 coins.", "if": "gold >= 10", "next": "buy"},
+                {"text": "Any news from the road?", "next": "rumor", "once": true},
+                {"text": "Goodbye."}
+            ]
+        },
+        "buy": {
+            "steps": [
+                {"set": {"gold": "gold - 10", "swords": "swords + 1"}},
+                {"command": "giveItem", "arguments": {"item": "sword"}},
+                {"speaker": "Smith", "text": "A fine blade. That makes {swords} so far."}
+            ],
+            "next": "greeting"
+        },
+        "rumor": {
+            "steps": [{"speaker": "Smith", "text": ["They say the old mine is open again.", "Wolves were seen on the north road.", "A storm is coming from the sea."]}],
+            "next": "greeting"
+        }
+    }
+}

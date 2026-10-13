@@ -2,7 +2,7 @@
 return {
     prefix = 'ALG',
     title = 'Algorithms',
-    description = 'Path finding, spatial queries, procedural generation, geometry and game AI, each on a world you paint, drag or aim at.',
+    description = 'Path finding, spatial queries, procedural generation, geometry, game AI and conversations, each on a world you paint, drag or aim at.',
     tests = {
         {code = 'ALG-001', title = 'A* on a grid', description = 'A* with its four heuristics, weighted A* and jump point search side by side on walls you paint.', module = 'astar'},
         {code = 'ALG-002', title = 'Hex and isometric grids', description = 'Paths on hexagonal, isometric and staggered grids laid out like Tiled maps.', module = 'hex-iso'},
@@ -31,5 +31,6 @@ return {
         {code = 'ALG-025', title = 'Influence maps', description = 'Two armies spread their threat over a map and read it to advance or retreat.', module = 'influence'},
         {code = 'ALG-026', title = 'Ray casts without physics', description = 'Rays against segments, rectangles, circles, polygons, chains, grids and spatial trees, with bounces and fans.', module = 'raycasts'},
         {code = 'ALG-027', title = 'Overlap boxes', description = 'Fighters of two teams on a belt of depth rows whose punch boxes reach the other team within a depth band, with rests after every hit, without physics.', module = 'overlap-boxes'},
+        {code = 'ALG-028', title = 'Conversation', description = 'A smith who greets once and then in variants, sells swords while the gold lasts, tells a rumor once, hands commands to the test and saves the walk to resume it.', module = 'conversation'},
     },
 }

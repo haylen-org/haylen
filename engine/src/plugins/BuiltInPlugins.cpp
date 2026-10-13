@@ -14,6 +14,7 @@
 #include "plugins/Animation2DPlugin.hpp"
 #include "plugins/AudioPlugin.hpp"
 #include "plugins/ContentPlugin.hpp"
+#include "plugins/ConversationPlugin.hpp"
 #include "plugins/CorePlugin.hpp"
 #include "plugins/Graphics2DPlugin.hpp"
 #include "plugins/HotReloadPlugin.hpp"
@@ -49,6 +50,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host&
     registry.add(std::make_unique<Procedural2DPlugin>());
     registry.add(std::make_unique<Navigation2DPlugin>());
     registry.add(std::make_unique<LocalizationPlugin>());
+    registry.add(std::make_unique<ConversationPlugin>());
     registry.add(std::make_unique<StoragePlugin>());
     registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession() != nullptr));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
