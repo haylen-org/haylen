@@ -1,4 +1,4 @@
--- Commands: a command buffer that types runs, a jump attack and three specials from the step state of seven actions, with the kept command, its age and the typed history, a facing that swaps forward and back, and a freeze that stops lifetimes as hit stop does.
+-- Commands: a command buffer that types runs, a jump attack and three specials from the step state of seven actions, with touch buttons that a sliding thumb presses in turn, with the kept command, its age and the typed history, a facing that swaps forward and back, and a freeze that stops lifetimes as hit stop does.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -60,9 +60,9 @@ function Commands:enter()
         },
         overlay = {
             ui.row{anchor = 'bottomRight', margin = {0, 40, 110, 0}, gap = 16,
-                ui.touchButton{action = 'defend', text = 'Defend', size = 100},
-                ui.touchButton{action = 'jump', text = 'Jump', size = 100},
-                ui.touchButton{action = 'attack', text = 'Attack', size = 100},
+                ui.touchButton{action = 'defend', text = 'Defend', size = 100, slideIn = true},
+                ui.touchButton{action = 'jump', text = 'Jump', size = 100, slideIn = true},
+                ui.touchButton{action = 'attack', text = 'Attack', size = 100, slideIn = true},
             },
             ui.touchStick{action = 'pad', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 240, height = 240},
         },

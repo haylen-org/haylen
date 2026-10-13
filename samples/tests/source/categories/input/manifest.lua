@@ -15,6 +15,6 @@ return {
         {code = 'INP-009', title = 'Character', description = 'A small platformer hero that every device moves at the same time, with prompts for the last device.', module = 'character'},
         {code = 'INP-010', title = 'Fixed steps', description = 'Presses counted in frames and in fixed steps at several time scales, where step edges count each press once, and a jump buffer that catches a press made just before landing.', module = 'steps'},
         {code = 'INP-011', title = 'Players', description = 'A seat for the keyboard and touch and one for each of eight gamepads, each with an action map that reads only its own devices, joined with the start button of its gamepad.', module = 'players'},
-        {code = 'INP-012', title = 'Commands', description = 'A command buffer that types runs, a jump attack and specials from keys, gamepads and touch, with the kept command, its age, the facing and a freeze like hit stop.', module = 'commands'},
+        {code = 'INP-012', title = 'Commands', description = 'A command buffer that types runs, a jump attack and specials from keys, gamepads and touch buttons that a sliding thumb presses in turn, with the kept command, its age, the facing and a freeze like hit stop.', module = 'commands'},
     },
 }

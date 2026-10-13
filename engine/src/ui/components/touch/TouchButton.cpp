@@ -17,6 +17,7 @@ void TouchButton::readProperties(PropertyReader& reader) {
     reader.read("image", image);
     reader.read("size", size, 8.0F, 2048.0F);
     reader.read("touchOnly", touchOnly);
+    reader.read("slideIn", slideIn);
     if (action.empty()) {
         reader.fail("action", "names the virtual button to drive and cannot be empty");
     }
@@ -37,7 +38,7 @@ void TouchButton::render(Context& context, const math::Rect& bounds) {
     if (!getCommon().enabled) {
         tracker.reset();
     }
-    const bool pressed = getCommon().enabled && tracker.update(context, bounds).has_value();
+    const bool pressed = getCommon().enabled && tracker.update(context, bounds, slideIn).has_value();
     if (pressed) {
         context.holdButton(action);
     }

@@ -494,6 +494,7 @@ The kinds `touchStick` and `touchButton` put on-screen controls in a GUI and dri
 - Controls keep the pointer from reaching the app behind them.
 - A control that stops drawing, because it, its parent or its GUI was hidden or removed, releases what it held. Values reach the actions at the start of the next frame.
 - A `touchButton` also reports `press` and `release` events for feedback such as sounds.
+- A `touchButton` with `slideIn = true` also takes a finger that slides onto it from elsewhere and lets it go when the finger slides off, so a thumb that rolls from one button onto the next types sequences the way action games read them.
 
 The Tiny Island HUD puts a floating stick in a large area at the bottom left and three buttons at the bottom right, all touch-only, inside a row whose visibility follows the player's touch controls setting. The buttons show the icons of the attack and the special of the chosen class.
 

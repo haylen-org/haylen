@@ -583,6 +583,38 @@ TEST_F(ComponentTest, TouchControlsIgnoreFingersWhileDisabled) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"attack:press", "attack:release"}));
 }
 
+TEST_F(ComponentTest, SlideInButtonsTakeAFingerThatMovesOntoThem) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "row", "padding": 40, "gap": 40, "children": [
+        {"kind": "touchButton", "id": "jump", "action": "jump", "size": 120, "slideIn": true},
+        {"kind": "touchButton", "id": "attack", "action": "attack", "size": 120, "slideIn": true},
+        {"kind": "touchButton", "id": "defend", "action": "defend", "size": 120}
+    ]})");
+    // clang-format on
+    const math::Rect jump = getBounds(*gui, "jump");
+    const math::Rect attack = getBounds(*gui, "attack");
+    const math::Rect defend = getBounds(*gui, "defend");
+    input::VirtualInput& controls = getEngine().getVirtualInput();
+
+    // A thumb that lands on one button and slides onto the next presses the second and lets go of the first.
+    touch(platform::Event::Type::TouchBegan, 1, jump.getCenter());
+    frames(2);
+    EXPECT_TRUE(controls.isButtonDown("jump"));
+    touch(platform::Event::Type::TouchMoved, 1, attack.getCenter());
+    frames(2);
+    EXPECT_FALSE(controls.isButtonDown("jump"));
+    EXPECT_TRUE(controls.isButtonDown("attack"));
+
+    // A button without sliding fingers waits for a finger that lands on it.
+    touch(platform::Event::Type::TouchMoved, 1, defend.getCenter());
+    frames(2);
+    EXPECT_FALSE(controls.isButtonDown("attack"));
+    EXPECT_FALSE(controls.isButtonDown("defend"));
+    touch(platform::Event::Type::TouchEnded, 1, defend.getCenter());
+    frames(2);
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"jump:press", "jump:release", "attack:press", "attack:release"}));
+}
+
 TEST_F(ComponentTest, DrivesVirtualControlsWithSeveralFingers) {
     // clang-format off
     auto gui = mount(R"({"kind": "row", "padding": 40, "gap": 400, "children": [

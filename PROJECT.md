@@ -1805,6 +1805,7 @@ Checklist:
 - [x] Entrada por passo fixo (`INP-08` da pesquisa): `input.stepPressed`, `input.stepReleased` e `input.stepDown` entregam cada toque a exatamente um passo fixo, e `input.consumePress` com o `buffer` da ação guarda o toque por um tempo de passos, como o buffer de pulo. Testado no `ActionMapTest`, no `InputStepLuaTest` e no teste `INP-010`.
 - [x] Mapas de ações por jogador: `input.newActionMap` com os dispositivos de cada jogador (teclado, mouse, um gamepad ou nenhum, controles virtuais com prefixo), até oito gamepads, `input.findGamepadPress` para entrar com o próprio gamepad e `map:stepButtons` com um número por jogador e passo. Testado no `ActionMapTest`, no `InputLuaTest` e no teste `INP-011`.
 - [x] Buffer de comandos: `input.newCommandBuffer` transforma os botões de cada passo num comando guardado (toque único, acorde, toque duplo e sequências com limite de passos, prioridade, tempo de vida em passos, congelamento e direção de frente e de trás). Testado no `CommandBufferTest`, no `CommandBufferLuaTest` e no teste `INP-012`.
+- [x] Botões de toque que pressionam quando o dedo desliza sobre eles: a propriedade `slideIn` do `ui.touchButton`. Testado no `ComponentTest` e no teste `INP-012`.
 
 #### AS. Sistema de conteúdo (`CONTENT_SYSTEM_IMPLEMENTATION.md`)
 

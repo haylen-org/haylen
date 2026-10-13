@@ -38,6 +38,7 @@ class TouchButton final : public Component {
     std::string image;
     float size = 120.0F;
     bool touchOnly = false;
+    bool slideIn = false;
     bool down = false;
     PointerTracker tracker;
 };

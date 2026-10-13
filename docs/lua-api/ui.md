@@ -2944,6 +2944,7 @@ A virtual button that holds the virtual button `action` down while a finger or t
 | `image` | image | none | Picture in the middle of the button. |
 | `size` | number from 8 to 2048 | `120` | Width and height. |
 | `touchOnly` | boolean | `false` | Shows the button only while the last input came from a touch screen. |
+| `slideIn` | boolean | `false` | Takes a finger, or the held left mouse button, that moves onto the button after it went down elsewhere, and lets it go when it moves off, so a thumb that slides along a row of buttons presses each one in turn. Without it, the button takes only a finger that lands on it. |
 
 A missing or empty action raises `The property "action" of a "touchButton" names the virtual button to drive and cannot be empty.`.
 
