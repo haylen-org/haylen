@@ -18,14 +18,14 @@ end
 local function logLines()
     local list = {}
     for index = 1, 30 do
-        list[index] = ui.label{text = string.format('Day %d: the tide rose %d cm', index, 20 + (index * 37) % 90), color = index % 5 == 0 and 'accentText' or 'text'}
+        list[index] = ui.label{id = 'day-' .. index, text = string.format('Day %d: the tide rose %d cm', index, 20 + (index * 37) % 90), color = index % 5 == 0 and 'accentText' or 'text'}
     end
     return list
 end
 
 function Containers:enter()
     self:frame{
-        hint = 'Scroll the log with the wheel or a finger, pick tabs, type a name of at least three letters and drag the splitter handle. The arrow keys and the directional pad move between the controls.',
+        hint = 'Scroll the log with the wheel or a finger, or with its buttons to day 25 and back to the top, pick tabs, type a name of at least three letters and drag the splitter handle. The arrow keys and the directional pad move between the controls.',
         focus = 'grow-one',
         content = {self:columns()},
     }
@@ -51,7 +51,13 @@ function Containers:columns()
                     ui.badge{text = 'Top right', tone = 'accent', solid = true, align = 'end'},
                 },
             }),
-            layout.section('Component "scroll"', {ui.scroll{id = 'log', height = 260, ui.column{gap = 6, children = logLines()}}}),
+            layout.section('Component "scroll"', {
+                ui.scroll{id = 'log', height = 260, ui.column{gap = 6, children = logLines()}},
+                ui.row{gap = 12,
+                    ui.button{text = 'Day 25', onClick = function(event) event.gui:command('log', 'scrollTo', {node = 'day-25', align = 'center'}) end},
+                    ui.button{text = 'Top', onClick = function(event) event.gui:command('log', 'scrollTo', {offset = 0}) end},
+                },
+            }),
         },
         ui.column{grow = 1, gap = 24,
             layout.section('Component "tabs"', {

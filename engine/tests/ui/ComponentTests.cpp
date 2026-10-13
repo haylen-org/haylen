@@ -469,6 +469,47 @@ TEST_F(ComponentTest, LetsThePointerThroughAnEmptyScroll) {
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click"}));
 }
 
+TEST_F(ComponentTest, ScrollsAScrollToAnOffsetOrANodeOnCommand) {
+    core::Json lines = core::Json::array();
+    for (int index = 1; index <= 100; ++index) {
+        lines.push_back({{"kind", "label"}, {"id", "line-" + std::to_string(index)}, {"text", "Line " + std::to_string(index)}});
+    }
+    const core::Json tree = {{"kind", "scroll"}, {"id", "log"}, {"scrollbar", false}, {"children", {{{"kind", "column"}, {"gap", 0}, {"children", lines}}}}};
+    auto gui = mount(tree.dump());
+    Context& context = getUi().getContext();
+    const auto distance = [&](const std::string& id) { return getBounds(*gui, id).y - getBounds(*gui, "log").y; };
+
+    const float offset = distance("line-11");
+    gui->command(context, "log", "scrollTo", {{"offset", offset}, {"animated", false}});
+    frames(2);
+    EXPECT_NEAR(distance("line-11"), 0.0F, 1.0F);
+
+    // A smooth scroll to a node aligns it with the view over a few frames.
+    gui->command(context, "log", "scrollTo", {{"node", "line-30"}, {"align", "start"}});
+    frames();
+    EXPECT_GT(distance("line-30"), 1.0F);
+    frames(120);
+    EXPECT_NEAR(distance("line-30"), 0.0F, 1.0F);
+
+    // A node that shows whole stays where it is with the nearest alignment.
+    gui->command(context, "log", "scrollTo", {{"node", "line-31"}});
+    frames(2);
+    EXPECT_NEAR(distance("line-30"), 0.0F, 1.0F);
+    gui->command(context, "log", "scrollTo", {{"node", "line-20"}, {"align", "center"}, {"animated", false}});
+    frames(2);
+    EXPECT_NEAR(distance("line-20"), (getBounds(*gui, "log").height - getBounds(*gui, "line-20").height) * 0.5F, 1.0F);
+    gui->command(context, "log", "scrollTo", {{"node", "line-1"}, {"animated", false}});
+    frames(2);
+    EXPECT_NEAR(distance("line-1"), 0.0F, 1.0F);
+
+    EXPECT_THROW(gui->command(context, "log", "scrollTo", core::Json::object()), std::invalid_argument);
+    EXPECT_THROW(gui->command(context, "log", "scrollTo", {{"node", "line-1"}, {"offset", 0}}), std::invalid_argument);
+    EXPECT_THROW(gui->command(context, "log", "scrollTo", {{"node", "line-999"}}), std::invalid_argument);
+    EXPECT_THROW(gui->command(context, "log", "scrollTo", {{"offset", 10}, {"speed", 2}}), std::invalid_argument);
+    EXPECT_THROW(gui->command(context, "log", "scrollTo", {{"node", "line-2"}, {"align", "middle"}}), std::invalid_argument);
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 // Typing reports only numbers inside the range, and the end of the editing brings any other number into it. Text that is not a finite number changes nothing.
 TEST_F(ComponentTest, CommitsTypedNumbersInsideTheRange) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "numberField", "id": "count", "value": 20, "min": 10, "max": 100}]})");

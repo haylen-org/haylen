@@ -649,10 +649,11 @@ scene.push({
 
 ### gui:command(id, name, arguments)
 
-Sends a command to the node `id`. The argument `arguments` is optional, and only `show` takes some.
+Sends a command to the node `id`. The argument `arguments` is optional, and only `show` and `scrollTo` take some.
 
 - The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea`, `collection` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, a collection keeps the focus on its focused item or focuses its first item in view, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.
+- The command `'scrollTo'` scrolls a `scroll` to a place, with the arguments `offset`, the distance from the start of the content in design units, or `node`, the id of a node inside the scroll, which the scroll follows while it moves. The argument `align` places the node: `'nearest'`, the default, scrolls the least that shows the whole node and nothing when it already shows, and `'start'`, `'center'` and `'end'` align that part of the node with that part of the view. The argument `animated`, `true` by default, moves there smoothly, and the wheel, a press or a drag of the player end the move. The command takes either `offset` or `node` and raises `The "scrollTo" command of a "scroll" takes a table with either "node" or "offset".` otherwise, an unknown argument raises `Unknown key "<key>" in the "scrollTo" command of a "scroll".`, a node outside the scroll raises `The scroll "<id>" holds no node with the id "<node>".`, and wrong values raise the errors of the properties of the same names.
 - The command `'show'` adds a notice to a `toast`, with the arguments `text`, `tone` and `duration`, which default to the properties of the toast. Every notice takes its place in the stack of the toast, so notices shown one after the other never cover each other. Unknown arguments raise `Unknown key "<key>" in the "show" command of a "toast".`, and wrong values raise the errors of the properties of the same names.
 
 A kind without that command raises `The component kind "<kind>" does not answer the command "<name>".`, arguments raise `The "focus" command takes no arguments.` or `The "open" command takes no arguments.`, and an unknown id raises `The GUI has no node with the id "<id>".`.
@@ -1374,7 +1375,7 @@ ui.mount(ui.stack{
 
 ### ui.scroll(properties)
 
-Shows one child in an area that scrolls up and down or sideways. The mouse wheel, the scroll bar and, on touch screens, dragging the content scroll it, and a drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. The focus scrolls to the focused control. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll, and a horizontal scroll needs a `width`. While the child is longer than the area, the [scroll bar](#scroll-bars) takes a lane of its own beside it, and a horizontal scroll adds that lane to its height. The content draws at the place of the scroll in the tree, so the nodes after it, such as an anchored sheet, and the GUIs of higher layers cover it.
+Shows one child in an area that scrolls up and down or sideways. The mouse wheel, the scroll bar and, on touch screens, dragging the content scroll it, and a drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. The focus scrolls to the focused control, and the command [`scrollTo`](#guicommandid-name-arguments) scrolls to an offset or to a node inside it. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll, and a horizontal scroll needs a `width`. While the child is longer than the area, the [scroll bar](#scroll-bars) takes a lane of its own beside it, and a horizontal scroll adds that lane to its height. The content draws at the place of the scroll in the tree, so the nodes after it, such as an anchored sheet, and the GUIs of higher layers cover it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1391,7 +1392,11 @@ local lines = {}
 for index = 1, 40 do
     lines[index] = ui.label{text = 'Quest log entry ' .. index}
 end
-ui.mount(ui.scroll{height = 600, ui.column{gap = 8, children = lines}})
+local log = ui.mount(ui.scroll{id = 'log', height = 600, ui.column{gap = 8, children = lines}})
+lines[#lines + 1] = ui.label{id = 'latest', text = 'Quest complete'}
+log:replaceChildren('log', {ui.column{gap = 8, children = lines}})
+log:command('log', 'scrollTo', {node = 'latest', align = 'end'})
+log:command('log', 'scrollTo', {offset = 0, animated = false})
 
 local cards = {}
 for index = 1, 8 do

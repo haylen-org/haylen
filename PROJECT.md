@@ -690,7 +690,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 - [ ] Os limites de uma célula de `collection` para desenhar nela.
 - [ ] Lista arrastável que recicla as linhas, `collection` que reordena por arrasto e escolha de uma linha arrastável pelo teclado e pelo controle remoto, que hoje pegam a linha em vez de escolhê-la.
 - [ ] Abrir um `contextMenu` a partir de uma parte de uma célula de `collection`, que não tem id de nó.
-- [ ] Comando que rola um `ui.scroll` até um deslocamento ou até um nó.
+- [x] Comando que rola um `ui.scroll` até um deslocamento ou até um nó. O comando `scrollTo` do `scroll` recebe `offset` ou `node`, com `align` (`nearest`, `start`, `center` ou `end`) e `animated`, segue o nó enquanto ele se move e para quando o jogador rola, conferido pelo teste `ComponentTest.ScrollsAScrollToAnOffsetOrANodeOnCommand`, pela referência e pelos botões do log no `GUI-001`.
 
 ### 8.14 Plataforma
 
