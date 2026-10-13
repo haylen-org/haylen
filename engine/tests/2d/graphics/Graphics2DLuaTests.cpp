@@ -220,7 +220,7 @@ TEST_F(Graphics2DLuaTest, SortsMasksOffsetsAndCapturesCanvases) {
     const std::string body = R"(
         local camera = graphics2d.newCamera()
         target = graphics.newRenderTarget(64, 32)
-        graphics2d.beginCapture(target, '#102030')
+        graphics2d.beginCapture(target, {clear = '#102030'})
         capturing = graphics2d.capturing()
         camera.zoom = {4, 4}
         graphics2d.beginWorld(camera, {sort = 'y', order = 2, visibilityMask = 1})
@@ -397,7 +397,7 @@ TEST_F(Graphics2DLuaTest, KeepsGpuPoolsSteadyAcrossFrames) {
                     end
                 end,
                 render = function()
-                    graphics2d.beginCapture(capture, '#000000')
+                    graphics2d.beginCapture(capture, {clear = '#000000'})
                     graphics2d.beginWorld(camera, {ambientLight = '#202040', postProcess = {vignetteStrength = 0.4}})
                     graphics2d.draw(hero, 0, 0, {normalMap = hero})
                     graphics2d.drawOccluder(occluder)

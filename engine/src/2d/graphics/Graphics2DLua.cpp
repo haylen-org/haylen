@@ -195,9 +195,14 @@ int Graphics2DLua::beginTarget(lua_State* L) {
     return 0;
 }
 
-// Captures the following canvases with `beginCapture(target[, clear])`, where the clear color is transparent unless given.
+// Captures the following canvases with `beginCapture(target, options)`, whose `clear` color is transparent unless given.
 int Graphics2DLua::beginCapture(lua_State* L) {
-    const math::Color clear = lua_isnoneornil(L, 2) ? math::Color::transparent() : lua::Stack::read<math::Color>(L, 2);
+    math::Color clear = math::Color::transparent();
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kCaptureFields});
+        lua::Table::readField(L, 2, "clear", clear);
+    }
     getRenderer(L).beginCapture(lua::Userdata::check<graphics::RenderTarget>(L, 1), clear);
     return 0;
 }

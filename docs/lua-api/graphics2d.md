@@ -976,9 +976,9 @@ scene.push({
 })
 ```
 
-### graphics2d.beginCapture(target, clear)
+### graphics2d.beginCapture(target, options)
 
-Starts a [capture](#captures): the world and screen canvases that begin until `graphics2d.endCapture` render into the render target `target`, cleared to `clear` first, transparent by default, instead of reaching the screen. The visible area covers the whole target, so give it the pixel size of the viewport to keep every pixel. Render target canvases begun during a capture still draw into their own targets. A capture can begin while another one is open, such as in a scene that a transition captures: the canvases that begin until it ends go into its own target, and the canvases after its end go back into the outer capture. A capture left open ends with the frame. The target holds colors premultiplied by their alpha, so draw its texture with `blend = 'premultiplied'` wherever it is not fully opaque, and the canvases of the capture cannot sample its texture, which raises `A draw cannot sample the render target that its canvas draws into.` An invalid target raises `A capture needs a valid render target.`
+Starts a [capture](#captures): the world and screen canvases that begin until `graphics2d.endCapture` render into the render target `target`, cleared first to the color of the option `clear`, transparent by default, instead of reaching the screen. Unknown options raise `Unknown option "<key>".` The visible area covers the whole target, so give it the pixel size of the viewport to keep every pixel. Render target canvases begun during a capture still draw into their own targets. A capture can begin while another one is open, such as in a scene that a transition captures: the canvases that begin until it ends go into its own target, and the canvases after its end go back into the outer capture. A capture left open ends with the frame. The target holds colors premultiplied by their alpha, so draw its texture with `blend = 'premultiplied'` wherever it is not fully opaque, and the canvases of the capture cannot sample its texture, which raises `A draw cannot sample the render target that its canvas draws into.` An invalid target raises `A capture needs a valid render target.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -992,7 +992,7 @@ local frame = graphics.newRenderTarget(math.floor(pixels.width), math.floor(pixe
 
 scene.push({
     render = function(self)
-        graphics2d.beginCapture(frame, '#FF101820')
+        graphics2d.beginCapture(frame, {clear = '#FF101820'})
         graphics2d.beginWorld(camera, {ambientLight = '#FF404060'})
         graphics2d.drawRect({-300, -200, 600, 400}, '#FF3A7D44')
         graphics2d.drawLight({x = 0, y = 0, radius = 300, color = '#FFFFD080'})
