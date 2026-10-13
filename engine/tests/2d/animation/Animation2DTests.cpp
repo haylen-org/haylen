@@ -102,7 +102,7 @@ TEST_F(AnimatorTest, PlaysAnimationsAndReportsProgress) {
 
     std::vector<std::string> events;
     animator.onFrame = [&](std::string_view name, std::size_t frame) { events.push_back(std::string(name) + ":" + std::to_string(frame)); };
-    animator.onFinish = [&](std::string_view name) { events.push_back(std::string(name) + ":done"); };
+    animator.onComplete = [&](std::string_view name) { events.push_back(std::string(name) + ":done"); };
 
     animator.update(1.0F);
     animator.play("run");
@@ -153,7 +153,7 @@ TEST_F(AnimatorTest, QueuesAnimationsAfterTheCurrentPass) {
     animator.add("attack", makeStrip(texture, animation2d::Animation::Loop::Once));
     animator.add("idle", makeStrip(texture, animation2d::Animation::Loop::PingPong));
     std::vector<std::string> finished;
-    animator.onFinish = [&finished](std::string_view name) { finished.emplace_back(name); };
+    animator.onComplete = [&finished](std::string_view name) { finished.emplace_back(name); };
 
     animator.queue("attack");
     EXPECT_EQ(animator.getCurrent(), "attack");
@@ -225,7 +225,7 @@ TEST_F(AnimatorTest, QueuesAFinishedOneShotAnimationAgainFromItsStart) {
     animation2d::Animator animator;
     animator.add("attack", makeStrip(texture, animation2d::Animation::Loop::Once));
     int finished = 0;
-    animator.onFinish = [&finished](std::string_view) { ++finished; };
+    animator.onComplete = [&finished](std::string_view) { ++finished; };
 
     animator.play("attack");
     animator.update(1.0F);
@@ -376,7 +376,7 @@ TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
         animator:add('slash', slash)
         events = {}
         animator.onFrame = function(name, frame) events[#events + 1] = name .. frame end
-        animator.onFinish = function(name) events[#events + 1] = name .. ' done' animator:play('run') end
+        animator.onComplete = function(name) events[#events + 1] = name .. ' done' animator:play('run') end
     )");
     // clang-format on
 
@@ -388,7 +388,7 @@ TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
     EXPECT_EQ(fixture.lua("return type(animator.onFrame) .. ' ' .. tostring(animator:has('run'))"), "function true");
     EXPECT_EQ(fixture.lua("animator.onFrame = nil animator:stop() return tostring(animator.onFrame) .. ' ' .. tostring(animator.playing)"), "nil false");
     EXPECT_EQ(fixture.lua("return animation2d.newAnimator().current"), "nil");
-    EXPECT_EQ(fixture.lua("animator.onFinish = nil animator.speed = 1 animator:play('slash') animator:queue('run') local before = animator.queuedCount animator:update(0.5) return before .. ' ' .. animator.queuedCount .. ' ' .. animator.current"), "1 0 run");
+    EXPECT_EQ(fixture.lua("animator.onComplete = nil animator.speed = 1 animator:play('slash') animator:queue('run') local before = animator.queuedCount animator:update(0.5) return before .. ' ' .. animator.queuedCount .. ' ' .. animator.current"), "1 0 run");
     EXPECT_EQ(fixture.lua("animator:queue('slash') animator:clearQueue() return animator.queuedCount"), "0");
     EXPECT_EQ(fixture.lua("animator:play('slash', true) animator:update(5) animator:queue('slash') return animator.frame .. ' ' .. tostring(animator.finished) .. ' ' .. tostring(animator.playing)"), "1 false true");
     EXPECT_EQ(fixture.lua("local a = animator:animation('slash') return a.frameCount .. ' ' .. a.loop .. ' ' .. string.format('%.2f %.2f', run.cycleDuration, animation2d.fromGrid(sheet, {frameWidth = 16, frameHeight = 16, loop = 'pingPong'}).cycleDuration)"), "2 once 0.80 1.40");
@@ -410,10 +410,10 @@ TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
     EXPECT_NE(fixture.lua("return animation2d.fromFrames(sheet, {})").find("expected at least one frame"), std::string::npos);
     EXPECT_NE(fixture.lua("return run:frame(9)").find("frame index out of range"), std::string::npos);
     EXPECT_NE(fixture.lua("animator:play('fly')").find("The animation \"fly\" does not exist in this animator."), std::string::npos);
-    EXPECT_NE(fixture.lua("animator.onFinish = 3").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("animator.onComplete = 3").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("return atlas:source('nope')").find("The frame \"nope\" does not exist in this atlas."), std::string::npos);
 
-    fixture.runLua("animator:play('slash', true) animator.onFinish = function() error('finish failed') end");
+    fixture.runLua("animator:play('slash', true) animator.onComplete = function() error('finish failed') end");
     EXPECT_NE(fixture.lua("animator:update(5)").find("finish failed"), std::string::npos);
 }
 

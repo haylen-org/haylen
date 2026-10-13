@@ -321,13 +321,13 @@ template <typename Advance> void Animation2DLua::advance(lua_State* L, Advance&&
         ~CallbackScope() {
             animator.onFrame = {};
             animator.onEvent = {};
-            animator.onFinish = {};
+            animator.onComplete = {};
         }
     } scope{animator};
 
     animator.onFrame = [L](std::string_view name, std::size_t frame) { callCallback(L, "onFrame", name, frame); };
     animator.onEvent = [L](std::string_view name, std::string_view event, std::size_t frame) { callEvent(L, name, event, frame); };
-    animator.onFinish = [L](std::string_view name) { callCallback(L, "onFinish", name, std::nullopt); };
+    animator.onComplete = [L](std::string_view name) { callCallback(L, "onComplete", name, std::nullopt); };
     body(animator);
 }
 
@@ -431,12 +431,12 @@ int Animation2DLua::animatorSetOnFrame(lua_State* L) {
     return setCallback(L, "onFrame");
 }
 
-int Animation2DLua::animatorGetOnFinish(lua_State* L) {
-    return getCallback(L, "onFinish");
+int Animation2DLua::animatorGetOnComplete(lua_State* L) {
+    return getCallback(L, "onComplete");
 }
 
-int Animation2DLua::animatorSetOnFinish(lua_State* L) {
-    return setCallback(L, "onFinish");
+int Animation2DLua::animatorSetOnComplete(lua_State* L) {
+    return setCallback(L, "onComplete");
 }
 
 int Animation2DLua::animatorGetOnEvent(lua_State* L) {
@@ -547,7 +547,7 @@ void Animation2DLua::install(lua_State* L) {
     AtlasBuilderLua::install(L);
     lua::ClassBuilder<Animation>(L).property("duration", &animationDuration).property("cycleDuration", &animationCycleDuration).property("frameCount", &animationFrameCount).property("texture", &animationTexture).field<&Animation::loop>("loop").function("frame", &animationFrame).function("frameAt", &animationFrameAt).function("frameData", &animationFrameData).function("addEvent", &lua::Binding::native<&animationAddEvent>).property("countsTicks", &animationCountsTicks).install();
 
-    lua::ClassBuilder<Animator>(L).function("add", &lua::Binding::native<&animatorAdd>).function("play", &lua::Binding::native<&animatorPlay>).function("queue", &lua::Binding::native<&animatorQueue>).function("clearQueue", &lua::Binding::native<&animatorClearQueue>).property("queuedCount", &animatorQueuedCount).function("stop", &animatorStop).function("has", &animatorHas).function("animation", &lua::Binding::native<&animatorAnimation>).function("update", &lua::Binding::native<&animatorUpdate>).function("step", &lua::Binding::native<&animatorStep>).function("apply", &lua::Binding::native<&animatorApply>).function("box", &lua::Binding::native<&animatorBox>).function("point", &lua::Binding::native<&animatorPoint>).property("current", &animatorCurrent).property("frame", &animatorFrame).property("time", &animatorTime).property("playing", &animatorPlaying).property("finished", &animatorFinished).field<&Animator::speed>("speed").nestedField<&Animator::pivot, &math::Vec2::x>("pivotX").nestedField<&Animator::pivot, &math::Vec2::y>("pivotY").property("onFrame", &animatorGetOnFrame, &animatorSetOnFrame).property("onFinish", &animatorGetOnFinish, &animatorSetOnFinish).property("onEvent", &animatorGetOnEvent, &animatorSetOnEvent).install();
+    lua::ClassBuilder<Animator>(L).function("add", &lua::Binding::native<&animatorAdd>).function("play", &lua::Binding::native<&animatorPlay>).function("queue", &lua::Binding::native<&animatorQueue>).function("clearQueue", &lua::Binding::native<&animatorClearQueue>).property("queuedCount", &animatorQueuedCount).function("stop", &animatorStop).function("has", &animatorHas).function("animation", &lua::Binding::native<&animatorAnimation>).function("update", &lua::Binding::native<&animatorUpdate>).function("step", &lua::Binding::native<&animatorStep>).function("apply", &lua::Binding::native<&animatorApply>).function("box", &lua::Binding::native<&animatorBox>).function("point", &lua::Binding::native<&animatorPoint>).property("current", &animatorCurrent).property("frame", &animatorFrame).property("time", &animatorTime).property("playing", &animatorPlaying).property("finished", &animatorFinished).field<&Animator::speed>("speed").nestedField<&Animator::pivot, &math::Vec2::x>("pivotX").nestedField<&Animator::pivot, &math::Vec2::y>("pivotY").property("onFrame", &animatorGetOnFrame, &animatorSetOnFrame).property("onComplete", &animatorGetOnComplete, &animatorSetOnComplete).property("onEvent", &animatorGetOnEvent, &animatorSetOnEvent).install();
 
     lua::ClassBuilder<SpriteAtlas>(L).property("texture", &atlasTexture).function("hasFrame", &atlasHasFrame).function("hasAnimation", &atlasHasAnimation).function("hasSlice", &atlasHasSlice).function("frame", &lua::Binding::native<&atlasFrame>).function("frameNames", &atlasFrameNames).function("animationNames", &atlasAnimationNames).function("sliceNames", &atlasSliceNames).function("animation", &lua::Binding::native<&atlasAnimation>).function("slice", &lua::Binding::native<&atlasSlice>).function("source", &lua::Binding::native<&atlasSource>).function("apply", &lua::Binding::native<&atlasApply>).function("animationFromFrames", &lua::Binding::native<&atlasAnimationFromFrames>).function("subset", &lua::Binding::native<&atlasSubset>).meta("__eq", &lua::Userdata::equal<SpriteAtlas>).install();
 

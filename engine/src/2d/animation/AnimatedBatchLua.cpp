@@ -167,7 +167,7 @@ int AnimatedBatchLua::readFields(lua_State* L) {
     return 0;
 }
 
-// The finish listeners of the batch run in the state of the call that advances it.
+// The complete listeners of the batch run in the state of the call that advances it.
 template <typename Advance> void AnimatedBatchLua::advance(lua_State* L, Advance&& body) {
     AnimatedBatch& batch = check(L);
     lua_State* previous = advancing;
@@ -214,12 +214,12 @@ int AnimatedBatchLua::texture(lua_State* L) {
     return 1;
 }
 
-// Listens with `on('finish', function, {owner = owner})`, called with the list of the sprites whose one-shot animation ended in an update. A listener ends with its owner, and without one it takes the default owner.
+// Listens with `on('complete', function, {owner = owner})`, called with the list of the sprites whose one-shot animation ended in an update. A listener ends with its owner, and without one it takes the default owner.
 int AnimatedBatchLua::on(lua_State* L) {
     AnimatedBatch& batch = check(L);
     const std::string_view event = lua::Stack::read<std::string_view>(L, 2);
-    if (event != "finish") {
-        return luaL_error(L, "Unknown animated batch event \"%s\". Animated batches report \"finish\".", std::string(event).c_str());
+    if (event != "complete") {
+        return luaL_error(L, "Unknown animated batch event \"%s\". Animated batches report \"complete\".", std::string(event).c_str());
     }
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
@@ -239,7 +239,7 @@ int AnimatedBatchLua::on(lua_State* L) {
     lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    core::Connection connection = batch.finished.connect([function, main](std::span<const std::size_t> ended) {
+    core::Connection connection = batch.completed.connect([function, main](std::span<const std::size_t> ended) {
         const auto call = [&](lua_State* state, bool reported) {
             if (!function->push(state)) {
                 return;

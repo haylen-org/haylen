@@ -15,7 +15,7 @@ Animation.lines = 8
 Animation.code = [[
 animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
 animator.onFrame = function(name, frame) if name == 'attack' and frame == 3 then log.info('Hit.') end end
-animator.onFinish = function(name) log.info('The clip "' .. name .. '" finished.') end
+animator.onComplete = function(name) log.info('The clip "' .. name .. '" finished.') end
 animator:play('attack', true)  animator:queue('run')  animator:queue('idle')  animator.speed = 1.5  animator:update(dt)  animator:apply(sprite)]]
 
 -- Adds the clips of the walker sheet to an animator, with the run clip in the given loop mode.
@@ -37,7 +37,7 @@ function Animation:enter()
             self:record('Callback "onFrame" at frame 3 of "attack": the blow lands')
         end
     end
-    self.hero.animator.onFinish = function(name) self:record('Callback "onFinish" for "' .. name .. '"') end
+    self.hero.animator.onComplete = function(name) self:record('Callback "onComplete" for "' .. name .. '"') end
 
     self.walkers = {}
     for index, mode in ipairs(Animation.loops) do

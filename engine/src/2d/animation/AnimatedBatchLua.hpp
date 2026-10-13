@@ -33,7 +33,7 @@ class AnimatedBatchLua final {
     static constexpr std::array<std::string_view, 5> kAnimationFields{"animation", "speed", "scaleX", "scaleY", "partColors"};
     static constexpr std::array<std::string_view, 1> kListenerFields{"owner"};
 
-    // The state of the Lua call that advances a batch, where its finish listeners run.
+    // The state of the Lua call that advances a batch, where its complete listeners run.
     inline static lua_State* advancing = nullptr;
 
     [[nodiscard]] static AnimatedBatch& check(lua_State* L);

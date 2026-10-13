@@ -73,8 +73,8 @@ class Animation2DLua final {
     static int setCallback(lua_State* L, const char* name);
     static int animatorGetOnFrame(lua_State* L);
     static int animatorSetOnFrame(lua_State* L);
-    static int animatorGetOnFinish(lua_State* L);
-    static int animatorSetOnFinish(lua_State* L);
+    static int animatorGetOnComplete(lua_State* L);
+    static int animatorSetOnComplete(lua_State* L);
     static int animatorGetOnEvent(lua_State* L);
     static int animatorSetOnEvent(lua_State* L);
 

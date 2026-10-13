@@ -50,7 +50,7 @@ void Animator::play(std::string_view name, bool restart) {
     ++plays;
     playing = true;
     entered = false;
-    finishReported = false;
+    completeReported = false;
 }
 
 void Animator::queue(std::string_view name) {
@@ -145,11 +145,11 @@ void Animator::advance(const Animation& active, float amount) {
         return;
     }
 
-    if (isFinished() && !finishReported) {
-        finishReported = true;
+    if (isFinished() && !completeReported) {
+        completeReported = true;
         playing = false;
-        if (onFinish) {
-            onFinish(current);
+        if (onComplete) {
+            onComplete(current);
         }
     }
 

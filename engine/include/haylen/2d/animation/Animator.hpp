@@ -24,7 +24,7 @@ class Animator final {
   public:
     using FrameCallback = std::function<void(std::string_view animation, std::size_t frame)>;
     using EventCallback = std::function<void(std::string_view animation, std::string_view event, std::size_t frame)>;
-    using FinishCallback = std::function<void(std::string_view animation)>;
+    using CompleteCallback = std::function<void(std::string_view animation)>;
 
     void add(std::string name, Animation animation);
     [[nodiscard]] bool has(std::string_view name) const;
@@ -76,7 +76,7 @@ class Animator final {
     math::Vec2 pivot{0.5F, 0.5F};
     FrameCallback onFrame;
     EventCallback onEvent;
-    FinishCallback onFinish;
+    CompleteCallback onComplete;
 
   private:
     // A step that spans more passes than this runs only the last ones, so one call never visits an unbounded number of frames.
@@ -98,7 +98,7 @@ class Animator final {
     std::uint64_t plays = 0;
     bool playing = false;
     bool entered = false;
-    bool finishReported = false;
+    bool completeReported = false;
 };
 
 } // namespace haylen::animation2d

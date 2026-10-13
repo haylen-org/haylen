@@ -89,7 +89,7 @@ class AnimatedBatch final {
     void draw(graphics2d::Renderer& renderer, const graphics2d::DrawOrder& order = {}) const;
 
     // Emits the sprites whose one-shot animation ended, once per update that ended any.
-    core::Signal<std::span<const std::size_t>> finished;
+    core::Signal<std::span<const std::size_t>> completed;
 
   private:
     struct State {

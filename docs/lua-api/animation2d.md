@@ -311,7 +311,7 @@ An `Animator` plays named animations and applies the current frame to sprites. I
 | `pivotX`, `pivotY` | number | read and write | Pivot that `apply` gives sprites, as a fraction of the untrimmed frame. Default to 0.5. |
 | `onFrame` | function or nil | read and write | Called for every frame the animation enters. |
 | `onEvent` | function or nil | read and write | Called for every event of a frame the animation enters. |
-| `onFinish` | function or nil | read and write | Called when a one-shot animation ends. |
+| `onComplete` | function or nil | read and write | Called when a one-shot animation ends. |
 
 ### animator:add(name, anim)
 
@@ -398,7 +398,7 @@ animator:clearQueue()
 
 ### animator:update(dt)
 
-Advances the current animation by `dt` seconds times `speed`, calls `onFrame` and `onEvent` for every frame it enters, in order, even the frames a long update passes, and `onFinish`, and starts the next queued animation when the current pass ends. The events of the first frame run with the first update after an animation starts. A looping animation that a single update moves more than two cycles reports only the frames of its last two cycles. A callback that plays another animation stops the reports of the old one. Errors raised by the callbacks propagate out of `update`, and an animation that counts ticks raises `The animation "<name>" counts ticks, so it advances with "step".`.
+Advances the current animation by `dt` seconds times `speed`, calls `onFrame` and `onEvent` for every frame it enters, in order, even the frames a long update passes, and `onComplete`, and starts the next queued animation when the current pass ends. The events of the first frame run with the first update after an animation starts. A looping animation that a single update moves more than two cycles reports only the frames of its last two cycles. A callback that plays another animation stops the reports of the old one. Errors raised by the callbacks propagate out of `update`, and an animation that counts ticks raises `The animation "<name>" counts ticks, so it advances with "step".`.
 
 ### animator:step(ticks)
 
@@ -499,7 +499,7 @@ Called with the animation name and the frame number, counting from 1, for every 
 
 Called with the animation name, the event name and the frame number, counting from 1, for every event of every frame the animation enters, in order, including the first frame on the first update after the animation starts.
 
-### animator.onFinish(name)
+### animator.onComplete(name)
 
 Called once with the animation name when a one-shot animation reaches its end. The callback may call `play` to switch animations.
 
@@ -518,7 +518,7 @@ animator.onFrame = function(name, frame)
         log.info('The sword hits on frame 3.')
     end
 end
-animator.onFinish = function(name)
+animator.onComplete = function(name)
     animator:play('idle')
 end
 animator:play('attack')
@@ -570,7 +570,7 @@ Returns the numbers of the sprites whose one-shot animation ended in the last up
 
 ### batch:on(event, listener, options)
 
-Listens to `'finish'`, which calls the listener once per update with the list of the sprites whose one-shot animation ended in it, and returns a `Connection`. The table `options` takes `owner`, and without one the listener takes the default owner.
+Listens to `'complete'`, which calls the listener once per update with the list of the sprites whose one-shot animation ended in it, and returns a `Connection`. The table `options` takes `owner`, and without one the listener takes the default owner.
 
 ### batch:draw(order)
 
@@ -592,7 +592,7 @@ end
 
 scene.push({
     enter = function(self)
-        army:on('finish', function(fallen)
+        army:on('complete', function(fallen)
             for _, index in ipairs(fallen) do
                 army:set(index, {color = '#80FFFFFF'})
             end

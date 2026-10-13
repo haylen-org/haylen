@@ -59,7 +59,7 @@ TEST_F(AnimatedBatchTest, AdvancesEverySpriteAtItsOwnSpeed) {
 
     // A one-shot animation ends once, in the update that reaches its end.
     std::vector<std::size_t> heard;
-    batch.finished.connect([&heard](std::span<const std::size_t> ended) { heard.assign(ended.begin(), ended.end()); });
+    batch.completed.connect([&heard](std::span<const std::size_t> ended) { heard.assign(ended.begin(), ended.end()); });
     batch.update(0.4F);
     EXPECT_EQ(heard, (std::vector<std::size_t>{striking}));
     EXPECT_EQ(std::vector<std::size_t>(batch.getFinished().begin(), batch.getFinished().end()), heard);
@@ -163,7 +163,7 @@ TEST_F(AnimatedBatchLuaTest, PlaysCrowdsFromLua) {
             crowd:add({x = index * 20, y = 10, animation = index % 5 == 0 and 'die' or 'walk', speed = 1 + index % 2})
         end
         ended = {}
-        crowd:on('finish', function(list) for _, index in ipairs(list) do ended[#ended + 1] = index end end, {owner = crowd})
+        crowd:on('complete', function(list) for _, index in ipairs(list) do ended[#ended + 1] = index end end, {owner = crowd})
         crowd:update(0.25)
         local sprite = crowd:get(2)
         return crowd:size() .. ' ' .. table.concat(ended, ',') .. ' ' .. sprite.animation .. ' ' .. sprite.frame .. ' ' .. sprite.source.x
@@ -171,7 +171,7 @@ TEST_F(AnimatedBatchLuaTest, PlaysCrowdsFromLua) {
     // clang-format on
     EXPECT_EQ(fixture.lua("crowd:play(1, 'die', true) crowd:set(1, {speed = 2, scaleX = 2}) crowd:update(0.1) return crowd:animation(1) .. ' ' .. crowd:frame(1) .. ' ' .. crowd:get(1).width .. ' ' .. #crowd:finished()"), "die 2 32.0 1");
     EXPECT_EQ(fixture.lua("local ok, message = pcall(crowd.add, crowd, {animation = 'fly'}) return message:match('The animation.*')"), "The animation \"fly\" does not exist in this animated batch.");
-    EXPECT_EQ(fixture.lua("local ok, message = pcall(crowd.on, crowd, 'loop', function() end) return message:match('Unknown.*')"), "Unknown animated batch event \"loop\". Animated batches report \"finish\".");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(crowd.on, crowd, 'loop', function() end) return message:match('Unknown.*')"), "Unknown animated batch event \"loop\". Animated batches report \"complete\".");
 }
 
 } // namespace haylen::animation2d

@@ -14,7 +14,7 @@ Crowd.spacing = 34
 Crowd.code = [[
 local crowd = animation2d.newAnimatedBatch(atlas.texture, {punch = punch, jab = jab})
 crowd:add({x = x, y = y, animation = 'punch', speed = 0.8})
-crowd:on('finish', function(list) ... end)  -- One list per update.
+crowd:on('complete', function(list) ... end)  -- One list per update.
 crowd:update(dt)  crowd:draw()  -- One call each for the whole crowd.]]
 
 function Crowd:enter()
@@ -49,7 +49,7 @@ function Crowd:build()
         self.crowd:add({x = (column + 0.5) * Crowd.spacing, y = (row + 0.8) * Crowd.spacing * 1.2, animation = 'punch', speed = 0.6 + (index * 37 % 9) * 0.1, scaleX = 0.5, scaleY = 0.5, flipHorizontal = row % 2 == 1})
     end
     self.columns = columns
-    self.crowd:on('finish', function(ended)
+    self.crowd:on('complete', function(ended)
         self.jabs = self.jabs + #ended
         for _, index in ipairs(ended) do
             self.crowd:play(index, 'punch')

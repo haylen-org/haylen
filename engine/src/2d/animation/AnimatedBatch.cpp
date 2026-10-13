@@ -220,7 +220,7 @@ void AnimatedBatch::advance(float amount, core::JobSystem* jobs) {
         }
     }
     if (!endedSprites.empty()) {
-        finished.emit(endedSprites);
+        completed.emit(endedSprites);
     }
 }
 

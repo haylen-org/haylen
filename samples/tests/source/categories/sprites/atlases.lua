@@ -51,7 +51,7 @@ function Atlases:enter()
 
     -- The splat plays once, so it starts over a moment after it finishes.
     local splat = self.players.splat.animator
-    splat.onFinish = function()
+    splat.onComplete = function()
         timer.after(0.8, function() splat:play('splat', true) end, {owner = self})
     end
 
