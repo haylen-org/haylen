@@ -172,6 +172,7 @@ TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
     EXPECT_NE(invalid(R"({"kind": "table", "columns": [{"align": "middle"}]})").find("has an \"align\" other than \"start\""), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "table", "columns": [{"id": "a"}]})").find("Unknown key \"id\" in \"table.columns\"."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "table", "rows": [{"id": "a", "cells": []}, {"id": "a", "cells": []}]})").find("The property \"rows\" of a \"table\" uses the row id \"a\" more than once."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "table", "columns": [{"text": "Name"}], "rows": [{"id": "a", "cells": ["Ana", 12]}]})").find("The property \"rows\" of a \"table\" gives the row \"a\" 2 cells for 1 columns."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "dialog", "buttons": [{"id": "ok", "variant": "huge"}]})").find("The property \"buttons\" of a \"dialog\" has a variant other than \"default\", \"primary\", \"destructive\", \"toolbar\", \"icon\" or \"link\"."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "touchStick"})").find("The property \"action\" of a \"touchStick\" names the virtual stick"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "numberField", "min": 5, "max": 1})").find("must not be greater than \"max\""), std::string::npos);

@@ -16,13 +16,19 @@
 
 namespace haylen::ui {
 
+// A row holds at most one cell per column, and a row with fewer cells leaves the last columns empty.
 void Table::readProperties(PropertyReader& reader) {
-    if (const core::Json* parsed = reader.take("columns")) {
-        columns = readColumns(reader, *parsed);
+    const core::Json* parsedColumns = reader.take("columns");
+    const core::Json* parsedRows = reader.take("rows");
+    std::vector<Column> nextColumns = parsedColumns != nullptr ? readColumns(reader, *parsedColumns) : columns;
+    std::vector<Row> nextRows = parsedRows != nullptr ? readRows(reader, *parsedRows) : rows;
+    for (const Row& row : nextRows) {
+        if (row.cells.size() > nextColumns.size()) {
+            reader.fail(parsedRows != nullptr ? "rows" : "columns", "gives the row \"" + row.id + "\" " + std::to_string(row.cells.size()) + " cells for " + std::to_string(nextColumns.size()) + " columns");
+        }
     }
-    if (const core::Json* parsed = reader.take("rows")) {
-        rows = readRows(reader, *parsed);
-    }
+    columns = std::move(nextColumns);
+    rows = std::move(nextRows);
     reader.read("selected", selected);
 }
 

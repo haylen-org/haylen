@@ -510,6 +510,17 @@ TEST_F(ComponentTest, ScrollsAScrollToAnOffsetOrANodeOnCommand) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
+TEST_F(ComponentTest, RefusesTableRowsWithMoreCellsThanColumns) {
+    auto gui = mount(R"({"kind": "table", "id": "scores", "columns": [{"text": "Name"}, {"text": "Score"}], "rows": [{"id": "ana", "cells": ["Ana", 12]}, {"id": "bia", "cells": ["Bia"]}]})");
+    EXPECT_THROW(gui->set("scores", {{"columns", {{{"text", "Name"}}}}}), std::invalid_argument);
+    EXPECT_THROW(gui->set("scores", {{"rows", {{{"id", "leo"}, {"cells", {"Leo", 3, "extra"}}}}}}), std::invalid_argument);
+
+    // A refused change keeps the columns and the rows the table had.
+    gui->set("scores", {{"columns", {{{"text", "Name"}}, {{"text", "Score"}}, {{"text", "Rank"}}}}, {"rows", {{{"id", "leo"}, {"cells", {"Leo", 3, 1}}}}}});
+    frames();
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 // Typing reports only numbers inside the range, and the end of the editing brings any other number into it. Text that is not a finite number changes nothing.
 TEST_F(ComponentTest, CommitsTypedNumbersInsideTheRange) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "numberField", "id": "count", "value": 20, "min": 10, "max": 100}]})");
