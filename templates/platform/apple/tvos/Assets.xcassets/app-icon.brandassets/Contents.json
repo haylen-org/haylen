@@ -1,25 +1,25 @@
 {
   "assets": [
     {
-      "filename": "app_icon_store.imagestack",
+      "filename": "app-icon-store.imagestack",
       "idiom": "tv",
       "role": "primary-app-icon",
       "size": "1280x768"
     },
     {
-      "filename": "app_icon.imagestack",
+      "filename": "app-icon.imagestack",
       "idiom": "tv",
       "role": "primary-app-icon",
       "size": "400x240"
     },
     {
-      "filename": "top_shelf_wide.imageset",
+      "filename": "top-shelf-wide.imageset",
       "idiom": "tv",
       "role": "top-shelf-image-wide",
       "size": "2320x720"
     },
     {
-      "filename": "top_shelf.imageset",
+      "filename": "top-shelf.imageset",
       "idiom": "tv",
       "role": "top-shelf-image",
       "size": "1920x720"
