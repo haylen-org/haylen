@@ -171,7 +171,7 @@ A preload group names assets that load together in the background, report their 
             {"path": "audio/music/menu.ogg", "options": {"stream": true}}
         ],
         "gameplay": [
-            "maps/level_01.tmj",
+            "maps/level-01.tmj",
             "images/characters/",
             {"path": "sprites/hero.json", "type": "atlas"},
             "audio/effects/"

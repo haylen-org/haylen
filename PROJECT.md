@@ -926,7 +926,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - [x] **docs/audio.md**: mixer, barramentos, efeitos, sessões e interrupções.
 - [x] **docs/tiled.md**: recursos suportados e convenções do Tiny Island.
 - [x] **docs/desktop.md**: janelas sem moldura, transparentes, sempre no topo e com cliques atravessando, e monitores.
-- [x] **docs/platform_bridge.md** e **docs/native.md**: protocolo JSON, handlers nativos, bibliotecas nativas pelo FFI e integração com SDKs.
+- [x] **docs/platform-bridge.md** e **docs/native.md**: protocolo JSON, handlers nativos, bibliotecas nativas pelo FFI e integração com SDKs.
 - [x] **docs/lua-api.md** e **docs/lua-api/<modulo>.md**: referência completa de cada módulo Lua com exemplos executáveis, com uma página para `haylen`, `scene`, `events`, `signal`, `timer`, `tween`, `jobs`, `collections`, `log`, `graphics`, `graphics2d`, `animation2d`, `particles2d`, `lighting2d`, `viewport`, `window`, `tiled`, `physics2d`, `navigation2d`, `spatial2d`, `procedural2d`, `ai`, `math`, `input`, `ui`, `imgui`, `audio`, `localization`, `assets`, `storage`, `preferences`, `platform`, `native`, `net` e `debug`.
 
 ## 12. Fases de trabalho
@@ -1363,7 +1363,7 @@ A referência são jogos como o Taskbar Hero, que rodam numa faixa transparente 
 - [x] **Plugins nativos em C++** para quem compila a engine (apps C++), registrados pela aplicação, com o mesmo ciclo de vida dos plugins da engine e o próprio módulo Lua.
 - [x] **Guia de integração com SDKs** (`docs/native.md`): como integrar a Steam (API flat em C), o Epic Online Services (API em C, NAT P2P) e SDKs parecidos por FFI ou por plugin nativo, com os callbacks do SDK chegando na thread do frame. Os SDKs não entram no repositório.
 - [~] **Testes em todas as plataformas nativas**: uma biblioteca nativa de teste (`engine/tests/native/NativeTest.c`, com funções, structs, buffers e um callback) compilada para cada plataforma e chamada pelo Lua em 15 testes da engine e no `samples/system/native`, que passa no player desktop, no app macOS, no simulador iOS com framework dinâmico e biblioteca estática, no emulador Android arm64 e, pela bridge, na web com WebGPU e WebGL2. Os testes da engine também passam no CI do Windows e do Linux. Faltam o sample no tvOS, no Mac Catalyst, no Windows, no Linux e em aparelhos reais.
-- [x] **Documentação**: `docs/platform_bridge.md`, o guia `docs/native.md` e as páginas da API Lua.
+- [x] **Documentação**: `docs/platform-bridge.md`, o guia `docs/native.md` e as páginas da API Lua.
 
 #### Y. Consistência da API Lua
 
@@ -1455,7 +1455,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 **Sample, documentação, testes e regras**
 
 - [x] Categoria Plugins do projeto de testes (`PLG-001` a `PLG-015`) com o plugin de demonstração `samples/tests/plugins/native-demo/` (Swift com UIKit e AppKit, Kotlin, JavaScript e C), um teste por capacidade (chamadas na thread principal e em segundo plano, falha tipada, timeout e cancelamento, evento retido na carga, eventos do nativo, configuração com padrão, banner nativo no topo e na base com espaço reservado, toque no banner, tela nativa que cobre o app, seletor de arquivo, URL com o app rodando e a frio, erro do app entregue ao nativo e devolvido ao próximo app, e informações do plugin), validado no simulador iOS, no Mac Catalyst, no simulador tvOS, no app macOS, no emulador Android, na web (WebGPU e WebGL2) e no player de desktop, e no harness sem janela com a parte nativa ausente. O que a plataforma não tem responde `unsupported` (seletor de arquivo no tvOS, banner, cobertura e arquivo no player de desktop).
-- [~] Guia `docs/plugins.md` (usar e escrever plugins: formato, Lua, Swift e Objective-C, Kotlin e Java, JavaScript, overlays, espaço reservado, cobertura, ciclo de vida, configuração, arquivos por app e testes), com `docs/platform_bridge.md`, `docs/distribution.md` e `docs/lua-api/platform.md` atualizados. Falta a parte do plugin de demonstração e do sample.
+- [~] Guia `docs/plugins.md` (usar e escrever plugins: formato, Lua, Swift e Objective-C, Kotlin e Java, JavaScript, overlays, espaço reservado, cobertura, ciclo de vida, configuração, arquivos por app e testes), com `docs/platform-bridge.md`, `docs/distribution.md` e `docs/lua-api/platform.md` atualizados. Falta a parte do plugin de demonstração e do sample.
 - [x] Testes GoogleTest da parte da engine: resolução do Lua dos plugins e colisão de nomes, configuração com padrões, handles e `send`, espaço reservado com a UI ancorada, app coberto, erros para o host, eventos retidos, `HaylenNativeApi.registerPlugin` e política de thread, com 950 testes passando, também sob ThreadSanitizer.
 - [~] Regras dos plugins no AGENTS.md (pacote, `plugin.json`, configuração, montagem e nomes). Falta completar com as APIs nativas quando o Android e a Apple ficarem prontos.
 - [ ] Caminhos da Apple que o simulador não dispara: resultado combinado do fetch em segundo plano (o `simctl` recusa push silencioso), sessões de URL em segundo plano, atalhos, atividades, token do APNs, resposta de notificação tocada e notificações remotas no macOS, conferir num aparelho.
@@ -1512,7 +1512,7 @@ Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e w
 
 - [x] Testes GoogleTest no host sem janela: pedidos de diálogo gravados e respondidos pelo teste, validação das opções, resultados, cancelamento e timeout, `unsupported`, informações do sistema, tema e bateria com os eventos, e os bindings Lua.
 - [x] Testes da categoria Platform do projeto de testes com as informações, o tema e a bateria ao vivo, e um sample ou testes de diálogos com mensagem, abrir arquivos, salvar e pasta, validados no macOS, no simulador iOS, no Mac Catalyst, no simulador tvOS, no emulador Android e na web. Windows e Linux compilados e testados no CI. Os testes "System" e "Dialogs" do sample de plataforma foram conferidos no macOS, nos simuladores, no Mac Catalyst, no emulador Android e na web.
-- [x] Páginas `docs/lua-api/system.md` e `docs/lua-api/dialogs.md` completas com exemplos, `docs/platform_bridge.md` sem os métodos embutidos e as regras no AGENTS.md.
+- [x] Páginas `docs/lua-api/system.md` e `docs/lua-api/dialogs.md` completas com exemplos, `docs/platform-bridge.md` sem os métodos embutidos e as regras no AGENTS.md.
 
 **Para os plugins futuros, fora desta etapa**
 

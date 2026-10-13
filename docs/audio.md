@@ -180,7 +180,7 @@ local rain = audio.play(assets.load('sfx/rain.ogg'), {bus = 'ambience', loop = t
 audio.pause(radio)
 
 audio.pauseAll()
-audio.play(assets.load('sfx/dialog_open.wav'), {bus = 'ui'})
+audio.play(assets.load('sfx/dialog-open.wav'), {bus = 'ui'})
 audio.resumeAll()
 
 -- The rain plays again, and the radio that the player turned off stays off.

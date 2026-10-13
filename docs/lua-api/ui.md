@@ -286,7 +286,7 @@ local graphics = require('haylen.graphics')
 local ui = require('haylen.ui')
 
 ui.addFont('serif', 'fonts/serif.ttf')
-ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf'), fallbacks = {assets.font('fonts/cjk.ttf')}}))
+ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif-bold.ttf'), fallbacks = {assets.font('fonts/cjk.ttf')}}))
 ui.addFont('pixel', assets.font('fonts/pixel.fnt', {filter = 'nearest'}))
 
 -- Labels draw Japanese from the fallback, and headings draw with the bold face.
@@ -1696,7 +1696,7 @@ A placeholder for a view with nothing to show yet, with an optional picture, a t
 local ui = require('haylen.ui')
 
 ui.mount(ui.emptyState{
-    image = 'ui/empty_chest.png',
+    image = 'ui/empty-chest.png',
     title = 'Nothing here',
     message = 'Chop some trees to fill your inventory.',
 })
@@ -1772,9 +1772,9 @@ A picture that works as a button, with optional pictures for hover and press and
 local ui = require('haylen.ui')
 
 ui.mount(ui.imageButton{
-    image = 'ui/wood_button.png',
-    hoverImage = 'ui/wood_button_hover.png',
-    pressedImage = 'ui/wood_button_pressed.png',
+    image = 'ui/wood-button.png',
+    hoverImage = 'ui/wood-button-hover.png',
+    pressedImage = 'ui/wood-button-pressed.png',
     text = 'Start',
     scale = 2,
     onClick = function() print('start') end,

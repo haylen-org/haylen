@@ -85,7 +85,7 @@ local graphics = require('haylen.graphics')
 
 local serif = graphics.newFontFamily({
     regular = assets.font('fonts/serif.ttf'),
-    bold = assets.font('fonts/serif_bold.ttf'),
+    bold = assets.font('fonts/serif-bold.ttf'),
     mono = assets.font('fonts/mono.ttf'),
     fallbacks = {assets.font('fonts/cjk.ttf'), assets.font('fonts/symbols.ttf')},
 })
@@ -99,7 +99,7 @@ Creates a bitmap `Font` from the contents of a BMFont `.fnt` file, in its text o
 local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 
-local pixel = graphics.newBitmapFont(assets.bytes('fonts/pixel.fnt'), {assets.texture('fonts/pixel_0.png', {filter = 'nearest'})})
+local pixel = graphics.newBitmapFont(assets.bytes('fonts/pixel.fnt'), {assets.texture('fonts/pixel-0.png', {filter = 'nearest'})})
 ```
 
 ### graphics.newGridFont(texture, options)

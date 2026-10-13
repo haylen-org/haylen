@@ -290,11 +290,11 @@ Every error that stops the app, the one its error screen shows, reaches the nati
 
 ### Retained events
 
-Events that native code sends before the app listens, such as the deep link or the notification that opened the app or a purchase that finished while it was closed, are sent retained. A retained event waits, up to 32 per name, for the first listener of its name, which receives the waiting events in order, as the [platform bridge guide](platform_bridge.md#retained-events) describes. The web context sends one with `context.emit(event, payload, {retain: true})`, the context of an Apple plugin with `emitRetained:payload:`, the context of an Android plugin with `emitRetained(event, payload)`, and a native library with `emit(event, payload, 0, 0, HAYLEN_NATIVE_EMIT_RETAIN)` of `HaylenNativeApi`.
+Events that native code sends before the app listens, such as the deep link or the notification that opened the app or a purchase that finished while it was closed, are sent retained. A retained event waits, up to 32 per name, for the first listener of its name, which receives the waiting events in order, as the [platform bridge guide](platform-bridge.md#retained-events) describes. The web context sends one with `context.emit(event, payload, {retain: true})`, the context of an Apple plugin with `emitRetained:payload:`, the context of an Android plugin with `emitRetained(event, payload)`, and a native library with `emit(event, payload, 0, 0, HAYLEN_NATIVE_EMIT_RETAIN)` of `HaylenNativeApi`.
 
 ### Batched events
 
-A plugin that reports something many times per frame, such as a sensor, the location or the progress of a download, sends its events batched. The batched events of a name that arrive in one frame reach the Lua listener once, as one list of their payloads in order, so the app runs its listener once per frame instead of once per event, as the [platform bridge guide](platform_bridge.md#batched-events) describes. The flag goes next to the retain flag: `context.emit(event, payload, {batched: true})` on the web, `emit:payload:retain:batched:` of the context of an Apple plugin, `try context.emit(event, payload, batched: true)` in Swift, `emit(event, payload, retain, batched)` of the context of an Android plugin, and `HAYLEN_NATIVE_EMIT_BATCHED` in the flags of `emit` of `HaylenNativeApi`.
+A plugin that reports something many times per frame, such as a sensor, the location or the progress of a download, sends its events batched. The batched events of a name that arrive in one frame reach the Lua listener once, as one list of their payloads in order, so the app runs its listener once per frame instead of once per event, as the [platform bridge guide](platform-bridge.md#batched-events) describes. The flag goes next to the retain flag: `context.emit(event, payload, {batched: true})` on the web, `emit:payload:retain:batched:` of the context of an Apple plugin, `try context.emit(event, payload, batched: true)` in Swift, `emit(event, payload, retain, batched)` of the context of an Android plugin, and `HAYLEN_NATIVE_EMIT_BATCHED` in the flags of `emit` of `HaylenNativeApi`.
 
 ### Bytes
 
@@ -307,7 +307,7 @@ Calls, answers and events carry bytes next to their JSON, such as a photo, a rec
 | Web | `Uint8Array` in the parameters of a handler. | `ArrayBuffer`, `Uint8Array` and every other `ArrayBuffer` view in the result of a handler and in `context.emit`. |
 | Native library, C | An array of `HaylenNativeBuffer` next to the parameters of a handler. | `HaylenNativeBuffer` arrays of `resolve` and `emit`, which the JSON refers to as `{"$bytes": N}`. |
 
-The helpers of the Swift template for `Codable` values carry JSON alone, so a Swift handler that takes or returns bytes registers with `registerHandler:handler:` and answers a dictionary. The [platform bridge guide](platform_bridge.md#byte-buffers) describes the format, and [`graphics.newTexture(bytes)`](lua-api/graphics.md#graphicsnewtexturebytes-options) and [`audio.newSound(bytes)`](lua-api/audio.md#audionewsoundbytes-options) turn the bytes of images and sounds into engine resources.
+The helpers of the Swift template for `Codable` values carry JSON alone, so a Swift handler that takes or returns bytes registers with `registerHandler:handler:` and answers a dictionary. The [platform bridge guide](platform-bridge.md#byte-buffers) describes the format, and [`graphics.newTexture(bytes)`](lua-api/graphics.md#graphicsnewtexturebytes-options) and [`audio.newSound(bytes)`](lua-api/audio.md#audionewsoundbytes-options) turn the bytes of images and sounds into engine resources.
 
 ### Streams
 
@@ -338,7 +338,7 @@ The web module of a plugin exports `default function load(context)`, which the l
 | --- | --- |
 | `context.id` | The id of the plugin. |
 | `context.config` | The parameter values of `app.json` with the defaults of `plugin.json` applied. |
-| `context.register(method, handler)` | Answers `<id>.<method>`, like `Module.haylen.register` described in the [platform bridge guide](platform_bridge.md#web). |
+| `context.register(method, handler)` | Answers `<id>.<method>`, like `Module.haylen.register` described in the [platform bridge guide](platform-bridge.md#web). |
 | `context.registerScreen(name, open)` | Opens the screen `<id>.<name>` with `open(params, screen)`, in a popup, with a redirect or with UI of the page, as [web screens](#web-screens) describes. |
 | `context.restoredScreen` | The screen of the plugin that a redirect left before the page loaded again, with `id`, `name`, `token`, `resolve(value)` and `reject(error)`, or `null`, as [web screens](#web-screens) describes. |
 | `context.emit(event, payload, options)` | Sends `<id>.<event>`, retained when `options.retain` is `true` and batched when `options.batched` is `true`, with `ArrayBuffer` and `Uint8Array` values as bytes. |
@@ -883,7 +883,7 @@ The same plugin in Objective-C:
 | --- | --- |
 | `identifier` | The id of the plugin. |
 | `config` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as an `NSDictionary`. |
-| `registerHandler:handler:`, `registerCancellableHandler:handler:` | Answer `<id>.<method>`, like the handlers of `HaylenBridge` in the [platform bridge guide](platform_bridge.md#apple-platforms). |
+| `registerHandler:handler:`, `registerCancellableHandler:handler:` | Answer `<id>.<method>`, like the handlers of `HaylenBridge` in the [platform bridge guide](platform-bridge.md#apple-platforms). |
 | `registerScreen:handler:` | Opens the screen `<id>.<name>`, as [Apple screens](#apple-screens) describes. |
 | `openVideoStream:width:height:format:`, `openAudioStream:sampleRate:channels:format:capacity:` | Open the video or audio [stream](#streams) of a name, or return the one that is open, and return `nil` and log why for arguments the stream cannot take. |
 | `emit:payload:`, `emitRetained:payload:`, `emit:payload:retain:batched:` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained:payload:`, and retained, batched or both with `emit:payload:retain:batched:`. A payload is any value `NSJSONSerialization` accepts, with `NSData` values that cross as bytes, or `nil`. |
@@ -1163,7 +1163,7 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 | `application()` | The `Application` of the app. |
 | `activity()` | The running `HaylenActivity`, or `null` while there is none, as in `onLoad`. It is a `GameActivity` and so an `AppCompatActivity`, a `FragmentActivity` and a `ComponentActivity`, which SDKs take as it is. |
 | `config()` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as a `JSONObject`. |
-| `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform_bridge.md#android), on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread described in [threads](#threads). |
+| `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform-bridge.md#android), on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread described in [threads](#threads). |
 | `registerSuspend(method) { params -> result }` | Kotlin only, with `dev.haylen:haylen-coroutines`. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
 | `registerScreen(name, contract, input, output)`, `registerScreen(name, opener)` | Open the screen `<id>.<name>` through an Activity Result contract or an opener, as [Android screens](#android-screens) describes. |
 | `restoredScreen()` | The `HaylenScreen` of the plugin that showed when the process ended, which the plugin ends once its answer arrives, or `null`. |

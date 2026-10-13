@@ -316,7 +316,7 @@ build/cpp/embedding-<hash>/web/
   webgl2/                 The same files built for WebGL2.
 ```
 
-The backend picker runs the WebGPU build when `navigator.gpu` returns an adapter and the WebGL2 build otherwise, by pointing `Module.locateFile` at the chosen folder and loading `<backend>/<target>.js`. `?backend=webgpu` or `?backend=webgl2` forces one of them, and `?package=<url>` names a zipped package to download. Because the page is the target's own shell, everything a custom `WEB_SHELL` adds, such as page handlers for the [platform bridge](platform_bridge.md#web), works in the bundle as well. `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
+The backend picker runs the WebGPU build when `navigator.gpu` returns an adapter and the WebGL2 build otherwise, by pointing `Module.locateFile` at the chosen folder and loading `<backend>/<target>.js`. `?backend=webgpu` or `?backend=webgl2` forces one of them, and `?package=<url>` names a zipped package to download. Because the page is the target's own shell, everything a custom `WEB_SHELL` adds, such as page handlers for the [platform bridge](platform-bridge.md#web), works in the bundle as well. `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
 
 ### Page setup
 
@@ -350,7 +350,7 @@ Only a page that sets `Module.haylen.development` runs in development, which the
 | `stop()` | Ends the app and leaves an empty canvas until the next start. |
 | `setPaused(paused)`, `pause()`, `resume()` | Pauses or resumes the app. A paused app keeps its last frame and sees the pause as a suspend. |
 | `paused()` | Returns whether the app is paused. |
-| `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | Platform bridge handlers and events, retained for the first listener with `options.retain`, described in the [platform bridge guide](platform_bridge.md#web). |
+| `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | Platform bridge handlers and events, retained for the first listener with `options.retain`, described in the [platform bridge guide](platform-bridge.md#web). |
 | `createPluginContext(id, config)` | The context of the web module of a plugin, described in the [plugin guide](plugins.md#web-modules). |
 
 The runtime reports back through callbacks the page assigns to `Module.haylen`:

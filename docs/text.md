@@ -37,8 +37,8 @@ local graphics = require('haylen.graphics')
 
 local story = graphics.newFontFamily({
     regular = assets.font('fonts/serif.ttf'),
-    bold = assets.font('fonts/serif_bold.ttf'),
-    italic = assets.font('fonts/serif_italic.ttf'),
+    bold = assets.font('fonts/serif-bold.ttf'),
+    italic = assets.font('fonts/serif-italic.ttf'),
     mono = assets.font('fonts/mono.ttf'),
     fallbacks = {assets.font('fonts/cjk.ttf')},
 })
@@ -195,7 +195,7 @@ local graphics2d = require('haylen.graphics2d')
 local assets = require('haylen.assets')
 local scene = require('haylen.scene')
 
-local family = graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf')})
+local family = graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif-bold.ttf')})
 local sign = graphics2d.newRichText('[center][b]Harbor[/b]\n[size=70%][wave amp=10]Ferries at noon[/wave][/size][/center]', {family = family, size = 40, maxWidth = 400})
 
 scene.push({
@@ -218,7 +218,7 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local ui = require('haylen.ui')
 
-ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf')}))
+ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif-bold.ttf')}))
 ui.mount(ui.card{padding = 24,
     ui.richText{id = 'quest', text = '[b]New quest:[/b] find the [url=map]lost map[/url].', revealSpeed = 40, onLink = function(event)
         print('open', event.link)

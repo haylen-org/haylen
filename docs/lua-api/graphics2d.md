@@ -1820,7 +1820,7 @@ local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
 local base = assets.texture('characters/villager.png', {filter = 'linear'})
-local mask = assets.texture('characters/villager_mask.png', {filter = 'linear'})
+local mask = assets.texture('characters/villager-mask.png', {filter = 'linear'})
 local crowd = graphics2d.newSpriteBatch(base)
 local outfits = {
     {red = '#FFC0392B', green = '#FF2E86C1', blue = '#FF1E8449', yellow = '#FF6E2C00'},

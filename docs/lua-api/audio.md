@@ -285,7 +285,7 @@ Returns the playback position of a voice in seconds, or 0 for a finished voice.
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 
-local speech = audio.play(assets.load('voice/line_01.ogg'))
+local speech = audio.play(assets.load('voice/line-01.ogg'))
 print(audio.cursor(speech))
 ```
 
@@ -297,7 +297,7 @@ Moves the playback of a voice to a time in seconds, such as when a player drags 
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 
-local track = audio.playMusic(assets.load('music/album_03.ogg', 'sound', {stream = true}), {loop = false})
+local track = audio.playMusic(assets.load('music/album-03.ogg', 'sound', {stream = true}), {loop = false})
 audio.setCursor(track, 95)
 ```
 
@@ -400,7 +400,7 @@ Adds an effect at the end of the chain of a voice, before its bus. An effect tha
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 
-local voice = audio.play(assets.load('voice/line_01.ogg'))
+local voice = audio.play(assets.load('voice/line-01.ogg'))
 audio.addEffect(voice, audio.newEffect('bandpass', {cutoff = 1500, q = 1.5}))
 ```
 
@@ -413,7 +413,7 @@ local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 
 local radio = audio.newEffect('highpass', {cutoff = 600})
-local voice = audio.play(assets.load('voice/line_01.ogg'), {effects = {radio}})
+local voice = audio.play(assets.load('voice/line-01.ogg'), {effects = {radio}})
 audio.removeEffect(voice, radio)
 ```
 
