@@ -32,15 +32,15 @@ A capability enters as new names, never as a new meaning of an existing name. Th
 
 ### Returns
 
-- A function returns one value, or a pair whose meaning never changes, such as a width and a height, a value and an error message, or a changed flag and a new value in `haylen.imgui`. Anything that describes a thing, such as what holds the focus or a hit of a ray cast, is a table with named fields, so it gains fields without changing the ones apps read.
+- A function returns one value, or a few values whose meaning and order never change, such as a width and a height, a value and an error message, or a changed flag and a new value in `haylen.imgui`. Anything that describes a thing, such as what holds the focus or a hit of a ray cast, is a table with named fields, so it gains fields without changing the ones apps read.
 - Lists are Lua sequences. A list whose items describe things holds tables.
 - C++ returns structs for the same reason, and a struct gains members with defaults.
 
 ### Events and callbacks
 
-- An event or callback that carries data passes it as one table with named fields, or as at most two values whose order is part of the contract, such as `code` and `reason` of a closed socket. A later version adds fields to the table, never values before existing ones. Engine events of [`haylen.events`](lua-api/events.md) always pass one table, so `sceneEntered` passes `{scene}` and `guiMounted` passes `{gui}`.
+- An event or callback that carries data passes it as one table with named fields, or as at most two values whose order is part of the contract, such as `code` and `reason` of a closed socket. A later version adds fields to the table, never values before existing ones. Engine events of [`haylen.events`](lua-api/events.md) that carry data pass one table, so `sceneEntered` passes `{scene}` and `guiMounted` passes `{gui}`, and an event without data gains a table when it first carries some.
 - Event names and callback names use the same verbs for the same ideas across modules: `onComplete` and `'complete'` when something reaches its end, `onKill` when it leaves the engine, `Started` and `Finished` for the phases of a transition, and `Changed` for a value that changed.
-- Every function that registers a callback, starts a task or starts a job takes an `owner`, and without one it takes the default owner, so nothing runs for an owner that is gone, as the [owners of `haylen.events`](lua-api/events.md#owners) describe.
+- Every function that registers a listener, starts a task or starts a job takes an `owner`, and without one it takes the default owner, so nothing runs for an owner that is gone, as the [owners of `haylen.events`](lua-api/events.md#owners) describe.
 
 ### Asynchronous calls
 
