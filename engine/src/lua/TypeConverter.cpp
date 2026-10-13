@@ -32,6 +32,8 @@ const TypeConverter::NameTable<platform::TextInput::Action, 4> TypeConverter::kT
 
 const TypeConverter::NameTable<core::ProcessMode, 5> TypeConverter::kProcessModes = {{{"inherit", core::ProcessMode::Inherit}, {"pausable", core::ProcessMode::Pausable}, {"whenPaused", core::ProcessMode::WhenPaused}, {"always", core::ProcessMode::Always}, {"disabled", core::ProcessMode::Disabled}}};
 
+const TypeConverter::NameTable<core::MotionReduction, 3> TypeConverter::kMotionReductions = {{{"keep", core::MotionReduction::Keep}, {"shorten", core::MotionReduction::Shorten}, {"skip", core::MotionReduction::Skip}}};
+
 void TypeConverter::pushComponent(lua_State* L, int table, const char* name, lua_Integer position) {
     if (lua_getfield(L, table, name) == LUA_TNIL) {
         lua_pop(L, 1);

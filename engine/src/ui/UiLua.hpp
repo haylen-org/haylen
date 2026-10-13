@@ -37,6 +37,8 @@ class UiLua final {
     static constexpr const char* kHandlersKey = "haylen.ui.handlers";
     static constexpr std::array<std::string_view, 4> kMountFields{"placement", "layer", "owner", "sharedFocus"};
     static constexpr std::array<std::string_view, 1> kEventFields{"owner"};
+    static constexpr float kMinimumTextScale = 0.5F;
+    static constexpr float kMaximumTextScale = 4.0F;
 
     [[nodiscard]] static plugins::UiPlugin& getPlugin(lua_State* L);
     static void pushRoot(lua_State* L);
@@ -104,6 +106,8 @@ class UiLua final {
     static int scaleMode(lua_State* L);
     static int setScale(lua_State* L);
     static int scale(lua_State* L);
+    static int setTextScale(lua_State* L);
+    static int textScale(lua_State* L);
     static int direction(lua_State* L);
     static int kinds(lua_State* L);
     static int open(lua_State* L);

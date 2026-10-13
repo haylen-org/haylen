@@ -162,6 +162,7 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
     float repeatDelay = tween.getRepeatDelay();
     float timeScale = tween.getTimeScale();
     ProcessMode processMode = tween.getProcessMode();
+    MotionReduction motionReduction = tween.getMotionReduction();
     bool unscaled = tween.isUnscaled();
     bool fixed = tween.isFixedStep();
     bool autoKill = tween.isAutoKill();
@@ -172,6 +173,7 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
     lua::Table::readField(L, options, "repeatDelay", repeatDelay);
     lua::Table::readField(L, options, "timeScale", timeScale);
     lua::Table::readField(L, options, "processMode", processMode);
+    lua::Table::readField(L, options, "reducedMotion", motionReduction);
     lua::Table::readField(L, options, "unscaled", unscaled);
     lua::Table::readField(L, options, "fixedStep", fixed);
     lua::Table::readField(L, options, "autoKill", autoKill);
@@ -183,6 +185,7 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
     tween.setRepeatDelay(repeatDelay);
     tween.setTimeScale(timeScale);
     tween.setProcessMode(processMode);
+    tween.setMotionReduction(motionReduction);
     tween.setUnscaled(unscaled);
     tween.setFixedStep(fixed);
     tween.setAutoKill(autoKill);

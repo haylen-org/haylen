@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "haylen/core/Connection.hpp"
+#include "haylen/core/MotionReduction.hpp"
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
@@ -96,6 +97,14 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     }
     [[nodiscard]] bool isFixedStep() const noexcept {
         return fixedStep;
+    }
+
+    // What a root tween does while the system asks for reduced motion. A tween that skips completes at once, and one that repeats forever holds still until the system no longer asks for it.
+    void setMotionReduction(MotionReduction value) noexcept {
+        motionReduction = value;
+    }
+    [[nodiscard]] MotionReduction getMotionReduction() const noexcept {
+        return motionReduction;
     }
 
     // A root tween that auto-kills leaves the manager when it completes. Turn it off to replay, reverse or seek a finished tween.
@@ -263,6 +272,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     int repeatCount = 0;
     LoopMode loopMode = LoopMode::Restart;
     ProcessMode processMode = ProcessMode::Inherit;
+    MotionReduction motionReduction = MotionReduction::Keep;
     bool unscaled = false;
     bool fixedStep = false;
     bool autoKill = true;

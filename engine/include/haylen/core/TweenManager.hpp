@@ -30,6 +30,14 @@ class TweenManager final {
     // Advances fixed-step tweens by one fixed step of the clock.
     void fixedUpdate(const FrameClock& clock);
 
+    // Whether the system asks for reduced motion, which the engine follows every frame, so root tweens shorten or skip as their motion reduction says.
+    void setReducedMotion(bool value) noexcept {
+        reducedMotion = value;
+    }
+    [[nodiscard]] bool isReducedMotion() const noexcept {
+        return reducedMotion;
+    }
+
     // Makes the tween the only one animating its fields: every other tween gives up the same fields of the same targets, and tweens left with nothing to animate are killed.
     void overwrite(const PropertyTween& tween);
 
@@ -62,6 +70,9 @@ class TweenManager final {
         float timeScale = 1.0F;
     };
 
+    // A tween that shortens under reduced motion plays this many times faster.
+    static constexpr float kShortenedSpeed = 4.0F;
+
     [[nodiscard]] std::size_t getGroup(std::string_view tag);
     void advanceAll(const FrameClock& clock, bool fixed);
     [[nodiscard]] std::vector<std::shared_ptr<Tween>> collectTagged(std::string_view tag) const;
@@ -74,6 +85,7 @@ class TweenManager final {
     std::vector<std::shared_ptr<Tween>> pending;
     std::vector<Group> groups{Group{}};
     bool updating = false;
+    bool reducedMotion = false;
 };
 
 } // namespace haylen::core

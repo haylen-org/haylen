@@ -112,7 +112,7 @@ const std::string& Context::getFontName(Theme::Font role) const noexcept {
 }
 
 float Context::getFontSize(Theme::Font role) const noexcept {
-    return resolve<float>([role](const Style& style) { return style.getFont(role).size; }, [role](const Theme& theme) { return theme.getFont(role).size; });
+    return textScale * resolve<float>([role](const Style& style) { return style.getFont(role).size; }, [role](const Theme& theme) { return theme.getFont(role).size; });
 }
 
 bool Context::isFontBold(Theme::Font role) const noexcept {

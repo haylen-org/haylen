@@ -13,6 +13,7 @@
 
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/LoadingView.hpp"
+#include "haylen/core/MotionReduction.hpp"
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/core/Scene.hpp"
 #include "haylen/core/SceneView.hpp"
@@ -40,6 +41,9 @@ class SceneManager final {
 
         // Holds back input events of the scenes and the action map until the change ends, including the load of the next scene.
         bool blockInput = true;
+
+        // What the transition does while the system asks for reduced motion, which the change reads when it starts.
+        MotionReduction motionReduction = MotionReduction::Keep;
 
         // Fades through a color, the classic transition.
         [[nodiscard]] static Transition fade(float seconds, math::Color color = math::Color::black());
@@ -180,6 +184,9 @@ class SceneManager final {
     void renderTransition(graphics2d::Renderer& renderer, const SceneView& view);
 
   private:
+    // A transition that shortens under reduced motion plays this many times faster.
+    static constexpr float kShortenedSpeed = 4.0F;
+
     enum class Operation : std::uint8_t {
         Push,
         Replace,
@@ -264,6 +271,7 @@ class SceneManager final {
     void publishPhase(std::string_view name, const Change& change);
     void prepareImages();
     void prepareLoadingImage();
+    void reduceMotion(Transition& transition) const;
     void endTransition() noexcept;
     [[nodiscard]] std::size_t getKeptLevel(const Change& change) const noexcept;
     [[nodiscard]] float getProgress(const Change& change) const;

@@ -61,6 +61,7 @@ SceneManager::Transition SceneLua::readTransition(lua_State* L, int index) {
     lua::Table::readField(L, index, "duration", transition.duration);
     lua::Table::readField(L, index, "ease", transition.ease);
     lua::Table::readField(L, index, "blockInput", transition.blockInput);
+    lua::Table::readField(L, index, "reducedMotion", transition.motionReduction);
 
     if (lua_getfield(L, index, "effect") == LUA_TTABLE) {
         lua_getfield(L, index, "color");

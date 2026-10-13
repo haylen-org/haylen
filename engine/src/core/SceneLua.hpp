@@ -18,8 +18,8 @@ class SceneLua final {
     static void pushLoad(lua_State* L, SceneLoad& load);
 
   private:
-    static constexpr std::array<std::string_view, 7> kTransitionFields{"duration", "effect", "direction", "color", "ease", "blockInput", "onComplete"};
-    static constexpr std::array<std::string_view, 14> kChangeFields{"duration", "effect", "direction", "color", "ease", "blockInput", "onComplete", "onError", "params", "loading", "loadingDelay", "minimumLoadingTime", "loadingFadeOut", "unloadBeforeLoad"};
+    static constexpr std::array<std::string_view, 8> kTransitionFields{"duration", "effect", "direction", "color", "ease", "blockInput", "reducedMotion", "onComplete"};
+    static constexpr std::array<std::string_view, 15> kChangeFields{"duration", "effect", "direction", "color", "ease", "blockInput", "reducedMotion", "onComplete", "onError", "params", "loading", "loadingDelay", "minimumLoadingTime", "loadingFadeOut", "unloadBeforeLoad"};
 
     [[nodiscard]] static SceneManager::Transition readTransition(lua_State* L, int index);
     [[nodiscard]] static SceneManager::Options readOptions(lua_State* L, int index);

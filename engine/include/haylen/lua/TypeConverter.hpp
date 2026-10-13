@@ -30,6 +30,7 @@
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
 #include "haylen/audio/Sound.hpp"
 #include "haylen/core/Connection.hpp"
+#include "haylen/core/MotionReduction.hpp"
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
@@ -102,6 +103,7 @@ class TypeConverter final {
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
     static const NameTable<core::ProcessMode, 5> kProcessModes;
+    static const NameTable<core::MotionReduction, 3> kMotionReductions;
     static constexpr std::array<std::string_view, 8> kEasingFields{"curve", "overshoot", "amplitude", "period", "steps", "position", "cubicBezier", "points"};
     static constexpr std::array<std::string_view, 4> kPartColorFields{"red", "green", "blue", "yellow"};
 
@@ -454,6 +456,15 @@ template <> struct EnumNames<core::ProcessMode> {
     }
     static std::string_view name(core::ProcessMode value) {
         return TypeConverter::toName(TypeConverter::kProcessModes, value);
+    }
+};
+
+template <> struct EnumNames<core::MotionReduction> {
+    static std::optional<core::MotionReduction> fromName(std::string_view name) {
+        return TypeConverter::fromTable(TypeConverter::kMotionReductions, name);
+    }
+    static std::string_view name(core::MotionReduction value) {
+        return TypeConverter::toName(TypeConverter::kMotionReductions, value);
     }
 };
 

@@ -406,8 +406,13 @@ A theme file has these keys.
 | `fontFiles` | Font names mapped to TrueType or OpenType files in the package assets, registered unless a font with that name already exists. The function `ui.addFont(name, path)` registers fonts from Lua too, and `ui.addFont(name, family)` registers a font family, whose faces and fallback fonts every text component of the roles that name it uses. |
 | `surfaces` | [Surfaces](../lua-api/ui.md#theme-surfaces) mapped to nine-slice images, or to `null` to go back to flat colors. |
 | `imageFilter` | The filter that the pictures of `image`, `icon`, `imageButton`, `avatar`, `circularProgress` and the touch controls load with, `'nearest'` (the default) for pixel art or `'linear'` for painted art that the screen scales. Switching to a theme with another filter loads the pictures again. |
+| `highContrast` | The name of the theme the UI draws while the system asks for higher contrast, or `false` to keep this theme. A theme takes the one of its base when it leaves the key out, so themes built on `dark` and `light` switch to `darkHighContrast` and `lightHighContrast`. |
 
 Unknown keys, roles, metrics and surfaces are errors, so a typo in a theme file never goes unnoticed.
+
+### Accessibility settings
+
+The UI follows the [accessibility settings](../lua-api/accessibility.md) of the system on its own. While the system asks for higher contrast, it draws the high contrast theme that the chosen theme names, and the engine ships `darkHighContrast` and `lightHighContrast`, with white or black text, borders of full contrast and a yellow or deep blue focus ring. While the system asks for reduced transparency, it draws the colors `window`, `panel`, `raised` and `tooltip` of the theme opaque. Its text scales with the text size of the system, so every font role grows and the controls around the text grow with it, until the app sets a scale of its own with [`ui.setTextScale`](../lua-api/ui.md#uisettextscalescale). The function `ui.theme()` keeps returning the theme the app chose, and `ui.themeColor` and the other readers of the theme return what the UI draws.
 
 ### Colors, metrics and fonts
 

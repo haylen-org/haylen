@@ -339,7 +339,7 @@ TEST_F(UiLuaTest, SetsTheDirectionOfTheUiAndOfNodes) {
 
 TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     fixture.runLua("ui = require('haylen.ui')");
-    EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. table.concat(ui.themes(), ',')"), "dark dark,light");
+    EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. table.concat(ui.themes(), ',')"), "dark dark,darkHighContrast,light,lightHighContrast");
     EXPECT_EQ(fixture.lua("ui.setTheme('light') return ui.theme()"), "light");
     EXPECT_NE(fixture.lua("ui.setTheme('marble')").find("no theme named \"marble\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return tostring(ui.usingPointer()) .. tostring(ui.usingKeyboard())"), "falsefalse");
@@ -450,7 +450,7 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     fixture.runLua("ui.setTheme('mint')");
     EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex() .. ' ' .. ui.themeColor('window'):toHex() .. ' ' .. ui.themeMetric('controlHeight') .. ' ' .. ui.themeFont('title').size .. ' ' .. ui.themeImageFilter()"), "#FF00AA88 #FFF4F5F9 80.0 72.0 linear");
     EXPECT_EQ(fixture.lua("local s = ui.themeSurface('panel') return tostring(s.slice):match('^haylen.NineSlice') .. ' ' .. s.scale .. ' ' .. table.concat(s.padding, ',') .. ' ' .. s.tint:toHex() .. ' ' .. tostring(s.colorize)"), "haylen.NineSlice 1.0 1.0,2.0,3.0,4.0 #FF808080 true");
-    EXPECT_EQ(fixture.lua("return table.concat(ui.themes(), ',')"), "dark,light,mint");
+    EXPECT_EQ(fixture.lua("return table.concat(ui.themes(), ',')"), "dark,darkHighContrast,light,lightHighContrast,mint");
 
     EXPECT_NE(fixture.lua("ui.themeColor('purple')").find("The theme has no color role named \"purple\"."), std::string::npos);
     EXPECT_NE(fixture.lua("ui.themeMetric('height')").find("The theme has no metric named \"height\"."), std::string::npos);
@@ -458,6 +458,63 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     EXPECT_NE(fixture.lua("ui.themeSurface('floor')").find("The theme has no surface named \"floor\"."), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addTheme({colors = {}})").find("A theme needs a name."), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addTheme({name = 'x'}, 'marble')").find("no theme named \"marble\" to start from"), std::string::npos);
+}
+
+TEST(UiLuaThemeTest, FollowsTheContrastAndTransparencyOfTheSystem) {
+    test::EngineFixture fixture;
+    fixture.runLua("ui = require('haylen.ui')");
+    EXPECT_EQ(fixture.lua("return ui.themeColor('text'):toHex() .. ' ' .. ui.themeColor('tooltip'):toHex()"), "#FFE8EAF2 #F20F111A");
+
+    // Higher contrast draws the high contrast theme the chosen theme names, which stays the chosen one, and reduced transparency draws the surfaces opaque.
+    fixture.host().setAccessibilitySettings({.highContrast = true});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. ui.themeColor('text'):toHex() .. ' ' .. ui.themeColor('focus'):toHex()"), "dark #FFFFFFFF #FFFFD60A");
+    fixture.runLua("ui.setTheme('light')");
+    EXPECT_EQ(fixture.lua("return ui.themeColor('text'):toHex()"), "#FF000000");
+    fixture.host().setAccessibilitySettings({.reducedTransparency = true});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return ui.themeColor('text'):toHex() .. ' ' .. ui.themeColor('tooltip'):toHex() .. ' ' .. ui.themeColor('hover'):toHex()"), "#FF1B1E2B #FF1B1E2B #0F000000");
+
+    // An app theme takes the high contrast theme of its base, names another one or keeps itself with false.
+    fixture.host().setAccessibilitySettings({.highContrast = true});
+    fixture.frames(1);
+    // clang-format off
+    fixture.runLua(R"(
+        ui.addTheme({name = 'calm', colors = {text = '#FF102030'}}, 'dark')
+        ui.addTheme({name = 'bold', colors = {text = '#FF00FF00'}, highContrast = false}, 'dark')
+        ui.addTheme({name = 'soft', colors = {text = '#FF405060'}, highContrast = 'bold'}, 'dark')
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("ui.setTheme('calm') return ui.themeColor('text'):toHex()"), "#FFFFFFFF");
+    EXPECT_EQ(fixture.lua("ui.setTheme('bold') return ui.themeColor('text'):toHex()"), "#FF00FF00");
+    EXPECT_EQ(fixture.lua("ui.setTheme('soft') return ui.themeColor('text'):toHex()"), "#FF00FF00");
+    EXPECT_NE(fixture.lua("ui.addTheme({name = 'odd', highContrast = 3})").find("The high contrast theme of a theme must be the name of a theme or \"false\"."), std::string::npos);
+    fixture.runLua("ui.addTheme({name = 'lost', highContrast = 'missing'})");
+    EXPECT_NE(fixture.lua("ui.setTheme('lost')").find("The theme \"lost\" names the high contrast theme \"missing\", which the UI does not know."), std::string::npos);
+}
+
+TEST(UiLuaThemeTest, ScalesTheTextWithTheSystemUnlessTheAppSetsAScale) {
+    test::EngineFixture fixture;
+    fixture.runLua("ui = require('haylen.ui') gui = ui.mount(ui.column{ui.label{id = 'title', text = 'Settings'}}, {placement = 'screen'})");
+    fixture.frames(2);
+    const std::string normal = fixture.lua("return gui:bounds('title').height");
+    EXPECT_EQ(fixture.lua("local scale, system = ui.textScale() return scale .. ' ' .. tostring(system)"), "1.0 true");
+
+    fixture.host().setAccessibilitySettings({.textScale = 2.0F});
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return ui.textScale()"), "2.0");
+    EXPECT_GT(std::stof(fixture.lua("return gui:bounds('title').height")), std::stof(normal) * 1.5F);
+
+    fixture.runLua("ui.setTextScale(1)");
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("local scale, system = ui.textScale() return scale .. ' ' .. tostring(system)"), "1.0 false");
+    EXPECT_EQ(fixture.lua("return gui:bounds('title').height"), normal);
+    fixture.runLua("ui.setTextScale('system')");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return ui.textScale()"), "2.0");
+    for (const char* value : {"0.25", "5", "'large'", "nil"}) {
+        EXPECT_NE(fixture.lua(std::string("ui.setTextScale(") + value + ")").find("The text scale of the UI is a number from 0.5 to 4, or \"system\" to follow the text size of the system."), std::string::npos) << value;
+    }
 }
 
 // Labels and every other text component draw with the faces of the family of their role, bold where the role asks for it, and take the characters the face lacks from the fallbacks, while rich text of a role lines up with them.

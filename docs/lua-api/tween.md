@@ -70,6 +70,7 @@ Every tween and timeline takes an optional options table, and unknown keys raise
 | `tag` | string | `''` | Group name for the tag functions, such as `tween.killTag` and `tween.setTimeScale`. |
 | `owner` | table or userdata | `nil` | Kills the tween when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. A tween that inherits its process mode follows the mode of its owner every frame, so it changes along with the owner. |
 | `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. |
+| `reducedMotion` | string | `'keep'` | What the tween does while the system asks for [reduced motion](accessibility.md): `'keep'` plays it as it is, `'shorten'` plays it four times faster and `'skip'` completes it at once with its callbacks, while a tween that repeats forever holds still until the system no longer asks for it. |
 | `unscaled` | boolean | `false` | Counts real time, ignoring the time scale. |
 | `fixedStep` | boolean | `false` | Advances with the fixed steps of physics instead of once per frame. |
 | `autoKill` | boolean | `true` | Leaves the engine when it completes. Turn it off to replay, reverse or seek a finished tween. |

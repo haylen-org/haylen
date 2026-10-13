@@ -14,6 +14,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/platform/Accessibility.hpp"
 #include "haylen/platform/Event.hpp"
 
 namespace haylen::core {
@@ -448,6 +449,19 @@ bool SceneManager::step(const std::shared_ptr<Change>& change, float& remaining)
     return true;
 }
 
+// A transition that skips under reduced motion switches at once without its effect, and one that shortens plays in a quarter of its time.
+void SceneManager::reduceMotion(Transition& transition) const {
+    if (!engine.getAccessibility().getSettings().reducedMotion) {
+        return;
+    }
+    if (transition.motionReduction == MotionReduction::Skip) {
+        transition.duration = 0.0F;
+        transition.effect.reset();
+    } else if (transition.motionReduction == MotionReduction::Shorten) {
+        transition.duration /= kShortenedSpeed;
+    }
+}
+
 void SceneManager::start(const std::shared_ptr<Change>& change) {
     change->from = getTopShared();
     const std::shared_ptr<Scene>& scene = change->scene;
@@ -471,6 +485,7 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
         return;
     }
 
+    reduceMotion(change->options.transition);
     const TransitionEffect* effect = change->options.transition.effect.get();
     change->covering = effect != nullptr && effect->getSwitchProgress() > 0.0F;
     if (!change->covering) {

@@ -305,6 +305,7 @@ void Engine::frame(double frameSeconds) {
             current.platform->pump();
             current.system->pump();
             current.accessibility->pump();
+            current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
             current.dialogs->pump();
             current.screens->pump();
         }

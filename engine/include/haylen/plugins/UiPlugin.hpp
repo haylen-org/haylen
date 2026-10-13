@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <span>
 #include <string>
@@ -82,9 +83,15 @@ class UiPlugin final : public Plugin {
     // Hands out the events of every mounted GUI once per frame, before the app updates.
     core::Signal<ui::Gui&, const ui::Event&> events;
 
+    // The theme the app chose. While the system asks for higher contrast the UI draws the high contrast theme that the chosen theme names, and while it asks for reduced transparency it draws the surfaces of the theme opaque, so `getTheme` returns the theme the UI draws. Throws for a theme whose high contrast theme the UI does not know.
     void addTheme(ui::Theme theme);
     void setTheme(std::string_view name);
-    [[nodiscard]] const ui::Theme& getTheme() const;
+    [[nodiscard]] const std::string& getThemeName() const noexcept {
+        return themeName;
+    }
+    [[nodiscard]] const ui::Theme& getTheme() const noexcept {
+        return shownTheme;
+    }
 
     // Returns a registered theme, or null for a name the UI does not know.
     [[nodiscard]] const ui::Theme* findTheme(std::string_view name) const;
@@ -117,6 +124,14 @@ class UiPlugin final : public Plugin {
         return scaling;
     }
 
+    // How much larger the text of the UI draws than the sizes of its themes, or nothing to follow the text scale of the system, which is how the UI starts.
+    void setTextScale(std::optional<float> value) noexcept {
+        textScale = value;
+    }
+    [[nodiscard]] const std::optional<float>& getTextScale() const noexcept {
+        return textScale;
+    }
+
     // Shades the screen outside the safe area and outlines it over everything, to check layouts against notches and system bars. The `debug.showSafeArea` option of `app.json` turns it on at start.
     void setSafeAreaVisible(bool value) noexcept {
         safeAreaVisible = value;
@@ -138,6 +153,8 @@ class UiPlugin final : public Plugin {
         std::uint64_t order = 0;
     };
 
+    // Builds the theme the UI draws from the chosen theme and the accessibility settings, and applies it.
+    void applyTheme(bool highContrast, bool reducedTransparency);
     void collectGuis(core::Engine& engine, const core::SceneView& view);
     void deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event);
     void deliverAtOnce(ui::Gui& gui, const ui::Event& event);
@@ -161,6 +178,10 @@ class UiPlugin final : public Plugin {
     std::unique_ptr<ui::Context> context;
     std::map<std::string, ui::Theme, std::less<>> themes;
     std::string themeName = "dark";
+    ui::Theme shownTheme = ui::Theme::dark();
+    bool shownHighContrast = false;
+    bool shownOpaque = false;
+    std::optional<float> textScale;
     std::vector<Mounted> guis;
 
     // The GUIs whose events the update delivers and those a view draws, kept between frames so they allocate nothing.

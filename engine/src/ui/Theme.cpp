@@ -167,6 +167,7 @@ std::optional<Theme::Surface> Theme::surfaceFromName(std::string_view value) noe
 Theme Theme::dark() {
     Theme theme;
     theme.name = "dark";
+    theme.highContrast = "darkHighContrast";
     for (std::size_t index = 0; index < kColorCount; ++index) {
         theme.colors[index] = math::Color::fromHex(kColorRoles[index].dark);
     }
@@ -182,17 +183,44 @@ Theme Theme::dark() {
 Theme Theme::light() {
     Theme theme = dark();
     theme.name = "light";
+    theme.highContrast = "lightHighContrast";
     for (std::size_t index = 0; index < kColorCount; ++index) {
         theme.colors[index] = math::Color::fromHex(kColorRoles[index].light);
     }
     return theme;
 }
 
+Theme Theme::darkHighContrast() {
+    Theme theme = dark();
+    theme.name = "darkHighContrast";
+    theme.highContrast.clear();
+    for (std::size_t index = 0; index < kColorCount; ++index) {
+        theme.colors[index] = math::Color::fromHex(kColorRoles[index].darkHighContrast);
+    }
+    return theme;
+}
+
+Theme Theme::lightHighContrast() {
+    Theme theme = dark();
+    theme.name = "lightHighContrast";
+    theme.highContrast.clear();
+    for (std::size_t index = 0; index < kColorCount; ++index) {
+        theme.colors[index] = math::Color::fromHex(kColorRoles[index].lightHighContrast);
+    }
+    return theme;
+}
+
+void Theme::makeSurfacesOpaque() noexcept {
+    for (const Color role : {Color::Window, Color::Panel, Color::Raised, Color::Tooltip}) {
+        colors[static_cast<std::size_t>(role)].a = 1.0F;
+    }
+}
+
 Theme Theme::fromJson(const core::Json& document, const Theme& base, const TextureLoader& loadTexture) {
     if (!document.is_object()) {
         throw std::invalid_argument("A theme must be a JSON object.");
     }
-    core::JsonValidator::requireKnownKeys(document, {"name", "colors", "metrics", "fonts", "fontFiles", "surfaces", "imageFilter"}, "the theme");
+    core::JsonValidator::requireKnownKeys(document, {"name", "colors", "metrics", "fonts", "fontFiles", "surfaces", "imageFilter", "highContrast"}, "the theme");
     if (!document.contains("name") || !document.at("name").is_string() || document.at("name").get<std::string>().empty()) {
         throw std::invalid_argument("A theme needs a name.");
     }
@@ -206,6 +234,16 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
             throw std::invalid_argument("The image filter of the theme must be \"nearest\" or \"linear\".");
         }
         theme.imageFilter = *filter;
+    }
+    if (document.contains("highContrast")) {
+        const core::Json& value = document.at("highContrast");
+        if (value.is_boolean() && !value.get<bool>()) {
+            theme.highContrast.clear();
+        } else if (value.is_string() && !value.get<std::string>().empty()) {
+            theme.highContrast = value.get<std::string>();
+        } else {
+            throw std::invalid_argument("The high contrast theme of a theme must be the name of a theme or \"false\".");
+        }
     }
 
     for (const auto& [key, value] : readSection(document, "colors").items()) {

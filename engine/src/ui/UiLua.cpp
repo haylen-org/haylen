@@ -637,7 +637,7 @@ int UiLua::setTheme(lua_State* L) {
 }
 
 int UiLua::theme(lua_State* L) {
-    lua::Stack::push(L, getPlugin(L).getTheme().getName());
+    lua::Stack::push(L, getPlugin(L).getThemeName());
     return 1;
 }
 
@@ -910,6 +910,32 @@ int UiLua::scale(lua_State* L) {
     return 3;
 }
 
+// Sets how much larger the text of the UI draws than its themes with `setTextScale(scale)`, or follows the text size of the system again with `setTextScale('system')`.
+int UiLua::setTextScale(lua_State* L) {
+    plugins::UiPlugin& plugin = getPlugin(L);
+    if (lua_type(L, 1) == LUA_TSTRING && lua::Stack::read<std::string_view>(L, 1) == "system") {
+        plugin.setTextScale(std::nullopt);
+        return 0;
+    }
+    if (lua_type(L, 1) != LUA_TNUMBER) {
+        return luaL_error(L, "The text scale of the UI is a number from 0.5 to 4, or \"system\" to follow the text size of the system.");
+    }
+    const auto factor = lua::Stack::read<float>(L, 1);
+    if (!(factor >= kMinimumTextScale && factor <= kMaximumTextScale)) {
+        return luaL_error(L, "The text scale of the UI is a number from 0.5 to 4, or \"system\" to follow the text size of the system.");
+    }
+    plugin.setTextScale(factor);
+    return 0;
+}
+
+// Returns the text scale the UI draws with and whether it follows the system.
+int UiLua::textScale(lua_State* L) {
+    plugins::UiPlugin& plugin = getPlugin(L);
+    lua::Stack::push(L, plugin.getContext().getTextScale());
+    lua::Stack::push(L, !plugin.getTextScale().has_value());
+    return 2;
+}
+
 int UiLua::setSafeAreaVisible(lua_State* L) {
     getPlugin(L).setSafeAreaVisible(lua::Stack::read<bool>(L, 1));
     return 0;
@@ -922,7 +948,7 @@ int UiLua::kinds(lua_State* L) {
 
 int UiLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"setImage", &lua::Binding::native<&setImage>}, {"removeImage", &lua::Binding::native<&removeImage>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
+        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"setImage", &lua::Binding::native<&setImage>}, {"removeImage", &lua::Binding::native<&removeImage>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"setTextScale", &lua::Binding::native<&setTextScale>}, {"textScale", &lua::Binding::native<&textScale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     lua_createtable(L, 0, 1);

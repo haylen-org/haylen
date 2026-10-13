@@ -257,6 +257,44 @@ TEST(TweenManagerTest, PlaysEasedProgressWithDelayAndCallbacks) {
     EXPECT_FLOAT_EQ(tween->getEase().apply(0.5F), 0.25F);
 }
 
+TEST(TweenManagerTest, ShortensOrSkipsTweensUnderReducedMotion) {
+    TweenRig rig;
+    Box kept;
+    Box shortened;
+    Box skipped;
+    Box forever;
+    rig.tweenX(kept, 1.0F, core::TweenProperty::to(10.0));
+    rig.tweenX(shortened, 1.0F, core::TweenProperty::to(10.0))->setMotionReduction(core::MotionReduction::Shorten);
+    bool completed = false;
+    auto skipping = rig.tweenX(skipped, 1.0F, core::TweenProperty::to(10.0));
+    skipping->setMotionReduction(core::MotionReduction::Skip);
+    skipping->setCallbacks({.complete = [&completed] { completed = true; }});
+    auto looping = rig.tweenX(forever, 1.0F, core::TweenProperty::to(10.0));
+    looping->setRepeatCount(-1);
+    looping->setMotionReduction(core::MotionReduction::Skip);
+
+    // Without reduced motion every tween plays as it is.
+    rig.step(0.125);
+    EXPECT_DOUBLE_EQ(shortened.x, 1.25);
+    EXPECT_DOUBLE_EQ(skipped.x, 1.25);
+
+    rig.tweens.setReducedMotion(true);
+    rig.step(0.125);
+    EXPECT_DOUBLE_EQ(kept.x, 2.5);
+    EXPECT_DOUBLE_EQ(shortened.x, 6.25);
+    EXPECT_DOUBLE_EQ(skipped.x, 10.0);
+    EXPECT_TRUE(completed);
+    EXPECT_FALSE(skipping->isAlive());
+
+    // A tween that repeats forever holds still until the system no longer asks for reduced motion.
+    EXPECT_DOUBLE_EQ(forever.x, 1.25);
+    rig.step(0.5);
+    EXPECT_DOUBLE_EQ(forever.x, 1.25);
+    rig.tweens.setReducedMotion(false);
+    rig.step(0.125);
+    EXPECT_DOUBLE_EQ(forever.x, 2.5);
+}
+
 TEST(TweenManagerTest, RepeatsWithEveryLoopMode) {
     TweenRig rig;
     Box restart;

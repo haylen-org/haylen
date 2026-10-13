@@ -209,10 +209,13 @@ class Theme final {
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
     static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::ScrollbarTrack) + 1;
 
+    // The built-in themes. The dark and light themes name their high contrast variants, which keep their metrics and fonts with colors of stronger contrast.
     [[nodiscard]] static Theme dark();
     [[nodiscard]] static Theme light();
+    [[nodiscard]] static Theme darkHighContrast();
+    [[nodiscard]] static Theme lightHighContrast();
 
-    // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles`, `surfaces` and `imageFilter`, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
+    // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles`, `surfaces`, `imageFilter` and `highContrast`, which names the theme to use while the system asks for higher contrast, or is `false` to keep this one, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
     [[nodiscard]] static Theme fromJson(const core::Json& document, const Theme& base, const TextureLoader& loadTexture);
 
     // Read the values of theme files and styles, where the context starts the message of an error, such as `The theme color "accent"`.
@@ -241,6 +244,17 @@ class Theme final {
     [[nodiscard]] const std::map<std::string, std::string, std::less<>>& getFontFiles() const noexcept {
         return fontFiles;
     }
+    // The name of the theme the UI draws with instead of this one while the system asks for higher contrast, or empty to keep this one.
+    [[nodiscard]] const std::string& getHighContrast() const noexcept {
+        return highContrast;
+    }
+    void setHighContrast(std::string value) {
+        highContrast = std::move(value);
+    }
+
+    // Takes the transparency out of the colors of the surfaces, the window, panels, raised surfaces and tooltips, which the UI draws while the system asks for reduced transparency.
+    void makeSurfacesOpaque() noexcept;
+
     // The filter that the pictures of components, such as images, icons and image buttons, load with.
     [[nodiscard]] graphics::Texture::Filter getImageFilter() const noexcept {
         return imageFilter;
@@ -260,11 +274,13 @@ class Theme final {
     void applyTo(ImGuiStyle& style, float pointsPerUnit) const;
 
   private:
-    // A color role with its name and its colors in the dark and light themes, as `0xRRGGBBAA`.
+    // A color role with its name and its colors in the dark and light themes and in their high contrast variants, as `0xRRGGBBAA`.
     struct ColorRole {
         std::string_view name;
         std::uint32_t dark = 0;
         std::uint32_t light = 0;
+        std::uint32_t darkHighContrast = 0;
+        std::uint32_t lightHighContrast = 0;
     };
 
     // A metric with its name and its value in the built-in themes, which suits the 1920 by 1080 design resolution the engine uses by default.
@@ -275,51 +291,51 @@ class Theme final {
 
     // clang-format off
     static constexpr std::array<ColorRole, kColorCount> kColorRoles{{
-        {"window", 0x1B1E2BFF, 0xF4F5F9FF},
-        {"panel", 0x232739FF, 0xFFFFFFFF},
-        {"raised", 0x2C3147FF, 0xFFFFFFFF},
-        {"tooltip", 0x0F111AF2, 0x1B1E2BF2},
-        {"overlay", 0x000000A0, 0x00000066},
-        {"shadow", 0x00000066, 0x1B1E2B29},
-        {"hover", 0xFFFFFF14, 0x0000000F},
-        {"pressed", 0xFFFFFF24, 0x0000001F},
-        {"selection", 0x4C7DFF40, 0x4C7DFF33},
-        {"focus", 0x7AA2FFFF, 0x3A66E0FF},
-        {"caret", 0x7AA2FFFF, 0x3A66E0FF},
-        {"border", 0x3A4058FF, 0xD6D9E4FF},
-        {"borderStrong", 0x525A7AFF, 0xB3B8CCFF},
-        {"scrollbar", 0x3A4058FF, 0xC9CDDBFF},
-        {"scrollbarHover", 0x525A7AFF, 0xA9AEC2FF},
-        {"track", 0x3A4058FF, 0xCDD1DDFF},
-        {"knob", 0xFFFFFFFF, 0xFFFFFFFF},
-        {"text", 0xE8EAF2FF, 0x1B1E2BFF},
-        {"textMuted", 0xA3A8BFFF, 0x5C6380FF},
-        {"textDisabled", 0x6A7090FF, 0xA3A8BFFF},
-        {"onTooltip", 0xE8EAF2FF, 0xF4F5F9FF},
-        {"accent", 0x4C7DFFFF, 0x3A66E0FF},
-        {"accentHover", 0x6690FFFF, 0x4C7DFFFF},
-        {"accentStrong", 0x3A66E0FF, 0x2C52C0FF},
-        {"onAccent", 0xFFFFFFFF, 0xFFFFFFFF},
-        {"accentBackground", 0x4C7DFF26, 0x3A66E01F},
-        {"accentText", 0x8FB0FFFF, 0x2C52C0FF},
-        {"success", 0x3DBE7AFF, 0x2E9E62FF},
-        {"onSuccess", 0xFFFFFFFF, 0xFFFFFFFF},
-        {"successBackground", 0x3DBE7A26, 0x2E9E621F},
-        {"successText", 0x6FDCA0FF, 0x1F7A49FF},
-        {"warning", 0xF2B23AFF, 0xD9941CFF},
-        {"onWarning", 0x1B1E2BFF, 0xFFFFFFFF},
-        {"warningBackground", 0xF2B23A26, 0xD9941C1F},
-        {"warningText", 0xF7CB70FF, 0x9A6508FF},
-        {"danger", 0xE5534BFF, 0xD0433BFF},
-        {"dangerHover", 0xEE6B64FF, 0xE5534BFF},
-        {"dangerStrong", 0xC8423BFF, 0xB0352EFF},
-        {"onDanger", 0xFFFFFFFF, 0xFFFFFFFF},
-        {"dangerBackground", 0xE5534B26, 0xD0433B1F},
-        {"dangerText", 0xFF8A84FF, 0xA8322BFF},
-        {"information", 0x3AA8E0FF, 0x2A8CC0FF},
-        {"onInformation", 0xFFFFFFFF, 0xFFFFFFFF},
-        {"informationBackground", 0x3AA8E026, 0x2A8CC01F},
-        {"informationText", 0x7FCBF2FF, 0x1D6A93FF},
+        {"window", 0x1B1E2BFF, 0xF4F5F9FF, 0x000000FF, 0xFFFFFFFF},
+        {"panel", 0x232739FF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
+        {"raised", 0x2C3147FF, 0xFFFFFFFF, 0x101010FF, 0xFFFFFFFF},
+        {"tooltip", 0x0F111AF2, 0x1B1E2BF2, 0x000000FF, 0x000000FF},
+        {"overlay", 0x000000A0, 0x00000066, 0x000000D0, 0x000000A0},
+        {"shadow", 0x00000066, 0x1B1E2B29, 0x00000066, 0x00000040},
+        {"hover", 0xFFFFFF14, 0x0000000F, 0xFFFFFF33, 0x0000001F},
+        {"pressed", 0xFFFFFF24, 0x0000001F, 0xFFFFFF4D, 0x00000033},
+        {"selection", 0x4C7DFF40, 0x4C7DFF33, 0xFFD60A66, 0x0040C04D},
+        {"focus", 0x7AA2FFFF, 0x3A66E0FF, 0xFFD60AFF, 0x0040C0FF},
+        {"caret", 0x7AA2FFFF, 0x3A66E0FF, 0xFFD60AFF, 0x0040C0FF},
+        {"border", 0x3A4058FF, 0xD6D9E4FF, 0xFFFFFFFF, 0x000000FF},
+        {"borderStrong", 0x525A7AFF, 0xB3B8CCFF, 0xFFFFFFFF, 0x000000FF},
+        {"scrollbar", 0x3A4058FF, 0xC9CDDBFF, 0xC0C0C0FF, 0x404040FF},
+        {"scrollbarHover", 0x525A7AFF, 0xA9AEC2FF, 0xFFFFFFFF, 0x000000FF},
+        {"track", 0x3A4058FF, 0xCDD1DDFF, 0x8A8A8AFF, 0x6A6A6AFF},
+        {"knob", 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+        {"text", 0xE8EAF2FF, 0x1B1E2BFF, 0xFFFFFFFF, 0x000000FF},
+        {"textMuted", 0xA3A8BFFF, 0x5C6380FF, 0xE6E6E6FF, 0x1F1F1FFF},
+        {"textDisabled", 0x6A7090FF, 0xA3A8BFFF, 0xA0A0A0FF, 0x5E5E5EFF},
+        {"onTooltip", 0xE8EAF2FF, 0xF4F5F9FF, 0xFFFFFFFF, 0xFFFFFFFF},
+        {"accent", 0x4C7DFFFF, 0x3A66E0FF, 0x9EC3FFFF, 0x0038B0FF},
+        {"accentHover", 0x6690FFFF, 0x4C7DFFFF, 0xC2DAFFFF, 0x0048D0FF},
+        {"accentStrong", 0x3A66E0FF, 0x2C52C0FF, 0x7AACFFFF, 0x002A88FF},
+        {"onAccent", 0xFFFFFFFF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
+        {"accentBackground", 0x4C7DFF26, 0x3A66E01F, 0x9EC3FF40, 0x0038B026},
+        {"accentText", 0x8FB0FFFF, 0x2C52C0FF, 0xB8D3FFFF, 0x002A88FF},
+        {"success", 0x3DBE7AFF, 0x2E9E62FF, 0x5EE39AFF, 0x0B6B38FF},
+        {"onSuccess", 0xFFFFFFFF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
+        {"successBackground", 0x3DBE7A26, 0x2E9E621F, 0x5EE39A40, 0x0B6B3826},
+        {"successText", 0x6FDCA0FF, 0x1F7A49FF, 0x8CF0B8FF, 0x0B5A30FF},
+        {"warning", 0xF2B23AFF, 0xD9941CFF, 0xFFD36BFF, 0x7A4D00FF},
+        {"onWarning", 0x1B1E2BFF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
+        {"warningBackground", 0xF2B23A26, 0xD9941C1F, 0xFFD36B40, 0x7A4D0026},
+        {"warningText", 0xF7CB70FF, 0x9A6508FF, 0xFFE19AFF, 0x6A4300FF},
+        {"danger", 0xE5534BFF, 0xD0433BFF, 0xFF8A84FF, 0x9E1C14FF},
+        {"dangerHover", 0xEE6B64FF, 0xE5534BFF, 0xFFA8A3FF, 0xB3261EFF},
+        {"dangerStrong", 0xC8423BFF, 0xB0352EFF, 0xFF6B63FF, 0x80140EFF},
+        {"onDanger", 0xFFFFFFFF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
+        {"dangerBackground", 0xE5534B26, 0xD0433B1F, 0xFF8A8440, 0x9E1C1426},
+        {"dangerText", 0xFF8A84FF, 0xA8322BFF, 0xFFB0ACFF, 0x8A1810FF},
+        {"information", 0x3AA8E0FF, 0x2A8CC0FF, 0x7FD1FFFF, 0x0B5480FF},
+        {"onInformation", 0xFFFFFFFF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
+        {"informationBackground", 0x3AA8E026, 0x2A8CC01F, 0x7FD1FF40, 0x0B548026},
+        {"informationText", 0x7FCBF2FF, 0x1D6A93FF, 0xA8E0FFFF, 0x0A4A70FF},
     }};
     static constexpr std::array<MetricRole, kMetricCount> kMetricRoles{{
         {"controlHeight", 64.0F},
@@ -437,6 +453,7 @@ class Theme final {
     [[nodiscard]] static const core::Json& readSection(const core::Json& document, const char* key);
 
     std::string name;
+    std::string highContrast;
     std::array<math::Color, kColorCount> colors{};
     std::array<float, kMetricCount> metrics{};
     std::array<FontStyle, kFontCount> fonts{};

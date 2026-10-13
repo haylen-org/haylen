@@ -1081,6 +1081,37 @@ TEST(SceneManagerTest, EasesTransitionsOnRealTime) {
     EXPECT_FALSE(engine.getScenes().isTransitioning());
 }
 
+TEST(SceneManagerTest, ShortensOrSkipsTransitionsUnderReducedMotion) {
+    std::vector<std::string> log;
+    test::EngineFixture fixture;
+    fixture.host().setAccessibilitySettings({.reducedMotion = true});
+    fixture.frames(1);
+    SceneManager& scenes = fixture.engine().getScenes();
+    SceneManager::Transition skipped = SceneManager::Transition::fade(1.0F);
+    skipped.motionReduction = MotionReduction::Skip;
+    scenes.push(std::make_shared<test::RecordingScene>("menu", log), {.transition = skipped});
+    fixture.frames(1, 0.01);
+    EXPECT_EQ(log, (std::vector<std::string>{"menu:load", "menu:enter", "menu:enterTransitionFinished"}));
+    EXPECT_FALSE(scenes.isTransitioning());
+
+    // A shortened fade of a second switches at the middle of its quarter of a second.
+    SceneManager::Transition shortened = SceneManager::Transition::fade(1.0F);
+    shortened.motionReduction = MotionReduction::Shorten;
+    scenes.push(std::make_shared<test::RecordingScene>("map", log), {.transition = shortened});
+    fixture.frames(1, 0.1);
+    EXPECT_EQ(log.back(), "map:load");
+    fixture.frames(1, 0.05);
+    EXPECT_EQ(log.back(), "map:enter");
+    fixture.frames(1, 0.15);
+    EXPECT_FALSE(scenes.isTransitioning());
+
+    // Transitions that keep their motion play as they are.
+    scenes.push(std::make_shared<test::RecordingScene>("shop", log), {.transition = SceneManager::Transition::fade(1.0F)});
+    fixture.frames(2, 0.2);
+    EXPECT_EQ(log.back(), "shop:load");
+    EXPECT_TRUE(scenes.isTransitioning());
+}
+
 TEST(SceneManagerTest, CustomEffectsChooseWhereTheyCoverTheScreen) {
     std::vector<std::string> log;
     test::EngineFixture fixture;

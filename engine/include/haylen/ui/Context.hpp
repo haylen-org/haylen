@@ -124,7 +124,16 @@ class Context final {
     math::Vec2 takeWheelDistance() noexcept;
     [[nodiscard]] const Theme::Image* getSurface(Theme::Surface role) const;
     [[nodiscard]] const std::string& getFontName(Theme::Font role) const noexcept;
+    // The size of a font role in UI units, which the text scale multiplies.
     [[nodiscard]] float getFontSize(Theme::Font role) const noexcept;
+
+    // How much larger the text of the UI draws than the sizes of the theme and the styles, such as the text size the user set in the system.
+    void setTextScale(float value) noexcept {
+        textScale = value;
+    }
+    [[nodiscard]] float getTextScale() const noexcept {
+        return textScale;
+    }
     [[nodiscard]] bool isFontBold(Theme::Font role) const noexcept;
     [[nodiscard]] bool isFontItalic(Theme::Font role) const noexcept;
     [[nodiscard]] ImFont* getFont(Theme::Font role) const;
@@ -269,6 +278,7 @@ class Context final {
     std::uint64_t frame = 0;
     double time = 0.0;
     float deltaSeconds = 0.0F;
+    float textScale = 1.0F;
 };
 
 } // namespace haylen::ui

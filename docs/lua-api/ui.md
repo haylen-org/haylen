@@ -116,7 +116,7 @@ end
 
 ### ui.setTheme(name)
 
-Switches the theme of every GUI and of [`haylen.imgui`](imgui.md) windows. The engine ships the themes `dark`, which is active at start, and `light`. An unknown name raises `The UI has no theme named "<name>".`.
+Switches the theme of every GUI and of [`haylen.imgui`](imgui.md) windows. The engine ships the themes `dark`, which is active at start, and `light`, with their high contrast themes `darkHighContrast` and `lightHighContrast`, which the UI draws instead while the system asks for higher contrast, as [accessibility settings](../ui/ui.md#accessibility-settings) describes. An unknown name raises `The UI has no theme named "<name>".`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -126,7 +126,7 @@ ui.setTheme('light')
 
 ### ui.theme()
 
-Returns the name of the active theme.
+Returns the name of the theme the app chose, also while the UI draws its high contrast theme.
 
 ```lua
 local ui = require('haylen.ui')
@@ -461,6 +461,28 @@ local ui = require('haylen.ui')
 
 local factor, scale, points = ui.scale()
 print('A control of 64 units spans ' .. 64 * scale .. ' design units and ' .. 64 * points .. ' points.')
+```
+
+### ui.setTextScale(scale)
+
+Sets how much larger the text of every GUI draws than the font sizes of its theme and styles, a number from 0.5 to 4, or `'system'`, which follows the text size of the system as [`accessibility.settings().textScale`](accessibility.md#accessibilitysettings) reports it and is how the UI starts. Controls grow with their text, so a layout made for the normal size keeps its text inside its controls. Any other value raises `The text scale of the UI is a number from 0.5 to 4, or "system" to follow the text size of the system.`.
+
+```lua
+local preferences = require('haylen.preferences')
+local ui = require('haylen.ui')
+
+ui.setTextScale(preferences.get('textScale', 'system'))
+```
+
+### ui.textScale()
+
+Returns the text scale the UI draws with, and whether it follows the system.
+
+```lua
+local ui = require('haylen.ui')
+
+local scale, followsSystem = ui.textScale()
+print('Text draws at ' .. scale .. ' times its size.')
 ```
 
 ### ui.setDirection(direction)

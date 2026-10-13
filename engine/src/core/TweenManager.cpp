@@ -56,7 +56,17 @@ void TweenManager::advanceAll(const FrameClock& clock, bool fixed) {
                 continue;
             }
             const double delta = fixed ? clock.getFixedStep() : (tween.isUnscaled() ? clock.getUnscaledDelta() : clock.getDelta());
-            tween.advance(static_cast<float>(delta) * groups[tween.group].timeScale);
+            float step = static_cast<float>(delta) * groups[tween.group].timeScale;
+
+            // A tween that skips under reduced motion completes at once, and one that never ends holds still.
+            if (reducedMotion && tween.getMotionReduction() == MotionReduction::Skip) {
+                tween.complete();
+                continue;
+            }
+            if (reducedMotion && tween.getMotionReduction() == MotionReduction::Shorten) {
+                step *= kShortenedSpeed;
+            }
+            tween.advance(step);
         }
     } catch (...) {
         finishUpdate();

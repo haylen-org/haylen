@@ -1183,7 +1183,7 @@ TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
     EXPECT_EQ(getUi().loadTheme(getEngine(), "themes/wood.json", "light"), "wood");
     getUi().setTheme("wood");
     EXPECT_EQ(getUi().getTheme().getName(), "wood");
-    EXPECT_EQ(getUi().getThemes(), (std::vector<std::string>{"dark", "light", "wood"}));
+    EXPECT_EQ(getUi().getThemes(), (std::vector<std::string>{"dark", "darkHighContrast", "light", "lightHighContrast", "wood"}));
     mount(R"({"kind": "panel", "children": [{"kind": "button", "text": "Wood"}, {"kind": "progress", "value": 0.5, "tone": "danger"}, {"kind": "pageHeader", "title": "Big"}, {"kind": "touchStick", "action": "move"}]})");
     frames(2);
     EXPECT_EQ(getEngine().getError(), nullptr);

@@ -35,6 +35,21 @@ local function slideIn(panel)
 end
 ```
 
+## What follows the settings
+
+The engine follows the settings on its own where it can, and leaves the rest to the app:
+
+- The UI scales its text with `textScale` until the app sets a scale with [`ui.setTextScale`](ui.md#uisettextscalescale), draws the high contrast theme of its theme with `highContrast` and draws the surfaces of its theme opaque with `reducedTransparency`, as [accessibility settings](../ui/ui.md#accessibility-settings) of the UI guide describes.
+- Tweens and scene transitions that opt in with their `reducedMotion` option shorten or skip their motion with `reducedMotion`, as the options of [tweens](tween.md#options) and [transitions](scene.md) describe, while the others keep their motion, since only the app knows which motion carries meaning.
+
+```lua
+local scene = require('haylen.scene')
+local tween = require('haylen.tween')
+
+tween.to(logo, 0.6, {y = 200}, {ease = 'outBack', reducedMotion = 'skip'})
+scene.replace(require('scenes.menu'), {duration = 0.5, effect = 'slideIn', reducedMotion = 'shorten'})
+```
+
 ## Events
 
 | Event | When | Data |

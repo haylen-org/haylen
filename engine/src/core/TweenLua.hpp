@@ -34,7 +34,7 @@ class TweenLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 17> kCommonFields{"delay", "repeatCount", "loopMode", "repeatDelay", "timeScale", "tag", "owner", "processMode", "unscaled", "fixedStep", "autoKill", "paused", "onStart", "onUpdate", "onLoop", "onComplete", "onKill"};
+    static constexpr std::array<std::string_view, 18> kCommonFields{"delay", "repeatCount", "loopMode", "repeatDelay", "timeScale", "tag", "owner", "processMode", "reducedMotion", "unscaled", "fixedStep", "autoKill", "paused", "onStart", "onUpdate", "onLoop", "onComplete", "onKill"};
     static constexpr std::array<std::string_view, 6> kTweenFields{"ease", "overwrite", "speedBased", "angles", "integers", "colorSpace"};
     static constexpr std::array<std::string_view, 1> kTimelineFields{"onStep"};
     static constexpr std::array<std::string_view, 1> kStaggerFields{"origin"};

@@ -30,6 +30,7 @@
 #include "haylen/io/Path.hpp"
 #include "haylen/localization/Catalog.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/platform/Accessibility.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
@@ -44,8 +45,10 @@ namespace haylen::plugins {
 
 UiPlugin::UiPlugin() {
     ui::BuiltInComponents::registerAll(components);
-    themes.emplace("dark", ui::Theme::dark());
-    themes.emplace("light", ui::Theme::light());
+    for (ui::Theme theme : {ui::Theme::dark(), ui::Theme::light(), ui::Theme::darkHighContrast(), ui::Theme::lightHighContrast()}) {
+        const std::string name = theme.getName();
+        themes.emplace(name, std::move(theme));
+    }
 }
 
 UiPlugin::~UiPlugin() = default;
@@ -131,6 +134,13 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     const graphics::Viewport& viewport = engine.getViewport();
     const math::Vec2 pixelsPerUnit = viewport.getPixelsPerUnit();
     backend->setScale(scaling.resolve(std::min(pixelsPerUnit.x, pixelsPerUnit.y), engine.getWindow().getDpiScale(), viewport.getVisibleRect().getSize()));
+
+    // The UI follows the accessibility settings of the system: its theme switches with the contrast and the transparency, and its text scales with the system unless the app set a scale.
+    const platform::AccessibilitySettings& settings = engine.getAccessibility().getSettings();
+    if (settings.highContrast != shownHighContrast || settings.reducedTransparency != shownOpaque) {
+        applyTheme(settings.highContrast, settings.reducedTransparency);
+    }
+    context->setTextScale(textScale.value_or(settings.textScale));
     backend->beginFrame(delta, viewport, engine.getInput(), navigation);
     if (backend->getPointsPerUnit() != styledPoints) {
         styledPoints = backend->getPointsPerUnit();
@@ -441,8 +451,8 @@ std::shared_ptr<ui::Gui> UiPlugin::findMounted(const ui::Gui* gui) const {
 void UiPlugin::addTheme(ui::Theme theme) {
     const std::string name = theme.getName();
     themes.insert_or_assign(name, std::move(theme));
-    if (name == themeName && backend) {
-        setTheme(name);
+    if (backend && (name == themeName || name == themes.find(themeName)->second.getHighContrast())) {
+        setTheme(themeName);
     }
 }
 
@@ -451,12 +461,28 @@ void UiPlugin::setTheme(std::string_view name) {
     if (found == themes.end()) {
         throw std::invalid_argument("The UI has no theme named \"" + std::string(name) + "\".");
     }
+    const std::string& variant = found->second.getHighContrast();
+    if (!variant.empty() && !themes.contains(variant)) {
+        throw std::invalid_argument("The theme \"" + std::string(name) + "\" names the high contrast theme \"" + variant + "\", which the UI does not know.");
+    }
     themeName = found->first;
+    applyTheme(shownHighContrast, shownOpaque);
+}
+
+void UiPlugin::applyTheme(bool highContrast, bool reducedTransparency) {
+    shownHighContrast = highContrast;
+    shownOpaque = reducedTransparency;
+    const ui::Theme& chosen = themes.find(themeName)->second;
+    const auto variant = highContrast && !chosen.getHighContrast().empty() ? themes.find(chosen.getHighContrast()) : themes.end();
+    shownTheme = variant != themes.end() ? variant->second : chosen;
+    if (reducedTransparency) {
+        shownTheme.makeSurfacesOpaque();
+    }
     if (!backend) {
         return;
     }
 
-    const ui::Theme& theme = found->second;
+    const ui::Theme& theme = shownTheme;
     for (std::size_t index = 0; index < ui::Theme::kFontCount; ++index) {
         (void)backend->getFont(theme.getFont(static_cast<ui::Theme::Font>(index)).font);
     }
@@ -470,10 +496,6 @@ void UiPlugin::setTheme(std::string_view name) {
 const ui::Theme* UiPlugin::findTheme(std::string_view name) const {
     const auto found = themes.find(name);
     return found != themes.end() ? &found->second : nullptr;
-}
-
-const ui::Theme& UiPlugin::getTheme() const {
-    return themes.find(themeName)->second;
 }
 
 std::vector<std::string> UiPlugin::getThemes() const {
