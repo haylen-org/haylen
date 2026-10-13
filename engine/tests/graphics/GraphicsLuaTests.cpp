@@ -119,4 +119,27 @@ TEST(GraphicsLuaTest, EditsImagesAndPacksThemIntoAtlases) {
     EXPECT_NE(fixture.lua("graphics.newTexture(canvas, {dynamic = true})").find("Unknown option \"dynamic\"."), std::string::npos);
 }
 
+// Render targets and whole frames come back as images in later frames, and images become PNG files.
+TEST(GraphicsLuaTest, ReadsTargetsCapturesTheScreenAndEncodesPngFiles) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        graphics = require('haylen.graphics')
+        async = require('async')
+        target = graphics.newRenderTarget(6, 3)
+        async.spawn(function()
+            local read = graphics.readTarget(target):await()
+            local screen = graphics.captureScreen():await()
+            local image = graphics.newImage(4, 2, '#FF336699')
+            local png = image:encodePngAsync():await()
+            done = read.width .. 'x' .. read.height .. ' ' .. tostring(screen.width > 0) .. ' ' .. graphics.decodeImage(png):pixel(3, 1):toHex() .. ' ' .. tostring(png == image:encodePng())
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return done") != "nil" || fixture.engine().getError() != nullptr; }));
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(fixture.lua("return done"), "6x3 true #FF336699 true");
+    EXPECT_NE(fixture.lua("graphics.readTarget(5)").find("haylen.RenderTarget expected"), std::string::npos);
+}
+
 } // namespace haylen::graphics

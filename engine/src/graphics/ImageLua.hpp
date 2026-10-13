@@ -4,10 +4,15 @@
 #include <memory>
 #include <string_view>
 
+#include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/lua/Type.hpp"
 
 struct lua_State;
+
+namespace varn::async {
+class Promise;
+}
 
 namespace haylen::lua {
 
@@ -37,10 +42,17 @@ class ImageLua final {
 
     static void push(lua_State* L, Image image);
 
+    // Reads a render target back with `graphics.readTarget(target)` and captures the next frame with `graphics.captureScreen()`, each returning a promise of an image.
+    static int readTarget(lua_State* L);
+    static int captureScreen(lua_State* L);
+
   private:
     static constexpr std::array<std::string_view, 2> kBlitFields{"source", "blend"};
 
     [[nodiscard]] static Image::Area readArea(lua_State* L, int index, const Image& image);
+
+    // Returns the callback of a read that settles the promise with the image or the failure.
+    [[nodiscard]] static Device::ReadCallback settle(const std::shared_ptr<varn::async::Promise>& promise);
     static int pixel(lua_State* L);
     static int setPixel(lua_State* L);
     static int fill(lua_State* L);
@@ -50,6 +62,8 @@ class ImageLua final {
     static int bleed(lua_State* L);
     static int visibleArea(lua_State* L);
     static int clone(lua_State* L);
+    static int encodePng(lua_State* L);
+    static int encodePngAsync(lua_State* L);
     static int width(lua_State* L);
     static int height(lua_State* L);
 };

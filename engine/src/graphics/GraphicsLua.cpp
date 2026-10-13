@@ -235,7 +235,7 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
 
 int GraphicsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"newVectorImage", &lua::Binding::native<&newVectorImage>}, {"newImage", &lua::Binding::native<&ImageLua::create>}, {"decodeImage", &lua::Binding::native<&ImageLua::decode>}, {"decodeImageAsync", &lua::Binding::native<&ImageLua::decodeAsync>}, {"whiteTexture", &whiteTexture}, {"backendName", &backendName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
+        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"newVectorImage", &lua::Binding::native<&newVectorImage>}, {"newImage", &lua::Binding::native<&ImageLua::create>}, {"decodeImage", &lua::Binding::native<&ImageLua::decode>}, {"decodeImageAsync", &lua::Binding::native<&ImageLua::decodeAsync>}, {"readTarget", &lua::Binding::native<&ImageLua::readTarget>}, {"captureScreen", &lua::Binding::native<&ImageLua::captureScreen>}, {"whiteTexture", &whiteTexture}, {"backendName", &backendName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

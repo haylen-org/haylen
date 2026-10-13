@@ -7,7 +7,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "graphics/GpuReadback.hpp"
 #include "graphics/ResourceGraveyard.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -36,10 +38,18 @@ struct DeviceState {
     std::vector<std::weak_ptr<TextureResource>> uploadingTextures;
     std::uint64_t uploads = 0;
 
+    // A render target whose pixels a caller asked for, and the copy of them once the frame that asked was submitted.
+    struct PendingRead {
+        RenderTarget target;
+        Device::ReadCallback done;
+        std::unique_ptr<GpuReadback> copy;
+    };
+
+    std::vector<PendingRead> reads;
+
     // Returns the sampler that every texture with the options shares, creating it on first use.
     [[nodiscard]] sg_sampler getSampler(Texture::Options options);
 
-    // Creates an image and the view that samples it.
     // Creates the image of a texture, with its mipmaps when asked for, and counts the bytes they hold.
     [[nodiscard]] static ImageViews createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes);
 

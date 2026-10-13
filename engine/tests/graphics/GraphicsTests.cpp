@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -137,6 +138,46 @@ TEST(DeviceTest, MakesTexturesWithMipmaps) {
     EXPECT_EQ(device.createTexture(graphics::Image(1, 1), {.mipmaps = true}).getWidth(), 1);
     EXPECT_THROW((void)device.createDynamicTexture(graphics::Image(4, 4), {.mipmaps = true}), std::invalid_argument);
     EXPECT_THROW((void)device.createRenderTarget(4, 4, {.mipmaps = true}), std::invalid_argument);
+}
+
+TEST(ImageTest, TurnsRenderedPixelsIntoStraightColorsAndPngFiles) {
+    // Two rows of one pixel each, stored bottom row first: a red at half alpha, premultiplied, under an opaque blue.
+    const graphics::Image image = graphics::Image::fromRendered({0, 0, 255, 255, 128, 0, 0, 128}, 1, 2, true);
+    EXPECT_EQ(image.getPixel(0, 0), math::Color::fromRgba8(255, 0, 0, 128));
+    EXPECT_EQ(image.getPixel(0, 1), math::Color::fromRgba8(0, 0, 255, 255));
+    EXPECT_EQ(graphics::Image::fromRendered({10, 20, 30, 0}, 1, 1, false).getPixel(0, 0), math::Color::fromRgba8(10, 20, 30, 0));
+
+    graphics::Image picture(5, 3, math::Color::fromHex(0xFF336699U));
+    picture.setPixel(4, 2, math::Color::fromRgba8(1, 2, 3, 4));
+    const graphics::Image decoded = graphics::Image::decode(picture.encodePng());
+    EXPECT_EQ(decoded.getWidth(), 5);
+    EXPECT_EQ(decoded.getPixel(4, 2), math::Color::fromRgba8(1, 2, 3, 4));
+    EXPECT_EQ(decoded.getPixel(0, 0), picture.getPixel(0, 0));
+    EXPECT_THROW((void)graphics::Image().encodePng(), std::invalid_argument);
+}
+
+// A read starts its copy after the frame that asks for it and reaches its callback in a later frame, and the engine captures whole frames the same way.
+TEST(DeviceTest, ReadsRenderTargetsAndCapturesTheScreenInLaterFrames) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics::RenderTarget target = device.createRenderTarget(8, 4);
+    std::optional<graphics::Image> read;
+    std::optional<graphics::Image> screen;
+    device.readTarget(target, [&read](std::optional<graphics::Image> image, const std::string&) { read = std::move(image); });
+    fixture.engine().captureScreen([&screen](std::optional<graphics::Image> image, const std::string&) { screen = std::move(image); });
+    EXPECT_EQ(device.getPendingReadCount(), 1U);
+    ASSERT_TRUE(fixture.frameUntil([&read, &screen] { return read.has_value() && screen.has_value(); }));
+    EXPECT_EQ(read->getWidth(), 8);
+    EXPECT_EQ(read->getHeight(), 4);
+    const math::Vec2 pixels = fixture.engine().getViewport().getPixelRect().getSize();
+    EXPECT_EQ(screen->getWidth(), static_cast<int>(pixels.x));
+    EXPECT_EQ(screen->getHeight(), static_cast<int>(pixels.y));
+    EXPECT_EQ(device.getPendingReadCount(), 0U);
+    EXPECT_THROW(device.readTarget({}, [](std::optional<graphics::Image>, const std::string&) {}), std::invalid_argument);
+
+    device.readTarget(target, [](std::optional<graphics::Image>, const std::string&) { FAIL() << "A cancelled read reached its callback."; });
+    device.cancelReads();
+    fixture.frames(2);
 }
 
 TEST(DeviceTest, CreatesReplacesAndReleasesResources) {

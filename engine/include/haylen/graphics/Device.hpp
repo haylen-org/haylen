@@ -2,7 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -12,6 +14,10 @@
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
 
+namespace haylen::core {
+class JobSystem;
+}
+
 namespace haylen::graphics {
 
 struct DeviceSetup;
@@ -20,6 +26,9 @@ struct DeviceState;
 // Owns the GPU context and creates textures and render targets. Every method must be called on the frame thread.
 class Device final {
   public:
+    // Receives the pixels of a render target, or the reason they could not be read.
+    using ReadCallback = std::function<void(std::optional<Image> image, const std::string& error)>;
+
     // How many objects of one kind the GPU context holds, out of the room it preallocated for them.
     struct Pool {
         std::string_view name;
@@ -67,6 +76,18 @@ class Device final {
 
     // Destroys GPU resources whose last handle was released, at a point where no pending draw can use them.
     void collectGarbage();
+
+    // Reads the pixels of a render target as the frame that asks for them renders it, with straight colors and the top row first. The copy starts once that frame is submitted and the GPU finishes it without the frame thread waiting, where the backend allows, and the callback receives the image on the frame thread in a later frame, after the task pool turned the copy into straight colors.
+    void readTarget(const RenderTarget& target, ReadCallback done);
+
+    // Starts the copies the frame asked for and hands over the finished ones. The engine calls it once per frame, after the frame was submitted.
+    void processReads(core::JobSystem& jobs);
+
+    // Drops every read that has not reached its callback, which never runs, such as when the app stops.
+    void cancelReads() noexcept;
+
+    // Returns how many reads have not reached their callback yet.
+    [[nodiscard]] std::size_t getPendingReadCount() const noexcept;
 
     [[nodiscard]] DeviceState& getState() noexcept {
         return *state;

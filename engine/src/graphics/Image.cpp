@@ -13,6 +13,9 @@
 #define STBI_NO_STDIO
 #define STBI_FAILURE_USERMSG
 #include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STBI_WRITE_NO_STDIO
+#include "stb_image_write.h"
 
 namespace haylen::graphics {
 
@@ -58,6 +61,40 @@ Image Image::decode(std::span<const std::uint8_t> encoded) {
     std::vector<std::uint8_t> data(decoded, decoded + byteCount(decodedWidth, decodedHeight));
     stbi_image_free(decoded);
     return Image(decodedWidth, decodedHeight, std::move(data));
+}
+
+std::vector<std::uint8_t> Image::encodePng() const {
+    if (pixels.empty()) {
+        throw std::invalid_argument("An empty image has no PNG file.");
+    }
+    std::vector<std::uint8_t> encoded;
+    // clang-format off
+    stbi_write_png_to_func([](void* context, void* data, int size) {
+        auto* target = static_cast<std::vector<std::uint8_t>*>(context);
+        target->insert(target->end(), static_cast<const std::uint8_t*>(data), static_cast<const std::uint8_t*>(data) + size);
+    }, &encoded, width, height, 4, pixels.data(), width * 4);
+    // clang-format on
+    return encoded;
+}
+
+// Rows are swapped when the backend stores the bottom row first, and colors are divided by their alpha.
+Image Image::fromRendered(std::vector<std::uint8_t> data, int columns, int rows, bool bottomUp) {
+    const auto rowBytes = static_cast<std::size_t>(columns) * 4U;
+    if (bottomUp) {
+        for (int row = 0; row < rows / 2; ++row) {
+            std::swap_ranges(data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row) * rowBytes), data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row + 1) * rowBytes), data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(rows - 1 - row) * rowBytes));
+        }
+    }
+    for (std::size_t offset = 0; offset < data.size(); offset += 4) {
+        const unsigned alpha = data[offset + 3];
+        if (alpha == 0U || alpha == 255U) {
+            continue;
+        }
+        for (std::size_t channel = 0; channel < 3; ++channel) {
+            data[offset + channel] = static_cast<std::uint8_t>(std::min(255U, (static_cast<unsigned>(data[offset + channel]) * 255U + alpha / 2U) / alpha));
+        }
+    }
+    return Image(columns, rows, std::move(data));
 }
 
 Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options options) {

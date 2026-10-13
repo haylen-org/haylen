@@ -1,5 +1,6 @@
 #include "haylen/graphics/Device.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -9,6 +10,7 @@
 #include "graphics/Gpu.hpp"
 #include "graphics/GpuAdapter.hpp"
 #include "graphics/TextureResource.hpp"
+#include "haylen/core/JobSystem.hpp"
 
 namespace haylen::graphics {
 
@@ -111,6 +113,69 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
     if (resource->dynamic) {
         state->stagePixels(resource, image.getPixels());
     }
+}
+
+void Device::readTarget(const RenderTarget& target, ReadCallback done) {
+    if (!target.isValid()) {
+        throw std::invalid_argument("A read needs a valid render target.");
+    }
+    state->reads.push_back({.target = target, .done = std::move(done)});
+}
+
+// A read starts its copy at the first call after the frame that asked for it, and hands its pixels to the task pool once the copy finished. Failed reads reach their callbacks after the walk, since a callback may ask for another read.
+void Device::processReads(core::JobSystem& jobs) {
+    std::vector<std::pair<ReadCallback, std::string>> failed;
+    for (std::size_t index = 0; index < state->reads.size();) {
+        DeviceState::PendingRead& read = state->reads[index];
+        const TextureResource& resource = *read.target.getTexture().getResource();
+        if (!read.copy) {
+            try {
+                read.copy = std::make_unique<GpuReadback>(resource.image, resource.width, resource.height);
+            } catch (const std::exception& error) {
+                failed.emplace_back(std::move(read.done), error.what());
+                state->reads.erase(state->reads.begin() + static_cast<std::ptrdiff_t>(index));
+                continue;
+            }
+            ++index;
+            continue;
+        }
+
+        std::optional<std::vector<std::uint8_t>> pixels;
+        try {
+            pixels = read.copy->poll();
+        } catch (const std::exception& error) {
+            failed.emplace_back(std::move(read.done), error.what());
+            state->reads.erase(state->reads.begin() + static_cast<std::ptrdiff_t>(index));
+            continue;
+        }
+        if (!pixels) {
+            ++index;
+            continue;
+        }
+        const int width = resource.width;
+        const int height = resource.height;
+        const bool flipped = resource.flipped;
+        ReadCallback done = std::move(read.done);
+        state->reads.erase(state->reads.begin() + static_cast<std::ptrdiff_t>(index));
+        // clang-format off
+        jobs.run([copied = std::move(*pixels), width, height, flipped]() mutable {
+            return Image::fromRendered(std::move(copied), width, height, flipped);
+        }, [done = std::move(done)](core::JobSystem::Result<Image> result) {
+            done(std::move(result.value), result.error);
+        });
+        // clang-format on
+    }
+    for (auto& [done, error] : failed) {
+        done(std::nullopt, error);
+    }
+}
+
+void Device::cancelReads() noexcept {
+    state->reads.clear();
+}
+
+std::size_t Device::getPendingReadCount() const noexcept {
+    return state->reads.size();
 }
 
 Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {

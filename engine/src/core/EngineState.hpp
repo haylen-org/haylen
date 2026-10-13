@@ -79,6 +79,11 @@ struct EngineState {
     std::unique_ptr<platform::Dialogs> dialogs;
     std::unique_ptr<platform::Screens> screens;
     std::unique_ptr<graphics2d::Renderer> renderer;
+
+    // The callbacks of the screen captures the next frame takes, those of the frame that renders now, and the image the frame renders into while it is captured.
+    std::vector<graphics::Device::ReadCallback> screenCaptures;
+    std::vector<graphics::Device::ReadCallback> capturingScreen;
+    graphics::RenderTarget screenImage;
     std::unique_ptr<assets::Manager> assets;
     std::unique_ptr<SceneManager> scenes;
     plugins::PluginRegistry plugins;

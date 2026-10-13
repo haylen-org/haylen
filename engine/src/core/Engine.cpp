@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <exception>
 #include <optional>
@@ -225,6 +226,9 @@ void Engine::stop() {
     attempt([&current] { current.events.emit(LifecycleEvent::kAppStopping); });
     attempt([&current] { current.scenes->clear(); });
     attempt([this, &current] { current.application->stop(*this); });
+    current.screenCaptures.clear();
+    current.capturingScreen.clear();
+    current.graphics->cancelReads();
 
     const std::vector<plugins::Plugin*> started = std::exchange(current.startedPlugins, {});
     for (auto plugin = started.rbegin(); plugin != started.rend(); ++plugin) {
@@ -386,8 +390,19 @@ void Engine::render(std::size_t plugins) {
     EngineState& current = *state;
     debug::Profiler& profiler = current.profiler;
 
-    // Rendering records every canvas and submits the whole frame at the end.
+    // Rendering records every canvas and submits the whole frame at the end. A frame the app asked to capture renders into an image of the pixel size of the viewport, which then covers the screen.
     current.renderer->beginFrame(current.viewport, current.config.clearColor);
+    const bool capturing = !current.screenCaptures.empty();
+    if (capturing) {
+        std::swap(current.capturingScreen, current.screenCaptures);
+        const math::Vec2 size = current.viewport.getPixelRect().getSize();
+        const int width = std::max(1, static_cast<int>(std::lround(size.x)));
+        const int height = std::max(1, static_cast<int>(std::lround(size.y)));
+        if (!current.screenImage.isValid() || current.screenImage.getWidth() != width || current.screenImage.getHeight() != height) {
+            current.screenImage = current.graphics->createRenderTarget(width, height);
+        }
+        current.renderer->beginCapture(current.screenImage, current.config.clearColor);
+    }
     try {
         const debug::ProfileScope scope(profiler, "render");
         if (!current.errorScreen) {
@@ -406,9 +421,28 @@ void Engine::render(std::size_t plugins) {
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+    if (capturing) {
+        try {
+            current.renderer->endCapture();
+            current.renderer->beginScreen();
+            const math::Rect visible = current.viewport.getVisibleRect();
+            current.renderer->draw({.texture = current.screenImage.getTexture(), .position = visible.getMin(), .size = visible.getSize(), .pivot = {0.0F, 0.0F}, .order = {.blend = graphics::BlendMode::Type::Premultiplied}});
+        } catch (const std::exception& exception) {
+            reportError(exception);
+        }
+    }
     try {
         const debug::ProfileScope scope(profiler, "submit");
         current.renderer->endFrame(current.host.getFrameTarget());
+    } catch (const std::exception& exception) {
+        reportError(exception);
+    }
+    for (graphics::Device::ReadCallback& done : current.capturingScreen) {
+        current.graphics->readTarget(current.screenImage, std::move(done));
+    }
+    current.capturingScreen.clear();
+    try {
+        current.graphics->processReads(*current.jobs);
     } catch (const std::exception& exception) {
         reportError(exception);
     }
@@ -965,6 +999,10 @@ io::Package& Engine::getPackage() noexcept {
 
 storage::UserStorage& Engine::getStorage() noexcept {
     return *state->storage;
+}
+
+void Engine::captureScreen(graphics::Device::ReadCallback done) {
+    state->screenCaptures.push_back(std::move(done));
 }
 
 JobSystem& Engine::getJobs() noexcept {

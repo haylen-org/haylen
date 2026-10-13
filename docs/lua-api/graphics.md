@@ -178,6 +178,23 @@ Creates an [`Image`](#image) of the size, every pixel `fill`, transparent by def
 
 Decodes the bytes of a PNG, JPG, TGA, BMP or GIF file into an [`Image`](#image), on the frame thread, or on the task pool with a promise of the image. The `image` asset type of [`haylen.assets`](assets.md) loads images of the package the same way, with `assets.loadAsync(path, 'image')` off the frame thread. Bytes that are no image raise `The image could not be decoded, and the decoder reported "reason".`
 
+### graphics.readTarget(target) and graphics.captureScreen()
+
+Return a promise of an [`Image`](#image) of the pixels of the render target `target` as the current frame renders it, or of everything the screen shows of the next frame the app renders, the interface and the debug overlay included. The GPU copies the pixels after the frame is submitted without the frame thread waiting for it, where the backend allows, as the [rendering guide](../rendering.md#reading-pixels-back) describes, and the task pool turns them into straight colors with the top row first, so the promise settles a frame or more later. An image saves as a PNG file with `image:encodePngAsync()` and [`storage.writeTextAsync`](storage.md).
+
+```lua
+local async = require('async')
+local graphics = require('haylen.graphics')
+local storage = require('haylen.storage')
+
+async.spawn(function()
+    local shot = graphics.captureScreen():await()
+    local png = shot:encodePngAsync():await()
+    storage.writeTextAsync('screenshots/latest.png', png):await()
+    print(shot.width, shot.height, #png)
+end)
+```
+
 ## Image
 
 An `Image` holds RGBA pixels on the CPU, for art that code makes, composes or packs before it becomes a texture, such as generated portraits, decals stamped into a map or the images of a [runtime atlas](animation2d.md#atlasbuilder). Areas are rectangles of whole pixels, `{x, y, width, height}` or a `Rect`. An image that work on the task pool still reads is copied before Lua changes it, so `blitAsync` and `builder:buildAsync` never see a later change and Lua never waits for them, and images of the asset cache stay as they were loaded.
@@ -197,6 +214,8 @@ An `Image` holds RGBA pixels on the CPU, for art that code makes, composes or pa
 | `image:bleed()` | Gives the transparent pixels around what shows the color of the nearest pixel that shows, which keeps the edges of a `'linear'` texture from darkening. |
 | `image:visibleArea()` | Returns the `Rect` around every pixel that shows, or `nil`. |
 | `image:clone()` | Returns a copy. |
+| `image:encodePng()` | Returns the bytes of a PNG file of the image. |
+| `image:encodePngAsync()` | Returns a promise of the bytes of a PNG file, encoded on the task pool from the image as it is now. |
 
 ```lua
 local assets = require('haylen.assets')

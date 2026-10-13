@@ -12,6 +12,7 @@
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Signal.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/AppPlugin.hpp"
@@ -50,9 +51,8 @@ class Profiler;
 }
 
 namespace haylen::graphics {
-class Device;
 class Viewport;
-} // namespace haylen::graphics
+}
 
 namespace haylen::graphics2d {
 class Renderer;
@@ -161,6 +161,8 @@ class Engine final {
     [[nodiscard]] FrameClock& getClock() noexcept;
     [[nodiscard]] EventBus& getEvents() noexcept;
     [[nodiscard]] FrameQueue& getFrameQueue() noexcept;
+    // Captures the next frame the app renders, everything the screen shows of it, into an image that reaches the callback in a later frame, read back as `graphics::Device::readTarget` reads.
+    void captureScreen(graphics::Device::ReadCallback done);
     [[nodiscard]] graphics::Device& getGraphics() noexcept;
     [[nodiscard]] graphics2d::Renderer& getRenderer2D() noexcept;
     [[nodiscard]] audio::Mixer& getAudio() noexcept;

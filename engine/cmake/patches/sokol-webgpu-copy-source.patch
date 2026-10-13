@@ -1,0 +1,11 @@
+--- a/sokol_gfx.h
++++ b/sokol_gfx.h
+@@ -19168,7 +19168,7 @@
+         wgpu_tex_desc.label = _sg_wgpu_stringview(desc->label);
+         wgpu_tex_desc.usage = WGPUTextureUsage_TextureBinding;
+         if (desc->usage.color_attachment || desc->usage.resolve_attachment || desc->usage.depth_stencil_attachment) {
+-            wgpu_tex_desc.usage |= WGPUTextureUsage_RenderAttachment;
++            wgpu_tex_desc.usage |= WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopySrc;
+         } else {
+             wgpu_tex_desc.usage |= WGPUTextureUsage_CopyDst;
+         }

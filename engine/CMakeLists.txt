@@ -622,13 +622,17 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Widgets.cpp
 )
 
-# The graphics device names its GPU and compiles shader sources ahead of their programs through Metal on Apple platforms, and names its GPU through the backend the build chose elsewhere.
+# The graphics device names its GPU, reads render targets back and compiles shader sources ahead of their programs through Metal on Apple platforms, and names its GPU and reads render targets back through the backend the build chose elsewhere.
 if(APPLE)
-  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.mm src/graphics/ShaderPrecompiler.mm)
-  set_source_files_properties(src/graphics/GpuAdapter.mm src/graphics/ShaderPrecompiler.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.mm src/graphics/GpuReadback.mm src/graphics/ShaderPrecompiler.mm)
+  set_source_files_properties(src/graphics/GpuAdapter.mm src/graphics/GpuReadback.mm src/graphics/ShaderPrecompiler.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 else()
-  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.cpp src/graphics/ShaderPrecompiler.cpp)
-  set_source_files_properties(src/graphics/GpuAdapter.cpp PROPERTIES COMPILE_DEFINITIONS SOKOL_${HAYLEN_BACKEND})
+  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.cpp src/graphics/GpuReadback.cpp src/graphics/ShaderPrecompiler.cpp)
+  set_source_files_properties(src/graphics/GpuAdapter.cpp src/graphics/GpuReadback.cpp PROPERTIES COMPILE_DEFINITIONS SOKOL_${HAYLEN_BACKEND})
+  # The readback of WebGPU calls the API of the port of WebGPU that the web players link, whose headers the module scan of CMake does not find.
+  if(EMSCRIPTEN AND HAYLEN_BACKEND STREQUAL "WGPU")
+    set_source_files_properties(src/graphics/GpuReadback.cpp PROPERTIES COMPILE_OPTIONS "--use-port=emdawnwebgpu" CXX_SCAN_FOR_MODULES OFF)
+  endif()
 endif()
 
 # The browser build talks WebSocket through the page and plays audio through it, while native builds use Poco with the TLS stack Varn already links.

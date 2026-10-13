@@ -8,6 +8,8 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/graphics/Device.hpp"
+#include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -173,6 +175,62 @@ int ImageLua::clone(lua_State* L) {
     return 1;
 }
 
+int ImageLua::encodePng(lua_State* L) {
+    const std::vector<std::uint8_t> encoded = lua::Userdata::check<Image>(L, 1).encodePng();
+    lua_pushlstring(L, reinterpret_cast<const char*>(encoded.data()), encoded.size());
+    return 1;
+}
+
+// Encodes on the task pool, from the image as it is now, and returns a promise of the bytes.
+int ImageLua::encodePngAsync(lua_State* L) {
+    const std::shared_ptr<const Image> image = lua::Userdata::checkShared<Image>(L, 1);
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    // clang-format off
+    engine.getJobs().run([image] { return image->encodePng(); }, [promise](core::JobSystem::Result<std::vector<std::uint8_t>> result) {
+        if (!result.isOk()) {
+            promise->reject(result.error);
+            return;
+        }
+        auto bytes = std::make_shared<std::vector<std::uint8_t>>(std::move(*result.value));
+        promise->resolveCustom([bytes](lua_State* state) { lua_pushlstring(state, reinterpret_cast<const char*>(bytes->data()), bytes->size()); });
+    });
+    // clang-format on
+    varn::async::Promise::push(L, promise);
+    return 1;
+}
+
+// Both promises resolve with the image once the GPU copied it and the task pool straightened it.
+int ImageLua::readTarget(lua_State* L) {
+    const RenderTarget target = lua::Userdata::check<RenderTarget>(L, 1);
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    engine.getGraphics().readTarget(target, settle(promise));
+    varn::async::Promise::push(L, promise);
+    return 1;
+}
+
+int ImageLua::captureScreen(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    engine.captureScreen(settle(promise));
+    varn::async::Promise::push(L, promise);
+    return 1;
+}
+
+Device::ReadCallback ImageLua::settle(const std::shared_ptr<varn::async::Promise>& promise) {
+    // clang-format off
+    return [promise](std::optional<Image> image, const std::string& error) {
+        if (!image) {
+            promise->reject(error);
+            return;
+        }
+        auto shared = std::make_shared<Image>(std::move(*image));
+        promise->resolveCustom([shared](lua_State* state) { lua::Userdata::emplace<Image>(state, shared); });
+    };
+    // clang-format on
+}
+
 int ImageLua::width(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<Image>(L, 1).getWidth());
     return 1;
@@ -184,7 +242,7 @@ int ImageLua::height(lua_State* L) {
 }
 
 void ImageLua::install(lua_State* L) {
-    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).property("width", &width).property("height", &height).install();
+    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).property("width", &width).property("height", &height).install();
 }
 
 } // namespace haylen::graphics
