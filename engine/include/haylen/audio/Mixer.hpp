@@ -70,7 +70,7 @@ class Mixer final {
         const OutputBackend* backend = nullptr;
     };
 
-    // A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where `Inherit` takes the mode of its bus, and the effects process the voice in order before its bus. When every voice plays, a new one stops the voice of the lowest priority, the quietest among them and then the oldest.
+    // A looping voice repeats the part of its sound between the loop start and the loop end in seconds, the whole sound by default, after it played from its start to the loop end once. A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where `Inherit` takes the mode of its bus, and the effects process the voice in order before its bus. When every voice plays, a new one stops the voice of the lowest priority, the quietest among them and then the oldest.
     struct PlayOptions {
         std::string bus = "sfx";
         float volume = 1.0F;
@@ -84,6 +84,8 @@ class Mixer final {
         core::ProcessMode processMode = core::ProcessMode::Inherit;
         std::vector<std::shared_ptr<Effect>> effects;
         std::uint8_t priority = kDefaultPriority;
+        float loopStart = 0.0F;
+        std::optional<float> loopEnd;
     };
 
     // The voices that one sound may play at once and the seconds of app time between two plays of it. A play beyond the voices stops the oldest or the quietest voice of the sound, or starts nothing with `Steal::None`, and a play within the cooldown starts nothing, returning the id of a voice that already finished.
@@ -105,12 +107,15 @@ class Mixer final {
         static const std::array<std::pair<std::string_view, Steal>, 3> kStealNames;
     };
 
+    // A looping track plays from its start to the loop end and repeats from the loop start, so one file holds an intro and a loop without a gap.
     struct MusicOptions {
         std::string bus = "music";
         float volume = 1.0F;
         float fade = 1.0F;
         bool loop = true;
         float startAt = 0.0F;
+        float loopStart = 0.0F;
+        std::optional<float> loopEnd;
     };
 
     // How positional voices fade, pan and shift in pitch with their place relative to the listener. The fade models are those of OpenAL between the minimum and the maximum distance: linear reaches silence at the maximum distance with a rolloff of 1, inverse and exponential keep fading more slowly and stop at the maximum distance. A voice pans by its horizontal offset over the pan distance, and a Doppler factor above 0 shifts the pitch of voices that move toward or away from the listener, with the speed of sound in world units per second.
@@ -279,6 +284,8 @@ class Mixer final {
     static void requirePitch(float value);
     static void requirePosition(math::Vec2 position);
     static void requirePlayOptions(const PlayOptions& options);
+    static void requireLoop(const PlayOptions& options, float duration);
+    [[nodiscard]] static std::uint64_t toFrame(float seconds, std::uint32_t sampleRate) noexcept;
 
     std::unique_ptr<MixerState> state;
 };

@@ -70,6 +70,10 @@ Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index, std::span<
                 luaL_error(L, "The priority of a voice runs from 0 to 255.");
             }
             options.priority = static_cast<std::uint8_t>(priority);
+        } else if (key == "loopStart") {
+            lua::Table::readValue(L, key, options.loopStart);
+        } else if (key == "loopEnd") {
+            lua::Table::readValue(L, key, options.loopEnd.emplace());
         } else if (key == "x") {
             lua::Table::readValue(L, key, x.emplace());
         } else if (key == "y") {
@@ -322,6 +326,8 @@ int AudioLua::playMusic(lua_State* L) {
         lua::Table::readField(L, 2, "fade", options.fade);
         lua::Table::readField(L, 2, "loop", options.loop);
         lua::Table::readField(L, 2, "startAt", options.startAt);
+        lua::Table::readField(L, 2, "loopStart", options.loopStart);
+        lua::Table::readField(L, 2, "loopEnd", options.loopEnd);
     }
     lua::Stack::push(L, getMixer(L).playMusic(lua::Stack::read<Sound>(L, 1), options));
     return 1;

@@ -12,7 +12,7 @@ namespace haylen::audio {
 
 struct SoundData;
 
-// The miniaudio data source through which a voice plays a streamed sound, as floats in the rate and channels of the file, which the voice converts to the mixer. Fills on the I/O pool decode the file through its package reader into a ring of frames ahead of the voice, and the audio thread only takes frames from the ring, so it never reads the package or waits: it plays silence where the frames have not arrived, and a seek only tells the next fill where to decode from. A looping voice loops without a gap, because the fill decodes the start of the file again right after its end.
+// The miniaudio data source through which a voice plays a streamed sound, as floats in the rate and channels of the file, which the voice converts to the mixer. Fills on the I/O pool decode the file through its package reader into a ring of frames ahead of the voice, and the audio thread only takes frames from the ring, so it never reads the package or waits: it plays silence where the frames have not arrived, and a seek only tells the next fill where to decode from. A looping voice loops without a gap, because the fill decodes the start of its loop again right after the end of the loop.
 class ReaderSource final {
   public:
     // The seconds of frames the ring holds, which cover a frame thread that stalls for that long, and the share of them that must be free before the next fill starts.
@@ -28,6 +28,9 @@ class ReaderSource final {
     [[nodiscard]] ma_data_source* get() noexcept {
         return &base;
     }
+
+    // Loops between two frames of the file instead of over the whole file, so a track plays its intro once and repeats the rest. The frame thread sets it before the voice starts.
+    void setLoopRegion(std::uint64_t begin, std::uint64_t end) noexcept;
 
     // Returns the job that tops the ring up on the I/O pool, while the voice has room in its ring or moved its cursor, and an empty function while a fill runs or nothing needs one. A fill that fails ends the voice and throws its failure. The frame thread calls it once per frame.
     [[nodiscard]] std::function<void()> takeFill();

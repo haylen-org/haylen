@@ -45,7 +45,7 @@ namespace haylen::audio {
 // Installs `haylen.audio`, which plays sounds and music through the mixer buses, and the `Sound` class.
 class AudioLua final {
   public:
-    static constexpr std::array<std::string_view, 13> kPlayFields{"bus", "volume", "pitch", "pitchVariation", "pan", "loop", "fadeIn", "startAt", "x", "y", "processMode", "effects", "priority"};
+    static constexpr std::array<std::string_view, 15> kPlayFields{"bus", "volume", "pitch", "pitchVariation", "pan", "loop", "fadeIn", "startAt", "x", "y", "processMode", "effects", "priority", "loopStart", "loopEnd"};
 
     static void install(lua_State* L);
 
@@ -54,7 +54,7 @@ class AudioLua final {
 
   private:
     static constexpr std::array<std::string_view, 3> kLimitFields{"voices", "cooldown", "steal"};
-    static constexpr std::array<std::string_view, 5> kMusicFields{"bus", "volume", "fade", "loop", "startAt"};
+    static constexpr std::array<std::string_view, 7> kMusicFields{"bus", "volume", "fade", "loop", "startAt", "loopStart", "loopEnd"};
     static constexpr std::array<std::string_view, 4> kSoundFields{"stream", "format", "sampleRate", "channels"};
     static constexpr std::array<std::string_view, 7> kSpatializationFields{"model", "minDistance", "maxDistance", "rolloff", "panDistance", "doppler", "speedOfSound"};
 

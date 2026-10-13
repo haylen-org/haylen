@@ -1,4 +1,4 @@
--- Music: two streamed tracks that crossfade over the chosen time, looping or played once and started partway, a volume that `playMusic` changes on the track already playing, the pause, resume and cursor of the music through its voice and a graph of the fades as the calls asked for them.
+-- Music: two streamed tracks that crossfade over the chosen time, looping or played once, started partway and repeated from a loop start after their intro, a volume that `playMusic` changes on the track already playing, the pause, resume and cursor of the music through its voice and a graph of the fades as the calls asked for them.
 local audio = require('haylen.audio')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -12,10 +12,10 @@ local Music = haylen.class('Music', AudioTest)
 
 local kHistory = 14
 local kColors = {calm = Test.accent, lively = Test.warm}
-local kCode = "local music = audio.playMusic(track, {fade = 2, loop = true, volume = 0.8, startAt = 0})\naudio.pause(music)\naudio.resume(music)\naudio.setCursor(music, audio.cursor(music) + 10)\naudio.stopMusic(2)\naudio.music() == track"
+local kCode = "local music = audio.playMusic(track, {fade = 2, loop = true, volume = 0.8, startAt = 0, loopStart = 4})\naudio.pause(music)\naudio.resume(music)\naudio.setCursor(music, audio.cursor(music) + 10)\naudio.stopMusic(2)\naudio.music() == track"
 
 function Music:enter()
-    self.fade, self.loop, self.volume, self.startAt = 2, true, 0.8, 0
+    self.fade, self.loop, self.volume, self.startAt, self.loopStart = 2, true, 0.8, 0, 0
     self.clock = 0
     self.segments = {}
     self.pauses = {}
@@ -27,6 +27,7 @@ function Music:enter()
             ui.button{id = 'lively', text = 'Play the ' .. sounds.tracks[2].text:lower(), variant = 'primary', onClick = function() self:play(sounds.tracks[2]) end},
             ui.formField{label = 'Crossfade and stop seconds', ui.slider{id = 'fade', min = 0, max = 5, step = 0.25, value = self.fade, showValue = true, onChange = function(event) self.fade = event.value end}},
             ui.toggle{id = 'loop', text = 'Loop the next track', checked = true, onChange = function(event) self.loop = event.checked end},
+            ui.formField{label = 'Repeat the next track from seconds', ui.slider{id = 'loopStart', min = 0, max = 20, step = 1, value = self.loopStart, showValue = true, onChange = function(event) self.loopStart = event.value end}},
             ui.formField{label = 'Start the next track at seconds', ui.slider{id = 'startAt', min = 0, max = 20, step = 1, value = self.startAt, showValue = true, onChange = function(event) self.startAt = event.value end}},
             ui.formField{label = 'Track volume', ui.slider{id = 'volume', min = 0, max = 1, step = 0.05, value = self.volume, showValue = true, onChange = function(event) self:setVolume(event.value) end}},
             ui.row{gap = 12,
@@ -73,7 +74,9 @@ end
 
 function Music:play(track)
     local current = self:current()
-    self.voice = audio.playMusic(sounds.track(track.path), {fade = self.fade, loop = self.loop, volume = self.volume, startAt = self.startAt})
+    -- The loop starts inside the track, a second before its end at the latest.
+    local sound = sounds.track(track.path)
+    self.voice = audio.playMusic(sound, {fade = self.fade, loop = self.loop, volume = self.volume, startAt = self.startAt, loopStart = math.min(self.loopStart, math.max(0, sound.duration - 1))})
     if current and current.track == track then
         return
     end

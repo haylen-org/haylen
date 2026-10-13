@@ -135,6 +135,16 @@ audio.resume(music)
 - The function `audio.music()` returns the sound that is playing or paused, or `nil`, and a track stopped through its voice counts as over.
 - The music voice is the last one the voice limit stops.
 
+A track with an intro keeps the intro and the loop in one file and plays with `loopStart` and `loopEnd` in seconds: the voice plays from its start to `loopEnd` once and then repeats from `loopStart`, sample exact and without a gap, also for streamed tracks, which decode the start of the loop right after its end. Ogg Vorbis and WAV loop without a seam, while MP3 encoders pad the start and the end of a file, which the decoder cannot always trim, so loops that must be seamless use the other formats.
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+
+local battle = assets.load('music/battle.ogg', 'sound', {stream = true})
+audio.playMusic(battle, {loopStart = 8.0, loopEnd = 72.0})
+```
+
 ## Pause and process modes
 
 The game pause of `haylen.setPaused` reaches sounds with the same process modes that scenes, timers and tweens use, as the [lifecycle guide](lifecycle.md#pause-and-process-modes) explains. A voice plays only while its process mode runs in the current pause state. A voice that the pause stops keeps its cursor, still counts as active, and resumes where it stopped when the pause ends.

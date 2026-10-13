@@ -1,6 +1,7 @@
 #include "audio/ReaderSource.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <span>
 #include <stdexcept>
 #include <vector>
@@ -12,7 +13,7 @@ namespace haylen::audio {
 
 // What a voice shares with its fills, which may outlive it. A fill writes frames at `written` and the audio thread takes them at `taken`, so each side moves only its own count. A seek of the audio thread raises `generation`, and from then on the audio thread takes nothing until a fill dropped the frames it never took, moved the decoder and set `ready` to the generation it served.
 struct ReaderSource::Feed {
-    explicit Feed(const SoundData& sound) : reader(sound.reader), channels(sound.channels), sampleRate(sound.sampleRate), length(sound.frames), capacity(std::max<std::size_t>(1, static_cast<std::size_t>(sound.sampleRate * kBufferSeconds))), ring(capacity * channels) {}
+    explicit Feed(const SoundData& sound) : reader(sound.reader), channels(sound.channels), sampleRate(sound.sampleRate), length(sound.frames), capacity(std::max<std::size_t>(1, static_cast<std::size_t>(sound.sampleRate * kBufferSeconds))), ring(capacity * channels), loopEnd(sound.frames > 0 ? sound.frames : std::numeric_limits<std::uint64_t>::max()) {}
 
     // Runs on the I/O pool, one fill at a time.
     void fill() {
@@ -33,7 +34,8 @@ struct ReaderSource::Feed {
         }
         if (ready.load(std::memory_order_relaxed) != served) {
             taken.store(written.load(std::memory_order_relaxed), std::memory_order_relaxed);
-            finished.store(!decoder->seek(target.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+            position = target.load(std::memory_order_relaxed);
+            finished.store(!decoder->seek(position), std::memory_order_relaxed);
             ready.store(served, std::memory_order_release);
         }
 
@@ -45,10 +47,20 @@ struct ReaderSource::Feed {
             if (room == 0) {
                 return;
             }
+            // A looping voice decodes up to the end of its loop and goes on from its start.
+            const bool loops = looping.load(std::memory_order_relaxed);
+            const std::uint64_t end = loopEnd.load(std::memory_order_relaxed);
+            if (loops && position >= end) {
+                if (!restartLoop()) {
+                    return;
+                }
+                continue;
+            }
             const std::size_t offset = ringOffset(head);
-            const std::size_t count = std::min(room, capacity - offset);
+            const std::size_t count = loops ? static_cast<std::size_t>(std::min<std::uint64_t>(std::min(room, capacity - offset), end - position)) : std::min(room, capacity - offset);
             const std::uint64_t decoded = decoder->read(std::span(ring).subspan(offset * channels, count * channels));
             written.store(head + decoded, std::memory_order_release);
+            position += decoded;
             if (decoded > 0) {
                 wrapped = false;
             }
@@ -56,13 +68,22 @@ struct ReaderSource::Feed {
                 continue;
             }
 
-            // The file ended. A looping voice goes on from its start, unless the file has no frames to loop.
-            if (!looping.load(std::memory_order_relaxed) || wrapped || !decoder->seek(0)) {
+            // The file ended before the end of the loop. A looping voice goes on from the start of its loop, unless the loop has no frames.
+            if (!loops || wrapped || !restartLoop()) {
                 finished.store(true, std::memory_order_release);
                 return;
             }
             wrapped = true;
         }
+    }
+
+    bool restartLoop() {
+        position = loopBegin.load(std::memory_order_relaxed);
+        if (!decoder->seek(position)) {
+            finished.store(true, std::memory_order_release);
+            return false;
+        }
+        return true;
     }
 
     // Copies the frames that arrived, at most the count, and returns how many.
@@ -100,6 +121,9 @@ struct ReaderSource::Feed {
     std::atomic<bool> failed{false};
     std::atomic<bool> looping{false};
     std::atomic<bool> filling{false};
+    std::atomic<std::uint64_t> loopBegin{0};
+    std::atomic<std::uint64_t> loopEnd;
+    std::uint64_t position = 0;
 };
 
 const ma_data_source_vtable ReaderSource::kVtable{&ReaderSource::read, &ReaderSource::seek, &ReaderSource::getFormat, &ReaderSource::getCursor, &ReaderSource::getLength, &ReaderSource::setLooping, MA_DATA_SOURCE_SELF_MANAGED_RANGE_AND_LOOP_POINT};
@@ -114,6 +138,11 @@ ReaderSource::ReaderSource(const SoundData& sound) : feed(std::make_shared<Feed>
 
 ReaderSource::~ReaderSource() {
     ma_data_source_uninit(get());
+}
+
+void ReaderSource::setLoopRegion(std::uint64_t begin, std::uint64_t end) noexcept {
+    feed->loopBegin.store(begin, std::memory_order_relaxed);
+    feed->loopEnd.store(end, std::memory_order_relaxed);
 }
 
 std::function<void()> ReaderSource::takeFill() {
@@ -147,8 +176,13 @@ ma_result ReaderSource::read(ma_data_source* source, void* frames, ma_uint64 fra
     std::size_t delivered = 0;
     if (state.ready.load(std::memory_order_acquire) == state.generation.load(std::memory_order_relaxed)) {
         delivered = state.take(output, count);
-        const ma_uint64 moved = self.cursor.load(std::memory_order_relaxed) + delivered;
-        self.cursor.store(state.looping.load(std::memory_order_relaxed) && state.length > 0 ? moved % state.length : moved, std::memory_order_relaxed);
+        ma_uint64 moved = self.cursor.load(std::memory_order_relaxed) + delivered;
+        const ma_uint64 begin = state.loopBegin.load(std::memory_order_relaxed);
+        const ma_uint64 end = state.loopEnd.load(std::memory_order_relaxed);
+        if (state.looping.load(std::memory_order_relaxed) && end > begin && moved >= end) {
+            moved = begin + (moved - begin) % (end - begin);
+        }
+        self.cursor.store(moved, std::memory_order_relaxed);
         if (delivered < count && state.finished.load(std::memory_order_acquire) && state.written.load(std::memory_order_acquire) == state.taken.load(std::memory_order_relaxed)) {
             *framesRead = delivered;
             return delivered == 0 ? MA_AT_END : MA_SUCCESS;

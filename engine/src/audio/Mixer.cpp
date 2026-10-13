@@ -134,17 +134,35 @@ void Mixer::requirePlayOptions(const PlayOptions& options) {
     }
 }
 
+std::uint64_t Mixer::toFrame(float seconds, std::uint32_t sampleRate) noexcept {
+    return static_cast<std::uint64_t>(std::llround(static_cast<double>(seconds) * static_cast<double>(sampleRate)));
+}
+
+void Mixer::requireLoop(const PlayOptions& options, float duration) {
+    const float end = options.loopEnd.value_or(duration);
+    if (!std::isfinite(options.loopStart) || !std::isfinite(end) || options.loopStart < 0.0F || end <= options.loopStart || end > duration + 1.0e-4F) {
+        throw std::invalid_argument("A loop needs 0 <= loopStart < loopEnd <= the length of the sound.");
+    }
+}
+
 Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     if (!sound.isValid()) {
         throw std::invalid_argument("Cannot play an empty sound.");
     }
     requirePlayOptions(options);
+    const bool region = options.loopStart > 0.0F || options.loopEnd.has_value();
+    if (region) {
+        requireLoop(options, sound.getDuration());
+    }
     std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);
     voice->sound = sound;
 
     const SoundData& data = *sound.getData();
     if (data.reader) {
         voice->readerSource = std::make_unique<ReaderSource>(data);
+        if (region) {
+            voice->readerSource->setLoopRegion(toFrame(options.loopStart, data.sampleRate), toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate));
+        }
         MixerState::Voice& streamed = *voice;
         const VoiceId id = state->start(std::move(voice), streamed.readerSource->get(), options);
         state->fill(streamed);
@@ -158,6 +176,9 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     }
     voice->bufferReady = true;
     ma_data_source* source = &voice->buffer;
+    if (region) {
+        ma_data_source_set_loop_point_in_pcm_frames(source, toFrame(options.loopStart, data.sampleRate), std::min<ma_uint64>(toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate), data.frames));
+    }
     return state->start(std::move(voice), source, options);
 }
 
@@ -166,7 +187,7 @@ Mixer::VoiceId Mixer::play(const std::shared_ptr<platform::AudioStream>& stream,
     if (!stream) {
         throw std::invalid_argument("Cannot play an empty audio stream.");
     }
-    if (options.loop || options.startAt != 0.0F || options.pitch != 1.0F || options.pitchVariation != 0.0F) {
+    if (options.loop || options.startAt != 0.0F || options.pitch != 1.0F || options.pitchVariation != 0.0F || options.loopStart != 0.0F || options.loopEnd) {
         throw std::invalid_argument("A stream plays as its samples arrive, so its voice takes no loop, start time, pitch or pitch variation.");
     }
     requirePlayOptions(options);
@@ -368,7 +389,7 @@ Mixer::VoiceId Mixer::playMusic(const Sound& sound, const MusicOptions& options)
     }
 
     // The next track starts before the current one fades out, so a track that cannot play leaves the current one playing.
-    const VoiceId track = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade, .startAt = options.startAt});
+    const VoiceId track = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade, .startAt = options.startAt, .loopStart = options.loopStart, .loopEnd = options.loopEnd});
     stop(state->musicVoice, options.fade);
     state->musicVoice = track;
     state->findVoice(track)->music = true;

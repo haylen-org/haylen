@@ -299,7 +299,7 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
-| `AUD-001` | Music | Two streamed tracks with crossfades of any length, looping or played once, started partway, paused, resumed and moved through with the cursor of their voice. |  |
+| `AUD-001` | Music | Two streamed tracks with crossfades of any length, looping or played once, started partway, repeated from a loop start after an intro, paused, resumed and moved through with the cursor of their voice. |  |
 | `AUD-002` | One-shot effects | Volume, pitch, pitch variation, pan, fades and the limit of voices of each sound. |  |
 | `AUD-003` | Buses | The bus tree with volumes, mutes and process modes, and what the game pause stops. |  |
 | `AUD-004` | Effects | Every filter, the delay and the reverb on a bus or on a voice, with tweened parameters. |  |

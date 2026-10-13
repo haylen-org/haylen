@@ -125,6 +125,28 @@ TEST_F(StreamedSoundTest, PlaysSeeksAndLoopsAFileOfSeveralMegabytesInBoundedMemo
     EXPECT_EQ(package->getWatchedReads(), 0U) << "The thread that mixes never reads the package.";
 }
 
+TEST_F(StreamedSoundTest, LoopsBetweenLoopPointsWithoutAGap) {
+    const std::vector<std::uint8_t> file = makePositions(kRate);
+    for (const bool streamed : {false, true}) {
+        const Sound sound = streamed ? Sound::stream(makeReader(file)) : Sound::decode(file);
+        const Mixer::VoiceId voice = mixer.play(sound, {.loop = true, .loopStart = 0.25F, .loopEnd = 0.5F});
+        const std::vector<std::uint64_t> played = listen(voice, kRate);
+        ASSERT_EQ(played.size(), kRate) << streamed;
+
+        // The intro plays once, and every frame after the loop end comes from the loop start on.
+        std::uint64_t expected = 0;
+        for (const std::uint64_t position : played) {
+            ASSERT_EQ(position, expected) << streamed;
+            expected = expected + 1 == kRate / 2 ? kRate / 4 : expected + 1;
+        }
+        mixer.stop(voice);
+        peak(toFrames(Mixer::kDeclickSeconds) + 1024);
+        mixer.update(0.0F);
+    }
+    EXPECT_THROW((void)mixer.play(makeTone(100), {.loop = true, .loopStart = 0.5F}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(makeTone(toFrames(1.0F)), {.loop = true, .loopStart = 0.5F, .loopEnd = 0.4F}), std::invalid_argument);
+}
+
 TEST_F(StreamedSoundTest, PlaysTheFramesOfItsDecodedSoundAndEndsWithThem) {
     const std::vector<std::uint8_t> file = makePositions(kRate / 4);
     const Sound decoded = Sound::decode(file);
