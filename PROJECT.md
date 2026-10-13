@@ -1860,6 +1860,8 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [ ] Os testes `PLT-001` e `PLT-002` passam mesmo sem o plugin `platform-sample`, porque só demonstram e não conferem nada: fazer cada um conferir as respostas do plugin e falhar quando ele faltar.
 - [ ] Servidor de desenvolvimento no Mac Catalyst: uma vez logou "Socket is not connected" logo depois de conectar e reconectou em um segundo. Achar a causa no código de rede.
 
+- [ ] O build da web de 32 bits mostra avisos `-Wshorten-64-to-32` em `engine/src/audio/ReaderSource.cpp`: corrigir os tipos, porque o build tem que ser sem avisos em todas as plataformas.
+
 #### AT. Documentação
 
 - [ ] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro.
