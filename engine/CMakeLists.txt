@@ -355,6 +355,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/input/ActionMapLua.cpp
   src/input/ActionMaps.cpp
   src/input/AppTextField.cpp
+  src/input/CommandBuffer.cpp
+  src/input/CommandBufferLua.cpp
   src/input/Controls.cpp
   src/input/Gesture.cpp
   src/input/GestureRecognizer.cpp

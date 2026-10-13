@@ -104,6 +104,7 @@ set(HAYLEN_TEST_SOURCES
   graphics/GraphicsTests.cpp
   graphics/ShaderTests.cpp
   graphics/VectorImageTests.cpp
+  input/CommandBufferTests.cpp
   input/GestureTests.cpp
   input/InputTests.cpp
   input/PointerEmulationTests.cpp

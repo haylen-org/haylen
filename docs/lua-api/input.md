@@ -1206,6 +1206,145 @@ local player = input.newActionMap({gamepad = 1})
 player.pressThreshold = 0.3
 ```
 
+## Command buffers
+
+A command buffer turns the buttons held on each fixed step into one kept command, the way action games read moves: a single press, a chord of buttons on one step, a double tap or a sequence of presses such as defend, forward and attack, typed within a number of steps. When several commands complete on one step, the highest priority wins, and the later one on a tie, a press on a later step replaces the kept command, and the kept command expires after its lifetime in steps unless the buffer is frozen, such as during hit stop. Time counts in steps, never in seconds, so the same presses always type the same commands, which replays and tests rely on.
+
+### input.newCommandBuffer(options)
+
+Creates a buffer.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `buttons` | required | The button names, from 1 to 32, which are also the order of presses within one step. Every button types a single-press command with its own name. |
+| `lifetime` | `1` | How many steps a typed command lasts, or `false` to keep it until it is consumed or replaced. A lifetime of 1 lasts only the step it was typed on, even while frozen. |
+| `lifetimes` | none | A table from button names to the lifetime of their single presses, such as `{left = 1, right = 1}`. |
+| `directions` | none | `{back = name, forward = name}`, the buttons of a character that faces right, which lets steps name `'forward'` and `'back'`. |
+| `commands` | `{}` | The named commands, each `{name, steps, maxTicks, priority, lifetime, clearsHistory}`, where `steps` lists button names, `'forward'` or `'back'`, `maxTicks` bounds the steps between the first and the last press, `priority` is 0 by default, `lifetime` defaults to the lifetime of the buffer and `clearsHistory`, `true` by default, forgets the typed presses once the command completes. |
+
+A chord is a command with `maxTicks = 0`, whose buttons go down on the same step, and a double tap is two presses of one button with nothing pressed between them.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local commands = input.newCommandBuffer({
+    buttons = {'defend', 'up', 'down', 'left', 'right', 'jump', 'attack'},
+    lifetime = 10,
+    lifetimes = {up = 1, down = 1, left = 1, right = 1},
+    directions = {back = 'left', forward = 'right'},
+    commands = {
+        {name = 'run', steps = {'forward', 'forward'}, maxTicks = 9, priority = 1},
+        {name = 'jumpAttack', steps = {'jump', 'attack'}, maxTicks = 0, priority = 2, clearsHistory = false},
+        {name = 'forwardSpecial', steps = {'defend', 'forward', 'attack'}, priority = 3, lifetime = false},
+    },
+})
+local player = input.newActionMap({gamepad = 1, actions = 'input.json'})
+
+scene.push({
+    facing = 1,
+    fixedUpdate = function(self, step)
+        commands.facing = self.facing
+        commands:update(player)
+        local typed = commands:peek()
+        if typed == 'forwardSpecial' or typed == 'attack' then
+            commands:consume(typed)
+            print('Typed ' .. typed .. '.')
+        end
+    end,
+})
+```
+
+### buffer:update(mapOrMask)
+
+Advances the buffer by one step with the buttons down on it: an action map, whose actions named like the buttons give their step state, as `map:stepDown()` tells, so a tap shorter than a step still counts, or an integer whose bit `n - 1` holds the button `n`, such as `map:stepButtons()` returns or a recording plays back.
+
+```lua
+local input = require('haylen.input')
+
+local commands = input.newCommandBuffer({buttons = {'jump', 'attack'}, lifetime = 6})
+commands:update(0x2)
+print(commands:peek())
+```
+
+### buffer:settle(mapOrMask)
+
+Takes the buttons held now as already down without a step, so a button held across a pause or the start of a round never types a press.
+
+```lua
+local input = require('haylen.input')
+
+local commands = input.newCommandBuffer({buttons = {'jump', 'attack'}})
+commands:settle(0x2)
+commands:update(0x2)
+print(commands:peek())
+```
+
+### buffer:peek()
+
+Returns the name of the kept command, or `nil`, without taking it. The name is a string the buffer already holds, so a step allocates nothing.
+
+```lua
+local input = require('haylen.input')
+
+local commands = input.newCommandBuffer({buttons = {'attack'}, lifetime = 4})
+commands:update(1)
+if commands:peek() == 'attack' then
+    print('An attack waits.')
+end
+```
+
+### buffer:consume(name)
+
+Takes the kept command when it is `name` and returns `true`, or returns `false`. A name the buffer does not have raises `The command buffer has no command "<name>".`.
+
+```lua
+local input = require('haylen.input')
+
+local commands = input.newCommandBuffer({buttons = {'attack'}, lifetime = 4})
+commands:update(1)
+print(commands:consume('attack'), commands:consume('attack'))
+```
+
+### buffer:held(button)
+
+Returns `true` while the button is down on the last step. A name the buffer does not have raises `The command buffer has no button "<name>".`.
+
+```lua
+local input = require('haylen.input')
+
+local commands = input.newCommandBuffer({buttons = {'defend'}})
+commands:update(1)
+print(commands:held('defend'))
+```
+
+### buffer:clear()
+
+Forgets the kept command and the typed presses and keeps the buttons that are held, such as when a character comes back to life.
+
+```lua
+local input = require('haylen.input')
+
+local commands = input.newCommandBuffer({buttons = {'attack'}, lifetime = 10})
+commands:update(1)
+commands:clear()
+print(commands:peek())
+```
+
+### buffer.frozen, buffer.facing, buffer.tick
+
+The property `frozen` stops lifetimes longer than one step from counting, `facing` is 1 for a character that faces right and -1 for one that faces left, which swaps the `'forward'` and `'back'` steps, and `tick` counts the steps the buffer took, read only.
+
+```lua
+local input = require('haylen.input')
+
+local commands = input.newCommandBuffer({buttons = {'left', 'right'}, directions = {back = 'left', forward = 'right'}})
+commands.facing = -1
+commands.frozen = true
+commands:update(0)
+print(commands.tick)
+```
+
 ## Virtual controls
 
 Virtual buttons and sticks are named inputs that code or on-screen controls write and the action map reads through `virtual:` and `virtualStick:` bindings. The `touchButton` and `touchStick` components of [`haylen.ui`](ui.md) write them from their `action` property, and an app can write them itself for custom controls. Values written during a frame reach the actions at the start of the next frame.
@@ -1350,6 +1489,17 @@ scene.push({
 | `The "gamepad" of an action map must be an index from 1 to 8, or false for none.` | The option `gamepad` of `input.newActionMap()` or of `map.devices` is not a gamepad index or `false`. |
 | `Unknown option "<key>".` | The options of `input.newActionMap()` or `map.devices` hold an unknown key. |
 | `The list of the buttons of a step holds action names, and entry <n> is not one.` | The list of `map:stepButtons()` holds something other than a string. |
+| `The command "<name>" names the button "<button>", which the buffer does not have.` | A step or a direction of `input.newCommandBuffer()` names a button that is not in `buttons`. |
+| `The lifetimes name the button "<button>", which the buffer does not have.` | The `lifetimes` of `input.newCommandBuffer()` name a button that is not in `buttons`. |
+| `A command lasts a whole number of steps from 1, or false to last until it is consumed.` | A lifetime is 0, negative, fractional or not a number. |
+| `A command buffer needs from 1 to 32 buttons.` | The `buttons` of `input.newCommandBuffer()` are empty or more than 32. |
+| `A command needs a name and at least one step.` | A command has no name or no steps. |
+| `The command "<name>" has more than 16 steps.` | A command is longer than the history of the buffer. |
+| `The command "<name>" names a direction, which needs the directions of the buffer.` | A step names `'forward'` or `'back'` in a buffer without `directions`. |
+| `The directions of a command buffer name the "back" and the "forward" buttons.` | The `directions` lack one of the two names. |
+| `The command name "<name>" is used by more than one command.` | Two commands, or a command and a button, share a name. |
+| `The command buffer has no command "<name>".` | The method `consume` received a name the buffer does not have. |
+| `The command buffer has no button "<name>".` | The method `held` received a name the buffer does not have. |
 | `at most 32 actions fit in the buttons of a step` | The list of `map:stepButtons()` is longer than 32. It comes inside a bad argument error. |
 | `expected left or right` | The function `input.gamepadStick()` received another side. It comes inside a bad argument error. |
 | `Unknown option "<key>".` | The function `input.setGestureSettings()` received an unknown field. |
