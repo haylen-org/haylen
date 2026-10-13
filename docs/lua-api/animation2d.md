@@ -1,6 +1,6 @@
 # haylen.animation2d
 
-The module `haylen.animation2d` plays frame animations on sprites. It cuts animations from sprite sheet grids or from lists of frames, reads TexturePacker and Aseprite atlases with their tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI.
+The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads TexturePacker and Aseprite atlases with their tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -615,7 +615,7 @@ A `StateGraph` is a checked description of states, made by `animation2d.newState
 
 ### graph:newPlayer(target, options)
 
-Returns a `StateGraphPlayer` that runs the graph on an `Animator`, or on a sprite of an `AnimatedBatch`, whose number the table `options` gives as `sprite`. The player starts in the initial state and plays its animation. A target without an animation a state plays raises `The state graph plays the animation "<name>", which its target lacks.`, and a batch without `sprite` raises `A state graph player of an animated batch needs the number of one of its sprites in "sprite".`.
+Returns a `StateGraphPlayer` that runs the graph on an `Animator`, on a sprite of an `AnimatedBatch`, whose number the table `options` gives as `sprite`, or on a track of a `Skeleton`, which `options` gives as `track`, 1 by default. The player starts in the initial state and plays its animation. A target without an animation a state plays raises `The state graph plays the animation "<name>", which its target lacks.`, and a batch without `sprite` raises `A state graph player of an animated batch needs the number of one of its sprites in "sprite".`.
 
 ## StateGraphPlayer
 
@@ -669,6 +669,168 @@ scene.push({
     end,
 })
 ```
+
+## Skeletons
+
+A skeleton animates a character made of parts, cutout pieces or meshes, on a hierarchy of bones, so one small set of images gives smooth motion, many animations, equipment swaps and aiming. The shared `SkeletonData` of a `.skeleton` file holds the bones, the slots in draw order, the skins, the constraints and the animations, and each `Skeleton` of it has its own pose:
+
+- Bones compose like nodes, each from its parent, with the root placed by the `x`, `y`, `rotation`, `scaleX` and `scaleY` of the skeleton. Every slot sits on a bone and shows one attachment: a region of the atlas, a mesh of a region whose vertices follow its bone or several bones by weight, a point, such as a hand, or an outline.
+- Tracks play animations over each other in track order, each with its own time, loop and weight, so a walk on track 1 and a wave on track 2 mix, and `crossFade` blends the pose of the animation a track played into the new one over its seconds. Animations turn, move and scale bones relative to their setup pose, color slots, swap attachments, deform meshes, change the mix of constraints, reorder the slots and fire events.
+- Inverse kinematics bends one bone, or a bone and its child, so the end of the chain reaches a target bone or a point the app gives, and transform constraints make bones follow the rotation and place of another bone.
+- A draw sends the slots in draw order as meshes of the atlas texture, neighbouring slots of one blend mode in one draw call, and lit canvases light them like meshes. Posing and skinning run in C++ on the frame thread, and nothing allocates once the buffers of a skeleton have grown.
+
+### The `.skeleton` format
+
+A `.skeleton` file is JSON in pixels and degrees, with y growing downward, and every key not listed raises an error that names it:
+
+| Key | Meaning |
+| --- | --- |
+| `atlas` | The path of the [sprite atlas](#loading-sprite-atlases) whose frames the attachments show, relative to the file. |
+| `bones` | A list of bones, parents before their children, each with `name`, `parent` (every bone but the first, the root), `x`, `y`, `rotation`, `scaleX`, `scaleY` and `length`, which inverse kinematics reads. |
+| `slots` | A list of slots in draw order, each with `name`, `bone`, `attachment` (the name it starts with), `color` and `blend`. |
+| `skins` | Skins by name, each mapping slot names to attachments by name. The skin `default` always exists, and another skin falls back to it. An attachment has `type` (`'region'`, the default, `'mesh'`, `'point'` or `'boundingBox'`), `frame` (the frame of the atlas, the name of the attachment by default), `x`, `y`, `rotation`, `scaleX`, `scaleY`, `width`, `height` and `color`. A mesh has `uvs` from 0 to 1 over its frame, `triangles`, and `vertices` in the space of its bone or `weights`, a list for each vertex of `{bone, x, y, weight}`. |
+| `ik` | Inverse kinematics constraints, each with `name`, `bones` (one bone, or a bone and its child), `target`, `bendPositive` and `mix`. |
+| `transform` | Transform constraints, each with `name`, `bones`, `target`, `rotateMix`, `translateMix`, `rotation`, `x` and `y`. |
+| `animations` | Animations by name, each with `bones` (`rotate` keys with `value`, `translate` and `scale` keys with `x` and `y`), `slots` (`attachment` keys with `name`, an empty name to hide, and `color` keys with `color`), `deform` (by slot and mesh, keys with `offsets` for each vertex or weight), `ik` (keys with `mix` and `bendPositive`), `drawOrder` (keys with the `order` of every slot), `events` (each with `time`, `name`, `text` and `number`) and an optional `duration`, which defaults to the time of its last key. |
+
+Every key of a timeline has `time` and a `curve` toward the next key: `'linear'`, the default, `'stepped'`, the name of an [easing](tween.md#easing), or four numbers of a cubic Bezier curve. Errors name the part at fault, such as `The bone "arm" names the unknown bone "torso".`, `The keys of the rotate of the bone "root" in the animation "walk" must follow each other in time.` and `The frame "cape" of the attachment "cape" of the slot "cape" does not exist in the atlas of the skeleton.`. Events at the time 0 of a looping animation fire each time it wraps.
+
+```json
+{
+    "atlas": "puppet.json",
+    "bones": [
+        {"name": "root"},
+        {"name": "hip", "parent": "root", "y": -74},
+        {"name": "thigh", "parent": "hip", "rotation": 90, "length": 36}
+    ],
+    "slots": [{"name": "thigh", "bone": "thigh", "attachment": "thigh"}],
+    "skins": {"default": {"thigh": {"thigh": {"x": 18, "rotation": 90}}}},
+    "animations": {
+        "walk": {
+            "bones": {"thigh": {"rotate": [{"time": 0, "value": 25, "curve": "sineInOut"}, {"time": 0.4, "value": -25, "curve": "sineInOut"}, {"time": 0.8, "value": 25}]}},
+            "events": [{"time": 0.4, "name": "step"}]
+        }
+    }
+}
+```
+
+### animation2d.newSkeletonData(description, atlas)
+
+Creates `SkeletonData` from a description table in the `.skeleton` format, without its `atlas` key, and a `SpriteAtlas`. The function `assets.load(path)` loads `.skeleton` files with their atlas on a worker thread.
+
+### animation2d.newSkeleton(data, options)
+
+Creates a `Skeleton` of `data` in its setup pose. The table `options` takes `skin`, `x`, `y`, `rotation`, `scaleX`, `scaleY` and `color`.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+local knight = animation2d.newSkeleton(assets.load('characters/knight.skeleton'), {skin = 'blue', x = 0, y = 200})
+knight:play('walk', {track = 1})
+
+scene.push({
+    enter = function(self)
+        knight:on('event', function(name) if name == 'step' then print('Footstep.') end end, {owner = self})
+    end,
+    update = function(self, dt)
+        if input.pressed('attack') then
+            knight:crossFade('slash', 0.1, {track = 2, loop = false})
+        end
+        knight:setIkTarget('aim', camera:screenToWorld(input.mousePosition()))
+        knight:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera, {sort = 'y'})
+        knight:draw({layer = 2})
+    end,
+})
+```
+
+## SkeletonData
+
+`SkeletonData` is shared and immutable. Its read-only properties `bones`, `slots`, `skins`, `animations` and `events` list their names, and `data:duration(name)` returns the length of an animation in seconds, raising `The skeleton has no animation "<name>".` for one it lacks. Two values compare equal with `==` when they are the same data.
+
+## Skeleton
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y`, `rotation`, `scaleX`, `scaleY` | number | read and write | The place of the root in the world, which tweens animate natively. |
+| `color` | Color | read and write | Multiplies the color of every slot. |
+| `skin` | string | read and write | The skin, whose attachments the slots show. A skin the data lacks raises `The skeleton has no skin "<name>".`. |
+| `data` | SkeletonData | read | The data of the skeleton. |
+
+### skeleton:play(name, options) and skeleton:crossFade(name, seconds, options)
+
+Play an animation on a track from its start, at once or crossfading from what the track played over `seconds`. The table `options` takes `track`, counted from 1 (default 1), `loop` (default `true`) and, for `play`, `fade` in seconds. An animation the data lacks raises `The skeleton has no animation "<name>".`.
+
+### skeleton:stop(track), skeleton:setTrackWeight(track, weight), skeleton:trackAnimation(track) and skeleton:trackTime(track)
+
+Clear a track, set the weight from 0 to 1 that it mixes in by, and return the name of the animation of a track, or `nil`, and its time.
+
+### skeleton:setAttachment(slot, name)
+
+Shows the attachment `name` of the skin in a slot, or nothing with `nil`. A slot or attachment the data lacks raises an error that names it.
+
+### skeleton:bone(name)
+
+Returns a table with the local `x`, `y`, `rotation`, `scaleX` and `scaleY` of a bone and its `worldX`, `worldY`, `worldRotation` and `worldScaleX` as of the last pose, which attaches other things to the bone. A bone the data lacks raises `The skeleton has no bone "<name>".`.
+
+### skeleton:setIkTarget(constraint, x, y), skeleton:clearIkTarget(constraint) and skeleton:setIkMix(constraint, mix)
+
+Make an inverse kinematics constraint reach a point in the world instead of its target bone, give it back its target bone, and set the mix from 0 to 1 it starts every pose with, which its timelines change.
+
+### skeleton:update(dt) and skeleton:pose()
+
+Advance every track by `dt` and pose the skeleton, firing the events the tracks passed, or pose it at the current times, such as after moving it.
+
+### skeleton:point(slot)
+
+Returns the `x` and `y` in the world of the point attachment a slot shows, or `nil`.
+
+### skeleton:bounds()
+
+Returns the `Rect` around every region and mesh of the last pose, which culls skeletons outside the view.
+
+### skeleton:draw(order)
+
+Draws the slots in draw order with the [draw order](graphics2d.md#draw-order) keys of `order`.
+
+### skeleton:on(event, listener, options)
+
+Listens to `'event'`, which calls the listener with the name, the track counted from 1, the animation, the text and the number of every event the tracks pass, and returns a `Connection`. The table `options` takes `owner`, and without one the listener takes the default owner.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local puppet = animation2d.newSkeleton(assets.load('animation/puppet.skeleton'), {x = 400, y = 500})
+puppet:play('walk', {track = 1})
+puppet:play('wave', {track = 2})
+puppet:setTrackWeight(2, 0.5)
+
+scene.push({
+    update = function(self, dt)
+        puppet:update(dt)
+        local hand = puppet:bone('frontFore')
+        print(hand.worldX, hand.worldY, puppet:trackAnimation(1))
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        puppet:draw()
+        local x, y = puppet:point('hand')
+        graphics2d.drawCircle(x, y, 4, '#FFFFE040')
+    end,
+})
+```
+
+A [state graph](#stategraph) drives a track of a skeleton with `graph:newPlayer(skeleton, {track = 1})`, crossfading by the `fade` of each transition, and players on several tracks of one skeleton make layers, such as legs that walk on one track while the arms aim on another.
 
 ## SpriteAtlas
 

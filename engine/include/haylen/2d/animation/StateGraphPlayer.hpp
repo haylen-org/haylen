@@ -15,8 +15,9 @@ namespace haylen::animation2d {
 
 class AnimatedBatch;
 class Animator;
+class Skeleton;
 
-// Runs a state graph on a target that holds the animations its states name: an animator, or one sprite of an animated batch. A player keeps the values of the parameters and the state, picks the animation of directional states by their vector, and takes the first transition whose source, exit time and condition allow it on each update, consuming the triggers its condition reads. It switches the animations of its target and never advances it, so the target updates as it always does.
+// Runs a state graph on a target that holds the animations its states name: an animator, one sprite of an animated batch, or one track of a skeleton, which crossfades by the fade of each transition, so players on several tracks of one skeleton make layers. A player keeps the values of the parameters and the state, picks the animation of directional states by their vector, and takes the first transition whose source, exit time and condition allow it on each update, consuming the triggers its condition reads. It switches the animations of its target and never advances it, so the target updates as it always does.
 class StateGraphPlayer final {
   public:
     struct BatchSprite {
@@ -24,7 +25,12 @@ class StateGraphPlayer final {
         std::size_t index = 0;
     };
 
-    using Target = std::variant<std::shared_ptr<Animator>, BatchSprite>;
+    struct SkeletonTrack {
+        std::shared_ptr<Skeleton> skeleton;
+        std::size_t track = 0;
+    };
+
+    using Target = std::variant<std::shared_ptr<Animator>, BatchSprite, SkeletonTrack>;
 
     // Starts in the initial state. Throws `std::invalid_argument` when the target lacks an animation a state plays.
     StateGraphPlayer(std::shared_ptr<const StateGraph> stateGraph, Target playTarget);
@@ -66,9 +72,9 @@ class StateGraphPlayer final {
     [[nodiscard]] float getTargetTime() const;
     [[nodiscard]] float getTargetCycle() const;
 
-    // Plays an animation on the target from its start, or at the time the animation before it reached.
-    void playOnTarget(const std::string& name, bool keepTime);
-    void enterState(std::size_t state);
+    // Plays an animation on the target from its start, or at the time the animation before it reached, crossfading a skeleton over the fade.
+    void playOnTarget(const std::string& name, bool keepTime, float fade);
+    void enterState(std::size_t state, float fade);
     [[nodiscard]] const std::string& animationOf(const StateGraph::State& state) const noexcept;
 
     std::shared_ptr<const StateGraph> graph;

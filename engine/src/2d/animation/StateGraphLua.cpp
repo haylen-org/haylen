@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "2d/animation/AnimatedBatchLua.hpp"
+#include "2d/animation/SkeletonLua.hpp"
 #include "haylen/2d/animation/Animator.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
@@ -44,12 +45,21 @@ int StateGraphLua::parameters(lua_State* L) {
     return 1;
 }
 
-// Plays the graph on an animator, or with `{sprite = index}` on a sprite of an animated batch.
+// Plays the graph on an animator, with `{sprite = index}` on a sprite of an animated batch, or with `{track = index}` on a track of a skeleton.
 int StateGraphLua::newPlayer(lua_State* L) {
     const std::shared_ptr<StateGraph>& graph = lua::Userdata::checkShared<StateGraph>(L, 1);
     StateGraphPlayer::Target target;
     if (lua::Userdata::test<Animator>(L, 2) != nullptr) {
         target = lua::Userdata::checkShared<Animator>(L, 2);
+    } else if (lua::Userdata::test<Skeleton>(L, 2) != nullptr) {
+        lua_Integer track = 1;
+        if (!lua_isnoneornil(L, 3)) {
+            luaL_checktype(L, 3, LUA_TTABLE);
+            lua::Table::checkFields(L, 3, {kPlayerFields});
+            lua::Table::readField(L, 3, "track", track);
+        }
+        luaL_argcheck(L, track >= 1, 3, "tracks are numbered from one");
+        target = StateGraphPlayer::SkeletonTrack{.skeleton = lua::Userdata::checkShared<Skeleton>(L, 2), .track = static_cast<std::size_t>(track - 1)};
     } else {
         const std::shared_ptr<AnimatedBatch>& batch = lua::Userdata::checkShared<AnimatedBatch>(L, 2);
         lua_Integer sprite = 0;

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "2d/animation/AnimatedBatchLua.hpp"
+#include "2d/animation/SkeletonLua.hpp"
 #include "2d/animation/StateGraphLua.hpp"
 #include "2d/nodes/Nodes2DLua.hpp"
 #include "haylen/2d/animation/Animation.hpp"
@@ -529,7 +530,7 @@ int Animation2DLua::atlasAnimationFromFrames(lua_State* L) {
 
 int Animation2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"fromGrid", &lua::Binding::native<&fromGrid>}, {"fromFrames", &lua::Binding::native<&fromFrames>}, {"newAnimator", &newAnimator}, {"newAnimatedBatch", &lua::Binding::native<&AnimatedBatchLua::create>}, {"newStateGraph", &lua::Binding::native<&StateGraphLua::create>}, {nullptr, nullptr},
+        {"fromGrid", &lua::Binding::native<&fromGrid>}, {"fromFrames", &lua::Binding::native<&fromFrames>}, {"newAnimator", &newAnimator}, {"newAnimatedBatch", &lua::Binding::native<&AnimatedBatchLua::create>}, {"newStateGraph", &lua::Binding::native<&StateGraphLua::create>}, {"newSkeletonData", &lua::Binding::native<&SkeletonLua::newData>}, {"newSkeleton", &lua::Binding::native<&SkeletonLua::newSkeleton>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -544,6 +545,7 @@ void Animation2DLua::install(lua_State* L) {
 
     AnimatedBatchLua::install(L);
     StateGraphLua::install(L);
+    SkeletonLua::install(L);
     lua::Binding::preload(L, "haylen.animation2d", &open);
 }
 

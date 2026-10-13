@@ -1,0 +1,729 @@
+{
+    "atlas": "puppet.json",
+    "bones": [
+        {
+            "name": "root"
+        },
+        {
+            "name": "hip",
+            "parent": "root",
+            "y": -74
+        },
+        {
+            "name": "torso",
+            "parent": "hip",
+            "length": 64
+        },
+        {
+            "name": "head",
+            "parent": "torso",
+            "y": -62
+        },
+        {
+            "name": "backUpper",
+            "parent": "torso",
+            "x": -2,
+            "y": -52,
+            "rotation": 90,
+            "length": 30
+        },
+        {
+            "name": "backFore",
+            "parent": "backUpper",
+            "x": 30,
+            "length": 28
+        },
+        {
+            "name": "frontUpper",
+            "parent": "torso",
+            "x": 2,
+            "y": -52,
+            "rotation": 90,
+            "length": 30
+        },
+        {
+            "name": "frontFore",
+            "parent": "frontUpper",
+            "x": 30,
+            "length": 28
+        },
+        {
+            "name": "backThigh",
+            "parent": "hip",
+            "x": -4,
+            "rotation": 90,
+            "length": 36
+        },
+        {
+            "name": "backShin",
+            "parent": "backThigh",
+            "x": 36,
+            "length": 34
+        },
+        {
+            "name": "frontThigh",
+            "parent": "hip",
+            "x": 4,
+            "rotation": 90,
+            "length": 36
+        },
+        {
+            "name": "frontShin",
+            "parent": "frontThigh",
+            "x": 36,
+            "length": 34
+        },
+        {
+            "name": "aim",
+            "parent": "root",
+            "x": 80,
+            "y": -60
+        }
+    ],
+    "slots": [
+        {
+            "name": "backUpper",
+            "bone": "backUpper",
+            "attachment": "upperArm",
+            "color": "#FFC8C8C8"
+        },
+        {
+            "name": "backFore",
+            "bone": "backFore",
+            "attachment": "forearm",
+            "color": "#FFC8C8C8"
+        },
+        {
+            "name": "backThigh",
+            "bone": "backThigh",
+            "attachment": "thigh",
+            "color": "#FFC8C8C8"
+        },
+        {
+            "name": "backShin",
+            "bone": "backShin",
+            "attachment": "shin",
+            "color": "#FFC8C8C8"
+        },
+        {
+            "name": "cape",
+            "bone": "torso",
+            "attachment": "cape"
+        },
+        {
+            "name": "frontThigh",
+            "bone": "frontThigh",
+            "attachment": "thigh"
+        },
+        {
+            "name": "frontShin",
+            "bone": "frontShin",
+            "attachment": "shin"
+        },
+        {
+            "name": "torso",
+            "bone": "torso",
+            "attachment": "torso"
+        },
+        {
+            "name": "head",
+            "bone": "head",
+            "attachment": "head"
+        },
+        {
+            "name": "hat",
+            "bone": "head",
+            "attachment": "hat"
+        },
+        {
+            "name": "frontUpper",
+            "bone": "frontUpper",
+            "attachment": "upperArm"
+        },
+        {
+            "name": "frontFore",
+            "bone": "frontFore",
+            "attachment": "forearm"
+        },
+        {
+            "name": "hand",
+            "bone": "frontFore",
+            "attachment": "hand"
+        }
+    ],
+    "skins": {
+        "default": {
+            "backUpper": {
+                "upperArm": {
+                    "frame": "upperArm",
+                    "x": 15
+                }
+            },
+            "backFore": {
+                "forearm": {
+                    "frame": "forearm",
+                    "x": 14
+                }
+            },
+            "frontUpper": {
+                "upperArm": {
+                    "frame": "upperArm",
+                    "x": 15
+                }
+            },
+            "frontFore": {
+                "forearm": {
+                    "frame": "forearm",
+                    "x": 14
+                }
+            },
+            "backThigh": {
+                "thigh": {
+                    "frame": "thigh",
+                    "x": 18,
+                    "rotation": 90
+                }
+            },
+            "backShin": {
+                "shin": {
+                    "frame": "shin",
+                    "x": 17,
+                    "rotation": 90
+                }
+            },
+            "frontThigh": {
+                "thigh": {
+                    "frame": "thigh",
+                    "x": 18,
+                    "rotation": 90
+                }
+            },
+            "frontShin": {
+                "shin": {
+                    "frame": "shin",
+                    "x": 17,
+                    "rotation": 90
+                }
+            },
+            "torso": {
+                "torso": {
+                    "frame": "torso",
+                    "y": -30
+                }
+            },
+            "head": {
+                "head": {
+                    "frame": "head",
+                    "y": -18
+                }
+            },
+            "hat": {
+                "hat": {
+                    "frame": "cap",
+                    "x": 2,
+                    "y": -38
+                }
+            },
+            "cape": {
+                "cape": {
+                    "type": "mesh",
+                    "frame": "cape",
+                    "vertices": [
+                        -20.0,
+                        -60.0,
+                        0.0,
+                        -60.0,
+                        20.0,
+                        -60.0,
+                        -20.0,
+                        -40.66666666666667,
+                        0.0,
+                        -40.66666666666667,
+                        20.0,
+                        -40.66666666666667,
+                        -20.0,
+                        -21.333333333333336,
+                        0.0,
+                        -21.333333333333336,
+                        20.0,
+                        -21.333333333333336,
+                        -20.0,
+                        -2.0,
+                        0.0,
+                        -2.0,
+                        20.0,
+                        -2.0
+                    ],
+                    "uvs": [
+                        0.0,
+                        0.0,
+                        0.5,
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.3333333333333333,
+                        0.5,
+                        0.3333333333333333,
+                        1.0,
+                        0.3333333333333333,
+                        0.0,
+                        0.6666666666666666,
+                        0.5,
+                        0.6666666666666666,
+                        1.0,
+                        0.6666666666666666,
+                        0.0,
+                        1.0,
+                        0.5,
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "triangles": [
+                        0,
+                        1,
+                        4,
+                        0,
+                        4,
+                        3,
+                        1,
+                        2,
+                        5,
+                        1,
+                        5,
+                        4,
+                        3,
+                        4,
+                        7,
+                        3,
+                        7,
+                        6,
+                        4,
+                        5,
+                        8,
+                        4,
+                        8,
+                        7,
+                        6,
+                        7,
+                        10,
+                        6,
+                        10,
+                        9,
+                        7,
+                        8,
+                        11,
+                        7,
+                        11,
+                        10
+                    ]
+                }
+            },
+            "hand": {
+                "hand": {
+                    "type": "point",
+                    "x": 28
+                }
+            }
+        },
+        "royal": {
+            "hat": {
+                "hat": {
+                    "frame": "crown",
+                    "y": -40
+                }
+            }
+        }
+    },
+    "ik": [
+        {
+            "name": "reach",
+            "bones": [
+                "frontUpper",
+                "frontFore"
+            ],
+            "target": "aim",
+            "bendPositive": false,
+            "mix": 0
+        }
+    ],
+    "animations": {
+        "walk": {
+            "duration": 0.8,
+            "bones": {
+                "frontThigh": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 25,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": -25,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": 25,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "backThigh": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": -25,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": 25,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": -25,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "frontShin": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.2,
+                            "value": -35,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "backShin": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.6,
+                            "value": -35,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "frontUpper": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": -20,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": 20,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": -20,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "backUpper": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 20,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": -20,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": 20,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "hip": {
+                    "translate": [
+                        {
+                            "time": 0,
+                            "x": 0,
+                            "y": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.2,
+                            "x": 0,
+                            "y": -4,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "x": 0,
+                            "y": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.6,
+                            "x": 0,
+                            "y": -4,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "x": 0,
+                            "y": 0,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                }
+            },
+            "events": [
+                {
+                    "time": 0.0,
+                    "name": "step",
+                    "text": "front"
+                },
+                {
+                    "time": 0.4,
+                    "name": "step",
+                    "text": "back"
+                }
+            ]
+        },
+        "idle": {
+            "duration": 1.6,
+            "bones": {
+                "torso": {
+                    "translate": [
+                        {
+                            "time": 0,
+                            "x": 0,
+                            "y": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "x": 0,
+                            "y": 2,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 1.6,
+                            "x": 0,
+                            "y": 0,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "frontUpper": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": -5,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": 5,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 1.6,
+                            "value": -5,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "backUpper": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 5,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": -5,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 1.6,
+                            "value": 5,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                }
+            }
+        },
+        "wave": {
+            "duration": 0.8,
+            "bones": {
+                "backUpper": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": -160,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": -160,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "backFore": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": -30,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": 30,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": -30,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                }
+            }
+        },
+        "flap": {
+            "duration": 1.2,
+            "deform": {
+                "cape": {
+                    "cape": [
+                        {
+                            "time": 0,
+                            "offsets": [
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0
+                            ],
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.6,
+                            "offsets": [
+                                -0.0,
+                                0,
+                                -0.0,
+                                0,
+                                -0.0,
+                                0,
+                                -2.0,
+                                0,
+                                -2.0,
+                                0,
+                                -2.0,
+                                0,
+                                -8.0,
+                                0,
+                                -8.0,
+                                0,
+                                -8.0,
+                                0,
+                                -18.0,
+                                0,
+                                -18.0,
+                                0,
+                                -18.0,
+                                0
+                            ],
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 1.2,
+                            "offsets": [
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0,
+                                0.0,
+                                0
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -47,6 +47,10 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/animation/Animation.cpp
   src/2d/animation/Animation2DLua.cpp
   src/2d/animation/Animator.cpp
+  src/2d/animation/Skeleton.cpp
+  src/2d/animation/SkeletonAnimation.cpp
+  src/2d/animation/SkeletonData.cpp
+  src/2d/animation/SkeletonLua.cpp
   src/2d/animation/SpriteAtlas.cpp
   src/2d/animation/StateGraph.cpp
   src/2d/animation/StateGraphLua.cpp

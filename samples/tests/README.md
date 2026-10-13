@@ -81,6 +81,7 @@ Frame data with boxes, points and events, animated batches, state graphs and ske
 | `ANI-001` | Frame data | A punch from an atlas whose hitbox, hand and pivot follow the flips, turns and scale of the fighter, with frame events and a version that steps by ticks. |  |
 | `ANI-002` | Animated crowd | Thousands of fighters of one animated batch punching at their own speeds, advanced and drawn with one call each, with waves of jabs that end on their own. |  |
 | `ANI-003` | State graph | A walker whose idle, run and attack clips a state graph picks from its speed, facing and an attack trigger, with directional states and the states it entered. |  |
+| `ANI-004` | Skeletons | A cutout puppet with walk and idle crossfading, a wave on a second track, a cape mesh that flaps, an arm that reaches for the pointer, skins and footstep events. |  |
 
 #### Nodes (NOD)
 

@@ -35,7 +35,7 @@ class StateGraphLua final {
     static int create(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 1> kPlayerFields{"sprite"};
+    static constexpr std::array<std::string_view, 2> kPlayerFields{"sprite", "track"};
     static constexpr std::array<std::string_view, 1> kListenerFields{"owner"};
 
     // The state of the Lua call that moves a player, where its listeners run.
