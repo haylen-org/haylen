@@ -163,6 +163,15 @@ TEST_F(StreamedSoundTest, EndsAVoiceWhoseReadsFail) {
 TEST_F(StreamedSoundTest, DecodesThroughAWindowOfTheFile) {
     const std::shared_ptr<test::CountingPackage> package = makePackage(makePositions(kLongFrames));
     const std::shared_ptr<io::PackageReader> reader = package->openAssetReader("music/long.wav");
+
+    // A standard library may give a large block room of its own, as MSVC does to align it, so the bound is the allocation of a buffer of one window.
+    // clang-format off
+    const std::size_t windowAllocation = [] {
+        const test::AllocationTracker probe;
+        const std::vector<std::uint8_t> window(ReaderDecoder::kWindowSize);
+        return probe.getLargest();
+    }();
+    // clang-format on
     const test::AllocationTracker tracker;
     ReaderDecoder decoder(reader);
     EXPECT_EQ(decoder.getLength(), kLongFrames);
@@ -181,7 +190,7 @@ TEST_F(StreamedSoundTest, DecodesThroughAWindowOfTheFile) {
     EXPECT_EQ(std::lround(block[0] * 32768.0F) - 1, static_cast<long>((kLongFrames / 2) % kPositionPeriod));
     EXPECT_LE(package->getReadBytes(), ReaderDecoder::kWindowSize);
 
-    EXPECT_LE(tracker.getLargest(), ReaderDecoder::kWindowSize);
+    EXPECT_LE(tracker.getLargest(), windowAllocation);
     EXPECT_LE(package->getLargestRead(), ReaderDecoder::kWindowSize);
 }
 
