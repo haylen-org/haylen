@@ -31,8 +31,60 @@ float ImageLibrary::getStepScale(int step) noexcept {
     return std::exp2(static_cast<float>(step) / static_cast<float>(kStepsPerOctave));
 }
 
+bool ImageLibrary::isNamed(std::string_view path) noexcept {
+    return path.starts_with('@');
+}
+
+void ImageLibrary::checkName(std::string_view name) {
+    if (!isNamed(name) || name.size() < 2) {
+        throw std::invalid_argument("A UI image made at run time has a name that starts with \"@\", such as \"@minimap\", not \"" + std::string(name) + "\".");
+    }
+}
+
+void ImageLibrary::setTexture(std::string_view name, graphics::Texture texture) {
+    checkName(name);
+    if (!texture.isValid()) {
+        throw std::invalid_argument("The UI image \"" + std::string(name) + "\" needs a texture.");
+    }
+    remove(name);
+    named.insert_or_assign(std::string(name), std::move(texture));
+}
+
+// A vector image set in code rasterizes for the pixels it covers like an SVG file of the package.
+void ImageLibrary::setVector(std::string_view name, graphics::VectorImage image) {
+    checkName(name);
+    if (!image.isValid()) {
+        throw std::invalid_argument("The UI image \"" + std::string(name) + "\" needs a vector image.");
+    }
+    remove(name);
+    vectors.insert_or_assign(std::string(name), Vector{.image = std::move(image)});
+}
+
+void ImageLibrary::remove(std::string_view name) {
+    if (const auto found = named.find(name); found != named.end()) {
+        named.erase(found);
+    }
+    if (const auto found = vectors.find(name); found != vectors.end()) {
+        for (const auto& [step, raster] : found->second.rasters) {
+            rasterBytes -= raster.bytes;
+        }
+        vectors.erase(found);
+    }
+}
+
+const graphics::Texture& ImageLibrary::requireTexture(std::string_view name) const {
+    const auto found = named.find(name);
+    if (found == named.end()) {
+        throw std::runtime_error("The UI image \"" + std::string(name) + "\" could not be loaded. No image of that name was set with \"ui.setImage\".");
+    }
+    return found->second;
+}
+
 graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Texture::Filter filter, float scale) {
-    if (!isVector(path)) {
+    if (isNamed(path) && !vectors.contains(path)) {
+        return requireTexture(path);
+    }
+    if (!isVector(path) && !isNamed(path)) {
         return requestFile(path, filter).texture;
     }
     Vector& vector = requestVector(path);
@@ -60,7 +112,10 @@ graphics::Texture ImageLibrary::getTexture(std::string_view path, graphics::Text
 }
 
 math::Vec2 ImageLibrary::getSize(std::string_view path, graphics::Texture::Filter filter) {
-    if (!isVector(path)) {
+    if (isNamed(path) && !vectors.contains(path)) {
+        return requireTexture(path).getSize();
+    }
+    if (!isVector(path) && !isNamed(path)) {
         const graphics::Texture& texture = requestFile(path, filter).texture;
         return texture.isValid() ? texture.getSize() : math::Vec2{};
     }
@@ -124,9 +179,9 @@ void ImageLibrary::requestRaster(const std::string& path, Vector& vector, int st
         return;
     }
     // clang-format off
-    jobs.run([image = vector.image, step] { return image.rasterize(getStepScale(step)); }, [this, owner = std::weak_ptr<bool>(alive), path, step](core::JobSystem::Result<graphics::Image> result) {
+    jobs.run([image = vector.image, step] { return image.rasterize(getStepScale(step)); }, [this, owner = std::weak_ptr<bool>(alive), path, step, image = vector.image](core::JobSystem::Result<graphics::Image> result) {
         const auto found = owner.expired() ? vectors.end() : vectors.find(path);
-        if (found == vectors.end()) {
+        if (found == vectors.end() || !(found->second.image == image)) {
             return;
         }
         Vector& entry = found->second;

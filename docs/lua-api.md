@@ -46,7 +46,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | Module | Purpose |
 | --- | --- |
 | [`haylen.input`](lua-api/input.md) | Keyboard, mouse, touch, gestures, gamepads and the action map. |
-| [`haylen.ui`](lua-api/ui.md) | Themed menus, HUDs, dialogs and touch controls, mirrored for right-to-left languages. |
+| [`haylen.ui`](lua-api/ui.md) | Themed menus, HUDs, dialogs and touch controls, mirrored for right-to-left languages, with images made at run time from textures, render targets and vector images. |
 | [`haylen.imgui`](lua-api/imgui.md) | Dear ImGui windows for debug panels and tools. |
 | [`haylen.audio`](lua-api/audio.md) | Sounds from files, bytes or raw samples, music, buses, effects, pause modes, interruptions and positional audio. |
 | [`haylen.localization`](lua-api/localization.md) | Translated text with placeholders, plural forms and the direction of each language. |

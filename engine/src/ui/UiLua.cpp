@@ -11,9 +11,13 @@
 
 #include "core/EventsLua.hpp"
 #include "graphics/FontLua.hpp"
+#include "graphics/ImageLua.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Signal.hpp"
+#include "haylen/graphics/Device.hpp"
+#include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
@@ -34,6 +38,7 @@
 #include "lua/ScriptedScene.hpp"
 #include "lua/StackScope.hpp"
 #include "ui/CollectionLua.hpp"
+#include "ui/ImageLibrary.hpp"
 #include "ui/MountLink.hpp"
 #include "ui/TransformLua.hpp"
 
@@ -675,6 +680,27 @@ int UiLua::themeImageFilter(lua_State* L) {
     return 1;
 }
 
+// Names an image made at run time with `ui.setImage(name, source)`, from a texture, a render target, a vector image or an image, which turns into a texture with the image filter of the theme.
+int UiLua::setImage(lua_State* L) {
+    const auto name = lua::Stack::read<std::string_view>(L, 1);
+    ImageLibrary& library = getPlugin(L).getImages();
+    if (const auto* target = lua::Userdata::test<graphics::RenderTarget>(L, 2)) {
+        library.setTexture(name, target->getTexture());
+    } else if (const auto* vector = lua::Userdata::test<graphics::VectorImage>(L, 2)) {
+        library.setVector(name, *vector);
+    } else if (const auto* image = lua::Userdata::test<graphics::Image>(L, 2)) {
+        library.setTexture(name, lua::Runtime::getEngine(L).getGraphics().createTexture(*image, {.filter = getPlugin(L).getTheme().getImageFilter()}));
+    } else {
+        library.setTexture(name, lua::Userdata::check<graphics::Texture>(L, 2));
+    }
+    return 0;
+}
+
+int UiLua::removeImage(lua_State* L) {
+    getPlugin(L).getImages().remove(lua::Stack::read<std::string_view>(L, 1));
+    return 0;
+}
+
 // Returns a font role of the active theme as `{font, size, bold, italic}`.
 int UiLua::themeFont(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
@@ -894,7 +920,7 @@ int UiLua::kinds(lua_State* L) {
 
 int UiLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
+        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"setImage", &lua::Binding::native<&setImage>}, {"removeImage", &lua::Binding::native<&removeImage>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     lua_createtable(L, 0, 1);

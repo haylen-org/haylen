@@ -47,6 +47,12 @@ class ImageLibrary final {
     // Counts the frames that tell which rasters were drawn lately, and releases the rasters drawn longest ago while the rasters pass the budget, keeping those of this frame and the one before.
     void beginFrame();
 
+    // Gives an image made at run time a name that every image value of the UI takes, such as the texture of a render target that a minimap renders into or a vector image built in code, in place of the image of that name. Names start with `@`, which no package path does. Throws `std::invalid_argument` for another name or an empty source.
+    void setTexture(std::string_view name, graphics::Texture texture);
+    void setVector(std::string_view name, graphics::VectorImage image);
+    void remove(std::string_view name);
+    [[nodiscard]] static bool isNamed(std::string_view path) noexcept;
+
     [[nodiscard]] static bool isVector(std::string_view path) noexcept;
     [[nodiscard]] static int getStep(float scale) noexcept;
     [[nodiscard]] static float getStepScale(int step) noexcept;
@@ -75,6 +81,8 @@ class ImageLibrary final {
     };
 
     [[nodiscard]] File& requestFile(std::string_view path, graphics::Texture::Filter filter);
+    static void checkName(std::string_view name);
+    [[nodiscard]] const graphics::Texture& requireTexture(std::string_view name) const;
     [[nodiscard]] Vector& requestVector(std::string_view path);
     void requestRaster(const std::string& path, Vector& vector, int step);
     [[nodiscard]] int clampStep(const graphics::VectorImage& image, int step) const noexcept;
@@ -85,6 +93,7 @@ class ImageLibrary final {
     core::JobSystem& jobs;
     std::array<std::map<std::string, File, std::less<>>, 2> files;
     std::map<std::string, Vector, std::less<>> vectors;
+    std::map<std::string, graphics::Texture, std::less<>> named;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
     std::size_t rasterBudget;
     std::size_t rasterBytes = 0;

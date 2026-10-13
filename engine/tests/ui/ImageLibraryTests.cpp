@@ -181,4 +181,43 @@ TEST_F(ImageLibraryTest, ReadsSvgPicturesAndCornersFromLua) {
     // clang-format on
 }
 
+// Images made at run time take names that every image value of the UI takes: a render target that renders every frame, a texture, an image and a vector image.
+TEST_F(ImageLibraryTest, ShowsTexturesRenderTargetsAndImagesMadeAtRunTime) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        graphics = require('haylen.graphics')
+        graphics2d = require('haylen.graphics2d')
+        minimap = graphics.newRenderTarget(64, 32)
+        camera = graphics2d.newCamera()
+        ui.setImage('@minimap', minimap)
+        ui.setImage('@swatch', graphics.newTexture(8, 8, {fill = '#FF00FF00'}))
+        ui.setImage('@stamp', graphics.newImage(10, 6, '#FFFF0000'))
+        ui.setImage('@badge', graphics.newVectorImage('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><rect width="24" height="12" fill="#3366FF"/></svg>'))
+        require('haylen.scene').push({render = function()
+            graphics2d.beginTarget(minimap, camera, {clear = '#FF203040'})
+            graphics2d.drawCircle(0, 0, 10, '#FFFFFFFF')
+        end})
+    )");
+    // clang-format on
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "image", "id": "map", "image": "@minimap"}, {"kind": "icon", "id": "swatch", "image": "@swatch"}, {"kind": "image", "id": "stamp", "image": "@stamp"}, {"kind": "image", "id": "badge", "image": "@badge", "scale": 2}]})");
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getBounds(*gui, "badge").width > 0.0F; }));
+    EXPECT_EQ(getFixture().engine().getError(), nullptr);
+    EXPECT_EQ(getBounds(*gui, "map").getSize(), math::Vec2(64.0F, 32.0F));
+    EXPECT_EQ(getBounds(*gui, "stamp").getSize(), math::Vec2(10.0F, 6.0F));
+    EXPECT_EQ(getBounds(*gui, "badge").getSize(), math::Vec2(48.0F, 24.0F));
+    EXPECT_TRUE(drawsColor(IM_COL32(255, 255, 255, 255)));
+
+    ImageLibrary& library = getUi().getImages();
+    EXPECT_EQ(library.getTexture("@swatch", graphics::Texture::Filter::Linear, 1.0F).getSize(), math::Vec2(8.0F, 8.0F));
+    library.remove("@swatch");
+    EXPECT_THROW((void)library.getTexture("@swatch", graphics::Texture::Filter::Linear, 1.0F), std::runtime_error);
+    EXPECT_NE(getFixture().lua("ui.setImage('minimap', minimap)").find("A UI image made at run time has a name that starts with \"@\", such as \"@minimap\", not \"minimap\"."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.setImage('@x', 5)").find("haylen.Texture expected"), std::string::npos);
+    getFixture().runLua("ui.removeImage('@stamp')");
+    getFixture().frames(2);
+    ASSERT_NE(getFixture().engine().getError(), nullptr);
+    EXPECT_NE(std::string(getFixture().engine().getError()->what()).find("The UI image \"@stamp\" could not be loaded. No image of that name was set with \"ui.setImage\"."), std::string::npos);
+}
+
 } // namespace haylen::ui

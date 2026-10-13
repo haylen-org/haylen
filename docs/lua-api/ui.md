@@ -218,6 +218,29 @@ local title = ui.themeFont('title')
 print(title.font, title.size, title.bold, title.italic)
 ```
 
+### ui.setImage(name, source) and ui.removeImage(name)
+
+Gives an image made at run time a name that every image value of the UI takes, in place of the image that had it: an image, an icon, an avatar, an image button, the icon of a button or the picture of a list item shows it like a file of the package. The argument `source` is a `Texture`, a `RenderTarget`, whose texture shows what the target renders every frame, such as a minimap or a portrait of the player, a `VectorImage`, which rasterizes for the pixels it covers like an SVG file, or an `Image`, which becomes a texture with the image filter of the theme. A render target holds colors premultiplied by their alpha, so its soft edges show darker unless its clear color is opaque. Names start with `@`, which no path of the package does, and another name raises `A UI image made at run time has a name that starts with "@", such as "@minimap", not "name".` A component that shows a name nothing gives stops the app with `The UI image "@name" could not be loaded. No image of that name was set with "ui.setImage".`
+
+```lua
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local minimap = graphics.newRenderTarget(240, 160)
+local camera = graphics2d.newCamera()
+ui.setImage('@minimap', minimap)
+ui.mount(ui.image{image = '@minimap', width = 240, height = 160, radius = 12})
+
+scene.push({
+    render = function(self)
+        graphics2d.beginTarget(minimap, camera, {clear = '#FF1B5E20'})
+        graphics2d.drawCircle(0, 0, 8, '#FFFFEB3B')
+    end,
+})
+```
+
 ### ui.themeImageFilter()
 
 Returns the texture filter that the pictures of components load with in the active theme, `'nearest'` or `'linear'`, which the `imageFilter` key of a [theme](#themes) sets.
@@ -932,7 +955,7 @@ Lua has no separate empty list, so an empty table converts to an empty JSON obje
 | theme color | The name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. |
 | length | A non-negative number, or `'auto'` to let the content decide. |
 | insets | One number for every side, `{vertical, horizontal}`, or `{top, right, bottom, left}`. Every value is non-negative. |
-| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, toolbar and icon buttons tint them like their text, and the `iconColor` of a button tints them in every variant. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
+| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`, or the name of an image made at run time, which starts with `@` and which [`ui.setImage`](#uisetimagename-source) gives. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, toolbar and icon buttons tint them like their text, and the `iconColor` of a button tints them in every variant. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
 | tone | `'neutral'`, `'accent'`, `'success'`, `'warning'`, `'danger'` or `'information'`. |
 | variant | One of `'default'`, `'primary'`, `'destructive'`, `'toolbar'`, `'icon'` or `'link'`, described under [button](#uibuttonproperties). |
 | items | A list of [items](#items). |

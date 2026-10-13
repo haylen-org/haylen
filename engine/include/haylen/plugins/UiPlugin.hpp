@@ -58,6 +58,7 @@ class UiPlugin final : public Plugin {
 
     [[nodiscard]] ui::Backend& getBackend();
     [[nodiscard]] ui::Context& getContext();
+    [[nodiscard]] ui::ImageLibrary& getImages();
     [[nodiscard]] ui::FocusNavigator& getFocus() noexcept {
         return focus;
     }

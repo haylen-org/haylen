@@ -104,6 +104,10 @@ ui::Backend& UiPlugin::getBackend() {
     return *backend;
 }
 
+ui::ImageLibrary& UiPlugin::getImages() {
+    return *images;
+}
+
 ui::Context& UiPlugin::getContext() {
     if (!context) {
         throw std::logic_error("The UI plugin has not started.");
