@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -289,11 +290,32 @@ void ActionMap::setPressThreshold(float value) {
     pressThreshold = value;
 }
 
+void ActionMap::setDevices(Devices value) {
+    if (value.gamepads == Devices::Gamepads::One && value.gamepad >= Input::kMaxGamepads) {
+        throw std::invalid_argument("An action map reads one of the gamepads from 1 to " + std::to_string(Input::kMaxGamepads) + ".");
+    }
+    devices = std::move(value);
+}
+
+// The prefix of the virtual controls of the map goes in front of the name of the binding, in a buffer that keeps its room, so reading it allocates nothing after the first frame.
+std::string_view ActionMap::getVirtualName(const Binding& binding) const noexcept {
+    if (devices.virtualPrefix.empty()) {
+        return binding.name;
+    }
+    virtualName.assign(devices.virtualPrefix).append(binding.name);
+    return virtualName;
+}
+
 float ActionMap::getBindingValue(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept {
     // clang-format off
     const auto anyGamepad = [&](auto&& read) {
-        if (gamepadIndex) {
-            return read(*gamepadIndex);
+        switch (devices.gamepads) {
+        case Devices::Gamepads::One:
+            return read(devices.gamepad);
+        case Devices::Gamepads::None:
+            return 0.0F;
+        case Devices::Gamepads::Every:
+            break;
         }
         float strongestValue = 0.0F;
         for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
@@ -305,15 +327,15 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
 
     switch (binding.source) {
     case Binding::Source::Key:
-        return !isKeyCaptured(binding.key) && (input.isKeyDown(binding.key) || input.isKeyPressed(binding.key)) ? 1.0F : 0.0F;
+        return devices.keyboard && !isKeyCaptured(binding.key) && (input.isKeyDown(binding.key) || input.isKeyPressed(binding.key)) ? 1.0F : 0.0F;
     case Binding::Source::MouseButton:
-        return !isMouseButtonCaptured(binding.mouseButton) && (input.isMouseDown(binding.mouseButton) || input.isMousePressed(binding.mouseButton)) ? 1.0F : 0.0F;
+        return devices.mouse && !isMouseButtonCaptured(binding.mouseButton) && (input.isMouseDown(binding.mouseButton) || input.isMousePressed(binding.mouseButton)) ? 1.0F : 0.0F;
     case Binding::Source::GamepadButton:
         return anyGamepad([&](std::size_t index) { return input.isGamepadDown(index, binding.gamepadButton) && !isGamepadButtonCaptured(index, binding.gamepadButton) ? 1.0F : 0.0F; });
     case Binding::Source::GamepadAxis:
         return anyGamepad([&](std::size_t index) { return isGamepadAxisCaptured(index, binding.gamepadAxis) ? 0.0F : std::max(0.0F, input.getGamepadAxis(index, binding.gamepadAxis) * binding.direction); });
     case Binding::Source::VirtualButton:
-        return virtualInput.isButtonDown(binding.name) ? 1.0F : 0.0F;
+        return devices.virtualControls && virtualInput.isButtonDown(getVirtualName(binding)) ? 1.0F : 0.0F;
     case Binding::Source::GamepadStick:
     case Binding::Source::VirtualStick:
         return getBindingVector(binding, input, virtualInput).getLength();
@@ -323,13 +345,13 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
 
 math::Vec2 ActionMap::getBindingVector(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept {
     if (binding.source == Binding::Source::VirtualStick) {
-        return virtualInput.getStick(binding.name);
+        return devices.virtualControls ? virtualInput.getStick(getVirtualName(binding)) : math::Vec2{};
     }
-    if (binding.source != Binding::Source::GamepadStick) {
+    if (binding.source != Binding::Source::GamepadStick || devices.gamepads == Devices::Gamepads::None) {
         return {};
     }
-    if (gamepadIndex) {
-        return isStickCaptured(*gamepadIndex, binding.rightStick) ? math::Vec2{} : input.getGamepadStick(*gamepadIndex, binding.rightStick);
+    if (devices.gamepads == Devices::Gamepads::One) {
+        return isStickCaptured(devices.gamepad, binding.rightStick) ? math::Vec2{} : input.getGamepadStick(devices.gamepad, binding.rightStick);
     }
 
     math::Vec2 strongestStick{};

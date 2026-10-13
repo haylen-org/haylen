@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 
 #include "haylen/input/Controls.hpp"
@@ -95,8 +96,9 @@ TEST_F(AndroidGamepadStatesTest, KeepsEveryControllerInTheSlotOfItsFirstEvent) {
     AndroidGamepadStates controllers;
     controllers.press(4, input::GamepadButton::South, true);
     controllers.move(-1, {.leftX = 0.5F, .hatX = 1.0F, .hatY = -1.0F});
-    controllers.press(8, input::GamepadButton::East, true);
-    controllers.press(12, input::GamepadButton::North, true);
+    for (std::size_t slot = 2; slot < input::Input::kMaxGamepads; ++slot) {
+        controllers.press(static_cast<std::int32_t>(100 + slot), input::GamepadButton::East, true);
+    }
     controllers.press(20, input::GamepadButton::West, true);
     States states = read(controllers);
     EXPECT_TRUE(button(states[0], input::GamepadButton::South));
@@ -104,11 +106,11 @@ TEST_F(AndroidGamepadStatesTest, KeepsEveryControllerInTheSlotOfItsFirstEvent) {
     EXPECT_TRUE(button(states[1], input::GamepadButton::DpadRight));
     EXPECT_TRUE(button(states[1], input::GamepadButton::DpadUp));
     EXPECT_TRUE(button(states[2], input::GamepadButton::East));
-    EXPECT_TRUE(button(states[3], input::GamepadButton::North));
+    EXPECT_TRUE(button(states[input::Input::kMaxGamepads - 1], input::GamepadButton::East));
     for (const input::GamepadState& state : states) {
         EXPECT_TRUE(state.connected);
         EXPECT_EQ(state.name, "Controller");
-        EXPECT_FALSE(button(state, input::GamepadButton::West)) << "A fifth controller waits for a free slot.";
+        EXPECT_FALSE(button(state, input::GamepadButton::West)) << "A controller beyond the last slot waits for a free slot.";
     }
 
     // A removed controller frees its slot for the next one, and the others stay where they are.

@@ -64,6 +64,7 @@ class Font;
 
 namespace haylen::input {
 class ActionMap;
+class ActionMaps;
 class AppTextField;
 class GestureRecognizer;
 class Input;
@@ -170,6 +171,7 @@ class Engine final {
     [[nodiscard]] input::Input& getInput() noexcept;
     [[nodiscard]] input::GestureRecognizer& getGestures() noexcept;
     [[nodiscard]] input::ActionMap& getActions() noexcept;
+    [[nodiscard]] input::ActionMaps& getActionMaps() noexcept;
     [[nodiscard]] input::VirtualInput& getVirtualInput() noexcept;
     [[nodiscard]] input::PointerEmulation& getPointerEmulation() noexcept;
     [[nodiscard]] input::AppTextField& getAppTextField() noexcept;

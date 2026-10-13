@@ -26,7 +26,7 @@
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Viewport.hpp"
-#include "haylen/input/ActionMap.hpp"
+#include "haylen/input/ActionMaps.hpp"
 #include "haylen/input/AppTextField.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/input/GestureRecognizer.hpp"
@@ -65,7 +65,7 @@ struct EngineState {
     graphics::Viewport viewport;
     input::Input input;
     input::GestureRecognizer gestures;
-    input::ActionMap actions;
+    input::ActionMaps actions;
     input::VirtualInput virtualInput;
     input::PointerEmulation pointerEmulation;
     FrameClock clock;

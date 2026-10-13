@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "haylen/input/ActionMaps.hpp"
 #include "haylen/input/AppTextField.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Event.hpp"
@@ -154,7 +155,6 @@ TEST_F(InputLuaTest, MapsActionsFromEveryDevice) {
     EXPECT_EQ(lua("local x, y = input.vector('move') return x .. ',' .. y"), "0.0,0.0");
 
     EXPECT_EQ(lua("return input.saveActions().actions[1].bindings[2]"), "button:south");
-    EXPECT_EQ(lua("input.setGamepadIndex(2) input.setGamepadIndex(nil) return 'ok'"), "ok");
     EXPECT_EQ(lua("return input.down('unknown')"), "false");
     EXPECT_NE(lua("input.loadActions({actions = {{name = 'x', type = 'button', bindings = {'key:nope'}}}})").find("The input binding \"key:nope\" is invalid."), std::string::npos);
     EXPECT_NE(lua("input.loadActions({actions = {{name = 'x', type = 'trigger'}}})").find("The type of an action must be \"button\", \"axis\" or \"vector\", not \"trigger\"."), std::string::npos);
@@ -385,6 +385,47 @@ TEST(InputStepLuaTest, CountsEveryPressOnceInFixedSteps) {
     EXPECT_EQ(fixture.lua("return attacks .. ' ' .. held"), "4 6");
     EXPECT_EQ(fixture.lua("return input.consumePress('attack') and not input.consumePress('attack')"), "true");
     EXPECT_EQ(fixture.lua("return input.stepReleased('attack')"), "false");
+}
+
+TEST_F(InputLuaTest, GivesEachPlayerAnActionMapWithItsOwnDevices) {
+    // clang-format off
+    lua(R"(
+        document = {actions = {{name = 'jump', type = 'button', bindings = {'key:space', 'button:south'}}, {name = 'fire', type = 'button', bindings = {'button:west'}}}}
+        input.loadActions(document)
+        keyboard = input.newActionMap({mouse = false, gamepad = false, actions = document})
+        second = input.newActionMap({keyboard = false, gamepad = 2, actions = document})
+    )");
+    // clang-format on
+    GamepadState pad{.connected = true, .name = "Second Pad"};
+    pad.buttons[static_cast<std::size_t>(GamepadButton::South)] = true;
+    pad.buttons[static_cast<std::size_t>(GamepadButton::West)] = true;
+    fixture.host().setGamepad(1, pad);
+    fixture.frames(1);
+
+    EXPECT_EQ(lua("return input.findGamepadPress('south') .. ' ' .. input.findGamepadPress() .. ' ' .. tostring(input.findGamepadPress('north'))"), "2 2 nil");
+    EXPECT_EQ(lua("return tostring(second:down('jump')) .. ' ' .. tostring(keyboard:down('jump')) .. ' ' .. tostring(input.down('jump'))"), "true false true");
+    EXPECT_EQ(lua("return second.devices.gamepad .. ' ' .. tostring(keyboard.devices.gamepad) .. ' ' .. tostring(input.actions().devices.gamepad)"), "2 false nil");
+    EXPECT_EQ(lua("return input.actions() == input.actions() and input.actions() ~= second"), "true");
+    fixture.frames(1, 0.0);
+    EXPECT_EQ(lua("return second:stepButtons({'fire', 'missing', 'jump'})"), "5");
+
+    EXPECT_EQ(lua("second.devices = {gamepad = 1} second.pressThreshold = 0.25 return second.pressThreshold"), "0.25");
+    fixture.frames(1);
+    EXPECT_EQ(lua("return second:down('jump')"), "false");
+    EXPECT_EQ(lua("input.actions().devices = {gamepad = 2} return input.actions().devices.gamepad"), "2");
+    EXPECT_NE(lua("input.newActionMap({gamepads = 2})").find("Unknown option \"gamepads\"."), std::string::npos);
+    EXPECT_NE(lua("input.newActionMap({gamepad = 9})").find("The \"gamepad\" of an action map must be an index from 1 to 8, or false for none."), std::string::npos);
+    EXPECT_NE(lua("second.devices = {gamepad = 0}").find("The \"gamepad\" of an action map must be an index from 1 to 8, or false for none."), std::string::npos);
+    EXPECT_NE(lua("second.pressThreshold = 2").find("The press threshold must be above 0 and at most 1."), std::string::npos);
+    EXPECT_NE(lua("return second:stepButtons({1, 2})").find("entry 1 is not one"), std::string::npos);
+    EXPECT_NE(lua("return input.gamepadDown('south', 9)").find("gamepad index out of range"), std::string::npos);
+    EXPECT_EQ(lua("return input.gamepadConnected(8)"), "false");
+
+    // A map that Lua lets go of leaves the engine at the next frame.
+    const std::size_t before = fixture.engine().getActionMaps().size();
+    lua("keyboard = nil collectgarbage() collectgarbage()");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getActionMaps().size(), before - 1);
 }
 
 } // namespace haylen::input

@@ -2,11 +2,13 @@
 
 #include <array>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/input/ActionMaps.hpp"
 #include "haylen/input/Controls.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
@@ -417,13 +419,13 @@ TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
     EXPECT_NEAR(actions.getVector("move").x, 1.0F, 1e-5F);
     EXPECT_NEAR(actions.getValue("aim"), 1.0F, 1e-5F);
 
-    actions.setGamepadIndex(0);
+    actions.setDevices({.gamepads = ActionMap::Devices::Gamepads::One, .gamepad = 0});
     actions.update(input, virtualInput, false);
     EXPECT_FALSE(actions.isDown("attack"));
     EXPECT_EQ(actions.getVector("move"), math::Vec2{});
     EXPECT_EQ(actions.getValue("aim"), 0.0F);
 
-    actions.setGamepadIndex(std::nullopt);
+    actions.setDevices({});
     actions.update(input, virtualInput, false);
     EXPECT_TRUE(actions.isDown("attack"));
 
@@ -636,6 +638,61 @@ TEST_F(ActionMapTest, ConsumesEachPressOnceWithinItsBuffer) {
     // clang-format on
     EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button", "buffer": -1}]})"), "The buffer of an action must be a number of seconds from 0.");
     EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button", "buffer": "long"}]})"), "The buffer of an action must be a number of seconds from 0.");
+}
+
+TEST_F(ActionMapTest, EachMapReadsOnlyItsDevices) {
+    const core::Json document = core::Json::parse(R"({"actions": [{"name": "jump", "type": "button", "bindings": ["key:space", "button:south", "virtual:jump"]}, {"name": "move", "type": "vector", "bindings": ["stick:left"]}]})");
+    ActionMaps maps;
+    const std::shared_ptr<ActionMap> keyboard = maps.create({.mouse = false, .gamepads = ActionMap::Devices::Gamepads::None, .virtualPrefix = "touch."});
+    std::shared_ptr<ActionMap> second = maps.create({.keyboard = false, .mouse = false, .gamepads = ActionMap::Devices::Gamepads::One, .gamepad = 1, .virtualControls = false});
+    const std::shared_ptr<ActionMap> eighth = maps.create({.keyboard = false, .gamepads = ActionMap::Devices::Gamepads::One, .gamepad = 7, .virtualControls = false});
+    for (const auto& map : {maps.getDefault(), keyboard, second, eighth}) {
+        map->load(document);
+    }
+    EXPECT_EQ(maps.size(), 4U);
+
+    Input input;
+    VirtualInput virtualInput;
+    std::array<GamepadState, Input::kMaxGamepads> pads{};
+    pads[1] = makeGamepad(GamepadButton::South, 1.0F);
+    input.updateGamepads(pads);
+    maps.update(input, virtualInput, false);
+    EXPECT_TRUE(maps.getDefault()->isDown("jump"));
+    EXPECT_FALSE(keyboard->isDown("jump"));
+    EXPECT_TRUE(second->isDown("jump"));
+    EXPECT_NEAR(second->getVector("move").x, 1.0F, 1e-5F);
+    EXPECT_FALSE(eighth->isDown("jump"));
+
+    // The last of the eight gamepads drives only its own map, and the virtual controls reach the map whose prefix they carry.
+    pads[1] = {};
+    pads[7] = makeGamepad(GamepadButton::South);
+    input.updateGamepads(pads);
+    virtualInput.setButton("touch.jump", true);
+    maps.update(input, virtualInput, false);
+    EXPECT_TRUE(eighth->isPressed("jump"));
+    EXPECT_FALSE(second->isDown("jump"));
+    EXPECT_TRUE(keyboard->isPressed("jump"));
+    virtualInput.setButton("jump", true);
+    maps.update(input, virtualInput, false);
+    EXPECT_FALSE(second->isDown("jump"));
+
+    // The presses that the UI captures stay away from every map, and a map nobody holds leaves at the next update.
+    ActionMap::Capture capture;
+    capture.buttons.set(static_cast<std::size_t>(GamepadButton::South));
+    maps.setCapture(capture);
+    pads[7] = {};
+    input.updateGamepads(pads);
+    maps.update(input, virtualInput, false);
+    pads[7] = makeGamepad(GamepadButton::South);
+    input.updateGamepads(pads);
+    maps.update(input, virtualInput, false);
+    EXPECT_FALSE(eighth->isDown("jump"));
+    const std::weak_ptr<ActionMap> released = second;
+    second.reset();
+    maps.update(input, virtualInput, false);
+    EXPECT_TRUE(released.expired());
+    EXPECT_EQ(maps.size(), 3U);
+    EXPECT_THROW(keyboard->setDevices({.gamepads = ActionMap::Devices::Gamepads::One, .gamepad = Input::kMaxGamepads}), std::invalid_argument);
 }
 
 TEST_F(ActionMapTest, RejectsInvalidDocuments) {

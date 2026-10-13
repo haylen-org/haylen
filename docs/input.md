@@ -63,14 +63,14 @@ end
 
 ### Gamepads
 
-Up to four gamepads are tracked, with indices from 1 to 4 that default to 1. Buttons use the positional names `south`, `east`, `west` and `north` for the face buttons, so `south` is A on an Xbox pad and Cross on a PlayStation pad, plus `leftShoulder`, `rightShoulder`, `leftStick`, `rightStick`, `back`, `start`, `guide` and the d-pad. Axes are `leftX`, `leftY`, `rightX`, `rightY`, `leftTrigger` and `rightTrigger`.
+Up to eight gamepads are tracked, with indices from 1 to 8 that default to 1. Buttons use the positional names `south`, `east`, `west` and `north` for the face buttons, so `south` is the bottom face button whatever its label says, plus `leftShoulder`, `rightShoulder`, `leftStick`, `rightStick`, `back`, `start`, `guide` and the d-pad. Axes are `leftX`, `leftY`, `rightX`, `rightY`, `leftTrigger` and `rightTrigger`.
 
 - `input.gamepadDown`, `input.gamepadPressed` and `input.gamepadReleased` read buttons, and `input.gamepadConnected` and `input.gamepadName` describe the pad.
 - `input.gamepadAxis(axis, index)` returns one axis with the dead zone removed and the rest rescaled. Sticks go from -1 to 1 with positive y pointing down, and triggers from 0 to 1.
 - `input.gamepadStick(side, index)` returns a whole stick with the dead zone applied to its radius, which keeps diagonals smooth.
 - `input.setGamepadDeadzone(value)` sets the dead zone of every axis and stick, from 0 to below 1, 0.2 by default.
 
-Each platform reads gamepads through its own API: GameController on Apple platforms, XInput on Windows, the joystick devices under `/dev/input` on Linux, which the engine reads in the layout of the driver of Xbox controllers, so controllers whose drivers number their buttons another way may swap the west and north buttons there, the input events of GameActivity on Android, which reach the app wherever the focus is inside its window, and the Gamepad API in browsers. Android sends the sticks and the triggers only to the window with the focus, such as a dialog over the app, so they come to rest when the window of the app loses the focus, and the next movement of a stick brings its position back. The engine reads the gamepads that a browser gives its `standard` mapping and leaves the others out, since their buttons have no known places, and browsers reveal a gamepad to the page only after one of its buttons is pressed. Every platform keeps a gamepad at its index for as long as it stays connected, so a pad that disconnects never moves the others, and a pad that connects takes the lowest free index.
+Each platform reads gamepads through its own API: GameController on Apple platforms, XInput on Windows, the joystick devices under `/dev/input` on Linux, which the engine reads in the layout of the common driver of controllers with lettered face buttons, so controllers whose drivers number their buttons another way may swap the west and north buttons there, the input events of GameActivity on Android, which reach the app wherever the focus is inside its window, and the Gamepad API in browsers. Android sends the sticks and the triggers only to the window with the focus, such as a dialog over the app, so they come to rest when the window of the app loses the focus, and the next movement of a stick brings its position back. The engine reads the gamepads that a browser gives its `standard` mapping and leaves the others out, since their buttons have no known places, and browsers reveal a gamepad to the page only after one of its buttons is pressed. Windows reports at most four gamepads, the limit of XInput, and browsers report as many as they expose, usually four, while the other platforms fill all eight slots. Every platform keeps a gamepad at its index for as long as it stays connected, so a pad that disconnects never moves the others, and a pad that connects takes the lowest free index.
 
 ### Events
 
@@ -112,7 +112,7 @@ Every binding is a string with a source and a name.
 | `virtual:<name>` | A virtual button, written by a `touchButton` of the UI or by `input.setVirtualButton`. | `virtual:attack` |
 | `virtualStick:<name>` | A virtual stick, written by a `touchStick` of the UI or by `input.setVirtualStick`. | `virtualStick:move` |
 
-Gamepad bindings read every connected gamepad and use the strongest one. `input.setGamepadIndex(index)` makes them read one pad only, which suits local multiplayer, and `input.setGamepadIndex(nil)` reads every pad again.
+Gamepad bindings read every connected gamepad and use the strongest one, unless the devices of the map pick one gamepad or none, as [Players](#players) explains.
 
 ### Loading actions
 
@@ -145,6 +145,21 @@ input.loadActions({actions = {
 An action name that was never defined reads as not down and 0, so optional actions need no checks.
 
 While a scene change holds input back, every action reads as up and 0. A key, button, stick or touch control that is still held when the change ends keeps its actions up until it is released, so the press that opened a menu never reaches the menu as a second press. The navigation actions of the interface, such as `uiCancel`, follow the same rule.
+
+## Players
+
+Local multiplayer games give each player an action map of their own. `input.newActionMap(options)` creates a map that reads only the devices its options name: `keyboard` and `mouse`, `true` by default, `gamepad`, the index of one gamepad, `false` for none, or left out for every gamepad, and `virtual` with `virtualPrefix` for the virtual controls, whose prefix goes in front of the names of `virtual:` bindings, so two touch layouts on one screen drive two players. Every map loads the same documents as the default map, updates at the start of every frame and every fixed step, and leaves the engine once Lua lets go of it. The functions of the module, such as `input.down`, read the default map, which `input.actions()` returns as a map too.
+
+```lua
+local input = require('haylen.input')
+
+local players = {input.newActionMap({mouse = false, gamepad = false, virtualPrefix = 'touch.', actions = 'input/fight.json'})}
+for pad = 1, 4 do
+    players[#players + 1] = input.newActionMap({keyboard = false, mouse = false, virtual = false, gamepad = pad, actions = 'input/fight.json'})
+end
+```
+
+A join screen takes the gamepad that presses a button with `input.findGamepadPress('start')`, which returns the lowest index of a gamepad that pressed it in this frame, and gives that player a map with `devices = {gamepad = index}`. The events `gamepadConnected` and `gamepadDisconnected` carry the index, so a game pauses when the gamepad of a player leaves and resumes when it comes back at the same index. In a fixed step, `map:stepButtons(list)` returns one integer per player with a bit for each action of the list that is down in the step, for command buffers, recordings and bots.
 
 ## Virtual buttons and sticks
 
@@ -325,4 +340,4 @@ The HUD in `samples/games/tiny-island/source/ui/hud.lua` drives the virtual inpu
 
 ## From C++
 
-The raw state lives in `haylen::input::Input` (`haylen/input/Input.hpp`), reached with `engine.getInput()`. `haylen::input::ActionMap` (`haylen/input/ActionMap.hpp`), reached with `engine.getActions()`, loads the same JSON documents and can also define and remove actions one by one in code with `ActionMap::Action` and `ActionMap::Binding`, and the UI plugin hands it the keys and buttons it captures with `ActionMap::setCapture`. `engine.getVirtualInput()` returns the `haylen::input::VirtualInput` that touch controls write, and `engine.getGestures()` returns the `haylen::input::GestureRecognizer`. `haylen::input::Controls` (`haylen/input/Controls.hpp`) converts keys, mouse buttons, gamepad buttons and gamepad axes to and from the names that bindings and Lua use. See [Architecture](architecture.md) for how the frame updates them and [Lua](lua.md) for the scripting side.
+The raw state lives in `haylen::input::Input` (`haylen/input/Input.hpp`), reached with `engine.getInput()`. `haylen::input::ActionMap` (`haylen/input/ActionMap.hpp`), reached with `engine.getActions()`, loads the same JSON documents and can also define and remove actions one by one in code with `ActionMap::Action` and `ActionMap::Binding`, and the UI plugin hands the keys and buttons it captures to every map through `haylen::input::ActionMaps` (`haylen/input/ActionMaps.hpp`), reached with `engine.getActionMaps()`, whose `create(devices)` makes the map of a player with its `ActionMap::Devices`. `engine.getVirtualInput()` returns the `haylen::input::VirtualInput` that touch controls write, and `engine.getGestures()` returns the `haylen::input::GestureRecognizer`. `haylen::input::Controls` (`haylen/input/Controls.hpp`) converts keys, mouse buttons, gamepad buttons and gamepad axes to and from the names that bindings and Lua use. See [Architecture](architecture.md) for how the frame updates them and [Lua](lua.md) for the scripting side.

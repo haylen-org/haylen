@@ -13,6 +13,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/AppTextField.hpp"
+#include "haylen/input/Controls.hpp"
 #include "haylen/input/GestureRecognizer.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/PointerEmulation.hpp"
@@ -25,6 +26,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/TextInput.hpp"
+#include "input/ActionMapLua.hpp"
 
 namespace haylen::input {
 
@@ -294,6 +296,23 @@ int InputLua::gamepadStick(lua_State* L) {
     return pushPair(L, getInput(L).getGamepadStick(readGamepadIndex(L, 2), side == "right"));
 }
 
+// Returns the lowest index of a gamepad that pressed the button in this frame, or any button when none is named, or nil, which a screen where players join with their own gamepad reads.
+int InputLua::findGamepadPress(lua_State* L) {
+    const Input& devices = getInput(L);
+    const std::optional<GamepadButton> wanted = lua_isnoneornil(L, 1) ? std::nullopt : std::optional(lua::Stack::read<GamepadButton>(L, 1));
+    for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
+        for (std::size_t code = 0; code < Controls::kGamepadButtonCount; ++code) {
+            const auto button = static_cast<GamepadButton>(code);
+            if ((!wanted || *wanted == button) && devices.isGamepadPressed(index, button)) {
+                lua_pushinteger(L, static_cast<lua_Integer>(index + 1));
+                return 1;
+            }
+        }
+    }
+    lua_pushnil(L);
+    return 1;
+}
+
 int InputLua::setGamepadDeadzone(lua_State* L) {
     getInput(L).setGamepadDeadzone(lua::Stack::read<float>(L, 1));
     return 0;
@@ -406,104 +425,6 @@ int InputLua::touchAsMouse(lua_State* L) {
     return 1;
 }
 
-int InputLua::loadActions(lua_State* L) {
-    core::Engine& owner = lua::Runtime::getEngine(L);
-    const core::Json document = lua_type(L, 1) == LUA_TSTRING ? owner.getAssets().json(lua::Stack::read<std::string_view>(L, 1)) : lua::JsonConverter::read(L, 1);
-    owner.getActions().load(document);
-    return 0;
-}
-
-int InputLua::saveActions(lua_State* L) {
-    lua::JsonConverter::push(L, lua::Runtime::getEngine(L).getActions().save());
-    return 1;
-}
-
-int InputLua::actionNames(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().getNames());
-    return 1;
-}
-
-// Adds an action given as a table in the action map document format, or replaces the action with the same name in its place.
-int InputLua::defineAction(lua_State* L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-    lua::Runtime::getEngine(L).getActions().define(ActionMap::Action::fromJson(lua::JsonConverter::read(L, 1)));
-    return 0;
-}
-
-int InputLua::removeAction(lua_State* L) {
-    lua::Runtime::getEngine(L).getActions().remove(lua::Stack::read<std::string_view>(L, 1));
-    return 0;
-}
-
-int InputLua::clearActions(lua_State* L) {
-    lua::Runtime::getEngine(L).getActions().clear();
-    return 0;
-}
-
-int InputLua::actionDefinition(lua_State* L) {
-    const ActionMap::Action* definition = lua::Runtime::getEngine(L).getActions().findAction(lua::Stack::read<std::string_view>(L, 1));
-    if (definition == nullptr) {
-        lua_pushnil(L);
-        return 1;
-    }
-    lua::JsonConverter::push(L, definition->toJson());
-    return 1;
-}
-
-int InputLua::setPressThreshold(lua_State* L) {
-    lua::Runtime::getEngine(L).getActions().setPressThreshold(lua::Stack::read<float>(L, 1));
-    return 0;
-}
-
-int InputLua::actionDown(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().isDown(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::actionPressed(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().isPressed(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::actionReleased(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().isReleased(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::actionValue(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().getValue(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::actionVector(lua_State* L) {
-    return pushPair(L, lua::Runtime::getEngine(L).getActions().getVector(lua::Stack::read<std::string_view>(L, 1)));
-}
-
-int InputLua::stepDown(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().isStepDown(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::stepPressed(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().isStepPressed(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::stepReleased(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().isStepReleased(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::consumePress(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().consumePress(lua::Stack::read<std::string_view>(L, 1)));
-    return 1;
-}
-
-int InputLua::setGamepadIndex(lua_State* L) {
-    lua::Runtime::getEngine(L).getActions().setGamepadIndex(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<std::size_t>(readGamepadIndex(L, 1)));
-    return 0;
-}
-
 int InputLua::setVirtualButton(lua_State* L) {
     lua::Runtime::getEngine(L).getVirtualInput().setButton(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<bool>(L, 2));
     return 0;
@@ -521,13 +442,15 @@ int InputLua::clearVirtual(lua_State* L) {
 
 int InputLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"keyDown", &keyDown}, {"keyPressed", &keyPressed}, {"keyReleased", &keyReleased}, {"anyKeyPressed", &anyKeyPressed}, {"modifiers", &modifiers}, {"text", &text}, {"mouseDown", &mouseDown}, {"mousePressed", &mousePressed}, {"mouseReleased", &mouseReleased}, {"mousePosition", &mousePosition}, {"mouseFramebufferPosition", &mouseFramebufferPosition}, {"mouseDelta", &mouseDelta}, {"mouseScroll", &mouseScroll}, {"mouseInside", &mouseInside}, {"pointerCaptured", &pointerCaptured}, {"keyCaptured", &keyCaptured}, {"gamepadButtonCaptured", &gamepadButtonCaptured}, {"gamepadAxisCaptured", &gamepadAxisCaptured}, {"touches", &touches}, {"findTouch", &findTouch}, {"gestures", &lua::Binding::native<&gestures>}, {"setGestureSettings", &lua::Binding::native<&setGestureSettings>}, {"gestureSettings", &gestureSettings}, {"gamepadConnected", &gamepadConnected}, {"gamepadName", &gamepadName}, {"gamepadDown", &gamepadDown}, {"gamepadPressed", &gamepadPressed}, {"gamepadReleased", &gamepadReleased}, {"gamepadAxis", &gamepadAxis}, {"gamepadStick", &gamepadStick}, {"setGamepadDeadzone", &lua::Binding::native<&setGamepadDeadzone>}, {"gamepadDeadzone", &gamepadDeadzone}, {"setScrollSpeed", &lua::Binding::native<&setScrollSpeed>}, {"scrollSpeed", &scrollSpeed}, {"lastDevice", &lastDevice}, {"editText", &lua::Binding::native<&editText>}, {"finishText", &finishText}, {"editingText", &editingText}, {"setMouseAsTouch", &setMouseAsTouch}, {"mouseAsTouch", &mouseAsTouch}, {"setTouchAsMouse", &setTouchAsMouse}, {"touchAsMouse", &touchAsMouse}, {"loadActions", &lua::Binding::native<&loadActions>}, {"saveActions", &saveActions}, {"actionNames", &actionNames}, {"defineAction", &lua::Binding::native<&defineAction>}, {"removeAction", &removeAction}, {"clearActions", &clearActions}, {"actionDefinition", &actionDefinition}, {"setPressThreshold", &lua::Binding::native<&setPressThreshold>}, {"down", &actionDown}, {"pressed", &actionPressed}, {"released", &actionReleased}, {"value", &actionValue}, {"vector", &actionVector}, {"stepDown", &stepDown}, {"stepPressed", &stepPressed}, {"stepReleased", &stepReleased}, {"consumePress", &consumePress}, {"setGamepadIndex", &setGamepadIndex}, {"setVirtualButton", &setVirtualButton}, {"setVirtualStick", &setVirtualStick}, {"clearVirtual", &clearVirtual}, {nullptr, nullptr},
+        {"keyDown", &keyDown}, {"keyPressed", &keyPressed}, {"keyReleased", &keyReleased}, {"anyKeyPressed", &anyKeyPressed}, {"modifiers", &modifiers}, {"text", &text}, {"mouseDown", &mouseDown}, {"mousePressed", &mousePressed}, {"mouseReleased", &mouseReleased}, {"mousePosition", &mousePosition}, {"mouseFramebufferPosition", &mouseFramebufferPosition}, {"mouseDelta", &mouseDelta}, {"mouseScroll", &mouseScroll}, {"mouseInside", &mouseInside}, {"pointerCaptured", &pointerCaptured}, {"keyCaptured", &keyCaptured}, {"gamepadButtonCaptured", &gamepadButtonCaptured}, {"gamepadAxisCaptured", &gamepadAxisCaptured}, {"touches", &touches}, {"findTouch", &findTouch}, {"gestures", &lua::Binding::native<&gestures>}, {"setGestureSettings", &lua::Binding::native<&setGestureSettings>}, {"gestureSettings", &gestureSettings}, {"gamepadConnected", &gamepadConnected}, {"gamepadName", &gamepadName}, {"gamepadDown", &gamepadDown}, {"gamepadPressed", &gamepadPressed}, {"gamepadReleased", &gamepadReleased}, {"gamepadAxis", &gamepadAxis}, {"gamepadStick", &gamepadStick}, {"setGamepadDeadzone", &lua::Binding::native<&setGamepadDeadzone>}, {"gamepadDeadzone", &gamepadDeadzone}, {"setScrollSpeed", &lua::Binding::native<&setScrollSpeed>}, {"scrollSpeed", &scrollSpeed}, {"lastDevice", &lastDevice}, {"editText", &lua::Binding::native<&editText>}, {"finishText", &finishText}, {"editingText", &editingText}, {"setMouseAsTouch", &setMouseAsTouch}, {"mouseAsTouch", &mouseAsTouch}, {"setTouchAsMouse", &setTouchAsMouse}, {"touchAsMouse", &touchAsMouse}, {"findGamepadPress", &findGamepadPress}, {"setVirtualButton", &setVirtualButton}, {"setVirtualStick", &setVirtualStick}, {"clearVirtual", &clearVirtual}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
+    ActionMapLua::addFunctions(L);
     return 1;
 }
 
 void InputLua::install(lua_State* L) {
+    ActionMapLua::install(L);
     lua::Binding::preload(L, "haylen.input", &open);
 }
 

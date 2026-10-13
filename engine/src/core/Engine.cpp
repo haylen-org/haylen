@@ -1059,6 +1059,10 @@ input::Input& Engine::getInput() noexcept {
 }
 
 input::ActionMap& Engine::getActions() noexcept {
+    return *state->actions.getDefault();
+}
+
+input::ActionMaps& Engine::getActionMaps() noexcept {
     return state->actions;
 }
 

@@ -82,6 +82,24 @@ class ActionMap final {
         static const std::array<std::pair<std::string_view, Type>, 3> kTypeNames;
     };
 
+    // The devices whose bindings a map reads: the keyboard, the mouse, every gamepad, one gamepad or none, and the virtual controls, whose names the prefix goes in front of, so `virtual:jump` reads the virtual button `p2.jump` in a map with the prefix `p2.`.
+    struct Devices {
+        enum class Gamepads : std::uint8_t {
+            Every,
+            One,
+            None,
+        };
+
+        bool keyboard = true;
+        bool mouse = true;
+        Gamepads gamepads = Gamepads::Every;
+        std::size_t gamepad = 0;
+        bool virtualControls = true;
+        std::string virtualPrefix;
+
+        [[nodiscard]] bool operator==(const Devices&) const = default;
+    };
+
     // The keys, gamepad buttons and gamepad axes the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open and the directions while a control has the focus.
     struct Capture {
         bool keyboard = false;
@@ -99,8 +117,13 @@ class ActionMap final {
     [[nodiscard]] const Action* findAction(std::string_view name) const noexcept;
     [[nodiscard]] std::vector<std::string> getNames() const;
 
-    void setGamepadIndex(std::optional<std::size_t> value) noexcept {
-        gamepadIndex = value;
+    // Throws `std::invalid_argument` for one gamepad at an index from `Input::kMaxGamepads` on.
+    void setDevices(Devices value);
+    [[nodiscard]] const Devices& getDevices() const noexcept {
+        return devices;
+    }
+    [[nodiscard]] float getPressThreshold() const noexcept {
+        return pressThreshold;
     }
     // Takes a threshold above 0 and up to 1 and throws `std::invalid_argument` for any other value.
     void setPressThreshold(float value);
@@ -168,12 +191,14 @@ class ActionMap final {
     [[nodiscard]] float getBindingValue(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] math::Vec2 getBindingVector(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] float getStrongest(const std::vector<Binding>& list, const Input& input, const VirtualInput& virtualInput) const noexcept;
+    [[nodiscard]] std::string_view getVirtualName(const Binding& binding) const noexcept;
     [[nodiscard]] const State* find(std::string_view name) const noexcept;
     [[nodiscard]] bool isStickCaptured(std::size_t index, bool right) const noexcept;
     void holdCaptured(const Input& input) noexcept;
 
     std::vector<State> actions;
-    std::optional<std::size_t> gamepadIndex;
+    Devices devices;
+    mutable std::string virtualName;
     float pressThreshold = 0.5F;
     Capture capture;
     std::bitset<Controls::kKeyCount> capturedKeys;

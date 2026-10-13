@@ -22,6 +22,7 @@
 #include "haylen/core/SceneView.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/input/ActionMaps.hpp"
 #include "haylen/input/AppTextField.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
@@ -77,7 +78,7 @@ void UiPlugin::stop(core::Engine& engine) {
         controls.setStick(name, {});
     }
     engine.getInput().setPointerCaptured(false);
-    engine.getActions().setCapture({});
+    engine.getActionMaps().setCapture({});
 
     // Pending image loads finish into a library that no longer exists, so they drop their result.
     images.reset();
@@ -292,7 +293,7 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
 
     // The action map of the next frame ignores mouse buttons while the interface owns the pointer, so a click on a button never reaches gameplay, and it leaves the presses the interface answers itself to the interface, such as the cancel that closes a popup.
     engine.getInput().setPointerCaptured(isUsingPointer());
-    engine.getActions().setCapture(getCapture());
+    engine.getActionMaps().setCapture(getCapture());
 }
 
 // A text field that edits takes every key, and a control that listens for a binding takes every key and gamepad button. A control with the focus takes every navigation action and Tab, a play area with the focus leaves the directions, accept and menu to the game, and the UI otherwise takes the presses it answers itself.

@@ -27,7 +27,7 @@ namespace haylen::input {
 // Raw device state for the current frame. Positions are in design coordinates.
 class Input final {
   public:
-    static constexpr std::size_t kMaxGamepads = 4;
+    static constexpr std::size_t kMaxGamepads = 8;
     // A precise scroll counts as one step of a wheel for every this many points of the screen it moves.
     static constexpr float kPointsPerLine = 40.0F;
 

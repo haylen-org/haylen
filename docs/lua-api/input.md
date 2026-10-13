@@ -442,7 +442,7 @@ input.setGestureSettings({longPressDuration = settings.longPressDuration * 1.5})
 
 ## Gamepads
 
-Up to four gamepads are tracked. Gamepad indices start at 1, default to 1 and raise a bad argument error with `gamepad index out of range` outside 1 to 4. Buttons and axes use the names listed in [Gamepad names](#gamepad-names).
+Up to eight gamepads are tracked. Gamepad indices start at 1, default to 1 and raise a bad argument error with `gamepad index out of range` outside 1 to 8. Buttons and axes use the names listed in [Gamepad names](#gamepad-names).
 
 ### input.gamepadConnected(index)
 
@@ -521,7 +521,7 @@ scene.push({
 
 ### input.gamepadButtonCaptured(button, index)
 
-Returns `true` while the current press of a gamepad button belongs to the interface, such as the east button that closes a popup, and `button:` bindings read it as up meanwhile. The argument `index` picks the gamepad from 1 to 4 and defaults to 1.
+Returns `true` while the current press of a gamepad button belongs to the interface, such as the east button that closes a popup, and `button:` bindings read it as up meanwhile. The argument `index` picks the gamepad from 1 to 8 and defaults to 1.
 
 ```lua
 local input = require('haylen.input')
@@ -538,7 +538,7 @@ scene.push({
 
 ### input.gamepadAxisCaptured(axis, index)
 
-Returns `true` while the current lean of a gamepad axis past the press threshold belongs to the interface, such as the left stick that moves the focus between the controls of a menu, and `axis:` and `stick:` bindings of that axis read it as 0 meanwhile. The argument `axis` is one of `'leftX'`, `'leftY'`, `'rightX'`, `'rightY'`, `'leftTrigger'` or `'rightTrigger'`, and `index` picks the gamepad from 1 to 4 and defaults to 1.
+Returns `true` while the current lean of a gamepad axis past the press threshold belongs to the interface, such as the left stick that moves the focus between the controls of a menu, and `axis:` and `stick:` bindings of that axis read it as 0 meanwhile. The argument `axis` is one of `'leftX'`, `'leftY'`, `'rightX'`, `'rightY'`, `'leftTrigger'` or `'rightTrigger'`, and `index` picks the gamepad from 1 to 8 and defaults to 1.
 
 ```lua
 local input = require('haylen.input')
@@ -791,7 +791,7 @@ Bindings are strings with a source and a name.
 | `virtual:<name>` | A virtual button set with `input.setVirtualButton()` or an on-screen `touchButton`. |
 | `virtualStick:<name>` | A virtual stick set with `input.setVirtualStick()` or an on-screen `touchStick`, for vector actions. |
 
-Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released for a press the interface took, as [`input.pointerCaptured()`](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [`input.keyCaptured()`](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [`haylen.scene`](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
+Gamepad bindings read every connected gamepad and use the strongest one, unless the [devices](#mapdevices) of the map pick one gamepad or none. Mouse bindings read as released for a press the interface took, as [`input.pointerCaptured()`](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [`input.keyCaptured()`](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [`haylen.scene`](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
 
 An action map document is a table or a JSON file with an `actions` list. Each action has `name`, `type` and the binding lists its type uses, and an optional `buffer` in seconds, 0 by default, which keeps a press available to [`input.consumePress()`](#inputconsumepressaction) for that long after the first fixed step that saw it. A buffer that is not a number from 0 raises `The buffer of an action must be a number of seconds from 0.`.
 
@@ -1057,15 +1057,153 @@ scene.push({
 })
 ```
 
-### input.setGamepadIndex(index)
+### input.findGamepadPress(button)
 
-Makes gamepad bindings read only the gamepad at `index`, from 1 to 4, which suits local multiplayer. Passing `nil` reads every gamepad again.
+Returns the lowest index of a gamepad that pressed the button in this frame, or that pressed any button when `button` is `nil`, or `nil` when none did. A join screen gives the player who pressed the gamepad a map that reads it.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local players = {}
+
+scene.push({
+    update = function(self, dt)
+        local pad = input.findGamepadPress('start')
+        if pad and not players[pad] then
+            players[pad] = input.newActionMap({keyboard = false, mouse = false, virtual = false, gamepad = pad, actions = 'input.json'})
+        end
+    end,
+})
+```
+
+## Action maps of players
+
+Each player of a local multiplayer game reads an action map of their own, which loads the same documents and offers the same functions as the default map, as methods. The default map is a map too, which `input.actions()` returns, and the functions of the module read it. Every map updates at the start of every frame and every fixed step, takes the presses the interface captures like the default map, and leaves the engine once Lua lets go of it.
+
+### input.newActionMap(options)
+
+Creates an action map that reads the devices of its options, every device by default.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `keyboard` | `true` | Whether `key:` bindings read the keyboard. |
+| `mouse` | `true` | Whether `mouse:` bindings read the mouse. |
+| `gamepad` | every gamepad | The index of the one gamepad that `button:`, `axis:` and `stick:` bindings read, from 1 to 8, or `false` for none. |
+| `virtual` | `true` | Whether `virtual:` and `virtualStick:` bindings read the virtual controls. |
+| `virtualPrefix` | `''` | Text that goes in front of the name of every virtual binding, so `virtual:jump` reads the virtual button `p2.jump` with the prefix `p2.`. |
+| `actions` | none | A document table or the path of a JSON file to load, as `map:load()` takes. |
 
 ```lua
 local input = require('haylen.input')
 
-input.setGamepadIndex(2)
-input.setGamepadIndex(nil)
+local first = input.newActionMap({gamepad = false, actions = 'input.json'})
+local second = input.newActionMap({keyboard = false, mouse = false, gamepad = 1, actions = 'input.json'})
+```
+
+### input.actions()
+
+Returns the default action map, which the functions of the module read and change. Two calls return values that compare equal.
+
+```lua
+local input = require('haylen.input')
+
+input.actions().devices = {gamepad = 1}
+```
+
+### map:load(document), map:save(), map:names(), map:define(action), map:definition(name), map:remove(name), map:clear()
+
+Load, save, list, define, read and remove the actions of the map, with the formats and errors of `input.loadActions()`, `input.saveActions()`, `input.actionNames()`, `input.defineAction()`, `input.actionDefinition()`, `input.removeAction()` and `input.clearActions()`.
+
+```lua
+local input = require('haylen.input')
+
+local player = input.newActionMap({gamepad = 2})
+player:load('input.json')
+player:define({name = 'taunt', type = 'button', bindings = {'button:north'}})
+print(#player:names(), player:definition('taunt').bindings[1])
+```
+
+### map:down(action), map:pressed(action), map:released(action), map:value(action), map:vector(action)
+
+Read the actions of the map in the frame, as `input.down()`, `input.pressed()`, `input.released()`, `input.value()` and `input.vector()` read the default map.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local player = input.newActionMap({gamepad = 2, actions = 'input.json'})
+
+scene.push({
+    x = 0,
+    update = function(self, dt)
+        local dx = player:vector('move')
+        self.x = self.x + dx * 200 * dt
+    end,
+})
+```
+
+### map:stepDown(action), map:stepPressed(action), map:stepReleased(action), map:consumePress(action)
+
+Read the actions of the map in fixed steps and take their presses, as `input.stepDown()`, `input.stepPressed()`, `input.stepReleased()` and `input.consumePress()` read the default map.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local player = input.newActionMap({gamepad = 1, actions = 'input.json'})
+
+scene.push({
+    fixedUpdate = function(self, step)
+        if player:stepPressed('attack') then
+            print('Attack.')
+        end
+    end,
+})
+```
+
+### map:stepButtons(list)
+
+Returns one integer whose bit `n - 1` is set when the action `list[n]` is down in this fixed step, as `stepDown` tells, for command buffers, recordings and bots that keep one number per player and step. The list holds at most 32 action names, and a name the map does not define reads as up.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local buttons = {'up', 'down', 'left', 'right', 'attack', 'jump', 'defend'}
+local player = input.newActionMap({gamepad = 1, actions = 'input.json'})
+
+scene.push({
+    fixedUpdate = function(self, step)
+        local mask = player:stepButtons(buttons)
+        if mask & (1 << 4) ~= 0 then
+            print('Attack is down.')
+        end
+    end,
+})
+```
+
+### map.devices
+
+The devices the map reads, as a table with the keys of the options of `input.newActionMap()` without `actions`, where `gamepad` is left out while the map reads every gamepad. Assigning a table replaces every device setting, and keys left out take their defaults.
+
+```lua
+local input = require('haylen.input')
+
+local player = input.newActionMap()
+player.devices = {keyboard = false, mouse = false, gamepad = 3}
+print(player.devices.gamepad)
+```
+
+### map.pressThreshold
+
+The value at which every action of the map counts as down, above 0 and at most 1, 0.5 by default, with the error of `input.setPressThreshold()`.
+
+```lua
+local input = require('haylen.input')
+
+local player = input.newActionMap({gamepad = 1})
+player.pressThreshold = 0.3
 ```
 
 ## Virtual controls
@@ -1208,7 +1346,11 @@ scene.push({
 | Message | Cause |
 | --- | --- |
 | `unknown value '<name>'` | A key, mouse button, gamepad button or gamepad axis name does not exist. It comes inside a bad argument error. |
-| `gamepad index out of range` | A gamepad index is outside 1 to 4. It comes inside a bad argument error. |
+| `gamepad index out of range` | A gamepad index is outside 1 to 8. It comes inside a bad argument error. |
+| `The "gamepad" of an action map must be an index from 1 to 8, or false for none.` | The option `gamepad` of `input.newActionMap()` or of `map.devices` is not a gamepad index or `false`. |
+| `Unknown option "<key>".` | The options of `input.newActionMap()` or `map.devices` hold an unknown key. |
+| `The list of the buttons of a step holds action names, and entry <n> is not one.` | The list of `map:stepButtons()` holds something other than a string. |
+| `at most 32 actions fit in the buttons of a step` | The list of `map:stepButtons()` is longer than 32. It comes inside a bad argument error. |
 | `expected left or right` | The function `input.gamepadStick()` received another side. It comes inside a bad argument error. |
 | `Unknown option "<key>".` | The function `input.setGestureSettings()` received an unknown field. |
 | `The gamepad dead zone must be at least 0 and below 1.` | The function `input.setGamepadDeadzone()` received a value outside that range. |

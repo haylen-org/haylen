@@ -1,4 +1,4 @@
--- Action map: the button, axis and vector actions of the input tests with their bindings and live state, driven by keys, the mouse, gamepads and on-screen touch controls at once, the press threshold, the gamepad that bindings read and prompts for the last device used.
+-- Action map: the button, axis and vector actions of the input tests with their bindings and live state, driven by keys, the mouse, gamepads and on-screen touch controls at once, the press threshold, the gamepad that the devices of the map read and prompts for the last device used.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -15,7 +15,7 @@ local kPrompts = {
     gamepad = 'Gamepad: the left stick or the d-pad moves, south jumps, west dashes, the triggers throttle.',
     touch = 'Touch: the stick moves, and the Jump and Dash buttons jump and dash.',
 }
-local kIndices = {{id = 'all', text = 'All'}, {id = '1', text = '1'}, {id = '2', text = '2'}, {id = '3', text = '3'}, {id = '4', text = '4'}}
+local kIndices = {{id = 'all', text = 'All'}, {id = '1', text = '1'}, {id = '2', text = '2'}, {id = '3', text = '3'}, {id = '4', text = '4'}, {id = '5', text = '5'}, {id = '6', text = '6'}, {id = '7', text = '7'}, {id = '8', text = '8'}}
 local kFlash = 0.3
 
 function Actions:enter()
@@ -40,7 +40,7 @@ function Actions:enter()
                 input.setPressThreshold(event.value)
             end}},
             ui.formField{label = 'Gamepad the bindings read', ui.segmentedControl{id = 'pad', items = kIndices, selected = 'all', onChange = function(event)
-                input.setGamepadIndex(event.value ~= 'all' and tonumber(event.value) or nil)
+                input.actions().devices = event.value ~= 'all' and {gamepad = tonumber(event.value)} or {}
             end}},
             ui.formField{label = 'Touch controls', ui.toggle{id = 'touchOnly', text = 'Only after a touch', onChange = function(event)
                 for _, id in ipairs({'stick', 'jump', 'dash'}) do
@@ -63,7 +63,7 @@ end
 function Actions:exit()
     Actions.super.exit(self)
     input.setPressThreshold(0.5)
-    input.setGamepadIndex(nil)
+    input.actions().devices = {}
     input.clearVirtual()
 end
 

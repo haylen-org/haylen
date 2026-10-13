@@ -209,7 +209,7 @@ TEST(ReportedStateTest, KeepsAPausedAppSuspendedWhileItsPageShowsAndHides) {
 }
 
 TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
-    std::array<int, 6> pads{};
+    std::array<int, input::Input::kMaxGamepads + 2> pads{};
     const auto pad = [&pads](std::size_t index) -> const void* { return &pads[index]; };
     GamepadSlots slots;
 
@@ -225,15 +225,21 @@ TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
     EXPECT_EQ(slots.getController(2), pad(2));
 
     // New controllers fill the free slots, and the one beyond the last slot waits for a slot to free up.
-    slots.update(std::vector{pad(1), pad(3), pad(2), pad(4), pad(5)});
+    std::vector<const void*> listed{pad(1), pad(2)};
+    for (std::size_t index = 3; index < pads.size(); ++index) {
+        listed.push_back(pad(index));
+    }
+    slots.update(listed);
     EXPECT_EQ(slots.getController(0), pad(3));
     EXPECT_EQ(slots.getController(3), pad(4));
+    EXPECT_EQ(slots.getController(input::Input::kMaxGamepads - 1), pad(input::Input::kMaxGamepads));
 
     // A controller that takes the place of one that left waits an update, so the app hears the one that left first.
-    slots.update(std::vector{pad(3), pad(2), pad(4), pad(5)});
+    listed.erase(listed.begin());
+    slots.update(listed);
     EXPECT_EQ(slots.getController(1), nullptr);
-    slots.update(std::vector{pad(3), pad(2), pad(4), pad(5)});
-    EXPECT_EQ(slots.getController(1), pad(5));
+    slots.update(listed);
+    EXPECT_EQ(slots.getController(1), pad(input::Input::kMaxGamepads + 1));
     EXPECT_EQ(slots.getController(input::Input::kMaxGamepads), nullptr);
 
     slots.update({});
