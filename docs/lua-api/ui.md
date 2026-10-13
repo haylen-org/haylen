@@ -1755,6 +1755,8 @@ A button that reports `click` when pressed. It can take the focus.
 | `text` | text | none | Label of the button. |
 | `icon` | image | none | Picture before the label, as large as the theme `iconSize` metric. |
 | `iconColor` | theme color | none | Tint of the icon, such as `'text'` for an SVG icon drawn with `currentColor` on a light button. Without it toolbar and icon buttons tint the icon like their label and the other variants keep its colors. |
+| `iconPlacement` | string | `'start'` | Where the icon stands: `'start'` before the label, or `'top'` above it, which makes the button as tall as the icon and a line of text, as the buttons of a tab bar on a phone are. |
+| `justify` | string | `'center'` | Where the icon and the label sit across the button: `'start'`, `'center'` or `'end'`. At the start or the end they keep the theme `controlPaddingX` from the edge, as the content of a search bar does. |
 | `variant` | variant | `'default'` | Look of the button. |
 | `checked` | boolean | `false` | Marks the button as active with the selection color, which suits toolbar toggles. |
 
@@ -1779,6 +1781,13 @@ ui.mount(ui.row{
     ui.button{icon = 'ui/gear.png', variant = 'icon', tooltip = 'Settings'},
     ui.button{text = 'Credits', variant = 'link'},
 })
+
+ui.mount(ui.row{gap = 0,
+    ui.button{text = 'Home', icon = 'ui/home.svg', iconPlacement = 'top', variant = 'toolbar', grow = 1},
+    ui.button{text = 'Search', icon = 'ui/search.svg', iconPlacement = 'top', variant = 'toolbar', grow = 1},
+}, {placement = 'safe'})
+
+ui.mount(ui.button{text = 'Search dishes', icon = 'ui/search.svg', justify = 'start', width = 640})
 ```
 
 ### ui.imageButton(properties)

@@ -1,4 +1,4 @@
--- Every variant of button, image buttons with hover and pressed pictures, chips that toggle or remove themselves and a menu button.
+-- Every variant of button, icons above labels and content at the start, image buttons with hover and pressed pictures, chips that toggle or remove themselves and a menu button.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -55,6 +55,14 @@ function Buttons:columns()
                     ui.button{id = 'favorite', icon = 'interface/icons/star.png', variant = 'icon', tooltip = 'Favorite', onClick = self:pressed('the icon button')},
                     ui.button{icon = 'interface/icons/heart.png', variant = 'icon', tooltip = 'Like', onClick = self:pressed('the heart icon button')},
                 },
+            }),
+            layout.section('Icon placement and justify', {
+                ui.row{gap = 0,
+                    ui.button{text = 'Island', icon = 'interface/icons/star.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Island" tab')},
+                    ui.button{text = 'Forge', icon = 'interface/icons/hammer.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Forge" tab')},
+                    ui.button{text = 'Settings', icon = 'interface/icons/gear.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Settings" tab')},
+                },
+                ui.button{text = 'Search the island', icon = 'interface/icons/key.png', justify = 'start', align = 'stretch', onClick = self:pressed('the search bar')},
             }),
             layout.section('Component "menuButton"', {
                 ui.menuButton{id = 'file', text = 'File', icon = 'interface/icons/key.png', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)

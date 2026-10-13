@@ -6,7 +6,7 @@ return {
     tests = {
         {code = 'GUI-001', title = 'Containers', description = 'Rows, columns, grids, stacks, scrolls, cards, panels, dividers, tabs, form fields and splitters.', module = 'containers'},
         {code = 'GUI-002', title = 'Text', description = 'Labels in every font role and color, alignment, wrapping, page headers, empty states and alerts.', module = 'text'},
-        {code = 'GUI-003', title = 'Buttons', description = 'Every button variant, image buttons, chips and menu buttons.', module = 'buttons'},
+        {code = 'GUI-003', title = 'Buttons', description = 'Every button variant, icons above labels for tab bars, content at the start for search bars, image buttons, chips and menu buttons.', module = 'buttons'},
         {code = 'GUI-004', title = 'Choices', description = 'Check boxes, toggles and radio groups.', module = 'choices'},
         {code = 'GUI-005', title = 'Text fields', description = 'Text fields with every keyboard and return key, secret fields, text areas and filter fields.', module = 'text-fields'},
         {code = 'GUI-006', title = 'Pickers', description = 'Combos, color fields, number fields and sliders.', module = 'pickers'},

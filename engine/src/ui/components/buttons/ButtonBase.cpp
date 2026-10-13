@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "haylen/ui/Context.hpp"
+#include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {
@@ -12,17 +13,19 @@ void ButtonBase::readProperties(PropertyReader& reader) {
     reader.read("icon", icon);
     reader.read("iconColor", iconColor);
     reader.readChoice<Widgets::ButtonVariant>("variant", variant, Widgets::kButtonVariants);
+    reader.readChoice<Widgets::IconPlacement>("iconPlacement", content.iconPlacement, Widgets::kIconPlacements);
+    reader.readChoice<Alignment>("justify", content.justify, Typography::kAlignments);
     readMore(reader);
 }
 
 math::Vec2 ButtonBase::measureContent(Context& context, float) {
-    return Widgets::measureButton(context, context.getText(text), !icon.empty(), variant);
+    return Widgets::measureButton(context, context.getText(text), !icon.empty(), variant, content);
 }
 
 bool ButtonBase::drawButton(Context& context, const math::Rect& bounds, bool checked) {
     const float iconSize = context.getMetric(Theme::Metric::IconSize);
     const graphics::Texture iconTexture = icon.empty() ? graphics::Texture{} : context.getImage(icon, {iconSize, iconSize});
-    const bool clicked = Widgets::button(context, bounds, context.getText(text), icon.empty() ? nullptr : &iconTexture, variant, checked, iconColor ? std::optional<math::Color>(context.getColor(*iconColor)) : std::nullopt);
+    const bool clicked = Widgets::button(context, bounds, context.getText(text), icon.empty() ? nullptr : &iconTexture, variant, checked, iconColor ? std::optional<math::Color>(context.getColor(*iconColor)) : std::nullopt, content);
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }

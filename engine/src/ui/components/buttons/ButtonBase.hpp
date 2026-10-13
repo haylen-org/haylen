@@ -13,7 +13,7 @@
 
 namespace haylen::ui {
 
-// The text, icon with its tint and variant every button-like kind shares.
+// The text, icon with its tint and placement, the place of the content and the variant every button-like kind shares.
 class ButtonBase : public Component {
   public:
     [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
@@ -36,6 +36,7 @@ class ButtonBase : public Component {
     std::string icon;
     std::optional<Theme::Color> iconColor;
     Widgets::ButtonVariant variant = Widgets::ButtonVariant::Default;
+    Widgets::ButtonContent content;
 };
 
 } // namespace haylen::ui

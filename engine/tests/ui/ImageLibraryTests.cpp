@@ -45,6 +45,21 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
         return std::any_of(vertices.begin(), vertices.end(), [color](const ImDrawVert& vertex) { return vertex.col == color; });
     }
 
+    // Returns the box the vertices of a color the GUIs drew in the last frame cover, in UI units.
+    [[nodiscard]] math::Rect findColorBox(ImU32 color) {
+        getUi().getBackend().makeCurrent();
+        const ImVector<ImDrawVert>& vertices = ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer;
+        math::Vec2 minimum{1e9F, 1e9F};
+        math::Vec2 maximum{-1e9F, -1e9F};
+        for (const ImDrawVert& vertex : vertices) {
+            if (vertex.col == color) {
+                minimum = {std::min(minimum.x, vertex.pos.x), std::min(minimum.y, vertex.pos.y)};
+                maximum = {std::max(maximum.x, vertex.pos.x), std::max(maximum.y, vertex.pos.y)};
+            }
+        }
+        return math::Rect::fromMinMax(minimum, maximum);
+    }
+
     // Counts the vertices the GUIs drew in the last frame.
     [[nodiscard]] int countVertices() {
         getUi().getBackend().makeCurrent();
@@ -136,6 +151,40 @@ TEST_F(ImageLibraryTest, TintsTheIconOfAButtonWithItsIconColor) {
     frames(2);
     EXPECT_TRUE(drawsColor(danger));
     EXPECT_THROW(gui->set("help", {{"iconColor", "crimson"}}), std::invalid_argument);
+}
+
+TEST_F(ImageLibraryTest, PlacesTheIconOfAButtonAboveItsLabelOrWithTheContentAtTheStart) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "alignItems": "start", "children": [
+        {"kind": "button", "id": "tab", "text": "Home", "icon": "icons/badge.svg", "iconColor": "danger", "iconPlacement": "top"},
+        {"kind": "button", "id": "search", "text": "Search", "icon": "icons/badge.svg", "iconColor": "success", "justify": "start", "width": 600}
+    ]})");
+    // clang-format on
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getContext().getImage("icons/badge.svg", {36.0F, 36.0F}).isValid(); }));
+    frames(2);
+    const Theme& theme = getUi().getTheme();
+    const float iconSize = theme.getMetric(Theme::Metric::IconSize);
+
+    // The icon stands above the label, in the middle of a button taller than a control.
+    const math::Rect tab = getBounds(*gui, "tab");
+    const math::Rect tabIcon = findColorBox(ImGuiConverter::toImU32(theme.getColor(Theme::Color::Danger)));
+    EXPECT_GT(tab.height, theme.getMetric(Theme::Metric::ControlHeight));
+    EXPECT_NEAR(tabIcon.getCenter().x, tab.getCenter().x, 1.0F);
+    EXPECT_LT(tabIcon.y, tab.getCenter().y - iconSize * 0.5F);
+    EXPECT_NEAR(tabIcon.width, iconSize, 1.0F);
+
+    // The content of the search bar starts after the padding of the control.
+    const math::Rect search = getBounds(*gui, "search");
+    const math::Rect searchIcon = findColorBox(ImGuiConverter::toImU32(theme.getColor(Theme::Color::Success)));
+    EXPECT_NEAR(searchIcon.x, search.x + theme.getMetric(Theme::Metric::ControlPaddingX), 1.0F);
+    EXPECT_NEAR(searchIcon.getCenter().y, search.getCenter().y, 1.0F);
+
+    gui->set("search", {{"justify", "end"}});
+    frames(2);
+    EXPECT_GT(findColorBox(ImGuiConverter::toImU32(theme.getColor(Theme::Color::Success))).x, search.getCenter().x);
+    EXPECT_THROW(gui->set("tab", {{"iconPlacement", "bottom"}}), std::invalid_argument);
+    EXPECT_THROW(gui->set("tab", {{"justify", "spaceBetween"}}), std::invalid_argument);
+    EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
 TEST_F(ImageLibraryTest, ReportsSvgDocumentsThatFailToLoad) {

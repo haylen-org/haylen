@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <system_error>
 
 #include <fast_float/fast_float.h>
@@ -44,10 +45,10 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
     const math::Rect middle = math::Rect::fromMinMax({bounds.x + side + 4.0F, bounds.y}, {bounds.getRight() - side - 4.0F, bounds.getBottom()});
 
     ImGui::PushID("minus");
-    const bool lower = Widgets::button(context, minus, "-", nullptr, Widgets::ButtonVariant::Default);
+    const bool lower = Widgets::button(context, minus, "-", nullptr, Widgets::ButtonVariant::Default, false, std::nullopt, {});
     ImGui::PopID();
     ImGui::PushID("plus");
-    const bool raise = Widgets::button(context, plus, "+", nullptr, Widgets::ButtonVariant::Default);
+    const bool raise = Widgets::button(context, plus, "+", nullptr, Widgets::ButtonVariant::Default, false, std::nullopt, {});
     ImGui::PopID();
 
     // Numeric keypads have no minus sign, so a field that takes negative numbers types on the text keyboard.

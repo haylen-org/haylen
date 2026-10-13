@@ -10,6 +10,7 @@
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/ui/Alignment.hpp"
+#include "haylen/ui/Component.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "ui/ImGuiConverter.hpp"
@@ -123,7 +124,7 @@ void Widgets::focusItem(Context& context) {
     context.getFocus().focus(ImGui::GetItemID(), math::Rect::fromMinMax({box.Min.x, box.Min.y}, {box.Max.x, box.Max.y}));
 }
 
-math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant) {
+math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content) {
     const float height = context.getMetric(Theme::Metric::ControlHeight);
     const float icon = context.getMetric(Theme::Metric::IconSize);
     if (variant == ButtonVariant::Icon) {
@@ -135,14 +136,20 @@ math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool
     }
 
     const math::Insets padding = Surfaces::getPadding(context, getSurfaces(variant).normal);
-    float width = textWidth + context.getMetric(Theme::Metric::ControlPaddingX) * 2.0F + padding.getHorizontal();
+    const float paddingX = context.getMetric(Theme::Metric::ControlPaddingX) * 2.0F + padding.getHorizontal();
+    if (content.iconPlacement == IconPlacement::Top && hasIcon) {
+        const float labelHeight = label.empty() ? 0.0F : Typography::getLineHeight(context, Theme::Font::Button) + context.getMetric(Theme::Metric::ContentSpacing) * 0.5F;
+        const float stacked = icon + labelHeight + context.getMetric(Theme::Metric::ControlPaddingY) + padding.getVertical();
+        return {std::max(std::max(textWidth, icon) + paddingX, height), std::max(stacked, height)};
+    }
+    float width = textWidth + paddingX;
     if (hasIcon) {
         width += icon + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing));
     }
     return {std::max(width, height), height};
 }
 
-bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, std::optional<math::Color> iconTint) {
+bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, std::optional<math::Color> iconTint, const ButtonContent& content) {
     const Interaction state = interact(context, bounds, context.getMetric(Theme::Metric::ControlRadius));
 
     if (variant == ButtonVariant::Link) {
@@ -187,20 +194,44 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
         Surfaces::fill(context, bounds, context.getColor(Theme::Color::Selection), context.getMetric(Theme::Metric::ControlRadius));
     }
 
-    // The label and icon sit together in the middle of the space the surface leaves free, the icon on the side the UI starts.
-    const math::Rect inner = bounds.inset(Surfaces::getPadding(context, surfaces.normal));
-    const float iconSize = icon != nullptr && icon->isValid() ? context.getMetric(Theme::Metric::IconSize) : 0.0F;
-    const float labelWidth = label.empty() ? 0.0F : std::min(Typography::measure(context, Theme::Font::Button, label).x, std::max(0.0F, inner.width - iconSize - context.getMetric(Theme::Metric::ContentSpacing)));
-    const float contentWidth = iconSize + labelWidth + (iconSize > 0.0F && labelWidth > 0.0F ? context.getMetric(Theme::Metric::ContentSpacing) : 0.0F);
-    float x = std::floor(inner.x + (inner.width - contentWidth) * 0.5F);
+    const math::Color iconColor = iconTint.value_or(variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white());
+    drawButtonContent(context, bounds.inset(Surfaces::getPadding(context, surfaces.normal)), label, icon != nullptr && icon->isValid() ? icon : nullptr, textColor, iconColor, content);
+    return state.clicked;
+}
+
+// The icon and the label sit together where `justify` puts them, the icon on the side the UI starts or above the label, and away from the edges by the control padding unless they sit in the middle.
+void Widgets::drawButtonContent(Context& context, const math::Rect& inner, std::string_view label, const graphics::Texture* icon, math::Color textColor, math::Color iconColor, const ButtonContent& content) {
+    const float iconSize = icon != nullptr ? context.getMetric(Theme::Metric::IconSize) : 0.0F;
+    const float spacing = context.getMetric(Theme::Metric::ContentSpacing);
+    const float edge = content.justify == Alignment::Center ? 0.0F : std::min(context.getMetric(Theme::Metric::ControlPaddingX), inner.width * 0.5F);
+    const float start = inner.x + edge;
+    const float room = std::max(0.0F, inner.width - edge * 2.0F);
+    const float measured = label.empty() ? 0.0F : Typography::measure(context, Theme::Font::Button, label).x;
+
+    if (content.iconPlacement == IconPlacement::Top && iconSize > 0.0F) {
+        const float lineHeight = label.empty() ? 0.0F : Typography::getLineHeight(context, Theme::Font::Button);
+        const float gap = label.empty() ? 0.0F : spacing * 0.5F;
+        const float top = std::floor(inner.getCenter().y - (iconSize + gap + lineHeight) * 0.5F);
+        const float iconX = std::floor(Component::align(content.justify, start, room, iconSize));
+        Surfaces::drawImage(context, *icon, context.mirror({iconX, top, iconSize, iconSize}, inner), iconColor);
+        if (!label.empty()) {
+            const float labelWidth = std::min(measured, room);
+            const float labelX = std::floor(Component::align(content.justify, start, room, labelWidth));
+            Typography::drawAligned(context, Theme::Font::Button, context.mirror({labelX, top + iconSize + gap, labelWidth, lineHeight}, inner), textColor, label, Alignment::Start);
+        }
+        return;
+    }
+
+    const float labelWidth = std::min(measured, std::max(0.0F, room - iconSize - spacing));
+    const float contentWidth = iconSize + labelWidth + (iconSize > 0.0F && labelWidth > 0.0F ? spacing : 0.0F);
+    float x = std::floor(Component::align(content.justify, start, room, contentWidth));
     if (iconSize > 0.0F) {
-        Surfaces::drawImage(context, *icon, context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner), iconTint.value_or(variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white()));
-        x += iconSize + context.getMetric(Theme::Metric::ContentSpacing);
+        Surfaces::drawImage(context, *icon, context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner), iconColor);
+        x += iconSize + spacing;
     }
     if (labelWidth > 0.0F) {
         Typography::drawAligned(context, Theme::Font::Button, context.mirror({x, inner.y, labelWidth, inner.height}, inner), textColor, label, Alignment::Start);
     }
-    return state.clicked;
 }
 
 math::Vec2 Widgets::measureChoice(Context& context, std::string_view label) {

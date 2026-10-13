@@ -482,7 +482,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | --- | --- | --- | --- |
 | `GUI-001` | Containers | Rows, columns, grids, stacks, scrolls, cards, panels, dividers, tabs, form fields and splitters. |  |
 | `GUI-002` | Text | Labels in every font role and color, alignment, wrapping, page headers, empty states and alerts. |  |
-| `GUI-003` | Buttons | Every button variant, image buttons, chips and menu buttons. |  |
+| `GUI-003` | Buttons | Every button variant, icons above labels for tab bars, content at the start for search bars, image buttons, chips and menu buttons. |  |
 | `GUI-004` | Choices | Check boxes, toggles and radio groups. |  |
 | `GUI-005` | Text fields | Text fields with every keyboard and return key, secret fields, text areas and filter fields. |  |
 | `GUI-006` | Pickers | Combos, color fields, number fields and sliders. |  |

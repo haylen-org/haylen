@@ -12,6 +12,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/FocusDirection.hpp"
 #include "haylen/ui/Theme.hpp"
 
@@ -31,6 +32,11 @@ class Widgets final {
         Link,
     };
 
+    enum class IconPlacement : std::uint8_t {
+        Start,
+        Top,
+    };
+
     enum class Tone : std::uint8_t {
         Neutral,
         Accent,
@@ -44,6 +50,12 @@ class Widgets final {
         bool hovered = false;
         bool held = false;
         bool clicked = false;
+    };
+
+    // How a button arranges its icon and label: the icon before the label or above it, and the content together at the start, the middle or the end of the button.
+    struct ButtonContent {
+        IconPlacement iconPlacement = IconPlacement::Start;
+        Alignment justify = Alignment::Center;
     };
 
     struct ToneColors {
@@ -60,6 +72,11 @@ class Widgets final {
         {"toolbar", ButtonVariant::Toolbar},
         {"icon", ButtonVariant::Icon},
         {"link", ButtonVariant::Link},
+    }};
+
+    static constexpr std::array<std::pair<std::string_view, IconPlacement>, 2> kIconPlacements{{
+        {"start", IconPlacement::Start},
+        {"top", IconPlacement::Top},
     }};
 
     static constexpr std::array<std::pair<std::string_view, Tone>, 6> kTones{{
@@ -88,9 +105,9 @@ class Widgets final {
     // Gives the focus to the last item, which lets a menu start with its first button selected. The ring keeps its visibility, and shows at once when the player last used a gamepad or has no pointer device.
     static void focusItem(Context& context);
 
-    [[nodiscard]] static math::Vec2 measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant);
+    [[nodiscard]] static math::Vec2 measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content);
     // Draws a button with its label and icon, which takes `iconTint` when given and otherwise the color of the label in toolbar and icon buttons and its own colors in the others.
-    [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked = false, std::optional<math::Color> iconTint = std::nullopt);
+    [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, std::optional<math::Color> iconTint, const ButtonContent& content);
 
     [[nodiscard]] static math::Vec2 measureChoice(Context& context, std::string_view label);
     static bool checkbox(Context& context, const math::Rect& bounds, bool& value, std::string_view label);
@@ -137,6 +154,9 @@ class Widgets final {
 
     // A theme may leave out the hover or pressed image of a surface, and then the normal image stands in for it.
     [[nodiscard]] static const Theme::Image* getStateImage(Context& context, const SurfaceSet& set, const Interaction& state);
+
+    // Draws the icon and the label of a button inside the space its surface leaves free.
+    static void drawButtonContent(Context& context, const math::Rect& inner, std::string_view label, const graphics::Texture* icon, math::Color textColor, math::Color iconColor, const ButtonContent& content);
 };
 
 } // namespace haylen::ui
