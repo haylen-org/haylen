@@ -166,6 +166,14 @@ class PropertiesTest(unittest.TestCase):
         self.assertEqual(haylen.java_property("Ilha Tropical ✓\\n"), "Ilha Tropical \\u2713\\\\n")
 
 
+class StoryboardTest(unittest.TestCase):
+    def test_storyboards_of_apple_tv_are_documents_of_apple_tv(self):
+        # The interface compiler of tvOS fails without a message on a storyboard of the iOS document type.
+        for path in [*haylen.ENGINE_DIR.glob("platform/apple/**/*.storyboard"), *haylen.TEMPLATES_DIR.glob("**/*.storyboard")]:
+            text = path.read_text(encoding="utf-8")
+            self.assertEqual('targetRuntime="AppleTV"' in text, 'type="com.apple.InterfaceBuilder.AppleTV.Storyboard"' in text, path)
+
+
 class TextFileTest(unittest.TestCase):
     def test_every_text_file_is_read_and_written_as_utf_8(self):
         # Windows reads and writes text in its own code page by default, which turns the copyright sign of `app.json` into a byte that no UTF-8 tool reads.
