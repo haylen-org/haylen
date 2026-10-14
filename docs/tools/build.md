@@ -24,7 +24,7 @@ What each platform needs on top of that:
 | Linux | `linux` | Linux | OpenGL core | Ninja | GCC or Clang and the X11, Xi, Xcursor, Xext, Xrandr and OpenGL development packages, for example `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev` on Debian and Ubuntu. |
 | iOS | `ios` | macOS | Metal | Xcode | Xcode. Apps also need XcodeGen only to regenerate the template project. |
 | tvOS | `tvos` | macOS | Metal | Xcode | Xcode, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
-| Android | `android` | any | OpenGL ES 3 | Ninja | Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37 and platform-tools, and JDK 17. |
+| Android | `android` | any | OpenGL ES 3 | Ninja | Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37 and platform-tools, and JDK 17 or newer. |
 | Web | `web` | any | WebGPU | Ninja through `emcmake` | `git`, and a browser with WebGPU to run it. |
 | Web | `web-webgl2` | any | WebGL2 | Ninja through `emcmake` | `git`, and a browser with WebGL2 to run it. |
 
@@ -402,7 +402,7 @@ C++ apps built with `haylen_add_app` target iOS 16.3 on iPhone and iPad and tvOS
 
 | Job | Runs |
 | --- | --- |
-| `format` | `haylen.py format --check` with clang-format 23.1.1, and the tests of `tools/test_haylen.py`. |
+| `format` | `haylen.py format --check` with clang-format 23.1.3, and the tests of `tools/test_haylen.py`. |
 | `desktop` | `haylen.py test --config Debug` and `haylen.py sdk --config Release --check-consumers package`, which builds the SDK and a project that finds it with `find_package`, on macOS, Ubuntu and Windows. |
 | `coverage` | `haylen.py coverage` on macOS, whose report table shows in the log. |
 | `web` | `haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player. |

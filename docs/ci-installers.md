@@ -109,7 +109,7 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - run: brew install ninja
       - uses: actions/cache@v6
         with:
@@ -136,7 +136,7 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - run: brew install ninja
       - uses: actions/cache@v6
         with:
@@ -227,7 +227,7 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - run: brew install ninja
       - uses: actions/cache@v6
         with:
@@ -337,7 +337,7 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - run: brew install ninja
       - uses: actions/cache@v6
         with:
@@ -410,11 +410,11 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
       # The NDK, CMake and platform that the build guide of the engine lists for its Android builds.
       - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.0"
@@ -468,7 +468,7 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - uses: ilammy/msvc-dev-cmd@v1.13.0
       - run: pip install ninja
       - uses: actions/cache@v6
@@ -513,7 +513,7 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev dpkg-dev
       # The AppImage generator of CPack needs a newer CMake than the one of the runner.
       - run: pip install cmake
@@ -552,7 +552,7 @@ jobs:
           path: haylen
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       # The content tool of the release builds with the desktop artifacts of this system.
       - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
       - uses: actions/cache@v6

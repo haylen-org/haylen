@@ -210,7 +210,7 @@ haylen format
 haylen format --check
 ```
 
-The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, and then lists the multi-line lambdas that are not between `// clang-format off` and `// clang-format on`. The option `--check` changes nothing and fails when a file is not formatted or a lambda is missing its markers. The command `clang-format` must be on `PATH`, and CI installs version 23.1.1 with `pip install clang-format==23.1.1`.
+The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, and then lists the multi-line lambdas that are not between `// clang-format off` and `// clang-format on`. The option `--check` changes nothing and fails when a file is not formatted or a lambda is missing its markers. The command `clang-format` must be on `PATH`, and CI installs version 23.1.3 with `pip install clang-format==23.1.3`.
 
 ## The rules of haylen.py
 
@@ -226,11 +226,11 @@ The workflow `.github/workflows/ci.yml` runs on every push to a branch and every
 
 | Job | Runner | What it does |
 | --- | --- | --- |
-| `format` | Ubuntu | Installs clang-format 23.1.1, runs `python haylen.py format --check` and the tests of the rules of `haylen.py`. |
+| `format` | Ubuntu | Installs clang-format 23.1.3, runs `python haylen.py format --check` and the tests of the rules of `haylen.py`. |
 | `desktop` | macOS, Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages on Linux, and Ninja with the MSVC environment on Windows. Runs `python haylen.py test --config Debug`, then `python haylen.py sdk --config Release --check-consumers package`, which builds the SDK and the consumer project `engine/tests/consumer` that finds it with `find_package`. |
 | `coverage` | macOS | Runs `python haylen.py coverage`, whose report table shows in the log. |
 | `web` | Ubuntu | Caches the Emscripten SDK in `.tools/emsdk` and runs `python haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player. |
-| `android` | Ubuntu | Installs Java 17, NDK 30.0.16248370, CMake 4.1.2 and the Android 37 platform, and runs `python haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository. |
+| `android` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2 and the Android 37 platform, and runs `python haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository. |
 | `apple` | macOS | Installs Ninja and runs `python haylen.py engine --platform apple`, which builds `Haylen.xcframework`. |
 | `desktop-apps` | Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages, `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux, and Ninja with the MSVC environment on Windows. Creates the starter app with `python haylen.py new build/starter` and runs `python haylen.py dist build/starter` for the platform, which builds the desktop artifacts, the starter app from the Linux or Windows template in the Release configuration and its `.deb` and AppImage or its installer, then checks the installed app and validates its desktop entry on Linux. Then it creates the starter C++ app with `python haylen.py new build/starter-cpp --kind cpp` and builds it with `python haylen.py run-cpp build/starter-cpp --build-only`, which compiles the engine with the app. |
 | `release` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, which the desktop artifacts with the content tool need, caches the Emscripten SDK and builds the protected release of the test project for the web with `prepare --config Release`, with keys made for the job and thrown away with it, and inspects the site with `check --config Release`, which fails when it holds Lua text, a file of the package as it is, a zipped package, symbol files or a key in any form. |
