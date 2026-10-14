@@ -229,7 +229,7 @@ Camera shake and flashes, distortion, dissolving sprites, outlines and glows, an
 | `EFX-002` | Heat haze and shock rings | Draws with a "distortion" in a canvas with post-processing: heat haze over a campfire, shock rings from the cursor, a rippling shield and a glass bubble that follows the cursor, with the bend distance on a slider. |  |
 | `EFX-003` | Dissolve | Sprites that dissolve into noise with a colored edge and come back, with the duration, the edge width, the noise cell size and the edge color on controls. |  |
 | `EFX-004` | Outline and glow | A selection outline on the sprite nearest the cursor and pulsing glows around the sprites picked with a press, by day and by night, with widths, sizes and colors on controls. |  |
-| `EFX-005` | Post-processing chain | Bloom, vignette, saturation, contrast, brightness, color grading through lookup textures made in Lua, chromatic aberration, pixelation and blur over a scene with fire and a torch at the cursor, with presets and the whole chain on a switch. |  |
+| `EFX-005` | Post-processing chain | Bloom, vignette, saturation, contrast, brightness, color grading through lookup textures made in Lua, chromatic aberration, pixelation, blur, film grain and dithering over a scene with fire and a torch at the cursor, with presets and the whole chain on a switch. |  |
 
 #### Scenes and transitions (SCN)
 

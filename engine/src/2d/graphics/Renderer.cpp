@@ -90,6 +90,9 @@ void Renderer::validatePostProcess(const CanvasOptions& options) {
     if (!(post.colorLutStrength >= 0.0F && post.colorLutStrength <= 1.0F)) {
         throw std::invalid_argument("The strength of a color lookup texture must be from 0 to 1.");
     }
+    if (!(post.grain >= 0.0F && post.grain <= 1.0F)) {
+        throw std::invalid_argument("The grain of post-processing must be from 0 to 1.");
+    }
 }
 
 float Renderer::lowestPoint(std::span<const math::Vec2> points) noexcept {

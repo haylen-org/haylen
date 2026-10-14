@@ -98,6 +98,8 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
         }
         lua_pop(L, 1);
         lua::Table::readField(L, post, "correctColorVision", process.correctColorVision);
+        lua::Table::readField(L, post, "grain", process.grain);
+        lua::Table::readField(L, post, "dither", process.dither);
         lua::Table::readField(L, post, "materials", process.materials);
         options.postProcess = process;
     }

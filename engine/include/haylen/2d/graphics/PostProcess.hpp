@@ -63,6 +63,12 @@ struct PostProcess {
     ColorVision colorVision = ColorVision::Normal;
     bool correctColorVision = false;
 
+    // Adds noise that changes every frame, from 0 to 1, like the grain of film.
+    float grain = 0.0F;
+
+    // Spreads the rounding of every color to 8 bits over neighboring pixels, so smooth gradients, fog and light fall off without bands.
+    bool dither = false;
+
     std::vector<Material> materials;
 
     // The rows of the matrix that turns a color into the one that the color vision option shows, which is the identity for normal vision.

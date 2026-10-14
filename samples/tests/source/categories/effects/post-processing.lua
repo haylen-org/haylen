@@ -1,4 +1,4 @@
--- Post-processing chain: the `postProcess` options of a world canvas add bloom, a vignette, saturation, contrast and brightness, color grading through a lookup texture, chromatic aberration, pixelation and blur, applied in one chain when the canvas is composited. The lookup textures are made in Lua as 256 by 16 strips, and the presets set every value at once.
+-- Post-processing chain: the `postProcess` options of a world canvas add bloom, a vignette, saturation, contrast and brightness, color grading through a lookup texture, chromatic aberration, pixelation, blur, film grain and dithering, applied in one chain when the canvas is composited. The lookup textures are made in Lua as 256 by 16 strips, and the presets set every value at once.
 local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
@@ -26,12 +26,13 @@ PostProcessing.sliders = {
     {'chromaticAberration', 'Chromatic aberration', 0, 12, 1},
     {'pixelate', 'Pixel size', 0, 16, 0},
     {'blur', 'Blur radius', 0, 24, 1},
+    {'grain', 'Film grain', 0, 0.5, 2},
 }
-PostProcessing.defaults = {bloomStrength = 0, bloomThreshold = 0.8, bloomRadius = 12, vignetteStrength = 0, vignetteRadius = 0.6, saturation = 1, contrast = 1, brightness = 1, colorLutStrength = 1, chromaticAberration = 0, pixelate = 0, blur = 0, grade = 'none'}
+PostProcessing.defaults = {bloomStrength = 0, bloomThreshold = 0.8, bloomRadius = 12, vignetteStrength = 0, vignetteRadius = 0.6, saturation = 1, contrast = 1, brightness = 1, colorLutStrength = 1, chromaticAberration = 0, pixelate = 0, blur = 0, grain = 0, dither = false, grade = 'none'}
 PostProcessing.presets = {
     {id = 'clean', text = 'Clean', values = {}},
-    {id = 'dream', text = 'Dream', values = {bloomStrength = 1.2, bloomThreshold = 0.55, bloomRadius = 28, blur = 2, saturation = 1.25, vignetteStrength = 0.35}},
-    {id = 'retro', text = 'Retro', values = {pixelate = 6, chromaticAberration = 3, grade = 'sepia', colorLutStrength = 0.8, vignetteStrength = 0.5, contrast = 1.15}},
+    {id = 'dream', text = 'Dream', values = {bloomStrength = 1.2, bloomThreshold = 0.55, bloomRadius = 28, blur = 2, saturation = 1.25, vignetteStrength = 0.35, dither = true}},
+    {id = 'retro', text = 'Retro', values = {pixelate = 6, chromaticAberration = 3, grade = 'sepia', colorLutStrength = 0.8, vignetteStrength = 0.5, contrast = 1.15, grain = 0.12}},
     {id = 'paused', text = 'Paused', values = {blur = 12, saturation = 0.35, brightness = 0.7, vignetteStrength = 0.6}},
 }
 PostProcessing.grades = {
@@ -108,6 +109,7 @@ function PostProcessing:showValues()
         self:set(slider[1], {value = self.post[slider[1]]})
     end
     self:set('grade', {selected = self.grade})
+    self:set('dither', {checked = self.post.dither})
 end
 
 function PostProcessing:enter()
@@ -128,6 +130,7 @@ function PostProcessing:enter()
         ui.row{gap = 8, children = presets[1]},
         ui.row{gap = 8, children = presets[2]},
         ui.toggle{id = 'enabled', text = 'Post-processing on', checked = self.enabled, onChange = function(event) self.enabled = event.checked end},
+        ui.toggle{id = 'dither', text = 'Dither the gradients', checked = self.post.dither, onChange = function(event) self.post.dither = event.checked end},
         ui.formField{label = 'Color grading', ui.radioGroup{id = 'grade', items = grades, selected = self.grade, onChange = function(event)
             self.grade = event.value
             self.post.colorLut = self.luts[event.value]

@@ -21,6 +21,7 @@ layout(binding=0) uniform composite_fs_params {
     vec4 vision_red;
     vec4 vision_green;
     vec4 vision_blue;
+    vec4 grain;
 };
 layout(binding=0) uniform texture2D scene_texture;
 layout(binding=1) uniform texture2D light_texture;
@@ -76,6 +77,11 @@ vec4 first_stage() {
     return vec4(red.r, green.g, blue.b, max(green.a, max(red.a, blue.a)));
 }
 
+// Interleaved gradient noise from 0 to 1, which neighboring pixels spread evenly.
+float pixel_noise(vec2 pixel) {
+    return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
+}
+
 // Looks the color up in a lookup texture of `shape.y` square cells side by side, one cell for each step of blue, with red across a cell and green down it.
 vec3 graded(vec3 color) {
     float cells = shape.y;
@@ -126,6 +132,14 @@ void main() {
     // The fade covers the canvas with an opaque color.
     color = mix(color, fade.rgb, fade.a);
     alpha = min(mix(alpha, 1.0, fade.a), 1.0);
+
+    // Grain: x is the strength of the grain, which `grain.z` moves every frame, and y turns on the dither of one step of 8 bits.
+    if (grain.x > 0.0) {
+        color += (pixel_noise(gl_FragCoord.xy + grain.z * 5.588238) - 0.5) * grain.x * alpha;
+    }
+    if (grain.y > 0.5) {
+        color += (pixel_noise(gl_FragCoord.xy) - 0.5) / 255.0 * alpha;
+    }
     frag_color = vec4(clamp(color, vec3(0.0), vec3(alpha)), alpha);
 }
 @end

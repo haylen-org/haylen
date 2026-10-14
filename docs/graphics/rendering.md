@@ -247,9 +247,11 @@ A world or render target canvas with `postProcess` renders offscreen like a lit 
 6. The `saturation` around the luminance, then `contrast` around middle gray scaled by the alpha of the pixel, then `brightness`.
 7. The `tint`, multiplied into every pixel.
 8. The `colorLut`, a lookup texture of square cells that grades every color, mixed in by `colorLutStrength`.
-9. The vignette, darkening by `vignetteStrength` from `vignetteRadius` over `vignetteSoftness`.
-10. The `fade`, mixing toward its color by its alpha, which covers the canvas with that color as if it were opaque.
-11. The `materials`, in order. The composite writes into a post target, every material but the last draws the image before it into the other post target, and the last draws into the destination of the canvas, each as one quad of the sprite program of the material.
+9. The `colorVision`, which shows or corrects a deficiency of color vision.
+10. The vignette, darkening by `vignetteStrength` from `vignetteRadius` over `vignetteSoftness`.
+11. The `fade`, mixing toward its color by its alpha, which covers the canvas with that color as if it were opaque.
+12. The `grain`, noise of interleaved gradients that moves every frame, and the `dither`, the same noise of one step of 8 bits, which spreads the rounding of smooth gradients so they show no bands.
+13. The `materials`, in order. The composite writes into a post target, every material but the last draws the image before it into the other post target, and the last draws into the destination of the canvas, each as one quad of the sprite program of the material.
 
 Without bloom and blur the composite is one pass. Bloom and blur split it into two stages: the first writes the image of steps 1 to 4 into a post target, then the filter program shrinks that image to half its size into a pair of half-size targets, keeping for bloom only what passes `bloomThreshold`, and blurs it there horizontally and vertically with nine Gaussian taps spread over `bloomRadius` or `blur`, and the second stage reads the blurred image instead of the sharp one when the canvas blurs, adds the bloom and finishes the steps from 5 on. Bloom and blur therefore cost a full-size pass and three half-size passes each, and the other adjustments cost nothing beyond the composite. Distances are in units of the destination, design units for world canvases and pixels for render target canvases.
 

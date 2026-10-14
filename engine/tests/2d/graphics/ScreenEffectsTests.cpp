@@ -103,6 +103,7 @@ TEST(ScreenEffectsTest, BloomAndBlurAddPassesAtHalfTheSize) {
 
     // The lens effects live in the composite, and bloom and blur each shrink and blur twice after the first stage.
     EXPECT_EQ(lens.passes, plain.passes);
+    EXPECT_EQ(render({.grain = 0.3F, .dither = true}).passes, plain.passes);
     EXPECT_EQ(bloom.passes, plain.passes + 4U);
     EXPECT_EQ(both.passes, plain.passes + 7U);
     EXPECT_EQ(both.drawCalls, plain.drawCalls + 7U);
@@ -116,6 +117,7 @@ TEST(ScreenEffectsTest, BloomAndBlurAddPassesAtHalfTheSize) {
     EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.colorLut = lut, .colorLutStrength = 2.0F}}), std::invalid_argument);
     EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.bloomRadius = 0.0F}}), std::invalid_argument);
     EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.blur = -1.0F}}), std::invalid_argument);
+    EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.grain = 1.5F}}), std::invalid_argument);
 }
 
 TEST(ScreenEffectsTest, SpriteEffectsDrawInOneCallPerTexture) {
@@ -155,7 +157,7 @@ TEST(ScreenEffectsTest, LuaReachesFlashDistortionPostProcessingAndSpriteEffects)
         hero = graphics2d.newSprite(graphics.whiteTexture(), {x = 10, width = 32, height = 32, effect = {dissolve = 0.5, dissolveColor = '#FFFF8000', outlineWidth = 2}})
         lut = graphics.newTexture(16, 4)
         require('haylen.scene').push({render = function()
-            graphics2d.beginWorld(camera, {postProcess = {distortion = 20, chromaticAberration = 3, pixelate = 4, blur = 6, bloomStrength = 0.6, bloomThreshold = 0.7, bloomRadius = 10, colorLut = lut, colorLutStrength = 0.5}})
+            graphics2d.beginWorld(camera, {postProcess = {distortion = 20, chromaticAberration = 3, pixelate = 4, blur = 6, bloomStrength = 0.6, bloomThreshold = 0.7, bloomRadius = 10, colorLut = lut, colorLutStrength = 0.5, grain = 0.2, dither = true}})
             lit = graphics2d.canvasLit()
             hero:draw()
             graphics2d.draw(graphics.whiteTexture(), 0, 0, {width = 40, height = 40, distortion = 0.8})

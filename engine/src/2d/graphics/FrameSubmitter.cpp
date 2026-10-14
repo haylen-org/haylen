@@ -664,6 +664,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
         .vision_red = {vision[0][0], vision[0][1], vision[0][2], 0.0F},
         .vision_green = {vision[1][0], vision[1][1], vision[1][2], 0.0F},
         .vision_blue = {vision[2][0], vision[2][1], vision[2][2], 0.0F},
+        .grain = {post.grain, post.dither ? 1.0F : 0.0F, static_cast<float>(state.epoch % kGrainFrames), 0.0F},
     };
     sg_apply_uniforms(UB_composite_composite_fs_params, SG_RANGE(params));
     sg_draw(0, 3, 1);

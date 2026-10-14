@@ -56,6 +56,9 @@ class FrameSubmitter final {
     // The composite of a lit canvas without post-processing grades nothing.
     static const PostProcess kNoPostProcess;
 
+    // The grain repeats its pattern after this many frames, which keeps the seed of its noise exact as a float.
+    static constexpr std::uint64_t kGrainFrames = 1024;
+
     // Moves everything drawn with the matrix by an offset in world units.
     [[nodiscard]] static Matrix translated(Matrix matrix, math::Vec2 offset) noexcept;
     [[nodiscard]] static Matrix projection(const math::Transform2D& view, math::Vec2 viewSize) noexcept;

@@ -24,7 +24,7 @@ class Graphics2DLua final {
   private:
     static constexpr std::array<std::string_view, 6> kCanvasFields{"sort", "order", "visibilityMask", "ambientLight", "clear", "postProcess"};
     static constexpr std::array<std::string_view, 8> kImageBlendFields{"pattern", "progress", "center", "cellSize", "blockSize", "color", "reversed", "angle"};
-    static constexpr std::array<std::string_view, 20> kPostProcessFields{"tint", "saturation", "brightness", "contrast", "vignetteStrength", "vignetteRadius", "vignetteSoftness", "fade", "distortion", "chromaticAberration", "pixelate", "blur", "bloomStrength", "bloomThreshold", "bloomRadius", "colorLut", "colorLutStrength", "colorVision", "correctColorVision", "materials"};
+    static constexpr std::array<std::string_view, 22> kPostProcessFields{"tint", "saturation", "brightness", "contrast", "vignetteStrength", "vignetteRadius", "vignetteSoftness", "fade", "distortion", "chromaticAberration", "pixelate", "blur", "bloomStrength", "bloomThreshold", "bloomRadius", "colorLut", "colorLutStrength", "colorVision", "correctColorVision", "grain", "dither", "materials"};
     static constexpr std::array<std::string_view, 4> kMetaballFields{"color", "outlineColor", "outlineWidth", "threshold"};
     static constexpr std::array<std::string_view, 4> kDrawFields{"scaleX", "scaleY", "partColors", "effect"};
     static constexpr std::array<std::string_view, 4> kNineSliceFields{"source", "borders", "pieces", "fill"};
