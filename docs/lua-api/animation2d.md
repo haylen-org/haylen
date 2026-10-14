@@ -1,6 +1,6 @@
 # haylen.animation2d
 
-The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads TexturePacker and Aseprite atlases with their tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI. The [animation guide](../2d/animation.md) explains which player suits which need.
+The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads sprite atlas JSON files with their frame tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI. The [animation guide](../2d/animation.md) explains which player suits which need.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -8,7 +8,7 @@ local animation2d = require('haylen.animation2d')
 
 ## Loading sprite atlases
 
-A sprite atlas is a JSON file exported by TexturePacker or Aseprite together with the image it describes. Load it with the `atlas` asset type of [`haylen.assets`](assets.md), which has no file extension of its own, so the type is always given:
+A sprite atlas is a JSON file in the hash or array layout, with frame tags and slices, together with the image it describes. Load it with the `atlas` asset type of [`haylen.assets`](assets.md), which has no file extension of its own, so the type is always given:
 
 ```lua
 local assets = require('haylen.assets')
@@ -27,13 +27,13 @@ The JSON file supports these fields:
 | `frames[].frame` | Required rectangle `{x, y, w, h}` of the frame in the image. |
 | `frames[].rotated` | Must be absent or `false`. Rotated frames raise `Rotated atlas frames are not supported. Disable rotation in the packer.` |
 | `frames[].spriteSourceSize`, `frames[].sourceSize` | Trim data. When both are present, the frame remembers where the trimmed rectangle sits inside the original frame, so pivots stay stable while the animation plays. |
-| `frames[].duration` | Frame duration in milliseconds, as Aseprite writes it. Frames without it last 100 milliseconds. |
+| `frames[].duration` | Frame duration in milliseconds. Frames without it last 100 milliseconds. |
 | `frames[].data` | The user data of the frame, which names its [events](#frame-data) separated by commas, such as `"swing, whoosh"`. |
 | `meta.image` | Required path of the image, relative to the JSON file. |
-| `meta.frameTags` | Aseprite tags, each with `name`, `from` and `to` (frame positions counted from 0), `direction` and `repeat`. Every tag becomes an animation with the durations of its frames. |
-| `meta.slices` | Aseprite slices. Slices whose first key has a `center` become nine-slices. Their `bounds` are relative to the frame at the position given by the key's `frame`, which defaults to 0. Every other slice becomes [frame data](#frame-data): a box named after the slice on the frames its keys cover, or a point when the user data `data` of the slice is `"point"`. |
+| `meta.frameTags` | Frame tags, each with `name`, `from` and `to` (frame positions counted from 0), `direction` and `repeat`. Every tag becomes an animation with the durations of its frames. |
+| `meta.slices` | Slices. Slices whose first key has a `center` become nine-slices. Their `bounds` are relative to the frame at the position given by the key's `frame`, which defaults to 0. Every other slice becomes [frame data](#frame-data): a box named after the slice on the frames its keys cover, or a point when the user data `data` of the slice is `"point"`. |
 
-Tag directions `forward` and `reverse` loop, and `pingpong` and `pingpong_reverse` play back and forth. A `repeat` of `"1"` plays the tag once. An absent `repeat` or `"0"` loops forever, and larger counts raise `The Aseprite tag "name" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.` Other errors are `The direction of an Aseprite tag must be "forward", "reverse", "pingpong" or "pingpong_reverse", not "name".` and `An Aseprite tag refers to frames that do not exist.` Both layouts keep their frames in file order, so a tag counts the same positions Aseprite does, even when frames named `hero 0` to `hero 11` would sort differently by name.
+Tag directions `forward` and `reverse` loop, and `pingpong` and `pingpong_reverse` play back and forth. A `repeat` of `"1"` plays the tag once. An absent `repeat` or `"0"` loops forever, and larger counts raise `The frame tag "name" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.` Other errors are `The direction of a frame tag must be "forward", "reverse", "pingpong" or "pingpong_reverse", not "name".` and `A frame tag refers to frames that do not exist.` Both layouts keep their frames in file order, so a tag counts the positions of the file, even when frames named `hero 0` to `hero 11` would sort differently by name.
 
 ## Frame data
 
@@ -897,11 +897,11 @@ Returns the list of frame names in file order.
 
 ### atlas:animationNames()
 
-Returns the names of the animations made from Aseprite tags, sorted.
+Returns the names of the animations made from frame tags, sorted.
 
 ### atlas:sliceNames()
 
-Returns the names of the nine-slices made from Aseprite slices, sorted.
+Returns the names of the nine-slices made from slices, sorted.
 
 ```lua
 local assets = require('haylen.assets')

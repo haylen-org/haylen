@@ -542,7 +542,7 @@ audio.playMusic(music)
 
 ### Sprite atlases
 
-Sprite atlases are JSON files exported by TexturePacker or Aseprite in the hash or array layout. They have no extension of their own, so pass the type `'atlas'`. The image path stored in the file is relative to the JSON file, and Aseprite frame tags become animations. The atlas is described in [`haylen.animation2d`](animation2d.md).
+Sprite atlases are JSON files in the hash or array layout, with frame tags and slices. They have no extension of their own, so pass the type `'atlas'`. The image path stored in the file is relative to the JSON file, and its frame tags become animations. The atlas is described in [`haylen.animation2d`](animation2d.md).
 
 ```lua
 local assets = require('haylen.assets')

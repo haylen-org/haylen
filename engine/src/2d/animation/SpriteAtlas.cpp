@@ -77,13 +77,13 @@ void SpriteAtlas::readFrameSlice(const Document& slice) {
 Animation::Loop SpriteAtlas::readTagLoop(const Document& tag) {
     const std::string direction = tag.value("direction", std::string("forward"));
     if (direction != "forward" && direction != "reverse" && direction != "pingpong" && direction != "pingpong_reverse") {
-        throw std::invalid_argument("The direction of an Aseprite tag must be \"forward\", \"reverse\", \"pingpong\" or \"pingpong_reverse\", not \"" + direction + "\".");
+        throw std::invalid_argument("The direction of a frame tag must be \"forward\", \"reverse\", \"pingpong\" or \"pingpong_reverse\", not \"" + direction + "\".");
     }
 
-    // Aseprite stores the repeat count as text, and an absent or zero count means forever.
+    // The repeat count is stored as text, and an absent or zero count means forever.
     const int repeats = tag.contains("repeat") ? std::stoi(tag.at("repeat").get<std::string>()) : 0;
     if (repeats > 1) {
-        throw std::invalid_argument("The Aseprite tag \"" + tag.at("name").get<std::string>() + "\" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.");
+        throw std::invalid_argument("The frame tag \"" + tag.at("name").get<std::string>() + "\" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.");
     }
     if (repeats == 1) {
         return Animation::Loop::Once;
@@ -183,7 +183,7 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
         const auto from = tag.at("from").get<std::size_t>();
         const auto to = tag.at("to").get<std::size_t>();
         if (from > to || to >= atlas.frameOrder.size()) {
-            throw std::out_of_range("An Aseprite tag refers to frames that do not exist.");
+            throw std::out_of_range("A frame tag refers to frames that do not exist.");
         }
 
         Animation animation{.texture = atlas.texture, .loop = readTagLoop(tag)};

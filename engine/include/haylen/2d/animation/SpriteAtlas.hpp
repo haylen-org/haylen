@@ -15,10 +15,10 @@
 
 namespace haylen::animation2d {
 
-// Frames packed into one texture by a sprite sheet packer or a pixel art editor. Frame tags become animations, slices with a nine-slice center become nine-slices, and the other slices become the boxes, points and pivots of the frames their keys cover, while the user data of a frame names its events.
+// A sprite atlas JSON in the hash or array layout: frames packed into one texture, with frame tags and slices. Frame tags become animations, slices with a nine-slice center become nine-slices, and the other slices become the boxes, points and pivots of the frames their keys cover, while the user data of a frame names its events.
 class SpriteAtlas final {
   public:
-    // Reads the hash and array JSON layouts. The document keeps its keys in file order, because Aseprite tags count frames by their position in the file. Rotated frames and tags that repeat a fixed number of times above one are rejected.
+    // Reads the hash and array JSON layouts. The document keeps its keys in file order, because frame tags count frames by their position in the file. Rotated frames and tags that repeat a fixed number of times above one are rejected.
     [[nodiscard]] static SpriteAtlas parse(const nlohmann::ordered_json& document, graphics::Texture image);
 
     // Builds an atlas from frames and animations in the order given, such as those an atlas builder packs. Throws `std::invalid_argument` without a texture or for a name given twice.

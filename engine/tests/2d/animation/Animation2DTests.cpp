@@ -28,7 +28,7 @@ class AnimatorTest : public AnimationTest {};
 
 class SpriteAtlasTest : public ::testing::Test {
   protected:
-    static constexpr const char* kAsepriteAtlas = R"({
+    static constexpr const char* kTaggedAtlas = R"({
         "frames": [
             {"filename": "hero 0", "frame": {"x": 0, "y": 0, "w": 8, "h": 16}, "rotated": false, "trimmed": true, "spriteSourceSize": {"x": 4, "y": 0, "w": 8, "h": 16}, "sourceSize": {"w": 16, "h": 16}, "duration": 100},
             {"filename": "hero 1", "frame": {"x": 8, "y": 0, "w": 16, "h": 16}, "duration": 200},
@@ -249,10 +249,10 @@ TEST_F(AnimatorTest, QueuesAFinishedOneShotAnimationAgainFromItsStart) {
     EXPECT_EQ(finished, 2);
 }
 
-TEST_F(SpriteAtlasTest, ReadsAsepriteFramesTagsAndSlices) {
+TEST_F(SpriteAtlasTest, ReadsArrayFramesTagsAndSlices) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 32));
-    const auto document = nlohmann::ordered_json::parse(kAsepriteAtlas);
+    const auto document = nlohmann::ordered_json::parse(kTaggedAtlas);
     const animation2d::SpriteAtlas atlas = animation2d::SpriteAtlas::parse(document, texture);
 
     EXPECT_EQ(animation2d::SpriteAtlas::imagePath(document), "hero.png");
@@ -312,7 +312,7 @@ TEST_F(SpriteAtlasTest, PlacesTheSlicesOfTrimmedFramesInTheSheet) {
     EXPECT_THROW((void)animation2d::SpriteAtlas::parse(trimmed(R"({"x": 0, "y": 0, "w": 24, "h": 18})"), texture), std::invalid_argument);
 }
 
-TEST_F(SpriteAtlasTest, ReadsTexturePackerHashesAndRejectsUnsupportedData) {
+TEST_F(SpriteAtlasTest, ReadsHashFramesAndRejectsUnsupportedData) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(32, 32));
 
@@ -329,7 +329,7 @@ TEST_F(SpriteAtlasTest, ReadsTexturePackerHashesAndRejectsUnsupportedData) {
 }
 
 TEST_F(SpriteAtlasTest, KeepsHashFramesInFileOrder) {
-    // Aseprite names frames `hero 0` to `hero 11` and its tags count positions in the file, where `hero 10` comes after `hero 9`.
+    // Frames named `hero 0` to `hero 11` keep the order of the file, where `hero 10` comes after `hero 9`, because frame tags count positions in it.
     std::string frames;
     for (int index = 0; index < 12; ++index) {
         frames += (index == 0 ? "" : ", ") + std::string(R"("hero )") + std::to_string(index) + R"(": {"frame": {"x": )" + std::to_string(index * 8) + R"(, "y": 0, "w": 8, "h": 8}})";
@@ -348,7 +348,7 @@ TEST_F(SpriteAtlasTest, KeepsHashFramesInFileOrder) {
 
 TEST_F(SpriteAtlasTest, LoadsThroughAssetsAndSharesItsTexture) {
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(64, 32, 0xFFFFFFFFU);
-    test::EngineFixture fixture({{"content/ui/hero.json", kAsepriteAtlas}, {"content/ui/hero.png", std::string(image.begin(), image.end())}});
+    test::EngineFixture fixture({{"content/ui/hero.json", kTaggedAtlas}, {"content/ui/hero.png", std::string(image.begin(), image.end())}});
     assets::Manager& assets = fixture.engine().getAssets();
 
     const auto atlas = std::static_pointer_cast<animation2d::SpriteAtlas>(assets.load("atlas", "ui/hero.json"));
@@ -373,7 +373,7 @@ TEST_F(SpriteAtlasTest, LoadsThroughAssetsAndSharesItsTexture) {
 
 TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(64, 32, 0xFFFFFFFFU);
-    test::EngineFixture fixture({{"content/ui/hero.json", kAsepriteAtlas}, {"content/ui/hero.png", std::string(image.begin(), image.end())}, {"content/units/warrior.png", std::string(image.begin(), image.end())}});
+    test::EngineFixture fixture({{"content/ui/hero.json", kTaggedAtlas}, {"content/ui/hero.png", std::string(image.begin(), image.end())}, {"content/units/warrior.png", std::string(image.begin(), image.end())}});
     // clang-format off
     fixture.runLua(R"(
         animation2d = require('haylen.animation2d')
