@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -79,7 +80,7 @@ TEST(NumberFormatTest, WritesNumbersWithTheMarksOfALanguage) {
     EXPECT_EQ(format("ja", 12345, {.style = NumberFormat::Style::Compact}), "1.2万");
     EXPECT_EQ(format("de", 2500000, {.style = NumberFormat::Style::Compact}), "2,5 Mio.");
 
-    EXPECT_THROW((void)format("en", 1.0 / 0.0, {}), std::invalid_argument);
+    EXPECT_THROW((void)format("en", std::numeric_limits<double>::infinity(), {}), std::invalid_argument);
     EXPECT_THROW((void)format("en", 1, {.minimumFractionDigits = 3, .maximumFractionDigits = 1}), std::invalid_argument);
 }
 
