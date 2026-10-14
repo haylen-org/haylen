@@ -120,7 +120,7 @@ void WindowsMediaSession::update(const std::optional<MediaSession::NowPlaying>& 
             updater->ClearAll();
         }
         found->put_PlaybackStatus(ABI::Windows::Media::MediaPlaybackStatus_Closed);
-        found->put_IsEnabled(FALSE);
+        found->put_IsEnabled(false);
         return;
     }
     show(*found, *value);
@@ -129,9 +129,9 @@ void WindowsMediaSession::update(const std::optional<MediaSession::NowPlaying>& 
 void WindowsMediaSession::show(ISystemMediaTransportControls& target, const MediaSession::NowPlaying& value) {
     using Command = MediaSession::Command;
     offered = value.commands;
-    const auto offers = [&value](Command command) { return (value.commands & MediaSession::bit(command)) != 0 ? TRUE : FALSE; };
-    const BOOL toggles = offers(Command::TogglePlayPause);
-    target.put_IsEnabled(TRUE);
+    const auto offers = [&value](Command command) -> boolean { return (value.commands & MediaSession::bit(command)) != 0; };
+    const boolean toggles = offers(Command::TogglePlayPause);
+    target.put_IsEnabled(true);
     target.put_IsPlayEnabled(offers(Command::Play) || toggles);
     target.put_IsPauseEnabled(offers(Command::Pause) || toggles);
     target.put_IsStopEnabled(offers(Command::Stop));
