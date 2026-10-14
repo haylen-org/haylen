@@ -39,7 +39,6 @@ class InputRecordingLua final {
     static constexpr std::array<std::string_view, 3> kRecorderOptions{"buttons", "players", "data"};
 
     [[nodiscard]] static std::size_t readPlayer(lua_State* L, int index, std::size_t players);
-    static void pushNames(lua_State* L, const InputRecording& recording);
 
     static int newRecorder(lua_State* L);
     static int loadRecording(lua_State* L);

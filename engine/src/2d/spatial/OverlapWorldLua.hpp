@@ -1,23 +1,13 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string_view>
-#include <vector>
 
-#include "haylen/2d/spatial/OverlapWorld.hpp"
+#include "2d/spatial/ScriptedOverlapWorld.hpp"
 #include "haylen/lua/Type.hpp"
 
 struct lua_State;
-
-namespace haylen::spatial2d {
-
-// An overlap world in Lua with the buffer of contacts it fills, so a step reuses its memory.
-struct ScriptedOverlapWorld {
-    OverlapWorld world;
-    std::vector<OverlapWorld::Contact> contacts;
-};
-
-} // namespace haylen::spatial2d
 
 namespace haylen::lua {
 

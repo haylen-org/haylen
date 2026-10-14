@@ -45,9 +45,6 @@ class UpdateScreen final {
     [[nodiscard]] Action getFocusedAction() const noexcept {
         return focused;
     }
-    [[nodiscard]] const math::Rect& getRetryButton() const noexcept {
-        return retryButton;
-    }
 
     // Whether the platform lets an app close itself, which iOS, iPadOS and tvOS do not.
     [[nodiscard]] bool canQuit() const;

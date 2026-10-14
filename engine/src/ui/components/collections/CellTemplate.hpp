@@ -91,12 +91,6 @@ class CellTemplate final {
     [[nodiscard]] bool isInteractive() const noexcept {
         return interactive;
     }
-    [[nodiscard]] bool bindsIndex() const noexcept {
-        return indexBound;
-    }
-    [[nodiscard]] bool bindsSelection() const noexcept {
-        return selectionBound;
-    }
 
   private:
     static constexpr std::array<std::string_view, 5> kKeys{"template", "estimatedSize", "span", "sticky", "interactive"};

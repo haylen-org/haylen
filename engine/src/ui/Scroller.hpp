@@ -25,9 +25,6 @@ class Scroller final {
     [[nodiscard]] double getTarget() const noexcept {
         return target;
     }
-    [[nodiscard]] bool isDragging() const noexcept {
-        return motion == Motion::Dragging;
-    }
     [[nodiscard]] bool isAnimating() const noexcept {
         return motion == Motion::Animating;
     }

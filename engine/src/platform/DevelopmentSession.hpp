@@ -54,11 +54,6 @@ class DevelopmentSession final {
     void addChanges(std::span<const std::string> paths);
     [[nodiscard]] std::vector<std::string> takeChanges();
 
-    // Whether the session scans a package folder, which the desktop player of an app folder does.
-    [[nodiscard]] bool isWatching() const noexcept {
-        return watcher != nullptr;
-    }
-
     // Returns the next scan of the folder, or null without a folder and while the last scan still exists.
     [[nodiscard]] std::shared_ptr<Scan> beginScan();
 

@@ -30,32 +30,29 @@
 
 namespace haylen::bench {
 
-// Counts the bytes the whole process allocates while a measurement runs and the largest single allocation, which the replaced global allocation functions report, so a reader that holds a whole file shows at once.
-class AllocationMeter final {
-  public:
-    static void reset() noexcept {
-        total.store(0, std::memory_order_relaxed);
-        largest.store(0, std::memory_order_relaxed);
-    }
-
-    static void record(std::size_t size) noexcept {
-        total.fetch_add(size, std::memory_order_relaxed);
-        std::size_t seen = largest.load(std::memory_order_relaxed);
-        while (size > seen && !largest.compare_exchange_weak(seen, size, std::memory_order_relaxed)) {}
-    }
-
-    [[nodiscard]] static std::size_t getLargest() noexcept {
-        return largest.load(std::memory_order_relaxed);
-    }
-
-  private:
-    static inline std::atomic<std::size_t> total{0};
-    static inline std::atomic<std::size_t> largest{0};
-};
-
 // Times the protected content of a release on this machine: building it, opening it, reading files in order and at random, finding files in the catalog, planning the ranges of an update and adding the records of one to the local store, with the largest allocation of each, so a regression in throughput or a reader that starts to hold whole files shows in the numbers.
 class ContentBenchmark final {
   public:
+    // Keeps the largest single allocation of the whole process while a measurement runs, which the replaced global allocation functions report, so a reader that holds a whole file shows at once.
+    class AllocationMeter final {
+      public:
+        static void reset() noexcept {
+            largest.store(0, std::memory_order_relaxed);
+        }
+
+        static void record(std::size_t size) noexcept {
+            std::size_t seen = largest.load(std::memory_order_relaxed);
+            while (size > seen && !largest.compare_exchange_weak(seen, size, std::memory_order_relaxed)) {}
+        }
+
+        [[nodiscard]] static std::size_t getLargest() noexcept {
+            return largest.load(std::memory_order_relaxed);
+        }
+
+      private:
+        static inline std::atomic<std::size_t> largest{0};
+    };
+
     static int run() {
         const std::filesystem::path root = std::filesystem::temp_directory_path() / "haylen-content-benchmark";
         std::filesystem::remove_all(root);
@@ -215,7 +212,7 @@ int main() {
 
 // The standard names the replaceable allocation functions, so the benchmark replaces them here, and they only forward to the meter and to `malloc` and `free`. The array and nothrow forms call these by default.
 void* operator new(std::size_t size) {
-    haylen::bench::AllocationMeter::record(size);
+    haylen::bench::ContentBenchmark::AllocationMeter::record(size);
     if (void* memory = std::malloc(size == 0 ? 1 : size)) {
         return memory;
     }

@@ -10,17 +10,20 @@ namespace haylen::graphics2d {
 
 namespace {
 
-std::array<float, 3> apply(const std::array<std::array<float, 3>, 3>& matrix, std::array<float, 3> color) {
-    std::array<float, 3> result{};
-    for (std::size_t row = 0; row < 3; ++row) {
-        result[row] = matrix[row][0] * color[0] + matrix[row][1] * color[1] + matrix[row][2] * color[2];
+class PostProcessTest : public ::testing::Test {
+  protected:
+    static std::array<float, 3> apply(const std::array<std::array<float, 3>, 3>& matrix, std::array<float, 3> color) {
+        std::array<float, 3> result{};
+        for (std::size_t row = 0; row < 3; ++row) {
+            result[row] = matrix[row][0] * color[0] + matrix[row][1] * color[1] + matrix[row][2] * color[2];
+        }
+        return result;
     }
-    return result;
-}
+};
 
 } // namespace
 
-TEST(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
+TEST_F(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
     PostProcess post;
     EXPECT_EQ(apply(post.getColorVisionMatrix(), {0.25F, 0.5F, 0.75F}), (std::array<float, 3>{0.25F, 0.5F, 0.75F}));
 
@@ -47,7 +50,7 @@ TEST(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
     }
 }
 
-TEST(PostProcessTest, ReadsTheColorVisionOptionsFromLua) {
+TEST_F(PostProcessTest, ReadsTheColorVisionOptionsFromLua) {
     test::EngineFixture fixture;
     fixture.runLua("graphics2d = require('haylen.graphics2d') camera = graphics2d.newCamera()");
     for (const char* vision : {"normal", "protanopia", "deuteranopia", "tritanopia"}) {

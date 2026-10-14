@@ -46,7 +46,6 @@ class Inspector final {
     static void pushRoot(lua_State* L, std::string_view name);
     static void pushModuleField(lua_State* L, const char* module, const char* field, bool call);
     static void pushPath(lua_State* L, std::span<const std::string> path);
-    static void pushChild(lua_State* L, const std::string& key);
     static void pushKey(lua_State* L, int container, const std::string& key);
     [[nodiscard]] static Entry describe(lua_State* L, std::string key, int index, bool editable);
     [[nodiscard]] static std::string describeValue(lua_State* L, int index);
