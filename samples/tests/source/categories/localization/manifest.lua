@@ -11,7 +11,7 @@ return {
         {code = 'LOC-005', title = 'Fallback language', description = 'Keys a language lacks, taken from the fallback language, and keys no language has.', module = 'fallback'},
         {code = 'LOC-006', title = 'Best match', description = 'The device language and other tags matched to the languages of the app.', module = 'best-match'},
         {code = 'LOC-007', title = 'Fonts per language', description = 'One font family whose fallbacks draw Japanese in every component.', module = 'fonts'},
-        {code = 'LOC-008', title = 'Layout follows the text', description = 'Buttons and paragraphs that measure again when the language changes, and a pseudo translation that shows where texts would overflow.', module = 'relayout'},
+        {code = 'LOC-008', title = 'Layout follows the text', description = 'Buttons and paragraphs that measure again when the language changes, a pseudo translation that shows where texts would overflow, and a title that shrinks to fit.', module = 'relayout'},
         {code = 'LOC-009', title = 'Right-to-left interface', description = 'Arabic mirrors the whole interface, and nodes with a direction of their own keep it.', module = 'direction'},
         {code = 'LOC-010', title = 'Numbers, dates and lists', description = 'Decimals, percentages, amounts, compact numbers, dates in every style, lists and the plural and ordinal categories of ten languages.', module = 'formats'},
     },

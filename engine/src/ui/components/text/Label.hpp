@@ -48,6 +48,9 @@ class Label final : public Component {
     bool wrap = true;
     std::optional<math::Color> outline;
     float outlineWidth = 2.0F;
+
+    // A label that does not wrap draws a text wider than its bounds smaller, down to this share of its font size, before it shortens the text.
+    float minScale = 1.0F;
 };
 
 } // namespace haylen::ui

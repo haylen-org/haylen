@@ -39,8 +39,8 @@ class Typography final {
 
     [[nodiscard]] static math::Vec2 measureParagraph(Context& context, Theme::Font font, std::string_view text, float width);
 
-    // Draws wrapped lines aligned inside the bounds, where start and end follow the direction of the UI. An outline keeps light text readable over busy scenes.
-    static void drawParagraph(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal, std::optional<math::Color> outline = std::nullopt, float outlineWidth = 2.0F);
+    // Draws wrapped lines aligned inside the bounds, where start and end follow the direction of the UI. An outline keeps light text readable over busy scenes, and a scale below 1 draws the text smaller than its font.
+    static void drawParagraph(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal, std::optional<math::Color> outline = std::nullopt, float outlineWidth = 2.0F, float scale = 1.0F);
 
     // Returns the style that lays text out in a font role of the theme in the language of the node being drawn, where start and end become the sides of the UI they name.
     [[nodiscard]] static text::Style getStyle(Context& context, Theme::Font font, float wrapWidth = -1.0F, text::Alignment align = text::Alignment::Start);

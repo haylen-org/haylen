@@ -22,13 +22,14 @@ void Label::readProperties(PropertyReader& reader) {
         outline = outlineColor;
     }
     reader.read("outlineWidth", outlineWidth, 0.0F, 16.0F);
+    reader.read("minScale", minScale, 0.25F, 1.0F);
 }
 
 math::Vec2 Label::measureContent(Context& context, float availableWidth) {
     return Typography::measureParagraph(context, font, context.getText(text), wrap ? availableWidth : -1.0F);
 }
 
-// Without wrapping every line of the text keeps its own line and ends with an ellipsis when it does not fit, and the block of lines sits in the middle of the height.
+// Without wrapping every line of the text keeps its own line, a text wider than the label draws smaller down to the smallest scale, a line that still does not fit ends with an ellipsis, and the block of lines sits in the middle of the height.
 void Label::render(Context& context, const math::Rect& bounds) {
     const std::string_view full = context.getText(text);
     if (wrap) {
@@ -36,12 +37,15 @@ void Label::render(Context& context, const math::Rect& bounds) {
         return;
     }
     std::string_view shown = full;
-    if (Typography::measure(context, font, full).x > bounds.width) {
+    const float natural = Typography::measure(context, font, full).x;
+    const float scale = natural > bounds.width ? std::max(minScale, bounds.width / natural) : 1.0F;
+    const float room = bounds.width / scale;
+    if (natural > room) {
         std::string& lines = context.getFrameText();
         std::size_t start = 0;
         while (start <= full.size()) {
             const std::size_t end = std::min(full.find('\n', start), full.size());
-            lines += Typography::elide(context, font, full.substr(start, end - start), bounds.width);
+            lines += Typography::elide(context, font, full.substr(start, end - start), room);
             if (end < full.size()) {
                 lines += '\n';
             }
@@ -49,9 +53,9 @@ void Label::render(Context& context, const math::Rect& bounds) {
         }
         shown = lines;
     }
-    const float height = Typography::measureParagraph(context, font, shown, -1.0F).y;
+    const float height = Typography::measureParagraph(context, font, shown, -1.0F).y * scale;
     const math::Rect block{bounds.x, std::floor(bounds.y + (bounds.height - height) * 0.5F), bounds.width, height};
-    Typography::drawParagraph(context, font, block, context.getColor(color.value_or(Theme::Color::Text)), shown, textAlign, outline, outlineWidth);
+    Typography::drawParagraph(context, font, block, context.getColor(color.value_or(Theme::Color::Text)), shown, textAlign, outline, outlineWidth, scale);
 }
 
 bool Label::describe(Context& context, platform::AccessibilityElement& element) const {

@@ -67,4 +67,25 @@ TEST_F(LabelTest, KeepsTheLinesOfATextThatDoesNotWrapInsideTheLabel) {
     EXPECT_NEAR(centered.front().getCenter().y, getBounds(*gui, "lines").getCenter().y, line * 0.25F);
 }
 
+// A label that does not wrap draws a text that is too wide smaller, down to its smallest scale, and shortens it only below that scale.
+TEST_F(LabelTest, ShrinksATextThatIsTooWideBeforeItShortensIt) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "title", "wrap": false, "width": 200, "minScale": 0.4, "text": "A long title of the general store of the island"}]})");
+    const float line = getUi().getTheme().getFont(Theme::Font::Body).size;
+    const math::Rect box = getBounds(*gui, "title");
+    const float spread = line * 0.2F;
+
+    const std::vector<math::Rect> shrunk = drawText();
+    ASSERT_EQ(shrunk.size(), 1U);
+    EXPECT_LT(shrunk.front().height, line * 0.9F);
+    EXPECT_GT(shrunk.front().width, box.width * 0.8F);
+    EXPECT_LE(shrunk.front().getRight(), box.getRight() + spread);
+
+    // At the full size the same text no longer fits and ends with an ellipsis at the height of its font.
+    gui->set("title", {{"minScale", 1}});
+    const std::vector<math::Rect> shortened = drawText();
+    ASSERT_EQ(shortened.size(), 1U);
+    EXPECT_GT(shortened.front().height, line * 0.9F);
+    EXPECT_LE(shortened.front().getRight(), box.getRight() + spread);
+}
+
 } // namespace haylen::ui

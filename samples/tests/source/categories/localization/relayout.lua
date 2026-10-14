@@ -1,4 +1,4 @@
--- Buttons measure their words, labels wrap at the width of their card and rows share what is left, so a new language lays the card out again without any code. The panel on the right reads the bounds of the nodes every frame, and the pseudo translation makes every text a third longer with accents to show where it would overflow.
+-- Buttons measure their words, labels wrap at the width of their card and rows share what is left, so a new language lays the card out again without any code. The panel on the right reads the bounds of the nodes every frame, the pseudo translation makes every text a third longer with accents to show where it would overflow, and the title shrinks to fit its width instead of ending with an ellipsis.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local timer = require('haylen.timer')
@@ -10,13 +10,13 @@ local language = require('categories.localization.language')
 local Relayout = haylen.class('Relayout', LanguageTest)
 
 Relayout.hint = 'Pick another language, turn on the cycle or the pseudo translation, and watch the buttons and the paragraph take their new sizes.'
-Relayout.measured = {'save', 'cancel', 'options', 'intro', 'hard'}
+Relayout.measured = {'title', 'save', 'cancel', 'options', 'intro', 'hard'}
 Relayout.cycleSeconds = 1.5
 
 function Relayout:content()
     return {
         ui.card{width = 900, align = 'start', gap = 20,
-            ui.label{text = {key = 'menu.title'}, font = 'heading'},
+            ui.label{id = 'title', text = {key = 'menu.title'}, font = 'heading', wrap = false, width = 420, minScale = 0.5},
             ui.label{id = 'intro', text = {key = 'layout.intro'}},
             ui.row{gap = 12,
                 ui.button{id = 'save', text = {key = 'layout.save'}, variant = 'primary'},
