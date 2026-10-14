@@ -177,7 +177,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo Z da seção 14.2.
 113. Tudo isso funciona 100% e otimizado em todas as plataformas, com pesquisa e planejamento de como fazer cada parte.
 114. A cada bloco terminado, fazer commit e push.
 115. Revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre, e manter tudo no AGENTS.md e nesta mega lista.
-116. Os plugins de terceiros citados (Firebase, AdMob e os outros) ficam fora deste repositório, em repositórios próprios em https://github.com/haylen-org, feitos pelo dono depois e separado. Este repositório tem só a arquitetura, a engine e a capacidade, com testes simples e equivalentes, sem bibliotecas de terceiros além das da engine.
+116. Os plugins de SDKs de terceiros (analytics, anúncios e os outros) ficam fora deste repositório, em repositórios próprios em https://github.com/haylen-org, feitos pelo dono depois e separado. Este repositório tem só a arquitetura, a engine e a capacidade, com testes simples e equivalentes, sem bibliotecas de terceiros além das da engine.
 
 ### 2.5 Sexto pedido: diálogos, notificações, informações do sistema e webview
 
