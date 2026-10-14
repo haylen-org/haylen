@@ -35,7 +35,7 @@ AccessibilitySettings AppleAccessibility::read() {
     constexpr CGFloat kBodySize = 17.0;
     UITraitCollection* traits = [UITraitCollection traitCollectionWithPreferredContentSizeCategory:UIApplication.sharedApplication.preferredContentSizeCategory];
     const CGFloat scaled = [UIFontMetrics.defaultMetrics scaledValueForValue:kBodySize compatibleWithTraitCollection:traits];
-    return {.textScale = static_cast<float>(scaled / kBodySize), .reducedMotion = UIAccessibilityIsReduceMotionEnabled(), .highContrast = UIAccessibilityDarkerSystemColorsEnabled(), .reducedTransparency = UIAccessibilityIsReduceTransparencyEnabled(), .screenReader = UIAccessibilityIsVoiceOverRunning()};
+    return {.textScale = static_cast<float>(scaled / kBodySize), .reducedMotion = UIAccessibilityIsReduceMotionEnabled() == YES, .highContrast = UIAccessibilityDarkerSystemColorsEnabled() == YES, .reducedTransparency = UIAccessibilityIsReduceTransparencyEnabled() == YES, .screenReader = UIAccessibilityIsVoiceOverRunning() == YES};
 #endif
 }
 
