@@ -149,8 +149,8 @@ CPMAddPackage(
 # Parses floating point numbers the way `std::from_chars` does, which the C++ library of Apple platforms offers only from iOS and tvOS 26 and macOS 26.
 CPMAddPackage(
   NAME fast_float
-  URL "https://github.com/fastfloat/fast_float/archive/refs/tags/v8.3.0.tar.gz"
-  URL_HASH SHA256=90485994d0fed61d0693e8dba32c464b0e8adf7f2e7c2efbf5bff0df5ef5b13f
+  URL "https://github.com/fastfloat/fast_float/archive/refs/tags/v8.3.2.tar.gz"
+  URL_HASH SHA256=71bb9e865b888df01351558db5a39586d13ea97ada162156b3a07784d8c1b26b
   DOWNLOAD_ONLY YES
 )
 

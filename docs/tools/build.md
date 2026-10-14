@@ -227,7 +227,7 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | SheenBidi | v3.0.0 | Apache 2.0. The Unicode Bidirectional Algorithm and script runs, compiled from its unity source as `haylen_sheenbidi`. |
 | libunibreak | 8.0 | zlib license. Line breaking and grapheme clusters of Unicode 17, compiled as `haylen_unibreak`. |
 | BudouX | v0.9.3 | Apache 2.0. Only its Thai phrase model, a JSON file the engine embeds for breaking Thai lines. |
-| fast_float | v8.3.0 | Headers only. Parses floating point numbers on every platform, where `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
+| fast_float | v8.3.2 | Headers only. Parses floating point numbers on every platform, where `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
 | Dear ImGui | v1.92.9b | Compiled as `haylen_imgui` with the engine's ImGui configuration. |
 | miniaudio | 0.11.25 | Compiled as `haylen_miniaudio`. |
 | Box2D | v3.1.1 | |
