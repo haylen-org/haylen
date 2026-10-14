@@ -429,13 +429,19 @@ def emsdk_root() -> Path:
 
 
 def ensure_emsdk() -> Path:
+    """Returns the `emcmake` of the pinned Emscripten. An SDK that holds another version takes the newest list of releases and installs the pinned one."""
     root = emsdk_root()
-    emcmake = root / "upstream" / "emscripten" / ("emcmake.bat" if host_name() == "windows" else "emcmake")
-    if emcmake.exists():
+    emscripten = root / "upstream" / "emscripten"
+    emcmake = emscripten / ("emcmake.bat" if host_name() == "windows" else "emcmake")
+    version = emscripten / "emscripten-version.txt"
+    if emcmake.exists() and version.read_text(encoding="utf-8").strip().strip('"') == EMSDK_VERSION:
         return emcmake
 
     terminal.step(f"Installing Emscripten {EMSDK_VERSION} into `{shown_path(root)}`")
-    if not root.exists():
+    if root.exists():
+        run(["git", "fetch", "--depth", "1", "origin", "HEAD"], cwd=root)
+        run(["git", "reset", "--hard", "FETCH_HEAD"], cwd=root)
+    else:
         run(["git", "clone", "--depth", "1", "https://github.com/emscripten-core/emsdk.git", root])
     script = root / ("emsdk.bat" if host_name() == "windows" else "emsdk")
     run([script, "install", EMSDK_VERSION], cwd=root)

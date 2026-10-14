@@ -526,6 +526,29 @@ class ShaderCompilerTest(unittest.TestCase):
         self.assertEqual([path.name for path in target.parent.iterdir()], [target.name])
 
 
+class EmscriptenTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.emscripten = self.scratch / "emsdk" / "upstream" / "emscripten"
+        self.emscripten.mkdir(parents=True)
+        (self.emscripten / ("emcmake.bat" if haylen.host_name() == "windows" else "emcmake")).write_text("")
+
+    def installed(self, version: str) -> list[list[str]]:
+        (self.emscripten / "emscripten-version.txt").write_text(f'"{version}"\n')
+        with mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            haylen.ensure_emsdk()
+        return [[str(part) for part in call.args[0]] for call in run.call_args_list]
+
+    def test_the_pinned_version_is_used_as_it_is(self):
+        self.assertEqual(self.installed(haylen.EMSDK_VERSION), [])
+
+    def test_another_version_takes_the_newest_releases_and_installs_the_pinned_one(self):
+        commands = self.installed("1.0.0")
+        self.assertEqual(commands[0][:2], ["git", "fetch"])
+        self.assertEqual([command[1:] for command in commands[2:]], [["install", haylen.EMSDK_VERSION], ["activate", haylen.EMSDK_VERSION]])
+
+
 class AndroidKeyTest(unittest.TestCase):
     def setUp(self):
         self.app = Path(tempfile.mkdtemp()).resolve()
