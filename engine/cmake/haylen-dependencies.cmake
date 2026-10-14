@@ -247,8 +247,9 @@ endif()
 add_library(haylen_stb INTERFACE)
 target_include_directories(haylen_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
 
-add_library(haylen_nanosvg INTERFACE)
-target_include_directories(haylen_nanosvg SYSTEM INTERFACE "${nanosvg_SOURCE_DIR}/src")
+# The SVG reader and rasterizer compile in a library of their own, which keeps the warnings of the engine off their code.
+add_library(haylen_nanosvg STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/graphics/NanoSvgImpl.c")
+target_include_directories(haylen_nanosvg SYSTEM PUBLIC "${nanosvg_SOURCE_DIR}/src")
 
 add_library(haylen_fast_float INTERFACE)
 target_include_directories(haylen_fast_float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")
