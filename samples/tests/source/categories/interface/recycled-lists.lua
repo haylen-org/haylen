@@ -184,7 +184,7 @@ function RecycledLists:update(dt)
     local first, last = self.list:visibleRange()
     local shelf = self.gui:collection('shelf')
     local card = shelf:cellOf(1) and shelf:cellOf(1):bounds()
-    local place = card and string.format(' The first shell draws at %d, %d.', card.x, card.y) or ''
+    local place = card and string.format(' The first shell draws at %.0f, %.0f.', card.x, card.y) or ''
 
     local focus = item and string.format('"%s" of "%s"%s', item, id, part and (' on "' .. part .. '"') or '') or tostring(id)
     self:status(string.format('Rows %d, in view %s to %s. Cells alive %d, created %d. Focus %s.%s%s', self.list.count, tostring(first), tostring(last), cells.alive, cells.created, focus, place, self.last))

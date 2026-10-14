@@ -63,7 +63,7 @@ function CustomGui:draw(area)
     -- The safe area and the UI scale come from the engine like everything else the GUI reads.
     local safe = viewport.safeRect()
     local factor, scale = ui.scale()
-    local text = string.format('Safe area %d, %d, %d by %d. UI scale %.2f by %.2f. Focus on "%s".', safe.x, safe.y, safe.width, safe.height, factor, scale, tostring(gui.focus))
+    local text = string.format('Safe area %.0f, %.0f, %.0f by %.0f. UI scale %.2f by %.2f. Focus on "%s".', safe.x, safe.y, safe.width, safe.height, factor, scale, tostring(gui.focus))
     Test.caption(text, left, area.height - 60, {size = 22})
 end
 
