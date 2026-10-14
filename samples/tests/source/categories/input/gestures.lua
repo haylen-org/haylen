@@ -1,4 +1,4 @@
--- Gestures: taps, double taps, long presses, swipes and pinches marked where they happen, a card that pinches to zoom and resets on a double tap, a count of each gesture and the thresholds of the recognizer.
+-- Gestures: taps, double taps, long presses, swipes and pinches marked where they happen, a card that two fingers zoom, turn and move and that a double tap resets, a count of each gesture and the thresholds of the recognizer.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -27,6 +27,8 @@ function Gestures:enter()
         self.counts[name] = 0
     end
     self.scale, self.baseScale = 1, 1
+    self.angle, self.baseAngle = 0, 0
+    self.offsetX, self.offsetY, self.baseX, self.baseY = 0, 0, 0, 0
     self.journal = Journal(30)
 
     local controls = {}
@@ -59,7 +61,7 @@ function Gestures:describe(gesture)
     if gesture.type == 'swipe' then
         return string.format('Swipe %+.0f, %+.0f', gesture.dx, gesture.dy)
     elseif gesture.type == 'pinch' then
-        return string.format('Pinch scale %.2f', gesture.scale)
+        return string.format('Pinch scale %.2f, turn %.0f degrees, move %+.0f, %+.0f', gesture.scale, math.deg(gesture.rotation), gesture.dx, gesture.dy)
     end
     return string.format('Gesture "%s" at %.0f, %.0f', gesture.type, gesture.x, gesture.y)
 end
@@ -84,24 +86,26 @@ function Gestures:update(dt)
             self.counts[gesture.type] = self.counts[gesture.type] + 1
             if gesture.type == 'pinch' then
                 self.scale = math.max(0.3, math.min(4, self.baseScale * gesture.scale))
+                self.angle = self.baseAngle + gesture.rotation
+                self.offsetX, self.offsetY = self.baseX + gesture.dx, self.baseY + gesture.dy
             else
                 self.markers[#self.markers + 1] = {type = gesture.type, x = x, y = y, dx = gesture.dx, dy = gesture.dy, age = 0}
                 self.journal:add(self:describe(gesture), kColors[gesture.type])
             end
             if gesture.type == 'doubleTap' then
-                self.scale = 1
+                self.scale, self.angle, self.offsetX, self.offsetY = 1, 0, 0, 0
             end
         end
     end
     if #input.touches() < 2 then
-        self.baseScale = self.scale
+        self.baseScale, self.baseAngle, self.baseX, self.baseY = self.scale, self.angle, self.offsetX, self.offsetY
     end
 
     local counts = {}
     for _, name in ipairs(kTypes) do
         counts[#counts + 1] = '"' .. name .. '" ' .. self.counts[name]
     end
-    self:status('Gestures ' .. table.concat(counts, ', ') .. string.format(', card scale %.2f', self.scale))
+    self:status('Gestures ' .. table.concat(counts, ', ') .. string.format(', card scale %.2f, turn %.0f degrees', self.scale, math.deg(self.angle)))
 end
 
 function Gestures:drawMarker(marker)
@@ -123,11 +127,10 @@ function Gestures:drawMarker(marker)
 end
 
 function Gestures:draw(area)
-    local cx, cy = area.width * 0.38, area.height * 0.5
+    local cx, cy = area.width * 0.38 + self.offsetX, area.height * 0.5 + self.offsetY
     local half = 150 * self.scale
-    graphics2d.drawRect({cx - half, cy - half * 0.66, half * 2, half * 1.32}, Test.surface)
-    graphics2d.drawRectOutline({cx - half, cy - half * 0.66, half * 2, half * 1.32}, 3, Test.line, {layer = 1})
-    Test.caption('Pinch to zoom, double tap to reset', cx, cy, {anchor = {0.5, 0.5}, color = Test.ink, size = 17 * math.max(0.6, self.scale)})
+    graphics2d.drawShape({cx - half, cy - half * 0.66, half * 2, half * 1.32}, {radius = 12, rotation = self.angle, color = Test.surface, borderWidth = 3, borderColor = Test.line})
+    Test.caption('Pinch to zoom, turn and move, double tap to reset', cx, cy, {anchor = {0.5, 0.5}, color = Test.ink, size = 17 * math.max(0.6, self.scale)})
 
     for _, marker in ipairs(self.markers) do
         self:drawMarker(marker)

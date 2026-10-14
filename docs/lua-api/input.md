@@ -374,8 +374,9 @@ Returns a list of the gestures recognized in this frame. Each gesture is a table
 | --- | --- | --- |
 | `type` | string | One of `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` or `'pinch'`. |
 | `x`, `y` | number | Where the gesture happened in design coordinates. A pinch reports the center between the two fingers. |
-| `dx`, `dy` | number | The movement of a swipe, from where the finger landed to where it lifted. Other gestures report 0. |
+| `dx`, `dy` | number | The movement of a swipe, from where the finger landed to where it lifted, and the movement of the center of a pinch since exactly two fingers started touching the screen, which pans a map or a camera with two fingers. Other gestures report 0. |
 | `scale` | number | The spread of a pinch divided by the spread when exactly two fingers started touching the screen, which a third finger starts again when it comes or goes. Other gestures report 1. |
+| `rotation` | number | How far a pinch turned since exactly two fingers started touching the screen, in radians from -π to π, positive in the direction that turns the x axis toward the y axis. Other gestures report 0. |
 
 A tap fires when a finger lifts quickly without moving far. The second tap of a double tap reports both a `'tap'` and a `'doubleTap'` in the same frame. A long press fires once while the finger is still down, and that finger ends without a tap. A swipe fires when a finger lifts after moving far enough quickly enough. A pinch fires every frame in which one of exactly two fingers moves, and fingers that were part of a pinch never end as taps or swipes. A finger the system cancels, and every finger or mouse press still down when the window loses focus or the app is suspended, ends without a gesture.
 
@@ -388,6 +389,7 @@ scene.push({
     enter = function(self)
         self.camera = graphics2d.newCamera()
         self.baseZoom = 1
+        self.baseRotation = 0
     end,
     update = function(self, dt)
         for _, gesture in ipairs(input.gestures()) do
@@ -399,10 +401,12 @@ scene.push({
                 print('menu at', gesture.x, gesture.y)
             elseif gesture.type == 'pinch' then
                 self.camera.zoom = {self.baseZoom * gesture.scale, self.baseZoom * gesture.scale}
+                self.camera.rotation = self.baseRotation + gesture.rotation
             end
         end
         if #input.touches() < 2 then
             self.baseZoom = self.camera.zoom.x
+            self.baseRotation = self.camera.rotation
         end
     end,
 })

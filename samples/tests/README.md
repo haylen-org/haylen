@@ -346,7 +346,7 @@ The keyboard, the mouse, touches, gestures, gamepads, the action map, remapping,
 | `INP-001` | Keyboard | Keys held, pressed and released, modifiers, key events with repeats and the text typed with the layout of the platform. |  |
 | `INP-002` | Mouse | Buttons, the wheel and the trackpad with their units and the scroll speed, the movement of a frame, cursor shapes, a hidden cursor, a captured mouse and a finger acting as the mouse. | tvos |
 | `INP-003` | Touch | Up to ten fingers drawn with their id, phase, trail and time on the screen, and the mouse acting as a finger. | tvos |
-| `INP-004` | Gestures | Taps, double taps, long presses, swipes and pinches with their thresholds. | tvos |
+| `INP-004` | Gestures | Taps, double taps, long presses and swipes, and pinches that zoom, turn and move a card, with their thresholds. | tvos |
 | `INP-005` | Gamepads | Eight live controllers with sticks, triggers and buttons labeled as each controller labels them, their connections, rumbles of both motors and the dead zone. |  |
 | `INP-006` | Action map | Button, axis and vector actions bound to keys, mouse, gamepads and touch controls, and the last device used. |  |
 | `INP-007` | Remapping | Rebinding the controls with key captures, kept in the preferences for the next launch. |  |

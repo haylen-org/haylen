@@ -49,6 +49,13 @@ class GestureRecognizer final {
     }
 
   private:
+    // Where the two fingers of a pinch began: how far apart, at which angle from the first finger to the second and around which center.
+    struct PinchStart {
+        float spread = 0.0F;
+        float angle = 0.0F;
+        math::Vec2 center;
+    };
+
     struct Pointer {
         math::Vec2 start;
         math::Vec2 position;
@@ -67,7 +74,7 @@ class GestureRecognizer final {
     std::map<std::uint64_t, Pointer> pointers;
     std::optional<Pointer> mouse;
     std::optional<std::pair<double, math::Vec2>> lastTap;
-    std::optional<float> pinchStart;
+    std::optional<PinchStart> pinchStart;
     std::vector<const Touch*> fingers;
     double time = 0.0;
 };

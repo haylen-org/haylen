@@ -198,13 +198,13 @@ int InputLua::findTouch(lua_State* L) {
     return 1;
 }
 
-// Returns the gestures of this frame as `{type, x, y, dx, dy, scale}` tables, in design coordinates.
+// Returns the gestures of this frame as `{type, x, y, dx, dy, scale, rotation}` tables, in design coordinates.
 int InputLua::gestures(lua_State* L) {
     const std::span<const Gesture> recognized = lua::Runtime::getEngine(L).getGestures().getGestures();
     lua_createtable(L, static_cast<int>(recognized.size()), 0);
     for (std::size_t index = 0; index < recognized.size(); ++index) {
         const Gesture& gesture = recognized[index];
-        lua_createtable(L, 0, 6);
+        lua_createtable(L, 0, 7);
         lua::Stack::push(L, Gesture::typeName(gesture.type));
         lua_setfield(L, -2, "type");
         lua::Stack::push(L, gesture.position.x);
@@ -217,6 +217,8 @@ int InputLua::gestures(lua_State* L) {
         lua_setfield(L, -2, "dy");
         lua::Stack::push(L, gesture.scale);
         lua_setfield(L, -2, "scale");
+        lua::Stack::push(L, gesture.rotation);
+        lua_setfield(L, -2, "rotation");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
     return 1;

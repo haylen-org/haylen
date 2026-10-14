@@ -49,7 +49,7 @@ An app chooses to treat one device as the other. With `input.setMouseAsTouch(tru
 
 ### Gestures
 
-`input.gestures()` returns the gestures recognized in this frame: `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` and `'pinch'`, each with a position, the movement of a swipe and the scale of a pinch. While no finger is down, the left mouse button acts as a finger, so gestures also work with a mouse on desktop. `input.setGestureSettings` changes the thresholds, such as `longPressDuration` or `swipeMinDistance`, and `mouse = false` turns the mouse off as a finger.
+`input.gestures()` returns the gestures recognized in this frame: `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` and `'pinch'`, each with a position, the movement of a swipe, and the scale, the rotation and the movement of the center of a pinch, which zoom, turn and pan with two fingers. While no finger is down, the left mouse button acts as a finger, so gestures also work with a mouse on desktop. `input.setGestureSettings` changes the thresholds, such as `longPressDuration` or `swipeMinDistance`, and `mouse = false` turns the mouse off as a finger.
 
 ```lua
 for _, gesture in ipairs(input.gestures()) do

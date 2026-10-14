@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <numbers>
 #include <string>
 #include <vector>
 
@@ -159,6 +161,22 @@ TEST_F(GestureTest, RecognizesPinches) {
     EXPECT_EQ(frame(), Names{});
 }
 
+TEST_F(GestureTest, TurnsAndMovesAPinchWithItsFingers) {
+    touch(platform::Event::Type::TouchBegan, {{2, {200.0F, 100.0F}}, {1, {100.0F, 100.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchMoved, {{1, {150.0F, 150.0F}}, {2, {150.0F, 250.0F}}});
+    EXPECT_EQ(frame(), Names{"pinch"});
+    EXPECT_NEAR(first().rotation, std::numbers::pi_v<float> * 0.5F, 1.0e-5F);
+    EXPECT_FLOAT_EQ(first().scale, 1.0F);
+    EXPECT_EQ(first().position, math::Vec2(150.0F, 200.0F));
+    EXPECT_EQ(first().delta, math::Vec2(0.0F, 100.0F));
+
+    touch(platform::Event::Type::TouchMoved, {{1, {200.0F, 100.0F}}, {2, {100.0F, 100.0F}}});
+    frame();
+    EXPECT_NEAR(std::abs(first().rotation), std::numbers::pi_v<float>, 1.0e-5F);
+    EXPECT_EQ(first().delta, math::Vec2(0.0F, 0.0F));
+}
+
 TEST_F(GestureTest, FollowsAPinchWithoutAllocating) {
     touch(platform::Event::Type::TouchBegan, {{1, {100.0F, 100.0F}}, {2, {200.0F, 100.0F}}});
     frame();
@@ -189,20 +207,24 @@ TEST_F(GestureTest, TreatsTheMouseAsOneFinger) {
 
 TEST(GestureLuaTest, ListsGesturesOfTheFrame) {
     test::EngineFixture fixture;
-    fixture.runLua("input = require('haylen.input') seen = {} require('haylen.scene').push({update = function() for _, g in ipairs(input.gestures()) do seen[#seen + 1] = g.type .. '@' .. g.x .. ',' .. g.y end end})");
+    fixture.runLua("input = require('haylen.input') seen = {} require('haylen.scene').push({update = function() for _, g in ipairs(input.gestures()) do seen[#seen + 1] = string.format('%s@%g,%g:%g,%g*%g/%.2f', g.type, g.x, g.y, g.dx, g.dy, g.scale, g.rotation) end end})");
     // clang-format off
-    const auto send = [&](platform::Event::Type type) {
+    const auto send = [&](platform::Event::Type type, std::initializer_list<platform::TouchPoint> touches) {
         platform::Event event;
         event.type = type;
-        event.touchCount = 1;
-        event.touches[0] = {.id = 7, .position = {400.0F, 300.0F}, .changed = true};
+        for (const platform::TouchPoint& touch : touches) {
+            event.touches[event.touchCount++] = touch;
+        }
         fixture.engine().handleEvent(event);
         fixture.frames(1);
     };
     // clang-format on
-    send(platform::Event::Type::TouchBegan);
-    send(platform::Event::Type::TouchEnded);
-    EXPECT_EQ(fixture.lua("return table.concat(seen, ' ')"), "tap@400.0,300.0");
+    send(platform::Event::Type::TouchBegan, {{.id = 7, .position = {400.0F, 300.0F}, .changed = true}});
+    send(platform::Event::Type::TouchEnded, {{.id = 7, .position = {400.0F, 300.0F}, .changed = true}});
+    EXPECT_EQ(fixture.lua("return table.concat(seen, ' ')"), "tap@400,300:0,0*1/0.00");
+    send(platform::Event::Type::TouchBegan, {{.id = 8, .position = {400.0F, 300.0F}, .changed = true}, {.id = 9, .position = {500.0F, 300.0F}, .changed = true}});
+    send(platform::Event::Type::TouchMoved, {{.id = 9, .position = {400.0F, 500.0F}, .changed = true}});
+    EXPECT_EQ(fixture.lua("return seen[2]"), "pinch@400,400:-50,100*2/1.57");
     EXPECT_EQ(fixture.lua("input.setGestureSettings({longPressDuration = 1, mouse = false}) return 'ok'"), "ok");
     EXPECT_NE(fixture.lua("input.setGestureSettings({hold = 1})").find("Unknown option \"hold\""), std::string::npos);
     EXPECT_EQ(Gesture::typeName(Gesture::Type::LongPress), "longPress");

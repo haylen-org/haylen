@@ -1,5 +1,8 @@
 #include "haylen/input/GestureRecognizer.hpp"
 
+#include <cmath>
+#include <numbers>
+
 #include "haylen/input/Input.hpp"
 
 namespace haylen::input {
@@ -104,14 +107,20 @@ void GestureRecognizer::recognizePinch(const Input& input) {
         return;
     }
 
-    const float spread = math::Vec2::distance(fingers[0]->position, fingers[1]->position);
+    // The finger that touched first leads, so the angle of the pinch never flips with the order the platform lists the touches in.
+    const Touch& lead = fingers[0]->id < fingers[1]->id ? *fingers[0] : *fingers[1];
+    const Touch& other = &lead == fingers[0] ? *fingers[1] : *fingers[0];
+    const math::Vec2 between = other.position - lead.position;
+    const float spread = between.getLength();
+    const float angle = between.getAngle();
+    const math::Vec2 center = (lead.position + other.position) * 0.5F;
     if (!pinchStart) {
-        pinchStart = spread;
+        pinchStart = PinchStart{.spread = spread, .angle = angle, .center = center};
     }
-    const bool moved = fingers[0]->phase == TouchPhase::Moved || fingers[1]->phase == TouchPhase::Moved;
-    if (moved && *pinchStart > 0.0F) {
-        const math::Vec2 center = (fingers[0]->position + fingers[1]->position) * 0.5F;
-        gestures.push_back({.type = Gesture::Type::Pinch, .position = center, .scale = spread / *pinchStart});
+    const bool moved = lead.phase == TouchPhase::Moved || other.phase == TouchPhase::Moved;
+    if (moved && pinchStart->spread > 0.0F) {
+        const float rotation = std::remainder(angle - pinchStart->angle, 2.0F * std::numbers::pi_v<float>);
+        gestures.push_back({.type = Gesture::Type::Pinch, .position = center, .delta = center - pinchStart->center, .scale = spread / pinchStart->spread, .rotation = rotation});
     }
 }
 
