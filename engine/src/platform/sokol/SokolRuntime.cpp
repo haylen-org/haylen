@@ -484,7 +484,7 @@ void SokolRuntime::replace(App app) {
 } // namespace haylen::platform
 
 #if defined(__APPLE__)
-// sokol_app leaves main to Apple apps, which call this after registering their native HaylenBridge handlers.
+// The library sokol_app leaves main to Apple apps, which call this after registering their native HaylenBridge handlers.
 int haylen_main(int argc, char* argv[]) {
     return haylen::platform::SokolRuntime::run(argc, argv);
 }

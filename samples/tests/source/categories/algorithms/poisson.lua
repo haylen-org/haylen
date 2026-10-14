@@ -55,7 +55,7 @@ end
 -- Spacing grows from the nearest spacing at the focus to the farthest one a spread away.
 function Poisson:sampleAroundFocus()
     local fx, fy, spread = self.focusPoint[1], self.focusPoint[2], self.spread
-    profiler.beginScope('poisson disk')
+    profiler.beginScope('poissonDisk')
     self.points = m.poissonDisk({
         area = kArea,
         minimumDistance = kNearest,
@@ -98,7 +98,7 @@ function Poisson:update(dt)
         self.dirty, self.wait = false, kResampleDelay
         self:sample()
     end
-    local timing = self.latency and string.format('worker thread %.0f ms', self.latency) or string.format('function "poissonDisk" %.1f ms', self:timing('poisson disk'))
+    local timing = self.latency and string.format('worker thread %.0f ms', self.latency) or string.format('function "poissonDisk" %.1f ms', self:timing('poissonDisk'))
     self:status(string.format('Points %d, spacing %d to %d, %s', #self.points, kNearest, kFarthest, timing))
 end
 

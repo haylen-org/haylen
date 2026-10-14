@@ -679,7 +679,7 @@ def command_format(args: argparse.Namespace) -> None:
 
 
 def command_bench(args: argparse.Namespace) -> None:
-    """Builds a benchmark in Release and runs it on this machine: sprites on the GPU, the frame loop, events, owners, timers, tweens, jobs and asset loading on the CPU, path finding, crowds, spatial queries and ray casts on the CPU, procedural generation, geometry and destruction on the CPU, physics worlds on the CPU, long UI lists on the CPU, frames of sprites, shapes, text and interface components on the CPU, particle emitters on the CPU, protected content on the CPU and the disk, or the Lua bunnymark on the CPU."""
+    """Builds a benchmark in Release and runs it on this machine: sprites on the GPU, the frame loop, events, owners, timers, tweens, jobs and asset loading on the CPU, path finding, crowds, spatial queries and ray casts on the CPU, procedural generation, geometry and destruction on the CPU, physics worlds on the CPU, long UI lists on the CPU, frames of sprites, shapes, text and interface components on the CPU, particle emitters on the CPU, protected content on the CPU and the disk, or the Lua sprite benchmark on the CPU."""
     if args.suite in CPU_BENCHMARKS:
         build = build_options(host_name(), "Release", CPU_BENCHMARKS[args.suite], args.jobs)
         command_build(build)
@@ -5091,7 +5091,7 @@ def build_parser() -> argparse.ArgumentParser:
     formatter.set_defaults(handler=command_format)
 
     bench = commands.add_parser("bench", help="Build and run a benchmark of the engine in Release on this machine.")
-    bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "animation", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content, node or animation benchmark on the CPU or the Lua bunnymark on the CPU.")
+    bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "animation", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content, node or animation benchmark on the CPU or the Lua sprite benchmark on the CPU.")
     add_jobs_option(bench)
     bench.set_defaults(handler=command_bench)
 

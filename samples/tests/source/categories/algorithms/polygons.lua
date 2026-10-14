@@ -59,7 +59,7 @@ end
 function Polygons:combine()
     local options = self.options
     self.ring = ring(self.center[1], self.center[2], 220, 110)
-    profiler.beginScope('polygon booleans')
+    profiler.beginScope('polygonBooleans')
     local result = m.polygon[options.operation](self.star, self.ring)
     if options.offset ~= 0 then
         result = m.polygon.offset(result, options.offset, {join = options.join})
@@ -75,7 +75,7 @@ function Polygons:update(dt)
         self.center = {self.pointer.worldX, self.pointer.worldY}
         self:combine()
     end
-    self:status(string.format('Outlines %d, area %.0f, convex pieces %d, booleans %.3f ms', #self.result, m.polygon.area(self.result), #self.pieces, self:timing('polygon booleans')))
+    self:status(string.format('Outlines %d, area %.0f, convex pieces %d, booleans %.3f ms', #self.result, m.polygon.area(self.result), #self.pieces, self:timing('polygonBooleans')))
 end
 
 function Polygons:draw(area)

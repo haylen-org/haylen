@@ -18,8 +18,8 @@ local kCell = 3.3
 local kClusterSize = 16
 local kSearches = {
     {name = 'HPA*', scope = 'hpa', color = '#FFFFD54F', width = 5},
-    {name = 'A*', scope = 'a-star', color = '#FF4DD0E1', width = 2},
-    {name = 'Jump point search', scope = 'jump-point', color = '#FFF06292', width = 2},
+    {name = 'A*', scope = 'aStar', color = '#FF4DD0E1', width = 2},
+    {name = 'Jump point search', scope = 'jumpPoint', color = '#FFF06292', width = 2},
 }
 
 function Hpa:enter()
@@ -59,7 +59,7 @@ function Hpa:build()
         end
     end
     self.start, self.goal = self:open(4, 4), self:open(kSize - 5, kSize - 5)
-    profiler.beginScope('hpa build')
+    profiler.beginScope('hpaBuild')
     self.router = self.grid:hierarchicalPathfinder({clusterSize = kClusterSize})
     profiler.endScope()
     self:repaint()
@@ -91,10 +91,10 @@ function Hpa:search()
     profiler.beginScope('hpa')
     results[1] = {self.router:findPath(sx, sy, gx, gy)}
     profiler.endScope()
-    profiler.beginScope('a-star')
+    profiler.beginScope('aStar')
     results[2] = {self.grid:findPath(sx, sy, gx, gy)}
     profiler.endScope()
-    profiler.beginScope('jump-point')
+    profiler.beginScope('jumpPoint')
     results[3] = {self.grid:findPath(sx, sy, gx, gy, {jumpPoint = true})}
     profiler.endScope()
     self.results = {}
@@ -123,7 +123,7 @@ function Hpa:paint()
     if pointer.released and self.stroke then
         local box = self.stroke
         self.stroke = nil
-        profiler.beginScope('hpa update')
+        profiler.beginScope('hpaUpdate')
         self.router:update(box[1], box[2], math.min(box[3], kSize - 1), math.min(box[4], kSize - 1))
         profiler.endScope()
         self:repaint()
@@ -148,7 +148,7 @@ function Hpa:update(dt)
     for index, search in ipairs(kSearches) do
         self.results[index].milliseconds = self:timing(search.scope)
     end
-    self:status(string.format('Entrances %d, build %.2f ms, update %.2f ms', self.router.nodeCount, self:timing('hpa build'), self:timing('hpa update')))
+    self:status(string.format('Entrances %d, build %.2f ms, update %.2f ms', self.router.nodeCount, self:timing('hpaBuild'), self:timing('hpaUpdate')))
 end
 
 function Hpa:draw(area)

@@ -171,7 +171,7 @@ function bench:update()
 
     self.frames = self.frames + 1
     self.frameStart = now
-    debugging.beginScope('bunnies update')
+    debugging.beginScope('spritesUpdate')
     updates[mode](self.state)
     debugging.endScope()
     if self.frames > warmup then
@@ -185,7 +185,7 @@ function bench:render()
     end
     graphics2d.beginScreen()
     local started = os.clock()
-    debugging.beginScope('bunnies draw')
+    debugging.beginScope('spritesDraw')
     draws[self.phase.mode](self.state)
     debugging.endScope()
     if self.frames > warmup then

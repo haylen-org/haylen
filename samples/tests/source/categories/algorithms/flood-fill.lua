@@ -86,7 +86,7 @@ end
 function FloodFill:apply(column, row)
     if self.tool == 'bucket' then
         if self.grid:get(column, row) ~= 0 then
-            profiler.beginScope('flood fill')
+            profiler.beginScope('floodFill')
             self.filled = #spatial2d.floodFill(self.grid, column, row, {diagonal = self.diagonal, value = self.color})
             profiler.endScope()
             self.painted = true
@@ -120,7 +120,7 @@ function FloodFill:update(dt)
             self:apply(column, row)
         end
     end
-    self:status(string.format('Islands %d, sets after bridges %d, last fill %d cells, fill %.3f ms, regions %.3f ms', self.count, self.sets.setCount, self.filled or 0, self:timing('flood fill'), self:timing('regions')))
+    self:status(string.format('Islands %d, sets after bridges %d, last fill %d cells, fill %.3f ms, regions %.3f ms', self.count, self.sets.setCount, self.filled or 0, self:timing('floodFill'), self:timing('regions')))
 end
 
 function FloodFill:draw(area)

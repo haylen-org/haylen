@@ -56,7 +56,7 @@ end
 function MarchingSquares:trace()
     local options = self.options
     local origin = {self.board.left + kSpacing / 2, self.board.top + kSpacing / 2}
-    profiler.beginScope('marching squares')
+    profiler.beginScope('marchingSquares')
     local outlines
     if options.source == 'field' then
         outlines = m.marchingSquares.trace(self.values, kColumns, kRows, {threshold = options.threshold, spacing = kSpacing, origin = origin})
@@ -112,7 +112,7 @@ function MarchingSquares:update(dt)
     if self.pointer.down then
         self:paint(dt)
     end
-    self:status(string.format('Samples %d, outlines %d, points %d, trace %.3f ms', kColumns * kRows, #self.outlines, self.points, self:timing('marching squares')))
+    self:status(string.format('Samples %d, outlines %d, points %d, trace %.3f ms', kColumns * kRows, #self.outlines, self.points, self:timing('marchingSquares')))
 end
 
 function MarchingSquares:draw(area)

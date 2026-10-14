@@ -60,7 +60,7 @@ function Raycasts:update(dt)
     local dx, dy = self.pointer.worldX - self.eye[1], self.pointer.worldY - self.eye[2]
     local aim = math.atan(dy, dx)
     self.rays = {}
-    profiler.beginScope('tiled casts')
+    profiler.beginScope('tiledCasts')
     local count = self.mode == 'fan' and kFanRays or 1
     for index = 1, count do
         local angle = count == 1 and aim or aim + (index - 1) / count * math.pi * 2
@@ -77,7 +77,7 @@ function Raycasts:update(dt)
     elseif first.source == 'object' then
         summary = string.format('Object "%s" of class "%s"', first.hit.name, first.hit.type)
     end
-    self:status(string.format('%s, distance %.0f, rays %d in %.3f ms', summary, first.hit and first.hit.distance or 0, count, self:timing('tiled casts')))
+    self:status(string.format('%s, distance %.0f, rays %d in %.3f ms', summary, first.hit and first.hit.distance or 0, count, self:timing('tiledCasts')))
 end
 
 function Raycasts:draw(area)

@@ -12,6 +12,7 @@ import io
 import json
 import os
 import plistlib
+import re
 import shutil
 import subprocess
 import socket
@@ -205,6 +206,57 @@ class FileNameTest(unittest.TestCase):
             return path.suffix == ".py" and "_" not in path.parent.as_posix() and (path.stem in imported or path.name.startswith("test_"))
 
         self.assertEqual([name for name in files if "_" in name and not allowed(name)], [], "These tracked files and folders use underscores where their names take dashes.")
+
+
+class WritingTest(unittest.TestCase):
+    root = Path(__file__).resolve().parent.parent
+
+    def tracked(self, *patterns: str) -> list[str]:
+        return subprocess.run(["git", "ls-files", "--", *patterns], cwd=self.root, capture_output=True, text=True, check=True).stdout.splitlines()
+
+    def test_line_comments_are_sentences_that_start_with_a_capital_letter(self):
+        # A comment that goes on in an indented line, such as a table under its sentence, and the markers of tools are no sentences of their own.
+        markers = {"//": ("*.c", "*.cpp", "*.h", "*.hpp", "*.m", "*.mm", "*.js", "*.java", "*.kt", "*.kts", "*.swift", "*.glsl"), "--": ("*.lua",), "#": ("*.py", "*.cmake", "*CMakeLists.txt")}
+        tools = ("clang-format", "NOLINT", "MARK:", "noqa", "type:", "pragma", "!", "#")
+        wrong = []
+        for marker, patterns in markers.items():
+            for name in self.tracked(*patterns):
+                if "/patches/" in name:
+                    continue
+                for number, line in enumerate((self.root / name).read_text(encoding="utf-8").splitlines(), 1):
+                    stripped = line.lstrip()
+                    if not stripped.startswith(marker) or stripped.startswith(marker * 2 if marker != "--" else "---") or stripped.startswith("--[["):
+                        continue
+                    text = stripped[len(marker):]
+                    if not text.strip() or text.startswith(("  ", "\t")) or text.strip().startswith(tools):
+                        continue
+                    if text.strip()[0].islower() or text.rstrip()[-1] not in ".:!?)`\"]":
+                        wrong.append(f"{name}:{number}: {text.strip()}")
+        self.assertEqual(wrong, [], "These comments are no complete sentences that start with a capital letter.")
+
+    def test_texts_that_lua_gives_the_interface_start_with_a_capital_letter(self):
+        # A value without a space is data, such as an id, a path or a word that the app echoes, and code shown as code keeps its own form.
+        option = re.compile(r"""(?<![\w.])(text|title|hint|caption|message|prompt|label|subtitle|description|tooltip)\s*=\s*(['"])((?:\\.|(?!\2).)*)\2""")
+        names = ("iOS", "iPhone", "iPad", "iPadOS", "macOS", "tvOS", "visionOS")
+        wrong = []
+        for name in self.tracked("samples/*.lua", "templates/*.lua", "engine/bench/*.lua"):
+            for number, line in enumerate((self.root / name).read_text(encoding="utf-8").splitlines(), 1):
+                if line.lstrip().startswith("--") or "'monospace'" in line:
+                    continue
+                for match in option.finditer(line):
+                    value = match.group(3)
+                    if re.search(r"bind\s*=\s*\{[^}]*$", line[: match.start()]) or " " not in value or "(" in value or value.startswith(names):
+                        continue
+                    if value[0].islower():
+                        wrong.append(f"{name}:{number}: {value}")
+        self.assertEqual(wrong, [], "These texts of the interface start with a lowercase letter.")
+
+    def test_no_file_names_another_engine_or_the_authors_and_tools_of_third_party_art(self):
+        # The project plan records the requests of the owner as they were made, and the bytes of binary files hold the metadata that tools write. The names are kept encoded, so this test names none of them itself.
+        words = base64.b64decode("a2VubmV5CnJ1YmJlcmR1Y2sKcmFuZG9tbWluZApvcGVuZ2FtZWFydAphc2Vwcml0ZQp0ZXh0dXJlcGFja2VyCnBpeGVsbWF0b3IKZ2FtZXN5bnRoCnNvdW5kYm9vdGgKZmwgc3R1ZGlvCmxvZ2ljIGV4cHJlc3MKYWRtb2IKZmlyZWJhc2UKYnVubnltYXJrCmdvZG90CnVucmVhbCBlbmdpbmUKY29jb3MyZApkZWZvbGQKZ2FtZW1ha2VyCnBoYXNlcgpwaXhpanMKZ29vZ2xlIHNpZ24KZ29vZ2xlIGlkZW50aXR5CmVwaWMgb25saW5l").split(b"\n")
+        names = re.compile(b"|".join(re.escape(word) for word in words), re.IGNORECASE)
+        found = [name for name in self.tracked() if name != "PROJECT.md" and (self.root / name).is_file() and names.search((self.root / name).read_bytes())]
+        self.assertEqual(found, [], "These files name another engine, a third-party SDK or the author or tool of third-party art.")
 
 
 class TerminalStream(io.StringIO):

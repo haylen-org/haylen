@@ -78,7 +78,7 @@ function FieldOfView:update(dt)
         if column and self.grid:get(column, row) == 0 then
             self.viewer = {column, row}
         end
-        profiler.beginScope('field of view')
+        profiler.beginScope('fieldOfView')
         self.visible = spatial2d.fieldOfView(self.grid, self.viewer[1], self.viewer[2], self.radius)
         profiler.endScope()
         self.visibleSet = {}
@@ -90,16 +90,16 @@ function FieldOfView:update(dt)
         self.sightLine = spatial2d.line(self.viewer[1], self.viewer[2], self.guard[1], self.guard[2])
         self.ring = spatial2d.circle(self.viewer[1], self.viewer[2], self.radius)
         local spotted = self.visibleSet[self.guard[2] * kColumns + self.guard[1]]
-        self:status(string.format('Visible cells %d, shadowcasting %.3f ms, the guard %s', #self.visible, self:timing('field of view'), spotted and 'sees you' or 'does not see you'))
+        self:status(string.format('Visible cells %d, shadowcasting %.3f ms, the guard %s', #self.visible, self:timing('fieldOfView'), spotted and 'sees you' or 'does not see you'))
     else
         local x, y = self.pointer.worldX, self.pointer.worldY
         local bounds = m.rect(kBounds)
         if bounds:contains({x, y}) then
-            profiler.beginScope('visibility polygon')
+            profiler.beginScope('visibilityPolygon')
             self.polygon = spatial2d.visibilityPolygon({x, y}, self.segments, kBounds)
             profiler.endScope()
         end
-        self:status(string.format('Walls %d, polygon corners %d, visibility %.3f ms', #self.segments, self.polygon and #self.polygon or 0, self:timing('visibility polygon')))
+        self:status(string.format('Walls %d, polygon corners %d, visibility %.3f ms', #self.segments, self.polygon and #self.polygon or 0, self:timing('visibilityPolygon')))
     end
 end
 

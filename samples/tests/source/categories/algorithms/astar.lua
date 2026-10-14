@@ -17,9 +17,9 @@ local kColumns, kRows, kCell = 30, 36, 14
 local kMudCost = 5
 local kColors = {floor = '#FF2B3240', wall = '#FF90A4AE', mud = '#FF6D4C41'}
 local kPanels = {
-    {name = 'A*', scope = 'a-star', x = -540},
+    {name = 'A*', scope = 'aStar', x = -540},
     {name = 'Weighted A*', scope = 'weighted', x = 0},
-    {name = 'Jump point search', scope = 'jump-point', x = 540},
+    {name = 'Jump point search', scope = 'jumpPoint', x = 540},
 }
 
 function AStar:enter()
@@ -87,14 +87,14 @@ function AStar:search()
     local sx, sy, gx, gy = self.start[1], self.start[2], self.goal[1], self.goal[2]
     local options = self.options
     local results = {}
-    profiler.beginScope('a-star')
+    profiler.beginScope('aStar')
     results[1] = {self.grid:findPath(sx, sy, gx, gy, {heuristic = options.heuristic, diagonal = options.diagonal})}
     profiler.endScope()
     profiler.beginScope('weighted')
     results[2] = {self.grid:findPath(sx, sy, gx, gy, {heuristic = options.heuristic, diagonal = options.diagonal, weight = options.weight})}
     profiler.endScope()
     if self.grid.uniformCost then
-        profiler.beginScope('jump-point')
+        profiler.beginScope('jumpPoint')
         results[3] = {self.grid:findPath(sx, sy, gx, gy, {diagonal = options.diagonal, jumpPoint = true})}
         profiler.endScope()
     else

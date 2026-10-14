@@ -156,10 +156,10 @@ function Raycasts:update(dt)
             end
         end
     end
-    profiler.beginScope('math casts')
+    profiler.beginScope('mathCasts')
     self.cast = casts[self.mode](self)
     profiler.endScope()
-    self:status(string.format('%s, cast %.3f ms', self.cast.summary, self:timing('math casts')))
+    self:status(string.format('%s, cast %.3f ms', self.cast.summary, self:timing('mathCasts')))
 end
 
 function Raycasts:draw(area)

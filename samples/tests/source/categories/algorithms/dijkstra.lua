@@ -73,7 +73,7 @@ function Dijkstra:plan()
     if self.useGold then
         sources[2] = {x = self.gold[1], y = self.gold[2], value = -6}
     end
-    profiler.beginScope('dijkstra maps')
+    profiler.beginScope('dijkstraMaps')
     self.chase = self.grid:dijkstraMap(sources)
     self.flee = self.grid:dijkstraMap({{x = self.player[1], y = self.player[2]}})
     self.flee:flee()
@@ -123,7 +123,7 @@ function Dijkstra:update(dt)
         self.player = {column, row}
         self:plan()
     end
-    self:status(string.format('Maps %.3f ms, player at %d, %d, chase value there %.1f', self:timing('dijkstra maps'), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
+    self:status(string.format('Maps %.3f ms, player at %d, %d, chase value there %.1f', self:timing('dijkstraMaps'), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
 end
 
 function Dijkstra:draw(area)

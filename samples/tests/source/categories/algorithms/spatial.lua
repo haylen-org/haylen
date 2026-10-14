@@ -135,17 +135,17 @@ function Spatial:update(dt)
     end
     if self.moving then
         self:move(dt)
-        profiler.beginScope('spatial update')
+        profiler.beginScope('spatialUpdate')
         self:store()
         profiler.endScope()
     end
     self.hits = nil
-    profiler.beginScope('spatial query')
+    profiler.beginScope('spatialQuery')
     self.found = self:ask(self.pointer.worldX, self.pointer.worldY)
     profiler.endScope()
 
     local structure = self.structure
-    self:status(string.format('Stored %d, %s, found %d, update %.3f ms, query %.3f ms', structure.size, self:detail(), #self.found, self:timing('spatial update'), self:timing('spatial query')))
+    self:status(string.format('Stored %d, %s, found %d, update %.3f ms, query %.3f ms', structure.size, self:detail(), #self.found, self:timing('spatialUpdate'), self:timing('spatialQuery')))
 end
 
 function Spatial:draw(area)
