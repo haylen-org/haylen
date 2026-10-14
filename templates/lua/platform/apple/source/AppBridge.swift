@@ -1,6 +1,6 @@
 import Foundation
 
-// The native platform bridge handlers of the app on macOS, iOS, iPadOS, Mac Catalyst and tvOS, which the function main of main.mm registers before the app starts.
+// The native platform bridge handlers of the app on macOS, iOS, iPadOS, Mac Catalyst and tvOS, which the function main of main.m registers before the app starts.
 @objc final class AppBridge: NSObject {
     struct Greeting: Decodable {
         let name: String

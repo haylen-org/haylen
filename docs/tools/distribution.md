@@ -407,7 +407,7 @@ Both templates ship a working call of the [platform bridge](../platform/platform
 
 | Platform | Lua app | C++ app |
 | --- | --- | --- |
-| macOS, iOS, iPadOS, Mac Catalyst, tvOS | Swift, in `platform/apple/source/AppBridge.swift`, which the function `main` of `main.mm` registers. | Objective-C, in `src/AppBridge.mm`, which registers in `+load`. |
+| macOS, iOS, iPadOS, Mac Catalyst, tvOS | Swift, in `platform/apple/source/AppBridge.swift`, which the function `main` of `main.m` registers. | Objective-C, in `src/AppBridge.mm`, which registers in `+load`. |
 | Android | Kotlin, in `onCreate` of `App` in `platform/android/app/src/main/kotlin/dev/haylen/app/App.kt`. | The same Kotlin. |
 | Web | JavaScript, in `Module.preRun` of `platform/web/app.js`. | The same JavaScript, linked with `--pre-js`. |
 | Windows, Linux | No native handler, so the call fails with the code `noHandler` and the app shows its message. | C++, in `registerDesktopHandlers` of `src/App.cpp`, whose engine handler answers there. |
@@ -421,7 +421,7 @@ templates/lua/platform/apple/
   project.yml                     XcodeGen spec, which includes haylen/project.yml and gives each target its template from it.
   App.xcodeproj                   The project generated from project.yml with the haylen/ folder of an app without plugins or native libraries, always committed next to it.
   App.xcconfig                    Includes haylen/Haylen.xcconfig, and the settings after the include win.
-  source/main.mm                  Calls haylen_main, after the native bridge handlers of the app register.
+  source/main.m                   Calls haylen_main, after the native bridge handlers of the app register.
   source/AppBridge.swift          The Swift handler of the bridge example.
   source/HaylenBridgeAsync.swift  Registers Swift handlers of the bridge and of plugin contexts written as async functions with Codable parameters and results, and sends events with Encodable payloads.
   source/HaylenBridging.h         Makes HaylenBridge.h, HaylenPlugin.h and HaylenNotificationPlugin.h visible to the Swift files of the app and its plugins.
