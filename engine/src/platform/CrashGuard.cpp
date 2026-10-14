@@ -7,6 +7,7 @@
 
 #include <fcntl.h>
 #include <io.h>
+#include <share.h>
 #include <sys/stat.h>
 #elif !defined(__EMSCRIPTEN__)
 #include <fcntl.h>
@@ -57,13 +58,16 @@ void CrashGuard::writeReport(std::string_view reason) noexcept {
         return;
     }
 #if defined(_WIN32)
-    const int descriptor = _wopen(path.data(), _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY, _S_IREAD | _S_IWRITE);
+    int descriptor = -1;
+    if (_wsopen_s(&descriptor, path.data(), _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY, _SH_DENYNO, _S_IREAD | _S_IWRITE) != 0) {
+        return;
+    }
 #else
     const int descriptor = open(path.data(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-#endif
     if (descriptor < 0) {
         return;
     }
+#endif
 
     const Context& context = contexts[static_cast<std::size_t>(published.load(std::memory_order_acquire))];
     writeAll(descriptor, R"({"reason":")");
