@@ -80,7 +80,7 @@ SHADER_PROGRAMS = {"sprite": [], "sprite_lit": ["HAYLEN_LIT"], "batch": ["HAYLEN
 SHADER_ENGINE_BLOCKS = {"haylen_vs_params", "haylen_lit_params"}
 SHADER_ENGINE_TEXTURES = {"sprite_texture", *(f"sprite_texture_{index}" for index in range(1, 8))}
 SHADER_WATCH_SECONDS = 0.5
-GRADLE_VERSION = "9.8.0"
+GRADLE_VERSION = "9.8.1"
 # XcodeGen generates the Apple projects from their `project.yml`. The hash is the one of the `xcodegen.zip` asset of the release.
 XCODEGEN_VERSION = "2.46.0"
 XCODEGEN_SHA256 = "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
