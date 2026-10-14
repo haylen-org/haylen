@@ -85,6 +85,15 @@ GpuInstance GpuInstance::makeParts(const PartColors& colors) noexcept {
     return std::bit_cast<GpuInstance>(Parts{.colors = {colors.red.toRgba8(), colors.green.toRgba8(), colors.blue.toRgba8(), colors.yellow.toRgba8()}, .unused = {}});
 }
 
+GpuInstance GpuInstance::makeData(const SpriteData& data) noexcept {
+    static_assert(sizeof(DataRecord) == sizeof(GpuInstance));
+    return std::bit_cast<GpuInstance>(DataRecord{.values = {data.values[0], data.values[1], data.values[2], data.values[3]}, .texture = static_cast<float>(data.texture), .unused = {}});
+}
+
+std::size_t GpuInstance::getDataTexture() const noexcept {
+    return static_cast<std::size_t>(std::bit_cast<DataRecord>(*this).texture);
+}
+
 GpuInstance GpuInstance::makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept {
     static_assert(sizeof(Effect) == sizeof(GpuInstance));
     const float reach = std::max(effect.outlineWidth, effect.glowSize) + 1.0F;

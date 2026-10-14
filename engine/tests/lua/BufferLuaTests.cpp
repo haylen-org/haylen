@@ -67,7 +67,7 @@ TEST(SpriteLayoutTest, MovesSpriteFieldsThroughFloats) {
     EXPECT_EQ(second.size, math::Vec2(4.0F, 4.0F));
 
     std::vector<float> stored(4);
-    layout.store(layout.makeSprite(values, 0), stored, 0);
+    layout.store(layout.makeSprite(values, 0), {}, stored, 0);
     EXPECT_EQ(stored, (std::vector<float>{1.0F, 2.0F, 0.5F, 0.25F}));
     EXPECT_THROW(SpriteLayout({}), std::invalid_argument);
     EXPECT_EQ(SpriteLayout::fieldFromName("sourceWidth"), SpriteLayout::Field::SourceWidth);
@@ -75,11 +75,11 @@ TEST(SpriteLayoutTest, MovesSpriteFieldsThroughFloats) {
     EXPECT_FALSE(SpriteLayout::fieldFromName("depth").has_value());
 }
 
-// Every field a layout names reads and writes the value of the sprite it stands for.
+// Every field a layout names reads and writes the value of the sprite or of its data that it stands for, where the texture counts from 1.
 TEST(SpriteLayoutTest, StoresAndAppliesEveryField) {
     std::vector<SpriteLayout::Field> fields;
     std::vector<float> values;
-    for (int field = 0; field <= static_cast<int>(SpriteLayout::Field::SourceHeight); ++field) {
+    for (int field = 0; field <= static_cast<int>(SpriteLayout::Field::Data4); ++field) {
         fields.push_back(static_cast<SpriteLayout::Field>(field));
         values.push_back(static_cast<float>(field + 1) * 0.5F);
     }
@@ -91,9 +91,14 @@ TEST(SpriteLayoutTest, StoresAndAppliesEveryField) {
     EXPECT_EQ(sprite.pivot, math::Vec2(3.0F, 3.5F));
     EXPECT_EQ(sprite.color, (math::Color{4.0F, 4.5F, 5.0F, 5.5F}));
     EXPECT_EQ(sprite.source, (math::Rect{6.0F, 6.5F, 7.0F, 7.5F}));
+    const SpriteData data = layout.makeData(values, 0);
+    EXPECT_EQ(data, (SpriteData{.texture = 7, .values = {8.5F, 9.0F, 9.5F, 10.0F}}));
+    EXPECT_TRUE(layout.hasData());
+    EXPECT_FALSE(SpriteLayout({SpriteLayout::Field::X}).hasData());
+    EXPECT_TRUE(SpriteLayout({SpriteLayout::Field::X}, {}, {.texture = 1}).hasData());
 
     std::vector<float> stored(values.size());
-    layout.store(sprite, stored, 0);
+    layout.store(sprite, data, stored, 0);
     EXPECT_EQ(stored, values);
 }
 

@@ -54,11 +54,12 @@ scene.push({
 
 The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`, and leaves the others, which the sources include, alone. It runs `sokol-shdc` from `.tools/` with `engine/shaders/include` as its working directory, which is how `@include haylen/material.glsl` finds the shader library, and writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or the shader library, and `--force` compiles them all. The app's own `@include` paths are relative to the folder of the source being compiled.
 
-Every source compiles eight times, once for each kind of draw and once more of each for lit canvases:
+Every source compiles ten times, once for each kind of draw and once more of each for lit canvases:
 
 | Program | Defines | Draws |
 | --- | --- | --- |
 | `sprite`, `sprite_lit` | none, `HAYLEN_LIT` | Sprites, batches, nine-slices, rectangles, lines and post-processing. |
+| `batch`, `batch_lit` | `HAYLEN_BATCH`, `HAYLEN_BATCH HAYLEN_LIT` | Sprite batches with several textures or with [sprite data](#sprite-data). |
 | `text`, `text_lit` | `HAYLEN_TEXT`, `HAYLEN_TEXT HAYLEN_LIT` | Text. |
 | `mesh`, `mesh_lit` | `HAYLEN_MESH`, `HAYLEN_MESH HAYLEN_LIT` | Meshes and polygons. |
 | `shape`, `shape_lit` | `HAYLEN_SHAPE`, `HAYLEN_SHAPE HAYLEN_LIT` | Circles, rings, arcs and shapes, whose `uv` goes from 0 to 1 across the rectangle of the shape. |
@@ -83,7 +84,9 @@ The file `haylen/material.glsl` holds what every material shares. It defines the
 | `uv` | `in vec2` | Texture coordinate of the pixel in the texture of the draw. |
 | `color` | `in vec4` | Color of the draw, or of the mesh vertex. |
 | `sprite_texture`, `sprite_sampler` | texture and sampler at binding 0 | The texture of the draw, the image before the pass in post-processing, and the atlas of text. |
-| `haylen_texture(vec2 point)` | `vec4` | The texture of the draw at a point. |
+| `haylen_texture(vec2 point)` | `vec4` | The texture of the draw at a point, which a sprite of a batch with several textures picks by its own texture. |
+| `haylen_source` | `in vec4` | The source rectangle of the draw in texture coordinates, with its smallest corner in `xy` and its largest in `zw`, and the whole texture for meshes and shapes. |
+| `haylen_data` | `in vec4` | The four numbers of the [sprite data](#sprite-data) of a sprite of a batch, and zeros in the other draws. |
 | `haylen_inside(vec2 point)` | `vec2` | The point moved inside the texels of the source rectangle of the draw, half a texel in from its sides, so filtering never reads the texels around the region of a sprite, such as its neighbours in an atlas. Meshes and shapes keep their point. |
 | `haylen_sprite(vec2 point)` | `vec4` | The texture color inside the source of the draw times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. A shape paints its border color over it in the band along its edge. |
 | `haylen_text(vec2 point)` | `vec4` | The glyph at a point with its fill and outline, which is how text draws. Its weight, outline and softness, with the smoothing of the edge on screen, stop a sixteenth of the field short of the border of the quad of the glyph and shrink together beyond it. |
@@ -97,13 +100,59 @@ A material reads its colors through `haylen_base`, so the same source shades spr
 
 The engine's own shaders in `engine/shaders` include the same library, so a material draws exactly where the engine's program would.
 
+## Sprite data
+
+Each sprite of a [sprite batch](../lua-api/graphics2d.md#batches-of-several-textures) carries four numbers of its own, its `data`, which a material reads as `haylen_data` in the `batch` programs, so sprites that share one material and one draw call still sway, glow or tint on their own instead of each one taking a draw call with its own uniform values. The other programs read zeros, so the same source shades every kind of draw. A batch draws with the `batch` programs when it has several textures, or data and a material.
+
+```glsl
+// The file `content/shaders/sway.glsl`.
+@include haylen/material.glsl
+
+@fs sway_fs
+@include_block haylen_fragment
+layout(binding=1) uniform sway_params {
+    float time;
+};
+
+void main() {
+    float height = (uv.y - haylen_source.y) / max(haylen_source.w - haylen_source.y, 0.0001);
+    float bend = sin(time * 2.0 + haylen_data.x) * haylen_data.y * (1.0 - height);
+    vec4 base = haylen_base(uv + vec2(bend * (haylen_source.z - haylen_source.x), 0.0));
+    haylen_output(vec4(base.rgb * (1.0 + haylen_data.z), base.a));
+}
+@end
+
+@program sway haylen_vs sway_fs
+```
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+local sway = graphics2d.newMaterial(assets.shader('shaders/sway.shader'))
+local grass = graphics2d.newSpriteBatch(assets.texture('meadow/grass.png'))
+for index = 1, 400 do
+    grass:add({x = math.random(0, 1920), y = math.random(0, 1080), pivotY = 1, data = {math.random() * 6.28, 0.08, math.random() * 0.2}})
+end
+
+scene.push({
+    render = function(self)
+        sway:set('time', haylen.elapsed())
+        graphics2d.beginScreen()
+        grass:draw({material = sway})
+    end,
+})
+```
+
 ## Uniforms and textures
 
 A material fills the uniform blocks and textures that the fragment shader declares:
 
 - Uniform blocks take the bindings 1 to 6. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, and binding 7 the lighting of lit canvases. The renderer fills both with the layout of the shader library it was built with, so a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen.py shaders".` when a draw first uses it.
 - Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of `vec4`, `ivec4` and `mat4`, the types sokol-shdc allows, laid out with std140 rules.
-- Textures take the bindings from 1 up, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or `sprite_sampler`. The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
+- Textures take the bindings from 1 to 24, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or `sprite_sampler`. The bindings 25 to 31 hold the textures of a batch after its first in the `batch` programs. The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
 - A texture that a material leaves unset draws as white.
 
 The method `material:set(name, value)` takes the value that fits the type, as the [`Material` reference](../lua-api/graphics2d.md#material) lists, and a draw copies the values of its material when it is made. The properties `shader.uniforms` and `shader.textures` list what a shader offers.

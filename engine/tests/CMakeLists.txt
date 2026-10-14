@@ -18,6 +18,7 @@ set(HAYLEN_TEST_SOURCES
   2d/graphics/RendererTests.cpp
   2d/graphics/ScreenEffectsTests.cpp
   2d/graphics/ShapeTests.cpp
+  2d/graphics/SpriteDataTests.cpp
   2d/graphics/TextPainterTests.cpp
   2d/graphics/VectorAtlasTests.cpp
   2d/lighting/Lighting2DTests.cpp

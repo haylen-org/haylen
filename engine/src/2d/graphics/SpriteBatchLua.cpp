@@ -1,6 +1,10 @@
 #include "2d/graphics/SpriteBatchLua.hpp"
 
+#include <algorithm>
+#include <format>
 #include <optional>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "core/FloatBufferLua.hpp"
@@ -30,13 +34,47 @@ template <> struct EnumNames<graphics2d::SpriteLayout::Field> {
 
 namespace haylen::graphics2d {
 
-SpriteLayout SpriteBatchLua::readLayout(lua_State* L, int index, const SpriteInstance& sprite) {
-    luaL_checktype(L, index, LUA_TTABLE);
-    return SpriteLayout(lua::Stack::read<std::vector<SpriteLayout::Field>>(L, index), sprite);
+std::vector<graphics::Texture> SpriteBatchLua::readTextures(lua_State* L, int index) {
+    if (lua_type(L, index) == LUA_TTABLE) {
+        return lua::Stack::read<std::vector<graphics::Texture>>(L, index);
+    }
+    return {lua::Stack::read<graphics::Texture>(L, index)};
 }
 
-void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& sprite, const PartColors& colors) {
-    lua_createtable(L, 0, 14);
+// The data holds up to four numbers, and the numbers it leaves out keep those of the base.
+std::optional<SpriteData> SpriteBatchLua::readSpriteData(lua_State* L, int index, std::size_t textureCount, SpriteData base) {
+    const int table = lua_absindex(L, index);
+    const int texture = lua_getfield(L, table, "texture");
+    const int values = lua_getfield(L, table, "data");
+    if (texture == LUA_TNIL && values == LUA_TNIL) {
+        lua_pop(L, 2);
+        return std::nullopt;
+    }
+    if (texture != LUA_TNIL) {
+        const lua_Integer number = luaL_checkinteger(L, -2);
+        if (number < 1 || static_cast<std::size_t>(number) > textureCount) {
+            throw std::invalid_argument(std::format("A sprite draws from the texture {} of its batch, which has {}.", number, textureCount == 1 ? std::string("1 texture") : std::format("{} textures", textureCount)));
+        }
+        base.texture = static_cast<std::uint8_t>(number - 1);
+    }
+    if (values != LUA_TNIL) {
+        const std::vector<float> numbers = lua::Stack::read<std::vector<float>>(L, -1);
+        if (numbers.size() > base.values.size()) {
+            throw std::invalid_argument(std::format("The data of a sprite holds up to 4 numbers, and this one has {}.", numbers.size()));
+        }
+        std::ranges::copy(numbers, base.values.begin());
+    }
+    lua_pop(L, 2);
+    return base;
+}
+
+SpriteLayout SpriteBatchLua::readLayout(lua_State* L, int index, const SpriteInstance& sprite, const SpriteData& data) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    return SpriteLayout(lua::Stack::read<std::vector<SpriteLayout::Field>>(L, index), sprite, data);
+}
+
+void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& sprite, const PartColors& colors, const SpriteData& data) {
+    lua_createtable(L, 0, 16);
     lua::Stack::push(L, sprite.position.x);
     lua_setfield(L, -2, "x");
     lua::Stack::push(L, sprite.position.y);
@@ -65,6 +103,10 @@ void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& spri
     lua_setfield(L, -2, "flipDiagonal");
     lua::Stack::push(L, colors);
     lua_setfield(L, -2, "partColors");
+    lua::Stack::push(L, static_cast<int>(data.texture) + 1);
+    lua_setfield(L, -2, "texture");
+    lua::Stack::push(L, std::vector<float>(data.values.begin(), data.values.end()));
+    lua_setfield(L, -2, "data");
 }
 
 void SpriteBatchLua::readPartColors(lua_State* L, int table, SpriteBatch& batch, std::size_t index) {
@@ -86,10 +128,17 @@ std::size_t SpriteBatchLua::checkFirst(lua_State* L, int index) {
     return static_cast<std::size_t>(first - 1);
 }
 
+// A sprite without a size takes the size of the texture it draws from.
 int SpriteBatchLua::add(lua_State* L) {
     SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
-    const std::size_t index = batch.add(lua::TypeConverter::readSpriteInstance(L, 2, batch.getTexture(), {}, {kPartColorFields}));
+    luaL_checktype(L, 2, LUA_TTABLE);
+    const std::optional<SpriteData> data = readSpriteData(L, 2, batch.getTextures().size());
+    const graphics::Texture& texture = batch.getTextures()[data ? data->texture : 0];
+    const std::size_t index = batch.add(lua::TypeConverter::readSpriteInstance(L, 2, texture, {}, {kPartColorFields, kDataFields}));
     readPartColors(L, 2, batch, index);
+    if (data) {
+        batch.setData(index, *data);
+    }
     lua::Stack::push(L, index + 1);
     return 1;
 }
@@ -97,15 +146,21 @@ int SpriteBatchLua::add(lua_State* L) {
 int SpriteBatchLua::set(lua_State* L) {
     SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
     const std::size_t index = checkIndex(L, 2, batch);
-    batch.set(index, lua::TypeConverter::readSpriteInstance(L, 3, batch.getTexture(), batch.get(index), {kPartColorFields}));
+    luaL_checktype(L, 3, LUA_TTABLE);
+    const std::optional<SpriteData> data = readSpriteData(L, 3, batch.getTextures().size(), batch.getData(index));
+    const graphics::Texture& texture = batch.getTextures()[data ? data->texture : batch.getData(index).texture];
+    batch.set(index, lua::TypeConverter::readSpriteInstance(L, 3, texture, batch.get(index), {kPartColorFields, kDataFields}));
     readPartColors(L, 3, batch, index);
+    if (data) {
+        batch.setData(index, *data);
+    }
     return 0;
 }
 
 int SpriteBatchLua::get(lua_State* L) {
     const SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
     const std::size_t index = checkIndex(L, 2, batch);
-    pushSpriteInstance(L, batch.get(index), batch.getPartColors(index));
+    pushSpriteInstance(L, batch.get(index), batch.getPartColors(index), batch.getData(index));
     return 1;
 }
 

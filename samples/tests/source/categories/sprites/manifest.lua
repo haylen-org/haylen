@@ -22,5 +22,6 @@ return {
         {code = 'SPR-016', title = 'Groups and masks', description = 'A round portrait and a shaped card drawn through masks, fog of war cut open around the pointer and shapes that fade as one group.', module = 'groups-masks'},
         {code = 'SPR-017', title = 'Images and runtime atlases', description = 'A badge composed from images off the frame thread, sprites drawn from separate textures or one atlas packed at run time, and mipmaps.', module = 'atlases-runtime'},
         {code = 'SPR-018', title = 'Screen capture', description = 'The whole screen captured into an image without the frame thread waiting, shown and saved as a PNG file.', module = 'screen-capture'},
+        {code = 'SPR-019', title = 'Batches of several textures', description = 'A meadow of sprites from four separate images in one batch and one draw call, swayed by a material through the data of each sprite.', module = 'batch-textures'},
     },
 }

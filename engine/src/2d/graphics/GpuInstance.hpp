@@ -1,10 +1,12 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 #include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
+#include "haylen/2d/graphics/SpriteData.hpp"
 #include "haylen/2d/graphics/SpriteEffect.hpp"
 #include "haylen/2d/graphics/SpriteFlip.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
@@ -43,6 +45,9 @@ struct GpuInstance {
     // Packs the part colors of a recolored sprite into the record that follows its own, which the recolor program reads at the same instance.
     [[nodiscard]] static GpuInstance makeParts(const PartColors& colors) noexcept;
 
+    // Packs the data of a sprite of a batch into the record that follows its own, which the batch program reads at the same instance.
+    [[nodiscard]] static GpuInstance makeData(const SpriteData& data) noexcept;
+
     // Packs the effect of a sprite into the record that follows its own, which the effect program reads at the same instance. The reach grows the quad of the sprite by the outline and the glow, as a share of its source of `sourceSize` pixels.
     [[nodiscard]] static GpuInstance makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept;
 
@@ -52,6 +57,9 @@ struct GpuInstance {
     // Multiplies the alpha of the colors of a sprite or of a shape, such as by the strength of a distortion draw.
     void fade(float amount) noexcept;
     void fadeShape(float amount) noexcept;
+
+    // Returns the texture of the batch that the record of the data of a sprite names.
+    [[nodiscard]] std::size_t getDataTexture() const noexcept;
 
     // Returns the corners of the quad on its canvas from the top-left one clockwise, where the vertex stage places them, without the skew of italic glyphs.
     [[nodiscard]] std::array<math::Vec2, 4> getCorners() const noexcept;
@@ -64,6 +72,13 @@ struct GpuInstance {
         float reach[2];
         float widths[2];
         std::uint8_t unused[16];
+    };
+
+    // The four numbers of a sprite of a batch and the index of its texture.
+    struct DataRecord {
+        float values[4];
+        float texture;
+        std::uint8_t unused[28];
     };
 
     // The colors of the red, green, blue and yellow parts in the first bytes of a record.

@@ -8,7 +8,7 @@
 
 namespace haylen::graphics2d {
 
-const std::array<std::string_view, 8> Material::kPrograms = {"sprite", "sprite_lit", "text", "text_lit", "mesh", "mesh_lit", "shape", "shape_lit"};
+const std::array<std::string_view, 10> Material::kPrograms = {"sprite", "sprite_lit", "batch", "batch_lit", "text", "text_lit", "mesh", "mesh_lit", "shape", "shape_lit"};
 
 Material::Material(graphics::Shader shader) {
     if (!shader.isValid()) {

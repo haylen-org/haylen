@@ -89,7 +89,7 @@ int AnimatedBatchLua::set(lua_State* L) {
 int AnimatedBatchLua::get(lua_State* L) {
     const AnimatedBatch& batch = check(L);
     const std::size_t index = checkIndex(L, 2, batch);
-    graphics2d::SpriteBatchLua::pushSpriteInstance(L, batch.get(index), batch.getPartColors(index));
+    graphics2d::SpriteBatchLua::pushSpriteInstance(L, batch.get(index), batch.getPartColors(index), batch.getData(index));
     lua::Stack::push(L, batch.getAnimation(index));
     lua_setfield(L, -2, "animation");
     lua::Stack::push(L, batch.getSpeed(index));

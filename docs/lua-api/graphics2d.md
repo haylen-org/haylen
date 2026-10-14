@@ -249,7 +249,7 @@ scene.push({
 
 ### graphics2d.drawBatch(texture, sprites, order)
 
-Draws a list of sprite tables that share `texture` as one batch, without keeping them in a `SpriteBatch`. Each sprite table uses the keys described in [`SpriteBatch`](#spritebatch). The argument `order` is an optional draw order table. An empty list draws nothing. Use a `SpriteBatch` instead when most sprites stay the same from frame to frame.
+Draws a list of sprite tables that share `texture` as one batch, without keeping them in a `SpriteBatch`. The argument `texture` may also be a list of textures, which each sprite picks from with its `texture` key, as [batches of several textures](#batches-of-several-textures) explain. Each sprite table uses the keys described in [`SpriteBatch`](#spritebatch). The argument `order` is an optional draw order table. An empty list draws nothing. Use a `SpriteBatch` instead when most sprites stay the same from frame to frame.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -274,7 +274,7 @@ scene.push({
 
 ### graphics2d.drawBatch(texture, buffer, layout, order)
 
-Draws the sprites a float buffer of [`haylen.collections`](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. The argument `layout` is a sprite table, with the keys of [`SpriteBatch`](#spritebatch) but `partColors`, that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".`. The [performance section of the Lua guide](../core/lua.md#performance) compares it with sprite tables.
+Draws the sprites a float buffer of [`haylen.collections`](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. The argument `texture` may also be a list of textures, which the `texture` field of each sprite picks from. The argument `layout` is a sprite table, with the keys of [`SpriteBatch`](#spritebatch) but `partColors`, that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".`. The [performance section of the Lua guide](../core/lua.md#performance) compares it with sprite tables.
 
 ```lua
 local collections = require('haylen.collections')
@@ -1130,7 +1130,7 @@ scene.push({
 
 ### graphics2d.newSpriteBatch(texture)
 
-Creates a `SpriteBatch` that draws many sprites of one texture in a single batch. The sprite data stays in C++, and scripts change only the sprites that move.
+Creates a `SpriteBatch` that draws many sprites of one texture in a single batch. The sprite data stays in C++, and scripts change only the sprites that move. The argument `texture` may also be a list of up to 8 textures, whose sprites still draw in one call, as [batches of several textures](#batches-of-several-textures) explain.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1524,7 +1524,7 @@ scene.push({
 
 ## SpriteBatch
 
-A `SpriteBatch` holds many sprites that share one texture. Indices count from 1. Each sprite is a table with these keys:
+A `SpriteBatch` holds many sprites that share one texture, or up to 8 textures. Indices count from 1. Each sprite is a table with these keys:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1538,10 +1538,12 @@ A `SpriteBatch` holds many sprites that share one texture. Indices count from 1.
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image. |
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
 | `partColors` | table | white parts | The colors of the parts of the sprite when the batch draws with a `partMask`, as [recoloring by parts](#recoloring-by-parts) explains. A batch keeps room for part colors only once a sprite has some. |
+| `texture` | integer | `1` | The texture of the batch that the sprite draws from, counted from 1. A sprite without a size takes the size of its texture. |
+| `data` | table | `{0, 0, 0, 0}` | Up to four numbers that the material of the draw reads as `haylen_data`, as [batches of several textures](#batches-of-several-textures) explain. A batch keeps room for the texture and the data only once a sprite has some. |
 
 ### Sprite fields
 
-Float buffers name the numbers of a sprite with these fields: `x`, `y`, `width`, `height`, `rotation`, `pivotX`, `pivotY`, the color channels `red`, `green`, `blue` and `alpha` from 0 to 1, and the source rectangle `sourceX`, `sourceY`, `sourceWidth` and `sourceHeight` in texture pixels. An unknown name raises an error that ends with `(unknown value '<name>')`, and an empty list raises `A sprite layout needs at least one field.`.
+Float buffers name the numbers of a sprite with these fields: `x`, `y`, `width`, `height`, `rotation`, `pivotX`, `pivotY`, the color channels `red`, `green`, `blue` and `alpha` from 0 to 1, the source rectangle `sourceX`, `sourceY`, `sourceWidth` and `sourceHeight` in texture pixels, the `texture` of the batch counted from 1, and the numbers of the data `data1`, `data2`, `data3` and `data4`. An unknown name raises an error that ends with `(unknown value '<name>')`, and an empty list raises `A sprite layout needs at least one field.`.
 
 ### batch:add(sprite)
 
@@ -1725,7 +1727,7 @@ scene.push({
 
 ### batch:bake()
 
-Copies the sprites into an immutable `StaticSpriteBatch` on the GPU, which draws every frame without uploading sprite data again. Later changes to the batch do not affect the baked copy. An empty batch raises `A static batch needs a texture and at least one sprite.`
+Copies the sprites into an immutable `StaticSpriteBatch` on the GPU, which draws every frame without uploading sprite data again. Later changes to the batch do not affect the baked copy. An empty batch raises `A static batch needs a texture and at least one sprite.`, and a batch with several textures or with sprite data raises `A sprite batch with several textures or sprite data does not bake. Draw it as a sprite batch instead.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1838,6 +1840,48 @@ scene.push({
         graphics2d.beginScreen()
         crowd:draw({partMask = mask})
         hero:draw()
+    end,
+})
+```
+
+## Batches of several textures
+
+A sprite batch draws from up to 8 textures in one draw call, so sprites of separate images that mix in one layer, such as heroes, rocks and trees that a y-sorted world interleaves, need no atlas to share a batch. `graphics2d.newSpriteBatch` and `graphics2d.drawBatch` take a list of textures, and each sprite names the one it draws from with its `texture` key, counted from 1, or the `texture` field of a float buffer. A sprite without a size takes the size of its own texture.
+
+Every sprite also has `data`, four numbers that the [material](#material) of the draw reads in its shader as `haylen_data`, so one material and one draw call give every sprite its own phase, strength, color or frame, as the [shader guide](../graphics/shaders.md#sprite-data) describes. A batch with several textures, or with data and a material, draws with the batch program, which reads a second record for each sprite, while the data of a batch of one texture without a material changes nothing and costs nothing.
+
+The textures of a batch draw with one sampler, so they share their filter, wrap and mipmaps. A batch with several textures draws without a part mask, a normal map or a distortion, and does not bake. These errors stop such a batch:
+
+| Error | Cause |
+| --- | --- |
+| `A sprite batch draws from at most 8 textures.` | The list holds more than 8 textures. |
+| `The textures of a sprite batch share their filter, wrap and mipmaps, since they draw with one sampler.` | The textures sample differently. |
+| `A sprite draws from the texture <number> of its batch, which has <count> textures.` | A sprite table names a texture past the list. |
+| `A sprite of a batch names a texture past the <count> textures of the batch.` | A float buffer names a texture past the list. |
+| `The data of a sprite holds up to 4 numbers, and this one has <count>.` | The `data` of a sprite table holds more than four numbers. |
+| `A sprite batch with several textures draws without a part mask.` | The order has a `partMask`. |
+| `A sprite batch with several textures draws without a normal map.` | The order has a `normalMap` in a lit canvas. |
+| `A sprite batch with several textures or sprite data draws without a distortion.` | The order has a `distortion`. |
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+-- The shader `content/shaders/sway.glsl` bends each sprite by `haylen_data.x` as its phase and `haylen_data.y` as its strength.
+local sway = graphics2d.newMaterial(assets.shader('shaders/sway.shader'))
+local images = {assets.texture('meadow/grass.png'), assets.texture('meadow/flower.png'), assets.texture('meadow/bush.png')}
+local meadow = graphics2d.newSpriteBatch(images)
+for index = 1, 600 do
+    meadow:add({x = math.random(0, 1920), y = math.random(0, 1080), pivotY = 1, texture = index % 3 + 1, data = {math.random() * 6.28, 0.05}})
+end
+
+scene.push({
+    render = function(self)
+        sway:set('time', haylen.elapsed())
+        graphics2d.beginScreen()
+        meadow:draw({material = sway})
     end,
 })
 ```

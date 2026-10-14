@@ -731,10 +731,12 @@ elseif(HAYLEN_BACKEND STREQUAL "GLCORE")
   target_link_libraries(haylen_engine PRIVATE OpenGL::GL)
 endif()
 
-# Programs that draw into lit canvases also compile with HAYLEN_LIT, which writes the images the light pass reads.
+# Programs that draw into lit canvases also compile with HAYLEN_LIT, which writes the images the light pass reads, and the sprite program compiles once more with HAYLEN_BATCH for the sprite batches with several textures or sprite data.
 set(shader_dir "${CMAKE_CURRENT_LIST_DIR}/shaders")
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/sprite.glsl" MODULE sprite)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/sprite.glsl" MODULE sprite_lit DEFINES HAYLEN_LIT)
+haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/sprite.glsl" MODULE batch DEFINES HAYLEN_BATCH)
+haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/sprite.glsl" MODULE batch_lit DEFINES HAYLEN_BATCH HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/text.glsl" MODULE text DEFINES HAYLEN_TEXT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/text.glsl" MODULE text_lit DEFINES HAYLEN_TEXT HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/mesh.glsl" MODULE mesh DEFINES HAYLEN_MESH)

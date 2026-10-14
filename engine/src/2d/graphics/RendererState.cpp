@@ -16,6 +16,8 @@
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "shaders/batch.glsl.h"
+#include "shaders/batch_lit.glsl.h"
 #include "shaders/blend.glsl.h"
 #include "shaders/blend_lit.glsl.h"
 #include "shaders/composite.glsl.h"
@@ -40,8 +42,8 @@ namespace haylen::graphics2d {
 debug::ObjectCounter& RendererState::bufferCounter = *new debug::ObjectCounter("RendererBuffers", debug::ObjectCounter::Kind::Native);
 
 std::uint64_t RendererState::submissions = 0;
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc};
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc, batch_sprite_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc, batch_lit_sprite_shader_desc};
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
@@ -215,7 +217,7 @@ void RendererState::resetFrame() noexcept {
     canvasOpen = false;
 }
 
-std::uint32_t RendererState::getShade(Program program, const DrawOrder& order) {
+std::uint32_t RendererState::getShade(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures) {
     if (!(order.specular >= 0.0F && order.emission >= 0.0F)) {
         throw std::invalid_argument("A draw needs a specular strength and an emission of zero or more.");
     }
@@ -232,6 +234,11 @@ std::uint32_t RendererState::getShade(Program program, const DrawOrder& order) {
     }
     if (program == Program::Recolor) {
         shade.partMask = order.partMask.getResource().get();
+    }
+    if (program == Program::Batch) {
+        for (std::size_t index = 0; index < shade.batchTextures.size(); ++index) {
+            shade.batchTextures[index] = textures[index + 1 < textures.size() ? index + 1 : 0].getResource().get();
+        }
     }
     // Unlit canvases ignore the lighting of draws, so it never splits their commands.
     if (getCanvas().isLit()) {
@@ -290,7 +297,7 @@ void RendererState::requireReadable(const graphics::TextureResource* texture) {
     }
 }
 
-DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY) {
+DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY, std::span<const graphics::Texture> textures) {
     Canvas& current = getCanvas();
     if (order.material.isValid() && (program == Program::ImageBlend || program == Program::Metaball)) {
         throw std::invalid_argument("Image blends and metaballs do not take a material.");
@@ -301,11 +308,20 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
     if (order.material.isValid() && program == Program::Effect) {
         throw std::invalid_argument("A sprite with an effect does not take a material.");
     }
+    if (program == Program::Batch && textures.size() > 1 && order.normalMap.isValid()) {
+        throw std::invalid_argument("A sprite batch with several textures draws without a normal map.");
+    }
     const bool distorts = order.distortion > 0.0F;
+    if (distorts && program == Program::Batch) {
+        throw std::invalid_argument("A sprite batch with several textures or sprite data draws without a distortion.");
+    }
     if (distorts && program != Program::Sprite && program != Program::Mesh && program != Program::Shape) {
         throw std::invalid_argument("Only sprites, sprite batches, nine-slices, shapes and meshes draw as distortion.");
     }
     requireReadable(texture);
+    for (const graphics::Texture& batchTexture : textures) {
+        requireReadable(batchTexture.getResource().get());
+    }
     if (program == Program::Recolor) {
         requireReadable(order.partMask.getResource().get());
     }
@@ -323,7 +339,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         .program = program,
         .blend = distorts ? graphics::BlendMode::Type::Additive : order.blend,
         .clip = clipStack.empty() ? 0U : clipStack.back(),
-        .shade = getShade(program, order),
+        .shade = getShade(program, order, textures),
         .texture = texture,
         .distortion = distorts,
     };
@@ -465,6 +481,9 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
     case Program::Shape:
         describeShapeLayout(desc);
         return;
+    case Program::Batch:
+        describeBatchLayout(desc);
+        return;
     case Program::Sprite:
     case Program::Text:
         break;
@@ -532,6 +551,28 @@ void RendererState::describeEffectLayout(sg_pipeline_desc& desc) {
     desc.layout.attrs[ATTR_effect_effect_effect_amounts] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
     desc.layout.attrs[ATTR_effect_effect_effect_reach] = {.buffer_index = 2, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT2};
     desc.layout.attrs[ATTR_effect_effect_effect_widths] = {.buffer_index = 2, .offset = 24, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+}
+
+// A sprite of a batch is its own record followed by the record of its data, which the second buffer binding reads at the same instance.
+void RendererState::describeBatchLayout(sg_pipeline_desc& desc) {
+    constexpr int kStride = static_cast<int>(sizeof(GpuInstance) * 2);
+    desc.layout.buffers[0].stride = 8;
+    desc.layout.buffers[1].stride = kStride;
+    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.buffers[2].stride = kStride;
+    desc.layout.buffers[2].step_func = SG_VERTEXSTEP_PER_INSTANCE;
+    desc.layout.attrs[ATTR_batch_sprite_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_batch_sprite_instance_position] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_batch_sprite_instance_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_batch_sprite_instance_uv] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_USHORT4N};
+    desc.layout.attrs[ATTR_batch_sprite_instance_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_batch_sprite_instance_flash] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_batch_sprite_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
+    desc.layout.attrs[ATTR_batch_sprite_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
+    desc.layout.attrs[ATTR_batch_sprite_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
+    desc.layout.attrs[ATTR_batch_sprite_instance_data] = {.buffer_index = 2, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT4};
+    desc.layout.attrs[ATTR_batch_sprite_instance_texture] = {.buffer_index = 2, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT};
     desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
 }
 
@@ -666,6 +707,8 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
         return lit ? "mesh_lit" : "mesh";
     case Program::Shape:
         return lit ? "shape_lit" : "shape";
+    case Program::Batch:
+        return lit ? "batch_lit" : "batch";
     case Program::ImageBlend:
     case Program::Composite:
     case Program::Light:
@@ -675,7 +718,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::Effect:
         break;
     }
-    throw std::logic_error("Materials only replace the sprite, text, mesh and shape programs.");
+    throw std::logic_error("Materials only replace the sprite, batch, text, mesh and shape programs.");
 }
 
 const graphics::ShaderResource::Program& RendererState::getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target) {

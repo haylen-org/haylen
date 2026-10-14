@@ -164,6 +164,10 @@ graphics2d::PartColors AnimatedBatch::getPartColors(std::size_t index) const {
     return batch.getPartColors(index);
 }
 
+graphics2d::SpriteData AnimatedBatch::getData(std::size_t index) const {
+    return batch.getData(index);
+}
+
 void AnimatedBatch::writeFields(std::span<const float> values, const graphics2d::SpriteLayout& layout, std::size_t first) {
     batch.writeFields(values, layout, first);
     const std::size_t end = std::min(states.size(), first + layout.getCount(values));

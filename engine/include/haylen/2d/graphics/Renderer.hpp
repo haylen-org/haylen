@@ -21,6 +21,7 @@
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
+#include "haylen/2d/graphics/SpriteData.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/SpriteLayout.hpp"
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
@@ -157,6 +158,10 @@ class Renderer final {
 
     // Draws the sprites a buffer of floats holds, each one the template of the layout with the fields the values give it, without a sprite list in between.
     void drawBatch(const graphics::Texture& texture, std::span<const float> values, const SpriteLayout& layout, const DrawOrder& order = {});
+
+    // Draws sprites that pick their texture by their data among up to `SpriteData::kMaxTextures` textures with the same filter, wrap and mipmaps, in one draw call, and hand the material of the order the numbers of their data, where sprites past the end of the data take the first texture and zeros. A batch with several textures draws without a part mask, a normal map or a distortion.
+    void drawBatch(std::span<const graphics::Texture> textures, std::span<const SpriteInstance> sprites, std::span<const SpriteData> data, const DrawOrder& order = {}, std::span<const PartColors> partColors = {});
+    void drawBatch(std::span<const graphics::Texture> textures, std::span<const float> values, const SpriteLayout& layout, const DrawOrder& order = {});
     // Draws a baked batch shifted by an offset in world units, which lets parallax layers reuse one batch. A baked batch takes no part mask.
     void drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order = {}, math::Vec2 offset = {});
     void drawNineSlice(const NineSlice& slice, const math::Rect& area, math::Color color = math::Color::white(), const DrawOrder& order = {}, float borderScale = 1.0F);
@@ -282,8 +287,11 @@ class Renderer final {
     // Runs the overlays in the open canvas and closes it.
     void finishCanvas();
 
-    // Adds `count` sprites of one texture, where `spriteAt` returns the sprite at an index from any worker thread, and `partsAt` its part colors when the order recolors them.
-    template <typename SpriteAt, typename PartsAt> void addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt);
+    // Adds `count` sprites of the textures, where `spriteAt` returns the sprite at an index from any worker thread, `partsAt` its part colors when the order recolors them, and `dataAt` its data when the sprites have any.
+    template <typename SpriteAt, typename PartsAt, typename DataAt> void addBatch(std::span<const graphics::Texture> textures, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt, const DataAt& dataAt, bool hasData);
+
+    // Throws when the textures cannot share one draw call, or when a sprite names a texture the batch lacks.
+    template <typename DataAt> static void checkBatch(std::span<const graphics::Texture> textures, std::size_t count, const DataAt& dataAt, bool hasData);
 
     std::unique_ptr<RendererState> state;
 };

@@ -11,6 +11,7 @@
 #include "haylen/2d/graphics/DrawOrder.hpp"
 #include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/SpriteBatch.hpp"
+#include "haylen/2d/graphics/SpriteData.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/SpriteLayout.hpp"
 #include "haylen/core/Signal.hpp"
@@ -71,6 +72,7 @@ class AnimatedBatch final {
     void set(std::size_t index, const graphics2d::SpriteInstance& sprite);
     void setPartColors(std::size_t index, const graphics2d::PartColors& colors);
     [[nodiscard]] graphics2d::PartColors getPartColors(std::size_t index) const;
+    [[nodiscard]] graphics2d::SpriteData getData(std::size_t index) const;
     void writeFields(std::span<const float> values, const graphics2d::SpriteLayout& layout, std::size_t first = 0);
     void readFields(std::span<float> values, const graphics2d::SpriteLayout& layout, std::size_t first = 0) const;
 

@@ -16,6 +16,8 @@
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "shaders/batch.glsl.h"
+#include "shaders/batch_lit.glsl.h"
 #include "shaders/blend.glsl.h"
 #include "shaders/composite.glsl.h"
 #include "shaders/effect.glsl.h"
@@ -59,7 +61,7 @@ FrameSubmitter::Matrix FrameSubmitter::projection(const math::Transform2D& view,
 }
 
 bool FrameSubmitter::isInstanced(const DrawItem& item) noexcept {
-    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Shape) && item.batch == nullptr;
+    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Shape || item.program == Program::Batch) && item.batch == nullptr;
 }
 
 void FrameSubmitter::submit() {
@@ -789,7 +791,8 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             bindings.vertex_buffers[1] = command.batch != nullptr ? command.batch->buffer : state.instanceBuffer;
             bindings.vertex_buffer_offsets[1] = static_cast<int>(command.first * sizeof(GpuInstance));
         }
-        if (command.program == Program::Recolor || command.program == Program::Effect) {
+        const bool paired = command.program == Program::Recolor || command.program == Program::Effect || command.program == Program::Batch;
+        if (paired) {
             bindings.vertex_buffers[2] = state.instanceBuffer;
             bindings.vertex_buffer_offsets[2] = static_cast<int>((command.first + 1) * sizeof(GpuInstance));
         }
@@ -798,6 +801,8 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
         }
         if (shade.material != nullptr) {
             bindMaterial(bindings, shade, *command.texture, pass, command.program);
+        } else if (command.program == Program::Batch) {
+            bindBatch(bindings, shade, *command.texture, pass);
         } else {
             bindings.views[VIEW_sprite_sprite_texture] = command.texture->view;
             bindings.samplers[SMP_sprite_sprite_sampler] = command.texture->sampler;
@@ -810,7 +815,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
         if (command.program == Program::Mesh) {
             sg_draw(static_cast<int>(command.first), static_cast<int>(command.count), 1);
         } else {
-            sg_draw(0, 4, static_cast<int>(command.program == Program::Recolor || command.program == Program::Effect ? command.count / 2 : command.count));
+            sg_draw(0, 4, static_cast<int>(paired ? command.count / 2 : command.count));
         }
         ++state.stats.drawCalls;
     }
@@ -916,6 +921,18 @@ void FrameSubmitter::applyShade(const Shade& shade, graphics::PassTarget pass, P
     }
 }
 
+void FrameSubmitter::bindBatch(sg_bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass) {
+    static_assert(VIEW_batch_sprite_texture_7 == VIEW_batch_sprite_texture_1 + 6 && VIEW_batch_lit_sprite_texture_1 == VIEW_batch_sprite_texture_1);
+    bindings.views[VIEW_batch_sprite_texture] = texture.view;
+    for (std::size_t index = 0; index < shade.batchTextures.size(); ++index) {
+        bindings.views[VIEW_batch_sprite_texture_1 + index] = shade.batchTextures[index]->view;
+    }
+    bindings.samplers[SMP_batch_sprite_sampler] = texture.sampler;
+    if (pass == graphics::PassTarget::LitScene) {
+        bindings.views[VIEW_batch_lit_normal_texture] = (shade.normalMap != nullptr ? shade.normalMap : state.white.getResource().get())->view;
+    }
+}
+
 void FrameSubmitter::bindMaterial(sg_bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass, Program program) {
     const graphics::ShaderResource::Program& made = state.getMaterialProgram(*shade.material, program, pass);
     const std::vector<graphics::Shader::TextureSlot>& textures = shade.material->shader.getTextures();
@@ -925,6 +942,9 @@ void FrameSubmitter::bindMaterial(sg_bindings& bindings, const Shade& shade, con
             if (textures[index].slot == slot) {
                 return *state.shadeTextures[shade.textureBegin + index];
             }
+        }
+        if (program == Program::Batch && slot >= VIEW_batch_sprite_texture_1) {
+            return *shade.batchTextures[static_cast<std::size_t>(slot - VIEW_batch_sprite_texture_1)];
         }
         return slot == 0 ? texture : *state.white.getResource();
     };

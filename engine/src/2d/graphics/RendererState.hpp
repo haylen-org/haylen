@@ -63,7 +63,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 11;
+    static constexpr std::size_t kProgramCount = 12;
 
     // The submissions numbered so far on the frame thread, where one engine runs at a time.
     static std::uint64_t submissions;
@@ -213,8 +213,8 @@ struct RendererState {
     // Throws when a draw would sample the image its canvas draws into, which no backend can read and write in one pass.
     void requireReadable(const graphics::TextureResource* texture);
 
-    // The standing y is the point a y-sorted canvas sorts the draw by.
-    DrawItem& addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY);
+    // The standing y is the point a y-sorted canvas sorts the draw by, and a draw of the batch program names every texture of its batch, the first one being the texture of the draw.
+    DrawItem& addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY, std::span<const graphics::Texture> textures = {});
 
     // Scales the coverage of the instances or vertices a distortion draw recorded by its distortion, so their alpha adds up in the distortion map.
     static void scaleCoverage(std::span<GpuInstance> data, Program program, float distortion) noexcept;
@@ -262,12 +262,13 @@ struct RendererState {
     [[nodiscard]] static const char* materialProgramName(Program program, graphics::PassTarget target);
 
     // Returns the index of the shade of a draw, reusing the last shade when the draw shades the same way.
-    [[nodiscard]] std::uint32_t getShade(Program program, const DrawOrder& order);
+    [[nodiscard]] std::uint32_t getShade(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures);
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
     void describeLayout(sg_pipeline_desc& desc, Program program) const;
     static void describeRecolorLayout(sg_pipeline_desc& desc);
     static void describeEffectLayout(sg_pipeline_desc& desc);
     static void describeShapeLayout(sg_pipeline_desc& desc);
+    static void describeBatchLayout(sg_pipeline_desc& desc);
     static void describeLightLayout(sg_pipeline_desc& desc);
     void describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const;
 };

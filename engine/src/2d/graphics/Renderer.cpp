@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -16,6 +17,7 @@
 #include "graphics/DeviceState.hpp"
 #include "graphics/Gpu.hpp"
 #include "graphics/TextureResource.hpp"
+#include "haylen/2d/graphics/SpriteBatch.hpp"
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/2d/lighting/Occluder.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -255,42 +257,73 @@ void Renderer::draw(const Sprite& sprite) {
     state->addInstances(Program::Recolor, sprite.order, sprite.texture, recolored, sprite.position.y);
 }
 
-template <typename SpriteAt, typename PartsAt> void Renderer::addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt) {
-    if (!texture.isValid()) {
-        throw std::invalid_argument("Cannot draw a sprite batch without a texture.");
+template <typename DataAt> void Renderer::checkBatch(std::span<const graphics::Texture> textures, std::size_t count, const DataAt& dataAt, bool hasData) {
+    SpriteBatch::checkTextures(textures);
+    if (!hasData) {
+        return;
     }
+    for (std::size_t index = 0; index < count; ++index) {
+        if (dataAt(index).texture >= textures.size()) {
+            throw std::invalid_argument(std::format("A sprite of a batch names a texture past the {} textures of the batch.", textures.size()));
+        }
+    }
+}
+
+template <typename SpriteAt, typename PartsAt, typename DataAt> void Renderer::addBatch(std::span<const graphics::Texture> textures, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt, const DataAt& dataAt, bool hasData) {
+    checkBatch(textures, count, dataAt, hasData);
     if (count == 0 || !state->accepts(order)) {
         return;
     }
 
-    // A recolored sprite takes a second record with its part colors. A y-sorted canvas sorts every sprite of the batch on its own, so each one becomes an item.
+    // A recolored sprite takes a second record with its part colors, and a sprite of the batch program one with its data, which only a material or several textures need. A y-sorted canvas sorts every sprite of the batch on its own, so each one becomes an item.
     const bool recolored = order.partMask.isValid();
-    const Program program = recolored ? Program::Recolor : Program::Sprite;
-    const std::size_t stride = recolored ? 2 : 1;
-    state->retain(texture);
-    const auto first = static_cast<std::uint32_t>(state->instances.size());
+    const bool several = textures.size() > 1;
+    if (recolored && several) {
+        throw std::invalid_argument("A sprite batch with several textures draws without a part mask.");
+    }
+    const bool batched = !recolored && (several || (hasData && order.material.isValid()));
+    const Program program = recolored ? Program::Recolor : (batched ? Program::Batch : Program::Sprite);
+    const std::size_t stride = recolored || batched ? 2 : 1;
+    const std::span<const graphics::Texture> listed = batched ? textures : std::span<const graphics::Texture>{};
+    graphics::TextureResource* first = textures.front().getResource().get();
+    std::array<const graphics::TextureResource*, SpriteData::kMaxTextures> resources{};
+    for (std::size_t index = 0; index < textures.size(); ++index) {
+        state->retain(textures[index]);
+        resources[index] = textures[index].getResource().get();
+    }
+    const auto begin = static_cast<std::uint32_t>(state->instances.size());
     if (state->getCanvas().options.sort == SortMode::Y) {
         for (std::size_t index = 0; index < count; ++index) {
-            DrawItem& item = state->addItem(program, order, texture.getResource().get(), spriteAt(index).position.y);
-            item.first = first + static_cast<std::uint32_t>(index * stride);
+            DrawItem& item = state->addItem(program, order, first, spriteAt(index).position.y, listed);
+            item.first = begin + static_cast<std::uint32_t>(index * stride);
             item.count = static_cast<std::uint32_t>(stride);
         }
     } else {
-        DrawItem& item = state->addItem(program, order, texture.getResource().get(), spriteAt(0).position.y);
-        item.first = first;
+        DrawItem& item = state->addItem(program, order, first, spriteAt(0).position.y, listed);
+        item.first = begin;
         item.count = static_cast<std::uint32_t>(count * stride);
     }
     state->instances.resize(state->instances.size() + count * stride);
 
     // Large batches convert their instances on the worker pool while the frame thread takes its own share.
-    GpuInstance* output = state->instances.data() + first;
-    const graphics::TextureResource& resource = *texture.getResource();
+    GpuInstance* output = state->instances.data() + begin;
     // clang-format off
-    const auto convert = [&](std::size_t begin, std::size_t end) {
-        for (std::size_t index = begin; index < end; ++index) {
-            output[index * stride] = GpuInstance::make(resource, spriteAt(index));
+    const auto convert = [&](std::size_t from, std::size_t to) {
+        for (std::size_t index = from; index < to; ++index) {
             if (recolored) {
+                output[index * stride] = GpuInstance::make(*first, spriteAt(index));
                 output[index * stride + 1] = GpuInstance::makeParts(partsAt(index));
+            } else if (hasData) {
+                const SpriteData data = dataAt(index);
+                output[index * stride] = GpuInstance::make(*resources[data.texture], spriteAt(index));
+                if (batched) {
+                    output[index * stride + 1] = GpuInstance::makeData(data);
+                }
+            } else {
+                output[index * stride] = GpuInstance::make(*first, spriteAt(index));
+                if (batched) {
+                    output[index * stride + 1] = GpuInstance::makeData({});
+                }
             }
         }
     };
@@ -302,21 +335,35 @@ template <typename SpriteAt, typename PartsAt> void Renderer::addBatch(const gra
         convert(0, count);
     }
     if (order.distortion > 0.0F) {
-        RendererState::scaleCoverage(std::span(state->instances).subspan(first, count * stride), program, order.distortion);
+        RendererState::scaleCoverage(std::span(state->instances).subspan(begin, count * stride), program, order.distortion);
     }
     state->stats.sprites += count;
 }
 
 void Renderer::drawBatch(const graphics::Texture& texture, std::span<const SpriteInstance> sprites, const DrawOrder& order, std::span<const PartColors> partColors) {
-    // clang-format off
-    addBatch(texture, sprites.size(), order, [sprites](std::size_t index) -> const SpriteInstance& { return sprites[index]; }, [partColors](std::size_t index) {
-        return index < partColors.size() ? partColors[index] : PartColors{};
-    });
-    // clang-format on
+    drawBatch(std::span(&texture, 1), sprites, {}, order, partColors);
 }
 
 void Renderer::drawBatch(const graphics::Texture& texture, std::span<const float> values, const SpriteLayout& layout, const DrawOrder& order) {
-    addBatch(texture, layout.getCount(values), order, [values, &layout](std::size_t index) { return layout.makeSprite(values, index); }, [](std::size_t) { return PartColors{}; });
+    drawBatch(std::span(&texture, 1), values, layout, order);
+}
+
+void Renderer::drawBatch(std::span<const graphics::Texture> textures, std::span<const SpriteInstance> sprites, std::span<const SpriteData> data, const DrawOrder& order, std::span<const PartColors> partColors) {
+    // clang-format off
+    addBatch(textures, sprites.size(), order, [sprites](std::size_t index) -> const SpriteInstance& { return sprites[index]; }, [partColors](std::size_t index) {
+        return index < partColors.size() ? partColors[index] : PartColors{};
+    }, [data](std::size_t index) {
+        return index < data.size() ? data[index] : SpriteData{};
+    }, !data.empty());
+    // clang-format on
+}
+
+void Renderer::drawBatch(std::span<const graphics::Texture> textures, std::span<const float> values, const SpriteLayout& layout, const DrawOrder& order) {
+    // clang-format off
+    addBatch(textures, layout.getCount(values), order, [values, &layout](std::size_t index) { return layout.makeSprite(values, index); }, [](std::size_t) { return PartColors{}; }, [values, &layout](std::size_t index) {
+        return layout.makeData(values, index);
+    }, layout.hasData());
+    // clang-format on
 }
 
 void Renderer::drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order, math::Vec2 offset) {
@@ -881,7 +928,7 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
     const std::size_t end = state->items.size();
     for (std::size_t index = canvas.itemBegin; index < end; ++index) {
         const DrawItem item = state->items[index];
-        const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor || item.program == Program::Effect;
+        const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Batch;
         if ((!sprite && item.program != Program::Text) || item.distortion || item.texture == state->white.getResource().get()) {
             continue;
         }
@@ -891,7 +938,7 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
             continue;
         }
 
-        const std::size_t stride = item.program == Program::Recolor || item.program == Program::Effect ? 2 : 1;
+        const std::size_t stride = item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Batch ? 2 : 1;
         if (item.program == Program::Text) {
             math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
             for (std::size_t quad = item.first; quad < item.first + item.count; ++quad) {
@@ -902,7 +949,9 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
         }
         for (std::size_t quad = item.first; quad < item.first + item.count; quad += stride) {
             const bool named = quad == item.first || item.count == stride;
-            visitor({.corners = state->instances[quad].getCorners(), .label = named ? std::string_view(item.texture->label) : std::string_view()});
+            const std::size_t texture = item.program == Program::Batch ? state->instances[quad + 1].getDataTexture() : 0;
+            const graphics::TextureResource* drawn = texture == 0 ? item.texture : state->shades[item.shade].batchTextures[texture - 1];
+            visitor({.corners = state->instances[quad].getCorners(), .label = named ? std::string_view(drawn->label) : std::string_view()});
         }
     }
 }

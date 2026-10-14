@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -149,8 +150,9 @@ int Graphics2DLua::blendCameras(lua_State* L) {
     return 1;
 }
 
+// Makes a batch of one texture with `newSpriteBatch(texture)`, or of several with `newSpriteBatch({texture, ...})`.
 int Graphics2DLua::newSpriteBatch(lua_State* L) {
-    lua::Userdata::emplace<SpriteBatch>(L, std::make_shared<SpriteBatch>(lua::Stack::read<graphics::Texture>(L, 1)));
+    lua::Userdata::emplace<SpriteBatch>(L, std::make_shared<SpriteBatch>(SpriteBatchLua::readTextures(L, 1)));
     return 1;
 }
 
@@ -303,32 +305,42 @@ int Graphics2DLua::drawVector(lua_State* L) {
     return 0;
 }
 
-// Draws a list of sprite tables that share one texture as a single batch with `drawBatch(texture, {{x, y, width, height, ...}, ...}, order)`, or the sprites a float buffer holds with `drawBatch(texture, buffer, {fields = {'x', 'y', ...}, width = ..., ...}, order)`, where the table is the template of every sprite.
+// Draws a list of sprite tables of one texture, or of a list of textures that each sprite picks from with its `texture`, as a single batch with `drawBatch(textures, {{x, y, width, height, ...}, ...}, order)`, or the sprites a float buffer holds with `drawBatch(textures, buffer, {fields = {'x', 'y', ...}, width = ..., ...}, order)`, where the table is the template of every sprite.
 int Graphics2DLua::drawBatch(lua_State* L) {
-    const graphics::Texture texture = lua::Stack::read<graphics::Texture>(L, 1);
+    const std::vector<graphics::Texture> textures = SpriteBatchLua::readTextures(L, 1);
+    SpriteBatch::checkTextures(textures);
     if (const core::FloatBuffer* buffer = lua::Userdata::test<core::FloatBuffer>(L, 2)) {
-        const SpriteInstance sprite = lua::TypeConverter::readSpriteInstance(L, 3, texture, {}, {SpriteBatchLua::kLayoutFields});
+        luaL_checktype(L, 3, LUA_TTABLE);
+        const SpriteData data = SpriteBatchLua::readSpriteData(L, 3, textures.size()).value_or(SpriteData{});
+        const SpriteInstance sprite = lua::TypeConverter::readSpriteInstance(L, 3, textures[data.texture], {}, {SpriteBatchLua::kLayoutFields, SpriteBatchLua::kDataFields});
         if (lua_getfield(L, 3, "fields") != LUA_TTABLE) {
             return luaL_error(L, "A \"drawBatch\" call with a float buffer needs the fields each sprite takes, such as \"fields = {'x', 'y'}\".");
         }
-        const SpriteLayout layout = SpriteBatchLua::readLayout(L, -1, sprite);
+        const SpriteLayout layout = SpriteBatchLua::readLayout(L, -1, sprite, data);
         lua_pop(L, 1);
-        getRenderer(L).drawBatch(texture, buffer->getValues(), layout, lua::TypeConverter::readDrawOrder(L, 4));
+        getRenderer(L).drawBatch(textures, buffer->getValues(), layout, lua::TypeConverter::readDrawOrder(L, 4));
         return 0;
     }
     luaL_checktype(L, 2, LUA_TTABLE);
     std::vector<SpriteInstance> sprites(static_cast<std::size_t>(luaL_len(L, 2)));
     std::vector<PartColors> partColors;
+    std::vector<SpriteData> data;
     for (std::size_t index = 0; index < sprites.size(); ++index) {
         lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
-        sprites[index] = lua::TypeConverter::readSpriteInstance(L, -1, texture, {}, {SpriteBatchLua::kPartColorFields});
+        luaL_checktype(L, -1, LUA_TTABLE);
+        const std::optional<SpriteData> spriteData = SpriteBatchLua::readSpriteData(L, -1, textures.size());
+        if (spriteData) {
+            data.resize(sprites.size());
+            data[index] = *spriteData;
+        }
+        sprites[index] = lua::TypeConverter::readSpriteInstance(L, -1, textures[spriteData ? spriteData->texture : 0], {}, {SpriteBatchLua::kPartColorFields, SpriteBatchLua::kDataFields});
         if (lua_getfield(L, -1, "partColors") != LUA_TNIL) {
             partColors.resize(sprites.size());
             partColors[index] = lua::Stack::read<PartColors>(L, -1);
         }
         lua_pop(L, 2);
     }
-    getRenderer(L).drawBatch(texture, sprites, lua::TypeConverter::readDrawOrder(L, 3), partColors);
+    getRenderer(L).drawBatch(textures, sprites, data, lua::TypeConverter::readDrawOrder(L, 3), partColors);
     return 0;
 }
 

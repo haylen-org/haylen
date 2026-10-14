@@ -75,10 +75,10 @@ SHDC_COMMIT = "11d0cf678105d614d675e6d9bd2aaf3eeff12f8c"
 SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
 SHADER_SLANGS = "glsl430:glsl300es:hlsl5:metal_macos:metal_ios:metal_sim:wgsl"
 # Every material compiles once per kind of draw and once more for lit canvases, and the engine picks the program of a draw by these names.
-SHADER_PROGRAMS = {"sprite": [], "sprite_lit": ["HAYLEN_LIT"], "text": ["HAYLEN_TEXT"], "text_lit": ["HAYLEN_TEXT", "HAYLEN_LIT"], "mesh": ["HAYLEN_MESH"], "mesh_lit": ["HAYLEN_MESH", "HAYLEN_LIT"], "shape": ["HAYLEN_SHAPE"], "shape_lit": ["HAYLEN_SHAPE", "HAYLEN_LIT"]}
+SHADER_PROGRAMS = {"sprite": [], "sprite_lit": ["HAYLEN_LIT"], "batch": ["HAYLEN_BATCH"], "batch_lit": ["HAYLEN_BATCH", "HAYLEN_LIT"], "text": ["HAYLEN_TEXT"], "text_lit": ["HAYLEN_TEXT", "HAYLEN_LIT"], "mesh": ["HAYLEN_MESH"], "mesh_lit": ["HAYLEN_MESH", "HAYLEN_LIT"], "shape": ["HAYLEN_SHAPE"], "shape_lit": ["HAYLEN_SHAPE", "HAYLEN_LIT"]}
 # The uniform blocks and textures of the shader library, which the engine fills itself.
 SHADER_ENGINE_BLOCKS = {"haylen_vs_params", "haylen_lit_params"}
-SHADER_ENGINE_TEXTURES = {"sprite_texture"}
+SHADER_ENGINE_TEXTURES = {"sprite_texture", *(f"sprite_texture_{index}" for index in range(1, 8))}
 SHADER_WATCH_SECONDS = 0.5
 GRADLE_VERSION = "9.8.0"
 # XcodeGen generates the Apple projects from their `project.yml`. The hash is the one of the `xcodegen.zip` asset of the release.

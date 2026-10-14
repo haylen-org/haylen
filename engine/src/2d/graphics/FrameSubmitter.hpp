@@ -106,7 +106,10 @@ class FrameSubmitter final {
     // Applies the uniforms of how a command is shaded: the lighting of lit passes and the values of its material.
     void applyShade(const Shade& shade, graphics::PassTarget pass, Program program);
 
-    // Binds the textures and samplers of a material program, where slot 0 takes the texture of the draw.
+    // Binds the textures of a batch program without a material, every one with the sampler of the first.
+    void bindBatch(sg_bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass);
+
+    // Binds the textures and samplers of a material program, where slot 0 takes the texture of the draw and the slots of the textures of a batch take the others.
     void bindMaterial(sg_bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass, Program program);
 
     RendererState& state;

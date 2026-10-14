@@ -11,6 +11,7 @@
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -22,6 +23,8 @@
 #include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/Material.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/SpriteData.hpp"
+#include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
@@ -384,6 +387,9 @@ TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
     material.set("strength", 1.0F);
     const graphics2d::Material post(shader);
     const graphics::Texture texture = device.createTexture(graphics::Image(8, 8, math::Color::white()));
+    const std::vector<graphics::Texture> textures{texture, device.createTexture(graphics::Image(16, 16, math::Color::white()))};
+    const std::vector<graphics2d::SpriteInstance> sprites(2, graphics2d::SpriteInstance{.size = {4.0F, 4.0F}});
+    const std::vector<graphics2d::SpriteData> data{{.values = {1.0F}}, {.texture = 1, .values = {0.5F}}};
     const graphics::RenderTarget target = device.createRenderTarget(64, 64);
 
     // clang-format off
@@ -393,6 +399,8 @@ TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
         for (const bool lit : {false, true}) {
             renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = lit ? std::optional(math::Color::white()) : std::nullopt, .postProcess = graphics2d::PostProcess{.materials = {post, post}}});
             renderer.draw({.texture = texture, .order = order});
+            renderer.drawBatch(textures, sprites, data, order);
+            renderer.drawBatch(std::span(textures).first(1), sprites, std::span(data).first(1), order);
             material.set("strength", 0.5F);
             renderer.draw({.texture = texture, .order = order});
             renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white(), order);
@@ -409,10 +417,10 @@ TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
     const graphics2d::Renderer::Stats& stats = fixture.engine().getRenderer2D().getStats();
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_EQ(stats.canvases, 3U);
-    EXPECT_GE(stats.drawCalls, 15U);
+    EXPECT_GE(stats.drawCalls, 19U);
     EXPECT_EQ(material.get("strength"), std::vector<float>{0.5F});
 
-    // Materials replace the sprite, text, mesh and shape programs only.
+    // Materials replace the sprite, batch, text, mesh and shape programs only.
     graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
     renderer.beginScreen();
     EXPECT_THROW(renderer.drawImageBlend({.from = texture, .to = texture}, {.material = material}), std::invalid_argument);

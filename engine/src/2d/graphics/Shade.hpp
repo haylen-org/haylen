@@ -1,6 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
+
+#include "haylen/2d/graphics/SpriteData.hpp"
 
 namespace haylen::graphics {
 struct TextureResource;
@@ -23,6 +26,9 @@ struct Shade {
     // The part mask of recolored draws.
     graphics::TextureResource* partMask = nullptr;
 
+    // The textures of a batch after its first, which the sprites of the batch program pick by their data, where the slots past the last texture repeat the first.
+    std::array<graphics::TextureResource*, SpriteData::kMaxTextures - 1> batchTextures{};
+
     graphics::TextureResource* normalMap = nullptr;
     float specular = 0.0F;
     float shininess = 0.0F;
@@ -31,9 +37,9 @@ struct Shade {
     std::int16_t layer = 0;
     bool unshaded = false;
 
-    // Tells whether draws of both shades can share a command, which takes the same material values and the same lighting.
+    // Tells whether draws of both shades can share a command, which takes the same material values, the same textures and the same lighting.
     [[nodiscard]] bool matches(const Shade& other) const noexcept {
-        return material == other.material && revision == other.revision && version == other.version && partMask == other.partMask && normalMap == other.normalMap && specular == other.specular && shininess == other.shininess && emission == other.emission && lightMask == other.lightMask && layer == other.layer && unshaded == other.unshaded;
+        return material == other.material && revision == other.revision && version == other.version && partMask == other.partMask && batchTextures == other.batchTextures && normalMap == other.normalMap && specular == other.specular && shininess == other.shininess && emission == other.emission && lightMask == other.lightMask && layer == other.layer && unshaded == other.unshaded;
     }
 };
 

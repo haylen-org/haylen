@@ -1,4 +1,4 @@
-// The Haylen shader library for 2D draws. A material is a fragment shader that includes this file, declares its program with the `haylen_vs` vertex stage and writes its color with `haylen_output`. The engine compiles every material for sprites, text, meshes and shapes, and for lit canvases, through the `HAYLEN_TEXT`, `HAYLEN_MESH`, `HAYLEN_SHAPE` and `HAYLEN_LIT` defines.
+// The Haylen shader library for 2D draws. A material is a fragment shader that includes this file, declares its program with the `haylen_vs` vertex stage and writes its color with `haylen_output`. The engine compiles every material for sprites, sprite batches with several textures or sprite data, text, meshes and shapes, and for lit canvases, through the `HAYLEN_BATCH`, `HAYLEN_TEXT`, `HAYLEN_MESH`, `HAYLEN_SHAPE` and `HAYLEN_LIT` defines.
 @include haylen/output.glsl
 
 // The vertex stage of every 2D program, which programs with attributes of their own include and call from their `main`.
@@ -33,6 +33,11 @@ in vec4 instance_flash;
 in float instance_rotation;
 in vec4 instance_parameters;
 in vec2 instance_pivot;
+#ifdef HAYLEN_BATCH
+// A sprite of a batch with several textures or sprite data reads a second record with its four numbers and the texture it draws from.
+in vec4 instance_data;
+in float instance_texture;
+#endif
 #endif
 
 out vec2 uv;
@@ -41,6 +46,10 @@ out vec4 haylen_flash;
 out vec3 haylen_text_style;
 out vec2 haylen_transform;
 out vec4 haylen_source;
+out vec4 haylen_data;
+#ifdef HAYLEN_BATCH
+out float haylen_texture_index;
+#endif
 #ifdef HAYLEN_SHAPE
 out vec4 haylen_shape_frame;
 out vec4 haylen_shape_sector_point;
@@ -67,6 +76,7 @@ void haylen_vertex_main() {
     haylen_text_style = vec3(0.0);
     haylen_transform = vec2(0.0);
     haylen_source = vec4(0.0);
+    haylen_data = vec4(0.0);
 #elif defined(HAYLEN_SHAPE)
     // The quad reaches past the edge by the margin, where the edge fades out, and turns with the shape around its center, while the texture coordinates go from 0 to 1 across the rectangle of the shape. The fragment stage measures from the center in the frame of the shape, where the border and the radii of the corners take their shares of the shorter half side, and from the same point turned so the sector lies around the x axis.
     vec2 local = (corner * 2.0 - 1.0) * (shape_half_size + shape_reach.y);
@@ -80,6 +90,7 @@ void haylen_vertex_main() {
     haylen_text_style = vec3(0.0);
     haylen_transform = vec2(shape_rotation, 0.0);
     haylen_source = vec4(0.0, 0.0, 1.0, 1.0);
+    haylen_data = vec4(0.0);
     float shorter = min(shape_half_size.x, shape_half_size.y);
     float middle = (shape_form.z + shape_form.y * 0.5) * 6.28318531;
     haylen_shape_frame = vec4(local, shape_half_size);
@@ -121,6 +132,12 @@ void haylen_vertex_main() {
     color = instance_color;
     haylen_flash = instance_flash;
     haylen_transform = vec2(angle, flags);
+#ifdef HAYLEN_BATCH
+    haylen_data = instance_data;
+    haylen_texture_index = instance_texture;
+#else
+    haylen_data = vec4(0.0);
+#endif
 #endif
 }
 @end
@@ -136,6 +153,16 @@ void main() {
 @block haylen_fragment
 layout(binding=0) uniform texture2D sprite_texture;
 layout(binding=0) uniform sampler sprite_sampler;
+#ifdef HAYLEN_BATCH
+// The textures of a batch after its first, which share the sampler of the first one.
+layout(binding=25) uniform texture2D sprite_texture_1;
+layout(binding=26) uniform texture2D sprite_texture_2;
+layout(binding=27) uniform texture2D sprite_texture_3;
+layout(binding=28) uniform texture2D sprite_texture_4;
+layout(binding=29) uniform texture2D sprite_texture_5;
+layout(binding=30) uniform texture2D sprite_texture_6;
+layout(binding=31) uniform texture2D sprite_texture_7;
+#endif
 
 in vec2 uv;
 in vec4 color;
@@ -143,6 +170,10 @@ in vec4 haylen_flash;
 in vec3 haylen_text_style;
 in vec2 haylen_transform;
 in vec4 haylen_source;
+in vec4 haylen_data;
+#ifdef HAYLEN_BATCH
+in float haylen_texture_index;
+#endif
 
 #ifdef HAYLEN_SHAPE
 in vec4 haylen_shape_frame;
@@ -193,8 +224,66 @@ vec4 haylen_shape_paint(vec4 fill) {
 
 @include_block haylen_output
 
+// The texture of the draw at a point, which a sprite of a batch with several textures picks by its index. The index is the same across the quad of a sprite, but compilers cannot tell, so the lookup takes the slopes of the point before it picks the texture.
 vec4 haylen_texture(vec2 point) {
+#ifdef HAYLEN_BATCH
+    vec2 slopeX = dFdx(point);
+    vec2 slopeY = dFdy(point);
+    int index = int(haylen_texture_index + 0.5);
+    if (index == 1) {
+        return textureGrad(sampler2D(sprite_texture_1, sprite_sampler), point, slopeX, slopeY);
+    }
+    if (index == 2) {
+        return textureGrad(sampler2D(sprite_texture_2, sprite_sampler), point, slopeX, slopeY);
+    }
+    if (index == 3) {
+        return textureGrad(sampler2D(sprite_texture_3, sprite_sampler), point, slopeX, slopeY);
+    }
+    if (index == 4) {
+        return textureGrad(sampler2D(sprite_texture_4, sprite_sampler), point, slopeX, slopeY);
+    }
+    if (index == 5) {
+        return textureGrad(sampler2D(sprite_texture_5, sprite_sampler), point, slopeX, slopeY);
+    }
+    if (index == 6) {
+        return textureGrad(sampler2D(sprite_texture_6, sprite_sampler), point, slopeX, slopeY);
+    }
+    if (index == 7) {
+        return textureGrad(sampler2D(sprite_texture_7, sprite_sampler), point, slopeX, slopeY);
+    }
+    return textureGrad(sampler2D(sprite_texture, sprite_sampler), point, slopeX, slopeY);
+#else
     return texture(sampler2D(sprite_texture, sprite_sampler), point);
+#endif
+}
+
+// The size in texels of the texture of the draw.
+vec2 haylen_texture_size() {
+#ifdef HAYLEN_BATCH
+    int index = int(haylen_texture_index + 0.5);
+    if (index == 1) {
+        return vec2(textureSize(sampler2D(sprite_texture_1, sprite_sampler), 0));
+    }
+    if (index == 2) {
+        return vec2(textureSize(sampler2D(sprite_texture_2, sprite_sampler), 0));
+    }
+    if (index == 3) {
+        return vec2(textureSize(sampler2D(sprite_texture_3, sprite_sampler), 0));
+    }
+    if (index == 4) {
+        return vec2(textureSize(sampler2D(sprite_texture_4, sprite_sampler), 0));
+    }
+    if (index == 5) {
+        return vec2(textureSize(sampler2D(sprite_texture_5, sprite_sampler), 0));
+    }
+    if (index == 6) {
+        return vec2(textureSize(sampler2D(sprite_texture_6, sprite_sampler), 0));
+    }
+    if (index == 7) {
+        return vec2(textureSize(sampler2D(sprite_texture_7, sprite_sampler), 0));
+    }
+#endif
+    return vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
 }
 
 // Moves a point inside the texels of the source rectangle of the draw, so filtering never reads the texels around it, such as the neighbours of a region of an atlas or the borders of a stretched nine-slice center. Meshes and shapes keep their texture coordinates.
@@ -202,7 +291,7 @@ vec2 haylen_inside(vec2 point) {
 #if defined(HAYLEN_MESH) || defined(HAYLEN_SHAPE)
     return point;
 #else
-    vec2 margin = 0.5 / vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
+    vec2 margin = 0.5 / haylen_texture_size();
     vec2 middle = (haylen_source.xy + haylen_source.zw) * 0.5;
     return clamp(point, min(haylen_source.xy + margin, middle), max(haylen_source.zw - margin, middle));
 #endif
