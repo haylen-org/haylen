@@ -27,5 +27,5 @@
 	<string>LaunchScreen</string>
 	<key>GCSupportsControllerUserInteraction</key>
 	<true/>
-</dict>
+@HAYLEN_PLUGIN_KEYS@</dict>
 </plist>

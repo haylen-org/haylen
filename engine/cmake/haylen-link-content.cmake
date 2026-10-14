@@ -1,8 +1,12 @@
-# Links `app.json`, `source` and `content` of the `SOURCE` package folder into the `DESTINATION` folder, so edited files are visible without rebuilding and nothing else in the package folder is deployed.
+# Links the `ENTRIES` of the `SOURCE` package folder, `app.json`, `source`, `content` and the plugin manifests and Lua of the plugins that `app.json` lists, separated by "|", into the `DESTINATION` folder, so edited files are visible without rebuilding and nothing else in the package folder is deployed.
 
-file(MAKE_DIRECTORY "${DESTINATION}")
+string(REPLACE "|" ";" entries "${ENTRIES}")
+foreach(entry IN LISTS entries)
+  get_filename_component(parent "${DESTINATION}/${entry}" DIRECTORY)
+  file(MAKE_DIRECTORY "${parent}")
+endforeach()
 
-foreach(entry app.json source content)
+foreach(entry IN LISTS entries)
   set(original "${SOURCE}/${entry}")
   set(link "${DESTINATION}/${entry}")
 

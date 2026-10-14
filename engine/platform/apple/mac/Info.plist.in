@@ -26,5 +26,5 @@
 	<string>NSApplication</string>
 	<key>GCSupportsControllerUserInteraction</key>
 	<true/>
-@HAYLEN_UI_ELEMENT@</dict>
+@HAYLEN_UI_ELEMENT@@HAYLEN_PLUGIN_KEYS@</dict>
 </plist>

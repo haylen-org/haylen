@@ -360,11 +360,35 @@ class RunCppTest(unittest.TestCase):
 
     def test_cpp_apps_launch_on_apple_platforms_with_an_empty_command_line(self):
         (self.scratch / "ios-simulator-debug" / "bin" / "Debug-iphonesimulator" / "game.app").mkdir(parents=True)
+        (self.scratch / "ios-simulator-debug" / "bin" / "game").mkdir(parents=True)
+        (self.scratch / "ios-simulator-debug" / "bin" / "game" / "package.txt").write_text(str(self.scratch / "package"))
         args = haylen.build_parser().parse_args(["run-cpp", "project", "--platform", "ios-simulator"])
         simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
-        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
+        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
             haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
         self.assertEqual(launch.call_args.args[2:], (simulator, []))
+
+    def test_the_apple_parts_of_plugins_reach_the_cmake_project_of_cpp_apps(self):
+        plugin = self.scratch / "plugins" / "camera"
+        (plugin / "apple").mkdir(parents=True)
+        (plugin / "apple" / "CameraPlugin.swift").write_text("")
+        (plugin / "apple" / "notes.txt").write_text("")
+        (plugin / "camera.bundle").mkdir()
+        manifest = {"id": "camera", "version": "1.0.0", "platforms": ["ios"], "parameters": {}, "apple": {"class": "CameraPlugin", "sources": "apple", "frameworks": ["AVFoundation.framework"], "resources": ["camera.bundle"], "infoPlist": {"NSCameraUsageDescription": "Shows the camera."}}}
+        app = mock.Mock(plugins=[haylen.Plugin(plugin, manifest, None)], plugin_values={"camera": {}})
+        fragment = self.scratch / "build" / haylen.CPP_PLUGINS_FILE
+        fragment.parent.mkdir()
+        self.assertTrue(haylen.write_cpp_apple_plugins(app, "ios-simulator", fragment.parent, fragment))
+        text = fragment.read_text()
+        self.assertIn(f"set(HAYLEN_PLUGIN_SOURCES [==[{(fragment.parent / 'haylen-plugins' / 'camera' / 'sources' / 'CameraPlugin.swift').as_posix()}]==])", text)
+        self.assertIn("set(HAYLEN_PLUGIN_FRAMEWORKS [==[AVFoundation]==])", text)
+        self.assertIn("<key>NSCameraUsageDescription</key>", text)
+        self.assertTrue((fragment.parent / "haylen-plugins" / "camera" / "resources" / "camera.bundle").is_dir())
+        self.assertFalse(haylen.write_cpp_apple_plugins(app, "ios-simulator", fragment.parent, fragment))
+
+        manifest["apple"]["packages"] = [{"url": "https://example.com/camera.git", "version": "1.0.0", "products": ["Camera"]}]
+        with self.assertRaisesRegex(haylen.BuildError, 'The plugin "camera" needs "packages" on Apple platforms'):
+            haylen.write_cpp_apple_plugins(app, "ios-simulator", fragment.parent, fragment)
 
     def test_cpp_apps_launch_on_android_with_an_empty_command_line(self):
         built = self.scratch / "android-arm64-v8a-debug" / "bin" / "game"

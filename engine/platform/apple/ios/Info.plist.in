@@ -41,5 +41,5 @@
 @HAYLEN_ORIENTATIONS_IPAD@	</array>
 	<key>GCSupportsControllerUserInteraction</key>
 	<true/>
-</dict>
+@HAYLEN_PLUGIN_KEYS@</dict>
 </plist>

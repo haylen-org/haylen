@@ -117,6 +117,8 @@ CONTENT_PROFILES = {"macos": "apple", "catalyst": "apple", "ios": "apple", "ios-
 CONTENT_KEPT_GENERATIONS = 2
 # The source of the bootstrap that a release build compiles in, which the content tool writes from the key folder of the app.
 BOOTSTRAP_SOURCE = "HaylenBootstrap.cpp"
+# The Swift helpers of the bridge and of plugin contexts, which every Apple target with Swift compiles from the engine, since a Swift module in the artifact would have to match the Swift compiler of each app.
+APPLE_SWIFT_HELPERS = "HaylenBridgeAsync.swift"
 # The files of a release folder besides its shards, and the suffix of the shards.
 RELEASE_MANIFESTS = ("app.hmanifest", "content.hmanifest")
 RELEASE_SHARD_SUFFIX = ".hpak"
@@ -141,6 +143,11 @@ FORMAT_ROOTS = ["engine/include", "engine/src", "engine/tests", "engine/tools", 
 FORMAT_SKIPPED_FOLDERS = {".cxx", ".gradle", "build", "_deps"}
 # A package is `app.json` with the Lua modules under `source` and the assets under `content`, and nothing else in its folder ships.
 PACKAGE_FOLDERS = ("source", "content")
+# The CMake file that tells haylen_add_app the Apple parts of the plugins of a C++ app, and the kinds of source files it compiles.
+CPP_PLUGINS_FILE = "haylen-plugins.cmake"
+CPP_APPLE_PLUGIN_SOURCES = {".swift", ".m", ".mm", ".c", ".cpp"}
+# The list of the web parts of the plugins of a C++ app, which the page of the app reads next to it.
+CPP_WEB_PLUGINS = "plugins.json"
 # Build outputs and Finder files that never travel with a copied platform folder or plugin.
 COPY_IGNORED = shutil.ignore_patterns(".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin")
 # Engine files that never reach an artifact, so editing them keeps the artifacts fresh.
@@ -826,6 +833,7 @@ def build_apple_artifacts(config: str, jobs: int) -> None:
     # Apps link the system frameworks of the engine and declare its privacy reasons from the files next to the framework.
     shutil.copy2(headers.parent.parent / "framework" / "share" / "haylen" / "haylen-frameworks.json", output.parent)
     shutil.copy2(ENGINE_DIR / "platform" / "apple" / "PrivacyInfo.xcprivacy", output.parent)
+    shutil.copy2(ENGINE_DIR / "platform" / "apple" / APPLE_SWIFT_HELPERS, output.parent)
 
 
 def android_engine_sdk(abi: str) -> Path:
@@ -2343,7 +2351,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
             entry = {"package": dependency[1], "product": dependency[2]} if dependency[0] == "package" else {"sdk": dependency[1]}
             dependencies.append({**entry, **({"destinationFilters": destinations} if destinations else {})})
 
-        sources = [{"path": "app", "type": "folder", "buildPhase": "resources"}, {"path": "PrivacyInfo.xcprivacy", "buildPhase": "resources"}, {"path": BOOTSTRAP_SOURCE}]
+        sources = [{"path": "app", "type": "folder", "buildPhase": "resources"}, {"path": "PrivacyInfo.xcprivacy", "buildPhase": "resources"}, {"path": BOOTSTRAP_SOURCE}, {"path": APPLE_SWIFT_HELPERS}]
         if folder != "macos":
             sources.append({"path": "Splash.xcassets"})
         if symbols and folder != "macos":
@@ -2391,6 +2399,7 @@ def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_c
     else:
         copy_package(app, generated / "app")
         write_if_changed(generated / BOOTSTRAP_SOURCE, development_bootstrap("!DEBUG"))
+    write_if_changed(generated / APPLE_SWIFT_HELPERS, (ARTIFACTS_DIR / "apple" / APPLE_SWIFT_HELPERS).read_text(encoding="utf-8"))
     write_apple_splash(app, generated)
     write_apple_xcconfig(app, generated, prepare_apple_native(app, generated, run_platform, jobs))
     write_apple_plists(app, root, generated)
@@ -4041,11 +4050,16 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
     directory = folder / f"{args.platform}-{args.config.lower()}"
     generator = "Ninja" if args.platform == "catalyst" else "Xcode"
-    command = ["cmake", "-S", project, "-B", directory, "-G", generator, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args)]
+    plugins = directory / CPP_PLUGINS_FILE
+    command = ["cmake", "-S", project, "-B", directory, "-G", generator, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args), f"-DHAYLEN_PLUGINS_FILE={plugins.as_posix()}"]
     if device:
         command.append(f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}")
     terminal.step(f'Building the target "{target}" for "{args.platform}" in `{shown_path(directory)}`')
+
+    # The first configuration records the package of the target, whose plugins give the second one their Apple parts.
     run(command)
+    if write_cpp_apple_plugins(App(Path((directory / "bin" / target / "package.txt").read_text(encoding="utf-8").strip()), RUN_TARGETS[args.platform].plugins), args.platform, directory, plugins):
+        run(command)
     run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs), *(["--", "-allowProvisioningUpdates"] if device else [])])
 
     # Ninja places the bundle in `bin/<target>`, while the Xcode generator places it in `bin`.
@@ -4057,6 +4071,48 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
         return
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
     launch_apple(bundle, args, simulator, [])
+
+
+def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: Path) -> bool:
+    """Copies the Apple sources and resources of the plugins of a C++ app that build for a run platform into its build folder and writes the CMake file that `haylen_add_app` reads, which compiles the sources into the app, links the system frameworks, bundles the resources and adds the `infoPlist` keys to its `Info.plist`, the parts that the target templates give Lua apps. Returns whether the file changed. Swift packages and build scripts need the Xcode project of the Apple template."""
+    target_platform = RUN_TARGETS[platform].plugins
+    copied = directory / "haylen-plugins"
+    shutil.rmtree(copied, ignore_errors=True)
+    sources: list[Path] = []
+    resources: list[Path] = []
+    frameworks: list[str] = []
+    for plugin in app.plugins:
+        apple = plugin_section(app, plugin, "apple", (target_platform,)) if plugin.supports(target_platform) else None
+        if apple is None:
+            continue
+        unsupported = [key for key in ("packages", "buildScripts") if apple.get(key)]
+        if unsupported:
+            raise BuildError(f'The plugin "{plugin.id}" needs {" and ".join(f"\"{key}\"" for key in unsupported)} on Apple platforms, which only the Xcode project of the Apple template builds. Build the app from a Lua project, or use a plugin without them.')
+        if "sources" in apple:
+            shutil.copytree(plugin.folder / apple["sources"], copied / plugin.id / "sources", ignore=COPY_IGNORED)
+            sources += sorted(path for path in (copied / plugin.id / "sources").rglob("*") if path.suffix in CPP_APPLE_PLUGIN_SOURCES)
+        for resource in plugin.manifest["apple"].get("resources", []):
+            source = plugin_file(app, plugin, resource)
+            if source is not None:
+                resources.append(copy_into(source, copied / plugin.id / "resources"))
+        frameworks += [Path(framework).stem for framework in apple.get("frameworks", []) if Path(framework).stem not in frameworks]
+
+    # The keys of the plugins go inside the dictionary of the Info.plist of the engine, which a property list of their own carries.
+    keys = apple_plugin_keys(app, (target_platform,), "infoPlist", {}, {}, '"Info.plist"')
+    entries = plistlib.dumps(keys, sort_keys=True).decode().split("<dict>", 1)[1].rsplit("</dict>", 1)[0].strip("\n") if keys else ""
+    lines = [
+        "# Written by haylen.py from app.json and the plugins of the app for haylen_add_app, which builds their Apple parts into the app.",
+        f"set(HAYLEN_PLUGIN_SOURCES [==[{';'.join(path.as_posix() for path in sources)}]==])",
+        f"set(HAYLEN_PLUGIN_RESOURCES [==[{';'.join(path.as_posix() for path in resources)}]==])",
+        f"set(HAYLEN_PLUGIN_FRAMEWORKS [==[{';'.join(frameworks)}]==])",
+        f"set(HAYLEN_PLUGIN_KEYS [==[{entries}\n]==])" if entries else "set(HAYLEN_PLUGIN_KEYS \"\")",
+        "",
+    ]
+    text = "\n".join(lines)
+    if fragment.is_file() and fragment.read_text(encoding="utf-8") == text:
+        return False
+    fragment.write_text(text, encoding="utf-8")
+    return True
 
 
 def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
@@ -4087,7 +4143,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
 
 
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
-    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder, whose page runs the backend the browser supports, and returns that folder. A protected release, which both builds make byte for byte the same, goes once into `app/` of the site, where its content streams by range."""
+    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder with the web parts of the plugins of its app, whose page runs the backend the browser supports, and returns that folder. A protected release, which both builds make byte for byte the same, goes once into `app/` of the site, where its content streams by range."""
     output = folder / "web"
     shutil.rmtree(output, ignore_errors=True)
     releases = []
@@ -4112,6 +4168,10 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, 
         if {path.name: file_hash(path) for path in releases[0].iterdir()} != {path.name: file_hash(path) for path in releases[-1].iterdir()}:
             raise BuildError(f'The WebGPU and WebGL2 builds of "{target}" made different protected releases, while the page serves one. Build them again from a clean build folder.')
         shutil.copytree(releases[0], output / "app")
+
+    # The web parts of the plugins of the app go next to the page, which imports and loads them before the app starts, as the loader of the web template does.
+    package = Path((built / "package.txt").read_text(encoding="utf-8").strip())
+    (output / CPP_WEB_PLUGINS).write_text(json.dumps(write_web_plugins(App(package, "web"), output), indent=4) + "\n", encoding="utf-8")
 
     # The page is the shell of the target, with the script that picks the backend where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
     shell = (built / f"{target}.shell.html").read_text(encoding="utf-8")

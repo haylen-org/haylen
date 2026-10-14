@@ -93,6 +93,14 @@ The tool `haylen.py` copies the `web/` folder of every plugin with a web part to
 
 The `native` section of a plugin joins the native libraries of the app, so haylen.py builds and places it like an entry of the `native` section of `app.json`, as [native libraries](../tools/distribution.md#native-libraries) describes, for the desktop player, Windows and Linux apps, the Apple projects and Android, on the platforms it lists. The library is named after the id of the plugin with its dashes turned into underscores, so `native.load('my_plugin')` loads the library of `my-plugin`.
 
+### C++ apps
+
+C++ apps take plugins the same way, with the parts assembled where their builds need them. `haylen_add_app` puts `plugins/<id>/plugin.json` and `plugins/<id>/source/` of every plugin that `app.json` lists into the package of every platform, and `run-cpp` brings the native parts:
+
+- **Android.** The library of the app goes into the Android project of the app, which `run-cpp` prepares like the project of a Lua app, with the modules, the Gradle plugins, the placeholders and `haylen-plugins.json` of the plugins.
+- **Web.** `run-cpp` copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site and lists them in `plugins.json` next to the page, whose script imports the modules and calls `load(context)` of each one in load order before the app starts, as the loader of the web template does.
+- **Apple platforms.** `run-cpp` copies the `sources` and the resources of every plugin into the build folder of the platform and writes `haylen-plugins.cmake` there, which it names to CMake with `HAYLEN_PLUGINS_FILE`. `haylen_add_app` reads it and compiles the Objective-C, C and Swift sources into the app, the Swift files with `engine/platform/apple/HaylenPlugins.h` as their bridging header and with the [Swift helpers](#swift-helpers), links the system frameworks, bundles the resources and adds the `infoPlist` keys to the `Info.plist` of the app. The CMake project enables Swift on Apple platforms, as the C++ template does. The Swift packages and the build scripts of plugins need the Xcode project of the Apple template, so `run-cpp` stops with a message for a plugin that has them.
+
 ## Plugin package
 
 ### Layout
@@ -1002,7 +1010,7 @@ A URL scheme of `CFBundleURLTypes` opens the app, whose plugins receive the link
 
 ### Swift helpers
 
-`source/HaylenBridgeAsync.swift` of the Apple template adds Swift helpers on top of the Objective-C API:
+`engine/platform/apple/HaylenBridgeAsync.swift` adds Swift helpers on top of the Objective-C API. The tool `haylen.py` writes it into `haylen/` of Apple projects, whose target templates compile it, and `haylen_add_app` compiles it into C++ apps whose plugins have Swift sources:
 
 | Helper | Meaning |
 | --- | --- |

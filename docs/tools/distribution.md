@@ -312,6 +312,7 @@ build/artifacts/
   apple/Haylen.xcframework      Static library and headers for macOS, iOS, the iOS simulator, Mac Catalyst, tvOS and the tvOS simulator.
   apple/haylen-frameworks.json  The system frameworks that the engine needs on iOS, Mac Catalyst, tvOS and macOS, which haylen.py links into Apple projects.
   apple/PrivacyInfo.xcprivacy   The APIs with required reasons that the engine calls, which haylen.py merges into the privacy manifest of Apple apps.
+  apple/HaylenBridgeAsync.swift The Swift helpers of the bridge and of plugin contexts, which haylen.py writes into the haylen/ folder of Apple projects.
   android/maven/                Maven repository with dev.haylen:haylen, the Android library with the player, and dev.haylen:haylen-plugins, haylen-links and haylen-coroutines.
   android/sdk/<abi>/            The SDK of the engine for each Android ABI, which links the release libraries of apps.
   web/webgpu/                   haylen.js and haylen.wasm of the player for WebGPU, haylen-audio-worklet.js, the processor of its audio output, and haylen-content-store.js, the worker of its content store.
@@ -399,7 +400,7 @@ The file `source/main.lua` is a scene with the logo, the name of the app, a line
 
 ### cpp
 
-The folder of a C++ app is its CMake project and its package at once, since `haylen_add_app` deploys only `app.json`, `source/` and `content/`. Its `CMakeLists.txt` adds the engine folder that `HAYLEN_ENGINE_SOURCE` names, which `run-cpp` passes, or an installed SDK through `find_package` when the variable is empty, as the [embedding guide](embedding.md) describes, and builds the target `main` with the `CPP` option from `src/App.cpp`, with `src/AppBridge.mm` on Apple platforms and with `platform/web/app.js` linked into the runtime script with `--pre-js` on the web. The target is not named `app`, because iOS and tvOS bundles keep the package in a folder of that name next to the executable. Its scene draws the logo, the name of the app and the answer of the [bridge example](#the-bridge-example) with the renderer of the engine, and the app runs no Lua. Android builds through `platform/android` of the common layer, as [run-cpp](#run-cpp) describes, and `haylen_add_app` makes the apps of the other platforms itself. The commands `run`, `prepare`, `xcodegen`, `dist` and `steam`, which build the platform projects of Lua apps, stop for the folder of a C++ app and name `run-cpp` instead.
+The folder of a C++ app is its CMake project and its package at once, since `haylen_add_app` deploys only `app.json`, `source/`, `content/` and the manifests and Lua of the plugins that `app.json` lists, whose native parts `run-cpp` brings as the [plugin guide](../platform/plugins.md#c-apps) describes. Its `CMakeLists.txt` adds the engine folder that `HAYLEN_ENGINE_SOURCE` names, which `run-cpp` passes, or an installed SDK through `find_package` when the variable is empty, as the [embedding guide](embedding.md) describes, and builds the target `main` with the `CPP` option from `src/App.cpp`, with `src/AppBridge.mm` on Apple platforms and with `platform/web/app.js` linked into the runtime script with `--pre-js` on the web. The target is not named `app`, because iOS and tvOS bundles keep the package in a folder of that name next to the executable. Its scene draws the logo, the name of the app and the answer of the [bridge example](#the-bridge-example) with the renderer of the engine, and the app runs no Lua. Android builds through `platform/android` of the common layer, as [run-cpp](#run-cpp) describes, and `haylen_add_app` makes the apps of the other platforms itself. The commands `run`, `prepare`, `xcodegen`, `dist` and `steam`, which build the platform projects of Lua apps, stop for the folder of a C++ app and name `run-cpp` instead.
 
 ### The bridge example
 
@@ -423,7 +424,6 @@ templates/lua/platform/apple/
   App.xcconfig                    Includes haylen/Haylen.xcconfig, and the settings after the include win.
   source/main.m                   Calls haylen_main, after the native bridge handlers of the app register.
   source/AppBridge.swift          The Swift handler of the bridge example.
-  source/HaylenBridgeAsync.swift  Registers Swift handlers of the bridge and of plugin contexts written as async functions with Codable parameters and results, and sends events with Encodable payloads.
   source/HaylenBridging.h         Makes HaylenBridge.h, HaylenPlugin.h and HaylenNotificationPlugin.h visible to the Swift files of the app and its plugins.
   ios/                            Info.plist, LaunchScreen.storyboard and Assets.xcassets with the app icon.
   tvos/                           Info.plist, LaunchScreen.storyboard and Assets.xcassets with the layered app icons and the top shelf images.
@@ -523,6 +523,7 @@ The tool `haylen.py` writes one folder inside a project, `haylen/`, which the `.
 | `Splash.xcassets` | The `splash-logo` image and the `splash-background` color of the [launch screens](#splash-screens). |
 | `app/` | The package, which the bundle carries as `Resources/app`, or in the Release configuration the protected release of the app. |
 | `HaylenBootstrap.cpp` | The bootstrap of the app, which every target template compiles. In the Release configuration the content tool writes it from the key folder of the app, with its sealed content keys, and in the Debug configuration it holds only a check that stops a release build of the development package with the way to prepare the release. |
+| `HaylenBridgeAsync.swift` | The [Swift helpers](../platform/plugins.md#swift-helpers) of the bridge and of plugin contexts, which every target template compiles, from the Apple artifacts. |
 | `native/`, `HaylenNativeSymbols.mm` | The [native libraries](#native-libraries) of the run platform with the file lists of the embed phases, and the table of the symbols of static libraries. |
 | `plugins/<id>/` | The Apple sources and resources of the plugins. |
 | `Haylen.xcframework` | A link to the framework of the artifacts. |

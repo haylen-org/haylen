@@ -1,5 +1,6 @@
 <script>
     // Runs the WebGPU build when the browser offers a WebGPU adapter and the WebGL2 build otherwise. The `backend` parameter of the address forces either one.
+    // The web parts of the plugins of the app, which `plugins.json` next to the page lists in load order, load once the runtime exists and before the app starts, and a plugin that fails keeps the app from starting.
     (async () => {
         const forced = new URLSearchParams(location.search).get("backend");
         let backend = forced === "webgpu" || forced === "webgl2" ? forced : null;
@@ -7,6 +8,26 @@
             const adapter = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
             backend = adapter ? "webgpu" : "webgl2";
         }
+        const plugins = await (await fetch("plugins.json")).json();
+        const loaded = await Promise.all(
+            plugins.map(async (plugin) => {
+                const module = await import(new URL(plugin.module, document.baseURI).href);
+                if (typeof module.default !== "function") {
+                    throw new Error("The plugin \"" + plugin.id + "\" does not export \"load(context)\" as the default export of \"" + plugin.module + "\".");
+                }
+                return { plugin, load: module.default };
+            })
+        );
+        Module.preRun = Module.preRun || [];
+        Module.preRun.push(() => {
+            Module.addRunDependency("haylen-plugins");
+            (async () => {
+                for (const { plugin, load } of loaded) {
+                    await load(Module.haylen.createPluginContext(plugin.id, plugin.config));
+                }
+                Module.removeRunDependency("haylen-plugins");
+            })();
+        });
         Module.locateFile = (path) => backend + "/" + path;
         const script = document.createElement("script");
         script.src = backend + "/{{TARGET}}.js";

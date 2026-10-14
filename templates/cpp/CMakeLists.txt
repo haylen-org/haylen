@@ -2,9 +2,9 @@
 cmake_minimum_required(VERSION 3.28...4.4)
 project(App LANGUAGES C CXX)
 
-# The Objective-C++ bridge handler of Apple platforms needs the compiler of Objective-C++.
+# The Objective-C++ bridge handler of Apple platforms needs the compiler of Objective-C++, and the Apple parts of plugins may hold Swift.
 if(APPLE)
-  enable_language(OBJCXX)
+  enable_language(OBJCXX Swift)
 endif()
 
 set(HAYLEN_ENGINE_SOURCE "" CACHE PATH "The engine folder of a Haylen checkout. Empty finds an installed SDK with find_package.")

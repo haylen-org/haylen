@@ -25,6 +25,7 @@
 		49A811C6C45D5B73D553AA04 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64525A5E227A6F8D56316636 /* AVFoundation.framework */; };
 		4DABBEF89CF0C18F1E854F34 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */; };
 		4F61DECEEE65FCDB7B0E1E14 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 609349DF20D01EF9541FA51A /* QuartzCore.framework */; };
+		5282F7DB96D6A6916E257ED6 /* HaylenBridgeAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC7D43001340BE61E9FB5AE6 /* HaylenBridgeAsync.swift */; };
 		575303CDA0129B2DBC14134A /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E659DE470F86E25B0A48DA55 /* GameController.framework */; };
 		59F4004C3E5C9A5C5D01DDA0 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93773212B32C9B1B03E2D35B /* Network.framework */; };
 		60599AA4A83960FF8E2F2B05 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE11E27F8C2F86913015C6E1 /* Assets.xcassets */; };
@@ -59,9 +60,11 @@
 		CD954826551848E10E9FE362 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E11F866B40772B2B88C0599A /* CoreAudio.framework */; };
 		D0727CE8C557A6FABACAC5DF /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB92594DDC4336170D045976 /* MetalKit.framework */; };
 		D247C790ED7B238E825A7FF9 /* app in Resources */ = {isa = PBXBuildFile; fileRef = 785CC13C763BA59F86046EB0 /* app */; };
+		D38AEED4C27BB06BE120E8BC /* HaylenBridgeAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC7D43001340BE61E9FB5AE6 /* HaylenBridgeAsync.swift */; };
 		D78069BD0E4A7CFF77925501 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */; };
 		DAF4DD7196A0F372A87D5D0F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E11F866B40772B2B88C0599A /* CoreAudio.framework */; };
 		DB1ECBF8C50A6356360AAF63 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 32DFCA6979988D18408B2256 /* UniformTypeIdentifiers.framework */; };
+		DBE33D7F8E26B76335100EED /* HaylenBridgeAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC7D43001340BE61E9FB5AE6 /* HaylenBridgeAsync.swift */; };
 		DEE4BD0D75B23A2892CF21B1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 58FBB2D1052B9870DDD312D5 /* Metal.framework */; };
 		E5592221B879FDB263605333 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3F039FF63D30D21B8BB1868F /* LaunchScreen.storyboard */; };
 		EB9D689C7598B3D35EB90987 /* Haylen.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DBB0B5A6BA934671179571C /* Haylen.xcframework */; };
@@ -99,6 +102,7 @@
 		C563E05ACD9AEA786427820A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C566608AF6B9452AFB3B18B2 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
 		D61A2ED27AC9820EBB332146 /* macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = macOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DC7D43001340BE61E9FB5AE6 /* HaylenBridgeAsync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaylenBridgeAsync.swift; sourceTree = "<group>"; };
 		E11F866B40772B2B88C0599A /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		E659DE470F86E25B0A48DA55 /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = System/Library/Frameworks/GameController.framework; sourceTree = SDKROOT; };
 		EE11E27F8C2F86913015C6E1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -239,6 +243,7 @@
 			isa = PBXGroup;
 			children = (
 				206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */,
+				DC7D43001340BE61E9FB5AE6 /* HaylenBridgeAsync.swift */,
 				C563E05ACD9AEA786427820A /* PrivacyInfo.xcprivacy */,
 				037D2CFC365C78ED67618965 /* Splash.xcassets */,
 			);
@@ -433,6 +438,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9A0F5AE3909B56954E2164E5 /* HaylenBootstrap.cpp in Sources */,
+				5282F7DB96D6A6916E257ED6 /* HaylenBridgeAsync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -441,6 +447,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2530307C175CA0D60D66C8E6 /* HaylenBootstrap.cpp in Sources */,
+				D38AEED4C27BB06BE120E8BC /* HaylenBridgeAsync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -449,6 +456,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2BEDB2E614DBF2CAFCB8DBAD /* HaylenBootstrap.cpp in Sources */,
+				DBE33D7F8E26B76335100EED /* HaylenBridgeAsync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
