@@ -42,7 +42,7 @@ dependencies {
     api("androidx.activity:activity:1.13.0")
     api("androidx.core:core:1.19.1")
     implementation("androidx.core:core-splashscreen:1.2.0")
-    implementation("androidx.customview:customview:1.1.0")
+    implementation("androidx.customview:customview:1.2.0")
     implementation("androidx.window:window-java:1.5.1")
 }
 
