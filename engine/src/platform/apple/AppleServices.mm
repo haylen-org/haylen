@@ -94,7 +94,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     if (std::filesystem::is_directory(folder)) {
         std::shared_ptr<io::Package> files = io::Package::openDirectory(folder);
 #if TARGET_OS_OSX
-        // The shards of the packs that a store installs on their own, such as the expansions of a Steam app, land in `packs` next to the app, outside its signed bundle.
+        // The shards of the packs that a store installs on their own, such as the expansions of a desktop game, land in `packs` next to the app, outside its signed bundle.
         const std::filesystem::path packs = std::filesystem::path(NSBundle.mainBundle.bundlePath.UTF8String).parent_path() / "packs";
         if (std::filesystem::is_directory(packs)) {
             files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{files, io::Package::openDirectory(packs)});

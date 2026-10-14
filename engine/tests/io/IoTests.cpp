@@ -46,7 +46,7 @@ TEST(PathTest, BuildsAssetPathsAndParts) {
     EXPECT_EQ(Path::directory("a.png"), "");
     EXPECT_EQ(Path::join("maps", "../tilesets/t.tsj"), "tilesets/t.tsj");
     EXPECT_EQ(Path::join("", "a/b"), "a/b");
-    EXPECT_EQ(Path::plugin("firebase-analytics", Path::kPluginManifestFile), "plugins/firebase-analytics/plugin.json");
+    EXPECT_EQ(Path::plugin("cloud-analytics", Path::kPluginManifestFile), "plugins/cloud-analytics/plugin.json");
     EXPECT_EQ(Path::plugin("ads", "source/init.lua"), "plugins/ads/source/init.lua");
     EXPECT_TRUE(Path::isInside("maps/a.tmj", "maps"));
     EXPECT_TRUE(Path::isInside("maps/a.tmj", ""));

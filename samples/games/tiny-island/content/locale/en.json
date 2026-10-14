@@ -71,7 +71,7 @@
         "fullscreen": "Fullscreen",
         "touch": "Touch controls",
         "device": "Device info",
-        "google": "Sign in with Google",
+        "signIn": "Sign in",
         "back": "Back",
         "signedIn": "Signed in as {name}"
     },

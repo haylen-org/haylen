@@ -21,7 +21,7 @@ class Path final {
     // Returns the package path of an asset, which always lives under the package content folder.
     [[nodiscard]] static std::string asset(std::string_view path);
 
-    // Returns the package path of a file in the folder of a plugin, such as `plugins/admob/plugin.json`.
+    // Returns the package path of a file in the folder of a plugin, such as `plugins/ads/plugin.json`.
     [[nodiscard]] static std::string plugin(std::string_view id, std::string_view relative);
 
     [[nodiscard]] static std::string_view extension(std::string_view path) noexcept;

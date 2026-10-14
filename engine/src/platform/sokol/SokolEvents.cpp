@@ -17,7 +17,6 @@ std::optional<Event> SokolEvents::translate(const sapp_event& source) noexcept {
     switch (source.type) {
     case SAPP_EVENTTYPE_KEY_DOWN:
     case SAPP_EVENTTYPE_KEY_UP:
-        // Sokol key codes follow the GLFW values that the engine keys use as well.
         return Event{.type = source.type == SAPP_EVENTTYPE_KEY_DOWN ? Event::Type::KeyDown : Event::Type::KeyUp, .key = isPlatformBack(source) ? input::Key::Escape : static_cast<input::Key>(source.key_code), .repeat = source.key_repeat, .modifiers = held};
     case SAPP_EVENTTYPE_CHAR:
         return Event{.type = Event::Type::Character, .modifiers = held, .character = static_cast<char32_t>(source.char_code)};

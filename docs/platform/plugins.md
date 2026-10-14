@@ -10,10 +10,10 @@ These plugins are distributable folders, not the engine plugins of `haylen::plug
 
 ```sh
 haylen plugin list
-haylen plugin add admob --app ~/apps/my-game
+haylen plugin add ads --app ~/apps/my-game
 haylen plugin add ~/plugins/my-plugin --app ~/apps/my-game
 haylen plugin list --app ~/apps/my-game
-haylen plugin remove admob --app ~/apps/my-game
+haylen plugin remove ads --app ~/apps/my-game
 haylen plugin new ~/plugins/my-plugin
 ```
 
@@ -31,16 +31,16 @@ haylen plugin new ~/plugins/my-plugin
 ```json
 {
     "plugins": {
-        "admob": {"iosAppId": "ca-app-pub-3940256099942544~1458002511", "androidAppId": "ca-app-pub-3940256099942544~3347511713", "testMode": true},
-        "firebase": {"googleServicesPlist": "platform/firebase/GoogleService-Info.plist", "googleServicesJson": "platform/firebase/google-services.json"},
-        "firebase-analytics": {}
+        "ads": {"iosAppId": "ios-app-1234", "androidAppId": "android-app-1234", "testMode": true},
+        "cloud": {"servicesPlist": "platform/cloud/Services-Info.plist", "servicesJson": "platform/cloud/services.json"},
+        "cloud-analytics": {}
     }
 }
 ```
 
 `plugins` maps the id of every plugin the app uses to the values of its parameters, and each id names the folder `plugins/<id>/` of the app. Values are plain JSON values. A value that differs per platform uses one parameter per platform, such as `iosAppId` and `androidAppId`, so nothing resolves platform objects at runtime. A parameter that the app leaves out takes its default. The README of every plugin lists its parameters.
 
-A `file` parameter is a path relative to the app folder. Files such as `GoogleService-Info.plist` and `google-services.json` belong outside `source/` and `content/`, for example under `platform/`, so they never ship in the package, and haylen.py brings them into the projects that need them.
+A `file` parameter is a path relative to the app folder. Files such as `Services-Info.plist` and `services.json` belong outside `source/` and `content/`, for example under `platform/`, so they never ship in the package, and haylen.py brings them into the projects that need them.
 
 ### Validation
 
@@ -81,7 +81,7 @@ The sources of a plugin compile into the targets like the files of `source/`, so
 2. It writes the plugin keys of `haylen/haylen.properties`. `plugins` lists the modules as `id=folder` entries, which `settings.gradle.kts` includes and `app/build.gradle.kts` depends on. `gradlePlugins` lists the Gradle plugins as `id=version` entries, and every `placeholder.<name>` key is a manifest placeholder.
 3. The root `build.gradle.kts` puts the plugin marker of every Gradle plugin, `<id>:<id>.gradle.plugin:<version>`, on the build classpath, which serves the app module like a plugin declared with `apply false`, and `app/build.gradle.kts` applies each one by its id. A `plugins {}` block takes only literal ids, so a list that changes per app goes through the build classpath.
 4. `app/build.gradle.kts` adds the placeholders to `manifestPlaceholders`, where the manifests of the plugin modules find them when the manifests merge.
-5. The `files` of the plugins, such as `google-services.json` for `app/`, belong to the project. The tool `haylen.py` copies them into the copy of the template that it keeps for an app without `platform/android`, and in a project of the developer [`check`](../tools/distribution.md#check) names each one that the project lacks, with the copy to make.
+5. The `files` of the plugins, such as `services.json` for `app/`, belong to the project. The tool `haylen.py` copies them into the copy of the template that it keeps for an app without `platform/android`, and in a project of the developer [`check`](../tools/distribution.md#check) names each one that the project lacks, with the copy to make.
 
 The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries, together with the manifests of the libraries the module depends on. Every plugin module depends on `dev.haylen:haylen-plugins`, whose manifest declares the provider that loads the plugin classes that the meta-data names when the app process starts, as [the Android part](#the-android-part) describes, so an app without plugins has no provider. A permission that the app removes from the merged manifest with `tools:node="remove"` stays out, which `check` reports and the plugin answers with `unsupported` at run time.
 
@@ -106,7 +106,7 @@ C++ apps take plugins the same way, with the parts assembled where their builds 
 ### Layout
 
 ```text
-<id>/                 The id in dash-case, such as admob or firebase-analytics.
+<id>/                 The id in dash-case, such as ads or cloud-analytics.
   plugin.json         The manifest.
   README.md           What the plugin does, its setup on each platform, its parameters and its complete Lua API with examples.
   source/             The Lua API: init.lua is require('<id>') and <name>.lua is require('<id>.<name>').
@@ -122,32 +122,32 @@ A plugin needs only the folders of the platforms it supports. Paths in `plugin.j
 
 ```json
 {
-    "id": "admob",
-    "name": "AdMob",
+    "id": "ads",
+    "name": "Ads",
     "version": "1.0.0",
     "description": "Banner, interstitial, rewarded and app open ads with consent.",
     "platforms": ["ios", "android", "web"],
     "requires": [],
     "parameters": {
-        "iosAppId": {"type": "string", "platforms": ["ios"], "required": true, "description": "AdMob app id of the iOS app."},
-        "androidAppId": {"type": "string", "platforms": ["android"], "required": true, "description": "AdMob app id of the Android app."},
+        "iosAppId": {"type": "string", "platforms": ["ios"], "required": true, "description": "App id of the iOS app in the ads service."},
+        "androidAppId": {"type": "string", "platforms": ["android"], "required": true, "description": "App id of the Android app in the ads service."},
         "testMode": {"type": "boolean", "default": false, "description": "Serve test ads."},
         "trackingDescription": {"type": "string", "platforms": ["ios"], "default": "Your data is used to show you more relevant ads.", "description": "Text of the App Tracking Transparency prompt."}
     },
     "apple": {
-        "class": "HaylenAdMobPlugin",
+        "class": "HaylenAdsPlugin",
         "sources": "apple",
         "packages": {
-            "GoogleMobileAds": {"url": "https://github.com/googleads/swift-package-manager-google-mobile-ads.git", "exactVersion": "13.10.0", "products": ["GoogleMobileAds"]}
+            "AdsKit": {"url": "https://example.com/ads-kit.git", "exactVersion": "2.4.0", "products": ["AdsKit"]}
         },
         "frameworks": ["AppTrackingTransparency.framework"],
-        "infoPlist": {"GADApplicationIdentifier": "${iosAppId}", "NSUserTrackingUsageDescription": "${trackingDescription}", "SKAdNetworkItems": [{"SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"}]}
+        "infoPlist": {"AdsApplicationIdentifier": "${iosAppId}", "NSUserTrackingUsageDescription": "${trackingDescription}", "SKAdNetworkItems": [{"SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"}]}
     },
     "android": {
         "module": "android",
-        "placeholders": {"haylenAdmobAppId": "${androidAppId}"}
+        "placeholders": {"haylenAdsAppId": "${androidAppId}"}
     },
-    "web": {"module": "web/admob.js"}
+    "web": {"module": "web/ads.js"}
 }
 ```
 
@@ -158,7 +158,7 @@ A plugin needs only the folders of the platforms it supports. Paths in `plugin.j
 | `version` | Yes | One to three numbers separated by dots, such as `1.2.0`. |
 | `description` | Yes | What the plugin does, in one sentence. |
 | `platforms` | Yes | The platforms the plugin supports, each once: `ios`, `catalyst`, `tvos`, `macos`, `android`, `web`, `windows` and `linux`. Its Apple part compiles only into the targets and destinations they allow. |
-| `requires` | No | The ids of other plugins that the app must list as well, such as `firebase` for `firebase-analytics`. |
+| `requires` | No | The ids of other plugins that the app must list as well, such as `cloud` for `cloud-analytics`. |
 | `parameters` | No | The values an app gives the plugin in `app.json`, by name in camelCase. |
 | `apple` | No | The Apple part, which needs one of `ios`, `catalyst`, `tvos` and `macos` in `platforms`. |
 | `android` | No | The Android part, which needs `android` in `platforms`. |
@@ -190,7 +190,7 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 | `infoPlist` | Keys merged into the `Info.plist` of every platform of the plugin. |
 | `entitlements` | Keys merged into the entitlements of every platform of the plugin. |
 | `privacy` | Declarations merged into the privacy manifest of the app: `NSPrivacyAccessedAPITypes`, each with its `NSPrivacyAccessedAPIType` and `NSPrivacyAccessedAPITypeReasons`, `NSPrivacyCollectedDataTypes`, `NSPrivacyTracking` and `NSPrivacyTrackingDomains`, as the [privacy manifest](../tools/distribution.md#privacy-manifest) describes. |
-| `resources` | Files copied to the root of the app bundle: a path inside the plugin, or a reference to a `file` parameter such as `"${googleServicesPlist}"`, which names a file of the app and is left out while the parameter has no value. |
+| `resources` | Files copied to the root of the app bundle: a path inside the plugin, or a reference to a `file` parameter such as `"${servicesPlist}"`, which names a file of the app and is left out while the parameter has no value. |
 | `buildScripts` | Post-build phases, each with a `name`, a `script` and optional `inputFiles` and `outputFiles`. |
 
 #### android
@@ -198,15 +198,15 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 | Key | Value |
 | --- | --- |
 | `module` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`, which the Android template declares, and depends on the engine with `implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")`, where `val haylenEngineVersion: String by extra` reads the engine version that the Android project gives every module, and on the [other engine libraries](#engine-libraries) it uses. |
-| `gradlePlugins` | Gradle plugins that the app module applies, each as `{"id": ..., "version": ...}`, such as `{"id": "com.google.gms.google-services", "version": "4.5.0"}`. |
+| `gradlePlugins` | Gradle plugins that the app module applies, each as `{"id": ..., "version": ...}`, such as `{"id": "com.example.services", "version": "1.0.0"}`. |
 | `placeholders` | Manifest placeholders by name, whose text values the manifest of the module reads as `${name}`. |
-| `files` | Copies into the Android project, each as `{"from": ..., "to": ...}`. `from` is a path inside the plugin or a reference to a `file` parameter, and `to` is a path inside the project, such as `app/google-services.json`. |
+| `files` | Copies into the Android project, each as `{"from": ..., "to": ...}`. `from` is a path inside the plugin or a reference to a `file` parameter, and `to` is a path inside the project, such as `app/services.json`. |
 
 #### web
 
 | Key | Value |
 | --- | --- |
-| `module` | The ES module in the `web` folder that the loader imports, such as `web/admob.js`. Its default export is `load(context)`, and it may import the other modules of the folder with relative paths. |
+| `module` | The ES module in the `web` folder that the loader imports, such as `web/ads.js`. Its default export is `load(context)`, and it may import the other modules of the folder with relative paths. |
 
 ### Creating a plugin
 
@@ -221,9 +221,9 @@ haylen plugin add ~/plugins/my-plugin --app ~/apps/my-game
 
 ### Modules
 
-The Lua API of a plugin lives in `source/` of its folder, and the package carries it as `plugins/<id>/source/`. `require('<id>')` loads `plugins/<id>/source/init.lua`, and `require('<id>.<name>')` loads `plugins/<id>/source/<name>.lua` or, when that file is missing, `plugins/<id>/source/<name>/init.lua`, with dots of the name as folders like any module. Only the plugins that `app.json` lists have modules, so `require` looks for any other name in `source/` of the app. Plugin modules load like the modules of the app, as text in development and as the bytecode of a protected release in release builds, and their chunk names are their package paths, so errors point at files such as `plugins/admob/source/init.lua`.
+The Lua API of a plugin lives in `source/` of its folder, and the package carries it as `plugins/<id>/source/`. `require('<id>')` loads `plugins/<id>/source/init.lua`, and `require('<id>.<name>')` loads `plugins/<id>/source/<name>.lua` or, when that file is missing, `plugins/<id>/source/<name>/init.lua`, with dots of the name as folders like any module. Only the plugins that `app.json` lists have modules, so `require` looks for any other name in `source/` of the app. Plugin modules load like the modules of the app, as text in development and as the bytecode of a protected release in release builds, and their chunk names are their package paths, so errors point at files such as `plugins/ads/source/init.lua`.
 
-A module of the app whose first name part is the id of a plugin could never load, because `require` finds the module of the plugin first. The app stops on the error screen when it starts, before `source/main.lua` runs, with both files named: `The app module source/admob/ads.lua has the name admob.ads, which require resolves to plugins/admob/source/ads.lua of the plugin admob. Rename the module of the app.` An app in development restarts when a module or the `plugin.json` of one of its plugins changes, like it does for its own modules.
+A module of the app whose first name part is the id of a plugin could never load, because `require` finds the module of the plugin first. The app stops on the error screen when it starts, before `source/main.lua` runs, with both files named: `The app module source/ads/banner.lua has the name ads.banner, which require resolves to plugins/ads/source/banner.lua of the plugin ads. Rename the module of the app.` An app in development restarts when a module or the `plugin.json` of one of its plugins changes, like it does for its own modules.
 
 ### The plugin handle
 
@@ -926,7 +926,7 @@ The runtime's application delegate hands every event below to the plugins that i
 
 The runtime refers to UserNotifications only through the Objective-C runtime, so the engine links no framework for notifications, and an app links UserNotifications only when its code uses it, as a plugin that posts or receives notifications does. Such a plugin declares `UserNotifications.framework` in the `frameworks` of its `apple` section and adopts `HaylenNotificationPlugin`, declared in `haylen/platform/apple/HaylenNotificationPlugin.h`, which adds the two methods of the delegate of the notification center to `HaylenPlugin`.
 
-While the app launches, in `willFinishLaunching`, the runtime looks for `UNUserNotificationCenter` by its name. When the app links the framework and has plugins, the runtime makes its application delegate the delegate of the center, which is what the system needs to deliver the response to a notification that launched the app through `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:`, and hands the events of the center to the plugins that implement their methods, as [events of the app](#events-of-the-app) describes. Plugins never replace the delegate. SDKs that swizzle the application delegate to find these events, such as Firebase with `FirebaseAppDelegateProxyEnabled`, can have that turned off in the `infoPlist` of their plugin, because the runtime already hands the events over.
+While the app launches, in `willFinishLaunching`, the runtime looks for `UNUserNotificationCenter` by its name. When the app links the framework and has plugins, the runtime makes its application delegate the delegate of the center, which is what the system needs to deliver the response to a notification that launched the app through `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:`, and hands the events of the center to the plugins that implement their methods, as [events of the app](#events-of-the-app) describes. Plugins never replace the delegate. SDKs that swizzle the application delegate to find these events, such as the ones of analytics and messaging services, can have that turned off in the `infoPlist` of their plugin, because the runtime already hands the events over.
 
 ```swift
 // plugins/reminders/apple/RemindersPlugin.swift
@@ -1071,7 +1071,7 @@ An app whose plugins bring no provider and no link activity has no exported comp
 
 ### The plugin class
 
-A plugin class extends `dev.haylen.HaylenPlugin` and has a public constructor without parameters. `HaylenPluginProvider`, a content provider that the manifest of `dev.haylen:haylen-plugins` declares, starts with the app process, before `Application.onCreate`. It reads every `dev.haylen.plugin.<id>` entry of the merged manifest, creates each class once and calls `onLoad` with the context of the plugin, in the [load order](#load-order) that `haylen-plugins.json` of the APK assets lists, so SDKs set up before any app code runs. Its `initOrder` is 50, so the providers that SDKs start with at 100, such as the one of Firebase, have run by then. The tool `haylen.py prepare` writes that file with the id, the version and the parameter values of every plugin with an Android part, so the runtime never reads `app.json` or a `plugin.json`, which a protected release keeps in its encrypted app domain, and a plugin class that the file does not list loads after the listed ones without parameter values. The engine receives the ids of the plugins that loaded, which `handle.native` and `platform.plugins()` show in Lua.
+A plugin class extends `dev.haylen.HaylenPlugin` and has a public constructor without parameters. `HaylenPluginProvider`, a content provider that the manifest of `dev.haylen:haylen-plugins` declares, starts with the app process, before `Application.onCreate`. It reads every `dev.haylen.plugin.<id>` entry of the merged manifest, creates each class once and calls `onLoad` with the context of the plugin, in the [load order](#load-order) that `haylen-plugins.json` of the APK assets lists, so SDKs set up before any app code runs. Its `initOrder` is 50, so the providers that SDKs start with at 100 have run by then. The tool `haylen.py prepare` writes that file with the id, the version and the parameter values of every plugin with an Android part, so the runtime never reads `app.json` or a `plugin.json`, which a protected release keeps in its encrypted app domain, and a plugin class that the file does not list loads after the listed ones without parameter values. The engine receives the ids of the plugins that loaded, which `handle.native` and `platform.plugins()` show in Lua.
 
 - A class that cannot be found or created, such as a class the module lacks or one without a public constructor without parameters, and a class that does not extend `HaylenPlugin`, are logged as errors with the tag `haylen` that name the class and the plugin, and the plugin runs without its native part.
 - An `onLoad` that throws is logged the same way, the methods it registered go away, and the plugin runs without its native part.

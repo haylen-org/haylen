@@ -18,10 +18,10 @@ my-app/
     images/hero.png    Loaded with assets.texture('images/hero.png').
     preload.json
   plugins/
-    admob/
+    ads/
       plugin.json      The manifest of a plugin that app.json lists.
       source/
-        init.lua       Loaded with require('admob').
+        init.lua       Loaded with require('ads').
 ```
 
 Lua files use `dash-case` names, and asset files and folders use lowercase names with dashes, such as `audio/fire-loop.ogg`. The command `haylen package my-app -o my-app.zip` zips `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of a folder, with `app.json` at the root of the archive. The desktop player runs either form with `haylen my-app` or `haylen my-app.zip`, and the [distribution guide](../tools/distribution.md) shows how to run a package on every platform and in the browser.
@@ -86,7 +86,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `debug.reload` | string | `"module"` | How a changed Lua module applies while the app runs in development: `"module"` reloads it in place with the state of the app, and `"restart"` restarts the app, as [hot reload](#hot-reload) describes. Any other value raises `The "debug.reload" option must be "module" or "restart".` |
 | `autoload` | array of strings | `[]` | Modules that load as [autoloads](#autoloads) before `source/main.lua`, such as `"state.player-data"`. |
 | `native` | object | `{}` | The native libraries the app ships, by name, as the [native code guide](../platform/native.md#packaging-libraries-with-an-app) describes. |
-| `plugins` | object | `{}` | The [plugins](../platform/plugins.md) the app uses, by id in `dash-case`, each with an object of the values of its parameters, such as `{"admob": {"testMode": true}}`. Every id needs `plugins/<id>/plugin.json` in the package, and the app fails to load with `The plugin "admob" in "app.json" has no "plugins/admob/plugin.json" in the package.` otherwise. |
+| `plugins` | object | `{}` | The [plugins](../platform/plugins.md) the app uses, by id in `dash-case`, each with an object of the values of its parameters, such as `{"ads": {"testMode": true}}`. Every id needs `plugins/<id>/plugin.json` in the package, and the app fails to load with `The plugin "ads" in "app.json" has no "plugins/ads/plugin.json" in the package.` otherwise. |
 
 ```json
 {
@@ -127,7 +127,7 @@ scene.push(require('scenes.boot').new())
 
 ## Modules and require
 
-The function `require` returns a module that is already loaded, which is where Varn's modules are from the start. Otherwise it looks in two places. It first builds the modules registered in `package.preload`, which are the engine modules such as `haylen.graphics` and the modules of any plugin a C++ project adds. Then it searches the `source/` folder of the package: `require('scenes.main-menu')` loads `source/scenes/main-menu.lua` and, when that file is missing, `source/scenes/main-menu/init.lua`. A module whose first name part is the id of a plugin of `app.json` comes from the `source/` folder of that plugin instead: `require('admob')` loads `plugins/admob/source/init.lua` and `require('admob.consent')` loads `plugins/admob/source/consent.lua`, so a module of the app named after a plugin is an error when the app starts, as the [plugin guide](../platform/plugins.md#modules) explains. Modules load as text, except in a protected release, where the Lua modules of the app and its plugins ship as bytecode that the release build compiled and the module loader of the engine alone loads, as the [content guide](../content/content.md#lua-bytecode) describes. The same names, files and lines appear in errors either way.
+The function `require` returns a module that is already loaded, which is where Varn's modules are from the start. Otherwise it looks in two places. It first builds the modules registered in `package.preload`, which are the engine modules such as `haylen.graphics` and the modules of any plugin a C++ project adds. Then it searches the `source/` folder of the package: `require('scenes.main-menu')` loads `source/scenes/main-menu.lua` and, when that file is missing, `source/scenes/main-menu/init.lua`. A module whose first name part is the id of a plugin of `app.json` comes from the `source/` folder of that plugin instead: `require('ads')` loads `plugins/ads/source/init.lua` and `require('ads.consent')` loads `plugins/ads/source/consent.lua`, so a module of the app named after a plugin is an error when the app starts, as the [plugin guide](../platform/plugins.md#modules) explains. Modules load as text, except in a protected release, where the Lua modules of the app and its plugins ship as bytecode that the release build compiled and the module loader of the engine alone loads, as the [content guide](../content/content.md#lua-bytecode) describes. The same names, files and lines appear in errors either way.
 
 The fields `package.path` and `package.cpath` are empty, so nothing is ever loaded from the host file system and an app behaves the same from a folder, a zip file or the browser. A missing module raises `no file 'source/scenes/missing.lua' or 'source/scenes/missing/init.lua' in the app package`.
 
@@ -497,7 +497,7 @@ scene.push({
 })
 ```
 
-The command `haylen bench --suite lua` runs a Lua bunnymark, `engine/bench/lua-benchmark`, on the headless host: every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in five ways. The mode `tables` keeps one table for each sprite and draws the list with `graphics2d.drawBatch(texture, sprites)`. The mode `calls` keeps the same tables and draws each one with its own `graphics2d.draw(texture, x, y, sprite)`. The mode `buffer` keeps the positions in a float buffer written one value at a time with `buffer[index]` and draws the buffer. The mode `bulk` keeps the positions in a plain Lua array, copies it into the buffer with one `buffer:set(1, positions)` and draws the buffer. The mode `batch` does the same update and moves a sprite batch with `batch:writeFields`. These are the average CPU milliseconds of one frame on an Apple M5 Pro in Release, where the draw column is the recording of the draw calls, including the conversion of the sprites on worker threads, and the frame column covers the whole frame of the engine.
+The command `haylen bench --suite lua` runs the Lua sprite benchmark `engine/bench/lua-benchmark` on the headless host: every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in five ways. The mode `tables` keeps one table for each sprite and draws the list with `graphics2d.drawBatch(texture, sprites)`. The mode `calls` keeps the same tables and draws each one with its own `graphics2d.draw(texture, x, y, sprite)`. The mode `buffer` keeps the positions in a float buffer written one value at a time with `buffer[index]` and draws the buffer. The mode `bulk` keeps the positions in a plain Lua array, copies it into the buffer with one `buffer:set(1, positions)` and draws the buffer. The mode `batch` does the same update and moves a sprite batch with `batch:writeFields`. These are the average CPU milliseconds of one frame on an Apple M5 Pro in Release, where the draw column is the recording of the draw calls, including the conversion of the sprites on worker threads, and the frame column covers the whole frame of the engine.
 
 | Sprites | Mode | Update | Draw | Frame |
 | --- | --- | --- | --- | --- |

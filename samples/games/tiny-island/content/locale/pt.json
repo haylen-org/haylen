@@ -71,7 +71,7 @@
         "fullscreen": "Tela cheia",
         "touch": "Controles de toque",
         "device": "Dados do aparelho",
-        "google": "Entrar com Google",
+        "signIn": "Entrar",
         "back": "Voltar",
         "signedIn": "Conectado como {name}"
     },

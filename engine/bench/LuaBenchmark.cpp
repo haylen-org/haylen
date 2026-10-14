@@ -11,7 +11,7 @@
 
 namespace haylen::bench {
 
-// Runs the Lua bunnymark package on the headless host, where no GPU paces the frames, so the numbers it prints are the CPU cost of Lua updating and drawing many sprites through tables, a float buffer and a sprite batch.
+// Runs the Lua sprite package on the headless host, where no GPU paces the frames, so the numbers it prints are the CPU cost of Lua updating and drawing many sprites through tables, a float buffer and a sprite batch.
 class LuaBenchmark final {
   public:
     static int run(const std::filesystem::path& folder) {

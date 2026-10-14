@@ -4,7 +4,7 @@
 
 namespace haylen::input {
 
-// A keyboard key, numbered like the GLFW and Sokol key codes.
+// A keyboard key, numbered like the Sokol key codes.
 enum class Key : std::uint16_t {
     Unknown = 0,
     Space = 32,

@@ -11,16 +11,16 @@
 namespace haylen::platform {
 
 TEST(PluginLoadOrderTest, KeepsTheOrderOfAppJsonWithRequiredPluginsFirst) {
-    // The order of `app.json` is not alphabetical, and "analytics" requires "firebase", which `app.json` lists after it.
+    // The order of `app.json` is not alphabetical, and "analytics" requires "cloud", which `app.json` lists after it.
     io::MemoryPackage package("order");
-    package.setFile("app.json", test::TestFiles::bytes(R"({"name": "Order", "plugins": {"zoo-ads": {}, "analytics": {}, "firebase": {}, "camera": {}}})"));
+    package.setFile("app.json", test::TestFiles::bytes(R"({"name": "Order", "plugins": {"zoo-ads": {}, "analytics": {}, "cloud": {}, "camera": {}}})"));
     package.setFile("plugins/zoo-ads/plugin.json", test::TestFiles::bytes(R"({"id": "zoo-ads", "version": "1"})"));
-    package.setFile("plugins/analytics/plugin.json", test::TestFiles::bytes(R"({"id": "analytics", "version": "1", "requires": ["firebase", "absent"]})"));
-    package.setFile("plugins/firebase/plugin.json", test::TestFiles::bytes(R"({"id": "firebase", "version": "1"})"));
+    package.setFile("plugins/analytics/plugin.json", test::TestFiles::bytes(R"({"id": "analytics", "version": "1", "requires": ["cloud", "absent"]})"));
+    package.setFile("plugins/cloud/plugin.json", test::TestFiles::bytes(R"({"id": "cloud", "version": "1"})"));
     package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({"id": "camera", "version": "1", "requires": ["zoo-ads"]})"));
 
     // A required plugin that `app.json` does not list loads nowhere, so it takes no place in the order.
-    EXPECT_EQ(PluginLoadOrder::read(package), (std::vector<std::string>{"zoo-ads", "firebase", "analytics", "camera"}));
+    EXPECT_EQ(PluginLoadOrder::read(package), (std::vector<std::string>{"zoo-ads", "cloud", "analytics", "camera"}));
 }
 
 TEST(PluginLoadOrderTest, ReadsNoPluginsWithoutThePluginsOfAppJson) {

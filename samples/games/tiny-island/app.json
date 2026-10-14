@@ -20,7 +20,7 @@
     },
     "clearColor": "#FF2FB3C4",
     "plugins": {
-        "google-sign-in": {
+        "sign-in": {
             "clientId": ""
         }
     }

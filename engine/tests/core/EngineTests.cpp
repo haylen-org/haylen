@@ -156,7 +156,7 @@ TEST(AppConfigTest, ReadsEveryField) {
         "splash": {"logo": "ui/logo.png", "background": "#405060", "darkBackground": "#FF000000", "duration": 1.5, "fadeOut": 0.5},
         "input": {"mouseAsTouch": true, "scrollSpeed": 0.5},
         "ui": {"scaleMode": "physical", "scale": 1.25},
-        "native": {"steam_api": {"files": {"macos": "platform/apple/libsteam_api.dylib"}}}
+        "native": {"game_platform": {"files": {"macos": "platform/apple/libgame_platform.dylib"}}}
     })"));
 
     EXPECT_EQ(config.name, "Tiny Island");
@@ -195,7 +195,7 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_FALSE(plain.darkBackground.has_value());
     EXPECT_EQ(plain.duration, 0.0F);
     EXPECT_EQ(plain.fadeOut, 0.25F);
-    EXPECT_EQ(config.native.at("steam_api").at("files").at("macos"), "platform/apple/libsteam_api.dylib");
+    EXPECT_EQ(config.native.at("game_platform").at("files").at("macos"), "platform/apple/libgame_platform.dylib");
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"native", core::Json::array()}}), std::invalid_argument);
 
     const core::AppConfig roundTrip = core::AppConfig::fromJson(config.toJson());
@@ -273,33 +273,33 @@ TEST(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
 }
 
 TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
-    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"admob": {"testMode": true, "placements": ["top"]}, "firebase-analytics": {}}})"));
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"ads": {"testMode": true, "placements": ["top"]}, "cloud-analytics": {}}})"));
     EXPECT_EQ(config.plugins.size(), 2U);
-    EXPECT_EQ(config.plugins.at("admob").at("testMode"), true);
-    EXPECT_EQ(config.plugins.at("firebase-analytics"), core::Json::object());
+    EXPECT_EQ(config.plugins.at("ads").at("testMode"), true);
+    EXPECT_EQ(config.plugins.at("cloud-analytics"), core::Json::object());
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).plugins, config.plugins);
     EXPECT_TRUE(core::AppConfig::fromJson(core::Json::object()).plugins.empty());
 
     // The section is an object of parameter objects, keyed by ids in `dash-case`, which also keeps every id inside the plugins folder of the package.
-    for (const char* document : {R"({"plugins": ["admob"]})", R"({"plugins": {"admob": true}})", R"({"plugins": {"AdMob": {}}})", R"({"plugins": {"ad--mob": {}}})", R"({"plugins": {"admob-": {}}})", R"({"plugins": {"2d-kit": {}}})", R"({"plugins": {"../admob": {}}})", R"({"plugins": {"": {}}})"}) {
+    for (const char* document : {R"({"plugins": ["ads"]})", R"({"plugins": {"ads": true}})", R"({"plugins": {"Ads": {}}})", R"({"plugins": {"a--ds": {}}})", R"({"plugins": {"ads-": {}}})", R"({"plugins": {"2d-kit": {}}})", R"({"plugins": {"../ads": {}}})", R"({"plugins": {"": {}}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
     try {
-        (void)core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"admob": []}})"));
+        (void)core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"ads": []}})"));
         FAIL() << "A plugin needs an object of parameter values.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin \"admob\" in \"app.json\" must have an object of parameter values.");
+        EXPECT_STREQ(error.what(), "The plugin \"ads\" in \"app.json\" must have an object of parameter values.");
     }
 
     // Every plugin of `app.json` has its manifest in the package.
-    io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(R"({"plugins": {"admob": {}}})")}});
+    io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}});
     try {
         (void)core::AppConfig::fromPackage(package);
         FAIL() << "The package has no manifest for the plugin.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin \"admob\" in \"app.json\" has no \"plugins/admob/plugin.json\" in the package.");
+        EXPECT_STREQ(error.what(), "The plugin \"ads\" in \"app.json\" has no \"plugins/ads/plugin.json\" in the package.");
     }
-    package.setFile("plugins/admob/plugin.json", test::TestFiles::bytes(R"({"id": "admob"})"));
+    package.setFile("plugins/ads/plugin.json", test::TestFiles::bytes(R"({"id": "ads"})"));
     EXPECT_EQ(core::AppConfig::fromPackage(package).plugins.size(), 1U);
 }
 

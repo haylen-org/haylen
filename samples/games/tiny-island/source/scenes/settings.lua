@@ -1,10 +1,10 @@
--- The settings sheet, shown over the menu or the paused run. It also shows what the system reports about the device and tries the platform bridge with the Google sign-in of the local plugin google-sign-in.
+-- The settings sheet, shown over the menu or the paused run. It also shows what the system reports about the device and tries the platform bridge with the local plugin sign-in.
 local scene = require('haylen.scene')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
-local googleSignIn = require('google-sign-in')
+local signIn = require('sign-in')
 local preferences = require('systems.preferences')
 local sound = require('systems.sound')
 local widgets = require('ui.widgets')
@@ -45,9 +45,9 @@ function settings:enter()
         local info = system.info()
         self.gui:set('bridge', {text = string.format('Device "%s", system "%s" %s, locale "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', info.locale or '')})
     end, {variant = 'default', grow = 1})}
-    if googleSignIn.available then
-        bridge[2] = widgets.button('google', 'settings.google', function()
-            self:ask(googleSignIn.signIn, function(account)
+    if signIn.available then
+        bridge[2] = widgets.button('signIn', 'settings.signIn', function()
+            self:ask(signIn.signIn, function(account)
                 return widgets.text('settings.signedIn', {name = account.name or account.email})
             end)
         end, {variant = 'default', grow = 1})

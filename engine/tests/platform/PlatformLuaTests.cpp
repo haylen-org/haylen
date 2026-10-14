@@ -27,7 +27,7 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
             local doubled = platform.call('math.double', {value = 21}):await()
             local _, failure = platform.call('math.fail'):await()
             local device = platform.call('device.model'):await()
-            local _, denied = platform.call('auth.login', {provider = 'google'}):await()
+            local _, denied = platform.call('auth.login', {provider = 'email'}):await()
             summary = doubled.value .. ' ' .. tostring(failure.message:find('handler failed') ~= nil) .. ' ' .. device.model .. ' ' .. denied
         end)
     )");
@@ -37,7 +37,7 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getPlatformCalls().size() == 1; }));
     fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[0].id, true, R"({"model": "phone"})");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getPlatformCalls().size() == 2; }));
-    EXPECT_EQ(fixture.host().getPlatformCalls()[1].paramsJson, R"({"provider":"google"})");
+    EXPECT_EQ(fixture.host().getPlatformCalls()[1].paramsJson, R"({"provider":"email"})");
     fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[1].id, false, R"("denied")");
 
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));

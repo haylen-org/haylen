@@ -1,4 +1,4 @@
--- A bunnymark for Lua: sprites fall, bounce off the edges of the screen and draw every frame. Each phase keeps them in a different way and logs the average CPU milliseconds of the process spent updating them, drawing them and on the whole frame. CPU time stays steady when other programs load the machine, while wall time does not.
+-- A sprite benchmark for Lua: sprites fall, bounce off the edges of the screen and draw every frame. Each phase keeps them in a different way and logs the average CPU milliseconds of the process spent updating them, drawing them and on the whole frame. CPU time stays steady when other programs load the machine, while wall time does not.
 --   `tables`  One Lua table for each sprite, drawn with `graphics2d.drawBatch(texture, tables)`.
 --   `calls`   The same tables, each drawn with its own `graphics2d.draw(texture, x, y, options)` call.
 --   `buffer`  Positions in a `FloatBuffer` written one value at a time, drawn with `graphics2d.drawBatch(texture, buffer, layout)`.

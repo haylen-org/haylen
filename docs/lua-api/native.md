@@ -28,7 +28,7 @@ end
 Loads a library and returns the namespace of Varn's `ffi` whose fields are the functions that `ffi.cdef` declared, called with the C types of their parameters and results. The argument `name` is one of:
 
 - A path, which is any name with a folder in it, such as `/opt/sdk/libsdk.so` or `./libsdk.dylib`. It loads as given.
-- A file name with an extension, such as `steam_api64.dll` or `libsteam_api.so`, which is looked up in the folders below.
+- A file name with an extension, such as `game_platform.dll` or `libgame_platform.so`, which is looked up in the folders below.
 - A library name without prefix and extension, such as `native_test`, which becomes the file names of the platform: `libnative_test.dylib` and `native_test.framework/native_test` on macOS and Mac Catalyst, `native_test.framework/native_test` on iOS and tvOS, `native_test.dll` on Windows, and `libnative_test.so` on Linux and Android.
 
 A name is looked up in this order, and the first file that loads wins:

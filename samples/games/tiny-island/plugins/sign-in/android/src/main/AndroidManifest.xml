@@ -3,7 +3,7 @@
     <application>
         <!-- The provider of the `haylen-plugins` library creates and loads the plugin class that this entry names when the app process starts. -->
         <meta-data
-            android:name="dev.haylen.plugin.google-sign-in"
-            android:value="dev.haylen.tinyisland.GoogleSignInPlugin" />
+            android:name="dev.haylen.plugin.sign-in"
+            android:value="dev.haylen.tinyisland.SignInPlugin" />
     </application>
 </manifest>

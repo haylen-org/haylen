@@ -39,7 +39,7 @@ local async = require('async')
 local platform = require('haylen.platform')
 
 async.spawn(function()
-    local account, err = platform.call('auth.google.signIn', {prompt = true}, {timeout = 60}):await()
+    local account, err = platform.call('auth.signIn', {prompt = true}, {timeout = 60}):await()
     if account then
         print('signed in as ' .. account.email)
     elseif err.code == 'timeout' then
@@ -66,7 +66,7 @@ Calls `listener(payload)` every time native code sends the event named `event`, 
 
 Native code retains an event that may come before the app listens, such as the deep link or the notification that opened the app, or purchases that finished while it was closed. A retained event that nothing listens to waits, up to 32 per name with the oldest dropped first, and the first listener of its name receives the waiting events in order at the start of the next frame, before any newer event of that name. A retained batch waits as the list of its frame. Events wait in the running app, so a restarted app starts with none.
 
-The engine sends no events of its own, so event names are a contract between the app and its native code. Plugins name their events after their id, such as `admob.closed`.
+The engine sends no events of its own, so event names are a contract between the app and its native code. Plugins name their events after their id, such as `ads.closed`.
 
 ```lua
 local platform = require('haylen.platform')
@@ -235,7 +235,7 @@ Returns the [handle](#plugin-handles) of the plugin `id` that `app.json` lists, 
 ```lua
 local platform = require('haylen.platform')
 
-local ads = platform.plugin('admob')
+local ads = platform.plugin('ads')
 print(ads.id, ads.version, ads.native, ads.config.testMode)
 ```
 
@@ -278,7 +278,7 @@ end)
 
 | Member | Meaning |
 | --- | --- |
-| `handle.id` | The id of the plugin, such as `'admob'`. |
+| `handle.id` | The id of the plugin, such as `'ads'`. |
 | `handle.version` | The `version` of its `plugin.json`. |
 | `handle.config` | A table with the parameter values of the plugin in `app.json`, over the `default` of every parameter of its `plugin.json`, the same values its native parts receive. |
 | `handle.native` | Whether the native part of the plugin runs on this platform, read anew every time, since a native library may declare it later. |
@@ -292,25 +292,25 @@ end)
 The members are read-only, and an empty method or event name raises `A method or event of the plugin "<id>" needs a name.`. A platform without the native part of the plugin answers its calls with the code `noHandler`, so a plugin checks `handle.native` when it can do without it. The [plugin guide](../platform/plugins.md#lua-api-of-plugins) shows the Lua API of a whole plugin.
 
 ```lua
--- plugins/admob/source/init.lua
+-- plugins/ads/source/init.lua
 local platform = require('haylen.platform')
 
-local handle = platform.plugin('admob')
-local admob = {}
+local handle = platform.plugin('ads')
+local ads = {}
 
-function admob.showBanner(placement)
+function ads.showBanner(placement)
     return handle:call('showBanner', {placement = placement or handle.config.placement})
 end
 
-function admob.logImpression(name)
+function ads.logImpression(name)
     handle:send('logImpression', {name = name})
 end
 
-function admob.onClosed(listener)
+function ads.onClosed(listener)
     return handle:on('closed', listener)
 end
 
-return admob
+return ads
 ```
 
 ## Screens

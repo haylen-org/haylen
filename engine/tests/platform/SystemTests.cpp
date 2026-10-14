@@ -156,7 +156,7 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     EXPECT_EQ(fixture.lua("return system.theme()"), "light");
     EXPECT_EQ(fixture.lua("local battery = system.battery() return tostring(battery.level) .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "nil false unknown");
 
-    fixture.host().setSystemInfo({.os = SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Pixel 9", .manufacturer = "Google", .deviceKind = SystemInfo::DeviceKind::Phone, .cpuName = "Tensor G4", .cpuCores = 8, .memoryBytes = 12884901888, .locale = "pt-BR", .languages = {"pt-BR", "en-US"}, .timeZone = "America/Sao_Paulo"});
+    fixture.host().setSystemInfo({.os = SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Phone 9", .manufacturer = "Maker", .deviceKind = SystemInfo::DeviceKind::Phone, .cpuName = "Chip G4", .cpuCores = 8, .memoryBytes = 12884901888, .locale = "pt-BR", .languages = {"pt-BR", "en-US"}, .timeZone = "America/Sao_Paulo"});
     fixture.restart();
     // clang-format off
     fixture.runLua(R"(
@@ -169,7 +169,7 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
         summary = table.concat({info.os, info.osVersion, info.deviceModel, info.manufacturer, info.deviceKind, info.cpuName, info.cpuCores, info.memoryBytes, info.locale, table.concat(info.languages, ','), info.timeZone}, '|')
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return summary"), "android|16|Pixel 9|Google|phone|Tensor G4|8|12884901888|pt-BR|pt-BR,en-US|America/Sao_Paulo");
+    EXPECT_EQ(fixture.lua("return summary"), "android|16|Phone 9|Maker|phone|Chip G4|8|12884901888|pt-BR|pt-BR,en-US|America/Sao_Paulo");
 
     fixture.host().setTheme(Theme::Dark);
     fixture.host().setBattery({.level = 0.5F, .charging = true, .state = Battery::State::Charging});

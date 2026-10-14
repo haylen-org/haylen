@@ -19,7 +19,7 @@
 
 namespace haylen::content {
 
-// How a release splits for the stores that deliver it: what ships with the app, what stays for the server and the packs of named content, such as the expansions that Steam installs as depots of their own, and how little of it changes between two builds.
+// How a release splits for the stores that deliver it: what ships with the app, what stays for the server and the packs of named content, such as the expansions that a store installs on their own, and how little of it changes between two builds.
 class ReleaseStagerTest : public ::testing::Test {
   protected:
     using Files = std::map<std::string, std::vector<std::uint8_t>>;

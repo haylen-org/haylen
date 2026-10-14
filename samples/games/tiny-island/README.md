@@ -102,7 +102,7 @@ tiny-island/
     fonts/               The font of the interface with its license.
     preload.json         The boot, menu and gameplay preload groups.
   plugins/
-    google-sign-in/      The local plugin with the Google sign-in: its Lua API, its Android module and its web module.
+    sign-in/             The local plugin that signs the player in: its Lua API, its Android module and its web module.
   tools/
     generate-island-map.py  The island map generator.
 ```
@@ -111,7 +111,7 @@ The day runs dawn, day, dusk and night in a loop of 15, 150, 15 and 90 seconds. 
 
 ## Platform bridge demo
 
-The settings screen shows what `system.info()` of [`haylen.system`](../../../docs/lua-api/system.md) reports about the device and, on Android and the web, signs in with Google through the local plugin [`google-sign-in`](plugins/google-sign-in) and shows the answer. Google sign-in needs the web client id of a Google Cloud project, which `clientId` under `plugins.google-sign-in` of `app.json` gives both platforms. The plugin holds the native side, a Java plugin class with Credential Manager on Android and a web module with Google Identity Services, which `haylen.py run` builds into a copy of the template of each platform, and [the plugin guide](../../../docs/platform/plugins.md) explains how to write plugins of your own.
+The settings screen shows what `system.info()` of [`haylen.system`](../../../docs/lua-api/system.md) reports about the device and, on Android and the web, signs the player in through the local plugin [`sign-in`](plugins/sign-in) and shows the answer. The sign-in needs the web client id that the identity service of the account gives the game, which `clientId` under `plugins.sign-in` of `app.json` gives both platforms. The plugin holds the native side, a Java plugin class with Credential Manager on Android and a web module with the script of the identity service, which `haylen.py run` builds into a copy of the template of each platform, and [the plugin guide](../../../docs/platform/plugins.md) explains how to write plugins of your own.
 
 ## Credits
 

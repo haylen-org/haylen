@@ -190,7 +190,7 @@ void AppConfig::readPlugins(const Json& section, AppConfig& config) {
     }
     for (const auto& [id, values] : section.items()) {
         if (!isPluginId(id)) {
-            throw std::invalid_argument("The plugin id \"" + id + "\" in \"app.json\" is not in \"dash-case\", such as \"firebase-analytics\".");
+            throw std::invalid_argument("The plugin id \"" + id + "\" in \"app.json\" is not in \"dash-case\", such as \"cloud-analytics\".");
         }
         if (!values.is_object()) {
             throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" must have an object of parameter values.");

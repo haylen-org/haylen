@@ -17,8 +17,8 @@ import dev.haylen.HaylenPluginContext;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// Native part of the Google sign-in of Tiny Island on Android. It answers `google-sign-in.signIn` with the Google account the player picks through Credential Manager, with the web client id of the game's Google Cloud project from the parameter `clientId` of the plugin.
-public final class GoogleSignInPlugin extends HaylenPlugin {
+// Native part of the sign-in of Tiny Island on Android. It answers `sign-in.signIn` with the account the player picks through Credential Manager, with the web client id that the identity service gives the game from the parameter `clientId` of the plugin.
+public final class SignInPlugin extends HaylenPlugin {
     private HaylenPluginContext context;
 
     @Override
@@ -30,11 +30,11 @@ public final class GoogleSignInPlugin extends HaylenPlugin {
     private void signIn(String clientId, HaylenBridge.Reply reply) {
         Activity activity = context.activity();
         if (clientId.isEmpty()) {
-            reply.failure("Google sign-in needs the web client id of the game's Google Cloud project. Set \"plugins.google-sign-in.clientId\" in the \"app.json\" of the game.");
+            reply.failure("Sign-in needs the web client id that the identity service gives the game. Set \"plugins.sign-in.clientId\" in the \"app.json\" of the game.");
             return;
         }
         if (activity == null) {
-            reply.failure("Google sign-in needs the activity of the game, which is not running.");
+            reply.failure("Sign-in needs the activity of the game, which is not running.");
             return;
         }
 
@@ -45,7 +45,7 @@ public final class GoogleSignInPlugin extends HaylenPlugin {
             public void onResult(GetCredentialResponse response) {
                 Credential credential = response.getCredential();
                 if (!(credential instanceof CustomCredential) || !GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL.equals(credential.getType())) {
-                    reply.failure("Credential Manager returned a credential that is not a Google account.");
+                    reply.failure("Credential Manager returned a credential that is not an ID token of an account.");
                     return;
                 }
                 try {
@@ -57,7 +57,7 @@ public final class GoogleSignInPlugin extends HaylenPlugin {
 
             @Override
             public void onError(GetCredentialException error) {
-                reply.failure("Google sign-in failed: \"" + error.getType() + "\" " + error.getMessage());
+                reply.failure("Sign-in failed: \"" + error.getType() + "\" " + error.getMessage());
             }
         });
     }

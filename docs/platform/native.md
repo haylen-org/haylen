@@ -1,6 +1,6 @@
 # Native code
 
-An app reaches anything native, from the APIs of the platform to native libraries and SDKs with a C API, in three ways. This guide explains them, how to choose between them, how native libraries are called from Lua and how their callbacks reach it, how an app ships its libraries on every platform, and how to integrate SDKs such as the flat C API of Steam or the C API of Epic Online Services with its NAT P2P. The [`haylen.native` reference](../lua-api/native.md) and the [`haylen.platform` reference](../lua-api/platform.md) list every function, and the [platform bridge guide](platform-bridge.md) describes how bridge calls travel.
+An app reaches anything native, from the APIs of the platform to native libraries and SDKs with a C API, in three ways. This guide explains them, how to choose between them, how native libraries are called from Lua and how their callbacks reach it, how an app ships its libraries on every platform, and how to integrate SDKs with a C API, such as a game platform SDK with a flat C API or an online services SDK with peer-to-peer connections through NAT. The [`haylen.native` reference](../lua-api/native.md) and the [`haylen.platform` reference](../lua-api/platform.md) list every function, and the [platform bridge guide](platform-bridge.md) describes how bridge calls travel.
 
 The Native libraries category of the test project, `NAT-001` to `NAT-005` in `samples/tests/source/categories/native/`, runs every part of this guide against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail. The `native` section of `samples/tests/app.json` builds the library from `samples/tests/plugins/native-test/native/`.
 
@@ -58,7 +58,7 @@ The rules of Varn's `ffi` that matter most:
 - Numbers convert both ways, `const char*` parameters take Lua strings, `ffi.string(pointer[, length])` copies text or bytes out, `ffi.new('T[?]', n)` allocates a buffer that Lua owns, and `ffi.new('T', table)` fills a struct from a table by field name or by position, nested structs included.
 - A struct passes by value as a cdata of its type and by pointer as the same cdata. An array field, such as `char name[33]`, reads and writes its elements in place and travels with its struct when the struct passes by value.
 - A `T*` and a `T[n]` pass where C expects a `const T*`, so a buffer from `ffi.new` goes to a `const uint8_t*` parameter as it is. A `const T*` does not pass where C expects a `T*` unless `ffi.cast` drops the `const`, and a `void*` takes and gives any pointer.
-- The constants of an `enum` are fields of `ffi.C`, such as `ffi.C.EOS_Success`, and an enum has the size of an `int`. A bitfield has the layout the C compiler of the platform gives it, and `intptr_t` and `uintptr_t` are integers as wide as a pointer. A function takes at most 30 arguments and a struct has at most 30 fields.
+- The constants of an `enum` are fields of `ffi.C`, such as `ffi.C.SDK_SUCCESS`, and an enum has the size of an `int`. A bitfield has the layout the C compiler of the platform gives it, and `intptr_t` and `uintptr_t` are integers as wide as a pointer. A function takes at most 30 arguments and a struct has at most 30 fields.
 - A function pointer is called like a function, whether a function returned it, a struct holds it or `ffi.cast` made it from an address, such as the light userdata of `native.findSymbol`, and calling a null one raises an error.
 - Variadic functions are called with Lua numbers, strings and pointers after the fixed arguments.
 - A value that does not fit a parameter or a field raises an error that names both types, such as `The C type "const int *" does not convert to "int *".`.
@@ -83,7 +83,7 @@ end)
 lib.native_test_report_later(reporter.pointer, 42)
 ```
 
-Varn callbacks fit SDKs that call back only on the thread that pumps them, such as `SteamAPI_RunCallbacks` or `EOS_Platform_Tick` called from Lua, and callbacks that must return a value to native code, such as a comparison function for a sort. They run on the main Lua state, never on the coroutine that called `ffi.cast`, so they keep working after it ended. An error raised during an `ffi` call, such as the sort that calls the comparison, is raised by that call once it returns, with the traceback of the callback after its message, and an error raised outside any `ffi` call stops the app with the error screen, like the error of an `async` task. A callback that fails returns zero to native code. An engine callback with `thread = 'frame'` runs inside the native call too, and it is the better fit for pumped SDKs whose callbacks return nothing, because it also takes calls from other threads.
+Varn callbacks fit SDKs that call back only on the thread that pumps them, such as the run or tick function of a game platform SDK called from Lua, and callbacks that must return a value to native code, such as a comparison function for a sort. They run on the main Lua state, never on the coroutine that called `ffi.cast`, so they keep working after it ended. An error raised during an `ffi` call, such as the sort that calls the comparison, is raised by that call once it returns, with the traceback of the callback after its message, and an error raised outside any `ffi` call stops the app with the error screen, like the error of an `async` task. A callback that fails returns zero to native code. An engine callback with `thread = 'frame'` runs inside the native call too, and it is the better fit for pumped SDKs whose callbacks return nothing, because it also takes calls from other threads.
 
 ## Threads
 
@@ -129,11 +129,11 @@ The `native` section of `app.json` lists the libraries an app ships, by the name
 ```json
 {
     "native": {
-        "steam_api": {
+        "game_platform": {
             "files": {
-                "macos": "platform/apple/native/libsteam_api.dylib",
-                "windows": "platform/windows/steam_api64.dll",
-                "linux": "platform/linux/libsteam_api.so"
+                "macos": "platform/apple/native/libgame_platform.dylib",
+                "windows": "platform/windows/game_platform.dll",
+                "linux": "platform/linux/libgame_platform.so"
             }
         },
         "native_test": {
@@ -185,18 +185,18 @@ The command `haylen run <app>` builds or copies the libraries of this desktop in
 An app that compiles the engine with `haylen_add_app` extends it with plugins of its own, which have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. The method `installLua` installs a Lua module with the binding toolkit of `haylen/lua/`. A plugin added before the engine starts, or while it runs, gets `start` and `installLua` like a built-in one. The [embedding guide](../tools/embedding.md#plugins-of-an-app) shows a complete plugin.
 
 ```cpp
-class SteamPlugin final : public haylen::plugins::Plugin {
+class GamePlatformPlugin final : public haylen::plugins::Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
-        return "steam";
+        return "gamePlatform";
     }
 
     void update(haylen::core::Engine&, float) override {
-        SteamAPI_RunCallbacks();
+        gp_run_callbacks();
     }
 
     void installLua(haylen::core::Engine&, lua_State* L) override {
-        haylen::lua::Binding::preload(L, "game.steam", &SteamPlugin::open);
+        haylen::lua::Binding::preload(L, "game.platform", &GamePlatformPlugin::open);
     }
 
   private:
@@ -213,9 +213,9 @@ SDKs with a C API work through FFI without glue code, and the SDKs themselves ne
 3. Pump the SDK once per frame from the frame thread, in the `update` of an autoload or of the scene that owns the connection.
 4. Receive its callbacks on the frame thread: engine callbacks with `thread = 'frame'` for SDKs that call back while they are pumped, engine callbacks with the default thread for SDKs that call back from their own threads, or polling for SDKs that queue their events.
 
-### Steam
+### A game platform SDK with a flat C API
 
-The flat API of Steamworks, `steam_api_flat.h`, is plain C. The function `SteamAPI_InitFlat` starts it, and the manual dispatch functions turn every callback into a message that Lua reads each frame, so no C callback is needed at all. The names of the interface accessors, such as `SteamAPI_SteamFriends_v017`, carry the version of the interface and change with the SDK, so they come from the headers of the SDK version the app ships. The desktop library is `libsteam_api.dylib` on macOS, `steam_api64.dll` on 64-bit Windows and `libsteam_api.so` on Linux.
+A game platform SDK often has a flat C API that starts with an init function and turns every callback into a message that Lua reads each frame through manual dispatch functions, so no C callback is needed at all. The names below stand for the functions of such an SDK, whose real names, versioned interface accessors and structs come from the headers of the SDK version the app ships, together with its desktop library of each platform.
 
 ```lua
 local ffi = require('ffi')
@@ -223,87 +223,84 @@ local haylen = require('haylen')
 local native = require('haylen.native')
 
 ffi.cdef[[
-    typedef struct { char message[1024]; } SteamErrMsg;
-    typedef struct CallbackMsg_t { int32_t m_hSteamUser; int m_iCallback; uint8_t* m_pubParam; int m_cubParam; } CallbackMsg_t;
-    int SteamAPI_InitFlat(SteamErrMsg* message);
-    void SteamAPI_Shutdown(void);
-    int32_t SteamAPI_GetHSteamPipe(void);
-    void SteamAPI_ManualDispatch_Init(void);
-    void SteamAPI_ManualDispatch_RunFrame(int32_t pipe);
-    bool SteamAPI_ManualDispatch_GetNextCallback(int32_t pipe, CallbackMsg_t* message);
-    void SteamAPI_ManualDispatch_FreeLastCallback(int32_t pipe);
-    void* SteamAPI_SteamFriends_v017(void);
-    const char* SteamAPI_ISteamFriends_GetPersonaName(void* friends);
+    typedef struct { char message[1024]; } gp_error;
+    typedef struct { int32_t user; int32_t id; uint8_t* data; int32_t size; } gp_message;
+    int gp_init(gp_error* error);
+    void gp_shutdown(void);
+    int32_t gp_pipe(void);
+    void gp_dispatch_run_frame(int32_t pipe);
+    bool gp_dispatch_next(int32_t pipe, gp_message* message);
+    void gp_dispatch_free_last(int32_t pipe);
+    const char* gp_user_name(void);
 ]]
 
-local files = {macos = 'libsteam_api.dylib', windows = 'steam_api64.dll', linux = 'libsteam_api.so'}
-local steam = native.load(files[haylen.platform])
+local files = {macos = 'libgame_platform.dylib', windows = 'game_platform.dll', linux = 'libgame_platform.so'}
+local sdk = native.load(files[haylen.platform])
 
-local failure = ffi.new('SteamErrMsg')
-if steam.SteamAPI_InitFlat(failure) ~= 0 then
-    error('Steam did not start: ' .. ffi.string(failure.message))
+local failure = ffi.new('gp_error')
+if sdk.gp_init(failure) ~= 0 then
+    error('The game platform did not start: ' .. ffi.string(failure.message))
 end
-steam.SteamAPI_ManualDispatch_Init()
-local pipe = steam.SteamAPI_GetHSteamPipe()
-print('playing as ' .. ffi.string(steam.SteamAPI_ISteamFriends_GetPersonaName(steam.SteamAPI_SteamFriends_v017())))
+local pipe = sdk.gp_pipe()
+print('Playing as ' .. ffi.string(sdk.gp_user_name()))
 
--- Called once per frame from an update. Each message is a callback of Steam, whose id and parameter struct come from the headers.
-local message = ffi.new('CallbackMsg_t')
+-- Called once per frame from an update. Each message is a callback of the SDK, whose id and parameter struct come from its headers.
+local message = ffi.new('gp_message')
 local function pump()
-    steam.SteamAPI_ManualDispatch_RunFrame(pipe)
-    while steam.SteamAPI_ManualDispatch_GetNextCallback(pipe, message) do
-        print('Steam callback ' .. message.m_iCallback .. ' with ' .. message.m_cubParam .. ' bytes')
-        steam.SteamAPI_ManualDispatch_FreeLastCallback(pipe)
+    sdk.gp_dispatch_run_frame(pipe)
+    while sdk.gp_dispatch_next(pipe, message) do
+        print('Callback ' .. message.id .. ' with ' .. message.size .. ' bytes')
+        sdk.gp_dispatch_free_last(pipe)
     end
 end
 ```
 
-A parameter struct of a callback is read with `ffi.cast('const SomeCallback_t*', message.m_pubParam)` before `FreeLastCallback`, after declaring the struct with the packing its header uses. The Steam client reads the app id from `steam_appid.txt` next to the executable during development, which the Windows and Linux folders of the app keep in `platform/windows/` and `platform/linux/`, and from the macOS app bundle in `Contents/MacOS`.
+A parameter struct of a callback is read with `ffi.cast('const some_callback*', message.data)` before the message is freed, after declaring the struct with the packing its header uses. Files that such an SDK reads next to the executable during development stay in `platform/windows/` and `platform/linux/` of the app, which land next to the executable, and in `Contents/MacOS` of the macOS app bundle.
 
-### Epic Online Services and NAT P2P
+### An online services SDK with NAT P2P
 
-The Epic Online Services SDK is a C API. The functions `EOS_Initialize` and `EOS_Platform_Create` start it, `EOS_Platform_Tick` runs its work and calls its callbacks on the thread that ticks it, and `EOS_Platform_GetP2PInterface` gives the peer-to-peer interface, which traverses NAT with relays when a direct connection fails. Its option structs start with an `ApiVersion` field set to the `*_API_LATEST` constant of the header, and its handles are opaque pointers. The library is `EOSSDK-Win64-Shipping.dll` on Windows, `libEOSSDK-Mac-Shipping.dylib` on macOS, `libEOSSDK-Linux-Shipping.so` on Linux, `libEOSSDK.so` on Android and `EOSSDK.framework` on iOS.
+An online services SDK with a C API is usually started by an initialize function and a platform create function, runs its work and calls its callbacks on the thread that ticks it, and gives a peer-to-peer interface that traverses NAT with relays when a direct connection fails. Its option structs often start with a version field set to the latest constant of the header, and its handles are opaque pointers. The names below stand for the functions of such an SDK.
 
-Callbacks such as `EOS_P2P_OnIncomingConnectionRequestCallback` receive a pointer to an info struct that is valid only during the callback. Ticking the platform from Lua on the frame thread with an engine callback of `thread = 'frame'` runs the Lua function inside the tick, where the pointer is still valid.
+Callbacks such as the one of an incoming connection request receive a pointer to an info struct that is valid only during the callback. Ticking the platform from Lua on the frame thread with an engine callback of `thread = 'frame'` runs the Lua function inside the tick, where the pointer is still valid.
 
 ```lua
 local ffi = require('ffi')
 local native = require('haylen.native')
 
 ffi.cdef[[
-    typedef struct EOS_PlatformHandle* EOS_HPlatform;
-    typedef struct EOS_P2PHandle* EOS_HP2P;
-    typedef struct EOS_ProductUserIdDetails* EOS_ProductUserId;
-    typedef struct EOS_P2P_SocketId { int32_t ApiVersion; char SocketName[33]; } EOS_P2P_SocketId;
-    typedef struct EOS_P2P_AddNotifyPeerConnectionRequestOptions { int32_t ApiVersion; EOS_ProductUserId LocalUserId; const EOS_P2P_SocketId* SocketId; } EOS_P2P_AddNotifyPeerConnectionRequestOptions;
-    typedef struct EOS_P2P_OnIncomingConnectionRequestInfo { void* ClientData; EOS_ProductUserId LocalUserId; EOS_ProductUserId RemoteUserId; const EOS_P2P_SocketId* SocketId; } EOS_P2P_OnIncomingConnectionRequestInfo;
-    typedef void (*EOS_P2P_OnIncomingConnectionRequestCallback)(const EOS_P2P_OnIncomingConnectionRequestInfo* Data);
-    void EOS_Platform_Tick(EOS_HPlatform platform);
-    EOS_HP2P EOS_Platform_GetP2PInterface(EOS_HPlatform platform);
-    uint64_t EOS_P2P_AddNotifyPeerConnectionRequest(EOS_HP2P p2p, const EOS_P2P_AddNotifyPeerConnectionRequestOptions* options, void* clientData, EOS_P2P_OnIncomingConnectionRequestCallback callback);
+    typedef struct os_platform* os_platform_handle;
+    typedef struct os_p2p* os_p2p_handle;
+    typedef struct os_user* os_user_id;
+    typedef struct os_socket_id { int32_t version; char name[33]; } os_socket_id;
+    typedef struct os_request_options { int32_t version; os_user_id local_user; const os_socket_id* socket; } os_request_options;
+    typedef struct os_request_info { void* client_data; os_user_id local_user; os_user_id remote_user; const os_socket_id* socket; } os_request_info;
+    typedef void (*os_request_callback)(const os_request_info* info);
+    void os_platform_tick(os_platform_handle platform);
+    os_p2p_handle os_platform_p2p(os_platform_handle platform);
+    uint64_t os_p2p_notify_requests(os_p2p_handle p2p, const os_request_options* options, void* client_data, os_request_callback callback);
 ]]
 
-local eos = native.load('EOSSDK-Win64-Shipping')
+local sdk = native.load('online_services')
 
--- The platform handle and the local user come from `EOS_Platform_Create` and a login, with their option structs declared the same way.
+-- The platform handle and the local user come from the create function and a login, with their option structs declared the same way.
 local function listen(platform, localUser)
-    local socket = ffi.new('EOS_P2P_SocketId', {ApiVersion = 1, SocketName = 'game'})
-    local options = ffi.new('EOS_P2P_AddNotifyPeerConnectionRequestOptions', {ApiVersion = 1, LocalUserId = localUser, SocketId = socket})
-    local requests = native.callback('void (const struct EOS_P2P_OnIncomingConnectionRequestInfo* data)', function(data)
-        local info = ffi.cast('const EOS_P2P_OnIncomingConnectionRequestInfo*', data)
-        print('connection request from', info.RemoteUserId)
+    local socket = ffi.new('os_socket_id', {version = 1, name = 'game'})
+    local options = ffi.new('os_request_options', {version = 1, local_user = localUser, socket = socket})
+    local requests = native.callback('void (const struct os_request_info* info)', function(info)
+        local request = ffi.cast('const os_request_info*', info)
+        print('Connection request from', request.remote_user)
     end, {thread = 'frame'})
-    eos.EOS_P2P_AddNotifyPeerConnectionRequest(eos.EOS_Platform_GetP2PInterface(platform), options, nil, requests.pointer)
+    sdk.os_p2p_notify_requests(sdk.os_platform_p2p(platform), options, nil, requests.pointer)
     return requests, socket
 end
 
 -- Called once per frame from an update, so the callbacks of the tick run on the frame thread.
 local function pump(platform)
-    eos.EOS_Platform_Tick(platform)
+    sdk.os_platform_tick(platform)
 end
 ```
 
-Accepting a connection, sending packets with `EOS_P2P_SendPacket` and reading them with `EOS_P2P_GetNextReceivedPacketSize` and `EOS_P2P_ReceivePacket` after each tick follow the same pattern, with buffers from `ffi.new('uint8_t[?]', size)`. The `ApiVersion` values come from the header of the SDK version the app ships, and Android and iOS need the platform options that the SDK documents for them.
+Accepting a connection, sending packets and reading them after each tick follow the same pattern, with buffers from `ffi.new('uint8_t[?]', size)`. The version values come from the header of the SDK version the app ships, and Android and iOS need the platform options that the SDK documents for them.
 
 ### Other SDKs
 

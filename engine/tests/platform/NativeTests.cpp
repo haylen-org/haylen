@@ -90,8 +90,8 @@ TEST_F(NativeSignatureTest, RejectsWhatACallbackCannotReceive) {
 }
 
 TEST_F(NativeLibrariesTest, NamesTheFilesOfALibraryOnThePlatform) {
-    EXPECT_EQ(NativeLibraries::getFileNames("steam_api64.dll"), (std::vector<std::string>{"steam_api64.dll"}));
-    EXPECT_EQ(NativeLibraries::getFileNames("libsteam_api.so.1"), (std::vector<std::string>{"libsteam_api.so.1"}));
+    EXPECT_EQ(NativeLibraries::getFileNames("game_platform.dll"), (std::vector<std::string>{"game_platform.dll"}));
+    EXPECT_EQ(NativeLibraries::getFileNames("libgame_platform.so.1"), (std::vector<std::string>{"libgame_platform.so.1"}));
 #if defined(_WIN32)
     EXPECT_EQ(NativeLibraries::getFileNames("native_test"), (std::vector<std::string>{"native_test.dll"}));
 #elif defined(__APPLE__)

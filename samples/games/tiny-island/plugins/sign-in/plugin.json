@@ -1,0 +1,16 @@
+{
+    "id": "sign-in",
+    "name": "Sign-In",
+    "version": "1.0.0",
+    "description": "Signs the player in with an account of the platform through Credential Manager on Android and the identity service of the account on the web.",
+    "platforms": ["android", "web"],
+    "parameters": {
+        "clientId": {"type": "string", "default": "", "description": "The web client id that the identity service of the account gives the game, which Android asks Credential Manager for and the web page gives the identity service."}
+    },
+    "android": {
+        "module": "android"
+    },
+    "web": {
+        "module": "web/sign-in.js"
+    }
+}
