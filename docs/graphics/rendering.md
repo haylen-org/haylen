@@ -395,6 +395,7 @@ A slot is freed when the last handle to its object goes away, and the object is 
 - The method `map:setTile` bakes the region of its cell again. Grids that change cells every frame draw best as a `TileLayer`, whose chunks are smaller and bake only when they change, or keep the cells that change in a small layer of their own.
 - Recording draws in their final order, for example layer by layer from the lowest, lets the renderer upload instances without copying them into draw order.
 - Measure in Release builds, because Debug builds run without optimizations and with the Sokol validation layer.
+- Positions are 32-bit floats on their way to the GPU, which keep a step of a hundredth of a unit up to about 100,000 units from the origin and a step of a sixteenth of a unit near a million, where sprites start to jitter. A world larger than that keeps a local origin near the player, as the chunks of a streamed world do, and moves the origin, the camera and every object by the same amount when the player crosses into another chunk. Physics has the same limit, so its bodies move with the origin.
 
 ## Sprite benchmark
 

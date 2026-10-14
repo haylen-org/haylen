@@ -669,6 +669,54 @@ scene.push({
 
 Cells and object positions of a placed map stay in map coordinates, so add the map position to what `map:cellToWorld` and `map:objectToWorld` return, and subtract it before `map:worldToCell`.
 
+### Streaming a large world
+
+A world larger than memory keeps only the maps near the camera: the list of a `.world` costs a few numbers per map, `assets.loadAsync` parses a map and decodes its images on worker threads, and a map that nothing refers to any more leaves the cache, so the frame never waits for the disk and memory follows the camera. Load a map when its area comes within a margin of the visible area, and forget it once it is farther than a larger margin, so a camera that moves back and forth along an edge never loads the same map again and again:
+
+```lua
+local assets = require('haylen.assets')
+local async = require('async')
+local graphics2d = require('haylen.graphics2d')
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+local tiled = require('haylen.tiled')
+
+local camera = graphics2d.newCamera()
+local entries = assets.load('maps/world/overworld.world')
+local loaded, loading = {}, {}
+
+-- Whether the area of an entry overlaps the visible area grown by a margin.
+local function near(entry, margin)
+    return m.rect(entry.x, entry.y, entry.width, entry.height):intersects(camera:visibleBounds():expanded(margin))
+end
+
+scene.push({
+    update = function(self, dt)
+        camera.x = camera.x + 300 * dt
+        for _, entry in ipairs(entries) do
+            if not loaded[entry] and not loading[entry] and near(entry, 512) then
+                loading[entry] = true
+                scene.spawn(self, function()
+                    local data = assets.loadAsync(entry.path):await()
+                    loading[entry] = nil
+                    loaded[entry] = data and tiled.newMapRenderer(data)
+                end)
+            elseif loaded[entry] and not near(entry, 1024) then
+                loaded[entry] = nil
+            end
+        end
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        for entry, map in pairs(loaded) do
+            map:draw(camera, {x = entry.x, y = entry.y})
+        end
+    end,
+})
+```
+
+The stress sample `samples/stress/streamed-map` streams the chunks of one infinite map the same way, with the tile layers of `graphics2d.newTileLayer` and the decorations that `procedural2d.scatterAsync` places off the frame thread.
+
 ## Flip flags
 
 The module has the constants of the flags that Tiled stores in the high bits of a global tile id, and a function that removes them.
