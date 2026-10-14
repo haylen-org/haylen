@@ -375,8 +375,9 @@ def download(url: str, target: Path, sha256: str | None = None) -> None:
 
 
 def ensure_shdc() -> Path:
+    """Returns the pinned sokol-shdc, kept in a folder named after its commit, so a new pin downloads its own binary. The binary moves into place only once it is complete and executable, since tests that compile shaders may ask for it at the same time."""
     executable = executable_name("sokol-shdc")
-    target = TOOLS_DIR / executable
+    target = TOOLS_DIR / f"sokol-shdc-{SHDC_COMMIT[:7]}" / executable
     if target.exists():
         return target
 
@@ -385,8 +386,10 @@ def ensure_shdc() -> Path:
     if folder is None:
         raise BuildError(f'The shader compiler "sokol-shdc" has no prebuilt binary for "{host_name()}" on "{host_arch()}". Use a host with a prebuilt binary, as the build guide lists.')
 
-    download(f"https://raw.githubusercontent.com/floooh/sokol-tools-bin/{SHDC_COMMIT}/bin/{folder}/{executable}", target)
-    target.chmod(0o755)
+    partial = target.with_name(f"{executable}.{os.getpid()}.part")
+    download(f"https://raw.githubusercontent.com/floooh/sokol-tools-bin/{SHDC_COMMIT}/bin/{folder}/{executable}", partial)
+    partial.chmod(0o755)
+    partial.replace(target)
     return target
 
 
@@ -553,9 +556,9 @@ def cmake_cache_value(directory: Path, name: str) -> str:
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
-    """Configures the build tree when it does not exist yet or when the requested backend differs from the one it was configured with."""
+    """Configures the build tree when it does not exist yet, when the requested backend differs from the one it was configured with or when the pinned shader compiler changed."""
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_RENDER_BACKEND") != requested_backend(args):
+    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_RENDER_BACKEND") != requested_backend(args) or Path(cmake_cache_value(directory, "HAYLEN_SOKOL_SHDC")) != ensure_shdc():
         command_configure(args)
     return directory
 

@@ -494,6 +494,38 @@ class ConsumerArgumentTest(unittest.TestCase):
             haylen.consumer_modes(haylen.build_parser().parse_args(["sdk", "--platform", "web", "--check-consumers"]))
 
 
+class ShaderCompilerTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.scratch)
+
+    def test_a_new_pin_of_the_shader_compiler_configures_the_build_tree_again(self):
+        compiler = self.scratch / "tools" / "sokol-shdc-new" / "sokol-shdc"
+        tree = self.scratch / "build" / "macos-debug"
+        tree.mkdir(parents=True)
+        arguments = argparse.Namespace(platform="macos", config="Debug", backend=None, sanitizers=None)
+        with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shdc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_RENDER_BACKEND:STRING=AUTO\nHAYLEN_SOKOL_SHDC:FILEPATH={(self.scratch / 'tools' / 'sokol-shdc').as_posix()}\n")
+            haylen.ensure_configured(arguments)
+            self.assertEqual(configure.call_count, 1)
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_RENDER_BACKEND:STRING=AUTO\nHAYLEN_SOKOL_SHDC:FILEPATH={compiler.as_posix()}\n")
+            haylen.ensure_configured(arguments)
+            self.assertEqual(configure.call_count, 1)
+
+    def test_the_shader_compiler_appears_only_once_it_is_complete_and_executable(self):
+        target = self.scratch / f"sokol-shdc-{haylen.SHDC_COMMIT[:7]}" / haylen.executable_name("sokol-shdc")
+
+        def download(url: str, partial: Path, sha256: str | None = None) -> None:
+            self.assertFalse(target.exists())
+            partial.parent.mkdir(parents=True, exist_ok=True)
+            partial.write_bytes(b"compiler")
+
+        with mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "download", side_effect=download):
+            self.assertEqual(haylen.ensure_shdc(), target)
+        self.assertTrue(os.access(target, os.X_OK))
+        self.assertEqual([path.name for path in target.parent.iterdir()], [target.name])
+
+
 class AndroidKeyTest(unittest.TestCase):
     def setUp(self):
         self.app = Path(tempfile.mkdtemp()).resolve()

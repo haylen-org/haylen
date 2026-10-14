@@ -23,7 +23,7 @@ function(haylen_compile_shader target)
   add_custom_command(
     OUTPUT "${header}"
     COMMAND "${HAYLEN_SOKOL_SHDC}" --input "${SHADER_SOURCE}" --output "${header}" --slang "glsl430:glsl300es:hlsl5:metal_macos:metal_ios:metal_sim:wgsl" --module "${SHADER_MODULE}" ${defines}
-    DEPENDS "${SHADER_SOURCE}" ${library}
+    DEPENDS "${SHADER_SOURCE}" "${HAYLEN_SOKOL_SHDC}" ${library}
     WORKING_DIRECTORY "${HAYLEN_SHADER_LIBRARY_DIR}"
     COMMENT "Compiling shader \"${SHADER_MODULE}\""
     VERBATIM
