@@ -1849,7 +1849,7 @@ scene.push({
 
 ## Batches of several textures
 
-A sprite batch draws from up to 8 textures in one draw call, so sprites of separate images that mix in one layer, such as heroes, rocks and trees that a y-sorted world interleaves, need no atlas to share a batch. `graphics2d.newSpriteBatch` and `graphics2d.drawBatch` take a list of textures, and each sprite names the one it draws from with its `texture` key, counted from 1, or the `texture` field of a float buffer. A sprite without a size takes the size of its own texture.
+A sprite batch draws from up to 8 textures in one draw call, so sprites of separate images that mix in one layer, such as heroes, rocks and trees that a y-sorted world interleaves, need no atlas to share a batch. The functions `graphics2d.newSpriteBatch` and `graphics2d.drawBatch` take a list of textures, and each sprite names the one it draws from with its `texture` key, counted from 1, or the `texture` field of a float buffer. A sprite without a size takes the size of its own texture.
 
 Every sprite also has `data`, four numbers that the [material](#material) of the draw reads in its shader as `haylen_data`, so one material and one draw call give every sprite its own phase, strength, color or frame, as the [shader guide](../graphics/shaders.md#sprite-data) describes. A batch with several textures, or with data and a material, draws with the batch program, which reads a second record for each sprite, while the data of a batch of one texture without a material changes nothing and costs nothing.
 

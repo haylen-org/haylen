@@ -1,6 +1,6 @@
 # haylen.dialogs
 
-`haylen.dialogs` shows the native dialogs of the system: message boxes with up to three buttons, and pickers of files to open, of the destination of data to save and of a folder. They look and behave like the dialogs of every other app of the platform, which suits desktop tools, editors and settings that import or export files. Menus and messages drawn in the style of the app belong to [haylen.ui](ui.md) instead.
+The module `haylen.dialogs` shows the native dialogs of the system: message boxes with up to three buttons, and pickers of files to open, of the destination of data to save and of a folder. They look and behave like the dialogs of every other app of the platform, which suits desktop tools, editors and settings that import or export files. Menus and messages drawn in the style of the app belong to [haylen.ui](ui.md) instead.
 
 ```lua
 local dialogs = require('haylen.dialogs')
@@ -103,7 +103,7 @@ end)
 
 ### dialogs.openFolder(options)
 
-Shows a picker of a folder and returns a call whose `await` gives the path of the folder, or `nil` when the user cancelled. `options` is optional.
+Shows a picker of a folder and returns a call whose `await` gives the path of the folder, or `nil` when the user cancelled. The argument `options` is optional.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -183,7 +183,7 @@ Browsers open their file pickers only in the moments after a click, a tap or a k
 
 ## C++
 
-`engine.getDialogs()` returns the `haylen::platform::Dialogs` of the running app, declared in `haylen/platform/Dialogs.hpp`. `show(request, callback, timeout)` validates a `haylen::platform::DialogRequest`, whose `dialog` holds a `Message`, `OpenFiles`, `SaveFile` or `OpenFolder`, throws `std::invalid_argument` with the messages above for a request the platform cannot show and returns the id of the dialog. The callback receives a `haylen::platform::DialogResult` on the frame thread, with the `button` counted from zero, the opened `files`, the `saved` file or the `folder`, or a `failure` with its `Code` and message. `cancel(id)` gives a dialog up.
+The function `engine.getDialogs()` returns the `haylen::platform::Dialogs` of the running app, declared in `haylen/platform/Dialogs.hpp`. The function `show(request, callback, timeout)` validates a `haylen::platform::DialogRequest`, whose `dialog` holds a `Message`, `OpenFiles`, `SaveFile` or `OpenFolder`, throws `std::invalid_argument` with the messages above for a request the platform cannot show and returns the id of the dialog. The callback receives a `haylen::platform::DialogResult` on the frame thread, with the `button` counted from zero, the opened `files`, the `saved` file or the `folder`, or a `failure` with its `Code` and message. The function `cancel(id)` gives a dialog up.
 
 ```cpp
 haylen::platform::DialogRequest request{.dialog = haylen::platform::DialogRequest::Message{.title = "Unsaved map", .text = "Save the changes?", .buttons = {"Save", "Discard"}}};

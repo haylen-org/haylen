@@ -24,7 +24,7 @@ haylen plugin new ~/plugins/my-plugin
 | `plugin list [--app]` | Lists the plugins of the app with their version, their platforms and their status: `ok`, the problems that keep a plugin from building for any of its platforms, or a folder that `app.json` does not list. |
 | `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/` in a folder named after its id, with an example method and event on every platform. `--id` defaults to the folder name and must match it. |
 
-`--app` takes an app folder or a sample path from `samples/`, and defaults to the current folder.
+The option `--app` takes an app folder or a sample path from `samples/`, and defaults to the current folder.
 
 ### app.json
 
@@ -38,7 +38,7 @@ haylen plugin new ~/plugins/my-plugin
 }
 ```
 
-`plugins` maps the id of every plugin the app uses to the values of its parameters, and each id names the folder `plugins/<id>/` of the app. Values are plain JSON values. A value that differs per platform uses one parameter per platform, such as `iosAppId` and `androidAppId`, so nothing resolves platform objects at runtime. A parameter that the app leaves out takes its default. The README of every plugin lists its parameters.
+The key `plugins` maps the id of every plugin the app uses to the values of its parameters, and each id names the folder `plugins/<id>/` of the app. Values are plain JSON values. A value that differs per platform uses one parameter per platform, such as `iosAppId` and `androidAppId`, so nothing resolves platform objects at runtime. A parameter that the app leaves out takes its default. The README of every plugin lists its parameters.
 
 A `file` parameter is a path relative to the app folder. Files such as `Services-Info.plist` and `services.json` belong outside `source/` and `content/`, for example under `platform/`, so they never ship in the package, and haylen.py brings them into the projects that need them.
 
@@ -62,7 +62,7 @@ Plugins load in the order of `app.json`, except that every plugin loads after th
 
 ### The package
 
-For every plugin that `app.json` lists, the package carries `plugins/<id>/plugin.json` and `plugins/<id>/source/` next to `app.json`, `source/` and `content/`. `haylen.py package`, the package copies of the Apple and Android projects, the Android package index and the `app.zip` of the web all hold them. `require('<id>')` loads `plugins/<id>/source/init.lua`, and `require('<id>.<name>')` loads `plugins/<id>/source/<name>.lua`. Nothing else of a plugin folder ships in the package: its native parts reach the platform projects, and its README stays behind.
+For every plugin that `app.json` lists, the package carries `plugins/<id>/plugin.json` and `plugins/<id>/source/` next to `app.json`, `source/` and `content/`. The command `haylen.py package`, the package copies of the Apple and Android projects, the Android package index and the `app.zip` of the web all hold them. The function `require('<id>')` loads `plugins/<id>/source/init.lua`, and `require('<id>.<name>')` loads `plugins/<id>/source/<name>.lua`. Nothing else of a plugin folder ships in the package: its native parts reach the platform projects, and its README stays behind.
 
 ### Apple platforms
 
@@ -71,16 +71,16 @@ The tool `haylen.py` brings the Apple parts of the plugins into the target templ
 1. It copies the `sources` folder of every plugin to `haylen/plugins/<id>/sources/` and its resources to `haylen/plugins/<id>/resources/`.
 2. It adds the sources, the Swift packages with the products they link, the system frameworks, the resources and the build scripts of each plugin to the templates `HaylenIOS`, `HaylenTVOS` and `HaylenMacOS` of the platforms the plugin lists. `HaylenIOS` builds iOS and Mac Catalyst, so a plugin that lists only one of `ios` and `catalyst` joins it with `destinationFilters`, which keep its sources, products and frameworks to that destination. A product or a framework that several plugins link joins a template once, and a framework of the engine or one that a target of the template links itself stays out, since XcodeGen refuses a dependency that a target lists twice.
 3. It merges the `infoPlist` keys of the plugins into the `Info.plist` of each platform, where `ios/Info.plist` serves iOS and Mac Catalyst, the `entitlements` into the entitlements of iOS, Mac Catalyst, tvOS and macOS, and the `privacy` declarations into the privacy manifest of the app, all in `haylen/`. The values of the developer win and the keys of the plugins fill what is missing: objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, while a key that two plugins, or a plugin and `app.json`, set to different values fails the build with both named.
-4. `run` generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `haylen.py tools` and the first such build download, when `haylen/project.yml` changed and the project holds no edits made in Xcode since its last generation, and `haylen xcodegen <app>` generates it whenever the developer asks.
+4. The command `run` generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `haylen.py tools` and the first such build download, when `haylen/project.yml` changed and the project holds no edits made in Xcode since its last generation, and `haylen xcodegen <app>` generates it whenever the developer asks.
 
 The sources of a plugin compile into the targets like the files of `source/`, so Swift reaches the engine through `HaylenBridging.h`, and [the Apple part](#the-apple-part) describes the plugin class they hold. The resources land at the root of the app bundle. Build scripts run as post-build phases for every destination of their targets, so a script of a plugin that leaves out Mac Catalyst checks `IS_MACCATALYST` itself. The runtime reads the plugin classes and their order from the package, as [the plugin class](#the-plugin-class) describes. A target without its template, or with an `INFOPLIST_FILE` of its own, leaves out what the plugins bring, which [`check`](../tools/distribution.md#check) reports and the plugins answer with `unsupported` at run time.
 
 ### Android
 
 1. The tool `haylen.py` copies the library module of every plugin into `haylen/plugins/<id>/` of the Android project.
-2. It writes the plugin keys of `haylen/haylen.properties`. `plugins` lists the modules as `id=folder` entries, which `settings.gradle.kts` includes and `app/build.gradle.kts` depends on. `gradlePlugins` lists the Gradle plugins as `id=version` entries, and every `placeholder.<name>` key is a manifest placeholder.
+2. It writes the plugin keys of `haylen/haylen.properties`. The key `plugins` lists the modules as `id=folder` entries, which `settings.gradle.kts` includes and `app/build.gradle.kts` depends on. The key `gradlePlugins` lists the Gradle plugins as `id=version` entries, and every `placeholder.<name>` key is a manifest placeholder.
 3. The root `build.gradle.kts` puts the plugin marker of every Gradle plugin, `<id>:<id>.gradle.plugin:<version>`, on the build classpath, which serves the app module like a plugin declared with `apply false`, and `app/build.gradle.kts` applies each one by its id. A `plugins {}` block takes only literal ids, so a list that changes per app goes through the build classpath.
-4. `app/build.gradle.kts` adds the placeholders to `manifestPlaceholders`, where the manifests of the plugin modules find them when the manifests merge.
+4. The file `app/build.gradle.kts` adds the placeholders to `manifestPlaceholders`, where the manifests of the plugin modules find them when the manifests merge.
 5. The `files` of the plugins, such as `services.json` for `app/`, belong to the project. The tool `haylen.py` copies them into the copy of the template that it keeps for an app without `platform/android`, and in a project of the developer [`check`](../tools/distribution.md#check) names each one that the project lacks, with the copy to make.
 
 The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries, together with the manifests of the libraries the module depends on. Every plugin module depends on `dev.haylen:haylen-plugins`, whose manifest declares the provider that loads the plugin classes that the meta-data names when the app process starts, as [the Android part](#the-android-part) describes, so an app without plugins has no provider. A permission that the app removes from the merged manifest with `tools:node="remove"` stays out, which `check` reports and the plugin answers with `unsupported` at run time.
@@ -95,11 +95,11 @@ The `native` section of a plugin joins the native libraries of the app, so hayle
 
 ### C++ apps
 
-C++ apps take plugins the same way, with the parts assembled where their builds need them. `haylen_add_app` puts `plugins/<id>/plugin.json` and `plugins/<id>/source/` of every plugin that `app.json` lists into the package of every platform, and `run-cpp` brings the native parts:
+C++ apps take plugins the same way, with the parts assembled where their builds need them. The function `haylen_add_app` puts `plugins/<id>/plugin.json` and `plugins/<id>/source/` of every plugin that `app.json` lists into the package of every platform, and `run-cpp` brings the native parts:
 
 - **Android.** The library of the app goes into the Android project of the app, which `run-cpp` prepares like the project of a Lua app, with the modules, the Gradle plugins, the placeholders and `haylen-plugins.json` of the plugins.
-- **Web.** `run-cpp` copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site and lists them in `plugins.json` next to the page, whose script imports the modules and calls `load(context)` of each one in load order before the app starts, as the loader of the web template does.
-- **Apple platforms.** `run-cpp` copies the `sources` and the resources of every plugin into the build folder of the platform and writes `haylen-plugins.cmake` there, which it names to CMake with `HAYLEN_PLUGINS_FILE`. `haylen_add_app` reads it and compiles the Objective-C, C and Swift sources into the app, the Swift files with `engine/platform/apple/HaylenPlugins.h` as their bridging header and with the [Swift helpers](#swift-helpers), links the system frameworks, bundles the resources and adds the `infoPlist` keys to the `Info.plist` of the app. The CMake project enables Swift on Apple platforms, as the C++ template does. The Swift packages and the build scripts of plugins need the Xcode project of the Apple template, so `run-cpp` stops with a message for a plugin that has them.
+- **Web.** The command `run-cpp` copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site and lists them in `plugins.json` next to the page, whose script imports the modules and calls `load(context)` of each one in load order before the app starts, as the loader of the web template does.
+- **Apple platforms.** The command `run-cpp` copies the `sources` and the resources of every plugin into the build folder of the platform and writes `haylen-plugins.cmake` there, which it names to CMake with `HAYLEN_PLUGINS_FILE`. The function `haylen_add_app` reads it and compiles the Objective-C, C and Swift sources into the app, the Swift files with `engine/platform/apple/HaylenPlugins.h` as their bridging header and with the [Swift helpers](#swift-helpers), links the system frameworks, bundles the resources and adds the `infoPlist` keys to the `Info.plist` of the app. The CMake project enables Swift on Apple platforms, as the C++ template does. The Swift packages and the build scripts of plugins need the Xcode project of the Apple template, so `run-cpp` stops with a message for a plugin that has them.
 
 ## Plugin package
 
@@ -177,7 +177,7 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 | `required` | No | Whether the app must give a value for the platforms of the parameter. `false` by default. |
 | `default` | No | The value of an optional parameter that the app leaves out, of the type of the parameter. |
 
-`${name}` in a string of the `apple` and `android` sections is replaced with the value of the parameter `name`, and each one must name a declared parameter. A string that is only a reference takes the value with its type, so `"${testMode}"` becomes a boolean in `Info.plist`, while a reference inside longer text inserts the value as text. A key or an item whose references name a parameter without a value is left out. The `Info.plist` keys and the entitlements of each Apple platform take only the parameters that apply to it, so a parameter of `macos` alone, such as one that turns on the entitlements of the hardened runtime, leaves its keys out of iOS, Mac Catalyst and tvOS. Shell expansions such as `${BUILD_DIR%/Build/*}` are no references and stay as they are. Build settings in paths and scripts use the `$(NAME)` form, which also keeps XcodeGen from replacing them with environment variables when it generates the project.
+The placeholder `${name}` in a string of the `apple` and `android` sections is replaced with the value of the parameter `name`, and each one must name a declared parameter. A string that is only a reference takes the value with its type, so `"${testMode}"` becomes a boolean in `Info.plist`, while a reference inside longer text inserts the value as text. A key or an item whose references name a parameter without a value is left out. The `Info.plist` keys and the entitlements of each Apple platform take only the parameters that apply to it, so a parameter of `macos` alone, such as one that turns on the entitlements of the hardened runtime, leaves its keys out of iOS, Mac Catalyst and tvOS. Shell expansions such as `${BUILD_DIR%/Build/*}` are no references and stay as they are. Build settings in paths and scripts use the `$(NAME)` form, which also keeps XcodeGen from replacing them with environment variables when it generates the project.
 
 #### apple
 
@@ -215,19 +215,19 @@ haylen plugin new ~/plugins/my-plugin
 haylen plugin add ~/plugins/my-plugin --app ~/apps/my-game
 ```
 
-`plugin new` copies `templates/plugin/` with the id in the names of the files, classes and modules: `plugin.json`, a README, `source/init.lua` with the Lua API, `apple/<Name>Plugin.swift`, the Android module with its manifest meta-data and `<Name>Plugin.kt`, and `web/<id>.js`, together with the files that the repository of a plugin keeps at its root: `.gitignore`, which keeps out the build folders of the Android module and of the CMake project in `native/`, the caches of Gradle and Kotlin and the files of Finder and the editors, `.editorconfig`, which sets the style of text files, and `.clang-format`, the C, C++ and Objective-C style of the engine. Each native part answers the method `<id>.echo` and sends the event `<id>.echoed`, and the Lua API wraps both with the plugin handle of `platform.plugin(id)`.
+The command `plugin new` copies `templates/plugin/` with the id in the names of the files, classes and modules: `plugin.json`, a README, `source/init.lua` with the Lua API, `apple/<Name>Plugin.swift`, the Android module with its manifest meta-data and `<Name>Plugin.kt`, and `web/<id>.js`, together with the files that the repository of a plugin keeps at its root: `.gitignore`, which keeps out the build folders of the Android module and of the CMake project in `native/`, the caches of Gradle and Kotlin and the files of Finder and the editors, `.editorconfig`, which sets the style of text files, and `.clang-format`, the C, C++ and Objective-C style of the engine. Each native part answers the method `<id>.echo` and sends the event `<id>.echoed`, and the Lua API wraps both with the plugin handle of `platform.plugin(id)`.
 
 ## Lua API of plugins
 
 ### Modules
 
-The Lua API of a plugin lives in `source/` of its folder, and the package carries it as `plugins/<id>/source/`. `require('<id>')` loads `plugins/<id>/source/init.lua`, and `require('<id>.<name>')` loads `plugins/<id>/source/<name>.lua` or, when that file is missing, `plugins/<id>/source/<name>/init.lua`, with dots of the name as folders like any module. Only the plugins that `app.json` lists have modules, so `require` looks for any other name in `source/` of the app. Plugin modules load like the modules of the app, as text in development and as the bytecode of a protected release in release builds, and their chunk names are their package paths, so errors point at files such as `plugins/ads/source/init.lua`.
+The Lua API of a plugin lives in `source/` of its folder, and the package carries it as `plugins/<id>/source/`. The function `require('<id>')` loads `plugins/<id>/source/init.lua`, and `require('<id>.<name>')` loads `plugins/<id>/source/<name>.lua` or, when that file is missing, `plugins/<id>/source/<name>/init.lua`, with dots of the name as folders like any module. Only the plugins that `app.json` lists have modules, so `require` looks for any other name in `source/` of the app. Plugin modules load like the modules of the app, as text in development and as the bytecode of a protected release in release builds, and their chunk names are their package paths, so errors point at files such as `plugins/ads/source/init.lua`.
 
 A module of the app whose first name part is the id of a plugin could never load, because `require` finds the module of the plugin first. The app stops on the error screen when it starts, before `source/main.lua` runs, with both files named: `The app module source/ads/banner.lua has the name ads.banner, which require resolves to plugins/ads/source/banner.lua of the plugin ads. Rename the module of the app.` An app in development restarts when a module or the `plugin.json` of one of its plugins changes, like it does for its own modules.
 
 ### The plugin handle
 
-`platform.plugin(id)` of [haylen.platform](../lua-api/platform.md#plugin-handles) returns the handle of a plugin, which its Lua modules use to reach its native part:
+The function `platform.plugin(id)` of [haylen.platform](../lua-api/platform.md#plugin-handles) returns the handle of a plugin, which its Lua modules use to reach its native part:
 
 | Member | Meaning |
 | --- | --- |
@@ -240,7 +240,7 @@ A module of the app whose first name part is the id of a plugin could never load
 | `handle:videoStream(name)`, `handle:audioStream(name)` | The video or audio [stream](#streams) `name` that the native part opened, or `nil` until it opens it. |
 | `handle:openScreen(name, params, options)` | Opens the [screen](#plugin-screens) `name` of the plugin, which covers the app until it ends, and returns a platform call that its result settles. |
 
-`platform.plugins()` lists the plugins of the app with their `id`, `version` and `native`. Methods and events of plugins use camelCase names, and the native parts register and send them under the same names, which their contexts prefix with the id. A platform without the native part of a plugin answers its calls with the code `noHandler`, and a native part that cannot offer a method on its platform fails the call with the code `unsupported` and a message that says why, so the Lua API stays the same everywhere. `handle.native` tells the Lua API whether the native part exists at all.
+The function `platform.plugins()` lists the plugins of the app with their `id`, `version` and `native`. Methods and events of plugins use camelCase names, and the native parts register and send them under the same names, which their contexts prefix with the id. A platform without the native part of a plugin answers its calls with the code `noHandler`, and a native part that cannot offer a method on its platform fails the call with the code `unsupported` and a message that says why, so the Lua API stays the same everywhere. The field `handle.native` tells the Lua API whether the native part exists at all.
 
 ```lua
 -- plugins/game-center/source/init.lua
@@ -336,7 +336,7 @@ Opening a stream again returns the same stream, whose handle stays valid for goo
 
 ### The native plugin list
 
-`handle.native` and the `native` field of `platform.plugins()` come from the platform, which reports the plugins whose native part it loaded: on the web, the plugins whose module received a context, on Apple platforms the plugins whose class the runtime created, and on Android the plugins whose class the engine library created and loaded. A native library of the app declares itself the native part of a plugin with `registerPlugin(id)` of [`HaylenNativeApi`](../lua-api/native.md#library-handlers), which is how the `native` part of a plugin counts on the desktops.
+The field `handle.native` and the `native` field of `platform.plugins()` come from the platform, which reports the plugins whose native part it loaded: on the web, the plugins whose module received a context, on Apple platforms the plugins whose class the runtime created, and on Android the plugins whose class the engine library created and loaded. A native library of the app declares itself the native part of a plugin with `registerPlugin(id)` of [`HaylenNativeApi`](../lua-api/native.md#library-handlers), which is how the `native` part of a plugin counts on the desktops.
 
 ### Web modules
 
@@ -417,7 +417,7 @@ A screen is native UI of a plugin that takes over the app until it ends with one
 - **One at a time, in the foreground.** A screen opens at once while the app is `'active'`. One that the app asks for while it is `'inactive'` in the foreground, such as right in the answer of a dialog before its window has the focus again, waits until the app is `'active'`, within its `timeout`, and then opens, while in the background the call fails with the code `notActive`, also when the app goes there while the screen waits. While a screen shows, which the whole process shares, or waits, another one fails with the code `busy`.
 - **The result.** The end of the screen settles its call, with the result or with a failure such as `cancelled` when the person closed the screen.
 - **Restored ends.** A screen outlives the app that opened it: the app may restart under it, after a hot reload or `haylen.requestRestart()`, the process may end while the screen shows, as Android ends apps in the background, or a web page may leave for a redirect and load again. The end then reaches the next app as the retained event `<id>.screenRestored`, with `screen`, the name of the screen, `state`, the value that `options.state` gave, and `result`, or `error` with `message`, `code` and `data` for a failure. A restarted app starts covered by the screen that still shows, and `platform.screenShowing()` tells it why.
-- **Cancel.** `call:cancel()` and a `timeout` fail the call at once and ask the platform to dismiss the screen. The cover lasts until the platform reports the screen gone, and that end reaches no app. A screen that waits ends at once and never reaches the platform.
+- **Cancel.** The method `call:cancel()` and a `timeout` fail the call at once and ask the platform to dismiss the screen. The cover lasts until the platform reports the screen gone, and that end reaches no app. A screen that waits ends at once and never reaches the platform.
 
 ```lua
 -- plugins/paywall/source/init.lua
@@ -478,7 +478,7 @@ Native libraries come first, as with their handlers: a screen that a library reg
 
 #### Web screens
 
-`context.registerScreen(name, open)` of the web module of a plugin registers the screen `<id>.<name>`. The runtime calls `open(params, screen)` while it opens the screen, in the frame after the app asked for it, with the parameters, where bytes of the app arrive as `Uint8Array` values, and the screen.
+The function `context.registerScreen(name, open)` of the web module of a plugin registers the screen `<id>.<name>`. The runtime calls `open(params, screen)` while it opens the screen, in the frame after the app asked for it, with the parameters, where bytes of the app arrive as `Uint8Array` values, and the screen.
 
 | Member | Meaning |
 | --- | --- |
@@ -489,7 +489,7 @@ Native libraries come first, as with their handlers: a screen that a library reg
 | `screen.popup(url, options)` | Opens a popup at once and returns a promise of its answer. `options.width` and `options.height` size it, 480 by 640 by default, and `options.origin` names another origin whose pages may answer besides the origin of the app. The promise fails with the code `popupBlocked` when the browser blocks the popup and with the code `cancelled` when the popup closes without an answer. |
 | `screen.redirect(url)` | Keeps the pending screen in the session storage of the page and leaves the page for the address, or ends the screen with the code `storageUnavailable` when the session storage cannot keep it. |
 
-`open` may be an async function, and an error it throws, or a promise it returns that fails, ends the screen with that error. A screen whose name no module registered fails with the code `noHandler`. When the app gives the screen up, the runtime aborts `screen.signal`, closes the popup of the screen and ends the screen as `cancelled`.
+The function `open` may be an async function, and an error it throws, or a promise it returns that fails, ends the screen with that error. A screen whose name no module registered fails with the code `noHandler`. When the app gives the screen up, the runtime aborts `screen.signal`, closes the popup of the screen and ends the screen as `cancelled`.
 
 **Popups.** The page in the popup answers with a message `{haylenScreen: token, result}` or `{haylenScreen: token, error: {message, code, data}}`. It posts the message to `window.opener` with the origin of the app, and when it has no opener, such as after a page with `Cross-Origin-Opener-Policy: same-origin` cut the link, on the `BroadcastChannel` named `haylen-screens`, which only pages of the same origin reach. The runtime takes a message only when its token names the screen that shows and it comes from the popup of the screen with the origin of the app or `options.origin`, or from the channel, and then closes the popup. A sign-in or payment provider therefore returns to a callback page on the site of the app, which posts the answer.
 
@@ -552,7 +552,7 @@ The rules of browsers apply to every page screen.
 
 #### Desktop screens
 
-A native library registers a screen with `registerScreen(plugin, name, open, cancel, user)` of [`HaylenNativeApi`](../lua-api/native.md#library-handlers). The engine calls `open(user, screen, paramsJson, buffers, bufferCount)` on the frame thread once it covered the app, and the library opens a window of its own over the window of the app, which `getWindow` hands it, and ends the screen with `finishScreen(screen, ok, resultJson, buffers, bufferCount)` from any thread when the window closes. `cancel(user, screen)` asks it to close the window of a screen that the app gave up, and the library still calls `finishScreen` then. `coverApp` and `uncoverApp` cover the app for other native UI of a library, such as the overlay of an SDK.
+A native library registers a screen with `registerScreen(plugin, name, open, cancel, user)` of [`HaylenNativeApi`](../lua-api/native.md#library-handlers). The engine calls `open(user, screen, paramsJson, buffers, bufferCount)` on the frame thread once it covered the app, and the library opens a window of its own over the window of the app, which `getWindow` hands it, and ends the screen with `finishScreen(screen, ok, resultJson, buffers, bufferCount)` from any thread when the window closes. The function `cancel(user, screen)` asks it to close the window of a screen that the app gave up, and the library still calls `finishScreen` then. The methods `coverApp` and `uncoverApp` cover the app for other native UI of a library, such as the overlay of an SDK.
 
 | Desktop | Window of the app | Window of a screen |
 | --- | --- | --- |
@@ -564,7 +564,7 @@ The confirm screen of the [demo plugin](#screens) opens each of these windows.
 
 #### Apple screens
 
-`registerScreen:handler:` of the context of a plugin class, `registerScreen(_:handler:)` in Swift, registers the screen `<id>.<name>`. The runtime calls the handler on the main queue once the engine covered the app, with the parameters, where bytes arrive as `NSData` values, and a `HaylenScreen`, through which the handler shows its UI and which it ends. A name that no plugin registered fails with the code `noHandler`, and a screen that finds no window of the app to show over fails with the code `notActive`.
+The method `registerScreen:handler:` of the context of a plugin class, `registerScreen(_:handler:)` in Swift, registers the screen `<id>.<name>`. The runtime calls the handler on the main queue once the engine covered the app, with the parameters, where bytes arrive as `NSData` values, and a `HaylenScreen`, through which the handler shows its UI and which it ends. A name that no plugin registered fails with the code `noHandler`, and a screen that finds no window of the app to show over fails with the code `notActive`.
 
 | Member | Meaning |
 | --- | --- |
@@ -595,8 +595,8 @@ context.registerScreen("offer") { (params: Offer, screen: HaylenScreen) in
 
 The context of a plugin class registers the screen `<id>.<name>` in `onLoad`, in one of two ways.
 
-- **An Activity Result contract.** `registerScreen(name, contract, input, output)` takes an `ActivityResultContract`, a `HaylenScreen.Input` that turns the parameters of the app into the input of the contract, and a `HaylenScreen.Output` that turns the output of the contract into the result of the screen, any value that `reply.success` takes. Every `HaylenActivity` registers the launcher of the contract under the stable key `haylen.<id>.<name>` in `onCreate`, before it starts, so a result that Android delivers to a new activity, after the activity was recreated or the process ended while the screen showed, finds its launcher. A `null` output, which the contracts of AndroidX give when the person backs out, ends the screen with the code `cancelled`, and a thrown `HaylenBridge.Failure` ends it with its code and data.
-- **An opener.** `registerScreen(name, opener)` takes a `HaylenScreen.Opener`, which the runtime calls on the main thread with the parameters and the `HaylenScreen`, for UI that the plugin shows itself, such as the launcher of an SDK that the plugin created in `onActivityCreated`.
+- **An Activity Result contract.** The function `registerScreen(name, contract, input, output)` takes an `ActivityResultContract`, a `HaylenScreen.Input` that turns the parameters of the app into the input of the contract, and a `HaylenScreen.Output` that turns the output of the contract into the result of the screen, any value that `reply.success` takes. Every `HaylenActivity` registers the launcher of the contract under the stable key `haylen.<id>.<name>` in `onCreate`, before it starts, so a result that Android delivers to a new activity, after the activity was recreated or the process ended while the screen showed, finds its launcher. A `null` output, which the contracts of AndroidX give when the person backs out, ends the screen with the code `cancelled`, and a thrown `HaylenBridge.Failure` ends it with its code and data.
+- **An opener.** The function `registerScreen(name, opener)` takes a `HaylenScreen.Opener`, which the runtime calls on the main thread with the parameters and the `HaylenScreen`, for UI that the plugin shows itself, such as the launcher of an SDK that the plugin created in `onActivityCreated`.
 
 The runtime opens the screen on the main thread once the engine covered the app. A name that no plugin registered fails with the code `noHandler`, and a screen that finds the activity away from the foreground with the code `notActive`. `HaylenScreen` has these members:
 
@@ -685,7 +685,7 @@ end)
 
 ### Android requirements
 
-`context.requirements()` of an Android plugin returns its `dev.haylen.HaylenRequirements`, which reads the merged manifest and the build of the app from any thread. The manifest stays the same while the process lives, so it reads the package once.
+The function `context.requirements()` of an Android plugin returns its `dev.haylen.HaylenRequirements`, which reads the merged manifest and the build of the app from any thread. The manifest stays the same while the process lives, so it reads the package once.
 
 | Member | Meaning |
 | --- | --- |
@@ -735,7 +735,7 @@ The engine checks its own features the same way. The manifest of the Android tem
 
 ### Apple requirements
 
-`context.requirements` of an Apple plugin is its `HaylenRequirements`, declared in `haylen/platform/apple/HaylenRequirements.h`, which reads the `Info.plist`, the linked classes and, on macOS and Mac Catalyst, the entitlements of the app from any thread. A usage description matters most, since the system ends an app that asks for a permission without the usage description of that permission, so a plugin checks it before the call that asks.
+The field `context.requirements` of an Apple plugin is its `HaylenRequirements`, declared in `haylen/platform/apple/HaylenRequirements.h`, which reads the `Info.plist`, the linked classes and, on macOS and Mac Catalyst, the entitlements of the app from any thread. A usage description matters most, since the system ends an app that asks for a permission without the usage description of that permission, so a plugin checks it before the call that asks.
 
 | Member | Meaning |
 | --- | --- |
@@ -785,7 +785,7 @@ The plugin "contacts" needs the usage description "NSContactsUsageDescription", 
 
 ### Web requirements
 
-`context.require(needs)` of the web module of a plugin checks what the page offers and throws an error with the code `unsupported` and `data.missing` when the page lacks any of it, after it logged each missing requirement once, as a warning on the console and through the `onLog` callback of the page, so a handler that lets it through fails its call with it. A key of `needs` other than the three of the table throws a `TypeError`.
+The function `context.require(needs)` of the web module of a plugin checks what the page offers and throws an error with the code `unsupported` and `data.missing` when the page lacks any of it, after it logged each missing requirement once, as a warning on the console and through the `onLog` callback of the page, so a handler that lets it through fails its call with it. A key of `needs` other than the three of the table throws a `TypeError`.
 
 | Key of `needs` | Value | Missing when | `kind` and `name` |
 | --- | --- | --- | --- |
@@ -955,7 +955,7 @@ final class RemindersPlugin: NSObject, HaylenNotificationPlugin {
 
 ### Overlays
 
-`context.overlay` places native views of the plugin over the app, such as a banner. Its `addView:placement:`, `add(_:placement:)` in Swift, takes a view and a `HaylenPlacement` and returns a `HaylenOverlayItem`, `HaylenOverlay.Item` in Swift:
+The method `context.overlay` places native views of the plugin over the app, such as a banner. Its `addView:placement:`, `add(_:placement:)` in Swift, takes a view and a `HaylenPlacement` and returns a `HaylenOverlayItem`, `HaylenOverlay.Item` in Swift:
 
 | Member | Meaning |
 | --- | --- |
@@ -1010,7 +1010,7 @@ A URL scheme of `CFBundleURLTypes` opens the app, whose plugins receive the link
 
 ### Swift helpers
 
-`engine/platform/apple/HaylenBridgeAsync.swift` adds Swift helpers on top of the Objective-C API. The tool `haylen.py` writes it into `haylen/` of Apple projects, whose target templates compile it, and `haylen_add_app` compiles it into C++ apps whose plugins have Swift sources:
+The file `engine/platform/apple/HaylenBridgeAsync.swift` adds Swift helpers on top of the Objective-C API. The tool `haylen.py` writes it into `haylen/` of Apple projects, whose target templates compile it, and `haylen_add_app` compiles it into C++ apps whose plugins have Swift sources:
 
 | Helper | Meaning |
 | --- | --- |
@@ -1250,7 +1250,7 @@ val tap = PendingIntent.getActivity(context.application(), messageId.hashCode(),
 
 ### Android overlays
 
-`context.overlay().add(view, placement)` places a native view over the app, such as a banner, and returns a `HaylenOverlay.Panel`:
+The function `context.overlay().add(view, placement)` places a native view over the app, such as a banner, and returns a `HaylenOverlay.Panel`:
 
 | Member | Meaning |
 | --- | --- |
@@ -1309,7 +1309,7 @@ The test project, [`samples/tests`](../../samples/tests), carries the plugin [`n
 
 ### The Lua API
 
-`source/init.lua` wraps every method and event of the plugin in a function of its own, so apps never write method names, and reads `handle.native` to tell whether the native part runs. Apple platforms, Android and the web load their native parts before any Lua runs. The desktops run the C library, so on macOS, Windows and Linux, when no other native part loaded, the module calls `native.load('native_demo', {init = 'native_demo_haylen_init'})`, whose init function declares the library the native part of the plugin with `registerPlugin`. That happens once per process, since `handle.native` stays true after a restart, and the macOS app built from the Apple template runs the Swift part instead. The module then sends `start`, which every native part answers by ending what an earlier app of the process left running, the ticks and the banner, and by sending the error that stopped that app as the retained event `lastError`. A plugin that needs to know when a new app starts, since the engine restarts apps inside one process, uses such a call.
+The file `source/init.lua` wraps every method and event of the plugin in a function of its own, so apps never write method names, and reads `handle.native` to tell whether the native part runs. Apple platforms, Android and the web load their native parts before any Lua runs. The desktops run the C library, so on macOS, Windows and Linux, when no other native part loaded, the module calls `native.load('native_demo', {init = 'native_demo_haylen_init'})`, whose init function declares the library the native part of the plugin with `registerPlugin`. That happens once per process, since `handle.native` stays true after a restart, and the macOS app built from the Apple template runs the Swift part instead. The module then sends `start`, which every native part answers by ending what an earlier app of the process left running, the ticks and the banner, and by sending the error that stopped that app as the retained event `lastError`. A plugin that needs to know when a new app starts, since the engine restarts apps inside one process, uses such a call.
 
 ### Calls
 
@@ -1325,11 +1325,11 @@ The test project, [`samples/tests`](../../samples/tests), carries the plugin [`n
 
 ### Events
 
-`burst` shows [batched events](#batched-events): `burst(count, ticks)` sends `count` events 30 times per second for `ticks` ticks, each marked batched, from a `Timer` on Apple platforms, the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, and then `burstDone`, so the Lua listener receives one list of the events of each frame. `tick` comes from a `Timer` on the main run loop on Apple platforms, a `Runnable` posted to the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, which each send with `context.emit`, `HaylenNativeApi.emit` or their equivalent from their thread. `loaded` goes out retained from `load(with:)`, `onLoad`, `load(context)` and the init function, before any app listens, and waits for the first listener of the process, which the sample connects only when its Events test opens.
+The event `burst` shows [batched events](#batched-events): `burst(count, ticks)` sends `count` events 30 times per second for `ticks` ticks, each marked batched, from a `Timer` on Apple platforms, the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, and then `burstDone`, so the Lua listener receives one list of the events of each frame. The event `tick` comes from a `Timer` on the main run loop on Apple platforms, a `Runnable` posted to the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, which each send with `context.emit`, `HaylenNativeApi.emit` or their equivalent from their thread. The event `loaded` goes out retained from `load(with:)`, `onLoad`, `load(context)` and the init function, before any app listens, and waits for the first listener of the process, which the sample connects only when its Events test opens.
 
 ### Streams
 
-`startVideo` opens the video stream `pattern` and draws an animated pattern into it 30 times per second, and `startTone` opens the audio stream `tone` and synthesizes a sine wave into it a tenth of a second ahead of the clock. The C library draws BGRA frames of 320 by 180 pixels and 16-bit mono samples at 44100 Hz on threads of its own, which the engine turns into RGBA and resamples to the mixer. The Swift part draws the pattern with CoreGraphics into `CVPixelBuffer`s of a pool and pushes them with `push(_:timestamp:)`, and pushes mono floats at 44100 Hz, each from a dispatch queue of its own. The web module animates a `<canvas>` that it pushes into `context.videoStream('pattern')` and pushes `Float32Array` blocks into `context.audioStream('tone', {sampleRate = 44100, channels = 1})` from timers of the page. The Kotlin part draws the pattern with a `Canvas` into an RGBA `Bitmap` and pushes it with `push(bitmap, timestamp)`, and pushes mono floats at 44100 Hz with `push(samples, frames)`, each from a `HandlerThread` of its own. The Lua API returns the streams with `videoStream()` and `audioStream()`, whose texture the sample draws and whose voice it plays, with a level meter from `read`.
+The method `startVideo` opens the video stream `pattern` and draws an animated pattern into it 30 times per second, and `startTone` opens the audio stream `tone` and synthesizes a sine wave into it a tenth of a second ahead of the clock. The C library draws BGRA frames of 320 by 180 pixels and 16-bit mono samples at 44100 Hz on threads of its own, which the engine turns into RGBA and resamples to the mixer. The Swift part draws the pattern with CoreGraphics into `CVPixelBuffer`s of a pool and pushes them with `push(_:timestamp:)`, and pushes mono floats at 44100 Hz, each from a dispatch queue of its own. The web module animates a `<canvas>` that it pushes into `context.videoStream('pattern')` and pushes `Float32Array` blocks into `context.audioStream('tone', {sampleRate = 44100, channels = 1})` from timers of the page. The Kotlin part draws the pattern with a `Canvas` into an RGBA `Bitmap` and pushes it with `push(bitmap, timestamp)`, and pushes mono floats at 44100 Hz with `push(samples, frames)`, each from a `HandlerThread` of its own. The Lua API returns the streams with `videoStream()` and `audioStream()`, whose texture the sample draws and whose voice it plays, with a level meter from `read`.
 
 ### Parameters
 
@@ -1337,7 +1337,7 @@ The native parts read their parameters from the context, `context.config` on App
 
 ### Views over the app
 
-The banner is a native view that the overlay of the context places at the top or the bottom of the safe area, 360 by 56 points, dp or page pixels, with `reserve` set or not: `context.overlay.add(view, placement:)` with a `HaylenPlacement` on Apple platforms, `context.overlay().add(view, placement)` on Android, which adds it over the surface of the app, and `context.overlay.add(element, placement)` on the web. `update`, the visibility and `remove` of the item it returns move, hide and remove the banner, and a native button inside it sends `bannerTapped`. The sample shows that its frame, laid out in the safe area, moves out of the way of a banner that reserves its edge, and that taps outside the banner reach the app.
+The banner is a native view that the overlay of the context places at the top or the bottom of the safe area, 360 by 56 points, dp or page pixels, with `reserve` set or not: `context.overlay.add(view, placement:)` with a `HaylenPlacement` on Apple platforms, `context.overlay().add(view, placement)` on Android, which adds it over the surface of the app, and `context.overlay.add(element, placement)` on the web. The method `update`, the visibility and `remove` of the item it returns move, hide and remove the banner, and a native button inside it sends `bannerTapped`. The sample shows that its frame, laid out in the safe area, moves out of the way of a banner that reserves its edge, and that taps outside the banner reach the app.
 
 ### Covering the app
 
@@ -1345,15 +1345,15 @@ The native screen is a `UIViewController` presented full screen on iOS, iPadOS, 
 
 ### Screens
 
-`confirm` is the [screen](#plugin-screens) of the plugin, which asks a question with Confirm and Decline and answers with `{confirmed, via, language}`. The web opens `web/screen.html` in a popup with `screen.popup`, whose page posts the answer to the app, and the desktops open a native window over the window of the app from `getWindow`: a sheet on macOS in `NativeDemoScreen.m`, an owned window on Windows and a transient X11 window on a connection of its own on Linux in `NativeDemoScreen.c`, whose Close button and close box end the screen as `cancelled`. Apple platforms show a UIKit controller in `NativeDemoConfirm.swift`, presented full screen, whose swipe and Menu button end the screen as `cancelled`, and an AppKit sheet on macOS, and add `swiftUI`, the same question in the SwiftUI view of `NativeDemoConfirmView.swift` through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS, whose Close button ends the screen as `cancelled` with `fail`, which closes the window of Mac Catalyst too. The web adds `redirect`, which leaves the page for the same confirm page and comes back with the answer and the token of the screen in the address, which the module reads through `context.restoredScreen` in `load`. Android registers the screen as the contract of `NativeDemoConfirm.kt`, which starts `NativeDemoConfirmActivity`, an `AppCompatActivity` of its own, whose Back button gives `null` and so ends the screen as `cancelled`, which a cancel of the app finishes, and whose end reaches the next app as `screenRestored` when the process ended while it showed. The Native screen test of the sample opens the screen, shows that the app was covered and drew nothing under it, tries a second screen, which fails with `busy`, cancels one from a timer while it shows, restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state, and opens the screen right in the answer of a message of [haylen.dialogs](../lua-api/dialogs.md), which waits until the app is active.
+The method `confirm` is the [screen](#plugin-screens) of the plugin, which asks a question with Confirm and Decline and answers with `{confirmed, via, language}`. The web opens `web/screen.html` in a popup with `screen.popup`, whose page posts the answer to the app, and the desktops open a native window over the window of the app from `getWindow`: a sheet on macOS in `NativeDemoScreen.m`, an owned window on Windows and a transient X11 window on a connection of its own on Linux in `NativeDemoScreen.c`, whose Close button and close box end the screen as `cancelled`. Apple platforms show a UIKit controller in `NativeDemoConfirm.swift`, presented full screen, whose swipe and Menu button end the screen as `cancelled`, and an AppKit sheet on macOS, and add `swiftUI`, the same question in the SwiftUI view of `NativeDemoConfirmView.swift` through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS, whose Close button ends the screen as `cancelled` with `fail`, which closes the window of Mac Catalyst too. The web adds `redirect`, which leaves the page for the same confirm page and comes back with the answer and the token of the screen in the address, which the module reads through `context.restoredScreen` in `load`. Android registers the screen as the contract of `NativeDemoConfirm.kt`, which starts `NativeDemoConfirmActivity`, an `AppCompatActivity` of its own, whose Back button gives `null` and so ends the screen as `cancelled`, which a cancel of the app finishes, and whose end reaches the next app as `screenRestored` when the process ended while it showed. The Native screen test of the sample opens the screen, shows that the app was covered and drew nothing under it, tries a second screen, which fails with `busy`, cancels one from a timer while it shows, restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state, and opens the screen right in the answer of a message of [haylen.dialogs](../lua-api/dialogs.md), which waits until the app is active.
 
 ### Native results
 
-`pickFile` shows the platform side of a result: `ActivityResultContracts.OpenDocument` on Android, whose launcher the plugin class registers under the key `native-demo.pickFile` in `onActivityCreated` and which answers the call, or logs a pick that ends after the process ended while the picker showed, a `UIDocumentPickerViewController` that is its own delegate on iOS, iPadOS and Mac Catalyst, `NSOpenPanel` on macOS and an `<input type="file">` with its `change` and `cancel` events on the web. A cancelled picker answers `nil`.
+The method `pickFile` shows the platform side of a result: `ActivityResultContracts.OpenDocument` on Android, whose launcher the plugin class registers under the key `native-demo.pickFile` in `onActivityCreated` and which answers the call, or logs a pick that ends after the process ended while the picker showed, a `UIDocumentPickerViewController` that is its own delegate on iOS, iPadOS and Mac Catalyst, `NSOpenPanel` on macOS and an `<input type="file">` with its `change` and `cancel` events on the web. A cancelled picker answers `nil`.
 
 ### Permissions and notifications
 
-The call `requestPermission` asks the person for `camera` or `notifications` with the prompt of the system and answers with `{kind, granted, status, language}`. On Apple platforms the camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, tvOS has no camera, and the notifications ask through `UNUserNotificationCenter`. The call `notify(seconds)` schedules a local notification of the plugin, which shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class, which adopts `HaylenNotificationPlugin`, through the delegate of the notification center that the runtime sets because the plugin links UserNotifications, also when the tap launches the closed app, and the plugin sends it as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample. On Android the plugin checks with `context.requirements()` that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does, and asks through a launcher of `ActivityResultContracts.RequestPermission` that it registers in `onActivityCreated`, answering with the status `authorized` or `denied`. Before Android 13 notifications need no permission, so the answer tells whether the person left them on. `notify` fails with the code `permissionDenied` while the notifications of the app are off, and otherwise sets an alarm, which starts the process when it was closed, whose receiver, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
+The call `requestPermission` asks the person for `camera` or `notifications` with the prompt of the system and answers with `{kind, granted, status, language}`. On Apple platforms the camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, tvOS has no camera, and the notifications ask through `UNUserNotificationCenter`. The call `notify(seconds)` schedules a local notification of the plugin, which shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class, which adopts `HaylenNotificationPlugin`, through the delegate of the notification center that the runtime sets because the plugin links UserNotifications, also when the tap launches the closed app, and the plugin sends it as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample. On Android the plugin checks with `context.requirements()` that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does, and asks through a launcher of `ActivityResultContracts.RequestPermission` that it registers in `onActivityCreated`, answering with the status `authorized` or `denied`. Before Android 13 notifications need no permission, so the answer tells whether the person left them on. The method `notify` fails with the code `permissionDenied` while the notifications of the app are off, and otherwise sets an alarm, which starts the process when it was closed, whose receiver, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
 
 ### Requirements
 

@@ -39,13 +39,13 @@ Tag directions `forward` and `reverse` loop, and `pingpong` and `pingpong_revers
 
 Every frame of an animation holds, in pixels of its untrimmed frame:
 
-- `pivot`, the point the frame stands on, which `animator:apply` gives the sprite in place of `pivotX` and `pivotY`.
-- `boxes`, named rectangles such as hitboxes and hurtboxes, which [`animator:box`](#animatorboxname-sprite) places in the world.
-- `points`, named points such as a hand or a muzzle, which [`animator:point`](#animatorpointname-sprite) places in the world.
-- `events`, names that [`animator.onEvent`](#animatoroneventname-event-frame) receives when the animation enters the frame.
-- `ticks`, the length of the frame in fixed steps, for animations that advance with [`animator:step`](#animatorstepticks) so their frames end exactly on steps. Every frame of an animation counts ticks or none does, which otherwise raises `Every frame of an animation counts ticks, or none does.`.
+- The field `pivot`, the point the frame stands on, which `animator:apply` gives the sprite in place of `pivotX` and `pivotY`.
+- The field `boxes`, named rectangles such as hitboxes and hurtboxes, which [`animator:box`](#animatorboxname-sprite) places in the world.
+- The field `points`, named points such as a hand or a muzzle, which [`animator:point`](#animatorpointname-sprite) places in the world.
+- The field `events`, names that [`animator.onEvent`](#animatoroneventname-event-frame) receives when the animation enters the frame.
+- The field `ticks`, the length of the frame in fixed steps, for animations that advance with [`animator:step`](#animatorstepticks) so their frames end exactly on steps. Every frame of an animation counts ticks or none does, which otherwise raises `Every frame of an animation counts ticks, or none does.`.
 
-Atlases read frame data from their slices and frames. A slice key holds from its frame until the frame of the next key, the last key until the last frame, and a key with an empty `bounds` hides the slice from its frame on. A box slice marks the `bounds` of each key as its box, and the `pivot` of a key, relative to its bounds, becomes the pivot of the frames it covers. A point slice marks the `pivot` of each key, or the middle of its bounds. `animation2d.fromFrames` takes frame data as tables, `anim:addEvent` adds events in code, and `anim:frameData`, `atlas:frame` and `animator:box` read it back.
+Atlases read frame data from their slices and frames. A slice key holds from its frame until the frame of the next key, the last key until the last frame, and a key with an empty `bounds` hides the slice from its frame on. A box slice marks the `bounds` of each key as its box, and the `pivot` of a key, relative to its bounds, becomes the pivot of the frames it covers. A point slice marks the `pivot` of each key, or the middle of its bounds. The function `animation2d.fromFrames` takes frame data as tables, `anim:addEvent` adds events in code, and `anim:frameData`, `atlas:frame` and `animator:box` read it back.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -87,7 +87,7 @@ Animations and option tables use these loop names:
 
 ### animation2d.fromGrid(texture, options)
 
-Cuts an `Animation` from a grid of equally sized cells in `texture`. Cells are numbered from 1, left to right and top to bottom. `options`:
+Cuts an `Animation` from a grid of equally sized cells in `texture`. Cells are numbered from 1, left to right and top to bottom. The argument `options`:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |

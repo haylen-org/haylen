@@ -138,7 +138,7 @@ The function links `haylen::runtime`, which brings the system libraries of the p
 
 ### Protected releases
 
-The cache variable `HAYLEN_PROTECTED_RELEASE`, off by default, makes every app of the project ship its [protected release](../content/content.md) instead of the package as it is, exactly like the release builds of Lua apps: the Lua modules as bytecode and every asset encrypted in shards, which the app opens with the bootstrap that the build compiles into it, so a C++ app and a Lua app read their content through the same code. `haylen.py run-cpp --config Release` turns it on, and any other configuration turns it off.
+The cache variable `HAYLEN_PROTECTED_RELEASE`, off by default, makes every app of the project ship its [protected release](../content/content.md) instead of the package as it is, exactly like the release builds of Lua apps: the Lua modules as bytecode and every asset encrypted in shards, which the app opens with the bootstrap that the build compiles into it, so a C++ app and a Lua app read their content through the same code. The command `haylen.py run-cpp --config Release` turns it on, and any other configuration turns it off.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -154,11 +154,11 @@ The build runs the content tool on the package with the keys of the app from its
 | Web | The manifests and the app domain preloaded at `/app`, and the whole release in `app/` next to the page, from which the content streams by range into the [content store of the browser](../content/content.md#the-web). |
 | Android | The release in `bin/<target>/release.txt`, which `run-cpp` places in the assets of the Android project instead of the package. |
 
-An app with a content server in `app.json` ships only what its required content needs, and the shards of named packs stay in `haylen-release/<target>/packs/`, as the [delivery guide](../content/content.md#delivery) explains. `run-cpp --config Release` inspects the built app before it launches and stops when it holds Lua text, a file of the package as it is, symbol files or a key in any form.
+An app with a content server in `app.json` ships only what its required content needs, and the shards of named packs stay in `haylen-release/<target>/packs/`, as the [delivery guide](../content/content.md#delivery) explains. The command `run-cpp --config Release` inspects the built app before it launches and stops when it holds Lua text, a file of the package as it is, symbol files or a key in any form.
 
 ## An app written in C++
 
-The command `haylen new <folder> --kind cpp` creates a C++ app from the [C++ template](distribution.md#cpp): a CMake project that adds the engine from the folder that `HAYLEN_ENGINE_SOURCE` names, or from an installed SDK when the variable is empty, and builds the target `main` from its sources, with the [bridge example](distribution.md#the-bridge-example) of the templates and the Android project and web page code that it shares with Lua apps. `haylen run-cpp <folder>` builds and runs it on every platform this machine reaches, and passes `HAYLEN_ENGINE_SOURCE` itself.
+The command `haylen new <folder> --kind cpp` creates a C++ app from the [C++ template](distribution.md#cpp): a CMake project that adds the engine from the folder that `HAYLEN_ENGINE_SOURCE` names, or from an installed SDK when the variable is empty, and builds the target `main` from its sources, with the [bridge example](distribution.md#the-bridge-example) of the templates and the Android project and web page code that it shares with Lua apps. The command `haylen run-cpp <folder>` builds and runs it on every platform this machine reaches, and passes `HAYLEN_ENGINE_SOURCE` itself.
 
 ```cmake
 set(HAYLEN_ENGINE_SOURCE "" CACHE PATH "The engine folder of a Haylen checkout. Empty finds an installed SDK with find_package.")

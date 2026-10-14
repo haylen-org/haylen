@@ -501,7 +501,7 @@ end
 
 ### debug.addCommand(name, fn, options)
 
-Adds a command to the console and returns its [`Connection`](signal.md#connection), replacing the command with the same name. `name` is one word without spaces or quotes. When the command runs, `fn` receives its arguments, converted to their kinds, and returns the text to print as a string or a number, or nothing. An error that `fn` raises fails the command with its message instead of stopping the app, and a value of another type fails it with `A console command returns a string, a number or nothing.`.
+Adds a command to the console and returns its [`Connection`](signal.md#connection), replacing the command with the same name. The argument `name` is one word without spaces or quotes. When the command runs, `fn` receives its arguments, converted to their kinds, and returns the text to print as a string or a number, or nothing. An error that `fn` raises fails the command with its message instead of stopping the app, and a value of another type fails it with `A console command returns a string, a number or nothing.`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |

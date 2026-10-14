@@ -36,7 +36,7 @@ The terrain comes from the seed alone. A height field of fractal noise of [`hayl
 
 Every frame the app wants the chunks that the camera sees and a ring of one chunk around them, and unloads the chunks more than three chunks away. Up to eight missing chunks build at once, nearest first, each in a task that the scene owns:
 
-1. `procedural.scatterAsync` places the decorations of the chunk on a worker thread.
+1. The function `procedural.scatterAsync` places the decorations of the chunk on a worker thread.
 2. A job of [`haylen.jobs`](../../../docs/lua-api/jobs.md) samples the noise of the 4,096 tiles and their borders, sorts the decorations from the top down and makes the sprite fields of both, pausing at every row once the build time of the frame is spent, which the panel sets from 2 to 16 milliseconds.
 3. On the frame thread, one `buffer:set` and one `batch:writeFields` fill a sprite batch that `batch:bake()` turns into a static batch for the tiles and another for the decorations, so a loaded chunk uploads nothing again and draws with two calls of `graphics2d.drawStatic`.
 

@@ -8,7 +8,7 @@ A Haylen plugin that exercises every capability of native plugins with the APIs 
 haylen plugin add samples/tests/plugins/native-demo --app my-app
 ```
 
-`plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `app.json` with the defaults of its parameters:
+The command `plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `app.json` with the defaults of its parameters:
 
 ```json
 {
@@ -66,7 +66,7 @@ end
 
 ### demo.config()
 
-Returns the parameters of the plugin, the values of `app.json` over the defaults of `plugin.json`. `demo.id` and `demo.version` are the id and the version of the plugin.
+Returns the parameters of the plugin, the values of `app.json` over the defaults of `plugin.json`. The fields `demo.id` and `demo.version` are the id and the version of the plugin.
 
 ```lua
 local demo = require('native-demo')
@@ -163,7 +163,7 @@ end)
 
 ### demo.wait(token, options)
 
-Never answers by itself. `options` takes the `timeout` of [platform calls](../../../../docs/lua-api/platform.md#platformcallmethod-params-options). When the timeout passes or the app cancels the call, the native part hears it and sends `waitCancelled` with the `token`.
+Never answers by itself. The argument `options` takes the `timeout` of [platform calls](../../../../docs/lua-api/platform.md#platformcallmethod-params-options). When the timeout passes or the app cancels the call, the native part hears it and sends `waitCancelled` with the `token`.
 
 ### demo.onWaitCancelled(listener)
 
@@ -203,7 +203,7 @@ Sends `count` events of the name `burst` 30 times per second for `ticks` ticks, 
 
 ### demo.onBurst(listener), demo.onBurstDone(listener)
 
-`onBurst` calls `listener(list)` once per frame with the list of the `{tick, index, language}` of the events that arrived in that frame, in order, and `onBurstDone` calls `listener({events, ticks, language})` once the last event arrived.
+The method `onBurst` calls `listener(list)` once per frame with the list of the `{tick, index, language}` of the events that arrived in that frame, in order, and `onBurstDone` calls `listener({events, ticks, language})` once the last event arrived.
 
 ```lua
 local demo = require('native-demo')
@@ -219,7 +219,7 @@ demo.burst(100, 30)
 
 ### demo.startVideo(), demo.stopVideo(), demo.videoStream()
 
-`startVideo` opens the video stream `pattern` and draws the pattern into it 30 times per second with its stripes moving, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, BGRA `CVPixelBuffer`s of 320 by 180 pixels drawn with CoreGraphics on a dispatch queue on Apple platforms, RGBA `Bitmap`s of 320 by 180 pixels drawn with a `Canvas` on a `HandlerThread` on Android, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. `stopVideo` stops the frames. `videoStream()` returns the [video stream](../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it.
+The method `startVideo` opens the video stream `pattern` and draws the pattern into it 30 times per second with its stripes moving, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, BGRA `CVPixelBuffer`s of 320 by 180 pixels drawn with CoreGraphics on a dispatch queue on Apple platforms, RGBA `Bitmap`s of 320 by 180 pixels drawn with a `Canvas` on a `HandlerThread` on Android, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. The method `stopVideo` stops the frames. The function `videoStream()` returns the [video stream](../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it.
 
 ```lua
 local async = require('async')
@@ -249,7 +249,7 @@ scene.push({
 
 ### demo.startTone(frequency), demo.stopTone(), demo.audioStream()
 
-`startTone` opens the audio stream `tone` and synthesizes a sine wave of `frequency` hertz into it a tenth of a second ahead of the clock, and answers with `{frequency, sampleRate, channels, format, language}`: 16-bit mono samples at 44100 Hz from a thread of the library on the desktops, mono floats at 44100 Hz from a dispatch queue on Apple platforms and from a `HandlerThread` on Android, and `Float32Array` blocks at 44100 Hz from a timer of the page on the web. `stopTone` stops the samples. `audioStream()` returns the [audio stream](../../../../docs/lua-api/platform.md#audio-streams), or `nil` until the native part opened it.
+The method `startTone` opens the audio stream `tone` and synthesizes a sine wave of `frequency` hertz into it a tenth of a second ahead of the clock, and answers with `{frequency, sampleRate, channels, format, language}`: 16-bit mono samples at 44100 Hz from a thread of the library on the desktops, mono floats at 44100 Hz from a dispatch queue on Apple platforms and from a `HandlerThread` on Android, and `Float32Array` blocks at 44100 Hz from a timer of the page on the web. The method `stopTone` stops the samples. The function `audioStream()` returns the [audio stream](../../../../docs/lua-api/platform.md#audio-streams), or `nil` until the native part opened it.
 
 ```lua
 local async = require('async')
@@ -278,7 +278,7 @@ demo.onLoaded(function(payload) print('Loaded', payload.language, payload.platfo
 
 ### demo.showBanner(anchor, reserve)
 
-Shows the native banner, a bar with the `greeting` and a Tap button on the `bannerColor`, 360 by 56 points, dp or page pixels, or places it again. `anchor` is `'top'` or `'bottom'` of the safe area, and with `reserve` true the banner reserves its edge, so the safe area of the app shrinks and UI anchored to it moves out of its way. Answers with `{anchor, reserve, visible}`. Another anchor fails with the code `invalidAnchor`.
+Shows the native banner, a bar with the `greeting` and a Tap button on the `bannerColor`, 360 by 56 points, dp or page pixels, or places it again. The option `anchor` is `'top'` or `'bottom'` of the safe area, and with `reserve` true the banner reserves its edge, so the safe area of the app shrinks and UI anchored to it moves out of its way. Answers with `{anchor, reserve, visible}`. Another anchor fails with the code `invalidAnchor`.
 
 ### demo.setBannerVisible(visible)
 
@@ -326,7 +326,7 @@ end)
 
 ### demo.openScreen(options)
 
-Opens the confirm [screen](../../../../docs/platform/plugins.md#plugin-screens) of the plugin, which asks a question with Confirm and Decline, and answers with `{confirmed, via, language}` once the person answers. The engine covers the app before the screen shows and draws nothing under it. It is a UIKit controller presented full screen on iOS, iPadOS, Mac Catalyst and tvOS, whose swipe and Menu button end it with the code `cancelled`, an AppKit sheet in the macOS app, a popup of `web/screen.html` on the web, which the browser blocks unless a click, a tap or a key press asked for it right before, and a window over the window of the app on the desktops: a sheet on macOS, an owned window on Windows and a transient window on Linux, whose Close button and close box end it with the code `cancelled`. On Android it is an `AppCompatActivity` of the plugin that the activity of the app starts through the Activity Result API, whose Back button ends it with the code `cancelled` and which a cancel of the app finishes, and when Android ended the process while it showed, its answer reaches the next app as `screenRestored`. `options` takes `state`, `opaque` and `timeout`, like `openScreen` of the plugin handle, and the state comes back with a restored end.
+Opens the confirm [screen](../../../../docs/platform/plugins.md#plugin-screens) of the plugin, which asks a question with Confirm and Decline, and answers with `{confirmed, via, language}` once the person answers. The engine covers the app before the screen shows and draws nothing under it. It is a UIKit controller presented full screen on iOS, iPadOS, Mac Catalyst and tvOS, whose swipe and Menu button end it with the code `cancelled`, an AppKit sheet in the macOS app, a popup of `web/screen.html` on the web, which the browser blocks unless a click, a tap or a key press asked for it right before, and a window over the window of the app on the desktops: a sheet on macOS, an owned window on Windows and a transient window on Linux, whose Close button and close box end it with the code `cancelled`. On Android it is an `AppCompatActivity` of the plugin that the activity of the app starts through the Activity Result API, whose Back button ends it with the code `cancelled` and which a cancel of the app finishes, and when Android ended the process while it showed, its answer reaches the next app as `screenRestored`. The argument `options` takes `state`, `opaque` and `timeout`, like `openScreen` of the plugin handle, and the state comes back with a restored end.
 
 ```lua
 local async = require('async')
@@ -404,7 +404,7 @@ end)
 
 ### demo.notify(seconds), demo.onNotificationOpened(listener)
 
-`notify` schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`. The notification shows while the app is in front too, and when the person taps it the native part sends `notificationOpened` retained with `{identifier, title, action, language}`, so a tap that launched the closed app reaches the first listener however late it connects. On Apple platforms it goes through `UNUserNotificationCenter`, which the plugin links with `UserNotifications.framework` in the `frameworks` of its `plugin.json`, and whose delegate the runtime then owns and hands to the plugin class, a `HaylenNotificationPlugin`, and tvOS fails `notify` with the code `unsupported`, since TVs show no notifications. On Android an alarm posts the notification through `NotificationManagerCompat` on the channel `native-demo`, also when the app was closed, its tap starts `HaylenLinkActivity`, which hands it to the app, and `notify` fails with the code `permissionDenied` while the notifications of the app are off. On the web a timer of the page shows a notification of the Notification API, whose click focuses the page and reaches the app, so it shows only while the page is open, and `notify` fails with the code `permissionDenied` until the person allows the notifications of the page.
+The method `notify` schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`. The notification shows while the app is in front too, and when the person taps it the native part sends `notificationOpened` retained with `{identifier, title, action, language}`, so a tap that launched the closed app reaches the first listener however late it connects. On Apple platforms it goes through `UNUserNotificationCenter`, which the plugin links with `UserNotifications.framework` in the `frameworks` of its `plugin.json`, and whose delegate the runtime then owns and hands to the plugin class, a `HaylenNotificationPlugin`, and tvOS fails `notify` with the code `unsupported`, since TVs show no notifications. On Android an alarm posts the notification through `NotificationManagerCompat` on the channel `native-demo`, also when the app was closed, its tap starts `HaylenLinkActivity`, which hands it to the app, and `notify` fails with the code `permissionDenied` while the notifications of the app are off. On the web a timer of the page shows a notification of the Notification API, whose click focuses the page and reaches the app, so it shows only while the page is open, and `notify` fails with the code `permissionDenied` until the person allows the notifications of the page.
 
 ```lua
 local async = require('async')

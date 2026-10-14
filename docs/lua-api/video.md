@@ -1,6 +1,6 @@
 # haylen.video
 
-`haylen.video` plays video files of the package into a texture, which sprites, UI images, materials and anything else that draws a texture show, with its sound through the mixer and a bus of [`haylen.audio`](audio.md). Use it for intros, cutscenes, tutorials, animated backgrounds and menus.
+The module `haylen.video` plays video files of the package into a texture, which sprites, UI images, materials and anything else that draws a texture show, with its sound through the mixer and a bus of [`haylen.audio`](audio.md). Use it for intros, cutscenes, tutorials, animated backgrounds and menus.
 
 ```lua
 local video = require('haylen.video')
@@ -129,7 +129,7 @@ Stops the video and its sound for good. The texture keeps the last frame it show
 
 ## C++
 
-`graphics::Video` plays a `platform::VideoDecoder`, the interface that the decoder of each platform implements and that a project implements for a format of its own: a decoder reads frames and sound ahead of the playback and seeks, and a decoder with a clock of its own plays by itself and reports its time. The `video` plugin creates videos of the package with `VideoPlugin::create`, which opens the file through `Host::openVideo`, and updates them at the start of every frame.
+The class `graphics::Video` plays a `platform::VideoDecoder`, the interface that the decoder of each platform implements and that a project implements for a format of its own: a decoder reads frames and sound ahead of the playback and seeks, and a decoder with a clock of its own plays by itself and reports its time. The `video` plugin creates videos of the package with `VideoPlugin::create`, which opens the file through `Host::openVideo`, and updates them at the start of every frame.
 
 ```cpp
 std::shared_ptr<haylen::graphics::Video> video = engine.getPlugin<haylen::plugins::VideoPlugin>().create(engine, "videos/intro.mp4", {.autoplay = true});

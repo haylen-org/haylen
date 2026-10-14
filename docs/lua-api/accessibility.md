@@ -1,6 +1,6 @@
 # haylen.accessibility
 
-`haylen.accessibility` follows the accessibility settings of the system, how large the user wants text, whether they want less motion, higher contrast or less transparency and whether a screen reader runs, and opens the UI to screen readers, which read the elements of every GUI aloud and act on them. Use it to calm the motion of an app, to pick a theme with stronger colors, to announce what changed and to check what a screen reader reads.
+The module `haylen.accessibility` follows the accessibility settings of the system, how large the user wants text, whether they want less motion, higher contrast or less transparency and whether a screen reader runs, and opens the UI to screen readers, which read the elements of every GUI aloud and act on them. Use it to calm the motion of an app, to pick a theme with stronger colors, to announce what changed and to check what a screen reader reads.
 
 ```lua
 local accessibility = require('haylen.accessibility')
@@ -158,7 +158,7 @@ Every platform reports every change while the app runs. On Linux the engine reac
 
 ## C++
 
-`platform::Accessibility`, which `engine.getAccessibility()` returns, holds the settings as `platform::AccessibilitySettings` with `getSettings()` and publishes `accessibilitySettingsChanged`. The platform reports the settings through `SokolHost::getSystemState()` from any thread, and the host hands the engine the last report once per frame through `Host::getAccessibilitySettings()`. It also holds the last tree of `platform::AccessibilityElement` records with `getElements()` and `getFocused()`, says announcements with `announce(text, interrupt)`, queues the actions of screen readers with `perform(request)` from any thread and turns the tree on with `setTreeEnabled`. The UI builds the tree in `ui::AccessibilityTree`, which components join through `Component::describe` and parts of components through `addPart`, and the platform receives it through `Host::updateAccessibility` and answers through `AccessibilityRelay::perform`.
+The class `platform::Accessibility`, which `engine.getAccessibility()` returns, holds the settings as `platform::AccessibilitySettings` with `getSettings()` and publishes `accessibilitySettingsChanged`. The platform reports the settings through `SokolHost::getSystemState()` from any thread, and the host hands the engine the last report once per frame through `Host::getAccessibilitySettings()`. It also holds the last tree of `platform::AccessibilityElement` records with `getElements()` and `getFocused()`, says announcements with `announce(text, interrupt)`, queues the actions of screen readers with `perform(request)` from any thread and turns the tree on with `setTreeEnabled`. The UI builds the tree in `ui::AccessibilityTree`, which components join through `Component::describe` and parts of components through `addPart`, and the platform receives it through `Host::updateAccessibility` and answers through `AccessibilityRelay::perform`.
 
 ```cpp
 const haylen::platform::AccessibilitySettings& settings = engine.getAccessibility().getSettings();

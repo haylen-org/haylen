@@ -1,6 +1,6 @@
 # haylen.system
 
-`haylen.system` tells what the device and its operating system are, follows the theme of the system and the battery, and offers the services every system has for apps: opening a url with the app that handles it, vibrating the device and showing what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to lower the work of the app on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [haylen.dialogs](dialogs.md), and the methods of the app and its plugins in [haylen.platform](platform.md).
+The module `haylen.system` tells what the device and its operating system are, follows the theme of the system and the battery, and offers the services every system has for apps: opening a url with the app that handles it, vibrating the device and showing what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to lower the work of the app on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [haylen.dialogs](dialogs.md), and the methods of the app and its plugins in [haylen.platform](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -215,7 +215,7 @@ The engine library of Android declares no permission, so the manifest of the app
 
 ## C++
 
-`engine.getSystem()` returns the `haylen::platform::System` of the running app, declared in `haylen/platform/System.hpp`. `getInfo()` returns the `haylen::platform::SystemInfo`, whose `Os` and `DeviceKind` enums name the operating system and the kind of device and whose empty strings and zeros are the values the platform does not report, `getTheme()` returns the `haylen::platform::Theme`, `Light` or `Dark`, and `getBattery()` the `haylen::platform::Battery` with its optional `level`, `charging` and `State`. `openUrl(url, callback)` calls back on the frame thread with whether an app took the url, and `vibrate(seconds)` vibrates. Both throw `std::invalid_argument` for the values Lua rejects, and `graphics::Device::getAdapterName()` names the GPU on its own.
+The function `engine.getSystem()` returns the `haylen::platform::System` of the running app, declared in `haylen/platform/System.hpp`. The function `getInfo()` returns the `haylen::platform::SystemInfo`, whose `Os` and `DeviceKind` enums name the operating system and the kind of device and whose empty strings and zeros are the values the platform does not report, `getTheme()` returns the `haylen::platform::Theme`, `Light` or `Dark`, and `getBattery()` the `haylen::platform::Battery` with its optional `level`, `charging` and `State`. The function `openUrl(url, callback)` calls back on the frame thread with whether an app took the url, and `vibrate(seconds)` vibrates. Both throw `std::invalid_argument` for the values Lua rejects, and `graphics::Device::getAdapterName()` names the GPU on its own.
 
 ```cpp
 const haylen::platform::SystemInfo& info = engine.getSystem().getInfo();

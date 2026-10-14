@@ -1,6 +1,6 @@
 # haylen.platform
 
-`haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Parameters, results and events carry bytes next to their JSON, such as images and audio, and the native parts of plugins feed the app video and audio streams. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing or deep links, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The engine wraps what the device is, opening urls and vibrating in [haylen.system](system.md), and native message boxes and file pickers in [haylen.dialogs](dialogs.md). The Lua modules of [plugins](../platform/plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles), which also opens the [screens](#screens) of the plugin, native UI that takes over the app until it ends with one result. The [native code guide](../platform/native.md) compares the bridge with the other ways to reach native code.
+The module `haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Parameters, results and events carry bytes next to their JSON, such as images and audio, and the native parts of plugins feed the app video and audio streams. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing or deep links, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The engine wraps what the device is, opening urls and vibrating in [haylen.system](system.md), and native message boxes and file pickers in [haylen.dialogs](dialogs.md). The Lua modules of [plugins](../platform/plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles), which also opens the [screens](#screens) of the plugin, native UI that takes over the app until it ends with one result. The [native code guide](../platform/native.md) compares the bridge with the other ways to reach native code.
 
 ```lua
 local platform = require('haylen.platform')
@@ -8,7 +8,7 @@ local platform = require('haylen.platform')
 
 ## How calls travel
 
-`platform.call` looks for a handler in this order:
+The function `platform.call` looks for a handler in this order:
 
 1. A handler registered in the engine, either from Lua with `platform.registerHandler` or from C++.
 2. A handler that a native library registered through the `HaylenNativeApi` of the engine, as [haylen.native](native.md#library-handlers) describes.
@@ -26,7 +26,7 @@ Results and events always reach Lua on the frame thread, at the start of a frame
 
 ### platform.call(method, params, options)
 
-Calls the method named `method` with `params`, which default to an empty object, and returns a [call](#calls) at once. `call:await()` inside a coroutine, such as one started with `async.spawn` or `scene.spawn`, returns the result, or `nil` and an [error](#errors). `options` is an optional table:
+Calls the method named `method` with `params`, which default to an empty object, and returns a [call](#calls) at once. The method `call:await()` inside a coroutine, such as one started with `async.spawn` or `scene.spawn`, returns the result, or `nil` and an [error](#errors). The argument `options` is an optional table:
 
 | Option | Type | Meaning |
 | --- | --- | --- |
@@ -241,7 +241,7 @@ print(ads.id, ads.version, ads.native, ads.config.testMode)
 
 ## Calls
 
-`platform.call` returns a `haylen.PlatformCall`.
+The function `platform.call` returns a `haylen.PlatformCall`.
 
 | Member | Meaning |
 | --- | --- |
@@ -274,7 +274,7 @@ end)
 
 ## Plugin handles
 
-`platform.plugin(id)` returns a `haylen.AppPlugin`, the handle through which the Lua API of a plugin talks to its native part on every platform. Its methods and events carry the id of the plugin in front of their names, which is how the native parts of plugins register them.
+The function `platform.plugin(id)` returns a `haylen.AppPlugin`, the handle through which the Lua API of a plugin talks to its native part on every platform. Its methods and events carry the id of the plugin in front of their names, which is how the native parts of plugins register them.
 
 | Member | Meaning |
 | --- | --- |
@@ -315,7 +315,7 @@ return ads
 
 ## Screens
 
-A screen is native UI of a plugin that takes over the app until it ends with one result, such as a paywall, a sign-in flow, a payment page, the activity of an SDK, a popup page on the web or a window over the window of the app on the desktops. `handle:openScreen(name, params, options)` of the [plugin handle](#plugin-handles) opens the screen `name` of the plugin with `params`, which default to an empty object and cross like the parameters of a call, bytes included, and returns a [call](#calls) at once, whose `await` returns the result of the screen or `nil` and an [error](#errors).
+A screen is native UI of a plugin that takes over the app until it ends with one result, such as a paywall, a sign-in flow, a payment page, the activity of an SDK, a popup page on the web or a window over the window of the app on the desktops. The method `handle:openScreen(name, params, options)` of the [plugin handle](#plugin-handles) opens the screen `name` of the plugin with `params`, which default to an empty object and cross like the parameters of a call, bytes included, and returns a [call](#calls) at once, whose `await` returns the result of the screen or `nil` and an [error](#errors).
 
 | Option | Type | Meaning |
 | --- | --- | --- |
@@ -325,7 +325,7 @@ A screen is native UI of a plugin that takes over the app until it ends with one
 
 - The engine covers the app at the start of the next frame and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, and `haylen.appCovered()` returns `true` until the screen ends, however it ends.
 - One screen shows at a time in the whole process. A screen opens at once while the app is `'active'`, while one that the app asks for while it is `'inactive'` in the foreground, such as right in the answer of a dialog before its window has the focus again or while an ad covers the app, waits until the app is `'active'` and then opens, and its `timeout` counts while it waits. In the background a screen fails with the code `notActive` at once, and a screen that waits fails the same way when the app goes there.
-- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone. A screen that waits ends at once and never reaches the platform. On Android they take effect also while a screen that is an activity of its own covers the app, since the app keeps ticking in the background, as the [lifecycle guide](../core/lifecycle.md#app-states) describes.
+- The method `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone. A screen that waits ends at once and never reaches the platform. On Android they take effect also while a screen that is an activity of its own covers the app, since the app keeps ticking in the background, as the [lifecycle guide](../core/lifecycle.md#app-states) describes.
 - A screen outlives the app that opened it. When the app restarts under it or the process ends while it shows, such as a web page that left for a redirect and loaded again, its end reaches the next app as the retained event `screenRestored` of the plugin, which `handle:on('screenRestored', listener)` receives with `screen`, the name of the screen, `state`, the value of `options.state`, and `result`, or `error` with `message`, `code` and `data` when the screen failed. The event waits for the first listener of its name, like every [retained event](#platformonevent-listener-options).
 
 A screen fails with the codes of [errors](#errors) and these.
@@ -511,7 +511,7 @@ Native handlers receive the parameters as parsed JSON, with the bytes of the app
 
 ## Android handlers
 
-`dev.haylen.HaylenBridge` in the engine Android library holds the handlers. `HaylenBridge.register(method, handler)` adds a handler, `HaylenBridge.unregister(method)` removes it and `HaylenBridge.emit(event, payload)` sends an event, which `HaylenBridge.emit(event, payload, true)` sends retained and `HaylenBridge.emit(event, payload, retain, true)` batched. Handlers run on the main thread, and `HaylenBridge.register(method, handler, HaylenBridge.Threading.BACKGROUND)` runs one on the background thread that such handlers share, for work that does not touch the UI. `params` is what `org.json.JSONTokener` reads from the parameters on the thread of the handler, usually a `JSONObject`, where bytes of the app are `byte[]` values. Plugins register through their context, as the [plugin guide](../platform/plugins.md#the-android-part) describes. The reply of a call has these members:
+The class `dev.haylen.HaylenBridge` in the engine Android library holds the handlers. `HaylenBridge.register(method, handler)` adds a handler, `HaylenBridge.unregister(method)` removes it and `HaylenBridge.emit(event, payload)` sends an event, which `HaylenBridge.emit(event, payload, true)` sends retained and `HaylenBridge.emit(event, payload, retain, true)` batched. Handlers run on the main thread, and `HaylenBridge.register(method, handler, HaylenBridge.Threading.BACKGROUND)` runs one on the background thread that such handlers share, for work that does not touch the UI. The argument `params` is what `org.json.JSONTokener` reads from the parameters on the thread of the handler, usually a `JSONObject`, where bytes of the app are `byte[]` values. Plugins register through their context, as the [plugin guide](../platform/plugins.md#the-android-part) describes. The reply of a call has these members:
 
 | Member | Meaning |
 | --- | --- |
@@ -572,7 +572,7 @@ object ProfilePlugin {
 
 ## Apple handlers
 
-`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event, `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`, and `+emit:payload:retain:batched:` sends one in the list of its frame when `batched` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, where bytes of the app are `NSData` values, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts, with `NSData` values anywhere inside, which cross as bytes, or `nil`, and a success value it rejects fails the call with `The native handler for "<method>" returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for "<method>" failed.`. Handlers can be registered at any time, even before the app starts. An event payload that is not JSON is logged as an error and dropped.
+`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event, `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`, and `+emit:payload:retain:batched:` sends one in the list of its frame when `batched` is `YES`. Handlers run on the main queue, and so does the cancel block. The argument `params` is the parsed JSON, an `NSDictionary` for object parameters, where bytes of the app are `NSData` values, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. The argument `result` is any value `NSJSONSerialization` accepts, with `NSData` values anywhere inside, which cross as bytes, or `nil`, and a success value it rejects fails the call with `The native handler for "<method>" returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for "<method>" failed.`. Handlers can be registered at any time, even before the app starts. An event payload that is not JSON is logged as an error and dropped.
 
 ```objc
 #import "haylen/platform/apple/HaylenBridge.h"
@@ -601,7 +601,7 @@ object ProfilePlugin {
 [HaylenBridge emit:@"app.link" payload:@{@"url" : url.absoluteString} retain:YES];
 ```
 
-Swift handlers written as async functions register with `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `HaylenBridgeAsync.swift`, which the target templates of Apple projects compile from the engine, where `Params` is `Decodable` and `Result` is `Encodable`. A handler runs on the main actor, a thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, any other error fails it with the code `exception`, and the task is cancelled when the app cancels the call or its timeout passes. `try HaylenBridge.emit(event, payload, retain: false)` sends an event with an `Encodable` payload. The native parts of plugins register and emit through the context of their plugin instead, which puts the id of the plugin in front of the names, as the [plugin guide](../platform/plugins.md#the-apple-part) describes.
+Swift handlers written as async functions register with `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `HaylenBridgeAsync.swift`, which the target templates of Apple projects compile from the engine, where `Params` is `Decodable` and `Result` is `Encodable`. A handler runs on the main actor, a thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, any other error fails it with the code `exception`, and the task is cancelled when the app cancels the call or its timeout passes. The call `try HaylenBridge.emit(event, payload, retain: false)` sends an event with an `Encodable` payload. The native parts of plugins register and emit through the context of their plugin instead, which puts the id of the plugin in front of the names, as the [plugin guide](../platform/plugins.md#the-apple-part) describes.
 
 ```swift
 import Foundation
@@ -656,7 +656,7 @@ A native library registers handlers written in C through the `HaylenNativeApi` t
 
 ## C++ handlers
 
-C++ code registers handlers that run inside the engine with `engine.getPlatform().registerHandler(method, handler)`, where the handler receives the parameters as a `haylen::platform::Bridge::Payload`, JSON with its byte buffers, and a reply function that takes a `haylen::platform::Bridge::Result` with `ok`, a `value` payload and an `error` of `message`, `code` and `data`. `engine.getPlatform().emit(event, payloadJson, buffers, {.retain = true, .batched = true})` sends an event from any thread, `engine.getPlatform().send(method, params)` calls a method whose answer nobody needs, and `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`. `engine.getScreens()` returns the `haylen::platform::Screens` that open the screens of plugins, as the [plugin guide](../platform/plugins.md#c) describes.
+C++ code registers handlers that run inside the engine with `engine.getPlatform().registerHandler(method, handler)`, where the handler receives the parameters as a `haylen::platform::Bridge::Payload`, JSON with its byte buffers, and a reply function that takes a `haylen::platform::Bridge::Result` with `ok`, a `value` payload and an `error` of `message`, `code` and `data`. The function `engine.getPlatform().emit(event, payloadJson, buffers, {.retain = true, .batched = true})` sends an event from any thread, `engine.getPlatform().send(method, params)` calls a method whose answer nobody needs, and `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`. The function `engine.getScreens()` returns the `haylen::platform::Screens` that open the screens of plugins, as the [plugin guide](../platform/plugins.md#c) describes.
 
 ```cpp
 engine.getPlatform().registerHandler("save.cloudSync", [](const haylen::platform::Bridge::Payload& params, haylen::platform::Bridge::Reply reply) {

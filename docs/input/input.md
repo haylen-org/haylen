@@ -8,9 +8,9 @@ This guide explains both levels, the virtual controls that on-screen touch contr
 
 The engine updates device state, gamepads, gestures and the action map once at the start of every frame from the events that arrived before it. Edge states such as `input.keyPressed`, `input.mouseReleased`, `input.gamepadPressed` and the action `input.pressed` stay true for that whole frame, in every scene callback, and are false again on the next frame.
 
-- Read frame edges in `update`. `fixedUpdate` can run zero or several times in one frame, so a frame edge read there can be missed or seen twice.
+- Read frame edges in `update`. The hook `fixedUpdate` can run zero or several times in one frame, so a frame edge read there can be missed or seen twice.
 - Read actions in `fixedUpdate` with `input.stepPressed`, `input.stepReleased` and `input.stepDown`. The engine moves the edges that arrived since the previous fixed step into the step state at the start of every step, so each press reaches exactly one step, the first one after it, whatever the frame rate, and a tap shorter than a step still holds the action for one step. What a step sees never depends on the frame rate, which simulations, replays and tick-exact games need.
-- `input.consumePress(action)` returns `true` once per press, in `update` or in `fixedUpdate`, and the `buffer` of an action keeps a press available for that many seconds of fixed steps, which is the usual jump buffer: a jump pressed just before landing still jumps.
+- The function `input.consumePress(action)` returns `true` once per press, in `update` or in `fixedUpdate`, and the `buffer` of an action keeps a press available for that many seconds of fixed steps, which is the usual jump buffer: a jump pressed just before landing still jumps.
 - Keys, modifier keys and mouse buttons held when the window loses focus or the app is suspended are released in that frame, and touches and gestures in progress are cancelled without producing taps or swipes, so a player never comes back to a stuck key.
 - A key that goes down and up again within one frame still counts as pressed by the actions bound to it.
 - Positions are in design coordinates, the space set by `design` in `app.json`. See [Rendering](../graphics/rendering.md) for how design coordinates map to the screen.
@@ -19,7 +19,7 @@ The engine updates device state, gamepads, gestures and the action map once at t
 
 ### Keyboard
 
-`input.keyDown(key)`, `input.keyPressed(key)` and `input.keyReleased(key)` take key names such as `'space'`, `'leftShift'`, `'a'` or `'f3'`, listed under [Key names](../lua-api/input.md#key-names). Key repeat from holding a key is not a new press. `input.anyKeyPressed()` suits title screens, and `input.modifiers()` returns the `shift`, `control`, `alt` and `super` state of the latest key event.
+The functions `input.keyDown(key)`, `input.keyPressed(key)` and `input.keyReleased(key)` take key names such as `'space'`, `'leftShift'`, `'a'` or `'f3'`, listed under [Key names](../lua-api/input.md#key-names). Key repeat from holding a key is not a new press. The function `input.anyKeyPressed()` suits title screens, and `input.modifiers()` returns the `shift`, `control`, `alt` and `super` state of the latest key event.
 
 Text entry reads `input.text()`, the UTF-8 text typed in this frame, which follows the keyboard layout and input methods of the platform. [UI text fields](../ui/ui.md) already handle typing, so most apps never read it.
 
@@ -29,7 +29,7 @@ The other platforms keep the same rule. On macOS the hidden field passes the rel
 
 ### Mouse
 
-Mouse buttons are `'left'`, `'right'` and `'middle'`. `input.mousePosition()` returns the position in design coordinates, `input.mouseDelta()` the movement of this frame (which keeps working while the mouse is locked with [haylen.window](../lua-api/window.md)), `input.mouseScroll()` the scroll of the wheel or the trackpad in steps of a wheel, which `input.setScrollSpeed()` and the `app.json` key `input.scrollSpeed` speed up or slow down, and `input.mouseInside()` whether the mouse is over the window.
+Mouse buttons are `'left'`, `'right'` and `'middle'`. The function `input.mousePosition()` returns the position in design coordinates, `input.mouseDelta()` the movement of this frame (which keeps working while the mouse is locked with [haylen.window](../lua-api/window.md)), `input.mouseScroll()` the scroll of the wheel or the trackpad in steps of a wheel, which `input.setScrollSpeed()` and the `app.json` key `input.scrollSpeed` speed up or slow down, and `input.mouseInside()` whether the mouse is over the window.
 
 A camera converts screen points in design coordinates, the space of the mouse position, to world positions with `camera:screenToWorld`, which also accounts for its viewport.
 
@@ -43,13 +43,13 @@ local worldX, worldY = camera:screenToWorld(input.mousePosition())
 
 ### Touch
 
-`input.touches()` returns the fingers on the screen, including fingers that lifted in this frame. Each touch has an `id` that stays the same while the finger is down, its position `x` and `y`, where it landed in `startX` and `startY`, its movement since the last frame in `dx` and `dy`, how long it has been down in `duration` and its `phase`: `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. Fingers in the `'ended'` or `'cancelled'` phase leave the list on the next frame.
+The function `input.touches()` returns the fingers on the screen, including fingers that lifted in this frame. Each touch has an `id` that stays the same while the finger is down, its position `x` and `y`, where it landed in `startX` and `startY`, its movement since the last frame in `dx` and `dy`, how long it has been down in `duration` and its `phase`: `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. Fingers in the `'ended'` or `'cancelled'` phase leave the list on the next frame.
 
 An app chooses to treat one device as the other. With `input.setMouseAsTouch(true)` or `"input": {"mouseAsTouch": true}` in `app.json`, the left mouse button becomes a finger for the whole engine, so touch controls, gestures and touch code run on a desktop as on a phone. With `input.setTouchAsMouse(true)` or `"touchAsMouse": true`, the first finger down also drives the mouse, so code that reads `input.mousePressed` and `input.mousePosition` runs on a touch screen while the touches keep working.
 
 ### Gestures
 
-`input.gestures()` returns the gestures recognized in this frame: `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` and `'pinch'`, each with a position, the movement of a swipe, and the scale, the rotation and the movement of the center of a pinch, which zoom, turn and pan with two fingers. While no finger is down, the left mouse button acts as a finger, so gestures also work with a mouse on desktop. `input.setGestureSettings` changes the thresholds, such as `longPressDuration` or `swipeMinDistance`, and `mouse = false` turns the mouse off as a finger.
+The function `input.gestures()` returns the gestures recognized in this frame: `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` and `'pinch'`, each with a position, the movement of a swipe, and the scale, the rotation and the movement of the center of a pinch, which zoom, turn and pan with two fingers. While no finger is down, the left mouse button acts as a finger, so gestures also work with a mouse on desktop. The function `input.setGestureSettings` changes the thresholds, such as `longPressDuration` or `swipeMinDistance`, and `mouse = false` turns the mouse off as a finger.
 
 ```lua
 for _, gesture in ipairs(input.gestures()) do
@@ -65,12 +65,12 @@ end
 
 Up to eight gamepads are tracked, with indices from 1 to 8 that default to 1. Buttons use the positional names `south`, `east`, `west` and `north` for the face buttons, so `south` is the bottom face button whatever its label says, plus `leftShoulder`, `rightShoulder`, `leftStick`, `rightStick`, `back`, `start`, `guide` and the d-pad. Axes are `leftX`, `leftY`, `rightX`, `rightY`, `leftTrigger` and `rightTrigger`.
 
-- `input.gamepadDown`, `input.gamepadPressed` and `input.gamepadReleased` read buttons, and `input.gamepadConnected` and `input.gamepadName` describe the pad.
-- `input.gamepadAxis(axis, index)` returns one axis with the dead zone removed and the rest rescaled. Sticks go from -1 to 1 with positive y pointing down, and triggers from 0 to 1.
-- `input.gamepadStick(side, index)` returns a whole stick with the dead zone applied to its radius, which keeps diagonals smooth.
-- `input.setGamepadDeadzone(value)` sets the dead zone of every axis and stick, from 0 to below 1, 0.2 by default.
-- `input.gamepadLabels(index)` tells how the gamepad labels its face buttons, `'letters'`, `'swappedLetters'`, `'shapes'` or `'unknown'`, so prompts show the label the player sees while bindings keep the positional names.
-- `input.rumble(index, {low, high, seconds})` runs the low and the high frequency motors of a gamepad, and the engine stops every gamepad when the app loses the focus or stops. Each platform rumbles through its own API, as the [reference](../lua-api/input.md#inputrumbleindex-options) lists.
+- The functions `input.gamepadDown`, `input.gamepadPressed` and `input.gamepadReleased` read buttons, and `input.gamepadConnected` and `input.gamepadName` describe the pad.
+- The function `input.gamepadAxis(axis, index)` returns one axis with the dead zone removed and the rest rescaled. Sticks go from -1 to 1 with positive y pointing down, and triggers from 0 to 1.
+- The function `input.gamepadStick(side, index)` returns a whole stick with the dead zone applied to its radius, which keeps diagonals smooth.
+- The function `input.setGamepadDeadzone(value)` sets the dead zone of every axis and stick, from 0 to below 1, 0.2 by default.
+- The function `input.gamepadLabels(index)` tells how the gamepad labels its face buttons, `'letters'`, `'swappedLetters'`, `'shapes'` or `'unknown'`, so prompts show the label the player sees while bindings keep the positional names.
+- The function `input.rumble(index, {low, high, seconds})` runs the low and the high frequency motors of a gamepad, and the engine stops every gamepad when the app loses the focus or stops. Each platform rumbles through its own API, as the [reference](../lua-api/input.md#inputrumbleindex-options) lists.
 
 Each platform reads gamepads through its own API: GameController on Apple platforms, XInput on Windows, the joystick devices under `/dev/input` on Linux, which the engine reads in the layout of the common driver of controllers with lettered face buttons, so controllers whose drivers number their buttons another way may swap the west and north buttons there, the input events of GameActivity on Android, which reach the app wherever the focus is inside its window, and the Gamepad API in browsers. Android sends the sticks and the triggers only to the window with the focus, such as a dialog over the app, so they come to rest when the window of the app loses the focus, and the next movement of a stick brings its position back. The engine reads the gamepads that a browser gives its `standard` mapping and leaves the others out, since their buttons have no known places, and browsers reveal a gamepad to the page only after one of its buttons is pressed. Windows reports at most four gamepads, the limit of XInput, and browsers report as many as they expose, usually four, while the other platforms fill all eight slots. Every platform keeps a gamepad at its index for as long as it stays connected, so a pad that disconnects never moves the others, and a pad that connects takes the lowest free index.
 
@@ -118,7 +118,7 @@ Gamepad bindings read every connected gamepad and use the strongest one, unless 
 
 ### Loading actions
 
-An action map document is a table or a JSON file with an `actions` list. Each action has a `name`, a `type` and the binding lists its type uses. `input.loadActions(document)` replaces the whole map and takes either a table or the path of a JSON file in the assets. Unknown keys, unknown types and malformed bindings raise errors that name the problem, such as `The input binding "key:spcae" is invalid. Use a binding such as "key:space", "mouse:left", "button:south", "axis:leftX+" or "stick:left".`
+An action map document is a table or a JSON file with an `actions` list. Each action has a `name`, a `type` and the binding lists its type uses. The function `input.loadActions(document)` replaces the whole map and takes either a table or the path of a JSON file in the assets. Unknown keys, unknown types and malformed bindings raise errors that name the problem, such as `The input binding "key:spcae" is invalid. Use a binding such as "key:space", "mouse:left", "button:south", "axis:leftX+" or "stick:left".`
 
 ```lua
 local input = require('haylen.input')
@@ -132,7 +132,7 @@ input.loadActions({actions = {
 }})
 ```
 
-`input.saveActions()` returns the current map in the same format, and `input.actionNames()` lists the action names in definition order. Single actions change at runtime too. `input.defineAction(action)` takes one action table in the same format and adds it, or replaces the action with the same name in place, `input.actionDefinition(name)` returns the table of one action or `nil`, and `input.removeAction(name)` and `input.clearActions()` remove actions. A remapping screen reads an action with `actionDefinition`, swaps one binding and defines it again. `input.setPressThreshold(value)` changes the value at which every action counts as down, above 0 and at most 1, 0.5 by default. [haylen.preferences](../lua-api/preferences.md) keeps a remapped map across launches: `preferences.capture()` stores it under `input.actions`, and `preferences.apply()` loads it back, so an app loads its default actions first and calls `preferences.apply()` afterwards.
+The function `input.saveActions()` returns the current map in the same format, and `input.actionNames()` lists the action names in definition order. Single actions change at runtime too. The function `input.defineAction(action)` takes one action table in the same format and adds it, or replaces the action with the same name in place, `input.actionDefinition(name)` returns the table of one action or `nil`, and `input.removeAction(name)` and `input.clearActions()` remove actions. A remapping screen reads an action with `actionDefinition`, swaps one binding and defines it again. The function `input.setPressThreshold(value)` changes the value at which every action counts as down, above 0 and at most 1, 0.5 by default. [haylen.preferences](../lua-api/preferences.md) keeps a remapped map across launches: `preferences.capture()` stores it under `input.actions`, and `preferences.apply()` loads it back, so an app loads its default actions first and calls `preferences.apply()` afterwards.
 
 ### Reading actions
 
@@ -150,7 +150,7 @@ While a scene change holds input back, every action reads as up and 0. A key, bu
 
 ## Players
 
-Local multiplayer games give each player an action map of their own. `input.newActionMap(options)` creates a map that reads only the devices its options name: `keyboard` and `mouse`, `true` by default, `gamepad`, the index of one gamepad, `false` for none, or left out for every gamepad, and `virtual` with `virtualPrefix` for the virtual controls, whose prefix goes in front of the names of `virtual:` bindings, so two touch layouts on one screen drive two players. Every map loads the same documents as the default map, updates at the start of every frame and every fixed step, and leaves the engine once Lua lets go of it. The functions of the module, such as `input.down`, read the default map, which `input.actions()` returns as a map too.
+Local multiplayer games give each player an action map of their own. The function `input.newActionMap(options)` creates a map that reads only the devices its options name: `keyboard` and `mouse`, `true` by default, `gamepad`, the index of one gamepad, `false` for none, or left out for every gamepad, and `virtual` with `virtualPrefix` for the virtual controls, whose prefix goes in front of the names of `virtual:` bindings, so two touch layouts on one screen drive two players. Every map loads the same documents as the default map, updates at the start of every frame and every fixed step, and leaves the engine once Lua lets go of it. The functions of the module, such as `input.down`, read the default map, which `input.actions()` returns as a map too.
 
 ```lua
 local input = require('haylen.input')
@@ -165,11 +165,11 @@ A join screen takes the gamepad that presses a button with `input.findGamepadPre
 
 ## Command buffers
 
-Action games read typed commands rather than single buttons: a double tap that runs, a jump and an attack on the same step, a sequence of defend, forward and attack, a press kept for a few steps so it lands when the character can act, and a clock that stops during hit stop. `input.newCommandBuffer(options)` builds one in C++ for each character: it names its buttons, their lifetimes in steps, the back and forward buttons of the facing and the commands with their steps, time limits and priorities, and `buffer:update(map)` in every fixed step reads the step state of the actions named like the buttons, or an integer of buttons from `map:stepButtons()` or a recording. `buffer:peek()` names the kept command and `buffer:consume(name)` takes it once the character acts on it. A step is one call that allocates nothing, and the same presses always type the same commands. The [reference](../lua-api/input.md#command-buffers) lists the rules and the options.
+Action games read typed commands rather than single buttons: a double tap that runs, a jump and an attack on the same step, a sequence of defend, forward and attack, a press kept for a few steps so it lands when the character can act, and a clock that stops during hit stop. The function `input.newCommandBuffer(options)` builds one in C++ for each character: it names its buttons, their lifetimes in steps, the back and forward buttons of the facing and the commands with their steps, time limits and priorities, and `buffer:update(map)` in every fixed step reads the step state of the actions named like the buttons, or an integer of buttons from `map:stepButtons()` or a recording. The method `buffer:peek()` names the kept command and `buffer:consume(name)` takes it once the character acts on it. A step is one call that allocates nothing, and the same presses always type the same commands. The [reference](../lua-api/input.md#command-buffers) lists the rules and the options.
 
 ## Recording and replay
 
-`input.newRecorder({buttons, players, data})` keeps the buttons of every player on every fixed step, written as masks or read from action maps, with the identifier and the fixed rate of the app and a string of the app, such as `random:state()` of each seeded generator. `recording:bytes()` and `input.loadRecording(bytes)` move it through files, saves and servers, and `input.newPlayback(recording)` hands the steps back, so a replay feeds `playback:mask(player)` wherever the game read the masks of the players, such as a [command buffer](#command-buffers). A run replays exactly when the app reads input only through those masks, restores its generators with `random:setState(playback.data)` and steps its simulation in `fixedUpdate`, and the optional hash of each step finds the first step where a replay diverges. Automated playtests run a recording on the headless player, which fails on any error. Physics stays deterministic across thread counts, and transcendental functions of the C library may differ between platforms, which matters only for replays that cross platforms.
+The function `input.newRecorder({buttons, players, data})` keeps the buttons of every player on every fixed step, written as masks or read from action maps, with the identifier and the fixed rate of the app and a string of the app, such as `random:state()` of each seeded generator. The methods `recording:bytes()` and `input.loadRecording(bytes)` move it through files, saves and servers, and `input.newPlayback(recording)` hands the steps back, so a replay feeds `playback:mask(player)` wherever the game read the masks of the players, such as a [command buffer](#command-buffers). A run replays exactly when the app reads input only through those masks, restores its generators with `random:setState(playback.data)` and steps its simulation in `fixedUpdate`, and the optional hash of each step finds the first step where a replay diverges. Automated playtests run a recording on the headless player, which fails on any error. Physics stays deterministic across thread counts, and transcendental functions of the C library may differ between platforms, which matters only for replays that cross platforms.
 
 ## Virtual buttons and sticks
 
@@ -189,7 +189,7 @@ Values written during a frame reach the actions at the start of the next frame, 
 
 ## Last device and touch-only controls
 
-`input.lastDevice()` returns the kind of device the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboardMouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Moving the mouse alone does not change it, and neither do key repeats or a gamepad button or stick that stays held, so a player who holds a trigger and then presses a key gets keyboard prompts. Use it to show matching button prompts.
+The function `input.lastDevice()` returns the kind of device the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboardMouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Moving the mouse alone does not change it, and neither do key repeats or a gamepad button or stick that stays held, so a player who holds a trigger and then presses a key gets keyboard prompts. Use it to show matching button prompts.
 
 ```lua
 local prompts = {keyboardMouse = 'Press Space', touch = 'Tap the screen', gamepad = 'Press A'}
@@ -207,7 +207,7 @@ Touch controls use the same rule through their `touchOnly` property. A `touchSti
 
 ## UI and gameplay input
 
-The action map reads `mouse:` bindings as released for a press that went down while the interface owned the pointer, until it is released, so an action bound to `mouse:left` never goes down when the player clicks a HUD button, and a drag that started in the game keeps its action down while it crosses the interface. The raw mouse and keyboard functions still report every click and key. `ui.usingPointer()` returns `true` while the pointer is over something the interface owns, and `ui.usingKeyboard()` returns `true` while a text field has the focus, so code that reads the raw devices checks them first.
+The action map reads `mouse:` bindings as released for a press that went down while the interface owned the pointer, until it is released, so an action bound to `mouse:left` never goes down when the player clicks a HUD button, and a drag that started in the game keeps its action down while it crosses the interface. The raw mouse and keyboard functions still report every click and key. The function `ui.usingPointer()` returns `true` while the pointer is over something the interface owns, and `ui.usingKeyboard()` returns `true` while a text field has the focus, so code that reads the raw devices checks them first.
 
 ```lua
 local input = require('haylen.input')
@@ -273,9 +273,9 @@ Input the interface answers itself never triggers an action, the same way the ac
 - every key while a text field edits, also on iOS, iPadOS, tvOS and Mac Catalyst, where a hardware keyboard still reports keys while the native field edits,
 - every key and gamepad button while a `keyCapture` listens.
 
-A key, button or axis pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone, and a captured axis holds the stick it belongs to. `input.keyCaptured(key)`, `input.gamepadButtonCaptured(button)` and `input.gamepadAxisCaptured(axis)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
+A key, button or axis pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone, and a captured axis holds the stick it belongs to. The functions `input.keyCaptured(key)`, `input.gamepadButtonCaptured(button)` and `input.gamepadAxisCaptured(axis)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
 
-A screen therefore goes back with the `onCancel` handler of its GUI root instead of an action of its own. `uiCancel` reaches the root only when no popup, combo list, dialog or edit answers it first, so the Escape that closes a combo list never leaves the screen, and the next Escape does. A game that pauses with Escape either gives its screen a play area, whose GUI hears the cancel, or leaves the focus empty, so its `pause` action hears it.
+A screen therefore goes back with the `onCancel` handler of its GUI root instead of an action of its own. The action `uiCancel` reaches the root only when no popup, combo list, dialog or edit answers it first, so the Escape that closes a combo list never leaves the screen, and the next Escape does. A game that pauses with Escape either gives its screen a play area, whose GUI hears the cancel, or leaves the focus empty, so its `pause` action hears it.
 
 ```lua
 local scene = require('haylen.scene')
@@ -332,7 +332,7 @@ Tiny Island defines five actions in `samples/games/tiny-island/content/input/act
 | `interact` | E | East (B) | `touchButton` |
 | `pause` | Escape | Start | The pause button of the HUD |
 
-`move` combines three kinds of input in one action: the digital directions of keys and the d-pad, the left stick and the virtual stick of the HUD. The player entity reads it once and never asks which device moved it.
+The action `move` combines three kinds of input in one action: the digital directions of keys and the d-pad, the left stick and the virtual stick of the HUD. The player entity reads it once and never asks which device moved it.
 
 ```lua
 local mx, my = input.vector('move')
@@ -344,10 +344,10 @@ elseif self.class.special ~= 'guard' and input.pressed('special') and self.speci
 end
 ```
 
-The same action can mean different things per class. The warrior guards while `special` is held, so the game reads `input.down('special')`, and the other classes trigger their special once per press with `input.pressed('special')`. `interact` is read with `input.down` to double the reach for feeding the fire while it is held. The gameplay and pause scenes read `input.pressed('pause')`, so Escape and Start open and close the pause menu during a run. The settings and class selection screens go back with the `onCancel` handler of their GUI root, which the `uiCancel` action of the interface triggers with Escape and the east button, as [UI and gameplay input](#ui-and-gameplay-input) describes.
+The same action can mean different things per class. The warrior guards while `special` is held, so the game reads `input.down('special')`, and the other classes trigger their special once per press with `input.pressed('special')`. The action `interact` is read with `input.down` to double the reach for feeding the fire while it is held. The gameplay and pause scenes read `input.pressed('pause')`, so Escape and Start open and close the pause menu during a run. The settings and class selection screens go back with the `onCancel` handler of their GUI root, which the `uiCancel` action of the interface triggers with Escape and the east button, as [UI and gameplay input](#ui-and-gameplay-input) describes.
 
 The HUD in `samples/games/tiny-island/source/ui/hud.lua` drives the virtual inputs with a floating `touchStick` for `move` and `touchButton` controls for `attack`, `special` and `interact`, all with `touchOnly = true`. The pause button of the HUD is a regular icon button that opens the pause menu directly. When the pause menu covers the run, the gameplay scene hides the HUD and calls `input.clearVirtual()`, so nothing stays pressed while the game is paused.
 
 ## From C++
 
-The raw state lives in `haylen::input::Input` (`haylen/input/Input.hpp`), reached with `engine.getInput()`. `haylen::input::ActionMap` (`haylen/input/ActionMap.hpp`), reached with `engine.getActions()`, loads the same JSON documents and can also define and remove actions one by one in code with `ActionMap::Action` and `ActionMap::Binding`, and the UI plugin hands the keys and buttons it captures to every map through `haylen::input::ActionMaps` (`haylen/input/ActionMaps.hpp`), reached with `engine.getActionMaps()`, whose `create(devices)` makes the map of a player with its `ActionMap::Devices`, and `haylen::input::CommandBuffer` (`haylen/input/CommandBuffer.hpp`) types commands from the masks of each step. `engine.getVirtualInput()` returns the `haylen::input::VirtualInput` that touch controls write, and `engine.getGestures()` returns the `haylen::input::GestureRecognizer`. `haylen::input::Controls` (`haylen/input/Controls.hpp`) converts keys, mouse buttons, gamepad buttons and gamepad axes to and from the names that bindings and Lua use. See [Architecture](../core/architecture.md) for how the frame updates them and [Lua](../core/lua.md) for the scripting side.
+The raw state lives in `haylen::input::Input` (`haylen/input/Input.hpp`), reached with `engine.getInput()`. The class `haylen::input::ActionMap` (`haylen/input/ActionMap.hpp`), reached with `engine.getActions()`, loads the same JSON documents and can also define and remove actions one by one in code with `ActionMap::Action` and `ActionMap::Binding`, and the UI plugin hands the keys and buttons it captures to every map through `haylen::input::ActionMaps` (`haylen/input/ActionMaps.hpp`), reached with `engine.getActionMaps()`, whose `create(devices)` makes the map of a player with its `ActionMap::Devices`, and `haylen::input::CommandBuffer` (`haylen/input/CommandBuffer.hpp`) types commands from the masks of each step. The function `engine.getVirtualInput()` returns the `haylen::input::VirtualInput` that touch controls write, and `engine.getGestures()` returns the `haylen::input::GestureRecognizer`. The class `haylen::input::Controls` (`haylen/input/Controls.hpp`) converts keys, mouse buttons, gamepad buttons and gamepad axes to and from the names that bindings and Lua use. See [Architecture](../core/architecture.md) for how the frame updates them and [Lua](../core/lua.md) for the scripting side.
