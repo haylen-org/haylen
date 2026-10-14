@@ -45,7 +45,7 @@ function ScreenReader:enter()
                 ui.radioGroup{id = 'quality', accessibilityLabel = 'Quality', horizontal = true, items = {{id = 'low', text = 'Low'}, {id = 'high', text = 'High'}}, selected = 'high'},
                 ui.textField{id = 'name', placeholder = 'Name of the profile'},
                 ui.icon{image = 'interface/icons/heart.png', accessibilityLabel = 'Favorite'},
-                ui.label{text = 'Decoration that screen readers skip', color = 'textMuted', accessibilityHidden = true},
+                ui.icon{image = 'interface/icons/star.png', size = 24, color = 'textMuted', accessibilityHidden = true},
             },
         },
         controls = {

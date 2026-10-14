@@ -109,6 +109,7 @@ class Widgets final {
     // Draws a button with its label and icon, which takes `iconTint` when given and otherwise the color of the label in toolbar and icon buttons and its own colors in the others.
     [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, std::optional<math::Color> iconTint, const ButtonContent& content);
 
+    // Check boxes, radio buttons and toggles take at least the height of a control, so their rows are touch targets as large as buttons.
     [[nodiscard]] static math::Vec2 measureChoice(Context& context, std::string_view label);
     static bool checkbox(Context& context, const math::Rect& bounds, bool& value, std::string_view label);
     static bool radio(Context& context, const math::Rect& bounds, bool selected, std::string_view label, std::string_view idLabel);

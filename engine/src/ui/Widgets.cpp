@@ -237,7 +237,7 @@ void Widgets::drawButtonContent(Context& context, const math::Rect& inner, std::
 math::Vec2 Widgets::measureChoice(Context& context, std::string_view label) {
     const float box = context.getMetric(Theme::Metric::ChoiceSize);
     const float width = box + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing) + Typography::measure(context, Theme::Font::Body, label).x);
-    return {width, std::max(box, Typography::getLineHeight(context, Theme::Font::Body)) + context.getMetric(Theme::Metric::ControlPaddingY)};
+    return {width, std::max(std::max(box, Typography::getLineHeight(context, Theme::Font::Body)) + context.getMetric(Theme::Metric::ControlPaddingY), context.getMetric(Theme::Metric::ControlHeight))};
 }
 
 bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, std::string_view label) {
@@ -287,7 +287,7 @@ bool Widgets::radio(Context& context, const math::Rect& bounds, bool selected, s
 
 math::Vec2 Widgets::measureToggle(Context& context, std::string_view label) {
     const float width = context.getMetric(Theme::Metric::ToggleWidth) + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing) + Typography::measure(context, Theme::Font::Body, label).x);
-    return {width, std::max(context.getMetric(Theme::Metric::ToggleHeight), Typography::getLineHeight(context, Theme::Font::Body)) + context.getMetric(Theme::Metric::ControlPaddingY)};
+    return {width, std::max(std::max(context.getMetric(Theme::Metric::ToggleHeight), Typography::getLineHeight(context, Theme::Font::Body)) + context.getMetric(Theme::Metric::ControlPaddingY), context.getMetric(Theme::Metric::ControlHeight))};
 }
 
 bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, std::string_view label) {

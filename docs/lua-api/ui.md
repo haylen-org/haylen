@@ -3165,7 +3165,7 @@ Both built-in themes share these metrics, in design units.
 
 | Metric | Default | Used for |
 | --- | --- | --- |
-| `controlHeight` | `64` | Height of buttons, fields, combos, sliders and the tab strip. |
+| `controlHeight` | `64` | Height of buttons, fields, combos, sliders and the tab strip, and the least height of the rows of check boxes, radio buttons and toggles, so every control is a touch target of the same size, which meets the size the accessibility audits of the platforms ask for at the scales of phones. |
 | `controlRadius` | `12` | Corner radius of controls, panels and windows. |
 | `controlPaddingX` | `24` | Horizontal padding inside buttons, fields, alerts and toasts. |
 | `controlPaddingY` | `12` | Vertical padding of settings rows, alerts, toasts and text areas. |
