@@ -47,7 +47,7 @@ void main() {
 @fs light_fs
 in vec2 world;
 in vec2 shape_uv;
-// Color: rgb is the light color times its intensity and a the blend mode, 0 to add, 1 to subtract and 2 to mix.
+// Color: rgb is the light color times its intensity and a the blend mode, 0 to add, 1 to subtract, 2 to mix and 3 to keep the maximum.
 flat in vec4 color;
 // Shape: x is the kind, 0 for point, 1 for spot and 2 for directional lights, y the radius, z the height and w the shadow row, or -1 without shadows.
 flat in vec4 shape;
@@ -142,7 +142,7 @@ void main() {
 
     float shadowed = shape.w >= 0.0 ? shadow_amount(offset, along) * shadow_color.a : 0.0;
     vec3 tint = color.rgb * shaped.rgb;
-    if (color.a > 1.5) {
+    if (color.a > 1.5 && color.a < 2.5) {
         frag_color = vec4(tint, clamp(falloff * (diffuse + specular) * (1.0 - shadowed), 0.0, 1.0));
         return;
     }

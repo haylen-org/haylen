@@ -20,7 +20,7 @@ Lights come in three types:
 | `'spot'` | A point light that only shines inside a cone around its rotation, fully inside `innerAngle` and fading out at `outerAngle`, both full angles in radians. |
 | `'directional'` | Covers the whole canvas from its rotation, the direction the light travels, like the sun. Position, radius, texture and scale do not apply. |
 
-Each light combines with the light map by its blend mode: `'add'` brightens it, `'subtract'` darkens it and `'mix'` replaces it by the strength of the light, which suits a colored pool of light over a lit room. A light reaches a draw when the draw's `lightMask` shares a bit with the light's `itemMask` and the draw's layer lies between `layerMin` and `layerMax`. Draws have the light mask 1 and lights the item mask 1 unless they say otherwise, so masks only matter once they change. Light masks and item masks have 8 bits, shadow masks and occluder masks have 32 bits, and layer ranges tell layers apart from -128 to 127 and count layers beyond them as the nearest end.
+Each light combines with the light map by its blend mode: `'add'` brightens it, `'subtract'` darkens it, `'mix'` replaces it by the strength of the light, which suits a colored pool of light over a lit room, and `'max'` keeps the brighter of the map and the light in each channel, so torches whose circles overlap light the overlap no more than the brightest of them, as many tile games light their maps. A light reaches a draw when the draw's `lightMask` shares a bit with the light's `itemMask` and the draw's layer lies between `layerMin` and `layerMax`. Draws have the light mask 1 and lights the item mask 1 unless they say otherwise, so masks only matter once they change. Light masks and item masks have 8 bits, shadow masks and occluder masks have 32 bits, and layer ranges tell layers apart from -128 to 127 and count layers beyond them as the nearest end.
 
 Draws shade themselves with the draw options of [`graphics2d`](graphics2d.md#draw-order). The option `normalMap` gives a sprite a second texture with the same layout as its texture, whose red and green store the x and y of the surface normal with y pointing up the image, from 0 for -1 to 255 for 1, the convention of most normal map tools. Normal-mapped sprites take light by the angle it reaches them at, where the light `height` lifts it above the canvas, and `specular`, scaled by the alpha of the normal map, and `shininess` shape their highlights. Draws with `unshaded` keep their own colors whatever the light, and `emission` makes the colors of a draw glow by that strength on top of the light, so `emission = 1` shows them fully even in the dark.
 
@@ -71,7 +71,7 @@ A `Light` holds every setting of one light, so a scene creates it once and draws
 | `innerAngle`, `outerAngle` | number | `0.5`, `1` | Full angles in radians of the cone of spot lights. The inner angle may not exceed the outer one, which may not exceed a full turn. |
 | `height` | number | `0` | Height above the canvas, which sets the angle light reaches normal-mapped draws at. |
 | `enabled` | boolean | `true` | Disabled lights draw nothing. |
-| `blend` | string | `'add'` | `'add'`, `'subtract'` or `'mix'`. |
+| `blend` | string | `'add'` | `'add'`, `'subtract'`, `'mix'` or `'max'`. |
 | `itemMask` | integer | `1` | Bits of the light masks of the draws the light reaches, from 0 to 255. |
 | `layerMin`, `layerMax` | integer | all layers | The layers of the draws the light reaches. |
 | `shadows` | boolean | `false` | Lets occluders block the light. |

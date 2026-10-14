@@ -442,6 +442,8 @@ sg_blend_state RendererState::lightBlend(std::uint8_t blend) noexcept {
         return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE, .op_rgb = SG_BLENDOP_REVERSE_SUBTRACT};
     case lighting2d::Light::Blend::Mix:
         return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
+    case lighting2d::Light::Blend::Max:
+        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE, .op_rgb = SG_BLENDOP_MAX};
     }
     return {};
 }

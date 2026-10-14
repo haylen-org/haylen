@@ -162,6 +162,20 @@ TEST(LightTest, CombinesBlendModesInDrawOrderBeyondOne) {
     EXPECT_EQ(Light::illuminate(ambient, {}, {}), ambient);
 }
 
+TEST(LightTest, KeepsTheBrighterChannelWithTheMaximumBlend) {
+    using Light = lighting2d::Light;
+    EXPECT_EQ(Light::blendFromName("max"), Light::Blend::Max);
+    const Light warm{.radius = 100.0F, .color = {1.0F, 0.5F, 0.0F, 1.0F}, .intensity = 0.8F, .blend = Light::Blend::Max};
+    const Light torch{.position = {40.0F, 0.0F}, .radius = 100.0F, .color = {0.6F, 0.6F, 0.6F, 1.0F}, .blend = Light::Blend::Max};
+    const math::Color dark{0.1F, 0.1F, 0.3F, 1.0F};
+    const math::Color lit = Light::illuminate(dark, std::vector<Light>{warm, torch}, {});
+    EXPECT_FLOAT_EQ(lit.r, 0.8F);
+    EXPECT_FLOAT_EQ(lit.g, std::max(0.4F, 0.6F * torch.getStrengthAt({})));
+    EXPECT_FLOAT_EQ(lit.b, 0.3F);
+    const math::Color again = Light::illuminate(lit, std::vector<Light>{warm}, {});
+    EXPECT_EQ(again, lit);
+}
+
 TEST(LightTest, ReachesDrawsByLightMaskAndLayerRange) {
     using Light = lighting2d::Light;
     const Light light{.radius = 100.0F, .itemMask = 0b0110, .layerMin = -1, .layerMax = 2};

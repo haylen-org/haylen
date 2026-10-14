@@ -4,7 +4,7 @@ The module `haylen.lighting2d` lights 2D scenes: point, spot and directional lig
 
 ## A lit scene
 
-A world or render target canvas of [`haylen.graphics2d`](../lua-api/graphics2d.md) becomes lit when it receives `ambientLight`. Its draws then also record their emission, the normal and specular strength of their surface and the light mask and layer that lights test, every light drawn into the canvas adds to, subtracts from or mixes with a light map that starts at the ambient color, and the composite multiplies the scene by the light map. A white ambient color shows the scene as it is, and a dark blue one turns it into a night where only the lights show color. Canvases without ambient light draw as usual, so a HUD on the screen canvas stays unlit.
+A world or render target canvas of [`haylen.graphics2d`](../lua-api/graphics2d.md) becomes lit when it receives `ambientLight`. Its draws then also record their emission, the normal and specular strength of their surface and the light mask and layer that lights test, every light drawn into the canvas adds to, subtracts from, mixes with or keeps the maximum of a light map that starts at the ambient color, and the composite multiplies the scene by the light map. A white ambient color shows the scene as it is, and a dark blue one turns it into a night where only the lights show color. Canvases without ambient light draw as usual, so a HUD on the screen canvas stays unlit.
 
 ## What a light reaches
 

@@ -151,7 +151,7 @@ Lit canvases with ambient, point, spot and directional lights, shadows, normal m
 | `LIT-002` | Point lights | Colored point lights with their own radius and intensity, one on the cursor and more where you place them. |  |
 | `LIT-003` | Spot lights | Cones that aim at the cursor and sweep the room, with their inner and outer angles. |  |
 | `LIT-004` | Directional light | A sun that covers the whole canvas from one direction and casts long shadows. |  |
-| `LIT-005` | Blend modes | Lights that add, subtract or mix into the light map. |  |
+| `LIT-005` | Blend modes | Lights that add, subtract, mix or keep the maximum in the light map. |  |
 | `LIT-006` | Intensity above 1 | Lights brighter than the unlit colors in a floating-point light map. |  |
 | `LIT-007` | Shadows | Occluders, the "none", "pcf5" and "pcf13" filters, shadow color and smoothness. |  |
 | `LIT-008` | Physics and Tiled occluders | Shadows cast by falling physics crates and by the walls of a Tiled object layer. |  |

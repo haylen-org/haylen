@@ -11,7 +11,7 @@
 namespace haylen::lighting2d {
 
 const std::array<std::string_view, 3> Light::kTypeNames = {"point", "spot", "directional"};
-const std::array<std::string_view, 3> Light::kBlendNames = {"add", "subtract", "mix"};
+const std::array<std::string_view, 4> Light::kBlendNames = {"add", "subtract", "mix", "max"};
 const std::array<std::string_view, 3> Light::kShadowFilterNames = {"none", "pcf5", "pcf13"};
 
 std::optional<Light::Type> Light::typeFromName(std::string_view name) noexcept {
@@ -117,6 +117,8 @@ math::Color Light::apply(math::Color below, math::Vec2 point) const noexcept {
         return {below.r - light.r * strength, below.g - light.g * strength, below.b - light.b * strength, below.a};
     case Blend::Mix:
         return math::Color::lerp(below, light, std::clamp(strength, 0.0F, 1.0F));
+    case Blend::Max:
+        return {std::max(below.r, light.r * strength), std::max(below.g, light.g * strength), std::max(below.b, light.b * strength), below.a};
     }
     return below;
 }

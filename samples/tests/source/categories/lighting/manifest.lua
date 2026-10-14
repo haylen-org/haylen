@@ -8,7 +8,7 @@ return {
         {code = 'LIT-002', title = 'Point lights', description = 'Colored point lights with their own radius and intensity, one on the cursor and more where you place them.', module = 'point-lights'},
         {code = 'LIT-003', title = 'Spot lights', description = 'Cones that aim at the cursor and sweep the room, with their inner and outer angles.', module = 'spot-lights'},
         {code = 'LIT-004', title = 'Directional light', description = 'A sun that covers the whole canvas from one direction and casts long shadows.', module = 'directional'},
-        {code = 'LIT-005', title = 'Blend modes', description = 'Lights that add, subtract or mix into the light map.', module = 'blend-modes'},
+        {code = 'LIT-005', title = 'Blend modes', description = 'Lights that add, subtract, mix or keep the maximum in the light map.', module = 'blend-modes'},
         {code = 'LIT-006', title = 'Intensity above 1', description = 'Lights brighter than the unlit colors in a floating-point light map.', module = 'hdr'},
         {code = 'LIT-007', title = 'Shadows', description = 'Occluders, the "none", "pcf5" and "pcf13" filters, shadow color and smoothness.', module = 'shadows'},
         {code = 'LIT-008', title = 'Physics and Tiled occluders', description = 'Shadows cast by falling physics crates and by the walls of a Tiled object layer.', module = 'occluders'},

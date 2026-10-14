@@ -22,11 +22,12 @@ struct Light {
         Directional,
     };
 
-    // Added lights brighten the light map, subtracted lights darken it, and mixed lights replace it by their strength.
+    // Added lights brighten the light map, subtracted lights darken it, mixed lights replace it by their strength, and maximum lights keep the brighter of each channel, so overlapping lights never light a spot more than the brightest of them.
     enum class Blend : std::uint8_t {
         Add,
         Subtract,
         Mix,
+        Max,
     };
 
     // Shadow edges take one sample of the shadow map, or 5 or 13 samples spread by the smoothness for softer edges.
@@ -109,7 +110,7 @@ struct Light {
 
   private:
     static const std::array<std::string_view, 3> kTypeNames;
-    static const std::array<std::string_view, 3> kBlendNames;
+    static const std::array<std::string_view, 4> kBlendNames;
     static const std::array<std::string_view, 3> kShadowFilterNames;
 };
 
