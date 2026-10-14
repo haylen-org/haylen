@@ -47,6 +47,13 @@ CPMAddPackage(
   SYSTEM YES
 )
 
+# Varn builds its own code, the Lua it vendors and libuv with the warning flags of their projects, which MSVC answers with hundreds of warnings in code the engine does not own.
+set(varn_compiled_targets varn_core varn_vendor_lua)
+if(TARGET uv_a)
+  list(APPEND varn_compiled_targets uv_a)
+endif()
+haylen_disable_warnings(${varn_compiled_targets})
+
 # The headers of Poco ask MSVC to link every Poco library by its file name, which no longer exists once the SDK merges the libraries into one, while CMake links them by their targets anyway.
 if(MSVC AND TARGET Poco::Foundation)
   get_target_property(poco_foundation Poco::Foundation ALIASED_TARGET)
