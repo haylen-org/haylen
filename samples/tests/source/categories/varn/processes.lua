@@ -2,14 +2,17 @@
 local datetime = require('datetime')
 local haylen = require('haylen')
 local process = require('process')
+local system = require('haylen.system')
 
 local VarnTest = require('categories.varn.varn-test')
 
 local Processes = haylen.class('Processes', VarnTest)
 
 Processes.hint = 'Every command runs through the shell of the platform on the I/O pool, so the frame never waits for it. Run again repeats the lesson.'
--- A command that runs for 5 seconds in the shell of the platform, "cmd.exe" on Windows and "sh" elsewhere.
-Processes.slow = haylen.platform == 'windows' and 'ping -n 6 127.0.0.1 > nul' or 'sleep 5'
+-- The shell of the system is "cmd.exe" on Windows, also under the headless player there, and "sh" elsewhere.
+Processes.windows = system.info().os == 'windows'
+-- A command that runs for 5 seconds in that shell.
+Processes.slow = Processes.windows and 'ping -n 6 127.0.0.1 > nul' or 'sleep 5'
 
 Processes.excerpts = {
     {'Commands', [[
@@ -55,7 +58,7 @@ end
 
 function Processes:environment()
     local path = process.getenv('PATH') or ''
-    local separator = haylen.platform == 'windows' and ';' or ':'
+    local separator = Processes.windows and ';' or ':'
     local folders = select(2, path:gsub(separator, '')) + 1
     local missing = process.getenv('HAYLEN_MISSING', 'none')
     self:check('env', 'Environment', path ~= '' and missing == 'none' and type(process.env) == 'table', string.format('The variable "PATH" lists %d folders, and "HAYLEN_MISSING" falls back to "%s".', folders, missing))
