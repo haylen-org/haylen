@@ -568,6 +568,20 @@ class EmscriptenTest(unittest.TestCase):
         self.assertEqual(commands[0][:2], ["git", "fetch"])
         self.assertEqual([command[1:] for command in commands[2:]], [["install", haylen.EMSDK_VERSION], ["activate", haylen.EMSDK_VERSION]])
 
+    def test_a_web_tree_of_another_version_builds_again_from_nothing(self):
+        tree = self.scratch / "build" / "web-release"
+        tree.mkdir(parents=True)
+        (tree / "CMakeCache.txt").write_text("HAYLEN_RENDER_BACKEND:STRING=WGPU\n")
+        (tree / "object.o").write_bytes(b"object")
+        (tree / haylen.EMSCRIPTEN_MARKER).write_text("1.0.0")
+        self.assertTrue(haylen.is_stale_web_tree(tree))
+        with mock.patch.object(haylen, "run", side_effect=lambda command, env: tree.mkdir()) as run:
+            haylen.configure_web_tree(["emcmake", "cmake"], tree)
+        run.assert_called_once()
+        self.assertFalse((tree / "object.o").exists())
+        (tree / "CMakeCache.txt").write_text("HAYLEN_RENDER_BACKEND:STRING=WGPU\n")
+        self.assertFalse(haylen.is_stale_web_tree(tree))
+
 
 class AndroidKeyTest(unittest.TestCase):
     def setUp(self):

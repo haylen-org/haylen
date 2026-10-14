@@ -97,6 +97,8 @@ INNO_SETUP_VERSION = "7.1.0"
 INNO_SETUP_SHA256 = "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f"
 ANDROID_NDK_VERSION = "30.0.16248370"
 EMSDK_VERSION = "6.0.12"
+# The file in every web build tree that records the version of Emscripten that configured it.
+EMSCRIPTEN_MARKER = "emscripten-version.txt"
 # The miniaudio library plays through AAudio from Android 8.1 on, and the engine builds it without OpenSL ES, like the `minSdk` of the Android library and template.
 ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
@@ -450,6 +452,20 @@ def ensure_emsdk() -> Path:
     return emcmake
 
 
+def is_stale_web_tree(directory: Path) -> bool:
+    """Tells whether another version of Emscripten configured a web build tree, or one that predates the record of the version."""
+    marker = directory / EMSCRIPTEN_MARKER
+    return (directory / "CMakeCache.txt").exists() and (not marker.exists() or marker.read_text(encoding="utf-8").strip() != EMSDK_VERSION)
+
+
+def configure_web_tree(command: list, directory: Path, env: dict[str, str] | None = None) -> None:
+    """Configures a web build tree with the pinned Emscripten. A tree that another version configured is deleted first, because Emscripten keeps no ABI between versions, so every object builds again."""
+    if is_stale_web_tree(directory):
+        shutil.rmtree(directory)
+    run(command, env=env)
+    (directory / EMSCRIPTEN_MARKER).write_text(EMSDK_VERSION, encoding="utf-8")
+
+
 def android_sdk() -> Path:
     for variable in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
         value = os.environ.get(variable)
@@ -550,8 +566,12 @@ def command_tools(args: argparse.Namespace) -> None:
 
 def command_configure(args: argparse.Namespace) -> None:
     command, env = configure_command(args)
-    terminal.step(f'Configuring the "{args.platform}" build in `{shown_path(build_dir(args.platform, args.config, args.sanitizers))}`')
-    run(command, env=env)
+    directory = build_dir(args.platform, args.config, args.sanitizers)
+    terminal.step(f'Configuring the "{args.platform}" build in `{shown_path(directory)}`')
+    if args.platform in WEB_PLATFORMS:
+        configure_web_tree(command, directory, env)
+    else:
+        run(command, env=env)
 
 
 def cmake_cache_value(directory: Path, name: str) -> str:
@@ -563,9 +583,9 @@ def cmake_cache_value(directory: Path, name: str) -> str:
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
-    """Configures the build tree when it does not exist yet, when the requested backend differs from the one it was configured with or when the pinned shader compiler changed."""
+    """Configures the build tree when it does not exist yet, when the requested backend differs from the one it was configured with, when the pinned shader compiler changed or when another version of Emscripten configured a web tree."""
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_RENDER_BACKEND") != requested_backend(args) or Path(cmake_cache_value(directory, "HAYLEN_SOKOL_SHDC")) != ensure_shdc():
+    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_RENDER_BACKEND") != requested_backend(args) or Path(cmake_cache_value(directory, "HAYLEN_SOKOL_SHDC")) != ensure_shdc() or (args.platform in WEB_PLATFORMS and is_stale_web_tree(directory)):
         command_configure(args)
     return directory
 
@@ -3077,7 +3097,7 @@ def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[st
     for backend in ("webgpu", "webgl2"):
         build = project / f"build-{backend}"
         terminal.step(f'Linking the release runtime of `{shown_path(app.folder)}` for "{backend}"')
-        run([ensure_emsdk(), "cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={web_sdk(backend) / 'lib' / 'cmake' / 'haylen'}"])
+        configure_web_tree([ensure_emsdk(), "cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={web_sdk(backend) / 'lib' / 'cmake' / 'haylen'}"], build)
         run(["cmake", "--build", build, "--config", "Release", "--parallel", str(args.jobs)])
         destination = site / backend
         shutil.rmtree(destination, ignore_errors=True)
@@ -4160,9 +4180,9 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, 
     for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
         directory = folder / f"{platform_name}-{config.lower()}"
         terminal.step(f'Building the target "{target}" for "{platform_name}" in `{shown_path(directory)}`')
-        if options is not None or not (directory / "CMakeCache.txt").exists():
+        if options is not None or not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
             renderer = "WGPU" if platform_name == "web" else "GLES3"
-            run([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}", *(options or [])])
+            configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}", *(options or [])], directory)
         run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
         built = directory / "bin" / target
         destination = output / backend
