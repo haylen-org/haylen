@@ -96,7 +96,7 @@ APPIMAGE_TOOLS_SHA256 = {
 INNO_SETUP_VERSION = "7.1.0"
 INNO_SETUP_SHA256 = "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f"
 ANDROID_NDK_VERSION = "30.0.16248370"
-EMSDK_VERSION = "6.0.10"
+EMSDK_VERSION = "6.0.12"
 # The miniaudio library plays through AAudio from Android 8.1 on, and the engine builds it without OpenSL ES, like the `minSdk` of the Android library and template.
 ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
