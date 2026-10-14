@@ -65,9 +65,8 @@ void ConversationState::enter(std::size_t target) {
     ++visits[target];
 }
 
-// Steps run until a line shows, and a node without steps left offers its choices, goes to its next node or ends the walk.
+// Steps run until a line shows, and a node without steps left offers its choices, goes to its next node or ends the walk. The line shown last stays until another one replaces it or the walk ends, so the choices that follow a line show with it.
 void ConversationState::run() {
-    line.reset();
     for (std::size_t count = 0; count < kMaxSteps; ++count) {
         const Conversation::Node& current = conversation->getNode(node);
         if (step >= current.steps.size()) {
@@ -77,6 +76,7 @@ void ConversationState::run() {
             }
             if (!current.next) {
                 finished = true;
+                line.reset();
                 return;
             }
             enter(*current.next);
@@ -107,6 +107,7 @@ void ConversationState::run() {
         }
     }
     finished = true;
+    line.reset();
     throw std::logic_error(std::format("The conversation ran {} steps without a line in the node \"{}\", which looks like a loop of jumps.", kMaxSteps, conversation->getNode(node).name));
 }
 

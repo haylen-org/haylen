@@ -115,7 +115,8 @@ TEST_F(ConversationTest, WalksLinesConditionsChoicesAndCommands) {
     std::vector<std::string> heard;
     state.advance();
     ASSERT_EQ(state.getChoices().size(), 3U);
-    EXPECT_EQ(state.getLine()->text, "smith.hello") << "The line before the choices stays with them.";
+    ASSERT_TRUE(state.getLine()) << "The line before the choices stays with them.";
+    EXPECT_EQ(state.getLine()->text, "smith.hello");
     EXPECT_EQ(state.getVariables().at("metSmith"), true);
     state.deliverCommands();
     const core::Connection listening = state.commanded.connect([&heard](std::string_view name, const core::Json& arguments) { heard.push_back(std::string(name) + " " + arguments.dump()); });
