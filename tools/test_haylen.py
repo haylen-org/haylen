@@ -20,6 +20,7 @@ import sys
 import tempfile
 import threading
 import time
+import tokenize
 import unittest
 import urllib.parse
 import zipfile
@@ -379,6 +380,33 @@ class LauncherTest(unittest.TestCase):
         self.assertIn('python "%~dp0haylen.py" %*', script)
         self.assertIn("exit /b %errorlevel%", script)
 
+
+
+class PythonVersionTest(unittest.TestCase):
+    def test_an_older_python_stops_with_the_version_it_needs(self):
+        script = f"import runpy, sys; sys.version_info = (3, 11, 9); runpy.run_path({str(haylen.ROOT / 'haylen.py')!r})"
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Haylen needs Python 3.12 or newer", result.stderr)
+
+    def test_every_f_string_keeps_its_quote_out_of_its_fields_so_an_older_python_reads_the_file(self):
+        source = (haylen.ROOT / "haylen.py").read_text(encoding="utf-8")
+        offsets = [0]
+        for line in source.splitlines(keepends=True):
+            offsets.append(offsets[-1] + len(line))
+        depth, start, quote = 0, 0, ""
+        with tokenize.open(haylen.ROOT / "haylen.py") as file:
+            for token in tokenize.generate_tokens(file.readline):
+                if token.type == tokenize.FSTRING_START:
+                    if depth == 0:
+                        quote = token.string.lstrip("rRfFbB")
+                        start = offsets[token.start[0] - 1] + token.start[1] + len(token.string)
+                    depth += 1
+                elif token.type == tokenize.FSTRING_END:
+                    depth -= 1
+                    if depth == 0:
+                        fields = re.sub(r"\\.", "", source[start : offsets[token.start[0] - 1] + token.start[1]])
+                        self.assertNotIn(quote, fields, f"The f-string on line {token.start[0]} uses its own quote inside, which only Python 3.12 reads.")
 
 class NativeLibrariesTest(unittest.TestCase):
     def setUp(self):

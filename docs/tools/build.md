@@ -4,7 +4,7 @@
 
 ## Requirements
 
-Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler. Ninja is needed by every build except iOS, tvOS, macOS with `--xcode`, and Windows builds, which fall back to the default CMake generator when Ninja is not on `PATH`. Run the script with `haylen` on macOS and Linux and with `python haylen.py` on Windows.
+Every host needs Python 3.12 or newer, CMake 3.28 or newer and a C++20 compiler. An older Python stops `haylen.py` at its start with a message that names the version it needs. Ninja is needed by every build except iOS, tvOS, macOS with `--xcode`, and Windows builds, which fall back to the default CMake generator when Ninja is not on `PATH`. Run the script with the command `haylen` at the root of the repository, the shell script on macOS and Linux and `haylen.cmd` on Windows.
 
 `haylen.py` downloads the remaining tools the first time a command needs them:
 

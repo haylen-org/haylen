@@ -36,6 +36,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Callable, Iterator, TextIO
 
+# The tool stops here on an older Python, so the rest of the file keeps to the grammar that Python reads far enough to run this check.
+MINIMUM_PYTHON = (3, 12)
+if sys.version_info < MINIMUM_PYTHON:
+    sys.exit(f'Haylen needs Python {MINIMUM_PYTHON[0]}.{MINIMUM_PYTHON[1]} or newer, and "{sys.executable}" is Python {sys.version.split()[0]}. Install a newer Python and run "haylen" again.')
+
 ROOT = Path(__file__).resolve().parent
 BUILD_ROOT = ROOT / "build"
 TOOLS_DIR = ROOT / ".tools"
@@ -300,6 +305,11 @@ def shown_path(path: Path) -> str:
     """Names a path relative to the current folder when it lies inside it, so messages stay short and terminals still open it."""
     return str(path.relative_to(Path.cwd())) if path.is_relative_to(Path.cwd()) else str(path)
 
+
+
+def quoted_names(names, separator: str = ", ") -> str:
+    """Lists names for a message, each in double quotes."""
+    return separator.join(f'"{name}"' for name in names)
 
 # The command that runs haylen.py from the current folder, which the messages that suggest a command start with.
 TOOL = "haylen"
@@ -1152,7 +1162,7 @@ class NativeLibrary:
             raise BuildError(f"{where} needs a name of letters, digits and underscores and an object with its files or its CMake project.")
         unknown = set(entry) - {"files", "cmake", "platforms", "link", "symbols"}
         if unknown:
-            raise BuildError(f"{where} has unknown keys: {', '.join(f'"{key}"' for key in sorted(unknown))}.")
+            raise BuildError(f"{where} has unknown keys: {quoted_names(sorted(unknown))}.")
         if ("files" in entry) == ("cmake" in entry) or ("cmake" in entry) != ("platforms" in entry):
             raise BuildError(f"{where} lists either its prebuilt files by platform or a CMake project with the platforms it builds for.")
 
@@ -1162,7 +1172,7 @@ class NativeLibrary:
             raise BuildError(f'{where} gives Android a folder with a subfolder of libraries for each ABI, like "jniLibs".')
         for platform in platforms:
             if platform not in NATIVE_PLATFORMS:
-                raise BuildError(f"{where} names the unknown platform \"{platform}\". Native libraries ship to {', '.join(f'"{name}"' for name in NATIVE_PLATFORMS)}.")
+                raise BuildError(f"{where} names the unknown platform \"{platform}\". Native libraries ship to {quoted_names(NATIVE_PLATFORMS)}.")
         for path in files.values():
             if not path.exists():
                 raise BuildError(f"{where} lists `{shown_path(path)}`, which does not exist.")
@@ -1521,7 +1531,7 @@ class PluginManifestCheck:
         platforms = self.manifest.get("platforms", [])
         self.platforms = [platform for platform in platforms if platform in PLUGIN_PLATFORMS] if isinstance(platforms, list) else []
         if not platforms or self.platforms != platforms or len(set(self.platforms)) != len(self.platforms):
-            self.report("platforms", f"must list each platform of the plugin once, among {', '.join(f'"{name}"' for name in PLUGIN_PLATFORMS)}.")
+            self.report("platforms", f"must list each platform of the plugin once, among {quoted_names(PLUGIN_PLATFORMS)}.")
         requires = self.manifest.get("requires", [])
         if not isinstance(requires, list) or not all(isinstance(required, str) and PLUGIN_ID.fullmatch(required) and required != self.identifier for required in requires):
             self.report("requires", "must list the ids of other plugins that the app needs as well.")
@@ -1540,7 +1550,7 @@ class PluginManifestCheck:
             self.check_keys(key, parameter, {"type", "platforms", "required", "default", "description"}, {"type", "description"})
             kind = parameter.get("type")
             if "type" in parameter and kind not in PARAMETER_TYPES:
-                self.report(f"{key}.type", f"must be one of {', '.join(f'"{name}"' for name in PARAMETER_TYPES)}.")
+                self.report(f"{key}.type", f"must be one of {quoted_names(PARAMETER_TYPES)}.")
             scope = parameter.get("platforms")
             if "platforms" in parameter and (not isinstance(scope, list) or not scope or not all(platform in self.platforms for platform in scope)):
                 self.report(f"{key}.platforms", "must list platforms of the plugin.")
@@ -1723,7 +1733,7 @@ def plugin_order(plugins: dict[str, Plugin]) -> list[Plugin]:
         if plugin in ordered:
             return
         if plugin.id in visiting:
-            raise BuildError(f"The plugins {', '.join(f'"{name}"' for name in visiting[visiting.index(plugin.id) :])} require each other in a cycle.")
+            raise BuildError(f"The plugins {quoted_names(visiting[visiting.index(plugin.id) :])} require each other in a cycle.")
         visiting.append(plugin.id)
         for required in plugin.requires:
             visit(plugins[required])
@@ -2831,7 +2841,7 @@ def android_device(requested: str | None) -> str:
             raise BuildError(f'The device "{requested}" is not a connected Android device. Use the command "adb devices" to list them.')
         return requested
     if len(devices) != 1:
-        raise BuildError('Name the Android device with "--device", because ' + ("none is connected." if not devices else f"{len(devices)} are connected: {', '.join(f'"{device}"' for device in devices)}."))
+        raise BuildError('Name the Android device with "--device", because ' + ("none is connected." if not devices else f"{len(devices)} are connected: {quoted_names(devices)}."))
     return devices[0]
 
 
@@ -3772,7 +3782,7 @@ def require_platform_template(app: Path, template: str) -> str:
     """Returns the kind of an app, and stops when its kind has no template of the platform."""
     kind = app_kind(app)
     if template not in platform_templates(kind):
-        raise BuildError(f"The {APP_KINDS[kind]} apps have no \"{template}\" template. Their platform templates are {', '.join(f'"{name}"' for name in platform_templates(kind))}.")
+        raise BuildError(f"The {APP_KINDS[kind]} apps have no \"{template}\" template. Their platform templates are {quoted_names(platform_templates(kind))}.")
     return kind
 
 
@@ -3916,7 +3926,7 @@ def command_plugin_add(args: argparse.Namespace) -> None:
     terminal.success(f'Added the plugin "{plugin.id}" {plugin.version} to `{shown_path(app)}`.')
     missing = [name for name, value in values.items() if value == "" and plugin.parameters.get(name, {}).get("required")]
     if missing:
-        names = ", ".join(f'"{name}"' for name in missing)
+        names = quoted_names(missing)
         terminal.warning(f'Fill in {names} under "plugins.{plugin.id}" of `{shown_path(app / "app.json")}` before the app builds.')
     for required in plugin.requires:
         if required not in listed:
@@ -4117,7 +4127,7 @@ def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: 
             continue
         unsupported = [key for key in ("packages", "buildScripts") if apple.get(key)]
         if unsupported:
-            raise BuildError(f'The plugin "{plugin.id}" needs {" and ".join(f"\"{key}\"" for key in unsupported)} on Apple platforms, which only the Xcode project of the Apple template builds. Build the app from a Lua project, or use a plugin without them.')
+            raise BuildError(f'The plugin "{plugin.id}" needs {quoted_names(unsupported, " and ")} on Apple platforms, which only the Xcode project of the Apple template builds. Build the app from a Lua project, or use a plugin without them.')
         if "sources" in apple:
             shutil.copytree(plugin.folder / apple["sources"], copied / plugin.id / "sources", ignore=COPY_IGNORED)
             sources += sorted(path for path in (copied / plugin.id / "sources").rglob("*") if path.suffix in CPP_APPLE_PLUGIN_SOURCES)
@@ -4150,7 +4160,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     device = android_device(args.device)
     abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
     if abi not in ANDROID_ABIS:
-        raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {', '.join(f'"{name}"' for name in ANDROID_ABIS)}. Use a device or an emulator of one of those.")
+        raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {quoted_names(ANDROID_ABIS)}. Use a device or an emulator of one of those.")
     directory = folder / f"android-{abi}-{args.config.lower()}"
     terminal.step(f'Building the target "{target}" for "{abi}" in `{shown_path(directory)}`')
     run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi), *cpp_release_options(args)])
@@ -4766,7 +4776,7 @@ class DevelopmentServer:
         for client in clients:
             if not client.send_batch(message, contents):
                 self.drop(client)
-        names = ", ".join(f'"{path}"' for path in [*changed, *removed])
+        names = quoted_names([*changed, *removed])
         terminal.info(f"Sent {names} to {len(clients)} connected {'app' if len(clients) == 1 else 'apps'}.")
 
     def drop(self, client: DevelopmentClient) -> None:
@@ -4797,11 +4807,11 @@ class DevelopmentServer:
         if message.get("restarted"):
             terminal.info(f"The app restarts: {message.get('reason', '')}")
         elif message.get("modules"):
-            names = ", ".join(f'"{path}"' for path in message["modules"])
+            names = quoted_names(message["modules"])
             resumed = " and resumed" if message.get("resumed") else ""
             terminal.success(f"The app reloaded {names}{resumed} in {round(message.get('milliseconds', 0))} ms.")
         elif message.get("assets"):
-            names = ", ".join(f'"{path}"' for path in message["assets"])
+            names = quoted_names(message["assets"])
             terminal.success(f"The app reloaded the assets {names}.")
 
     def accept(self, handler: http.server.BaseHTTPRequestHandler) -> None:
