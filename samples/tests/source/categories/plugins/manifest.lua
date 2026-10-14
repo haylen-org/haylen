@@ -82,5 +82,7 @@ return {
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
         {code = 'PLG-021', title = 'Fake sign-in', description = 'An account that the person picks in a native sheet, the current user that the device keeps and signing out.', module = 'sign-in',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-022', title = 'Bridge benchmark', description = 'The round trip of one call, the calls per second, and the work of a frame with N calls and with N batched events, logged for the platform it runs on.', module = 'benchmark',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
     },
 }

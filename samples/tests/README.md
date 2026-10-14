@@ -679,6 +679,7 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-019` | Fake store | The products of a fake store, purchases that the person confirms in a native sheet with a receipt, a kept product and restored purchases. | headless |
 | `PLG-020` | Fake ads | A full-screen ad and a rewarded ad that cover the app while they show, and the reward of an ad watched to the end. | headless |
 | `PLG-021` | Fake sign-in | An account that the person picks in a native sheet, the current user that the device keeps and signing out. | headless |
+| `PLG-022` | Bridge benchmark | The round trip of one call, the calls per second, and the work of a frame with N calls and with N batched events, logged for the platform it runs on. | headless |
 
 #### Preferences (PRF)
 
