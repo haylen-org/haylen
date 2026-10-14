@@ -50,16 +50,16 @@ void CrashGuard::setContext(std::string_view json) {
     published.store(next, std::memory_order_release);
 }
 
+#if !defined(__EMSCRIPTEN__)
+
 void CrashGuard::writeReport(std::string_view reason) noexcept {
     if (path[0] == 0) {
         return;
     }
 #if defined(_WIN32)
     const int descriptor = _wopen(path.data(), _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY, _S_IREAD | _S_IWRITE);
-#elif !defined(__EMSCRIPTEN__)
-    const int descriptor = open(path.data(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
 #else
-    const int descriptor = -1;
+    const int descriptor = open(path.data(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
 #endif
     if (descriptor < 0) {
         return;
@@ -73,7 +73,7 @@ void CrashGuard::writeReport(std::string_view reason) noexcept {
     writeAll(descriptor, "}\n");
 #if defined(_WIN32)
     _close(descriptor);
-#elif !defined(__EMSCRIPTEN__)
+#else
     close(descriptor);
 #endif
 }
@@ -82,10 +82,8 @@ void CrashGuard::writeAll(int descriptor, std::string_view text) noexcept {
     while (!text.empty()) {
 #if defined(_WIN32)
         const int written = _write(descriptor, text.data(), static_cast<unsigned int>(text.size()));
-#elif !defined(__EMSCRIPTEN__)
-        const ssize_t written = write(descriptor, text.data(), text.size());
 #else
-        const int written = -1;
+        const ssize_t written = write(descriptor, text.data(), text.size());
 #endif
         if (written <= 0) {
             return;
@@ -93,6 +91,8 @@ void CrashGuard::writeAll(int descriptor, std::string_view text) noexcept {
         text.remove_prefix(static_cast<std::size_t>(written));
     }
 }
+
+#endif
 
 #if defined(_WIN32)
 
@@ -168,6 +168,8 @@ std::string_view CrashGuard::describeSignal(int signal) noexcept {
 #else
 
 void CrashGuard::installHandlers() {}
+
+void CrashGuard::writeReport(std::string_view) noexcept {}
 
 #endif
 

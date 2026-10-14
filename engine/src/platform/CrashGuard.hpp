@@ -36,7 +36,10 @@ class CrashGuard final {
     };
 
     static void installHandlers();
+
+#if !defined(__EMSCRIPTEN__)
     static void writeAll(int descriptor, std::string_view text) noexcept;
+#endif
 
 #if defined(_WIN32)
     static long __stdcall handleException(_EXCEPTION_POINTERS* info);
