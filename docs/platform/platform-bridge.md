@@ -24,6 +24,20 @@ Every step carries the JSON text of the payload together with its byte buffers, 
 
 Native events take the same road: `BridgeRelay::emit(event, payloadJson, buffers, options)` queues the event, and `pump` delivers it to every listener connected with `on`. An event with invalid JSON, or whose JSON refers to a buffer it lacks, is logged and dropped. Events that arrive while no app is running are dropped too, and so are events that nothing listens to, unless they are retained.
 
+## Performance
+
+The test `PLG-022` of the test project measures the bridge to the native part of the demo plugin: the round trip of one call awaited after the other, the calls per second of 2000 calls sent at once, the work of a frame that sends N calls, and the work of the frames that receive N batched events 30 times per second. It logs every number with its code, so a run on a device, a simulator or a browser records them. These are the numbers of the Debug build of the test project:
+
+| Measure | iOS simulator, Swift | Android emulator `Pixel_10a`, Kotlin | Chrome without a window, JavaScript |
+| --- | --- | --- | --- |
+| Frames per second of the run | 58 | 30 | 59 |
+| Round trip of an awaited call | 16.67 ms | 34.98 ms | 16.66 ms |
+| Calls per second, 2000 at once | 58824 | 25000 | 71429 |
+| Frame work with 0, 10, 100 and 1000 calls | 0.56, 0.73, 0.78 and 2.16 ms | 0.70, 0.81, 1.00 and 4.80 ms | 0.90, 1.02, 1.36 and 2.49 ms |
+| Frame work with 10, 100 and 1000 batched events 30 times per second | 0.33, 0.55 and 0.31 ms | 0.77, 0.91 and 1.37 ms | 0.65, 0.90 and 1.51 ms |
+
+An awaited call costs one frame of the platform, since the reply settles in the pump of the next frame and the coroutine resumes in the poll that follows it, so code that waits on many calls in a row sends them together and awaits them with `async.all` instead. The emulator draws without a window at about 30 frames per second, which makes its round trip twice as long, while the calls per second and the work of a frame measure the bridge itself. Batched events cost little whatever their number, because a name of events reaches its listener as one list per frame.
+
 ## Retained events
 
 Some events come before the app listens: the deep link or the notification that opened the app, a purchase that finished while it was closed, or the result of a sign-in that restores itself at launch. Native code sends them retained. A retained event that nothing listens to waits in the bridge, up to `Bridge::kRetainedLimit`, 32, per name with the oldest dropped first, and the first `on` of its name receives the waiting events in order at the next pump, before any newer event of that name. The events wait in the bridge of the running app, so a restarted app starts with none, and an event that reaches the engine while no app runs is dropped even when it is retained. The Android library and the Apple runtime keep the events that native code sends while no app runs, such as while the app launches, and hand them to the next app in order, so an event sent retained before any app ran still reaches its first listener. Every entry point takes the flag: the `retain` field of `Bridge::EmitOptions` for `Bridge::emit` and `BridgeRelay::emit` in C++, `HAYLEN_NATIVE_EMIT_RETAIN` in the flags of `emit` of `HaylenNativeApi` in native libraries, `HaylenBridge.emit(event, payload, retain)`, `emitRetained` and `emit(event, payload, retain, batched)` of plugin contexts on Android, `+emit:payload:retain:` of `HaylenBridge`, `emitRetained:payload:` and `emit:payload:retain:batched:` of plugin contexts on Apple platforms, `Module.haylen.emit(event, payload, {retain: true})` and `context.emit` of plugin modules on the web, and `platform.emit(event, payload, {retain = true})` in Lua tests.

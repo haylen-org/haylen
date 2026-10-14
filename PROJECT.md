@@ -1447,7 +1447,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 **Desempenho**
 
-- [ ] Benchmark da bridge no emulador Android, no simulador iOS e na web: ida e volta de uma chamada, chamadas por segundo e custo por frame de N chamadas e de N eventos, com os números na documentação.
+- [x] Benchmark da bridge no emulador Android, no simulador iOS e na web: ida e volta de uma chamada, chamadas por segundo e custo por frame de N chamadas e de N eventos, com os números na documentação. O teste PLG-022 mede tudo e loga os números, que estão na seção de desempenho de `docs/platform/platform-bridge.md`: no simulador iOS, 16,67 ms por chamada aguardada, 58.824 chamadas por segundo e de 0,56 a 2,16 ms de trabalho por frame com até 1.000 chamadas; no emulador Android, que roda a 30 quadros por segundo sem janela, 34,98 ms, 25.000 por segundo e de 0,70 a 4,80 ms; e no Chrome sem janela, 16,66 ms, 71.429 por segundo e de 0,90 a 2,49 ms. O benchmark mostrou que uma chamada aguardada custava dois frames, porque a resposta chegava pelo `Bridge::pump` depois do poll do loop de eventos, e agora os pumps rodam antes do poll e a ida e volta custa um frame, testado em `PlatformLuaTest.ResumesAnAwaitedCallInTheFrameItsReplyReaches`.
 - [x] Lote de eventos frequentes do nativo para o Lua e do Lua para o nativo, entregues uma vez por frame. Pronto com a marcação `batched` dos eventos, como o grupo AB descreve.
 
 **Fora deste repositório**
