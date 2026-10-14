@@ -1222,10 +1222,41 @@ class ComponentAssetTest : public ComponentTest {
               {"content/themes/wood.json", R"({"name": "wood", "fontFiles": {"ui": "fonts/ui.ttf"}, "fonts": {"title": {"font": "ui", "size": 64}},
                   "surfaces": {"panel": {"image": "ui/panel.png", "slice": 8}, "button": {"image": "ui/panel.png", "slice": 8, "padding": 4}, "track": {"image": "ui/panel.png", "slice": 4, "padding": 4},
                       "trackFill": {"image": "ui/fill.png", "slice": 2, "colorize": true}, "stickBase": {"image": "ui/panel.png", "slice": 8, "colorize": true}, "tooltip": {"image": "ui/panel.png", "slice": 8, "padding": 6}}})"},
+              {"content/ui/mark.png", toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
+              {"content/ui/dot.png", toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
+              {"content/ui/row.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/hover.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/bar.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/themes/plates.json", R"({"name": "plates", "surfaces": {"radio": {"image": "ui/mark.png"}, "radioSelected": {"image": "ui/dot.png"}, "cellSelected": {"image": "ui/row.png", "slice": 8},
+                  "cellHover": {"image": "ui/hover.png", "slice": 8}, "titleBar": {"image": "ui/bar.png", "slice": 8, "padding": [10, 16, 12, 16]}, "toast": {"image": "ui/panel.png", "slice": 8, "padding": 20}}})"},
               {"content/themes/broken.json", R"({"name": "broken", "fonts": {"body": {"font": "missing"}}})"},
               {"content/themes/smooth.json", R"({"name": "smooth", "imageFilter": "linear"})"},
               {"content/i18n/en.json", R"({"menu": {"play": "Play {n}"}})"},
           }) {}
+
+    // Draws a frame and returns where each texture drawn through the 2D renderer landed, since every draw of a texture starts with a quad named after it and the quads after it belong to the same draw until a text starts another one.
+    std::map<std::string, math::Rect, std::less<>> drawFrame() {
+        std::map<std::string, math::Rect, std::less<>> drawn;
+        graphics2d::Renderer& renderer = getEngine().getRenderer2D();
+        // clang-format off
+        const std::uint64_t overlay = renderer.addCanvasOverlay([&drawn](graphics2d::Renderer& drawing) {
+            std::string current;
+            drawing.visitDrawn([&](const graphics2d::Renderer::Drawn& quad) {
+                if (quad.text) {
+                    current.clear();
+                    return;
+                }
+                current = quad.label.empty() ? current : std::string(quad.label);
+                const math::Rect bounds = math::Geometry::bounds(quad.corners);
+                const auto found = drawn.find(current);
+                drawn.insert_or_assign(current, found == drawn.end() ? bounds : found->second.merged(bounds));
+            });
+        });
+        // clang-format on
+        fixture.frames(1);
+        renderer.removeCanvasOverlay(overlay);
+        return drawn;
+    }
 };
 
 TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
@@ -1369,26 +1400,6 @@ TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {
 TEST_F(ComponentAssetTest, KeepsTheTrackOfASwitchStillWhileItTurns) {
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/wood.json"));
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "toggle", "id": "sound", "checked": true}]})");
-
-    // Every draw of a texture starts with a quad named after it, and the quads after it belong to the same draw.
-    // clang-format off
-    const auto drawFrame = [this] {
-        std::map<std::string, math::Rect, std::less<>> drawn;
-        graphics2d::Renderer& renderer = getEngine().getRenderer2D();
-        const std::uint64_t overlay = renderer.addCanvasOverlay([&drawn](graphics2d::Renderer& drawing) {
-            std::string current;
-            drawing.visitDrawn([&](const graphics2d::Renderer::Drawn& quad) {
-                current = quad.label.empty() ? current : std::string(quad.label);
-                const math::Rect bounds = math::Geometry::bounds(quad.corners);
-                const auto found = drawn.find(current);
-                drawn.insert_or_assign(current, found == drawn.end() ? bounds : found->second.merged(bounds));
-            });
-        });
-        fixture.frames(1);
-        renderer.removeCanvasOverlay(overlay);
-        return drawn;
-    };
-    // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/fill.png"); }));
     const auto steady = drawFrame();
     ASSERT_TRUE(steady.contains("ui/panel.png"));
@@ -1424,6 +1435,58 @@ TEST_F(ComponentAssetTest, PaintsTooltipsWithTheThemeSurface) {
     const ImTextureID panel = getUi().getContext().getTextureReference(getEngine().getAssets().texture("ui/panel.png")).GetTexID();
     const ImVector<ImDrawCmd>& commands = tooltip->DrawList->CmdBuffer;
     EXPECT_TRUE(std::any_of(commands.begin(), commands.end(), [panel](const ImDrawCmd& command) { return command.TexRef._TexID == panel; }));
+}
+
+TEST_F(ComponentAssetTest, DrawsRadioMarksWithTheirSurfaces) {
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
+    mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "radioGroup", "items": [{"id": "easy", "text": "Easy"}, {"id": "hard", "text": "Hard"}], "selected": "easy"}]})");
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/dot.png"); }));
+    const auto drawn = drawFrame();
+    const float size = getUi().getTheme().getMetric(Theme::Metric::ChoiceSize);
+    ASSERT_TRUE(drawn.contains("ui/mark.png"));
+    EXPECT_EQ(drawn.at("ui/dot.png").getSize(), math::Vec2(size, size));
+    EXPECT_EQ(drawn.at("ui/mark.png").getSize(), math::Vec2(size, size));
+    EXPECT_GT(drawn.at("ui/mark.png").y, drawn.at("ui/dot.png").getBottom());
+}
+
+TEST_F(ComponentAssetTest, HighlightsTheRowsOfListsWithTheCellSurfaces) {
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "list", "id": "crew", "width": 400, "height": 300, "items": [{"id": "ana", "text": "Ana"}, {"id": "leo", "text": "Leo"}], "selected": "ana"}]})");
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/row.png"); }));
+    const math::Rect chosen = drawFrame().at("ui/row.png");
+    EXPECT_FLOAT_EQ(chosen.height, getUi().getTheme().getMetric(Theme::Metric::ListRowHeight));
+    EXPECT_FLOAT_EQ(chosen.y, getBounds(*gui, "crew").y);
+
+    pointer(platform::Event::Type::MouseMove, {chosen.getCenter().x, chosen.getCenter().y + chosen.height});
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/hover.png"); }));
+    EXPECT_EQ(drawFrame().at("ui/hover.png"), chosen.translated({0.0F, chosen.height}));
+}
+
+TEST_F(ComponentAssetTest, FramesTheTitlesOfWindowsAndDialogsWithTheTitleBar) {
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
+    auto gui = mount(R"({"kind": "window", "id": "bag", "title": "Bag", "x": 100, "y": 100, "width": 500, "height": 400})");
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/bar.png"); }));
+    const math::Rect window = getBounds(*gui, "bag");
+    EXPECT_EQ(drawFrame().at("ui/bar.png"), math::Rect(window.x, window.y, window.width, getUi().getTheme().getMetric(Theme::Metric::WindowTitleHeight)));
+
+    getUi().unmount(*gui);
+    gui = mount(R"({"kind": "dialog", "id": "quit", "open": true, "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}]})");
+    frames(30);
+    const math::Rect dialog = getBounds(*gui, "quit");
+    const float padding = getUi().getTheme().getMetric(Theme::Metric::PanelPadding);
+    const float title = Typography::measureParagraph(getUi().getContext(), Theme::Font::Heading, "Quit?", dialog.width).y;
+    EXPECT_EQ(drawFrame().at("ui/bar.png"), math::Rect(dialog.x + padding, dialog.y + padding, dialog.width - padding * 2.0F, title + 22.0F));
+}
+
+TEST_F(ComponentAssetTest, KeepsTheTextOfToastsInsideThePaddingOfTheirSurface) {
+    auto gui = mount(R"({"kind": "toast", "id": "saved", "text": "Saved", "duration": 0, "open": true})");
+    frames(30);
+    const float flat = getBounds(*gui, "saved").height;
+    EXPECT_GT(flat, 0.0F);
+
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
+    frames(2);
+    EXPECT_FLOAT_EQ(getBounds(*gui, "saved").height, flat + 40.0F);
 }
 
 } // namespace haylen::ui

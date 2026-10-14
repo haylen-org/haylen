@@ -167,7 +167,8 @@ float Dialog::getBodyHeight(Context& context, float width) {
     float height = 0.0F;
     const auto add = [&](float part) { height += part + (height > 0.0F ? spacing : 0.0F); };
     if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
-        add(Typography::measureParagraph(context, Theme::Font::Heading, titleText, width).y);
+        const math::Insets bar = Surfaces::getPadding(context, Theme::Surface::TitleBar);
+        add(Typography::measureParagraph(context, Theme::Font::Heading, titleText, width - bar.getHorizontal()).y + bar.getVertical());
     }
     if (const std::string_view messageText = context.getText(message); !messageText.empty()) {
         add(Typography::measureParagraph(context, Theme::Font::Body, messageText, width).y);
@@ -242,8 +243,14 @@ void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect
     const ImVec2 start = ImGui::GetCursorScreenPos();
     float y = start.y;
     if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
-        const float height = Typography::measureParagraph(context, Theme::Font::Heading, titleText, column.width).y;
-        Typography::drawParagraph(context, Theme::Font::Heading, {column.x, y, column.width, height}, context.getColor(Theme::Color::Text), titleText, Alignment::Start);
+        // An image of the title bar frames the title across the column, and its padding keeps the title inside its border.
+        const math::Insets bar = Surfaces::getPadding(context, Theme::Surface::TitleBar);
+        const float height = Typography::measureParagraph(context, Theme::Font::Heading, titleText, column.width - bar.getHorizontal()).y + bar.getVertical();
+        const math::Rect band{column.x, y, column.width, height};
+        if (const Theme::Image* image = context.getSurface(Theme::Surface::TitleBar)) {
+            Surfaces::drawNineSlice(context, *image, band, context.getColor(Theme::Color::Raised));
+        }
+        Typography::drawParagraph(context, Theme::Font::Heading, band.inset(bar), context.getColor(Theme::Color::Text), titleText, Alignment::Start);
         y += height + spacing;
     }
     if (const std::string_view messageText = context.getText(message); !messageText.empty()) {

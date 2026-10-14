@@ -171,4 +171,37 @@ TEST_F(SmoothEdgeTest, CastsOneSoftShadowUnderFloatingSurfaces) {
     EXPECT_FLOAT_EQ(shadow->radii[0], getMetric(Theme::Metric::PanelRadius) + size * 0.5F);
 }
 
+// A switch shades its track the way buttons shade their fill: with the hover color under the pointer and with the pressed color while it is held, in both of its states.
+TEST_F(SmoothEdgeTest, ShadesTheTrackOfAHeldSwitchWithThePressedColor) {
+    const std::shared_ptr<Gui> gui = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "toggle", "id": "sound"}]})");
+    frames(2);
+    // clang-format off
+    const auto shaded = [this](Theme::Color base, Theme::Color layer) {
+        const math::Color under = getColor(base);
+        const math::Color over = getColor(layer);
+        return math::Color{under.r + (over.r - under.r) * over.a, under.g + (over.g - under.g) * over.a, under.b + (over.b - under.b) * over.a, std::max(under.a, over.a)};
+    };
+    // clang-format on
+    const math::Vec2 knob = getBounds(*gui, "sound").getMin() + math::Vec2{20.0F, getBounds(*gui, "sound").height * 0.5F};
+    // clang-format off
+    const auto drawn = [this](math::Color color) {
+        return findShape([&color](const graphics2d::Shape& shape) {
+            return std::fabs(shape.color.r - color.r) < 1e-4F && std::fabs(shape.color.g - color.g) < 1e-4F && std::fabs(shape.color.b - color.b) < 1e-4F && std::fabs(shape.color.a - color.a) < 1e-4F;
+        }).has_value();
+    };
+    // clang-format on
+
+    pointer(platform::Event::Type::MouseMove, knob);
+    frames(2);
+    EXPECT_TRUE(drawn(shaded(Theme::Color::Track, Theme::Color::Hover)));
+    pointer(platform::Event::Type::MouseDown, knob);
+    frames(2);
+    EXPECT_TRUE(drawn(shaded(Theme::Color::Track, Theme::Color::Pressed)));
+    pointer(platform::Event::Type::MouseUp, knob);
+    frames(30);
+    pointer(platform::Event::Type::MouseDown, knob);
+    frames(2);
+    EXPECT_TRUE(drawn(shaded(Theme::Color::Accent, Theme::Color::Pressed)));
+}
+
 } // namespace haylen::ui

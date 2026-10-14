@@ -106,13 +106,18 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     const float side = closable ? bar.height : 0.0F;
     const math::Rect grip = context.mirror({bar.x, bar.y, bar.width - side, bar.height}, bar);
 
-    // The bar fills the top of the window inside its border, with its top corners parallel to the corners of the window.
-    const float border = context.getMetric(Theme::Metric::BorderWidth);
-    const math::Rect fill = math::Rect::fromMinMax({bar.x + border, bar.y + border}, {bar.getRight() - border, bar.getBottom()});
-    Surfaces::fill(context, fill, context.getColor(Theme::Color::Raised), Surfaces::getInnerRadius(context.getMetric(Theme::Metric::PanelRadius), border), ImDrawFlags_RoundCornersTop);
-    Widgets::line(context, {bar.x, bar.getBottom()}, {bar.getRight(), bar.getBottom()}, context.getMetric(Theme::Metric::BorderWidth), context.getColor(Theme::Color::Border));
+    // An image of the title bar covers the whole bar, and the flat bar fills the top of the window inside its border, with its top corners parallel to the corners of the window.
+    if (const Theme::Image* image = context.getSurface(Theme::Surface::TitleBar)) {
+        Surfaces::drawNineSlice(context, *image, bar, context.getColor(Theme::Color::Raised));
+    } else {
+        const float border = context.getMetric(Theme::Metric::BorderWidth);
+        const math::Rect fill = math::Rect::fromMinMax({bar.x + border, bar.y + border}, {bar.getRight() - border, bar.getBottom()});
+        Surfaces::fill(context, fill, context.getColor(Theme::Color::Raised), Surfaces::getInnerRadius(context.getMetric(Theme::Metric::PanelRadius), border), ImDrawFlags_RoundCornersTop);
+        Widgets::line(context, {bar.x, bar.getBottom()}, {bar.getRight(), bar.getBottom()}, border, context.getColor(Theme::Color::Border));
+    }
+    const math::Rect text = grip.inset(Surfaces::getPadding(context, Theme::Surface::TitleBar));
     const float inset = context.getMetric(Theme::Metric::ControlPaddingX);
-    Typography::drawAligned(context, Theme::Font::Button, {grip.x + inset, grip.y, std::max(0.0F, grip.width - inset * 2.0F), grip.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
+    Typography::drawAligned(context, Theme::Font::Button, {text.x + inset, text.y, std::max(0.0F, text.width - inset * 2.0F), text.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
 
     if (closable) {
         const math::Rect cross = context.mirror({bar.getRight() - side, bar.y, side, side}, bar).expanded(-side * 0.15F);

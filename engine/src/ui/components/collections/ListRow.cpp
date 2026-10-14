@@ -14,10 +14,10 @@ namespace haylen::ui {
 Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, bool selected, float rounding) {
     const float radius = rounding < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) * 0.5F : rounding;
     const Widgets::Interaction state = Widgets::interact(context, bounds, radius, "##row");
-    if (selected) {
-        Surfaces::fill(context, bounds, context.getColor(Theme::Color::Selection), radius);
-    } else if (state.hovered) {
-        Surfaces::fill(context, bounds, context.getColor(Theme::Color::Hover), radius);
+    if (selected || state.held || state.hovered) {
+        const Theme::Surface surface = selected ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
+        const Theme::Color color = selected ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
+        Surfaces::draw(context, surface, bounds, context.getColor(color), std::nullopt, radius);
     }
     return state;
 }

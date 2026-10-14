@@ -272,10 +272,15 @@ bool Widgets::radio(Context& context, const math::Rect& bounds, bool selected, s
     if (state.hovered) {
         fill = mix(fill, context.getColor(Theme::Color::Hover));
     }
-    // The ring runs inside the circle of the mark, so it never reaches past its size.
-    const float half = size * 0.5F;
-    Surfaces::drawShape(context, {.bounds = circle, .radii = {half, half, half, half}, .color = fill, .borderWidth = context.getMetric(Theme::Metric::BorderWidth), .borderColor = context.getColor(selected ? Theme::Color::Accent : Theme::Color::BorderStrong)});
-    if (selected) {
+    const Theme::Image* image = context.getSurface(selected ? Theme::Surface::RadioSelected : Theme::Surface::Radio);
+    if (image != nullptr) {
+        Surfaces::drawNineSlice(context, *image, circle, selected ? context.getColor(Theme::Color::Accent) : fill);
+    } else {
+        // The ring runs inside the circle of the mark, so it never reaches past its size.
+        const float half = size * 0.5F;
+        Surfaces::drawShape(context, {.bounds = circle, .radii = {half, half, half, half}, .color = fill, .borderWidth = context.getMetric(Theme::Metric::BorderWidth), .borderColor = context.getColor(selected ? Theme::Color::Accent : Theme::Color::BorderStrong)});
+    }
+    if (selected && image == nullptr) {
         const float dot = size * 0.25F;
         Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(circle.getCenter(), {dot * 2.0F, dot * 2.0F}), .radii = {dot, dot, dot, dot}, .color = context.getColor(Theme::Color::Accent)});
     }
@@ -308,9 +313,9 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const float width = context.getMetric(Theme::Metric::ToggleWidth);
     const float height = context.getMetric(Theme::Metric::ToggleHeight);
     const math::Rect track = context.mirror({bounds.x, std::floor(bounds.getCenter().y - height * 0.5F), width, height}, bounds);
-    const math::Color hover = context.getColor(Theme::Color::Hover);
-    const math::Color off = state.hovered ? mix(context.getColor(Theme::Color::Track), hover) : context.getColor(Theme::Color::Track);
-    const math::Color on = state.hovered ? mix(context.getColor(Theme::Color::Accent), hover) : context.getColor(Theme::Color::Accent);
+    const std::optional<math::Color> layer = state.held ? std::optional(context.getColor(Theme::Color::Pressed)) : state.hovered ? std::optional(context.getColor(Theme::Color::Hover)) : std::nullopt;
+    const math::Color off = layer ? mix(context.getColor(Theme::Color::Track), *layer) : context.getColor(Theme::Color::Track);
+    const math::Color on = layer ? mix(context.getColor(Theme::Color::Accent), *layer) : context.getColor(Theme::Color::Accent);
     if (context.getSurface(Theme::Surface::Track) == nullptr && context.getSurface(Theme::Surface::TrackFill) == nullptr) {
         // Flat colors fade the on color into the track itself, so the edge of the track never shows a rim of its own color around a fill on top of it.
         Surfaces::draw(context, Theme::Surface::Track, track, mix(off, on.withAlpha(on.a * eased)), std::nullopt, height * 0.5F);

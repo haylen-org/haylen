@@ -11,6 +11,7 @@
 #include <imgui.h>
 
 #include "haylen/core/JsonValidator.hpp"
+#include "haylen/math/Insets.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/PropertyReader.hpp"
@@ -95,7 +96,8 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
     const float bar = context.getMetric(Theme::Metric::ToneBarWidth);
     const std::string_view message = context.getText(notice.own ? text : notice.text);
-    const float height = Typography::measureParagraph(context, Theme::Font::Body, message, width - padding * 2.0F - bar).y + context.getMetric(Theme::Metric::ControlPaddingY) * 2.0F;
+    const math::Insets edge = Surfaces::getPadding(context, Theme::Surface::Toast);
+    const float height = Typography::measureParagraph(context, Theme::Font::Body, message, width - padding * 2.0F - bar - edge.getHorizontal()).y + context.getMetric(Theme::Metric::ControlPaddingY) * 2.0F + edge.getVertical();
 
     // A notice that comes in takes its whole place at once, and one that leaves gives its place back as it fades.
     const float extent = (height + context.getMetric(Theme::Metric::ItemSpacing)) * (notice.leaving ? notice.appear : 1.0F);
@@ -156,14 +158,21 @@ void Toast::drawFrame(Context& context, const Notice& notice, const math::Rect& 
     const float radius = context.getMetric(Theme::Metric::PanelRadius);
     Surfaces::drawShadow(context, frame, radius);
     Surfaces::draw(context, Theme::Surface::Toast, frame, context.getColor(Theme::Color::Tooltip), std::nullopt, radius);
-    const math::Rect bar = context.mirror({frame.x, frame.y, barWidth, frame.height}, frame);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.PushClipRect(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), true);
-    Surfaces::fill(context, frame, context.getColor(colors.fill), radius);
-    list.PopClipRect();
+
+    // Inside the padding of an image the bar is a strip with round ends, since the border of the image has a shape of its own.
+    const math::Rect content = frame.inset(Surfaces::getPadding(context, Theme::Surface::Toast));
+    const math::Rect bar = context.mirror({content.x, content.y, barWidth, content.height}, content);
+    if (context.getSurface(Theme::Surface::Toast) != nullptr) {
+        Surfaces::fill(context, bar, context.getColor(colors.fill), barWidth * 0.5F);
+    } else {
+        ImDrawList& list = *ImGui::GetWindowDrawList();
+        list.PushClipRect(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), true);
+        Surfaces::fill(context, frame, context.getColor(colors.fill), radius);
+        list.PopClipRect();
+    }
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
-    const math::Rect inner = context.mirror(math::Rect::fromMinMax({frame.x + barWidth + padding, frame.y + context.getMetric(Theme::Metric::ControlPaddingY)}, {frame.getRight() - padding, frame.getBottom()}), frame);
+    const math::Rect inner = context.mirror(math::Rect::fromMinMax({content.x + barWidth + padding, content.y + context.getMetric(Theme::Metric::ControlPaddingY)}, {content.getRight() - padding, content.getBottom()}), content);
     Typography::drawParagraph(context, Theme::Font::Body, inner, context.getColor(Theme::Color::OnTooltip), message, Alignment::Start);
 }
 

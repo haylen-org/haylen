@@ -426,7 +426,7 @@ Metrics size the controls. The metric `controlHeight` sets the height of buttons
 
 ### Surfaces
 
-A surface paints part of a component with a nine-slice image instead of flat colors, such as the paper panels and wooden dialogs of a textured game. The built-in themes have none. The reference lists [which component uses which surface](../lua-api/ui.md#theme-surfaces), from `panel`, `card`, `dialog`, `toast` and `banner` to the three states of each button variant, `field`, `check`, `track`, `trackFill`, `knob`, `tab`, `chip`, `badge` and the touch control surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed`.
+A surface paints part of a component with a nine-slice image instead of flat colors, such as the paper panels and wooden dialogs of a textured game. The built-in themes have none. The reference lists [which component uses which surface](../lua-api/ui.md#theme-surfaces), from `panel`, `card`, `dialog`, `window`, `titleBar`, `toast` and `banner` to the three states of each button variant, `field`, `check`, `radio`, `track`, `trackFill`, `knob`, `tab`, `chip`, `badge`, the scroll bars, the rows and cells that are hovered or selected, and the touch control surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed`.
 
 A surface image is an object with these keys.
 

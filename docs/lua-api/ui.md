@@ -1907,7 +1907,7 @@ end})
 
 ### ui.toggle(properties)
 
-A switch with a label. Off, its track takes the theme `track` color with the `knob` at its start, and on, the `accent` color covers the track with the knob at its end. A change slides the knob across over the theme `transitionDuration` while the color of the on state fades in or out over the whole track, so the track itself never moves or changes its shape. The theme `track`, `trackFill` and `knob` surfaces draw it when the theme has them, with `trackFill` inside the padding of `track`. It takes the properties of `checkbox`, reports `change` with `checked` and can take the focus.
+A switch with a label. Off, its track takes the theme `track` color with the `knob` at its start, and on, the `accent` color covers the track with the knob at its end. A change slides the knob across over the theme `transitionDuration` while the color of the on state fades in or out over the whole track, so the track itself never moves or changes its shape. Like a button, the track and its on color take the `hover` color under the pointer and the `pressed` color while the switch is held, and the knob takes the `pressed` color while held, so every state draws from the same parts. The theme `track`, `trackFill` and `knob` surfaces draw it when the theme has them, with `trackFill` inside the padding of `track`. It takes the properties of `checkbox`, reports `change` with `checked` and can take the focus.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1919,7 +1919,7 @@ end})
 
 ### ui.radioGroup(properties)
 
-A group of options of which one is picked. Picking another option reports `change` with the item id as `value`. It can take the focus, which goes to the selected option.
+A group of options of which one is picked. Picking another option reports `change` with the item id as `value`. It can take the focus, which goes to the selected option. The theme `radio` and `radioSelected` surfaces draw the marks when the theme has them.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -3246,13 +3246,14 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `card` | `card`. |
 | `dialog` | `dialog`. |
 | `tooltip` | Tooltips of every node. The text stays inside the `padding` of the surface. |
-| `toast` | `toast`. |
+| `toast` | `toast`. The text and the bar of the tone stay inside the `padding` of the surface, where the bar is a strip with round ends. |
 | `banner` | `pageHeader` with `banner = true`. |
 | `button`, `buttonHover`, `buttonPressed` | Default, toolbar and icon buttons, menu buttons, popovers, dialog buttons and the number field buttons. |
 | `buttonPrimary`, `buttonPrimaryHover`, `buttonPrimaryPressed` | Primary buttons. |
 | `buttonDestructive`, `buttonDestructiveHover`, `buttonDestructivePressed` | Destructive buttons. |
 | `field`, `fieldFocused` | Text fields, secret fields, text areas, filter fields, number fields, combos, color fields, steppers and key captures. |
 | `check`, `checkChecked` | Check boxes. |
+| `radio`, `radioSelected` | The marks of radio groups, empty and selected. The selected mark takes the `accent` color with `colorize`. |
 | `track`, `trackFill`, `knob` | Toggles, sliders, range sliders and progress bars. The fill of toggles, sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar keeps its frame, and a toggle fills its groove as its knob slides on. |
 | `stickBase`, `stickKnob` | The ring and the knob of touch sticks. |
 | `touchButton`, `touchButtonPressed` | Touch buttons. |
@@ -3262,8 +3263,9 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `segment`, `segmentSelected` | The strip of segmented controls and their selected segment. |
 | `menu` | The popups of combos, menu buttons, context menus, popovers and color fields. |
 | `window` | Windows. |
+| `titleBar` | The title bar of windows, across the top of the window, and the band behind the title of dialogs, across the content of the dialog, which only an image draws. The title stays inside the `padding` of the surface. |
 | `slot`, `slotHighlighted` | Slots of slot grids, and the selected or hovered slot. |
-| `cell`, `cellHover`, `cellPressed`, `cellSelected` | The backgrounds of interactive collection cells: always, while hovered, while pressed and while selected. Without images the state surfaces paint the `hover`, `pressed` and `selection` colors, and `cell` paints nothing. |
+| `cell`, `cellHover`, `cellPressed`, `cellSelected` | The backgrounds of interactive collection cells: always, while hovered, while pressed and while selected. The state surfaces also mark the rows of lists, trees, tables, accordions and popups. Without images the state surfaces paint the `hover`, `pressed` and `selection` colors, and `cell` paints nothing. |
 | `scrollbar`, `scrollbarHover` | The thumb of [scroll bars](#scroll-bars), and the thumb while hovered or held, which falls back to `scrollbar`. |
 | `scrollbarTrack` | The track the thumb of a scroll bar runs along, which only an image draws. |
 
