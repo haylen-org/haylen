@@ -22,7 +22,7 @@ android {
 }
 
 // The Android project of the app gives every module the engine version it builds with.
-val haylenEngineVersion: String by extra
+val haylenEngineVersion = extra["haylenEngineVersion"] as String
 
 dependencies {
     implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")

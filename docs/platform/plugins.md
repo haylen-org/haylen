@@ -197,7 +197,7 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 
 | Key | Value |
 | --- | --- |
-| `module` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`, which the Android template declares, and depends on the engine with `implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")`, where `val haylenEngineVersion: String by extra` reads the engine version that the Android project gives every module, and on the [other engine libraries](#engine-libraries) it uses. |
+| `module` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`, which the Android template declares, and depends on the engine with `implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")`, where `val haylenEngineVersion = extra["haylenEngineVersion"] as String` reads the engine version that the Android project gives every module, and on the [other engine libraries](#engine-libraries) it uses. |
 | `gradlePlugins` | Gradle plugins that the app module applies, each as `{"id": ..., "version": ...}`, such as `{"id": "com.example.services", "version": "1.0.0"}`. |
 | `placeholders` | Manifest placeholders by name, whose text values the manifest of the module reads as `${name}`. |
 | `files` | Copies into the Android project, each as `{"from": ..., "to": ...}`. `from` is a path inside the plugin or a reference to a `file` parameter, and `to` is a path inside the project, such as `app/services.json`. |
@@ -1040,7 +1040,7 @@ The Android part of a plugin is the Android library module that `module` of its 
 ```kotlin
 // plugins/share-sheet/android/build.gradle.kts
 // The Android project of the app gives every module the engine version it builds with.
-val haylenEngineVersion: String by extra
+val haylenEngineVersion = extra["haylenEngineVersion"] as String
 
 dependencies {
     implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")
