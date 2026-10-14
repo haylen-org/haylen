@@ -6,7 +6,7 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 
 - Desktop: `haylen run samples/tests` runs the project in the player with hot reload.
 - A platform: `haylen run samples/tests --platform ios-simulator`, and the same with `tvos-simulator`, `android`, `web`, `macos`, `windows` or `linux`.
-- Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error or whose scene failed to load, and exits with the status 1 when any test failed, which the CI job `tests-project` does on every push:
+- Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error, failed a check of their results or whose scene failed to load, and exits with the status 1 when any test failed, which the CI job `tests-project` does on every push:
 
 ```sh
 haylen build --target haylen-headless
@@ -644,8 +644,8 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
-| `PLT-001` | Native events | Events that the native code of the plugin "platform-sample" sends through the bridge, and the events of the platform itself. |  |
-| `PLT-002` | Custom handler | The method "platform-sample.echo", which Java answers on Android, Objective-C on Apple platforms and JavaScript on the web. |  |
+| `PLT-001` | Native events | Checks that the native code of the plugin "platform-sample" sends the ticks of its ticker from the language of the platform and that an event sent from Lua arrives, failing where the project builds the native code and it is missing, next to the events of the platform itself. |  |
+| `PLT-002` | Custom handler | Checks the answer of the method "platform-sample.echo", which Java gives on Android, Objective-C on Apple platforms and JavaScript on the web, and its failure without a text, failing where the project builds the native code and it is missing. |  |
 | `PLT-003` | Window and device | Platform, backend, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network. |  |
 | `PLT-004` | System | What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration. |  |
 | `PLT-005` | Dialogs | A native message with three buttons, the pickers of files to open, of the destination of a save and of a folder, and a message that the app gives up. |  |

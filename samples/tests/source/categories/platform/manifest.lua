@@ -4,8 +4,8 @@ return {
     title = 'Platform',
     description = 'The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", the native dialogs and every event of the platform.',
     tests = {
-        {code = 'PLT-001', title = 'Native events', description = 'Events that the native code of the plugin "platform-sample" sends through the bridge, and the events of the platform itself.', module = 'native-events'},
-        {code = 'PLT-002', title = 'Custom handler', description = 'The method "platform-sample.echo", which Java answers on Android, Objective-C on Apple platforms and JavaScript on the web.', module = 'custom-handler'},
+        {code = 'PLT-001', title = 'Native events', description = 'Checks that the native code of the plugin "platform-sample" sends the ticks of its ticker from the language of the platform and that an event sent from Lua arrives, failing where the project builds the native code and it is missing, next to the events of the platform itself.', module = 'native-events'},
+        {code = 'PLT-002', title = 'Custom handler', description = 'Checks the answer of the method "platform-sample.echo", which Java gives on Android, Objective-C on Apple platforms and JavaScript on the web, and its failure without a text, failing where the project builds the native code and it is missing.', module = 'custom-handler'},
         {code = 'PLT-003', title = 'Window and device', description = 'Platform, backend, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network.', module = 'window'},
         {code = 'PLT-004', title = 'System', description = 'What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration.', module = 'system'},
         {code = 'PLT-005', title = 'Dialogs', description = 'A native message with three buttons, the pickers of files to open, of the destination of a save and of a folder, and a message that the app gives up.', module = 'dialogs'},

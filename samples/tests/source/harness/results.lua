@@ -1,4 +1,5 @@
--- Rows of checks that a test draws on its stage: a state, a name and a detail. The states are waiting, pass, fail, info and skip, which marks what does not apply to the platform, such as an unsupported call. Every row that settles in a new state goes to the log with the code of the test.
+-- Rows of checks that a test draws on its stage: a state, a name and a detail. The states are waiting, pass, fail, info and skip, which marks what does not apply to the platform, such as an unsupported call. Every row that settles in a new state goes to the log with the code of the test, and a row that fails publishes the event "testCheckFailed", which fails the test in a run of every test.
+local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local log = require('haylen.log')
@@ -29,6 +30,9 @@ function Results:set(key, state, name, detail)
     if settled then
         local write = state == 'fail' and log.warning or log.info
         write(string.format('[%s] %s: %s. %s', self.code, Results.marks[state], name, row.detail))
+    end
+    if settled and state == 'fail' then
+        events.emit('testCheckFailed', {code = self.code, message = name .. ': ' .. row.detail})
     end
 end
 

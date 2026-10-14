@@ -4,6 +4,11 @@ local platform = require('haylen.platform')
 local handle = platform.plugin('platform-sample')
 local platformSample = {}
 
+-- Whether the native code of the plugin runs on this platform, which the desktop player never loads.
+function platformSample.available()
+    return handle.native
+end
+
 -- Sends a text to the native code, which answers with `{echo, characters, language, system}`, or fails when the text is empty.
 function platformSample.echo(text)
     return handle:call('echo', {text = text})
