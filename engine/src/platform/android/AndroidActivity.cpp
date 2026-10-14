@@ -2,8 +2,6 @@
 
 #include "sokol_app.h"
 
-#include "sokol_app.h"
-
 namespace haylen::platform {
 
 std::mutex& AndroidActivity::mutex = *new std::mutex();
