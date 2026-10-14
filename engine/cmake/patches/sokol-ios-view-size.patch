@@ -1,6 +1,6 @@
 --- a/sokol_app.h
 +++ b/sokol_app.h
-@@ -6957,7 +6957,7 @@
+@@ -6958,7 +6958,7 @@
  }
  
  _SOKOL_PRIVATE void _sapp_ios_update_dimensions(void) {

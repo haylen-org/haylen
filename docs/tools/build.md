@@ -10,7 +10,7 @@ Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler.
 
 | Tool | Version | Location | Needed by |
 | --- | --- | --- | --- |
-| `sokol-shdc` | commit `11d0cf6` of `floooh/sokol-tools-bin` | `.tools/sokol-shdc-11d0cf6` | Every build. Prebuilt binaries exist for macOS (arm64 and x64), Linux (arm64 and x64) and Windows (x64). |
+| `sokol-shdc` | commit `b975d56` of `floooh/sokol-tools-bin` | `.tools/sokol-shdc-b975d56` | Every build. Prebuilt binaries exist for macOS (arm64 and x64), Linux (arm64 and x64) and Windows (x64). |
 | Emscripten SDK | 6.0.10 | `.tools/emsdk` | Web builds. It is cloned with `git`. |
 | Gradle | 9.8.0 | `.tools/gradle-9.8.0` | The Android library and Android apps. |
 | XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen` | Apple apps whose plugins add to the Apple project, which haylen.py generates again. macOS only. |
@@ -218,7 +218,7 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it. |
 | Varn | commit `0248f79` | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links, and Varn picks the HTTP client driver of each platform itself: the Apple driver on iOS, tvOS and Mac Catalyst, the Android driver on Android and the fetch driver on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. Varn builds OpenSSL with its own `make` as one step of the build, with the jobs that `CMAKE_BUILD_PARALLEL_LEVEL` names when the tree is configured and one job without it, and `haylen.py` leaves the variable out, so a build never runs more jobs than it was given. |
-| Sokol | commit `2e75443` | Headers only. The runtime compiles the implementation for the chosen backend, with the patches in `engine/cmake/patches` that the [distribution guide](distribution.md#notes-on-dependencies) describes. |
+| Sokol | commit `5e94d12` | Headers only. The runtime compiles the implementation for the chosen backend, with the patches in `engine/cmake/patches` that the [distribution guide](distribution.md#notes-on-dependencies) describes. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash, whose prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images, and publishes no releases, so it is pinned to a commit of its default branch. |

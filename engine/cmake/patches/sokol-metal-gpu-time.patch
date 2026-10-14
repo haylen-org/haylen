@@ -1,6 +1,6 @@
 --- a/sokol_gfx.h
 +++ b/sokol_gfx.h
-@@ -5773,6 +5773,8 @@
+@@ -6216,6 +6216,8 @@
  SOKOL_GFX_API_DECL const void* sg_mtl_compute_command_encoder(void);
  // Metal: return __bridge-casted MTLCommandQueue
  SOKOL_GFX_API_DECL const void* sg_mtl_command_queue(void);
@@ -9,7 +9,7 @@
  // Metal: get internal __bridge-casted buffer resource objects
  SOKOL_GFX_API_DECL sg_mtl_buffer_info sg_mtl_query_buffer_info(sg_buffer buf);
  // Metal: get internal __bridge-casted image resource objects
-@@ -17222,12 +17224,20 @@
+@@ -17806,6 +17808,8 @@
      }
  }
  
@@ -18,6 +18,7 @@
  _SOKOL_PRIVATE void _sg_mtl_commit(void) {
      SOKOL_ASSERT(nil == _sg.mtl.render_cmd_encoder);
      SOKOL_ASSERT(nil == _sg.mtl.compute_cmd_encoder);
+@@ -17814,6 +17818,12 @@
  
      // commit the frame's command buffer
      if (_sg.mtl.cmd_buffer) {
@@ -30,18 +31,18 @@
          [_sg.mtl.cmd_buffer commit];
      }
  
-@@ -28335,6 +28345,14 @@
-         } else {
-             return 0;
-         }
+@@ -29244,6 +29254,14 @@
+     #endif
+ }
+ 
++SOKOL_API_IMPL uint64_t sg_mtl_gpu_frame_nanoseconds(void) {
++    #if defined(SOKOL_METAL)
++        return __atomic_load_n(&_sg_mtl_gpu_frame_ns, __ATOMIC_RELAXED);
 +    #else
 +        return 0;
 +    #endif
 +}
 +
-+SOKOL_API_IMPL uint64_t sg_mtl_gpu_frame_nanoseconds(void) {
-+    #if defined(SOKOL_METAL)
-+        return __atomic_load_n(&_sg_mtl_gpu_frame_ns, __ATOMIC_RELAXED);
-     #else
-         return 0;
-     #endif
+ SOKOL_API_IMPL sg_mtl_buffer_info sg_mtl_query_buffer_info(sg_buffer buf_id) {
+     SOKOL_ASSERT(_sg.valid);
+     _SG_STRUCT(sg_mtl_buffer_info, res);

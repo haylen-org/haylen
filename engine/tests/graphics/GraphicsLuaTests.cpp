@@ -57,8 +57,8 @@ TEST(GraphicsLuaTest, UpdatesDynamicTextures) {
 
     fixture.runLua("minimap:update(string.rep(string.char(0, 0, 0, 255), 2)) minimap:update(string.rep(string.char(255, 255, 255, 255), 2))");
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 8U);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 8U);
     EXPECT_EQ(fixture.lua("return require('haylen.graphics2d').stats().uploadedBytes"), "8");
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {dynamic = true, pixels = string.char(1, 2, 3, 4)}) return t.width"), "1");
     EXPECT_NE(fixture.lua("minimap:update('short')").find("The pixels do not match the size of the dynamic texture."), std::string::npos);

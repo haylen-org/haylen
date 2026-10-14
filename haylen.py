@@ -70,7 +70,7 @@ ANDROID_KEY_NAME = "CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR"
 # The command `keytool` refuses passwords shorter than this.
 ANDROID_KEY_PASSWORD_LENGTH = 6
 
-SHDC_COMMIT = "11d0cf678105d614d675e6d9bd2aaf3eeff12f8c"
+SHDC_COMMIT = "b975d5642093d62e76a1e088bdae945d6d8b8ff2"
 # App shaders include the shader library as `haylen/material.glsl`, which sokol-shdc finds from its working directory.
 SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
 SHADER_SLANGS = "glsl430:glsl300es:hlsl5:metal_macos:metal_ios:metal_sim:wgsl"

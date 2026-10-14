@@ -128,8 +128,8 @@ TEST(FontTest, UploadsItsAtlasOncePerFrameForTheGlyphsOfEveryDraw) {
         font.sync();
     }
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, static_cast<std::uint32_t>(page.getWidth() * page.getHeight()));
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, static_cast<std::uint32_t>(page.getWidth() * page.getHeight()));
     EXPECT_EQ(font.getPage(0).getResource()->image.id, image);
 }
 

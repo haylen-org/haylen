@@ -1,5 +1,6 @@
 #include "graphics/DeviceState.hpp"
 
+#include <bit>
 #include <memory>
 #include <utility>
 
@@ -86,8 +87,7 @@ DeviceState::ImageViews DeviceState::createTextureImage(const Image& image, bool
 
 DeviceState::ImageViews DeviceState::createDynamicImage(int width, int height, sg_pixel_format format) {
     sg_image_desc imageDesc{};
-    imageDesc.usage.immutable = false;
-    imageDesc.usage.dynamic_update = true;
+    imageDesc.usage.copy_dst = true;
     imageDesc.width = width;
     imageDesc.height = height;
     imageDesc.pixel_format = format;
@@ -127,6 +127,28 @@ void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, 
     resource->staged.assign(pixels.begin(), pixels.end());
 }
 
+void DeviceState::reserveStaging(std::size_t bytes) {
+    if (bytes <= stagingSize) {
+        return;
+    }
+
+    if (staging.id != SG_INVALID_ID) {
+        graveyard->buryBuffer(staging);
+    }
+    stagingSize = std::bit_ceil(bytes);
+    sg_buffer_desc desc{};
+    desc.size = stagingSize;
+    desc.usage.staging_buffer = true;
+    desc.usage.write_transient = true;
+    desc.usage.copy_src = true;
+    desc.label = "haylen-texture-staging";
+    staging = Gpu::makeBuffer(desc);
+}
+
+std::size_t DeviceState::getStagingBytes(const TextureResource& resource) noexcept {
+    return (resource.staged.size() + 3U) & ~std::size_t{3U};
+}
+
 std::size_t DeviceState::getImageBytes(int width, int height, sg_pixel_format format) {
     return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * static_cast<std::size_t>(sg_query_pixelformat(format).bytes_per_pixel);
 }
@@ -134,6 +156,7 @@ std::size_t DeviceState::getImageBytes(int width, int height, sg_pixel_format fo
 RenderTarget DeviceState::createRenderTarget(int width, int height, sg_pixel_format format, Texture::Options options) {
     sg_image_desc imageDesc{};
     imageDesc.usage.color_attachment = true;
+    imageDesc.usage.copy_src = true;
     imageDesc.width = width;
     imageDesc.height = height;
     imageDesc.pixel_format = format;

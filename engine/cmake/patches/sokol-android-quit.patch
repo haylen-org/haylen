@@ -11,11 +11,10 @@ Ends Android apps the way Android expects. When the activity is destroyed, the c
      key repeat flag     | YES     | YES   | YES    | ---   | ---     | YES
      windowed            | YES     | YES   | YES    | ---   | ---     | YES
      fullscreen          | YES     | YES   | YES    | YES   | YES     | YES(3)
-@@ -840,6 +840,15 @@
-           sapp_request_quit() function. The event handler callback code can handle
+@@ -841,6 +841,15 @@
            this event by calling sapp_cancel_quit() to cancel the quit.
            If the event is ignored, the application will quit as usual.
-+
+ 
 +    On Android, a programmatic quit calls the cleanup callback and finishes
 +    the activity, the same way the back button does. When the activity is
 +    destroyed, the cleanup callback is called as well, also when the native
@@ -24,10 +23,11 @@ Ends Android apps the way Android expects. When the activity is destroyed, the c
 +    terminated with exit(), which would run the static destructors of the
 +    process while Android's own rendering threads still use them, and a new
 +    activity in the same process starts with a cleared sokol_app state.
- 
++
      On the web platform, the quit behaviour differs from native platforms,
      because of web-specific restrictions:
-@@ -11192,11 +11201,14 @@
+ 
+@@ -11216,11 +11225,14 @@
  }
  
  _SOKOL_PRIVATE void _sapp_android_cleanup(void) {
@@ -46,7 +46,7 @@ Ends Android apps the way Android expects. When the activity is destroyed, the c
      }
      /* always try to cleanup by destroying egl context */
      _sapp_android_cleanup_egl();
-@@ -11217,6 +11229,16 @@
+@@ -11241,6 +11253,16 @@
      _sapp_android_update_dimensions(_sapp.android.current.window, false);
      _sapp_frame();
      eglSwapBuffers(_sapp.android.display, _sapp.android.surface);
@@ -63,7 +63,7 @@ Ends Android apps the way Android expects. When the activity is destroyed, the c
  }
  
  _SOKOL_PRIVATE bool _sapp_android_touch_event(const AInputEvent* e) {
-@@ -11647,8 +11669,9 @@
+@@ -11671,8 +11693,9 @@
  
      _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_DONE);
  

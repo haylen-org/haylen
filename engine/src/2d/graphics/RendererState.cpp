@@ -772,7 +772,6 @@ void RendererState::ensureBuffer(sg_buffer& buffer, std::size_t& capacity, std::
     sg_buffer_desc desc{};
     desc.size = capacity * elementSize;
     desc.usage.write_transient = true;
-    desc.usage.immutable = false;
     desc.usage.vertex_buffer = !isIndexBuffer;
     desc.usage.index_buffer = isIndexBuffer;
     desc.label = isIndexBuffer ? "haylen-index-buffer" : "haylen-vertex-buffer";

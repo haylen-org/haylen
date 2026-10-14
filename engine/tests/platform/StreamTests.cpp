@@ -111,11 +111,11 @@ TEST_F(VideoStreamTest, ReachesTheTextureAtTheStartOfTheNextFrame) {
     fixture.frames(1);
     EXPECT_EQ(stream->getFrameCount(), 1U);
     EXPECT_EQ(texture.getSize(), math::Vec2(2.0F, 2.0F));
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 16U);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 16U);
 
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 0U);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 0U);
 }
 
 TEST(PluginStreamsTest, OpensEachStreamOnceByPluginAndName) {

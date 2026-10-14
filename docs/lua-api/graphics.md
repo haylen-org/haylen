@@ -255,7 +255,7 @@ print(texture.width, texture.height, texture.filter, texture.wrap, texture == as
 
 ### texture:update(pixels)
 
-Replaces every pixel of a texture made with `dynamic = true` by `pixels`, a string of raw RGBA bytes, four per pixel, row by row from the top, whose length is `width * height * 4`. The texture keeps its size, and every draw of the frame shows the new pixels. The GPU takes whole textures, so a texture that changes several times in one frame sends only its last pixels, once, before the frame draws, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`
+Replaces every pixel of a texture made with `dynamic = true` by `pixels`, a string of raw RGBA bytes, four per pixel, row by row from the top, whose length is `width * height * 4`. The texture keeps its size, and every draw of the frame shows the new pixels. A texture that changes several times in one frame sends only its last pixels, whole and once, before the frame draws, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`
 
 ```lua
 local graphics = require('haylen.graphics')

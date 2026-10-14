@@ -235,20 +235,20 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
 
     // The first pixels wait for the next frame like any later change.
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 2U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 16U + 16U);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 2U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 16U + 16U);
 
     for (std::uint8_t glyph = 1; glyph <= 12; ++glyph) {
         device.updateTexture(atlas, std::vector<std::uint8_t>(16, glyph));
     }
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 16U);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 16U);
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().uploadedBytes, 16U);
     EXPECT_EQ(atlas.getResource()->image.id, atlasImage);
 
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 0U);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 0U);
 
     // A dynamic texture that takes a new size keeps its handle and stays dynamic, and its new pixels wait for the next frame.
     device.replaceTexture(image, graphics::Image(3, 1, math::Color::white()));
@@ -256,8 +256,8 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     EXPECT_EQ(image.getResource()->staged.size(), 12U);
     device.updateTexture(image, std::vector<std::uint8_t>(12, 7));
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 12U);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 12U);
 
     // A texture released before the upload is skipped.
     graphics::Texture temporary = device.createDynamicTexture(graphics::Image(1, 1, math::Color::white()));

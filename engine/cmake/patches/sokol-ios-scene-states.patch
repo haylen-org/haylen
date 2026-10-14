@@ -1,6 +1,6 @@
 --- a/sokol_app.h
 +++ b/sokol_app.h
-@@ -7292,6 +7292,14 @@
+@@ -7288,6 +7288,14 @@
  }
  
  - (void)sceneWillResignActive:(UIScene*)scene {
@@ -15,7 +15,7 @@
      if (!_sapp.ios.suspended) {
          _sapp.ios.suspended = true;
          #if defined(SOKOL_METAL)
-@@ -7303,7 +7311,7 @@
+@@ -7299,7 +7307,7 @@
      }
  }
  

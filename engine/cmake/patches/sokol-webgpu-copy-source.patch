@@ -1,11 +1,12 @@
 --- a/sokol_gfx.h
 +++ b/sokol_gfx.h
-@@ -19168,7 +19168,7 @@
-         wgpu_tex_desc.label = _sg_wgpu_stringview(desc->label);
-         wgpu_tex_desc.usage = WGPUTextureUsage_TextureBinding;
-         if (desc->usage.color_attachment || desc->usage.resolve_attachment || desc->usage.depth_stencil_attachment) {
--            wgpu_tex_desc.usage |= WGPUTextureUsage_RenderAttachment;
-+            wgpu_tex_desc.usage |= WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopySrc;
-         } else {
-             wgpu_tex_desc.usage |= WGPUTextureUsage_CopyDst;
+@@ -19799,6 +19799,9 @@
+         if (desc->usage.storage_image) {
+             wgpu_tex_desc.usage |= WGPUTextureUsage_StorageBinding;
          }
++        if (desc->usage.copy_src) {
++            wgpu_tex_desc.usage |= WGPUTextureUsage_CopySrc;
++        }
+         wgpu_tex_desc.dimension = _sg_wgpu_texture_dimension(img->cmn.type);
+         wgpu_tex_desc.size.width = (uint32_t) img->cmn.width;
+         wgpu_tex_desc.size.height = (uint32_t) img->cmn.height;

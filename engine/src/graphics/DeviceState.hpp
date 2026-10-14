@@ -37,6 +37,9 @@ struct DeviceState {
     std::vector<std::weak_ptr<TextureResource>> uploadedTextures;
     std::vector<std::weak_ptr<TextureResource>> uploadingTextures;
     std::uint64_t uploads = 0;
+    // The buffer that carries the pixels of the changed dynamic textures to their images, which grows to the largest upload of a frame.
+    sg_buffer staging{};
+    std::size_t stagingSize = 0;
 
     // A render target whose pixels a caller asked for, and the copy of them once the frame that asked was submitted.
     struct PendingRead {
@@ -70,6 +73,10 @@ struct DeviceState {
 
     // Keeps the pixels of a dynamic texture for the next upload, replacing the ones it kept before.
     void stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels);
+    // Makes the staging buffer hold at least the bytes, burying the smaller one it replaces.
+    void reserveStaging(std::size_t bytes);
+    // Returns the bytes that the pixels of a texture take in the staging buffer, where every texture starts at a multiple of four bytes.
+    [[nodiscard]] static std::size_t getStagingBytes(const TextureResource& resource) noexcept;
 
   private:
     [[nodiscard]] static std::uint8_t samplerKey(Texture::Options options) noexcept;

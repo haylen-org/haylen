@@ -10,7 +10,7 @@ Reports the scroll of precise devices, such as trackpads, in the points they mov
      int num_touches;                    // number of valid items in the touches[] array
      sapp_touchpoint touches[SAPP_MAX_TOUCHPOINTS];  // current touch points, valid in TOUCHES_BEGIN, TOUCHES_MOVED, TOUCHES_ENDED
      int window_width;                   // current window- and framebuffer sizes in pixels, always valid
-@@ -6827,15 +6828,12 @@
+@@ -6823,15 +6824,12 @@
      if (_sapp_events_enabled()) {
          float dx = (float) event.scrollingDeltaX;
          float dy = (float) event.scrollingDeltaY;
@@ -27,7 +27,7 @@ Reports the scroll of precise devices, such as trackpads, in the points they mov
              _sapp_call_event(&_sapp.event);
          }
      }
-@@ -8167,15 +8165,16 @@
+@@ -8163,15 +8161,16 @@
          _sapp_init_event(SAPP_EVENTTYPE_MOUSE_SCROLL);
          _sapp.event.modifiers = _sapp_emsc_mouse_event_mods(&emsc_event->mouse);
          /* see https://github.com/floooh/sokol/issues/339 */

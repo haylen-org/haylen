@@ -65,14 +65,14 @@ endif()
 # The `sokol_app` module scales the points that trackpads scroll down to a tenth on macOS and to a hundredth on the web, without telling them from the steps of a wheel, and counts the three lines that browsers report for a step of a wheel as four steps, so the last patch reports precise scrolls in points with a flag and the scroll of wheels in steps on every platform.
 # The `sokol_app` module reads the keys of the whole page and takes the focus moving between its elements for the focus of the app, so a page that hosts the app next to elements of its own, such as an editor, could only keep their keys from the app by stopping them before they reach those elements, so the next patch skips the keys that the runtime marks and every focus change but that of the window.
 # The `sokol_app` module turns only the arrows, Select, Menu and Play/Pause presses of UIKit into keys, so a hardware keyboard of an iPad or an Apple TV reaches the app with those keys alone, while the engine reads every key of it through GameController, so the last patch leaves the presses of keyboards to GameController and keeps the presses of remotes and game controllers.
-# The `sokol_gfx` module creates the attachments of WebGPU without the usage that copies from them, which the readback of render targets needs, so the next patch adds it.
+# The `sokol_gfx` module declares the `copy_src` usage of images without using it yet, so WebGPU textures never allow the copies out of them that the readback of render targets needs, and the next patch gives that usage to the textures that ask for it.
 # The `sokol_gfx` module measures no time on the GPU, which the traces of the profiler show, so the last patch reads it from the completed command buffer of every Metal frame.
 set(sokol_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-delegate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-gameactivity.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-scene-states.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-scroll-units.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-web-page-events.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-keyboard-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-webgpu-copy-source.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-metal-gpu-time.patch")
-set(sokol_hash d8560ddd11fb3223f3aaf6513aaa2d9be66ee7896fa1263ad51c5bd60ec52cf3)
+set(sokol_hash 8ddf2d37017e9029caca91bf6417d2c7fe0d4f52f35793864fbff70e52d23a97)
 haylen_patched_package_key(sokol_cache_key ${sokol_hash} ${sokol_patches})
 CPMAddPackage(
   NAME sokol
-  URL "https://github.com/floooh/sokol/archive/2e75443dbd4940b5aa8d76a8e479f8e4b270b9a3.tar.gz"
+  URL "https://github.com/floooh/sokol/archive/5e94d1291fea504ed911090338cf35bd9ef49a06.tar.gz"
   URL_HASH SHA256=${sokol_hash}
   PATCHES ${sokol_patches}
   CUSTOM_CACHE_KEY ${sokol_cache_key}

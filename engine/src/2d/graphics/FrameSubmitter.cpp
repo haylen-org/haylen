@@ -209,7 +209,6 @@ void FrameSubmitter::writeShadowAtlas(int rows) {
 
         sg_image_desc desc{};
         desc.usage.write_transient = true;
-        desc.usage.immutable = false;
         desc.width = lighting2d::ShadowMap::kResolution;
         desc.height = state.shadowRows;
         desc.pixel_format = SG_PIXELFORMAT_R32F;

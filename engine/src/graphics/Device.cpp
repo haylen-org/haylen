@@ -54,6 +54,9 @@ Device::Device(const DeviceSetup& setup) : state(std::make_unique<DeviceState>()
 
 Device::~Device() {
     state->white = {};
+    if (state->staging.id != SG_INVALID_ID) {
+        state->graveyard->buryBuffer(state->staging);
+    }
     state->graveyard->collect();
     state->graveyard.reset();
     for (const auto& [key, sampler] : state->samplers) {
@@ -207,19 +210,45 @@ void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t>
     state->stagePixels(resource, pixels);
 }
 
-// Sokol takes one update of an image per frame, holding its whole mip level, so every texture uploads the last pixels it received.
+// Every texture uploads the last pixels it received. Sokol takes every write into the staging buffer before the first copy out of it in a frame, so the pixels of all the textures go in before any of them is copied into its image.
 std::size_t Device::uploadTextures() {
-    std::size_t bytes = 0;
     ++state->uploads;
     std::swap(state->changedTextures, state->uploadingTextures);
+    std::size_t staged = 0;
+    for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
+        if (const std::shared_ptr<TextureResource> resource = changed.lock()) {
+            staged += DeviceState::getStagingBytes(*resource);
+        }
+    }
+    state->reserveStaging(staged);
+
+    std::size_t offset = 0;
+    for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
+        if (const std::shared_ptr<TextureResource> resource = changed.lock()) {
+            sg_write_buffer_desc write{};
+            write.src.data = {.ptr = resource->staged.data(), .size = resource->staged.size()};
+            write.dst = {.buffer = state->staging, .offset = offset};
+            sg_write_buffer_transient(&write);
+            offset += DeviceState::getStagingBytes(*resource);
+        }
+    }
+
+    std::size_t bytes = 0;
+    offset = 0;
     for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
         const std::shared_ptr<TextureResource> resource = changed.lock();
         if (!resource) {
             continue;
         }
-        sg_image_data data{};
-        data.mip_levels[0] = {.ptr = resource->staged.data(), .size = resource->staged.size()};
-        sg_update_image(resource->image, &data);
+        sg_copy_buffer_to_image_desc copy{};
+        copy.src.buffer = state->staging;
+        copy.src.offset = offset;
+        copy.src.bytes_per_row = static_cast<int>(resource->staged.size()) / resource->height;
+        copy.src.bytes_per_slice = static_cast<int>(resource->staged.size());
+        copy.dst.image = resource->image;
+        copy.size = {.width = resource->width, .height = resource->height, .num_slices = 1};
+        sg_copy_buffer_to_image(&copy);
+        offset += DeviceState::getStagingBytes(*resource);
         bytes += resource->staged.size();
         resource->pending = false;
         resource->uploadedAt = state->uploads;

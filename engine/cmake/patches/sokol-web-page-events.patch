@@ -1,18 +1,18 @@
 --- a/sokol_app.h
 +++ b/sokol_app.h
-@@ -7580,6 +7580,11 @@
- #ifdef __cplusplus
+@@ -7567,6 +7567,11 @@
  } /* extern "C" */
  #endif
-+
+ 
 +/* A page that hosts the app next to elements of its own, such as an editor, keeps their keys from the app by naming the time stamp of each one in `Module.sappIgnoredKey`, so those elements still hear their keys. */
 +EM_JS(int, sapp_js_is_ignored_key, (double timestamp), {
 +    return Module.sappIgnoredKey === timestamp ? 1 : 0;
 +});
- 
++
  EM_JS(void, sapp_js_add_beforeunload_listener, (void), {
      Module.sokol_beforeunload = (event) => {
-@@ -8321,6 +8326,9 @@
+         if (__sapp_html5_get_ask_leave_site() != 0) {
+@@ -8307,6 +8312,9 @@
  _SOKOL_PRIVATE EM_BOOL _sapp_emsc_key_cb(int emsc_type, const EmscriptenKeyboardEvent* emsc_event, void* user_data) {
      _SOKOL_UNUSED(user_data);
      bool consume_event = false;
@@ -22,7 +22,7 @@
      if (_sapp_events_enabled()) {
          sapp_event_type type;
          switch (emsc_type) {
-@@ -8433,8 +8441,11 @@
+@@ -8419,8 +8427,11 @@
  
  _SOKOL_PRIVATE EM_BOOL _sapp_emsc_focus_cb(int emsc_type, const EmscriptenFocusEvent* emsc_event, void* user_data) {
      _SOKOL_UNUSED(emsc_type);
@@ -35,7 +35,7 @@
      if (_sapp_events_enabled()) {
          _sapp_init_event(SAPP_EVENTTYPE_FOCUSED);
          _sapp_call_event(&_sapp.event);
-@@ -8444,8 +8455,11 @@
+@@ -8430,8 +8441,11 @@
  
  _SOKOL_PRIVATE EM_BOOL _sapp_emsc_blur_cb(int emsc_type, const EmscriptenFocusEvent* emsc_event, void* user_data) {
      _SOKOL_UNUSED(emsc_type);

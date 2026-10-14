@@ -1,6 +1,6 @@
 --- a/sokol_app.h
 +++ b/sokol_app.h
-@@ -7146,6 +7146,16 @@
+@@ -7142,6 +7142,16 @@
      bool consume_event = false;
      if (_sapp_events_enabled()) {
          for (UIPress *press in presses) {
