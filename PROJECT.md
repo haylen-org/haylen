@@ -599,7 +599,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 ### 8.6 Animação
 
 - [x] **Clipes de sprite** (`animation2d::Animation`): frames com duração, modos once, loop e ping-pong, velocidade, eventos por frame e fim.
-- [x] **Conjuntos de animação** a partir de tiras, atlas ou tags do Aseprite.
+- [x] **Conjuntos de animação** a partir de tiras, atlas ou tags de frames de um atlas.
 - [x] **Player de animação** (`animation2d::Animator`): play, reinício, parada, velocidade, frame atual, tempo, callbacks de frame e de fim e fila de animações que toca a próxima quando a atual termina (`animator:queue` e `animator:clearQueue`).
 - [x] **Tweens** (`core::TweenManager` e `haylen.tween`): float, Vec2 e Color em qualquer tabela ou userdata, com easing, atraso, repetição (`repeatCount`, negativo para sempre), yoyo, callbacks, pausa, `kill` e `wait()` com Promise, timelines e tags para matar, completar, pausar e retomar grupos (`killTag`, `completeTag`, `pauseTag` e `resumeTag`). O grupo S da seção 14.2 lista o sistema completo.
 
