@@ -18,6 +18,8 @@ function(haylen_static_closure target out_archives out_externals)
     endif()
     list(APPEND visited "${item}")
     if(NOT TARGET "${item}")
+      # Dependencies name a system library with `-l` or by its plain name, and both spellings join as the plain name so the link names it once.
+      string(REGEX REPLACE "^-l([^ ]+)$" "\\1" item "${item}")
       list(APPEND externals "${item}")
       continue()
     endif()
