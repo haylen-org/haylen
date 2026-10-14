@@ -260,6 +260,11 @@ TEST(EnvironmentTest, LoadsChunksOnlyAsText) {
     EXPECT_NE(fixture.lua("return dofile(folder .. '/binary.lua')").find("attempt to load a binary chunk (mode is 't')"), std::string::npos);
 }
 
+TEST(EnvironmentTest, CollectsGarbageInGenerations) {
+    test::EngineFixture fixture;
+    EXPECT_EQ(fixture.lua("local previous = collectgarbage('incremental') collectgarbage('generational') return previous"), "generational");
+}
+
 TEST(EnvironmentTest, KeepsEngineMetatablesOutOfReach) {
     test::EngineFixture fixture;
     fixture.runLua("point = require('haylen.math').vec2(1, 2)");
