@@ -775,9 +775,11 @@ def command_sdk(args: argparse.Namespace) -> None:
 def check_consumer(mode: str, config: str, jobs: int, sdk: Path) -> None:
     """Builds the consumer project of the engine tests, which adds the engine through `add_subdirectory`, CPM or the installed SDK like another project does, and compiles a C++ app against its public headers."""
     directory = BUILD_ROOT / "consumers" / f"{mode}-{config.lower()}"
-    # The project shares the dependency cache of the build trees of the engine, instead of downloading every dependency into its own folder.
-    cache = os.environ.get("CPM_SOURCE_CACHE", str(ROOT / ".cache" / "cpm"))
-    command = ["cmake", "-S", CONSUMER_PROJECT, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_CONSUMER_MODE={mode}", f"-DCPM_SOURCE_CACHE={cache}"]
+    command = ["cmake", "-S", CONSUMER_PROJECT, "-B", directory, f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_CONSUMER_MODE={mode}"]
+    # A project that builds the engine from its sources shares the dependency cache of the build trees of the engine, instead of downloading every dependency into its own folder, and the installed SDK needs neither.
+    if mode != "package":
+        cache = os.environ.get("CPM_SOURCE_CACHE", str(ROOT / ".cache" / "cpm"))
+        command += [f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCPM_SOURCE_CACHE={cache}"]
     if host_name() != "windows" or shutil.which("ninja"):
         command += ["-G", "Ninja"]
     if host_name() == "macos":
