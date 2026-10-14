@@ -78,6 +78,47 @@ Module.haylen = Module.haylen || {};
         }
     };
 
+    // The now-playing controls of the browser through the Media Session API, whose actions the media keys of keyboards and headsets send too. The commands reach the engine in the order of `MediaSession::Command`, and the play and pause actions send the toggle of an app that offers only the toggle, since browsers have no toggle action.
+    const mediaActions = ["play", "pause", null, "stop", "nexttrack", "previoustrack", "seekto"];
+    let mediaArtwork = null;
+    haylen.nowPlaying = function (info, artwork) {
+        if (!("mediaSession" in navigator)) {
+            return;
+        }
+        const session = navigator.mediaSession;
+        if (mediaArtwork) {
+            URL.revokeObjectURL(mediaArtwork);
+            mediaArtwork = null;
+        }
+        const offers = (command) => info !== null && (info.commands & (1 << command)) !== 0;
+        mediaActions.forEach(function (action, command) {
+            if (action === null) {
+                return;
+            }
+            const sent = command <= 1 && !offers(command) && offers(2) ? 2 : command;
+            const handler = offers(sent) ? (details) => Module._haylen_web_media_command(sent, details.seekTime || 0) : null;
+            // A browser that lacks an action throws, and the action is then not offered there.
+            try {
+                session.setActionHandler(action, handler);
+            } catch (error) {
+                return;
+            }
+        });
+        if (info === null) {
+            session.metadata = null;
+            session.playbackState = "none";
+            return;
+        }
+        if (artwork.length > 0) {
+            mediaArtwork = URL.createObjectURL(new Blob([artwork]));
+        }
+        session.metadata = new MediaMetadata({ title: info.title, artist: info.artist, album: info.album, artwork: mediaArtwork ? [{ src: mediaArtwork }] : [] });
+        session.playbackState = info.playing ? "playing" : "paused";
+        if (info.duration > 0 && session.setPositionState) {
+            session.setPositionState({ duration: info.duration, position: Math.min(info.position, info.duration), playbackRate: 1 });
+        }
+    };
+
     // Plays a rumble with both motors on the gamepad of the Gamepad API at the index, where the browser and the gamepad offer it, and stops it when both motors are 0.
     haylen.rumbleGamepad = function (index, low, high, seconds) {
         const pad = navigator.getGamepads ? navigator.getGamepads()[index] : null;

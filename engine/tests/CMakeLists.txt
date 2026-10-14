@@ -154,6 +154,7 @@ set(HAYLEN_TEST_SOURCES
   platform/HeadlessPlayerTests.cpp
   platform/LinuxFilePatternTests.cpp
   platform/LinuxSystemReaderTests.cpp
+  platform/MediaSessionTests.cpp
   platform/NativeLuaTests.cpp
   platform/NativeTests.cpp
   platform/NativeViewsTests.cpp

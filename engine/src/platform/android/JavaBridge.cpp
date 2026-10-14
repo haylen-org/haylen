@@ -44,6 +44,8 @@ jmethodID JavaBridge::cancelScreenMethod = nullptr;
 jclass JavaBridge::accessibilityClass = nullptr;
 jmethodID JavaBridge::updateAccessibilityMethod = nullptr;
 jmethodID JavaBridge::announceMethod = nullptr;
+jclass JavaBridge::mediaSessionClass = nullptr;
+jmethodID JavaBridge::updateMediaSessionMethod = nullptr;
 std::atomic<bool> JavaBridge::accessibilityWanted{false};
 std::mutex& JavaBridge::urlMutex = *new std::mutex();
 std::unordered_map<std::int64_t, std::function<void(bool)>>& JavaBridge::urlCallbacks = *new std::unordered_map<std::int64_t, std::function<void(bool)>>();
@@ -64,7 +66,8 @@ jint JavaBridge::load(JavaVM* vm) {
     dialogsClass = findClass(*env, "dev/haylen/HaylenDialogs");
     screensClass = findClass(*env, "dev/haylen/HaylenScreens");
     accessibilityClass = findClass(*env, "dev/haylen/HaylenAccessibilityTree");
-    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr) {
+    mediaSessionClass = findClass(*env, "dev/haylen/HaylenMediaSession");
+    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr) {
         return JNI_ERR;
     }
     dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B)V");
@@ -89,8 +92,9 @@ jint JavaBridge::load(JavaVM* vm) {
     cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
     updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
     announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
+    updateMediaSessionMethod = findMethod(*env, mediaSessionClass, "update", "([B[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -307,6 +311,19 @@ void JavaBridge::announce(std::string_view text, bool interrupt) {
     env.CallStaticVoidMethod(accessibilityClass, announceMethod, bytes, static_cast<jboolean>(interrupt ? JNI_TRUE : JNI_FALSE));
     env.DeleteLocalRef(bytes);
     clearException(env, "dev.haylen.HaylenAccessibilityTree.announce");
+}
+
+void JavaBridge::updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork) {
+    JNIEnv& env = getEnv();
+    const jbyteArray info = infoJson.empty() ? nullptr : toBytes(env, infoJson);
+    const jbyteArray bytes = artwork.empty() ? nullptr : toBytes(env, std::string_view(reinterpret_cast<const char*>(artwork.data()), artwork.size()));
+    env.CallStaticVoidMethod(mediaSessionClass, updateMediaSessionMethod, info, bytes);
+    for (const jbyteArray local : {info, bytes}) {
+        if (local != nullptr) {
+            env.DeleteLocalRef(local);
+        }
+    }
+    clearException(env, "dev.haylen.HaylenMediaSession.update");
 }
 
 void JavaBridge::showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data) {

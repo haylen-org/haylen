@@ -320,6 +320,10 @@ void SokolHost::openUrl(std::string_view url, std::function<void(bool opened)> c
     Services::openUrl(std::string(url), std::move(callback));
 }
 
+void SokolHost::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+    Services::setNowPlaying(value);
+}
+
 void SokolHost::vibrate(float seconds) {
     Services::vibrate(seconds);
 }

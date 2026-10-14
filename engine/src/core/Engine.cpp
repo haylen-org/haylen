@@ -67,6 +67,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
         });
     // clang-format on
     current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
+    current.mediaSession = std::make_unique<platform::MediaSession>(host, current.events);
     current.accessibility = std::make_unique<platform::Accessibility>(host, current.events);
     current.dialogs = std::make_unique<platform::Dialogs>(host, current.storage->getRoot() / "tmp" / "dialogs");
     current.screens = std::make_unique<platform::Screens>(host, *current.platform, [this] { return getAppState(); });
@@ -125,6 +126,7 @@ Engine::~Engine() {
     current.accessibility.reset();
     current.system->stopRumbles();
     current.system.reset();
+    current.mediaSession.reset();
     current.runtime->stop();
     current.jobs->discardQueued();
     current.runtime.reset();
@@ -304,6 +306,7 @@ void Engine::frame(double frameSeconds) {
             current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
             current.platform->pump();
             current.system->pump();
+            current.mediaSession->pump();
             current.accessibility->pump();
             current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
             current.dialogs->pump();
@@ -1107,6 +1110,10 @@ platform::Bridge& Engine::getPlatform() noexcept {
 
 platform::System& Engine::getSystem() noexcept {
     return *state->system;
+}
+
+platform::MediaSession& Engine::getMediaSession() noexcept {
+    return *state->mediaSession;
 }
 
 platform::Accessibility& Engine::getAccessibility() noexcept {

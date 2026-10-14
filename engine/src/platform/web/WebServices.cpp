@@ -112,6 +112,10 @@ EM_JS(void, haylen_js_vibrate, (float seconds), {
     Module.haylen.vibrate(seconds);
 });
 
+EM_JS(void, haylen_js_now_playing, (const char* json, const uint8_t* artwork, int size), {
+    Module.haylen.nowPlaying(json ? JSON.parse(UTF8ToString(json)) : null, HEAPU8.slice(artwork, artwork + size));
+});
+
 EM_JS(void, haylen_js_rumble_gamepad, (int index, float low, float high, float seconds), {
     Module.haylen.rumbleGamepad(index, low, high, seconds);
 });
@@ -304,6 +308,15 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 
 void Services::vibrate(float seconds) {
     haylen_js_vibrate(seconds);
+}
+
+void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+    if (!value) {
+        haylen_js_now_playing(nullptr, nullptr, 0);
+        return;
+    }
+    const std::string json = core::Json{{"title", value->title}, {"artist", value->artist}, {"album", value->album}, {"duration", value->duration}, {"position", value->position}, {"playing", value->playing}, {"commands", value->commands}}.dump();
+    haylen_js_now_playing(json.c_str(), reinterpret_cast<const std::uint8_t*>(value->artwork.data()), static_cast<int>(value->artwork.size()));
 }
 
 // Browsers never tell whether a screen reader runs, so the page keeps its mirror of the UI current all the time.

@@ -1,6 +1,6 @@
 # haylen.system
 
-`haylen.system` tells what the device and its operating system are, follows the theme of the system and the battery, and offers the services every system has for apps: opening a url with the app that handles it and vibrating the device. Use it to pick the language of a first launch, to match the colors of the app to the system, to lower the work of the app on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [haylen.dialogs](dialogs.md), and the methods of the app and its plugins in [haylen.platform](platform.md).
+`haylen.system` tells what the device and its operating system are, follows the theme of the system and the battery, and offers the services every system has for apps: opening a url with the app that handles it, vibrating the device and showing what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to lower the work of the app on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [haylen.dialogs](dialogs.md), and the methods of the app and its plugins in [haylen.platform](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -103,6 +103,59 @@ end
 onHit()
 ```
 
+### system.setNowPlaying(info)
+
+Shows what the app plays in the now-playing controls of the system, such as the lock screen and the control center of iPhones, the media notification of Android, the media controls of Windows and the media hub of browsers, and makes the media keys of keyboards, the buttons of headsets and the play and pause buttons of TV remotes reach the app as [`mediaCommand` events](#events). A second call replaces what showed, so an app calls it again when the track, the position or the playing state changes, and the controls move the position on by themselves while it plays. The table `info` takes these keys, and unknown keys raise `Unknown option "<key>".`:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `title`, `artist`, `album` | string | `''` | The texts the controls show. |
+| `duration` | number | `0` | The length in seconds, where `0` is a length that is not known, such as a live stream, which shows no position. |
+| `position` | number | `0` | Where the playback is, in seconds. |
+| `playing` | boolean | `false` | Whether it plays, which the play and pause control shows. |
+| `artwork` | string | none | The bytes of a PNG or JPEG image, such as what `assets.bytes` returns. |
+| `commands` | list of strings | every command | The controls to offer: `'play'`, `'pause'`, `'togglePlayPause'`, `'stop'`, `'next'`, `'previous'` and `'seek'`. |
+
+A negative duration or position raises `The duration and the position of what plays cannot be negative.`, an artwork that is not a string raises `The option "artwork" must be the bytes of a PNG or JPEG image.`, and `commands` raises `The option "commands" must be a list of command names.` or `The option "commands" names "<name>", which is not "play", "pause", "togglePlayPause", "stop", "next", "previous" or "seek".`. The engine takes the app out of the controls when it stops.
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+local events = require('haylen.events')
+local system = require('haylen.system')
+
+local track = {title = 'Harbor at dawn', artist = 'The island band', album = 'Tides', duration = 184}
+local voice = audio.playMusic(assets.load('music/harbor.ogg', 'sound', {stream = true}))
+local function show(playing)
+    system.setNowPlaying({title = track.title, artist = track.artist, album = track.album, duration = track.duration, position = audio.cursor(voice), playing = playing, artwork = assets.bytes('music/tides.png'), commands = {'play', 'pause', 'togglePlayPause', 'seek'}})
+end
+show(true)
+
+events.on('mediaCommand', function(event)
+    if event.command == 'pause' or (event.command == 'togglePlayPause' and not audio.paused(voice)) then
+        audio.pause(voice)
+        show(false)
+    elseif event.command == 'play' or event.command == 'togglePlayPause' then
+        audio.resume(voice)
+        show(true)
+    elseif event.command == 'seek' then
+        audio.setCursor(voice, event.position)
+        show(not audio.paused(voice))
+    end
+end)
+```
+
+### system.clearNowPlaying()
+
+Takes the app out of the now-playing controls of the system, which then stop sending `mediaCommand`.
+
+```lua
+local system = require('haylen.system')
+
+system.setNowPlaying({title = 'Menu theme', playing = true})
+system.clearNowPlaying()
+```
+
 ## Events
 
 The engine publishes the changes on [haylen.events](events.md#engine-events), once per change at the start of the frame after the system reported it. An app that starts reads the current values and hears only later changes.
@@ -111,6 +164,7 @@ The engine publishes the changes on [haylen.events](events.md#engine-events), on
 | --- | --- | --- |
 | `systemThemeChanged` | The system switched between light and dark colors. | `{theme}`, `'light'` or `'dark'`. |
 | `batteryChanged` | The level, the charging or the state of the battery changed. | The table `system.battery()` returns. |
+| `mediaCommand` | A control of the system, a media key or a headset button asked the app what plays to change, once the app showed what plays with [`system.setNowPlaying`](#systemsetnowplayinginfo). | `{command}`, one of the names of `commands`, with `position` in seconds for `'seek'`. |
 
 ```lua
 local events = require('haylen.events')
@@ -132,6 +186,20 @@ end)
 | Web | The `prefers-color-scheme` media query, with every change. | The Battery Status API where the browser has it, which only Chromium browsers do, with every change, and `'unknown'` elsewhere. A browser that cannot read a battery, as on a desktop without one, reports a full one. | What the browser tells, which it limits on purpose: the system it runs on with its version and the model of a phone through `navigator.userAgentData` where the browser has it, the cores, the memory that `navigator.deviceMemory` rounds and caps, the languages and the time zone. The processor and the maker stay `nil`. |
 | Windows | The app theme of the personalization settings, with every change. | The power status of the system, with every change that Windows announces, `'none'` on desktops without a battery. | The version of the kernel, the model and the maker of the computer and the processor from the registry, the cores, the memory, the languages of the user and the time zone, whose IANA name the ICU of Windows 10 1903 and later gives. |
 | Linux | The color scheme of the settings portal of the desktop, with every change, through GIO, which the engine loads at run time. Without GIO or the portal the theme stays `'light'` and never changes. | The first battery among the power supplies of the system, read when the app starts and every 30 seconds, `'none'` without one. | The distribution of `os-release` with the release of the kernel, the model and the maker of the computer, the processor, which ARM processors often leave out, the cores, the memory, the languages of `LANGUAGE` and `LANG` and the time zone of `TZ` or `/etc/localtime`. |
+
+The now-playing controls of each platform:
+
+| Platform | Controls | Media keys and buttons |
+| --- | --- | --- |
+| iOS and iPadOS | The lock screen, the control center and the Dynamic Island, through the info center and the remote commands of MediaPlayer, which the engine loads at run time. The lock screen shows an app whose audio session plays, so an app that plays in the background sets `audio.iosSession` of `app.json` to `playback`. | Headsets, CarPlay and the other accessories. |
+| tvOS | The now-playing screen of the Apple TV. | The play and pause button of the Siri Remote and of other remotes. |
+| macOS and Mac Catalyst | The now-playing item of the control center and of the menu bar, with the playback state that the media keys follow. | The media keys of the keyboard and the buttons of headsets. |
+| Android | The media notification of the shade and the lock screen, of a media session, where Android 13 and later draw the controls from the commands. Notifications of a media session need no permission, and the notification channel takes its name from the string `haylen_media_channel` of the resources of the app, `Playback` by default. | Headsets, Bluetooth devices and the media buttons of TV remotes, with the button that toggles reaching the app as `'togglePlayPause'`. |
+| Web | The media hub of the browser and the lock screen of phones, through the Media Session API. The browser shows them only while the page plays sound. | The media keys of the keyboard and of headsets. A browser that lacks an action leaves it out. |
+| Windows | The media flyout of the volume and of the lock screen, through the transport controls of the window of the app. | The media keys of the keyboard and of headsets. |
+| Linux | None. Linux desktops show the players that serve the MPRIS interface on the session bus, which the engine does not serve, so `setNowPlaying` changes nothing there. | None. |
+
+The browser and Windows have no toggle button, so an app that offers `'togglePlayPause'` without `'play'` and `'pause'` receives `'togglePlayPause'` from their play and pause buttons.
 
 Every platform opens urls: macOS through the workspace, iOS, iPadOS, Mac Catalyst and tvOS through the application, Android with a view intent, Windows through the shell, Linux with `xdg-open`, and the web in a new tab, which a popup blocker may refuse.
 

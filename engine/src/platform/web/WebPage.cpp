@@ -19,6 +19,7 @@
 #include "haylen/io/Path.hpp"
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/PluginStreams.hpp"
 #include "haylen/platform/Theme.hpp"
 #include "haylen/platform/native/HaylenNative.h"
@@ -302,6 +303,10 @@ core::Json WebPage::getFrameStatistics(core::Engine& engine) {
 
 // Entry points for the page, called through `Module.haylen` in `platform/web/haylen-runtime.js`.
 extern "C" {
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_media_command(int command, double position) {
+    haylen::platform::MediaSession::receive(static_cast<haylen::platform::MediaSession::Command>(command), position);
+}
 
 EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {
     return haylen::platform::WebPage::getLastError();

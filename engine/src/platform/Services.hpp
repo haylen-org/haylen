@@ -19,6 +19,7 @@
 #include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/Fold.hpp"
+#include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
@@ -116,6 +117,9 @@ class Services final {
 
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     static void vibrate(float seconds);
+
+    // Shows what the app plays in the now-playing and lock-screen controls of the platform, or takes the app out of them, as `Host::setNowPlaying` describes. Linux has no such controls the engine reaches and ignores it.
+    static void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value);
 
     // Exposes the tree of accessible elements to the screen readers of the platform and says announcements, as `Host::isAccessibilityTreeWanted`, `Host::updateAccessibility` and `Host::announce` describe. A platform without a screen reader interface never wants the tree and ignores both.
     [[nodiscard]] static bool isAccessibilityTreeWanted();

@@ -22,6 +22,7 @@
 #include "platform/ScreenRelay.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsDialogs.hpp"
+#include "platform/windows/WindowsMediaSession.hpp"
 #include "platform/windows/WindowsRumble.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
@@ -219,6 +220,10 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 }
 
 void Services::vibrate(float) {}
+
+void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+    WindowsMediaSession::update(value);
+}
 
 // The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
 bool Services::isAccessibilityTreeWanted() {

@@ -620,7 +620,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **One-shots** com volume, pitch, variação aleatória de pitch (`pitchVariation`, com semente para testes), pan, fade, início deslocado, loop e limite de vozes com roubo da voz mais antiga.
 - [x] **Música** em streaming com loop, crossfade, pausa e retomada.
 - [x] **Cursor das vozes**: `audio.setCursor(voice, seconds)` move qualquer voz, como quem arrasta a barra de progresso de uma música, e `audio.playMusic` aceita `startAt`, com o teste `AUD-001` do projeto de testes.
-- [ ] Teclas de mídia (tocar, pausar, próxima, anterior e volume) e os controles de "tocando agora" do sistema e da tela de bloqueio.
+- [x] Teclas de mídia (tocar, pausar, próxima, anterior e volume) e os controles de "tocando agora" do sistema e da tela de bloqueio. O `system.setNowPlaying` mostra título, artista, álbum, duração, posição, estado e arte nos controles do sistema, e os comandos (`play`, `pause`, `togglePlayPause`, `stop`, `next`, `previous` e `seek`) chegam como o evento `mediaCommand`, vindos dos controles, das teclas de mídia, de fones e de controles remotos: MediaPlayer carregado em tempo de execução na Apple, sessão de mídia com a notificação de mídia no Android, Media Session API na web e os controles de transporte da janela no Windows. O volume fica com o sistema. O Linux não tem controles que a engine alcance (MPRIS no barramento de sessão), documentado. Testado em `MediaSessionTest` e no `AUD-010`.
 - [x] **Áudio posicional 2D** com ouvinte e atenuação.
 - [~] **Ciclo de vida**: pausa ao suspender o app e retoma depois.
 

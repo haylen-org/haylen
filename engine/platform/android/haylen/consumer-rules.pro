@@ -47,6 +47,10 @@
     static void announce(byte[], boolean);
 }
 
+-keep class dev.haylen.HaylenMediaSession {
+    static void update(byte[], byte[]);
+}
+
 # The HTTP transport of Varn resolves its Kotlin classes, their fields and methods by name.
 -keep class com.varn.VarnHttp { *; }
 -keep class com.varn.VarnHttp$Outcome { *; }

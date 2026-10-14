@@ -234,6 +234,10 @@ class HeadlessHost final : public Host {
     void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override {
         accessibilityTrees.push_back({.elements = {elements.begin(), elements.end()}, .focused = focused});
     }
+    void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override {
+        nowPlaying = value;
+    }
+
     void announce(std::string_view text, bool interrupt) override {
         announcements.push_back({.text = std::string(text), .interrupt = interrupt});
     }
@@ -332,6 +336,11 @@ class HeadlessHost final : public Host {
     // Whether the headless platform wants the tree of accessible elements, as a platform does while a screen reader runs.
     void setAccessibilityTreeWanted(bool value) noexcept {
         accessibilityWanted = value;
+    }
+
+    // What the engine shows in the now-playing controls of the headless platform, or nothing.
+    [[nodiscard]] const std::optional<MediaSession::NowPlaying>& getNowPlaying() const noexcept {
+        return nowPlaying;
     }
 
     // The trees of accessible elements and the announcements the engine handed the headless platform, in order.
@@ -451,6 +460,7 @@ class HeadlessHost final : public Host {
     std::string networkRequirement;
     std::vector<AccessibilityTree> accessibilityTrees;
     std::vector<Announcement> announcements;
+    std::optional<MediaSession::NowPlaying> nowPlaying;
     bool accessibilityWanted = false;
     VideoOpener videoOpener;
     std::vector<DialogCall> dialogCalls;

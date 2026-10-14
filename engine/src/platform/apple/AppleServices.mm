@@ -25,6 +25,7 @@
 #import "platform/apple/AppleDialogs.hpp"
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleKeyboard.hpp"
+#import "platform/apple/AppleMediaSession.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
@@ -271,6 +272,10 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 
 void Services::vibrate(float) {
     AppleSystem::vibrate();
+}
+
+void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+    AppleMediaSession::update(value);
 }
 
 bool Services::isAccessibilityTreeWanted() {

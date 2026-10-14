@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -20,6 +21,7 @@
 #include "haylen/platform/AccessibilitySettings.hpp"
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/DialogRequest.hpp"
+#include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
@@ -79,6 +81,9 @@ class Host : public Window {
 
     // Opens a decoder of the video file that the reader reads, which the engine calls on a worker of the I/O pool, so several may open at once. Returns null where the platform has no decoder of video files, and throws `std::runtime_error` for a file the platform cannot decode.
     [[nodiscard]] virtual std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) = 0;
+
+    // Shows what the app plays in the now-playing and lock-screen controls of the system, or takes the app out of them with nothing, where the platform has such controls. The platform sends the commands of the controls, the media keys and headset buttons through `MediaSession::receive`.
+    virtual void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) = 0;
 
     // Asks the screen reader to say a text, after what it says now or interrupting it, where the platform has a screen reader.
     virtual void announce(std::string_view text, bool interrupt) = 0;

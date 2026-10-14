@@ -13,5 +13,6 @@ return {
         {code = 'AUD-007', title = 'Many voices', description = 'Bursts and rain of voices up to the limit of 128, with the statistics of every bus.', module = 'stress'},
         {code = 'AUD-008', title = 'Voice limits', description = 'A hundred coins with and without the limit of their sound, a line whose priority outlasts bursts that fill every voice, and a tone that stops and resumes quickly without clicks.', module = 'voice-limits'},
         {code = 'AUD-009', title = 'Loudness and output', description = 'Thirty explosions with the limiter of the master bus on and off, its threshold and the gain it takes away, and the state and latency of the output with the unlock of a browser.', module = 'output'},
+        {code = 'AUD-010', title = 'Now playing', description = 'A track in the now-playing controls of the system with its artwork, length and position, whose commands from the controls, media keys, headsets and remotes change what plays.', module = 'now-playing'},
     },
 }

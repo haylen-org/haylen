@@ -73,6 +73,7 @@ class LifecycleEvent final {
 
     static constexpr std::string_view kSystemThemeChanged = "systemThemeChanged";
     static constexpr std::string_view kBatteryChanged = "batteryChanged";
+    static constexpr std::string_view kMediaCommand = "mediaCommand";
     static constexpr std::string_view kAccessibilitySettingsChanged = "accessibilitySettingsChanged";
 
     static constexpr std::string_view kWebSocketConnected = "webSocketConnected";

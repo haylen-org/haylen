@@ -30,7 +30,7 @@ function(haylen_link_runtime_platform target scope)
     list(TRANSFORM frameworks PREPEND "-framework ")
     target_link_libraries(${target} ${scope} ${frameworks})
   elseif(HAYLEN_PLATFORM STREQUAL "windows")
-    target_link_libraries(${target} ${scope} xinput shell32 shcore ole32 imm32 advapi32 uuid mfplat mfreadwrite mfuuid)
+    target_link_libraries(${target} ${scope} xinput shell32 shcore shlwapi ole32 imm32 advapi32 uuid mfplat mfreadwrite mfuuid runtimeobject)
     if(HAYLEN_BACKEND STREQUAL "D3D11")
       target_link_libraries(${target} ${scope} d3d11 dxgi)
     else()
@@ -47,7 +47,7 @@ function(haylen_link_runtime_platform target scope)
       -sSTACK_SIZE=1048576
       -lidbfs.js
       "-sEXPORTED_RUNTIME_METHODS=[ccall,UTF8ToString,stringToNewUTF8,HEAPU8,HEAPU32,HEAPF32,FS,IDBFS,addRunDependency,removeRunDependency]"
-      "-sEXPORTED_FUNCTIONS=[_main,_malloc,_free,_haylen_web_resolve,_haylen_web_emit,_haylen_web_finish_screen,_haylen_web_restore_screen,_haylen_web_load_zip,_haylen_web_clear_files,_haylen_web_set_file,_haylen_web_remove_file,_haylen_web_run_files,_haylen_web_console,_haylen_web_restart,_haylen_web_stop,_haylen_web_set_paused,_haylen_web_paused,_haylen_web_apply_changes,_haylen_web_last_error,_haylen_web_visibility,_haylen_web_page_hidden,_haylen_web_network,_haylen_web_theme,_haylen_web_accessibility,_haylen_web_accessibility_action,_haylen_web_battery,_haylen_web_resolve_dialog,_haylen_web_text_edited,_haylen_web_text_action,_haylen_web_keyboard,_haylen_web_socket_opened,_haylen_web_socket_received,_haylen_web_socket_closed,_haylen_web_socket_failed,_haylen_web_audio_render,_haylen_web_open_video_stream,_haylen_web_push_video_frame,_haylen_web_open_audio_stream,_haylen_web_push_audio_frames]"
+      "-sEXPORTED_FUNCTIONS=[_main,_malloc,_free,_haylen_web_resolve,_haylen_web_emit,_haylen_web_finish_screen,_haylen_web_restore_screen,_haylen_web_load_zip,_haylen_web_clear_files,_haylen_web_set_file,_haylen_web_remove_file,_haylen_web_run_files,_haylen_web_console,_haylen_web_restart,_haylen_web_stop,_haylen_web_set_paused,_haylen_web_paused,_haylen_web_apply_changes,_haylen_web_last_error,_haylen_web_visibility,_haylen_web_page_hidden,_haylen_web_network,_haylen_web_theme,_haylen_web_accessibility,_haylen_web_accessibility_action,_haylen_web_battery,_haylen_web_resolve_dialog,_haylen_web_text_edited,_haylen_web_text_action,_haylen_web_keyboard,_haylen_web_socket_opened,_haylen_web_socket_received,_haylen_web_socket_closed,_haylen_web_socket_failed,_haylen_web_audio_render,_haylen_web_open_video_stream,_haylen_web_push_video_frame,_haylen_web_open_audio_stream,_haylen_web_push_audio_frames,_haylen_web_media_command]"
       "--pre-js=${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js"
     )
     if(HAYLEN_BACKEND STREQUAL "WGPU")

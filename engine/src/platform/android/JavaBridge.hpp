@@ -63,6 +63,9 @@ class JavaBridge final {
     static void answerUrl(std::int64_t request, bool opened);
 
     static void vibrate(std::int64_t milliseconds);
+
+    // Hands the media session of the activity what plays, as the JSON of `{title, artist, album, duration, position, playing, commands}` with the bytes of its artwork, or an empty JSON to leave the controls.
+    static void updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork);
     static void rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds);
 
     // The clipboard of the system, which the frame thread reads and writes.
@@ -142,6 +145,8 @@ class JavaBridge final {
     static jclass accessibilityClass;
     static jmethodID updateAccessibilityMethod;
     static jmethodID announceMethod;
+    static jclass mediaSessionClass;
+    static jmethodID updateMediaSessionMethod;
     static std::atomic<bool> accessibilityWanted;
 
     // The callbacks of the urls that wait for the answer of Java, by request.

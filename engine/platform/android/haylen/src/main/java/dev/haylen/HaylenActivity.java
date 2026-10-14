@@ -215,6 +215,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         battery.unregister();
         accessibility.unregister();
         accessibilityTree.detach();
+        HaylenMediaSession.release();
         fold.unregister();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         if (network != null) {

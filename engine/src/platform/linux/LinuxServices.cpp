@@ -170,6 +170,9 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 
 void Services::vibrate(float) {}
 
+// The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
+void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}
+
 // The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
 bool Services::isAccessibilityTreeWanted() {
     return false;

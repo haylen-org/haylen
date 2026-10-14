@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The name of the notification channel of the media notification, which an app overrides or translates with a string of the same name. -->
+<resources>
+    <string name="haylen_media_channel">Playback</string>
+</resources>

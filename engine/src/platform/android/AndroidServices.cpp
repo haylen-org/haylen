@@ -164,6 +164,15 @@ void Services::vibrate(float seconds) {
     JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
+void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
+    if (!value) {
+        JavaBridge::updateMediaSession({}, {});
+        return;
+    }
+    const std::string info = core::Json{{"title", value->title}, {"artist", value->artist}, {"album", value->album}, {"duration", value->duration}, {"position", value->position}, {"playing", value->playing}, {"commands", value->commands}}.dump();
+    JavaBridge::updateMediaSession(info, value->artwork);
+}
+
 bool Services::isAccessibilityTreeWanted() {
     return JavaBridge::isAccessibilityWanted();
 }
@@ -336,6 +345,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibilityTree_nativePerform(JNI
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {
     haylen::platform::AndroidActivity::receiveFold({.present = present == JNI_TRUE, .left = left, .top = top, .right = right, .bottom = bottom, .vertical = vertical == JNI_TRUE, .halfOpened = halfOpened == JNI_TRUE, .separating = separating == JNI_TRUE, .occluding = occluding == JNI_TRUE});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenMediaSession_nativeCommand(JNIEnv*, jclass, jint command, jdouble position) {
+    haylen::platform::MediaSession::receive(static_cast<haylen::platform::MediaSession::Command>(command), position);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jclass, jboolean present, jint level, jint scale, jint status) {

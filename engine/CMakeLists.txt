@@ -493,6 +493,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/ScreenRelay.cpp
   src/platform/Screens.cpp
   src/platform/StreamsLua.cpp
+  src/platform/MediaSession.cpp
   src/platform/System.cpp
   src/platform/SystemInfo.cpp
   src/platform/SystemLua.cpp
@@ -799,6 +800,7 @@ if(APPLE)
     src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleGamepads.mm
     src/platform/apple/AppleKeyboard.mm
+    src/platform/apple/AppleMediaSession.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleNotifications.mm
     src/platform/apple/AppleOrientation.mm
@@ -844,7 +846,7 @@ if(APPLE)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.m ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 elseif(WIN32)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsRumble.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsTextInput.cpp src/platform/windows/WindowsVideoDecoder.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsRumble.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsTextInput.cpp src/platform/windows/WindowsVideoDecoder.cpp)
 elseif(ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
