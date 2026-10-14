@@ -391,6 +391,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             manager.vibrate(combination.combine());
             return;
         }
+        rumbleBeforeVibratorManagers(device, stop, Math.max(low, high), milliseconds);
+    }
+
+    // Android before 12 has no vibrator manager on input devices and reaches the motors of a controller only as one vibrator.
+    @SuppressWarnings("deprecation")
+    private static void rumbleBeforeVibratorManagers(InputDevice device, boolean stop, float intensity, long milliseconds) {
         Vibrator vibrator = device.getVibrator();
         if (!vibrator.hasVibrator()) {
             return;
@@ -399,7 +405,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             vibrator.cancel();
             return;
         }
-        vibrator.vibrate(oneShot(milliseconds, Math.max(low, high)));
+        vibrator.vibrate(oneShot(milliseconds, intensity));
     }
 
     // Android takes amplitudes from 1 to 255, so a weak motor still turns at the lowest one.

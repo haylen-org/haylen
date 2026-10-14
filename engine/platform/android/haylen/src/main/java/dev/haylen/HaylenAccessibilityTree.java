@@ -10,6 +10,7 @@ import android.view.accessibility.AccessibilityManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityEventCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.core.view.accessibility.AccessibilityNodeProviderCompat;
 import androidx.customview.widget.ExploreByTouchHelper;
@@ -31,6 +32,8 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
     private static final int ACTION_ACTIVATE = 1 << 1;
     private static final int ACTION_INCREMENT = 1 << 2;
     private static final int ACTION_DECREMENT = 1 << 3;
+    // The virtual view that says the announcements of the app as a live region, after the elements.
+    private static final int ANNOUNCER = Integer.MAX_VALUE;
 
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static volatile HaylenAccessibilityTree current;
@@ -42,6 +45,8 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
     private Element[] elements = new Element[0];
     private long focused;
     private boolean asked;
+    private String announcement = "";
+    private boolean interrupting;
 
     private HaylenAccessibilityTree(View view) {
         super(view);
@@ -103,14 +108,21 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         });
     }
 
-    // Called by the engine on its frame thread.
+    // Called by the engine on its frame thread. A screen reader says the text of a live region when it changes, politely after what it says or at once for an assertive region.
     static void announce(byte[] text, boolean interrupt) {
-        String announcement = new String(text, StandardCharsets.UTF_8);
+        String said = new String(text, StandardCharsets.UTF_8);
         main.post(() -> {
             HaylenAccessibilityTree tree = current;
-            if (tree != null) {
-                tree.view.announceForAccessibility(announcement);
+            if (tree == null) {
+                return;
             }
+            boolean joins = tree.announcement.isEmpty();
+            tree.announcement = said;
+            tree.interrupting = interrupt;
+            if (joins) {
+                tree.invalidateRoot();
+            }
+            tree.invalidateVirtualView(ANNOUNCER, AccessibilityEventCompat.CONTENT_CHANGE_TYPE_TEXT);
         });
     }
 
@@ -182,6 +194,9 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
                 virtualViewIds.add(index);
             }
         }
+        if (!announcement.isEmpty()) {
+            virtualViewIds.add(ANNOUNCER);
+        }
     }
 
     // The classes of Android widgets tell services how to describe each role.
@@ -189,6 +204,13 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
     @Override
     protected void onPopulateNodeForVirtualView(int virtualViewId, @NonNull AccessibilityNodeInfoCompat node) {
         markAsked();
+        if (virtualViewId == ANNOUNCER) {
+            node.setClassName("android.widget.TextView");
+            node.setBoundsInParent(new Rect(0, 0, view.getWidth(), view.getHeight()));
+            node.setText(announcement);
+            node.setLiveRegion(interrupting ? ViewCompat.ACCESSIBILITY_LIVE_REGION_ASSERTIVE : ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE);
+            return;
+        }
         Element element = virtualViewId < elements.length ? elements[virtualViewId] : null;
         if (element == null) {
             node.setBoundsInParent(new Rect());
