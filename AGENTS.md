@@ -130,7 +130,7 @@ This file is binding for every change. It describes the project as it is and the
 ```text
 CMakeLists.txt            Root project: engine, player and tests.
 haylen, haylen.cmd        The command "haylen" for macOS and Linux and for Windows, which runs haylen.py with its arguments from any folder.
-haylen.py                 Single entry point for every platform and task of the engine: engine builds and artifacts, creating, preparing, checking, running and packaging apps, the installers and packages of desktop apps, protected releases and their keys, Android signing keys, shaders, serving web pages, tests, coverage, sanitizers, formatting, benchmarks and the SDK with its consumer check.
+haylen.py                 Single entry point for every platform and task of the engine: engine builds and artifacts, creating, preparing, checking, running and packaging apps, their plugins and platform projects, the installers and packages of desktop apps, protected releases and their keys, Android signing keys, shaders, serving web pages, tests, coverage, sanitizers, formatting, benchmarks and the SDK with its consumer check.
 PROJECT.md                Master plan, owner's requests and feature checklist (Portuguese).
 engine/
   CMakeLists.txt          Standalone engine project, consumable by other projects.

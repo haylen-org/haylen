@@ -327,39 +327,42 @@ As versões fixadas de cada componente ficam em `engine/cmake/haylen-dependencie
 ## 5. Estrutura de pastas
 
 ```text
-CMakeLists.txt              Projeto raiz: engine, player, testes e benchmarks.
-haylen.py                   Ponto único de build para todas as plataformas e tarefas: artefatos da engine, criação, execução e empacotamento de apps, samples, shaders, servidor web, testes, cobertura, sanitizers, formatação e benchmarks.
+CMakeLists.txt              Projeto raiz: engine, players, testes e benchmarks.
+haylen, haylen.cmd          O comando "haylen" do macOS e do Linux e do Windows, que roda o haylen.py de qualquer pasta.
+haylen.py                   Ponto único de build para todas as plataformas e tarefas: artefatos da engine, criação, preparo, conferência, execução e empacotamento de apps, plugins, projetos de plataforma, instaladores dos desktops, releases protegidas e suas chaves, chaves de assinatura do Android, shaders, servidor web, testes, cobertura, sanitizers, formatação, benchmarks e o SDK.
 AGENTS.md                   Regras oficiais, descrição do projeto e estrutura.
-AGENTS.md                   Aponta para o AGENTS.md.
 PROJECT.md                  Este documento.
 README.md                   Apresentação e início rápido.
-.github/workflows/ci.yml    CI: formatação, testes, cobertura, SDK e os artefatos web, Android e Apple.
-docs/                       Guias e referência da API Lua (docs/lua-api/).
-tools/                      Leitor e escritor de PNG das ferramentas que desenham a arte dos samples e o `test_haylen.py`, os testes das regras do `haylen.py`.
+.github/workflows/ci.yml    CI: formatação, testes da engine nos três desktops, cobertura, SDK, artefatos web, Android e Apple, apps de desktop, releases e o projeto de testes.
+docs/                       Índice, guias numa pasta por módulo da engine, referência da API Lua em lua-api/, política de API e guia de instaladores na CI.
+tools/                      Leitor e escritor de PNG das ferramentas que desenham a arte dos samples e o test_haylen.py, os testes das regras do haylen.py.
 engine/
   CMakeLists.txt            Projeto CMake independente da engine, usável por outros projetos.
-  cmake/                    Módulos CMake: CPM, dependências e patches, haylen_add_app, deploy do conteúdo, shaders, avisos, cobertura, instalação do SDK, fusão das slices do xcframework e toolchain do Mac Catalyst.
-  include/haylen/           API C++ pública dos contextos sem dimensão: core, ai, math, io, assets, graphics, text, input, audio, ui, platform, localization, storage, debug, net, lua e plugins.
-  include/haylen/2d/        API 2D: graphics, animation, particles, lighting, physics, tiled, navigation, spatial e procedural.
-  src/                      Implementação no mesmo formato de include/, com a classe de binding Lua ao lado de cada contexto. src/lua/ guarda o toolkit de bindings, src/plugins/ os plugins embutidos e src/platform/ a fronteira com o sistema, a interop nativa e uma pasta por plataforma (sokol, headless, apple, android, web, windows, linux e desktop).
+  cmake/                    Módulos CMake: CPM, dependências e patches, haylen_add_app, deploy do conteúdo e releases protegidas, arquivos embutidos, shaders, SDK, fusão de bibliotecas estáticas, avisos, cobertura, fusão das slices do xcframework e toolchain do Mac Catalyst.
+  include/haylen/           API C++ pública dos contextos sem dimensão: core, math, io, assets, graphics, text, input, audio, ui, platform, localization, conversation, storage, ai, debug, net, content, lua e plugins.
+  include/haylen/2d/        API 2D: graphics, animation, nodes, particles, lighting, physics, tiled, navigation, spatial e procedural.
+  src/                      Implementação no mesmo formato de include/, com a classe de binding Lua ao lado de cada contexto, o toolkit de bindings em lua/, os plugins embutidos em plugins/, o conteúdo protegido em content/ e a fronteira com o sistema em platform/, com a interop nativa em native/ e uma pasta por plataforma (sokol, headless, apple, android, web, windows e linux).
   shaders/                  Fontes sokol-shdc e a biblioteca de shaders que os shaders dos apps também incluem.
-  platform/android/         Projeto Gradle da biblioteca Android haylen (activity com splash, bridge, controles, insets, entrada de texto e o player).
-  platform/web/             Runtime JavaScript (haylen-runtime.js), processador de áudio AudioWorklet, shell HTML e seletor de backend dos apps C++.
-  platform/apple/           Info.plist e launch screens dos apps Apple montados pelo CMake.
-  bench/                    Benchmarks de sprites, algoritmos, geração procedural e Lua.
-  tests/                    Suíte GoogleTest com os helpers de suporte, as fontes de teste e a biblioteca nativa de teste.
+  platform/android/         Projeto Gradle das bibliotecas Android: haylen, haylen-plugins, haylen-links e haylen-coroutines.
+  platform/web/             Runtime JavaScript, processador de áudio, worker da loja de conteúdo, shell HTML e seletor de backend dos apps C++.
+  platform/apple/           Info.plist e launch screens dos apps Apple montados pelo CMake, o manifesto de privacidade da engine, o header da API de plugins e os helpers Swift da bridge.
+  bench/                    Benchmarks de sprites, algoritmos, geração procedural, física, UI, render, partículas, conteúdo, nós, animação, núcleo e Lua.
+  tools/content/            A ferramenta de conteúdo haylen-content e sua biblioteca.
+  tests/                    Suíte GoogleTest com os helpers de suporte, dados de teste, a biblioteca nativa de teste, os fuzzers dos formatos binários e o projeto consumidor do SDK.
 samples/
-  <categoria>/<sample>/     Samples por categoria (games, graphics, gameplay, interface, system e cpp).
+  tests/                    O projeto de testes: um app com um teste de cada recurso da engine, por categoria, com um código por teste.
+  <categoria>/<sample>/     Os outros samples por categoria (games, stress e cpp).
 templates/
-  app/                      Pacote do app inicial do haylen.py new.
-  platform/apple/           Projeto XcodeGen (project.yml) com o App.xcodeproj gerado ao lado: iOS e iPadOS com Mac Catalyst, tvOS e macOS.
-  platform/android/         Projeto Gradle do app, sem C++, que depende do AAR haylen.
-  platform/web/             Página de carregamento com a logo, a barra de progresso, a escolha do backend e a tela de erro.
+  common/                   Camada comum dos templates de app: app.json, logo, .gitignore, .editorconfig e .clang-format, e os projetos de plataforma que apps Lua e C++ compartilham (Android e o app.js da web).
+  lua/                      Camada dos apps Lua: source/main.lua e os projetos Apple, Windows, Linux e web.
+  cpp/                      Camada dos apps C++: o projeto CMake com haylen_add_app, as fontes e o handler da bridge em Objective-C++.
+  plugin/                   Esqueleto de plugin nativo que o haylen.py plugin new copia.
+extras/images/              Imagens da marca: logos vertical e horizontal, símbolo e variantes para fundo escuro.
 ```
 
-Um sample Lua tem `app.json`, `README.md`, `source/` e `content/`, e `platform/<template>/` só com o que acrescenta ao template. Só `app.json`, `source/` e `content/` são o pacote. O Tiny Island fica em `samples/games/tiny-island` e o sample C++ em `samples/cpp/embedding`.
+Um sample Lua tem `app.json`, `README.md`, `source/` e `content/`, e o código nativo dele fica em plugins locais em `plugins/`. Só `app.json`, `source/`, `content/` e o Lua dos plugins listados são o pacote. O Tiny Island fica em `samples/games/tiny-island` e o sample C++ em `samples/cpp/embedding`.
 
-Tudo o que o build gera fica em `build/`: as árvores `build/<plataforma>-<config>`, os artefatos da engine em `build/artifacts/`, os apps montados em `build/apps/<app>-<hash>/<plataforma>/` e os projetos C++ em `build/cpp/<projeto>-<hash>/`.
+Tudo o que o build gera fica em `build/`: as árvores `build/<plataforma>-<config>`, as árvores dos artefatos em `build/engine/`, os artefatos em `build/artifacts/`, os apps montados em `build/apps/<app>-<hash>/` e os projetos C++ em `build/cpp/<projeto>-<hash>/`.
 
 ## 6. Arquitetura
 
@@ -374,6 +377,8 @@ O guia `docs/core/architecture.md` descreve a arquitetura em detalhe. Esta seç�
 | `haylen::runtime` | Host real de cada plataforma: ponto de entrada (`main` no Linux, `WinMain` no Windows, `sokol_main` no Android e na web, ou `haylen_main` na Apple), `SokolHost` e os serviços da pasta da plataforma. |
 | `haylen::headless` | Host dos testes: backend dummy do Sokol, mixer sem dispositivo e chamadas da bridge gravadas. |
 | `haylen` | Player que roda qualquer pacote (`engine/src/platform/sokol/LuaPlayer.cpp`): executável no desktop e na web e `libhaylen.so` no Android. |
+| `haylen-headless` | Player que roda um app no host headless, falha em qualquer erro e sai com o status do app, como o projeto de testes na CI. |
+| `haylen-content` | Ferramenta que monta, confere, inspeciona, compara e publica as releases protegidas e escreve o bootstrap de cada app. |
 | `haylen_add_app` | Função CMake que monta o app C++ de um pacote para a plataforma do build. |
 
 O executável sempre define `core::Application::create()`: o player devolve um `lua::Application`, que roda `source/main.lua`, e um app C++ devolve a própria aplicação. `haylen.py sdk` instala o SDK para `find_package(haylen)`, com as bibliotecas fundidas em `libhaylen` e `libhaylen_runtime`, e `haylen.py engine` gera os artefatos prontos dos apps Lua (seção 7).
@@ -383,10 +388,10 @@ Todo subsistema é um plugin (`plugins::Plugin`) com nome e os ganchos `start`, 
 ### 6.2 Pacote do app
 
 - Um pacote é uma pasta ou um `.zip` com `app.json`, os módulos Lua em `source/` e os recursos em `content/`. Nada mais na pasta faz parte do pacote, então projetos de plataforma, notas e arquivos de build podem ficar ao lado.
-- `app.json` define identidade (`name`, `identifier`, `version`), janela (inclusive as opções de desktop), resolução de design e política de escala, orientação, passo fixo, tempo máximo de frame, cor de fundo, splash, ciclo de vida, sessão de áudio, debug, autoloads e bibliotecas nativas. Ele é lido antes do Lua, porque a janela é criada antes do primeiro script, e chaves desconhecidas e valores inválidos são erros claros.
+- `app.json` define identidade (`name`, `identifier`, `version`), janela (inclusive as opções de desktop), resolução de design e política de escala, orientação, passo fixo, tempo máximo de frame, cor de fundo, splash, ciclo de vida, sessão de áudio, debug, entrega e atualização do conteúdo, autoloads, bibliotecas nativas e plugins. Ele é lido antes do Lua, porque a janela é criada antes do primeiro script, e chaves desconhecidas e valores inválidos são erros claros.
 - `source/main.lua` é o ponto de entrada. `require("scenes.menu")` carrega `source/scenes/menu.lua` (ou `source/scenes/menu/init.lua`), também dentro do zip e sempre como texto.
 - Todo caminho de asset é relativo a `content/`: `assets.texture("ui/logo.png")` lê `content/ui/logo.png`.
-- Onde o pacote fica: no desktop, a pasta ou o zip passado ao player (`haylen --dev samples/games/tiny-island` ou `haylen app.zip`). Nos apps Windows e Linux, `app/` ou `app.zip` ao lado do executável. Nos apps Apple, `Resources/app` do bundle. No Android, `app/` nos assets do APK, com `haylen-package-index.json`. Na web, o `app.zip` que a página entrega (`Module.haylen.packageData` ou `packageUrl`), ou `/app` no sistema de arquivos virtual dos apps C++.
+- Onde o pacote fica: no desktop, a pasta ou o zip passado ao player (`haylen --dev samples/games/tiny-island` ou `haylen app.zip`). Nos apps Windows e Linux, `app/` ao lado do executável. Nos apps Apple, `haylen/app` do projeto, que vai para os recursos do bundle. No Android, `app/` nos assets do APK. Na web, o `app.zip` que a página entrega (`Module.haylen.packageData` ou `packageUrl`), ou `/app` no sistema de arquivos virtual dos apps C++. Na configuração Release, todas as plataformas levam a release protegida no lugar do pacote.
 
 ### 6.3 Fluxo de um frame
 
@@ -443,56 +448,61 @@ Os guias `docs/tools/distribution.md` (comandos, artefatos, templates e montagem
 
 | Plataforma | Backend gráfico | Como um app Lua roda |
 | --- | --- | --- |
-| macOS | Metal | Player de desktop com hot reload (`haylen.py run <app>`) ou o alvo macOS do template Apple (`--platform macos`). |
-| Windows | Direct3D 11 | Player de desktop ou o player ao lado do pacote (`--platform windows`). |
-| Linux | OpenGL core | Player de desktop ou o player ao lado do pacote (`--platform linux`). |
-| iOS e iPadOS | Metal | Alvo iOS do template Apple (`--platform ios` ou `ios-simulator`). |
+| macOS | Metal | Player de desktop com hot reload (`haylen run <app>`) ou o alvo macOS do projeto Apple (`--platform macos`). |
+| Windows | Direct3D 11 | Player de desktop ou o projeto CMake do Windows, que liga o executável do app ao SDK dos artefatos do desktop (`--platform windows`). |
+| Linux | OpenGL core | Player de desktop ou o projeto CMake do Linux (`--platform linux`). |
+| iOS e iPadOS | Metal | Alvo iOS do projeto Apple (`--platform ios` ou `ios-simulator`). |
 | Mac Catalyst | Metal | Alvo iOS no Mac (`--platform catalyst`). |
-| tvOS | Metal | Alvo tvOS do template Apple (`--platform tvos` ou `tvos-simulator`). |
-| Android | OpenGL ES 3 | Template Android com o AAR `haylen` (`--platform android`). |
-| Web | WebGPU ou WebGL2, escolhido pela página | Template web com o player pré-compilado e o `app.zip` (`--platform web`). |
+| tvOS | Metal | Alvo tvOS do projeto Apple (`--platform tvos` ou `tvos-simulator`). |
+| Android | OpenGL ES 3 | Projeto Android com o AAR `haylen` (`--platform android`). |
+| Web | WebGPU ou WebGL2, escolhido pela página | Página web com o player pré-compilado e o `app.zip` (`--platform web`). |
 
-As versões mínimas são iOS e tvOS 16.3, macOS 13.3, Mac Catalyst 16.4 e Android 8.1 (API 27), com os motivos em `docs/tools/distribution.md`.
+As versões mínimas são macOS 14.0, iOS, iPadOS e tvOS 16.3, Mac Catalyst no macOS 13.3, Windows 10 versão 1903 e Android 8.1 (API 27), com os motivos em `docs/tools/distribution.md`.
 
 ### 7.2 Comandos do haylen.py
 
 | Comando | Para que serve |
 | --- | --- |
-| `tools` | Baixa as ferramentas fixadas (`sokol-shdc`, emsdk e Gradle) em `.tools/`. |
+| `tools` | Baixa as ferramentas fixadas em `.tools/`: o `sokol-shdc`, o XcodeGen no macOS e, quando pedidos, o emsdk e o Gradle. |
 | `configure` e `build` | Gera e compila uma árvore da engine em `build/<plataforma>-<config>`. |
 | `test` | Compila e roda os testes da engine nesta máquina, com `--sanitizers address` ou `thread` quando pedido. |
-| `engine` | Gera os artefatos prontos em `build/artifacts/`: `apple/Haylen.xcframework`, o AAR `haylen` num repositório Maven local em `android/maven`, os players web WebGPU e WebGL2 em `web/` e o player de desktop em `desktop/`, com um `manifest.json` que marca os artefatos velhos. |
-| `new` | Cria um app Lua ou, com `--kind cpp`, um app C++, copiando primeiro `templates/common` e depois `templates/lua` ou `templates/cpp`, com todos os templates de plataforma do tipo em `platform/`. |
-| `samples` | Lista os samples por categoria, com o comando que roda cada um. |
-| `run` | Roda um app ou sample: no player desta máquina com hot reload, ou montado a partir dos templates para `--platform macos`, `windows`, `linux`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `catalyst`, `android` ou `web`. |
+| `engine` | Gera os artefatos prontos em `build/artifacts/`: o `Haylen.xcframework`, o AAR `haylen` e as bibliotecas Android num repositório Maven local com o SDK de cada ABI, os players web WebGPU e WebGL2 com o SDK de cada backend e o player de desktop com o `haylen-content` e o SDK desta máquina. |
+| `new` | Cria um app Lua ou, com `--kind cpp`, um app C++, copiando primeiro `templates/common` e depois `templates/lua` ou `templates/cpp`, com os projetos de plataforma do tipo em `platform/`. |
+| `plugin` | Acrescenta, remove e lista os plugins de um app e cria um plugin a partir de `templates/plugin`. |
+| `platform` | Cria o projeto de uma plataforma num app a partir do template e compara o projeto com o template. |
+| `run` | Roda um app: no player desta máquina com hot reload, ou montado a partir do projeto para `--platform macos`, `windows`, `linux`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `catalyst`, `android` ou `web`, em Debug com o pacote como está ou em Release com a release protegida. |
+| `prepare` e `xcodegen` | Escrevem a pasta `haylen/` do projeto de uma plataforma, e o `xcodegen` gera de novo o `App.xcodeproj`. |
+| `check` | Confere o último build de um app contra o que a engine e os plugins pedem, e o build Release contra o vazamento de texto Lua, arquivos do pacote, símbolos e chaves. |
+| `android-key` | Cria a chave de upload ou de debug do Android em `platform/android/keystore`. |
 | `run-cpp` | Compila e roda um projeto C++ que usa `haylen_add_app`, no desktop, na web, no iOS, no tvOS, nos simuladores, no Mac Catalyst ou no Android. |
+| `content` | Monta, confere, inspeciona, compara, publica e compacta as releases protegidas, e mostra ou gira as chaves de um app. |
+| `dist` | Monta o instalador do Windows ou o `.deb` e o AppImage do Linux. |
+| `steam` | Monta uma release de desktop em depots do SteamPipe. |
 | `package` | Gera o zip com `app.json`, `source/` e `content/` de um app. |
 | `shaders` | Compila os shaders de `content/shaders/` de um app em arquivos `.shader`. |
-| `serve` | Serve uma pasta com MIME do wasm, COOP, COEP (com `--coep credentialless` ou `off`), CORP, CORS, sem cache e com arquivos pré-comprimidos. |
+| `serve` | Serve uma pasta com os cabeçalhos que as páginas WebAssembly pedem. |
 | `coverage` | Mede a cobertura da engine com LLVM source-based coverage. |
 | `format` | Aplica o `.clang-format` e confere os lambdas multilinha, com `--check` no CI. |
-| `bench` | Roda os benchmarks de sprites, algoritmos (`--suite algorithms`), geração procedural (`--suite procedural`) e Lua (`--suite lua`). |
-| `sdk` | Compila e instala o SDK para `find_package(haylen)`. |
-| `embedding` | Compila o sample C++ por `add_subdirectory`, CPM ou o SDK instalado. |
-| `clean` | Apaga `build/`. |
+| `bench` | Roda os benchmarks da engine em Release nesta máquina, com `--suite` para cada um. |
+| `sdk` | Compila e instala o SDK para `find_package(haylen)` e, com `--check-consumers`, compila um projeto que usa a engine por `add_subdirectory`, CPM ou o SDK. |
+| `clean` | Apaga as árvores de build, os artefatos e as pastas de build dos apps. |
 
-Os comandos recebem a pasta do app, relativa à pasta atual ou absoluta (`python3 haylen.py run samples/games/tiny-island`), e `run` sem app ou com uma pasta que não é app para com um erro claro.
+Os comandos recebem a pasta do app, relativa à pasta atual ou absoluta (`haylen run samples/games/tiny-island`), e `run` sem app ou com uma pasta que não é app para com um erro claro.
 
 ### 7.3 Como um app é montado
 
-Cada app tem a própria pasta de build, `build/apps/<app>-<hash>/`, e `run` recria `<plataforma>/` nela a cada execução:
+O projeto de cada plataforma é do desenvolvedor: `platform/<template>/` do app é o projeto inteiro, que o `haylen.py` compila no lugar, e um app sem ele usa uma cópia do template em `build/apps/<app>-<hash>/<template>/`. O `haylen.py` escreve só a pasta ignorada `haylen/` dentro do projeto:
 
-1. Copia o template da plataforma (`apple` para as plataformas Apple, `android` ou `web`). Windows e Linux começam de uma pasta vazia.
-2. Aplica por cima o `platform/<template>/` do app: o mesmo caminho substitui, e arquivo novo é adicionado.
-3. Injeta o pacote: `app/` ao lado do projeto Xcode, `app/src/main/assets/app/` com o índice no Android e `app.zip` na web.
-4. Compila ou copia as bibliotecas nativas da seção `native` do `app.json` para o lugar de cada plataforma.
-5. Grava as configurações geradas a partir do `app.json` (nome, identificador, versão, orientação e splash): `App.xcconfig`, os `Info.plist` e os assets de splash na Apple, as chaves `haylen` do `gradle.properties` e os recursos de splash no Android, e o `config.json` na web.
+1. Na Apple, os modelos de alvo de `haylen/project.yml` com as fontes, pacotes, frameworks, recursos e scripts dos plugins, o `Info.plist`, os entitlements e o manifesto de privacidade completados, e o pacote em `haylen/app`.
+2. No Android, as chaves de `haylen/haylen.properties`, o pacote em `haylen/assets`, os recursos de splash em `haylen/res`, as bibliotecas nativas em `haylen/jniLibs` e os módulos dos plugins em `haylen/plugins`.
+3. No Windows e no Linux, o `haylen/haylen.cmake` com `haylen_app`, que liga o executável ao SDK dos artefatos, e o pacote ao lado do executável instalado.
+4. Na web, o site com o player do backend, o `app.zip`, os módulos dos plugins e o `config.json`.
 
 Depois disso, `run` compila o projeto, instala e abre o app no simulador, emulador, aparelho, Mac ou servidor local, e transmite a saída do app no terminal. Os artefatos da engine são gerados de novo quando o hash das fontes da engine muda.
 
 ### 7.4 Apps C++
 
-Um app C++ é um projeto CMake que chama `haylen_add_app(<alvo> PACKAGE <pasta> [SOURCES ...] [CPP] [APPLE_PROJECT ...] [WEB_SHELL ...])` e compila a engine por `add_subdirectory`, CPM ou `find_package(haylen)`. A função leva o pacote para o app de cada plataforma: links para a pasta do pacote no Windows e no Linux (alvo `SYNC_PACKAGE-<alvo>`), recursos em `Resources/app` do bundle na Apple, `--preload-file` em `/app` na web e, no Android, a biblioteca do app e o caminho do pacote, que `haylen.py run-cpp --platform android` junta ao template Android. O sample `samples/cpp/embedding` é o exemplo.
+Um app C++ é um projeto CMake que chama `haylen_add_app(<alvo> PACKAGE <pasta> [SOURCES ...] [CPP] [APPLE_PROJECT ...] [WEB_SHELL ...])` e compila a engine por `add_subdirectory`, CPM ou `find_package(haylen)`. A função leva o pacote para o app de cada plataforma: links para a pasta do pacote no Windows e no Linux (alvo `SYNC_PACKAGE-<alvo>`), recursos em `Resources/app` do bundle na Apple, `--preload-file` em `/app` na web e, no Android, a biblioteca do app e o caminho do pacote, que `haylen.py run-cpp --platform android` junta ao template Android. Com `HAYLEN_PROTECTED_RELEASE`, que `run-cpp --config Release` liga, o app leva a release protegida com o bootstrap dele. O `haylen new --kind cpp` cria um app C++ do template, e o sample `samples/cpp/embedding` é o exemplo.
 
 ## 8. Recursos da engine
 
@@ -1013,7 +1023,7 @@ Esta seção cobre os pedidos 51 a 220 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 - [x] Logo da engine usada quando o app não tem logo, com os derivados para o splash e os ícones do Android, da Apple e da web, o banner de TV e o `logo.png` do app inicial, com a marca do grupo AD.
 - [x] Splash nos templates Apple (LaunchScreen com Auto Layout em iOS, iPadOS, Mac Catalyst e a imagem de abertura do tvOS) e Android (SplashScreen API mantida na tela até o primeiro frame da engine, sem tela preta no meio), funcionando em retrato e paisagem em celulares, tablets e TVs, com logo e cor de fundo do `app.json` (`splash`) e a logo da engine quando o app não tem uma.
 - [x] Player desktop como artefato (`haylen.py engine --platform desktop`).
-- [x] `haylen.py engine`, `new`, `samples`, `run`, `run-cpp`, `package`, `shaders` e `serve` como descritos em 14.1, com montagem em `build/apps/<app>-<hash>/<plataforma>/`, personalização por `platform/<template>/` e plataformas descobertas pelas pastas `platform/` das camadas de `templates/` (a tabela `RUN_TARGETS` no `haylen.py`). O `serve` entrega isolamento de origem (`crossOriginIsolated` verdadeiro no Chrome) e aceita `--coep off`.
+- [x] `haylen.py engine`, `new`, `run`, `run-cpp`, `package`, `shaders` e `serve` como descritos em 14.1, com montagem em `build/apps/<app>-<hash>/<plataforma>/`, personalização por `platform/<template>/` e plataformas descobertas pelas pastas `platform/` das camadas de `templates/` (a tabela `RUN_TARGETS` no `haylen.py`). O `serve` entrega isolamento de origem (`crossOriginIsolated` verdadeiro no Chrome) e aceita `--coep off`.
 - [x] Modo de desenvolvimento explícito (`--dev`) no player, sem hot reload em apps publicados. A web nunca passa `--dev`.
 - [x] Samples Lua rodando em macOS, simulador iOS, simulador tvOS, Mac Catalyst, emulador Android e web, e o sample C++ em macOS e web. Os 26 samples Lua rodam sem crash na web (WebGPU e WebGL2, 60 fps), no iPhone, no iPad e no Android, com o menu, testes abertos por toque e o voltar. No tvOS foram validados o Tiny Island, a UI com o controle remoto e um sample por categoria, e no Catalyst o Tiny Island e a UI. Faltam Windows e Linux (fora da máquina de desenvolvimento) e aparelhos físicos.
 
