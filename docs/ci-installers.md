@@ -417,7 +417,7 @@ jobs:
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
       # The NDK, CMake and platform that the build guide of the engine lists for its Android builds.
-      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.0"
+      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2"
       # The content tool of the release builds with the desktop artifacts of this system.
       - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
       - uses: actions/cache@v6

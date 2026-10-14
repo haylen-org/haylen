@@ -24,7 +24,7 @@ What each platform needs on top of that:
 | Linux | `linux` | Linux | OpenGL core | Ninja | GCC or Clang and the X11, Xi, Xcursor, Xext, Xrandr and OpenGL development packages, for example `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev` on Debian and Ubuntu. |
 | iOS | `ios` | macOS | Metal | Xcode | Xcode. Apps also need XcodeGen only to regenerate the template project. |
 | tvOS | `tvos` | macOS | Metal | Xcode | Xcode, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
-| Android | `android` | any | OpenGL ES 3 | Ninja | Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37 and platform-tools, and JDK 17 or newer. |
+| Android | `android` | any | OpenGL ES 3 | Ninja | Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37.2 and platform-tools, and JDK 17 or newer. |
 | Web | `web` | any | WebGPU | Ninja through `emcmake` | `git`, and a browser with WebGPU to run it. |
 | Web | `web-webgl2` | any | WebGL2 | Ninja through `emcmake` | `git`, and a browser with WebGL2 to run it. |
 

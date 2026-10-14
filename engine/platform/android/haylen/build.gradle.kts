@@ -11,7 +11,11 @@ val varnSourceDir = providers.gradleProperty("haylenVarnSourceDir").orNull
 
 android {
     namespace = "dev.haylen"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
     // Gradle strips the players with the tools of the NDK that `haylen.py` builds them with.
     ndkVersion = "30.0.16248370"
 
