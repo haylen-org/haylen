@@ -11,5 +11,6 @@ return {
         {code = 'FIL-005', title = 'Zip archives', description = 'Creating, listing and extracting zip archives with Varn "zip", including one shipped in the package.', module = 'zip'},
         {code = 'FIL-006', title = 'File browser', description = 'The folders and files of the user folder, with sizes, dates and a preview.', module = 'browser'},
         {code = 'FIL-007', title = 'Save versions', description = 'A slot of version 1 read by version 3 through migrations, the revision and backup of every write, a damaged slot that its backup replaces and a slot moved to another device.', module = 'save-versions'},
+        {code = 'FIL-008', title = 'Resume state', description = 'A screen and coins that a launch after the system ended the app in the background finds again, with how long ago the app left.', module = 'resume-state'},
     },
 }

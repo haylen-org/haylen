@@ -533,6 +533,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/VideoPlugin.cpp
   src/storage/Preferences.cpp
   src/storage/PreferencesLua.cpp
+  src/storage/ResumeState.cpp
   src/storage/SaveSlots.cpp
   src/storage/StorageLua.cpp
   src/storage/StoredJson.cpp

@@ -20,6 +20,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
+#include "haylen/storage/ResumeState.hpp"
 #include "haylen/storage/UserStorage.hpp"
 #include "storage/StoredJson.hpp"
 
@@ -399,9 +400,28 @@ int StorageLua::listSlotsAsync(lua_State* L) {
     return queue(L, false, [&slots] { return pushInfos(slots.list()); });
 }
 
+// Keeps a value that only a launch after the system ended the app in the background reads, or nothing for `nil`.
+int StorageLua::setResumeState(lua_State* L) {
+    luaL_checkany(L, 1);
+    ResumeState& state = lua::Runtime::getEngine(L).getPlugin<plugins::StoragePlugin>().getResumeState();
+    state.set(lua_isnil(L, 1) ? core::Json() : readStorable(L, 1));
+    return 0;
+}
+
+// Returns the value the run before kept and how many seconds ago the app went to the background with it, or nothing when that run ended normally or never reached the background.
+int StorageLua::resumeState(lua_State* L) {
+    const std::optional<ResumeState::Restored>& restored = lua::Runtime::getEngine(L).getPlugin<plugins::StoragePlugin>().getResumeState().getRestored();
+    if (!restored) {
+        return 0;
+    }
+    lua::JsonConverter::push(L, restored->value);
+    lua_pushnumber(L, restored->age);
+    return 2;
+}
+
 int StorageLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"readText", &lua::Binding::native<&readText>}, {"writeText", &lua::Binding::native<&writeText>}, {"readJson", &lua::Binding::native<&readJson>}, {"writeJson", &lua::Binding::native<&writeJson>}, {"exists", &lua::Binding::native<&exists>}, {"remove", &lua::Binding::native<&remove>}, {"list", &lua::Binding::native<&list>}, {"flush", &lua::Binding::native<&flush>}, {"root", &lua::Binding::native<&root>}, {"setSaveVersion", &lua::Binding::native<&setSaveVersion>}, {"saveVersion", &saveVersion}, {"addMigration", &lua::Binding::native<&addMigration>}, {"exportSlot", &lua::Binding::native<&exportSlot>}, {"importSlot", &lua::Binding::native<&importSlot>}, {"writeSlot", &lua::Binding::native<&writeSlot>}, {"readSlot", &lua::Binding::native<&readSlot>}, {"slotInfo", &lua::Binding::native<&slotInfo>}, {"slotExists", &lua::Binding::native<&slotExists>}, {"removeSlot", &lua::Binding::native<&removeSlot>}, {"listSlots", &lua::Binding::native<&listSlots>}, {"readTextAsync", &lua::Binding::native<&readTextAsync>}, {"writeTextAsync", &lua::Binding::native<&writeTextAsync>}, {"readJsonAsync", &lua::Binding::native<&readJsonAsync>}, {"writeJsonAsync", &lua::Binding::native<&writeJsonAsync>}, {"removeAsync", &lua::Binding::native<&removeAsync>}, {"listAsync", &lua::Binding::native<&listAsync>}, {"writeSlotAsync", &lua::Binding::native<&writeSlotAsync>}, {"readSlotAsync", &lua::Binding::native<&readSlotAsync>}, {"slotInfoAsync", &lua::Binding::native<&slotInfoAsync>}, {"removeSlotAsync", &lua::Binding::native<&removeSlotAsync>}, {"listSlotsAsync", &lua::Binding::native<&listSlotsAsync>}, {nullptr, nullptr},
+        {"readText", &lua::Binding::native<&readText>}, {"writeText", &lua::Binding::native<&writeText>}, {"readJson", &lua::Binding::native<&readJson>}, {"writeJson", &lua::Binding::native<&writeJson>}, {"exists", &lua::Binding::native<&exists>}, {"remove", &lua::Binding::native<&remove>}, {"list", &lua::Binding::native<&list>}, {"flush", &lua::Binding::native<&flush>}, {"root", &lua::Binding::native<&root>}, {"setSaveVersion", &lua::Binding::native<&setSaveVersion>}, {"saveVersion", &saveVersion}, {"addMigration", &lua::Binding::native<&addMigration>}, {"exportSlot", &lua::Binding::native<&exportSlot>}, {"importSlot", &lua::Binding::native<&importSlot>}, {"writeSlot", &lua::Binding::native<&writeSlot>}, {"readSlot", &lua::Binding::native<&readSlot>}, {"slotInfo", &lua::Binding::native<&slotInfo>}, {"slotExists", &lua::Binding::native<&slotExists>}, {"removeSlot", &lua::Binding::native<&removeSlot>}, {"listSlots", &lua::Binding::native<&listSlots>}, {"readTextAsync", &lua::Binding::native<&readTextAsync>}, {"writeTextAsync", &lua::Binding::native<&writeTextAsync>}, {"readJsonAsync", &lua::Binding::native<&readJsonAsync>}, {"writeJsonAsync", &lua::Binding::native<&writeJsonAsync>}, {"removeAsync", &lua::Binding::native<&removeAsync>}, {"listAsync", &lua::Binding::native<&listAsync>}, {"writeSlotAsync", &lua::Binding::native<&writeSlotAsync>}, {"readSlotAsync", &lua::Binding::native<&readSlotAsync>}, {"slotInfoAsync", &lua::Binding::native<&slotInfoAsync>}, {"removeSlotAsync", &lua::Binding::native<&removeSlotAsync>}, {"listSlotsAsync", &lua::Binding::native<&listSlotsAsync>}, {"setResumeState", &lua::Binding::native<&setResumeState>}, {"resumeState", &lua::Binding::native<&resumeState>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

@@ -59,12 +59,37 @@ void StoragePlugin::start(core::Engine& engine) {
     } catch (const std::exception& error) {
         core::Log::warning("{} The app starts with default preferences, and the next save replaces the file.", error.what());
     }
+    resumeState = std::make_unique<storage::ResumeState>(engine.getStorage());
+    try {
+        resumeState->load();
+    } catch (const std::exception& error) {
+        core::Log::warning("{}", error.what());
+    }
 }
 
 // The engine handles the suspension before its plugins, so the listeners of `appBackground` have run, and what they changed is saved with the rest.
 void StoragePlugin::event(core::Engine&, const platform::Event& event) {
-    if (event.type == platform::Event::Type::Suspended && preferences) {
+    if (!preferences) {
+        return;
+    }
+    if (event.type == platform::Event::Type::Suspended) {
         saveQuietly(*preferences);
+        writeResumeState(true);
+    } else if (event.type == platform::Event::Type::Resumed) {
+        writeResumeState(false);
+    }
+}
+
+// The app goes on whether the resume state reached the disk or not, as it would without one.
+void StoragePlugin::writeResumeState(bool background) noexcept {
+    try {
+        if (background) {
+            resumeState->save();
+        } else {
+            resumeState->discard();
+        }
+    } catch (const std::exception& error) {
+        core::Log::error("The resume state could not be written: {}", error.what());
     }
 }
 
@@ -74,6 +99,7 @@ void StoragePlugin::stop(core::Engine&) {
     jobs = nullptr;
     if (preferences) {
         saveQuietly(*preferences);
+        writeResumeState(false);
     }
     if (failure) {
         std::rethrow_exception(failure);
@@ -142,6 +168,13 @@ storage::Preferences& StoragePlugin::getPreferences() {
         throw std::logic_error("The storage plugin has not started.");
     }
     return *preferences;
+}
+
+storage::ResumeState& StoragePlugin::getResumeState() {
+    if (!resumeState) {
+        throw std::logic_error("The storage plugin has not started.");
+    }
+    return *resumeState;
 }
 
 // Bus names may hold dots, so every bus is a key of one group instead of a part of a dotted path, and buses the app has not created keep what the group stored for them.

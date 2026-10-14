@@ -22,6 +22,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/Preferences.hpp"
+#include "haylen/storage/ResumeState.hpp"
 #include "haylen/storage/SaveSlots.hpp"
 #include "haylen/storage/UserStorage.hpp"
 #include "support/EngineFixture.hpp"
@@ -397,6 +398,39 @@ TEST(PreferencesTest, KeepsUnsavedChangesWhenTheFileCannotBeRead) {
     EXPECT_EQ(preferences.get("volume"), 0.5);
 }
 
+TEST(ResumeStateTest, ReachesOnlyTheLaunchAfterTheBackground) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    ResumeState state(storage);
+    state.load();
+    EXPECT_FALSE(state.getRestored());
+
+    state.set(core::Json{{"screen", "map"}, {"day", 4}});
+    state.save();
+    ASSERT_TRUE(storage.exists("resume-state.json"));
+    state.discard();
+    EXPECT_FALSE(storage.exists("resume-state.json"));
+
+    state.save();
+    ResumeState next(storage);
+    next.load();
+    ASSERT_TRUE(next.getRestored());
+    EXPECT_EQ(next.getRestored()->value, (core::Json{{"screen", "map"}, {"day", 4}}));
+    EXPECT_GE(next.getRestored()->age, 0.0);
+    EXPECT_LT(next.getRestored()->age, 60.0);
+    EXPECT_FALSE(storage.exists("resume-state.json"));
+
+    state.set(nullptr);
+    state.save();
+    EXPECT_FALSE(storage.exists("resume-state.json"));
+    EXPECT_THROW(state.set(std::string(1, '\xFF')), std::invalid_argument);
+
+    storage.writeText("resume-state.json", "{\"value\": 1}");
+    EXPECT_THROW(next.load(), std::runtime_error);
+    EXPECT_FALSE(next.getRestored());
+    EXPECT_FALSE(storage.exists("resume-state.json"));
+}
+
 TEST(StorageLuaTest, ReadsAndWritesUserFiles) {
     test::EngineFixture fixture;
     fixture.runLua("storage = require('haylen.storage')");
@@ -503,6 +537,26 @@ TEST(StorageLuaTest, SavesWhatTheListenersOfTheBackgroundChange) {
     fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
     ASSERT_TRUE(fixture.engine().getStorage().exists("preferences.json"));
     EXPECT_NE(fixture.engine().getStorage().readText("preferences.json").find("\"screen\": \"map\""), std::string::npos);
+}
+
+TEST(StorageLuaTest, KeepsTheResumeStateForALaunchAfterTheBackground) {
+    test::EngineFixture fixture;
+    fixture.runLua("storage = require('haylen.storage') storage.setResumeState({screen = 'shop', items = {3, 5}})");
+    EXPECT_EQ(fixture.lua("return select('#', storage.resumeState())"), "0");
+
+    // The state reaches the disk in the background and leaves it when the app comes back.
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    EXPECT_NE(fixture.engine().getStorage().readText("resume-state.json").find("\"shop\""), std::string::npos);
+    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    EXPECT_FALSE(fixture.engine().getStorage().exists("resume-state.json"));
+
+    // A file the system left when it ended the app reaches the next launch, which consumes it.
+    fixture.engine().getStorage().writeText("resume-state.json", R"({"savedAt": 0, "value": {"screen": "map"}})");
+    fixture.restart();
+    EXPECT_EQ(fixture.lua("local value, age = require('haylen.storage').resumeState() return value.screen .. ' ' .. tostring(age > 1000000)"), "map true");
+    EXPECT_FALSE(fixture.engine().getStorage().exists("resume-state.json"));
+    EXPECT_NE(fixture.lua("require('haylen.storage').setResumeState(function() end)").find("error: "), std::string::npos);
+    EXPECT_EQ(fixture.lua("require('haylen.storage').setResumeState(nil) return 'ok'"), "ok");
 }
 
 TEST(StorageLuaTest, RefusesValuesThatJsonCannotHold) {

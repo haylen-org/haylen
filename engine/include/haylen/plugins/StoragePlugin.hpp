@@ -12,6 +12,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "haylen/storage/Preferences.hpp"
+#include "haylen/storage/ResumeState.hpp"
 #include "haylen/storage/SaveSlots.hpp"
 
 namespace haylen::core {
@@ -20,7 +21,7 @@ class JobSystem;
 
 namespace haylen::plugins {
 
-// Owns the save slots and preferences of the app and exposes user storage to Lua as `haylen.storage` and `haylen.preferences`. Preferences load when the engine starts, and unsaved changes are written when the app stops and when it goes to the background, after the listeners of `appBackground` have run. Background storage operations run on the I/O pool one at a time, in the order they were queued.
+// Owns the save slots, the preferences and the resume state of the app and exposes user storage to Lua as `haylen.storage` and `haylen.preferences`. Preferences load when the engine starts, and unsaved changes are written when the app stops and when it goes to the background, after the listeners of `appBackground` have run. The resume state of the run before loads when the engine starts, the current one is written when the app goes to the background, after those listeners, and removed when the app comes back or stops. Background storage operations run on the I/O pool one at a time, in the order they were queued.
 class StoragePlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -33,6 +34,7 @@ class StoragePlugin final : public Plugin {
 
     [[nodiscard]] storage::SaveSlots& getSaveSlots();
     [[nodiscard]] storage::Preferences& getPreferences();
+    [[nodiscard]] storage::ResumeState& getResumeState();
 
     // Runs the operation on the I/O pool once every operation queued before it finished, so operations on the same files never overlap and reach the disk in order. The operation hands its result back itself, such as through the frame queue of the job system, and an exception it throws reaches the engine as an error while the operations after it still run. Stopping the plugin runs the operations still waiting on the frame thread, so a save queued just before the app quits still reaches the disk.
     void queueOperation(std::function<void()> operation);
@@ -59,6 +61,9 @@ class StoragePlugin final : public Plugin {
     // Writes pending preferences from shutdown paths, where a failure must not escape.
     static void saveQuietly(storage::Preferences& target) noexcept;
 
+    // Writes the resume state when the app goes to the background, or removes it, where a failure is logged and the app goes on.
+    void writeResumeState(bool background) noexcept;
+
     // Tells whether a stored value is absent or of the JSON type, where any number counts as a float.
     [[nodiscard]] static bool hasStoredType(const core::Json& value, core::Json::value_t type) noexcept;
 
@@ -72,6 +77,7 @@ class StoragePlugin final : public Plugin {
     core::JobSystem* jobs = nullptr;
     std::unique_ptr<storage::SaveSlots> saveSlots;
     std::unique_ptr<storage::Preferences> preferences;
+    std::unique_ptr<storage::ResumeState> resumeState;
 };
 
 } // namespace haylen::plugins

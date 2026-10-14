@@ -415,6 +415,34 @@ scene.push({
 })
 ```
 
+## Resume state
+
+Mobile systems end apps in the background to free memory, and the player who comes back expects the app where they left it, not at the start. The resume state is a value that only that launch reads: the app keeps its current state with `storage.setResumeState`, the engine writes it to the storage folder when the app goes to the background, after the listeners of `appBackground` ran, and removes it when the app comes back to the foreground or stops normally. A launch after the system ended the app finds it with `storage.resumeState`, and a launch after the player quit finds nothing. On the web, a page that the browser closes or discards in the background leaves the state as well.
+
+### storage.setResumeState(value)
+
+Keeps `value`, any value that can become JSON, for the next time the app goes to the background, or nothing for `nil`. Call it whenever what the player would want back changes, such as the screen, the open dialog or the scroll of a list, which costs nothing until the app leaves the foreground. A value that cannot become JSON raises the errors of the [save slots](#save-slot-errors).
+
+### storage.resumeState()
+
+Returns the value that the run before kept and how many seconds ago that run went to the background, or nothing. The engine reads it once when the app starts and removes it from the disk, so a later launch never finds it again, and an app decides by the age whether the state is still worth restoring.
+
+```lua
+local scene = require('haylen.scene')
+local storage = require('haylen.storage')
+
+local Shop = require('scenes.shop')
+local Menu = require('scenes.menu')
+
+local state, age = storage.resumeState()
+if state and state.screen == 'shop' and age < 3600 then
+    scene.push(Shop(state.tab))
+else
+    scene.push(Menu())
+end
+storage.setResumeState({screen = 'menu'})
+```
+
 ## Save slot errors
 
 | Message | Cause |

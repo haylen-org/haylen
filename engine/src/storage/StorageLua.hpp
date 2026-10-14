@@ -75,6 +75,8 @@ class StorageLua final {
     static int slotInfoAsync(lua_State* L);
     static int removeSlotAsync(lua_State* L);
     static int listSlotsAsync(lua_State* L);
+    static int setResumeState(lua_State* L);
+    static int resumeState(lua_State* L);
     static int open(lua_State* L);
 };
 
