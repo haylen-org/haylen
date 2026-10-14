@@ -39,11 +39,10 @@ return {
                 headless = headless,
             }},
         {code = 'PLG-011', title = 'Permissions', description = 'The camera and notification prompts of the system, and a local notification whose tap reaches the app, even from a closed app.', module = 'permissions',
-            platforms = {'macos', 'ios', 'android'}, unsupported = {
+            platforms = {'macos', 'ios', 'android', 'web'}, unsupported = {
                 tvos = 'The TV has no camera and shows no notifications of the plugin.',
                 windows = 'The C library of the plugin asks for no permissions and shows no notifications on Windows.',
                 linux = 'The C library of the plugin asks for no permissions and shows no notifications on Linux.',
-                web = 'The web part of the plugin asks for no permissions and shows no notifications.',
                 headless = headless,
             }},
         {code = 'PLG-012', title = 'Requirements', description = 'A call whose native part needs what the project of the app lacks, which fails with the code "unsupported" and lists what is missing and how to add it.', module = 'requirements',

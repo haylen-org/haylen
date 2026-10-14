@@ -669,7 +669,7 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-008` | Covering native UI | A native screen over the whole app, which halts the app until it closes. | windows, linux, headless |
 | `PLG-009` | Native screen | A screen of the plugin whose answer reaches the call, and after a restart the next app as "screenRestored". | headless |
 | `PLG-010` | Native result | The file picker of the platform, which answers with the name of the picked file. | tvos, windows, linux, headless |
-| `PLG-011` | Permissions | The camera and notification prompts of the system, and a local notification whose tap reaches the app, even from a closed app. | tvos, windows, linux, web, headless |
+| `PLG-011` | Permissions | The camera and notification prompts of the system, and a local notification whose tap reaches the app, even from a closed app. | tvos, windows, linux, headless |
 | `PLG-012` | Requirements | A call whose native part needs what the project of the app lacks, which fails with the code "unsupported" and lists what is missing and how to add it. | windows, linux, headless |
 | `PLG-013` | Opened URLs | Links with the scheme of the plugin that open the app, before or after it started. | windows, linux, headless |
 | `PLG-014` | App errors | An error of the app that the native part keeps and sends back to the next app. | headless |

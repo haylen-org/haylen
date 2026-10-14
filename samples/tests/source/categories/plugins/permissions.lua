@@ -48,7 +48,7 @@ function Permissions:ask(kind)
         self.results:set(kind, 'waiting', name, 'The prompt of the system shows, unless the person answered it before.')
         local answer, err = demo.requestPermission(kind):await()
         if err and err.code == 'noHandler' then
-            self.results:set(kind, 'skip', name, 'The native part asks for permissions on Apple platforms and Android alone so far.')
+            self.results:set(kind, 'skip', name, 'The C library of the desktops asks for no permissions.')
             return
         elseif err then
             self.results:failure(kind, name, err)
@@ -63,13 +63,13 @@ function Permissions:notify()
         local name = 'A local notification is scheduled'
         local scheduled, err = demo.notify(Permissions.notifySeconds):await()
         if err and err.code == 'noHandler' then
-            self.results:set('notify', 'skip', name, 'The native part schedules notifications on Apple platforms and Android alone so far.')
+            self.results:set('notify', 'skip', name, 'The C library of the desktops shows no notifications.')
             return
         elseif err then
             self.results:failure('notify', name, err)
             return
         end
-        self.results:set('notify', 'pass', name, string.format('The notification "%s" shows in %d seconds. Tap it now, or close the app first to see the tap launch it.', scheduled.identifier, Permissions.notifySeconds))
+        self.results:set('notify', 'pass', name, string.format('The notification "%s" shows in %d seconds. Tap it now, or close the app first to see the tap launch it, except on the web, where a closed page shows nothing.', scheduled.identifier, Permissions.notifySeconds))
     end)
 end
 

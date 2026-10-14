@@ -350,6 +350,56 @@ export default function load(context) {
 
     context.register("pickFile", pickFile);
 
+    // The camera asks through `getUserMedia`, whose tracks stop at once, and notifications through the Notification API. The states of the browser take the names of the other platforms.
+    const permissionStatus = { granted: "authorized", denied: "denied", default: "notDetermined" };
+    let asking = false;
+    context.register("requestPermission", async (params) => {
+        if (params.kind !== "camera" && params.kind !== "notifications") {
+            throw failure(`The permission is "camera" or "notifications", not "${params.kind}".`, "invalidPermission");
+        }
+        if (asking) {
+            throw failure("Another permission request shows.", "busy");
+        }
+        context.require(params.kind === "camera" ? { secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" } : { secureContext: true, api: "Notification" });
+        asking = true;
+        try {
+            if (params.kind === "camera") {
+                try {
+                    const media = await navigator.mediaDevices.getUserMedia({ video: true });
+                    media.getTracks().forEach((track) => track.stop());
+                    return { kind: params.kind, granted: true, status: "authorized", language };
+                } catch (error) {
+                    if (error.name === "NotAllowedError") {
+                        return { kind: params.kind, granted: false, status: "denied", language };
+                    }
+                    throw failure("The camera did not answer: " + error.message, "unsupported");
+                }
+            }
+            const state = await Notification.requestPermission();
+            return { kind: params.kind, granted: state === "granted", status: permissionStatus[state], language };
+        } finally {
+            asking = false;
+        }
+    });
+
+    // The notification shows after the seconds pass while the page is open, since a page that closed runs no timers, and its click focuses the page and reaches the app as `notificationOpened`, retained like on the other platforms.
+    context.register("notify", (params) => {
+        context.require({ secureContext: true, api: "Notification" });
+        if (Notification.permission !== "granted") {
+            throw failure('The notifications of the page are off. Ask with "requestPermission" first.', "permissionDenied");
+        }
+        const identifier = `native-demo.${crypto.randomUUID()}`;
+        setTimeout(() => {
+            const notification = new Notification(params.title, { body: params.body, tag: identifier });
+            notification.addEventListener("click", () => {
+                window.focus();
+                notification.close();
+                context.emit("notificationOpened", { identifier, title: params.title, action: "open", language }, { retain: true });
+            });
+        }, Math.max(params.seconds, 1) * 1000);
+        return { identifier, seconds: params.seconds, language };
+    });
+
     // The plugin needs the Contact Picker API, which only browsers on phones offer, so the call shows how a requirement that the page lacks fails with the code `unsupported` and lists what is missing in `data.missing`. A browser that offers the API in a secure context gets the answer.
     context.register("requirementCheck", () => {
         context.require({ secureContext: true, api: "navigator.contacts" });
