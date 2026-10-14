@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -92,7 +93,7 @@ void OverlapWorld::remove(std::uint32_t entity) {
     if (grid) {
         grid->remove(entity);
     }
-    order.erase(order.begin() + ranks[entity - 1]);
+    order.erase(order.begin() + static_cast<std::ptrdiff_t>(ranks[entity - 1]));
     for (std::size_t rank = ranks[entity - 1]; rank < order.size(); ++rank) {
         ranks[order[rank] - 1] = static_cast<std::uint32_t>(rank);
     }
@@ -191,7 +192,7 @@ void OverlapWorld::collect(std::vector<Contact>& contacts) const {
         candidates.clear();
         const math::Rect bounds = placeBox(from, sets[from.set - 1].bounds);
         grid->query(options.touching ? bounds.expanded(1.0e-3F) : bounds, candidates);
-        std::ranges::sort(candidates, [this](std::uint64_t first, std::uint64_t second) { return ranks[first - 1] < ranks[second - 1]; });
+        std::ranges::sort(candidates, [this](std::uint64_t first, std::uint64_t second) { return ranks[static_cast<std::size_t>(first - 1)] < ranks[static_cast<std::size_t>(second - 1)]; });
         candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
         for (const std::uint64_t target : candidates) {
             if (target != source) {
