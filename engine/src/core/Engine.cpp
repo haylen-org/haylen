@@ -299,11 +299,9 @@ void Engine::frame(double frameSeconds) {
         if (!hidden) {
             current.assets->finalizePending();
         }
+        // The replies of the platform settle their promises before the event loop runs too, so a coroutine that awaits a native call resumes in the frame its reply reaches.
         {
             const debug::ProfileScope scope(profiler, "scripts");
-            const std::chrono::nanoseconds budget = getPollBudget(frameSeconds);
-            const varn::runtime::EventLoop::PollResult polled = current.runtime->poll(budget);
-            current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
             current.platform->pump();
             current.system->pump();
             current.mediaSession->pump();
@@ -311,6 +309,11 @@ void Engine::frame(double frameSeconds) {
             current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
             current.dialogs->pump();
             current.screens->pump();
+            // A screen that ended in the pump uncovers the app before the code that awaited its answer resumes.
+            applyCover();
+            const std::chrono::nanoseconds budget = getPollBudget(frameSeconds);
+            const varn::runtime::EventLoop::PollResult polled = current.runtime->poll(budget);
+            current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
         }
 
         if (!hidden) {

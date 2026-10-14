@@ -45,6 +45,16 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
     EXPECT_NE(fixture.lua("platform.registerHandler('x', 'not a function')").find("error: "), std::string::npos);
 }
 
+// A reply that reaches the bridge between two frames resumes the coroutine that awaits it in the next frame, so an awaited round trip costs one frame.
+TEST(PlatformLuaTest, ResumesAnAwaitedCallInTheFrameItsReplyReaches) {
+    test::EngineFixture fixture;
+    fixture.runLua("platform = require('haylen.platform') async = require('async') async.spawn(function() platform.call('native.echo'):await() resumed = true end)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getPlatformCalls().size() == 1; }));
+    fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[0].id, true, "1");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return resumed"), "true");
+}
+
 TEST(PlatformLuaTest, SubscribesToNativeEvents) {
     test::EngineFixture fixture;
     fixture.runLua("platform = require('haylen.platform') links = {} connection = platform.on('app.link', function(payload) links[#links + 1] = payload.url end)");
