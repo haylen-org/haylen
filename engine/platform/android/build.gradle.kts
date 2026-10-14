@@ -1,3 +1,13 @@
+// The Kotlin that the Android plugin builds Kotlin sources with, newer than the one the plugin brings by default.
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.21")
+    }
+}
+
 // Every module publishes its release variant as `dev.haylen:<module>` at the engine version to the Maven repository that `haylen.py engine --platform android` names.
 plugins {
     id("com.android.library") version "9.4.1" apply false

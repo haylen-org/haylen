@@ -441,7 +441,7 @@ The asset catalogs carry the Haylen icons, the gradient symbol on the navy `#071
 ```text
 templates/common/platform/android/
   settings.gradle.kts         Reads haylen/haylen.properties: the engine repository, the plugin modules in haylen/plugins, the engine version of the modules and their build folder.
-  build.gradle.kts            Android Gradle Plugin 9.4.1 for apps and libraries, and the Gradle plugins of the plugins on the build classpath.
+  build.gradle.kts            Android Gradle Plugin 9.4.1 for apps and libraries, Kotlin 2.4.21 for the Kotlin sources, and the Gradle plugins of the plugins on the build classpath.
   gradle.properties           Gradle settings.
   gradle/wrapper/             Gradle 9.8.1 for Android Studio.
   app/build.gradle.kts        The app module, which depends on dev.haylen:haylen, which brings GameActivity, AppCompat, the activity library and core, and on the plugin modules, applies the Gradle plugins of the plugins and has no C++.
