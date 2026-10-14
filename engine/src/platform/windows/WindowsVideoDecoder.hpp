@@ -4,6 +4,7 @@
 #define NOMINMAX
 #include <windows.h>
 
+#include <mfidl.h>
 #include <mfreadwrite.h>
 #include <wrl/client.h>
 
@@ -40,7 +41,8 @@ class WindowsVideoDecoder final : public VideoDecoder {
 
     static void enterThread();
     void check(HRESULT result, std::string_view what) const;
-    void readFormats();
+    void chooseFormats();
+    void readPictureFormat();
 
     std::string path;
     Info info;
@@ -48,6 +50,9 @@ class WindowsVideoDecoder final : public VideoDecoder {
     std::uint32_t soundChannels = 0;
     long stride = 0;
     double soundTime = 0.0;
+
+    // A seek lands on the key frame before the time it asks for, and the reads drop what comes before that time.
+    double seekTarget = 0.0;
     bool soundEnded = false;
 };
 

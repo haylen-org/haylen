@@ -23,8 +23,6 @@ class WindowsSystem final {
   private:
     static constexpr const wchar_t* kBiosKey = L"HARDWARE\\DESCRIPTION\\System\\BIOS";
     static constexpr const wchar_t* kProcessorKey = L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0";
-    static constexpr const wchar_t* kPersonalizeKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
-    static constexpr const wchar_t* kAccessibilityKey = L"Software\\Microsoft\\Accessibility";
 
     [[nodiscard]] static std::string getSystemVersion();
     [[nodiscard]] static std::string getLocale();
@@ -32,7 +30,6 @@ class WindowsSystem final {
     [[nodiscard]] static std::string getTimeZone();
     [[nodiscard]] static std::uint64_t getMemory();
     [[nodiscard]] static std::string readMachineText(const wchar_t* key, const wchar_t* name);
-    [[nodiscard]] static std::uint32_t readUserNumber(const wchar_t* key, const wchar_t* name, std::uint32_t missing);
 };
 
 } // namespace haylen::platform

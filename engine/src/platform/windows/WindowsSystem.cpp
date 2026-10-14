@@ -10,10 +10,10 @@
 #include <cstddef>
 #include <string_view>
 
-#include "haylen/platform/Theme.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/sokol/SokolHost.hpp"
 #include "platform/windows/WindowsPowerStatus.hpp"
+#include "platform/windows/WindowsSettings.hpp"
 #include "platform/windows/WindowsText.hpp"
 
 namespace haylen::platform {
@@ -38,26 +38,12 @@ void WindowsSystem::openUrl(const std::string& url, std::function<void(bool open
     callback(reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", WindowsText::toWide(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL)) > 32);
 }
 
-// Windows versions without the setting show light apps.
 void WindowsSystem::reportTheme() {
-    SokolHost::getSystemState().setTheme(readUserNumber(kPersonalizeKey, L"AppsUseLightTheme", 1) == 0 ? Theme::Dark : Theme::Light);
+    SokolHost::getSystemState().setTheme(WindowsSettings::readTheme());
 }
 
-// The text size of the accessibility settings is a percentage from 100 to 225, and turning off the animations of Windows clears the client area animations.
 void WindowsSystem::reportAccessibility() {
-    HIGHCONTRASTW contrast{.cbSize = static_cast<UINT>(sizeof(HIGHCONTRASTW))};
-    const bool highContrast = SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0) != FALSE && (contrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
-    BOOL animations = TRUE;
-    SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);
-    BOOL screenReader = FALSE;
-    SystemParametersInfoW(SPI_GETSCREENREADER, 0, &screenReader, 0);
-    SokolHost::getSystemState().setAccessibility({
-        .textScale = static_cast<float>(readUserNumber(kAccessibilityKey, L"TextScaleFactor", 100)) / 100.0F,
-        .reducedMotion = animations == FALSE,
-        .highContrast = highContrast,
-        .reducedTransparency = readUserNumber(kPersonalizeKey, L"EnableTransparency", 1) == 0,
-        .screenReader = screenReader != FALSE,
-    });
+    SokolHost::getSystemState().setAccessibility(WindowsSettings::readAccessibility());
 }
 
 void WindowsSystem::reportBattery() {
@@ -65,12 +51,6 @@ void WindowsSystem::reportBattery() {
     if (GetSystemPowerStatus(&status)) {
         SokolHost::getSystemState().setBattery(WindowsPowerStatus::toBattery(status.ACLineStatus, status.BatteryFlag, status.BatteryLifePercent));
     }
-}
-
-std::uint32_t WindowsSystem::readUserNumber(const wchar_t* key, const wchar_t* name, std::uint32_t missing) {
-    DWORD value = 0;
-    DWORD size = sizeof(value);
-    return RegGetValueW(HKEY_CURRENT_USER, key, name, RRF_RT_REG_DWORD, nullptr, &value, &size) == ERROR_SUCCESS ? value : missing;
 }
 
 // Reads the real version from `ntdll`, because `GetVersionEx` reports an older one to applications without a compatibility manifest.

@@ -2,7 +2,6 @@
 
 #include <mfapi.h>
 #include <mferror.h>
-#include <mfidl.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -35,7 +34,7 @@ WindowsVideoDecoder::WindowsVideoDecoder(std::shared_ptr<io::PackageReader> file
         check(MFCreateAttributes(&attributes, 1), "the source reader could not be made");
         check(attributes->SetUINT32(MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, TRUE), "the source reader could not be made");
         check(MFCreateSourceReaderFromByteStream(bytes.Get(), attributes.Get(), &reader), "it is no file that this platform plays");
-        readFormats();
+        chooseFormats();
     } catch (...) {
         reader.Reset();
         MFShutdown();
@@ -55,21 +54,13 @@ void WindowsVideoDecoder::check(HRESULT result, std::string_view what) const {
 }
 
 // The picture comes as 32-bit RGB and the sound as floats, and the duration comes from the presentation of the source.
-void WindowsVideoDecoder::readFormats() {
+void WindowsVideoDecoder::chooseFormats() {
     ComPtr<IMFMediaType> picture;
     check(MFCreateMediaType(&picture), "the format of its picture could not be made");
     picture->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
     picture->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
     check(reader->SetCurrentMediaType(static_cast<DWORD>(MF_SOURCE_READER_FIRST_VIDEO_STREAM), nullptr, picture.Get()), "it holds no picture that this platform plays");
-    ComPtr<IMFMediaType> current;
-    check(reader->GetCurrentMediaType(static_cast<DWORD>(MF_SOURCE_READER_FIRST_VIDEO_STREAM), &current), "the format of its picture is unknown");
-    UINT32 width = 0;
-    UINT32 height = 0;
-    check(MFGetAttributeSize(current.Get(), MF_MT_FRAME_SIZE, &width, &height), "the size of its picture is unknown");
-    info.width = static_cast<int>(width);
-    info.height = static_cast<int>(height);
-    UINT32 defaultStride = 0;
-    stride = SUCCEEDED(current->GetUINT32(MF_MT_DEFAULT_STRIDE, &defaultStride)) ? static_cast<LONG>(defaultStride) : static_cast<long>(width) * 4;
+    readPictureFormat();
 
     PROPVARIANT duration;
     PropVariantInit(&duration);
@@ -95,6 +86,19 @@ void WindowsVideoDecoder::readFormats() {
     soundEnded = info.channels == 0 || info.sampleRate == 0;
 }
 
+// The decoder settles the size of the picture once it decodes, and announces a new one with the first sample in that size, so the size and the rows are read again whenever the type of the picture changes.
+void WindowsVideoDecoder::readPictureFormat() {
+    ComPtr<IMFMediaType> current;
+    check(reader->GetCurrentMediaType(static_cast<DWORD>(MF_SOURCE_READER_FIRST_VIDEO_STREAM), &current), "the format of its picture is unknown");
+    UINT32 width = 0;
+    UINT32 height = 0;
+    check(MFGetAttributeSize(current.Get(), MF_MT_FRAME_SIZE, &width, &height), "the size of its picture is unknown");
+    info.width = static_cast<int>(width);
+    info.height = static_cast<int>(height);
+    UINT32 defaultStride = 0;
+    stride = SUCCEEDED(current->GetUINT32(MF_MT_DEFAULT_STRIDE, &defaultStride)) ? static_cast<LONG>(defaultStride) : static_cast<long>(width) * 4;
+}
+
 // A stride below zero means the rows come from the bottom up, and 32-bit RGB holds blue, green and red with an unused byte.
 VideoDecoder::Read WindowsVideoDecoder::readFrame(Frame& frame) {
     enterThread();
@@ -107,9 +111,13 @@ VideoDecoder::Read WindowsVideoDecoder::readFrame(Frame& frame) {
             return Read::End;
         }
         if ((flags & MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED) != 0) {
-            readFormats();
+            readPictureFormat();
         }
         if (!sample) {
+            continue;
+        }
+        LONGLONG duration = 0;
+        if (SUCCEEDED(sample->GetSampleDuration(&duration)) && static_cast<double>(timestamp + duration) / kUnitsPerSecond <= seekTarget) {
             continue;
         }
         ComPtr<IMFMediaBuffer> buffer;
@@ -164,7 +172,9 @@ bool WindowsVideoDecoder::readAudio(std::vector<float>& samples, double until) {
         DWORD length = 0;
         check(buffer->Lock(&data, nullptr, &length), "its sound could not be read");
         const std::size_t frames = length / (sizeof(float) * soundChannels);
-        for (std::size_t index = 0; index < frames; ++index) {
+        const double start = static_cast<double>(timestamp) / kUnitsPerSecond;
+        const auto skipped = static_cast<std::size_t>(std::clamp((seekTarget - start) * info.sampleRate, 0.0, static_cast<double>(frames)));
+        for (std::size_t index = skipped; index < frames; ++index) {
             for (std::uint32_t channel = 0; channel < info.channels; ++channel) {
                 float value = 0.0F;
                 std::memcpy(&value, data + (index * soundChannels + channel) * sizeof(float), sizeof(value));
@@ -172,7 +182,7 @@ bool WindowsVideoDecoder::readAudio(std::vector<float>& samples, double until) {
             }
         }
         buffer->Unlock();
-        soundTime = static_cast<double>(timestamp) / kUnitsPerSecond + static_cast<double>(frames) / info.sampleRate;
+        soundTime = start + static_cast<double>(frames) / info.sampleRate;
     }
     return !soundEnded;
 }
@@ -187,6 +197,7 @@ void WindowsVideoDecoder::seek(double seconds) {
     PropVariantClear(&position);
     check(result, "it could not seek");
     soundTime = seconds;
+    seekTarget = seconds;
     soundEnded = info.channels == 0;
 }
 
