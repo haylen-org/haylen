@@ -13,7 +13,7 @@ Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler.
 | `sokol-shdc` | commit `b975d56` of `floooh/sokol-tools-bin` | `.tools/sokol-shdc-b975d56` | Every build. Prebuilt binaries exist for macOS (arm64 and x64), Linux (arm64 and x64) and Windows (x64). |
 | Emscripten SDK | 6.0.12 | `.tools/emsdk` | Web builds. It is cloned with `git`. |
 | Gradle | 9.8.1 | `.tools/gradle-9.8.1` | The Android library and Android apps. |
-| XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen` | Apple apps whose plugins add to the Apple project, which haylen.py generates again. macOS only. |
+| XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen-2.46.0` | Apple apps whose plugins add to the Apple project, which haylen.py generates again. macOS only. |
 
 What each platform needs on top of that:
 

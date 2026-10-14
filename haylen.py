@@ -409,8 +409,9 @@ def ensure_gradle() -> Path:
 
 
 def ensure_xcodegen() -> Path:
-    """Returns the pinned XcodeGen, whose release zip unpacks into `.tools/xcodegen` with the setting presets next to its binary."""
-    target = TOOLS_DIR / "xcodegen" / "bin" / "xcodegen"
+    """Returns the pinned XcodeGen, whose release zip unpacks into a folder named after its version, `.tools/xcodegen-<version>/xcodegen`, with the setting presets next to its binary, so a new pin downloads its own release."""
+    folder = TOOLS_DIR / f"xcodegen-{XCODEGEN_VERSION}"
+    target = folder / "xcodegen" / "bin" / "xcodegen"
     if target.exists():
         return target
 
@@ -418,7 +419,7 @@ def ensure_xcodegen() -> Path:
     archive = TOOLS_DIR / "xcodegen.zip"
     download(f"https://github.com/yonaskolb/XcodeGen/releases/download/{XCODEGEN_VERSION}/xcodegen.zip", archive, XCODEGEN_SHA256)
     with zipfile.ZipFile(archive) as package:
-        package.extractall(TOOLS_DIR)
+        package.extractall(folder)
     archive.unlink()
     target.chmod(0o755)
     return target

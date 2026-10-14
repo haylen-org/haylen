@@ -22,6 +22,7 @@ import threading
 import time
 import unittest
 import urllib.parse
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -524,6 +525,25 @@ class ShaderCompilerTest(unittest.TestCase):
             self.assertEqual(haylen.ensure_shdc(), target)
         self.assertTrue(os.access(target, os.X_OK))
         self.assertEqual([path.name for path in target.parent.iterdir()], [target.name])
+
+
+class XcodeGenTest(unittest.TestCase):
+    def test_a_new_pin_downloads_its_own_release(self):
+        scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, scratch)
+        older = scratch / "xcodegen-1.0.0" / "xcodegen" / "bin" / "xcodegen"
+        older.parent.mkdir(parents=True)
+        older.write_text("older")
+
+        def download(url: str, archive: Path, sha256: str | None = None) -> None:
+            self.assertIn(f"/{haylen.XCODEGEN_VERSION}/", url)
+            with zipfile.ZipFile(archive, "w") as package:
+                package.writestr("xcodegen/bin/xcodegen", "pinned")
+
+        with mock.patch.object(haylen, "TOOLS_DIR", scratch), mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "download", side_effect=download):
+            installed = haylen.ensure_xcodegen()
+        self.assertEqual(installed, scratch / f"xcodegen-{haylen.XCODEGEN_VERSION}" / "xcodegen" / "bin" / "xcodegen")
+        self.assertEqual(installed.read_text(), "pinned")
 
 
 class EmscriptenTest(unittest.TestCase):
