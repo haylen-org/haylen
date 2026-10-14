@@ -134,17 +134,17 @@ haylen.py                 Single entry point for every platform and task of the 
 PROJECT.md                Master plan, owner's requests and feature checklist (Portuguese).
 engine/
   CMakeLists.txt          Standalone engine project, consumable by other projects.
-  cmake/                  Engine CMake modules: CPM bootstrap, dependencies and their patches, haylen_add_app, content deployment, SDK install, warnings, the xcframework slice merge and the Mac Catalyst toolchain.
-  include/haylen/         Public C++ API. Dimension-agnostic contexts: core, math, io, assets, graphics, text, input, audio, ui, platform, localization, conversation, storage, ai, debug, net, lua and plugins.
+  cmake/                  Engine CMake modules: CPM bootstrap, dependencies and their patches, haylen_add_app, content deployment and protected releases, embedded files, shaders, SDK install, the merge of static libraries, warnings, coverage, the xcframework slice merge and the Mac Catalyst toolchain.
+  include/haylen/         Public C++ API. Dimension-agnostic contexts: core, math, io, assets, graphics, text, input, audio, ui, platform, localization, conversation, storage, ai, debug, net, content, lua and plugins.
   include/haylen/2d/      Public 2D API: graphics, animation, particles, lighting, physics, tiled, navigation, spatial, procedural, nodes.
-  src/                    Implementation mirroring include/. src/lua/ holds the binding toolkit, src/plugins/ the built-in plugins, src/content/ the protected content with its cryptography in crypto/ and its wire formats in format/, and src/platform/ the host boundary, the native interop and one folder per platform (sokol, headless, apple, android, web, windows, linux). The `haylen` player is src/platform/sokol/LuaPlayer.cpp, and the `haylen-headless` player, which runs an app on the headless host, fails on any error and otherwise exits with the status the app quit with, is src/platform/headless/HeadlessPlayer.cpp with its entry point in HeadlessMain.cpp.
+  src/                    Implementation mirroring include/. src/lua/ holds the binding toolkit, src/plugins/ the built-in plugins, src/content/ the protected content with its cryptography in crypto/ and its wire formats in format/, and src/platform/ the host boundary, the native interop in native/ and one folder per platform (sokol, headless, apple, android, web, windows, linux). The `haylen` player is src/platform/sokol/LuaPlayer.cpp, and the `haylen-headless` player, which runs an app on the headless host, fails on any error and otherwise exits with the status the app quit with, is src/platform/headless/HeadlessPlayer.cpp with its entry point in HeadlessMain.cpp.
   shaders/                sokol-shdc shader sources and the shader library app shaders include.
   platform/android/       Gradle project of the Android libraries: `haylen` (activity with the splash screen, bridge, gamepad, insets, text input, requirements and the player library), the manifest-only `haylen-plugins` and `haylen-links`, and `haylen-coroutines`.
   platform/web/           JavaScript runtime, audio worklet and bridge, and the HTML shell and backend picker of C++ web apps.
-  platform/apple/         Info.plist and launch screen templates of Apple apps built with CMake, and the PrivacyInfo.xcprivacy of the engine.
+  platform/apple/         Info.plist and launch screen templates of Apple apps built with CMake, the PrivacyInfo.xcprivacy of the engine, the plugin API header that C++ apps bridge to Swift and the Swift helpers of the bridge.
   bench/                  The benchmark apps (sprites, algorithms, procedural, physics, UI, render, particles, content, nodes, animation, Lua).
   tools/content/          The content tool `haylen-content` and its library, which builds, verifies, inspects, compares and publishes protected releases on desktop hosts.
-  tests/                  GoogleTest suite with its support helpers, test fonts and the native test library, and the consumer project that `haylen.py sdk --check-consumers` builds.
+  tests/                  GoogleTest suite with its support helpers, test data and the native test library, the fuzzers of the binary formats, and the consumer project that `haylen.py sdk --check-consumers` builds.
 samples/
   tests/                  The test project: one app with a test of every engine feature, in categories, with a code per test.
   <category>/<sample>/    The other samples grouped by category (games, stress, cpp). A Lua sample folder is the app package plus its README, tools and local plugins.
@@ -247,7 +247,7 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - Keep headers, implementation files, namespaces, types, names, and responsibilities consistent.
 - The code must look like product code written by an experienced C++ engineer.
 - Do not add comments in headers merely to describe methods, sections, or members.
-- The build is warning-free on every platform with the warnings of `engine/cmake/haylen-warnings.cmake`.
+- The build is warning-free on every platform with the warnings of `engine/cmake/haylen-warnings.cmake`. Those warnings apply to the targets of the engine alone, and the targets of a dependency that bring warning flags of their own build without warnings through `haylen_disable_warnings`, since only that dependency can act on them.
 - clang-format does not format project lambdas acceptably. Wrap non-trivial lambdas in `// clang-format off` and `// clang-format on` markers, and format the lambda manually. Multi-line Lua sources in tests get the same markers.
 - Run `haylen format` before finishing a change. It applies `.clang-format` to every C, C++, Objective-C and Objective-C++ file of the engine, the samples and the templates, and lists multi-line lambdas that are missing their `clang-format off` and `on` markers. `haylen format --check` fails on either problem and runs in CI.
 
