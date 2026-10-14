@@ -493,6 +493,24 @@ The switch of the settings screen shows how the surfaces work together. Off, it 
 
 Four-number insets such as `slice` and `padding` run clockwise from the top: top, right, bottom and left. The key `slice` is measured in texture pixels and drawn at `scale`, while `padding` is in design units.
 
+### The fantasy theme of the test project
+
+The folder `samples/tests/content/interface/themes/fantasy/` holds an image theme in the casual fantasy look of Tiny Island, made to be taken by any app: `theme.json`, the atlas `atlas.png` with every piece of the theme, and eight icons of 128 pixels in `icons/`. An app copies the folder into its `content/` folder under the same path, with the font `fonts/lilita-one-regular.ttf` and its license, and loads it on top of `dark`. The test `GUI-033` of the test project shows every component in it next to the default theme at several UI scales.
+
+```lua
+ui.setTheme(ui.loadTheme('interface/themes/fantasy/theme.json', 'dark'))
+```
+
+- Every surface names the atlas in `image` and its piece in `source`, so the whole theme is one texture of 1152 by 724 pixels and its draws batch together. The tool `samples/tests/tools/interface/pack-fantasy-theme.py` packs the painted pieces into the atlas, writes the theme file and cuts the sheet of icons.
+- The buttons of the three variants have a normal and a pressed piece, and the hover states tint the normal piece. Chips reuse the slate button at a smaller scale, the selected chip the focused field, and the selected segment the blue button.
+- One panel piece draws `panel`, `card`, `dialog`, `window`, `menu` and `toast` at different scales and paddings, and `titleBar`, a blue plate, gives windows their title bar and dialog titles their band.
+- Fields, check boxes and radio marks have an empty and a focused, checked or selected piece, and the slots of slot grids reuse the field.
+- Switches, sliders and progress bars share the dark groove of `track`, the light pill of `trackFill` and the light `knob`, both with `colorize`, so the accent and every tone color them: green health, blue mana and loading.
+- Tabs have a slate and a blue piece. The rows of lists, trees, tables and popups and the cells of collections take the blue selection plate of `cellSelected`, which `cellHover` and `cellPressed` tint.
+- The scroll bars draw a light thumb with `colorize` in a dark groove of `scrollbarTrack`, and keep the lane and the gap of the engine, 10 units here.
+- The badge is a light pill with `colorize`, so a solid badge takes the fill of its tone and a badge that is not solid its background, which the theme makes opaque dark tones so its frame still shows. The text of a badge sits in the middle of the pill at every scale.
+- The tooltip is a dark box of its own, and the metrics size the controls to the art, with `controlHeight` 72 and `choiceSize` 46.
+
 ## Touch controls
 
 The kinds `touchStick` and `touchButton` put on-screen controls in a GUI and drive the virtual sticks and buttons that the [action map](../input/input.md#the-action-map) reads. A stick with `action = 'move'` feeds every action bound to `virtualStick:move`, and a button with `action = 'attack'` feeds every action bound to `virtual:attack`, so gameplay code reads `input.vector('move')` and `input.pressed('attack')` the same way for keyboards, gamepads and touch.

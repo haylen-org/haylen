@@ -33,7 +33,7 @@ The menu lists the categories by section with their prefixes and the number of t
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
 | `content/<category>/` | The assets of each category, and `content/fonts/` the open-license fonts that several categories share, each next to its license. |
 | `plugins/` | `native-demo`, the plugin that exercises every capability of native plugins, `native-sample` and `platform-sample` with the platform handlers of the Native and Platform tests, and `native-test`, which answers the test library in the browser and holds the CMake project of that library in `native/`. |
-| `tools/` | The generators of the art of the Animation, Interface, Nodes and Text categories, of the sounds of the Audio category, of the maps of the Tiled category and of the clip of the Video category. |
+| `tools/` | The generators of the art of the Animation, Interface, Nodes and Text categories, the packer of the fantasy theme of the Interface category, the generators of the sounds of the Audio category, of the maps of the Tiled category and of the clip of the Video category. |
 
 A manifest returns the `prefix`, the `title` and the `description` of its category and its `tests`. Each test has a `code`, a `title`, a `description` and the `module` of its file, and a test that does not run everywhere lists the `platforms` it runs on and, in `unsupported`, the reason for each other platform, from `macos`, `windows`, `linux`, `ios`, `tvos`, `android`, `web` and `headless`. The catalog checks every manifest when the project starts.
 
@@ -46,8 +46,23 @@ Some settings that `app.json` gives the whole project change at run time, so the
 - The safe area tests simulate the safe areas of devices with `viewport.setSafeAreaSimulation` and restore the simulation they found.
 - The screen reader test turns on the tree of accessible elements with `accessibility.setTreeEnabled` and restores the value it found.
 - The window, lifecycle and preferences tests restore the fullscreen mode, the lifecycle options, the bus volumes, the language and the theme they change.
+- The UI scale and image theme tests restore the scale of the UI and the theme they change.
 
 No test needs a setting that only `app.json` can give.
+
+## Art of the fantasy theme
+
+The image theme of `GUI-033` in `content/interface/themes/fantasy/` is painted for the project with the `codex` command line and its `$imagegen` skill, as the project rules describe, in the style of [Tiny Island](../games/tiny-island/README.md#art), whose art is the standard of the repository. The tool `tools/interface/pack-fantasy-theme.py` packs the pieces into the atlas, writes the theme file and cuts the sheet of icons into icons of 128 pixels. Every prompt carries the key words of this guide.
+
+| Part | Rule |
+| --- | --- |
+| Look | Polished casual fantasy interface in high definition, chunky cute rounded shapes and simple bold forms that read at a small size, seen straight from the front without perspective. |
+| Outline | A bold clean outline of even thickness in very dark navy `#15172A` around every piece, and `#1E1B33` around the icons, with nothing outside it but transparency. |
+| Shading | Soft cel shading with two tones per material and one soft glossy highlight, light from the top left, clean flat areas without noise or texture, and plain middles so every piece stretches as a nine-slice. |
+| Palette | Slate indigo panels `#2F3352` with slate bevels `#3A4066`, dark navy insets `#1E2138` for fields, boxes and grooves, slate lavender `#5D6596` default buttons and tabs, royal blue `#2F86F6` primary pieces, red `#F0473E` destructive buttons, green `#4CD45A` checks, a warm yellow `#FFC93C` rim for the selection and the focus, and near white `#F2F3FF` pieces that the theme colors with `colorize`. |
+| Sizes | Buttons 360 by 120 pixels, the panel 320 by 320, the title bar 480 by 112, the ribbon 720 by 140, fields 240 by 96, tabs 240 by 96, the selection plate 256 by 88, the tooltip 192 by 112, check boxes, radio marks and the knob 96 by 96, the groove 200 by 56, the fill 192 by 32, the badge 128 by 72, the scroll bar pieces 72 by 72 and icons 128 by 128. States of one piece, such as pressed, focused, checked or selected, are painted as edits of the first piece, so they keep its shape and size. |
+
+The theme loads its pictures and surfaces with the `linear` filter, because the art is painted in high definition and the screen scales it.
 
 ## Codes
 
@@ -514,6 +529,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-030` | Shared focus | A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll. |  |
 | `GUI-031` | Smooth curves | Every curved component and shape in the design and physical scales, next to the pixels of their edges magnified, which fade over one pixel of the screen at every scale. |  |
 | `GUI-032` | Images made at run time | A minimap rendered into a render target every frame, a portrait composed in code and a vector image built in code, shown by images, icons, buttons and list items. |  |
+| `GUI-033` | Image theme | A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, next to the default theme at several UI scales: buttons, chips, badges, choices, switches, fields, dropdowns, bars, sliders, tabs, lists, scroll bars, dialogs, windows, toasts and tooltips. |  |
 
 #### Accessibility (ACC)
 

@@ -36,5 +36,6 @@ return {
         {code = 'GUI-030', title = 'Shared focus', description = 'A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll.', module = 'shared-focus'},
         {code = 'GUI-031', title = 'Smooth curves', description = 'Every curved component and shape in the design and physical scales, next to the pixels of their edges magnified, which fade over one pixel of the screen at every scale.', module = 'smooth-curves'},
         {code = 'GUI-032', title = 'Images made at run time', description = 'A minimap rendered into a render target every frame, a portrait composed in code and a vector image built in code, shown by images, icons, buttons and list items.', module = 'runtime-images'},
+        {code = 'GUI-033', title = 'Image theme', description = 'A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, next to the default theme at several UI scales: buttons, chips, badges, choices, switches, fields, dropdowns, bars, sliders, tabs, lists, scroll bars, dialogs, windows, toasts and tooltips.', module = 'image-theme'},
     },
 }
