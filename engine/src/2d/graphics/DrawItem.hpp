@@ -16,9 +16,10 @@ namespace haylen::graphics2d {
 
 struct StaticBatchResource;
 
-// One recorded draw. The items of a canvas are sorted by key and then by sequence before they become commands.
+// One recorded draw. The items of a canvas are sorted by key, then by sort id and then by sequence before they become commands.
 struct DrawItem {
     std::uint64_t key = 0;
+    std::uint32_t sortId = 0;
     std::uint32_t sequence = 0;
     Program program = Program::Sprite;
     graphics::BlendMode::Type blend = graphics::BlendMode::Type::Alpha;

@@ -43,6 +43,7 @@ Every draw that takes an `order` table, and every option table that lists `layer
 | `layer` | integer | `0` | Higher layers draw later, on top of lower layers. |
 | `depth` | number | `0` | Inside one layer, higher depths draw later when the canvas sorts by depth. Other canvases ignore it. |
 | `sortOffset` | number | `0` | Moves the point a canvas that sorts by `'y'` sorts the draw by, such as from the center of a sprite down to its feet. |
+| `sortId` | integer | `0` | Orders the draws that sort the same, lowest first, such as characters on one row of a canvas sorted by `'y'`. |
 | `visibility` | integer | `1` | Bits of the draw. A canvas whose `visibilityMask` shares no bit with them skips the draw. |
 | `blend` | string | `'alpha'` | Blend mode of the draw. |
 | `material` | Material | none | A [custom shader material](#material) that shades the pixels of the draw. Sprites, batches, static batches, nine-slices, rectangles, lines, shapes, meshes and text take materials, while image blends and metaballs raise `Image blends and metaballs do not take a material.` |
@@ -57,7 +58,7 @@ Every draw that takes an `order` table, and every option table that lists `layer
 
 Unlit canvases ignore the lighting keys, and [`haylen.lighting2d`](lighting2d.md#how-2d-lighting-works) explains how lit canvases use them. A draw copies the values of its material when it is made, so a material changed between two draws shades each draw with its own values.
 
-The `sort` option of a canvas chooses how draws of one layer are ordered. The value `'layer'` keeps the order in which the app made them, `'depth'` sorts them by `depth`, and `'y'` sorts them by the y they stand on plus their `sortOffset`, so lower draws cover higher ones without setting any depth. Sprites stand on their pivot, and every sprite of a batch sorts on its own. Text stands on its position, rich text on the bottom of its block, and rectangles, lines, shapes, meshes, nine-slices, static batches, image blends and metaballs stand on their lowest point. Draws that sort the same keep the order in which the app made them. The function `graphics2d.pushLayerOffset` shifts the layer of every following draw of the canvas, so a group of draws, such as a character and its shadow, can move between layers together.
+The `sort` option of a canvas chooses how draws of one layer are ordered. The value `'layer'` keeps the order in which the app made them, `'depth'` sorts them by `depth`, and `'y'` sorts them by the y they stand on plus their `sortOffset`, so lower draws cover higher ones without setting any depth. Sprites stand on their pivot, and every sprite of a batch sorts on its own. Text stands on its position, rich text on the bottom of its block, and rectangles, lines, shapes, meshes, nine-slices, static batches, image blends and metaballs stand on their lowest point. Draws that sort the same draw by their `sortId`, lowest first, and draws with the same `sortId` keep the order in which the app made them. An app that walks its objects in an order that changes from frame to frame, such as the keys of a table with `pairs`, gives each object its own `sortId`, such as its id, so two characters on the same row never trade places. The function `graphics2d.pushLayerOffset` shifts the layer of every following draw of the canvas, so a group of draws, such as a character and its shadow, can move between layers together.
 
 Visibility bits hide draws from some canvases: draw the world once for the main camera and again for a minimap canvas whose `visibilityMask` leaves out details. The blend modes are:
 
@@ -207,7 +208,7 @@ Draws `texture` once with its pivot at `x`, `y`. The argument `options` is optio
 | `partColors` | table | white parts | The colors of the parts when the draw has a `partMask`, as [recoloring by parts](#recoloring-by-parts) explains. |
 | `effect` | table | none | Dissolves the sprite or draws an outline and a glow around it, as [sprite effects](#sprite-effects) explains. |
 | `x`, `y` | number | the arguments | Replace the position arguments. |
-| `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded`, `distortion` | | | [Draw order](#draw-order). |
+| `layer`, `depth`, `sortOffset`, `sortId`, `visibility`, `blend`, `material`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded`, `distortion` | | | [Draw order](#draw-order). |
 
 ```lua
 local assets = require('haylen.assets')
@@ -558,7 +559,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `rotation` | number | `0` | Rotation in radians. |
 | `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |
 | `pixelSnap` | boolean | `false` | Moves every line so its left edge lands on a whole pixel of the destination, centered and right-aligned lines included, and puts its baseline on a whole pixel row, which keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
-| `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `partMask`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded`, `distortion` | | | The [draw order](#draw-order). |
+| `layer`, `depth`, `sortOffset`, `sortId`, `visibility`, `blend`, `material`, `partMask`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded`, `distortion` | | | The [draw order](#draw-order). |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1490,7 +1491,7 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `source` | Rect | empty | Region of the texture in pixels. An empty rectangle covers the whole texture. |
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image. |
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
-| `layer`, `depth`, `sortOffset`, `visibility`, `blend` | | `0`, `0`, `0`, `1`, `'alpha'` | [Draw order](#draw-order). |
+| `layer`, `depth`, `sortOffset`, `sortId`, `visibility`, `blend` | | `0`, `0`, `0`, `0`, `1`, `'alpha'` | [Draw order](#draw-order). |
 | `material` | Material or nil | nil | Custom shader of the sprite. |
 | `partMask` | Texture or nil | nil | The mask that [recolors](#recoloring-by-parts) the parts of the sprite. |
 | `partColors` | table | white parts | The colors of the parts, as `{red = Color, green = Color, blue = Color, yellow = Color}` after the colors of the mask, each white when the table leaves it out. Reading it returns all four. |

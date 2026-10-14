@@ -72,7 +72,7 @@ namespace haylen::lua {
 // Reads the option tables of engine types and holds the component and name tables their converters share.
 class TypeConverter final {
   public:
-    static constexpr std::array<std::string_view, 14> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded", "distortion"};
+    static constexpr std::array<std::string_view, 15> kDrawOrderFields{"layer", "depth", "sortOffset", "sortId", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded", "distortion"};
     static constexpr std::array<std::string_view, 8> kSpriteEffectFields{"dissolve", "dissolveEdge", "dissolveSize", "dissolveColor", "outlineWidth", "outlineColor", "glowSize", "glowColor"};
     static constexpr std::array<std::string_view, 18> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "direction", "language", "pixelSnap"};
     static constexpr std::array<std::string_view, 3> kTextureOptionFields{"filter", "wrap", "mipmaps"};

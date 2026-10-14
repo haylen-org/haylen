@@ -335,6 +335,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
     // The coverage of distortion draws adds up in the distortion map, whatever their blend.
     DrawItem item{
         .key = DrawItem::makeKey(order, layerOffset, current.options.sort, standingY),
+        .sortId = order.sortId,
         .sequence = sequence++,
         .program = program,
         .blend = distorts ? graphics::BlendMode::Type::Additive : order.blend,

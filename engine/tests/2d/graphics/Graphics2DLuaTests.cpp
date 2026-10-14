@@ -213,8 +213,8 @@ TEST_F(Graphics2DLuaTest, KeepsCamerasInStepWithTheVisibleArea) {
 }
 
 TEST_F(Graphics2DLuaTest, SortsMasksOffsetsAndCapturesCanvases) {
-    lua("sprite = graphics2d.newSprite(hero, {sortOffset = -8, visibility = 2})");
-    EXPECT_EQ(lua("return sprite.sortOffset .. ' ' .. sprite.visibility"), "-8.0 2");
+    lua("sprite = graphics2d.newSprite(hero, {sortOffset = -8, sortId = 4, visibility = 2})");
+    EXPECT_EQ(lua("return sprite.sortOffset .. ' ' .. sprite.sortId .. ' ' .. sprite.visibility"), "-8.0 4 2");
 
     // clang-format off
     const std::string body = R"(
@@ -226,7 +226,7 @@ TEST_F(Graphics2DLuaTest, SortsMasksOffsetsAndCapturesCanvases) {
         graphics2d.beginWorld(camera, {sort = 'y', order = 2, visibilityMask = 1})
         unit = graphics2d.canvasUnitSize()
         graphics2d.draw(hero, 0, 40, {sortOffset = -30})
-        graphics2d.draw(hero, 0, 20)
+        graphics2d.draw(hero, 0, 20, {sortId = 2})
         sprite:draw()
         graphics2d.pushLayerOffset(3)
         graphics2d.drawRect({0, 0, 4, 4}, '#FFFFFF', {visibility = 3})

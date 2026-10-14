@@ -64,7 +64,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-003` | Animation | Clips, loop modes, frame and finish events and a queue of clips on an animator. |  |
 | `SPR-004` | Sprite batches | Many sprites of one texture kept in C++ and drawn in one batch, added, changed and removed. |  |
 | `SPR-005` | Static batches | A tile map baked once to the GPU and drawn every frame without uploads, with parallax offsets. |  |
-| `SPR-006` | Layers and y-sort | Heroes among trees sorted by the y they stand on, and a selected hero raised above every layer. |  |
+| `SPR-006` | Layers and y-sort | Heroes among trees sorted by the y they stand on, a selected hero raised above every layer, and a row of heroes on one y that sort ids keep in place while the drawing order shuffles. |  |
 | `SPR-007` | Pooled bullets | A bullet hell whose projectiles come from an object pool and draw in one batch. |  |
 | `SPR-008` | Bouncing bunnies | From a few to many thousands of sprites with float buffers or one table each, with the frame rate. |  |
 | `SPR-009` | Render targets | An offscreen canvas drawn every frame and used as a texture in several ways. |  |

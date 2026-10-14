@@ -314,6 +314,32 @@ TEST(RendererTest, SortsByTheYDrawsStandOn) {
     EXPECT_EQ(shapes.drawCalls, 2U);
 }
 
+TEST(RendererTest, OrdersDrawsThatSortTheSameByTheirSortIds) {
+    test::EngineFixture fixture;
+    const graphics::Texture first = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+    const graphics::Texture second = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+
+    // Four sprites stand on one row, recorded in two orders, and the ids put the second texture first whatever the order.
+    // clang-format off
+    const auto drawCalls = [&](bool reversed, bool ids) {
+        return test::FrameRenderer::renderOnce(fixture, [&, reversed, ids](core::Engine& engine) {
+            graphics2d::Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(graphics2d::Camera{}, {.sort = graphics2d::Renderer::SortMode::Y});
+            for (int step = 0; step < 4; ++step) {
+                const int index = reversed ? 3 - step : step;
+                const bool even = index % 2 == 0;
+                const std::uint32_t id = ids ? static_cast<std::uint32_t>(even ? 10 + index : index) : 0U;
+                renderer.draw({.texture = even ? first : second, .position = {static_cast<float>(index), 10.0F}, .order = {.sortId = id}});
+            }
+        }).drawCalls;
+    };
+    // clang-format on
+
+    EXPECT_EQ(drawCalls(false, true), 2U);
+    EXPECT_EQ(drawCalls(true, true), 2U);
+    EXPECT_EQ(drawCalls(false, false), 4U);
+}
+
 TEST(RendererTest, OffsetsLayersInScopesAndMasksVisibility) {
     test::EngineFixture fixture;
     const graphics::Texture first = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));

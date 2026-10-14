@@ -15,6 +15,9 @@ struct DrawOrder {
 
     // Moves the point a y-sorted canvas sorts the draw by, such as from the center of a sprite down to its feet.
     float sortOffset = 0.0F;
+
+    // Orders draws whose layer and depth or y are equal, lowest first, before the order they were recorded in, so characters on one row of a y-sorted canvas keep their places when an app records them in another order every frame.
+    std::uint32_t sortId = 0;
     std::uint32_t visibility = 1;
     graphics::BlendMode::Type blend = graphics::BlendMode::Type::Alpha;
     Material material;

@@ -418,6 +418,8 @@ graphics2d::DrawOrder TypeConverter::readDrawOrder(lua_State* L, int index, std:
             Table::readValue(L, key, order.depth);
         } else if (key == "sortOffset") {
             Table::readValue(L, key, order.sortOffset);
+        } else if (key == "sortId") {
+            Table::readValue(L, key, order.sortId);
         } else if (key == "visibility") {
             Table::readValue(L, key, order.visibility);
         } else if (key == "blend") {

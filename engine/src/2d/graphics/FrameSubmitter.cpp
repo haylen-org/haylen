@@ -243,7 +243,10 @@ void FrameSubmitter::buildCommands() {
         std::sort(order.begin(), order.end(), [&](std::uint32_t lhs, std::uint32_t rhs) {
             const DrawItem& a = state.items[lhs];
             const DrawItem& b = state.items[rhs];
-            return a.key != b.key ? a.key < b.key : a.sequence < b.sequence;
+            if (a.key != b.key) {
+                return a.key < b.key;
+            }
+            return a.sortId != b.sortId ? a.sortId < b.sortId : a.sequence < b.sequence;
         });
         // clang-format on
 
