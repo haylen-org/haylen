@@ -69,11 +69,11 @@ void Video::load(Opener opener) {
     jobs.postIo([target = std::weak_ptr<Shared>(shared), opener = std::move(opener)] {
         std::unique_ptr<platform::VideoDecoder> decoder;
         std::string failure;
-        bool unsupported = false;
+        bool noDecoder = false;
         try {
             decoder = opener();
-            unsupported = decoder == nullptr;
-            if (unsupported) {
+            noDecoder = decoder == nullptr;
+            if (noDecoder) {
                 failure = "This platform has no decoder of video files.";
             }
         } catch (const std::exception& exception) {
@@ -89,7 +89,7 @@ void Video::load(Opener opener) {
         }
         alive->decoder = std::move(decoder);
         alive->failure = std::move(failure);
-        alive->unsupported = unsupported;
+        alive->unsupported = noDecoder;
         alive->opened = true;
     });
     // clang-format on

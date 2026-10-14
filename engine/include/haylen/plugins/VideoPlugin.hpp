@@ -16,7 +16,7 @@ namespace haylen::plugins {
 // Plays the videos of the app with the decoder of the platform, keeping each one current at the start of every frame until it is released or the app stops, and installs `haylen.video`.
 class VideoPlugin final : public Plugin {
   public:
-    explicit VideoPlugin(platform::Host& host) : host(host) {}
+    explicit VideoPlugin(platform::Host& platformHost) : host(platformHost) {}
 
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "video";

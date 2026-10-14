@@ -20,11 +20,11 @@ void Popover::render(Context& context, const math::Rect& bounds) {
     if (!ImGui::IsPopupOpen("##popover")) {
         return;
     }
-    Component* content = getChildren().empty() ? nullptr : getChildren().front().get();
-    const math::Vec2 size = content != nullptr ? content->measure(context, contentWidth) : math::Vec2{};
+    Component* body = getChildren().empty() ? nullptr : getChildren().front().get();
+    const math::Vec2 size = body != nullptr ? body->measure(context, contentWidth) : math::Vec2{};
     if (const std::optional<math::Rect> box = popup.begin(context, "##popover", ImGuiWindowFlags_NoNavInputs, context.getMetric(Theme::Metric::PanelPadding), {std::max(size.x, contentWidth), size.y}, bounds, contentWidth)) {
-        if (content != nullptr) {
-            content->draw(context, *box);
+        if (body != nullptr) {
+            body->draw(context, *box);
         }
         popup.end(context);
     }
