@@ -1443,7 +1443,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 **Desktop e apps C++**
 
 - [x] A parte `native/` do plugin entra como biblioteca nativa do app, compilada e colocada como as da seção `native` do `app.json`, conferido com uma biblioteca CMake no macOS.
-- [ ] Apps C++ com plugins no Android e na web pelos templates, e na Apple pelo `run-cpp`, com a mesma montagem.
+- [x] Apps C++ com plugins no Android e na web pelos templates, e na Apple pelo `run-cpp`, com a mesma montagem. O `haylen_add_app` põe o `plugin.json` e o Lua dos plugins no pacote de todas as plataformas e na cópia de Debug. Na Apple, o `run-cpp` copia as fontes e os recursos dos plugins para a pasta de build e escreve o `haylen-plugins.cmake`, que o `haylen_add_app` lê para compilar o Objective-C, o C e o Swift com o `HaylenPlugins.h` como cabeçalho de ponte e as ajudas Swift da engine (`HaylenBridgeAsync.swift`, que saiu do template para `engine/platform/apple` e chega aos projetos Lua pela pasta `haylen/`), linkar os frameworks e juntar as chaves do `Info.plist`, e para com uma mensagem para pacotes Swift e scripts de build, que só o projeto Xcode do template monta. No Android, o projeto Gradle do app recebe os módulos dos plugins como os apps Lua, e na web o `run-cpp` copia a parte web dos plugins para o site e lista no `plugins.json`, que a página carrega antes do app. Conferido com um app C++ e um plugin com partes em Swift, Kotlin e JavaScript: a chamada do C++ chegou ao plugin e voltou no simulador iOS, no emulador Android e na web com WebGL2 e WebGPU. Testado em `RunCppTest` do `tools/test_haylen.py`.
 
 **Desempenho**
 
