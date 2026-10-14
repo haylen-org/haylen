@@ -1,5 +1,6 @@
 #include "haylen/localization/Catalog.hpp"
 
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <optional>
@@ -85,6 +86,37 @@ std::string Catalog::format(std::string_view pattern, const core::Json& argument
         result += argument != arguments.end() ? formatArgument(*argument) : std::string(pattern.substr(index, close - index + 1));
         index = close;
     }
+    return result;
+}
+
+// Letters take accents, placeholders and the tags of rich text stay as they are, and dots after the text make it a third longer.
+std::string Catalog::translatePseudo(std::string_view pattern) {
+    constexpr std::string_view kPlain = "aeiouyncAEIOUYNC";
+    constexpr std::array<std::string_view, kPlain.size()> kAccented{"á", "é", "í", "ó", "ú", "ý", "ñ", "ç", "Á", "É", "Í", "Ó", "Ú", "Ý", "Ñ", "Ç"};
+    std::string result = "« ";
+    result.reserve(pattern.size() * 2 + 8);
+    std::size_t letters = 0;
+    for (std::size_t index = 0; index < pattern.size(); ++index) {
+        const char character = pattern[index];
+        const std::size_t close = character == '{' || character == '[' ? pattern.find(character == '{' ? '}' : ']', index + 1) : std::string_view::npos;
+        if (close != std::string_view::npos) {
+            result.append(pattern.substr(index, close - index + 1));
+            index = close;
+            continue;
+        }
+        if (std::isalpha(static_cast<unsigned char>(character)) != 0) {
+            ++letters;
+        }
+        const std::size_t plain = kPlain.find(character);
+        if (plain == std::string_view::npos) {
+            result += character;
+        } else {
+            result.append(kAccented[plain]);
+        }
+    }
+    result += ' ';
+    result.append((letters + 2) / 3, '.');
+    result += " »";
     return result;
 }
 
@@ -178,7 +210,8 @@ std::string Catalog::getText(std::string_view key, const core::Json& arguments) 
         return std::string(key);
     }
     if (entry->is_string()) {
-        return format(entry->get_ref<const std::string&>(), arguments);
+        const std::string& pattern = entry->get_ref<const std::string&>();
+        return format(pseudo ? translatePseudo(pattern) : pattern, arguments);
     }
 
     // The rules of the language the text comes from pick the form, a `zero` form always takes a count of 0, and a form the entry lacks falls back to `other`.
@@ -195,7 +228,8 @@ std::string Catalog::getText(std::string_view key, const core::Json& arguments) 
             form = PluralRules::categoryName(category);
         }
     }
-    return format(entry->at(form).get_ref<const std::string&>(), arguments);
+    const std::string& pattern = entry->at(form).get_ref<const std::string&>();
+    return format(pseudo ? translatePseudo(pattern) : pattern, arguments);
 }
 
 std::optional<std::string> Catalog::findBestMatch(std::string_view tag) const {

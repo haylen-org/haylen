@@ -32,6 +32,8 @@ class LocalizationLua final {
     static int language(lua_State* L);
     static int setFallback(lua_State* L);
     static int fallback(lua_State* L);
+    static int setPseudo(lua_State* L);
+    static int pseudo(lua_State* L);
     static int languages(lua_State* L);
     static int has(lua_State* L);
     static int text(lua_State* L);

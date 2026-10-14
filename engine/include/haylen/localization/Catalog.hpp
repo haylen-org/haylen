@@ -40,6 +40,14 @@ class Catalog final {
     // Replaces `{name}` placeholders with the arguments, and `{{` and `}}` with single braces. A `count` argument picks the plural form by the plural rules of the language that holds the text, an `ordinal` argument of `true` picks it by the ordinal rules, a `zero` form takes a count of 0 whatever the rules say, and a form that the entry lacks falls back to `other`.
     [[nodiscard]] std::string getText(std::string_view key, const core::Json& arguments = core::Json::object()) const;
 
+    // Turns every text of the catalog into a pseudo translation while it is on: accented letters, a third longer and between guillemets, with the placeholders and the tags of rich text kept. Text that overflows its space, that a font cannot draw or that skipped the catalog then shows without translating the app.
+    void setPseudo(bool value) noexcept {
+        pseudo = value;
+    }
+    [[nodiscard]] bool isPseudo() const noexcept {
+        return pseudo;
+    }
+
     // Returns the loaded language that best matches a BCP 47 tag, trying the exact tag and then the same base language, as `pt` for `pt-BR` or `pt-BR` for `pt`.
     [[nodiscard]] std::optional<std::string> findBestMatch(std::string_view tag) const;
 
@@ -53,6 +61,7 @@ class Catalog final {
     [[nodiscard]] static std::string_view getBaseLanguage(std::string_view tag);
     [[nodiscard]] static std::string formatArgument(const core::Json& value);
     [[nodiscard]] static std::string format(std::string_view pattern, const core::Json& arguments);
+    [[nodiscard]] static std::string translatePseudo(std::string_view pattern);
 
     // Returns the entry and the language that holds it.
     [[nodiscard]] std::pair<const core::Json*, const std::string*> find(std::string_view key) const;
@@ -62,6 +71,7 @@ class Catalog final {
     std::map<std::string, text::Direction, std::less<>> directions;
     std::string language;
     std::string fallback;
+    bool pseudo = false;
 };
 
 } // namespace haylen::localization

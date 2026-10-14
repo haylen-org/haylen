@@ -59,6 +59,16 @@ int LocalizationLua::fallback(lua_State* L) {
     return 1;
 }
 
+int LocalizationLua::setPseudo(lua_State* L) {
+    getCatalog(L).setPseudo(lua::Stack::read<bool>(L, 1));
+    return 0;
+}
+
+int LocalizationLua::pseudo(lua_State* L) {
+    lua::Stack::push(L, getCatalog(L).isPseudo());
+    return 1;
+}
+
 int LocalizationLua::languages(lua_State* L) {
     lua::Stack::push(L, getCatalog(L).getLanguages());
     return 1;
@@ -199,7 +209,7 @@ int LocalizationLua::assetPath(lua_State* L) {
 
 int LocalizationLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
+        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"setPseudo", &lua::Binding::native<&setPseudo>}, {"pseudo", &lua::Binding::native<&pseudo>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

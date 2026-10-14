@@ -116,6 +116,28 @@ localization.loadFolder('i18n')
 print(localization.fallback())
 ```
 
+### localization.setPseudo(enabled)
+
+Turns every text of the catalog into a pseudo translation while `enabled` is `true`: the letters take accents, the text grows by a third with dots and sits between guillemets, while `{name}` placeholders and the tags of rich text stay as they are. A label that cuts its text, a button that grows past its space or a font that lacks an accented letter shows at once without translating the app, and a text that shows without guillemets never went through the catalog. Every GUI shows the change on its next frame.
+
+```lua
+local localization = require('haylen.localization')
+
+localization.add('en', {menu = {play = 'Play'}})
+localization.setPseudo(true)
+print(localization.text('menu.play')) -- « Pláý .. »
+```
+
+### localization.pseudo()
+
+Returns `true` while the catalog translates into the pseudo language.
+
+```lua
+local localization = require('haylen.localization')
+
+print(localization.pseudo())
+```
+
 ### localization.languages()
 
 Returns a sorted list of every language added.

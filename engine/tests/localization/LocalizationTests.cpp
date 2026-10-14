@@ -44,6 +44,20 @@ TEST_F(CatalogTest, TranslatesFormatsAndPluralizes) {
     EXPECT_FALSE(catalog.has("menu"));
 }
 
+TEST_F(CatalogTest, TranslatesIntoAPseudoLanguageThatShowsOverflowAndGaps) {
+    Catalog catalog = makeEnglish();
+    catalog.add("en", core::Json::parse(R"({"story": "[b]Once[/b] upon {{a}} time"})"));
+    catalog.setPseudo(true);
+    EXPECT_TRUE(catalog.isPseudo());
+    EXPECT_EQ(catalog.getText("menu.play"), "« Pláý .. »");
+    EXPECT_EQ(catalog.getText("greeting", {{"name", "Ana"}}), "« Hélló, Ana! .. »");
+    EXPECT_EQ(catalog.getText("coins", {{"count", 5}}), "« 5 çóíñs .. »");
+    EXPECT_EQ(catalog.getText("story"), "« [b]Óñçé[/b] úpóñ {a} tímé .... »");
+    EXPECT_EQ(catalog.getText("missing.key"), "missing.key");
+    catalog.setPseudo(false);
+    EXPECT_EQ(catalog.getText("menu.play"), "Play");
+}
+
 TEST_F(CatalogTest, ShowsKeysUnchangedBeforeAnyLanguageIsAdded) {
     const Catalog catalog;
     EXPECT_TRUE(catalog.getLanguage().empty());
@@ -126,6 +140,7 @@ TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
     EXPECT_EQ(fixture.lua("localization.setLanguage(localization.findBestMatch('pt_BR')) return localization.text('hud.day', {day = 4}) .. ' / ' .. localization.text('hud.wood', {count = 7})"), "Dia 4 / 7 logs");
     EXPECT_EQ(fixture.lua("localization.add('fr', {hud = {day = 'Jour {day}'}}) localization.setFallback('fr') return localization.fallback() .. ' ' .. tostring(localization.has('hud.wood'))"), "fr false");
     EXPECT_EQ(fixture.lua("return tostring(localization.findBestMatch('de')) .. ' ' .. localization.text('nothing.here')"), "nil nothing.here");
+    EXPECT_EQ(fixture.lua("localization.setPseudo(true) local text = localization.text('hud.day', {day = 5}) localization.setPseudo(false) return text .. ' ' .. tostring(localization.pseudo())"), "« Díá 5 . » false");
 
     EXPECT_EQ(fixture.lua("localization.add('ar', {['@direction'] = 'rightToLeft', hud = {day = 'اليوم {day}'}}) return localization.direction('ar') .. ' ' .. localization.direction()"), "rightToLeft leftToRight");
     EXPECT_NE(fixture.lua("localization.loadFolder('broken')").find("broken/en.json\" is not valid JSON"), std::string::npos);
