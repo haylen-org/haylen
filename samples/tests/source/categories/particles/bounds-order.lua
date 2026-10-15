@@ -20,14 +20,14 @@ function BoundsOrder:init(entry)
     self.bounded = true
     self.wind = 60
 
-    self.rain = particles2d.newEmitter({texture = ParticleTest.library('rain-streak'), rate = 150, lifetime = 3, speed = {950, 1100}, direction = 1.62, spread = 0.03, startSize = 44, endSize = 44, colors = {'#B0B0C8F0'}, shape = 'rectangle', shapeSize = {280, 4}, bounds = self:rainBounds(), boundsMode = 'kill', maxParticles = 512, layer = 2, seed = 241})
+    self.rain = particles2d.newEmitter(ParticleTest.look('rain-streak', {rate = 150, lifetime = 3, speed = {950, 1100}, direction = 1.62, spread = 0.03, startSize = 44, endSize = 44, colors = {'#B0B0C8F0'}, shape = 'rectangle', shapeSize = {280, 4}, bounds = self:rainBounds(), boundsMode = 'kill', maxParticles = 512, layer = 2, seed = 241}))
     self.rain.x, self.rain.y = -600, BoundsOrder.cloud
 
     local box = BoundsOrder.snowBox
-    self.snow = particles2d.newEmitter({texture = ParticleTest.library('snowflake'), rate = 14, prewarm = 10, lifetime = {10, 12}, speed = {20, 60}, direction = 1.5708, spread = 1, gravity = {self.wind, 30}, turbulence = {strength = 30, frequency = 0.01, speed = 0.4}, startSize = {14, 28}, endSizeScale = 1, rotation = {0, m.tau}, spin = {-1, 1}, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.05, 0.9, 1}, shape = 'rectangle', shapeSize = {box[3] / 2, box[4] / 2}, bounds = {-box[3] / 2, -box[4] / 2, box[3], box[4]}, boundsMode = 'wrap', maxParticles = 256, layer = 2, seed = 242})
+    self.snow = particles2d.newEmitter(ParticleTest.look('snowflake', {rate = 14, prewarm = 10, lifetime = {10, 12}, speed = {20, 60}, direction = 1.5708, spread = 1, gravity = {self.wind, 30}, turbulence = {strength = 30, frequency = 0.01, speed = 0.4}, startSize = {14, 28}, endSizeScale = 1, rotation = {0, m.tau}, spin = {-1, 1}, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.05, 0.9, 1}, shape = 'rectangle', shapeSize = {box[3] / 2, box[4] / 2}, bounds = {-box[3] / 2, -box[4] / 2, box[3], box[4]}, boundsMode = 'wrap', maxParticles = 256, layer = 2, seed = 242}))
     self.snow.x, self.snow.y = box[1] + box[3] / 2, box[2] + box[4] / 2
 
-    local smoke = {texture = ParticleTest.library('smoke-puff'), rate = 12, lifetime = {3, 3.5}, speed = {60, 90}, spread = 0.4, startSize = {60, 80}, endSize = {180, 220}, rotation = {0, m.tau}, spin = {-0.5, 0.5}, colors = {'#FFFFC060', '#FFC07040', '#E0505060', '#00404050'}, maxParticles = 64, layer = 2}
+    local smoke = ParticleTest.look('smoke-puff', {rate = 12, lifetime = {3, 3.5}, speed = {60, 90}, spread = 0.4, startSize = {60, 80}, endSize = {180, 220}, rotation = {0, m.tau}, spin = {-0.5, 0.5}, colors = {'#FFFFC060', '#FFC07040', '#E0505060', '#00404050'}, maxParticles = 64, layer = 2})
     smoke.particleOrder, smoke.seed = 'oldestFirst', 243
     self.oldestFirst = particles2d.newEmitter(smoke)
     smoke.particleOrder, smoke.seed = 'newestFirst', 244

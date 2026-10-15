@@ -13,7 +13,7 @@ Fireworks.gravity = 620
 function Fireworks:init(entry)
     Fireworks.super.init(self, entry)
     self.random = m.random(33)
-    self.soft, self.spark, self.sparkle = ParticleTest.texture('soft'), ParticleTest.texture('spark'), ParticleTest.texture('sparkle')
+    self.soft, self.spark, self.sparkle = 'soft-dot', 'hard-dot', 'sparkle'
     self.rockets, self.effects = {}, {}
     self.clock = 0
 end
@@ -24,7 +24,7 @@ end
 
 function Fireworks:launch(targetX)
     local x = self.random:range(-500, 500)
-    local trail = particles2d.newEmitter({texture = self.spark, rate = 90, lifetime = {0.4, 0.7}, speed = {0, 40}, spread = 6.2832, gravity = {0, 120}, startSize = {8, 12}, endSize = 0, colors = {'#FFFFE0A0', '#FFFF9040', '#00802000'}, blend = 'additive', layer = 2, seed = self.random:integer(1, 100000)})
+    local trail = particles2d.newEmitter(ParticleTest.look(self.spark, {rate = 90, lifetime = {0.4, 0.7}, speed = {0, 40}, spread = 6.2832, gravity = {0, 120}, startSize = {8, 12}, endSize = 0, colors = {'#FFFFE0A0', '#FFFF9040', '#00802000'}, blend = 'additive', layer = 2, seed = self.random:integer(1, 100000)}))
     local height = self.random:range(900, 1150)
     self.rockets[#self.rockets + 1] = {x = x, y = 540, vx = (targetX - x) * 0.45, vy = -height, trail = trail}
     self.effects[#self.effects + 1] = trail
@@ -34,8 +34,8 @@ function Fireworks:burst(x, y)
     local hue = self.random:nextFloat()
     local color, tint = m.fromHsv(hue, 0.7, 1), m.fromHsv(hue + 0.1, 0.9, 1)
     local seed = self.random:integer(1, 100000)
-    local stars = particles2d.newEmitter({texture = self.soft, rate = 0, bursts = {{time = 0, count = 110}}, duration = 0.1, lifetime = {1.2, 1.8}, speed = {260, 420}, spread = m.tau, gravity = {0, 160}, damping = 1.3, startSize = {18, 26}, endSize = 2, colors = {'#FFFFFFFF', color, tint:withAlpha(0)}, blend = 'additive', maxParticles = 128, layer = 3, seed = seed})
-    local crackle = particles2d.newEmitter({texture = self.sparkle, frames = ParticleTest.frames(self.sparkle), rate = 0, bursts = {{time = 0.5, count = 40}}, duration = 0.6, lifetime = {0.4, 0.8}, speed = {80, 300}, spread = m.tau, gravity = {0, 200}, startSize = {18, 28}, endSize = {18, 28}, colors = {'#FFFFFFFF', tint}, blend = 'additive', layer = 4, seed = seed + 1})
+    local stars = particles2d.newEmitter(ParticleTest.look(self.soft, {rate = 0, bursts = {{time = 0, count = 110}}, duration = 0.1, lifetime = {1.2, 1.8}, speed = {260, 420}, spread = m.tau, gravity = {0, 160}, damping = 1.3, startSize = {18, 26}, endSize = 2, colors = {'#FFFFFFFF', color, tint:withAlpha(0)}, blend = 'additive', maxParticles = 128, layer = 3, seed = seed}))
+    local crackle = particles2d.newEmitter(ParticleTest.look(self.sparkle, {rate = 0, bursts = {{time = 0.5, count = 40}}, duration = 0.6, lifetime = {0.4, 0.8}, speed = {80, 300}, spread = m.tau, gravity = {0, 200}, startSize = {18, 28}, endSize = {18, 28}, colors = {'#FFFFFFFF', tint}, blend = 'additive', layer = 4, seed = seed + 1}))
     for _, emitter in ipairs({stars, crackle}) do
         emitter.position = {x, y}
         self.effects[#self.effects + 1] = emitter

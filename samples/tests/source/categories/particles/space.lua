@@ -12,7 +12,7 @@ function Space:init(entry)
     Space.super.init(self, entry)
     self.speed = 2
     self.time = 0
-    local options = {texture = ParticleTest.texture('soft'), rate = 120, lifetime = {1, 1.4}, speed = {40, 90}, spread = 6.2832, startSize = {26, 32}, endSize = 2, colors = {'#FFFFE080', '#FFFF7040', '#00A02060'}, blend = 'additive', maxParticles = 512, layer = 2}
+    local options = ParticleTest.look('soft-dot', {rate = 120, lifetime = {1, 1.4}, speed = {40, 90}, spread = 6.2832, startSize = {26, 32}, endSize = 2, colors = {'#FFFFE080', '#FFFF7040', '#00A02060'}, blend = 'additive', maxParticles = 512, layer = 2})
     options.localSpace, options.seed = false, 50
     self.worldSpace = particles2d.newEmitter(options)
     options.localSpace, options.seed = true, 51

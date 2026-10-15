@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/sparkle-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[204, 856, 64, 64], [272, 856, 64, 64], [340, 856, 64, 64], [408, 856, 64, 64]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "loopRandomStart",
     "frameRate": 10,
     "rate": 40,

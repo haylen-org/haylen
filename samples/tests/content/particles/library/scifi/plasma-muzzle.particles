@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/flash-burst.png",
+    "texture": "../textures/effects.png",
+    "frames": [[0, 0, 256, 256]],
     "filter": "linear",
     "rate": 0,
     "bursts": [{"time": 0, "count": 1}],

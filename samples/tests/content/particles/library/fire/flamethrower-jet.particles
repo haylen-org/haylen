@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/fireball-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[788, 264, 128, 128], [260, 392, 128, 128], [392, 392, 128, 128], [524, 392, 128, 128]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "rate": 160,
     "maxParticles": 256,
     "lifetime": [0.35, 0.6],

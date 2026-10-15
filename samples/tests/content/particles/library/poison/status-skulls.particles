@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/skull.png",
+    "texture": "../textures/effects.png",
+    "frames": [[68, 856, 64, 64]],
     "filter": "linear",
     "rate": 2,
     "maxParticles": 4,

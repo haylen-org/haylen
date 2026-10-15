@@ -11,11 +11,11 @@ local Snow = haylen.class('Snow', ParticleTest)
 function Snow:init(entry)
     Snow.super.init(self, entry)
     self.wind = 30
-    local flake = ParticleTest.texture('snowflake')
+    local flake = 'snowflake'
     local area = {shape = 'rectangle', shapeSize = {1300, 10}, direction = 1.5708, spread = 0.4}
     self.layers = {
-        {drift = 0.5, emitter = particles2d.newEmitter({texture = flake, rate = 70, prewarm = 12, lifetime = {12, 14}, speed = {40, 70}, spread = area.spread, direction = area.direction, tangentialAcceleration = {-4, 4}, startSize = {8, 12}, endSize = {8, 12}, spin = {-1, 1}, colors = {'#90D8E8FF'}, shape = area.shape, shapeSize = area.shapeSize, maxParticles = 1024, layer = 1, seed = 6})},
-        {drift = 1, emitter = particles2d.newEmitter({texture = flake, rate = 25, prewarm = 12, lifetime = {7, 8}, speed = {90, 140}, spread = area.spread, direction = area.direction, tangentialAcceleration = {-8, 8}, startSize = {20, 30}, endSize = {20, 30}, spin = {-2, 2}, colors = {'#F0FFFFFF'}, shape = area.shape, shapeSize = area.shapeSize, maxParticles = 512, layer = 3, seed = 7})},
+        {drift = 0.5, emitter = particles2d.newEmitter(ParticleTest.look(flake, {rate = 70, prewarm = 12, lifetime = {12, 14}, speed = {40, 70}, spread = area.spread, direction = area.direction, tangentialAcceleration = {-4, 4}, startSize = {8, 12}, endSize = {8, 12}, spin = {-1, 1}, colors = {'#90D8E8FF'}, shape = area.shape, shapeSize = area.shapeSize, maxParticles = 1024, layer = 1, seed = 6}))},
+        {drift = 1, emitter = particles2d.newEmitter(ParticleTest.look(flake, {rate = 25, prewarm = 12, lifetime = {7, 8}, speed = {90, 140}, spread = area.spread, direction = area.direction, tangentialAcceleration = {-8, 8}, startSize = {20, 30}, endSize = {20, 30}, spin = {-2, 2}, colors = {'#F0FFFFFF'}, shape = area.shape, shapeSize = area.shapeSize, maxParticles = 512, layer = 3, seed = 7}))},
     }
     for _, layer in ipairs(self.layers) do
         layer.emitter.position = {0, -620}

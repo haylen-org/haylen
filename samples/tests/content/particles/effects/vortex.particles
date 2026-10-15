@@ -1,5 +1,6 @@
 {
-    "texture": "../images/star.png",
+    "texture": "../library/textures/effects.png",
+    "frames": [[544, 860, 64, 64]],
     "rate": 60,
     "lifetime": [1.4, 1.8],
     "speed": [0, 10],

@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/droplet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[0, 784, 64, 64]],
     "filter": "linear",
     "rate": 0.5,
     "maxParticles": 4,

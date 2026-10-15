@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/smoke-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[792, 528, 128, 128], [0, 652, 128, 128], [132, 656, 128, 128], [264, 656, 128, 128]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "rate": 10,
     "prewarm": 8,
     "maxParticles": 96,

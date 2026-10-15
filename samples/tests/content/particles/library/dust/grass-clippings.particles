@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/leaf-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[340, 788, 64, 64]],
     "filter": "linear",
-    "frames": [[0, 0, 64, 64]],
     "rate": 0,
     "bursts": [{"time": 0, "count": 12}],
     "duration": 0.05,

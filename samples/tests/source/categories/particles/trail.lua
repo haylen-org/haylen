@@ -8,10 +8,10 @@ local Trail = haylen.class('Trail', ParticleTest)
 
 function Trail:init(entry)
     Trail.super.init(self, entry)
-    local soft = ParticleTest.texture('soft')
-    self.pen = particles2d.newEmitter({texture = soft, rate = 240, lifetime = {0.7, 0.9}, speed = {0, 20}, spread = 6.2832, startSize = {34, 40}, endSize = 0, colors = {'#FFA0F0FF', '#FF6080FF', '#00A040FF'}, blend = 'additive', maxParticles = 512, layer = 2, seed = 10})
-    self.comet = particles2d.newEmitter({texture = soft, rate = 200, lifetime = {1, 1.4}, speed = {0, 30}, spread = 6.2832, startSize = {60, 70}, endSize = 4, colors = {'#FFFFF0C0', '#FFFF9030', '#00FF2000'}, blend = 'additive', maxParticles = 512, layer = 1, seed = 11})
-    self.dust = particles2d.newEmitter({texture = ParticleTest.texture('spark'), rate = 60, lifetime = {1, 2}, speed = {20, 80}, spread = 6.2832, gravity = {0, 40}, startSize = {4, 7}, endSize = 0, colors = {'#FFFFE0A0', '#00FF8040'}, blend = 'additive', layer = 3, seed = 12})
+    local soft = 'soft-dot'
+    self.pen = particles2d.newEmitter(ParticleTest.look(soft, {rate = 240, lifetime = {0.7, 0.9}, speed = {0, 20}, spread = 6.2832, startSize = {34, 40}, endSize = 0, colors = {'#FFA0F0FF', '#FF6080FF', '#00A040FF'}, blend = 'additive', maxParticles = 512, layer = 2, seed = 10}))
+    self.comet = particles2d.newEmitter(ParticleTest.look(soft, {rate = 200, lifetime = {1, 1.4}, speed = {0, 30}, spread = 6.2832, startSize = {60, 70}, endSize = 4, colors = {'#FFFFF0C0', '#FFFF9030', '#00FF2000'}, blend = 'additive', maxParticles = 512, layer = 1, seed = 11}))
+    self.dust = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = 60, lifetime = {1, 2}, speed = {20, 80}, spread = 6.2832, gravity = {0, 40}, startSize = {4, 7}, endSize = 0, colors = {'#FFFFE0A0', '#00FF8040'}, blend = 'additive', layer = 3, seed = 12}))
     self.time = 0
 end
 

@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/flame-soft.png",
+    "texture": "../textures/effects.png",
+    "frames": [[264, 524, 128, 128]],
     "filter": "linear",
     "rate": 50,
     "maxParticles": 96,

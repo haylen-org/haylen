@@ -13,9 +13,9 @@ Rain.ground = 330
 function Rain:init(entry)
     Rain.super.init(self, entry)
     self.intensity = 1
-    self.drops = particles2d.newEmitter({texture = ParticleTest.texture('raindrop'), rate = 500, lifetime = 0.95, speed = {1150, 1350}, direction = 1.62, spread = 0.02, startSize = {36, 52}, endSize = {36, 52}, colors = {'#90B0C8FF', '#90B0C8FF'}, shape = 'rectangle', shapeSize = {1100, 10}, maxParticles = 2048, layer = 1, seed = 4})
+    self.drops = particles2d.newEmitter(ParticleTest.look('rain-streak', {rate = 500, lifetime = 0.95, speed = {1150, 1350}, direction = 1.62, spread = 0.02, startSize = {36, 52}, endSize = {36, 52}, colors = {'#90B0C8FF', '#90B0C8FF'}, shape = 'rectangle', shapeSize = {1100, 10}, maxParticles = 2048, layer = 1, seed = 4}))
     self.drops.position = {-40, -820}
-    self.splashes = particles2d.newEmitter({texture = ParticleTest.texture('spark'), rate = 260, lifetime = {0.25, 0.45}, speed = {80, 200}, spread = 1.4, gravity = {0, 900}, startSize = {4, 7}, endSize = 2, colors = {'#C0D0E8FF', '#00D0E8FF'}, shape = 'rectangle', shapeSize = {1000, 4}, maxParticles = 1024, layer = 3, seed = 5})
+    self.splashes = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = 260, lifetime = {0.25, 0.45}, speed = {80, 200}, spread = 1.4, gravity = {0, 900}, startSize = {4, 7}, endSize = 2, colors = {'#C0D0E8FF', '#00D0E8FF'}, shape = 'rectangle', shapeSize = {1000, 4}, maxParticles = 1024, layer = 3, seed = 5}))
     self.splashes.position = {0, Rain.ground}
 end
 

@@ -17,10 +17,10 @@ Smoke.kinds = {
 function Smoke:init(entry)
     Smoke.super.init(self, entry)
     self.wind = 40
-    local texture = ParticleTest.texture('smoke')
+    local texture = 'smoke'
     self.chimneys = {}
     for index = 1, 3 do
-        local emitter = particles2d.newEmitter({texture = texture, frames = ParticleTest.frames(texture), rate = 10, prewarm = 6, lifetime = {4, 6}, speed = {50, 80}, spread = 0.3, gravity = {self.wind, -8}, damping = 0.2, startSize = {50, 70}, endSize = {220, 300}, spin = {-0.4, 0.4}, colors = Smoke.kinds.smoke, shape = 'circle', shapeSize = {16, 0}, maxParticles = 128, layer = 1, seed = index})
+        local emitter = particles2d.newEmitter(ParticleTest.look(texture, {rate = 10, prewarm = 6, lifetime = {4, 6}, speed = {50, 80}, spread = 0.3, gravity = {self.wind, -8}, damping = 0.2, startSize = {50, 70}, endSize = {220, 300}, spin = {-0.4, 0.4}, colors = Smoke.kinds.smoke, shape = 'circle', shapeSize = {16, 0}, maxParticles = 128, layer = 1, seed = index}))
         emitter.position = {-620 + (index - 1) * 560, 180}
         self.chimneys[index] = emitter
     end

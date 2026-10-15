@@ -12,10 +12,10 @@ Confetti.colors = {'#FFFF4060', '#FFFFD030', '#FF40D080', '#FF40A0FF', '#FFC060F
 
 function Confetti:init(entry)
     Confetti.super.init(self, entry)
-    self.texture = ParticleTest.texture('confetti')
-    self.strip = {}
+    local confetti = ParticleTest.look('confetti', {})
+    self.texture, self.strip = confetti.texture, {}
     for _ = 1, 8 do
-        table.move(ParticleTest.frames(self.texture), 1, 4, #self.strip + 1, self.strip)
+        table.move(confetti.frames, 1, #confetti.frames, #self.strip + 1, self.strip)
     end
     self.bursts = {}
     self.random = m.random(21)

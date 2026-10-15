@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/smoke-puff.png",
+    "texture": "../textures/effects.png",
+    "frames": [[0, 260, 256, 256]],
     "filter": "linear",
     "rate": 60,
     "rateOverDistance": 0.25,

@@ -9,9 +9,9 @@ local Bursts = haylen.class('Bursts', ParticleTest)
 
 function Bursts:init(entry)
     Bursts.super.init(self, entry)
-    local soft, smoke = ParticleTest.texture('soft'), ParticleTest.texture('smoke')
-    local plume = {texture = smoke, frames = ParticleTest.frames(smoke), rate = 10, lifetime = {3, 4}, speed = {60, 90}, spread = 0.3, gravity = {10, -10}, startSize = {40, 50}, endSize = {140, 180}, spin = {-0.5, 0.5}, colors = {'#00C0C8D0', '#A0C0C8D0', '#00C0C8D0'}, layer = 2}
-    self.scheduled = particles2d.newEmitter({texture = soft, rate = 0, bursts = {{time = 0, count = 40}, {time = 0.5, count = 12}, {time = 0.8, count = 12}, {time = 1.2, count = 60}}, duration = 2, loop = true, lifetime = {0.6, 1}, speed = {150, 300}, spread = 6.2832, damping = 2, startSize = {20, 28}, endSize = 2, colors = {'#FFFFE070', '#00FF6020'}, blend = 'additive', layer = 2, seed = 40})
+    local soft, smoke = 'soft-dot', 'smoke'
+    local plume = ParticleTest.look(smoke, {rate = 10, lifetime = {3, 4}, speed = {60, 90}, spread = 0.3, gravity = {10, -10}, startSize = {40, 50}, endSize = {140, 180}, spin = {-0.5, 0.5}, colors = {'#00C0C8D0', '#A0C0C8D0', '#00C0C8D0'}, layer = 2})
+    self.scheduled = particles2d.newEmitter(ParticleTest.look(soft, {rate = 0, bursts = {{time = 0, count = 40}, {time = 0.5, count = 12}, {time = 0.8, count = 12}, {time = 1.2, count = 60}}, duration = 2, loop = true, lifetime = {0.6, 1}, speed = {150, 300}, spread = 6.2832, damping = 2, startSize = {20, 28}, endSize = 2, colors = {'#FFFFE070', '#00FF6020'}, blend = 'additive', layer = 2, seed = 40}))
     self.scheduled.position = {-640, -40}
     plume.prewarm, plume.seed = 4, 41
     self.warm = particles2d.newEmitter(plume)
@@ -19,7 +19,7 @@ function Bursts:init(entry)
     plume.prewarm, plume.seed = 0, 42
     self.cold = particles2d.newEmitter(plume)
     self.cold.position = {120, 260}
-    self.once = particles2d.newEmitter({texture = soft, rate = 80, duration = 1.2, lifetime = {0.8, 1.2}, speed = {80, 160}, spread = 0.8, gravity = {0, 200}, startSize = 20, endSize = 4, colors = {'#FF80FFA0', '#0040C060'}, blend = 'additive', layer = 2, seed = 43})
+    self.once = particles2d.newEmitter(ParticleTest.look(soft, {rate = 80, duration = 1.2, lifetime = {0.8, 1.2}, speed = {80, 160}, spread = 0.8, gravity = {0, 200}, startSize = 20, endSize = 4, colors = {'#FF80FFA0', '#0040C060'}, blend = 'additive', layer = 2, seed = 43}))
     self.once.position = {640, 0}
     self.emitters = {self.scheduled, self.warm, self.cold, self.once}
 end

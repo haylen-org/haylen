@@ -23,7 +23,7 @@ function Forces:init(entry)
     for key, value in pairs(Forces.defaults) do
         self.values[key] = value
     end
-    self.emitter = particles2d.newEmitter({texture = ParticleTest.texture('soft'), rate = 180, lifetime = {2, 2.5}, speed = {220, 280}, direction = -1.5708, spread = 0.5, startSize = 20, endSize = 6, colors = {'#FF60E0FF', '#FFFFE070', '#00FF6040'}, shape = 'circle', shapeSize = {10, 0}, blend = 'additive', maxParticles = 1024, layer = 2, seed = 60})
+    self.emitter = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 180, lifetime = {2, 2.5}, speed = {220, 280}, direction = -1.5708, spread = 0.5, startSize = 20, endSize = 6, colors = {'#FF60E0FF', '#FFFFE070', '#00FF6040'}, shape = 'circle', shapeSize = {10, 0}, blend = 'additive', maxParticles = 1024, layer = 2, seed = 60}))
     self.emitter.position = {-120, 120}
     self:apply()
 end

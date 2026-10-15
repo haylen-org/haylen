@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/confetti-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[924, 272, 64, 64], [924, 340, 64, 64], [924, 408, 64, 64], [924, 476, 64, 64]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "loopRandomStart",
     "frameRate": 10,
     "rate": 0,

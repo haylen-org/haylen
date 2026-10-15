@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/bolt-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[780, 0, 128, 128], [780, 132, 128, 128], [260, 260, 128, 128], [392, 260, 128, 128]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "random",
     "rate": 6,
     "maxParticles": 4,

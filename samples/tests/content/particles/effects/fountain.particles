@@ -1,5 +1,6 @@
 {
-    "texture": "../images/soft.png",
+    "texture": "../library/textures/effects.png",
+    "frames": [[396, 656, 128, 128]],
     "rate": 160,
     "prewarm": 2,
     "lifetime": [1.4, 1.8],

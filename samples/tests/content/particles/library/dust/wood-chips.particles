@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/debris-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[924, 544, 64, 64], [924, 612, 64, 64], [924, 680, 64, 64], [924, 748, 64, 64]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "random",
     "rate": 0,
     "bursts": [{"time": 0, "count": 10}],

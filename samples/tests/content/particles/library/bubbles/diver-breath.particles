@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/bubble.png",
+    "texture": "../textures/effects.png",
+    "frames": [[524, 260, 128, 128]],
     "filter": "linear",
     "rate": 0,
     "bursts": [{"time": 0, "count": 8}, {"time": 0.1, "count": 5}],

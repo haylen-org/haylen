@@ -29,8 +29,8 @@ function ImageShapes:init(entry)
     self.clock = 0
 
     local size = {ImageShapes.size, ImageShapes.size}
-    self.sparkles = particles2d.newEmitter({texture = ParticleTest.library('sparkle-sheet'), frameGrid = {columns = 4, rows = 1}, rate = 30, lifetime = {0.5, 0.9}, speed = {0, 15}, startSize = {22, 34}, endSize = 6, colors = {'#FFFFFFFF', '#FFFFF0A0', '#00FFC060'}, shape = 'image', shapeImage = self.shape, shapeSize = size, blend = 'additive', layer = 3, seed = 261})
-    self.pieces = particles2d.newEmitter({texture = ParticleTest.library('pixel-square'), rate = 0, lifetime = {1.4, 2.2}, speed = {80, 420}, directionMode = 'outward', spread = 0.8, gravity = {0, 900}, damping = 0.6, startSize = 5, endSize = 5, spin = {-6, 6}, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.75, 1}, shape = 'image', shapeImage = self.shape, shapeSize = size, colorFromImage = self.ownColors, collision = {type = 'floor', y = ImageShapes.floor - ImageShapes.y, bounce = 0.3, friction = 0.4}, maxParticles = 4096, layer = 2, seed = 262})
+    self.sparkles = particles2d.newEmitter(ParticleTest.look('sparkle', {rate = 30, lifetime = {0.5, 0.9}, speed = {0, 15}, startSize = {22, 34}, endSize = 6, colors = {'#FFFFFFFF', '#FFFFF0A0', '#00FFC060'}, shape = 'image', shapeImage = self.shape, shapeSize = size, blend = 'additive', layer = 3, seed = 261}))
+    self.pieces = particles2d.newEmitter(ParticleTest.look('pixel-square', {rate = 0, lifetime = {1.4, 2.2}, speed = {80, 420}, directionMode = 'outward', spread = 0.8, gravity = {0, 900}, damping = 0.6, startSize = 5, endSize = 5, spin = {-6, 6}, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.75, 1}, shape = 'image', shapeImage = self.shape, shapeSize = size, colorFromImage = self.ownColors, collision = {type = 'floor', y = ImageShapes.floor - ImageShapes.y, bounce = 0.3, friction = 0.4}, maxParticles = 4096, layer = 2, seed = 262}))
     for _, emitter in ipairs({self.sparkles, self.pieces}) do
         emitter.x, emitter.y = 0, ImageShapes.y
     end

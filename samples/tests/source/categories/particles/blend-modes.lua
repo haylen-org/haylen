@@ -8,15 +8,15 @@ local ParticleTest = require('categories.particles.particle-test')
 local BlendModes = haylen.class('BlendModes', ParticleTest)
 
 BlendModes.modes = {'alpha', 'additive', 'multiply', 'screen', 'premultiplied'}
-BlendModes.straight = {texture = 'soft', colors = {'#FFFF9040', '#80FF5020', '#00FF2010'}}
-BlendModes.premultiplied = {texture = 'soft-premultiplied', colors = {'#FFFF9040', '#80802810', '#00000000'}}
+BlendModes.straight = {piece = 'soft-dot', colors = {'#FFFF9040', '#80FF5020', '#00FF2010'}}
+BlendModes.premultiplied = {piece = 'soft-dot-premultiplied', colors = {'#FFFF9040', '#80802810', '#00000000'}}
 
 function BlendModes:init(entry)
     BlendModes.super.init(self, entry)
     self.emitters = {}
     for index, mode in ipairs(BlendModes.modes) do
         local look = mode == 'premultiplied' and BlendModes.premultiplied or BlendModes.straight
-        local emitter = particles2d.newEmitter({texture = ParticleTest.texture(look.texture), rate = 40, lifetime = {1.6, 2}, speed = {200, 260}, direction = -1.5708, spread = 0.4, startSize = {50, 70}, endSize = {20, 30}, colors = look.colors, blend = mode, layer = 2, seed = 80 + index})
+        local emitter = particles2d.newEmitter(ParticleTest.look(look.piece, {rate = 40, lifetime = {1.6, 2}, speed = {200, 260}, direction = -1.5708, spread = 0.4, startSize = {50, 70}, endSize = {20, 30}, colors = look.colors, blend = mode, layer = 2, seed = 80 + index}))
         emitter.position = {(index - 3) * 330, 250}
         self.emitters[index] = emitter
     end

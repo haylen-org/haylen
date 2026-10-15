@@ -1,7 +1,7 @@
 {
-    "texture": "../library/textures/smoke-sheet.png",
+    "texture": "../library/textures/effects.png",
+    "frames": [[792, 528, 128, 128], [0, 652, 128, 128], [132, 656, 128, 128], [264, 656, 128, 128]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "random",
     "rate": 0,
     "bursts": [{"time": 0, "count": 16}],

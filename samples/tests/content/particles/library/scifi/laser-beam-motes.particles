@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/hard-dot.png",
+    "texture": "../textures/effects.png",
+    "frames": [[204, 788, 64, 64]],
     "filter": "linear",
     "rate": 200,
     "maxParticles": 128,

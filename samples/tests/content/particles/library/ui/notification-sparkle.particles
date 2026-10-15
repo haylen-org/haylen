@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/sparkle-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[204, 856, 64, 64], [272, 856, 64, 64], [340, 856, 64, 64], [408, 856, 64, 64]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "rate": 0,
     "bursts": [{"time": 0, "count": 2, "cycles": 3, "interval": 0.6}],
     "duration": 1.8,

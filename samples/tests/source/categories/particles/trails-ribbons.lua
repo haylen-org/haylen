@@ -16,7 +16,7 @@ function TrailsRibbons:init(entry)
     self.length = 16
     self.time = 0
 
-    self.sparks = particles2d.newEmitter({texture = ParticleTest.library('hard-dot'), rate = 14, lifetime = {1.4, 1.8}, speed = {500, 700}, direction = -1.5708, spread = 1.4, gravity = {0, 520}, startSize = 14, endSize = 8, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.8, 1}, tints = TrailsRibbons.neon, tintMode = 'cycle', trail = {length = self.length, lifetime = 0.35, widthStart = 10, widthEnd = 0, colors = {'#FFFFFFFF', '#00FFFFFF'}}, blend = 'additive', maxParticles = 64, layer = 3, seed = 321})
+    self.sparks = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = 14, lifetime = {1.4, 1.8}, speed = {500, 700}, direction = -1.5708, spread = 1.4, gravity = {0, 520}, startSize = 14, endSize = 8, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.8, 1}, tints = TrailsRibbons.neon, tintMode = 'cycle', trail = {length = self.length, lifetime = 0.35, widthStart = 10, widthEnd = 0, colors = {'#FFFFFFFF', '#00FFFFFF'}}, blend = 'additive', maxParticles = 64, layer = 3, seed = 321}))
     self.sparks.x, self.sparks.y = -420, 380
 
     self.blade = particles2d.newTrail({lifetime = self.lifetime, minDistance = 6, maxPoints = 96, widthStart = self.width, widthEnd = 0, colors = {'#FFFFFFFF', '#C080E0FF', '#002060FF'}, texture = ParticleTest.library('glow-line'), blend = 'additive', layer = 4})

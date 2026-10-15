@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/heart.png",
+    "texture": "../textures/effects.png",
+    "frames": [[272, 788, 64, 64]],
     "filter": "linear",
     "rate": 0,
     "bursts": [{"time": 0, "count": 6}],

@@ -14,10 +14,10 @@ function Magic:init(entry)
     self.orb = {x = 0, y = 0}
     self.swirl = 260
     self.pull = 180
-    local sparkle = ParticleTest.texture('sparkle')
-    self.vortex = particles2d.newEmitter({texture = ParticleTest.texture('soft'), rate = 160, lifetime = {1.2, 1.6}, speed = {0, 20}, spread = 6.2832, startSize = {22, 30}, endSize = 4, colors = {'#00A060FF', '#FFB070FF', '#FF60E0FF', '#0040C0FF'}, shape = 'ring', shapeSize = {220, 0}, blend = 'additive', maxParticles = 512, layer = 2, seed = 13})
-    self.stars = particles2d.newEmitter({texture = sparkle, frames = ParticleTest.frames(sparkle), rate = 14, lifetime = {0.8, 1.2}, speed = {10, 40}, spread = 6.2832, startSize = {30, 46}, endSize = {30, 46}, colors = {'#FFFFFFFF', '#FFA0E8FF', '#00A0E8FF'}, shape = 'circle', shapeSize = {260, 0}, blend = 'additive', layer = 3, seed = 14})
-    self.core = particles2d.newEmitter({texture = ParticleTest.texture('soft'), rate = 40, lifetime = 0.5, speed = 0, startSize = {120, 150}, endSize = {170, 200}, colors = {'#00FFFFFF', '#80C090FF', '#00A060FF'}, blend = 'additive', layer = 1, seed = 15})
+    local sparkle = 'sparkle'
+    self.vortex = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 160, lifetime = {1.2, 1.6}, speed = {0, 20}, spread = 6.2832, startSize = {22, 30}, endSize = 4, colors = {'#00A060FF', '#FFB070FF', '#FF60E0FF', '#0040C0FF'}, shape = 'ring', shapeSize = {220, 0}, blend = 'additive', maxParticles = 512, layer = 2, seed = 13}))
+    self.stars = particles2d.newEmitter(ParticleTest.look(sparkle, {rate = 14, lifetime = {0.8, 1.2}, speed = {10, 40}, spread = 6.2832, startSize = {30, 46}, endSize = {30, 46}, colors = {'#FFFFFFFF', '#FFA0E8FF', '#00A0E8FF'}, shape = 'circle', shapeSize = {260, 0}, blend = 'additive', layer = 3, seed = 14}))
+    self.core = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 40, lifetime = 0.5, speed = 0, startSize = {120, 150}, endSize = {170, 200}, colors = {'#00FFFFFF', '#80C090FF', '#00A060FF'}, blend = 'additive', layer = 1, seed = 15}))
     self:shape()
 end
 

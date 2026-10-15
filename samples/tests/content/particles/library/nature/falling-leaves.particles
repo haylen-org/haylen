@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/leaf-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[340, 788, 64, 64], [408, 788, 64, 64], [476, 792, 64, 64], [544, 792, 64, 64]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "loopRandomStart",
     "frameRate": 6,
     "rate": 3,

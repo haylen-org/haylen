@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/spark-streak.png",
+    "texture": "../textures/effects.png",
+    "frames": [[660, 660, 128, 128]],
     "filter": "linear",
     "rate": 300,
     "maxParticles": 1024,

@@ -33,7 +33,7 @@ The menu lists the categories by section with their prefixes and the number of t
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
 | `content/<category>/` | The assets of each category, and `content/fonts/` the open-license fonts that several categories share, each next to its license. |
 | `plugins/` | `native-demo`, the plugin that exercises every capability of native plugins, `native-sample` and `platform-sample` with the platform handlers of the Native and Platform tests, and `native-test`, which answers the test library in the browser and holds the CMake project of that library in `native/`. |
-| `tools/` | The generators of the art of the Animation, Interface, Nodes and Text categories, the packer of the fantasy theme of the Interface category, the generators of the sounds of the Audio category, of the maps of the Tiled category and of the clip of the Video category. |
+| `tools/` | The generators of the art of the Animation, Interface, Nodes and Text categories, the packer of the fantasy theme of the Interface category, the packer of the particle atlases, the generators of the sounds of the Audio category, of the maps of the Tiled category and of the clip of the Video category. |
 
 A manifest returns the `prefix`, the `title` and the `description` of its category and its `tests`. Each test has a `code`, a `title`, a `description` and the `module` of its file, and a test that does not run everywhere lists the `platforms` it runs on and, in `unsupported`, the reason for each other platform, from `macos`, `windows`, `linux`, `ios`, `tvos`, `android`, `web` and `headless`. The catalog checks every manifest when the project starts.
 
@@ -63,6 +63,20 @@ The image theme of `GUI-033` in `content/interface/themes/fantasy/` is painted f
 | Sizes | Buttons 360 by 120 pixels, the panel 320 by 320, the title bar 480 by 112, the ribbon 720 by 140, fields 240 by 96, tabs 240 by 96, the selection plate 256 by 88, the tooltip 192 by 112, check boxes, radio marks and the knob 96 by 96, the groove 200 by 56, the fill 192 by 32, the badge 128 by 72, the scroll bar pieces 72 by 72 and icons 128 by 128. States of one piece, such as pressed, focused, checked or selected, are painted as edits of the first piece, so they keep its shape and size. |
 
 The theme loads its pictures and surfaces with the `linear` filter, because the art is painted in high definition and the screen scales it.
+
+## Art of the particle library
+
+The particle pieces of `content/particles/library/textures/` are painted for the project with the `codex` command line and its `$imagegen` skill in the style of [Tiny Island](../games/tiny-island/README.md#art), sheets of pieces at a time, then cut, scaled and packed by the tool `tools/particles/pack-particle-textures.py` into the atlas `effects.png`, whose file `effects.json` names every piece, and the frames of every effect file move with them. The pixel art pieces of the pixel effects are packed into `pixel.png` the same way, and the glow line of the ribbons and the sheet of runes that `frameGrid` cuts stay images of their own. Every prompt carries the key words of this guide.
+
+| Part | Rule |
+| --- | --- |
+| Look | Polished casual fantasy effect sprites in high definition, chunky cute rounded shapes and simple bold forms that read at a small size, seen straight from the front. |
+| Outline | A bold clean outline of even thickness in very dark navy `#1E1B33` around every solid piece, such as puffs, balls, drops, flakes, stars, leaves, debris, flames and bolts. Light pieces, such as glows, rings, beams, streaks, swirls and the slash, have none and fade smoothly into transparency. |
+| Shading | Soft cel shading with two tones and one soft highlight, light from the top left, clean flat areas without noise or texture. |
+| Palette | Pure white `#FFFFFF` with light cool gray `#D5D9EA` shading, so the colors of an effect tint every piece, except the gold `#FFC93C` coin. The light pieces are pure white whose brightness is their alpha, and the soft dot also comes premultiplied for the premultiplied blending. |
+| Sizes | Single pieces of 64, 128 or 256 pixels and the ash flake of 32, the frames of a sheet at one scale in cells of 64 pixels, or of 128 for the smoke, the flames, the fireballs and the bolts, and four frames per sheet. States and frames of one piece are painted in one sheet, so they keep its shape and size. |
+
+The effects load the atlas with the `linear` filter, because the art is painted in high definition and the screen scales it, and the pixel art with the `nearest` filter.
 
 ## Codes
 

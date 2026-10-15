@@ -21,7 +21,7 @@ function Shapes:init(entry)
     self.speed = 10
     self.emitters = {}
     for index, shape in ipairs(Shapes.list) do
-        local emitter = particles2d.newEmitter({texture = ParticleTest.texture('soft'), rate = 90, lifetime = {1.5, 2}, speed = {self.speed, self.speed * 1.5}, spread = shape.name == 'cone' and 1.2 or 6.2832, startSize = 18, endSize = 4, colors = {'#FF80E0FF', '#0040A0FF'}, shape = shape.name, shapeSize = shape.size, blend = 'additive', layer = 2, seed = 30 + index})
+        local emitter = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 90, lifetime = {1.5, 2}, speed = {self.speed, self.speed * 1.5}, spread = shape.name == 'cone' and 1.2 or 6.2832, startSize = 18, endSize = 4, colors = {'#FF80E0FF', '#0040A0FF'}, shape = shape.name, shapeSize = shape.size, blend = 'additive', layer = 2, seed = 30 + index}))
         emitter.position = {(index - 3) * 330, 40}
         self.emitters[index] = emitter
     end

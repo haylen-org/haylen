@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/plus-sign.png",
+    "texture": "../textures/effects.png",
+    "frames": [[884, 816, 64, 64]],
     "filter": "linear",
     "rate": 10,
     "maxParticles": 16,

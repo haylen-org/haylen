@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/pixel-smoke-sheet.png",
+    "texture": "../textures/pixel.png",
+    "frames": [[0, 68, 16, 16], [18, 70, 16, 16], [36, 70, 16, 16], [54, 70, 16, 16]],
     "filter": "nearest",
-    "frameGrid": {"columns": 4, "rows": 1},
     "rate": 0,
     "bursts": [{"time": 0, "count": 6}],
     "duration": 0.05,

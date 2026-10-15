@@ -10,19 +10,34 @@ local Test = require('harness.test')
 local ParticleTest = haylen.class('ParticleTest', Test)
 
 ParticleTest.view = {1920, 1080}
+ParticleTest.atlases = {effects = 'particles/library/textures/effects.json', pixel = 'particles/library/textures/pixel.json'}
 ParticleTest.actions = {actions = {
     {name = 'cursor', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'stick:right'}},
     {name = 'press', type = 'button', bindings = {'axis:rightTrigger+'}},
     {name = 'fire', type = 'button', bindings = {'key:e', 'key:enter', 'key:space', 'button:south', 'button:west'}},
 }}
 
-function ParticleTest.texture(name)
-    return assets.texture('particles/images/' .. name .. '.png', {filter = 'linear'})
+-- Fills the emitter options `options` with the texture and the frames of a piece of the particle atlases of the library in `content/particles/library/textures` and returns them: the frame `name`, or the frames `name-1`, `name-2` and on of a sheet. The pixel art pieces, whose names start with `pixel-`, come from the atlas with the nearest filter, and the others from the atlas with the linear filter.
+function ParticleTest.look(name, options)
+    local pixel = name:find('^pixel%-') ~= nil
+    local atlas = assets.load(pixel and ParticleTest.atlases.pixel or ParticleTest.atlases.effects, 'atlas', {filter = pixel and 'nearest' or 'linear'})
+    local frames = {}
+    if atlas:hasFrame(name) then
+        frames[1] = atlas:source(name)
+    end
+    while atlas:hasFrame(name .. '-' .. #frames + 1) do
+        frames[#frames + 1] = atlas:source(name .. '-' .. #frames + 1)
+    end
+    if #frames == 0 then
+        error(('The particle atlases have no piece "%s".'):format(name), 2)
+    end
+    options.texture, options.frames = atlas.texture, frames
+    return options
 end
 
--- Returns a texture of the shared library in `content/particles/library/textures`, with the linear filter for the smooth images and the nearest filter for the pixel art ones, whose names start with `pixel_`.
+-- Returns a texture of the library that tests draw whole, such as the glow line of a ribbon and the sheet of runes that "frameGrid" cuts.
 function ParticleTest.library(name)
-    return assets.texture('particles/library/textures/' .. name .. '.png', {filter = name:find('^pixel_') and 'nearest' or 'linear'})
+    return assets.texture('particles/library/textures/' .. name .. '.png', {filter = 'linear'})
 end
 
 -- Updates every emitter, system or trail of a list and returns how many live particles or points they hold.
@@ -40,15 +55,6 @@ function ParticleTest.drawAll(list)
     for index = 1, #list do
         list[index]:draw()
     end
-end
-
--- Returns the source rectangles of an image made of square frames side by side.
-function ParticleTest.frames(texture)
-    local frames = {}
-    for index = 0, texture.width // texture.height - 1 do
-        frames[#frames + 1] = {index * texture.height, 0, texture.height, texture.height}
-    end
-    return frames
 end
 
 -- Fills the view with a gradient from the color `top` to the color `bottom`, below everything else.

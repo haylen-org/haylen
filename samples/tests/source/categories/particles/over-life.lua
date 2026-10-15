@@ -10,13 +10,13 @@ OverLife.rise = {rate = 30, lifetime = 2.4, speed = {110, 130}, spread = 0.15, l
 
 function OverLife:init(entry)
     OverLife.super.init(self, entry)
-    local soft, sparkle, smoke = ParticleTest.texture('soft'), ParticleTest.texture('sparkle'), ParticleTest.texture('smoke')
+    local soft, sparkle, smoke = 'soft-dot', 'sparkle', 'smoke'
     self.columns = {
-        {label = 'Five colors', options = {texture = soft, startSize = 40, endSize = 40, colors = {'#FFFF4040', '#FFFFC040', '#FF40FF80', '#FF40A0FF', '#00C060FF'}, blend = 'additive'}},
-        {label = 'Size 8 to 90', options = {texture = soft, startSize = 8, endSize = 90, colors = {'#FFFFFFFF', '#40FFFFFF'}}},
-        {label = 'Size 90 to 0', options = {texture = soft, startSize = 90, endSize = 0, colors = {'#FFFFB060'}}},
-        {label = 'Six frames', options = {texture = sparkle, frames = ParticleTest.frames(sparkle), startSize = 60, endSize = 60, colors = {'#FFFFF0A0'}, blend = 'additive'}},
-        {label = 'Smoke frames', options = {texture = smoke, frames = ParticleTest.frames(smoke), startSize = 50, endSize = 120, spin = {-1, 1}, colors = {'#00B0B0C0', '#C0B0B0C0', '#00B0B0C0'}}},
+        {label = 'Five colors', options = ParticleTest.look(soft, {startSize = 40, endSize = 40, colors = {'#FFFF4040', '#FFFFC040', '#FF40FF80', '#FF40A0FF', '#00C060FF'}, blend = 'additive'})},
+        {label = 'Size 8 to 90', options = ParticleTest.look(soft, {startSize = 8, endSize = 90, colors = {'#FFFFFFFF', '#40FFFFFF'}})},
+        {label = 'Size 90 to 0', options = ParticleTest.look(soft, {startSize = 90, endSize = 0, colors = {'#FFFFB060'}})},
+        {label = 'Four frames', options = ParticleTest.look(sparkle, {startSize = 60, endSize = 60, colors = {'#FFFFF0A0'}, blend = 'additive'})},
+        {label = 'Smoke frames', options = ParticleTest.look(smoke, {startSize = 50, endSize = 120, spin = {-1, 1}, colors = {'#00B0B0C0', '#C0B0B0C0', '#00B0B0C0'}})},
     }
     for index, column in ipairs(self.columns) do
         for key, value in pairs(OverLife.rise) do

@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/petal-sheet.png",
+    "texture": "../textures/effects.png",
+    "frames": [[612, 792, 64, 64], [680, 792, 64, 64], [748, 792, 64, 64], [816, 792, 64, 64]],
     "filter": "linear",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "loopRandomStart",
     "frameRate": 5,
     "rate": 8,

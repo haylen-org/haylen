@@ -24,7 +24,7 @@ function Distortion:init(entry)
     Distortion.super.init(self, entry)
     self.scenery = Scenery()
     self.robot = assets.texture('sprites/images/hero.png', {filter = 'linear'})
-    self.bubble = ParticleTest.library('hard-dot')
+    self.bubble = ParticleTest.look('hard-dot', {})
     self.campfire = Distortion.newSystem('fire/campfire-realistic')
     self.haze = Distortion.newSystem('fire/heat-haze')
     self.campfire.position, self.haze.position = Distortion.fire, {Distortion.fire[1], Distortion.fire[2] - 140}
@@ -111,7 +111,7 @@ function Distortion:draw(area)
     self.shield:draw()
     ParticleTest.drawAll(self.rings)
     if self.bubbleOn then
-        graphics2d.draw(self.bubble, self.cursorX, self.cursorY, {width = self.bubbleSize, height = self.bubbleSize, distortion = self.bubbleStrength})
+        graphics2d.draw(self.bubble.texture, self.cursorX, self.cursorY, {source = self.bubble.frames[1], width = self.bubbleSize, height = self.bubbleSize, distortion = self.bubbleStrength})
     end
 end
 

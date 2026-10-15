@@ -26,10 +26,10 @@ function Curves:init(entry)
     self.dustStops = true
     self.coinsSpinDown = true
 
-    self.pops = particles2d.newEmitter({texture = ParticleTest.library('bubble'), rate = 3, lifetime = 1.6, speed = 0, startSize = 0, endSize = 130, sizeCurve = Curves.sizeCurves[self.sizeCurve], colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.75, 1}, shape = 'circle', shapeSize = {110, 0}, layer = 2, seed = 201})
+    self.pops = particles2d.newEmitter(ParticleTest.look('bubble', {rate = 3, lifetime = 1.6, speed = 0, startSize = 0, endSize = 130, sizeCurve = Curves.sizeCurves[self.sizeCurve], colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.75, 1}, shape = 'circle', shapeSize = {110, 0}, layer = 2, seed = 201}))
     self.pops.x, self.pops.y = -760, -60
 
-    local kept = {texture = ParticleTest.library('star-5point'), rate = 5, lifetime = 3, speed = {120, 140}, spread = 0.15, startSize = {12, 70}, colors = {'#00FFD860', '#FFFFD860', '#FFFFD860', '#00FFD860'}, colorTimes = {0, 0.1, 0.85, 1}, layer = 2}
+    local kept = ParticleTest.look('star-5point', {rate = 5, lifetime = 3, speed = {120, 140}, spread = 0.15, startSize = {12, 70}, colors = {'#00FFD860', '#FFFFD860', '#FFFFD860', '#00FFD860'}, colorTimes = {0, 0.1, 0.85, 1}, layer = 2})
     kept.endSize, kept.seed = 40, 202
     self.converge = particles2d.newEmitter(kept)
     kept.endSize, kept.endSizeScale, kept.seed = nil, 1, 203
@@ -37,10 +37,10 @@ function Curves:init(entry)
     self.converge.x, self.converge.y = -380, Curves.ground - 40
     self.keep.x, self.keep.y = 0, Curves.ground - 40
 
-    self.dust = particles2d.newEmitter({texture = ParticleTest.library('smoke-puff'), rate = 26, lifetime = {1.4, 2}, speed = {350, 600}, spread = 2.6, speedCurve = Curves.stop, startSize = {30, 50}, endSize = {110, 150}, rotation = {0, m.tau}, spin = {-1, 1}, colors = {'#00C0A080', '#C0A08060', '#00806040'}, layer = 2, seed = 204})
+    self.dust = particles2d.newEmitter(ParticleTest.look('smoke-puff', {rate = 26, lifetime = {1.4, 2}, speed = {350, 600}, spread = 2.6, speedCurve = Curves.stop, startSize = {30, 50}, endSize = {110, 150}, rotation = {0, m.tau}, spin = {-1, 1}, colors = {'#00C0A080', '#C0A08060', '#00806040'}, layer = 2, seed = 204}))
     self.dust.x, self.dust.y = 380, Curves.ground - 10
 
-    self.coins = particles2d.newEmitter({texture = ParticleTest.library('coin-sheet'), frameGrid = {columns = 4, rows = 1, count = 1}, rate = 3, lifetime = 2.6, speed = {760, 860}, spread = 0.3, gravity = {0, 640}, startSize = 64, endSize = 64, rotation = {0, m.tau}, spin = {12, 18}, spinCurve = Curves.spinDown, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.85, 1}, layer = 3, seed = 205})
+    self.coins = particles2d.newEmitter(ParticleTest.look('coin-1', {rate = 3, lifetime = 2.6, speed = {760, 860}, spread = 0.3, gravity = {0, 640}, startSize = 64, endSize = 64, rotation = {0, m.tau}, spin = {12, 18}, spinCurve = Curves.spinDown, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.85, 1}, layer = 3, seed = 205}))
     self.coins.x, self.coins.y = 760, Curves.ground - 10
 
     self.emitters = {self.pops, self.converge, self.keep, self.dust, self.coins}

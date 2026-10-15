@@ -11,8 +11,8 @@ local Sparks = haylen.class('Sparks', ParticleTest)
 function Sparks:init(entry)
     Sparks.super.init(self, entry)
     self.onlyHeld = false
-    self.sparks = particles2d.newEmitter({texture = ParticleTest.texture('spark'), rate = 400, lifetime = {0.4, 1.1}, speed = {500, 1100}, direction = -0.5, spread = 0.7, gravity = {0, 1400}, damping = 1.2, startSize = {5, 9}, endSize = 1, colors = {'#FFFFFFE0', '#FFFFD060', '#FFFF7010', '#00A02000'}, shape = 'cone', shapeSize = {12, 0}, blend = 'additive', maxParticles = 2048, layer = 2, seed = 8})
-    self.glow = particles2d.newEmitter({texture = ParticleTest.texture('soft'), rate = 30, lifetime = 0.15, speed = 0, startSize = {90, 130}, endSize = 60, colors = {'#A0FFD080', '#00FF8020'}, blend = 'additive', layer = 3, seed = 9})
+    self.sparks = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = 400, lifetime = {0.4, 1.1}, speed = {500, 1100}, direction = -0.5, spread = 0.7, gravity = {0, 1400}, damping = 1.2, startSize = {5, 9}, endSize = 1, colors = {'#FFFFFFE0', '#FFFFD060', '#FFFF7010', '#00A02000'}, shape = 'cone', shapeSize = {12, 0}, blend = 'additive', maxParticles = 2048, layer = 2, seed = 8}))
+    self.glow = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 30, lifetime = 0.15, speed = 0, startSize = {90, 130}, endSize = 60, colors = {'#A0FFD080', '#00FF8020'}, blend = 'additive', layer = 3, seed = 9}))
 end
 
 function Sparks:enter()

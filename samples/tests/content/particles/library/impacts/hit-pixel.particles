@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/pixel-ring-sheet.png",
+    "texture": "../textures/pixel.png",
+    "frames": [[52, 52, 16, 16], [70, 52, 16, 16], [88, 54, 16, 16], [106, 54, 16, 16]],
     "filter": "nearest",
-    "frameGrid": {"columns": 4, "rows": 1},
     "rate": 0,
     "bursts": [{"time": 0, "count": 1}],
     "duration": 0.05,

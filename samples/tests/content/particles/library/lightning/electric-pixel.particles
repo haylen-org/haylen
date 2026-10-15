@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/pixel-bolt-sheet.png",
+    "texture": "../textures/pixel.png",
+    "frames": [[102, 0, 16, 16], [102, 18, 16, 16], [34, 34, 16, 16], [52, 34, 16, 16]],
     "filter": "nearest",
-    "frameGrid": {"columns": 4, "rows": 1},
     "frameMode": "random",
     "rate": 8,
     "maxParticles": 4,

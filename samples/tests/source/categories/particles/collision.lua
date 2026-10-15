@@ -26,10 +26,10 @@ function Collision:init(entry)
     self.bounce = 0.5
     self.white = graphics.whiteTexture()
 
-    self.sparks = particles2d.newEmitter({texture = ParticleTest.library('spark-streak'), rate = 90, lifetime = {1.8, 2.6}, speed = {300, 650}, direction = 1.5708, spread = 1.8, gravity = {0, 1200}, startSize = 12, endSize = 6, alignToVelocity = true, stretch = 0.02, colors = {'#FFFFFFE0', '#FFFFB040', '#FFFF6020', '#00A02000'}, collision = self:floorCollision(), blend = 'additive', maxParticles = 512, layer = 2, seed = 231})
+    self.sparks = particles2d.newEmitter(ParticleTest.look('spark-streak', {rate = 90, lifetime = {1.8, 2.6}, speed = {300, 650}, direction = 1.5708, spread = 1.8, gravity = {0, 1200}, startSize = 12, endSize = 6, alignToVelocity = true, stretch = 0.02, colors = {'#FFFFFFE0', '#FFFFB040', '#FFFF6020', '#00A02000'}, collision = self:floorCollision(), blend = 'additive', maxParticles = 512, layer = 2, seed = 231}))
     self.sparks.x, self.sparks.y = -640, Collision.spout
 
-    self.balls = particles2d.newEmitter({texture = ParticleTest.library('hard-dot'), rate = 6, lifetime = {6, 8}, speed = {300, 600}, spread = m.tau, gravity = {0, 500}, startSize = 26, endSize = 26, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.05, 0.9, 1}, tints = {'#FFFF8080', '#FFFFD060', '#FF80E0A0', '#FF80B0FF', '#FFD090FF'}, collision = {type = 'bounds', area = Collision.area, bounce = 0.9}, maxParticles = 64, layer = 2, seed = 232})
+    self.balls = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = 6, lifetime = {6, 8}, speed = {300, 600}, spread = m.tau, gravity = {0, 500}, startSize = 26, endSize = 26, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.05, 0.9, 1}, tints = {'#FFFF8080', '#FFFFD060', '#FF80E0A0', '#FF80B0FF', '#FFD090FF'}, collision = {type = 'bounds', area = Collision.area, bounce = 0.9}, maxParticles = 64, layer = 2, seed = 232}))
 
     self.world = physics2d.newWorld()
     self.round = self.world:createBody({type = 'static', x = 540, y = -170})
@@ -44,7 +44,7 @@ function Collision:init(entry)
     self.paddleStyle = {width = 280, height = 22, rotation = 0, color = '#FF6A8AC0', layer = 3}
     self.baseStyle = {width = 620, height = 40, color = '#FF4A5060', layer = 3}
 
-    self.drops = particles2d.newEmitter({texture = ParticleTest.library('droplet'), rate = 110, lifetime = 2.6, speed = {60, 120}, direction = 1.5708, spread = 0.1, gravity = {0, 1000}, startSize = 18, endSize = 14, colors = {'#FFA0D0FF', '#FFA0D0FF', '#0080B0FF'}, colorTimes = {0, 0.8, 1}, shape = 'rectangle', shapeSize = {230, 4}, collision = {type = 'world', bounce = 0.35, friction = 0.1}, maxParticles = 512, layer = 2, seed = 233})
+    self.drops = particles2d.newEmitter(ParticleTest.look('droplet', {rate = 110, lifetime = 2.6, speed = {60, 120}, direction = 1.5708, spread = 0.1, gravity = {0, 1000}, startSize = 18, endSize = 14, colors = {'#FFA0D0FF', '#FFA0D0FF', '#0080B0FF'}, colorTimes = {0, 0.8, 1}, shape = 'rectangle', shapeSize = {230, 4}, collision = {type = 'world', bounce = 0.35, friction = 0.1}, maxParticles = 512, layer = 2, seed = 233}))
     self.drops.x, self.drops.y = 640, -480
     self.drops:setCollisionWorld(self.world)
 

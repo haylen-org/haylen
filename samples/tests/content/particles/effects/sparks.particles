@@ -1,5 +1,6 @@
 {
-    "texture": "../images/spark.png",
+    "texture": "../library/textures/effects.png",
+    "frames": [[204, 788, 64, 64]],
     "rate": 0,
     "bursts": [{"time": 0, "count": 48}, {"time": 0.6, "count": 24}],
     "duration": 1.2,

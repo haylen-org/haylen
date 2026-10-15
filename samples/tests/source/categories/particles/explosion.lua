@@ -10,8 +10,8 @@ local Explosion = haylen.class('Explosion', ParticleTest)
 function Explosion:init(entry)
     Explosion.super.init(self, entry)
     self.random = m.random(5)
-    self.soft, self.spark, self.ring = ParticleTest.texture('soft'), ParticleTest.texture('spark'), ParticleTest.texture('ring')
-    self.smoke = ParticleTest.texture('smoke')
+    self.soft, self.spark, self.ring = 'soft-dot', 'hard-dot', 'ring-thin'
+    self.smoke = 'smoke'
     self.blasts = {}
     self.quiet = 0
 end
@@ -33,11 +33,11 @@ function Explosion:blast(x, y)
     local seed = self.random:integer(1, 100000)
     local once = Explosion.once
     self.blasts[#self.blasts + 1] = {
-        once({texture = self.soft, bursts = {{time = 0, count = 1}}, lifetime = 0.25, speed = 0, startSize = 420, endSize = 600, colors = {'#FFFFFFF0', '#00FFC060'}, blend = 'additive', layer = 5}, x, y, seed),
-        once({texture = self.ring, bursts = {{time = 0, count = 1}}, lifetime = 0.5, speed = 0, startSize = 60, endSize = 700, colors = {'#C0FFE0A0', '#00FF8040'}, blend = 'additive', layer = 4}, x, y, seed),
-        once({texture = self.soft, bursts = {{time = 0, count = 36}}, lifetime = {0.4, 0.9}, speed = {150, 420}, spread = m.tau, damping = 3, startSize = {80, 130}, endSize = {10, 30}, colors = {'#FFFFF0B0', '#FFFF9020', '#A0C02000', '#00200000'}, blend = 'additive', layer = 3}, x, y, seed),
-        once({texture = self.spark, bursts = {{time = 0, count = 60}}, lifetime = {0.8, 1.6}, speed = {300, 800}, spread = m.tau, gravity = {0, 700}, damping = 0.8, startSize = {6, 12}, endSize = 2, colors = {'#FFFFF0A0', '#FFFF6010', '#00801000'}, blend = 'additive', layer = 6}, x, y, seed),
-        once({texture = self.smoke, frames = ParticleTest.frames(self.smoke), bursts = {{time = 0.05, count = 18}}, lifetime = {1.5, 2.5}, speed = {40, 140}, spread = m.tau, damping = 1.5, gravity = {0, -40}, startSize = {80, 120}, endSize = {200, 280}, spin = {-1, 1}, colors = {'#00303030', '#B0303030', '#00202020'}, layer = 2}, x, y, seed),
+        once(ParticleTest.look(self.soft, {bursts = {{time = 0, count = 1}}, lifetime = 0.25, speed = 0, startSize = 420, endSize = 600, colors = {'#FFFFFFF0', '#00FFC060'}, blend = 'additive', layer = 5}), x, y, seed),
+        once(ParticleTest.look(self.ring, {bursts = {{time = 0, count = 1}}, lifetime = 0.5, speed = 0, startSize = 60, endSize = 700, colors = {'#C0FFE0A0', '#00FF8040'}, blend = 'additive', layer = 4}), x, y, seed),
+        once(ParticleTest.look(self.soft, {bursts = {{time = 0, count = 36}}, lifetime = {0.4, 0.9}, speed = {150, 420}, spread = m.tau, damping = 3, startSize = {80, 130}, endSize = {10, 30}, colors = {'#FFFFF0B0', '#FFFF9020', '#A0C02000', '#00200000'}, blend = 'additive', layer = 3}), x, y, seed),
+        once(ParticleTest.look(self.spark, {bursts = {{time = 0, count = 60}}, lifetime = {0.8, 1.6}, speed = {300, 800}, spread = m.tau, gravity = {0, 700}, damping = 0.8, startSize = {6, 12}, endSize = 2, colors = {'#FFFFF0A0', '#FFFF6010', '#00801000'}, blend = 'additive', layer = 6}), x, y, seed),
+        once(ParticleTest.look(self.smoke, {bursts = {{time = 0.05, count = 18}}, lifetime = {1.5, 2.5}, speed = {40, 140}, spread = m.tau, damping = 1.5, gravity = {0, -40}, startSize = {80, 120}, endSize = {200, 280}, spin = {-1, 1}, colors = {'#00303030', '#B0303030', '#00202020'}, layer = 2}), x, y, seed),
     }
 end
 

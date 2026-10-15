@@ -27,12 +27,12 @@ function ShapesDirections:init(entry)
     self.mode = 'outward'
     self.angle = 0
     self.thickness = 0
-    local dot = ParticleTest.library('soft-dot')
+    local dot = 'soft-dot'
     self.emitters = {}
     self.labels = {}
     for index, shape in ipairs(ShapesDirections.shapes) do
         self.labels[index] = 'Shape "' .. shape.name .. '"'
-        local emitter = particles2d.newEmitter({texture = dot, rate = 60, lifetime = {1.2, 1.6}, speed = {30, 60}, spread = 0.3, directionMode = self.mode, startSize = 16, endSize = 4, colors = {shape.color, shape.color, '#00FFFFFF'}, shape = shape.name, shapeSize = shape.size, shapeArc = shape.arc, shapePoints = shape.points, blend = 'additive', layer = 2, seed = 250 + index})
+        local emitter = particles2d.newEmitter(ParticleTest.look(dot, {rate = 60, lifetime = {1.2, 1.6}, speed = {30, 60}, spread = 0.3, directionMode = self.mode, startSize = 16, endSize = 4, colors = {shape.color, shape.color, '#00FFFFFF'}, shape = shape.name, shapeSize = shape.size, shapeArc = shape.arc, shapePoints = shape.points, blend = 'additive', layer = 2, seed = 250 + index}))
         emitter.x, emitter.y = -760 + (index - 1) * 380, ShapesDirections.row
         self.emitters[index] = emitter
     end
@@ -44,7 +44,7 @@ function ShapesDirections:init(entry)
     for index = 1, ShapesDirections.pathPoints do
         self.path[index] = {-600 + (index - 1) * 80, 300}
     end
-    self.follower = particles2d.newEmitter({texture = dot, rate = 160, lifetime = {0.8, 1.2}, speed = {20, 70}, spread = 0.8, gravity = {0, -60}, startSize = 18, endSize = 2, colors = {'#FFFFFFFF', '#FF60E0FF', '#0040A0FF'}, shape = 'polyline', shapePoints = self.path, blend = 'additive', maxParticles = 512, layer = 3, seed = 256})
+    self.follower = particles2d.newEmitter(ParticleTest.look(dot, {rate = 160, lifetime = {0.8, 1.2}, speed = {20, 70}, spread = 0.8, gravity = {0, -60}, startSize = 18, endSize = 2, colors = {'#FFFFFFFF', '#FF60E0FF', '#0040A0FF'}, shape = 'polyline', shapePoints = self.path, blend = 'additive', maxParticles = 512, layer = 3, seed = 256}))
     self.emitters[#self.emitters + 1] = self.follower
 end
 

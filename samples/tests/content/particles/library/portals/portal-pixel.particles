@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/pixel-dot-sheet.png",
+    "texture": "../textures/pixel.png",
+    "frames": [[72, 80, 8, 8], [82, 82, 8, 8], [92, 82, 8, 8], [102, 82, 8, 8]],
     "filter": "nearest",
-    "frameGrid": {"columns": 4, "rows": 1},
     "rate": 30,
     "maxParticles": 32,
     "lifetime": [0.6, 0.9],

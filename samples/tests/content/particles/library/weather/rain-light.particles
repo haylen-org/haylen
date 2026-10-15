@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/rain-streak.png",
+    "texture": "../textures/effects.png",
+    "frames": [[952, 816, 64, 64]],
     "filter": "linear",
     "rate": 180,
     "maxParticles": 512,

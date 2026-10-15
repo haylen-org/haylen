@@ -1,5 +1,6 @@
 {
-    "texture": "../images/snowflake.png",
+    "texture": "../library/textures/effects.png",
+    "frames": [[136, 856, 64, 64]],
     "rate": 40,
     "prewarm": 8,
     "lifetime": [8, 9],

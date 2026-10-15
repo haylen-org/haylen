@@ -1,7 +1,7 @@
 {
-    "texture": "../textures/pixel-star-sheet.png",
+    "texture": "../textures/pixel.png",
+    "frames": [[50, 88, 8, 8], [60, 88, 8, 8], [70, 90, 8, 8], [80, 92, 8, 8]],
     "filter": "nearest",
-    "frameGrid": {"columns": 4, "rows": 1},
     "rate": 8,
     "maxParticles": 16,
     "lifetime": [0.4, 0.6],

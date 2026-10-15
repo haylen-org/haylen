@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/snowflake.png",
+    "texture": "../textures/effects.png",
+    "frames": [[136, 856, 64, 64]],
     "filter": "linear",
     "rate": 30,
     "prewarm": 10,

@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/light-beam.png",
+    "texture": "../textures/effects.png",
+    "frames": [[660, 528, 128, 128]],
     "filter": "linear",
     "rate": 40,
     "duration": 0.8,

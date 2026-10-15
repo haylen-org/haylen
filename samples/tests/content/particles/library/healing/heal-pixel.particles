@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/pixel-square.png",
+    "texture": "../textures/pixel.png",
+    "frames": [[122, 72, 4, 4]],
     "rate": 12,
     "maxParticles": 16,
     "lifetime": [0.6, 0.9],

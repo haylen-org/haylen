@@ -1,5 +1,6 @@
 {
-    "texture": "../textures/star-4point.png",
+    "texture": "../textures/effects.png",
+    "frames": [[476, 860, 64, 64]],
     "filter": "linear",
     "rate": 4,
     "maxParticles": 8,
