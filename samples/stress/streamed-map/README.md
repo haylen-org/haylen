@@ -65,18 +65,16 @@ The build time trades how soon chunks appear for the slowest frames: 16 millisec
 
 ## Art
 
-The terrain and its decorations are vector art made for the sample with a script as one SVG atlas, rasterized once when the map loads with `image:rasterize(2)` of [`haylen.graphics`](../../../docs/lua-api/graphics.md#vectorimage) into a texture with the `linear` filter. It follows one style guide. The `codex` command line and its `$imagegen` skill regenerate these images from this style guide in the same sizes and layouts, as the [project rules](../../../AGENTS.md#samples) describe, for one consistent look with the rest of the project.
+The terrain and its decorations are painted for the sample with the `codex` command line and its `$imagegen` skill in the style of [Tiny Island](../../games/tiny-island/README.md#art), whose art is the standard of the repository, as the [project rules](../../../AGENTS.md#samples) describe, then cut and scaled into one atlas, `content/terrain/terrain.png` of 1152 by 208 pixels, which the map loads with the `linear` filter, because the art is painted in high definition and the screen scales it. Every prompt carries the key words of this guide.
 
 | Part | Rule |
 | --- | --- |
-| Look | A flat painted map seen from above, with soft marks inside the tiles and decorations seen slightly from the front, standing on their base. |
-| Outline | Tiles have none, so they join seamlessly. Decorations have a dark slate ink `#2B2A33` of 1.8 units. |
-| Light | From the top left: the slope of the height brightens the tiles that face it and darkens the others, deep water is darker, and every decoration casts a soft shadow of `#1B2A20` at 32 percent on the ground. |
+| Look | Polished casual fantasy map art in high definition, a flat painted map seen from above with small marks inside the tiles, and chunky cute decorations seen from a slight three-quarter top-down view, standing on their base. |
+| Outline | Tiles have none, so they join seamlessly. Decorations have a bold clean outline of even thickness in very dark navy `#1E1B33`. |
+| Shading | Soft cel shading with two tones per material and one soft highlight, light from the top left, clean flat areas without noise or texture. On the map, the slope of the height brightens the tiles that face the light and darkens the others, and deep water is darker. |
 | Palette | Deep water `#1E4C86`, water `#2C77B5`, sand `#E6CF95`, grass `#69B04F`, meadow `#A8BC58`, forest `#3E8743`, rock `#8A8781` and snow `#EEF2F6`, each with a lighter and a darker shade for its marks. Trees `#2F7A45` to `#5BAE5E` on trunks `#7A5232`, palms `#4BA15A` on `#9C7046`, boulders `#8F8B84`, flowers in gold, coral, cream and lilac. |
-| Tiles | Eight terrains of two variants, cells of 36 units holding a tile of 32 units whose color fills the gutter of 2 units around it, so linear filtering never mixes neighbors. A tile draws at 32 world units. |
-| Decorations | Pine, tree, palm, bush, boulder, flowers, snowy pine and reeds, in cells of 40 by 56 units every 48, drawn at 46 by 64 world units times a scale from 0.8 to 1.2, with their pivot at their base. |
-
-The atlas is `content/terrain/terrain.svg`, which rasterizes into a texture of 1152 by 208 pixels.
+| Tiles | Eight terrains of two variants in the top row, cells of 72 pixels holding a tile of 64 whose plain base color fills the outer band of the tile and the gutter of 4 pixels around it, so tiles join and turn in quarter turns without seams and linear filtering never mixes neighbors. A tile draws at 32 world units. |
+| Decorations | Pine, tree, palm, bush, boulder, flowers, snowy pine and reeds, painted in one sheet at one scale, in cells of 80 by 112 pixels every 96 from the top of 88, standing on a line 5 pixels above the bottom of their cell, drawn at 46 by 64 world units times a scale from 0.8 to 1.2, with their pivot at their base. |
 
 ## Package layout
 
@@ -91,5 +89,5 @@ streamed-map/
     hud.lua              The panel with the readout, refreshed four times per second, and the controls.
     tour.lua             The automatic run of the headless platform.
   content/
-    terrain/terrain.svg  The atlas of the tiles and the decorations.
+    terrain/terrain.png  The atlas of the tiles and the decorations.
 ```

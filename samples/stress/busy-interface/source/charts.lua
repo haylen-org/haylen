@@ -1,4 +1,4 @@
--- The charts of the dashboard, drawn with "haylen.graphics2d" in the spaces the GUI leaves open for them: a line chart of the moves of the cranes, bars of the berths and a ring of the share of every crane. Each chart sits on a panel that a nine-slice of the panel art draws, in the colors of the cards of the theme.
+-- The charts of the dashboard, drawn with "haylen.graphics2d" in the spaces the GUI leaves open for them: a line chart of the moves of the cranes, bars of the berths and a ring of the share of every crane. Each chart sits on a rounded panel in the colors of the cards of the theme.
 local graphics2d = require('haylen.graphics2d')
 local m = require('haylen.math')
 
@@ -15,8 +15,10 @@ Charts.palette = {'#FF3C9BE0', '#FF35B37E', '#FFE8A93A', '#FFE5534B', '#FFA87FE0
 Charts.header = 52
 Charts.padding = 16
 
-function Charts.panel(slice, rect)
-    graphics2d.drawNineSlice(slice, rect, nil, {layer = 0, borderScale = 0.5})
+Charts.card = {radius = 12, color = '#FF1B2430', borderWidth = 2, borderColor = '#FF2A3646', layer = 0}
+
+function Charts.panel(rect)
+    graphics2d.drawShape(rect, Charts.card)
 end
 
 local function inner(rect)

@@ -41,11 +41,6 @@ Dashboard.actions = {actions = {
 
 function Dashboard:load(context)
     context:progress(0, 'Drawing the panels')
-    local texture, failure = assets.vectorImage('dashboard/panel.svg'):rasterize(2):await()
-    if not texture then
-        error(failure, 0)
-    end
-    self.panelTexture = texture
     self.icons = {
         throughput = assets.vectorImage('dashboard/icon-moves.svg'),
         berthChart = assets.vectorImage('dashboard/icon-berths.svg'),
@@ -77,7 +72,7 @@ end
 function Dashboard:content()
     return ui.column{grow = 1, align = 'stretch', gap = 12,
         ui.row{gap = 14, height = 56,
-            ui.image{image = 'dashboard/logo.svg', width = 52, height = 52},
+            ui.image{image = 'dashboard/logo.png', width = 52, height = 52},
             ui.column{gap = 0, grow = 1,
                 ui.label{text = 'Port Operations', font = 'title', wrap = false},
                 ui.label{text = 'A shift at a made-up container port, live.', font = 'caption', color = 'textMuted', wrap = false},
@@ -126,7 +121,6 @@ function Dashboard:enter()
     self.sinceEvent = 0
     self.history = collections.newRingBuffer(Dashboard.historySize)
     self.events = {}
-    self.slice = graphics2d.newNineSlice(self.panelTexture, {borders = {28, 28, 28, 28}})
     self.hud = Hud.new(self, {
         content = self:content(),
         title = 'Busy Interface',
@@ -361,7 +355,7 @@ function Dashboard:renderUi()
     for id, icon in pairs(self.icons) do
         local rect = self.gui:bounds(id)
         if rect then
-            Charts.panel(self.slice, rect)
+            Charts.panel(rect)
             graphics2d.drawVector(icon, rect.x + 16, rect.y + 14, {width = 24, height = 24, pivotX = 0, pivotY = 0, color = Charts.line, layer = 2})
         end
     end

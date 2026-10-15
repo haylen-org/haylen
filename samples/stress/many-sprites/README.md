@@ -83,17 +83,17 @@ At 100,000 fish the buffer and the batch cost about the same, 22.9 and 24.0 mill
 
 ## Art
 
-Every image of the sample is vector art made for it with scripts as SVG, rasterized once when the pond loads with `image:rasterize(2)` of [`haylen.graphics`](../../../docs/lua-api/graphics.md#vectorimage) into textures with the `linear` filter, or drawn as vector images with `graphics2d.drawVector`. It follows one style guide. The `codex` command line and its `$imagegen` skill regenerate these images from this style guide in the same sizes and layouts, as the [project rules](../../../AGENTS.md#samples) describe, for one consistent look with the rest of the project.
+Every image of the sample is painted for it with the `codex` command line and its `$imagegen` skill in the style of [Tiny Island](../../games/tiny-island/README.md#art), whose art is the standard of the repository, as the [project rules](../../../AGENTS.md#samples) describe, then cut and scaled into place. The pond loads the images with the `linear` filter, because the art is painted in high definition and the screen scales it, and the atlas of the fish with mipmaps, because a fish draws at a fifth of its size. Every prompt carries the key words of this guide.
 
 | Part | Rule |
 | --- | --- |
-| Look | Flat rounded shapes seen from straight above, calm and clean, without texture noise. |
-| Outline | Deep teal ink `#0B2530`: 2.6 units around every fish, drawn as one outline layer under the fills so the parts of a fish join without seams, 4 around the lily pads and 3 around the blossoms. The floor and the light have none. |
-| Light | From the top left: a lighter band along the upper side of every fish and a darker one below it, highlights on the top left of the pebbles and the pads, and a soft shadow of `#06222B` at about 30 percent toward the bottom right under every fish, pad and blossom. |
-| Palette | Water `#1A5961` with sand patches `#20666C` and hollows `#155058`, pebbles from `#245E63` to `#4D8C83` with highlights `#8CC3B5`, weeds `#2F8A63`. Ember fish `#F26B3A` with cream spots `#FFF1D6` and peach fins `#FFB38A`, silver fish `#8FA6BC` with a slate stripe `#4F6A85`, jade fish `#26B39A` with gold fins and stripe `#F2C14E`. Pads `#4FA34A` with veins `#3B8337` and gloss `#9AD982`, blossoms `#F7B8CF` and `#FFE3EE` around a gold heart `#F2C14E`. The light is white. |
-| Fish | `content/sprites/fish.svg`: one strip of 24 cells of 64 by 40 units, three species of eight frames each, facing right, whose rear body and tail swing through a sine of 22 degrees. It rasterizes into a texture of 3072 by 80 pixels, and every fish draws at 26 by 16 design units. |
-| Pond | `content/pond/pond-floor.svg` and `content/pond/caustics.svg`: seamless tiles of 256 units, rasterized at twice their size. Parallax layers repeat the floor at 256 units and the light at 320 and 460 units, drifting and drawn additive at about 10 and 14 percent. |
-| Lily pads | `content/pond/lily-pad.svg` of 128 units and `content/pond/lily-blossom.svg` of 64 units, drawn as vector images at 130 to 240 design units, a blossom at 45 percent of its pad. |
+| Look | Polished casual fantasy in high definition, chunky cute shapes and simple bold forms that read at a small size, seen from straight above. |
+| Outline | A bold clean outline of even thickness in very dark navy `#1E1B33` around every fish, pad and blossom. The floor and the light have none. |
+| Shading | Soft cel shading with two tones per material and one soft highlight, light from the top left, clean flat areas without noise or texture. |
+| Palette | Water `#1A5961` with sand patches `#20666C` and hollows `#155058`, pebbles from `#245E63` to `#4D8C83` with highlights `#8CC3B5`, weeds `#2F8A63`. Ember fish `#F26B3A` with cream spots `#FFF1D6` and peach fins `#FFB38A`, silver fish `#8FA6BC` with a slate stripe `#4F6A85`, jade fish `#26B39A` with golden fins and stripe `#F2C14E`. Pads `#4FA34A` with veins `#3B8337` and gloss `#9AD982`, blossoms `#F7B8CF` and `#FFE3EE` around a golden heart `#F2C14E`. The light is white. |
+| Fish | The top row of `content/sprites/pond.png`: 18 cells of 128 by 80 pixels, three species of six frames each, painted in one sheet, facing right, whose rear body and tail swing through one swim cycle, each species cut with one box so its head keeps its place. Every fish draws at 26 by 16 design units. |
+| Lily pads | Below the fish in the same atlas, the pad of 256 pixels at `0, 84` and the blossom of 128 at `260, 84`, drawn at 130 to 240 design units, a blossom at 45 percent of its pad. |
+| Pond | `content/pond/pond-floor.png` and `content/pond/caustics.png`: seamless tiles of 512 pixels. The light is white, and its brightness is its alpha. Parallax layers repeat the floor at 256 units and the light at 320 and 460 units, drifting and drawn additive at about 10 and 14 percent. |
 
 ## Package layout
 
@@ -107,6 +107,6 @@ many-sprites/
     hud.lua              The panel with the readout, refreshed four times per second, and the controls.
     tour.lua             The automatic run of the headless platform.
   content/
-    sprites/fish.svg     The fish strip.
-    pond/                The floor, the light, the lily pad and the blossom.
+    sprites/pond.png     The atlas of the fish, the lily pad and the blossom.
+    pond/                The floor and the light.
 ```

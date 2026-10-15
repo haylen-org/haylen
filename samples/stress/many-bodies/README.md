@@ -64,18 +64,18 @@ The world steps 60 times per second, so at 120 frames per second every other fra
 
 ## Art
 
-Every image of the sample is vector art made for it with scripts as SVG. The toys, the wallpaper and the plank rasterize once when the playroom loads with `image:rasterize(2)` of [`haylen.graphics`](../../../docs/lua-api/graphics.md#vectorimage) into textures with the `linear` filter, the plank draws as a tiled nine-slice, and the chutes draw as vector images with `graphics2d.drawVector`. It follows one style guide. The `codex` command line and its `$imagegen` skill regenerate these images from this style guide in the same sizes and layouts, as the [project rules](../../../AGENTS.md#samples) describe, for one consistent look with the rest of the project.
+Every image of the sample is painted for it with the `codex` command line and its `$imagegen` skill in the style of [Tiny Island](../../games/tiny-island/README.md#art), whose art is the standard of the repository, as the [project rules](../../../AGENTS.md#samples) describe, then cut and scaled into place. The playroom loads the images with the `linear` filter, because the art is painted in high definition and the screen scales it, and the atlas of the toys with mipmaps, because the bin is seen whole at a third of its size. Every prompt carries the key words of this guide.
 
 | Part | Rule |
 | --- | --- |
-| Look | Chunky toy shapes with rounded corners, bright and glossy, seen from the side. |
-| Outline | Dark plum ink `#2A1E3B`, 3 units wide around every toy, plank and chute in their cells of 64 units. |
-| Light | From the top left: a lighter band on the upper side of every toy, a darker band at the bottom, a white gloss spot on the balls and a white facet on the gems. |
+| Look | Polished casual fantasy in high definition, chunky glossy toy shapes and simple bold forms that read at a small size, seen straight from the side. |
+| Outline | A bold clean outline of even thickness in very dark navy `#1E1B33` around every toy, the plank and the chute. |
+| Shading | Soft cel shading with two tones per material and one soft glossy highlight, light from the top left, clean flat areas without noise or texture. |
 | Palette | Four toy colors, each with its light and dark shade: red `#E8553F`, blue `#3D7FD9`, yellow `#F2B630` and green `#4DB36B`, with cream `#FFF6E8` faces and bands. The bin is wood `#C9884A` with grain `#9B5F2C` and nails `#7C4A22`, the chutes red, and the room a plum wallpaper of stripes `#3B2E5A` and `#43356A` with stars `#6A58A0`. |
-| Toys | `content/toys/toys.svg`: an atlas of four rows of four colors, cells of 64 units every 72 units, rasterized into a texture of 576 by 512 pixels. Blocks draw at 32 by 32 world units, balls at a diameter of 32, gems 34 wide and pills at 44 by 22. |
-| Bin | `content/room/plank.svg`: a plank of 96 units with borders of 20, which a nine-slice tiles over the floor, the walls and the lid, 90 world units thick. |
-| Chutes | `content/room/chute.svg`: a funnel of 200 by 140 units whose neck is three fifths of its width, drawn 567 world units wide over each gap of the lid. |
-| Room | `content/room/wallpaper.svg`: a seamless tile of 128 units, repeated at 256 world units by a parallax layer at half the speed of the camera. |
+| Toys | `content/room/playroom.png`: four rows of four colors, each toy of 128 pixels, or 128 by 64 for the pills, in cells 144 pixels apart, cut to its outline so the art fills its body. Blocks draw at 32 by 32 world units, balls at a diameter of 32, gems, which stand on a corner, 34 tall and pills at 44 by 22. |
+| Bin | The plank of 192 pixels at `8, 584` of the same atlas, with borders of 40, which a nine-slice tiles over the floor, the walls and the lid, 90 world units thick. |
+| Chutes | The funnel of 400 by 329 pixels at `208, 584` of the same atlas, whose neck is 0.35 of its width, drawn 971 world units wide so the neck covers each gap of the lid. |
+| Room | `content/room/wallpaper.png`: a seamless tile of 512 pixels, repeated at 256 world units by a parallax layer at half the speed of the camera. |
 
 ## Package layout
 
@@ -89,6 +89,5 @@ many-bodies/
     hud.lua              The panel with the readout, refreshed four times per second, and the controls.
     tour.lua             The automatic run of the headless platform.
   content/
-    toys/toys.svg        The toy atlas.
-    room/                The plank, the chute and the wallpaper.
+    room/                The atlas of the toys, the plank and the chute, and the wallpaper.
 ```

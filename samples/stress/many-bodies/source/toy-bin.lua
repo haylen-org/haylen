@@ -26,7 +26,7 @@ ToyBin.order = {layer = 2}
 ToyBin.angularDamping = 0.8
 ToyBin.sleepThreshold = 6.4
 
--- The toys, with their weight in the mix, their size in world units and the row of the atlas, whose cells of 64 units sit 72 units apart and rasterize at twice their size.
+-- The toys, with their weight in the mix, their size in world units and the row of the atlas, whose toys of 128 pixels sit in cells 144 pixels apart.
 ToyBin.kinds = {
     {name = 'block', weight = 3, width = 32, height = 32, row = 0},
     {name = 'ball', weight = 3, width = 32, height = 32, row = 1},
@@ -106,11 +106,11 @@ function ToyBin:spawn(kindIndex, x, y)
     elseif kind.name == 'ball' then
         body:addCircle(kind.width / 2, ToyBin.ballMaterial)
     elseif kind.name == 'gem' then
-        -- The corners of the gem art touch a circle of 31 units in its cell of 64.
-        local radius = kind.width * 31 / 64
+        -- The gem art stands on a corner, and its corners touch a circle of 62 pixels in its cell of 128.
+        local radius = kind.width * 62 / 128
         local points = {}
         for corner = 0, 5 do
-            local angle = corner * math.pi / 3
+            local angle = corner * math.pi / 3 + math.pi / 6
             points[#points + 1] = {math.cos(angle) * radius, math.sin(angle) * radius}
         end
         body:addPolygon(points, ToyBin.material)

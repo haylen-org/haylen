@@ -17,7 +17,10 @@ Playroom.start = 3000
 Playroom.step = 1000
 Playroom.maximumZoom = 6
 Playroom.zoomSpeed = 1.6
-Playroom.chuteSize = {ToyBin.mouth / 0.6, ToyBin.mouth / 0.6 * 0.7}
+-- The atlas holds the toys in cells of 144 pixels, the plank and the chute, whose neck spans 0.35 of its width and covers the gap of its mouth.
+Playroom.plankSource = {8, 584, 192, 192}
+Playroom.chuteSource = {208, 584, 400, 329}
+Playroom.chuteSize = {ToyBin.mouth / 0.35, ToyBin.mouth / 0.35 * 329 / 400}
 Playroom.blastTime = 0.45
 Playroom.sweepInterval = 0.5
 Playroom.insideColor = '#FF2C2346'
@@ -29,28 +32,26 @@ Playroom.actions = {actions = {
     {name = 'zoom', type = 'axis', positive = {'key:e', 'axis:rightY-'}, negative = {'key:q', 'axis:rightY+'}},
 }}
 
-local function raster(path)
-    local texture, failure = assets.vectorImage(path):rasterize(2):await()
-    if not texture then
+local function texture(path, options)
+    local loaded, failure = assets.loadAsync(path, 'texture', options):await()
+    if not loaded then
         error(failure, 0)
     end
-    return texture
+    return loaded
 end
 
 function Playroom:load(context)
-    context:progress(0, 'Drawing the toys')
-    self.toys = raster('toys/toys.svg')
+    context:progress(0, 'Unpacking the toys')
+    self.atlas = texture('room/playroom.png', {filter = 'linear', mipmaps = true})
     context:progress(0.5, 'Building the bin')
-    self.wallpaper = raster('room/wallpaper.svg')
-    self.plank = raster('room/plank.svg')
-    self.chute = assets.vectorImage('room/chute.svg')
+    self.wallpaper = texture('room/wallpaper.png', {filter = 'linear', wrap = 'repeat'})
 end
 
 function Playroom:enter()
     input.loadActions(Playroom.actions)
-    self.bin = ToyBin.new(self.toys, m.random(11))
+    self.bin = ToyBin.new(self.atlas, m.random(11))
     self.bin:pour(Playroom.start)
-    self.planks = graphics2d.newNineSlice(self.plank, {borders = {40, 40, 40, 40}, fill = 'tile'})
+    self.planks = graphics2d.newNineSlice(self.atlas, {source = Playroom.plankSource, borders = {40, 40, 40, 40}, fill = 'tile'})
     self.room = graphics2d.newParallax(self.wallpaper, {size = {256, 256}, repeatX = true, repeatY = true, scrollScale = {0.5, 0.5}})
     self.camera = graphics2d.newCamera()
     self.camera.maxShakeOffset = 30
@@ -249,7 +250,7 @@ function Playroom:render()
 
     local chuteWidth, chuteHeight = Playroom.chuteSize[1], Playroom.chuteSize[2]
     for _, chute in ipairs(ToyBin.chutes) do
-        graphics2d.drawVector(self.chute, chute + x, y - ToyBin.height - ToyBin.plank + 12, {width = chuteWidth, height = chuteHeight, pivotX = 0.5, pivotY = 1, layer = 4})
+        graphics2d.draw(self.atlas, chute + x, y - ToyBin.height - ToyBin.plank + 12, {source = Playroom.chuteSource, width = chuteWidth, height = chuteHeight, pivotX = 0.5, pivotY = 1, layer = 4})
     end
     for _, blast in ipairs(self.blasts) do
         local progress = blast.age / Playroom.blastTime

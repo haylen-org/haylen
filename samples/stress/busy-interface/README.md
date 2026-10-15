@@ -64,17 +64,15 @@ With 100,000 items in each list, the frame grows to about 14.5 milliseconds and 
 
 ## Art
 
-The art of the sample is vector art made for it as SVG. The logo is an SVG picture of the GUI, the icons of the charts draw as vector images with `graphics2d.drawVector` together with the charts, and the chart panel rasterizes once when the dashboard loads with `image:rasterize(2)` of [`haylen.graphics`](../../../docs/lua-api/graphics.md#vectorimage) into a texture with the `linear` filter. The cards, the lists and the table draw with the flat colors of the theme. It follows one style guide. The `codex` command line and its `$imagegen` skill regenerate these images from this style guide in the same sizes and layouts, as the [project rules](../../../AGENTS.md#samples) describe, for one consistent look with the rest of the project.
+The sample uses one image. The logo is painted for it with the `codex` command line and its `$imagegen` skill in the style of [Tiny Island](../../games/tiny-island/README.md#art), whose art is the standard of the repository, as the [project rules](../../../AGENTS.md#samples) describe, and the theme sets `imageFilter` to `linear`, because the logo is painted in high definition and the screen scales it. The icons of the charts are line icons in SVG that the dashboard tints with its accent, and the panels of the charts draw as rounded shapes of `graphics2d.drawShape`, so the cards, the charts, the lists and the table all draw with the flat colors of the theme.
 
 | Part | Rule |
 | --- | --- |
 | Look | A dense dark console: flat surfaces with rounded corners, thin borders and color only where a value needs attention. |
-| Outline | No ink outlines. Surfaces have a border of 2 units in `#2A3646` and corners of 12 units, and the panel art carries a faint top edge `#33425A`. |
-| Light | Flat, without shadows inside the screen. A brighter accent marks the live parts: the line, the latest point and the icons. |
-| Palette | Window `#0F141C`, panels `#141B25`, cards `#1B2430`, text `#E6ECF2` and `#8A9AAD`, accent blue `#3C9BE0`, success green `#35B37E`, warning amber `#E8A93A`, danger red `#E5534B`, and a chart palette of blue, green, amber, red, lilac `#A87FE0`, teal `#4FC9C4`, orange `#F07E4C` and steel `#9BB4CC`. |
-| Logo | `content/dashboard/logo.svg`: a crane over a container on a blue tile of 64 units with corners of 14, drawn at 52 design units. |
+| Logo | `content/dashboard/logo.png` of 128 pixels, drawn at 52 design units: a chunky cute harbor crane in white and warm yellow `#FFC93C` lifting an orange container over a short dock, on a royal blue `#2F86F6` rounded tile, with a bold clean outline in very dark navy `#1E1B33` and soft cel shading lit from the top left, like the app icons of Tiny Island. |
 | Icons | `content/dashboard/icon-moves.svg`, `icon-berths.svg` and `icon-share.svg`: line icons of 24 units in `currentColor`, tinted with the accent at 24 design units. |
-| Panel | `content/dashboard/panel.svg`: a card of 64 units with corners of 12, rasterized into 128 pixels and drawn as a nine-slice with borders of 28 pixels at half scale. |
+| Panels | Cards of the chart color `#1B2430` with a border of 2 units in `#2A3646` and corners of 12 units. |
+| Palette | Window `#0F141C`, panels `#141B25`, cards `#1B2430`, text `#E6ECF2` and `#8A9AAD`, accent blue `#3C9BE0`, success green `#35B37E`, warning amber `#E8A93A`, danger red `#E5534B`, and a chart palette of blue, green, amber, red, lilac `#A87FE0`, teal `#4FC9C4`, orange `#F07E4C` and steel `#9BB4CC`. |
 
 ## Package layout
 
@@ -89,5 +87,5 @@ busy-interface/
     hud.lua              The panel with the readout, refreshed four times per second, and the controls.
     tour.lua             The automatic run of the headless platform.
   content/
-    dashboard/           The logo, the chart icons and the panel.
+    dashboard/           The logo and the chart icons.
 ```

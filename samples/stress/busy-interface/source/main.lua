@@ -4,6 +4,7 @@ local ui = require('haylen.ui')
 
 ui.setTheme(ui.addTheme({
     name = 'operations',
+    imageFilter = 'linear',
     colors = {
         window = '#FF0F141C',
         panel = '#FF141B25',

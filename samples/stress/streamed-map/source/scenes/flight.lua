@@ -32,8 +32,8 @@ Flight.actions = {actions = {
 }}
 
 function Flight:load(context)
-    context:progress(0, 'Drawing the terrain')
-    local texture, failure = assets.vectorImage('terrain/terrain.svg'):rasterize(2):await()
+    context:progress(0, 'Unrolling the map')
+    local texture, failure = assets.loadAsync('terrain/terrain.png', 'texture', {filter = 'linear'}):await()
     if not texture then
         error(failure, 0)
     end

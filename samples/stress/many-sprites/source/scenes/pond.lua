@@ -19,6 +19,9 @@ Pond.step = 10000
 Pond.leadSpeed = 900
 Pond.manualTime = 2.5
 Pond.returnRate = 1.2
+-- Below the fish of the pond atlas sit a lily pad of 256 pixels and a blossom of 128.
+Pond.padSource = {0, 84, 256, 256}
+Pond.blossomSource = {260, 84, 128, 128}
 -- Lily pads as fractions of the play area, with their size, their turn and whether a blossom sits on them.
 Pond.pads = {
     {x = 0.08, y = 0.12, size = 210, turn = 0.4, blossom = true},
@@ -49,22 +52,20 @@ Pond.actions = {actions = {
     {name = 'uiFocus', type = 'button', bindings = {'button:back', 'key:pause'}},
 }}
 
-local function raster(path)
-    local texture, failure = assets.vectorImage(path):rasterize(2):await()
-    if not texture then
+local function texture(path, options)
+    local loaded, failure = assets.loadAsync(path, 'texture', options):await()
+    if not loaded then
         error(failure, 0)
     end
-    return texture
+    return loaded
 end
 
 function Pond:load(context)
-    context:progress(0, 'Drawing the fish')
-    self.fishTexture = raster('sprites/fish.svg')
-    context:progress(0.5, 'Drawing the pond')
-    self.floorTexture = raster('pond/pond-floor.svg')
-    self.lightTexture = raster('pond/caustics.svg')
-    self.pad = assets.vectorImage('pond/lily-pad.svg')
-    self.blossom = assets.vectorImage('pond/lily-blossom.svg')
+    context:progress(0, 'Netting the fish')
+    self.texture = texture('sprites/pond.png', {filter = 'linear', mipmaps = true})
+    context:progress(0.5, 'Filling the pond')
+    self.floorTexture = texture('pond/pond-floor.png', {filter = 'linear'})
+    self.lightTexture = texture('pond/caustics.png', {filter = 'linear'})
 end
 
 function Pond:enter()
@@ -76,7 +77,7 @@ function Pond:enter()
         graphics2d.newParallax(self.lightTexture, {size = {320, 320}, repeatX = true, repeatY = true, autoscroll = {16, 9}, color = '#24FFFFFF'}),
         graphics2d.newParallax(self.lightTexture, {size = {460, 460}, position = {90, 40}, repeatX = true, repeatY = true, autoscroll = {-12, 14}, color = '#1AFFFFFF'}),
     }
-    self.swarm = Swarm.new(self.fishTexture, m.random(7))
+    self.swarm = Swarm.new(self.texture, m.random(7))
     self.time = 0
     self.manual = 0
     self.hud = Hud.new(self, {
@@ -272,9 +273,9 @@ function Pond:render()
     for index, pad in ipairs(Pond.pads) do
         local x, y = stage.x + stage.width * pad.x, stage.y + stage.height * pad.y
         local sway = math.sin(self.time * 0.4 + index) * 0.06
-        graphics2d.drawVector(self.pad, x, y, {width = pad.size, height = pad.size, rotation = pad.turn + sway, layer = 4})
+        graphics2d.draw(self.texture, x, y, {source = Pond.padSource, width = pad.size, height = pad.size, rotation = pad.turn + sway, layer = 4})
         if pad.blossom then
-            graphics2d.drawVector(self.blossom, x - pad.size * 0.1, y - pad.size * 0.08, {width = pad.size * 0.45, height = pad.size * 0.45, rotation = sway * 2, layer = 5})
+            graphics2d.draw(self.texture, x - pad.size * 0.1, y - pad.size * 0.08, {source = Pond.blossomSource, width = pad.size * 0.45, height = pad.size * 0.45, rotation = sway * 2, layer = 5})
         end
     end
 end

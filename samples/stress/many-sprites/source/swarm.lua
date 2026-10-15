@@ -7,10 +7,10 @@ local m = require('haylen.math')
 local Swarm = {}
 Swarm.__index = Swarm
 
--- The fish strip holds three species of eight frames in one row, each frame a cell of 128 by 80 pixels.
+-- The top row of the pond atlas holds three species of six frames, each frame a cell of 128 by 80 pixels.
 Swarm.cellWidth = 128
 Swarm.cellHeight = 80
-Swarm.frames = 8
+Swarm.frames = 6
 Swarm.species = 3
 Swarm.size = {26, 16}
 Swarm.fields = {'x', 'y', 'rotation', 'sourceX'}
