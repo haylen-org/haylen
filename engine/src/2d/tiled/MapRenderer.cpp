@@ -36,6 +36,10 @@ math::Vec2 MapRenderer::drawSize(const Tileset& tileset, math::Rect source, math
     return source.getSize() * scale;
 }
 
+math::Vec2 MapRenderer::imageScale(math::Vec2 size, math::Rect source) noexcept {
+    return {size.x / source.width, size.y / source.height};
+}
+
 math::Rect MapRenderer::instanceBounds(const graphics2d::SpriteInstance& instance) noexcept {
     const float reach = std::max(instance.size.x, instance.size.y);
     return math::Rect::fromCenter(instance.position, {reach, reach});
@@ -101,8 +105,8 @@ std::uint64_t MapRenderer::readCollisionBits(const Layer& layer, std::string_vie
     return property->value.get<std::uint64_t>();
 }
 
-bool MapRenderer::isFullCell(const Object& object, math::Vec2 tileSize) noexcept {
-    return object.shape == Object::Shape::Rectangle && object.rotation == 0.0F && object.position == math::Vec2{} && object.size == tileSize;
+bool MapRenderer::isFullCell(const Object& object, math::Vec2 imageSize) noexcept {
+    return object.shape == Object::Shape::Rectangle && object.rotation == 0.0F && object.position == math::Vec2{} && object.size == imageSize;
 }
 
 graphics2d::DrawOrder MapRenderer::groundOrder(const graphics2d::DrawOrder& order, float ground, float standing) noexcept {
@@ -139,7 +143,7 @@ graphics2d::SpriteInstance MapRenderer::tileInstance(const Tileset& tileset, std
     const math::Vec2 size = drawSize(tileset, source, map.tileSize);
     const bool diagonal = (gid & Map::kFlipDiagonal) != 0;
     const math::Vec2 footprint = diagonal ? math::Vec2{size.y, size.x} : size;
-    const math::Vec2 topLeft = anchor + math::Vec2{0.0F, -footprint.y} + tileset.tileOffset;
+    const math::Vec2 topLeft = anchor + math::Vec2{0.0F, -footprint.y} + tileset.tileOffset * imageScale(size, source);
     return {
         .position = topLeft + footprint * 0.5F,
         .size = footprint,
@@ -725,22 +729,25 @@ TileCollision::Cell MapRenderer::collisionCell(physics2d::Body& body, int column
         return cell;
     }
 
+    // Collision shapes are drawn in the pixels of the tile image and scale with it when the tileset draws its tiles at the size of the grid.
     const graphics2d::SpriteInstance placed = tileInstance(tileset, localId, gid, cellAnchor(column, row) + origin);
     const math::Vec2 topLeft = placed.position - placed.size * 0.5F;
-    const math::Vec2 imageSize = drawSize(tileset, tileset.getSource(localId), map.tileSize);
+    const math::Rect source = tileset.getSource(localId);
+    const math::Vec2 imageSize = drawSize(tileset, source, map.tileSize);
+    const math::Vec2 scale = imageScale(imageSize, source);
     const bool merging = map.orientation == Map::Orientation::Orthogonal;
     const MapQuery query(map);
     std::vector<math::Vec2> points;
     for (const Object& object : tile->collision) {
         const physics2d::Shape::Options options = shapeOptions(object, filter);
         const bool solid = merging && object.shape != Object::Shape::Polyline && !options.sensor && !options.oneWay;
-        if (solid && placed.size == map.tileSize && isFullCell(object, map.tileSize)) {
+        if (solid && placed.size == map.tileSize && tileset.tileOffset.isZero() && isFullCell(object, source.getSize())) {
             cell.full = true;
             continue;
         }
         query.traceOutline(object, points);
         for (math::Vec2& point : points) {
-            point = topLeft + flipInTile(point, imageSize, gid);
+            point = topLeft + flipInTile(point * scale, imageSize, gid);
         }
         if (solid && points.size() >= 3) {
             cell.outlines.push_back(points);

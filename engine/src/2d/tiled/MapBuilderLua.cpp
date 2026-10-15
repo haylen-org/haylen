@@ -76,6 +76,8 @@ int MapBuilderLua::addTileset(lua_State* L) {
     lua::Table::readField(L, 2, "spacing", tileset->spacing);
     lua::Table::readField(L, 2, "offsetX", tileset->tileOffset.x);
     lua::Table::readField(L, 2, "offsetY", tileset->tileOffset.y);
+    lua::Table::readField(L, 2, "renderGridSize", tileset->renderGridSize);
+    lua::Table::readField(L, 2, "preserveAspect", tileset->preserveAspect);
     if (!(tileset->tileSize.x > 0.0F && tileset->tileSize.y > 0.0F)) {
         return luaL_error(L, "A tileset needs a positive tile width and height.");
     }

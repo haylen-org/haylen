@@ -22,7 +22,7 @@ class MapBuilderLua final {
 
   private:
     static constexpr std::array<std::string_view, 11> kMapFields{"orientation", "renderOrder", "width", "height", "tileWidth", "tileHeight", "infinite", "staggerAxis", "staggerIndex", "hexSideLength", "backgroundColor"};
-    static constexpr std::array<std::string_view, 13> kTilesetFields{"name", "image", "texture", "tileWidth", "tileHeight", "margin", "spacing", "tileCount", "filter", "wrap", "offsetX", "offsetY", "wangSets"};
+    static constexpr std::array<std::string_view, 15> kTilesetFields{"name", "image", "texture", "tileWidth", "tileHeight", "margin", "spacing", "tileCount", "filter", "wrap", "offsetX", "offsetY", "renderGridSize", "preserveAspect", "wangSets"};
     static constexpr std::array<std::string_view, 4> kWangSetFields{"name", "type", "colors", "tiles"};
     static constexpr std::array<std::string_view, 2> kWangTileFields{"tile", "wangId"};
     static constexpr std::array<std::string_view, 10> kLayerFields{"name", "kind", "visible", "opacity", "offsetX", "offsetY", "parallaxX", "parallaxY", "tint", "blend"};

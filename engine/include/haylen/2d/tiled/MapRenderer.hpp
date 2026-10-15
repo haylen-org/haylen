@@ -151,6 +151,8 @@ class MapRenderer final {
 
     // Size a tile covers when drawn, which is its image size or the map grid when the tileset asks for grid sized tiles.
     [[nodiscard]] static math::Vec2 drawSize(const Tileset& tileset, math::Rect source, math::Vec2 grid) noexcept;
+    // Scale from the pixels of a tile image to the size it draws at, which Tiled applies to tile offsets and collision shapes as well.
+    [[nodiscard]] static math::Vec2 imageScale(math::Vec2 size, math::Rect source) noexcept;
     [[nodiscard]] static math::Rect instanceBounds(const graphics2d::SpriteInstance& instance) noexcept;
     [[nodiscard]] static math::Color fade(math::Color color, float opacity) noexcept;
 
@@ -165,7 +167,7 @@ class MapRenderer final {
     // Reads the `category` and `mask` properties of a layer, which hold collision bits as integers of at least 0.
     [[nodiscard]] static physics2d::CollisionFilter layerFilter(const Layer& layer);
     [[nodiscard]] static std::uint64_t readCollisionBits(const Layer& layer, std::string_view name, std::uint64_t fallback);
-    [[nodiscard]] static bool isFullCell(const Object& object, math::Vec2 tileSize) noexcept;
+    [[nodiscard]] static bool isFullCell(const Object& object, math::Vec2 imageSize) noexcept;
     [[nodiscard]] static Inherited inherit(const Inherited& parent, const Layer& layer) noexcept;
     [[nodiscard]] static RegionKey regionOf(int column, int row, float ground, bool rows) noexcept;
 

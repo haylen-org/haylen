@@ -842,6 +842,29 @@ TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFil
     }
 }
 
+TEST_F(MapRendererTest, ScalesTheOffsetsAndCollisionShapesOfGridSizedTiles) {
+    // Tiles painted at 32 pixels draw on a grid of 16, so their offset of 8 pixels moves them by 4 and their collision shapes shrink with them, as Tiled draws them.
+    const core::Json document = core::Json::parse(R"({
+        "type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 3, "height": 2, "tilewidth": 16, "tileheight": 16, "infinite": false,
+        "tilesets": [{"firstgid": 1, "name": "painted", "tilewidth": 32, "tileheight": 32, "tilecount": 2, "columns": 2, "image": "images/painted.png", "imagewidth": 64, "imageheight": 32,
+            "tilerendersize": "grid", "tileoffset": {"x": 8, "y": 0}, "tiles": [
+                {"id": 0, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "width": 32, "height": 32}]}},
+                {"id": 1, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 16, "width": 32, "height": 16}]}}
+            ]}],
+        "layers": [{"id": 1, "name": "ground", "type": "tilelayer", "width": 3, "height": 2, "data": [1, 1, 0, 0, 0, 2]}]
+    })");
+    tiled::MapRenderer map(tiled::Map::parse(document, "maps/painted.tmj", reader()));
+    physics2d::World world({.gravity = {}});
+    const physics2d::Body ground = map.buildCollision(world).front();
+
+    // The two full tiles of the first row fill their cells and merge into one loop, and the half tile covers the lower half of its cell.
+    EXPECT_EQ(ground.getOutlines().size(), 2U);
+    EXPECT_NEAR(world.raycast({-10.0F, 8.0F}, {50.0F, 8.0F})->point.x, 4.0F, 0.01F);
+    EXPECT_NEAR(world.raycast({50.0F, 8.0F}, {-10.0F, 8.0F})->point.x, 36.0F, 0.01F);
+    EXPECT_NEAR(world.raycast({44.0F, 17.0F}, {44.0F, 40.0F})->point.y, 24.0F, 0.01F);
+    EXPECT_NEAR(world.raycast({60.0F, 28.0F}, {30.0F, 28.0F})->point.x, 52.0F, 0.01F);
+}
+
 TEST_F(MapRendererTest, SpawnsObjectsThroughFactories) {
     core::Json document = orthogonalMap();
     document["layers"][6]["layers"].push_back(core::Json::parse(R"({"id": 9, "name": "camp", "type": "objectgroup", "offsetx": 10, "offsety": 20, "objects": [{"id": 20, "type": "player", "x": 1, "y": 2}]})"));
@@ -1121,6 +1144,9 @@ TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {
 
     // The JSON of the map holds the tileset with its path relative to the file and the cells row by row.
     EXPECT_EQ(fixture.lua("local j = map:toJson('maps/built.tmj') return j.tilesets[1].image .. ' ' .. j.layers[1].name .. ' ' .. j.layers[1].data[23] .. ' ' .. j.layers[2].type .. ' ' .. j.width"), "images/terrain.png ground 4 objectgroup 8");
+
+    // A tileset painted larger than the grid draws its tiles at the size of the grid, as Tiled calls it.
+    EXPECT_EQ(fixture.lua("map:addTileset({name = 'painted', image = 'maps/images/terrain.png', tileWidth = 32, tileHeight = 32, renderGridSize = true, preserveAspect = true}) local t, j = map:tilesets()[2], map:toJson('maps/built.tmj') return tostring(t.renderGridSize) .. ' ' .. tostring(t.preserveAspect) .. ' ' .. j.tilesets[2].tilerendersize .. ' ' .. j.tilesets[2].fillmode"), "true true grid preserve-aspect-fit");
 
     // An infinite map takes and drops chunks of cells.
     // clang-format off

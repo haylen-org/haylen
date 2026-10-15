@@ -432,7 +432,7 @@ Describes a global tile id, or returns `nil` for 0 and for ids no tileset holds.
 | `image` | string | Image path of a tile from an image collection, or an empty string. |
 | `probability` | number | Chance of the tile in Tiled's terrain and random tools, 1 by default. |
 | `properties`, `propertyTypes` | table | Custom properties of the tile and their type names. |
-| `collision` | table | Collision shapes as object tables, relative to the tile. |
+| `collision` | table | Collision shapes as object tables, relative to the tile in the pixels of its image. |
 | `animation` | table | Animation frames as `{tileId = id, duration = seconds}` tables. Empty for still tiles. |
 
 ```lua
@@ -461,7 +461,7 @@ Returns the tilesets of the map in first gid order. Every tileset table has thes
 | `margin`, `spacing` | integer | Pixels around the tiles and between them in the image. |
 | `tileOffset` | Vec2 | Offset applied when the tiles are drawn. |
 | `objectAlignment` | string | Anchor of tile objects, such as `'unspecified'`, `'bottomleft'`, `'bottom'` or `'center'`. |
-| `renderGridSize` | boolean | The value is `true` when tiles are drawn at the map grid size instead of their image size. |
+| `renderGridSize` | boolean | The value is `true` when tiles are drawn at the map grid size instead of their image size, with their offsets and collision shapes scaled the same way. |
 | `preserveAspect` | boolean | The value is `true` when grid sized tiles keep their aspect ratio. |
 | `image` | string | Image path inside the content folder, or an empty string for image collections. |
 | `imageSize` | Vec2 | Image size written in the tileset. |
@@ -491,7 +491,7 @@ end
 
 Creates static bodies in the [`haylen.physics2d`](physics2d.md) world `world` for the collision of the map and returns them, in map order: one body for each tile layer whose `collision` property is not `false`, even when the layer has no collision shapes yet, so the tiles that `map:setTile` places later collide on it, and one body for each object layer with collision objects. Layer visibility does not matter.
 
-- Tile layers add the collision shapes of their tiles, placed and flipped with each tile. A tile layer with a `collision` property set to `false` adds nothing and gets no body.
+- Tile layers add the collision shapes of their tiles, placed and flipped with each tile, and scaled with the tiles of a tileset that draws them at the size of the grid. A tile layer with a `collision` property set to `false` adds nothing and gets no body.
 - On orthogonal maps the solid closed shapes of touching tiles merge into chain loops around each solid region, solid from the outside, with loops around the holes inside it, so bodies slide along floors, walls and slopes without catching on the joints between tiles. A region whose outline has only three corners, such as a lone triangle, stays a polygon. Sensors, polylines and shapes whose `oneWay` property is `true` stay separate shapes of the body. Isometric, staggered, hexagonal and oblique maps keep one shape for each tile shape.
 - Object layers whose class is `collision` add every object, and other object layers add the objects whose class is `collision`. Points and text objects add nothing, polylines become segments, ellipses and capsules become polygons, and tile objects cover their image where it draws, placed by the object alignment of their tileset.
 - Objects and tile shapes with a `sensor` property set to `true` become sensors, and those with a `oneWay` property set to `true` become [one-way platforms](physics2d.md#one-way-platforms) that only block bodies from above, on tile layers and object layers alike.
@@ -590,6 +590,8 @@ Adds a tileset after the tilesets of the map and returns its first global tile i
 | `margin`, `spacing` | integer | `0` | Pixels around the tiles and between them. |
 | `tileCount` | integer | from the image | Number of tiles, fewer than the image holds. |
 | `offsetX`, `offsetY` | number | `0` | Pixels every tile image moves when it draws. |
+| `renderGridSize` | boolean | `false` | Draws every tile at the size of the map grid instead of the size of its image, so tiles painted in high definition fill the cells of a smaller grid. Their offsets and collision shapes scale with them. |
+| `preserveAspect` | boolean | `false` | Keeps the aspect ratio of grid sized tiles, which then fit inside their cells. |
 | `wangSets` | table | none | Terrain sets for `map:paintTerrain`, a list of `{name, type, colors, tiles}`, where `type` is `'corner'`, `'edge'` or `'mixed'`, `colors` lists the names of the colors from 1, and `tiles` lists `{tile, wangId}` with the local tile id and the eight colors of its edges and corners, clockwise from the top edge, as Tiled stores them. |
 
 A tileset without an image or a texture raises `A tileset needs the package path of its "image" or a "texture".`, and a Wang tile without eight colors raises `A tile of a Wang set needs "wangId", the eight colors of its edges and corners from the top clockwise.`
