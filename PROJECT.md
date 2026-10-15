@@ -290,6 +290,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 218. A arte do Tiny Island é o padrão: todos os outros lugares (samples, projeto de testes, temas de UI e templates) seguem o mesmo estilo, a mesma forma de desenhar, as mesmas proporções e o mesmo polimento.
 219. Regra: nomes de arquivos e pastas usam traço (`platform-bridge.md`), nunca sublinhado. O sublinhado fica só onde é realmente necessário, como módulos Python de duas palavras e os nomes que uma plataforma exige.
 220. Regra: um template de app Lua e um template de app C++, completos e prontos para todas as plataformas (desktop, mobile, Apple TV e WebAssembly), já com a ponte nativa no C++ e no Lua. O que é comum aos templates fica numa pasta `common`. Ao criar um projeto, entra primeiro o comum e depois o específico, e o arquivo específico substitui o comum quando existe nos dois.
+221. Decisão: o comando `haylen steam` e as menções à Steam ficam com esse nome. A regra de não citar terceiros vale para jogos, apps, estúdios e artistas usados como referência, não para as plataformas, sistemas e lojas onde o app é publicado, como a Steam, a App Store e o Google Play.
 
 ## 3. Regras
 
@@ -959,7 +960,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 220 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 221 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -970,9 +971,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 220: decisões e checklist
+## 14. Pedidos 51 a 221: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 220 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 221 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
