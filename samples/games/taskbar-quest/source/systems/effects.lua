@@ -70,17 +70,25 @@ function effects:draw()
     for _, emitter in pairs(self.emitters) do
         emitter:draw()
     end
+    -- A text that fades draws in a group of its own, so it fades as one image and its outline never shows through its fill.
     for _, item in ipairs(self.texts) do
         local progress = item.time / textLife
-        local alpha = 1 - m.smoothstep(0.6, 1, progress)
+        local opacity = 1 - m.smoothstep(0.6, 1, progress)
+        local fading = opacity < 1
+        if fading then
+            graphics2d.beginGroup({opacity = opacity, layer = config.layer.text})
+        end
         graphics2d.drawText(nil, item.text, item.x, item.y - m.ease('quadOut', progress) * 36, {
             size = 26,
-            color = item.color:withAlpha(alpha),
+            color = item.color,
             outlineWidth = 3,
-            outlineColor = ink:withAlpha(alpha),
+            outlineColor = ink,
             anchor = {0.5, 1},
             layer = config.layer.text,
         })
+        if fading then
+            graphics2d.endGroup()
+        end
     end
 end
 
