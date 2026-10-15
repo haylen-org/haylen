@@ -1,7 +1,8 @@
 -- Tuning values of the quest. Sizes are design units, speeds are units per second and times are seconds.
 return {
-    -- Design units per pixel of the art, which draws with nearest filtering.
+    -- Design units per unit of the art, whose sizes count in these units, and the pixels the painted art holds in each of them, so it draws at "pixel / detail".
     pixel = 3,
+    detail = 4,
     groundHeight = 36,
 
     hero = {health = 10, speed = 70, reach = 58, attackInterval = 0.75, restTime = 3, marginLeft = 90, marginRight = 40},

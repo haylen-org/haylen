@@ -1,5 +1,6 @@
 {
     "name": "strip",
+    "imageFilter": "linear",
     "colors": {
         "panel": "#E61B1E2B",
         "raised": "#FF2C3147",

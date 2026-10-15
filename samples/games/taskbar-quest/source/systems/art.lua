@@ -1,33 +1,22 @@
--- The textures and frame animations of the quest, cut from the sheets in `content/images`.
-local animation2d = require('haylen.animation2d')
+-- The textures and frame animations of the quest, all cut from the atlas `content/images/quest.json`, which loads with the linear filter because the art is painted in high definition.
 local assets = require('haylen.assets')
 
 local art = {}
 
-local function sheet(path, frameWidth, frameHeight, animations)
-    local texture = assets.texture(path)
-    local result = {texture = texture}
-    for name, spec in pairs(animations) do
-        result[name] = animation2d.fromGrid(texture, {frameWidth = frameWidth, frameHeight = frameHeight, cells = spec.frames, framesPerSecond = spec.fps, loop = spec.loop})
-    end
-    return result
-end
-
 function art.load()
+    local atlas = assets.load('images/quest.json', 'atlas', {filter = 'linear'})
+    local texture = atlas.texture
     return {
-        hero = sheet('images/hero.png', 24, 24, {
-            idle = {frames = {1, 2}, fps = 2},
-            walk = {frames = {3, 4, 5, 6}, fps = 8},
-            attack = {frames = {7, 8, 9}, fps = 12, loop = 'once'},
-            hurt = {frames = {10}},
-        }),
-        slime = sheet('images/slime.png', 18, 16, {move = {frames = {1, 2, 1, 3}, fps = 6}, hurt = {frames = {4}}}),
-        mushroom = sheet('images/mushroom.png', 18, 16, {move = {frames = {2, 1, 3, 1}, fps = 6}, hurt = {frames = {4}}}),
-        coin = sheet('images/coin.png', 10, 10, {spin = {fps = 10}}),
-        decorations = sheet('images/decorations.png', 8, 8, {all = {}}),
-        ground = assets.texture('images/ground.png'),
-        grip = assets.texture('images/grip.png'),
-        cloud = assets.texture('images/cloud.png'),
+        texture = texture,
+        hero = {texture = texture, idle = atlas:animation('hero idle'), walk = atlas:animation('hero walk'), attack = atlas:animation('hero attack'), hurt = atlas:animation('hero hurt')},
+        slime = {texture = texture, move = atlas:animation('slime move'), hurt = atlas:animation('slime hurt')},
+        mushroom = {texture = texture, move = atlas:animation('mushroom move'), hurt = atlas:animation('mushroom hurt')},
+        coin = {texture = texture, spin = atlas:animation('coin spin')},
+        decorations = {texture = texture, all = atlas:animation('decorations')},
+        ground = atlas:source('ground'),
+        grip = atlas:source('grip'),
+        cloud = atlas:source('cloud'),
+        dot = atlas:source('dot'),
     }
 end
 

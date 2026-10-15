@@ -51,7 +51,7 @@ end
 
 function enemy:draw()
     local animation = self.flash > 0.5 and self.art.hurt or self.art.move
-    local scale = config.pixel * self.grow
+    local scale = config.pixel / config.detail * self.grow
     graphics2d.draw(self.art.texture, self.x + self.push, self.quest.lane.ground, {
         source = animation:frame(animation:frameAt(self.time)),
         pivotY = 1,

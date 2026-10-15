@@ -23,7 +23,7 @@ function game:enter()
     local images = art.load()
     self.desktop = desktop.new(self)
     self.stage = stage.new(images)
-    self.effects = effects.new()
+    self.effects = effects.new(images)
     self.hud = hud.new(self, {
         sword = function() self.quest:upgradeSword() end,
         potion = function() self.quest:drinkPotion() end,

@@ -1,5 +1,4 @@
--- Short feedback in the strip: bursts of square pixel particles and words that float up and fade.
-local graphics = require('haylen.graphics')
+-- Short feedback in the strip: bursts of round particles and words that float up and fade.
 local graphics2d = require('haylen.graphics2d')
 local m = require('haylen.math')
 local particles2d = require('haylen.particles2d')
@@ -20,11 +19,13 @@ local bursts = {
     heal = {colors = {'#FFA7F070', '#FFFFFFFF', '#0038B764'}, speed = {30, 80}, gravity = {0, -160}},
 }
 
-function effects.new()
+-- Takes the art of the quest, whose round dot every burst draws.
+function effects.new(art)
     local self = setmetatable({emitters = {}, texts = {}}, effects)
     for name, burst in pairs(bursts) do
         self.emitters[name] = particles2d.newEmitter({
-            texture = graphics.whiteTexture(),
+            texture = art.texture,
+            frames = {art.dot},
             rate = 0,
             lifetime = {0.35, 0.75},
             speed = burst.speed,

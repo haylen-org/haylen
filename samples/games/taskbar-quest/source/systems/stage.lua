@@ -8,9 +8,10 @@ local config = require('config')
 local stage = {}
 stage.__index = stage
 
-local tileWidth = 16 * config.pixel
+local tileWidth = 48 * config.pixel
 local skyTop = '#FF5B8FD6'
 local skyBottom = '#FFBFE3F0'
+local hillOutline = '#FF1E1B33'
 local hills = {
     {color = '#FFA3CFD0', height = 90, wave = 0.005, phase = 0},
     {color = '#FF74B48E', height = 48, wave = 0.012, phase = 2},
@@ -69,29 +70,22 @@ function stage:drawBackdrop(time)
     for index = 1, 3 do
         local x = left - 100 + (index * 530 + time * (8 + index * 3)) % span
         local y = top + (bottom - top) * (0.12 + index * 0.1)
-        graphics2d.draw(self.art.cloud, x, y, {scaleX = config.pixel, scaleY = config.pixel, color = '#E6FFFFFF', layer = config.layer.backdrop})
+        graphics2d.draw(self.art.texture, x, y, {source = self.art.cloud, scaleX = config.pixel / config.detail, scaleY = config.pixel / config.detail, color = '#E6FFFFFF', layer = config.layer.backdrop})
     end
 
-    -- Two rows of hills step their outlines on the pixel grid of the art.
-    local step = 4 * config.pixel
+    -- Two rows of rounded hills with the dark outline of the art along their tops.
+    local step = 8
     local first = math.floor(left / step) * step
     for _, hill in ipairs(hills) do
-        local points = {}
-        local previous
+        local ridge = {}
         for x = first, right + step, step do
-            local y = math.floor((self.groundTop - hill.height * (0.6 + 0.4 * math.sin(x * hill.wave + hill.phase))) / config.pixel) * config.pixel
-            if previous == nil then
-                points[#points + 1] = {x, y}
-            elseif y ~= previous then
-                points[#points + 1] = {x, previous}
-                points[#points + 1] = {x, y}
-            end
-            previous = y
+            ridge[#ridge + 1] = {x, self.groundTop - hill.height * (0.6 + 0.4 * math.sin(x * hill.wave + hill.phase))}
         end
-        points[#points + 1] = {right + step, previous}
+        local points = {table.unpack(ridge)}
         points[#points + 1] = {right + step, self.groundTop + step}
         points[#points + 1] = {first, self.groundTop + step}
         graphics2d.drawPolygon(points, hill.color, {layer = config.layer.backdrop})
+        graphics2d.drawPolyline(ridge, 3, hillOutline, false, {layer = config.layer.backdrop})
     end
 end
 
@@ -103,9 +97,9 @@ function stage:draw(windowMode, time)
     local visible = self.visible
     local tiles = {}
     for x = math.floor(visible.x / tileWidth) * tileWidth, visible:right(), tileWidth do
-        tiles[#tiles + 1] = {x = x, y = self.groundTop, width = tileWidth, height = config.groundHeight, pivotX = 0, pivotY = 0}
+        tiles[#tiles + 1] = {x = x, y = self.groundTop, width = tileWidth, height = config.groundHeight, pivotX = 0, pivotY = 0, source = self.art.ground}
     end
-    graphics2d.drawBatch(self.art.ground, tiles, {layer = config.layer.ground})
+    graphics2d.drawBatch(self.art.texture, tiles, {layer = config.layer.ground})
 
     local flowers = {}
     local size = 8 * config.pixel
@@ -116,7 +110,7 @@ function stage:draw(windowMode, time)
     end
     graphics2d.drawBatch(self.art.decorations.texture, flowers, {layer = config.layer.props})
 
-    graphics2d.draw(self.art.grip, self.grip.x, self.grip.y, {pivotX = 0, pivotY = 0, width = self.grip.width, height = self.grip.height, layer = config.layer.props})
+    graphics2d.draw(self.art.texture, self.grip.x, self.grip.y, {source = self.art.grip, pivotX = 0, pivotY = 0, width = self.grip.width, height = self.grip.height, layer = config.layer.props})
 end
 
 return stage

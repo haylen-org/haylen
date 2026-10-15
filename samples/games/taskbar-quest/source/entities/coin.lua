@@ -55,7 +55,7 @@ end
 
 function coin:draw()
     local spin = self.quest.art.coin.spin
-    graphics2d.draw(self.quest.art.coin.texture, self.x, self.y, {source = spin:frame(spin:frameAt(self.time)), pivotY = 1, scaleX = config.pixel, scaleY = config.pixel, layer = config.layer.coins})
+    graphics2d.draw(self.quest.art.coin.texture, self.x, self.y, {source = spin:frame(spin:frameAt(self.time)), pivotY = 1, scaleX = config.pixel / config.detail, scaleY = config.pixel / config.detail, layer = config.layer.coins})
 end
 
 return coin

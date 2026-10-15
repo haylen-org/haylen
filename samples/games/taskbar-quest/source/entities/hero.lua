@@ -17,12 +17,13 @@ local bodyHeight = 20 * config.pixel
 function hero.new(quest, x)
     local self = setmetatable({quest = quest, x = x, y = quest.lane.ground, facing = 1, lift = 0, health = config.hero.health, cooldown = 0, resting = false}, hero)
     local art = quest.art.hero
-    self.sprite = graphics2d.newSprite(art.texture, {scaleX = config.pixel, scaleY = config.pixel, layer = config.layer.hero})
+    self.sprite = graphics2d.newSprite(art.texture, {scaleX = config.pixel / config.detail, scaleY = config.pixel / config.detail, layer = config.layer.hero})
     self.animator = animation2d.newAnimator()
     for _, name in ipairs({'idle', 'walk', 'attack', 'hurt'}) do
         self.animator:add(name, art[name])
     end
-    self.animator.pivotY = 1
+    -- Every frame stands its body in the middle of its cell, so the pivot holds when the frame flips.
+    self.animator.pivotX, self.animator.pivotY = 0.5, 1
 
     -- The second frame of the swing is the one where the blade reaches forward.
     self.animator.onFrame = function(name, frame)
@@ -67,8 +68,6 @@ function hero:update(dt, lane)
         self.animator:play('walk')
     end
 
-    -- The body stands 11 pixels into the 24 pixel frame, so the pivot follows it when the frame flips.
-    self.animator.pivotX = self.facing > 0 and 11 / 24 or 13 / 24
     self.animator:update(dt)
     self.animator:apply(self.sprite)
 end
