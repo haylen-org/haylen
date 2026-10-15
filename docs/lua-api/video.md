@@ -77,7 +77,7 @@ end)
 | `texture` | Texture | read | The picture, transparent until the first frame shows, which keeps its handle when the video loops or seeks. |
 | `width`, `height` | integer | read | The size of the picture in pixels, 0 until the video is ready. |
 | `duration` | number | read | The length in seconds, 0 until the video is ready. |
-| `time` | number | read and write | The time the playback is at, in seconds. Setting it seeks. |
+| `time` | number | read and write | The time the playback is at, in seconds. It stops at the duration, where the video waits for its last frame before it ends, so it never depends on how fast the decoder runs. Setting it seeks. |
 | `playing` | boolean | read | Whether the video plays. |
 | `ended` | boolean | read | Whether the video played to its end. |
 | `state` | string | read | `'loading'`, `'ready'` or `'failed'`. |

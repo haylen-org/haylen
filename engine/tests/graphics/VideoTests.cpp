@@ -44,6 +44,19 @@ class VideoTest : public ::testing::Test {
         ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return intro.state") != "loading"; }));
     }
 
+    ~VideoTest() override {
+        hold(false);
+    }
+
+    // Holds every read of a frame of the decoder while the value is set, as a decoder that falls behind the playback does.
+    void hold(bool value) {
+        {
+            const std::scoped_lock lock(log->mutex);
+            log->held = value;
+        }
+        log->released.notify_all();
+    }
+
     // Plays frames until the time of the video reaches the seconds.
     void playUntil(double seconds) {
         ASSERT_TRUE(fixture.frameUntil([this, seconds] { return std::stod(fixture.lua("return intro.time")) >= seconds; }));
@@ -106,9 +119,14 @@ TEST_F(VideoTest, SeeksPausesAndPlaysAtItsRate) {
         EXPECT_DOUBLE_EQ(log->seeks.back(), 0.55);
     }
 
+    // The decoder falls behind while the video plays at twice its speed, so the clock stops at the end and waits for the last frame there.
+    hold(true);
     fixture.runLua("intro.rate = 2 intro:play()");
     fixture.frames(6, 0.05);
-    EXPECT_NEAR(std::stod(fixture.lua("return intro.time")), 1.0, 0.11);
+    EXPECT_EQ(fixture.lua("return intro.time .. ' ' .. tostring(intro.playing) .. ' ' .. tostring(intro.ended)"), "1.0 true false");
+    hold(false);
+    ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return tostring(intro.ended)") == "true"; }));
+    EXPECT_EQ(fixture.lua("return intro.time .. ' ' .. tostring(intro.playing)"), "1.0 false");
     fixture.runLua("intro:seek(0.1) intro:pause()");
     fixture.frames(5, 0.05);
     EXPECT_EQ(fixture.lua("return intro.time .. ' ' .. tostring(intro.playing)"), "0.1 false");

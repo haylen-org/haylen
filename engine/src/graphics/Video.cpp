@@ -231,8 +231,12 @@ void Video::update(double seconds, bool running) {
         fail();
         return;
     }
+    // The clock stops at the end of the video, where it waits for the decoder to deliver the last frame, so the time never depends on how fast the decoder runs.
     if (playing && running) {
         time += seconds * rate;
+        if (shared->info.duration > 0.0) {
+            time = std::min(time, shared->info.duration);
+        }
     }
 
     // The newest frame whose time came shows, and the frames it passed go back to the spare frames.

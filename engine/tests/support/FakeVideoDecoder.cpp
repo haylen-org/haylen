@@ -21,8 +21,9 @@ const platform::VideoDecoder::Info& FakeVideoDecoder::getInfo() const noexcept {
 
 platform::VideoDecoder::Read FakeVideoDecoder::readFrame(Frame& frame) {
     {
-        const std::scoped_lock lock(log->mutex);
+        std::unique_lock lock(log->mutex);
         log->readingThreads.insert(std::this_thread::get_id());
+        log->released.wait(lock, [this] { return !log->held; });
     }
     if (settings.info.clocked) {
         const std::scoped_lock lock(log->mutex);

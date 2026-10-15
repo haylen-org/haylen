@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -28,6 +29,10 @@ class FakeVideoDecoder final : public platform::VideoDecoder {
         // Whether a decoder with a clock of its own knows its size yet, and the error its next read of a frame throws.
         bool sized = true;
         std::string error;
+
+        // Holds every read of a frame while it is set, so a test sees the playback of a decoder that falls behind.
+        bool held = false;
+        std::condition_variable released;
     };
 
     struct Settings {
