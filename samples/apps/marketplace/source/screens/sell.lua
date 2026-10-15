@@ -48,7 +48,7 @@ function Sell:enter()
                     },
                     ui.column{gap = 10, grow = 1,
                         ui.formField{id = 'photoField', label = 'Photo', help = 'Pick what you sell and a backdrop.', required = true,
-                            ui.button{id = 'choosePhoto', text = 'Choose a photo', icon = Shell.icon('camera'), align = 'start', onClick = function(event)
+                            ui.button{id = 'choosePhoto', text = 'Choose a photo', icon = Shell.icon('camera'), iconColor = 'text', align = 'start', onClick = function(event)
                                 event.gui:set('photoDialog', {open = true})
                             end},
                         },

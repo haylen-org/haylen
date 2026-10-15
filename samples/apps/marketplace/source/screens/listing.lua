@@ -71,7 +71,7 @@ function Listing:enter()
         ui.divider{},
         ui.panel{padding = {12, 20, 14, 20}, style = Shell.flatBar,
             Shell.centered(860, ui.row{gap = 12, visible = not mine,
-                ui.button{id = 'message', text = 'Message', icon = Shell.icon('chat'), grow = 1, onClick = function()
+                ui.button{id = 'message', text = 'Message', icon = Shell.icon('chat'), iconColor = 'text', grow = 1, onClick = function()
                     self:openChat()
                 end},
                 ui.button{id = 'offer', text = 'Make an offer', icon = Shell.icon('tag'), variant = 'primary', grow = 1, onClick = function()

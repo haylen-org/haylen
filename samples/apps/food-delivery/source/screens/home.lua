@@ -44,7 +44,7 @@ function Home:enter()
                 ui.collection{id = 'popular', axis = 'horizontal', scrollbar = false, gap = 16, rememberFocus = true, types = {restaurant = Widgets.restaurantCard(Home.cardWidth)}, onSelect = self.openRestaurant},
                 self:shelfTitle('Offers today'),
                 ui.collection{id = 'offers', axis = 'horizontal', scrollbar = false, gap = 16, rememberFocus = true, types = {restaurant = Widgets.restaurantCard(Home.cardWidth)}, onSelect = self.openRestaurant},
-                ui.button{id = 'browse', text = string.format('Browse all %s restaurants', Home.thousands(Catalog.restaurantCount)), icon = Shell.icon('forward'), align = 'center', onClick = function()
+                ui.button{id = 'browse', text = string.format('Browse all %s restaurants', Home.thousands(Catalog.restaurantCount)), icon = Shell.icon('forward'), iconColor = 'text', align = 'center', onClick = function()
                     Shell.showTab('search')
                 end},
             },
