@@ -54,7 +54,7 @@ function GroupsMasks:draw(area)
         graphics2d.drawCircle(portraitX, portraitY, radius, '#FFFFFF')
     end)
     graphics2d.drawRect({portraitX - 90, portraitY - 90, 180, 180}, '#FF3D5A80')
-    graphics2d.draw(self.hero, portraitX, portraitY, {scaleX = 2, scaleY = 2})
+    graphics2d.draw(self.hero, portraitX, portraitY)
     graphics2d.popMask()
     graphics2d.drawRing(portraitX, portraitY, radius, 4, '#FFFFD54F')
 
@@ -72,7 +72,7 @@ function GroupsMasks:draw(area)
     graphics2d.pushClip({fogX, fogY, fogWidth, fogHeight})
     for row = 0, math.floor(fogHeight / 48) do
         for column = 0, math.floor(fogWidth / 48) do
-            graphics2d.draw(self.tiles, fogX + column * 48, fogY + row * 48, {source = {((row + column) % 3) * 32, 0, 32, 32}, width = 48, height = 48, pivotX = 0, pivotY = 0})
+            graphics2d.draw(self.tiles, fogX + column * 48, fogY + row * 48, {source = {((row + column) % 3) * 64, 0, 64, 64}, width = 48, height = 48, pivotX = 0, pivotY = 0})
         end
     end
     local holeX = math.max(fogX, math.min(fogX + fogWidth, self.pointerX or fogX + fogWidth / 2))

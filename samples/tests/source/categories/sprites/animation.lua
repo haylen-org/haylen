@@ -13,22 +13,22 @@ Animation.loops = {'loop', 'once', 'pingPong'}
 Animation.lines = 8
 
 Animation.code = [[
-animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
+animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 128, frameHeight = 128, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
 animator.onFrame = function(name, frame) if name == 'attack' and frame == 3 then log.info('Hit.') end end
 animator.onComplete = function(name) log.info('The clip "' .. name .. '" finished.') end
 animator:play('attack', true)  animator:queue('run')  animator:queue('idle')  animator.speed = 1.5  animator:update(dt)  animator:apply(sprite)]]
 
 -- Adds the clips of the walker sheet to an animator, with the run clip in the given loop mode.
 function Animation.clips(animator, sheet, runLoop)
-    animator:add('idle', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {1, 2, 3, 4}, framesPerSecond = 6}))
-    animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12, loop = runLoop}))
-    animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
+    animator:add('idle', animation2d.fromGrid(sheet, {frameWidth = 128, frameHeight = 128, cells = {1, 2, 3, 4}, framesPerSecond = 6}))
+    animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 128, frameHeight = 128, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12, loop = runLoop}))
+    animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 128, frameHeight = 128, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
 end
 
 function Animation:enter()
     local sheet = SpriteTest.texture('sheets/walker.png')
     self.history = {}
-    self.hero = {sprite = graphics2d.newSprite(sheet, {scaleX = 4, scaleY = 4}), animator = animation2d.newAnimator()}
+    self.hero = {sprite = graphics2d.newSprite(sheet, {scaleX = 2, scaleY = 2}), animator = animation2d.newAnimator()}
     Animation.clips(self.hero.animator, sheet, 'loop')
     self.hero.animator.pivotY = 0.9
     self.hero.animator:play('idle')
@@ -41,7 +41,7 @@ function Animation:enter()
 
     self.walkers = {}
     for index, mode in ipairs(Animation.loops) do
-        local entry = {sprite = graphics2d.newSprite(sheet, {scaleX = 2, scaleY = 2}), animator = animation2d.newAnimator()}
+        local entry = {sprite = graphics2d.newSprite(sheet, {scaleX = 1, scaleY = 1}), animator = animation2d.newAnimator()}
         Animation.clips(entry.animator, sheet, mode)
         entry.animator:play('run')
         self.walkers[index] = entry

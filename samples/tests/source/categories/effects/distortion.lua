@@ -103,7 +103,7 @@ end
 
 function Distortion:draw(area)
     self.scenery:draw()
-    graphics2d.draw(self.robot, Distortion.shield[1], Scenery.ground, {scaleX = 2.4, scaleY = 2.4, pivotY = 1, layer = 1})
+    graphics2d.draw(self.robot, Distortion.shield[1], Scenery.ground, {scaleX = 1.2, scaleY = 1.2, pivotY = 1, layer = 1})
     ParticleTest.label('Shield', Distortion.shield[1], Scenery.ground + 20)
     ParticleTest.label('Campfire', Distortion.fire[1], Scenery.ground + 20)
     self.campfire:draw()

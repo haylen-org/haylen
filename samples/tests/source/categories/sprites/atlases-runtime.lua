@@ -58,10 +58,10 @@ function RuntimeAtlases:enter()
         end
         self.packedAtlas = builder:buildAsync({padding = 4, extrude = 2, filter = 'linear'}):await()
 
-        local badge = graphics.newImage(160, 160)
-        badge:fill('#FF2E7D32', {10, 10, 140, 140})
-        badge:fill('#FF66BB6A', {20, 20, 120, 120})
-        badge = badge:blitAsync(images.hero, 32, 32, {blend = true}):await()
+        local badge = graphics.newImage(320, 320)
+        badge:fill('#FF2E7D32', {20, 20, 280, 280})
+        badge:fill('#FF66BB6A', {40, 40, 240, 240})
+        badge = badge:blitAsync(images.hero, 64, 64, {blend = true}):await()
         badge:bleed()
         self.badge = graphics.newTexture(badge, {filter = 'linear'})
     end)
@@ -85,14 +85,14 @@ function RuntimeAtlases:draw(area)
         local x = width * 0.25 + math.cos(index * 0.37 + self.time * 0.3) * (index % 97) * 2.4
         local y = height * 0.5 + math.sin(index * 0.53 + self.time * 0.3) * (index % 89) * 2.2
         if self.useAtlas and self.packedAtlas then
-            graphics2d.draw(self.packedAtlas.texture, x, y, {source = self.packedAtlas:source(names[which]), scaleX = 0.35, scaleY = 0.35})
+            graphics2d.draw(self.packedAtlas.texture, x, y, {source = self.packedAtlas:source(names[which]), scaleX = 0.175, scaleY = 0.175})
         else
-            graphics2d.draw(self.textures[which], x, y, {scaleX = 0.35, scaleY = 0.35})
+            graphics2d.draw(self.textures[which], x, y, {scaleX = 0.175, scaleY = 0.175})
         end
     end
 
     if self.badge then
-        graphics2d.draw(self.badge, width * 0.62, height * 0.25, {layer = 1})
+        graphics2d.draw(self.badge, width * 0.62, height * 0.25, {scaleX = 0.5, scaleY = 0.5, layer = 1})
     end
     graphics2d.drawText(nil, 'Composed off the frame thread', width * 0.62, height * 0.25 + 95, {size = 18, color = '#FFFFFFFF', align = 'center', layer = 1})
 

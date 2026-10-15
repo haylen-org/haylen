@@ -1,4 +1,4 @@
--- UI theme surfaces: a theme whose panels, banner, buttons, tracks, fills and knobs are nine-slice images. The gray images take the color of each component through `colorize`, so one fill image paints every tone. The theme applies to the whole screen while the test runs.
+-- UI theme surfaces: a theme whose panels, banner, buttons, tracks, fills and knobs are nine-slice images. Every piece is one region of the near white atlas `nine-slice/theme.png`, painted at twice the size it draws at, and the pieces take the color of each component through `colorize`, so one fill paints every tone. The theme applies to the whole screen while the test runs.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -12,13 +12,21 @@ ThemeSurfaces.demoWidth = 640
 ThemeSurfaces.tones = {'accent', 'success', 'warning', 'danger'}
 ThemeSurfaces.code = [[
 ui.setTheme(ui.addTheme({name = 'workshop', surfaces = {
-    button = {image = 'nine-slice/theme/button.png', slice = 16, padding = {0, 0, 4, 0}, colorize = true},
-    track = {image = 'nine-slice/theme/track.png', slice = 11, padding = 5},  trackFill = {image = 'nine-slice/theme/fill.png', slice = 7, colorize = true},
-}}, 'light'))  -- One gray fill image becomes the accent, success, warning and danger bars.]]
+    button = {image = 'nine-slice/theme.png', source = {0, 0, 96, 96}, slice = 32, scale = 0.5, padding = {0, 0, 4, 0}, colorize = true},
+    trackFill = {image = 'nine-slice/theme.png', source = {324, 184, 48, 36}, slice = 14, scale = 0.5, colorize = true},
+}}, 'light'))  -- One near white fill becomes the accent, success, warning and danger bars.]]
+
+-- The regions of the pieces in the atlas.
+ThemeSurfaces.atlas = 'nine-slice/theme.png'
+ThemeSurfaces.regions = {
+    button = {0, 0, 96, 96}, buttonPressed = {100, 0, 96, 96}, panel = {200, 0, 128, 128}, knob = {332, 0, 80, 80},
+    banner = {0, 132, 320, 112}, track = {324, 132, 96, 48}, fill = {324, 184, 48, 36},
+}
 
 -- The theme document, with `colorize` on or off for the surfaces that take the color of their component.
 function ThemeSurfaces.theme(colorize)
-    local button = function(image, padding) return {image = image, slice = 16, padding = padding, colorize = colorize} end
+    local atlas, regions = ThemeSurfaces.atlas, ThemeSurfaces.regions
+    local button = function(source, padding) return {image = atlas, source = source, slice = 32, scale = 0.5, padding = padding, colorize = colorize} end
     return {
         name = 'workshop',
         colors = {
@@ -28,18 +36,18 @@ function ThemeSurfaces.theme(colorize)
         },
         metrics = {controlHeight = 68, sliderTrackHeight = 24, sliderKnobSize = 40, progressHeight = 30, toggleWidth = 84, toggleHeight = 40},
         surfaces = {
-            panel = {image = 'nine-slice/theme/panel.png', slice = 20, padding = 10},
-            card = {image = 'nine-slice/theme/panel.png', slice = 20, padding = 10, tint = '#FFFFF8EC'},
-            banner = {image = 'nine-slice/theme/banner.png', slice = {10, 40}, padding = {8, 44}, colorize = colorize},
-            button = button('nine-slice/theme/button.png', {0, 0, 4, 0}),
-            buttonPressed = button('nine-slice/theme/button-pressed.png', {4, 0, 0, 0}),
-            buttonPrimary = button('nine-slice/theme/button.png', {0, 0, 4, 0}),
-            buttonPrimaryPressed = button('nine-slice/theme/button-pressed.png', {4, 0, 0, 0}),
-            buttonDestructive = button('nine-slice/theme/button.png', {0, 0, 4, 0}),
-            buttonDestructivePressed = button('nine-slice/theme/button-pressed.png', {4, 0, 0, 0}),
-            track = {image = 'nine-slice/theme/track.png', slice = 11, padding = 5},
-            trackFill = {image = 'nine-slice/theme/fill.png', slice = 7, colorize = colorize},
-            knob = {image = 'nine-slice/theme/knob.png'},
+            panel = {image = atlas, source = regions.panel, slice = 40, scale = 0.5, padding = 10, tint = '#FFFFF3DC'},
+            card = {image = atlas, source = regions.panel, slice = 40, scale = 0.5, padding = 10, tint = '#FFFFF8EC'},
+            banner = {image = atlas, source = regions.banner, slice = {20, 80}, scale = 0.5, padding = {8, 44}, colorize = colorize},
+            button = button(regions.button, {0, 0, 4, 0}),
+            buttonPressed = button(regions.buttonPressed, {4, 0, 0, 0}),
+            buttonPrimary = button(regions.button, {0, 0, 4, 0}),
+            buttonPrimaryPressed = button(regions.buttonPressed, {4, 0, 0, 0}),
+            buttonDestructive = button(regions.button, {0, 0, 4, 0}),
+            buttonDestructivePressed = button(regions.buttonPressed, {4, 0, 0, 0}),
+            track = {image = atlas, source = regions.track, slice = 22, scale = 0.5, padding = 5},
+            trackFill = {image = atlas, source = regions.fill, slice = 14, scale = 0.5, colorize = colorize},
+            knob = {image = atlas, source = regions.knob, scale = 0.5},
         },
     }
 end
@@ -49,7 +57,7 @@ function ThemeSurfaces:enter()
     ui.setTheme(ui.addTheme(ThemeSurfaces.theme(true), 'light'))
     self:frame{
         code = ThemeSurfaces.code,
-        hint = 'Turn "colorize" off to see the gray images as they are.',
+        hint = 'Turn "colorize" off to see the near white pieces as they are.',
         controls = {
             ui.toggle{id = 'colorize', text = 'Colorize', checked = true, onChange = function(event) ui.addTheme(ThemeSurfaces.theme(event.checked), 'light') end},
             ui.formField{label = 'Progress', ui.slider{id = 'progress', min = 0, max = 1, value = 0.6, showValue = true, onChange = function(event) self:fill(event.value) end}},
@@ -106,19 +114,19 @@ function ThemeSurfaces:render()
     ThemeSurfaces.super.render(self)
 end
 
--- Draws the fill image of the theme once per tone, multiplied by the color of the tone as `colorize` does.
+-- Draws the fill of the theme once per tone, multiplied by the color of the tone as `colorize` does, with the borders at the scale of the surface.
 function ThemeSurfaces:draw(area)
     local left = ThemeSurfaces.demoWidth + 70
     local fill, button = ui.themeSurface('trackFill'), ui.themeSurface('button')
     local width = area.width - left - 40
-    Test.caption('The image "theme/fill.png" times each tone', left, 30, {size = 24, color = Test.ink, maxWidth = width})
+    Test.caption('The fill of "nine-slice/theme.png" times each tone', left, 30, {size = 24, color = Test.ink, maxWidth = width})
     for index, tone in ipairs(ThemeSurfaces.tones) do
-        graphics2d.drawNineSlice(fill.slice, {left, 50 + index * 46, width, 30}, ui.themeColor(tone))
+        graphics2d.drawNineSlice(fill.slice, {left, 50 + index * 46, width, 30}, ui.themeColor(tone), {borderScale = fill.scale})
     end
-    Test.caption('The image "theme/button.png" times "raised", "accent" and "danger"', left, 300, {size = 24, color = Test.ink, maxWidth = width})
+    Test.caption('The button of "nine-slice/theme.png" times "raised", "accent" and "danger"', left, 300, {size = 24, color = Test.ink, maxWidth = width})
     local third = (width - 20) / 3
     for index, role in ipairs({'raised', 'accent', 'danger'}) do
-        graphics2d.drawNineSlice(button.slice, {left + (index - 1) * (third + 10), 370, third, 64}, ui.themeColor(role))
+        graphics2d.drawNineSlice(button.slice, {left + (index - 1) * (third + 10), 370, third, 64}, ui.themeColor(role), {borderScale = button.scale})
     end
 end
 

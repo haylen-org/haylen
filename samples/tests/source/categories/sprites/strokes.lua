@@ -15,7 +15,7 @@ Strokes.maxPoints = 400
 
 Strokes.code = [[
 graphics2d.drawStroke(points, {count = count, width = 18, join = 'round', cap = 'round', dashes = {30, 14}})
-graphics2d.drawStroke(rope, {width = 14, texture = tiles, textureMode = 'tile'})
+graphics2d.drawStroke(rope, {width = 14, texture = ropeTexture, textureMode = 'tile'})
 local flag = graphics2d.newGridMesh(tree, 12, 12)
 flag:setPositions(moved)  -- One call moves every vertex.]]
 
@@ -25,7 +25,7 @@ function Strokes:enter()
     self.count = 0
     self.time = 0
     -- The rope repeats its texture along its length, which takes a texture that wraps.
-    self.tiles = assets.texture('sprites/images/tiles.png', {filter = 'linear', wrap = 'repeat'})
+    self.rope = assets.texture('sprites/images/rope.png', {filter = 'linear', wrap = 'repeat'})
     local tree = SpriteTest.texture('images/tree.png')
     self.treeHeight = tree.height
     self.flag = graphics2d.newGridMesh(tree, 12, 12, {x = 0, y = 0, width = tree.width, height = tree.height})
@@ -83,7 +83,7 @@ function Strokes:update(dt)
     local rest, moved, time = self.rest, self.moved, self.time
     for index = 1, #rest, 2 do
         local x, y = rest[index], rest[index + 1]
-        moved[index] = x + math.sin(time * 3 + y * 0.04) * (1 - y / self.treeHeight) * 18
+        moved[index] = x + math.sin(time * 3 + y * 0.02) * (1 - y / self.treeHeight) * 36
         moved[index + 1] = y
     end
     self.flag:setPositions(moved)
@@ -99,8 +99,8 @@ function Strokes:draw(area)
     local ribbon = {width * 0.1, height * 0.75, width * 0.25, height * 0.62, width * 0.4, height * 0.8, width * 0.55, height * 0.66}
     graphics2d.drawStroke(ribbon, {widths = {2, 28, 18, 2}, colors = {'#FFFFD54F', '#FFFF7043', '#FFAB47BC', '#FF29B6F6'}, join = 'round', cap = 'round', layer = 1})
     local rope = {width * 0.1, height * 0.92, width * 0.3, height * 0.85 + math.sin(self.time) * 20, width * 0.55, height * 0.92}
-    graphics2d.drawStroke(rope, {width = 14, texture = self.tiles, textureMode = 'tile', join = 'round', layer = 1})
-    self.flag:draw(width * 0.66, height * 0.1, {layer = 1, scaleX = 3, scaleY = 3})
+    graphics2d.drawStroke(rope, {width = 14, texture = self.rope, textureMode = 'tile', join = 'round', layer = 1})
+    self.flag:draw(width * 0.66, height * 0.1, {layer = 1, scaleX = 1.5, scaleY = 1.5})
 end
 
 return Strokes

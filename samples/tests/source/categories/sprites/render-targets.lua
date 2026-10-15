@@ -24,7 +24,7 @@ function RenderTargets:enter()
     self.target = graphics.newRenderTarget(size, size, {filter = 'linear'})
     self.targetCamera = graphics2d.newCamera()
     self.targetCamera.position = {size / 2, size / 2}
-    self.hero = graphics2d.newSprite(SpriteTest.texture('images/hero.png'))
+    self.hero = graphics2d.newSprite(SpriteTest.texture('images/hero.png'), {scaleX = 0.5, scaleY = 0.5})
     self.time = 0
     self.redraw = true
     self.vertices, self.indices = {}, {}

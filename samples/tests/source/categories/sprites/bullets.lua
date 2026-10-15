@@ -11,7 +11,7 @@ local Test = require('harness.test')
 local Bullets = haylen.class('Bullets', SpriteTest)
 
 Bullets.patterns = {{id = 'spiral', text = 'Spiral'}, {id = 'rings', text = 'Rings'}, {id = 'aimed', text = 'Aimed'}}
-Bullets.sources = {{0, 0, 16, 16}, {16, 0, 16, 16}, {32, 0, 16, 16}, {48, 0, 16, 16}}
+Bullets.sources = {{0, 0, 64, 64}, {64, 0, 64, 64}, {128, 0, 64, 64}, {192, 0, 64, 64}}
 Bullets.capacity = 5000
 
 Bullets.code = [[

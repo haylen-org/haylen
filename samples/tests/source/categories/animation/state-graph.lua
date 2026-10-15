@@ -45,13 +45,13 @@ function StateGraph:enter()
     self.animator = animation2d.newAnimator()
     self.animator.pivotY = 0.9
     for _, side in ipairs({'Right', 'Left'}) do
-        self.animator:add('idle' .. side, animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {1, 2, 3, 4}, framesPerSecond = 6}))
-        self.animator:add('run' .. side, animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12}))
+        self.animator:add('idle' .. side, animation2d.fromGrid(sheet, {frameWidth = 128, frameHeight = 128, cells = {1, 2, 3, 4}, framesPerSecond = 6}))
+        self.animator:add('run' .. side, animation2d.fromGrid(sheet, {frameWidth = 128, frameHeight = 128, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12}))
     end
-    self.animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
+    self.animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 128, frameHeight = 128, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
     self.player = animation2d.newStateGraph(StateGraph.graph):newPlayer(self.animator)
     self.player:on('stateChanged', function(from, to) self:record(string.format('From "%s" to "%s"', from, to)) end, {owner = self})
-    self.walker = graphics2d.newSprite(sheet, {scaleX = 3, scaleY = 3})
+    self.walker = graphics2d.newSprite(sheet, {scaleX = 1.5, scaleY = 1.5})
     self.history = {}
     self:loadActions(StateGraph.actions)
     self:frame{

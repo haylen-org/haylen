@@ -22,7 +22,7 @@ local function slots(grid, prefix, size)
     for index = 1, size do
         local id = prefix .. '-' .. index
         local item = grid[id]
-        list[index] = {id = id, image = item and ('interface/icons/' .. item.icon .. '.png') or nil, count = item and item.count or nil}
+        list[index] = {id = id, image = item and layout.icon(item.icon) or nil, count = item and item.count or nil}
     end
     return list
 end
@@ -30,7 +30,7 @@ end
 function SlotGrid:chestItems()
     local items = {}
     for index, item in ipairs(self.chest) do
-        items[index] = {id = 'chest-' .. index, text = item.icon:sub(1, 1):upper() .. item.icon:sub(2), caption = item.count and ('Count ' .. item.count) or 'One', image = 'interface/icons/' .. item.icon .. '.png', iconColor = false}
+        items[index] = {id = 'chest-' .. index, text = item.icon:sub(1, 1):upper() .. item.icon:sub(2), caption = item.count and ('Count ' .. item.count) or 'One', image = layout.icon(item.icon), iconColor = false}
     end
     return items
 end

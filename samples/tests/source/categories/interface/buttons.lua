@@ -51,21 +51,21 @@ function Buttons:columns()
                         event.gui:set('hammer', {checked = checked})
                         self:report('The hammer is ' .. (checked and 'checked.' or 'unchecked.'))
                     end},
-                    ui.button{icon = 'interface/icons/gear.png', text = 'Toolbar', variant = 'toolbar', onClick = self:pressed('"toolbar"')},
-                    ui.button{id = 'favorite', icon = 'interface/icons/star.png', variant = 'icon', tooltip = 'Favorite', onClick = self:pressed('the icon button')},
-                    ui.button{icon = 'interface/icons/heart.png', variant = 'icon', tooltip = 'Like', onClick = self:pressed('the heart icon button')},
+                    ui.button{icon = 'interface/themes/fantasy/icons/gear.png', text = 'Toolbar', variant = 'toolbar', onClick = self:pressed('"toolbar"')},
+                    ui.button{id = 'favorite', icon = 'interface/themes/fantasy/icons/star.png', variant = 'icon', tooltip = 'Favorite', onClick = self:pressed('the icon button')},
+                    ui.button{icon = 'interface/themes/fantasy/icons/heart.png', variant = 'icon', tooltip = 'Like', onClick = self:pressed('the heart icon button')},
                 },
             }),
             layout.section('Icon placement and justify', {
                 ui.row{gap = 0,
-                    ui.button{text = 'Island', icon = 'interface/icons/star.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Island" tab')},
+                    ui.button{text = 'Island', icon = 'interface/themes/fantasy/icons/star.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Island" tab')},
                     ui.button{text = 'Forge', icon = 'interface/icons/hammer.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Forge" tab')},
-                    ui.button{text = 'Settings', icon = 'interface/icons/gear.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Settings" tab')},
+                    ui.button{text = 'Settings', icon = 'interface/themes/fantasy/icons/gear.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Settings" tab')},
                 },
-                ui.button{text = 'Search the island', icon = 'interface/icons/key.png', justify = 'start', align = 'stretch', onClick = self:pressed('the search bar')},
+                ui.button{text = 'Search the island', icon = 'interface/themes/fantasy/icons/key.png', justify = 'start', align = 'stretch', onClick = self:pressed('the search bar')},
             }),
             layout.section('Component "menuButton"', {
-                ui.menuButton{id = 'file', text = 'File', icon = 'interface/icons/key.png', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)
+                ui.menuButton{id = 'file', text = 'File', icon = 'interface/themes/fantasy/icons/key.png', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)
                     self:report('The menu picked "' .. event.item .. '".')
                 end},
             }),
@@ -73,9 +73,9 @@ function Buttons:columns()
         ui.column{grow = 1, gap = 24,
             layout.section('Component "imageButton"', {
                 ui.row{gap = 24,
-                    ui.imageButton{image = 'interface/images/sign.png', hoverImage = 'interface/images/sign-hover.png', pressedImage = 'interface/images/sign-pressed.png', text = 'Start', onClick = self:pressed('the sign')},
-                    ui.imageButton{image = 'interface/images/sign.png', scale = 1.5, text = 'Big', onClick = self:pressed('the big sign')},
-                    ui.imageButton{image = 'interface/icons/potion.png', scale = 3, tint = '#FFB0FFB0', tooltip = 'Tinted, without hover or pressed pictures', onClick = self:pressed('the potion')},
+                    ui.imageButton{image = 'interface/images/sign.png', hoverImage = 'interface/images/sign-hover.png', pressedImage = 'interface/images/sign-pressed.png', scale = 0.5, text = 'Start', onClick = self:pressed('the sign')},
+                    ui.imageButton{image = 'interface/images/sign.png', scale = 0.75, text = 'Big', onClick = self:pressed('the big sign')},
+                    ui.imageButton{image = 'interface/themes/fantasy/icons/potion.png', scale = 0.75, tint = '#FFB0FFB0', tooltip = 'Tinted, without hover or pressed pictures', onClick = self:pressed('the potion')},
                 },
             }),
             layout.section('Component "chip"', {

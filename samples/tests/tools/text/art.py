@@ -1,8 +1,7 @@
-"""The images of the text tests: a grid font of LCD digits, the button prompts that `[icon]` shows and the small pictures that `[img]` shows."""
+"""The grid font of LCD digits of the text tests, whose exact cells the grid font of the engine cuts."""
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 
@@ -36,26 +35,6 @@ def rect(image: Image, x: int, y: int, width: int, height: int, color: Color) ->
             put(image, column, row, color)
 
 
-def disc(image: Image, cx: float, cy: float, radius: float, color: Color) -> None:
-    for row in range(math.floor(cy - radius), math.ceil(cy + radius) + 1):
-        for column in range(math.floor(cx - radius), math.ceil(cx + radius) + 1):
-            if (column + 0.5 - cx) ** 2 + (row + 0.5 - cy) ** 2 <= radius * radius:
-                put(image, column, row, color)
-
-
-def polygon(image: Image, points: list[tuple[float, float]], color: Color) -> None:
-    xs, ys = [p[0] for p in points], [p[1] for p in points]
-    for row in range(math.floor(min(ys)), math.ceil(max(ys)) + 1):
-        for column in range(math.floor(min(xs)), math.ceil(max(xs)) + 1):
-            x, y, inside = column + 0.5, row + 0.5, False
-            for index, (ax, ay) in enumerate(points):
-                bx, by = points[index - 1]
-                if (ay > y) != (by > y) and x < (bx - ax) * (y - ay) / (by - ay) + ax:
-                    inside = not inside
-            if inside:
-                put(image, column, row, color)
-
-
 def lcd_digits() -> Image:
     """One row of equal cells in the order of `GRID_CHARACTERS`, lit segments in green over dim unlit ones."""
     width, height = GRID_CELL
@@ -72,47 +51,4 @@ def lcd_digits() -> Image:
         else:
             for name, (x, y, w, h) in bars.items():
                 rect(image, left + x, y, w, h, lit if name in SEGMENTS[character] else dim)
-    return image
-
-
-def prompts() -> Image:
-    """The south, east, west and north buttons of a gamepad in cells of 32 pixels: a dark disc with four dots in a diamond, where the dot of the button is large and lit."""
-    positions = [(0, 1), (1, 0), (-1, 0), (0, -1)]
-    image = Image.blank(32 * len(positions), 32)
-    for index, lit in enumerate(positions):
-        cx = index * 32 + 16
-        disc(image, cx, 16, 15, rgb("#8fb0ff"))
-        disc(image, cx, 16, 13, rgb("#232938"))
-        for dx, dy in positions:
-            if (dx, dy) == lit:
-                disc(image, cx + dx * 7, 16 + dy * 7, 4.5, rgb("#f2b23a"))
-            else:
-                disc(image, cx + dx * 7, 16 + dy * 7, 2.5, rgb("#7a8099"))
-    return image
-
-
-def coin() -> Image:
-    image = Image.blank(32, 32)
-    disc(image, 16, 16, 13, rgb("#7a4a10"))
-    disc(image, 16, 16, 11, rgb("#f2c14e"))
-    disc(image, 16, 16, 7, rgb("#d9a032"))
-    rect(image, 15, 11, 2, 10, rgb("#fff3c4"))
-    return image
-
-
-def heart() -> Image:
-    image = Image.blank(32, 32)
-    for color, grow in ((rgb("#5a1010"), 1.5), (rgb("#e53935"), 0)):
-        disc(image, 11, 12, 6 + grow, color)
-        disc(image, 21, 12, 6 + grow, color)
-        polygon(image, [(4.5 - grow, 14), (27.5 + grow, 14), (16, 27 + grow)], color)
-    disc(image, 10, 10, 2, rgb("#ffffff", 220))
-    return image
-
-
-def star() -> Image:
-    image = Image.blank(32, 32)
-    for color, outer, inner in ((rgb("#6b4a00"), 15, 7), (rgb("#ffd54f"), 12.5, 5.5)):
-        points = [(16 + math.cos(-math.pi / 2 + i * math.pi / 5) * (outer if i % 2 == 0 else inner), 17 + math.sin(-math.pi / 2 + i * math.pi / 5) * (outer if i % 2 == 0 else inner)) for i in range(10)]
-        polygon(image, points, color)
     return image

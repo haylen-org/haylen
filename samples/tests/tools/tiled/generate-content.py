@@ -1,4 +1,6 @@
-"""Generates the content of the Tiled tests: the pixel art, the tilesets, the templates, the maps and the world, as files that open and edit in Tiled 1.12.
+"""Generates the content of the Tiled tests: the tilesets, the templates, the maps and the world, as files that open and edit in Tiled 1.12.
+
+The images of the tilesets and the backdrops are painted for the project with the "codex" command line, as the art guide in the README of the test project describes, and the tilesets name them with their sizes.
 
 Run it from anywhere with `python3 samples/tests/tools/tiled/generate-content.py`. The same run always writes the same files into `samples/tests/content/tiled`.
 """
@@ -11,26 +13,12 @@ from pathlib import Path
 # The tool runs from the test project, which keeps no compiled Python files.
 sys.dont_write_bytecode = True
 
-import art  # noqa: E402
 import maps_play  # noqa: E402
 import maps_views  # noqa: E402
 import tilesets  # noqa: E402
 from tiled_json import save  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content" / "tiled"
-
-
-def write_art() -> None:
-    art.terrain().save(CONTENT / "tiles" / "terrain.png")
-    art.props().save(CONTENT / "tiles" / "props.png")
-    art.shore().save(CONTENT / "tiles" / "shore.png")
-    art.diamond_tiles().save(CONTENT / "tiles" / "diamonds.png")
-    art.hex_tiles().save(CONTENT / "tiles" / "hexagons.png")
-    art.sky().save(CONTENT / "images" / "sky.png")
-    art.clouds().save(CONTENT / "images" / "clouds.png")
-    art.hills(640, 200, "#4a5d7a", 7, 3).save(CONTENT / "images" / "hills-far.png")
-    art.hills(640, 160, "#3d6b4a", 8, 2).save(CONTENT / "images" / "hills-near.png")
-    art.hero().save(CONTENT / "sprites" / "hero.png")
 
 
 def write_tilesets() -> None:
@@ -63,7 +51,6 @@ def write_maps() -> None:
 
 
 def main() -> None:
-    write_art()
     write_tilesets()
     write_maps()
     print(f'Wrote the content of the Tiled tests to "{CONTENT}".')

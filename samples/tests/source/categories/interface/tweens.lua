@@ -36,7 +36,7 @@ function Tweens:columns()
     local cards = {}
     for index, icon in ipairs(Tweens.icons) do
         cards[index] = ui.card{id = 'card-' .. index, width = 190, gap = 8, align = 'start',
-            ui.icon{image = 'interface/icons/' .. icon .. '.png', size = 64},
+            ui.icon{image = layout.icon(icon), size = 64},
             ui.label{text = 'Item ' .. index},
         }
     end

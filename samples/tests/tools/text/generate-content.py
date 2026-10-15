@@ -1,4 +1,4 @@
-"""Generates the drawn content of the text tests under `content/text`: Haylen Pixel as a ".fnt" bitmap font in the text format and, with gold glyphs and an outline, in the binary format, the LCD digits of the grid font, the button prompts and the pictures of rich text.
+"""Generates the drawn content of the text tests under `content/text`: Haylen Pixel as a ".fnt" bitmap font in the text format and, with gold glyphs and an outline, in the binary format, and the LCD digits of the grid font. The button prompts and the pictures of rich text are painted for the project with the "codex" command line, as the art guide in the README of the test project describes.
 
 Run it from anywhere with `python3 samples/tests/tools/text/generate-content.py`. The same run always writes the same files.
 """
@@ -29,10 +29,6 @@ def main() -> None:
     bitmap_font.write_binary(CONTENT / "haylen-pixel-gold.fnt", "Haylen Pixel Gold", "haylen-pixel-gold-0.png", chars, PAGE_SIZE)
 
     write(art.lcd_digits(), CONTENT / "lcd-digits.png")
-    write(art.prompts(), CONTENT / "prompts.png")
-    write(art.coin(), CONTENT / "coin.png")
-    write(art.heart(), CONTENT / "heart.png")
-    write(art.star(), CONTENT / "star.png")
 
 
 if __name__ == "__main__":

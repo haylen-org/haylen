@@ -10,7 +10,7 @@ local Test = require('harness.test')
 local StretchTile = haylen.class('StretchTile', Test)
 
 StretchTile.border = 28
-StretchTile.preview = 2
+StretchTile.preview = 1
 StretchTile.code = [[
 local texture = assets.texture('nine-slice/panel.png', {filter = 'linear'})
 local stretched = graphics2d.newNineSlice(texture, {borders = {28, 28, 28, 28}})

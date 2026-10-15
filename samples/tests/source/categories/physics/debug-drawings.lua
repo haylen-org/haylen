@@ -24,7 +24,7 @@ debugging.setStatsMode('full')  -- The overlay lists the scenes and the drawings
 
 function DebugDrawings:enter()
     self.crate = assets.texture('sprites/images/rock.png', {filter = 'linear'})
-    self.hero = assets.texture('sprites/images/hero.png', {filter = 'nearest'})
+    self.hero = assets.texture('sprites/images/hero.png', {filter = 'linear'})
     self.results = Results(self.entry.code)
     self.drawings = debugging.drawings()
     self.mode = debugging.statsMode()

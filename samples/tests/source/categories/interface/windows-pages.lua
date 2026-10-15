@@ -19,8 +19,9 @@ local function levels()
 end
 
 -- A carousel page: a picture with its caption, narrower than the page so the arrows on the sides stay clear.
-local function page(image, caption)
-    return ui.column{gap = 8, ui.image{image = image, height = 140, fit = 'contain', align = 'center'}, ui.label{text = caption, align = 'center'}}
+-- A page of the carousel: the landscape at a time of day, which a tint gives the light of that hour.
+local function page(tint, caption)
+    return ui.column{gap = 8, ui.image{image = 'interface/images/landscape.png', tint = tint, height = 140, fit = 'contain', align = 'center'}, ui.label{text = caption, align = 'center'}}
 end
 
 function WindowsPages:enter()
@@ -56,9 +57,9 @@ function WindowsPages:columns()
         ui.column{grow = 2, gap = 24,
             layout.section('Component "carousel"', {
                 ui.carousel{height = 230, loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
-                    page('interface/images/landscape-day.png', 'Day'),
-                    page('interface/images/landscape-dusk.png', 'Dusk'),
-                    page('interface/images/landscape-night.png', 'Night'),
+                    page('#FFFFFFFF', 'Day'),
+                    page('#FFFFB08A', 'Dusk'),
+                    page('#FF5A6AB8', 'Night'),
                 },
             }),
             layout.section('Component "scroll" with snapping', {
@@ -71,7 +72,7 @@ function WindowsPages:columns()
             ui.label{text = 'An accordion with "multiple = true" keeps several sections open.', color = 'textMuted'},
             ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food', 'tools'},
                 ui.row{gap = 12, ui.icon{image = 'interface/icons/apple.png', size = 56}, ui.icon{image = 'interface/icons/fish.png', size = 56}, ui.button{text = 'Eat an apple', onClick = function() self:report('Ate an apple.') end}},
-                ui.row{gap = 12, ui.icon{image = 'interface/icons/hammer.png', size = 56}, ui.icon{image = 'interface/icons/key.png', size = 56}},
+                ui.row{gap = 12, ui.icon{image = 'interface/icons/hammer.png', size = 56}, ui.icon{image = 'interface/themes/fantasy/icons/key.png', size = 56}},
             },
         },
     }

@@ -3,6 +3,17 @@ local ui = require('haylen.ui')
 
 local layout = {}
 
+-- The item icons that the fantasy theme does not paint, which live in `content/interface/icons`.
+layout.ownIcons = {apple = true, fish = true, flag = true, hammer = true, sword = true}
+
+-- Returns the path of the item icon `name`, from the icons of the fantasy theme or from the icons of the category.
+function layout.icon(name)
+    if layout.ownIcons[name] then
+        return 'interface/icons/' .. name .. '.png'
+    end
+    return 'interface/themes/fantasy/icons/' .. name .. '.png'
+end
+
 -- A row of columns that fills the test, each starting at the top unless it sets its own `align`.
 function layout.columns(node)
     for _, child in ipairs(node) do

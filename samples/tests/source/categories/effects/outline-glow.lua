@@ -10,11 +10,11 @@ local Scenery = require('categories.effects.scenery')
 local OutlineGlow = haylen.class('OutlineGlow', ParticleTest)
 
 OutlineGlow.subjects = {
-    {name = 'Robot', path = 'sprites/images/hero.png', x = -720, scale = 2.6, glowing = true},
-    {name = 'Bunny', path = 'sprites/images/bunny.png', x = -360, scale = 5},
-    {name = 'Tree', path = 'sprites/images/tree.png', x = 0, scale = 3.2},
-    {name = 'Rock', path = 'sprites/images/rock.png', x = 360, scale = 4.5, glowing = true},
-    {name = 'Planet', path = 'shaders/images/planet.png', x = 720, scale = 0.9, y = 190, pivotY = 0.5},
+    {name = 'Robot', path = 'sprites/images/hero.png', x = -720, scale = 1.3, glowing = true},
+    {name = 'Bunny', path = 'sprites/images/bunny.png', x = -360, scale = 2.5},
+    {name = 'Tree', path = 'sprites/images/tree.png', x = 0, scale = 1.6},
+    {name = 'Rock', path = 'sprites/images/rock.png', x = 360, scale = 2.25, glowing = true},
+    {name = 'Planet', path = 'shaders/images/planet.png', x = 720, scale = 0.45, y = 190, pivotY = 0.5},
 }
 OutlineGlow.outlineColors = {
     {id = 'white', text = 'White', color = '#FFFFFFFF'},
@@ -53,7 +53,7 @@ function OutlineGlow:init(entry)
     self.night = true
     self.pulse = true
     self.outlineAll = false
-    self.outlineWidth, self.glowSize = 4, 20
+    self.outlineWidth, self.glowSize = 8, 36
     self.outlineColor = OutlineGlow.outlineColors[1].color
     self.glowColor = OutlineGlow.glowColors[1].color
     self.subjectStates = {}
@@ -75,13 +75,13 @@ function OutlineGlow:enter()
             ui.toggle{id = 'night', text = 'Night', checked = self.night, onChange = function(event) self.night = event.checked end},
             ui.toggle{id = 'pulse', text = 'Pulse the glow', checked = self.pulse, onChange = function(event) self.pulse = event.checked end},
             ui.toggle{id = 'all', text = 'Outline every sprite', checked = self.outlineAll, onChange = function(event) self.outlineAll = event.checked end},
-            ui.formField{label = 'Outline width in pixels', ui.slider{id = 'outlineWidth', min = 1, max = 12, value = self.outlineWidth, showValue = true, decimals = 1, onChange = function(event)
+            ui.formField{label = 'Outline width in pixels', ui.slider{id = 'outlineWidth', min = 1, max = 24, value = self.outlineWidth, showValue = true, decimals = 1, onChange = function(event)
                 self.outlineWidth = event.value
             end}},
             ui.formField{label = 'Outline color', ui.radioGroup{id = 'outlineColor', items = OutlineGlow.items(OutlineGlow.outlineColors), selected = OutlineGlow.outlineColors[1].id, onChange = function(event)
                 self.outlineColor = OutlineGlow.colorOf(OutlineGlow.outlineColors, event.value)
             end}},
-            ui.formField{label = 'Glow size in pixels', ui.slider{id = 'glowSize', min = 2, max = 48, value = self.glowSize, showValue = true, decimals = 0, onChange = function(event)
+            ui.formField{label = 'Glow size in pixels', ui.slider{id = 'glowSize', min = 2, max = 64, value = self.glowSize, showValue = true, decimals = 0, onChange = function(event)
                 self.glowSize = event.value
             end}},
             ui.formField{label = 'Glow color', ui.radioGroup{id = 'glowColor', items = OutlineGlow.items(OutlineGlow.glowColors), selected = OutlineGlow.glowColors[1].id, onChange = function(event)

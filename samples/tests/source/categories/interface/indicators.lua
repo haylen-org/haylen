@@ -34,7 +34,7 @@ end
 
 function Indicators:ability(name)
     return ui.column{gap = 8, align = 'center',
-        ui.circularProgress{id = 'cooldown-' .. name, variant = 'cooldown', image = 'interface/icons/' .. name .. '.png', size = 96, value = 0},
+        ui.circularProgress{id = 'cooldown-' .. name, variant = 'cooldown', image = layout.icon(name), size = 96, value = 0},
         ui.button{id = 'use-' .. name, text = 'Use', onClick = function()
             if self.left[name] <= 0 then
                 self.left[name] = Indicators.cooldowns[name]
@@ -46,7 +46,7 @@ end
 -- A picture wider than its box, shown with one fit over a panel that marks the box.
 function Indicators:fit(fit, tint)
     return ui.column{gap = 4, align = 'center',
-        ui.stack{width = 150, height = 110, ui.panel{align = 'stretch'}, ui.image{image = 'interface/images/landscape-day.png', fit = fit, tint = tint, align = 'stretch'}},
+        ui.stack{width = 150, height = 110, ui.panel{align = 'stretch'}, ui.image{image = 'interface/images/landscape.png', fit = fit, tint = tint, align = 'stretch'}},
         ui.label{text = tint and 'Fit "' .. fit .. '"\nWith a tint' or 'Fit "' .. fit .. '"', font = 'caption'},
     }
 end
@@ -81,7 +81,7 @@ function Indicators:columns()
         },
         ui.column{grow = 1, gap = 24,
             layout.section('Component "icon"', {
-                ui.row{gap = 16, ui.icon{image = 'interface/icons/coin.png'}, ui.icon{image = 'interface/icons/heart.png', size = 56}, ui.icon{image = 'interface/icons/star.png', size = 56, color = 'accent'}, ui.icon{image = 'interface/icons/gear.png', size = 72, color = 'textMuted'}},
+                ui.row{gap = 16, ui.icon{image = 'interface/themes/fantasy/icons/coin.png'}, ui.icon{image = 'interface/themes/fantasy/icons/heart.png', size = 56}, ui.icon{image = 'interface/themes/fantasy/icons/star.png', size = 56, color = 'accent'}, ui.icon{image = 'interface/themes/fantasy/icons/gear.png', size = 72, color = 'textMuted'}},
             }),
             layout.section('Image fits', {
                 ui.row{gap = 12, self:fit('contain'), self:fit('cover'), self:fit('fill', '#FFFFC080')},

@@ -11,10 +11,10 @@ local Scenery = require('categories.effects.scenery')
 local Dissolve = haylen.class('Dissolve', ParticleTest)
 
 Dissolve.subjects = {
-    {name = 'Robot', path = 'sprites/images/hero.png', x = -600, scale = 2.8},
-    {name = 'Rock', path = 'sprites/images/rock.png', x = -200, scale = 4.5},
-    {name = 'Tree', path = 'sprites/images/tree.png', x = 200, scale = 3.4},
-    {name = 'Planet', path = 'shaders/images/planet.png', x = 620, scale = 1.1, y = 200, pivotY = 0.5},
+    {name = 'Robot', path = 'sprites/images/hero.png', x = -600, scale = 1.4},
+    {name = 'Rock', path = 'sprites/images/rock.png', x = -200, scale = 2.25},
+    {name = 'Tree', path = 'sprites/images/tree.png', x = 200, scale = 1.7},
+    {name = 'Planet', path = 'shaders/images/planet.png', x = 620, scale = 0.55, y = 200, pivotY = 0.5},
 }
 Dissolve.edgeColors = {
     {id = 'embers', text = 'Embers', color = '#FFFF9A30'},
@@ -31,7 +31,7 @@ function Dissolve:init(entry)
     self.duration = 1.2
     self.subjectStates = {}
     for index, subject in ipairs(Dissolve.subjects) do
-        local effect = {dissolve = 0, dissolveEdge = 0.08, dissolveSize = 6, dissolveColor = Dissolve.edgeColors[1].color}
+        local effect = {dissolve = 0, dissolveEdge = 0.08, dissolveSize = 10, dissolveColor = Dissolve.edgeColors[1].color}
         self.subjectStates[index] = {
             subject = subject,
             texture = assets.texture(subject.path, {filter = 'linear'}),
@@ -66,7 +66,7 @@ function Dissolve:enter()
             ui.formField{label = 'Edge width', ui.slider{id = 'edge', min = 0, max = 0.4, value = first.dissolveEdge, showValue = true, onChange = function(event)
                 self:configure('dissolveEdge', event.value)
             end}},
-            ui.formField{label = 'Noise cell size in pixels', ui.slider{id = 'size', min = 1, max = 24, value = first.dissolveSize, showValue = true, decimals = 0, onChange = function(event)
+            ui.formField{label = 'Noise cell size in pixels', ui.slider{id = 'size', min = 1, max = 48, value = first.dissolveSize, showValue = true, decimals = 0, onChange = function(event)
                 self:configure('dissolveSize', event.value)
             end}},
             ui.formField{label = 'Edge color', ui.radioGroup{id = 'color', items = colors, selected = Dissolve.edgeColors[1].id, onChange = function(event)

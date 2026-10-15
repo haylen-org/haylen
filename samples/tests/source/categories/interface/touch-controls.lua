@@ -41,7 +41,7 @@ function TouchControls:enter()
                 ui.touchStick{id = 'aim', action = 'aim', radius = 100, deadZone = 0.25},
                 ui.column{gap = 24, style = {surfaces = TouchControls.art},
                     ui.touchButton{action = 'dash', text = 'Dash', size = 130, onPress = function() self.last = 'Dash pressed.' end},
-                    ui.touchButton{action = 'jump', image = 'interface/icons/star.png', size = 170, onPress = function() self.last = 'Jump pressed.' end, onRelease = function() self.last = 'Jump released.' end},
+                    ui.touchButton{action = 'jump', image = 'interface/themes/fantasy/icons/star.png', size = 170, onPress = function() self.last = 'Jump pressed.' end, onRelease = function() self.last = 'Jump released.' end},
                 },
             },
         },

@@ -9,7 +9,7 @@ local Scenery = haylen.class('Scenery')
 
 Scenery.ground = 400
 Scenery.cloudSpeed = 24
-Scenery.trees = {{-820, 330, 2.4}, {-640, 360, 1.9}, {660, 340, 2.6}, {860, 370, 2}}
+Scenery.trees = {{-820, 330, 1.2}, {-640, 360, 0.95}, {660, 340, 1.3}, {860, 370, 1}}
 
 function Scenery:init()
     local linear = {filter = 'linear'}
@@ -45,7 +45,7 @@ function Scenery:draw()
     end
     graphics2d.drawRect({area.x, Scenery.ground, area.width, area:bottom() - Scenery.ground}, '#FF2F5A2C', {layer = -4})
     for x = left, left + width, 384 do
-        graphics2d.draw(self.grass, x, Scenery.ground + 10, {width = 384, height = 96, pivotX = 0, pivotY = 1, layer = -3})
+        graphics2d.draw(self.grass, x, Scenery.ground + 10, {width = 384, height = 170, pivotX = 0, pivotY = 1, layer = -3})
     end
 end
 

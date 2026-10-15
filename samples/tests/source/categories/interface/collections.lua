@@ -49,13 +49,13 @@ end
 
 function Collections:columns()
     local saves = {
-        {id = 'slot1', text = 'Slot 1', caption = 'Day 12, 3 hours', image = 'interface/icons/star.png', iconColor = false},
-        {id = 'slot2', text = 'Slot 2', caption = 'Day 4, 40 minutes', image = 'interface/icons/heart.png', iconColor = false},
-        {id = 'slot3', text = 'Slot 3', caption = 'Corrupted', image = 'interface/icons/gear.png', iconColor = false, enabled = false},
+        {id = 'slot1', text = 'Slot 1', caption = 'Day 12, 3 hours', image = 'interface/themes/fantasy/icons/star.png', iconColor = false},
+        {id = 'slot2', text = 'Slot 2', caption = 'Day 4, 40 minutes', image = 'interface/themes/fantasy/icons/heart.png', iconColor = false},
+        {id = 'slot3', text = 'Slot 3', caption = 'Corrupted', image = 'interface/themes/fantasy/icons/gear.png', iconColor = false, enabled = false},
         {id = 'slot4', text = 'New game', caption = 'Empty slot'},
     }
     local tree = {
-        {id = 'tools', text = 'Tools', children = {{id = 'hammer', text = 'Hammer', image = 'interface/icons/hammer.png', iconColor = false}, {id = 'key', text = 'Old key', image = 'interface/icons/key.png', iconColor = false}}},
+        {id = 'tools', text = 'Tools', children = {{id = 'hammer', text = 'Hammer', image = 'interface/icons/hammer.png', iconColor = false}, {id = 'key', text = 'Old key', image = 'interface/themes/fantasy/icons/key.png', iconColor = false}}},
         {id = 'food', text = 'Food', children = {{id = 'apple', text = 'Apple', image = 'interface/icons/apple.png', iconColor = false}, {id = 'fish', text = 'Fish', image = 'interface/icons/fish.png', iconColor = false, caption = 'Raw'}}},
         {id = 'treasure', text = 'Treasure', children = {{id = 'coins', text = 'Coins', children = {{id = 'gold', text = 'Gold coin'}, {id = 'silver', text = 'Silver coin'}}}}},
     }

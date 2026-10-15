@@ -40,7 +40,7 @@ function BatchTextures:resize(area)
     for index = 1, BatchTextures.count do
         local which = (index - 1) % #self.textures + 1
         local texture = self.textures[which]
-        local scale = 0.18 + math.random() * 0.14
+        local scale = 0.09 + math.random() * 0.07
         self.meadow:add({
             x = math.random() * area.width,
             y = math.random() * area.height,

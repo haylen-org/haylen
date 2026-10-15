@@ -55,8 +55,8 @@ function Overlays:columns()
             layout.section('Component "tooltip"', {
                 ui.row{gap = 16,
                     ui.button{text = 'Hover me', tooltip = 'Tooltips show after the pointer rests for half a second.'},
-                    ui.button{icon = 'interface/icons/gear.png', variant = 'icon', tooltip = 'Settings'},
-                    ui.icon{image = 'interface/icons/coin.png', size = 56, tooltip = 'Twelve gold coins'},
+                    ui.button{icon = 'interface/themes/fantasy/icons/gear.png', variant = 'icon', tooltip = 'Settings'},
+                    ui.icon{image = 'interface/themes/fantasy/icons/coin.png', size = 56, tooltip = 'Twelve gold coins'},
                     ui.badge{text = 'New', tone = 'accent', tooltip = 'Any node takes a tooltip, badges too.'},
                 },
             }),
@@ -70,9 +70,9 @@ function Overlays:columns()
                 },
             }),
             layout.section('Component "contextMenu"', {
-                ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/icons/key.png', iconColor = false}, {id = 'copy', text = 'Duplicate', image = 'interface/icons/star.png', iconColor = false}, {id = 'erase', text = 'Erase', image = 'interface/icons/heart.png', iconColor = false}, {id = 'upload', text = 'Upload', enabled = false}},
+                ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/themes/fantasy/icons/key.png', iconColor = false}, {id = 'copy', text = 'Duplicate', image = 'interface/themes/fantasy/icons/star.png', iconColor = false}, {id = 'erase', text = 'Erase', image = 'interface/themes/fantasy/icons/heart.png', iconColor = false}, {id = 'upload', text = 'Upload', enabled = false}},
                     onSelect = function(event) self:report('The context menu picked "' .. event.item .. '".') end,
-                    ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/icons/potion.png', align = 'stretch'},
+                    ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/themes/fantasy/icons/potion.png', align = 'stretch'},
                 },
                 ui.button{text = 'Open the menu from code', variant = 'link', onClick = function(event) event.gui:command('slot-menu', 'open') end},
             }),

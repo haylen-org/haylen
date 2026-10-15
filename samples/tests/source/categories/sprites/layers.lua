@@ -58,17 +58,17 @@ function Layers:resize(area)
     self.props = {}
     for index = 1, 18 do
         local texture = index % 3 == 0 and self.rockTexture or self.treeTexture
-        self.props[index] = graphics2d.newSprite(texture, {x = random:range(40, area.width - 40), y = random:range(120, area.height - 10), pivotY = 1, layer = 1})
+        self.props[index] = graphics2d.newSprite(texture, {x = random:range(40, area.width - 40), y = random:range(120, area.height - 10), pivotY = 1, scaleX = 0.5, scaleY = 0.5, layer = 1})
     end
     self.walkers = {}
     for index = 1, Layers.heroes do
-        local hero = graphics2d.newSprite(self.heroTexture, {x = random:range(60, area.width - 60), y = random:range(120, area.height - 20), pivotY = 0.95, scaleX = 0.8, scaleY = 0.8, layer = 1})
+        local hero = graphics2d.newSprite(self.heroTexture, {x = random:range(60, area.width - 60), y = random:range(120, area.height - 20), pivotY = 0.95, scaleX = 0.4, scaleY = 0.4, layer = 1})
         self.walkers[index] = {sprite = hero, targetX = hero.x, targetY = hero.y}
     end
     -- Heroes that stand on the same y sort the same, so only their sort ids keep them in place.
     self.row = {}
     for index = 1, 4 do
-        self.row[index] = graphics2d.newSprite(self.heroTexture, {x = area.width * 0.5 + (index - 2.5) * 34, y = area.height - 16, pivotY = 0.95, scaleX = 0.8, scaleY = 0.8, layer = 1, color = index % 2 == 0 and '#FFB8D8FF' or '#FFFFFFFF'})
+        self.row[index] = graphics2d.newSprite(self.heroTexture, {x = area.width * 0.5 + (index - 2.5) * 34, y = area.height - 16, pivotY = 0.95, scaleX = 0.4, scaleY = 0.4, layer = 1, color = index % 2 == 0 and '#FFB8D8FF' or '#FFFFFFFF'})
     end
     self:setIds(self.ids)
 end

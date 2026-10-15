@@ -1,4 +1,4 @@
--- The built-in dark and light themes and the parchment theme of the tests, whose nine-slice surfaces cut one atlas image into panels, buttons, fields, tracks, tabs, chips and slots.
+-- The built-in dark and light themes and the fantasy theme of the tests, whose nine-slice surfaces cut one painted atlas into panels, buttons, fields, tracks, tabs, chips and slots.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -9,11 +9,11 @@ local layout = require('categories.interface.layout')
 
 local Themes = haylen.class('Themes', Test)
 
-Themes.names = {'dark', 'light', 'parchment'}
-Themes.backgrounds = {dark = '#FF101418', light = '#FFDDE2EC', parchment = '#FFC9A86E'}
+Themes.names = {'dark', 'light', 'fantasy'}
+Themes.backgrounds = {dark = '#FF101418', light = '#FFDDE2EC', fantasy = '#FF262A45'}
 
 function Themes:enter()
-    ui.loadTheme('interface/themes/parchment.json', 'light')
+    ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')
     self:frame{
         hint = 'Switch the theme with the segmented control, or with left and right while it has the focus. Every GUI restyles at once, the frame of the test included, and leaving the test goes back to the dark theme.',
         focus = 'theme',
@@ -38,7 +38,7 @@ function Themes:nodes()
     for index, name in ipairs(Themes.names) do
         themes[index] = {id = name, text = name:sub(1, 1):upper() .. name:sub(2)}
     end
-    local slots = {{id = 'a', image = 'interface/icons/sword.png'}, {id = 'b', image = 'interface/icons/apple.png', count = 3}, {id = 'c'}, {id = 'd', image = 'interface/icons/gem.png'}}
+    local slots = {{id = 'a', image = 'interface/icons/sword.png'}, {id = 'b', image = 'interface/icons/apple.png', count = 3}, {id = 'c'}, {id = 'd', image = 'interface/themes/fantasy/icons/gem.png'}}
     return {
         ui.row{gap = 24, ui.label{text = 'Theme', font = 'heading'}, ui.segmentedControl{id = 'theme', width = 720, items = themes, selected = ui.theme(), onChange = function(event)
             ui.setTheme(event.value)

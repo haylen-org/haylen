@@ -19,7 +19,7 @@ function Immediate:init(toStage, toScreen)
     self.toStage, self.toScreen = toStage, toScreen
     self.active, self.focus, self.order, self.focusIndex = nil, nil, {}, 1
     self.typed, self.edits = {}, nil
-    self.slice = graphics2d.newNineSlice(assets.texture('interface/themes/parchment.png'), {source = {144, 0, 32, 32}, borders = {10, 10, 10, 10}})
+    self.slice = graphics2d.newNineSlice(assets.texture('interface/themes/fantasy/atlas.png', {filter = 'linear'}), {source = {324, 144, 360, 120}, borders = {56, 44, 56, 40}})
 end
 
 -- Reads the pointer, the wheel and the navigation keys once per frame, before any control draws.
@@ -117,7 +117,7 @@ function Immediate:button(id, rect, text)
     if over then
         self.cursor = 'pointingHand'
     end
-    graphics2d.drawNineSlice(self.slice, rect, self.active == id and '#FFB0B0B0' or over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 2})
+    graphics2d.drawNineSlice(self.slice, rect, self.active == id and '#FFB0B0B0' or over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 0.4})
     self:ring(id, rect)
     local width, height = graphics2d.measureText(nil, text, {size = Immediate.size})
     self:label(text, rect[1] + (rect[3] - width) / 2, rect[2] + (rect[4] - height) / 2)

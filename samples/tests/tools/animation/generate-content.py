@@ -1,69 +1,38 @@
-"""Draws the fighter of the Animation tests, four frames of a punch in a flat style with soft edges, and writes its atlas with a tag, a hitbox slice with the pivot of the feet, a point slice on the fist and the events of the frames, and the cutout parts of the puppet of the skeleton test with their atlas.
+"""Writes the atlas of the fighter of the Animation tests, with a tag, a hitbox slice with the pivot of the feet, a point slice on the fist and the events of the frames, and the atlas and the skeleton of the cutout puppet of the skeleton test.
 
-Run it from anywhere with `python3 samples/tests/tools/animation/generate-content.py`. The same run always writes the same files into `samples/tests/content/animation`.
+The images `fighter.png`, four frames of a punch, and `puppet.png`, the cutout parts in the cells of PARTS, are painted for the project with the "codex" command line, as the art guide in the README of the test project describes, and the slices below follow the painted frames. Run it from anywhere with `python3 samples/tests/tools/animation/generate-content.py`. The same run always writes the same files into `samples/tests/content/animation`.
 """
 
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
-
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "nodes"))
-
-from sheet import Sheet, rgb  # noqa: E402
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
-
-from png_image import write  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content" / "animation"
 FRAME = 96
-
-# How far the fist reaches out of the shoulder on each frame of the punch.
-REACH = [4, 10, 26, 16]
-
-
-def fighter() -> Sheet:
-    sheet = Sheet(FRAME * len(REACH), FRAME)
-    outline, skin, shirt, trousers, glove = rgb("#1f2433"), rgb("#f0c49a"), rgb("#3d7fc4"), rgb("#2c3e5c"), rgb("#d9483b")
-    for index, reach in enumerate(REACH):
-        left = index * FRAME
-        lean = reach * 0.1
-
-        # The legs stand on the feet at the bottom middle of the frame, which the pivot marks.
-        sheet.rounded(left + 34, 60, 11, 32, 5, trousers, outline)
-        sheet.rounded(left + 50, 60, 11, 32, 5, trousers, outline)
-        sheet.rounded(left + 30 + lean, 32, 34, 34, 10, shirt, outline)
-        sheet.circle(left + 47 + lean, 22, 13, outline)
-        sheet.circle(left + 47 + lean, 22, 11, skin)
-
-        # The punching arm and its glove, whose middle is the hand point.
-        sheet.rounded(left + 44 + lean, 40, 14 + reach, 9, 4, skin, outline)
-        sheet.circle(left + 58 + lean + reach, 44, 8, outline)
-        sheet.circle(left + 58 + lean + reach, 44, 6.5, glove)
-    return sheet
+FRAMES = 4
+# The middle of the punching glove on each frame of the punch.
+HAND = [(58, 53), (60, 53), (78, 52), (59, 53)]
 
 
 def atlas() -> dict:
     frames = []
-    for index in range(len(REACH)):
+    for index in range(FRAMES):
         frame = {"filename": f"punch {index}", "frame": {"x": index * FRAME, "y": 0, "w": FRAME, "h": FRAME}, "duration": 120}
         if index == 2:
             frame["data"] = "swing"
         frames.append(frame)
     frames[3]["duration"] = 200
-    hand = [{"frame": index, "bounds": {"x": round(56 + reach * 1.1), "y": 42, "w": 4, "h": 4}} for index, reach in enumerate(REACH)]
+    hand = [{"frame": index, "bounds": {"x": x - 2, "y": y - 2, "w": 4, "h": 4}} for index, (x, y) in enumerate(HAND)]
     return {
         "frames": frames,
         "meta": {
             "image": "fighter.png",
-            "size": {"w": FRAME * len(REACH), "h": FRAME},
-            "frameTags": [{"name": "punch", "from": 0, "to": len(REACH) - 1, "direction": "forward"}],
+            "size": {"w": FRAME * FRAMES, "h": FRAME},
+            "frameTags": [{"name": "punch", "from": 0, "to": FRAMES - 1, "direction": "forward"}],
             "slices": [
-                {"name": "body", "keys": [{"frame": 0, "bounds": {"x": 30, "y": 8, "w": 34, "h": 84}, "pivot": {"x": 18, "y": 84}}]},
-                {"name": "hit", "keys": [{"frame": 2, "bounds": {"x": 76, "y": 34, "w": 20, "h": 20}}, {"frame": 3, "bounds": {"x": 0, "y": 0, "w": 0, "h": 0}}]},
+                {"name": "body", "keys": [{"frame": 0, "bounds": {"x": 18, "y": 6, "w": 40, "h": 88}, "pivot": {"x": 20, "y": 88}}]},
+                {"name": "hit", "keys": [{"frame": 2, "bounds": {"x": 70, "y": 42, "w": 20, "h": 20}}, {"frame": 3, "bounds": {"x": 0, "y": 0, "w": 0, "h": 0}}]},
                 {"name": "hand", "data": "point", "keys": hand},
             ],
         },
@@ -82,29 +51,6 @@ PARTS = {
     "crown": (176, 24, 44, 26),
     "cape": (0, 68, 40, 56),
 }
-
-
-def puppet() -> Sheet:
-    sheet = Sheet(256, 128)
-    outline, skin, shirt, trousers, cape = rgb("#1f2433"), rgb("#f0c49a"), rgb("#3d9a6f"), rgb("#2c3e5c"), rgb("#b8324b")
-    x, y, w, h = PARTS["torso"]
-    sheet.rounded(x + 1, y + 1, w - 2, h - 2, 12, shirt, outline)
-    x, y, w, h = PARTS["head"]
-    sheet.circle(x + w / 2, y + h / 2, w / 2 - 1, outline)
-    sheet.circle(x + w / 2, y + h / 2, w / 2 - 3, skin)
-    sheet.circle(x + w / 2 + 8, y + h / 2 - 2, 3, outline)
-    for name, color in (("upperArm", shirt), ("forearm", skin), ("thigh", trousers), ("shin", trousers)):
-        x, y, w, h = PARTS[name]
-        sheet.rounded(x + 1, y + 1, w - 2, h - 2, min(w, h) / 2 - 1, color, outline)
-    x, y, w, h = PARTS["cap"]
-    sheet.rounded(x + 4, y + 1, w - 8, h - 6, 9, rgb("#3d7fc4"), outline)
-    sheet.rounded(x + 1, y + h - 8, w - 2, 7, 3, rgb("#2f639b"), outline)
-    x, y, w, h = PARTS["crown"]
-    sheet.paint(x, y, w, h, lambda px, py: py >= y + 10 + abs(((px - x) % 14) - 7) * -1.2 + 8 and py <= y + h - 1 and x + 1 <= px <= x + w - 1, outline)
-    sheet.paint(x, y, w, h, lambda px, py: py >= y + 12 + abs(((px - x) % 14) - 7) * -1.2 + 8 and py <= y + h - 3 and x + 3 <= px <= x + w - 3, rgb("#f2b23a"))
-    x, y, w, h = PARTS["cape"]
-    sheet.rounded(x + 1, y + 1, w - 2, h - 2, 6, cape, outline)
-    return sheet
 
 
 def puppet_atlas() -> dict:
@@ -223,9 +169,7 @@ def puppet_skeleton() -> dict:
 
 def main() -> None:
     CONTENT.mkdir(parents=True, exist_ok=True)
-    write(fighter().image, CONTENT / "fighter.png")
     (CONTENT / "fighter.json").write_text(json.dumps(atlas(), indent=4) + "\n")
-    write(puppet().image, CONTENT / "puppet.png")
     (CONTENT / "puppet.json").write_text(json.dumps(puppet_atlas(), indent=4) + "\n")
     (CONTENT / "puppet.skeleton").write_text(json.dumps(puppet_skeleton(), indent=4) + "\n")
 

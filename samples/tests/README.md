@@ -33,7 +33,7 @@ The menu lists the categories by section with their prefixes and the number of t
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
 | `content/<category>/` | The assets of each category, and `content/fonts/` the open-license fonts that several categories share, each next to its license. |
 | `plugins/` | `native-demo`, the plugin that exercises every capability of native plugins, `native-sample` and `platform-sample` with the platform handlers of the Native and Platform tests, and `native-test`, which answers the test library in the browser and holds the CMake project of that library in `native/`. |
-| `tools/` | The generators of the art of the Animation, Interface, Nodes and Text categories, the packer of the fantasy theme of the Interface category, the packer of the particle atlases, the generators of the sounds of the Audio category, of the maps of the Tiled category and of the clip of the Video category. |
+| `tools/` | The writer of the atlas and the skeleton of the Animation category, the packer of the fantasy theme of the Interface category, the packer of the particle atlases, the generator of the bitmap fonts of the Text category, the generators of the sounds of the Audio category, of the maps and tilesets of the Tiled category and of the clip of the Video category. |
 
 A manifest returns the `prefix`, the `title` and the `description` of its category and its `tests`. Each test has a `code`, a `title`, a `description` and the `module` of its file, and a test that does not run everywhere lists the `platforms` it runs on and, in `unsupported`, the reason for each other platform, from `macos`, `windows`, `linux`, `ios`, `tvos`, `android`, `web` and `headless`. The catalog checks every manifest when the project starts.
 
@@ -63,6 +63,23 @@ The image theme of `GUI-033` in `content/interface/themes/fantasy/` is painted f
 | Sizes | Buttons 360 by 120 pixels, the panel 320 by 320, the title bar 480 by 112, the ribbon 720 by 140, fields 240 by 96, tabs 240 by 96, the selection plate 256 by 88, the tooltip 192 by 112, check boxes, radio marks and the knob 96 by 96, the groove 200 by 56, the fill 192 by 32, the badge 128 by 72, the scroll bar pieces 72 by 72 and icons 128 by 128. States of one piece, such as pressed, focused, checked or selected, are painted as edits of the first piece, so they keep its shape and size. |
 
 The theme loads its pictures and surfaces with the `linear` filter, because the art is painted in high definition and the screen scales it.
+
+## Art of the categories
+
+The pictures of the categories are painted for the project with the `codex` command line and its `$imagegen` skill in the style of [Tiny Island](../games/tiny-island/README.md#art), whose art is the standard of the repository, as the project rules describe, a sheet of pieces at a time, then cut, scaled and placed locally. Every prompt carries the key words of this guide, and the states and frames of one piece are painted in one sheet or as edits of the first piece, so they keep its shape and size. The pictures load with the `linear` filter, because they are painted in high definition and the screen scales them.
+
+| Part | Rule |
+| --- | --- |
+| Look | Polished casual fantasy in high definition, chunky cute shapes and simple bold forms that read at a small size. Characters are super deformed, with a head about 40 percent of their height, seen from the side in a slight three-quarter view and facing right. |
+| Outline | A bold clean outline of even thickness in very dark navy `#1E1B33` around every character, prop and item, and `#15172A` around the interface pieces. Tiles, terrain and backdrops have none, so they join without seams. |
+| Shading | Soft cel shading with two tones per material and one soft highlight, light from the top left, clean flat areas without noise or texture. |
+| Palette | Bright saturated colors: fresh greens `#7BC74D`, golden sand `#F3D58D`, tropical water `#2FB3C4`, warm wood browns, royal blue `#2F86F6` and warm yellow `#FFC93C`, and near white `#F2F3FF` interface pieces that the theme colors with `colorize`. |
+| Sprites | `content/sprites/`: the robot knight of 192 pixels, the bunny of 64 by 80, the rock of 96 by 64 and the tree of 128 by 192, each standing on its bottom edge and drawn at about half its size, the adventurer whose hat, shirt, trousers and boots the part mask marks in red, green, blue and yellow, a walker of 18 frames in cells of 128, the gem atlas with trimmed frames of 96 and the slime atlas with its speech bubble in cells of 96, the four bullets of 64 and a rope that tiles along a stroke. |
+| Scenery | `content/camera/`: seamless strips of mountains, hills, clouds and grass 1024 pixels wide, cut where the painted strip repeats. The knight and the tiles of the pixel snap tests stay pixel art of 16 pixels, because those tests show pixel art. |
+| Tiled | `content/tiled/`: tiles of 32 pixels cut from painted ground, water and lava textures, with the props, the coin, the slime, the torch and the other objects painted in one sheet, the corner Wang set of the shore drawn from the field of its corners over the painted water and sand, isometric and hexagonal tiles cut from the same textures, and backdrops cut from the scenery. The tilesets and maps keep their layout and tile ids. |
+| Nine-slice | `content/nine-slice/`: one atlas of near white pieces, the button, its pressed state, the panel, the knob, the ribbon, the groove and the fill, painted at twice the size they draw at, the near white panel on a trimmed atlas frame, and a wooden frame of 192 pixels around a striped middle, whose stripes show stretching against tiling, alone and cut into nine pieces. |
+| Interface | `content/interface/`: five item icons of 128 pixels next to the eight of the fantasy theme, two avatars of 128, one landscape that tints into dusk and night, the wooden sign with its hover and pressed states and the touch controls. |
+| Others | The fighter of four frames of 96 and the cutout puppet of the Animation tests, the parts of the tank of the Nodes tests painted at twice their size, the badge of the Events tests, the planet of the Shaders tests, and the prompts and pictures of rich text. The pixel art hero, the noise, the pattern and the ramps of the Shaders tests and the bitmap fonts of the Text tests stay data that their tests read pixel by pixel. |
 
 ## Art of the particle library
 

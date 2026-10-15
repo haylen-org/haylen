@@ -47,7 +47,7 @@ function Text:enter()
             },
             ui.column{grow = 1, gap = 24,
                 ui.pageHeader{title = 'Page header', caption = 'With a banner and centered text', banner = true, textAlign = 'center'},
-                layout.section('Component "emptyState"', {ui.emptyState{image = 'interface/icons/key.png', imageSize = 96, title = 'Nothing here', message = 'Open a chest to find items.'}}),
+                layout.section('Component "emptyState"', {ui.emptyState{image = 'interface/themes/fantasy/icons/key.png', imageSize = 96, title = 'Nothing here', message = 'Open a chest to find items.'}}),
                 ui.alert{tone = 'information', title = 'Information', message = 'The ferry leaves at noon.'},
                 ui.alert{tone = 'success', title = 'Success', message = 'Your progress was saved.'},
                 ui.alert{tone = 'warning', title = 'Warning', message = 'Night is coming.'},

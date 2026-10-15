@@ -13,8 +13,8 @@ RichText.styles = [==[
 [b]Bold[/b], [i]italic[/i], [u]underline[/u], [s]strike[/s] and [code]code()[/code].
 [color=#FF6A6A]Colors[/color], [bgcolor=#604C7DFF] backgrounds [/bgcolor], [size=150%]sizes[/size] and [alpha=0.5]alpha[/alpha].
 [outline=3 color=#FF402000][color=gold]Outline[/color][/outline], [shadow=3,3 color=#C0000000 blur=2]shadow[/shadow] and [glow=6 color=#FF8000]glow[/glow].
-[font=lilitaOne]A font the parchment theme registered[/font] next to the body font.
-Twelve coins [img=interface/icons/coin.png height=28] or press [icon=confirm] to open the chest [icon=coin].
+[font=lilitaOne]A font the fantasy theme registered[/font] next to the body font.
+Twelve coins [img=interface/themes/fantasy/icons/coin.png height=28] or press [icon=confirm] to open the chest [icon=coin].
 Read the [url=manual]manual[/url], the [url=map]map[/url] or the [hint=Frequently asked questions]FAQ[/hint].]==]
 
 RichText.blocks = [==[
@@ -34,7 +34,7 @@ RichText.effects = '[wave]Wave[/wave]  [shake]Shake[/shake]  [tornado radius=4]T
 RichText.dialogue = {
     '[b]Keeper:[/b] You made it through the storm.[pause=0.5] Few do.',
     '[b]Keeper:[/b] The beacon went dark three nights ago.[pause=0.4] [shake]Something[/shake] is out there.',
-    '[b]Keeper:[/b] Take this [img=interface/icons/key.png height=28] and [speed=0.4]be careful[/speed]...[pause=0.4] [rainbow]good luck![/rainbow]',
+    '[b]Keeper:[/b] Take this [img=interface/themes/fantasy/icons/key.png height=28] and [speed=0.4]be careful[/speed]...[pause=0.4] [rainbow]good luck![/rainbow]',
 }
 
 function RichText:init(entry)
@@ -42,11 +42,11 @@ function RichText:init(entry)
     self.line = 1
 end
 
--- The parchment theme registers the font that the markup names, and the icons that `[icon=name]` shows are registered for the whole app.
+-- The fantasy theme registers the font that the markup names, and the icons that `[icon=name]` shows are registered for the whole app.
 function RichText:enter()
-    ui.loadTheme('interface/themes/parchment.json', 'light')
-    graphics2d.registerTextIcon('coin', assets.texture('interface/icons/coin.png'))
-    graphics2d.registerTextIcon('confirm', assets.texture('interface/icons/star.png'))
+    ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')
+    graphics2d.registerTextIcon('coin', assets.texture('interface/themes/fantasy/icons/coin.png'))
+    graphics2d.registerTextIcon('confirm', assets.texture('interface/themes/fantasy/icons/star.png'))
     self:frame{
         hint = 'Click, tap or focus a link and press Enter to follow it, and rest the pointer on FAQ for its hint. Next line reveals the next line of the dialogue, and Skip shows the rest at once.',
         focus = 'next',

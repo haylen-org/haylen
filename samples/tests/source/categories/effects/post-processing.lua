@@ -173,7 +173,7 @@ end
 
 function PostProcessing:draw(area)
     self.scenery:draw()
-    graphics2d.draw(self.robot, 0, Scenery.ground, {scaleX = 2.6, scaleY = 2.6, pivotY = 1, layer = 1})
+    graphics2d.draw(self.robot, 0, Scenery.ground, {scaleX = 1.3, scaleY = 1.3, pivotY = 1, layer = 1})
     ParticleTest.drawAll(self.systems)
 end
 

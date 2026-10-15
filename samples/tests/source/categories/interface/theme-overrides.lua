@@ -13,8 +13,10 @@ ThemeOverrides.accents = {
     {id = 'violet', text = 'Violet', accent = '#FF8A5CE0', hover = '#FFA27AF0', strong = '#FF6E44C0'},
 }
 ThemeOverrides.cursors = {'pointingHand', 'iBeam', 'crosshair', 'resizeHorizontal', 'resizeAll', 'notAllowed'}
-ThemeOverrides.wood = {image = 'interface/themes/parchment.png', source = {144, 0, 32, 32}, slice = 10, scale = 2}
-ThemeOverrides.woodHover = {image = 'interface/themes/parchment.png', source = {178, 0, 32, 32}, slice = 10, scale = 2}
+-- The primary button of the fantasy atlas, which the painted button takes in place of the surfaces of its theme.
+ThemeOverrides.painted = {image = 'interface/themes/fantasy/atlas.png', source = {0, 392, 360, 120}, slice = {44, 56, 40, 56}, scale = 0.6, filter = 'linear'}
+ThemeOverrides.paintedHover = {image = 'interface/themes/fantasy/atlas.png', source = {0, 392, 360, 120}, slice = {44, 56, 40, 56}, scale = 0.6, filter = 'linear', tint = '#FFE4EEFF'}
+ThemeOverrides.paintedPressed = {image = 'interface/themes/fantasy/atlas.png', source = {364, 392, 360, 120}, slice = {44, 56, 40, 56}, scale = 0.6, filter = 'linear'}
 
 function ThemeOverrides:init(entry)
     ThemeOverrides.super.init(self, entry)
@@ -23,7 +25,7 @@ function ThemeOverrides:init(entry)
 end
 
 function ThemeOverrides:enter()
-    ui.loadTheme('interface/themes/parchment.json', 'light')
+    ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')
     self:frame{
         hint = 'The radius slider and the accent control restyle the first group at once, while the buttons around it keep the theme. Hover the cursor buttons with a mouse to see their shapes.',
         focus = 'radius',
@@ -76,14 +78,14 @@ function ThemeOverrides:columns()
             }),
             layout.section('Surfaces from a style', {
                 ui.row{gap = 12,
-                    ui.button{text = 'Wooden', style = {surfaces = {button = ThemeOverrides.wood, buttonHover = ThemeOverrides.woodHover, buttonPressed = ThemeOverrides.wood}}},
-                    ui.card{theme = 'parchment', style = {surfaces = {card = false}}, ui.label{text = 'Parchment with a flat card'}},
+                    ui.button{text = 'Painted', style = {surfaces = {button = ThemeOverrides.painted, buttonHover = ThemeOverrides.paintedHover, buttonPressed = ThemeOverrides.paintedPressed}}},
+                    ui.card{theme = 'fantasy', style = {surfaces = {card = false}}, ui.label{text = 'Fantasy with a flat card'}},
                 },
             }),
         },
         ui.column{grow = 1, gap = 24,
             layout.section('A subtree in the light theme', {self:sampler('light')}),
-            layout.section('A subtree in the parchment theme', {self:sampler('parchment')}),
+            layout.section('A subtree in the fantasy theme', {self:sampler('fantasy')}),
             layout.section('The cursor of each node', {ui.grid{columns = 3, gap = 12, children = cursors}}),
         },
     }

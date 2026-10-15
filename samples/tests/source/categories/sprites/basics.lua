@@ -11,6 +11,8 @@ local Basics = haylen.class('Basics', SpriteTest)
 
 Basics.pivots = {{id = 'center', text = 'Center', x = 0.5, y = 0.5}, {id = 'feet', text = 'Feet', x = 0.5, y = 1}, {id = 'corner', text = 'Corner', x = 0, y = 0}}
 Basics.tints = {{id = 'none', text = 'None', color = '#FFFFFFFF'}, {id = 'red', text = 'Red', color = '#FFFF7070'}, {id = 'gold', text = 'Gold', color = '#FFFFD166'}, {id = 'ghost', text = 'Ghost', color = '#70FFFFFF'}}
+-- The hero is painted at twice the size it draws at.
+Basics.size = 96
 Basics.variants = {
     {label = 'Pivot 0, 0 turned', properties = {pivotX = 0, pivotY = 0, rotation = 0.4}},
     {label = 'Scale 1.5, 0.75', properties = {scaleX = 1.5, scaleY = 0.75}},
@@ -45,10 +47,11 @@ end
 
 function Basics:enter()
     local texture = SpriteTest.texture('images/hero.png')
-    self.hero = graphics2d.newSprite(texture, {scaleX = 2, scaleY = 2})
+    self.hero = graphics2d.newSprite(texture, {width = Basics.size, height = Basics.size, scaleX = 2, scaleY = 2})
     self.samples = {}
     for index, variant in ipairs(Basics.variants) do
         self.samples[index] = graphics2d.newSprite(texture, variant.properties)
+        self.samples[index].width, self.samples[index].height = Basics.size, Basics.size
     end
     self.spin = true
     self:frame{

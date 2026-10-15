@@ -53,7 +53,7 @@ end
 function RichText:enter()
     local prompts = assets.texture('text/prompts.png', {filter = 'linear'})
     for index, name in ipairs(RichText.prompts) do
-        graphics2d.registerTextIcon(name, prompts, {source = {(index - 1) * 32, 0, 32, 32}})
+        graphics2d.registerTextIcon(name, prompts, {source = {(index - 1) * 64, 0, 64, 64}})
     end
     self:frame{hint = 'Move the pointer over a link or the hint: "text:linkAt" and "text:hintAt" report what lies under it in the status line. In a GUI the same links take the focus and the hint shows as a tooltip.'}
 end

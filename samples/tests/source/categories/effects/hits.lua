@@ -17,7 +17,7 @@ Hits.kinds = {
     {id = 'blast', text = 'Blast, full trauma', trauma = 1, flash = '#E0FFE8B0'},
 }
 Hits.robots = {-440, 0, 440}
-Hits.robotScale = 2.6
+Hits.robotScale = 1.3
 Hits.spriteFlashTime = 0.16
 Hits.knockDistance = 46
 
