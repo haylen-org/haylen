@@ -641,6 +641,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Context.cpp
   src/ui/FocusNavigator.cpp
   src/ui/FocusSearch.cpp
+  src/ui/IconColor.cpp
   src/ui/Gui.cpp
   src/ui/ImGuiConverter.cpp
   src/ui/ImGuiLua.cpp

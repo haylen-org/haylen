@@ -34,9 +34,9 @@ function RuntimeImages:enter()
             ui.column{grow = 1, gap = 24,
                 layout.section('A vector image built in code', {ui.row{gap = 16, ui.icon{image = '@badge', size = 48}, ui.button{text = 'With the badge', icon = '@badge'}}}),
                 layout.section('List items', {ui.list{id = 'list', items = {
-                    {id = 'map', text = 'Minimap', caption = 'Rendered every frame', image = '@minimap'},
-                    {id = 'portrait', text = 'Portrait', caption = 'Composed on the CPU', image = '@portrait'},
-                    {id = 'badge', text = 'Badge', caption = 'A vector image', image = '@badge'},
+                    {id = 'map', text = 'Minimap', caption = 'Rendered every frame', image = '@minimap', iconColor = false},
+                    {id = 'portrait', text = 'Portrait', caption = 'Composed on the CPU', image = '@portrait', iconColor = false},
+                    {id = 'badge', text = 'Badge', caption = 'A vector image', image = '@badge', iconColor = false},
                 }}}),
             },
         }},

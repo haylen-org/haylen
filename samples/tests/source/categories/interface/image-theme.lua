@@ -89,7 +89,7 @@ function ImageTheme:collections()
     local rows = {}
     for index = 1, 12 do
         local name = ImageTheme.icons[(index - 1) % #ImageTheme.icons + 1]
-        rows[index] = {id = 'item-' .. index, text = name:sub(1, 1):upper() .. name:sub(2) .. ' ' .. index, caption = 'Row ' .. index .. ' of the bag', image = ImageTheme.icon(name)}
+        rows[index] = {id = 'item-' .. index, text = name:sub(1, 1):upper() .. name:sub(2) .. ' ' .. index, caption = 'Row ' .. index .. ' of the bag', image = ImageTheme.icon(name), iconColor = false}
     end
     return layout.section('Tabs, lists and scroll bars', {
         ui.tabs{items = {{id = 'bag', text = 'Bag'}, {id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}}, selected = 'bag',

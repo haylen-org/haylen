@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string>
 
 #include "haylen/math/Rect.hpp"
@@ -8,7 +7,7 @@
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
-#include "haylen/ui/Theme.hpp"
+#include "ui/IconColor.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {
@@ -34,7 +33,7 @@ class ButtonBase : public Component {
   private:
     TextValue text;
     std::string icon;
-    std::optional<Theme::Color> iconColor;
+    IconColor iconColor;
     Widgets::ButtonVariant variant = Widgets::ButtonVariant::Default;
     Widgets::ButtonContent content;
 };

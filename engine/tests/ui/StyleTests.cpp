@@ -1,19 +1,26 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include <imgui.h>
+#include <imgui_internal.h>
+
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/ui/Context.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Style.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/TestFiles.hpp"
 #include "support/UiFixture.hpp"
+#include "ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
 
@@ -21,10 +28,22 @@ namespace {
 
 class StyleTest : public ::testing::Test, public test::UiFixture {
   protected:
-    StyleTest() : UiFixture({{"content/ui/frame.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))}}) {}
+    StyleTest() : UiFixture({{"content/ui/frame.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))}, {"content/ui/dot.png", toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))}}) {}
 
     [[nodiscard]] static std::string toText(const std::vector<std::uint8_t>& bytes) {
         return {bytes.begin(), bytes.end()};
+    }
+
+    [[nodiscard]] math::Color getThemeColor(Theme::Color role) {
+        return getUi().getTheme().getColor(role);
+    }
+
+    // Tells whether a vertex the GUIs drew in the last frame has the color.
+    [[nodiscard]] bool drawsColor(math::Color color) {
+        getUi().getBackend().makeCurrent();
+        const ImU32 packed = ImGuiConverter::toImU32(color);
+        const ImVector<ImDrawVert>& vertices = ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer;
+        return std::any_of(vertices.begin(), vertices.end(), [packed](const ImDrawVert& vertex) { return vertex.col == packed; });
     }
 
     // Runs a frame and tells whether the renderer drew a quad of the texture.
@@ -70,6 +89,41 @@ TEST_F(StyleTest, OverridesTheThemeForANodeAndTheNodesInsideIt) {
     EXPECT_EQ(getBounds(*gui, "inside").height, getBounds(*gui, "plain").height);
 }
 
+// A role a style names for a color comes from the theme of its node or from the layers outside the style, never from the same style.
+TEST_F(StyleTest, ResolvesTheThemeColorsAStyleNames) {
+    Context& context = getUi().getContext();
+    const Style outer = Style::fromJson(core::Json::parse(R"({"colors": {"accent": "#FF00FF00"}})"), "row.style");
+    const Style inner = Style::fromJson(core::Json::parse(R"({"colors": {"panel": "accent", "success": "#FFFF0000", "border": "success"}})"), "row.style");
+    context.pushStyle("", &inner, false);
+    EXPECT_EQ(context.getColor(Theme::Color::Panel), getThemeColor(Theme::Color::Accent));
+    EXPECT_EQ(context.getColor(Theme::Color::Border), getThemeColor(Theme::Color::Success));
+    EXPECT_EQ(context.getColor(Theme::Color::Success), math::Color::fromHex(0xFF0000FFU));
+    context.popStyle();
+
+    context.pushStyle("", &outer, false);
+    context.pushStyle("", &inner, false);
+    EXPECT_EQ(context.getColor(Theme::Color::Panel), math::Color::fromHex(0x00FF00FFU));
+    context.popStyle();
+    context.pushStyle("light", &inner, false);
+    EXPECT_EQ(context.getColor(Theme::Color::Panel), getUi().findTheme("light")->getColor(Theme::Color::Accent));
+    context.popStyle();
+    context.popStyle();
+}
+
+// The role resolves each frame against the active theme, so a styled node follows a theme switch without being built again.
+TEST_F(StyleTest, FollowsTheActiveThemeInTheColorsAStyleNames) {
+    getFixture().runLua("ui = require('haylen.ui') gui = ui.mount(ui.row{id = 'styled', style = {colors = {text = 'accent'}}, ui.icon{image = 'ui/dot.png', color = 'text'}}, {placement = 'screen'})");
+    frames(1);
+    ASSERT_TRUE(getFixture().frameUntil([&] { return drawsColor(getThemeColor(Theme::Color::Accent)); }));
+    const math::Color dark = getThemeColor(Theme::Color::Accent);
+    getFixture().runLua("ui.setTheme('light')");
+    frames(2);
+    EXPECT_NE(getThemeColor(Theme::Color::Accent), dark);
+    EXPECT_TRUE(drawsColor(getThemeColor(Theme::Color::Accent)));
+    EXPECT_FALSE(drawsColor(dark));
+    EXPECT_NE(getFixture().lua("gui:set('styled', {style = {colors = {text = 'ink'}}})").find(R"(must name a theme color such as "accent" or "textMuted".)"), std::string::npos);
+}
+
 TEST_F(StyleTest, DrawsASubtreeWithAnotherRegisteredTheme) {
     getUi().addTheme(getEngine(), core::Json::parse(R"({"name": "roomy", "metrics": {"controlHeight": 90}})"), "light");
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "dark", "text": "Dark"}, {"kind": "panel", "theme": "roomy", "children": [{"kind": "button", "id": "roomy", "text": "Roomy"}]}]})");
@@ -102,7 +156,8 @@ TEST_F(StyleTest, ReportsTheProblemsOfAStyle) {
         {R"({"kind": "button", "style": "big"})", R"(The property "style" of a "button" must be a table with "colors", "metrics", "fonts" or "surfaces".)"},
         {R"({"kind": "button", "style": {"sizes": {}}})", R"(Unknown key "sizes" in the property "style" of a "button".)"},
         {R"({"kind": "button", "style": {"colors": {"purple": "#FFFFFFFF"}}})", R"(The property "style" of a "button" has no color role named "purple".)"},
-        {R"({"kind": "button", "style": {"colors": {"accent": "blue"}}})", R"(The color "accent" of the property "style" of a "button" must be a color such as "#FF2E7D32".)"},
+        {R"({"kind": "button", "style": {"colors": {"accent": "blue"}}})", R"(The color "accent" of the property "style" of a "button" must name a theme color such as "accent" or "textMuted".)"},
+        {R"({"kind": "button", "style": {"colors": {"accent": "#blue"}}})", R"(The color "accent" of the property "style" of a "button" must be a color such as "#FF2E7D32".)"},
         {R"({"kind": "button", "style": {"metrics": {"controlHeight": -1}}})", R"(The metric "controlHeight" of the property "style" of a "button" must be a non-negative number.)"},
         {R"({"kind": "button", "style": {"fonts": {"button": {"size": 0}}}})", R"(The size of the font "button" of the property "style" of a "button" must be positive.)"},
         {R"({"kind": "button", "style": {"fonts": {"huge": {}}}})", R"(The property "style" of a "button" has no font role named "huge".)"},

@@ -10,7 +10,7 @@ ChoiceItem ChoiceItem::read(const core::Json& value, const std::string& context,
     if (!value.is_object()) {
         throw std::invalid_argument(PropertyReader::describeProperty(context) + " must hold objects with an id.");
     }
-    core::JsonValidator::requireKnownKeys(value, {"id", "text", "caption", "image", "enabled", "children"}, "\"" + context + "\"");
+    core::JsonValidator::requireKnownKeys(value, {"id", "text", "caption", "image", "iconColor", "enabled", "children"}, "\"" + context + "\"");
     const auto found = value.find("id");
     if (found == value.end() || !found->is_string() || found->get<std::string>().empty()) {
         throw std::invalid_argument(PropertyReader::describeProperty(context) + " needs a non-empty id for every item.");
@@ -31,6 +31,9 @@ ChoiceItem ChoiceItem::read(const core::Json& value, const std::string& context,
             throw std::invalid_argument(PropertyReader::describeProperty(context + ".image") + " must be a path.");
         }
         item.image = field->get<std::string>();
+    }
+    if (const auto field = value.find("iconColor"); field != value.end()) {
+        item.iconColor = IconColor::fromJson(*field, context + ".iconColor");
     }
     if (const auto field = value.find("enabled"); field != value.end()) {
         if (!field->is_boolean()) {

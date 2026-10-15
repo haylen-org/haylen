@@ -61,6 +61,19 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
         return math::Rect::fromMinMax(minimum, maximum);
     }
 
+    // Returns the color of the first picture the GUIs drew from the texture in the last frame, or zero when none drew.
+    [[nodiscard]] ImU32 findTextureColor(const graphics::Texture& texture) {
+        getUi().getBackend().makeCurrent();
+        const ImTextureID id = getContext().getTextureReference(texture).GetTexID();
+        const ImDrawList& list = *ImGui::FindWindowByName("##haylen-guis")->DrawList;
+        for (const ImDrawCmd& command : list.CmdBuffer) {
+            if (command.TexRef._TexID == id && command.ElemCount > 0) {
+                return list.VtxBuffer[static_cast<int>(command.VtxOffset + list.IdxBuffer[static_cast<int>(command.IdxOffset)])].col;
+            }
+        }
+        return 0;
+    }
+
     // Counts the vertices the GUIs drew in the last frame.
     [[nodiscard]] int countVertices() {
         getUi().getBackend().makeCurrent();
@@ -152,6 +165,55 @@ TEST_F(ImageLibraryTest, TintsTheIconOfAButtonWithItsIconColor) {
     frames(2);
     EXPECT_TRUE(drawsColor(danger));
     EXPECT_THROW(gui->set("help", {{"iconColor", "crimson"}}), std::invalid_argument);
+}
+
+TEST_F(ImageLibraryTest, TintsTheIconOfAButtonLikeItsTextUnlessItsIconColorIsFalse) {
+    getFixture().runLua("ui = require('haylen.ui') gui = ui.mount(ui.button{id = 'tool', text = 'Tool', icon = 'icons/badge.svg', variant = 'toolbar'}, {placement = 'screen'})");
+    const float iconSize = getUi().getTheme().getMetric(Theme::Metric::IconSize);
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getContext().getImage("icons/badge.svg", {iconSize, iconSize}).isValid(); }));
+    frames(2);
+    const graphics::Texture icon = getContext().getImage("icons/badge.svg", {iconSize, iconSize});
+    EXPECT_EQ(findTextureColor(icon), ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Text)));
+
+    getFixture().runLua("gui:set('tool', {iconColor = false})");
+    frames(2);
+    EXPECT_EQ(findTextureColor(icon), ImGuiConverter::toImU32(math::Color::white()));
+    EXPECT_NE(getFixture().lua("gui:set('tool', {iconColor = true})").find(R"(The property "iconColor" of a "button" must name a theme color such as "accent" or "textMuted", or be "false".)"), std::string::npos);
+}
+
+// A picture drawn with `currentColor` in an item follows the text of the item through every theme, so it never vanishes on a light one.
+TEST_F(ImageLibraryTest, TintsThePicturesOfItemsLikeTheirText) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        gui = ui.mount(ui.column{
+            ui.list{id = 'list', items = {{id = 'one', text = 'One', image = 'icons/badge.svg'}}},
+            ui.tree{id = 'tree', items = {{id = 'two', text = 'Two', image = 'icons/square.svg'}}},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    const float iconSize = getUi().getTheme().getMetric(Theme::Metric::IconSize);
+    const auto badge = [&] { return getContext().getImage("icons/badge.svg", {iconSize, iconSize}); };
+    const auto square = [&] { return getContext().getImage("icons/square.svg", {iconSize, iconSize}); };
+    ASSERT_TRUE(getFixture().frameUntil([&] { return badge().isValid() && square().isValid(); }));
+    frames(2);
+    const auto text = [&] { return ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Text)); };
+    EXPECT_EQ(findTextureColor(badge()), text());
+    EXPECT_EQ(findTextureColor(square()), text());
+
+    getFixture().runLua("ui.setTheme('light')");
+    frames(2);
+    EXPECT_EQ(findTextureColor(badge()), text());
+
+    // An item names a theme color for its picture, or keeps the colors of the picture with false.
+    getFixture().runLua("gui:set('list', {items = {{id = 'one', text = 'One', image = 'icons/badge.svg', iconColor = 'danger'}}})");
+    getFixture().runLua("gui:set('tree', {items = {{id = 'two', text = 'Two', image = 'icons/square.svg', iconColor = false}}})");
+    frames(2);
+    EXPECT_EQ(findTextureColor(badge()), ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Danger)));
+    EXPECT_EQ(findTextureColor(square()), ImGuiConverter::toImU32(math::Color::white()));
+
+    EXPECT_NE(getFixture().lua("gui:set('list', {items = {{id = 'one', iconColor = 'crimson'}}})").find(R"(The property "items.iconColor" of a "list" must name a theme color such as "accent" or "textMuted", or be "false".)"), std::string::npos);
+    EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
 TEST_F(ImageLibraryTest, PlacesTheIconOfAButtonAboveItsLabelOrWithTheContentAtTheStart) {

@@ -30,7 +30,7 @@ end
 function SlotGrid:chestItems()
     local items = {}
     for index, item in ipairs(self.chest) do
-        items[index] = {id = 'chest-' .. index, text = item.icon:sub(1, 1):upper() .. item.icon:sub(2), caption = item.count and ('Count ' .. item.count) or 'One', image = 'interface/icons/' .. item.icon .. '.png'}
+        items[index] = {id = 'chest-' .. index, text = item.icon:sub(1, 1):upper() .. item.icon:sub(2), caption = item.count and ('Count ' .. item.count) or 'One', image = 'interface/icons/' .. item.icon .. '.png', iconColor = false}
     end
     return items
 end

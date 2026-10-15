@@ -980,7 +980,7 @@ Lua has no separate empty list, so an empty table converts to an empty JSON obje
 | theme color | The name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. |
 | length | A non-negative number, or `'auto'` to let the content decide. |
 | insets | One number for every side, `{vertical, horizontal}`, or `{top, right, bottom, left}`. Every value is non-negative. |
-| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`, or the name of an image made at run time, which starts with `@` and which [`ui.setImage`](#uisetimagename-source-and-uiremoveimagename) gives. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, toolbar and icon buttons tint them like their text, and the `iconColor` of a button tints them in every variant. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
+| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`, or the name of an image made at run time, which starts with `@` and which [`ui.setImage`](#uisetimagename-source-and-uiremoveimagename) gives. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, toolbar and icon buttons and the pictures of [items](#items) tint them like their text, and the `iconColor` of a button or an item tints them with a theme color. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
 | tone | `'neutral'`, `'accent'`, `'success'`, `'warning'`, `'danger'` or `'information'`. |
 | variant | One of `'default'`, `'primary'`, `'destructive'`, `'toolbar'`, `'icon'` or `'link'`, described under [button](#uibuttonproperties). |
 | items | A list of [items](#items). |
@@ -1156,19 +1156,21 @@ Kinds that offer choices take an `items` list. Every item is a table with a uniq
 | `id` | string | required | Name of the item, unique within the list, and within the whole tree for `tree`, and not empty. Selection properties such as `selected` refer to it. |
 | `text` | text | none | Text of the item. |
 | `caption` | text | none | Second line under the text, shown by `list` and `tree`. |
-| `image` | image | none | Picture before the text, shown by `list` and `tree`. |
+| `image` | image | none | Picture before the text, shown by `list`, `tree` and the menus of `menuButton`, `combo` and `contextMenu`. |
+| `iconColor` | theme color or `false` | the color of the text | Tint of the picture. Without it the picture takes the color of the text of its item in every theme and state, so an SVG icon drawn with `currentColor` follows the theme, and `false` keeps the colors of the picture, such as a painted icon or an image made at run time. |
 | `enabled` | boolean | `true` | A disabled item cannot be picked. |
 | `children` | list of items | none | Nested items, accepted only by `tree`. |
 
-Item errors name the property and the kind: a repeated id raises `The property "items" of a "<kind>" uses the item id "<id>" more than once.`, an item without an id raises `The property "items" of a "<kind>" needs a non-empty id for every item.`, an item that is not a table raises `The property "items" of a "<kind>" must hold objects with an id.`, nested items outside a tree raise `The property "items" of a "<kind>" cannot nest items, which only a tree does.`, and tree children that are not a list raise `The property "items.children" of a "tree" must be a list of items.`.
+Item errors name the property and the kind: a repeated id raises `The property "items" of a "<kind>" uses the item id "<id>" more than once.`, an item without an id raises `The property "items" of a "<kind>" needs a non-empty id for every item.`, an item that is not a table raises `The property "items" of a "<kind>" must hold objects with an id.`, nested items outside a tree raise `The property "items" of a "<kind>" cannot nest items, which only a tree does.`, and tree children that are not a list raise `The property "items.children" of a "tree" must be a list of items.`, and an `iconColor` that is neither a theme color nor `false` raises `The property "items.iconColor" of a "<kind>" must name a theme color such as "accent" or "textMuted", or be "false".`.
 
 ```lua
 local ui = require('haylen.ui')
 
 ui.mount(ui.list{
     items = {
-        {id = 'wood', text = 'Wood', caption = 'Used for walls', image = 'ui/wood.png'},
-        {id = 'gold', text = 'Gold', enabled = false},
+        {id = 'wood', text = 'Wood', caption = 'Used for walls', image = 'ui/wood.png', iconColor = false},
+        {id = 'stone', text = 'Stone', image = 'icons/stone.svg'},
+        {id = 'gold', text = 'Gold', image = 'icons/coin.svg', iconColor = 'warning', enabled = false},
     },
 })
 ```
@@ -1763,7 +1765,7 @@ A button that reports `click` when pressed. It can take the focus.
 | --- | --- | --- | --- |
 | `text` | text | none | Label of the button. |
 | `icon` | image | none | Picture before the label, as large as the theme `iconSize` metric. |
-| `iconColor` | theme color | none | Tint of the icon, such as `'text'` for an SVG icon drawn with `currentColor` on a light button. Without it toolbar and icon buttons tint the icon like their label and the other variants keep its colors. |
+| `iconColor` | theme color or `false` | none | Tint of the icon, such as `'text'` for an SVG icon drawn with `currentColor` on a light button. Without it toolbar and icon buttons tint the icon like their label and the other variants keep its colors, and `false` keeps its colors in every variant. A value that is neither raises `The property "iconColor" of a "button" must name a theme color such as "accent" or "textMuted", or be "false".`. |
 | `iconPlacement` | string | `'start'` | Where the icon stands: `'start'` before the label, or `'top'` above it, which makes the button as tall as the icon and a line of text, as the buttons of a tab bar on a phone are. |
 | `justify` | string | `'center'` | Where the icon and the label sit across the button: `'start'`, `'center'` or `'end'`. At the start or the end they keep the theme `controlPaddingX` from the edge, as the content of a search bar does. |
 | `variant` | variant | `'default'` | Look of the button. |
@@ -1854,7 +1856,7 @@ A button that opens a menu of items and reports `select` with the item id as `it
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `items` | items | empty | Menu entries. Items use `id`, `text` and `enabled`. |
+| `items` | items | empty | Menu entries. Items use `id`, `text`, `caption`, `image`, `iconColor` and `enabled`. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -1946,7 +1948,7 @@ A field that shows the selected item and opens a list of the others. Picking ano
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `items` | items | empty | The choices. Items use `id`, `text` and `enabled`. |
+| `items` | items | empty | The choices. Items use `id`, `text` and `enabled`, and the list also shows their `caption`, `image` and `iconColor`. |
 | `selected` | string | none | Id of the selected item. |
 | `placeholder` | text | none | Text shown while no item is selected. |
 
@@ -2385,7 +2387,7 @@ A draggable list moves rows the way a [slot grid](#uislotgridproperties) moves s
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `items` | items | empty | The rows. Items use `id`, `text`, `caption`, `image` and `enabled`. |
+| `items` | items | empty | The rows. Items use `id`, `text`, `caption`, `image`, `iconColor` and `enabled`. |
 | `selected` | string | none | Id of the highlighted row. |
 | `draggable` | boolean | `false` | Lets the player drag and carry rows and drop items on them. |
 
@@ -2903,7 +2905,7 @@ A menu of items that opens over its one child: with a right click on it, a long 
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `items` | items | empty | Menu entries. Items use `id`, `text`, `image` and `enabled`. |
+| `items` | items | empty | Menu entries. Items use `id`, `text`, `caption`, `image`, `iconColor` and `enabled`. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -3093,6 +3095,8 @@ ui.mount(ui.panel{
 
 A style overrides the theme for one node and every node inside it, so any value a component reads, every color, metric, font and surface, changes for one instance without a theme of its own. It takes the sections of a [theme file](#themes): `colors`, `metrics`, `fonts`, whose roles set only the keys they list, and `surfaces`, whose images load in the background the first time they draw, while the flat colors stand in. A surface set to `false` paints with flat colors whatever the theme has. Values a style leaves out come from the style or theme around the node, so styles nest.
 
+A color of a style is a color of its own, such as `'#FF2E9E62'`, or the name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`, which takes the color of that role each frame from the theme of the node, when the node gives a `theme`, or from the theme and styles around it. A styled node therefore follows `ui.setTheme`, higher contrast and reduced transparency without being built again. A role never comes from the colors of the same style, so `{accent = '#FFFF0000', border = 'accent'}` gives the border the accent around the node.
+
 ```lua
 local ui = require('haylen.ui')
 
@@ -3104,10 +3108,12 @@ ui.mount(ui.column{
     },
     ui.panel{theme = 'light', ui.label{text = 'A light panel in a dark screen'}},
     ui.button{text = 'Wooden', style = {surfaces = {button = {image = 'ui/wood.png', slice = 12, filter = 'linear'}}}},
+    -- A selected tab in the accent of whatever theme is active.
+    ui.button{text = 'Home', variant = 'toolbar', style = {colors = {text = 'accentText'}}},
 })
 ```
 
-A style raises the errors of its values, each starting with the property that holds it: `The property "style" of a "<kind>" must be a table with "colors", "metrics", "fonts" or "surfaces".`, `Unknown key "<key>" in the property "style" of a "<kind>".`, `The property "style" of a "<kind>" must hold a table in "<section>".`, `The property "style" of a "<kind>" has no color role named "<name>".`, the same for metrics, font roles and surfaces, `The color "<name>" of the property "style" of a "<kind>" must be a color such as "#FF2E7D32".`, `The metric "<name>" of the property "style" of a "<kind>" must be a non-negative number.`, `The font "<name>" of the property "style" of a "<kind>" must be a table.`, `... must name its font with a string.`, `... must set "bold" to "true" or "false".`, `The size of the font "<name>" of the property "style" of a "<kind>" must be positive.` and `The image of the surface "<name>" of the property "style" of a "<kind>" must be a path.`. The other values of a surface image are checked once its image has loaded, with the errors of theme surfaces.
+A style raises the errors of its values, each starting with the property that holds it: `The property "style" of a "<kind>" must be a table with "colors", "metrics", "fonts" or "surfaces".`, `Unknown key "<key>" in the property "style" of a "<kind>".`, `The property "style" of a "<kind>" must hold a table in "<section>".`, `The property "style" of a "<kind>" has no color role named "<name>".`, the same for metrics, font roles and surfaces, `The color "<name>" of the property "style" of a "<kind>" must be a color such as "#FF2E7D32".` for a value that starts with `#` or is not a string, `The color "<name>" of the property "style" of a "<kind>" must name a theme color such as "accent" or "textMuted".` for an unknown role, `The metric "<name>" of the property "style" of a "<kind>" must be a non-negative number.`, `The font "<name>" of the property "style" of a "<kind>" must be a table.`, `... must name its font with a string.`, `... must set "bold" to "true" or "false".`, `The size of the font "<name>" of the property "style" of a "<kind>" must be positive.` and `The image of the surface "<name>" of the property "style" of a "<kind>" must be a path.`. The other values of a surface image are checked once its image has loaded, with the errors of theme surfaces.
 
 ## Theme colors
 

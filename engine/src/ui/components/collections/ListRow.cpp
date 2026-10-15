@@ -22,7 +22,7 @@ Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, b
     return state;
 }
 
-// The image stands on the side the UI starts, before the text.
+// The image stands on the side the UI starts, before the text, and takes the color of the text unless the item sets its icon color.
 void ListRow::drawContent(Context& context, const math::Rect& bounds, const ChoiceItem& item) {
     if (!Widgets::isVisible(context, bounds)) {
         return;
@@ -30,7 +30,7 @@ void ListRow::drawContent(Context& context, const math::Rect& bounds, const Choi
     float x = bounds.x + context.getMetric(Theme::Metric::RowPadding);
     if (!item.image.empty()) {
         const float icon = context.getMetric(Theme::Metric::IconSize);
-        Surfaces::drawImage(context, context.getImage(item.image, {icon, icon}), context.mirror({x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon}, bounds));
+        Surfaces::drawImage(context, context.getImage(item.image, {icon, icon}), context.mirror({x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon}, bounds), item.iconColor.resolve(context, context.getColor(Theme::Color::Text)));
         x += icon + context.getMetric(Theme::Metric::RowPadding);
     }
     const math::Rect text = context.mirror(math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - context.getMetric(Theme::Metric::RowPadding), bounds.getBottom()}), bounds);

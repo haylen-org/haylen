@@ -149,7 +149,7 @@ math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool
     return {std::max(width, height), height};
 }
 
-bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, std::optional<math::Color> iconTint, const ButtonContent& content) {
+bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, const IconColor& iconColor, const ButtonContent& content) {
     const Interaction state = interact(context, bounds, context.getMetric(Theme::Metric::ControlRadius));
 
     if (variant == ButtonVariant::Link) {
@@ -194,8 +194,8 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
         Surfaces::fill(context, bounds, context.getColor(Theme::Color::Selection), context.getMetric(Theme::Metric::ControlRadius));
     }
 
-    const math::Color iconColor = iconTint.value_or(variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white());
-    drawButtonContent(context, bounds.inset(Surfaces::getPadding(context, surfaces.normal)), label, icon != nullptr && icon->isValid() ? icon : nullptr, textColor, iconColor, content);
+    const math::Color iconTint = iconColor.resolve(context, variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white());
+    drawButtonContent(context, bounds.inset(Surfaces::getPadding(context, surfaces.normal)), label, icon != nullptr && icon->isValid() ? icon : nullptr, textColor, iconTint, content);
     return state.clicked;
 }
 

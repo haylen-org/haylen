@@ -70,7 +70,7 @@ function Overlays:columns()
                 },
             }),
             layout.section('Component "contextMenu"', {
-                ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/icons/key.png'}, {id = 'copy', text = 'Duplicate', image = 'interface/icons/star.png'}, {id = 'erase', text = 'Erase', image = 'interface/icons/heart.png'}, {id = 'upload', text = 'Upload', enabled = false}},
+                ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/icons/key.png', iconColor = false}, {id = 'copy', text = 'Duplicate', image = 'interface/icons/star.png', iconColor = false}, {id = 'erase', text = 'Erase', image = 'interface/icons/heart.png', iconColor = false}, {id = 'upload', text = 'Upload', enabled = false}},
                     onSelect = function(event) self:report('The context menu picked "' .. event.item .. '".') end,
                     ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/icons/potion.png', align = 'stretch'},
                 },

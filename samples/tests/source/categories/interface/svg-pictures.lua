@@ -21,7 +21,7 @@ end
 
 function SvgPictures:enter()
     self:frame{
-        hint = 'Move the UI scale to see the icons draw again for the size they cover instead of blurring. The buttons tint their icons with "iconColor", and the photo rounds its corners with "radius".',
+        hint = 'Move the UI scale to see the icons draw again for the size they cover instead of blurring. The buttons tint their icons with "iconColor", the bolt of the list takes the color of the text of its row, and the photo rounds its corners with "radius".',
         focus = 'scale',
         content = {self:columns()},
     }
@@ -39,7 +39,11 @@ function SvgPictures:columns()
     end
     local items = {}
     for index, name in ipairs(SvgPictures.icons) do
-        items[index] = {id = name, text = name:sub(1, 1):upper() .. name:sub(2), caption = 'An SVG picture in a list row', image = SvgPictures.picture(name)}
+        items[index] = {id = name, text = name:sub(1, 1):upper() .. name:sub(2), caption = 'An SVG picture in its own colors', image = SvgPictures.picture(name), iconColor = false}
+        -- The bolt is drawn with currentColor and takes the color of the text of its row.
+        if name == 'bolt' then
+            items[index].caption, items[index].iconColor = 'Tinted like the text of its row', nil
+        end
     end
     return layout.columns{
         ui.column{grow = 1, gap = 24,

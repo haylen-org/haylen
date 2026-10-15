@@ -19,6 +19,18 @@ const core::Json& Style::readSection(const core::Json& value, const char* key, c
     return section;
 }
 
+// A string that does not start with `#` names a theme color role, and anything else is a color of its own.
+Style::Color Style::readColor(const core::Json& value, const std::string& context) {
+    if (!value.is_string() || value.get_ref<const std::string&>().starts_with('#')) {
+        return Theme::readColor(value, context);
+    }
+    const std::optional<Theme::Color> role = Theme::colorFromName(value.get_ref<const std::string&>());
+    if (!role) {
+        throw std::invalid_argument(context + " must name a theme color such as \"accent\" or \"textMuted\".");
+    }
+    return *role;
+}
+
 // Every error starts with the property that holds the style, and its values follow the rules of theme files. Surfaces are read once their images arrive, since they load when they first draw.
 Style Style::fromJson(const core::Json& value, std::string_view path) {
     const std::string subject = PropertyReader::describeProperty(path);
@@ -34,7 +46,7 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
         if (!role) {
             throw std::invalid_argument(subject + " has no color role named \"" + key + "\".");
         }
-        style.colors[static_cast<std::size_t>(*role)] = Theme::readColor(color, "The color \"" + key + "\" of " + inside);
+        style.colors[static_cast<std::size_t>(*role)] = readColor(color, "The color \"" + key + "\" of " + inside);
     }
     for (const auto& [key, metric] : readSection(value, "metrics", subject).items()) {
         const std::optional<Theme::Metric> role = Theme::metricFromName(key);

@@ -5,6 +5,7 @@
 #include <optional>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 
 #include <imgui.h>
 
@@ -70,7 +71,27 @@ void Context::popStyle() {
 }
 
 math::Color Context::getColor(Theme::Color role) const noexcept {
-    return resolve<math::Color>([role](const Style& style) { return style.findColor(role); }, [role](const Theme& theme) { return theme.getColor(role); });
+    return findColor(role, layers.size());
+}
+
+// A role that a style names for a color takes the color of that role from the theme of its node or from the layers outside it, never from the same style, so names never go round in a loop.
+math::Color Context::findColor(Theme::Color role, std::size_t end) const noexcept {
+    for (std::size_t index = end; index-- > 0;) {
+        const Layer& layer = layers[index];
+        if (layer.style != nullptr) {
+            if (const std::optional<Style::Color>& color = layer.style->findColor(role)) {
+                if (const auto* own = std::get_if<math::Color>(&*color)) {
+                    return *own;
+                }
+                const Theme::Color named = *std::get_if<Theme::Color>(&*color);
+                return layer.theme != nullptr ? layer.theme->getColor(named) : findColor(named, index);
+            }
+        }
+        if (layer.theme != nullptr) {
+            return layer.theme->getColor(role);
+        }
+    }
+    return layers.front().theme->getColor(role);
 }
 
 float Context::getMetric(Theme::Metric role) const noexcept {

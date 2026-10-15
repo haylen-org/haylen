@@ -525,7 +525,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-026` | UI scale | The design and physical scale modes and the scale factor, with the size of a control in points on the screen. |  |
 | `GUI-027` | Custom GUI in Lua | A small immediate-mode GUI written in Lua with buttons, a check box, a slider, a native text field, a clipped list, focus, the cursor, the safe area and the UI scale. |  |
 | `GUI-028` | Scroll bars | Every component that scrolls side by side, each with its scroll bar in a lane of its own a gap of at least four points away from its content, in the design and physical scales. |  |
-| `GUI-029` | SVG pictures | SVG documents as icons, buttons, list rows, avatars and images that stay sharp at every size and UI scale, buttons that tint their icons, pictures with rounded corners and theme surfaces drawn from an SVG document. |  |
+| `GUI-029` | SVG pictures | SVG documents as icons, buttons, list rows, avatars and images that stay sharp at every size and UI scale, buttons and list rows that tint their icons, pictures with rounded corners and theme surfaces drawn from an SVG document. |  |
 | `GUI-030` | Shared focus | A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll. |  |
 | `GUI-031` | Smooth curves | Every curved component and shape in the design and physical scales, next to the pixels of their edges magnified, which fade over one pixel of the screen at every scale. |  |
 | `GUI-032` | Images made at run time | A minimap rendered into a render target every frame, a portrait composed in code and a vector image built in code, shown by images, icons, buttons and list items. |  |

@@ -249,6 +249,9 @@ class Context final {
         bool imgui = false;
     };
 
+    // Returns the color of a role that the layers below the end give, from the node being drawn out to the active theme.
+    [[nodiscard]] math::Color findColor(Theme::Color role, std::size_t end) const noexcept;
+
     // Returns the first value the layers give, from the node being drawn out to the active theme.
     template <typename Value, typename FromStyle, typename FromTheme> [[nodiscard]] Value resolve(const FromStyle& fromStyle, const FromTheme& fromTheme) const;
 

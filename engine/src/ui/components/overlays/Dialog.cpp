@@ -211,7 +211,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
         x -= size.x;
         ImGui::PushID(button->id.c_str());
         const math::Rect place = context.mirror({x, inner.getBottom() - height, size.x, height}, inner);
-        const bool pressed = Widgets::button(context, place, text, nullptr, button->variant, false, std::nullopt, {});
+        const bool pressed = Widgets::button(context, place, text, nullptr, button->variant, false, {}, {});
         context.getAccessibility().addPart(ImGui::GetItemID(), place, platform::AccessibilityElement::Role::Button, text, 0);
         if (button == buttons.rbegin() && ImGui::IsWindowAppearing()) {
             Widgets::focusItem(context);

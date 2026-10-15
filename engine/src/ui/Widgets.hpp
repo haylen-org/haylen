@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstdint>
-#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -15,6 +14,7 @@
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/FocusDirection.hpp"
 #include "haylen/ui/Theme.hpp"
+#include "ui/IconColor.hpp"
 
 namespace haylen::ui {
 
@@ -106,8 +106,8 @@ class Widgets final {
     static void focusItem(Context& context);
 
     [[nodiscard]] static math::Vec2 measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content);
-    // Draws a button with its label and icon, which takes `iconTint` when given and otherwise the color of the label in toolbar and icon buttons and its own colors in the others.
-    [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, std::optional<math::Color> iconTint, const ButtonContent& content);
+    // Draws a button with its label and icon, which takes the icon color when it sets one and otherwise the color of the label in toolbar and icon buttons and its own colors in the others.
+    [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, const IconColor& iconColor, const ButtonContent& content);
 
     // Check boxes, radio buttons and toggles take at least the height of a control, so their rows are touch targets as large as buttons.
     [[nodiscard]] static math::Vec2 measureChoice(Context& context, std::string_view label);

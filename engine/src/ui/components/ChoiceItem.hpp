@@ -8,6 +8,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/ui/PropertyReader.hpp"
 #include "haylen/ui/TextValue.hpp"
+#include "ui/IconColor.hpp"
 
 namespace haylen::ui {
 
@@ -17,6 +18,7 @@ struct ChoiceItem {
     TextValue text;
     TextValue caption;
     std::string image;
+    IconColor iconColor;
     bool enabled = true;
     std::vector<ChoiceItem> children;
 

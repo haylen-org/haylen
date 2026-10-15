@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 
 #include "haylen/core/Json.hpp"
 #include "haylen/math/Color.hpp"
@@ -22,10 +23,13 @@ class Style final {
         std::optional<bool> italic;
     };
 
+    // A color the style sets: a color of its own, or a theme color role, which takes the color of that role around the style each time it draws.
+    using Color = std::variant<math::Color, Theme::Color>;
+
     // Reads a style from an object with `colors`, `metrics`, `fonts` and `surfaces` at the path of the property that holds it, such as `button.style`, which starts its errors.
     [[nodiscard]] static Style fromJson(const core::Json& value, std::string_view path);
 
-    [[nodiscard]] const std::optional<math::Color>& findColor(Theme::Color role) const noexcept {
+    [[nodiscard]] const std::optional<Color>& findColor(Theme::Color role) const noexcept {
         return colors[static_cast<std::size_t>(role)];
     }
     [[nodiscard]] const std::optional<float>& findMetric(Theme::Metric role) const noexcept {
@@ -54,7 +58,9 @@ class Style final {
     static void readFonts(Style& style, const core::Json& section, const std::string& subject, const std::string& inside);
     [[nodiscard]] static const core::Json& readSection(const core::Json& value, const char* key, const std::string& subject);
 
-    std::array<std::optional<math::Color>, Theme::kColorCount> colors{};
+    [[nodiscard]] static Color readColor(const core::Json& value, const std::string& context);
+
+    std::array<std::optional<Color>, Theme::kColorCount> colors{};
     std::array<std::optional<float>, Theme::kMetricCount> metrics{};
     std::array<Font, Theme::kFontCount> fonts{};
     std::array<std::optional<Surface>, Theme::kSurfaceCount> surfaces{};
