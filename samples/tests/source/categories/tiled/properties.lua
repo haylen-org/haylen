@@ -1,8 +1,6 @@
 -- Custom properties of every type read from the map, its layers, its objects and its tiles, shown as a tree with the property type names Tiled stores next to them.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -34,7 +32,7 @@ local function items(prefix, properties, types)
 end
 
 function Properties:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/properties.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/properties.tmj')
     local map = self.map
     local owners = {
         {id = 'map', text = 'Map of class ' .. map.type, properties = map.properties, types = map.propertyTypes},

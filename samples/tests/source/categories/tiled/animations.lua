@@ -1,8 +1,6 @@
 -- Tile animations of the tileset playing on tile layers and on tile objects as `map:update` advances the map time, with the frames of the tile under the pointer.
-local assets = require('haylen.assets')
 local haylen = require('haylen')
 local input = require('haylen.input')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -10,7 +8,7 @@ local MapTest = require('categories.tiled.map-test')
 local Animations = haylen.class('Animations', MapTest)
 
 function Animations:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/animations.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/animations.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Water, lava and torches animate on tile layers, and the coins and slimes are animated tile objects. Point at a tile to read its frames. R or the X button sets the speed back to 1.',

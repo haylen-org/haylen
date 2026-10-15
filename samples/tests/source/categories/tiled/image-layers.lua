@@ -1,8 +1,6 @@
 -- Image layers that repeat across the view: a still sky, clouds that repeat on both axes and two ranges of hills, each scrolling at the parallax factor of its layer.
-local assets = require('haylen.assets')
 local haylen = require('haylen')
 local input = require('haylen.input')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -13,7 +11,7 @@ local ImageLayers = haylen.class('ImageLayers', MapTest)
 local kScrollSpeed = 160
 
 function ImageLayers:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/parallax.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/parallax.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'The camera travels along the map. Drag it, or use the arrows, the directional pad or the left stick, to see the far layers move less than the near ones. R or the X button goes back to the start.',

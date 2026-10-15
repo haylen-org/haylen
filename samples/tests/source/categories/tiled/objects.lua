@@ -1,8 +1,6 @@
 -- Every object shape of Tiled and objects made from templates, outlined from `map:objects` and picked under the pointer, while `map:draw` draws the tile and text objects itself.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -13,7 +11,7 @@ local Objects = haylen.class('Objects', MapTest)
 local kColors = {rectangle = '#FF4FC3F7', ellipse = '#FF81C784', capsule = '#FFBA68C8', point = '#FFFFD54F', polygon = '#FFFF8A65', polyline = '#FFE57373', text = '#FFB0BEC5', tile = '#FFFFFFFF'}
 
 function Objects:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/objects.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/objects.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Point at an object to read it. The lamps and the signs come from templates, and the second lamp and the second sign override what their template says.',

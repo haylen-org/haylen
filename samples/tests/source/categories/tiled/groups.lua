@@ -1,9 +1,7 @@
 -- Nested group layers: the town group moves and tints its walls, its upstairs group adds its own offset, opacity, tint and a parallax that lifts the roofs, and a background group lags behind the camera.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -14,7 +12,7 @@ local Groups = haylen.class('Groups', MapTest)
 local kSway = 160
 
 function Groups:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/groups.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/groups.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'The camera sways so the parallax of the groups shows: the background lags and the roofs lead. Drag, or use the arrows, the directional pad or the left stick, to move it yourself, and switch the groups on and off. R or the X button centers the camera.',

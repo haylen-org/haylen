@@ -8,6 +8,8 @@ Save maps in the Tiled JSON format with the `.tmj` extension, and keep external 
 
 Every path inside a map is resolved relative to the file that contains it, so a map, its tilesets, its templates and its images can live in any folders under the package `content/` directory, as long as the relative paths Tiled writes stay inside it.
 
+Tiles painted in high definition keep a grid of the size the game plays at. The tileset takes the size of the painted tiles and sets its tile render size to the map grid size in Tiled (`"tilerendersize": "grid"`), so every tile draws at the size of a cell, with its offset and collision shapes scaled the same way, and the map loads with the `linear` filter. The linear filter reads the pixels around each point, so a tileset image that keeps a gutter of the edge pixels of each tile around it, given to Tiled as its margin and spacing, never shows a neighbouring tile along the edges. The tiles of the Tiled tests of the test project are painted at four times their grid this way.
+
 ## Supported features
 
 - **Orientations**: Orthogonal, isometric, staggered and hexagonal maps (with `staggeraxis`, `staggerindex` and `hexsidelength`), and oblique maps with the `skewx` and `skewy` of Tiled 1.12. Cells, objects, bounds and collision all follow the skew. A skew that folds the grid onto a line is rejected.

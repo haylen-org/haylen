@@ -27,6 +27,11 @@ function BuiltMap.shoreTiles()
     return tiles
 end
 
+-- The tilesets of the painted tiles, which hold four pixels for every pixel of the grid in gutters of their edge pixels and draw at the size of the grid.
+function BuiltMap.painted(name, wangSets)
+    return {name = name, image = 'tiled/tiles/' .. name .. '.png', filter = 'linear', tileWidth = kTile * 4, tileHeight = kTile * 4, margin = 2, spacing = 4, renderGridSize = true, wangSets = wangSets}
+end
+
 function BuiltMap:enter()
     self.seed = 5
     self.erasing = false
@@ -46,10 +51,10 @@ end
 
 function BuiltMap:build()
     self.map = tiled.newMapRenderer(tiled.newMap({width = kColumns, height = kRows, tileWidth = kTile, tileHeight = kTile}))
-    self.terrain = self.map:addTileset({name = 'terrain', image = 'tiled/tiles/terrain.png', tileWidth = kTile, tileHeight = kTile})
-    self.map:addTileset({name = 'shore', image = 'tiled/tiles/shore.png', tileWidth = kTile, tileHeight = kTile, wangSets = {
+    self.terrain = self.map:addTileset(BuiltMap.painted('terrain'))
+    self.map:addTileset(BuiltMap.painted('shore', {
         {name = 'water', type = 'corner', colors = {'water'}, tiles = BuiltMap.shoreTiles()},
-    }})
+    }))
     self.map:addLayer({name = kGround})
     self.map:addLayer({name = kWater})
     self.grid = spatial2d.newCellGrid(kColumns, kRows)

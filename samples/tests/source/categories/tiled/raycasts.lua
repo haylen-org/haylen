@@ -1,5 +1,4 @@
 -- Ray casts against a map without a physics world: `map:raycastTiles` walks the cells of the walls layer and `map:raycastObjects` hits the shapes of the obstacles layer, and the nearer hit stops the ray.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -17,7 +16,7 @@ local kFanRays = 48
 local kLength = 1200
 
 function Raycasts:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/raycasts.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/raycasts.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'The ray aims at the pointer, and tapping or clicking moves the eye. Tile hits show the cell and its tile, object hits the name of the object. R or the X button puts the eye back.',

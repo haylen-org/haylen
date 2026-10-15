@@ -1,6 +1,8 @@
 -- The base of the Tiled tests: a view of the map that the play area fits, zoomed further by the zoom scale of the test, a pointer for every device, the actions every test reads, and a panel line of details.
+local assets = require('haylen.assets')
 local haylen = require('haylen')
 local profiler = require('haylen.debug')
+local tiled = require('haylen.tiled')
 
 local Pointer = require('harness.pointer')
 local Test = require('harness.test')
@@ -21,6 +23,11 @@ function MapTest:init(entry)
     self.pointer = Pointer()
     self.zoomScale = 1
     self.timings = {}
+end
+
+-- Loads a map of the Tiled tests with the `linear` filter, because their tiles are painted in high definition and drawn at the size of the grid.
+function MapTest.loadMap(path)
+    return tiled.newMapRenderer(assets.load(path, nil, {filter = 'linear'}))
 end
 
 -- Mounts the frame of the harness around the map and loads the actions of every Tiled test and the pointer.

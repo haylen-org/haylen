@@ -1,11 +1,9 @@
 -- Digging and building the walls of a map with `map:setTile` while balls bounce around: `map:buildCollision` merges the solid tiles that touch into chain loops, one around each region and one around each hole, and every change traces the loops of the regions it touches again on the same body.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -33,7 +31,7 @@ function Digging:enter()
 end
 
 function Digging:build()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/collision.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/collision.tmj')
     self.wallGid = self.map:tile(kWallLayer, 0, 0)
     self.world = physics2d.newWorld({gravity = {0, 0}})
     self.bodies = self.map:buildCollision(self.world)

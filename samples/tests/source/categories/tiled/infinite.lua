@@ -1,5 +1,4 @@
 -- An infinite map whose tile layers are stored as chunks, some at negative cells, drawn with culling as the camera pans over it.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -12,7 +11,7 @@ local Pan = require('categories.tiled.pan')
 local Infinite = haylen.class('Infinite', MapTest)
 
 function Infinite:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/infinite.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/infinite.tmj')
     self.chunks = self.map:layer('ground').chunks
     self:frame{
         hint = 'Drag the map, or use WASD, the arrows, the directional pad or the left stick, and the mouse wheel zooms. The cell under the pointer can be negative, and R or the X button comes back to the origin.',

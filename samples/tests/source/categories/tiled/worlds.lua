@@ -4,7 +4,6 @@ local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local m = require('haylen.math')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -18,7 +17,7 @@ function Worlds:enter()
     self.placed = {}
     local area
     for _, entry in ipairs(assets.load('tiled/maps/world/overworld.world')) do
-        local map = tiled.newMapRenderer(assets.load(entry.path))
+        local map = MapTest.loadMap(entry.path)
         self.placed[#self.placed + 1] = {map = map, path = entry.path, bounds = m.rect(entry.x, entry.y, entry.width, entry.height), title = map.properties.title}
         area = area and area:merged(self.placed[#self.placed].bounds) or m.rect(entry.x, entry.y, entry.width, entry.height)
     end

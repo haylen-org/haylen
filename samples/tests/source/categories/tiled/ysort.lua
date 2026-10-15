@@ -3,7 +3,6 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -14,8 +13,8 @@ local kSpeed = 220
 local kArrive = 6
 
 function YSort:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/ysort.tmj'))
-    self.hero = graphics2d.newSprite(assets.texture('tiled/sprites/hero.png'), {pivotY = 1, layer = 1})
+    self.map = MapTest.loadMap('tiled/maps/ysort.tmj')
+    self.hero = graphics2d.newSprite(assets.texture('tiled/sprites/hero.png', {filter = 'linear'}), {pivotY = 1, width = 32, height = 48, layer = 1})
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Walk with WASD, the arrows, the directional pad, the left stick or the touch stick, or tap or click where the hero should go. Switch y sorting off to see the hero drawn over everything.',

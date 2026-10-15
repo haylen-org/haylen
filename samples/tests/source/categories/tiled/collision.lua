@@ -1,11 +1,9 @@
 -- Physics collision built by `map:buildCollision` from the collision shapes of tiles and from collision objects, with water tiles and a pit as sensors and fences in a category of their own.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -16,7 +14,7 @@ local kFenceCategory = 2
 local kMaxBalls = 60
 
 function Collision:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/collision.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/collision.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Tap or click to throw a ball from there. Blue balls pass the fences, whose layer puts them in their own category. Balls in the water or the pit turn gold while they overlap the sensor. R or the X button clears the balls.',

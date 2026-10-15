@@ -1,15 +1,15 @@
 {
  "columns": 3,
  "image": "../tiles/props.png",
- "imageheight": 64,
- "imagewidth": 96,
- "margin": 0,
+ "imageheight": 260,
+ "imagewidth": 396,
+ "margin": 2,
  "name": "props",
- "spacing": 0,
+ "spacing": 4,
  "tilecount": 3,
  "tiledversion": "1.12.0",
- "tileheight": 64,
- "tilewidth": 32,
+ "tileheight": 256,
+ "tilewidth": 128,
  "type": "tileset",
  "version": "1.12",
  "tiles": [
@@ -26,10 +26,10 @@
       "type": "",
       "rotation": 0,
       "visible": true,
-      "x": 11,
-      "y": 50,
-      "width": 10,
-      "height": 12
+      "x": 44,
+      "y": 200,
+      "width": 40,
+      "height": 48
      }
     ],
     "opacity": 1,
@@ -52,10 +52,10 @@
       "type": "",
       "rotation": 0,
       "visible": true,
-      "x": 12,
-      "y": 52,
-      "width": 8,
-      "height": 10
+      "x": 48,
+      "y": 208,
+      "width": 32,
+      "height": 40
      }
     ],
     "opacity": 1,
@@ -90,10 +90,10 @@
       "type": "",
       "rotation": 0,
       "visible": true,
-      "x": 13,
-      "y": 56,
-      "width": 6,
-      "height": 6
+      "x": 52,
+      "y": 224,
+      "width": 24,
+      "height": 24
      }
     ],
     "opacity": 1,

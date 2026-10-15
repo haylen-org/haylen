@@ -1,9 +1,7 @@
 -- Entities made by `map:spawn` from the objects of a hidden layer, one factory per object class, placed with the offsets of their groups and drawn with the frames of their tiles.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -13,7 +11,7 @@ local Spawning = haylen.class('Spawning', MapTest)
 local kTouchDistance = 28
 
 function Spawning:enter()
-    self.map = tiled.newMapRenderer(assets.load('tiled/maps/spawning.tmj'))
+    self.map = MapTest.loadMap('tiled/maps/spawning.tmj')
     self.texture = self.map:tilesets()[1].texture
     local bounds = self.map.pixelBounds
     self:frame{

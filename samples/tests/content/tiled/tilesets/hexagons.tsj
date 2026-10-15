@@ -1,15 +1,16 @@
 {
  "columns": 4,
  "image": "../tiles/hexagons.png",
- "imageheight": 64,
- "imagewidth": 224,
- "margin": 0,
+ "imageheight": 260,
+ "imagewidth": 912,
+ "margin": 2,
  "name": "hexagons",
- "spacing": 0,
+ "spacing": 4,
  "tilecount": 4,
  "tiledversion": "1.12.0",
- "tileheight": 64,
- "tilewidth": 56,
+ "tileheight": 256,
+ "tilewidth": 224,
  "type": "tileset",
- "version": "1.12"
+ "version": "1.12",
+ "tilerendersize": "grid"
 }

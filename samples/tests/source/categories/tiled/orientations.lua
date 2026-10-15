@@ -1,9 +1,7 @@
 -- The five map orientations of Tiled drawn by the same `map:draw`, with the cell under the pointer found by `map:worldToCell` and outlined from `map:cellToWorld`.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
-local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
 
 local MapTest = require('categories.tiled.map-test')
@@ -22,7 +20,7 @@ local kMargin = 48
 function Orientations:enter()
     self.maps = {}
     for _, entry in ipairs(kMaps) do
-        self.maps[entry.id] = tiled.newMapRenderer(assets.load('tiled/maps/' .. entry.id .. '.tmj'))
+        self.maps[entry.id] = MapTest.loadMap('tiled/maps/' .. entry.id .. '.tmj')
     end
     self:frame{
         hint = 'Move the pointer over the map to see the cell under it. Q and E or the shoulder buttons switch the map.',

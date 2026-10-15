@@ -119,17 +119,18 @@ class MapBuilder:
         save(self.document, path)
 
 
-def tileset(name: str, image: str, image_width: int, image_height: int, tile_width: int, tile_height: int, tiles: list[dict] | None = None, **extra) -> dict:
-    columns = image_width // tile_width
+def tileset(name: str, image: str, image_width: int, image_height: int, tile_width: int, tile_height: int, tiles: list[dict] | None = None, margin: int = 0, spacing: int = 0, **extra) -> dict:
+    columns = (image_width - 2 * margin + spacing) // (tile_width + spacing)
+    rows = (image_height - 2 * margin + spacing) // (tile_height + spacing)
     document = {
         "columns": columns,
         "image": image,
         "imageheight": image_height,
         "imagewidth": image_width,
-        "margin": 0,
+        "margin": margin,
         "name": name,
-        "spacing": 0,
-        "tilecount": columns * (image_height // tile_height),
+        "spacing": spacing,
+        "tilecount": columns * rows,
         "tiledversion": TILED_VERSION,
         "tileheight": tile_height,
         "tilewidth": tile_width,
