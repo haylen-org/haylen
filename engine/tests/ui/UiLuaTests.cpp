@@ -463,7 +463,7 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
 TEST(UiLuaThemeTest, FollowsTheContrastAndTransparencyOfTheSystem) {
     test::EngineFixture fixture;
     fixture.runLua("ui = require('haylen.ui')");
-    EXPECT_EQ(fixture.lua("return ui.themeColor('text'):toHex() .. ' ' .. ui.themeColor('tooltip'):toHex()"), "#FFE8EAF2 #F20F111A");
+    EXPECT_EQ(fixture.lua("return ui.themeColor('text'):toHex() .. ' ' .. ui.themeColor('tooltip'):toHex()"), "#FFE8EAF2 #FF0F111A");
 
     // Higher contrast draws the high contrast theme the chosen theme names, which stays the chosen one, and reduced transparency draws the surfaces opaque.
     fixture.host().setAccessibilitySettings({.highContrast = true});
@@ -471,6 +471,7 @@ TEST(UiLuaThemeTest, FollowsTheContrastAndTransparencyOfTheSystem) {
     EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. ui.themeColor('text'):toHex() .. ' ' .. ui.themeColor('focus'):toHex()"), "dark #FFFFFFFF #FFFFD60A");
     fixture.runLua("ui.setTheme('light')");
     EXPECT_EQ(fixture.lua("return ui.themeColor('text'):toHex()"), "#FF000000");
+    fixture.runLua("ui.setTheme(ui.addTheme({name = 'glass', colors = {tooltip = '#C01B1E2B'}}, 'light'))");
     fixture.host().setAccessibilitySettings({.reducedTransparency = true});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return ui.themeColor('text'):toHex() .. ' ' .. ui.themeColor('tooltip'):toHex() .. ' ' .. ui.themeColor('hover'):toHex()"), "#FF1B1E2B #FF1B1E2B #0F000000");

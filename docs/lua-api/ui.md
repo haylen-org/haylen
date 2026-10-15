@@ -3124,7 +3124,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `window` | `#FF1B1E2B` | `#FFF4F5F9` | Background of ImGui windows and the outline of progress text. |
 | `panel` | `#FF232739` | `#FFFFFFFF` | Fill of panels and dialogs. |
 | `raised` | `#FF2C3147` | `#FFFFFFFF` | Fill of cards, buttons, fields and chips. |
-| `tooltip` | `#F20F111A` | `#F21B1E2B` | Background of tooltips and toasts. |
+| `tooltip` | `#FF0F111A` | `#FF1B1E2B` | Background of tooltips and toasts. |
 | `overlay` | `#A0000000` | `#66000000` | The backdrop behind dialogs and the base of touch controls. |
 | `shadow` | `#66000000` | `#291B1E2B` | The soft shadow under dialogs, windows, toasts, tooltips and the popups of combos, menus, popovers and color fields. |
 | `hover` | `#14FFFFFF` | `#0F000000` | Layer over hovered controls and rows. |

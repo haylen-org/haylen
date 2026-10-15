@@ -63,6 +63,15 @@ TEST(ThemeTest, ShipsDarkAndLightThemes) {
     EXPECT_EQ(light.getImageFilter(), graphics::Texture::Filter::Nearest);
 }
 
+// Toasts and tooltips carry text over whatever lies under them, so nothing under them shows through their surfaces.
+TEST(ThemeTest, PaintsTheSurfacesUnderTextOpaque) {
+    for (const Theme& theme : {Theme::dark(), Theme::light(), Theme::darkHighContrast(), Theme::lightHighContrast()}) {
+        for (const Theme::Color role : {Theme::Color::Window, Theme::Color::Panel, Theme::Color::Raised, Theme::Color::Tooltip}) {
+            EXPECT_EQ(theme.getColor(role).a, 1.0F) << theme.getName() << " " << static_cast<int>(role);
+        }
+    }
+}
+
 TEST(ThemeTest, ReadsThemesOnTopOfABase) {
     test::EngineFixture fixture;
     Loader loader{.texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 32, math::Color::white())), .paths = {}, .options = {}};
