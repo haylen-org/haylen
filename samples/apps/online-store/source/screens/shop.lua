@@ -53,8 +53,7 @@ end
 
 -- The card of the campaign of the season, in the accent color with the illustration of the app.
 function Shop:campaign()
-    local accent = ui.themeColor('accent'):toHex()
-    return ui.card{padding = {20, 12, 20, 26}, style = {colors = {raised = accent, border = accent}},
+    return ui.card{padding = {20, 12, 20, 26}, style = {colors = {raised = 'accent', border = 'accent'}},
         ui.row{gap = 8,
             ui.column{gap = 6, grow = 1,
                 ui.label{text = 'New season, fresh picks', font = 'heading', color = 'onAccent'},

@@ -11,6 +11,9 @@ local Widgets = require('widgets')
 
 local Chat = haylen.class('Chat', Page)
 
+-- The bubbles of the person take the accent color of the theme.
+Chat.bubbleStyle = {colors = {raised = 'accent', border = 'accent'}}
+
 function Chat:enter()
     local conversation
     for _, other in ipairs(Chats.list) do
@@ -41,7 +44,7 @@ function Chat:enter()
                     }, interactive = false},
                     outgoing = {template = ui.row{gap = 0,
                         ui.spacer{grow = 1},
-                        ui.card{maxWidth = 560, padding = {10, 16}, gap = 2, style = self:bubbleStyle(), ui.label{part = 'text', bind = {text = 'text'}, color = 'onAccent'}, ui.label{part = 'time', bind = {text = 'time'}, font = 'caption', color = 'onAccent', align = 'end'}},
+                        ui.card{maxWidth = 560, padding = {10, 16}, gap = 2, style = Chat.bubbleStyle, ui.label{part = 'text', bind = {text = 'text'}, color = 'onAccent'}, ui.label{part = 'time', bind = {text = 'time'}, font = 'caption', color = 'onAccent', align = 'end'}},
                     }, interactive = false},
                 },
             },
@@ -65,12 +68,6 @@ function Chat:enter()
     end, {owner = self})
     self.messages:setItems(conversation.messages)
     Chats.read(conversation)
-end
-
--- The bubbles of the person take the accent color.
-function Chat:bubbleStyle()
-    local accent = ui.themeColor('accent'):toHex()
-    return {colors = {raised = accent, border = accent}}
 end
 
 function Chat:send(text)

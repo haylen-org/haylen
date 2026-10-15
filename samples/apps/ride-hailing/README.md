@@ -57,7 +57,7 @@ The art follows the style guide of Tiny Island, the standard of the repository: 
 | Part | Rule |
 | --- | --- |
 | Rides | `content/rides/`: six SVG illustrations of 240 by 140 units on a transparent background, a vehicle of each kind seen from the side with a soft shadow. |
-| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, which the buttons, `ui.icon` and the pins of the map tint. |
+| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, which the buttons, `ui.icon`, the items of lists and menus and the pins of the map tint. |
 | Logo | `content/images/logo.svg`: a lime pin at the end of a dashed road on a night tile with the navy outline. |
 | Illustration | `content/images/hero.png`: the one painted image of the app, a teal car with its headlights on a road toward a lime pin under the moon, generated with the `codex` command line and its `$imagegen` skill in 1024 by 768 pixels with a transparent background and scaled to 768 by 576. It shows on the invitation of the account tab. |
 | Map | Drawn with primitives: night blocks and buildings, streets and avenues, a river with bridges, parks with trees, cars seen from above with their headlights and lime routes. |

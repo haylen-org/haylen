@@ -75,11 +75,11 @@ function Preview:enter()
 end
 
 function Preview:paymentItems()
-    local items = {{id = 'wallet', text = 'Wallet, ' .. Rides.money(Rides.wallet.balance)}}
+    local items = {{id = 'wallet', text = 'Wallet, ' .. Rides.money(Rides.wallet.balance), image = Shell.icon('wallet')}}
     for _, card in ipairs(Rides.wallet.cards) do
-        items[#items + 1] = {id = card.id, text = card.text}
+        items[#items + 1] = {id = card.id, text = card.text, image = Shell.icon(card.icon)}
     end
-    items[#items + 1] = {id = 'cash', text = 'Cash'}
+    items[#items + 1] = {id = 'cash', text = 'Cash', image = Shell.icon('cash')}
     return items
 end
 

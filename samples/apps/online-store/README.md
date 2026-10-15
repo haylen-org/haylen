@@ -61,7 +61,7 @@ The art follows the style guide of Tiny Island, the standard of the repository: 
 | --- | --- |
 | Products | `content/products/`: sixteen SVG illustrations of 200 by 200 units on a transparent background, one product drawn in white with a navy outline, navy shading at 16 percent and a soft shadow, so the `tint` of the picture paints it in each of its colors. |
 | Backdrops | `content/products/backdrops/`: eight pastel squares with two soft white circles behind the products. |
-| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, which the buttons and `ui.icon` tint. |
+| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, which the buttons, `ui.icon` and the items of lists and menus tint. |
 | Logo | `content/images/logo.svg`: a white shopping bag with a navy check on a coral tile with the navy outline. |
 | Illustration | `content/images/hero.png`: the one painted image of the app, shopping bags with a sneaker, a watch, a striped shirt and a gift, generated with the `codex` command line and its `$imagegen` skill in 1024 by 768 pixels with a transparent background and scaled to 768 by 576. It shows on the campaign, the confirmation and the empty states. |
 | Palette | Warm white `#FBF8F4` and white surfaces, navy text `#1F2A44` and `#6E7488`, coral `#F2545B` as the accent, and the dark theme on `#14151C`. The colors of the products are coral, navy, sage, sand, sky, plum, charcoal, mustard and white. |

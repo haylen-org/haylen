@@ -110,7 +110,7 @@ function Shell.tabButton(tab, current, placement)
         align = placement == 'bar' and 'center' or 'stretch',
         checked = selected and placement == 'rail',
         iconColor = selected and 'accentText' or 'textMuted',
-        style = {colors = {text = ui.themeColor(selected and 'accentText' or 'textMuted'):toHex()}},
+        style = {colors = {text = selected and 'accentText' or 'textMuted'}},
         accessibilityLabel = tab.text,
         onClick = function()
             if not selected then

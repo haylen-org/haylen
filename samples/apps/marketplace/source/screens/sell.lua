@@ -33,7 +33,7 @@ function Sell:enter()
         ui.row{padding = {14, 20, 8, 20}, ui.label{text = 'Sell an item', font = 'title'}},
         ui.scroll{grow = 1, height = 0,
             ui.column{maxWidth = 760, align = 'center', gap = 14, padding = {4, 20, 28, 20},
-                ui.card{padding = {12, 12, 12, 22}, style = {colors = {raised = ui.themeColor('accentBackground'):toHex()}},
+                ui.card{padding = {12, 12, 12, 22}, style = {colors = {raised = 'accentBackground'}},
                     ui.row{gap = 8,
                         ui.column{gap = 4, grow = 1,
                             ui.label{text = 'Give your things a second life', font = 'heading'},

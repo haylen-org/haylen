@@ -26,7 +26,6 @@ function Profile:enter()
                 ui.toggle{id = 'dark', text = 'Dark theme', checked = ui.theme() == 'marketDark', onChange = function(event)
                     preferences.set('dark', event.checked)
                     ui.setTheme(event.checked and 'marketDark' or 'marketLight')
-                    Shell.showTab('profile')
                 end},
             },
             ui.sectionTitle{text = string.format('Your listings, %d', #me.listings)},

@@ -66,8 +66,7 @@ end
 
 -- The card of the week with the illustration of the app.
 function Home:banner()
-    local accent = ui.themeColor('accent'):toHex()
-    return ui.card{padding = {18, 12, 18, 24}, style = {colors = {raised = accent, border = accent}},
+    return ui.card{padding = {18, 12, 18, 24}, style = {colors = {raised = 'accent', border = 'accent'}},
         ui.row{gap = 8,
             ui.column{gap = 6, grow = 1,
                 ui.label{text = 'Fresh sounds every morning', font = 'heading', color = 'onAccent'},

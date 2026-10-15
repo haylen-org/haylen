@@ -15,15 +15,14 @@ function Wallet:enter()
     self.amount = 20
     local cards = {}
     for _, card in ipairs(Rides.wallet.cards) do
-        cards[#cards + 1] = {id = card.id, text = card.text, caption = card.caption}
+        cards[#cards + 1] = {id = card.id, text = card.text, caption = card.caption, image = Shell.icon(card.icon)}
     end
-    cards[#cards + 1] = {id = 'cash', text = 'Cash', caption = 'Pay the driver at the end of the ride'}
-    local accent = ui.themeColor('accent'):toHex()
+    cards[#cards + 1] = {id = 'cash', text = 'Cash', caption = 'Pay the driver at the end of the ride', image = Shell.icon('cash')}
     self:mountGui(Shell.frame('wallet', ui.column{grow = 1, gap = 0,
         ui.row{padding = {14, 20, 8, 20}, ui.label{text = 'Wallet', font = 'title'}},
         ui.scroll{grow = 1, height = 0,
             ui.column{maxWidth = 860, align = 'center', gap = 14, padding = {4, 20, 28, 20},
-                ui.card{gap = 6, padding = {22, 24}, style = {colors = {raised = accent, border = accent}},
+                ui.card{gap = 6, padding = {22, 24}, style = {colors = {raised = 'accent', border = 'accent'}},
                     ui.label{text = 'Wallet balance', color = 'onAccent'},
                     ui.label{id = 'balance', text = '', font = 'title', color = 'onAccent'},
                     ui.button{id = 'addFunds', text = 'Add funds', icon = Shell.icon('plus'), align = 'start', margin = {8, 0, 0, 0}, style = {colors = {raised = '#FF0B1020', border = '#FF0B1020', text = '#FFEAF0FF'}}, iconColor = 'accent', onClick = function(event)
@@ -62,7 +61,7 @@ function Wallet:showWallet()
     self.gui:set('balance', {text = Rides.money(Rides.wallet.balance)})
     local movements = {}
     for index, move in ipairs(Rides.wallet.transactions) do
-        movements[index] = {id = move.id, text = move.title, caption = move.caption .. ' · ' .. move.amount}
+        movements[index] = {id = move.id, text = move.title, caption = move.caption .. ' · ' .. move.amount, image = Shell.icon(move.icon)}
     end
     self.gui:set('movements', {items = movements})
 end

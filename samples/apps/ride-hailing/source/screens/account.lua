@@ -19,7 +19,7 @@ function Account:enter()
                         ui.column{gap = 2, grow = 1, ui.label{text = 'Rosa Almeida', font = 'heading'}, ui.label{text = '4.96 stars as a rider · 214 trips', color = 'textMuted'}},
                     },
                 },
-                ui.card{padding = {12, 12, 12, 22}, style = {colors = {raised = ui.themeColor('accentBackground'):toHex()}},
+                ui.card{padding = {12, 12, 12, 22}, style = {colors = {raised = 'accentBackground'}},
                     ui.row{gap = 8,
                         ui.column{gap = 4, grow = 1,
                             ui.label{text = 'Invite a friend', font = 'heading'},
@@ -36,14 +36,13 @@ function Account:enter()
                     ui.settingsRow{label = 'Day theme', caption = 'A light map and screens for the daytime.', ui.toggle{id = 'day', checked = ui.theme() == 'rideDay', onChange = function(event)
                         preferences.set('day', event.checked)
                         ui.setTheme(event.checked and 'rideDay' or 'rideNight')
-                        Shell.showTab('account')
                     end}},
                     ui.sectionTitle{text = 'Safety'},
                     ui.settingsRow{label = 'Share every trip', caption = 'Trusted contacts follow your rides on a map.', ui.toggle{id = 'share', checked = false}},
                     ui.settingsRow{label = 'Quiet rides', caption = 'Ask drivers for a ride without small talk.', ui.toggle{id = 'quiet', checked = true}},
                 },
                 ui.sectionTitle{text = 'Trusted contacts'},
-                ui.card{padding = 6, ui.list{id = 'contacts', items = {{id = 'tom', text = 'Tomas Almeida', caption = 'Brother'}, {id = 'ines', text = 'Ines Kato', caption = 'Friend'}}}},
+                ui.card{padding = 6, ui.list{id = 'contacts', items = {{id = 'tom', text = 'Tomas Almeida', caption = 'Brother', image = Shell.icon('user')}, {id = 'ines', text = 'Ines Kato', caption = 'Friend', image = Shell.icon('user')}}}},
                 ui.button{id = 'signOut', text = 'Sign out', icon = Shell.icon('close'), variant = 'destructive', align = 'start', onClick = function()
                     Shell.notify('This sample keeps you signed in.', 'information')
                 end},

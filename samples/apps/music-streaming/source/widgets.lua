@@ -8,11 +8,11 @@ local Shell = require('shell')
 local Widgets = {}
 
 Widgets.trackMenu = {
-    {id = 'next', text = 'Play next'},
-    {id = 'queue', text = 'Add to the queue'},
-    {id = 'playlist', text = 'Add to a playlist'},
-    {id = 'artist', text = 'Go to the artist'},
-    {id = 'album', text = 'Go to the album'},
+    {id = 'next', text = 'Play next', image = Shell.icon('next')},
+    {id = 'queue', text = 'Add to the queue', image = Shell.icon('queue')},
+    {id = 'playlist', text = 'Add to a playlist', image = Shell.icon('plus')},
+    {id = 'artist', text = 'Go to the artist', image = Shell.icon('music')},
+    {id = 'album', text = 'Go to the album', image = Shell.icon('library')},
 }
 
 -- A row of a song with its cover or its number, its name, its artist and its length, across `span` lanes of a grid. A right click, a long press or the menu button open the menu of the song.

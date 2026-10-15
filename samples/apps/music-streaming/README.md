@@ -59,7 +59,7 @@ The art follows the style guide of Tiny Island, the standard of the repository: 
 | Part | Rule |
 | --- | --- |
 | Covers | Made by `source/covers.lua`: a diagonal gradient of the two colors of a genre with a sun over stripes, rings, bands, dots, waves or overlapping circles in a third color, outlined in navy, turned by a quarter of a turn, with a soft white sheen at the top. |
-| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, and filled play, pause, next and previous, which the buttons and `ui.icon` tint. |
+| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, and filled play, pause, next and previous, which the buttons, `ui.icon` and the items of menus tint. |
 | Logo | `content/images/logo.svg`: white headphones with yellow ear cups on a violet tile with the navy outline. |
 | Illustration | `content/images/hero.png`: the one painted image of the app, violet headphones on a vinyl record with a cassette and music notes, generated with the `codex` command line and its `$imagegen` skill in 1024 by 768 pixels with a transparent background and scaled to 768 by 576. It shows on the card of the week. |
 | Sound | Every song is made by the synthesizer of the app, so the sample holds no recordings. |

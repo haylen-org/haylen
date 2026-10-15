@@ -5,15 +5,15 @@ Account.name = 'Rosa Almeida'
 Account.email = 'rosa@example.com'
 
 Account.addresses = {
-    {id = 'home', text = 'Home', line = '12 Harbor Lane, apartment 4', corner = {3, 13}},
-    {id = 'work', text = 'Work', line = '480 Market Square, floor 9', corner = {11, 4}},
-    {id = 'studio', text = 'Studio', line = '77 Garden Row', corner = {6, 6}},
+    {id = 'home', text = 'Home', icon = 'home', line = '12 Harbor Lane, apartment 4', corner = {3, 13}},
+    {id = 'work', text = 'Work', icon = 'briefcase', line = '480 Market Square, floor 9', corner = {11, 4}},
+    {id = 'studio', text = 'Studio', icon = 'pin', line = '77 Garden Row', corner = {6, 6}},
 }
 
 Account.payments = {
-    {id = 'card', text = 'Card ending in 4821'},
-    {id = 'wallet', text = 'Phone wallet'},
-    {id = 'cash', text = 'Cash on delivery'},
+    {id = 'card', text = 'Card ending in 4821', icon = 'card'},
+    {id = 'wallet', text = 'Phone wallet', icon = 'phone'},
+    {id = 'cash', text = 'Cash on delivery', icon = 'cash'},
 }
 
 Account.address = 'home'

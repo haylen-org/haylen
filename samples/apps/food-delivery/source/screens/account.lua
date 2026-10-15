@@ -13,10 +13,10 @@ local AccountPage = haylen.class('AccountPage', Page)
 function AccountPage:enter()
     local addresses, payments = {}, {}
     for _, address in ipairs(Account.addresses) do
-        addresses[#addresses + 1] = {id = address.id, text = address.text, caption = address.line}
+        addresses[#addresses + 1] = {id = address.id, text = address.text, caption = address.line, image = Shell.icon(address.icon)}
     end
     for _, payment in ipairs(Account.payments) do
-        payments[#payments + 1] = {id = payment.id, text = payment.text}
+        payments[#payments + 1] = {id = payment.id, text = payment.text, image = Shell.icon(payment.icon)}
     end
     self:mountGui(Shell.frame('account', ui.column{grow = 1, gap = 0,
         ui.row{gap = 12, padding = {14, 16, 8, 20}, ui.label{text = 'Account', font = 'title', grow = 1}, Widgets.cartButton(self)},
@@ -36,7 +36,6 @@ function AccountPage:enter()
                     ui.settingsRow{label = 'Dark theme', caption = 'Warm dark colors for the evening.', ui.toggle{id = 'dark', checked = ui.theme() == 'foodDark', onChange = function(event)
                         preferences.set('dark', event.checked)
                         ui.setTheme(event.checked and 'foodDark' or 'foodLight')
-                        Shell.showTab('account')
                     end}},
                     ui.sectionTitle{text = 'Notices'},
                     ui.settingsRow{label = 'Order updates', caption = 'When the kitchen cooks and the courier rides.', ui.toggle{id = 'updates', checked = true}},

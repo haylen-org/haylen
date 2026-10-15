@@ -20,7 +20,7 @@ function Home:enter()
     local recent = {}
     for _, id in ipairs(Home.recent) do
         local place = Places.find(id)
-        recent[#recent + 1] = {id = id, text = place.name, caption = place.line}
+        recent[#recent + 1] = {id = id, text = place.name, caption = place.line, image = Shell.icon('clock')}
     end
     local shortcuts = {gap = 10}
     for _, saved in ipairs(Places.saved) do
@@ -30,7 +30,7 @@ function Home:enter()
     end
     self:mountGui(Shell.frame('home', ui.column{id = 'content', grow = 1, gap = 0, padding = 14, justify = 'end',
         ui.card{id = 'sheet', gap = 12, padding = {18, 18, 18, 18},
-            ui.card{id = 'current', visible = false, padding = {10, 14}, style = {colors = {raised = ui.themeColor('accentBackground'):toHex()}},
+            ui.card{id = 'current', visible = false, padding = {10, 14}, style = {colors = {raised = 'accentBackground'}},
                 ui.row{gap = 12,
                     ui.icon{image = Shell.icon('car'), size = 32, color = 'accentText'},
                     ui.column{gap = 0, grow = 1, ui.label{id = 'currentTitle', text = '', font = 'button', wrap = false}, ui.label{id = 'currentCaption', text = '', font = 'caption', color = 'textMuted', wrap = false}},

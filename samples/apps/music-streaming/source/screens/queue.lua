@@ -28,7 +28,7 @@ function Queue:enter()
             ui.label{id = 'nextLabel', text = 'Next up', font = 'caption', color = 'textMuted', margin = {8, 8, 0, 8}},
         }),
         Shell.centered(900, ui.collection{id = 'upcoming', gap = 2, padding = {0, 12, 24, 12}, reorderable = true, rememberFocus = true,
-            types = {entry = {template = ui.contextMenu{part = 'menu', items = {{id = 'remove', text = 'Remove from the queue'}, {id = 'next', text = 'Play now'}},
+            types = {entry = {template = ui.contextMenu{part = 'menu', items = {{id = 'remove', text = 'Remove from the queue', image = Shell.icon('trash')}, {id = 'next', text = 'Play now', image = Shell.icon('play')}},
                 ui.row{gap = 14, padding = {6, 8},
                     ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 52, height = 52, radius = 8},
                     ui.column{gap = 0, grow = 1,

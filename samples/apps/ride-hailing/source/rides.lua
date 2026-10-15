@@ -39,8 +39,8 @@ Rides.drivers = {
 }
 
 Rides.wallet = {balance = 32.5, cards = {
-    {id = 'card', text = 'Card ending in 4821', caption = 'Expires 08 of 2029'},
-    {id = 'business', text = 'Business card ending in 1190', caption = 'Expires 11 of 2027'},
+    {id = 'card', text = 'Card ending in 4821', caption = 'Expires 08 of 2029', icon = 'card'},
+    {id = 'business', text = 'Business card ending in 1190', caption = 'Expires 11 of 2027', icon = 'card'},
 }, payment = 'wallet', transactions = {}}
 
 Rides.months = {'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'}
@@ -103,7 +103,7 @@ function Rides:start()
     end
     for index = 1, 12 do
         local trip = self.past[index]
-        Rides.wallet.transactions[index] = {id = 'move-' .. index, type = 'move', title = 'Ride to ' .. trip.title, caption = trip.caption, amount = trip.cancelled and '$0.00' or '-' .. trip.price}
+        Rides.wallet.transactions[index] = {id = 'move-' .. index, type = 'move', icon = 'car', title = 'Ride to ' .. trip.title, caption = trip.caption, amount = trip.cancelled and '$0.00' or '-' .. trip.price}
     end
 end
 
@@ -199,7 +199,7 @@ function Rides.finish(stars, tip)
     if trip.payment == 'wallet' then
         Rides.wallet.balance = Rides.wallet.balance - total
     end
-    table.insert(Rides.wallet.transactions, 1, {id = 'move-now-' .. #Rides.past, type = 'move', title = 'Ride to ' .. to.name, caption = 'Today · ' .. kind.name, amount = '-' .. Rides.money(total)})
+    table.insert(Rides.wallet.transactions, 1, {id = 'move-now-' .. #Rides.past, type = 'move', icon = 'car', title = 'Ride to ' .. to.name, caption = 'Today · ' .. kind.name, amount = '-' .. Rides.money(total)})
     Rides.current = nil
     events.emit('tripChanged', trip)
 end
@@ -207,7 +207,7 @@ end
 -- Adds money to the wallet.
 function Rides.addFunds(amount)
     Rides.wallet.balance = Rides.wallet.balance + amount
-    table.insert(Rides.wallet.transactions, 1, {id = 'move-funds-' .. #Rides.wallet.transactions, type = 'move', title = 'Funds added', caption = 'Today · Card ending in 4821', amount = '+' .. Rides.money(amount)})
+    table.insert(Rides.wallet.transactions, 1, {id = 'move-funds-' .. #Rides.wallet.transactions, type = 'move', icon = 'plus', title = 'Funds added', caption = 'Today · Card ending in 4821', amount = '+' .. Rides.money(amount)})
     events.emit('walletChanged')
 end
 

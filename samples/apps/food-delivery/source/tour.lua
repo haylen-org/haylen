@@ -32,7 +32,7 @@ function Tour.steps()
         {'Follow the courier', function() Orders.active[1].elapsed = Orders.stageStart(Orders.active[1], 4) + 4 end},
         {'Go back to the orders', function() Shell.back() end},
         {'Open the account', function() Shell.showTab('account') end},
-        {'Turn on the dark theme', function() ui.setTheme('foodDark') Shell.showTab('account') end},
+        {'Turn on the dark theme', function() ui.setTheme('foodDark') end},
         {'Track in the dark theme', function() Shell.open(require('screens.tracking'), {order = Orders.active[1].id}) end},
         {'Deliver the order', function() Orders.active[1].elapsed = Orders.stageStart(Orders.active[1], 5) end},
         {'Go home', function() Shell.showTab('home') ui.setTheme('foodLight') end},

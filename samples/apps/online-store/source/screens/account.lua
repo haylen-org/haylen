@@ -27,7 +27,6 @@ function Account:enter()
                     ui.settingsRow{label = 'Dark theme', caption = 'Dark colors for the evening.', ui.toggle{id = 'dark', checked = ui.theme() == 'storeDark', onChange = function(event)
                         preferences.set('dark', event.checked)
                         ui.setTheme(event.checked and 'storeDark' or 'storeLight')
-                        Shell.showTab('account')
                     end}},
                     ui.sectionTitle{text = 'Notices'},
                     ui.settingsRow{label = 'Order updates', caption = 'When an order ships and arrives.', ui.toggle{id = 'updates', checked = true}},
@@ -36,7 +35,7 @@ function Account:enter()
                 ui.sectionTitle{text = 'Address'},
                 ui.card{ui.label{text = address.name}, ui.label{text = address.street .. ', ' .. address.city .. ' ' .. address.zip, color = 'textMuted'}},
                 ui.sectionTitle{text = 'Help'},
-                ui.card{padding = 6, ui.list{id = 'help', items = {{id = 'returns', text = 'Returns and refunds'}, {id = 'sizes', text = 'Size guide'}, {id = 'contact', text = 'Contact us'}}, onSelect = function()
+                ui.card{padding = 6, ui.list{id = 'help', items = {{id = 'returns', text = 'Returns and refunds', image = Shell.icon('truck')}, {id = 'sizes', text = 'Size guide', image = Shell.icon('ruler')}, {id = 'contact', text = 'Contact us', image = Shell.icon('chat')}}, onSelect = function()
                     Shell.notify('Help pages are not part of this sample.', 'information')
                 end}},
             },

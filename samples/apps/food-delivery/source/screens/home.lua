@@ -59,7 +59,7 @@ end
 function Home:addressItems()
     local items = {}
     for _, address in ipairs(Account.addresses) do
-        items[#items + 1] = {id = address.id, text = address.text .. ' · ' .. address.line}
+        items[#items + 1] = {id = address.id, text = address.text .. ' · ' .. address.line, image = Shell.icon(address.icon)}
     end
     return items
 end
@@ -71,13 +71,12 @@ end
 
 -- The card of the offer of the week, in the accent color with the illustration of the app.
 function Home:offer()
-    local accent = ui.themeColor('accent'):toHex()
-    return ui.card{padding = {20, 12, 20, 26}, style = {colors = {raised = accent, border = accent}},
+    return ui.card{padding = {20, 12, 20, 26}, style = {colors = {raised = 'accent', border = 'accent'}},
         ui.row{gap = 8,
             ui.column{gap = 6, grow = 1,
                 ui.label{text = 'Free delivery all week', font = 'heading', color = 'onAccent'},
                 ui.label{text = 'On orders over $15 from hundreds of kitchens near you.', font = 'caption', color = 'onAccent'},
-                ui.button{id = 'offer', text = 'Order now', align = 'start', margin = {8, 0, 0, 0}, style = {colors = {raised = '#FFFFFFFF', border = '#FFFFFFFF', text = ui.themeColor('accentStrong'):toHex()}}, onClick = function()
+                ui.button{id = 'offer', text = 'Order now', align = 'start', margin = {8, 0, 0, 0}, style = {colors = {raised = '#FFFFFFFF', border = '#FFFFFFFF', text = 'accentStrong'}}, onClick = function()
                     Shell.showTab('search', {filter = 'free'})
                 end},
             },

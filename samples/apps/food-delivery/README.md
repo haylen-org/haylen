@@ -58,7 +58,7 @@ The art follows the style guide of Tiny Island, the standard of the repository: 
 | Part | Rule |
 | --- | --- |
 | Dishes | `content/dishes/`: eighteen SVG illustrations of 320 by 200 units, one dish in a three-quarter view on a pastel card with two soft white circles, shown with `fit = 'cover'` from the wide cards to the round tiles of the cuisines. |
-| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, which the buttons and `ui.icon` tint. |
+| Icons | `content/icons/`: line icons of 24 units with strokes of 2 in `currentColor`, which the buttons, `ui.icon` and the items of lists and menus tint. |
 | Logo | `content/images/logo.svg`: a white bowl with steam on a tomato red tile with the navy outline. |
 | Offer | `content/images/hero.png`: the one painted image of the app, a red delivery scooter among a burger, pizza, ramen and fries, generated with the `codex` command line and its `$imagegen` skill in 1024 by 768 pixels with a transparent background and scaled to 768 by 576. |
 | Palette | Cream `#FFF8F1` and white surfaces, text `#2A1E1A` and `#8A766B`, tomato red `#E8452C` as the accent, and the dark theme on `#1C1512`. |
