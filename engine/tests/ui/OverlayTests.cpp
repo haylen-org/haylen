@@ -197,12 +197,48 @@ TEST_F(OverlayTest, KeepsADeckOpenWhileThePointerStaysInIt) {
     const float peek = getUi().getTheme().getMetric(Theme::Metric::ToastPeek);
     pointer(platform::Event::Type::MouseMove, {front.getCenter().x, front.y - peek * 0.5F});
     frames(getTransitionFrames() * 3);
-    for (int frame = 0; frame < 20; ++frame) {
-        std::vector<math::Rect> opened = drawMessages();
-        ASSERT_EQ(opened.size(), 3U);
-        std::ranges::sort(opened, [](const math::Rect& first, const math::Rect& second) { return first.y > second.y; });
-        EXPECT_GT(opened[0].y - opened[2].y, front.height * 2.0F);
+    std::vector<math::Rect> opened = drawMessages();
+    ASSERT_EQ(opened.size(), 3U);
+    std::ranges::sort(opened, [](const math::Rect& first, const math::Rect& second) { return first.y > second.y; });
+
+    // The deck stays open in every frame with the pointer on the notice behind, in the gaps between the notices and just past the front one.
+    const float gap = (opened[1].getBottom() + opened[0].y) * 0.5F;
+    for (const float y : {front.y - peek * 0.5F, gap, front.getBottom() + 4.0F}) {
+        pointer(platform::Event::Type::MouseMove, {front.getCenter().x, y});
+        for (int frame = 0; frame < 20; ++frame) {
+            std::vector<math::Rect> shown = drawMessages();
+            ASSERT_EQ(shown.size(), 3U);
+            std::ranges::sort(shown, [](const math::Rect& first, const math::Rect& second) { return first.y > second.y; });
+            EXPECT_GT(shown[0].y - shown[2].y, front.height * 2.0F);
+        }
     }
+}
+
+// A deck that never opens keeps its depth under the pointer, and each press takes the front notice away while the next one comes forward.
+TEST_F(OverlayTest, TakesTheFrontNoticeOfADeckThatNeverOpensAwayWithEachPress) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "toast", "id": "news", "position": "bottom", "arrangement": "deck", "expandable": false, "duration": 0}]})");
+    for (const char* message : {"One", "Two", "Three"}) {
+        gui->command(getUi().getContext(), "news", "show", {{"text", message}});
+    }
+    frames(getTransitionFrames() * 3);
+    const math::Rect front = getBounds(*gui, "news");
+    const float peek = getUi().getTheme().getMetric(Theme::Metric::ToastPeek);
+    pointer(platform::Event::Type::MouseMove, front.getCenter());
+    frames(getTransitionFrames() * 3);
+    std::vector<math::Rect> closed = drawMessages();
+    ASSERT_EQ(closed.size(), 3U);
+    std::ranges::sort(closed, [](const math::Rect& first, const math::Rect& second) { return first.y > second.y; });
+    EXPECT_LT(closed[0].y - closed[2].y, peek * 3.0F);
+
+    for (std::size_t left = 2; left > 0; --left) {
+        click(front.getCenter());
+        frames(getTransitionFrames() * 3);
+        std::vector<math::Rect> shown = drawMessages();
+        ASSERT_EQ(shown.size(), left);
+        std::ranges::sort(shown, [](const math::Rect& first, const math::Rect& second) { return first.y > second.y; });
+        EXPECT_NEAR(shown[0].getBottom(), closed[0].getBottom(), 1.0F);
+    }
+    EXPECT_EQ(findLastEvent("dismiss").value, (core::Json{{"reason", "clicked"}}));
 }
 
 TEST_F(OverlayTest, StopsTheTimeOfNoticesUnderThePointer) {

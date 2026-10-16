@@ -66,8 +66,8 @@ class ToastStack final {
         return ++lastKey;
     }
 
-    // Places a notice that wants to show, which asked to at `since`, with the length it takes in the stack and the space after it, and returns where it shows, or nothing while it waits for room in a list. A list shows the first `limit` notices, and a limit of zero shows them all. A closed deck puts each notice `peek` further in than the newer one in front of it, counted past the front notice, and an open deck lays the notices out like a list from the newest. The places follow the stack of the last frame.
-    [[nodiscard]] std::optional<Placement> place(std::uint64_t key, Position position, Arrangement arrangement, float extent, double since, std::size_t limit, float peek);
+    // Places a notice that wants to show, which asked to at `since`, with the length it takes in the stack and the space after it, and returns where it shows, or nothing while it waits for room in a list. A list shows the first `limit` notices, and a limit of zero shows them all. A closed deck puts each notice `peek` further in than the newer one in front of it, counted past the front notice, and a deck that is `expandable` opens while its stack is held and lays the notices out like a list from the newest. The places follow the stack of the last frame.
+    [[nodiscard]] std::optional<Placement> place(std::uint64_t key, Position position, Arrangement arrangement, bool expandable, float extent, double since, std::size_t limit, float peek);
 
     // Names the ImGui window that draws a notice placed in this frame.
     void attach(std::uint64_t key, ImGuiID window) noexcept;

@@ -33,7 +33,7 @@ bool ToastStack::isBefore(const Entry& entry, std::uint64_t key, double since) n
 }
 
 // The other notices of the position count first: those of the last frame, and those that asked to show since then and already placed themselves this frame. A list counts the notices that asked before this one, and a deck the ones that asked after it, which lie in front of it.
-std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Position position, Arrangement arrangement, float extent, double since, std::size_t limit, float peek) {
+std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Position position, Arrangement arrangement, bool expandable, float extent, double since, std::size_t limit, float peek) {
     const bool deck = arrangement == Arrangement::Deck;
     std::size_t ahead = 0;
     float offset = 0.0F;
@@ -61,7 +61,7 @@ std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Positi
         }
     }
 
-    const bool open = isHeld(position);
+    const bool open = expandable && isHeld(position);
     const Placement placement = !deck || open ? Placement{.offset = offset, .depth = 0, .front = 0.0F} : Placement{.offset = static_cast<float>(ahead) * peek, .depth = ahead, .front = front};
     current.push_back({.key = key, .position = position, .extent = extent, .since = since, .depth = placement.depth});
     if (!deck && limit > 0 && ahead >= limit) {

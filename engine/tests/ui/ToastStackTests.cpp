@@ -15,12 +15,12 @@ class ToastStackTest : public ::testing::Test {
 
     // Places a notice of a list and returns its distance from the edge, or nothing while it waits.
     std::optional<float> place(std::uint64_t key, ToastStack::Position position, float extent, double since, std::size_t limit) {
-        const std::optional<ToastStack::Placement> placement = stack.place(key, position, ToastStack::Arrangement::List, extent, since, limit, kPeek);
+        const std::optional<ToastStack::Placement> placement = stack.place(key, position, ToastStack::Arrangement::List, true, extent, since, limit, kPeek);
         return placement ? std::optional<float>(placement->offset) : std::nullopt;
     }
 
     ToastStack::Placement placeInDeck(std::uint64_t key, float extent, double since, std::size_t limit) {
-        return *stack.place(key, ToastStack::Position::Bottom, ToastStack::Arrangement::Deck, extent, since, limit, kPeek);
+        return *stack.place(key, ToastStack::Position::Bottom, ToastStack::Arrangement::Deck, true, extent, since, limit, kPeek);
     }
 
     ToastStack stack;
@@ -113,6 +113,11 @@ TEST_F(ToastStackTest, PutsTheNewestNoticeOfADeckInFrontAndOpensTheDeckWhileItIs
     EXPECT_EQ(placements[1].offset, 70.0F);
     EXPECT_EQ(placements[0].offset, 130.0F);
     EXPECT_EQ(placements[0].depth, 0U);
+
+    // A deck that is not expandable keeps its depth while its stack is held.
+    stack.hold(ToastStack::Position::Bottom);
+    stack.beginFrame();
+    EXPECT_EQ(stack.place(keys[0], ToastStack::Position::Bottom, ToastStack::Arrangement::Deck, false, 50.0F, 0, 2, kPeek)->depth, 2U);
 
     stack.beginFrame();
     EXPECT_FALSE(stack.isHeld(ToastStack::Position::Bottom));

@@ -38,12 +38,12 @@ function ToastStacks:enter()
             end}
     end
     self:frame{
-        hint = 'Every button adds a notice at its position. A list shows three notices at most while the next ones wait, and a deck puts the newest in front and opens under the pointer or a finger. The time of a stack stops while the pointer or a finger is on it, a press closes a notice, and a sideways drag swipes it away.',
+        hint = 'Every button adds a notice at its position. A list shows three notices at most while the next ones wait, and a deck puts the newest in front, opens under the pointer or a finger or, as the other deck, keeps its depth while each press takes the front notice away. The time of a stack stops while the pointer or a finger is on it, a press closes a notice, and a sideways drag swipes it away.',
         focus = 'show-top',
         content = {layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('Command "show" at every position', {
-                    ui.segmentedControl{id = 'arrangement', items = {{id = 'list', text = 'List'}, {id = 'deck', text = 'Deck'}}, selected = 'list', onChange = function(event) self:arrange(event.value) end},
+                    ui.segmentedControl{id = 'arrangement', items = {{id = 'list', text = 'List'}, {id = 'deck', text = 'Deck that opens'}, {id = 'depth', text = 'Deck'}}, selected = 'list', onChange = function(event) self:arrange(event.value) end},
                     ui.grid{columns = 3, gap = 12, children = buttons},
                 }),
                 layout.section('Variants, indicators and actions', {
@@ -96,9 +96,10 @@ function ToastStacks:burst()
     end
 end
 
-function ToastStacks:arrange(arrangement)
+-- A deck that opens spreads under the pointer, and the other deck keeps its depth while each press takes the front notice away.
+function ToastStacks:arrange(choice)
     for _, position in ipairs(ToastStacks.positions) do
-        self:set(position, {arrangement = arrangement})
+        self:set(position, {arrangement = choice == 'list' and 'list' or 'deck', expandable = choice == 'deck'})
     end
 end
 

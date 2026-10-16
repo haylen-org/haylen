@@ -40,6 +40,7 @@ void Toast::readProperties(PropertyReader& reader) {
     readContent(reader, content);
     reader.readChoice<ToastStack::Position>("position", position, ToastStack::kPositions);
     reader.readChoice<ToastStack::Arrangement>("arrangement", arrangement, ToastStack::kArrangements);
+    reader.read("expandable", expandable);
     if (reader.has("open")) {
         reader.read("open", open);
         restart();
@@ -256,7 +257,7 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     const float extent = (layout.size.y + spacing) * (notice.leaving ? notice.appear : 1.0F);
     const float limit = context.getMetric(Theme::Metric::ToastLimit);
-    const std::optional<ToastStack::Placement> place = stack.place(notice.key, stacked, arrangement, extent, notice.since, static_cast<std::size_t>(limit), context.getMetric(Theme::Metric::ToastPeek));
+    const std::optional<ToastStack::Placement> place = stack.place(notice.key, stacked, arrangement, expandable, extent, notice.since, static_cast<std::size_t>(limit), context.getMetric(Theme::Metric::ToastPeek));
     if (!place) {
         return false;
     }
@@ -312,7 +313,8 @@ bool Toast::drawNotice(Context& context, Notice& notice) {
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * alpha);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
-    if (fade < 1.0F || notice.leaving) {
+    // The notices behind the front of a deck that never opens leave every press to the front one.
+    if (fade < 1.0F || notice.leaving || (deck && !expandable && place->depth > 0)) {
         flags |= ImGuiWindowFlags_NoInputs;
     }
     if (ImGui::Begin(name.data(), nullptr, flags)) {

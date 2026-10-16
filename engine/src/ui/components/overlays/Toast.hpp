@@ -167,6 +167,7 @@ class Toast final : public Component {
     Content content;
     ToastStack::Position position = ToastStack::Position::Top;
     ToastStack::Arrangement arrangement = ToastStack::Arrangement::List;
+    bool expandable = true;
     std::vector<Notice> notices;
 };
 
