@@ -64,6 +64,7 @@ Every command is about the engine or about an app, plugin or project that the de
 | `bench` | Build and run a benchmark of the engine in Release. |
 | `sdk` | Build the engine SDK, install it for `find_package(haylen)` and check that other projects consume the engine. |
 | `clean` | Remove every build tree, the engine artifacts and the build folders of apps. |
+| `--version` | Print the version of the engine that `engine/VERSION` holds. |
 
 ### Output
 

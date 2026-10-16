@@ -26,7 +26,7 @@ haylen run-cpp ~/apps/my-cpp-game --platform android
 
 ## Commands
 
-The file `haylen` at the root of the repository, a shell script for macOS and Linux, and `haylen.cmd` next to it for Windows, run `haylen.py` with every argument they get, from any folder and through a link. With the root on `PATH`, every command below is `haylen <command>`, and `python3 haylen.py <command>` does the same.
+The file `haylen` at the root of the repository, a shell script for macOS and Linux, and `haylen.cmd` next to it for Windows, run `haylen.py` with every argument they get, from any folder and through a link. With the root on `PATH`, every command below is `haylen <command>`, and `python3 haylen.py <command>` does the same. The option `haylen --version` prints `Haylen` followed by the version of the engine that `engine/VERSION` holds.
 
 | Command | Purpose |
 | --- | --- |

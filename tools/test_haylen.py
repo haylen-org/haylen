@@ -375,6 +375,11 @@ class LauncherTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertTrue(result.stdout.startswith("usage: haylen "))
 
+    def test_the_version_option_prints_the_version_of_the_engine(self):
+        result = subprocess.run([sys.executable, str(haylen.ROOT / "haylen.py"), "--version"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), f"Haylen {(haylen.ROOT / 'engine' / 'VERSION').read_text(encoding='utf-8').strip()}")
+
     def test_the_windows_launcher_hands_every_argument_to_the_tool(self):
         script = (haylen.ROOT / "haylen.cmd").read_text()
         self.assertIn('python "%~dp0haylen.py" %*', script)

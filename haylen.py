@@ -4932,6 +4932,7 @@ def add_app_argument(parser: argparse.ArgumentParser) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="haylen", description="Builds, tests and runs the Haylen engine, and creates, runs, checks and packages the apps that a developer names by their folder.")
+    parser.add_argument("--version", action="version", version=f"Haylen {engine_version()}", help="Show the version of the engine and exit.")
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
 
     tools = commands.add_parser("tools", help="Download the pinned build tools.")
