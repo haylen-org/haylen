@@ -67,6 +67,12 @@ class Context final {
         }
     };
 
+    // How far the wheel or the trackpad moves an area along its axis in a frame, in UI units toward its top or left end, and whether the distance came in steps of a wheel, which an area glides through, or in the points of a trackpad, which it follows at once.
+    struct WheelScroll {
+        float distance = 0.0F;
+        bool stepped = false;
+    };
+
     // Turns the events of the components of a collection cell into events of the collection while the cell draws.
     class EventRedirect final {
       public:
@@ -121,8 +127,10 @@ class Context final {
     [[nodiscard]] float getMetric(Theme::Metric role) const noexcept;
     // Returns how far the wheels and the trackpads scroll in this frame in UI units: `scrollLine` for each step of a wheel and the points a trackpad moved, with positive values for scrolling up and to the left.
     [[nodiscard]] math::Vec2 getWheelDistance() const noexcept;
-    // Returns the wheel distance of the frame for the area that scrolls by it and keeps it from the areas around, which draw later and get nothing. Areas inside others draw first, so the innermost area that can scroll under the pointer takes the wheel.
-    math::Vec2 takeWheelDistance() noexcept;
+    // Returns the wheel of the frame for an area that scrolls along one axis, and nothing while the gesture belongs to another area. A gesture keeps the axis it starts along and goes to the innermost area under the pointer that can move along it the way it scrolls, then stays with that area until it pauses. The `position` is how far the area shows from its top or left end, out of `maximum`, and `hovered` says whether the pointer is over the area and nothing covers it.
+    [[nodiscard]] WheelScroll takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered);
+    // Returns whether the finger that drags belongs to an area that it pressed and that can scroll along `horizontal`. The finger goes to the innermost such area once it travels past the slop along that axis more than across it, and stays with it until it lifts.
+    [[nodiscard]] bool takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal);
     [[nodiscard]] const Theme::Image* getSurface(Theme::Surface role) const;
     [[nodiscard]] const std::string& getFontName(Theme::Font role) const noexcept;
     // The size of a font role in UI units, which the text scale multiplies.

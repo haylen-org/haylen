@@ -19,6 +19,7 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/ui/NavigationInput.hpp"
+#include "ui/ScrollArbiter.hpp"
 #include "ui/TextSession.hpp"
 
 namespace haylen::ui {
@@ -282,7 +283,7 @@ void Backend::runDraw(const Draw& draw) {
     }
 }
 
-Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())) {
+Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())), scrollArbiter(std::make_unique<ScrollArbiter>()) {
     imguiContext = ImGui::CreateContext();
     makeCurrent();
 
@@ -487,9 +488,14 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
         place(event.position);
         io.AddMouseButtonEvent(static_cast<int>(event.mouseButton), event.type == platform::Event::Type::MouseDown);
         break;
-    case platform::Event::Type::MouseScroll:
-        (event.preciseScroll ? pendingWheel.points : pendingWheel.lines) += event.scroll;
+    case platform::Event::Type::MouseScroll: {
+        // Shift turns a wheel that only scrolls up and down sideways for the components, as macOS does for every app, and the ImGui windows of the app take the scroll as it came in steps of ImGui, since ImGui turns it with Shift itself.
+        const bool sideways = !event.preciseScroll && event.modifiers.shift && event.scroll.x == 0.0F;
+        scrollArbiter->addWheel(sideways ? math::Vec2{event.scroll.y, 0.0F} : event.scroll, event.preciseScroll);
+        const math::Vec2 steps = event.preciseScroll ? event.scroll / (pointsPerUnit * kImGuiScrollFonts * kBaseFontSize) : event.scroll;
+        io.AddMouseWheelEvent(steps.x, steps.y);
         break;
+    }
     case platform::Event::Type::MouseLeave:
         io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
         pointerPosition.reset();
@@ -653,13 +659,6 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     }
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
 
-    // The components scroll by the steps and points of the frame themselves, and the ImGui windows of the app take them in the steps of ImGui.
-    wheel = std::exchange(pendingWheel, {});
-    wheelTaken = false;
-    const math::Vec2 steps = wheel.lines + wheel.points / (pointsPerUnit * kImGuiScrollFonts * kBaseFontSize);
-    if (!steps.isZero()) {
-        io.AddMouseWheelEvent(steps.x, steps.y);
-    }
     textSession->beginFrame(viewport, scale, deltaSeconds);
     closeAbandonedPopups();
     feedGamepad(input, navigation);
@@ -679,6 +678,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     sprites.clear();
     renderedLists.clear();
     ImGui::NewFrame();
+    scrollArbiter->beginFrame(deltaSeconds);
     if (pixels > 0.0F) {
         GImGui->DrawListSharedData.InitialFringeScale = 1.0F / pixels;
     }

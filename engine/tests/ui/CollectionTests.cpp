@@ -125,11 +125,18 @@ TEST_F(CollectionTest, ScrollsByThePointsOfATrackpadAndTheLinesOfAWheel) {
     auto gui = mountCollection(kRows);
     Collection& list = gui->getCollection("list");
     show(list, makeItems(200));
+    // A trackpad moves the list under the pointer in the frame its scroll arrives.
+    pointer(platform::Event::Type::MouseMove, list.getBounds().getCenter());
+    frames();
     wheel(list.getBounds().getCenter(), -45.0F, 0.0F, true);
-    frames(2);
     EXPECT_NEAR(list.getScrollOffset(), 45.0, 0.5);
+
+    // A step of a wheel glides by `scrollLine` instead of jumping there.
     wheel(list.getBounds().getCenter(), -1.0F);
-    frames(2);
+    frames();
+    EXPECT_GT(list.getScrollOffset(), 45.5);
+    EXPECT_LT(list.getScrollOffset(), 108.5);
+    frames(60);
     EXPECT_NEAR(list.getScrollOffset(), 109.0, 0.5);
 }
 
@@ -265,7 +272,7 @@ TEST_F(CollectionTest, KeepsTheFocusWhenTheFocusedItemScrollsOutOfView) {
     ASSERT_EQ(getFocusedItem(), "i3");
 
     // The wheel takes the item away, and the focus stays on it while no cell shows it.
-    wheel(list.getBounds().getCenter(), -200.0F * 60.0F / 64.0F);
+    wheel(list.getBounds().getCenter(), -200.0F * 60.0F, 0.0F, true);
     frames(3);
     EXPECT_EQ(list.findCell(2), nullptr);
     EXPECT_EQ(getFocusedItem(), "i3");
@@ -600,6 +607,47 @@ TEST_F(CollectionTest, FlingsWithATouchDragAlongItsAxis) {
     EXPECT_EQ(countEvents("select"), 0U);
 }
 
+TEST_F(CollectionTest, LeavesGesturesAcrossItsAxisToTheScrollAroundIt) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 800, "height": 400, "children": [{"kind": "column", "gap": 0, "children": [
+        {"kind": "spacer", "height": 150},
+        {"kind": "collection", "id": "shelf", "axis": "horizontal", "width": 700, "height": 120, "gap": 0, "types": {"tile": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 100}}}},
+        {"kind": "spacer", "height": 1500}
+    ]}]})");
+    // clang-format on
+    Collection& shelf = gui->getCollection("shelf");
+    show(shelf, makeItems(100));
+    const float top = shelf.getBounds().y;
+
+    // The wheel and a trackpad that move up and down over the shelf scroll the page, and a sideways trackpad scrolls the shelf.
+    wheel(shelf.getBounds().getCenter(), -1.0F);
+    frames(60);
+    EXPECT_NEAR(shelf.getBounds().y, top - 64.0F, 0.5F);
+    wheel(shelf.getBounds().getCenter(), -30.0F, 0.0F, true);
+    frames(60);
+    EXPECT_NEAR(shelf.getBounds().y, top - 94.0F, 0.5F);
+    EXPECT_DOUBLE_EQ(shelf.getScrollOffset(), 0.0);
+    wheel(shelf.getBounds().getCenter(), 0.0F, -50.0F, true);
+    frames(60);
+    EXPECT_NEAR(shelf.getScrollOffset(), 50.0, 0.5);
+    EXPECT_NEAR(shelf.getBounds().y, top - 94.0F, 0.5F);
+
+    // A finger that drags up over the shelf scrolls the page and leaves the shelf where it was.
+    const math::Vec2 start = shelf.getBounds().getCenter();
+    touch(platform::Event::Type::TouchBegan, 1, start);
+    frames();
+    for (int step = 1; step <= 10; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, start - math::Vec2{3.0F, 10.0F * static_cast<float>(step)});
+        frames();
+    }
+    frames(20);
+    touch(platform::Event::Type::TouchEnded, 1, start - math::Vec2{3.0F, 100.0F});
+    frames(60);
+    EXPECT_LT(shelf.getBounds().y, top - 150.0F);
+    EXPECT_NEAR(shelf.getScrollOffset(), 50.0, 0.5);
+    EXPECT_EQ(countEvents("select"), 0U);
+}
+
 TEST_F(CollectionTest, MirrorsHorizontalCollectionsInRightToLeftLayouts) {
     getUi().setDirection(text::Direction::RightToLeft);
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "axis": "horizontal", "width": 1000, "height": 100, "gap": 0, "types": {"tile": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 100}}}})");
@@ -610,8 +658,8 @@ TEST_F(CollectionTest, MirrorsHorizontalCollectionsInRightToLeftLayouts) {
     EXPECT_NEAR(getItemBounds(list, 1).getRight(), getItemBounds(list, 0).x, 0.5F);
 
     const float before = getItemBounds(list, 0).x;
-    wheel(area.getCenter(), -1.0F);
-    frames();
+    wheel(area.getCenter(), 0.0F, 1.0F);
+    frames(60);
     EXPECT_GT(list.getScrollOffset(), 0.0);
     EXPECT_GT(getItemBounds(list, 2).x, before - 200.0F);
 

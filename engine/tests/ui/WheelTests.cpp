@@ -22,11 +22,11 @@ class WheelTest : public ::testing::Test, public test::UiFixture {
         return list;
     }
 
-    // Scrolls over an area and returns how far its content moved up.
+    // Scrolls over an area, waits until the gesture ends and the content rests, and returns how far the content moved up.
     float scrolled(const Gui& gui, std::string_view area, std::string_view content, float delta, bool precise) {
         const float before = getBounds(gui, content).y;
         wheel(getBounds(gui, area).getCenter(), delta, 0.0F, precise);
-        frames(2);
+        frames(60);
         return before - getBounds(gui, content).y;
     }
 };

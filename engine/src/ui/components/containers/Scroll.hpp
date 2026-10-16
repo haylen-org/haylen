@@ -13,10 +13,11 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
 #include "ui/Scrollbar.hpp"
+#include "ui/Scroller.hpp"
 
 namespace haylen::ui {
 
-// Shows one child in an area that scrolls up and down or sideways. The wheel, the scroll bar and a finger dragging the content scroll it, the focus scrolls to the focused control, the command `scrollTo` scrolls to an offset or to a node inside it, and with snapping it settles on the start of the nearest item of its child. While the child is longer than the area, the bar takes a lane of its own beside it.
+// Shows one child in an area that scrolls up and down or sideways. The wheel, the scroll bar and a finger dragging the content scroll it, with the motion of a `Scroller`, the focus scrolls to the focused control, the command `scrollTo` scrolls to an offset or to a node inside it, and with snapping it settles on the start of the nearest item of its child. While the child is longer than the area, the bar takes a lane of its own beside it.
 class Scroll final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -55,26 +56,30 @@ class Scroll final : public Component {
         {"end", Align::End},
     }};
     static constexpr float kSnapDelay = 0.12F;
-    static constexpr float kSnapSpeed = 14.0F;
+    static constexpr double kSettleDistance = 0.5;
 
     [[nodiscard]] math::Rect place(Context& context, Component& child, math::Vec2 size, const math::Rect& view) const;
 
-    // A finger that drags the content takes over from the control it pressed, so a list of buttons still scrolls on a touch screen.
-    void followFinger();
-    void settle(Context& context, float position, float limit);
+    // The scroll of the ImGui window follows the offset, and the offset follows a scroll that something else gave the window, such as the focus bringing a control into view, at once, so the next move of the focus starts from the control in view.
+    void followWindow();
+
+    // A finger that drags the content along the axis takes over from the control it pressed, so a list of buttons still scrolls on a touch screen.
+    void followFinger(Context& context, const math::Rect& bounds, bool underPointer);
+    void settle();
 
     [[nodiscard]] static const Component* findNode(const Component& parent, std::string_view id);
 
     // Returns the offset a request scrolls to, or nothing while its node does not show.
-    [[nodiscard]] std::optional<float> findTarget(const Request& value, math::Vec2 origin, float view, float limit) const;
-
-    // Moves the offset toward the target, the whole way at once or a share of it each frame, and returns whether it arrived.
-    bool approach(Context& context, float target, bool animated);
+    [[nodiscard]] std::optional<double> findTarget(const Request& value, math::Vec2 origin, double view) const;
 
     bool scrollbarShown = true;
     bool horizontal = false;
     bool snap = false;
+    bool pressed = false;
+    bool dragging = false;
     float idle = 0.0F;
+    std::optional<float> written;
+    Scroller scroller;
     std::vector<float> points;
     std::optional<Request> request;
     Scrollbar scrollbar;

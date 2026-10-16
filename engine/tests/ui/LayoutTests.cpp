@@ -214,28 +214,41 @@ TEST_F(LayoutTest, KeepsTheAspectRatio) {
     EXPECT_THROW(gui->set("high", {{"aspectRatio", 0}}), std::invalid_argument);
 }
 
-// A horizontal scroll turns the sideways wheel and the vertical one into sideways scrolling, and keeps the wheel from the vertical scroll around it, so one turn moves one area.
-TEST_F(LayoutTest, ScrollsSidewaysWithEveryWheelAndKeepsItFromTheAreaAround) {
-    // clang-format off
-    auto gui = mount(R"({"kind": "scroll", "id": "page", "height": 400, "children": [{"kind": "column", "children": [
-        {"kind": "scroll", "id": "strip", "axis": "horizontal", "scrollbar": false, "width": 300, "height": 200, "children": [{"kind": "row", "id": "covers", "children": [{"kind": "spacer", "width": 1200, "height": 100}]}]},
-        {"kind": "spacer", "height": 1000}
-    ]}]})");
-    // clang-format on
-    const math::Vec2 inside = getBounds(*gui, "strip").getCenter();
-    pointer(platform::Event::Type::MouseMove, inside);
-    frames(2);
-    const float start = getBounds(*gui, "covers").x;
-    const float top = getBounds(*gui, "strip").y;
+// A finger flings a scroll on past where it lets go.
+TEST_F(LayoutTest, FlingsAScrollWithAFingerAndSpringsBackFromPastItsEnds) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "spacer", "height": 4000}]}]})");
+    const math::Vec2 center = getBounds(*gui, "page").getCenter();
+    const float top = getBounds(*gui, "content").y;
 
-    wheel(inside, 0.0F, -1.0F);
-    frames(2);
-    const float sideways = getBounds(*gui, "covers").x;
-    EXPECT_LT(sideways, start);
-    wheel(inside, -1.0F);
-    frames(2);
-    EXPECT_LT(getBounds(*gui, "covers").x, sideways);
-    EXPECT_EQ(getBounds(*gui, "strip").y, top);
+    touch(platform::Event::Type::TouchBegan, 1, center + math::Vec2{0.0F, 150.0F});
+    frames();
+    for (int step = 1; step <= 6; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{0.0F, 150.0F - 50.0F * static_cast<float>(step)});
+        frames();
+    }
+    const float released = getBounds(*gui, "content").y;
+    EXPECT_LT(released, top - 150.0F);
+    touch(platform::Event::Type::TouchEnded, 1, center - math::Vec2{0.0F, 150.0F});
+    frames(120);
+    EXPECT_LT(getBounds(*gui, "content").y, released - 300.0F);
+}
+
+TEST_F(LayoutTest, StretchesAScrollPulledPastItsStartAndSpringsBack) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "spacer", "height": 4000}]}]})");
+    const math::Vec2 center = getBounds(*gui, "page").getCenter();
+    const float top = getBounds(*gui, "content").y;
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames();
+    for (int step = 1; step <= 6; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{0.0F, 30.0F * static_cast<float>(step)});
+        frames();
+    }
+    const float stretched = getBounds(*gui, "content").y - top;
+    EXPECT_GT(stretched, 20.0F);
+    EXPECT_LT(stretched, 150.0F);
+    touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{0.0F, 180.0F});
+    frames(60);
+    EXPECT_EQ(getBounds(*gui, "content").y, top);
 }
 
 // A settings row placed at the width it measures keeps its label column whole and gives its control the width it asked for after the gap.

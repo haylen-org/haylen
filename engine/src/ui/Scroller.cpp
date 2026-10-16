@@ -9,8 +9,32 @@ double Scroller::clamp(double value) const noexcept {
     return std::clamp(value, 0.0, maximum);
 }
 
-void Scroller::setMaximum(double value) noexcept {
-    maximum = std::max(0.0, value);
+// Content stretches past an end the way a rubber band does: by the pull while the pull is short, and toward the length of the view as the pull grows.
+double Scroller::stretch(double pull) const noexcept {
+    if (view <= 0.0) {
+        return 0.0;
+    }
+    return std::copysign(view * (1.0 - 1.0 / (std::fabs(pull) * kElasticity / view + 1.0)), pull);
+}
+
+double Scroller::unstretch(double overscroll) const noexcept {
+    if (view <= 0.0) {
+        return 0.0;
+    }
+    const double reach = std::min(std::fabs(overscroll), view * 0.999);
+    return std::copysign(reach * view / (kElasticity * (view - reach)), overscroll);
+}
+
+void Scroller::pull(double delta) noexcept {
+    const double inside = clamp(offset);
+    const double reach = inside + unstretch(offset - inside) + delta;
+    const double edge = clamp(reach);
+    offset = edge + stretch(reach - edge);
+}
+
+void Scroller::setRange(double maximumValue, double viewLength) noexcept {
+    maximum = std::max(0.0, maximumValue);
+    view = std::max(0.0, viewLength);
     target = clamp(target);
     if (motion == Motion::Resting) {
         offset = clamp(offset);
@@ -43,11 +67,23 @@ void Scroller::drag(double delta, float seconds) noexcept {
         motion = Motion::Dragging;
         velocity = 0.0;
     }
-    const bool stretching = (offset <= 0.0 && delta < 0.0) || (offset >= maximum && delta > 0.0);
-    offset += stretching ? delta * kResistance : delta;
+    pull(delta);
     if (seconds > 0.0F) {
         velocity = velocity * 0.4 + delta / static_cast<double>(seconds) * 0.6;
     }
+}
+
+void Scroller::wheel(double delta, bool stepped) noexcept {
+    if (stepped) {
+        animateTo((motion == Motion::Animating ? target : clamp(offset)) + delta);
+        return;
+    }
+    if (motion != Motion::Wheeling) {
+        motion = Motion::Wheeling;
+        velocity = 0.0;
+    }
+    pull(delta);
+    quiet = 0.0F;
 }
 
 void Scroller::release() noexcept {
@@ -64,7 +100,7 @@ void Scroller::release() noexcept {
 void Scroller::animateTo(double value) noexcept {
     target = clamp(value);
     if (motion != Motion::Animating) {
-        velocity = motion == Motion::Dragging ? 0.0 : velocity;
+        velocity = motion == Motion::Dragging || motion == Motion::Wheeling ? 0.0 : velocity;
         motion = Motion::Animating;
     }
 }
@@ -108,6 +144,12 @@ bool Scroller::update(float seconds) noexcept {
         break;
     case Motion::Animating:
         spring(target, seconds);
+        break;
+    case Motion::Wheeling:
+        quiet += seconds;
+        if (quiet > kWheelRest) {
+            release();
+        }
         break;
     case Motion::Resting:
     case Motion::Dragging:

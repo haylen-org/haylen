@@ -197,7 +197,6 @@ class Collection final : public Component {
     static constexpr int kMaxPool = 256;
     static constexpr float kMaxPrefetch = 4.0F;
     static constexpr int kStableFrames = 2;
-    static constexpr float kDragSlop = 12.0F;
     static constexpr float kSnapDelay = 0.12F;
     static constexpr float kSettleDistance = 0.5F;
     static constexpr float kScrollbarFadeDelay = 0.8F;

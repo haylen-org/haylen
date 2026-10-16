@@ -15,6 +15,7 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/Component.hpp"
+#include "ui/ScrollArbiter.hpp"
 
 namespace haylen::ui {
 
@@ -99,20 +100,17 @@ float Context::getMetric(Theme::Metric role) const noexcept {
 }
 
 math::Vec2 Context::getWheelDistance() const noexcept {
-    const Backend::Wheel& wheel = getBackend().getWheel();
+    const ScrollArbiter::Wheel& wheel = getBackend().getScrollArbiter().getWheel();
     return wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit();
 }
 
-math::Vec2 Context::takeWheelDistance() noexcept {
-    Backend& owner = getBackend();
-    if (owner.isWheelTaken()) {
-        return {};
-    }
-    const math::Vec2 distance = getWheelDistance();
-    if (!distance.isZero()) {
-        owner.takeWheel();
-    }
-    return distance;
+Context::WheelScroll Context::takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered) {
+    const ScrollArbiter::AxisWheel wheel = getBackend().getScrollArbiter().takeWheel(area, bounds, horizontal, position, maximum, hovered);
+    return {.distance = wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit(), .stepped = wheel.lines != 0.0F};
+}
+
+bool Context::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal) {
+    return getBackend().getScrollArbiter().takeDrag(area, bounds, horizontal);
 }
 
 // A style that sets a surface paints it with its image, or with flat colors while the image loads or when the style asks for them.

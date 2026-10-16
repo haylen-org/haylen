@@ -210,8 +210,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const auto toPosition = [&value](int bytes) { return core::Utf8::countCodePoints(std::string_view(value).substr(0, static_cast<std::size_t>(std::clamp(bytes, 0, static_cast<int>(value.size()))))); };
     const float overflow = std::max(0.0F, laid->size.y - area.height);
     math::Vec2 scroll = editing.scroll;
-    if (multiline && overflow > 0.0F && ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()))) {
-        scroll.y = std::clamp(scroll.y - context.takeWheelDistance().y, 0.0F, overflow);
+    if (multiline && overflow > 0.0F) {
+        const bool hovered = ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()));
+        scroll.y = std::clamp(scroll.y - context.takeWheel(id, bounds, false, scroll.y, overflow, hovered).distance, 0.0F, overflow);
     }
     if (state != nullptr) {
         follow(scroll, *field, field->getCaret(toPosition(state->GetCursorPos())).translated(getOrigin(*laid, area, scroll, rightToLeft, multiline)), area, rightToLeft, multiline);

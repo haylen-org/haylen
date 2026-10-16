@@ -21,8 +21,10 @@ float Scrollbar::getGap(const Context& context) {
 }
 
 void Scrollbar::takeWheel(Context& context) {
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetScrollMaxY() > 0.0F) {
-        ImGui::SetScrollY(ImGui::GetScrollY() - context.takeWheelDistance().y);
+    const ImGuiWindow& window = *ImGui::GetCurrentWindow();
+    const Context::WheelScroll wheel = context.takeWheel(window.ID, ImGuiConverter::toRect(window.InnerRect), false, window.Scroll.y, window.ScrollMax.y, ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows));
+    if (wheel.distance != 0.0F) {
+        ImGui::SetScrollY(window.Scroll.y - wheel.distance);
     }
 }
 

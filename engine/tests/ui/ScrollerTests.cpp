@@ -28,7 +28,7 @@ class ScrollerTest : public ::testing::Test {
 } // namespace
 
 TEST_F(ScrollerTest, FlingsAndComesToRest) {
-    scroller.setMaximum(100000.0);
+    scroller.setRange(100000.0, 600.0);
     for (int step = 0; step < 10; ++step) {
         scroller.drag(50.0, kStep);
     }
@@ -49,7 +49,7 @@ TEST_F(ScrollerTest, FlingsAndComesToRest) {
 }
 
 TEST_F(ScrollerTest, SpringsBackFromBeyondTheEnds) {
-    scroller.setMaximum(1000.0);
+    scroller.setRange(1000.0, 600.0);
     for (int step = 0; step < 4; ++step) {
         scroller.drag(-50.0, kStep);
     }
@@ -67,8 +67,69 @@ TEST_F(ScrollerTest, SpringsBackFromBeyondTheEnds) {
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 1000.0);
 }
 
+TEST_F(ScrollerTest, StretchesLessTheFartherItIsPulledAndReturnsAlongTheSameCurve) {
+    // A short pull stretches by about half its length, a long one by less for each unit, and the stretch never reaches the length of the view.
+    scroller.setRange(1000.0, 600.0);
+    scroller.drag(-20.0, kStep);
+    const double first = -scroller.getOverscroll();
+    EXPECT_GT(first, 10.0);
+    EXPECT_LT(first, 11.0);
+    for (int step = 0; step < 100; ++step) {
+        scroller.drag(-20.0, kStep);
+    }
+    const double far = -scroller.getOverscroll();
+    scroller.drag(-20.0, kStep);
+    EXPECT_LT(-scroller.getOverscroll() - far, first / 4.0);
+    EXPECT_LT(-scroller.getOverscroll(), 600.0);
+
+    // Pulling back by the same distance brings the content back to its end.
+    scroller.drag(20.0 * 102.0, kStep);
+    EXPECT_NEAR(scroller.getOffset(), 0.0, 1e-6);
+}
+
+TEST_F(ScrollerTest, GlidesThroughTheStepsOfAWheel) {
+    // Each step of a wheel moves the target, so steps that follow one another add up while the content glides there without passing it.
+    scroller.setRange(5000.0, 600.0);
+    scroller.wheel(64.0, true);
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), 0.0);
+    scroller.update(kStep);
+    scroller.wheel(64.0, true);
+    EXPECT_DOUBLE_EQ(scroller.getTarget(), 128.0);
+    double offset = scroller.getOffset();
+    while (!scroller.isResting()) {
+        scroller.update(kStep);
+        EXPECT_GE(scroller.getOffset(), offset);
+        EXPECT_LE(scroller.getOffset(), 128.0);
+        offset = scroller.getOffset();
+    }
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), 128.0);
+
+    scroller.wheel(-500.0, true);
+    settle();
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), 0.0);
+}
+
+TEST_F(ScrollerTest, FollowsATrackpadAtOnceAndSpringsBackOnceItRests) {
+    scroller.setRange(1000.0, 600.0);
+    scroller.wheel(30.0, false);
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), 30.0);
+
+    // Past an end the content stretches while the trackpad keeps moving, and springs back once it sends nothing.
+    scroller.wheel(1100.0, false);
+    EXPECT_GT(scroller.getOverscroll(), 0.0);
+    EXPECT_LT(scroller.getOverscroll(), 130.0);
+    for (int step = 0; step < 3; ++step) {
+        scroller.update(kStep);
+        scroller.wheel(10.0, false);
+    }
+    EXPECT_GT(scroller.getOverscroll(), 0.0);
+    EXPECT_FALSE(scroller.isResting());
+    EXPECT_GT(settle(), 0);
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), 1000.0);
+}
+
 TEST_F(ScrollerTest, StopsAtTheEndsWhenItJumps) {
-    scroller.setMaximum(500.0);
+    scroller.setRange(500.0, 600.0);
     scroller.jumpTo(-40.0);
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 0.0);
     scroller.jumpTo(900.0);
@@ -77,7 +138,7 @@ TEST_F(ScrollerTest, StopsAtTheEndsWhenItJumps) {
 }
 
 TEST_F(ScrollerTest, FollowsATargetThatMovesWithoutOvershooting) {
-    scroller.setMaximum(5000.0);
+    scroller.setRange(5000.0, 600.0);
     scroller.animateTo(500.0);
     for (int step = 0; step < 5; ++step) {
         scroller.update(kStep);
@@ -97,7 +158,7 @@ TEST_F(ScrollerTest, FollowsATargetThatMovesWithoutOvershooting) {
 }
 
 TEST_F(ScrollerTest, ShiftsTheOffsetAndTheTargetTogether) {
-    scroller.setMaximum(5000.0);
+    scroller.setRange(5000.0, 600.0);
     scroller.animateTo(1000.0);
     scroller.update(kStep);
     const double before = scroller.getOffset();

@@ -451,6 +451,7 @@ TEST_F(GameComponentTest, SnapsScrolledItemsIntoPlace) {
         touch(platform::Event::Type::TouchMoved, 1, {shelf.x + 350.0F - 44.0F * static_cast<float>(step), shelf.y + 60.0F});
         frames();
     }
+    frames(20);
     touch(platform::Event::Type::TouchEnded, 1, {shelf.x + 130.0F, shelf.y + 60.0F});
     frames(60);
     EXPECT_NEAR(getBounds(*gui, "b1").x, shelf.x, 1.0F);

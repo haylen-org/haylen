@@ -98,31 +98,49 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         flags |= ImGuiWindowFlags_HorizontalScrollbar;
     }
     if (context.getBackend().beginChild("##scroll", bounds.getSize(), ImGuiChildFlags_NavFlattened, flags)) {
-        // The bar takes the pointer in its lane before the content does.
+        const float view = horizontal ? box.width : box.height;
+        const ImVec2 start = ImGui::GetCursorScreenPos();
+        const float shown = horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY();
+        scroller.setRange(std::max(0.0F, (horizontal ? size.x : size.y) - view), view);
+        followWindow();
+
+        // The wheel and the finger move the content along the axis, and the bar takes the pointer in its lane before the content does.
+        const bool underPointer = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+        const Context::WheelScroll wheel = context.takeWheel(ImGui::GetCurrentWindow()->ID, bounds, horizontal, scroller.getOffset(), scroller.getMaximum(), underPointer);
+        if (wheel.distance != 0.0F) {
+            scroller.wheel(-static_cast<double>(wheel.distance), wheel.stepped);
+            request.reset();
+        }
+        followFinger(context, bounds, underPointer);
         if (overflowing) {
-            const float view = horizontal ? bounds.width : bounds.height;
-            const double maximum = std::max(0.0F, (horizontal ? size.x : size.y) - view);
-            const std::optional<double> offset = scrollbar.interact(context, bounds, horizontal, false, horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY(), maximum, view);
-            if (offset && horizontal) {
-                ImGui::SetScrollX(static_cast<float>(*offset));
-            } else if (offset) {
-                ImGui::SetScrollY(static_cast<float>(*offset));
+            if (const std::optional<double> offset = scrollbar.interact(context, bounds, horizontal, false, scroller.getOffset(), scroller.getMaximum(), view)) {
+                scroller.jumpTo(*offset);
+                request.reset();
             }
         }
+        const bool touched = (underPointer && (wheel.distance != 0.0F || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
+        idle = touched ? 0.0F : idle + context.getDeltaSeconds();
+        scroller.update(context.getDeltaSeconds());
+
+        // The ImGui window scrolls to the offset within the range in whole units, as ImGui keeps it, and the content draws at the offset itself, so it moves smoothly and stretches past an end.
+        const double offset = scroller.getOffset();
+        written = static_cast<float>(std::round(std::clamp(offset, 0.0, scroller.getMaximum())));
+        (horizontal ? ImGui::GetCurrentWindow()->Scroll.x : ImGui::GetCurrentWindow()->Scroll.y) = *written;
+        const float moved = shown - static_cast<float>(offset);
+        const math::Vec2 shift = horizontal ? math::Vec2{moved, 0.0F} : math::Vec2{0.0F, moved};
 
         // The child lays out in the box the lane leaves, scrolled, and draws only inside it.
         points.clear();
         math::Vec2 origin;
         if (child != nullptr) {
-            const ImVec2 start = ImGui::GetCursorScreenPos();
-            origin = math::Vec2{start.x, start.y} + (box.getMin() - bounds.getMin());
-            const math::Rect view{origin.x, origin.y, box.width, box.height};
-            const math::Rect area = place(context, *child, size, view);
+            origin = math::Vec2{start.x, start.y} + (box.getMin() - bounds.getMin()) + shift;
+            const math::Rect area = place(context, *child, size, {origin.x, origin.y, box.width, box.height});
             ImGui::PushClipRect(ImGuiConverter::toImVec2(box.getMin()), ImGuiConverter::toImVec2(box.getMax()), true);
             child->draw(context, area);
             ImGui::PopClipRect();
             ImGui::SetCursorScreenPos(start);
-            ImGui::Dummy(horizontal ? ImVec2{area.getRight() - start.x, view.getBottom() - start.y} : ImVec2{view.getRight() - start.x, area.getBottom() - start.y});
+            const math::Vec2 end = math::Vec2::max(area.getMax(), origin + box.getSize()) - shift;
+            ImGui::Dummy({end.x - start.x, end.y - start.y});
 
             // The items of the child are the places snapping settles on, measured from the start of the content.
             for (const auto& item : child->getChildren()) {
@@ -132,35 +150,21 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             }
         }
 
-        // The innermost area under the pointer that can scroll takes the wheel, so one turn moves one area, and a horizontal one takes the vertical wheel too.
-        const bool underPointer = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
-        const float room = horizontal ? ImGui::GetScrollMaxX() : ImGui::GetScrollMaxY();
-        const math::Vec2 distance = underPointer && room > 0.0F ? context.takeWheelDistance() : math::Vec2{};
-        if (!distance.isZero() || (underPointer && ImGui::IsMouseDown(ImGuiMouseButton_Left))) {
-            request.reset();
-        }
-        if (!distance.isZero()) {
-            if (horizontal) {
-                ImGui::SetScrollX(ImGui::GetScrollX() - distance.y - distance.x);
-            } else {
-                ImGui::SetScrollY(ImGui::GetScrollY() - distance.y);
-            }
-        }
-        followFinger();
-        const bool touched = (underPointer && (!distance.isZero() || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
-        idle = touched ? 0.0F : idle + context.getDeltaSeconds();
         if (request) {
-            const float view = horizontal ? box.width : box.height;
-            const float limit = std::max(0.0F, (horizontal ? size.x : size.y) - view);
-            const std::optional<float> target = findTarget(*request, origin, view, limit);
-            if (!target || approach(context, *target, request->animated)) {
+            const std::optional<double> target = findTarget(*request, origin, view);
+            if (!target) {
                 request.reset();
+            } else if (!request->animated) {
+                scroller.jumpTo(*target);
+                request.reset();
+            } else if (scroller.isResting() && std::fabs(*target - scroller.getOffset()) <= kSettleDistance) {
+                request.reset();
+            } else {
+                scroller.animateTo(*target);
             }
             idle = 0.0F;
         }
-        if (snap && idle > kSnapDelay) {
-            settle(context, horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY(), horizontal ? ImGui::GetScrollMaxX() : ImGui::GetScrollMaxY());
-        }
+        settle();
         if (overflowing) {
             scrollbar.draw(context, 1.0F);
         }
@@ -179,49 +183,73 @@ math::Rect Scroll::place(Context& context, Component& child, math::Vec2 size, co
     return {std::floor(context.alignHorizontally(alignment, view.x, view.width, width)), view.y, width, size.y};
 }
 
-void Scroll::followFinger() {
-    const ImGuiIO& io = ImGui::GetIO();
-    const ImGuiContext& state = *GImGui;
-    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || io.MouseSource != ImGuiMouseSource_TouchScreen || !ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-        return;
-    }
-
-    // Only a drag along the scrolling axis takes the finger from a control, and a text field being edited keeps it.
-    const ImVec2 dragged = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
-    const bool along = horizontal ? std::fabs(dragged.x) > std::fabs(dragged.y) : std::fabs(dragged.y) > std::fabs(dragged.x);
-    if (state.ActiveId != 0 && (!along || io.WantTextInput || state.ActiveIdWindow == nullptr || state.ActiveIdWindow->RootWindow != ImGui::GetCurrentWindow()->RootWindow)) {
-        return;
-    }
-    if (state.ActiveId != 0) {
-        ImGui::ClearActiveID();
-    }
-    if (horizontal) {
-        ImGui::SetScrollX(ImGui::GetScrollX() - io.MouseDelta.x);
-    } else {
-        ImGui::SetScrollY(ImGui::GetScrollY() - io.MouseDelta.y);
+void Scroll::followWindow() {
+    const ImGuiWindow& window = *ImGui::GetCurrentWindow();
+    const float shown = horizontal ? window.Scroll.x : window.Scroll.y;
+    const float limit = horizontal ? window.ScrollMax.x : window.ScrollMax.y;
+    if (written && !dragging && shown != std::min(*written, limit)) {
+        scroller.jumpTo(shown);
+        request.reset();
     }
 }
 
+void Scroll::followFinger(Context& context, const math::Rect& bounds, bool underPointer) {
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImGuiContext& state = *GImGui;
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        pressed = underPointer;
+        dragging = false;
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        if (dragging) {
+            scroller.release();
+        }
+        pressed = false;
+        dragging = false;
+        return;
+    }
+    if (!pressed || io.MouseSource != ImGuiMouseSource_TouchScreen) {
+        return;
+    }
+
+    // A text field being edited keeps the finger.
+    if (!dragging) {
+        if (scroller.getMaximum() <= 0.0 || !context.takeDrag(ImGui::GetCurrentWindow()->ID, bounds, horizontal)) {
+            return;
+        }
+        if (state.ActiveId != 0 && io.WantTextInput) {
+            pressed = false;
+            return;
+        }
+        if (state.ActiveId != 0) {
+            ImGui::ClearActiveID();
+        }
+        dragging = true;
+        request.reset();
+    }
+    scroller.drag(-static_cast<double>(horizontal ? io.MouseDelta.x : io.MouseDelta.y), context.getDeltaSeconds());
+}
+
 // A node scrolls only as far as it needs to show whole with `nearest`, and aligns its start, middle or end with the view otherwise.
-std::optional<float> Scroll::findTarget(const Request& value, math::Vec2 origin, float view, float limit) const {
+std::optional<double> Scroll::findTarget(const Request& value, math::Vec2 origin, double view) const {
     if (value.offset) {
-        return std::clamp(*value.offset, 0.0F, limit);
+        return std::clamp(static_cast<double>(*value.offset), 0.0, scroller.getMaximum());
     }
     const Component* node = findNode(*this, value.node);
     if (node == nullptr || !node->getCommon().visible) {
         return std::nullopt;
     }
     const math::Rect area = node->getBounds();
-    const float position = horizontal ? area.x - origin.x : area.y - origin.y;
-    const float length = horizontal ? area.width : area.height;
-    const float current = horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY();
-    float target = current;
+    const double position = horizontal ? area.x - origin.x : area.y - origin.y;
+    const double length = horizontal ? area.width : area.height;
+    const double current = scroller.getOffset();
+    double target = current;
     switch (value.align) {
     case Align::Start:
         target = position;
         break;
     case Align::Center:
-        target = position + (length - view) * 0.5F;
+        target = position + (length - view) * 0.5;
         break;
     case Align::End:
         target = position + length - view;
@@ -234,41 +262,24 @@ std::optional<float> Scroll::findTarget(const Request& value, math::Vec2 origin,
         }
         break;
     }
-    return std::clamp(target, 0.0F, limit);
+    return std::clamp(target, 0.0, scroller.getMaximum());
 }
 
-bool Scroll::approach(Context& context, float target, bool animated) {
-    const float position = horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY();
-    const float distance = target - position;
-    const float step = animated ? std::max(std::fabs(distance) * std::min(1.0F, context.getDeltaSeconds() * kSnapSpeed), 1.0F) : std::fabs(distance);
-    const float next = std::fabs(distance) <= step ? target : position + std::copysign(step, distance);
-    if (horizontal) {
-        ImGui::SetScrollX(next);
-    } else {
-        ImGui::SetScrollY(next);
-    }
-    return next == target;
-}
-
-void Scroll::settle(Context& context, float position, float limit) {
-    if (points.empty()) {
+// Once the player lets go and the content rests, it glides to the item of the child nearest to where it stopped.
+void Scroll::settle() {
+    if (!snap || points.empty() || dragging || request || !scroller.isResting() || idle < kSnapDelay) {
         return;
     }
-    float target = std::clamp(points.front(), 0.0F, limit);
+    const double position = scroller.getOffset();
+    double target = std::clamp(static_cast<double>(points.front()), 0.0, scroller.getMaximum());
     for (const float point : points) {
-        const float candidate = std::clamp(point, 0.0F, limit);
+        const double candidate = std::clamp(static_cast<double>(point), 0.0, scroller.getMaximum());
         if (std::fabs(candidate - position) < std::fabs(target - position)) {
             target = candidate;
         }
     }
-    // ImGui rounds scroll positions, so every step moves at least one pixel and never stalls short of the target.
-    const float distance = target - position;
-    const float step = std::max(std::fabs(distance) * std::min(1.0F, context.getDeltaSeconds() * kSnapSpeed), 1.0F);
-    const float next = std::fabs(distance) <= step ? target : position + std::copysign(step, distance);
-    if (horizontal) {
-        ImGui::SetScrollX(next);
-    } else {
-        ImGui::SetScrollY(next);
+    if (std::fabs(target - position) > kSettleDistance) {
+        scroller.animateTo(target);
     }
 }
 

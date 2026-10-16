@@ -15,6 +15,7 @@
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/PropertyReader.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/ScrollArbiter.hpp"
 #include "ui/Scrollbar.hpp"
 #include "ui/Scroller.hpp"
 #include "ui/Surfaces.hpp"
@@ -320,7 +321,7 @@ void Collection::arrangeChange(const CollectionSource::Change& change) {
     }
     layout->arrange({.count = count, .crossLength = std::max(0.0F, crossLength), .gap = gapLength, .lanes = laneCount, .spans = spans}, first);
     sizes->arrangeFrom(*layout, gapLength, layout->getLine(std::min(first, count - 1)));
-    scroller->setMaximum(getContentLength() - getMainLength());
+    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
 }
 
 std::optional<std::size_t> Collection::mapIndex(std::size_t index, const CollectionSource::Change& change) const {
@@ -568,7 +569,7 @@ void Collection::arrange() {
     layout->arrange({.count = count, .crossLength = cross, .gap = gapLength, .lanes = laneCount, .spans = spans}, 0);
     sizes->arrange(*layout, gapLength);
     layoutDirty = false;
-    scroller->setMaximum(getContentLength() - getMainLength());
+    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
 }
 
 std::size_t Collection::findFirstFrom(double offset) const {
@@ -664,7 +665,7 @@ void Collection::restoreHold() {
         return;
     }
     const Hold kept = *std::exchange(hold, std::nullopt);
-    scroller->setMaximum(getContentLength() - getMainLength());
+    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
     if (kept.end) {
         scroller->shift(scroller->getMaximum() - scroller->getOffset());
     } else if (kept.index < sizes->size()) {
@@ -873,7 +874,7 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     rightToLeft = context.isRightToLeft();
     context.getFocus().beginCollection(bounds, !isVertical(), rememberFocus ? rememberedTarget : 0);
     updateGeometry(context, (isVertical() ? bounds.width - padding.getHorizontal() : bounds.height - padding.getVertical()) - getLaneReserve(context));
-    scroller->setMaximum(getContentLength() - getMainLength());
+    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
     if (getCount() == 0) {
         laneReserved = false;
         animate();
@@ -944,17 +945,19 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     noticeHiddenCells(context);
 }
 
-// The innermost collection under the pointer takes the wheel, a horizontal one the vertical wheel too, and a finger that drags along the axis past a small distance takes over from the control it pressed, unless that control edits text.
+// The wheel moves the collection along its axis while its gesture belongs to it, and a finger that drags along its axis takes over from the control it pressed, unless that control edits text.
 void Collection::takeInput(Context& context) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiContext& state = *GImGui;
     const bool underPointer = ImGui::IsWindowHovered() && viewport.contains(math::Vec2{io.MousePos.x, io.MousePos.y});
+    const bool mirrored = rightToLeft && !isVertical();
     idle += delta;
 
-    const math::Vec2 distance = underPointer && scroller->getMaximum() > 0.0 ? context.takeWheelDistance() : math::Vec2{};
-    const float wheel = isVertical() ? -distance.y : -distance.y + (rightToLeft ? distance.x : -distance.x);
-    if (wheel != 0.0F) {
-        scroller->jumpTo(scroller->getOffset() + static_cast<double>(wheel));
+    // A mirrored collection starts at its right end, so its offset counts from there while the wheel counts from the left.
+    const double position = mirrored ? scroller->getMaximum() - scroller->getOffset() : scroller->getOffset();
+    const Context::WheelScroll wheel = context.takeWheel(ImGui::GetID(this), viewport, !isVertical(), position, scroller->getMaximum(), underPointer);
+    if (wheel.distance != 0.0F) {
+        scroller->wheel(static_cast<double>(mirrored ? wheel.distance : -wheel.distance), wheel.stepped);
         pendingScroll.reset();
         idle = 0.0F;
     }
@@ -985,11 +988,10 @@ void Collection::takeInput(Context& context) {
     if (!pressed || io.MouseSource != ImGuiMouseSource_TouchScreen) {
         return;
     }
+
+    // A list that pulls to refresh takes the finger even while all its items show.
     if (!dragging) {
-        const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
-        const float along = std::fabs(isVertical() ? moved.y : moved.x);
-        const float across = std::fabs(isVertical() ? moved.x : moved.y);
-        if (along < kDragSlop || along <= across) {
+        if ((scroller->getMaximum() <= 0.0 && !(refreshable && isVertical())) || !context.takeDrag(ImGui::GetID(this), viewport, !isVertical())) {
             return;
         }
         if (state.ActiveId != 0 && io.WantTextInput) {
@@ -1017,7 +1019,7 @@ bool Collection::takeLift(Context& context) {
     const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
     const float distance = std::sqrt(moved.x * moved.x + moved.y * moved.y);
     const bool touch = io.MouseSource == ImGuiMouseSource_TouchScreen;
-    const bool lifting = touch ? distance < kDragSlop && io.MouseDownDuration[0] >= context.getMetric(Theme::Metric::LongPressDuration) : distance >= kDragSlop;
+    const bool lifting = touch ? distance < ScrollArbiter::kDragSlop && io.MouseDownDuration[0] >= context.getMetric(Theme::Metric::LongPressDuration) : distance >= ScrollArbiter::kDragSlop;
     if (!lifting) {
         return false;
     }
@@ -1634,7 +1636,7 @@ void Collection::refreshRange() {
     hold.reset();
     if (renderedFrame > 0) {
         ensureArranged();
-        scroller->setMaximum(getContentLength() - getMainLength());
+        scroller->setRange(getContentLength() - getMainLength(), getMainLength());
     }
 }
 
