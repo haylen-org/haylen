@@ -8,7 +8,7 @@
 #define {{MACRO}}_EXPORT __attribute__((visibility("default")))
 #endif
 
-static const HaylenNativeApi* {{SYMBOL}}_api = 0;
+static const HaylenNativeApi* {{SYMBOL}}_api = NULL;
 
 // Answers `{{ID}}.echo` with the parameters it receives, which hold the message, and sends them to the app again as the `{{ID}}.echoed` event.
 static void {{SYMBOL}}_echo(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
@@ -16,8 +16,8 @@ static void {{SYMBOL}}_echo(void* user, uint64_t call, const char* method, const
     (void)method;
     (void)buffers;
     (void)bufferCount;
-    {{SYMBOL}}_api->emit("{{ID}}.echoed", paramsJson, 0, 0, 0);
-    {{SYMBOL}}_api->resolve(call, 1, paramsJson, 0, 0);
+    {{SYMBOL}}_api->emit("{{ID}}.echoed", paramsJson, NULL, 0, 0);
+    {{SYMBOL}}_api->resolve(call, 1, paramsJson, NULL, 0);
 }
 
 // Registers the methods of the plugin and declares the library the native part of `{{ID}}`.
@@ -26,7 +26,7 @@ static void {{SYMBOL}}_echo(void* user, uint64_t call, const char* method, const
         return 1;
     }
     {{SYMBOL}}_api = api;
-    api->registerHandler("{{ID}}.echo", {{SYMBOL}}_echo, 0, 0);
+    api->registerHandler("{{ID}}.echo", {{SYMBOL}}_echo, NULL, NULL);
     api->registerPlugin("{{ID}}");
     return 0;
 }
