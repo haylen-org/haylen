@@ -654,7 +654,7 @@ Sends a command to the node `id`. The argument `arguments` is optional, and only
 - The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea`, `collection` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, a collection keeps the focus on its focused item or focuses its first item in view, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.
 - The command `'scrollTo'` scrolls a `scroll` to a place, with the arguments `offset`, the distance from the start of the content in design units, or `node`, the id of a node inside the scroll, which the scroll follows while it moves. The argument `align` places the node: `'nearest'`, the default, scrolls the least that shows the whole node and nothing when it already shows, and `'start'`, `'center'` and `'end'` align that part of the node with that part of the view. The argument `animated`, `true` by default, moves there smoothly, and the wheel, a press or a drag of the player end the move. The command takes either `offset` or `node` and raises `The "scrollTo" command of a "scroll" takes a table with either "node" or "offset".` otherwise, an unknown argument raises `Unknown key "<key>" in the "scrollTo" command of a "scroll".`, a node outside the scroll raises `The scroll "<id>" holds no node with the id "<node>".`, and wrong values raise the errors of the properties of the same names.
-- The command `'show'` adds a notice to a `toast`, with the arguments `text`, `tone` and `duration`, which default to the properties of the toast. Every notice takes its place in the stack of the toast, so notices shown one after the other never cover each other. Unknown arguments raise `Unknown key "<key>" in the "show" command of a "toast".`, and wrong values raise the errors of the properties of the same names.
+- The commands `'show'`, `'update'` and `'hide'` add, change and let go the notices of a `toast`, as [its reference](#uitoastproperties) describes.
 
 A kind without that command raises `The component kind "<kind>" does not answer the command "<name>".`, arguments raise `The "focus" command takes no arguments.` or `The "open" command takes no arguments.`, and an unknown id raises `The GUI has no node with the id "<id>".`.
 
@@ -1226,7 +1226,9 @@ Events are collected while the GUI draws and handed to the handlers once per fra
 | `window` | `close` | none |
 | `splitter` | `resize` | `ratio` (number) |
 | `dialog` | `answer` | `button` (button id) |
-| `dialog`, `toast` | `dismiss` | none |
+| `dialog` | `dismiss` | none |
+| `toast` | `noticeShow`, `click`, `action` | `notice` (id of the notice, absent for the notice of the properties) |
+| `toast` | `dismiss` | `reason` (`'timeout'`, `'closed'`, `'swiped'`, `'action'` or `'hidden'`), `notice` (id of the notice, absent for the notice of the properties) |
 | `touchButton` | `press`, `release` | none, for any finger, in place of the `press` and `release` of every kind |
 | every kind | `focus`, `blur` | none |
 | a node with `focusScope`, the GUI root | `cancel` | none |
@@ -2850,28 +2852,66 @@ ui.mount(ui.column{
 
 ### ui.toast(properties)
 
-Short notices at an edge of the safe area. The notice of the toast shows while `open` is `true`, and the `show` [command](#guicommandid-name-arguments) adds more notices to the same toast. Every notice slides in from the edge and fades in, stays for its duration, then fades out while the notices after it move up into its place. The notices of every toast at the same position form one stack, in the order they were asked to show, so they never cover each other, and when the stack already shows the theme `toastLimit` notices, the next ones wait their turn and their time starts once they show. A toast takes no room in the layout that holds it and ignores the pointer. Setting `open = true` again shows the notice of the toast again from the start, at the end of the stack, and the end of that notice reports `dismiss`.
+Short notices at an edge of the safe area. The notice of the toast shows while `open` is `true`, and the commands add more notices to the same toast, change them and let them go. A notice is a pill of the color of its tone with an optional indicator, a title, a text, an action and a close button, slides in from the edge and fades in, stays for its duration, then fades out while the notices around it move into its place. The notices of every toast at the same position form one stack, so they never cover each other. In a `'list'` they line up in the order they were asked to show, and when the list already shows the theme `toastLimit` notices, the next ones wait their turn and their time starts once they show. In a `'deck'` the newest notice is in front at the edge and the older ones peek out behind it, smaller, the theme `toastPeek` past the notice in front of each, and the deck opens into a list while the pointer or a finger is on it. The time of the notices of a stack stops while the pointer or a finger is on one of them.
+
+A notice of a list is as wide as what it shows, up to the theme `toastWidth`, and the notices of a deck all take that width, so they line up. A press on a notice reports `click`, the action reports `action` and lets the notice go, the close button lets it go, and a press that drags the notice sideways past a third of its width swipes it away, while a shorter drag springs back. Every notice that leaves reports `dismiss` with the reason, except the notice of the properties when setting `open = true` again replaces it with a new one at the end of the stack. A toast takes no room in the layout that holds it, its notices take the pointer over them, and the action and the close button never take the focus, so a notice that comes never pulls the focus from the game or the screen.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `open` | boolean | `false` | Shows the notice of the toast. |
 | `text` | text | none | The notice. |
-| `tone` | tone | `'information'` | Color of the bar on its start edge. |
-| `duration` | number from 0 to 3600 | `3` | Seconds on screen. The value `0` keeps the notice until `open` is set to `false`. |
+| `title` | text | none | A bold line over the text. |
+| `tone` | tone | `'neutral'` | Color of the notice, and the symbol of the indicator `'icon'`: a check for `'success'`, a cross for `'danger'`, an exclamation mark for `'warning'` and an "i" for the other tones. |
+| `variant` | string | `'solid'` | How the notice paints its tone: `'solid'` fills it with the color of the tone, `'soft'` with its pale color and a border of the tone, and `'outline'` with the raised color of the theme and a border of the tone. A neutral notice takes the colors of tooltips. A theme that paints toasts with an image keeps the image and gives the tone to the indicator. |
+| `indicator` | string | `'none'` | What shows before the text: `'none'`, `'icon'` for the symbol of the tone, `'busy'` for a spinner or `'progress'` for a ring that fills with `progress`. |
+| `progress` | number from 0 to 1 | `0` | How full the ring of the indicator `'progress'` is. |
+| `action` | text | none | The text of a button at the end of the notice, such as `'Undo'`. |
+| `closable` | boolean | `false` | Shows a close button at the end of the notice. |
+| `duration` | number from 0 to 3600 | `3` | Seconds on screen. The value `0` keeps the notice until it is closed, swiped away, hidden or `open` is set to `false`. |
 | `position` | string | `'top'` | Where the stack sits: `'top'` or `'bottom'` in the middle of the edge, or `'topStart'`, `'topEnd'`, `'bottomStart'` and `'bottomEnd'` at its sides, where start is the left of a left-to-right UI. |
+| `arrangement` | string | `'list'` | How the notices of the toast stack: `'list'` or `'deck'`. |
+
+The [commands](#guicommandid-name-arguments) of a toast take a table:
+
+- The command `'show'` adds a notice with the arguments `notice`, its id, and `title`, `text`, `action`, `tone`, `variant`, `indicator`, `progress`, `closable` and `duration`, which are the properties of the same names. A notice looks like the properties of the toast unless its arguments say otherwise, and says only what its arguments say. Showing a notice with the id of a notice that shows changes it and starts its time again.
+- The command `'update'` changes the notice with the id `notice` with the same arguments, such as the progress of an upload, and a `duration` among them starts its time again. A missing id raises `The "update" command of a "toast" needs the "notice" it changes.`.
+- The command `'hide'` lets the notice with the id `notice` go, or every notice of the toast without an id.
+
+An id that no notice of the toast has raises `The toast "<id>" shows no notice "<notice>".`, an argument that is not a table raises `The "<command>" command of a "toast" takes a table.`, unknown arguments raise `Unknown key "<key>" in the "<command>" command of a "toast".`, and wrong values raise the errors of the properties of the same names.
+
+| Event | Values | When |
+| --- | --- | --- |
+| `noticeShow` | `notice` | A notice comes on screen, which for a notice that waited in a full list is when its turn comes. |
+| `click` | `notice` | The player pressed a notice and let go without swiping it. |
+| `action` | `notice` | The player pressed the action of a notice, which then leaves. |
+| `dismiss` | `reason`, `notice` | A notice left: `'timeout'` when its time ended, `'closed'` by its close button, `'swiped'` by a swipe, `'action'` by its action and `'hidden'` by `open = false` or the command `'hide'`. |
+
+The value `notice` is the id the notice was shown with, and it is absent for the notice of the properties.
 
 ```lua
 local ui = require('haylen.ui')
 
-local notices = ui.mount(ui.toast{id = 'saved', text = 'Progress saved', tone = 'success', position = 'bottom'})
+local notices = ui.mount(ui.toast{id = 'saved', text = 'Progress saved', tone = 'success', indicator = 'icon', position = 'bottom',
+    onAction = function(event)
+        print('Undo ' .. event.notice)
+    end,
+    onDismiss = function(event)
+        print((event.notice or 'saved') .. ' left: ' .. event.reason)
+    end})
 
-local function showSaved()
-    notices:set('saved', {open = true})
-end
+notices:set('saved', {open = true})
+notices:command('saved', 'show', {notice = 'chest', text = 'Two new items in the chest', tone = 'information', duration = 5})
+notices:command('saved', 'show', {notice = 'trash', text = 'The map was deleted', variant = 'outline', tone = 'danger', indicator = 'icon', action = 'Undo', closable = true})
 
-showSaved()
-notices:command('saved', 'show', {text = 'Two new items in the chest', tone = 'information', duration = 5})
-notices:command('saved', 'show', {text = 'The storm is coming', tone = 'warning'})
+-- A notice that follows a task changes as the task goes on.
+notices:command('saved', 'show', {notice = 'upload', text = 'Uploading the save', indicator = 'progress', duration = 0})
+notices:command('saved', 'update', {notice = 'upload', progress = 0.5})
+notices:command('saved', 'update', {notice = 'upload', text = 'Save uploaded', tone = 'success', indicator = 'icon', duration = 2})
+
+-- The newest notice in front, the older ones behind it.
+local deck = ui.mount(ui.toast{id = 'feed', position = 'bottomEnd', arrangement = 'deck', duration = 6})
+deck:command('feed', 'show', {text = 'A gull stole a fish'})
+deck:command('feed', 'show', {text = 'The tide is rising', tone = 'information'})
 ```
 
 ### ui.window(properties)
@@ -3196,7 +3236,7 @@ Both built-in themes share these metrics, in design units.
 | `tabPaddingX` | `24` | Horizontal padding of each tab. |
 | `listRowHeight` | `64` | Height of list, tree and table rows and the smallest height of settings rows. |
 | `dialogWidth` | `760` | Width of dialogs. |
-| `toastWidth` | `560` | Width of toasts. |
+| `toastWidth` | `560` | Widest a toast grows, and the width of the toasts of a deck. |
 | `tooltipWidth` | `520` | Width at which tooltips wrap. |
 | `settingsLabelWidth` | `420` | Width of the label column of settings rows. |
 | `caretWidth` | `2` | Width of the text cursor in fields and [`haylen.imgui`](imgui.md) inputs. |
@@ -3207,8 +3247,10 @@ Both built-in themes share these metrics, in design units.
 | `pageIndicatorSize` | `14` | Size of the page dots of carousels. |
 | `toggleKnobInset` | `4` | Space between the knob of a switch and the edge of its track. |
 | `transitionDuration` | `0.15` | Seconds the transitions of the UI take: the knob of a switch, the fades of dialogs and their backdrops, and the fades and moves of toasts. |
-| `toastLimit` | `3` | Notices one stack of toasts shows at once, while the others wait. The value `0` shows them all. |
-| `toneBarWidth` | `6` | Width of the bar of the tone of toasts and alerts. |
+| `toastLimit` | `3` | Notices one list of toasts shows at once, while the others wait, and the notices a closed deck shows, while the older ones hide behind them. The value `0` shows them all. |
+| `toastRadius` | `999` | Corner radius of toasts, at most half the height of a toast of one line, so the default rounds every toast of one line into a pill. |
+| `toastPeek` | `14` | How far each notice behind the front of a closed deck of toasts peeks out past the notice in front of it. |
+| `toneBarWidth` | `6` | Width of the bar of the tone of alerts. |
 | `panelRadius` | `16` | Corner radius of panels, cards, dialogs, windows, toasts and popups, which the rows of a popup and the title bar of a window follow inside it. |
 | `contentSpacing` | `12` | Space between the box, the switch or the icon of a control and its text. |
 | `focusGap` | `3` | Space between a control and its focus ring. |

@@ -35,7 +35,7 @@ end
 
 -- Mounts the notices, which stay above every screen, and shows the first tab.
 function Shell.start()
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5}, {layer = 10, sharedFocus = true})
+    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5, indicator = 'icon'}, {layer = 10, sharedFocus = true})
     Shell.showTab('home')
 end
 

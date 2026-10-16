@@ -3,30 +3,52 @@
 #include <algorithm>
 #include <utility>
 
+#include <imgui_internal.h>
+
 namespace haylen::ui {
 
-void ToastStack::beginFrame() noexcept {
+// The windows of the notices of the last frame come to the front from the deepest to the front one, so every notice draws over those behind it.
+void ToastStack::beginFrame() {
+    order.clear();
+    for (const Entry& entry : current) {
+        if (entry.window != 0) {
+            order.push_back(&entry);
+        }
+    }
+    std::ranges::sort(order, [](const Entry* first, const Entry* second) { return first->depth != second->depth ? first->depth > second->depth : first->key < second->key; });
+    for (const Entry* entry : order) {
+        if (ImGuiWindow* window = ImGui::FindWindowByID(entry->window)) {
+            ImGui::BringWindowToDisplayFront(window);
+        }
+    }
+
     std::swap(previous, current);
     current.clear();
+    held = std::exchange(holding, {});
 }
 
 bool ToastStack::isBefore(const Entry& entry, std::uint64_t key, double since) noexcept {
     return entry.since < since || (entry.since == since && entry.key < key);
 }
 
-// The notices before this one take their places first: those of the last frame, and those that asked to show since then and already placed themselves this frame. Only the first ones up to the limit show, so a notice behind them waits, and a limit of zero shows every notice.
-std::optional<float> ToastStack::place(std::uint64_t key, Position position, float extent, double since, std::size_t limit) {
+// The other notices of the position count first: those of the last frame, and those that asked to show since then and already placed themselves this frame. A list counts the notices that asked before this one, and a deck the ones that asked after it, which lie in front of it.
+std::optional<ToastStack::Placement> ToastStack::place(std::uint64_t key, Position position, Arrangement arrangement, float extent, double since, std::size_t limit, float peek) {
+    const bool deck = arrangement == Arrangement::Deck;
     std::size_t ahead = 0;
     float offset = 0.0F;
-    bool waits = false;
+    double newest = since;
+    float front = extent;
     // clang-format off
     const auto count = [&](const Entry& entry) {
-        if (entry.position != position || entry.key == key || !isBefore(entry, key, since)) {
+        if (entry.position != position || entry.key == key || isBefore(entry, key, since) == deck) {
             return;
         }
         ++ahead;
-        waits = waits || (limit > 0 && ahead >= limit);
         offset += entry.extent;
+        if (entry.since >= newest) {
+            newest = entry.since;
+            front = entry.extent;
+        }
     };
     // clang-format on
     for (const Entry& entry : previous) {
@@ -37,11 +59,30 @@ std::optional<float> ToastStack::place(std::uint64_t key, Position position, flo
             count(entry);
         }
     }
-    current.push_back({.key = key, .position = position, .extent = extent, .since = since});
-    if (waits) {
+
+    const bool open = isHeld(position);
+    const Placement placement = !deck || open ? Placement{.offset = offset, .depth = 0, .front = 0.0F} : Placement{.offset = static_cast<float>(ahead) * peek, .depth = ahead, .front = front};
+    current.push_back({.key = key, .position = position, .extent = extent, .since = since, .depth = placement.depth});
+    if (!deck && limit > 0 && ahead >= limit) {
         return std::nullopt;
     }
-    return offset;
+    return placement;
+}
+
+void ToastStack::attach(std::uint64_t key, ImGuiID window) noexcept {
+    for (Entry& entry : current) {
+        if (entry.key == key) {
+            entry.window = window;
+        }
+    }
+}
+
+void ToastStack::hold(Position position) noexcept {
+    holding[static_cast<std::size_t>(position)] = true;
+}
+
+bool ToastStack::isHeld(Position position) const noexcept {
+    return held[static_cast<std::size_t>(position)];
 }
 
 } // namespace haylen::ui

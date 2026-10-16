@@ -796,6 +796,26 @@ TEST_F(UiLuaTest, ReportsWhereFloatingNodesDraw) {
     EXPECT_EQ(fixture.lua("return tostring(screen:bounds('map'))"), "nil");
 }
 
+TEST_F(UiLuaTest, ShowsChangesAndHidesToastNoticesFromLua) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        reasons = {}
+        screen = ui.mount(ui.toast{id = 'jobs', duration = 0, variant = 'soft', arrangement = 'deck', onDismiss = function(event)
+            reasons[#reasons + 1] = (event.notice or 'own') .. ':' .. event.reason
+        end}, {placement = 'screen'})
+        screen:command('jobs', 'show', {notice = 'upload', title = 'Upload', text = 'Sending the save', indicator = 'progress', progress = 0.25})
+    )");
+    // clang-format on
+    fixture.frames(10);
+    fixture.runLua("screen:command('jobs', 'update', {notice = 'upload', progress = 1, tone = 'success', indicator = 'icon'})");
+    fixture.frames(2);
+    fixture.runLua("screen:command('jobs', 'hide', {notice = 'upload'})");
+    fixture.frames(20);
+    EXPECT_EQ(fixture.lua("return table.concat(reasons, ' ')"), "upload:hidden");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(screen.command, screen, 'jobs', 'update', {notice = 'gone'}) return message"), "The toast \"jobs\" shows no notice \"gone\".");
+}
+
 TEST_F(UiLuaTest, SimulatesTheSafeAreaAndKeepsTheBackButton) {
     // clang-format off
     fixture.runLua(R"(
