@@ -249,7 +249,7 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - Do not add comments in headers merely to describe methods, sections, or members.
 - The build is warning-free on every platform with the warnings of `engine/cmake/haylen-warnings.cmake`. Those warnings apply to the targets of the engine alone, and the targets of a dependency that bring warning flags of their own build without warnings through `haylen_disable_warnings`, since only that dependency can act on them.
 - The tool `clang-format` does not format project lambdas acceptably. Wrap non-trivial lambdas in `// clang-format off` and `// clang-format on` markers, and format the lambda manually. Multi-line Lua sources in tests get the same markers.
-- Run `haylen format` before finishing a change. It applies `.clang-format` to every C, C++, Objective-C and Objective-C++ file of the engine, the samples and the templates, and lists multi-line lambdas that are missing their `clang-format off` and `on` markers. The command `haylen format --check` fails on either problem and runs in CI.
+- Run `haylen format` before finishing a change. It applies `.clang-format` to every C, C++, Objective-C and Objective-C++ file of the engine, the samples and the templates, except the files of the plugin template whose names hold a token such as `{{NAME}}`, which become code only once `plugin new` replaces their tokens, and lists multi-line lambdas that are missing their `clang-format off` and `on` markers. The command `haylen format --check` fails on either problem and runs in CI.
 
 ## Writing standard
 

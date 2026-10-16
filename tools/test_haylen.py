@@ -386,6 +386,30 @@ class LauncherTest(unittest.TestCase):
         self.assertIn("exit /b %errorlevel%", script)
 
 
+class PluginTemplateTest(unittest.TestCase):
+    def test_a_new_plugin_has_a_native_part_for_every_platform(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch) / "camera-scanner"
+            with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+                haylen.command_plugin_new(argparse.Namespace(folder=str(folder), id=None))
+            manifest = json.loads((folder / "plugin.json").read_text())
+            self.assertEqual(manifest["platforms"], ["ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux"])
+            self.assertEqual(manifest["native"], {"cmake": "native", "platforms": ["macos", "windows", "linux"]})
+
+            # The desktop library and its init function take the id with underscores, the name that "native.load" finds.
+            source = (folder / "native" / "CameraScanner.c").read_text()
+            self.assertIn("CAMERA_SCANNER_EXPORT int camera_scanner_haylen_init(const HaylenNativeApi* api)", source)
+            self.assertIn('api->registerHandler("camera-scanner.echo"', source)
+            self.assertIn("add_library(camera_scanner CameraScanner.c)", (folder / "native" / "CMakeLists.txt").read_text())
+            self.assertIn("native.load('camera_scanner', {init = 'camera_scanner_haylen_init'})", (folder / "source" / "init.lua").read_text())
+            self.assertFalse([path for path in folder.rglob("*") if "{{" in path.name or (path.is_file() and "{{" in path.read_text())])
+
+    def test_the_format_command_leaves_the_files_of_the_template_with_tokens_alone(self):
+        sources = haylen.format_sources()
+        self.assertNotIn(haylen.PLUGIN_TEMPLATE / "native" / "{{NAME}}.c", sources)
+        self.assertIn(haylen.ROOT / "templates" / "cpp" / "src" / "App.cpp", sources)
+
+
 class CleanTest(unittest.TestCase):
     def test_clean_removes_the_build_folder_and_says_when_it_was_already_clean(self):
         with tempfile.TemporaryDirectory() as scratch:

@@ -663,11 +663,12 @@ def command_coverage(args: argparse.Namespace) -> None:
 
 
 def format_sources() -> list[Path]:
+    """Lists the C, C++ and Objective-C sources to format, leaving out the files of the plugin template whose names hold a token such as `{{NAME}}`, which become code only once "plugin new" replaces their tokens."""
     files: list[Path] = []
     for root in FORMAT_ROOTS:
         folder = ROOT / root
         if folder.exists():
-            files += [path for path in folder.rglob("*") if path.suffix in FORMAT_EXTENSIONS and path.is_file() and not FORMAT_SKIPPED_FOLDERS.intersection(path.relative_to(folder).parts)]
+            files += [path for path in folder.rglob("*") if path.suffix in FORMAT_EXTENSIONS and path.is_file() and "{{" not in path.name and not FORMAT_SKIPPED_FOLDERS.intersection(path.relative_to(folder).parts)]
     return sorted(files)
 
 
@@ -4000,7 +4001,7 @@ def command_plugin_new(args: argparse.Namespace) -> None:
         raise BuildError(f"The folder `{shown_path(folder)}` already exists and is not empty. Name a new folder or an empty one.")
 
     words = identifier.split("-")
-    tokens = {"{{ID}}": identifier, "{{NAME}}": "".join(word.capitalize() for word in words), "{{TITLE}}": " ".join(word.capitalize() for word in words), "{{PACKAGE}}": "".join(words)}
+    tokens = {"{{ID}}": identifier, "{{NAME}}": "".join(word.capitalize() for word in words), "{{TITLE}}": " ".join(word.capitalize() for word in words), "{{PACKAGE}}": "".join(words), "{{SYMBOL}}": "_".join(words), "{{MACRO}}": "_".join(words).upper()}
 
     def substitute(text: str) -> str:
         for token, value in tokens.items():

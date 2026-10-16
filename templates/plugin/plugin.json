@@ -3,7 +3,7 @@
     "name": "{{TITLE}}",
     "version": "1.0.0",
     "description": "Echoes messages through the native code of every platform.",
-    "platforms": ["ios", "catalyst", "tvos", "macos", "android", "web"],
+    "platforms": ["ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux"],
     "requires": [],
     "parameters": {},
     "apple": {
@@ -15,5 +15,9 @@
     },
     "web": {
         "module": "web/{{ID}}.js"
+    },
+    "native": {
+        "cmake": "native",
+        "platforms": ["macos", "windows", "linux"]
     }
 }

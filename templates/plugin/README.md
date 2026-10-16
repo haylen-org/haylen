@@ -25,7 +25,7 @@ The command `plugin add` copies the plugin into `plugins/{{ID}}/` of the app and
 | iOS, iPadOS, Mac Catalyst, tvOS, macOS | `apple/{{NAME}}Plugin.swift` | None. |
 | Android | The library module in `android/` | None. |
 | Web | `web/{{ID}}.js` | None. |
-| Windows, Linux | None | Calls fail with the code `noHandler`. |
+| Windows, Linux, and macOS in the desktop player | The C library of `native/{{NAME}}.c` | None. The tool `haylen.py` builds it with CMake and places it next to the app, and the Lua API loads it. |
 
 ## Parameters
 
