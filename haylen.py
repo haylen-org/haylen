@@ -4896,8 +4896,12 @@ def command_serve(args: argparse.Namespace) -> None:
 
 
 def command_clean(_: argparse.Namespace) -> None:
+    if not BUILD_ROOT.exists():
+        terminal.success(f"Nothing to clean, because `{BUILD_ROOT}` does not exist.")
+        return
+
     shutil.rmtree(BUILD_ROOT, ignore_errors=True)
-    terminal.success(f"Removed `{shown_path(BUILD_ROOT)}`.")
+    terminal.success(f"Removed every build tree, the engine artifacts and the build folders of apps from `{BUILD_ROOT}`.")
 
 
 def add_jobs_option(parser: argparse.ArgumentParser) -> None:

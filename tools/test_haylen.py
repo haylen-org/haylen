@@ -386,6 +386,18 @@ class LauncherTest(unittest.TestCase):
         self.assertIn("exit /b %errorlevel%", script)
 
 
+class CleanTest(unittest.TestCase):
+    def test_clean_removes_the_build_folder_and_says_what_it_held(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            build = Path(scratch) / "build"
+            (build / "macos-debug").mkdir(parents=True)
+            for message in ("Removed every build tree, the engine artifacts and the build folders of apps from", "Nothing to clean, because"):
+                output = io.StringIO()
+                with mock.patch.object(haylen, "BUILD_ROOT", build), mock.patch.object(haylen, "terminal", haylen.Terminal(output, io.StringIO(), {})):
+                    haylen.command_clean(argparse.Namespace())
+                self.assertFalse(build.exists())
+                self.assertIn(f"{message} {build}", output.getvalue())
+
 
 class PythonVersionTest(unittest.TestCase):
     def test_an_older_python_stops_with_the_version_it_needs(self):
