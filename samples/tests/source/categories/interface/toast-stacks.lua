@@ -38,7 +38,7 @@ function ToastStacks:enter()
             end}
     end
     self:frame{
-        hint = 'Every button adds a notice at its position. A list shows three notices at most while the next ones wait, and a deck puts the newest in front and opens under the pointer or a finger. The time of a stack stops while the pointer or a finger is on it, a press reports a click, and a sideways drag swipes a notice away.',
+        hint = 'Every button adds a notice at its position. A list shows three notices at most while the next ones wait, and a deck puts the newest in front and opens under the pointer or a finger. The time of a stack stops while the pointer or a finger is on it, a press closes a notice, and a sideways drag swipes it away.',
         focus = 'show-top',
         content = {layout.columns{
             ui.column{grow = 1, gap = 24,

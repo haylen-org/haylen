@@ -186,6 +186,25 @@ TEST_F(OverlayTest, PutsTheNewestNoticeOfADeckInFrontAndOpensTheDeckUnderThePoin
     EXPECT_LT(closed[2].width, opened[2].width * 0.93F);
 }
 
+// A deck that the pointer opens over a notice behind its front stays open while the pointer is anywhere in it, though the notice moves away from the pointer as the deck opens.
+TEST_F(OverlayTest, KeepsADeckOpenWhileThePointerStaysInIt) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "toast", "id": "news", "position": "bottom", "arrangement": "deck", "duration": 0}]})");
+    for (const char* message : {"One", "Two", "Three"}) {
+        gui->command(getUi().getContext(), "news", "show", {{"text", message}});
+    }
+    frames(getTransitionFrames() * 3);
+    const math::Rect front = getBounds(*gui, "news");
+    const float peek = getUi().getTheme().getMetric(Theme::Metric::ToastPeek);
+    pointer(platform::Event::Type::MouseMove, {front.getCenter().x, front.y - peek * 0.5F});
+    frames(getTransitionFrames() * 3);
+    for (int frame = 0; frame < 20; ++frame) {
+        std::vector<math::Rect> opened = drawMessages();
+        ASSERT_EQ(opened.size(), 3U);
+        std::ranges::sort(opened, [](const math::Rect& first, const math::Rect& second) { return first.y > second.y; });
+        EXPECT_GT(opened[0].y - opened[2].y, front.height * 2.0F);
+    }
+}
+
 TEST_F(OverlayTest, StopsTheTimeOfNoticesUnderThePointer) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "toast", "id": "note", "text": "Hold me", "duration": 0.5, "open": true}]})");
     frames(getTransitionFrames());
@@ -236,14 +255,14 @@ TEST_F(OverlayTest, ClosesNoticesWithTheirButtonsAndSwipesThemAway) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "toast", "id": "note", "duration": 0, "position": "bottom"}]})");
     const float padding = getUi().getTheme().getMetric(Theme::Metric::ControlPaddingX);
 
-    // A press on the notice reports a click and keeps the notice.
+    // A press on the notice reports a click and lets the notice go.
     gui->command(getUi().getContext(), "note", "show", {{"notice", "pressed"}, {"text", "Open the cart"}});
     frames(getTransitionFrames() * 2);
     click(getBounds(*gui, "note").getCenter());
-    EXPECT_EQ(findLastEvent("click").value, (core::Json{{"notice", "pressed"}}));
-    EXPECT_EQ(drawMessages().size(), 1U);
-    gui->command(getUi().getContext(), "note", "hide", core::Json::object());
     frames(getTransitionFrames() * 2);
+    EXPECT_EQ(findLastEvent("click").value, (core::Json{{"notice", "pressed"}}));
+    EXPECT_EQ(findLastEvent("dismiss").value, (core::Json{{"reason", "clicked"}, {"notice", "pressed"}}));
+    EXPECT_TRUE(drawMessages().empty());
 
     // The close button sits at the end of the notice.
     gui->command(getUi().getContext(), "note", "show", {{"notice", "closing"}, {"text", "The file was deleted"}, {"closable", true}});

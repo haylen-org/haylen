@@ -20,7 +20,7 @@ namespace haylen::ui {
 
 class PropertyReader;
 
-// Short notices at an edge of the safe area. The notice of the properties shows while `open` is set, the `show` command adds more, `update` changes a notice and `hide` lets notices go. Every notice takes its place in the stack of its position, as a list or a deck, slides and fades in, stays for its duration while nothing holds its stack, and leaves when its time ends, when the player closes it, swipes it away or presses its action. A notice reports `noticeShow` when it comes on screen, `click` and `action` when the player presses it or its action, and `dismiss` with the reason when it leaves.
+// Short notices at an edge of the safe area. The notice of the properties shows while `open` is set, the `show` command adds more, `update` changes a notice and `hide` lets notices go. Every notice takes its place in the stack of its position, as a list or a deck, slides and fades in, stays for its duration while nothing holds its stack, and leaves when its time ends, when the player presses it, closes it, swipes it away or presses its action. A notice reports `noticeShow` when it comes on screen, `click` and `action` when the player presses it or its action, and `dismiss` with the reason when it leaves.
 class Toast final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -57,6 +57,7 @@ class Toast final : public Component {
     // Why a notice left, which `dismiss` reports.
     enum class Reason : std::uint8_t {
         Timeout,
+        Clicked,
         Closed,
         Swiped,
         Action,
@@ -124,8 +125,9 @@ class Toast final : public Component {
         {"busy", Indicator::Busy},
         {"progress", Indicator::Progress},
     }};
-    static constexpr std::array<std::pair<std::string_view, Reason>, 5> kReasons{{
+    static constexpr std::array<std::pair<std::string_view, Reason>, 6> kReasons{{
         {"timeout", Reason::Timeout},
+        {"clicked", Reason::Clicked},
         {"closed", Reason::Closed},
         {"swiped", Reason::Swiped},
         {"action", Reason::Action},

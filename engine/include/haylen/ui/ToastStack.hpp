@@ -10,6 +10,8 @@
 
 #include <imgui.h>
 
+#include "haylen/math/Rect.hpp"
+
 namespace haylen::ui {
 
 // Stacks the toasts of every GUI at the edges of the safe area, so toasts that show together never cover each other. In a list a toast takes its place after the toasts that asked to show before it at the same position, the stack shows a limited number at once, and the others wait their turn in the order they asked. In a deck the newest toast is in front, at the edge, and the older ones peek out behind it, until the pointer or a finger opens the deck into a list.
@@ -70,9 +72,13 @@ class ToastStack final {
     // Names the ImGui window that draws a notice placed in this frame.
     void attach(std::uint64_t key, ImGuiID window) noexcept;
 
-    // Holds the stack of a position for the next frame, while the pointer or a finger is on one of its notices, which opens a deck and stops the time of its notices.
+    // Holds the stack of a position for the next frame, while the pointer or a finger is on one of its notices or, once held, anywhere in the area its notices took in the last frame, so a deck that opens away from the pointer stays open. A held stack opens a deck and stops the time of its notices.
     void hold(Position position) noexcept;
     [[nodiscard]] bool isHeld(Position position) const noexcept;
+
+    // Adds the frame a notice drew to the area of the stack of its position in this frame.
+    void cover(Position position, const math::Rect& frame) noexcept;
+    [[nodiscard]] const math::Rect& getArea(Position position) const noexcept;
 
   private:
     struct Entry {
@@ -93,6 +99,8 @@ class ToastStack final {
     std::vector<const Entry*> order;
     std::array<bool, kPositionCount> held{};
     std::array<bool, kPositionCount> holding{};
+    std::array<math::Rect, kPositionCount> areas{};
+    std::array<math::Rect, kPositionCount> covering{};
     std::uint64_t lastKey = 0;
 };
 

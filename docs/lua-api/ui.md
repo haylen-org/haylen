@@ -1228,7 +1228,7 @@ Events are collected while the GUI draws and handed to the handlers once per fra
 | `dialog` | `answer` | `button` (button id) |
 | `dialog` | `dismiss` | none |
 | `toast` | `noticeShow`, `click`, `action` | `notice` (id of the notice, absent for the notice of the properties) |
-| `toast` | `dismiss` | `reason` (`'timeout'`, `'closed'`, `'swiped'`, `'action'` or `'hidden'`), `notice` (id of the notice, absent for the notice of the properties) |
+| `toast` | `dismiss` | `reason` (`'timeout'`, `'clicked'`, `'closed'`, `'swiped'`, `'action'` or `'hidden'`), `notice` (id of the notice, absent for the notice of the properties) |
 | `touchButton` | `press`, `release` | none, for any finger, in place of the `press` and `release` of every kind |
 | every kind | `focus`, `blur` | none |
 | a node with `focusScope`, the GUI root | `cancel` | none |
@@ -2852,9 +2852,9 @@ ui.mount(ui.column{
 
 ### ui.toast(properties)
 
-Short notices at an edge of the safe area. The notice of the toast shows while `open` is `true`, and the commands add more notices to the same toast, change them and let them go. A notice is a pill of the color of its tone with an optional indicator, a title, a text, an action and a close button, slides in from the edge and fades in, stays for its duration, then fades out while the notices around it move into its place. The notices of every toast at the same position form one stack, so they never cover each other. In a `'list'` they line up in the order they were asked to show, and when the list already shows the theme `toastLimit` notices, the next ones wait their turn and their time starts once they show. In a `'deck'` the newest notice is in front at the edge and the older ones peek out behind it, smaller, the theme `toastPeek` past the notice in front of each, and the deck opens into a list while the pointer or a finger is on it. The time of the notices of a stack stops while the pointer or a finger is on one of them.
+Short notices at an edge of the safe area. The notice of the toast shows while `open` is `true`, and the commands add more notices to the same toast, change them and let them go. A notice is a pill of the color of its tone with an optional indicator, a title, a text, an action and a close button, slides in from the edge and fades in, stays for its duration, then fades out while the notices around it move into its place. The notices of every toast at the same position form one stack, so they never cover each other. In a `'list'` they line up in the order they were asked to show, and when the list already shows the theme `toastLimit` notices, the next ones wait their turn and their time starts once they show. In a `'deck'` the newest notice is in front at the edge and the older ones peek out behind it, smaller, the theme `toastPeek` past the notice in front of each, and the deck opens into a list while the pointer or a finger is on it, and stays open while the pointer is anywhere in the area its notices take. The time of the notices of a stack stops while the pointer or a finger is on it. When an edge of the safe area is too narrow for its start, middle and end stacks side by side, they form one stack, in which every notice keeps its side, so stacks never cover each other.
 
-A notice of a list is as wide as what it shows, up to the theme `toastWidth`, and the notices of a deck all take that width, so they line up. A press on a notice reports `click`, the action reports `action` and lets the notice go, the close button lets it go, and a press that drags the notice sideways past a third of its width swipes it away, while a shorter drag springs back. Every notice that leaves reports `dismiss` with the reason, except the notice of the properties when setting `open = true` again replaces it with a new one at the end of the stack. A toast takes no room in the layout that holds it, its notices take the pointer over them, and the action and the close button never take the focus, so a notice that comes never pulls the focus from the game or the screen.
+A notice of a list is as wide as what it shows, up to the theme `toastWidth` times the [text scale](#uisettextscalescale) within the safe area, and the notices of a deck all take that width, so they line up. A press on a notice reports `click` and lets it go, the action reports `action` and lets the notice go, the close button lets it go, and a press that drags the notice sideways past a third of its width swipes it away, while a shorter drag springs back. Every notice that leaves reports `dismiss` with the reason, except the notice of the properties when setting `open = true` again replaces it with a new one at the end of the stack. A toast takes no room in the layout that holds it, its notices take the pointer over them, and the action and the close button never take the focus, so a notice that comes never pulls the focus from the game or the screen.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2862,7 +2862,7 @@ A notice of a list is as wide as what it shows, up to the theme `toastWidth`, an
 | `text` | text | none | The notice. |
 | `title` | text | none | A bold line over the text. |
 | `tone` | tone | `'neutral'` | Color of the notice, and the symbol of the indicator `'icon'`: a check for `'success'`, a cross for `'danger'`, an exclamation mark for `'warning'` and an "i" for the other tones. |
-| `variant` | string | `'solid'` | How the notice paints its tone: `'solid'` fills it with the color of the tone, `'soft'` with its pale color and a border of the tone, and `'outline'` with the raised color of the theme and a border of the tone. A neutral notice takes the colors of tooltips. A theme that paints toasts with an image keeps the image and gives the tone to the indicator. |
+| `variant` | string | `'solid'` | How the notice paints its tone: `'solid'` fills it with the color of the tone, `'soft'` with its pale color over the raised color, which keeps it opaque, and a border of the tone, and `'outline'` with the raised color of the theme and a border of the tone. A neutral notice takes the colors of tooltips. A theme that paints toasts with an image keeps the image and gives the tone to the indicator. |
 | `indicator` | string | `'none'` | What shows before the text: `'none'`, `'icon'` for the symbol of the tone, `'busy'` for a spinner or `'progress'` for a ring that fills with `progress`. |
 | `progress` | number from 0 to 1 | `0` | How full the ring of the indicator `'progress'` is. |
 | `action` | text | none | The text of a button at the end of the notice, such as `'Undo'`. |
@@ -2882,9 +2882,9 @@ An id that no notice of the toast has raises `The toast "<id>" shows no notice "
 | Event | Values | When |
 | --- | --- | --- |
 | `noticeShow` | `notice` | A notice comes on screen, which for a notice that waited in a full list is when its turn comes. |
-| `click` | `notice` | The player pressed a notice and let go without swiping it. |
+| `click` | `notice` | The player pressed a notice and let go without swiping it, and the notice leaves. |
 | `action` | `notice` | The player pressed the action of a notice, which then leaves. |
-| `dismiss` | `reason`, `notice` | A notice left: `'timeout'` when its time ended, `'closed'` by its close button, `'swiped'` by a swipe, `'action'` by its action and `'hidden'` by `open = false` or the command `'hide'`. |
+| `dismiss` | `reason`, `notice` | A notice left: `'timeout'` when its time ended, `'clicked'` by a press, `'closed'` by its close button, `'swiped'` by a swipe, `'action'` by its action and `'hidden'` by `open = false` or the command `'hide'`. |
 
 The value `notice` is the id the notice was shown with, and it is absent for the notice of the properties.
 
@@ -3236,7 +3236,7 @@ Both built-in themes share these metrics, in design units.
 | `tabPaddingX` | `24` | Horizontal padding of each tab. |
 | `listRowHeight` | `64` | Height of list, tree and table rows and the smallest height of settings rows. |
 | `dialogWidth` | `760` | Width of dialogs. |
-| `toastWidth` | `560` | Widest a toast grows, and the width of the toasts of a deck. |
+| `toastWidth` | `560` | Widest a toast grows at a text scale of 1, and the width of the toasts of a deck. |
 | `tooltipWidth` | `520` | Width at which tooltips wrap. |
 | `settingsLabelWidth` | `420` | Width of the label column of settings rows. |
 | `caretWidth` | `2` | Width of the text cursor in fields and [`haylen.imgui`](imgui.md) inputs. |

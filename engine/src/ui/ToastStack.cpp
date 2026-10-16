@@ -25,6 +25,7 @@ void ToastStack::beginFrame() {
     std::swap(previous, current);
     current.clear();
     held = std::exchange(holding, {});
+    areas = std::exchange(covering, {});
 }
 
 bool ToastStack::isBefore(const Entry& entry, std::uint64_t key, double since) noexcept {
@@ -83,6 +84,15 @@ void ToastStack::hold(Position position) noexcept {
 
 bool ToastStack::isHeld(Position position) const noexcept {
     return held[static_cast<std::size_t>(position)];
+}
+
+void ToastStack::cover(Position position, const math::Rect& frame) noexcept {
+    math::Rect& area = covering[static_cast<std::size_t>(position)];
+    area = area.isEmpty() ? frame : math::Rect::fromMinMax(math::Vec2::min(area.getMin(), frame.getMin()), math::Vec2::max(area.getMax(), frame.getMax()));
+}
+
+const math::Rect& ToastStack::getArea(Position position) const noexcept {
+    return areas[static_cast<std::size_t>(position)];
 }
 
 } // namespace haylen::ui
