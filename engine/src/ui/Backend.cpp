@@ -297,6 +297,11 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
     // The navigation actions reach ImGui as gamepad keys, so a remapped action moves the focus like its keys, and cancel never drops the focus.
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
     io.ConfigNavEscapeClearFocusItem = false;
+
+    // The window switcher of ImGui, which holding the west button of a gamepad or pressing Ctrl+Tab opens, is a tool of ImGui that apps never show.
+    imguiContext->ConfigNavWindowingWithGamepad = false;
+    imguiContext->ConfigNavWindowingKeyNext = 0;
+    imguiContext->ConfigNavWindowingKeyPrev = 0;
     io.ConfigErrorRecoveryEnableTooltip = false;
     io.ConfigErrorRecoveryEnableDebugLog = false;
 

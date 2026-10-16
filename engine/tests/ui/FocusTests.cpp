@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+#include <imgui.h>
+#include <imgui_internal.h>
+
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
@@ -214,6 +217,34 @@ TEST_F(FocusTest, OpensPopoversWithTheFocusInsideAndCancelClosesThem) {
     frames();
     EXPECT_TRUE(isFocused(*gui, "help"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"help:focus"}));
+}
+
+// The west button of a gamepad, the square of some controllers, and Ctrl+Tab never open the window switcher of ImGui, which belongs to the tools of ImGui and not to an app.
+TEST_F(FocusTest, NeverOpensTheWindowSwitcherOfImGui) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "play", "text": "Play"}, {"kind": "button", "id": "quit", "text": "Quit"}]})");
+    gui->command(getUi().getContext(), "play", "focus", core::Json::object());
+    frames(2);
+
+    input::GamepadState held{.connected = true};
+    held.buttons[static_cast<std::size_t>(input::GamepadButton::West)] = true;
+    getFixture().host().setGamepad(0, held);
+    frames(60);
+    getUi().getBackend().makeCurrent();
+    EXPECT_EQ(GImGui->NavWindowingTarget, nullptr);
+    getFixture().host().setGamepad(0, input::GamepadState{.connected = true});
+    frames(2);
+
+    platform::Event event;
+    event.modifiers.control = true;
+    for (const input::Key code : {input::Key::LeftControl, input::Key::Tab}) {
+        event.type = platform::Event::Type::KeyDown;
+        event.key = code;
+        getEngine().handleEvent(event);
+    }
+    frames(30);
+    getUi().getBackend().makeCurrent();
+    EXPECT_EQ(GImGui->NavWindowingTarget, nullptr);
+    EXPECT_TRUE(isFocused(*gui, "play"));
 }
 
 TEST_F(FocusTest, ScrollsTheFocusedControlIntoView) {
