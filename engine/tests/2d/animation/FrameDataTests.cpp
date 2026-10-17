@@ -72,6 +72,27 @@ TEST_F(FrameDataTest, ReadsBoxesPointsPivotsAndEventsFromAtlases) {
     EXPECT_NE(atlas.getAnimation("punch").frames[1].findBox("hit"), nullptr);
 }
 
+// A frame that reaches past the image of the atlas would draw pixels the image does not hold, so the atlas refuses it.
+TEST_F(FrameDataTest, RefusesFramesOutsideTheImageOfTheAtlas) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 32));
+    // clang-format off
+    const auto parse = [&](const char* frame) {
+        return SpriteAtlas::parse(nlohmann::ordered_json::parse(std::string(R"({"frames": {"grip": {"frame": )") + frame + "}}}"), texture);
+    };
+    // clang-format on
+    EXPECT_NO_THROW((void)parse(R"({"x": 32, "y": 0, "w": 32, "h": 32})"));
+    for (const char* frame : {R"({"x": 32, "y": 2, "w": 32, "h": 32})", R"({"x": 40, "y": 0, "w": 32, "h": 32})", R"({"x": -1, "y": 0, "w": 8, "h": 8})", R"({"x": 0, "y": 0, "w": 0, "h": 8})"}) {
+        SCOPED_TRACE(frame);
+        try {
+            (void)parse(frame);
+            ADD_FAILURE() << "The atlas took a frame outside its image.";
+        } catch (const std::invalid_argument& error) {
+            EXPECT_STREQ(error.what(), "The frame \"grip\" of the atlas must lie inside its image of 64 by 32 pixels, with an area.");
+        }
+    }
+}
+
 TEST_F(FrameDataTest, RunsTheEventsOfEveryFrameItPassesInOrder) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));

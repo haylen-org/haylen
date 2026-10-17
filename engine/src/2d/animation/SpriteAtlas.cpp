@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "haylen/math/Insets.hpp"
@@ -11,6 +12,14 @@ namespace haylen::animation2d {
 
 math::Rect SpriteAtlas::readRect(const Document& value) {
     return {value.at("x").get<float>(), value.at("y").get<float>(), value.at("w").get<float>(), value.at("h").get<float>()};
+}
+
+void SpriteAtlas::checkFrame(const std::string& name, const math::Rect& source, const graphics::Texture& texture) {
+    const float width = static_cast<float>(texture.getWidth());
+    const float height = static_cast<float>(texture.getHeight());
+    if (source.width <= 0.0F || source.height <= 0.0F || source.x < 0.0F || source.y < 0.0F || source.getRight() > width || source.getBottom() > height) {
+        throw std::invalid_argument("The frame \"" + name + "\" of the atlas must lie inside its image of " + std::to_string(texture.getWidth()) + " by " + std::to_string(texture.getHeight()) + " pixels, with an area.");
+    }
 }
 
 SpriteFrame SpriteAtlas::readFrame(const Document& entry) {
@@ -98,6 +107,7 @@ SpriteAtlas SpriteAtlas::assemble(graphics::Texture image, std::vector<std::pair
     SpriteAtlas atlas;
     atlas.texture = std::move(image);
     for (auto& [name, frame] : frameList) {
+        checkFrame(name, frame.source, atlas.texture);
         if (!atlas.frames.emplace(name, std::move(frame)).second) {
             throw std::invalid_argument("The atlas has the frame \"" + name + "\" twice.");
         }
@@ -154,6 +164,9 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
             atlas.frames.emplace(name, readFrame(entry));
             atlas.frameOrder.push_back(name);
         }
+    }
+    for (const std::string& name : atlas.frameOrder) {
+        checkFrame(name, atlas.frames.find(name)->second.source, atlas.texture);
     }
 
     const Document meta = document.value("meta", Document::object());

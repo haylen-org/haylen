@@ -56,6 +56,8 @@ class SpriteAtlas final {
 
     [[nodiscard]] static math::Rect readRect(const Document& value);
     [[nodiscard]] static SpriteFrame readFrame(const Document& entry);
+    // Throws for a frame that has no area or reaches past the image of the atlas, which would draw pixels the image does not hold.
+    static void checkFrame(const std::string& name, const math::Rect& source, const graphics::Texture& texture);
     [[nodiscard]] static Animation::Loop readTagLoop(const Document& tag);
     void readFrameSlice(const Document& slice);
 

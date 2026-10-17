@@ -24,7 +24,7 @@ The JSON file supports these fields:
 | Field | Meaning |
 | --- | --- |
 | `frames` | Either an object from frame name to frame (hash layout) or a list of frames with a `filename` each (array layout). |
-| `frames[].frame` | Required rectangle `{x, y, w, h}` of the frame in the image. |
+| `frames[].frame` | Required rectangle `{x, y, w, h}` of the frame in the image, which has an area and lies inside the image. Any other rectangle raises `The frame "<name>" of the atlas must lie inside its image of <width> by <height> pixels, with an area.`, since it would draw pixels the image does not hold. |
 | `frames[].rotated` | Must be absent or `false`. Rotated frames raise `Rotated atlas frames are not supported. Disable rotation in the packer.` |
 | `frames[].spriteSourceSize`, `frames[].sourceSize` | Trim data. When both are present, the frame remembers where the trimmed rectangle sits inside the original frame, so pivots stay stable while the animation plays. |
 | `frames[].duration` | Frame duration in milliseconds. Frames without it last 100 milliseconds. |

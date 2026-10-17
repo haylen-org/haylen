@@ -33,7 +33,7 @@
         {"filename": "cloud", "frame": {"x": 242, "y": 170, "w": 136, "h": 56}, "duration": 100},
         {"filename": "dot", "frame": {"x": 390, "y": 170, "w": 24, "h": 24}, "duration": 100}
     ],
-    "meta": {"image": "quest.png", "size": {"w": 1024, "h": 232}, "frameTags": [
+    "meta": {"image": "quest.png", "size": {"w": 1024, "h": 240}, "frameTags": [
         {"name": "hero idle", "from": 0, "to": 1, "direction": "forward"},
         {"name": "hero walk", "from": 2, "to": 5, "direction": "forward"},
         {"name": "hero attack", "from": 6, "to": 8, "direction": "forward", "repeat": "1"},
