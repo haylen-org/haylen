@@ -126,7 +126,7 @@ float Surfaces::getInnerRadius(float radius, float inset) noexcept {
     return std::max(0.0F, radius - inset);
 }
 
-// The shadow is the surface moved down by the offset and grown by half the size of the shadow, with an edge that fades over the whole size, so it is as dark as its color along the edge of the surface and clears the size away from it.
+// The shadow is the surface moved down by the offset, with an edge that fades over twice the size of the shadow centered on the edge of the surface, as a blur does, so it starts at half its color along that edge and clears the size away from it.
 void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radius, float lift) {
     const float size = context.getMetric(Theme::Metric::ShadowSize) * lift;
     const math::Color shade = context.getColor(Theme::Color::Shadow);
@@ -134,12 +134,11 @@ void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radi
     if (size <= 0.0F || color.a <= 0.0F) {
         return;
     }
-    const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset) * lift}).expanded(size * 0.5F);
-    const float rounding = radius + size * 0.5F;
+    const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset) * lift});
     ImDrawList& list = *ImGui::GetWindowDrawList();
-    const math::Rect reach = context.getReshape().apply(cast.expanded(size * 0.5F));
+    const math::Rect reach = context.getReshape().apply(cast.expanded(size));
     list.PushClipRect(ImGuiConverter::toImVec2(reach.getMin()), ImGuiConverter::toImVec2(reach.getMax()), false);
-    drawShape(context, {.bounds = cast, .radii = {rounding, rounding, rounding, rounding}, .color = color, .softness = size});
+    drawShape(context, {.bounds = cast, .radii = {radius, radius, radius, radius}, .color = color, .softness = size * 2.0F});
     list.PopClipRect();
 }
 

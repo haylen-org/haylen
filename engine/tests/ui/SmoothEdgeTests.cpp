@@ -191,26 +191,27 @@ TEST_F(SmoothEdgeTest, RoundsTheFocusRingAroundTheCornersOfItsControl) {
     EXPECT_EQ(ring->color.a, 0.0F);
 }
 
-// A floating surface casts one shape whose edge fades over the size of the shadow, as dark as the shadow color along the edge of the surface.
+// A floating surface casts the shape of the surface, moved down by the offset, whose edge fades over twice the size of the shadow centered on its edge, as a blur does, so the shadow starts at half its color along the edge of the surface instead of a dark band.
 TEST_F(SmoothEdgeTest, CastsOneSoftShadowUnderFloatingSurfaces) {
-    mount(R"({"kind": "dialog", "open": true, "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}]})");
+    const std::shared_ptr<Gui> gui = mount(R"({"kind": "dialog", "id": "quit", "open": true, "title": "Quit?", "message": "Progress is saved.", "buttons": [{"id": "no", "text": "Stay"}]})");
     frames(30);
     const float size = getMetric(Theme::Metric::ShadowSize);
-    const std::optional<graphics2d::Shape> shadow = findShape([size](const graphics2d::Shape& shape) { return shape.softness == size; });
+    const std::optional<graphics2d::Shape> shadow = findShape([size](const graphics2d::Shape& shape) { return shape.softness == size * 2.0F; });
     ASSERT_TRUE(shadow.has_value());
     EXPECT_EQ(shadow->color, getColor(Theme::Color::Shadow));
-    EXPECT_FLOAT_EQ(shadow->radii[0], getMetric(Theme::Metric::PanelRadius) + size * 0.5F);
+    EXPECT_EQ(shadow->bounds, getBounds(*gui, "quit").translated({0.0F, getMetric(Theme::Metric::ShadowOffset)}));
+    EXPECT_EQ(shadow->radii, round(getMetric(Theme::Metric::PanelRadius)));
 }
 
 // A notice floats lower than dialogs and windows, so it casts a smaller, nearer and lighter shadow than theirs.
 TEST_F(SmoothEdgeTest, CastsALowShadowUnderANotice) {
     mount(R"({"kind": "column", "children": [{"kind": "toast", "text": "Saved", "duration": 0, "open": true}]})");
     frames(30);
-    const float size = getMetric(Theme::Metric::ShadowSize);
-    const std::optional<graphics2d::Shape> shadow = findShape([size](const graphics2d::Shape& shape) { return shape.softness > 0.0F && shape.softness < size; });
+    const float softness = getMetric(Theme::Metric::ShadowSize) * 2.0F;
+    const std::optional<graphics2d::Shape> shadow = findShape([softness](const graphics2d::Shape& shape) { return shape.softness > 0.0F && shape.softness < softness; });
     ASSERT_TRUE(shadow.has_value());
     EXPECT_LT(shadow->color.a, getColor(Theme::Color::Shadow).a);
-    EXPECT_FALSE(findShape([size](const graphics2d::Shape& shape) { return shape.softness == size; }).has_value());
+    EXPECT_FALSE(findShape([softness](const graphics2d::Shape& shape) { return shape.softness == softness; }).has_value());
 }
 
 // A switch shades its track the way buttons shade their fill: with the hover color under the pointer and with the pressed color while it is held, in both of its states.

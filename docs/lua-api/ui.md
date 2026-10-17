@@ -3258,7 +3258,7 @@ Both built-in themes share these metrics, in design units.
 | `disabledOpacity` | `0.5` | Opacity of disabled nodes. |
 | `tooltipDelay` | `0.5` | Seconds the pointer rests on a node before its tooltip shows. |
 | `longPressDuration` | `0.5` | Seconds a finger holds a context menu before it opens. |
-| `shadowSize` | `24` | Reach of the soft shadow of floating surfaces, which a toast casts at a share of this reach, nearer and lighter. The value `0` turns shadows off. |
+| `shadowSize` | `24` | Reach of the soft shadow of floating surfaces past their edge, along which the shadow starts at half its color, and which a toast casts at a share of this reach, nearer and lighter. The value `0` turns shadows off. |
 | `shadowOffset` | `6` | How far below its surface a shadow falls. |
 | `chipHeight` | `48` | Height of chips. |
 | `strokeWidth` | `2` | Width of the lines of drawn icons, such as the cross of a removable chip and the lens of a filter field. |
