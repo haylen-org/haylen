@@ -1,0 +1,155 @@
+{
+    "emitters": [
+        {
+            "name": "shield",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.3,
+            "speed": 0,
+            "startSize": 160,
+            "endSize": 190,
+            "aspect": 0.45,
+            "offset": [
+                30,
+                -60
+            ],
+            "colors": [
+                "#007FE8FF",
+                "#FF7FE8FF",
+                "#007FE8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        },
+        {
+            "name": "flash",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1040,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.18,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 150,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": 0,
+            "spin": 0,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "offset": [
+                30,
+                -60
+            ]
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 10
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 12,
+            "lifetime": [
+                0.2,
+                0.35
+            ],
+            "speed": [
+                300,
+                520
+            ],
+            "direction": 0,
+            "spread": 1.6,
+            "gravity": [
+                0,
+                700
+            ],
+            "startSize": [
+                16,
+                26
+            ],
+            "endSize": 4,
+            "alignToVelocity": true,
+            "stretch": 0.03,
+            "offset": [
+                30,
+                -60
+            ],
+            "colors": [
+                "#00DFFBFF",
+                "#FFDFFBFF",
+                "#00DFFBFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        }
+    ]
+}

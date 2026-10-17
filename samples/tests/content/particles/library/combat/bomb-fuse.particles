@@ -1,0 +1,127 @@
+{
+    "emitters": [
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 60,
+            "prewarm": 0.5,
+            "maxParticles": 48,
+            "lifetime": [
+                0.1,
+                0.25
+            ],
+            "speed": [
+                160,
+                320
+            ],
+            "spread": 6.2832,
+            "startSize": [
+                8,
+                16
+            ],
+            "endSize": 2,
+            "alignToVelocity": true,
+            "stretch": 0.03,
+            "emission": 1,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFE37A",
+                "#00FF9A2E"
+            ],
+            "colorTimes": [
+                0,
+                0.5,
+                1
+            ]
+        },
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 10,
+            "prewarm": 0.2,
+            "maxParticles": 4,
+            "lifetime": 0.2,
+            "speed": 0,
+            "startSize": 62.99999999999999,
+            "endSize": 90,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFD27A",
+                "#99FFD27A",
+                "#36FFD27A",
+                "#00FFD27A"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ]
+        },
+        {
+            "name": "smoke",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 3,
+            "prewarm": 1.0,
+            "maxParticles": 6,
+            "lifetime": [
+                0.8,
+                1.2
+            ],
+            "speed": [
+                40,
+                60
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "startSize": [
+                24,
+                32
+            ],
+            "endSize": [
+                50,
+                64
+            ],
+            "colors": [
+                "#00A09C98",
+                "#80A09C98",
+                "#00A09C98"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        }
+    ]
+}

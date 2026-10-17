@@ -1,0 +1,132 @@
+{
+    "emitters": [
+        {
+            "name": "dust",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1444,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1576,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1708,
+                    1048,
+                    128,
+                    128
+                ],
+                [
+                    1840,
+                    1048,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 10,
+            "prewarm": 0.6,
+            "maxParticles": 16,
+            "lifetime": [
+                0.35,
+                0.55
+            ],
+            "speed": [
+                40,
+                90
+            ],
+            "direction": 2.5416,
+            "spread": 0.5,
+            "gravity": [
+                0,
+                120
+            ],
+            "startSize": [
+                12,
+                18
+            ],
+            "endSize": [
+                28,
+                36
+            ],
+            "shape": "rectangle",
+            "shapeSize": [
+                2,
+                30
+            ],
+            "frameMode": "random",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#CCFFFFFF",
+                "#CCFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.4,
+                1
+            ]
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 0.6,
+            "maxParticles": 24,
+            "lifetime": [
+                0.25,
+                0.45
+            ],
+            "speed": [
+                150,
+                280
+            ],
+            "direction": 2.2416,
+            "spread": 0.6,
+            "gravity": [
+                0,
+                900
+            ],
+            "alignToVelocity": true,
+            "stretch": 0.03,
+            "startSize": [
+                10,
+                18
+            ],
+            "endSize": 4,
+            "emission": 1,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFD27A",
+                "#00FF6A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.4,
+                1
+            ]
+        }
+    ]
+}

@@ -1,0 +1,245 @@
+{
+    "emitters": [
+        {
+            "name": "flash",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    792,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.12,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 90,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": 0,
+            "spin": 0,
+            "colors": [
+                "#00FFF1B8",
+                "#FFFFF1B8",
+                "#00FFF1B8"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ]
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 10
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 12,
+            "lifetime": [
+                0.15,
+                0.35
+            ],
+            "speed": [
+                300,
+                600
+            ],
+            "direction": 3.1416,
+            "spread": 1.4,
+            "gravity": [
+                0,
+                900
+            ],
+            "startSize": [
+                14,
+                24
+            ],
+            "endSize": 4,
+            "alignToVelocity": true,
+            "stretch": 0.03,
+            "emission": 1,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFD27A",
+                "#00FF6A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.4,
+                1
+            ]
+        },
+        {
+            "name": "dust",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1444,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1576,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1708,
+                    1048,
+                    128,
+                    128
+                ],
+                [
+                    1840,
+                    1048,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 3
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": [
+                0.4,
+                0.6
+            ],
+            "speed": [
+                60,
+                120
+            ],
+            "direction": 3.1416,
+            "spread": 0.8,
+            "damping": 3,
+            "startSize": [
+                16,
+                24
+            ],
+            "endSize": [
+                36,
+                48
+            ],
+            "frameMode": "random",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#CCFFFFFF",
+                "#CCFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                0.4,
+                1
+            ]
+        },
+        {
+            "name": "bits",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    816,
+                    1436,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 4
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 6,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                160,
+                300
+            ],
+            "direction": 2.7416,
+            "spread": 1.0,
+            "gravity": [
+                0,
+                1300
+            ],
+            "startSize": [
+                6,
+                10
+            ],
+            "endSizeScale": 1,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -10,
+                10
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.85,
+                1
+            ]
+        }
+    ]
+}

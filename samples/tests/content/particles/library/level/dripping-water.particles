@@ -1,0 +1,95 @@
+{
+    "emitters": [
+        {
+            "name": "drop",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 1.2,
+            "prewarm": 2.0,
+            "maxParticles": 4,
+            "lifetime": 2.0,
+            "speed": 0,
+            "gravity": [
+                0,
+                1400
+            ],
+            "startSize": 14,
+            "endSize": 14,
+            "rotation": 0,
+            "offset": [
+                0,
+                -320
+            ],
+            "collision": {
+                "type": "floor",
+                "y": 320,
+                "result": "die"
+            },
+            "subEmitters": [
+                {
+                    "effect": "drip-splash.particles",
+                    "trigger": "collision",
+                    "count": [
+                        5,
+                        7
+                    ]
+                }
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.98,
+                1
+            ]
+        },
+        {
+            "name": "ripple",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 1.2,
+            "prewarm": 0.5,
+            "maxParticles": 8,
+            "lifetime": 0.5,
+            "speed": 0,
+            "startSize": 10,
+            "endSize": 90,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00BFEFFF",
+                "#B2BFEFFF",
+                "#00BFEFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "localSpace": true,
+            "tilt": 1.38
+        }
+    ]
+}

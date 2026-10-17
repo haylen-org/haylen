@@ -1,6 +1,6 @@
 {
     "texture": "../library/textures/effects.png",
-    "frames": [[1668, 1412, 64, 64]],
+    "frames": [[68, 1432, 64, 64]],
     "filter": "linear",
     "rate": 14,
     "maxParticles": 64,

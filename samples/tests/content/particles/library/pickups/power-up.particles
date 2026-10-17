@@ -1,0 +1,208 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 251.99999999999997,
+            "endSize": 360,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFC93C",
+                "#59FFC93C",
+                "#1FFFC93C",
+                "#00FFC93C"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                -80
+            ]
+        },
+        {
+            "name": "column",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    260,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 2
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": [
+                0.7,
+                0.9
+            ],
+            "speed": 0,
+            "shape": "rectangle",
+            "shapeSize": [
+                30,
+                0
+            ],
+            "startSize": 320,
+            "endSize": 360,
+            "aspect": 2.0,
+            "offset": [
+                0,
+                -150
+            ],
+            "colors": [
+                "#00FFD24A",
+                "#80FFD24A",
+                "#00FFD24A"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                1
+            ]
+        },
+        {
+            "name": "spiral",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    792,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 16
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 20,
+            "lifetime": [
+                0.7,
+                1.0
+            ],
+            "speed": [
+                60,
+                90
+            ],
+            "shape": "ring",
+            "shapeSize": [
+                60,
+                0
+            ],
+            "directionMode": "tangent",
+            "spread": 0,
+            "gravity": [
+                0,
+                -500
+            ],
+            "radialAcceleration": -80,
+            "startSize": [
+                12,
+                22
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "colors": [
+                "#00FFF1B8",
+                "#FFFFF1B8",
+                "#00FFF1B8"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        },
+        {
+            "name": "flash",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1040,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.22,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 150,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": 0,
+            "spin": 0,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "offset": [
+                0,
+                -60
+            ]
+        }
+    ]
+}

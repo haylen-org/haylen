@@ -1,0 +1,119 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 3,
+            "prewarm": 0.8,
+            "maxParticles": 4,
+            "lifetime": 0.8,
+            "speed": 0,
+            "startSize": 140.0,
+            "endSize": 200,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#002EC8FF",
+                "#802EC8FF",
+                "#2D2EC8FF",
+                "#002EC8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "localSpace": true
+        },
+        {
+            "name": "core",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    68,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "additive",
+            "rate": 3,
+            "prewarm": 0.6,
+            "maxParticles": 4,
+            "lifetime": 0.6,
+            "speed": 0,
+            "startSize": 40,
+            "endSize": 40,
+            "sizeCurve": "quadOut",
+            "localSpace": true,
+            "unshaded": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.8,
+                1
+            ]
+        },
+        {
+            "name": "trail",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 30,
+            "prewarm": 0.4,
+            "maxParticles": 24,
+            "lifetime": [
+                0.15,
+                0.25
+            ],
+            "speed": [
+                500,
+                640
+            ],
+            "direction": 3.1416,
+            "spread": 0.08,
+            "startSize": [
+                60,
+                90
+            ],
+            "endSize": 20,
+            "alignToVelocity": true,
+            "unshaded": true,
+            "colors": [
+                "#007FE8FF",
+                "#FF7FE8FF",
+                "#007FE8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ]
+        }
+    ]
+}

@@ -24,7 +24,7 @@ PREMULTIPLIED = ("soft-dot", "soft-dot-premultiplied")
 # Textures that tests draw whole, as the ribbon of a trail and the sheet that "frameGrid" cuts, stay files of their own.
 GLOW_LINE = "glow-line"
 RUNES = ("rune", 4)
-FRAMES = re.compile(r'"frames": (\[\[.*?\]\])')
+FRAMES = re.compile(r'"frames": (\[\s*\[.*?\]\s*\])', re.DOTALL)
 TEXTURE = re.compile(r'"texture": "([^"]+)"')
 
 # Every piece of an atlas with its count of frames.
@@ -35,7 +35,8 @@ SMOOTH = {
     "arrow": 1, "heart": 1, "skull": 1, "notes": 1, "shield": 1, "circle-hexagram": 1, "circle-star": 1, "circle-glyphs": 1, "circle-hooks": 1,
     "flame-soft": 1, "smoke-puff": 1, "smoke-curl": 1, "ember": 1, "splash": 1, "dust-cloud": 1, "shard": 1, "shard-broken": 1, "droplet": 1,
     "bubble": 1, "snowflake": 1, "feather": 1, "gem": 1, "confetti": 1, "coin": 2, "leaf": 4, "petal": 4, "sparkle": 4, "cloud": 4, "puff": 4,
-    "debris": 4, "dust": 4, "smoke": 4, "flame": 4, "fireball": 4,
+    "debris": 4, "dust": 4, "smoke": 4, "flame": 4, "fireball": 4, "key": 1, "heart-red": 1, "star-gold": 1, "gem-cyan": 1, "brick": 2, "plank": 2,
+    "casing": 1, "stone": 1, "ice-cube": 1, "slime": 1, "lava-blob": 1, "flag": 1, "bone": 1, "nut": 1,
 }
 PIXEL = {
     "pixel-bolt": 4, "pixel-bubble": 1, "pixel-coin": 4, "pixel-dot": 4, "pixel-drop": 1, "pixel-explosion": 4, "pixel-flame": 4,
@@ -90,19 +91,25 @@ def document(atlas: str, regions: dict[str, list[int]], order: list[str]) -> str
 
 
 def move_frames(atlas: str, before: dict[tuple[int, ...], str], regions: dict[str, list[int]]) -> None:
-    """Rewrites the frames of every effect file that draws from the atlas with the regions that its pieces have now."""
+    """Rewrites the frames of every emitter of every effect file that draws from the atlas with the regions that its pieces have now, where the texture an emitter names comes before its frames."""
     for path in sorted((CONTENT / "particles").rglob("*.particles")):
         text = path.read_text()
-        texture = TEXTURE.search(text)
-        if texture is None or (path.parent / texture.group(1)).resolve() != (TEXTURES / f"{atlas}.png").resolve():
-            continue
-        moved = []
-        for rect in json.loads(FRAMES.search(text).group(1)):
-            name = before.get(tuple(rect))
-            if name not in regions:
-                sys.exit(f"The effect file `{path}` draws the frame {rect} of \"{atlas}.png\", which is no piece of the atlas.")
-            moved.append(regions[name])
-        path.write_text(FRAMES.sub(lambda _: '"frames": ' + json.dumps(moved, separators=(", ", ": ")), text, count=1))
+
+        def moved(match: re.Match[str]) -> str:
+            texture = None
+            for found in TEXTURE.finditer(text, 0, match.start()):
+                texture = found.group(1)
+            if texture is None or (path.parent / texture).resolve() != (TEXTURES / f"{atlas}.png").resolve():
+                return match.group(0)
+            rects = []
+            for rect in json.loads(match.group(1)):
+                name = before.get(tuple(rect))
+                if name not in regions:
+                    sys.exit(f"The effect file `{path}` draws the frame {rect} of \"{atlas}.png\", which is no piece of the atlas.")
+                rects.append(regions[name])
+            return '"frames": ' + json.dumps(rects, separators=(", ", ": "))
+
+        path.write_text(FRAMES.sub(moved, text))
 
 
 def main() -> None:

@@ -13,6 +13,7 @@ local LibraryBrowser = haylen.class('LibraryBrowser', ParticleTest)
 LibraryBrowser.folder = 'particles/library/'
 LibraryBrowser.styles = {casual = 'Casual', realistic = 'Realistic', pixel = 'Pixel art', neon = 'Neon'}
 LibraryBrowser.kinds = {loop = 'loop', once = 'one shot', cycle = 'cycle'}
+LibraryBrowser.views = {top = ', top view', side = ', side view', any = ''}
 LibraryBrowser.counter = {760, -420}
 LibraryBrowser.replayDelay = 0.6
 LibraryBrowser.sliders = {
@@ -115,7 +116,7 @@ end
 function LibraryBrowser:effectItems(category)
     local items = {}
     for index, effect in ipairs(category.effects) do
-        items[index] = {id = effect.id, text = effect.name, caption = LibraryBrowser.styles[effect.style] .. ', ' .. LibraryBrowser.kinds[effect.kind] .. (effect.composite and ', several emitters' or '')}
+        items[index] = {id = effect.id, text = effect.name, caption = LibraryBrowser.styles[effect.style] .. ', ' .. LibraryBrowser.kinds[effect.kind] .. LibraryBrowser.views[effect.view] .. (effect.composite and ', several emitters' or '')}
     end
     return items
 end

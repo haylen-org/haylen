@@ -1,0 +1,105 @@
+{
+    "emitters": [
+        {
+            "name": "arcs",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    0,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 0.3,
+            "maxParticles": 8,
+            "lifetime": 0.12,
+            "speed": 0,
+            "shape": "rectangle",
+            "shapeSize": [
+                220,
+                0
+            ],
+            "startSize": [
+                70,
+                110
+            ],
+            "endSize": [
+                70,
+                110
+            ],
+            "rotation": [
+                -0.3,
+                0.3
+            ],
+            "aspect": 2.2,
+            "unshaded": true,
+            "colors": [
+                "#00BFD4FF",
+                "#FFBFD4FF",
+                "#00BFD4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 16,
+            "prewarm": 0.6,
+            "maxParticles": 24,
+            "lifetime": [
+                0.25,
+                0.45
+            ],
+            "speed": [
+                120,
+                260
+            ],
+            "direction": 1.5708,
+            "spread": 1.6,
+            "gravity": [
+                0,
+                900
+            ],
+            "shape": "rectangle",
+            "shapeSize": [
+                220,
+                0
+            ],
+            "startSize": [
+                10,
+                18
+            ],
+            "endSize": 4,
+            "alignToVelocity": true,
+            "unshaded": true,
+            "colors": [
+                "#00DFF8FF",
+                "#FFDFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        }
+    ]
+}

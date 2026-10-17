@@ -1,6 +1,6 @@
 """Writes the effect files and the catalog of the particle library of the test project from the layers of each effect.
 
-Every effect is a list of layers, such as a soft halo, a flare, a ring, sparkles, rising icons, puffs or debris, built by the functions of this tool from the pieces of the atlas `content/particles/library/textures/effects.json`, which the tool `pack-particle-textures.py` packs. An effect of one layer becomes a file of one emitter and the others composite files of inline emitters, one folder for each category, and `catalog.json` lists them with their name, style and kind. Run it with `python3 samples/tests/tools/particles/write-effect-library.py` after packing the atlas. The pixel art effects draw from `pixel.png` and keep their own files, which the tool lists in the catalog as they are.
+Every effect is a list of layers, such as a soft halo, a flare, a ring, sparkles, rising icons, puffs or debris, built by the functions of this tool from the pieces of the atlas `content/particles/library/textures/effects.json`, which the tool `pack-particle-textures.py` packs. An effect of one layer becomes a file of one emitter and the others composite files of inline emitters, one folder for each category, and `catalog.json` lists them with their name, style, kind and the view they suit. Run it with `python3 samples/tests/tools/particles/write-effect-library.py` after packing the atlas. The pixel art effects draw from `pixel.png` and keep their own files, which the tool lists in the catalog as they are.
 """
 
 from __future__ import annotations
@@ -80,14 +80,18 @@ class Effect:
     name: str
     style: str
     kind: str
+    view: str
     layers: list[tuple[str, dict]] = field(default_factory=list)
 
 
 EFFECTS: list[Effect] = []
 
 
-def effect(category: str, id: str, name: str, style: str, kind: str, *layers: tuple[str, dict]) -> None:
-    EFFECTS.append(Effect(category, id, name, style, kind, list(layers)))
+def effect(category: str, id: str, name: str, style: str, kind: str, *layers: tuple[str, dict], view: str | None = None) -> None:
+    """Adds an effect, whose view is `top` when something of it lies on the ground, `side` for the floor of a side view and `any` otherwise."""
+    if view is None:
+        view = "top" if any("tilt" in layer for _, layer in layers) else "any"
+    EFFECTS.append(Effect(category, id, name, style, kind, view, list(layers)))
 
 
 def halo(rgb: str, size: float, life: float, alpha: float = 0.4, timing: dict | None = None, **extra) -> dict:
@@ -417,6 +421,257 @@ effect("trails", "neon-trail", "Neon trail", "neon", "loop",
        ("head", emitter("hard-dot", rate=24, rateOverDistance=0.1, maxParticles=48, lifetime=[0.3, 0.5], speed=[10, 30], spread=TAU, startSize=[8, 12], endSize=2, trail={"length": 10, "lifetime": 0.3, "widthStart": 6, "widthEnd": 0, "colors": ["#FFFFFFFF", "#007FF6FF"]}, unshaded=True, **ramp((0, "FFFFFF", 1), (0.5, "7FF6FF", 1), (1, "2E6BFF", 0)))))
 
 
+# Side view: the emitter sits on the floor of a platform game, where pieces land, bounce and roll, and motion runs along the floor.
+FLOOR = {"type": "floor", "y": 0, "bounce": 0.35, "friction": 0.35}
+LEFT = 3.1416
+DUST = {"blend": "alpha", "frameMode": "random", "rotation": [0, TAU]}
+
+
+def side_puffs(count: int, speed: list[float], size: list[float], grow: float, life: list[float], rgb: str = "FFFFFF", alpha: float = 0.9) -> list[tuple[str, dict]]:
+    """Dust puffs that roll away along the floor to both sides."""
+    return [(name, emitter("dust", **once(count), maxParticles=count * 2, lifetime=life, speed=speed, direction=direction, spread=0.35, damping=4.5, gravity=[0, -40], startSize=size, endSize=[size[0] * grow, size[1] * grow], sizeCurve="quadOut", **DUST, **fade(rgb, alpha, 0.05, 0.4)))
+            for name, direction in (("left", LEFT - 0.15), ("right", 0.15))]
+
+
+def chunks(piece: str, count: int, speed: list[float], size: list[float], rgb: str = "FFFFFF", spread: float = 2.2, blend: str = "alpha", **extra) -> dict:
+    """Pieces that fly up, fall back, bounce on the floor and settle, such as the bricks of a broken block."""
+    options = {"maxParticles": count * 2, "lifetime": [1.1, 1.6], "speed": speed, "direction": -QUARTER, "spread": spread, "gravity": [0, 1500], "startSize": size, "endSizeScale": 1, "rotation": [0, TAU], "spin": [-9, 9], "spinCurve": "quadOut", "frameMode": "random", "collision": FLOOR, "blend": blend, **fade(rgb, 1, 0.02, 0.85)}
+    options.update(extra)
+    return emitter(piece, **once(count), **options)
+
+
+def collect(piece: str, rgb: str, size: float, blend: str = "alpha", **extra) -> dict:
+    """A collected item that pops, rises and fades away."""
+    options = {"maxParticles": 2, "lifetime": 0.6, "speed": 260, "direction": -QUARTER, "spread": 0, "damping": 4, "startSize": size * 0.6, "endSize": size, "sizeCurve": {"points": [0, 1.25, 1]}, "blend": blend, **fade("FFFFFF", 1, 0.02, 0.6)}
+    options.update(extra)
+    return emitter(piece, **once(1), **options)
+
+
+# Movement.
+effect("movement", "jump-dust", "Jump dust", "casual", "once",
+       *side_puffs(4, [120, 200], [22, 32], 1.8, [0.35, 0.55]),
+       ("sparkles", burst("star-4point", "FFFFFF", 4, [80, 160], [0.25, 0.4], [8, 14], direction=-QUARTER, spread=2.4)), view="side")
+effect("movement", "double-jump", "Double jump", "casual", "once",
+       ("ring", ring("BFF4FF", 40, 180, 0.35, tilt=1.25)),
+       ("flash", flare("flare", "FFFFFF", 120, 0.2)),
+       ("feathers", emitter("feather", blend="alpha", **once(6), maxParticles=8, lifetime=[0.9, 1.3], speed=[120, 220], direction=QUARTER, spread=2.6, damping=3, gravity=[0, 160], turbulence={"strength": 120, "frequency": 0.02, "speed": 1.5}, startSize=[16, 24], endSizeScale=1, rotation=[0, TAU], spin=[-3, 3], **fade("FFFFFF", 1, 0.05, 0.7))),
+       ("sparkles", burst("star-4point", "BFF4FF", 6, [120, 220], [0.3, 0.5], [10, 18])), view="side")
+effect("movement", "land-dust", "Landing dust", "casual", "once",
+       *side_puffs(6, [200, 340], [30, 44], 2.0, [0.45, 0.7]),
+       ("pebbles", chunks("debris", 6, [180, 320], [6, 10], spread=1.6)), view="side")
+effect("movement", "run-dust", "Run dust", "casual", "loop",
+       ("puffs", emitter("dust", **steady(7, 0.8), maxParticles=12, lifetime=[0.45, 0.7], speed=[50, 100], direction=LEFT - 0.25, spread=0.3, damping=3, gravity=[0, -50], startSize=[16, 24], endSize=[36, 48], sizeCurve="quadOut", **DUST, **fade("FFFFFF", 0.85, 0.08, 0.4))), view="side")
+effect("movement", "dash", "Dash", "casual", "once",
+       ("glow", emitter("soft-dot", **once(1), maxParticles=2, lifetime=0.25, speed=0, startSize=90, endSize=60, aspect=3.0, offset=[-70, -60], **fade("7FE8FF", 0.35, 0.05))),
+       ("streaks", emitter("spark-streak", **once(12), maxParticles=16, lifetime=[0.2, 0.35], speed=[700, 1000], direction=LEFT, spread=0.05, damping=5, shape="rectangle", shapeSize=[20, 60], offset=[0, -60], startSize=[60, 110], endSize=20, alignToVelocity=True, stretch=0.05, **fade("DFFBFF", 0.9, 0.05))),
+       ("flash", flare("flare-thin", "FFFFFF", 200, 0.18, offset=[0, -60])),
+       ("dust", emitter("dust", **once(4), maxParticles=6, lifetime=[0.4, 0.6], speed=[100, 200], direction=LEFT - 0.2, spread=0.3, damping=4, startSize=[24, 34], endSize=[50, 64], **DUST, **fade("FFFFFF", 0.8, 0.05, 0.4))), view="side")
+effect("movement", "wall-slide", "Wall slide", "casual", "loop",
+       ("dust", emitter("dust", **steady(10, 0.6), maxParticles=16, lifetime=[0.35, 0.55], speed=[40, 90], direction=LEFT - 0.6, spread=0.5, gravity=[0, 120], startSize=[12, 18], endSize=[28, 36], shape="rectangle", shapeSize=[2, 30], **DUST, **fade("FFFFFF", 0.8, 0.1, 0.4))),
+       ("sparks", emitter("spark-streak", **steady(14, 0.6), maxParticles=24, lifetime=[0.25, 0.45], speed=[150, 280], direction=LEFT - 0.9, spread=0.6, gravity=[0, 900], alignToVelocity=True, stretch=0.03, startSize=[10, 18], endSize=4, emission=1, **ramp((0, "FFFFFF", 1), (0.4, "FFD27A", 1), (1, "FF6A1F", 0)))), view="side")
+effect("movement", "wall-jump", "Wall jump", "casual", "once",
+       ("ring", ring("FFFFFF", 30, 150, 0.3, aspect=0.4, alpha=0.9)),
+       ("puffs", emitter("dust", **once(6), maxParticles=8, lifetime=[0.4, 0.6], speed=[160, 280], direction=LEFT, spread=1.2, damping=4.5, startSize=[22, 32], endSize=[46, 60], **DUST, **fade("FFFFFF", 0.85, 0.05, 0.4))),
+       ("sparkles", burst("star-4point", "FFFFFF", 4, [100, 200], [0.25, 0.4], [10, 16], direction=LEFT, spread=1.4)), view="side")
+effect("movement", "ground-pound", "Ground pound", "casual", "once",
+       ("flash", flare("flash-burst", "FFE7A8", 260, 0.25, rotation=[0, TAU])),
+       ("shockwave", ring("FFF1D8", 60, 560, 0.45, piece="ring-thick", tilt=1.38, alpha=0.9)),
+       *side_puffs(8, [300, 480], [36, 52], 2.2, [0.55, 0.85]),
+       ("rocks", chunks("debris", 10, [380, 620], [10, 20], spread=1.5)), view="side")
+effect("movement", "spring-bounce", "Spring bounce", "casual", "once",
+       ("lines", emitter("spark-streak", **once(6), maxParticles=8, lifetime=0.3, speed=[500, 700], direction=-QUARTER, spread=0.9, damping=6, startSize=[40, 60], endSize=10, alignToVelocity=True, stretch=0.03, **fade("FFFFFF", 0.9, 0.05))),
+       ("stars", emitter("star-5point", **once(5), maxParticles=6, lifetime=[0.5, 0.7], speed=[300, 420], direction=-QUARTER, spread=1.6, gravity=[0, 900], startSize=[16, 24], endSize=0, sizeCurve="quadIn", spin=[-6, 6], **fade("FFE23C", 1, 0.05))),
+       ("ring", ring("FFFFFF", 40, 160, 0.3, tilt=1.25)), view="side")
+effect("movement", "speed-lines", "Speed lines", "casual", "loop",
+       ("lines", emitter("spark-streak", **steady(30, 0.5), maxParticles=40, lifetime=[0.18, 0.3], speed=[1400, 1800], direction=LEFT, spread=0, shape="rectangle", shapeSize=[200, 150], startSize=[120, 220], endSizeScale=1, aspect=1.5, offset=[0, -80], **fade("FFFFFF", 0.5, 0.2, 0.7))), view="side")
+effect("movement", "footstep-splash", "Footstep splash", "casual", "once",
+       ("drops", emitter("droplet", blend="alpha", **once(8), maxParticles=10, lifetime=[0.4, 0.6], speed=[180, 300], direction=-QUARTER, spread=1.8, gravity=[0, 1300], startSize=[8, 14], endSizeScale=0.7, alignToVelocity=True, rotation=QUARTER, collision={"type": "floor", "y": 0, "result": "die"}, **fade("FFFFFF", 1, 0.02, 0.9))),
+       ("ripple", ring("BFEFFF", 20, 120, 0.5, tilt=1.35, blend="alpha", alpha=0.8)), view="side")
+effect("movement", "glide-feathers", "Glide feathers", "casual", "loop",
+       ("feathers", emitter("feather", blend="alpha", **steady(3, 2.0), maxParticles=12, lifetime=[1.6, 2.2], speed=[40, 80], direction=LEFT + 0.6, spread=0.6, gravity=[0, 60], turbulence={"strength": 90, "frequency": 0.015, "speed": 1}, startSize=[16, 24], endSizeScale=1, rotation=[0, TAU], spin=[-2, 2], offset=[0, -60], **fade("FFFFFF", 1, 0.1, 0.75))), view="side")
+
+# Pickups.
+effect("pickups", "coin-collect", "Coin collect", "casual", "once",
+       ("glow", halo("FFC93C", 220, 0.4, 0.45)),
+       ("coin", collect("coin", "FFFFFF", 54, frameMode="loop", frameRate=12)),
+       ("flare", flare("star-4point", "FFF1B8", 110, 0.3, spin=4)),
+       ("sparkles", burst("star-4point", "FFE37A", 8, [160, 280], [0.3, 0.5], [10, 18])), view="side")
+effect("pickups", "gem-collect", "Gem collect", "casual", "once",
+       ("glow", halo("2ED8FF", 260, 0.45, 0.45)),
+       ("gem", collect("gem-cyan", "FFFFFF", 60)),
+       ("ring", ring("BFF6FF", 40, 170, 0.35)),
+       ("sparkles", burst("star-4point", "BFF6FF", 10, [180, 300], [0.35, 0.55], [10, 18])), view="side")
+effect("pickups", "key-collect", "Key collect", "casual", "once",
+       ("glow", halo("FFC93C", 300, 0.7, 0.45)),
+       ("rays", flare("flash-burst", "FFE37A", 260, 0.7, spin=0.8, settle=0.8, alpha=0.7)),
+       ("key", collect("key", "FFFFFF", 70, lifetime=0.8, rotation=-0.4, spin=1.2)),
+       ("sparkles", burst("star-4point", "FFF1B8", 10, [140, 260], [0.4, 0.7], [10, 18])), view="side")
+effect("pickups", "heart-pickup", "Heart pickup", "casual", "once",
+       ("glow", halo("FF4F7A", 260, 0.5, 0.45)),
+       ("heart", collect("heart-red", "FFFFFF", 60)),
+       ("hearts", emitter("heart", **once(6), maxParticles=8, lifetime=[0.6, 0.9], speed=[120, 220], direction=-QUARTER, spread=2.0, damping=2.5, gravity=[0, -60], startSize=[14, 22], endSize=0, sizeCurve="quadIn", **fade("FF6A9A", 1, 0.05))),
+       ("ring", ring("FFC2D2", 40, 160, 0.35)), view="side")
+effect("pickups", "power-up", "Power up", "casual", "once",
+       ("glow", halo("FFC93C", 360, 1.0, 0.35, offset=[0, -80])),
+       ("column", emitter("light-beam", **once(2), maxParticles=4, lifetime=[0.7, 0.9], speed=0, shape="rectangle", shapeSize=[30, 0], startSize=320, endSize=360, aspect=2.0, offset=[0, -150], **fade("FFD24A", 0.5, 0.15))),
+       ("spiral", emitter("star-4point", **once(16), maxParticles=20, lifetime=[0.7, 1.0], speed=[60, 90], shape="ring", shapeSize=[60, 0], directionMode="tangent", spread=0, gravity=[0, -500], radialAcceleration=-80, startSize=[12, 22], endSize=0, sizeCurve="quadIn", **fade("FFF1B8", 1, 0.05))),
+       ("flash", flare("flare", "FFFFFF", 150, 0.22, offset=[0, -60])), view="side")
+effect("pickups", "checkpoint", "Checkpoint", "casual", "once",
+       ("glow", halo("FFC93C", 320, 0.9, 0.45, offset=[0, -60])),
+       ("flag", collect("flag", "FFFFFF", 80, speed=0, lifetime=0.9, offset=[0, -60])),
+       ("confetti", emitter("hard-dot", blend="alpha", **once(30), maxParticles=36, lifetime=[1.0, 1.4], speed=[360, 560], direction=-QUARTER, spread=1.0, gravity=[0, 900], damping=2, startSize=[10, 14], endSizeScale=1, aspect=[0.35, 0.55], rotation=[0, TAU], spin=[-12, 12], tints=["#FFFF4F7A", "#FFFFC93C", "#FF4CC9FF", "#FF7CFF5E"], offset=[0, -60], **fade("FFFFFF", 1, 0.02, 0.85))),
+       ("sparkles", rising("star-4point", "FFF1B8", 10, 60, [80, 140], [0.6, 0.9], [10, 16])), view="side")
+effect("pickups", "star-collect", "Star collect", "casual", "once",
+       ("glow", halo("FFC93C", 300, 0.6, 0.5)),
+       ("star", collect("star-gold", "FFFFFF", 70, spin=6, spinCurve="quadOut")),
+       ("rays", flare("flash-burst", "FFE37A", 240, 0.4, spin=1, alpha=0.7)),
+       ("sparkles", burst("star-5point", "FFF1B8", 8, [200, 320], [0.4, 0.6], [10, 16], gravity=[0, 500])), view="side")
+effect("pickups", "extra-life", "Extra life", "casual", "once",
+       ("glow", halo("4CFF5E", 320, 0.8, 0.5)),
+       ("flash", flare("flare", "FFFFFF", 200, 0.25)),
+       ("ring", ring("B8FFC0", 50, 220, 0.4)),
+       ("crosses", emitter("plus-sign", **once(8), maxParticles=10, lifetime=[0.7, 1.0], speed=[120, 220], direction=-QUARTER, spread=1.6, damping=2, gravity=[0, -80], startSize=[16, 26], endSize=0, sizeCurve="quadIn", **fade("7CFF8A", 1, 0.05))), view="side")
+effect("pickups", "chest-open", "Chest open", "casual", "once",
+       ("light", emitter("light-cone", **once(1), maxParticles=2, lifetime=1.2, speed=0, startSize=220, endSize=280, offset=[0, -110], **fade("FFE37A", 0.8, 0.15, 0.6))),
+       ("glow", halo("FFC93C", 320, 1.0, 0.45, offset=[0, -40])),
+       ("coins", chunks("coin", 10, [420, 620], [22, 30], spread=0.9, frameMode="loopRandomStart", frameRate=10, spin=0, rotation=0)),
+       ("sparkles", rising("star-4point", "FFF1B8", 14, 60, [120, 220], [0.5, 0.9], [10, 18])), view="side")
+effect("pickups", "coin-magnet", "Coin magnet", "casual", "loop",
+       ("coins", emitter("coin", blend="alpha", **steady(4, 1.0), maxParticles=12, lifetime=1.2, speed=[40, 80], spread=TAU, shape="ring", shapeSize=[240, 0], attractors=[{"x": 0, "y": -60, "strength": 2400, "radius": 400, "killRadius": 20}], startSize=26, endSizeScale=1, frameMode="loopRandomStart", frameRate=10, **fade("FFFFFF", 1, 0.1, 0.9))),
+       ("glow", halo("FFC93C", 200, 1.0, 0.35, timing=steady(2, 1.0), offset=[0, -60])), view="side")
+
+# Combat from the side.
+effect("combat", "slash-side", "Side slash", "casual", "once",
+       ("arc", emitter("slash-arc", **once(1), maxParticles=2, lifetime=0.26, speed=0, startSize=230, endSize=270, rotation=-1.2, spin=8, spinCurve="quadOut", offset=[40, -70], **fade("FFFFFF", 1, 0.05))),
+       ("trail", emitter("slash-arc", **once(1), maxParticles=2, lifetime=0.32, speed=0, startSize=250, endSize=300, rotation=-1.6, spin=8, spinCurve="quadOut", offset=[40, -70], **fade("7FE8FF", 0.6, 0.1))),
+       ("sparks", emitter("spark-streak", **once(6), maxParticles=8, lifetime=[0.15, 0.3], speed=[300, 520], direction=0, spread=0.8, damping=4, startSize=[20, 32], endSize=6, alignToVelocity=True, stretch=0.03, offset=[110, -70], **fade("DFFBFF", 1, 0.05))), view="side")
+effect("combat", "stomp-stars", "Stomp stars", "casual", "once",
+       ("flash", flare("impact-star", "FFF1B8", 140, 0.2)),
+       ("stars", emitter("star-5point", **once(6), maxParticles=8, lifetime=[0.6, 0.8], speed=[260, 380], direction=-QUARTER, spread=2.0, gravity=[0, 900], startSize=[18, 26], endSize=6, spin=[-6, 6], **fade("FFE23C", 1, 0.05, 0.8))),
+       *side_puffs(4, [140, 220], [22, 30], 1.8, [0.35, 0.5]), view="side")
+effect("combat", "enemy-defeat", "Enemy defeat", "casual", "once",
+       ("flash", flare("flare", "FFFFFF", 200, 0.22, offset=[0, -60])),
+       ("clouds", emitter("cloud", blend="alpha", **once(7), maxParticles=8, lifetime=[0.45, 0.65], speed=[160, 240], shape="ring", shapeSize=[20, 0], directionMode="outward", spread=0.2, damping=5, startSize=[44, 60], endSize=[70, 90], sizeCurve="quadOut", frameMode="random", offset=[0, -60], **ramp((0, "FFFFFF", 1), (0.6, "FFFFFF", 1), (1, "FFFFFF", 0)))),
+       ("stars", burst("star-5point", "FFE23C", 6, [200, 320], [0.4, 0.6], [12, 20], gravity=[0, 600], offset=[0, -60])), view="side")
+effect("combat", "muzzle-flash", "Muzzle flash", "casual", "once",
+       ("flare", flare("flare-thin", "FFE7A8", 160, 0.1, rotation=0, settle=0.2)),
+       ("burst", flare("impact-star", "FFC24A", 90, 0.1, rotation=[0, TAU])),
+       ("sparks", emitter("spark-streak", **once(6), maxParticles=8, lifetime=[0.1, 0.2], speed=[500, 800], direction=0, spread=0.5, startSize=[20, 30], endSize=6, alignToVelocity=True, stretch=0.03, emission=1, **fade("FFE7A8", 1, 0.05))),
+       ("smoke", emitter("puff", blend="alpha", **once(3, delay=0.05), maxParticles=4, lifetime=[0.6, 0.9], speed=[40, 80], direction=-0.4, spread=0.5, damping=2, gravity=[0, -80], startSize=[16, 24], endSize=[40, 56], rotation=[0, TAU], frameMode="random", **fade("C8C8D0", 0.6, 0.1))), view="side")
+effect("combat", "bullet-impact", "Bullet impact", "casual", "once",
+       ("flash", flare("star-4point", "FFF1B8", 90, 0.12)),
+       ("sparks", emitter("spark-streak", **once(10), maxParticles=12, lifetime=[0.15, 0.35], speed=[300, 600], direction=LEFT, spread=1.4, gravity=[0, 900], startSize=[14, 24], endSize=4, alignToVelocity=True, stretch=0.03, emission=1, **ramp((0, "FFFFFF", 1), (0.4, "FFD27A", 1), (1, "FF6A1F", 0)))),
+       ("dust", emitter("dust", **once(3), maxParticles=4, lifetime=[0.4, 0.6], speed=[60, 120], direction=LEFT, spread=0.8, damping=3, startSize=[16, 24], endSize=[36, 48], **DUST, **fade("FFFFFF", 0.8, 0.05, 0.4))),
+       ("bits", emitter("stone", blend="alpha", **once(4), maxParticles=6, lifetime=[0.5, 0.8], speed=[160, 300], direction=LEFT - 0.4, spread=1.0, gravity=[0, 1300], startSize=[6, 10], endSizeScale=1, rotation=[0, TAU], spin=[-10, 10], **fade("FFFFFF", 1, 0.02, 0.85))), view="side")
+effect("combat", "shell-casing", "Shell casing", "casual", "once",
+       ("casing", emitter("casing", blend="alpha", **once(1), maxParticles=2, lifetime=1.4, speed=[300, 360], direction=-2.2, spread=0.2, gravity=[0, 1500], startSize=28, endSize=28, rotation=[0, TAU], spin=[14, 18], spinCurve="quadOut", collision={"type": "floor", "y": 60, "bounce": 0.45, "friction": 0.4}, **fade("FFFFFF", 1, 0.02, 0.9))), view="side")
+effect("combat", "fireball-shot", "Fireball shot", "casual", "loop",
+       ("glow", halo("FF8A1F", 220, 0.8, 0.45, timing=steady(3, 0.8), localSpace=True)),
+       ("core", emitter("orb", **steady(3, 0.6), maxParticles=4, lifetime=0.6, **still(80), localSpace=True, **fade("FFE37A", 1, 0.2, 0.8))),
+       ("trail", emitter("flame-soft", **steady(40, 0.5), maxParticles=40, lifetime=[0.25, 0.4], speed=[300, 420], direction=LEFT, spread=0.25, startSize=[50, 66], endSize=10, sizeCurve="quadIn", rotation=-QUARTER, **ramp((0, "FFF4C8", 0), (0.15, "FFB52E", 0.9), (0.6, "FF4A1F", 0.6), (1, "B0101F", 0)))),
+       ("sparks", emitter("ember", **steady(14, 0.6), maxParticles=16, lifetime=[0.3, 0.5], speed=[200, 300], direction=LEFT, spread=0.5, startSize=[6, 10], endSize=2, emission=1, **ramp((0, "FFF4C8", 1), (1, "FF6A1F", 0)))), view="side")
+effect("combat", "energy-shot", "Energy shot", "neon", "loop",
+       ("glow", halo("2EC8FF", 200, 0.8, 0.5, timing=steady(3, 0.8), localSpace=True)),
+       ("core", emitter("hard-dot", **steady(3, 0.6), maxParticles=4, lifetime=0.6, **still(40), localSpace=True, unshaded=True, **fade("FFFFFF", 1, 0.2, 0.8))),
+       ("trail", emitter("spark-streak", **steady(30, 0.4), maxParticles=24, lifetime=[0.15, 0.25], speed=[500, 640], direction=LEFT, spread=0.08, startSize=[60, 90], endSize=20, alignToVelocity=True, unshaded=True, **fade("7FE8FF", 1, 0.1))), view="side")
+effect("combat", "death-burst", "Defeat burst", "casual", "once",
+       ("flash", flare("flare", "FFFFFF", 260, 0.25, offset=[0, -60])),
+       ("orbs", emitter("hard-dot", **once(12), maxParticles=12, lifetime=[0.5, 0.7], speed=[260, 300], shape="ring", shapeSize=[10, 0], directionMode="outward", spread=0, damping=3, startSize=[22, 28], endSize=0, sizeCurve="quadIn", offset=[0, -60], **fade("FFFFFF", 1, 0.02))),
+       ("ring", ring("FFFFFF", 40, 260, 0.4, offset=[0, -60])),
+       ("sparkles", burst("star-4point", "FFFFFF", 8, [160, 280], [0.4, 0.6], [10, 18], offset=[0, -60])), view="side")
+effect("combat", "respawn", "Respawn", "casual", "once",
+       ("beam", emitter("light-beam", **once(2), maxParticles=4, lifetime=[0.6, 0.8], speed=0, startSize=360, endSize=300, aspect=1.6, offset=[0, -170], **fade("BFF4FF", 0.9, 0.1))),
+       ("ring", ring("BFF4FF", 160, 40, 0.5, tilt=1.25)),
+       ("gather", emitter("star-4point", **once(14), maxParticles=16, lifetime=0.5, speed=[220, 260], shape="ring", shapeSize=[130, 0], directionMode="inward", spread=0, startSize=[12, 18], endSize=4, offset=[0, -60], **fade("FFFFFF", 1, 0.2))),
+       ("flash", flare("flare", "FFFFFF", 220, 0.3, timing=once(1, delay=0.45), offset=[0, -60])), view="side")
+effect("combat", "hurt", "Hurt", "casual", "once",
+       ("flash", flare("impact-star", "FF4A4A", 150, 0.2, rotation=[0, TAU])),
+       ("core", flare("star-4point", "FFFFFF", 90, 0.15)),
+       ("sparks", burst("spark-streak", "FF8A8A", 6, [300, 480], [0.15, 0.3], [18, 28], alignToVelocity=True, stretch=0.03, rotation=0)), view="side")
+effect("combat", "shield-block", "Shield block", "casual", "once",
+       ("shield", emitter("ring-thin", **once(1), maxParticles=2, lifetime=0.3, speed=0, startSize=160, endSize=190, aspect=0.45, offset=[30, -60], **fade("7FE8FF", 1, 0.05))),
+       ("flash", flare("flare", "FFFFFF", 150, 0.18, offset=[30, -60])),
+       ("sparks", emitter("spark-streak", **once(10), maxParticles=12, lifetime=[0.2, 0.35], speed=[300, 520], direction=0, spread=1.6, gravity=[0, 700], startSize=[16, 26], endSize=4, alignToVelocity=True, stretch=0.03, offset=[30, -60], **fade("DFFBFF", 1, 0.05))), view="side")
+effect("combat", "explosion-side", "Explosion on the ground", "casual", "once",
+       ("glow", halo("FF6A1F", 520, 0.9, 0.55, offset=[0, -80])),
+       ("flash", flare("flare", "FFFFFF", 300, 0.24, offset=[0, -80])),
+       ("fireball", emitter("fireball", **once(7), maxParticles=8, lifetime=[0.45, 0.65], speed=[100, 220], direction=-QUARTER, spread=1.6, damping=3, startSize=[90, 120], endSize=[180, 230], sizeCurve="quadOut", rotation=[0, TAU], frameMode="overLife", offset=[0, -40], **ramp((0, "FFF4C8", 1), (0.25, "FFB52E", 0.95), (0.6, "FF4A1F", 0.6), (1, "6A1010", 0)))),
+       ("smoke", emitter("puff", blend="alpha", **once(8, delay=0.12), maxParticles=10, lifetime=[1.0, 1.4], speed=[80, 160], direction=-QUARTER, spread=1.2, damping=2, gravity=[0, -120], startSize=[60, 90], endSize=[140, 180], rotation=[0, TAU], frameMode="random", offset=[0, -80], **ramp((0, "A8968C", 0), (0.15, "948278", 0.85), (0.7, "7A6C66", 0.55), (1, "6A5E5A", 0)))),
+       *side_puffs(6, [300, 460], [40, 56], 2.0, [0.6, 0.9]),
+       ("rocks", chunks("debris", 10, [500, 760], [14, 26], spread=1.4)), view="side")
+effect("combat", "bomb-fuse", "Bomb fuse", "casual", "loop",
+       ("sparks", emitter("spark-streak", **steady(60, 0.5), maxParticles=48, lifetime=[0.1, 0.25], speed=[160, 320], spread=TAU, startSize=[8, 16], endSize=2, alignToVelocity=True, stretch=0.03, emission=1, **ramp((0, "FFFFFF", 1), (0.5, "FFE37A", 1), (1, "FF9A2E", 0)))),
+       ("glow", halo("FFD27A", 90, 0.2, 0.6, timing=steady(10, 0.2))),
+       ("smoke", emitter("smoke-curl", blend="alpha", **steady(3, 1.0), maxParticles=6, lifetime=[0.8, 1.2], speed=[40, 60], direction=-QUARTER, spread=0.3, startSize=[24, 32], endSize=[50, 64], **fade("A09C98", 0.5, 0.2))), view="side")
+
+# Level pieces that break, flow and blow in a side view.
+effect("level", "block-break", "Block break", "casual", "once",
+       ("bricks", chunks("brick", 8, [420, 640], [20, 32], spread=1.4)),
+       ("dust", emitter("dust", **once(5), maxParticles=6, lifetime=[0.4, 0.6], speed=[80, 160], spread=TAU, damping=4, startSize=[30, 40], endSize=[56, 70], offset=[0, -30], **DUST, **fade("FFE6C8", 0.85, 0.05, 0.4))),
+       ("flash", flare("star-4point", "FFF1D8", 120, 0.15, offset=[0, -30])), view="side")
+effect("level", "crate-break", "Crate break", "casual", "once",
+       ("planks", chunks("plank", 9, [380, 600], [22, 34], spread=1.6)),
+       ("chips", chunks("plank", 8, [300, 520], [8, 12], spread=2.0)),
+       ("dust", emitter("dust", **once(5), maxParticles=6, lifetime=[0.4, 0.6], speed=[80, 160], spread=TAU, damping=4, startSize=[30, 40], endSize=[56, 70], offset=[0, -30], **DUST, **fade("FFFFFF", 0.85, 0.05, 0.4))), view="side")
+effect("level", "rock-break", "Rock break", "casual", "once",
+       ("stones", chunks("stone", 9, [360, 580], [14, 26], spread=1.6)),
+       ("dust", emitter("dust", **once(6), maxParticles=8, lifetime=[0.5, 0.7], speed=[80, 180], spread=TAU, damping=4, startSize=[34, 44], endSize=[60, 76], offset=[0, -30], **DUST, **fade("E8E0D8", 0.85, 0.05, 0.4))), view="side")
+effect("level", "ice-break", "Ice break", "casual", "once",
+       ("cubes", chunks("ice-cube", 8, [380, 600], [14, 24], spread=1.6)),
+       ("shards", chunks("shard", 8, [400, 640], [16, 24], spread=1.8, blend="additive", rgb="C8F0FF")),
+       ("sparkles", burst("star-4point", "FFFFFF", 8, [140, 260], [0.4, 0.6], [10, 18], offset=[0, -30])), view="side")
+effect("level", "lava-bubbles", "Lava bubbles", "casual", "loop",
+       ("glow", emitter("soft-dot", **steady(6, 1.0), maxParticles=12, lifetime=1.0, speed=0, shape="rectangle", shapeSize=[200, 0], startSize=160, endSize=200, aspect=1.6, **fade("FF6A1F", 0.35, 0.3, 0.6))),
+       ("blobs", emitter("lava-blob", blend="alpha", **steady(5, 1.2), maxParticles=12, lifetime=[0.6, 0.9], speed=[260, 380], direction=-QUARTER, spread=0.6, gravity=[0, 1100], shape="rectangle", shapeSize=[180, 0], startSize=[14, 22], endSizeScale=0.8, rotation=[0, TAU], collision={"type": "floor", "y": 0, "result": "die"}, emission=1, **fade("FFFFFF", 1, 0.05, 0.9))),
+       ("embers", emitter("ember", **steady(8, 2.0), maxParticles=24, lifetime=[1.0, 1.6], speed=[60, 120], direction=-QUARTER, spread=0.6, shape="rectangle", shapeSize=[200, 0], turbulence={"strength": 60, "frequency": 0.02, "speed": 1}, startSize=[6, 10], endSize=2, emission=1, **ramp((0, "FFF4C8", 1), (0.6, "FF9A2E", 0.9), (1, "E0401F", 0)))), view="side")
+effect("level", "waterfall-splash", "Waterfall splash", "casual", "loop",
+       ("mist", emitter("soft-dot", blend="alpha", **steady(14, 2.0), maxParticles=40, lifetime=[1.2, 1.8], speed=[40, 90], direction=-QUARTER, spread=1.4, shape="rectangle", shapeSize=[90, 0], gravity=[0, -20], startSize=[40, 60], endSize=[100, 140], **fade("EAF8FF", 0.4, 0.2))),
+       ("foam", emitter("cloud", blend="alpha", **steady(8, 1.0), maxParticles=16, lifetime=[0.5, 0.8], speed=[60, 120], direction=-QUARTER, spread=1.6, shape="rectangle", shapeSize=[80, 0], startSize=[30, 44], endSize=[50, 64], frameMode="random", **fade("FFFFFF", 0.9, 0.1, 0.5))),
+       ("drops", emitter("droplet", blend="alpha", **steady(24, 1.0), maxParticles=40, lifetime=[0.5, 0.8], speed=[200, 340], direction=-QUARTER, spread=1.4, gravity=[0, 1200], shape="rectangle", shapeSize=[80, 0], startSize=[8, 14], endSizeScale=0.7, alignToVelocity=True, rotation=QUARTER, collision={"type": "floor", "y": 0, "result": "die"}, **fade("FFFFFF", 1, 0.02, 0.9))), view="side")
+effect("level", "water-splash-side", "Water splash", "casual", "once",
+       ("crown", emitter("splash", blend="alpha", **once(1), maxParticles=2, lifetime=0.5, speed=0, startSize=160, endSize=240, sizeCurve="quadOut", offset=[0, -50], **ramp((0, "BFEFFF", 0.9), (0.6, "8FD8FF", 0.8), (1, "6CC4FF", 0)))),
+       ("drops", emitter("droplet", blend="alpha", **once(18), maxParticles=20, lifetime=[0.6, 0.9], speed=[300, 520], direction=-QUARTER, spread=1.5, gravity=[0, 1400], startSize=[10, 18], endSizeScale=0.7, alignToVelocity=True, rotation=QUARTER, collision={"type": "floor", "y": 0, "result": "die"}, **fade("FFFFFF", 1, 0.02, 0.9))),
+       ("ripple", ring("BFEFFF", 40, 300, 0.7, tilt=1.38, blend="alpha", alpha=0.8)), view="side")
+effect("level", "jetpack", "Jetpack", "realistic", "loop",
+       ("glow", halo("FF9A2E", 160, 0.4, 0.45, timing=steady(6, 0.4), offset=[0, 20])),
+       ("flames", emitter("flame", **steady(40, 0.5), maxParticles=32, lifetime=[0.2, 0.32], speed=[300, 420], direction=QUARTER, spread=0.15, startSize=[40, 54], endSize=12, sizeCurve="quadIn", rotation=3.1416, frameMode="loopRandomStart", frameRate=16, emission=1, **FIRE)),
+       ("smoke", emitter("smoke", blend="alpha", **steady(10, 1.0), maxParticles=20, lifetime=[0.8, 1.2], speed=[200, 280], direction=QUARTER, spread=0.3, damping=2.5, startSize=[30, 40], endSize=[90, 120], rotation=[0, TAU], frameMode="random", offset=[0, 60], **ramp((0, "8A8680", 0), (0.2, "7A7670", 0.6), (1, "6A6662", 0)))), view="side")
+effect("level", "rocket-exhaust", "Rocket exhaust", "realistic", "loop",
+       ("flames", emitter("flame", **steady(46, 0.5), maxParticles=40, lifetime=[0.2, 0.3], speed=[460, 600], direction=LEFT, spread=0.08, startSize=[46, 60], endSize=14, sizeCurve="quadIn", rotation=-QUARTER, frameMode="loopRandomStart", frameRate=16, emission=1, **FIRE)),
+       ("core", emitter("flame-soft", **steady(24, 0.5), maxParticles=16, lifetime=0.15, speed=[300, 360], direction=LEFT, spread=0.05, startSize=30, endSize=10, rotation=-QUARTER, emission=1, **fade("BFE8FF", 0.9, 0.1))),
+       ("smoke", emitter("smoke", blend="alpha", **steady(12, 2.0), maxParticles=40, lifetime=[1.2, 1.8], speed=[300, 380], direction=LEFT, spread=0.12, damping=1.8, gravity=[0, -40], startSize=[30, 40], endSize=[120, 160], rotation=[0, TAU], frameMode="random", offset=[-80, 0], **ramp((0, "8A8680", 0), (0.2, "7A7670", 0.55), (1, "6A6662", 0)))), view="side")
+effect("level", "steam-vent", "Steam vent", "realistic", "loop",
+       ("steam", emitter("smoke", blend="alpha", **steady(9, 2.0), maxParticles=24, lifetime=[1.2, 1.7], speed=[160, 240], direction=-QUARTER, spread=0.18, damping=1.2, turbulence={"strength": 40, "frequency": 0.01, "speed": 0.8}, startSize=[30, 40], endSize=[130, 170], rotation=[0, TAU], frameMode="random", **ramp((0, "FFFFFF", 0), (0.15, "F2F6FA", 0.7), (1, "E8EEF4", 0)))), view="side")
+effect("level", "drip-splash", "Drip splash", "casual", "once",
+       ("drops", emitter("droplet", blend="alpha", **once(6), maxParticles=8, lifetime=[0.3, 0.45], speed=[120, 220], direction=-QUARTER, spread=1.8, gravity=[0, 1300], startSize=[5, 8], endSizeScale=0.7, **fade("FFFFFF", 1, 0.02, 0.8))), view="side")
+effect("level", "dripping-water", "Dripping water", "casual", "loop",
+       ("drop", emitter("droplet", blend="alpha", **steady(1.2, 2.0), maxParticles=4, lifetime=2.0, speed=0, gravity=[0, 1400], startSize=14, endSize=14, rotation=0, offset=[0, -320], collision={"type": "floor", "y": 320, "result": "die"},
+                        subEmitters=[{"effect": "drip-splash.particles", "trigger": "collision", "count": [5, 7]}],
+                        **fade("FFFFFF", 1, 0.02, 0.98))),
+       ("ripple", ring("BFEFFF", 10, 90, 0.5, timing=steady(1.2, 0.5), tilt=1.38, blend="alpha", alpha=0.7, localSpace=True)), view="side")
+effect("level", "electric-wire", "Electric wire", "neon", "loop",
+       ("arcs", emitter("electric-arc", **steady(14, 0.3), maxParticles=8, lifetime=0.12, speed=0, shape="rectangle", shapeSize=[220, 0], startSize=[70, 110], endSize=[70, 110], rotation=[-0.3, 0.3], aspect=2.2, unshaded=True, **fade("BFD4FF", 1, 0.05))),
+       ("sparks", emitter("spark-streak", **steady(16, 0.6), maxParticles=24, lifetime=[0.25, 0.45], speed=[120, 260], direction=QUARTER, spread=1.6, gravity=[0, 900], shape="rectangle", shapeSize=[220, 0], startSize=[10, 18], endSize=4, alignToVelocity=True, unshaded=True, **fade("DFF8FF", 1, 0.05))), view="side")
+effect("level", "wind-gust", "Wind gust", "casual", "loop",
+       ("streaks", emitter("swirl", blend="alpha", **steady(4, 1.0), maxParticles=8, lifetime=[0.6, 0.9], speed=[500, 700], direction=0, spread=0.05, shape="rectangle", shapeSize=[0, 160], startSize=[90, 130], endSizeScale=1, aspect=2.5, offset=[-300, -80], **fade("FFFFFF", 0.35, 0.2, 0.7))),
+       ("leaves", emitter("leaf", blend="alpha", **steady(3, 1.5), maxParticles=8, lifetime=[1.0, 1.4], speed=[500, 700], direction=-0.1, spread=0.2, shape="rectangle", shapeSize=[0, 140], turbulence={"strength": 160, "frequency": 0.01, "speed": 1}, startSize=[16, 22], endSizeScale=1, rotation=[0, TAU], spin=[-6, 6], frameMode="random", tints=["#FF9CC84C", "#FFE8C850"], offset=[-300, -80], **fade("FFFFFF", 1, 0.05, 0.85))), view="side")
+effect("level", "ceiling-dust", "Ceiling dust", "casual", "once",
+       ("pebbles", emitter("debris", blend="alpha", **once(10), maxParticles=12, lifetime=[0.8, 1.1], speed=[0, 40], direction=QUARTER, spread=0.6, gravity=[0, 1200], shape="rectangle", shapeSize=[120, 0], startSize=[6, 12], endSizeScale=1, rotation=[0, TAU], spin=[-6, 6], frameMode="random", offset=[0, -360], collision={"type": "floor", "y": 360, "bounce": 0.3}, **fade("FFFFFF", 1, 0.02, 0.85))),
+       ("dust", emitter("dust", **once(8), maxParticles=10, lifetime=[0.9, 1.3], speed=[20, 60], direction=QUARTER, spread=0.6, gravity=[0, 200], shape="rectangle", shapeSize=[120, 0], startSize=[20, 30], endSize=[50, 70], offset=[0, -360], **DUST, **fade("FFFFFF", 0.7, 0.1, 0.5))), view="side")
+effect("level", "geyser", "Geyser", "casual", "loop",
+       ("column", emitter("droplet", blend="alpha", **steady(60, 1.4), maxParticles=96, lifetime=[0.9, 1.3], speed=[700, 900], direction=-QUARTER, spread=0.12, gravity=[0, 1100], startSize=[12, 22], endSizeScale=0.8, alignToVelocity=True, rotation=QUARTER, collision={"type": "floor", "y": 0, "result": "die"}, **fade("FFFFFF", 1, 0.02, 0.9))),
+       ("mist", emitter("soft-dot", blend="alpha", **steady(12, 2.0), maxParticles=32, lifetime=[1.0, 1.6], speed=[300, 500], direction=-QUARTER, spread=0.3, damping=2, startSize=[40, 60], endSize=[100, 140], **fade("EAF8FF", 0.35, 0.2))),
+       ("foam", emitter("cloud", blend="alpha", **steady(8, 1.0), maxParticles=12, lifetime=[0.4, 0.6], speed=[60, 120], direction=-QUARTER, spread=2.0, startSize=[26, 36], endSize=[44, 56], frameMode="random", **fade("FFFFFF", 0.9, 0.1, 0.5))), view="side")
+effect("level", "teleport-pad", "Teleport pad", "casual", "loop",
+       ("pad", ground("disc", "2EC8FF", 200, 1.6, 1.25, 0, alpha=0.6)),
+       ("pulse", ring("BFF6FF", 60, 220, 0.9, timing=steady(1.6, 0.9), tilt=GROUND, localSpace=True)),
+       ("beam", emitter("light-beam", **steady(2, 1.2), maxParticles=4, lifetime=1.2, speed=0, startSize=300, endSize=320, aspect=1.6, offset=[0, -140], localSpace=True, **fade("7FE8FF", 0.6, 0.25, 0.75))),
+       ("sparkles", rising("star-4point", "DFFBFF", 14, 80, [100, 180], [0.7, 1.1], [8, 14])), view="side")
+effect("level", "slime-splat", "Slime splat", "casual", "once",
+       ("blobs", emitter("slime", blend="alpha", **once(10), maxParticles=12, lifetime=[1.0, 1.4], speed=[260, 460], direction=-QUARTER, spread=1.8, gravity=[0, 1300], startSize=[14, 26], endSizeScale=1, rotation=[0, TAU], collision={"type": "floor", "y": 0, "result": "stick"}, **fade("FFFFFF", 1, 0.02, 0.8))),
+       ("puddle", emitter("slime", blend="alpha", **once(1), maxParticles=2, lifetime=1.2, speed=0, startSize=40, endSize=90, aspect=2.6, sizeCurve="expoOut", **fade("FFFFFF", 0.9, 0.05, 0.7))), view="side")
+
+
 # The pixel art effects draw from the pixel atlas and keep their own files, which the catalog lists after the effects of this tool.
 PIXEL_EFFECTS = [
     ("fire", "campfire-pixel", "Campfire", "loop"), ("smoke", "smoke-puff-pixel", "Smoke poof", "once"), ("explosions", "explosion-pixel", "Explosion", "once"),
@@ -441,13 +696,13 @@ def write_effect(entry: Effect) -> None:
 
 
 def main() -> None:
-    titles = {"hits": "Hits", "magic-circles": "Magic circles", "buffs": "Buffs and auras", "status": "Status icons", "healing": "Healing", "explosions": "Explosions", "portals": "Portals", "fire": "Fire", "ice": "Ice", "lightning": "Lightning", "water": "Water", "rewards": "Rewards", "celebration": "Celebration", "smoke": "Smoke", "scifi": "Science fiction", "sparks": "Sparks", "weather": "Weather", "environment": "Environment", "trails": "Trails", "dust": "Dust and debris", "blood": "Blood", "magic": "Magic", "poison": "Poison", "nature": "Leaves and petals", "bubbles": "Bubbles", "impacts": "Impacts", "auras": "Auras", "vehicles": "Vehicles"}
+    titles = {"hits": "Hits", "magic-circles": "Magic circles", "buffs": "Buffs and auras", "status": "Status icons", "healing": "Healing", "explosions": "Explosions", "portals": "Portals", "fire": "Fire", "ice": "Ice", "lightning": "Lightning", "water": "Water", "rewards": "Rewards", "celebration": "Celebration", "smoke": "Smoke", "scifi": "Science fiction", "sparks": "Sparks", "weather": "Weather", "environment": "Environment", "trails": "Trails", "dust": "Dust and debris", "blood": "Blood", "magic": "Magic", "poison": "Poison", "nature": "Leaves and petals", "bubbles": "Bubbles", "impacts": "Impacts", "auras": "Auras", "vehicles": "Vehicles", "movement": "Movement", "pickups": "Pickups", "combat": "Combat", "level": "Level"}
     categories: dict[str, list[dict]] = {}
     for entry in EFFECTS:
         write_effect(entry)
-        categories.setdefault(entry.category, []).append({"id": entry.id, "name": entry.name, "style": entry.style, "kind": entry.kind})
+        categories.setdefault(entry.category, []).append({"id": entry.id, "name": entry.name, "style": entry.style, "kind": entry.kind, "view": entry.view})
     for category, id, name, kind in PIXEL_EFFECTS:
-        categories.setdefault(category, []).append({"id": id, "name": name, "style": "pixel", "kind": kind})
+        categories.setdefault(category, []).append({"id": id, "name": name, "style": "pixel", "kind": kind, "view": "any"})
     catalog = {"categories": [{"id": key, "title": titles[key], "effects": value} for key, value in categories.items()]}
     (LIBRARY / "catalog.json").write_text(json.dumps(catalog, indent=1) + "\n")
 

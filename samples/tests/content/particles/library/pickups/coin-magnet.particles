@@ -1,0 +1,101 @@
+{
+    "emitters": [
+        {
+            "name": "coins",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1972,
+                    988,
+                    64,
+                    64
+                ],
+                [
+                    1972,
+                    1056,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 4,
+            "prewarm": 1.0,
+            "maxParticles": 12,
+            "lifetime": 1.2,
+            "speed": [
+                40,
+                80
+            ],
+            "spread": 6.2832,
+            "shape": "ring",
+            "shapeSize": [
+                240,
+                0
+            ],
+            "attractors": [
+                {
+                    "x": 0,
+                    "y": -60,
+                    "strength": 2400,
+                    "radius": 400,
+                    "killRadius": 20
+                }
+            ],
+            "startSize": 26,
+            "endSizeScale": 1,
+            "frameMode": "loopRandomStart",
+            "frameRate": 10,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.9,
+                1
+            ]
+        },
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 140.0,
+            "endSize": 200,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFC93C",
+                "#59FFC93C",
+                "#1FFFC93C",
+                "#00FFC93C"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                -60
+            ]
+        }
+    ]
+}

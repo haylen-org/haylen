@@ -1,0 +1,53 @@
+{
+    "texture": "../textures/effects.png",
+    "filter": "linear",
+    "frames": [
+        [
+            0,
+            1432,
+            64,
+            64
+        ]
+    ],
+    "blend": "alpha",
+    "rate": 0,
+    "bursts": [
+        {
+            "time": 0,
+            "count": 6
+        }
+    ],
+    "duration": 0.05,
+    "maxParticles": 8,
+    "lifetime": [
+        0.3,
+        0.45
+    ],
+    "speed": [
+        120,
+        220
+    ],
+    "direction": -1.5708,
+    "spread": 1.8,
+    "gravity": [
+        0,
+        1300
+    ],
+    "startSize": [
+        5,
+        8
+    ],
+    "endSizeScale": 0.7,
+    "colors": [
+        "#00FFFFFF",
+        "#FFFFFFFF",
+        "#FFFFFFFF",
+        "#00FFFFFF"
+    ],
+    "colorTimes": [
+        0,
+        0.02,
+        0.8,
+        1
+    ]
+}

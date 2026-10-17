@@ -5,7 +5,7 @@
             "name": "glow",
             "offset": [0, -40],
             "texture": "../library/textures/effects.png",
-            "frames": [[132, 1300, 128, 128]],
+            "frames": [[264, 1300, 128, 128]],
             "filter": "linear",
             "rate": 12,
             "lifetime": 0.5,

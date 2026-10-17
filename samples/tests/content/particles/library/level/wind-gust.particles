@@ -1,0 +1,147 @@
+{
+    "emitters": [
+        {
+            "name": "streaks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    260,
+                    1040,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 4,
+            "prewarm": 1.0,
+            "maxParticles": 8,
+            "lifetime": [
+                0.6,
+                0.9
+            ],
+            "speed": [
+                500,
+                700
+            ],
+            "direction": 0,
+            "spread": 0.05,
+            "shape": "rectangle",
+            "shapeSize": [
+                0,
+                160
+            ],
+            "startSize": [
+                90,
+                130
+            ],
+            "endSizeScale": 1,
+            "aspect": 2.5,
+            "offset": [
+                -300,
+                -80
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#59FFFFFF",
+                "#59FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.7,
+                1
+            ]
+        },
+        {
+            "name": "leaves",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1556,
+                    1304,
+                    96,
+                    96
+                ],
+                [
+                    1656,
+                    1312,
+                    96,
+                    96
+                ],
+                [
+                    1756,
+                    1312,
+                    96,
+                    96
+                ],
+                [
+                    1856,
+                    1312,
+                    96,
+                    96
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 3,
+            "prewarm": 1.5,
+            "maxParticles": 8,
+            "lifetime": [
+                1.0,
+                1.4
+            ],
+            "speed": [
+                500,
+                700
+            ],
+            "direction": -0.1,
+            "spread": 0.2,
+            "shape": "rectangle",
+            "shapeSize": [
+                0,
+                140
+            ],
+            "turbulence": {
+                "strength": 160,
+                "frequency": 0.01,
+                "speed": 1
+            },
+            "startSize": [
+                16,
+                22
+            ],
+            "endSizeScale": 1,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -6,
+                6
+            ],
+            "frameMode": "random",
+            "tints": [
+                "#FF9CC84C",
+                "#FFE8C850"
+            ],
+            "offset": [
+                -300,
+                -80
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                0.85,
+                1
+            ]
+        }
+    ]
+}

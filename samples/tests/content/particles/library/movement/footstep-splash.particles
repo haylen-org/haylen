@@ -1,0 +1,104 @@
+{
+    "emitters": [
+        {
+            "name": "drops",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 10,
+            "lifetime": [
+                0.4,
+                0.6
+            ],
+            "speed": [
+                180,
+                300
+            ],
+            "direction": -1.5708,
+            "spread": 1.8,
+            "gravity": [
+                0,
+                1300
+            ],
+            "startSize": [
+                8,
+                14
+            ],
+            "endSizeScale": 0.7,
+            "alignToVelocity": true,
+            "rotation": 1.5708,
+            "collision": {
+                "type": "floor",
+                "y": 0,
+                "result": "die"
+            },
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ]
+        },
+        {
+            "name": "ripple",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.5,
+            "speed": 0,
+            "startSize": 20,
+            "endSize": 120,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00BFEFFF",
+                "#CCBFEFFF",
+                "#00BFEFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "tilt": 1.35
+        }
+    ]
+}

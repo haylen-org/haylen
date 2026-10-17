@@ -1,0 +1,213 @@
+{
+    "emitters": [
+        {
+            "name": "flash",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1040,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.25,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 260,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": 0,
+            "spin": 0,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "offset": [
+                0,
+                -60
+            ]
+        },
+        {
+            "name": "orbs",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    68,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 12
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 12,
+            "lifetime": [
+                0.5,
+                0.7
+            ],
+            "speed": [
+                260,
+                300
+            ],
+            "shape": "ring",
+            "shapeSize": [
+                10,
+                0
+            ],
+            "directionMode": "outward",
+            "spread": 0,
+            "damping": 3,
+            "startSize": [
+                22,
+                28
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "offset": [
+                0,
+                -60
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                1
+            ]
+        },
+        {
+            "name": "ring",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.4,
+            "speed": 0,
+            "startSize": 40,
+            "endSize": 260,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "offset": [
+                0,
+                -60
+            ]
+        },
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    792,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 16,
+            "lifetime": [
+                0.4,
+                0.6
+            ],
+            "speed": [
+                160,
+                280
+            ],
+            "spread": 6.2832,
+            "damping": 3.5,
+            "startSize": [
+                10,
+                18
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "offset": [
+                0,
+                -60
+            ]
+        }
+    ]
+}

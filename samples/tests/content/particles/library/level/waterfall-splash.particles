@@ -1,0 +1,189 @@
+{
+    "emitters": [
+        {
+            "name": "mist",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 14,
+            "prewarm": 2.0,
+            "maxParticles": 40,
+            "lifetime": [
+                1.2,
+                1.8
+            ],
+            "speed": [
+                40,
+                90
+            ],
+            "direction": -1.5708,
+            "spread": 1.4,
+            "shape": "rectangle",
+            "shapeSize": [
+                90,
+                0
+            ],
+            "gravity": [
+                0,
+                -20
+            ],
+            "startSize": [
+                40,
+                60
+            ],
+            "endSize": [
+                100,
+                140
+            ],
+            "colors": [
+                "#00EAF8FF",
+                "#66EAF8FF",
+                "#00EAF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        },
+        {
+            "name": "foam",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    784,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    916,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1048,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1180,
+                    1040,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 8,
+            "prewarm": 1.0,
+            "maxParticles": 16,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                60,
+                120
+            ],
+            "direction": -1.5708,
+            "spread": 1.6,
+            "shape": "rectangle",
+            "shapeSize": [
+                80,
+                0
+            ],
+            "startSize": [
+                30,
+                44
+            ],
+            "endSize": [
+                50,
+                64
+            ],
+            "frameMode": "random",
+            "colors": [
+                "#00FFFFFF",
+                "#E6FFFFFF",
+                "#E6FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.5,
+                1
+            ]
+        },
+        {
+            "name": "drops",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 24,
+            "prewarm": 1.0,
+            "maxParticles": 40,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                200,
+                340
+            ],
+            "direction": -1.5708,
+            "spread": 1.4,
+            "gravity": [
+                0,
+                1200
+            ],
+            "shape": "rectangle",
+            "shapeSize": [
+                80,
+                0
+            ],
+            "startSize": [
+                8,
+                14
+            ],
+            "endSizeScale": 0.7,
+            "alignToVelocity": true,
+            "rotation": 1.5708,
+            "collision": {
+                "type": "floor",
+                "y": 0,
+                "result": "die"
+            },
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ]
+        }
+    ]
+}

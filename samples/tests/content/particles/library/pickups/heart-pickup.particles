@@ -1,0 +1,185 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": 0.5,
+            "speed": 0,
+            "startSize": 182.0,
+            "endSize": 260,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF4F7A",
+                "#73FF4F7A",
+                "#28FF4F7A",
+                "#00FF4F7A"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ]
+        },
+        {
+            "name": "heart",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1356,
+                    1304,
+                    96,
+                    96
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.6,
+            "speed": 260,
+            "direction": -1.5708,
+            "spread": 0,
+            "damping": 4,
+            "startSize": 36.0,
+            "endSize": 60,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.25,
+                    1
+                ]
+            },
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.6,
+                1
+            ]
+        },
+        {
+            "name": "hearts",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    916,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 6
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": [
+                0.6,
+                0.9
+            ],
+            "speed": [
+                120,
+                220
+            ],
+            "direction": -1.5708,
+            "spread": 2.0,
+            "damping": 2.5,
+            "gravity": [
+                0,
+                -60
+            ],
+            "startSize": [
+                14,
+                22
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "colors": [
+                "#00FF6A9A",
+                "#FFFF6A9A",
+                "#00FF6A9A"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        },
+        {
+            "name": "ring",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.35,
+            "speed": 0,
+            "startSize": 40,
+            "endSize": 160,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFC2D2",
+                "#FFFFC2D2",
+                "#00FFC2D2"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ]
+        }
+    ]
+}

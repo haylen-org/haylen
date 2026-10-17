@@ -1,6 +1,6 @@
 {
     "texture": "../library/textures/effects.png",
-    "frames": [[1024, 1404, 96, 96]],
+    "frames": [[1756, 1412, 96, 96]],
     "rate": 40,
     "prewarm": 8,
     "lifetime": [8, 9],

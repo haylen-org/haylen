@@ -1,0 +1,58 @@
+{
+    "emitters": [
+        {
+            "name": "lines",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 30,
+            "prewarm": 0.5,
+            "maxParticles": 40,
+            "lifetime": [
+                0.18,
+                0.3
+            ],
+            "speed": [
+                1400,
+                1800
+            ],
+            "direction": 3.1416,
+            "spread": 0,
+            "shape": "rectangle",
+            "shapeSize": [
+                200,
+                150
+            ],
+            "startSize": [
+                120,
+                220
+            ],
+            "endSizeScale": 1,
+            "aspect": 1.5,
+            "offset": [
+                0,
+                -80
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#80FFFFFF",
+                "#80FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.7,
+                1
+            ]
+        }
+    ]
+}

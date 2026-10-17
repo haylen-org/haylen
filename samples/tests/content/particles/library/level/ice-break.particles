@@ -1,0 +1,201 @@
+{
+    "emitters": [
+        {
+            "name": "cubes",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    136,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 16,
+            "lifetime": [
+                1.1,
+                1.6
+            ],
+            "speed": [
+                380,
+                600
+            ],
+            "direction": -1.5708,
+            "spread": 1.6,
+            "gravity": [
+                0,
+                1500
+            ],
+            "startSize": [
+                14,
+                24
+            ],
+            "endSizeScale": 1,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -9,
+                9
+            ],
+            "spinCurve": "quadOut",
+            "frameMode": "random",
+            "collision": {
+                "type": "floor",
+                "y": 0,
+                "bounce": 0.35,
+                "friction": 0.35
+            },
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.85,
+                1
+            ]
+        },
+        {
+            "name": "shards",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1456,
+                    1404,
+                    96,
+                    96
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 16,
+            "lifetime": [
+                1.1,
+                1.6
+            ],
+            "speed": [
+                400,
+                640
+            ],
+            "direction": -1.5708,
+            "spread": 1.8,
+            "gravity": [
+                0,
+                1500
+            ],
+            "startSize": [
+                16,
+                24
+            ],
+            "endSizeScale": 1,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -9,
+                9
+            ],
+            "spinCurve": "quadOut",
+            "frameMode": "random",
+            "collision": {
+                "type": "floor",
+                "y": 0,
+                "bounce": 0.35,
+                "friction": 0.35
+            },
+            "colors": [
+                "#00C8F0FF",
+                "#FFC8F0FF",
+                "#FFC8F0FF",
+                "#00C8F0FF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.85,
+                1
+            ]
+        },
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    792,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 16,
+            "lifetime": [
+                0.4,
+                0.6
+            ],
+            "speed": [
+                140,
+                260
+            ],
+            "spread": 6.2832,
+            "damping": 3.5,
+            "startSize": [
+                10,
+                18
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "offset": [
+                0,
+                -30
+            ]
+        }
+    ]
+}

@@ -1,0 +1,184 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 0.4,
+            "maxParticles": 4,
+            "lifetime": 0.4,
+            "speed": 0,
+            "startSize": 112.0,
+            "endSize": 160,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF9A2E",
+                "#73FF9A2E",
+                "#28FF9A2E",
+                "#00FF9A2E"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                20
+            ]
+        },
+        {
+            "name": "flames",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1820,
+                    0,
+                    192,
+                    192
+                ],
+                [
+                    1820,
+                    196,
+                    192,
+                    192
+                ],
+                [
+                    1820,
+                    392,
+                    192,
+                    192
+                ],
+                [
+                    1820,
+                    588,
+                    192,
+                    192
+                ]
+            ],
+            "blend": "additive",
+            "rate": 40,
+            "prewarm": 0.5,
+            "maxParticles": 32,
+            "lifetime": [
+                0.2,
+                0.32
+            ],
+            "speed": [
+                300,
+                420
+            ],
+            "direction": 1.5708,
+            "spread": 0.15,
+            "startSize": [
+                40,
+                54
+            ],
+            "endSize": 12,
+            "sizeCurve": "quadIn",
+            "rotation": 3.1416,
+            "frameMode": "loopRandomStart",
+            "frameRate": 16,
+            "emission": 1,
+            "colors": [
+                "#00FFE7A8",
+                "#B2FFC24A",
+                "#99FF7A1F",
+                "#4CD8381F",
+                "#00801010"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                0.8,
+                1
+            ]
+        },
+        {
+            "name": "smoke",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    260,
+                    780,
+                    256,
+                    256
+                ],
+                [
+                    520,
+                    780,
+                    256,
+                    256
+                ],
+                [
+                    780,
+                    780,
+                    256,
+                    256
+                ],
+                [
+                    1040,
+                    780,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 10,
+            "prewarm": 1.0,
+            "maxParticles": 20,
+            "lifetime": [
+                0.8,
+                1.2
+            ],
+            "speed": [
+                200,
+                280
+            ],
+            "direction": 1.5708,
+            "spread": 0.3,
+            "damping": 2.5,
+            "startSize": [
+                30,
+                40
+            ],
+            "endSize": [
+                90,
+                120
+            ],
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "frameMode": "random",
+            "offset": [
+                0,
+                60
+            ],
+            "colors": [
+                "#008A8680",
+                "#997A7670",
+                "#006A6662"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        }
+    ]
+}

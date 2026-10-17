@@ -1,0 +1,75 @@
+{
+    "texture": "../textures/effects.png",
+    "filter": "linear",
+    "frames": [
+        [
+            1444,
+            1040,
+            128,
+            128
+        ],
+        [
+            1576,
+            1040,
+            128,
+            128
+        ],
+        [
+            1708,
+            1048,
+            128,
+            128
+        ],
+        [
+            1840,
+            1048,
+            128,
+            128
+        ]
+    ],
+    "blend": "alpha",
+    "rate": 7,
+    "prewarm": 0.8,
+    "maxParticles": 12,
+    "lifetime": [
+        0.45,
+        0.7
+    ],
+    "speed": [
+        50,
+        100
+    ],
+    "direction": 2.8916,
+    "spread": 0.3,
+    "damping": 3,
+    "gravity": [
+        0,
+        -50
+    ],
+    "startSize": [
+        16,
+        24
+    ],
+    "endSize": [
+        36,
+        48
+    ],
+    "sizeCurve": "quadOut",
+    "frameMode": "random",
+    "rotation": [
+        0,
+        6.2832
+    ],
+    "colors": [
+        "#00FFFFFF",
+        "#D9FFFFFF",
+        "#D9FFFFFF",
+        "#00FFFFFF"
+    ],
+    "colorTimes": [
+        0,
+        0.08,
+        0.4,
+        1
+    ]
+}

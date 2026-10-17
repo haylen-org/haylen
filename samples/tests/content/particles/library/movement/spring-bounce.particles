@@ -1,0 +1,148 @@
+{
+    "emitters": [
+        {
+            "name": "lines",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    528,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 6
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.3,
+            "speed": [
+                500,
+                700
+            ],
+            "direction": -1.5708,
+            "spread": 0.9,
+            "damping": 6,
+            "startSize": [
+                40,
+                60
+            ],
+            "endSize": 10,
+            "alignToVelocity": true,
+            "stretch": 0.03,
+            "colors": [
+                "#00FFFFFF",
+                "#E6FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        },
+        {
+            "name": "stars",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    924,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 5
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 6,
+            "lifetime": [
+                0.5,
+                0.7
+            ],
+            "speed": [
+                300,
+                420
+            ],
+            "direction": -1.5708,
+            "spread": 1.6,
+            "gravity": [
+                0,
+                900
+            ],
+            "startSize": [
+                16,
+                24
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "spin": [
+                -6,
+                6
+            ],
+            "colors": [
+                "#00FFE23C",
+                "#FFFFE23C",
+                "#00FFE23C"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ]
+        },
+        {
+            "name": "ring",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.3,
+            "speed": 0,
+            "startSize": 40,
+            "endSize": 160,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "tilt": 1.25
+        }
+    ]
+}

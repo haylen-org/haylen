@@ -1,0 +1,62 @@
+{
+    "texture": "../textures/effects.png",
+    "filter": "linear",
+    "frames": [
+        [
+            884,
+            1436,
+            48,
+            48
+        ]
+    ],
+    "blend": "alpha",
+    "rate": 0,
+    "bursts": [
+        {
+            "time": 0,
+            "count": 1
+        }
+    ],
+    "duration": 0.05,
+    "maxParticles": 2,
+    "lifetime": 1.4,
+    "speed": [
+        300,
+        360
+    ],
+    "direction": -2.2,
+    "spread": 0.2,
+    "gravity": [
+        0,
+        1500
+    ],
+    "startSize": 28,
+    "endSize": 28,
+    "rotation": [
+        0,
+        6.2832
+    ],
+    "spin": [
+        14,
+        18
+    ],
+    "spinCurve": "quadOut",
+    "collision": {
+        "type": "floor",
+        "y": 60,
+        "bounce": 0.45,
+        "friction": 0.4
+    },
+    "colors": [
+        "#00FFFFFF",
+        "#FFFFFFFF",
+        "#FFFFFFFF",
+        "#00FFFFFF"
+    ],
+    "colorTimes": [
+        0,
+        0.02,
+        0.9,
+        1
+    ]
+}

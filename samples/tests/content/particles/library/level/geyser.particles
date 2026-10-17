@@ -1,0 +1,171 @@
+{
+    "emitters": [
+        {
+            "name": "column",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 60,
+            "prewarm": 1.4,
+            "maxParticles": 96,
+            "lifetime": [
+                0.9,
+                1.3
+            ],
+            "speed": [
+                700,
+                900
+            ],
+            "direction": -1.5708,
+            "spread": 0.12,
+            "gravity": [
+                0,
+                1100
+            ],
+            "startSize": [
+                12,
+                22
+            ],
+            "endSizeScale": 0.8,
+            "alignToVelocity": true,
+            "rotation": 1.5708,
+            "collision": {
+                "type": "floor",
+                "y": 0,
+                "result": "die"
+            },
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ]
+        },
+        {
+            "name": "mist",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 12,
+            "prewarm": 2.0,
+            "maxParticles": 32,
+            "lifetime": [
+                1.0,
+                1.6
+            ],
+            "speed": [
+                300,
+                500
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "damping": 2,
+            "startSize": [
+                40,
+                60
+            ],
+            "endSize": [
+                100,
+                140
+            ],
+            "colors": [
+                "#00EAF8FF",
+                "#59EAF8FF",
+                "#00EAF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        },
+        {
+            "name": "foam",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    784,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    916,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1048,
+                    1040,
+                    128,
+                    128
+                ],
+                [
+                    1180,
+                    1040,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 8,
+            "prewarm": 1.0,
+            "maxParticles": 12,
+            "lifetime": [
+                0.4,
+                0.6
+            ],
+            "speed": [
+                60,
+                120
+            ],
+            "direction": -1.5708,
+            "spread": 2.0,
+            "startSize": [
+                26,
+                36
+            ],
+            "endSize": [
+                44,
+                56
+            ],
+            "frameMode": "random",
+            "colors": [
+                "#00FFFFFF",
+                "#E6FFFFFF",
+                "#E6FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.5,
+                1
+            ]
+        }
+    ]
+}

@@ -1,0 +1,159 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    264,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 1.0,
+            "maxParticles": 12,
+            "lifetime": 1.0,
+            "speed": 0,
+            "shape": "rectangle",
+            "shapeSize": [
+                200,
+                0
+            ],
+            "startSize": 160,
+            "endSize": 200,
+            "aspect": 1.6,
+            "colors": [
+                "#00FF6A1F",
+                "#59FF6A1F",
+                "#59FF6A1F",
+                "#00FF6A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.3,
+                0.6,
+                1
+            ]
+        },
+        {
+            "name": "blobs",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    204,
+                    1432,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 5,
+            "prewarm": 1.2,
+            "maxParticles": 12,
+            "lifetime": [
+                0.6,
+                0.9
+            ],
+            "speed": [
+                260,
+                380
+            ],
+            "direction": -1.5708,
+            "spread": 0.6,
+            "gravity": [
+                0,
+                1100
+            ],
+            "shape": "rectangle",
+            "shapeSize": [
+                180,
+                0
+            ],
+            "startSize": [
+                14,
+                22
+            ],
+            "endSizeScale": 0.8,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "collision": {
+                "type": "floor",
+                "y": 0,
+                "result": "die"
+            },
+            "emission": 1,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                0.9,
+                1
+            ]
+        },
+        {
+            "name": "embers",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    520,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 8,
+            "prewarm": 2.0,
+            "maxParticles": 24,
+            "lifetime": [
+                1.0,
+                1.6
+            ],
+            "speed": [
+                60,
+                120
+            ],
+            "direction": -1.5708,
+            "spread": 0.6,
+            "shape": "rectangle",
+            "shapeSize": [
+                200,
+                0
+            ],
+            "turbulence": {
+                "strength": 60,
+                "frequency": 0.02,
+                "speed": 1
+            },
+            "startSize": [
+                6,
+                10
+            ],
+            "endSize": 2,
+            "emission": 1,
+            "colors": [
+                "#FFFFF4C8",
+                "#E6FF9A2E",
+                "#00E0401F"
+            ],
+            "colorTimes": [
+                0,
+                0.6,
+                1
+            ]
+        }
+    ]
+}
