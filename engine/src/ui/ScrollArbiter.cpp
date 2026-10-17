@@ -1,5 +1,6 @@
 #include "ui/ScrollArbiter.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 
@@ -46,9 +47,47 @@ void ScrollArbiter::chooseArea(math::Vec2 pointer) {
     wheelArea = choose(wheelOffers);
 }
 
+// An item near the start or the end of an area scrolls it that way, faster the closer it gets, up to full speed at the edge and past it, and among the areas it nears that can move that way the smallest one scrolls, so an area inside another wins over it.
+void ScrollArbiter::chooseEdge(math::Vec2 pointer) {
+    edgeArea = 0;
+    edgeFactor = 0.0F;
+    float smallest = 0.0F;
+    for (const EdgeArea& area : previousEdgeAreas) {
+        const float along = area.horizontal ? pointer.x - area.bounds.x : pointer.y - area.bounds.y;
+        const float across = area.horizontal ? pointer.y - area.bounds.y : pointer.x - area.bounds.x;
+        const float length = area.horizontal ? area.bounds.width : area.bounds.height;
+        const float breadth = area.horizontal ? area.bounds.height : area.bounds.width;
+        if (area.edge <= 0.0F || across < 0.0F || across > breadth || along < -area.edge || along > length + area.edge) {
+            continue;
+        }
+
+        float factor = 0.0F;
+        if (along < area.edge && area.position > 0.0) {
+            factor = -(1.0F - std::max(along, 0.0F) / area.edge);
+        } else if (along > length - area.edge && area.position < area.maximum) {
+            factor = 1.0F - std::max(length - along, 0.0F) / area.edge;
+        }
+        const float size = area.bounds.width * area.bounds.height;
+        if (factor != 0.0F && (edgeArea == 0 || size < smallest)) {
+            edgeArea = area.id;
+            edgeFactor = factor;
+            smallest = size;
+        }
+    }
+}
+
 void ScrollArbiter::beginFrame(float seconds) {
     const ImGuiIO& io = ImGui::GetIO();
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
+    frameSeconds = seconds;
+    edgeAreas.swap(previousEdgeAreas);
+    edgeAreas.clear();
+    itemDragged = std::exchange(carrying, false) || ImGui::GetDragDropPayload() != nullptr;
+    if (itemDragged) {
+        chooseEdge(pointer);
+    } else {
+        edgeArea = 0;
+    }
     wheel = std::exchange(pending, {});
     delivered = wheel;
     touched = std::exchange(pendingTouched, false);
@@ -82,9 +121,10 @@ void ScrollArbiter::beginFrame(float seconds) {
         wheelPointer = pointer;
     }
 
+    // An item that the finger picked up in the frame the drag offers came keeps the finger.
     if (!io.MouseDown[ImGuiMouseButton_Left]) {
         dragArea = 0;
-    } else if (dragArea == 0 && !dragOffers.empty()) {
+    } else if (dragArea == 0 && !dragOffers.empty() && !itemDragged) {
         dragArea = choose(dragOffers);
     }
     dragOffers.clear();
@@ -109,6 +149,9 @@ bool ScrollArbiter::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizo
     if (dragArea != 0) {
         return dragArea == area;
     }
+    if (itemDragged) {
+        return false;
+    }
     const ImGuiIO& io = ImGui::GetIO();
     const ImVec2 press = io.MouseClickedPos[ImGuiMouseButton_Left];
     if (!io.MouseDown[ImGuiMouseButton_Left] || !bounds.contains(math::Vec2{press.x, press.y})) {
@@ -121,6 +164,11 @@ bool ScrollArbiter::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizo
         dragOffers.push_back({.area = area, .size = bounds.width * bounds.height, .movable = true});
     }
     return false;
+}
+
+float ScrollArbiter::takeEdgeScroll(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, float edge) {
+    edgeAreas.push_back({.id = area, .bounds = bounds, .horizontal = horizontal, .position = position, .maximum = maximum, .edge = edge});
+    return area == edgeArea ? edgeFactor * kEdgeSpeed * frameSeconds : 0.0F;
 }
 
 } // namespace haylen::ui

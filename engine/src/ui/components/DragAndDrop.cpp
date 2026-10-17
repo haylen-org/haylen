@@ -17,8 +17,10 @@ DragAndDrop::Result DragAndDrop::handle(Context& context, const Component& compo
     const ImGuiContext& state = *GImGui;
     const ImGuiID item = state.LastItemData.ID;
 
-    // A drag carries the node and the entry it left, and shows its picture under the pointer.
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+    // A drag carries the node and the entry it left, and shows its picture under the pointer. A finger picks the entry up only after it held it for a long press, since a finger that moves at once scrolls the area around it.
+    const ImGuiIO& io = ImGui::GetIO();
+    const bool held = io.MouseSource != ImGuiMouseSource_TouchScreen || io.MouseDownDuration[ImGuiMouseButton_Left] >= context.getMetric(Theme::Metric::LongPressDuration);
+    if (held && ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
         const std::string payload = core::Json{{"source", component.getId()}, {"item", entry}}.dump();
         ImGui::SetDragDropPayload(kPayload, payload.data(), payload.size());
         const float side = std::min(bounds.width, bounds.height);

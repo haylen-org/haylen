@@ -122,6 +122,15 @@ bool Context::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal) 
     return getBackend().getScrollArbiter().takeDrag(area, bounds, horizontal);
 }
 
+float Context::takeEdgeScroll(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum) {
+    const float edge = std::min((horizontal ? bounds.width : bounds.height) * 0.25F, getMetric(Theme::Metric::ListRowHeight));
+    return getBackend().getScrollArbiter().takeEdgeScroll(area, bounds, horizontal, position, maximum, edge);
+}
+
+void Context::carryItem() noexcept {
+    getBackend().getScrollArbiter().carryItem();
+}
+
 // A style that sets a surface paints it with its image, or with flat colors while the image loads or when the style asks for them.
 const Theme::Image* Context::getSurface(Theme::Surface role) const {
     for (auto layer = layers.rbegin(); layer != layers.rend(); ++layer) {

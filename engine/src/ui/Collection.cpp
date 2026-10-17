@@ -962,6 +962,14 @@ void Collection::takeInput(Context& context) {
         idle = 0.0F;
     }
 
+    // An item that the player drags near an end of the view scrolls it, the lifted item of the collection as well as an item of drag and drop.
+    const float edge = context.takeEdgeScroll(ImGui::GetID(this), viewport, !isVertical(), position, scroller->getMaximum());
+    if (edge != 0.0F) {
+        scroller->jumpTo(scroller->getOffset() + static_cast<double>(mirrored ? -edge : edge));
+        pendingScroll.reset();
+        idle = 0.0F;
+    }
+
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         pressed = underPointer;
         dragging = false;
@@ -979,7 +987,7 @@ void Collection::takeInput(Context& context) {
         return;
     }
     if (lift) {
-        followLift(context);
+        context.carryItem();
         return;
     }
     if (reorderable && pressed && !dragging && takeLift(context)) {
@@ -1032,24 +1040,6 @@ bool Collection::takeLift(Context& context) {
     }
     context.emit(*this, "dragStart", {{"item", lift->item}, {"index", lift->index + 1}});
     return true;
-}
-
-// The view scrolls while the lifted item lies near one of its ends, faster the closer it gets.
-void Collection::followLift(Context& context) {
-    const ImVec2 pointer = ImGui::GetIO().MousePos;
-    const float main = getMainLength();
-    const float position = isVertical() ? pointer.y - viewport.y : (rightToLeft ? viewport.getRight() - pointer.x : pointer.x - viewport.x);
-    const float edge = std::min(main * 0.25F, context.getMetric(Theme::Metric::ListRowHeight));
-    float speed = 0.0F;
-    if (edge > 0.0F && position < edge) {
-        speed = -(1.0F - std::max(position, 0.0F) / edge);
-    } else if (edge > 0.0F && position > main - edge) {
-        speed = 1.0F - std::max(main - position, 0.0F) / edge;
-    }
-    if (speed != 0.0F) {
-        scroller->jumpTo(scroller->getOffset() + static_cast<double>(speed * kAutoScrollSpeed * delta));
-        idle = 0.0F;
-    }
 }
 
 void Collection::finishLift(Context& context) {

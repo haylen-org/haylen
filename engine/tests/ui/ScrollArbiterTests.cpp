@@ -5,7 +5,10 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/ui/Collection.hpp"
+#include "haylen/ui/CollectionItems.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
 
 namespace haylen::ui {
@@ -51,6 +54,15 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
         event.scrollPhase = value;
         getEngine().handleEvent(event);
         frames();
+    }
+
+    // A page holding a draggable list of rows taller than the page.
+    std::shared_ptr<Gui> mountDraggableList() {
+        std::string items;
+        for (int index = 1; index <= 40; ++index) {
+            items += (index > 1 ? ", " : "") + std::string(R"({"id": "r)") + std::to_string(index) + R"(", "text": "Row )" + std::to_string(index) + R"("})";
+        }
+        return mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 360, "children": [{"kind": "list", "id": "rows", "draggable": true, "items": [)" + items + "]}]}");
     }
 
     std::shared_ptr<Gui> mountLongPage() {
@@ -240,6 +252,101 @@ TEST_F(ScrollArbiterTest, NeverStretchesTheContentWithAPreciseDeviceWithoutPhase
         trackpad(inside, {0.0F, 40.0F});
         EXPECT_EQ(getBounds(*gui, "content").y, top);
     }
+}
+
+TEST_F(ScrollArbiterTest, ScrollsTheAreaUnderAnItemDraggedNearItsEdge) {
+    auto gui = mountDraggableList();
+    const math::Rect page = getBounds(*gui, "page");
+    const float top = getBounds(*gui, "rows").y;
+    const math::Vec2 grab = {page.getCenter().x, page.y + 20.0F};
+    pointer(platform::Event::Type::MouseMove, grab);
+    frames();
+    pointer(platform::Event::Type::MouseDown, grab);
+    frames();
+    pointer(platform::Event::Type::MouseMove, grab + math::Vec2{0.0F, 20.0F});
+    frames(2);
+    EXPECT_EQ(findLastEvent("dragStart").value, (core::Json{{"item", "r1"}}));
+
+    // The item at the bottom edge scrolls the page down, and the page stops once the item leaves the edge.
+    pointer(platform::Event::Type::MouseMove, {grab.x, page.getBottom() - 4.0F});
+    frames(30);
+    const float scrolled = getBounds(*gui, "rows").y;
+    EXPECT_LT(scrolled, top - 300.0F);
+    pointer(platform::Event::Type::MouseMove, page.getCenter());
+    frames(2);
+    const float resting = getBounds(*gui, "rows").y;
+    frames(10);
+    EXPECT_EQ(getBounds(*gui, "rows").y, resting);
+
+    // The item drops on a row that the page did not show when the drag started.
+    pointer(platform::Event::Type::MouseUp, page.getCenter());
+    frames(2);
+    const std::string target = findLastEvent("drop").value.at("item").get<std::string>();
+    EXPECT_GT(std::stoi(target.substr(1)), 10);
+}
+
+// A finger that swipes over a row of a draggable list scrolls the page and leaves the row where it is.
+TEST_F(ScrollArbiterTest, ScrollsAPageWhenAFingerSwipesOverADraggableRow) {
+    auto gui = mountDraggableList();
+    const math::Vec2 inside = getBounds(*gui, "page").getCenter();
+    const float top = getBounds(*gui, "rows").y;
+    swipe(inside + math::Vec2{0.0F, 100.0F}, inside - math::Vec2{0.0F, 100.0F});
+    EXPECT_LT(getBounds(*gui, "rows").y, top - 150.0F);
+    EXPECT_EQ(std::ranges::count(getEventNames(), std::string("rows:dragStart")), 0);
+}
+
+// A finger that holds a row for a long press picks it up, and the page then leaves the finger to the item.
+TEST_F(ScrollArbiterTest, PicksUpADraggableRowAfterALongPress) {
+    auto gui = mountDraggableList();
+    const math::Rect page = getBounds(*gui, "page");
+    const float top = getBounds(*gui, "rows").y;
+    const math::Vec2 grab = {page.getCenter().x, page.y + 20.0F};
+    touch(platform::Event::Type::TouchBegan, 1, grab);
+    frames(static_cast<int>(getUi().getTheme().getMetric(Theme::Metric::LongPressDuration) * 60.0F) + 4);
+    for (int step = 1; step <= 6; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, grab + math::Vec2{0.0F, 20.0F * static_cast<float>(step)});
+        frames();
+    }
+    EXPECT_EQ(findLastEvent("dragStart").value, (core::Json{{"item", "r1"}}));
+    EXPECT_EQ(getBounds(*gui, "rows").y, top);
+    touch(platform::Event::Type::TouchEnded, 1, grab + math::Vec2{0.0F, 120.0F});
+    frames(2);
+    EXPECT_EQ(findLastEvent("drop").value.at("sourceItem"), "r1");
+}
+
+// The item that a reorderable collection lifted scrolls the page around the collection once it nears the edge of the page, since the collection shows all its items.
+TEST_F(ScrollArbiterTest, ScrollsThePageAroundACollectionUnderItsLiftedItem) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 360, "children": [{"kind": "column", "id": "content", "gap": 0, "children": [
+        {"kind": "collection", "id": "queue", "reorderable": true, "height": 300, "gap": 0, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 50}}}},
+        {"kind": "spacer", "height": 1500}
+    ]}]})");
+    // clang-format on
+    Collection& queue = gui->getCollection("queue");
+    std::vector<CollectionItems::Item> items;
+    for (int index = 1; index <= 6; ++index) {
+        items.push_back({.id = "i" + std::to_string(index), .type = "row", .fields = core::Json{{"title", "Item " + std::to_string(index)}}});
+    }
+    auto source = std::make_shared<CollectionItems>();
+    source->assign(std::move(items));
+    queue.setSource(source);
+    frames(3);
+
+    const math::Rect page = getBounds(*gui, "page");
+    const float top = getBounds(*gui, "content").y;
+    const math::Vec2 grab = queue.getBounds().getMin() + math::Vec2{100.0F, 25.0F};
+    pointer(platform::Event::Type::MouseMove, grab);
+    frames();
+    pointer(platform::Event::Type::MouseDown, grab);
+    frames();
+    pointer(platform::Event::Type::MouseMove, grab + math::Vec2{0.0F, 30.0F});
+    frames(2);
+    EXPECT_EQ(findLastEvent("dragStart").value.at("item"), "i1");
+    pointer(platform::Event::Type::MouseMove, {grab.x, page.getBottom() - 4.0F});
+    frames(30);
+    EXPECT_LT(getBounds(*gui, "content").y, top - 200.0F);
+    pointer(platform::Event::Type::MouseUp, {grab.x, page.getBottom() - 4.0F});
+    frames(2);
 }
 
 TEST_F(ScrollArbiterTest, AFingerGoesToTheAreaWhoseAxisItsDragFollows) {

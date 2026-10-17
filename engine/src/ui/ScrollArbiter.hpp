@@ -11,7 +11,7 @@
 
 namespace haylen::ui {
 
-// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area, wherever the content goes, until the fingers leave a trackpad that reports the phases of its gestures, or until a device without phases pauses or the pointer moves on while it rests. The momentum that the system adds to a trackpad once the fingers left keeps the gesture and reaches its area apart, which moves on by its own motion when it has one, and fingers that touch the trackpad reach every area under the pointer, which stops its motion. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, and stays with it until it lifts.
+// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area, wherever the content goes, until the fingers leave a trackpad that reports the phases of its gestures, or until a device without phases pauses or the pointer moves on while it rests. The momentum that the system adds to a trackpad once the fingers left keeps the gesture and reaches its area apart, which moves on by its own motion when it has one, and fingers that touch the trackpad reach every area under the pointer, which stops its motion. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, and stays with it until it lifts, unless it already drags an item. An item that the pointer or a finger drags scrolls the innermost area under it that it nears the edge of and that can move that way, faster the closer it gets to the edge.
 class ScrollArbiter final {
   public:
     // Steps of a wheel, points of the screen that a trackpad moved and points of the momentum that the system adds to a trackpad once its fingers left, with positive values for scrolling up and to the left.
@@ -34,6 +34,9 @@ class ScrollArbiter final {
     // How far a finger travels, in UI units, before its drag scrolls instead of pressing.
     static constexpr float kDragSlop = 12.0F;
 
+    // How fast an area scrolls, in UI units per second, while the player drags an item at its very edge.
+    static constexpr float kEdgeSpeed = 1600.0F;
+
     void addWheel(math::Vec2 scroll, bool precise, platform::Event::ScrollPhase phase) noexcept;
 
     // Starts a frame once ImGui has read the pointer of the frame, and settles the gestures from the areas of the frame before.
@@ -50,6 +53,14 @@ class ScrollArbiter final {
     // Returns whether the drag of the finger belongs to an area that can scroll along `horizontal`.
     [[nodiscard]] bool takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal);
 
+    // Holds an item that the pointer drags outside drag and drop, such as the lifted item of a collection, for the next frame, so it scrolls the areas it nears as a dragged item does.
+    void carryItem() noexcept {
+        carrying = true;
+    }
+
+    // Returns how far an area scrolls in this frame while the player drags an item within `edge` of one of its ends, toward its bottom or right end when positive. The `position` is how far the area shows from its top or left end, out of `maximum`.
+    [[nodiscard]] float takeEdgeScroll(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, float edge);
+
   private:
     // An area that scrolls by the wheel, as it registered in a frame.
     struct Area {
@@ -59,6 +70,16 @@ class ScrollArbiter final {
         double position = 0.0;
         double maximum = 0.0;
         bool hovered = false;
+    };
+
+    // An area that scrolls under a dragged item, as it registered in a frame.
+    struct EdgeArea {
+        ImGuiID id = 0;
+        math::Rect bounds;
+        bool horizontal = false;
+        double position = 0.0;
+        double maximum = 0.0;
+        float edge = 0.0F;
     };
 
     struct Offer {
@@ -77,6 +98,9 @@ class ScrollArbiter final {
 
     // Chooses the area of a gesture among the areas of the frame before.
     void chooseArea(math::Vec2 pointer);
+
+    // Chooses the area that a dragged item scrolls among the areas of the frame before, with how fast it scrolls.
+    void chooseEdge(math::Vec2 pointer);
     [[nodiscard]] static bool isEmpty(const Wheel& value) noexcept;
 
     Wheel pending;
@@ -100,6 +124,13 @@ class ScrollArbiter final {
     std::vector<Offer> wheelOffers;
     ImGuiID dragArea = 0;
     std::vector<Offer> dragOffers;
+    bool carrying = false;
+    bool itemDragged = false;
+    float frameSeconds = 0.0F;
+    ImGuiID edgeArea = 0;
+    float edgeFactor = 0.0F;
+    std::vector<EdgeArea> edgeAreas;
+    std::vector<EdgeArea> previousEdgeAreas;
 };
 
 } // namespace haylen::ui

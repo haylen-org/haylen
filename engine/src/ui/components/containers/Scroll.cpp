@@ -104,12 +104,16 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         scroller.setRange(std::max(0.0F, (horizontal ? size.x : size.y) - view), view);
         followWindow();
 
-        // The wheel and the finger move the content along the axis, and the bar takes the pointer in its lane before the content does.
+        // The wheel, the finger and an item dragged near an end move the content along the axis, and the bar takes the pointer in its lane before the content does.
         const bool underPointer = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
         const Context::WheelScroll wheel = context.takeWheel(ImGui::GetCurrentWindow()->ID, bounds, horizontal, scroller.getOffset(), scroller.getMaximum(), underPointer);
         const bool wheeled = wheel.motion != Context::WheelScroll::Motion::None;
         scroller.follow(wheel, -1.0, context.getDeltaSeconds());
         if (wheeled) {
+            request.reset();
+        }
+        if (const float edge = context.takeEdgeScroll(ImGui::GetCurrentWindow()->ID, bounds, horizontal, scroller.getOffset(), scroller.getMaximum()); edge != 0.0F) {
+            scroller.jumpTo(scroller.getOffset() + static_cast<double>(edge));
             request.reset();
         }
         followFinger(context, bounds, underPointer);

@@ -203,7 +203,6 @@ class Collection final : public Component {
     static constexpr float kSlideSpeed = 14.0F;
     static constexpr float kFadeSpeed = 6.0F;
     static constexpr float kScrollbarFade = 0.4F;
-    static constexpr float kAutoScrollSpeed = 1600.0F;
     static constexpr std::size_t kNotReported = std::numeric_limits<std::size_t>::max();
 
     static constexpr std::array<std::pair<std::string_view, Axis>, 2> kAxes{{{"vertical", Axis::Vertical}, {"horizontal", Axis::Horizontal}}};
@@ -260,9 +259,8 @@ class Collection final : public Component {
     void takeInput(Context& context);
     void finishDrag(Context& context);
 
-    // Lifts the pressed item once the mouse drags it or a finger holds it, scrolls while the lifted item nears an end of the view, and reports where it lands.
+    // Lifts the pressed item once the mouse drags it or a finger holds it, and reports where it lands.
     [[nodiscard]] bool takeLift(Context& context);
-    void followLift(Context& context);
     void finishLift(Context& context);
     [[nodiscard]] std::optional<std::size_t> findItemAt(math::Vec2 point) const;
 
