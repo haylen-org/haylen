@@ -157,6 +157,10 @@ jobs:
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Create the starter app
         run: python haylen.py new build/starter
+      - name: Add a plugin from the plugin template, whose desktop library the app then builds
+        run: |
+          python haylen.py plugin new build/echo-check
+          python haylen.py plugin add build/echo-check --app build/starter
       - name: Build the packages of the starter app from the template of the platform
         run: python haylen.py dist build/starter --platform ${{ matrix.platform }} --output build/dist
       - name: Check the installed app
