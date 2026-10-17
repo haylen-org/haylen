@@ -1,0 +1,192 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.2,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 224.0,
+            "endSize": 320,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#004CFF5E",
+                "#4C4CFF5E",
+                "#1B4CFF5E",
+                "#004CFF5E"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "localSpace": true
+        },
+        {
+            "name": "base",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    0,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.2,
+            "prewarm": 1.6,
+            "maxParticles": 6,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 220,
+            "endSize": 220,
+            "sizeCurve": "quadOut",
+            "spin": 0.5,
+            "tilt": 1.15,
+            "localSpace": true,
+            "colors": [
+                "#007CFF8A",
+                "#997CFF8A",
+                "#997CFF8A",
+                "#007CFF8A"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ],
+            "offset": [
+                0,
+                70
+            ]
+        },
+        {
+            "name": "crosses",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1048,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 4,
+            "prewarm": 1.4,
+            "maxParticles": 64,
+            "lifetime": [
+                1.0,
+                1.4
+            ],
+            "speed": [
+                60,
+                90
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                100,
+                30.0
+            ],
+            "startSize": [
+                16,
+                28
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#007CFF8A",
+                "#FF7CFF8A",
+                "#FF7CFF8A",
+                "#007CFF8A"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ]
+        },
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    660,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 10,
+            "prewarm": 1.2,
+            "maxParticles": 64,
+            "lifetime": [
+                0.7,
+                1.2
+            ],
+            "speed": [
+                40,
+                100
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                120,
+                36.0
+            ],
+            "startSize": [
+                8,
+                16
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#00E6FFE9",
+                "#FFE6FFE9",
+                "#FFE6FFE9",
+                "#00E6FFE9"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ]
+        }
+    ]
+}

@@ -1,8 +1,0 @@
-{
-    "emitters": [
-        {"name": "smoke", "effect": "../smoke/smoke-puff-cartoon.particles", "delay": 0.1},
-        {"name": "blast", "effect": "../explosions/explosion-cartoon.particles"},
-        {"name": "stars", "effect": "../explosions/explosion-cartoon-stars.particles"},
-        {"name": "burst", "effect": "../impacts/hit-cartoon.particles", "scale": 2}
-    ]
-}

@@ -11,7 +11,7 @@ local ParticleTest = require('categories.particles.particle-test')
 local LibraryBrowser = haylen.class('LibraryBrowser', ParticleTest)
 
 LibraryBrowser.folder = 'particles/library/'
-LibraryBrowser.styles = {realistic = 'Realistic', cartoon = 'Cartoon', pixel = 'Pixel art', neon = 'Neon', magic = 'Magic', scifi = 'Science fiction'}
+LibraryBrowser.styles = {casual = 'Casual', realistic = 'Realistic', pixel = 'Pixel art', neon = 'Neon'}
 LibraryBrowser.kinds = {loop = 'loop', once = 'one shot', cycle = 'cycle'}
 LibraryBrowser.counter = {760, -420}
 LibraryBrowser.replayDelay = 0.6

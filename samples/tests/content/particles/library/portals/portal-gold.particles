@@ -1,0 +1,161 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.2,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 322.0,
+            "endSize": 460,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFB52E",
+                "#73FFB52E",
+                "#28FFB52E",
+                "#00FFB52E"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "localSpace": true
+        },
+        {
+            "name": "swirl",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    260,
+                    1040,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 4,
+            "prewarm": 1.0,
+            "maxParticles": 8,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 260,
+            "endSize": 200,
+            "sizeCurve": "quadOut",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": 4,
+            "localSpace": true,
+            "colors": [
+                "#00FFE37A",
+                "#E6FFE37A",
+                "#00FFE37A"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        },
+        {
+            "name": "core",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    780,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.25,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 150,
+            "endSize": 150,
+            "sizeCurve": "quadOut",
+            "localSpace": true,
+            "colors": [
+                "#00FFF4C8",
+                "#80FFF4C8",
+                "#80FFF4C8",
+                "#00FFF4C8"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ]
+        },
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    660,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 10,
+            "prewarm": 1.0,
+            "maxParticles": 16,
+            "lifetime": [
+                0.6,
+                1.0
+            ],
+            "shape": "ring",
+            "shapeSize": [
+                110,
+                0
+            ],
+            "shapeThickness": 20,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 20,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "localSpace": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        }
+    ]
+}

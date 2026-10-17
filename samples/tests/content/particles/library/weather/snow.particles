@@ -1,0 +1,70 @@
+{
+    "emitters": [
+        {
+            "name": "flakes",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1024,
+                    1404,
+                    96,
+                    96
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 40,
+            "prewarm": 8.0,
+            "maxParticles": 400,
+            "lifetime": [
+                7,
+                9
+            ],
+            "speed": [
+                60,
+                110
+            ],
+            "direction": 1.5708,
+            "spread": 0.3,
+            "shape": "rectangle",
+            "shapeSize": [
+                1100,
+                10
+            ],
+            "offset": [
+                0,
+                -560
+            ],
+            "turbulence": {
+                "strength": 40,
+                "frequency": 0.004,
+                "speed": 0.4
+            },
+            "startSize": [
+                10,
+                22
+            ],
+            "endSizeScale": 1,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -1,
+                1
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#F2FFFFFF",
+                "#F2FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                0.9,
+                1
+            ]
+        }
+    ]
+}

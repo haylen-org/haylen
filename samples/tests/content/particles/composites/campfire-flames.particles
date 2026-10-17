@@ -1,6 +1,6 @@
 {
     "texture": "../library/textures/effects.png",
-    "frames": [[656, 396, 128, 128], [788, 396, 128, 128], [0, 520, 128, 128], [132, 524, 128, 128]],
+    "frames": [[1820, 0, 192, 192], [1820, 196, 192, 192], [1820, 392, 192, 192], [1820, 588, 192, 192]],
     "filter": "linear",
     "frameMode": "loopRandomStart",
     "frameRate": 10,

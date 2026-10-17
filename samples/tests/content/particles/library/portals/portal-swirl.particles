@@ -1,22 +1,157 @@
 {
-    "texture": "../textures/effects.png",
-    "frames": [[396, 656, 128, 128]],
-    "filter": "linear",
-    "rate": 140,
-    "maxParticles": 256,
-    "lifetime": [1.0, 1.4],
-    "speed": [0, 10],
-    "direction": -1.5708,
-    "spread": 6.2832,
-    "radialAcceleration": -60,
-    "tangentialAcceleration": 300,
-    "startSize": [14, 22],
-    "endSize": 2,
-    "colors": ["#00C060FF", "#FFE080FF", "#FF8040FF", "#00401080"],
-    "shape": "ring",
-    "shapeSize": [110, 0],
-    "localSpace": true,
-    "light": {"radius": 280, "color": "#FFC080FF"},
-    "blend": "additive",
-    "emission": 1
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.2,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 294.0,
+            "endSize": 420,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF3BD6",
+                "#73FF3BD6",
+                "#28FF3BD6",
+                "#00FF3BD6"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "localSpace": true
+        },
+        {
+            "name": "spiral",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    780,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.25,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 280,
+            "endSize": 280,
+            "sizeCurve": "quadOut",
+            "spin": -3,
+            "localSpace": true,
+            "colors": [
+                "#00FF8AE6",
+                "#FFFF8AE6",
+                "#FFFF8AE6",
+                "#00FF8AE6"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ]
+        },
+        {
+            "name": "rim",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1300,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.25,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 260,
+            "endSize": 260,
+            "sizeCurve": "quadOut",
+            "spin": 1,
+            "localSpace": true,
+            "colors": [
+                "#00FF3BD6",
+                "#99FF3BD6",
+                "#99FF3BD6",
+                "#00FF3BD6"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ]
+        },
+        {
+            "name": "pull",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    660,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 1.0,
+            "maxParticles": 24,
+            "lifetime": 0.8,
+            "speed": [
+                120,
+                160
+            ],
+            "shape": "ring",
+            "shapeSize": [
+                200,
+                0
+            ],
+            "directionMode": "inward",
+            "spread": 0,
+            "tangentialAcceleration": 200,
+            "startSize": [
+                12,
+                20
+            ],
+            "endSize": 4,
+            "localSpace": true,
+            "colors": [
+                "#00FFD0F6",
+                "#FFFFD0F6",
+                "#00FFD0F6"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        }
+    ]
 }

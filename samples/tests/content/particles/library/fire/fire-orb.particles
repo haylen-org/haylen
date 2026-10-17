@@ -1,0 +1,125 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 210.0,
+            "endSize": 300,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF8A1F",
+                "#73FF8A1F",
+                "#28FF8A1F",
+                "#00FF8A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "localSpace": true
+        },
+        {
+            "name": "core",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    780,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 110,
+            "endSize": 110,
+            "sizeCurve": "quadOut",
+            "localSpace": true,
+            "colors": [
+                "#00FFE37A",
+                "#FFFFE37A",
+                "#FFFFE37A",
+                "#00FFE37A"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ]
+        },
+        {
+            "name": "flames",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    652,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 24,
+            "prewarm": 0.8,
+            "maxParticles": 32,
+            "lifetime": [
+                0.4,
+                0.6
+            ],
+            "speed": [
+                80,
+                140
+            ],
+            "direction": -1.5708,
+            "spread": 0.4,
+            "shape": "circle",
+            "shapeSize": [
+                30,
+                0
+            ],
+            "startSize": [
+                60,
+                80
+            ],
+            "endSize": 10,
+            "sizeCurve": "quadIn",
+            "localSpace": true,
+            "colors": [
+                "#00FFF4C8",
+                "#E6FFB52E",
+                "#99FF4A1F",
+                "#00B0101F"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ]
+        }
+    ]
+}

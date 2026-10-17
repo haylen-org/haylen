@@ -1,0 +1,111 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.5,
+            "prewarm": 2.0,
+            "maxParticles": 4,
+            "lifetime": 2.0,
+            "speed": 0,
+            "startSize": 308.0,
+            "endSize": 440,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF9A1F",
+                "#66FF9A1F",
+                "#24FF9A1F",
+                "#00FF9A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "tilt": 1.15,
+            "localSpace": true
+        },
+        {
+            "name": "disc",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1040,
+                    0,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.5,
+            "prewarm": 2.0,
+            "maxParticles": 6,
+            "lifetime": 2.0,
+            "speed": 0,
+            "startSize": 280,
+            "endSize": 280,
+            "sizeCurve": "quadOut",
+            "spin": 0,
+            "tilt": 1.15,
+            "localSpace": true,
+            "colors": [
+                "#00FFB43C",
+                "#CCFFB43C",
+                "#CCFFB43C",
+                "#00FFB43C"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ]
+        },
+        {
+            "name": "pulse",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.4,
+            "prewarm": 1.4,
+            "maxParticles": 8,
+            "lifetime": 1.4,
+            "speed": 0,
+            "startSize": 120,
+            "endSize": 340,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFD27A",
+                "#CCFFD27A",
+                "#00FFD27A"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "localSpace": true,
+            "tilt": 1.15
+        }
+    ]
+}

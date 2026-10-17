@@ -1,7 +1,0 @@
-{
-    "emitters": [
-        {"name": "rays", "effect": "../ui/level-up-rays.particles"},
-        {"name": "burst", "effect": "../ui/level-up-burst.particles"},
-        {"name": "confetti", "effect": "../celebration/confetti-pop.particles", "delay": 0.1}
-    ]
-}

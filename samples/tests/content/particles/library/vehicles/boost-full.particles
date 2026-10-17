@@ -1,7 +1,0 @@
-{
-    "emitters": [
-        {"name": "lines", "effect": "../trails/speed-lines.particles"},
-        {"name": "flame", "effect": "../vehicles/boost-flame.particles"},
-        {"name": "streaks", "effect": "../vehicles/nitro-neon.particles"}
-    ]
-}

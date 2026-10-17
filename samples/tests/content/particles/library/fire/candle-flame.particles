@@ -1,19 +1,96 @@
 {
-    "texture": "../textures/effects.png",
-    "frames": [[264, 524, 128, 128]],
-    "filter": "linear",
-    "rate": 30,
-    "maxParticles": 24,
-    "lifetime": [0.25, 0.4],
-    "speed": [20, 35],
-    "direction": -1.5708,
-    "spread": 0.12,
-    "gravity": [0, -40],
-    "startSize": [12, 16],
-    "endSize": [3, 5],
-    "colors": ["#FFFFFFE8", "#FFFFC860", "#80FF7A20", "#00802000"],
-    "localSpace": true,
-    "light": {"radius": 120, "intensity": 0.8, "color": "#FFFFC070", "flicker": {"speed": 5, "amount": 0.1}},
-    "blend": "additive",
-    "emission": 1
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 112.0,
+            "endSize": 160,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFB24A",
+                "#66FFB24A",
+                "#24FFB24A",
+                "#00FFB24A"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                -10
+            ]
+        },
+        {
+            "name": "flame",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    652,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 1.0,
+            "maxParticles": 12,
+            "lifetime": [
+                0.3,
+                0.4
+            ],
+            "speed": [
+                30,
+                40
+            ],
+            "direction": -1.5708,
+            "spread": 0.05,
+            "startSize": [
+                40,
+                46
+            ],
+            "endSize": 10,
+            "light": {
+                "radius": 120,
+                "color": "#FFFFC070",
+                "intensity": 0.8,
+                "flicker": {
+                    "speed": 6,
+                    "amount": 0.15
+                }
+            },
+            "emission": 1,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFF4C8",
+                "#B2FFB52E",
+                "#00FF6A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.7,
+                1
+            ]
+        }
+    ]
 }

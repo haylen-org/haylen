@@ -1,0 +1,141 @@
+{
+    "emitters": [
+        {
+            "name": "crown",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1040,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.5,
+            "speed": 0,
+            "startSize": 180,
+            "endSize": 290,
+            "sizeCurve": "quadOut",
+            "offset": [
+                0,
+                -60
+            ],
+            "colors": [
+                "#E6BFEFFF",
+                "#CC8FD8FF",
+                "#006CC4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.6,
+                1
+            ]
+        },
+        {
+            "name": "drops",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1600,
+                    1412,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 14
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 16,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                260,
+                460
+            ],
+            "direction": -1.5708,
+            "spread": 1.3,
+            "gravity": [
+                0,
+                1400
+            ],
+            "startSize": [
+                12,
+                22
+            ],
+            "endSizeScale": 0.7,
+            "alignToVelocity": true,
+            "rotation": 1.5708,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.8,
+                1
+            ]
+        },
+        {
+            "name": "ring",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.6,
+            "speed": 0,
+            "startSize": 60,
+            "endSize": 260,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00BFEFFF",
+                "#CCBFEFFF",
+                "#00BFEFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "tilt": 1.15
+        }
+    ]
+}

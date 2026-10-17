@@ -1,9 +1,22 @@
 {
     "texture": "../textures/effects.png",
-    "frames": [[260, 0, 256, 256]],
     "filter": "linear",
+    "frames": [
+        [
+            1560,
+            520,
+            256,
+            256
+        ]
+    ],
+    "blend": "alpha",
     "rate": 0,
-    "bursts": [{"time": 0, "count": 1}],
+    "bursts": [
+        {
+            "time": 0,
+            "count": 1
+        }
+    ],
     "duration": 0.05,
     "maxParticles": 1,
     "lifetime": 0.6,
@@ -11,6 +24,9 @@
     "startSize": 40,
     "endSize": 720,
     "sizeCurve": "expoOut",
-    "colors": ["#FFFFFFFF", "#00FFFFFF"],
-    "distortion": 1
+    "distortion": 1,
+    "colors": [
+        "#FFFFFFFF",
+        "#00FFFFFF"
+    ]
 }

@@ -1,6 +1,0 @@
-{
-    "emitters": [
-        {"name": "rain", "effect": "../weather/rain-heavy.particles"},
-        {"name": "splashes", "effect": "../weather/rain-splash.particles", "offset": [0, 1080]}
-    ]
-}

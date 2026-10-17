@@ -1,0 +1,88 @@
+{
+    "emitters": [
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    660,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 8,
+            "rateOverDistance": 0.25,
+            "maxParticles": 96,
+            "lifetime": [
+                0.4,
+                0.7
+            ],
+            "spread": 6.2832,
+            "speed": [
+                10,
+                40
+            ],
+            "startSize": 0,
+            "endSize": 22,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.0
+                ]
+            },
+            "spin": [
+                -2,
+                2
+            ],
+            "colors": [
+                "#00FFE7FF",
+                "#FFFFE7FF",
+                "#00FFE7FF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ]
+        },
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 10,
+            "rateOverDistance": 0.15,
+            "maxParticles": 64,
+            "lifetime": [
+                0.3,
+                0.5
+            ],
+            "speed": 0,
+            "startSize": 60,
+            "endSize": 20,
+            "colors": [
+                "#00C86AFF",
+                "#73C86AFF",
+                "#00C86AFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ]
+        }
+    ]
+}

@@ -18,7 +18,7 @@ from png_image import Image, read, write  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content"
 TEXTURES = CONTENT / "particles" / "library" / "textures"
-WIDTH = {"effects": 1024, "pixel": 128}
+WIDTH = {"effects": 2048, "pixel": 128}
 GAP = {"effects": 4, "pixel": 2}
 PREMULTIPLIED = ("soft-dot", "soft-dot-premultiplied")
 # Textures that tests draw whole, as the ribbon of a trail and the sheet that "frameGrid" cuts, stay files of their own.
@@ -29,11 +29,13 @@ TEXTURE = re.compile(r'"texture": "([^"]+)"')
 
 # Every piece of an atlas with its count of frames.
 SMOOTH = {
-    "soft-dot": 1, "hard-dot": 1, "flash-burst": 1, "ring-thin": 1, "light-beam": 1, "spark-streak": 1, "swirl": 1, "slash-arc": 1,
-    "rain-streak": 1, "bubble": 1, "cartoon-puff": 1, "droplet": 1, "feather": 1, "gem": 1, "heart": 1, "hex-cell": 1, "impact-star": 1,
-    "plus-sign": 1, "shard": 1, "skull": 1, "snowflake": 1, "star-4point": 1, "star-5point": 1, "ash-flake": 1, "smoke-puff": 1,
-    "flame-soft": 1, "coin": 4, "confetti": 4, "debris": 4, "leaf": 4, "petal": 4, "sparkle": 4, "smoke": 4, "flame": 4, "fireball": 4,
-    "bolt": 4,
+    "soft-dot": 1, "hard-dot": 1, "flare": 1, "flare-thin": 1, "star-4point": 1, "sparkle-cluster": 1, "flash-burst": 1, "impact-star": 1,
+    "ring-thin": 1, "ring-thick": 1, "ring-blades": 1, "dot-ring": 1, "disc": 1, "orb": 1, "swirl": 1, "spiral": 1, "slash-arc": 1, "claws": 1,
+    "spark-streak": 1, "rain-streak": 1, "light-beam": 1, "light-cone": 1, "electric-arc": 1, "bolt": 1, "star-5point": 1, "plus-sign": 1,
+    "arrow": 1, "heart": 1, "skull": 1, "notes": 1, "shield": 1, "circle-hexagram": 1, "circle-star": 1, "circle-glyphs": 1, "circle-hooks": 1,
+    "flame-soft": 1, "smoke-puff": 1, "smoke-curl": 1, "ember": 1, "splash": 1, "dust-cloud": 1, "shard": 1, "shard-broken": 1, "droplet": 1,
+    "bubble": 1, "snowflake": 1, "feather": 1, "gem": 1, "confetti": 1, "coin": 2, "leaf": 4, "petal": 4, "sparkle": 4, "cloud": 4, "puff": 4,
+    "debris": 4, "dust": 4, "smoke": 4, "flame": 4, "fireball": 4,
 }
 PIXEL = {
     "pixel-bolt": 4, "pixel-bubble": 1, "pixel-coin": 4, "pixel-dot": 4, "pixel-drop": 1, "pixel-explosion": 4, "pixel-flame": 4,

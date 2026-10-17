@@ -1,22 +1,121 @@
 {
-    "texture": "../textures/effects.png",
-    "frames": [[396, 656, 128, 128]],
-    "filter": "linear",
-    "rate": 3,
-    "prewarm": 10,
-    "maxParticles": 32,
-    "lifetime": [4, 7],
-    "speed": [5, 20],
-    "direction": -1.5708,
-    "spread": 6.2832,
-    "turbulence": {"strength": 30, "frequency": 0.01, "speed": 0.5},
-    "startSize": [6, 10],
-    "endSize": [6, 10],
-    "endSizeScale": 1,
-    "colors": ["#00D8FF60", "#FFD8FF60", "#00D8FF60", "#FFD8FF60", "#00D8FF60"],
-    "shape": "rectangle",
-    "shapeSize": [600, 200],
-    "particleLights": {"radius": 40, "intensity": 0.5, "max": 32},
-    "blend": "additive",
-    "emission": 1
+    "emitters": [
+        {
+            "name": "lights",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 6.0,
+            "maxParticles": 48,
+            "lifetime": [
+                4,
+                6
+            ],
+            "speed": [
+                10,
+                30
+            ],
+            "spread": 6.2832,
+            "shape": "rectangle",
+            "shapeSize": [
+                500,
+                200
+            ],
+            "turbulence": {
+                "strength": 40,
+                "frequency": 0.01,
+                "speed": 0.6
+            },
+            "startSize": [
+                18,
+                28
+            ],
+            "endSizeScale": 1,
+            "emission": 1,
+            "particleLights": {
+                "radius": 40,
+                "intensity": 0.6,
+                "max": 16
+            },
+            "colors": [
+                "#00D8FF6A",
+                "#E6D8FF6A",
+                "#33D8FF6A",
+                "#E6D8FF6A",
+                "#4CD8FF6A",
+                "#00D8FF6A"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.35,
+                0.55,
+                0.8,
+                1
+            ]
+        },
+        {
+            "name": "cores",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1668,
+                    1412,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 6.0,
+            "maxParticles": 48,
+            "lifetime": [
+                4,
+                6
+            ],
+            "speed": [
+                10,
+                30
+            ],
+            "spread": 6.2832,
+            "shape": "rectangle",
+            "shapeSize": [
+                500,
+                200
+            ],
+            "turbulence": {
+                "strength": 40,
+                "frequency": 0.01,
+                "speed": 0.6
+            },
+            "startSize": [
+                4,
+                6
+            ],
+            "endSizeScale": 1,
+            "emission": 1,
+            "colors": [
+                "#00F4FFD0",
+                "#E6F4FFD0",
+                "#E6F4FFD0",
+                "#00F4FFD0"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.8,
+                1
+            ]
+        }
+    ]
 }

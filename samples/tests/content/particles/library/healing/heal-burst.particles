@@ -1,0 +1,201 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": 0.9,
+            "speed": 0,
+            "startSize": 294.0,
+            "endSize": 420,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#004CFF5E",
+                "#734CFF5E",
+                "#284CFF5E",
+                "#004CFF5E"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ]
+        },
+        {
+            "name": "ring",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.6,
+            "speed": 0,
+            "startSize": 80,
+            "endSize": 300,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00B8FFC0",
+                "#FFB8FFC0",
+                "#00B8FFC0"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "tilt": 1.15
+        },
+        {
+            "name": "crosses",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1048,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 9
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 12,
+            "lifetime": [
+                0.8,
+                1.1
+            ],
+            "speed": [
+                80,
+                180
+            ],
+            "direction": -1.5708,
+            "spread": 1.4,
+            "damping": 1.5,
+            "gravity": [
+                0,
+                -40
+            ],
+            "startSize": [
+                22,
+                38
+            ],
+            "endSize": 0,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1,
+                    0
+                ]
+            },
+            "colors": [
+                "#007CFF8A",
+                "#FF7CFF8A",
+                "#007CFF8A"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ]
+        },
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    660,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 10
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 20,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                120,
+                240
+            ],
+            "spread": 6.2832,
+            "damping": 3.5,
+            "startSize": [
+                10,
+                20
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "colors": [
+                "#00E6FFE9",
+                "#FFE6FFE9",
+                "#00E6FFE9"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "gravity": [
+                0,
+                -80
+            ]
+        }
+    ]
+}

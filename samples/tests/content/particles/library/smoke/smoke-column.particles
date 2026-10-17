@@ -1,0 +1,137 @@
+{
+    "emitters": [
+        {
+            "name": "smoke",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    260,
+                    780,
+                    256,
+                    256
+                ],
+                [
+                    520,
+                    780,
+                    256,
+                    256
+                ],
+                [
+                    780,
+                    780,
+                    256,
+                    256
+                ],
+                [
+                    1040,
+                    780,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 7,
+            "prewarm": 4.0,
+            "maxParticles": 40,
+            "lifetime": [
+                3.0,
+                4.0
+            ],
+            "speed": [
+                60,
+                90
+            ],
+            "direction": -1.5708,
+            "spread": 0.2,
+            "turbulence": {
+                "strength": 40,
+                "frequency": 0.01,
+                "speed": 0.5
+            },
+            "gravity": [
+                20,
+                0
+            ],
+            "startSize": [
+                60,
+                80
+            ],
+            "endSize": [
+                220,
+                300
+            ],
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -0.3,
+                0.3
+            ],
+            "frameMode": "random",
+            "particleOrder": "newestFirst",
+            "colors": [
+                "#008A8680",
+                "#BF7A7670",
+                "#666A6662",
+                "#005A5652"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.7,
+                1
+            ]
+        },
+        {
+            "name": "wisps",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 2,
+            "prewarm": 3.0,
+            "maxParticles": 8,
+            "lifetime": [
+                2.0,
+                3.0
+            ],
+            "speed": [
+                60,
+                80
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "startSize": [
+                60,
+                80
+            ],
+            "endSize": [
+                140,
+                180
+            ],
+            "rotation": [
+                -0.3,
+                0.3
+            ],
+            "colors": [
+                "#00B0ACA8",
+                "#66A09C98",
+                "#00908C88"
+            ],
+            "colorTimes": [
+                0,
+                0.3,
+                1
+            ]
+        }
+    ]
+}

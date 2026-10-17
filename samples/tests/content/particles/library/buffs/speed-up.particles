@@ -1,0 +1,86 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.5,
+            "prewarm": 1.4,
+            "maxParticles": 4,
+            "lifetime": 1.4,
+            "speed": 0,
+            "startSize": 237.99999999999997,
+            "endSize": 340,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#002EC8C8",
+                "#4C2EC8C8",
+                "#1B2EC8C8",
+                "#002EC8C8"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "localSpace": true
+        },
+        {
+            "name": "swirls",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    260,
+                    1040,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 1.0,
+            "maxParticles": 12,
+            "lifetime": 0.9,
+            "speed": [
+                100,
+                130
+            ],
+            "direction": -1.5708,
+            "spread": 0,
+            "startSize": 120,
+            "endSize": 200,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": 9,
+            "tilt": 1.15,
+            "localSpace": true,
+            "offset": [
+                0,
+                60
+            ],
+            "colors": [
+                "#00C8FFFF",
+                "#D9C8FFFF",
+                "#00C8FFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ]
+        }
+    ]
+}

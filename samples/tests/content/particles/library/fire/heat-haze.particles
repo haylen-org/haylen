@@ -1,18 +1,50 @@
 {
     "texture": "../textures/effects.png",
-    "frames": [[396, 656, 128, 128]],
     "filter": "linear",
+    "frames": [
+        [
+            132,
+            1300,
+            128,
+            128
+        ]
+    ],
+    "blend": "alpha",
     "rate": 36,
+    "prewarm": 1.4,
     "maxParticles": 96,
-    "lifetime": [0.9, 1.4],
-    "speed": [50, 90],
+    "lifetime": [
+        0.9,
+        1.4
+    ],
+    "speed": [
+        50,
+        90
+    ],
     "direction": -1.5708,
     "spread": 0.35,
-    "turbulence": {"strength": 60, "frequency": 0.03, "speed": 1.5},
-    "startSize": [16, 24],
-    "endSize": [36, 52],
-    "colors": ["#00FFFFFF", "#C0FFFFFF", "#00FFFFFF"],
+    "turbulence": {
+        "strength": 60,
+        "frequency": 0.03,
+        "speed": 1.5
+    },
+    "startSize": [
+        16,
+        24
+    ],
+    "endSize": [
+        36,
+        52
+    ],
     "shape": "circle",
-    "shapeSize": [24, 0],
-    "distortion": 1
+    "shapeSize": [
+        24,
+        0
+    ],
+    "distortion": 1,
+    "colors": [
+        "#00FFFFFF",
+        "#C0FFFFFF",
+        "#00FFFFFF"
+    ]
 }

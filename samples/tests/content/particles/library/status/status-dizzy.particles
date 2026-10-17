@@ -1,0 +1,85 @@
+{
+    "emitters": [
+        {
+            "name": "stars",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    792,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 3.2,
+            "prewarm": 1.6,
+            "maxParticles": 8,
+            "lifetime": 1.6,
+            "speed": 160,
+            "shape": "ring",
+            "shapeSize": [
+                80,
+                0
+            ],
+            "directionMode": "tangent",
+            "spread": 0,
+            "radialAcceleration": -320,
+            "startSize": 26,
+            "endSize": 26,
+            "spin": 3,
+            "tilt": 1.15,
+            "localSpace": true,
+            "colors": [
+                "#00FFE23C",
+                "#FFFFE23C",
+                "#FFFFE23C",
+                "#00FFE23C"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.85,
+                1
+            ]
+        },
+        {
+            "name": "orbit",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.25,
+            "prewarm": 1.6,
+            "maxParticles": 6,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 180,
+            "endSize": 180,
+            "sizeCurve": "quadOut",
+            "spin": 0,
+            "tilt": 1.15,
+            "localSpace": true,
+            "colors": [
+                "#00FFF1B8",
+                "#40FFF1B8",
+                "#40FFF1B8",
+                "#00FFF1B8"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ]
+        }
+    ]
+}

@@ -1,23 +1,198 @@
 {
-    "texture": "../textures/effects.png",
-    "frames": [[204, 788, 64, 64]],
-    "filter": "linear",
-    "rate": 0,
-    "bursts": [{"time": 0, "count": 40}],
-    "duration": 0.05,
-    "maxParticles": 48,
-    "lifetime": [0.4, 0.7],
-    "speed": [300, 600],
-    "direction": -1.5708,
-    "directionMode": "outward",
-    "spread": 0,
-    "damping": 3,
-    "startSize": [6, 10],
-    "endSize": [2, 3],
-    "colors": ["#FFFFFFFF", "#FF40F0FF", "#00FF30C0"],
-    "shape": "ring",
-    "shapeSize": [8, 0],
-    "trail": {"length": 8, "lifetime": 0.2, "widthStart": 4, "widthEnd": 0},
-    "blend": "additive",
-    "unshaded": true
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": 0.6,
+            "speed": 0,
+            "startSize": 294.0,
+            "endSize": 420,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF2EC8",
+                "#80FF2EC8",
+                "#2DFF2EC8",
+                "#00FF2EC8"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ]
+        },
+        {
+            "name": "ring",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.4,
+            "speed": 0,
+            "startSize": 40,
+            "endSize": 340,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#007FF6FF",
+                "#FF7FF6FF",
+                "#007FF6FF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "unshaded": true
+        },
+        {
+            "name": "flare",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1300,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 2
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.25,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 300,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": 0,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "unshaded": true
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1668,
+                    1412,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 40
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 48,
+            "lifetime": [
+                0.4,
+                0.7
+            ],
+            "speed": [
+                300,
+                600
+            ],
+            "directionMode": "outward",
+            "shape": "ring",
+            "shapeSize": [
+                8,
+                0
+            ],
+            "spread": 0,
+            "damping": 3,
+            "startSize": [
+                6,
+                10
+            ],
+            "endSize": [
+                2,
+                3
+            ],
+            "trail": {
+                "length": 8,
+                "lifetime": 0.2,
+                "widthStart": 4,
+                "widthEnd": 0
+            },
+            "unshaded": true,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFF40F0",
+                "#00FF30C0"
+            ],
+            "colorTimes": [
+                0,
+                0.4,
+                1
+            ]
+        }
+    ]
 }

@@ -1,0 +1,52 @@
+{
+    "texture": "../textures/effects.png",
+    "filter": "linear",
+    "frames": [
+        [
+            132,
+            1300,
+            128,
+            128
+        ]
+    ],
+    "blend": "alpha",
+    "rate": 10,
+    "prewarm": 8.0,
+    "maxParticles": 96,
+    "lifetime": [
+        6,
+        9
+    ],
+    "speed": [
+        5,
+        15
+    ],
+    "spread": 6.2832,
+    "shape": "rectangle",
+    "shapeSize": [
+        600,
+        300
+    ],
+    "turbulence": {
+        "strength": 15,
+        "frequency": 0.006,
+        "speed": 0.3
+    },
+    "startSize": [
+        4,
+        9
+    ],
+    "endSizeScale": 1,
+    "colors": [
+        "#00FFF1D8",
+        "#80FFF1D8",
+        "#80FFF1D8",
+        "#00FFF1D8"
+    ],
+    "colorTimes": [
+        0,
+        0.2,
+        0.8,
+        1
+    ]
+}

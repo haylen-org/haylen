@@ -1,23 +1,95 @@
 {
-    "texture": "../textures/effects.png",
-    "frames": [[660, 660, 128, 128]],
-    "filter": "linear",
-    "rate": 300,
-    "maxParticles": 1024,
-    "lifetime": [0.4, 1.0],
-    "speed": [400, 900],
-    "direction": -0.6,
-    "spread": 1.2,
-    "gravity": [0, 1400],
-    "damping": 1,
-    "collision": {"type": "floor", "y": 120, "bounce": 0.35, "friction": 0.4, "result": "bounce"},
-    "startSize": [3, 6],
-    "endSize": 1,
-    "stretch": 0.025,
-    "alignToVelocity": true,
-    "colors": ["#FFFFFFF0", "#FFFFE080", "#FFFF9020", "#00A03000"],
-    "shape": "cone",
-    "shapeSize": [8, 0],
-    "light": {"radius": 300, "color": "#FFC0E0FF", "flicker": {"speed": 20, "amount": 0.5}},
-    "blend": "additive"
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 0.4,
+            "maxParticles": 4,
+            "lifetime": 0.4,
+            "speed": 0,
+            "startSize": 98.0,
+            "endSize": 140,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFD27A",
+                "#33FFD27A",
+                "#12FFD27A",
+                "#00FFD27A"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ]
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    396,
+                    1304,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 70,
+            "prewarm": 1.0,
+            "maxParticles": 128,
+            "lifetime": [
+                0.4,
+                0.9
+            ],
+            "speed": [
+                260,
+                520
+            ],
+            "direction": -1.1,
+            "spread": 1.6,
+            "gravity": [
+                0,
+                1200
+            ],
+            "alignToVelocity": true,
+            "stretch": 0.03,
+            "startSize": [
+                14,
+                24
+            ],
+            "endSize": 4,
+            "collision": {
+                "type": "floor",
+                "y": 80,
+                "bounce": 0.35,
+                "friction": 0.2
+            },
+            "emission": 1,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFE7A8",
+                "#CCFF9A2E",
+                "#00E0401F"
+            ],
+            "colorTimes": [
+                0,
+                0.3,
+                0.7,
+                1
+            ]
+        }
+    ]
 }

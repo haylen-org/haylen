@@ -1,0 +1,99 @@
+{
+    "emitters": [
+        {
+            "name": "leaves",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1124,
+                    1304,
+                    96,
+                    96
+                ],
+                [
+                    1224,
+                    1304,
+                    96,
+                    96
+                ],
+                [
+                    1324,
+                    1304,
+                    96,
+                    96
+                ],
+                [
+                    1424,
+                    1304,
+                    96,
+                    96
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 4,
+            "prewarm": 8.0,
+            "maxParticles": 48,
+            "lifetime": [
+                7,
+                10
+            ],
+            "speed": [
+                50,
+                90
+            ],
+            "direction": 1.5708,
+            "spread": 0.4,
+            "gravity": [
+                20,
+                10
+            ],
+            "shape": "rectangle",
+            "shapeSize": [
+                1000,
+                10
+            ],
+            "offset": [
+                0,
+                -560
+            ],
+            "turbulence": {
+                "strength": 70,
+                "frequency": 0.006,
+                "speed": 0.5
+            },
+            "startSize": [
+                22,
+                32
+            ],
+            "endSizeScale": 1,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -1.5,
+                1.5
+            ],
+            "frameMode": "random",
+            "tints": [
+                "#FFE89A3C",
+                "#FFD0603C",
+                "#FFE8C850",
+                "#FF9CC84C"
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                0.9,
+                1
+            ]
+        }
+    ]
+}

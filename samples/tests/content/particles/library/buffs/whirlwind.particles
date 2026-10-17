@@ -1,0 +1,173 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.5,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 224.0,
+            "endSize": 320,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FFC24A",
+                "#4CFFC24A",
+                "#1BFFC24A",
+                "#00FFC24A"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                -20
+            ],
+            "localSpace": true
+        },
+        {
+            "name": "funnel",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    260,
+                    1040,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 1.2,
+            "maxParticles": 24,
+            "lifetime": 1.1,
+            "speed": [
+                200,
+                230
+            ],
+            "direction": -1.5708,
+            "spread": 0,
+            "startSize": 40,
+            "endSize": 300,
+            "sizeCurve": "quadIn",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": 11,
+            "tilt": 1.15,
+            "localSpace": true,
+            "offset": [
+                0,
+                80
+            ],
+            "colors": [
+                "#00FFE37A",
+                "#E6FFD24A",
+                "#B2FFB52E",
+                "#00FF8A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.7,
+                1
+            ]
+        },
+        {
+            "name": "dust",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1328,
+                    1404,
+                    64,
+                    64
+                ],
+                [
+                    1396,
+                    1404,
+                    64,
+                    64
+                ],
+                [
+                    1464,
+                    1404,
+                    64,
+                    64
+                ],
+                [
+                    1532,
+                    1404,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 6,
+            "prewarm": 1.0,
+            "maxParticles": 12,
+            "lifetime": [
+                0.6,
+                1.0
+            ],
+            "speed": [
+                60,
+                120
+            ],
+            "direction": -1.5708,
+            "spread": 1.6,
+            "gravity": [
+                0,
+                120
+            ],
+            "startSize": [
+                8,
+                14
+            ],
+            "endSize": 4,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -6,
+                6
+            ],
+            "offset": [
+                0,
+                80
+            ],
+            "frameMode": "random",
+            "localSpace": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.7,
+                1
+            ]
+        }
+    ]
+}

@@ -1,0 +1,231 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.2,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 210.0,
+            "endSize": 300,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#007CFF3B",
+                "#4C7CFF3B",
+                "#1B7CFF3B",
+                "#007CFF3B"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "tilt": 1.15,
+            "localSpace": true
+        },
+        {
+            "name": "clouds",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1180,
+                    1172,
+                    128,
+                    128
+                ],
+                [
+                    1312,
+                    1172,
+                    128,
+                    128
+                ],
+                [
+                    1444,
+                    1172,
+                    128,
+                    128
+                ],
+                [
+                    1576,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 2.5,
+            "prewarm": 2.0,
+            "maxParticles": 64,
+            "lifetime": [
+                1.4,
+                2.0
+            ],
+            "speed": [
+                20,
+                40
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                90,
+                27.0
+            ],
+            "startSize": [
+                50,
+                70
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#00C9A6FF",
+                "#CCC9A6FF",
+                "#CCC9A6FF",
+                "#00C9A6FF"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ],
+            "frameMode": "random",
+            "rotation": [
+                -0.3,
+                0.3
+            ]
+        },
+        {
+            "name": "skulls",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1840,
+                    1180,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.6,
+            "maxParticles": 64,
+            "lifetime": [
+                1.2,
+                1.6
+            ],
+            "speed": [
+                40,
+                60
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                70,
+                21.0
+            ],
+            "startSize": [
+                26,
+                36
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#00FF5CD6",
+                "#FFFF5CD6",
+                "#FFFF5CD6",
+                "#00FF5CD6"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ]
+        },
+        {
+            "name": "bubbles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    520,
+                    1040,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 5,
+            "prewarm": 1.2,
+            "maxParticles": 64,
+            "lifetime": [
+                0.8,
+                1.2
+            ],
+            "speed": [
+                60,
+                110
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                90,
+                27.0
+            ],
+            "startSize": [
+                8,
+                16
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#009CFF6B",
+                "#FF9CFF6B",
+                "#FF9CFF6B",
+                "#009CFF6B"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ]
+        }
+    ]
+}

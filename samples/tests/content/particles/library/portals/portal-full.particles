@@ -1,6 +1,0 @@
-{
-    "emitters": [
-        {"name": "swirl", "effect": "../portals/portal-swirl.particles"},
-        {"name": "pull", "effect": "../portals/portal-inward.particles"}
-    ]
-}

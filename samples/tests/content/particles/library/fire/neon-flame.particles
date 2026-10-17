@@ -1,19 +1,147 @@
 {
-    "texture": "../textures/effects.png",
-    "frames": [[264, 524, 128, 128]],
-    "filter": "linear",
-    "rate": 70,
-    "maxParticles": 96,
-    "lifetime": [0.4, 0.7],
-    "speed": [90, 150],
-    "direction": -1.5708,
-    "spread": 0.3,
-    "gravity": [0, -120],
-    "startSize": [36, 52],
-    "endSize": [4, 8],
-    "colors": ["#FFFFFFFF", "#FF40F0FF", "#C0FF30C0", "#00601080"],
-    "shape": "circle",
-    "shapeSize": [14, 0],
-    "blend": "additive",
-    "unshaded": true
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    132,
+                    1300,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 196.0,
+            "endSize": 280,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF2EC8",
+                "#73FF2EC8",
+                "#28FF2EC8",
+                "#00FF2EC8"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                -30
+            ]
+        },
+        {
+            "name": "flames",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    652,
+                    1172,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 30,
+            "prewarm": 1.0,
+            "maxParticles": 40,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                80,
+                140
+            ],
+            "direction": -1.5708,
+            "spread": 0.2,
+            "shape": "ellipse",
+            "shapeSize": [
+                30,
+                6
+            ],
+            "startSize": [
+                50,
+                70
+            ],
+            "endSize": 10,
+            "sizeCurve": "quadIn",
+            "turbulence": {
+                "strength": 60,
+                "frequency": 0.03,
+                "speed": 2
+            },
+            "unshaded": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FF7FF6FF",
+                "#CCFF2EC8",
+                "#006A10FF"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.55,
+                1
+            ]
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1668,
+                    1412,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "additive",
+            "rate": 10,
+            "prewarm": 1.0,
+            "maxParticles": 24,
+            "lifetime": [
+                0.6,
+                1.0
+            ],
+            "speed": [
+                100,
+                200
+            ],
+            "direction": -1.5708,
+            "spread": 0.6,
+            "startSize": [
+                4,
+                7
+            ],
+            "endSize": 1,
+            "trail": {
+                "length": 6,
+                "lifetime": 0.15,
+                "widthStart": 3,
+                "widthEnd": 0
+            },
+            "unshaded": true,
+            "colors": [
+                "#FFFFFFFF",
+                "#FF7FF6FF",
+                "#00FF2EC8"
+            ],
+            "colorTimes": [
+                0,
+                0.5,
+                1
+            ]
+        }
+    ]
 }

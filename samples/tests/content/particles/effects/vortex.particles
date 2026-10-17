@@ -1,6 +1,6 @@
 {
     "texture": "../library/textures/effects.png",
-    "frames": [[544, 860, 64, 64]],
+    "frames": [[792, 1304, 128, 128]],
     "rate": 60,
     "lifetime": [1.4, 1.8],
     "speed": [0, 10],
