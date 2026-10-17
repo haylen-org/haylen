@@ -956,8 +956,8 @@ void Collection::takeInput(Context& context) {
     // A mirrored collection starts at its right end, so its offset counts from there while the wheel counts from the left.
     const double position = mirrored ? scroller->getMaximum() - scroller->getOffset() : scroller->getOffset();
     const Context::WheelScroll wheel = context.takeWheel(ImGui::GetID(this), viewport, !isVertical(), position, scroller->getMaximum(), underPointer);
-    if (wheel.distance != 0.0F) {
-        scroller->wheel(static_cast<double>(mirrored ? wheel.distance : -wheel.distance), wheel.stepped);
+    scroller->follow(wheel, mirrored ? 1.0 : -1.0, delta);
+    if (wheel.motion != Context::WheelScroll::Motion::None) {
         pendingScroll.reset();
         idle = 0.0F;
     }

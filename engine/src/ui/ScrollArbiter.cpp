@@ -7,7 +7,16 @@
 
 namespace haylen::ui {
 
-void ScrollArbiter::addWheel(math::Vec2 scroll, bool precise) noexcept {
+// The momentum of a trackpad counts apart, the fingers that touch it and leave it count once per frame, and the scroll they make while they move counts with the points of the frame.
+void ScrollArbiter::addWheel(math::Vec2 scroll, bool precise, platform::Event::ScrollPhase phase) noexcept {
+    using Phase = platform::Event::ScrollPhase;
+    if (phase == Phase::Momentum) {
+        pending.momentum += scroll;
+        return;
+    }
+    pendingTouched = pendingTouched || phase == Phase::Began;
+    pendingLifted = pendingLifted || phase == Phase::Ended;
+    pendingPhased = pendingPhased || phase != Phase::None;
     (precise ? pending.points : pending.lines) += scroll;
 }
 
@@ -42,17 +51,22 @@ void ScrollArbiter::beginFrame(float seconds) {
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
     wheel = std::exchange(pending, {});
     delivered = wheel;
+    touched = std::exchange(pendingTouched, false);
+    lifted = std::exchange(pendingLifted, false);
+    const bool framePhased = std::exchange(pendingPhased, false);
     areas.swap(previousAreas);
     areas.clear();
 
-    // A wheel that pauses, or that rests while the pointer moves on, ends its gesture, and the next wheel starts one along the axis it moves most.
+    // A gesture of a trackpad with phases lasts while its fingers are on it or its momentum goes on. A wheel without phases that pauses, or that rests while the pointer moves on, ends its gesture. The next wheel starts a gesture along the axis it moves most.
     const bool scrolled = !isEmpty(wheel);
-    if (gesture && (quiet > kGesturePause || (quiet > kPointerPause && (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel))) {
+    if (gesture && !fingers && ((phased && wheel.momentum.isZero()) || quiet > kGesturePause || (quiet > kPointerPause && (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel))) {
         gesture = false;
     }
+    fingers = (fingers || touched || (framePhased && scrolled)) && !lifted;
     if (scrolled && !gesture) {
         const math::Vec2 motion = wheel.lines.isZero() ? wheel.points : wheel.lines;
         gesture = true;
+        phased = framePhased;
         vertical = std::fabs(motion.y) >= std::fabs(motion.x);
         waiting = wheel;
         chooseArea(pointer);
@@ -78,10 +92,17 @@ void ScrollArbiter::beginFrame(float seconds) {
 
 ScrollArbiter::AxisWheel ScrollArbiter::takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered) {
     areas.push_back({.id = area, .bounds = bounds, .horizontal = horizontal, .position = position, .maximum = maximum, .hovered = hovered});
+    const ImVec2 pointer = ImGui::GetIO().MousePos;
+    AxisWheel result{.touched = touched && hovered && bounds.contains(math::Vec2{pointer.x, pointer.y})};
     if (!gesture || vertical == horizontal || area != wheelArea) {
-        return {};
+        return result;
     }
-    return horizontal ? AxisWheel{delivered.lines.x, delivered.points.x} : AxisWheel{delivered.lines.y, delivered.points.y};
+    result.lines = horizontal ? delivered.lines.x : delivered.lines.y;
+    result.points = horizontal ? delivered.points.x : delivered.points.y;
+    result.momentum = horizontal ? delivered.momentum.x : delivered.momentum.y;
+    result.held = phased && (fingers || lifted);
+    result.lifted = phased && lifted;
+    return result;
 }
 
 bool ScrollArbiter::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal) {

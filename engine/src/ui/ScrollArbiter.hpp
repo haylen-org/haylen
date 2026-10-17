@@ -7,28 +7,34 @@
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/platform/Event.hpp"
 
 namespace haylen::ui {
 
-// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area until it pauses or the pointer moves on while it rests, wherever the content goes. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, and stays with it until it lifts.
+// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area, wherever the content goes, until the fingers leave a trackpad that reports the phases of its gestures, or until a device without phases pauses or the pointer moves on while it rests. The momentum that the system adds to a trackpad once the fingers left keeps the gesture and reaches its area apart, which moves on by its own motion when it has one, and fingers that touch the trackpad reach every area under the pointer, which stops its motion. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, and stays with it until it lifts.
 class ScrollArbiter final {
   public:
-    // Steps of a wheel and points of the screen that a trackpad moved, with positive values for scrolling up and to the left.
+    // Steps of a wheel, points of the screen that a trackpad moved and points of the momentum that the system adds to a trackpad once its fingers left, with positive values for scrolling up and to the left.
     struct Wheel {
         math::Vec2 lines{};
         math::Vec2 points{};
+        math::Vec2 momentum{};
     };
 
-    // The part of a wheel that moves one area along its axis, with positive values toward its top or left end.
+    // The part of a wheel that moves one area along its axis, with positive values toward its top or left end, and the fingers of a trackpad with phases: whether they hold the gesture of the area, whether they touched the trackpad over the area and whether they left it.
     struct AxisWheel {
         float lines = 0.0F;
         float points = 0.0F;
+        float momentum = 0.0F;
+        bool held = false;
+        bool touched = false;
+        bool lifted = false;
     };
 
     // How far a finger travels, in UI units, before its drag scrolls instead of pressing.
     static constexpr float kDragSlop = 12.0F;
 
-    void addWheel(math::Vec2 scroll, bool precise) noexcept;
+    void addWheel(math::Vec2 scroll, bool precise, platform::Event::ScrollPhase phase) noexcept;
 
     // Starts a frame once ImGui has read the pointer of the frame, and settles the gestures from the areas of the frame before.
     void beginFrame(float seconds);
@@ -77,6 +83,13 @@ class ScrollArbiter final {
     Wheel wheel;
     Wheel delivered;
     Wheel waiting;
+    bool pendingTouched = false;
+    bool pendingLifted = false;
+    bool touched = false;
+    bool lifted = false;
+    bool pendingPhased = false;
+    bool fingers = false;
+    bool phased = false;
     bool gesture = false;
     bool vertical = true;
     ImGuiID wheelArea = 0;

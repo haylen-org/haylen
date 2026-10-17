@@ -10,6 +10,8 @@ namespace {
 
 class ScrollerTest : public ::testing::Test {
   protected:
+    using Motion = Context::WheelScroll::Motion;
+
     static constexpr float kStep = 1.0F / 60.0F;
 
     // Runs the scroller until it rests and returns the steps it took.
@@ -90,10 +92,10 @@ TEST_F(ScrollerTest, StretchesLessTheFartherItIsPulledAndReturnsAlongTheSameCurv
 TEST_F(ScrollerTest, GlidesThroughTheStepsOfAWheel) {
     // Each step of a wheel moves the target, so steps that follow one another add up while the content glides there without passing it.
     scroller.setRange(5000.0, 600.0);
-    scroller.wheel(64.0, true);
+    scroller.follow({.distance = 64.0F, .motion = Motion::Glide}, 1.0, kStep);
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 0.0);
     scroller.update(kStep);
-    scroller.wheel(64.0, true);
+    scroller.follow({.distance = 64.0F, .motion = Motion::Glide}, 1.0, kStep);
     EXPECT_DOUBLE_EQ(scroller.getTarget(), 128.0);
     double offset = scroller.getOffset();
     while (!scroller.isResting()) {
@@ -103,29 +105,55 @@ TEST_F(ScrollerTest, GlidesThroughTheStepsOfAWheel) {
         offset = scroller.getOffset();
     }
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 128.0);
-
-    scroller.wheel(-500.0, true);
-    settle();
-    EXPECT_DOUBLE_EQ(scroller.getOffset(), 0.0);
 }
 
-TEST_F(ScrollerTest, FollowsATrackpadAtOnceAndSpringsBackOnceItRests) {
+// Fingers on a trackpad drag the content and stretch it past an end, and once they leave the content flings or springs back at once, as it does after a finger leaves the screen.
+TEST_F(ScrollerTest, FollowsFingersOnATrackpadAndSpringsBackTheMomentTheyLeave) {
     scroller.setRange(1000.0, 600.0);
-    scroller.wheel(30.0, false);
+    scroller.follow({.distance = 30.0F, .motion = Motion::Drag}, 1.0, kStep);
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 30.0);
-
-    // Past an end the content stretches while the trackpad keeps moving, and springs back once it sends nothing.
-    scroller.wheel(1100.0, false);
+    scroller.follow({.distance = 1100.0F, .motion = Motion::Drag}, 1.0, kStep);
     EXPECT_GT(scroller.getOverscroll(), 0.0);
-    EXPECT_LT(scroller.getOverscroll(), 130.0);
-    for (int step = 0; step < 3; ++step) {
+
+    // Fingers that rest keep the content stretched, and no motion runs until they leave.
+    for (int step = 0; step < 30; ++step) {
+        scroller.follow({.motion = Motion::Drag}, 1.0, kStep);
         scroller.update(kStep);
-        scroller.wheel(10.0, false);
     }
     EXPECT_GT(scroller.getOverscroll(), 0.0);
-    EXPECT_FALSE(scroller.isResting());
-    EXPECT_GT(settle(), 0);
+    scroller.follow({.motion = Motion::Drag, .lifted = true}, 1.0, kStep);
+    scroller.update(kStep);
+    EXPECT_LT(scroller.getOverscroll(), 130.0);
+    EXPECT_LT(settle(), 40);
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 1000.0);
+}
+
+TEST_F(ScrollerTest, FlingsWhenFingersLeaveATrackpadAndStopsWhenTheyTouchItAgain) {
+    scroller.setRange(100000.0, 600.0);
+    for (int step = 0; step < 6; ++step) {
+        scroller.follow({.distance = 40.0F, .motion = Motion::Drag}, 1.0, kStep);
+    }
+    scroller.follow({.motion = Motion::Drag, .lifted = true}, 1.0, kStep);
+    for (int step = 0; step < 10; ++step) {
+        scroller.update(kStep);
+    }
+    const double flung = scroller.getOffset();
+    EXPECT_GT(flung, 400.0);
+    EXPECT_FALSE(scroller.isResting());
+    scroller.follow({.touched = true}, 1.0, kStep);
+    EXPECT_TRUE(scroller.isResting());
+    scroller.update(kStep);
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), flung);
+}
+
+// A precise device that reports no phases moves the content within its range and never stretches it, since nothing tells when its fingers leave.
+TEST_F(ScrollerTest, MovesThePointsOfADeviceWithoutPhasesWithinTheRange) {
+    scroller.setRange(1000.0, 600.0);
+    scroller.follow({.distance = 30.0F, .motion = Motion::Free}, 1.0, kStep);
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), 30.0);
+    scroller.follow({.distance = 2000.0F, .motion = Motion::Free}, 1.0, kStep);
+    EXPECT_DOUBLE_EQ(scroller.getOffset(), 1000.0);
+    EXPECT_TRUE(scroller.isResting());
 }
 
 TEST_F(ScrollerTest, StopsAtTheEndsWhenItJumps) {

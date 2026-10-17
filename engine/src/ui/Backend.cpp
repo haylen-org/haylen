@@ -463,8 +463,12 @@ void Backend::handleEvent(const platform::Event& event, const graphics::Viewport
         break;
     }
     case platform::Event::Type::FocusGained:
+        io.AddFocusEvent(true);
+        break;
     case platform::Event::Type::FocusLost:
-        io.AddFocusEvent(event.type == platform::Event::Type::FocusGained);
+        // A window that loses the focus never hears the fingers leave the trackpad, so they count as gone.
+        io.AddFocusEvent(false);
+        scrollArbiter->addWheel({}, true, platform::Event::ScrollPhase::Ended);
         break;
     default:
         handlePointer(event, viewport);
@@ -496,7 +500,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     case platform::Event::Type::MouseScroll: {
         // Shift turns a wheel that only scrolls up and down sideways for the components, as macOS does for every app, and the ImGui windows of the app take the scroll as it came in steps of ImGui, since ImGui turns it with Shift itself.
         const bool sideways = !event.preciseScroll && event.modifiers.shift && event.scroll.x == 0.0F;
-        scrollArbiter->addWheel(sideways ? math::Vec2{event.scroll.y, 0.0F} : event.scroll, event.preciseScroll);
+        scrollArbiter->addWheel(sideways ? math::Vec2{event.scroll.y, 0.0F} : event.scroll, event.preciseScroll, event.scrollPhase);
         const math::Vec2 steps = event.preciseScroll ? event.scroll / (pointsPerUnit * kImGuiScrollFonts * kBaseFontSize) : event.scroll;
         io.AddMouseWheelEvent(steps.x, steps.y);
         break;

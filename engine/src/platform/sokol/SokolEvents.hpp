@@ -31,6 +31,7 @@ class SokolEvents final {
 
     [[nodiscard]] static input::KeyModifiers toModifiers(std::uint32_t bits) noexcept;
     [[nodiscard]] static std::optional<input::MouseButton> toMouseButton(sapp_mousebutton button) noexcept;
+    [[nodiscard]] static Event::ScrollPhase toScrollPhase(sapp_scroll_phase phase) noexcept;
     [[nodiscard]] static Event toTouchEvent(Event::Type type, const sapp_event& source) noexcept;
 };
 

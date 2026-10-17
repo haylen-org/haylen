@@ -32,7 +32,7 @@ std::optional<Event> SokolEvents::translate(const sapp_event& source) noexcept {
     case SAPP_EVENTTYPE_MOUSE_MOVE:
         return Event{.type = Event::Type::MouseMove, .modifiers = held, .position = {source.mouse_x, source.mouse_y}, .delta = {source.mouse_dx, source.mouse_dy}};
     case SAPP_EVENTTYPE_MOUSE_SCROLL:
-        return Event{.type = Event::Type::MouseScroll, .modifiers = held, .scroll = {source.scroll_x, source.scroll_y}, .preciseScroll = source.scroll_precise};
+        return Event{.type = Event::Type::MouseScroll, .modifiers = held, .scroll = {source.scroll_x, source.scroll_y}, .preciseScroll = source.scroll_precise, .scrollPhase = toScrollPhase(source.scroll_phase)};
     case SAPP_EVENTTYPE_MOUSE_ENTER:
         return Event{.type = Event::Type::MouseEnter};
     case SAPP_EVENTTYPE_MOUSE_LEAVE:
@@ -66,6 +66,21 @@ std::optional<Event> SokolEvents::translate(const sapp_event& source) noexcept {
 
 input::KeyModifiers SokolEvents::toModifiers(std::uint32_t bits) noexcept {
     return {.shift = (bits & SAPP_MODIFIER_SHIFT) != 0U, .control = (bits & SAPP_MODIFIER_CTRL) != 0U, .alt = (bits & SAPP_MODIFIER_ALT) != 0U, .super = (bits & SAPP_MODIFIER_SUPER) != 0U};
+}
+
+Event::ScrollPhase SokolEvents::toScrollPhase(sapp_scroll_phase phase) noexcept {
+    switch (phase) {
+    case SAPP_SCROLLPHASE_BEGAN:
+        return Event::ScrollPhase::Began;
+    case SAPP_SCROLLPHASE_CHANGED:
+        return Event::ScrollPhase::Changed;
+    case SAPP_SCROLLPHASE_ENDED:
+        return Event::ScrollPhase::Ended;
+    case SAPP_SCROLLPHASE_MOMENTUM:
+        return Event::ScrollPhase::Momentum;
+    default:
+        return Event::ScrollPhase::None;
+    }
 }
 
 std::optional<input::MouseButton> SokolEvents::toMouseButton(sapp_mousebutton button) noexcept {

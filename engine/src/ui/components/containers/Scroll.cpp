@@ -107,8 +107,9 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         // The wheel and the finger move the content along the axis, and the bar takes the pointer in its lane before the content does.
         const bool underPointer = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
         const Context::WheelScroll wheel = context.takeWheel(ImGui::GetCurrentWindow()->ID, bounds, horizontal, scroller.getOffset(), scroller.getMaximum(), underPointer);
-        if (wheel.distance != 0.0F) {
-            scroller.wheel(-static_cast<double>(wheel.distance), wheel.stepped);
+        const bool wheeled = wheel.motion != Context::WheelScroll::Motion::None;
+        scroller.follow(wheel, -1.0, context.getDeltaSeconds());
+        if (wheeled) {
             request.reset();
         }
         followFinger(context, bounds, underPointer);
@@ -118,7 +119,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
                 request.reset();
             }
         }
-        const bool touched = (underPointer && (wheel.distance != 0.0F || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
+        const bool touched = (underPointer && (wheeled || ImGui::IsMouseDown(ImGuiMouseButton_Left))) || ImGui::GetActiveID() != 0;
         idle = touched ? 0.0F : idle + context.getDeltaSeconds();
         scroller.update(context.getDeltaSeconds());
 

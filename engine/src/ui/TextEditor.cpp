@@ -212,7 +212,8 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     math::Vec2 scroll = editing.scroll;
     if (multiline && overflow > 0.0F) {
         const bool hovered = ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()));
-        scroll.y = std::clamp(scroll.y - context.takeWheel(id, bounds, false, scroll.y, overflow, hovered).distance, 0.0F, overflow);
+        const Context::WheelScroll wheel = context.takeWheel(id, bounds, false, scroll.y, overflow, hovered);
+        scroll.y = std::clamp(scroll.y - wheel.distance - wheel.momentum, 0.0F, overflow);
     }
     if (state != nullptr) {
         follow(scroll, *field, field->getCaret(toPosition(state->GetCursorPos())).translated(getOrigin(*laid, area, scroll, rightToLeft, multiline)), area, rightToLeft, multiline);

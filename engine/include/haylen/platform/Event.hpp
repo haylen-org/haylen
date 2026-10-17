@@ -48,6 +48,15 @@ struct Event {
         AudioServicesReset,
     };
 
+    // The phase of the gesture a scroll belongs to, for precise devices that report one, such as the trackpads of macOS: the fingers touch the device, move and leave it, and the momentum that the system adds once they left arrives in its own phase. Wheels and the precise devices of the other platforms report none.
+    enum class ScrollPhase : std::uint8_t {
+        None,
+        Began,
+        Changed,
+        Ended,
+        Momentum,
+    };
+
     static constexpr std::size_t kMaxTouchPoints = 10;
 
     Type type = Type::KeyDown;
@@ -63,6 +72,7 @@ struct Event {
     // A scroll moves by the points of the screen that a precise device, such as a trackpad, reports when `preciseScroll` is set, and by steps of a wheel otherwise, with positive values for scrolling up and to the left.
     math::Vec2 scroll{};
     bool preciseScroll = false;
+    ScrollPhase scrollPhase = ScrollPhase::None;
     std::array<TouchPoint, kMaxTouchPoints> touches{};
     std::size_t touchCount = 0;
 

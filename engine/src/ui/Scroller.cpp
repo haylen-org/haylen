@@ -67,23 +67,40 @@ void Scroller::drag(double delta, float seconds) noexcept {
         motion = Motion::Dragging;
         velocity = 0.0;
     }
+    // The speed follows the content, which moves less than the finger past an end, so a release there springs back without flinging further out.
+    const double before = offset;
     pull(delta);
     if (seconds > 0.0F) {
-        velocity = velocity * 0.4 + delta / static_cast<double>(seconds) * 0.6;
+        velocity = velocity * 0.4 + (offset - before) / static_cast<double>(seconds) * 0.6;
     }
 }
 
-void Scroller::wheel(double delta, bool stepped) noexcept {
-    if (stepped) {
+void Scroller::follow(const Context::WheelScroll& wheel, double toward, float seconds) noexcept {
+    if (wheel.touched && motion == Motion::Flinging) {
+        stop();
+    }
+
+    const double delta = toward * static_cast<double>(wheel.distance);
+    switch (wheel.motion) {
+    case Context::WheelScroll::Motion::Glide:
         animateTo((motion == Motion::Animating ? target : clamp(offset)) + delta);
-        return;
+        break;
+    case Context::WheelScroll::Motion::Drag:
+        // Fingers that leave without moving keep the speed they had, which the release flings with.
+        if (delta != 0.0 || !wheel.lifted) {
+            drag(delta, seconds);
+        }
+        break;
+    case Context::WheelScroll::Motion::Free:
+        jumpTo(offset + delta);
+        break;
+    case Context::WheelScroll::Motion::None:
+        break;
     }
-    if (motion != Motion::Wheeling) {
-        motion = Motion::Wheeling;
-        velocity = 0.0;
+
+    if (wheel.lifted && motion == Motion::Dragging) {
+        release();
     }
-    pull(delta);
-    quiet = 0.0F;
 }
 
 void Scroller::release() noexcept {
@@ -100,7 +117,7 @@ void Scroller::release() noexcept {
 void Scroller::animateTo(double value) noexcept {
     target = clamp(value);
     if (motion != Motion::Animating) {
-        velocity = motion == Motion::Dragging || motion == Motion::Wheeling ? 0.0 : velocity;
+        velocity = motion == Motion::Dragging ? 0.0 : velocity;
         motion = Motion::Animating;
     }
 }
@@ -144,12 +161,6 @@ bool Scroller::update(float seconds) noexcept {
         break;
     case Motion::Animating:
         spring(target, seconds);
-        break;
-    case Motion::Wheeling:
-        quiet += seconds;
-        if (quiet > kWheelRest) {
-            release();
-        }
         break;
     case Motion::Resting:
     case Motion::Dragging:

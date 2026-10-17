@@ -371,6 +371,46 @@ TEST_F(ScrollbarTest, ScrollsTheTextOfATextAreaWithItsBar) {
     EXPECT_LT(top, before - field.height);
 }
 
+// A text area has no motion of its own, so the momentum that the system adds to a trackpad once its fingers left keeps scrolling its text.
+TEST_F(ScrollbarTest, ScrollsATextAreaWithTheMomentumOfATrackpad) {
+    using Phase = platform::Event::ScrollPhase;
+    auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
+    frames(2);
+    const math::Vec2 inside = getBounds(*gui, "notes").getCenter();
+    graphics2d::Renderer& renderer = getEngine().getRenderer2D();
+    float top = 0.0F;
+    // clang-format off
+    const std::uint64_t overlay = renderer.addCanvasOverlay([&top](graphics2d::Renderer& drawing) {
+        drawing.visitDrawn([&top](const graphics2d::Renderer::Drawn& drawn) {
+            if (drawn.text) {
+                top = math::Geometry::bounds(drawn.corners).y;
+            }
+        });
+    });
+    // clang-format on
+    // clang-format off
+    const auto scroll = [&](float distance, Phase phase) {
+        pointer(platform::Event::Type::MouseMove, inside);
+        platform::Event event;
+        event.type = platform::Event::Type::MouseScroll;
+        event.scroll = {0.0F, distance};
+        event.preciseScroll = true;
+        event.scrollPhase = phase;
+        getEngine().handleEvent(event);
+        frames();
+    };
+    // clang-format on
+    scroll(0.0F, Phase::Began);
+    scroll(-10.0F, Phase::Changed);
+    scroll(0.0F, Phase::Ended);
+    const float lifted = top;
+    for (int step = 0; step < 5; ++step) {
+        scroll(-10.0F, Phase::Momentum);
+    }
+    renderer.removeCanvasOverlay(overlay);
+    EXPECT_NEAR(top, lifted - 50.0F, 1.0F);
+}
+
 TEST_F(ScrollbarTest, ScrollsTheRowsOfALongComboBesideItsBar) {
     std::string items;
     for (int index = 1; index <= 120; ++index) {

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <string>
 
 #include "haylen/core/Engine.hpp"
@@ -38,6 +39,22 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
     // Sends a trackpad scroll over a point and runs a frame.
     void trackpad(math::Vec2 point, math::Vec2 scroll) {
         wheel(point, scroll.y, scroll.x, true);
+    }
+
+    // Sends the scroll of a trackpad that reports the phases of its gestures over a point, up and down, and runs a frame.
+    void phase(math::Vec2 point, float scroll, platform::Event::ScrollPhase value) {
+        pointer(platform::Event::Type::MouseMove, point);
+        platform::Event event;
+        event.type = platform::Event::Type::MouseScroll;
+        event.scroll = {0.0F, scroll};
+        event.preciseScroll = true;
+        event.scrollPhase = value;
+        getEngine().handleEvent(event);
+        frames();
+    }
+
+    std::shared_ptr<Gui> mountLongPage() {
+        return mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "spacer", "height": 4000}]}]})");
     }
 
     // Drags a finger from one point to another over some frames, rests it until its speed is gone and lifts it.
@@ -157,6 +174,72 @@ TEST_F(ScrollArbiterTest, ShiftTurnsAWheelSideways) {
     frames(kRest);
     EXPECT_NEAR(getBounds(*gui, "covers").x, left - 64.0F, 0.5F);
     EXPECT_EQ(getBounds(*gui, "strip").y, top);
+}
+
+// Content that fingers on a trackpad pulled past an end springs back the moment they leave, while the momentum the system adds after them still arrives and moves nothing.
+TEST_F(ScrollArbiterTest, SpringsBackTheMomentFingersLeaveATrackpadWhileItsMomentumGoesOn) {
+    using Phase = platform::Event::ScrollPhase;
+    auto gui = mountLongPage();
+    const math::Vec2 inside = getBounds(*gui, "page").getCenter();
+    const float top = getBounds(*gui, "content").y;
+    phase(inside, 0.0F, Phase::Began);
+    for (int step = 0; step < 6; ++step) {
+        phase(inside, 40.0F, Phase::Changed);
+    }
+    const float stretched = getBounds(*gui, "content").y - top;
+    EXPECT_GT(stretched, 40.0F);
+    EXPECT_LT(stretched, 240.0F);
+
+    // The content goes on a little with the speed it had and then springs back, never pulled further by the momentum.
+    phase(inside, 0.0F, Phase::Ended);
+    float peak = stretched;
+    for (int step = 0; step < 30; ++step) {
+        phase(inside, 20.0F, Phase::Momentum);
+        const float now = getBounds(*gui, "content").y - top;
+        peak = std::max(peak, now);
+        if (step == 0) {
+            EXPECT_GT(now, stretched * 0.5F);
+        }
+    }
+    EXPECT_LT(peak, stretched + 20.0F);
+    EXPECT_NEAR(getBounds(*gui, "content").y, top, 0.5F);
+}
+
+// Fingers that leave a trackpad in the middle of the content fling it with the speed they had, the momentum of the system changes nothing, and fingers that touch the trackpad again stop it.
+TEST_F(ScrollArbiterTest, FlingsWithItsOwnMotionWhenFingersLeaveATrackpad) {
+    using Phase = platform::Event::ScrollPhase;
+    auto gui = mountLongPage();
+    const math::Vec2 inside = getBounds(*gui, "page").getCenter();
+    trackpad(inside, {0.0F, -1000.0F});
+    frames(kRest);
+    phase(inside, 0.0F, Phase::Began);
+    for (int step = 0; step < 6; ++step) {
+        phase(inside, -40.0F, Phase::Changed);
+    }
+    phase(inside, 0.0F, Phase::Ended);
+    const float released = getBounds(*gui, "content").y;
+    for (int step = 0; step < 10; ++step) {
+        phase(inside, 300.0F, Phase::Momentum);
+    }
+    const float flung = getBounds(*gui, "content").y;
+    EXPECT_LT(flung, released - 100.0F);
+
+    phase(inside, 0.0F, Phase::Began);
+    const float caught = getBounds(*gui, "content").y;
+    frames(10);
+    EXPECT_NEAR(getBounds(*gui, "content").y, caught, 1.0F);
+    phase(inside, 0.0F, Phase::Ended);
+}
+
+// A precise device without phases never pulls the content past an end, since nothing would tell it to spring back.
+TEST_F(ScrollArbiterTest, NeverStretchesTheContentWithAPreciseDeviceWithoutPhases) {
+    auto gui = mountLongPage();
+    const math::Vec2 inside = getBounds(*gui, "page").getCenter();
+    const float top = getBounds(*gui, "content").y;
+    for (int step = 0; step < 6; ++step) {
+        trackpad(inside, {0.0F, 40.0F});
+        EXPECT_EQ(getBounds(*gui, "content").y, top);
+    }
 }
 
 TEST_F(ScrollArbiterTest, AFingerGoesToTheAreaWhoseAxisItsDragFollows) {

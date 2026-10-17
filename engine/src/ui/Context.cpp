@@ -101,12 +101,21 @@ float Context::getMetric(Theme::Metric role) const noexcept {
 
 math::Vec2 Context::getWheelDistance() const noexcept {
     const ScrollArbiter::Wheel& wheel = getBackend().getScrollArbiter().getWheel();
-    return wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit();
+    return wheel.lines * getMetric(Theme::Metric::ScrollLine) + (wheel.points + wheel.momentum) / getBackend().getPointsPerUnit();
 }
 
 Context::WheelScroll Context::takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered) {
     const ScrollArbiter::AxisWheel wheel = getBackend().getScrollArbiter().takeWheel(area, bounds, horizontal, position, maximum, hovered);
-    return {.distance = wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit(), .stepped = wheel.lines != 0.0F};
+    using Motion = WheelScroll::Motion;
+    Motion motion = Motion::None;
+    if (wheel.lines != 0.0F) {
+        motion = Motion::Glide;
+    } else if (wheel.held) {
+        motion = Motion::Drag;
+    } else if (wheel.points != 0.0F) {
+        motion = Motion::Free;
+    }
+    return {.distance = wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit(), .momentum = wheel.momentum / getBackend().getPointsPerUnit(), .motion = motion, .touched = wheel.touched, .lifted = wheel.lifted};
 }
 
 bool Context::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal) {

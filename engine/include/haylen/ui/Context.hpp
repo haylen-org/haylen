@@ -67,10 +67,20 @@ class Context final {
         }
     };
 
-    // How far the wheel or the trackpad moves an area along its axis in a frame, in UI units toward its top or left end, and whether the distance came in steps of a wheel, which an area glides through, or in the points of a trackpad, which it follows at once.
+    // How the wheel or the trackpad moves an area along its axis in a frame: the distance in UI units toward its top or left end, and how the area follows it. The steps of a wheel glide there, fingers on a trackpad that reports the phases of its gestures drag the content, stretching it past an end, and a precise device without phases moves the content within its range. Fingers that touch the trackpad over the area stop its motion, and fingers that leave it let the content go on by its own motion. The momentum that the system adds once they left arrives apart, for areas that have no motion of their own.
     struct WheelScroll {
+        enum class Motion : std::uint8_t {
+            None,
+            Glide,
+            Drag,
+            Free,
+        };
+
         float distance = 0.0F;
-        bool stepped = false;
+        float momentum = 0.0F;
+        Motion motion = Motion::None;
+        bool touched = false;
+        bool lifted = false;
     };
 
     // Turns the events of the components of a collection cell into events of the collection while the cell draws.
