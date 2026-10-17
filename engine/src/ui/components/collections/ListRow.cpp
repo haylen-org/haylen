@@ -17,7 +17,7 @@ Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, b
     if (selected || state.held || state.hovered) {
         const Theme::Surface surface = selected ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
         const Theme::Color color = selected ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
-        Surfaces::draw(context, surface, bounds, context.getColor(color), std::nullopt, radius);
+        Surfaces::draw(context, surface, bounds, context.getColor(color), std::nullopt, rounding < 0.0F ? context.getInnerRadii(bounds, radius) : Surfaces::getRadii(radius, ImDrawFlags_RoundCornersAll));
     }
     return state;
 }

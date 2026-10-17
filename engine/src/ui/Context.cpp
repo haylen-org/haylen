@@ -8,6 +8,7 @@
 #include <variant>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "haylen/localization/Catalog.hpp"
 #include "haylen/text/FontFamily.hpp"
@@ -248,6 +249,7 @@ void Context::beginFrame(double now, float delta) noexcept {
     heldButtons.clear();
     sticks.clear();
     reshapes.clear();
+    enclosures.clear();
     layers.resize(1);
     toasts.beginFrame();
     time = now;
@@ -267,6 +269,35 @@ void Context::emit(const Component& component, std::string name, core::Json valu
 
 void Context::blockPointer(const math::Rect& area) {
     backend.blockPointer(area);
+}
+
+void Context::pushEnclosure(const math::Rect& bounds, float radius) {
+    enclosures.push_back({.bounds = bounds, .radius = radius, .window = ImGui::GetCurrentWindow()->RootWindow});
+}
+
+void Context::popEnclosure() {
+    enclosures.pop_back();
+}
+
+// A corner of the highlight that lies within the radius of the matching corner of the enclosure, on both axes, rounds by that radius less the inset, so the gap between the two curves stays even.
+std::array<float, 4> Context::getInnerRadii(const math::Rect& bounds, float radius) const {
+    std::array<float, 4> radii{radius, radius, radius, radius};
+    if (enclosures.empty() || enclosures.back().radius <= 0.0F || enclosures.back().window != ImGui::GetCurrentWindow()->RootWindow) {
+        return radii;
+    }
+    const Enclosure& outer = enclosures.back();
+    const float left = bounds.x - outer.bounds.x;
+    const float top = bounds.y - outer.bounds.y;
+    const float right = outer.bounds.getRight() - bounds.getRight();
+    const float bottom = outer.bounds.getBottom() - bounds.getBottom();
+    const std::array<std::array<float, 2>, 4> insets{{{left, top}, {right, top}, {right, bottom}, {left, bottom}}};
+    for (std::size_t corner = 0; corner < radii.size(); ++corner) {
+        const float inset = std::max(insets[corner][0], insets[corner][1]);
+        if (insets[corner][0] >= 0.0F && insets[corner][1] >= 0.0F && inset < outer.radius) {
+            radii[corner] = outer.radius - inset;
+        }
+    }
+    return radii;
 }
 
 // A node scales around its center, which maps a point `p` to `p * s + center * (1 - s)`, and the nodes around it apply their own mapping after it.

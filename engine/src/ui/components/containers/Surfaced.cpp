@@ -21,4 +21,11 @@ void Surfaced::paint(Context& context, const math::Rect& bounds) {
     Surfaces::draw(context, surface, bounds, context.getColor(fill), border, context.getMetric(Theme::Metric::PanelRadius));
 }
 
+// The nodes inside round their highlights concentric with the corners of the surface, which a surface that a theme paints with an image leaves to the image.
+void Surfaced::render(Context& context, const math::Rect& bounds) {
+    context.pushEnclosure(bounds, context.getSurface(surface) != nullptr ? 0.0F : context.getMetric(Theme::Metric::PanelRadius));
+    Linear::render(context, bounds);
+    context.popEnclosure();
+}
+
 } // namespace haylen::ui

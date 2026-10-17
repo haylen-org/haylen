@@ -3252,7 +3252,7 @@ Both built-in themes share these metrics, in design units.
 | `toastRadius` | `999` | Corner radius of toasts, at most half the height of a toast of one line, so the default rounds every toast of one line into a pill. |
 | `toastPeek` | `14` | How far each notice behind the front of a closed deck of toasts peeks out past the notice in front of it. |
 | `toneBarWidth` | `6` | Width of the bar of the tone of alerts. |
-| `panelRadius` | `16` | Corner radius of panels, cards, dialogs, windows, toasts and popups, which the rows of a popup and the title bar of a window follow inside it. |
+| `panelRadius` | `16` | Corner radius of panels, cards, dialogs, windows, toasts and popups, which the rows of a popup, the highlighted rows of a list or a collection in a card and the title bar of a window follow inside it. |
 | `contentSpacing` | `12` | Space between the box, the switch or the icon of a control and its text. |
 | `focusGap` | `3` | Space between a control and its focus ring. |
 | `disabledOpacity` | `0.5` | Opacity of disabled nodes. |

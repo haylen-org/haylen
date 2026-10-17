@@ -73,12 +73,20 @@ void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bou
         return;
     }
     const float rounding = std::min(radius < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) : radius, std::min(bounds.width, bounds.height) * 0.5F);
+    draw(context, role, bounds, fill, border, getRadii(rounding, corners));
+}
+
+void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border, const std::array<float, 4>& radii) {
+    if (const Theme::Image* image = context.getSurface(role)) {
+        drawNineSlice(context, *image, bounds, fill);
+        return;
+    }
     const float width = context.getMetric(Theme::Metric::BorderWidth);
     const bool bordered = border && border->a > 0.0F && width > 0.0F;
     if (fill.a <= 0.0F && !bordered) {
         return;
     }
-    drawShape(context, {.bounds = bounds, .radii = getRadii(rounding, corners), .color = fill, .borderWidth = bordered ? width : 0.0F, .borderColor = bordered ? *border : math::Color::transparent()});
+    drawShape(context, {.bounds = bounds, .radii = radii, .color = fill, .borderWidth = bordered ? width : 0.0F, .borderColor = bordered ? *border : math::Color::transparent()});
 }
 
 // A shape rounds each corner by at most half its shorter side, so the radius needs no limit here.

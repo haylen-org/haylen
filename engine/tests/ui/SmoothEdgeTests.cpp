@@ -114,6 +114,37 @@ TEST_F(SmoothEdgeTest, DrawsTheBackdropOfACooldownAsItsDial) {
     EXPECT_EQ(dial->bounds.getCenter(), getBounds(*gui, "cooldown").getCenter());
 }
 
+// A selected row inside a card rounds the corners it shares with the card concentric with the corners of the card, so the gap between the two curves stays even, and keeps the radius of rows elsewhere.
+TEST_F(SmoothEdgeTest, RoundsTheCornersOfARowConcentricWithTheCardAroundIt) {
+    const char* items = R"([{"id": "home", "text": "Home"}, {"id": "work", "text": "Work"}, {"id": "studio", "text": "Studio"}])";
+    const float panel = getUi().getTheme().getMetric(Theme::Metric::PanelRadius);
+    const float row = getUi().getTheme().getMetric(Theme::Metric::ControlRadius) * 0.5F;
+    const math::Color selection = getUi().getTheme().getColor(Theme::Color::Selection);
+    // clang-format off
+    const auto selectedRadii = [&](const std::string& json) {
+        auto gui = mount(json);
+        frames(2);
+        const std::optional<graphics2d::Shape> shape = findShape([&selection](const graphics2d::Shape& drawn) { return drawn.color == selection; });
+        getUi().unmount(*gui);
+        return shape ? shape->radii : std::array<float, 4>{};
+    };
+    // clang-format on
+
+    const std::array<float, 4> first = selectedRadii(std::string(R"({"kind": "column", "align": "start", "children": [{"kind": "card", "padding": 6, "width": 400, "children": [{"kind": "list", "selected": "home", "items": )") + items + "}]}]}");
+    EXPECT_NEAR(first[0], panel - 6.0F, 0.01F);
+    EXPECT_NEAR(first[1], panel - 6.0F, 0.01F);
+    EXPECT_NEAR(first[2], row, 0.01F);
+    EXPECT_NEAR(first[3], row, 0.01F);
+
+    const std::array<float, 4> last = selectedRadii(std::string(R"({"kind": "column", "align": "start", "children": [{"kind": "card", "padding": 6, "width": 400, "children": [{"kind": "list", "selected": "studio", "items": )") + items + "}]}]}");
+    EXPECT_NEAR(last[0], row, 0.01F);
+    EXPECT_NEAR(last[2], panel - 6.0F, 0.01F);
+    EXPECT_NEAR(last[3], panel - 6.0F, 0.01F);
+
+    const std::array<float, 4> plain = selectedRadii(std::string(R"({"kind": "column", "width": 400, "children": [{"kind": "list", "selected": "home", "items": )") + items + "}]}");
+    EXPECT_EQ(plain, (std::array<float, 4>{row, row, row, row}));
+}
+
 // Every curved control draws through shapes whose edges the shader covers exactly, so a frame of them uploads no vertices of ImGui at all.
 TEST_F(SmoothEdgeTest, DrawsTheCurvesOfControlsAsShapes) {
     // clang-format off

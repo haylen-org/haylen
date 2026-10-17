@@ -1346,7 +1346,7 @@ bool Collection::drawCell(Context& context, CollectionCell& cell, const math::Re
             if (chosen || state.held || state.hovered) {
                 const Theme::Surface surface = chosen ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
                 const Theme::Color color = chosen ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
-                Surfaces::draw(context, surface, rect, context.getColor(color), std::nullopt, radius);
+                Surfaces::draw(context, surface, rect, context.getColor(color), std::nullopt, context.getInnerRadii(rect, radius));
             }
             clicked = state.clicked && !(reorderable && GImGui->NavActivatePressedId == item && takeCarry(context, cell));
             if (reorderable && focus.getCarried() && focus.getCarried()->source == getId()) {

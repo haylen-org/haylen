@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -28,6 +29,8 @@
 #include "haylen/ui/Theme.hpp"
 #include "haylen/ui/ToastStack.hpp"
 #include "haylen/ui/Transform.hpp"
+
+struct ImGuiWindow;
 
 namespace haylen::input {
 class Input;
@@ -239,6 +242,12 @@ class Context final {
     void emit(const Component& component, std::string name, core::Json value = core::Json::object());
     void blockPointer(const math::Rect& area);
 
+    // A rounded surface pushes its area and corner radius around the drawing of the nodes inside it, so their highlights round concentric with its corners. Popups, dialogs and the other windows of their own never take the corners of a surface around them.
+    void pushEnclosure(const math::Rect& bounds, float radius);
+    void popEnclosure();
+    // Returns the radii of the top-left, top-right, bottom-right and bottom-left corners of a highlight, such as a selected row: concentric with a corner of the innermost enclosure that the highlight comes within its radius of, and `radius` elsewhere.
+    [[nodiscard]] std::array<float, 4> getInnerRadii(const math::Rect& bounds, float radius) const;
+
     // Nodes whose transform scales, fades or tints them push it around their drawing.
     void pushReshape(const Transform& shape, math::Vec2 center);
     void popReshape();
@@ -282,6 +291,12 @@ class Context final {
         std::string language;
     };
 
+    struct Enclosure {
+        math::Rect bounds;
+        float radius = 0.0F;
+        const ImGuiWindow* window = nullptr;
+    };
+
     Backend& backend;
     FocusNavigator& focus;
     const localization::Catalog& catalog;
@@ -297,6 +312,7 @@ class Context final {
     std::set<std::string, std::less<>> heldButtons;
     std::map<std::string, math::Vec2, std::less<>> sticks;
     std::vector<Reshape> reshapes;
+    std::vector<Enclosure> enclosures;
     ToastStack toasts;
 
     // The texts the frame keeps, in slots that frames reuse and that never move while the frame draws.

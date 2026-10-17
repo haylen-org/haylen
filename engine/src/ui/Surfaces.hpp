@@ -22,6 +22,8 @@ class Surfaces final {
   public:
     // Paints a surface, whose flat colors round the corners the flags name, all of them by default, with the border inside the same edge.
     static void draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border = std::nullopt, float radius = -1.0F, ImDrawFlags corners = ImDrawFlags_RoundCornersAll);
+    // Draws a surface whose corners round by their own radii, each at most half the shorter side, top-left first and clockwise.
+    static void draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border, const std::array<float, 4>& radii);
 
     // Fills a rectangle whose corners the flags name round by the radius, up to half its shorter side, such as the highlight of a row.
     static void fill(Context& context, const math::Rect& bounds, math::Color color, float radius, ImDrawFlags corners = ImDrawFlags_RoundCornersAll);

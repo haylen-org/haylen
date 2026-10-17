@@ -15,6 +15,7 @@ class Surfaced : public Linear {
   protected:
     [[nodiscard]] math::Insets getPadding(Context& context) const override;
     void paint(Context& context, const math::Rect& bounds) override;
+    void render(Context& context, const math::Rect& bounds) override;
 
   private:
     Theme::Surface surface;
