@@ -40,7 +40,7 @@ function ToastStacks:enter()
     self:frame{
         hint = 'Every button adds a notice at its position. A list shows three notices at most while the next ones wait, and a deck puts the newest in front, opens under the pointer or a finger or, as the other deck, keeps its depth while each press takes the front notice away. The time of a stack stops while the pointer or a finger is on it, a press closes a notice, and a sideways drag swipes it away.',
         focus = 'show-top',
-        content = {layout.columns{
+        content = {ui.scroll{grow = 1, height = 0, layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('Command "show" at every position', {
                     ui.segmentedControl{id = 'arrangement', items = {{id = 'list', text = 'List'}, {id = 'deck', text = 'Deck that opens'}, {id = 'depth', text = 'Deck'}}, selected = 'list', onChange = function(event) self:arrange(event.value) end},
@@ -71,7 +71,7 @@ function ToastStacks:enter()
                 onAnswer = function(event) self:set('status', {text = 'The dialog answered "' .. event.button .. '".'}) end},
             ui.toast{id = 'sticky', text = 'This notice stays until it is let go', tone = 'warning', duration = 0},
             table.unpack(toasts),
-        }},
+        }}},
     }
 end
 
