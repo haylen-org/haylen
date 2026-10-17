@@ -34,8 +34,8 @@ class Surfaces final {
     // Draws a shape in UI coordinates, moved, scaled and faded by the transforms of the nodes around it and by the alpha of ImGui, such as the alpha of a disabled node.
     static void drawShape(Context& context, graphics2d::Shape shape);
 
-    // Paints the soft shadow of the theme under a floating surface, such as a dialog or a menu, reaching past the clip of its window.
-    static void drawShadow(Context& context, const math::Rect& bounds, float radius);
+    // Paints the soft shadow of the theme under a floating surface, such as a dialog or a menu, reaching past the clip of its window. A lift below one casts a smaller, nearer and lighter shadow for a surface that floats lower.
+    static void drawShadow(Context& context, const math::Rect& bounds, float radius, float lift = 1.0F);
 
     // Returns the radius of each corner, from the top-left one clockwise, for the corners the flags round.
     [[nodiscard]] static std::array<float, 4> getRadii(float radius, ImDrawFlags corners) noexcept;

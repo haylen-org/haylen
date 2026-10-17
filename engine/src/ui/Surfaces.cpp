@@ -127,13 +127,14 @@ float Surfaces::getInnerRadius(float radius, float inset) noexcept {
 }
 
 // The shadow is the surface moved down by the offset and grown by half the size of the shadow, with an edge that fades over the whole size, so it is as dark as its color along the edge of the surface and clears the size away from it.
-void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radius) {
-    const float size = context.getMetric(Theme::Metric::ShadowSize);
-    const math::Color color = context.getColor(Theme::Color::Shadow);
+void Surfaces::drawShadow(Context& context, const math::Rect& bounds, float radius, float lift) {
+    const float size = context.getMetric(Theme::Metric::ShadowSize) * lift;
+    const math::Color shade = context.getColor(Theme::Color::Shadow);
+    const math::Color color = shade.withAlpha(shade.a * lift);
     if (size <= 0.0F || color.a <= 0.0F) {
         return;
     }
-    const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset)}).expanded(size * 0.5F);
+    const math::Rect cast = bounds.translated({0.0F, context.getMetric(Theme::Metric::ShadowOffset) * lift}).expanded(size * 0.5F);
     const float rounding = radius + size * 0.5F;
     ImDrawList& list = *ImGui::GetWindowDrawList();
     const math::Rect reach = context.getReshape().apply(cast.expanded(size * 0.5F));

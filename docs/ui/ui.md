@@ -90,7 +90,7 @@ Every curve of the components fades over one pixel of the screen, in both scale 
 
 - A surface paints its fill and its border in one shape, so the border runs inside the same edge, follows its corners and meets the fill without a seam.
 - The focus ring is the border of a shape the `focusGap` away from its control, with corners concentric to the corners of the control.
-- The shadow of a floating surface is one shape under it whose edge fades over `shadowSize`, as dark as the `shadow` color along the edge of the surface.
+- The shadow of a floating surface is one shape under it whose edge fades over `shadowSize`, as dark as the `shadow` color along the edge of the surface. A toast floats lower than dialogs, windows and popups, so its shadow is smaller, nearer and lighter, and the notices of a stack never darken each other.
 - The highlight of a selected, hovered or pressed row of a list or a collection inside a card or a panel rounds the corners that meet the corners of the card concentric with them, with the radius of the card less the space between them, and keeps the radius of its rows everywhere else.
 - The shapes reach the renderer at their place among the ImGui draws through callbacks of the draw list, and so do the texts, rich texts and nine-slices of the components. The draws one after another in a window under the same clip and texture share one callback, the shapes of neighbouring controls merge into one draw call, and the frame keeps every draw in storage that frames reuse.
 

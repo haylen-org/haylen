@@ -202,6 +202,17 @@ TEST_F(SmoothEdgeTest, CastsOneSoftShadowUnderFloatingSurfaces) {
     EXPECT_FLOAT_EQ(shadow->radii[0], getMetric(Theme::Metric::PanelRadius) + size * 0.5F);
 }
 
+// A notice floats lower than dialogs and windows, so it casts a smaller, nearer and lighter shadow than theirs.
+TEST_F(SmoothEdgeTest, CastsALowShadowUnderANotice) {
+    mount(R"({"kind": "column", "children": [{"kind": "toast", "text": "Saved", "duration": 0, "open": true}]})");
+    frames(30);
+    const float size = getMetric(Theme::Metric::ShadowSize);
+    const std::optional<graphics2d::Shape> shadow = findShape([size](const graphics2d::Shape& shape) { return shape.softness > 0.0F && shape.softness < size; });
+    ASSERT_TRUE(shadow.has_value());
+    EXPECT_LT(shadow->color.a, getColor(Theme::Color::Shadow).a);
+    EXPECT_FALSE(findShape([size](const graphics2d::Shape& shape) { return shape.softness == size; }).has_value());
+}
+
 // A switch shades its track the way buttons shade their fill: with the hover color under the pointer and with the pressed color while it is held, in both of its states.
 TEST_F(SmoothEdgeTest, ShadesTheTrackOfAHeldSwitchWithThePressedColor) {
     const std::shared_ptr<Gui> gui = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "toggle", "id": "sound"}]})");

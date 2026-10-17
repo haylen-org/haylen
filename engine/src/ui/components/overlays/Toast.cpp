@@ -358,7 +358,7 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
         return context.mirror(part.translated(origin), frame);
     };
     // clang-format on
-    Surfaces::drawShadow(context, frame, layout.radius);
+    Surfaces::drawShadow(context, frame, layout.radius, kShadowLift);
     Surfaces::draw(context, Theme::Surface::Toast, frame, colors.fill, colors.border, layout.radius);
 
     // The whole notice takes the press that swipes it, and the action and the close button over it take theirs first.

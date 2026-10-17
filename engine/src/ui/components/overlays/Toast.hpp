@@ -134,6 +134,9 @@ class Toast final : public Component {
         {"hidden", Reason::Hidden},
     }};
 
+    // A notice floats low over what it covers, with this share of the shadow of dialogs and windows, so the notices of a stack never darken each other.
+    static constexpr float kShadowLift = 0.4F;
+
     // A notice behind the front of a closed deck shrinks by this share for each notice in front of it.
     static constexpr float kDeckShrink = 0.05F;
 
