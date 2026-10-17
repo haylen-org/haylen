@@ -181,28 +181,28 @@
                 "thigh": {
                     "frame": "thigh",
                     "x": 18,
-                    "rotation": 90
+                    "rotation": -90
                 }
             },
             "backShin": {
                 "shin": {
                     "frame": "shin",
                     "x": 17,
-                    "rotation": 90
+                    "rotation": -90
                 }
             },
             "frontThigh": {
                 "thigh": {
                     "frame": "thigh",
                     "x": 18,
-                    "rotation": 90
+                    "rotation": -90
                 }
             },
             "frontShin": {
                 "shin": {
                     "frame": "shin",
                     "x": 17,
-                    "rotation": 90
+                    "rotation": -90
                 }
             },
             "torso": {
