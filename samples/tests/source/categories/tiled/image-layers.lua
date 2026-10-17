@@ -1,4 +1,4 @@
--- Image layers that repeat across the view: a still sky, clouds that repeat on both axes and two ranges of hills, each scrolling at the parallax factor of its layer.
+-- Image layers that repeat across the view: a still sky, clouds that repeat on both axes, two ranges of hills and the ground seen from the side, each scrolling at the parallax factor of its layer, with the bushes of a tile layer passing in front.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')

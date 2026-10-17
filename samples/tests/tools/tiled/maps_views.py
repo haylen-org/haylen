@@ -125,21 +125,18 @@ def parallax(folder: Path) -> None:
     builder = MapBuilder(80, 12, backgroundcolor="#ff1e3a5f", parallaxoriginx=0, parallaxoriginy=192).tileset(1, TERRAIN)
     rng = random.Random(61)
 
-    def ground(column: int, row: int) -> int:
-        if row == 9:
-            return gid(t.GRASS)
-        return gid(t.DIRT) if row > 9 else 0
-
+    # The bushes of the front layer pass nearer than the ground, so they stand at the bottom edge of the view, partly below it.
     def front(column: int, row: int) -> int:
-        return gid(t.BUSH) if row == 10 and rng.random() < 0.25 else 0
+        return gid(t.BUSH) if row == 11 and rng.random() < 0.25 else 0
 
+    # The ground is a strip seen from the side, whose grass covers the foot of the near hills, so the trees stand on it.
     builder.add(
         builder.image("sky", "../images/sky.png", 16, 384, repeatx=True, parallaxx=0, parallaxy=0),
         builder.image("clouds", "../images/clouds.png", 320, 160, repeatx=True, repeaty=True, parallaxx=0.15, parallaxy=0.15, opacity=0.8),
         builder.image("far hills", "../images/hills-far.png", 640, 200, repeatx=True, parallaxx=0.3, parallaxy=1, offsety=110, tintcolor="#ff9fb0c8"),
-        builder.image("near hills", "../images/hills-near.png", 640, 160, repeatx=True, parallaxx=0.6, parallaxy=1, offsety=170),
-        builder.tiles("ground", ground),
-        builder.tiles("front", front, parallaxx=1.4, parallaxy=1),
+        builder.image("near hills", "../images/hills-near.png", 640, 160, repeatx=True, parallaxx=0.6, parallaxy=1, offsety=140),
+        builder.image("ground", "../images/ground.png", 640, 112, repeatx=True, offsety=272),
+        builder.tiles("front", front, parallaxx=1.4, parallaxy=1, offsety=14),
     )
     builder.save(folder / "parallax.tmj")
 

@@ -7,7 +7,7 @@ return {
         {code = 'TLD-001', title = 'Orientations', description = 'Orthogonal, isometric, staggered, hexagonal and oblique maps, with the cell under the pointer.', module = 'orientations'},
         {code = 'TLD-002', title = 'Infinite maps', description = 'A map stored in chunks that reach negative cells, panned with the pointer, the keys or a stick.', module = 'infinite'},
         {code = 'TLD-003', title = 'Tile animations', description = 'Water, lava, torches, coins and slimes whose tiles play their frames on map time.', module = 'animations'},
-        {code = 'TLD-004', title = 'Image layers', description = 'A sky, clouds and hills that repeat across the view and scroll at their own parallax.', module = 'image-layers'},
+        {code = 'TLD-004', title = 'Image layers', description = 'A sky, clouds, hills and the ground seen from the side that repeat across the view and scroll at their own parallax, with bushes of a tile layer passing in front.', module = 'image-layers'},
         {code = 'TLD-005', title = 'Group layers', description = 'Nested groups that pass their offset, tint, opacity and parallax on to their layers.', module = 'groups'},
         {code = 'TLD-006', title = 'Objects and templates', description = 'Every object shape and object templates with their overrides, picked under the pointer.', module = 'objects'},
         {code = 'TLD-007', title = 'Properties', description = 'Custom properties of every type on the map, its layers, its objects and its tiles.', module = 'properties'},
