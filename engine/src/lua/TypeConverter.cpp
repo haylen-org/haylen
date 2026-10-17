@@ -538,6 +538,8 @@ graphics2d::SpriteInstance TypeConverter::readSpriteInstance(lua_State* L, int i
             Table::readValue(L, key, base.pivot.y);
         } else if (key == "rotation") {
             Table::readValue(L, key, base.rotation);
+        } else if (key == "tilt") {
+            Table::readValue(L, key, base.tilt);
         } else if (key == "color") {
             Table::readValue(L, key, base.color);
         } else if (key == "flash") {

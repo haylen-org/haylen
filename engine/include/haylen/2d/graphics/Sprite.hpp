@@ -20,6 +20,7 @@ struct Sprite {
     math::Vec2 scale{1.0F, 1.0F};
     math::Vec2 pivot{0.5F, 0.5F};
     float rotation = 0.0F;
+    float tilt = 0.0F;
     math::Color color = math::Color::white();
     math::Color flash = math::Color::transparent();
     SpriteFlip flip{};

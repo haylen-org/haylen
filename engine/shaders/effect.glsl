@@ -15,14 +15,16 @@ out vec4 glow_color;
 out vec4 amounts;
 out vec2 widths;
 
-// Places the corners of the grown quad like the sprite program places its own, with the flips of the sprite, and hands the effect to the fragment stage.
+// Places the corners of the grown quad like the sprite program places its own, with the tilt and the flips of the sprite, and hands the effect to the fragment stage.
 void main() {
     haylen_output_premultiply = haylen_premultiply;
     vec2 grown = corner * (1.0 + 2.0 * effect_reach) - effect_reach;
     vec2 local = (grown - instance_pivot) * instance_size;
     float sine = sin(instance_rotation);
     float cosine = cos(instance_rotation);
-    vec2 world = instance_position + vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
+    vec2 turned = vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
+    turned.y *= 1.0 - instance_parameters.w;
+    vec2 world = instance_position + turned;
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
 
     float flags = floor(instance_parameters.x * 255.0 + 0.5);

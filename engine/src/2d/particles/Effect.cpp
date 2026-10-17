@@ -158,8 +158,8 @@ math::EasingCurve Effect::readCurve(const core::Json& value, std::string_view ke
 }
 
 bool Effect::isEmitterKey(std::string_view key) noexcept {
-    static constexpr std::array<std::string_view, 71> kKeys{
-        "texture", "filter", "wrap", "frames", "frameGrid", "frameMode", "frameRate", "rate", "rateOverDistance", "bursts", "delay", "duration", "loop", "prewarm", "maxParticles", "lifetime", "speed", "speedCurve", "direction", "directionMode", "spread", "inheritVelocity", "gravity", "radialAcceleration", "tangentialAcceleration", "damping", "turbulence", "attractors", "collision", "bounds", "boundsMode", "startSize", "endSize", "endSizeScale", "sizeCurve", "aspect", "stretch", "rotation", "rotationStep", "alignToVelocity", "spin", "spinCurve", "colors", "colorTimes", "colorBlend", "tints", "tintMode", "shape", "shapeSize", "shapeAngle", "shapeArc", "shapePoints", "shapeThickness", "shapeImage", "colorFromImage", "localSpace", "pixelSnap", "particleOrder", "subEmitters", "trail", "light", "particleLights", "layer", "depth", "sortOffset", "visibility", "blend", "emission", "unshaded", "lightMask", "distortion",
+    static constexpr std::array<std::string_view, 72> kKeys{
+        "texture", "filter", "wrap", "frames", "frameGrid", "frameMode", "frameRate", "rate", "rateOverDistance", "bursts", "delay", "duration", "loop", "prewarm", "maxParticles", "lifetime", "speed", "speedCurve", "direction", "directionMode", "spread", "inheritVelocity", "gravity", "radialAcceleration", "tangentialAcceleration", "damping", "turbulence", "attractors", "collision", "bounds", "boundsMode", "startSize", "endSize", "endSizeScale", "sizeCurve", "aspect", "stretch", "rotation", "rotationStep", "tilt", "alignToVelocity", "spin", "spinCurve", "colors", "colorTimes", "colorBlend", "tints", "tintMode", "shape", "shapeSize", "shapeAngle", "shapeArc", "shapePoints", "shapeThickness", "shapeImage", "colorFromImage", "localSpace", "pixelSnap", "particleOrder", "subEmitters", "trail", "light", "particleLights", "layer", "depth", "sortOffset", "visibility", "blend", "emission", "unshaded", "lightMask", "distortion",
     };
     return std::find(kKeys.begin(), kKeys.end(), key) != kKeys.end();
 }
@@ -498,6 +498,8 @@ void Effect::readLook(const std::string& key, const core::Json& value, EmitterCo
         config.rotation = readRange(value, key);
     } else if (key == "rotationStep") {
         config.rotationStep = readNumber(value, key);
+    } else if (key == "tilt") {
+        config.tilt = readNumber(value, key);
     } else if (key == "alignToVelocity") {
         config.alignToVelocity = readBool(value, key);
     } else if (key == "spin") {

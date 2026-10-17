@@ -333,6 +333,23 @@ TEST_F(ParticlesTest, ParticlesTurnStretchAndSnap) {
     EXPECT_THROW(Emitter({.texture = texture(), .pixelSnap = -1.0F}), std::invalid_argument);
 }
 
+// A tilted emitter draws its particles on a plane through the emitter, nearer to it by the cosine of the tilt along the height of the screen, while they move as before, and its sprites lie on the same plane.
+TEST_F(ParticlesTest, TiltedEmittersLayTheirParticlesOnAPlane) {
+    Emitter tilted({.texture = texture(), .rate = 0.0F, .lifetime = {2.0F, 2.0F}, .speed = {100.0F, 100.0F}, .direction = 0.7853982F, .spread = 0.0F, .tilt = math::Math::kPi / 3.0F, .localSpace = true});
+    tilted.position = {100.0F, 200.0F};
+    tilted.burst(1);
+    tilted.update(0.5F);
+    const Emitter::Particle particle = tilted.getParticle(0);
+    EXPECT_NEAR(particle.position.x, 100.0F + 35.355F, 0.01F);
+    EXPECT_NEAR(particle.position.y, 200.0F + 35.355F, 0.01F);
+    EXPECT_NEAR(particle.sprite.position.x, particle.position.x, 0.01F);
+    EXPECT_NEAR(particle.sprite.position.y, 200.0F + 17.678F, 0.01F);
+    EXPECT_FLOAT_EQ(particle.sprite.tilt, math::Math::kPi / 3.0F);
+
+    EXPECT_THROW(Emitter({.texture = texture(), .tilt = -0.1F}), std::invalid_argument);
+    EXPECT_THROW(Emitter({.texture = texture(), .tilt = 1.6F}), std::invalid_argument);
+}
+
 TEST_F(ParticlesTest, FramesPlayInEveryMode) {
     const graphics::Texture sheet = texture(64, 32);
     Emitter grid({.texture = sheet, .frameGrid = {.columns = 4, .rows = 2, .count = 6}, .rate = 0.0F, .lifetime = {1.0F, 1.0F}});
@@ -750,7 +767,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
             "speedCurve": "quadOut", "directionMode": "outward", "inheritVelocity": 0.3, "turbulence": {"strength": 30, "frequency": 0.02, "speed": 1},
             "attractors": [{"x": 0, "y": -50, "strength": 300, "radius": 100, "killRadius": 4, "space": "world"}],
             "collision": {"type": "floor", "y": 40, "bounce": 0.3, "friction": 0.2, "result": "bounce", "lifeLoss": 0.1}, "bounds": [-100, -100, 200, 200], "boundsMode": "wrap",
-            "endSizeScale": [0.5, 1], "sizeCurve": {"curve": "backOut", "overshoot": 3}, "aspect": [1, 2], "stretch": 0.02, "rotation": [0, 6.2832], "rotationStep": 1.5708,
+            "endSizeScale": [0.5, 1], "sizeCurve": {"curve": "backOut", "overshoot": 3}, "aspect": [1, 2], "stretch": 0.02, "rotation": [0, 6.2832], "rotationStep": 1.5708, "tilt": 1.2,
             "alignToVelocity": true, "spinCurve": {"steps": 4}, "colors": ["#FFFFFFFF", "#80FF8000", "#00FF0000"], "colorTimes": [0, 0.3, 1], "colorBlend": "steps",
             "tints": ["#FFFF0000", "#FF0000FF"], "tintMode": "cycle", "shape": "arc", "shapeSize": [30, 0], "shapeAngle": 0.5, "shapeArc": [0, 3.14], "shapeThickness": 4,
             "pixelSnap": 2, "particleOrder": "newestFirst", "trail": {"length": 6, "lifetime": 0.2, "widthStart": 4, "widthEnd": 0, "colors": ["#FFFFFFFF", "#00FFFFFF"], "texture": "../images/line.png"},
@@ -807,6 +824,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(config.boundsMode, EmitterConfig::BoundsMode::Wrap);
     EXPECT_EQ(config.sizeCurve.getKind(), math::EasingCurve::Kind::Parametric);
     EXPECT_EQ(config.spinCurve->getKind(), math::EasingCurve::Kind::Steps);
+    EXPECT_FLOAT_EQ(config.tilt, 1.2F);
     EXPECT_EQ(config.colorBlend, EmitterConfig::ColorBlend::Steps);
     EXPECT_EQ(config.tintMode, EmitterConfig::TintMode::Cycle);
     EXPECT_EQ(config.shape, EmitterConfig::Shape::Arc);

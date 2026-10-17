@@ -91,6 +91,8 @@ void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& spri
     lua_setfield(L, -2, "pivotY");
     lua::Stack::push(L, sprite.rotation);
     lua_setfield(L, -2, "rotation");
+    lua::Stack::push(L, sprite.tilt);
+    lua_setfield(L, -2, "tilt");
     lua::Stack::push(L, sprite.color);
     lua_setfield(L, -2, "color");
     lua::Stack::push(L, sprite.flash);

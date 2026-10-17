@@ -109,6 +109,9 @@ void Emitter::validateLook(const EmitterConfig& settings) {
     if (!scaleValid || !(settings.aspect.min > 0.0F) || !(settings.stretch >= 0.0F) || !(settings.rotationStep >= 0.0F) || !(settings.pixelSnap >= 0.0F)) {
         throw std::invalid_argument("A particle end size scale, stretch, rotation step and pixel snap must be at least 0, and an aspect must be positive.");
     }
+    if (!(settings.tilt >= 0.0F && settings.tilt <= kMaxTilt)) {
+        throw std::invalid_argument("A particle tilt must be from 0 to 1.5708 radians.");
+    }
     const EmitterConfig::ParticleTrail& trail = settings.trail;
     if (trail.length > kMaxTrailLength || trail.length * settings.maxParticles > kMaxTrailPoints || !(trail.lifetime > 0.0F && std::isfinite(trail.lifetime)) || !(trail.widthStart >= 0.0F && trail.widthEnd >= 0.0F) || trail.colors.empty()) {
         throw std::invalid_argument("A particle trail holds at most 64 points, a million points across all the particles of the emitter, and needs a positive lifetime, widths of at least 0 and at least one color.");
@@ -196,6 +199,7 @@ void Emitter::prepare() {
     using Mode = EmitterConfig::FrameMode;
     usesTints = !config.tints.empty() || config.colorFromImage || inheritsColor;
     usesAspects = config.aspect.min != 1.0F || config.aspect.max != 1.0F;
+    flatten = std::max(std::cos(config.tilt), 0.0F);
     usesFrameStarts = config.frameMode == Mode::LoopRandomStart || config.frameMode == Mode::Random;
     usesHits = config.collision.type != EmitterConfig::Collision::Type::None;
     const std::size_t count = getCount();
@@ -532,7 +536,7 @@ void Emitter::trigger(std::size_t subEmitter, std::size_t index) {
         return;
     }
     const std::size_t count = pick(sub.count);
-    const math::Vec2 at = getOrigin() + particles.positions[index];
+    const math::Vec2 at = placeOnPlane(getOrigin() + particles.positions[index]);
     const math::Vec2 inherited = getVelocity(index) * sub.inheritVelocity;
     const math::Color tint = sub.inheritColor ? particleColor(index) : math::Color::white();
     Emitter& child = *children[subEmitter];
@@ -942,11 +946,16 @@ graphics2d::SpriteInstance Emitter::spriteAt(std::size_t index) const noexcept {
     if (config.stretch > 0.0F) {
         width += heading.getLength() * std::fabs(easeDown(config.speedCurve, life)) * config.stretch;
     }
-    math::Vec2 at = getOrigin() + particles.positions[index];
+    math::Vec2 at = placeOnPlane(getOrigin() + particles.positions[index]);
     if (config.pixelSnap > 0.0F) {
         at = math::Vec2{std::round(at.x / config.pixelSnap), std::round(at.y / config.pixelSnap)} * config.pixelSnap;
     }
-    return {.position = at, .size = {width, size}, .source = frameAt(index, life), .rotation = angle, .color = particleColor(index)};
+    return {.position = at, .size = {width, size}, .source = frameAt(index, life), .rotation = angle, .tilt = config.tilt, .color = particleColor(index)};
+}
+
+// Lays a point of the simulation on the tilted plane of the emitter, which passes through the emitter and shortens every height above or below it.
+math::Vec2 Emitter::placeOnPlane(math::Vec2 at) const noexcept {
+    return {at.x, position.y + (at.y - position.y) * flatten};
 }
 
 Emitter::Particle Emitter::getParticle(std::size_t index) const {
@@ -1001,9 +1010,9 @@ void Emitter::drawTrails(graphics2d::Renderer& renderer) const {
             continue;
         }
         trailLine.clear();
-        trailLine.push_back(origin + particles.positions[index]);
+        trailLine.push_back(placeOnPlane(origin + particles.positions[index]));
         for (std::size_t point = 0; point < points; ++point) {
-            trailLine.push_back(origin + particles.trails[index * length + point]);
+            trailLine.push_back(placeOnPlane(origin + particles.trails[index * length + point]));
         }
         Ribbon::append(trailLine, std::span<const float>(trailPlaces).first(trailLine.size()), {.widthStart = trail.widthStart * scale, .widthEnd = trail.widthEnd * scale, .colors = trail.colors, .tint = particleColor(index)}, trailVertices, trailIndices);
     }
@@ -1040,7 +1049,7 @@ void Emitter::drawLights(graphics2d::Renderer& renderer) const {
             const std::size_t index = light * getCount() / shown;
             const math::Color color = particleColor(index);
             if (color.a > 0.0F) {
-                renderer.drawLight({.position = origin + particles.positions[index], .radius = lights.radius * scale, .color = color.withAlpha(1.0F), .intensity = lights.intensity * color.a});
+                renderer.drawLight({.position = placeOnPlane(origin + particles.positions[index]), .radius = lights.radius * scale, .color = color.withAlpha(1.0F), .intensity = lights.intensity * color.a});
             }
         }
     }

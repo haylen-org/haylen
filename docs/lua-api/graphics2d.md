@@ -203,6 +203,7 @@ Draws `texture` once with its pivot at `x`, `y`. The argument `options` is optio
 | `scaleX`, `scaleY` | number | `1` | Multiply the drawn size. |
 | `pivotX`, `pivotY` | number | `0.5` | Point of the sprite that sits at `x`, `y` and that rotation turns around. |
 | `rotation` | number | `0` | Rotation in radians. |
+| `tilt` | number | `0` | Lays the turned sprite on a plane that leans away from the viewer by this angle in radians, which shortens its height on the screen by the cosine of the angle, so a circle on the ground spins as an ellipse instead of turning the ellipse. |
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha, for hit flashes. |
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image horizontally or vertically. |
@@ -223,6 +224,27 @@ scene.push({
     render = function(self)
         graphics2d.beginScreen()
         graphics2d.draw(sheet, 400, 300, {source = {0, 0, 192, 192}, scaleX = 2, scaleY = 2, flipHorizontal = true, flash = '#80FFFFFF'})
+    end,
+})
+```
+
+A tilted sprite lies on the ground under a character, such as a magic circle that keeps turning flat:
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local circle = assets.texture('effects/magic-circle.png', {filter = 'linear'})
+local turned = 0
+
+scene.push({
+    update = function(self, dt)
+        turned = turned + dt
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.draw(circle, 400, 420, {width = 240, height = 240, rotation = turned, tilt = 1.1, blend = 'additive'})
     end,
 })
 ```
@@ -1488,6 +1510,7 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `scaleX`, `scaleY` | number | `1` | Multiply the drawn size. |
 | `pivotX`, `pivotY` | number | `0.5` | Pivot as a fraction of the size. |
 | `rotation` | number | `0` | Rotation in radians. |
+| `tilt` | number | `0` | Lays the turned sprite on a plane that leans away from the viewer by this angle in radians, which shortens its height on the screen by the cosine of the angle, so a circle on the ground spins as an ellipse instead of turning the ellipse. |
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
 | `source` | Rect | empty | Region of the texture in pixels. An empty rectangle covers the whole texture. |
@@ -1536,6 +1559,7 @@ A `SpriteBatch` holds many sprites that share one texture, or up to 8 textures. 
 | `source` | Rect | whole texture | Region of the texture in pixels. |
 | `pivotX`, `pivotY` | number | `0.5` | Pivot as a fraction of the size. |
 | `rotation` | number | `0` | Rotation in radians. |
+| `tilt` | number | `0` | Lays the turned sprite on a plane that leans away from the viewer by this angle in radians, which shortens its height on the screen by the cosine of the angle, so a circle on the ground spins as an ellipse instead of turning the ellipse. |
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image. |
@@ -1546,7 +1570,7 @@ A `SpriteBatch` holds many sprites that share one texture, or up to 8 textures. 
 
 ### Sprite fields
 
-Float buffers name the numbers of a sprite with these fields: `x`, `y`, `width`, `height`, `rotation`, `pivotX`, `pivotY`, the color channels `red`, `green`, `blue` and `alpha` from 0 to 1, the source rectangle `sourceX`, `sourceY`, `sourceWidth` and `sourceHeight` in texture pixels, the `texture` of the batch counted from 1, and the numbers of the data `data1`, `data2`, `data3` and `data4`. An unknown name raises an error that ends with `(unknown value '<name>')`, and an empty list raises `A sprite layout needs at least one field.`.
+Float buffers name the numbers of a sprite with these fields: `x`, `y`, `width`, `height`, `rotation`, `tilt`, `pivotX`, `pivotY`, the color channels `red`, `green`, `blue` and `alpha` from 0 to 1, the source rectangle `sourceX`, `sourceY`, `sourceWidth` and `sourceHeight` in texture pixels, the `texture` of the batch counted from 1, and the numbers of the data `data1`, `data2`, `data3` and `data4`. An unknown name raises an error that ends with `(unknown value '<name>')`, and an empty list raises `A sprite layout needs at least one field.`.
 
 ### batch:add(sprite)
 

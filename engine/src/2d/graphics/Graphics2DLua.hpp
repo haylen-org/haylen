@@ -31,7 +31,7 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 1> kCaptureFields{"clear"};
     static constexpr std::array<std::string_view, 1> kNineSliceDrawFields{"borderScale"};
     static constexpr std::array<std::string_view, 8> kShapeFields{"radius", "rotation", "startAngle", "sweep", "color", "borderWidth", "borderColor", "softness"};
-    static constexpr std::array<std::string_view, 14> kVectorFields{"x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
+    static constexpr std::array<std::string_view, 15> kVectorFields{"x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "tilt", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
 

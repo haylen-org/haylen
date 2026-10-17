@@ -105,7 +105,12 @@ void haylen_vertex_main() {
     local.x -= haylen_signed_byte(instance_parameters.z) / 127.0 * local.y;
     float sine = sin(angle);
     float cosine = cos(angle);
-    vec2 world = instance_position + vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
+    vec2 turned = vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
+#ifndef HAYLEN_TEXT
+    // The tilt lays the turned quad on a plane that leans away from the viewer, which shortens its height on the screen.
+    turned.y *= 1.0 - instance_parameters.w;
+#endif
+    vec2 world = instance_position + turned;
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
 
     // Text reads the outline, the weight and the softness from its parameters, and sprites read flip flags that follow Tiled: bit 0 flips horizontally, bit 1 vertically and bit 2 swaps the axes. Tiled swaps the image first and flips the result, so the lookup flips first and swaps last.

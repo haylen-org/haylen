@@ -23,6 +23,7 @@ class SpriteLayout final {
         Width,
         Height,
         Rotation,
+        Tilt,
         PivotX,
         PivotY,
         Red,
@@ -43,7 +44,7 @@ class SpriteLayout final {
     // Throws `std::invalid_argument` without fields.
     explicit SpriteLayout(std::vector<Field> layoutFields, const SpriteInstance& sprite = {}, const SpriteData& data = {});
 
-    // Resolves the names `x`, `y`, `width`, `height`, `rotation`, `pivotX`, `pivotY`, `red`, `green`, `blue`, `alpha`, `sourceX`, `sourceY`, `sourceWidth`, `sourceHeight`, `texture`, `data1`, `data2`, `data3` and `data4`.
+    // Resolves the names `x`, `y`, `width`, `height`, `rotation`, `tilt`, `pivotX`, `pivotY`, `red`, `green`, `blue`, `alpha`, `sourceX`, `sourceY`, `sourceWidth`, `sourceHeight`, `texture`, `data1`, `data2`, `data3` and `data4`.
     [[nodiscard]] static std::optional<Field> fieldFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view fieldName(Field value) noexcept;
 
@@ -75,8 +76,8 @@ class SpriteLayout final {
     void store(const SpriteInstance& sprite, const SpriteData& data, std::span<float> values, std::size_t index) const noexcept;
 
   private:
-    static constexpr std::array<std::pair<std::string_view, Field>, 20> kFieldNames{{
-        {"x", Field::X}, {"y", Field::Y}, {"width", Field::Width}, {"height", Field::Height}, {"rotation", Field::Rotation}, {"pivotX", Field::PivotX}, {"pivotY", Field::PivotY}, {"red", Field::Red}, {"green", Field::Green}, {"blue", Field::Blue}, {"alpha", Field::Alpha}, {"sourceX", Field::SourceX}, {"sourceY", Field::SourceY}, {"sourceWidth", Field::SourceWidth}, {"sourceHeight", Field::SourceHeight}, {"texture", Field::Texture}, {"data1", Field::Data1}, {"data2", Field::Data2}, {"data3", Field::Data3}, {"data4", Field::Data4},
+    static constexpr std::array<std::pair<std::string_view, Field>, 21> kFieldNames{{
+        {"x", Field::X}, {"y", Field::Y}, {"width", Field::Width}, {"height", Field::Height}, {"rotation", Field::Rotation}, {"tilt", Field::Tilt}, {"pivotX", Field::PivotX}, {"pivotY", Field::PivotY}, {"red", Field::Red}, {"green", Field::Green}, {"blue", Field::Blue}, {"alpha", Field::Alpha}, {"sourceX", Field::SourceX}, {"sourceY", Field::SourceY}, {"sourceWidth", Field::SourceWidth}, {"sourceHeight", Field::SourceHeight}, {"texture", Field::Texture}, {"data1", Field::Data1}, {"data2", Field::Data2}, {"data3", Field::Data3}, {"data4", Field::Data4},
     }};
 
     [[nodiscard]] static bool isDataField(Field field) noexcept {
@@ -98,6 +99,8 @@ class SpriteLayout final {
             return sprite.size.y;
         case Field::Rotation:
             return sprite.rotation;
+        case Field::Tilt:
+            return sprite.tilt;
         case Field::PivotX:
             return sprite.pivot.x;
         case Field::PivotY:

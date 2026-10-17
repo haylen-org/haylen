@@ -90,6 +90,7 @@ TEST_F(Graphics2DLuaTest, CreatesAndEditsSprites) {
     EXPECT_EQ(lua("sprite.source = {0, 0, 8, 8} sprite.flash = '#80FFFFFF' sprite.depth = 3 sprite.flipVertical = true sprite.flipHorizontal = false return sprite.source.width .. ' ' .. sprite.flash:toHex() .. ' ' .. sprite.depth .. ' ' .. tostring(sprite.flipHorizontal) .. tostring(sprite.flipVertical)"), "8.0 #80FFFFFF 3.0 falsetrue");
     EXPECT_EQ(lua("sprite.texture = graphics.whiteTexture() return sprite.texture == graphics.whiteTexture()"), "true");
     EXPECT_EQ(lua("local before = sprite.flipDiagonal sprite.flipDiagonal = true return tostring(before) .. ' ' .. tostring(sprite.flipDiagonal) .. ' ' .. tostring(graphics2d.newSprite(hero, {flipDiagonal = true}).flipDiagonal)"), "false true true");
+    EXPECT_EQ(lua("local before = sprite.tilt sprite.tilt = 1 return before .. ' ' .. sprite.tilt .. ' ' .. graphics2d.newSprite(hero, {tilt = 0.5}).tilt"), "0.0 1.0 0.5");
     EXPECT_NE(lua("return graphics2d.newSprite(hero, {speed = 3})").find("Sprite\" has no writable property \"speed\""), std::string::npos);
     EXPECT_NE(lua("sprite.blend = 'burn'").find("error: "), std::string::npos);
     EXPECT_NE(lua("return graphics2d.newSprite('hero')").find("error: "), std::string::npos);
@@ -123,6 +124,7 @@ TEST_F(Graphics2DLuaTest, DrawsBatchesAndStaticBatches) {
     EXPECT_EQ(lua("local s = batch:get(1) return s.x .. ' ' .. s.y .. ' ' .. s.width .. 'x' .. s.height .. ' ' .. s.pivotX .. ' ' .. s.color:toHex() .. ' ' .. tostring(s.flipHorizontal) .. ' ' .. tostring(s.source.width)"), "1.0 2.0 16.0x8.0 0.5 #FFFFFFFF false 0.0");
     EXPECT_EQ(lua("local index = batch:add({source = {0, 0, 4, 2}, flipVertical = true, rotation = 1, flash = '#80FFFFFF'}) local s = batch:get(index) batch:remove(index) return s.width .. 'x' .. s.height .. ' ' .. tostring(s.flipVertical) .. ' ' .. s.rotation .. ' ' .. s.flash:toHex()"), "4.0x2.0 true 1.0 #80FFFFFF");
     EXPECT_EQ(lua("local index = batch:add({flipDiagonal = true}) local diagonal = batch:get(index).flipDiagonal batch:remove(index) return tostring(diagonal) .. ' ' .. tostring(batch:get(1).flipDiagonal)"), "true false");
+    EXPECT_EQ(lua("local index = batch:add({tilt = 1.5}) local tilt = batch:get(index).tilt batch:remove(index) return tilt .. ' ' .. batch:get(1).tilt"), "1.5 0.0");
     EXPECT_NE(lua("batch:get(9)").find("sprite index out of range"), std::string::npos);
     EXPECT_NE(lua("batch:reserve(-1)").find("expected a non-negative integer"), std::string::npos);
     EXPECT_NE(lua("batch:reserve(1 << 60)").find("A sprite batch holds at most 16777216 sprites."), std::string::npos);
@@ -307,6 +309,7 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
     EXPECT_NE(render("graphics2d.beginWorld(graphics2d.newCamera(), {ambientLight = '#000000', postProcess = {vignete = 1}})").find("Unknown option \"vignete\""), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.draw(hero, 0, 0, {scale = 2})").find("Unknown option \"scale\""), std::string::npos);
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.draw(hero, 0, 0, {flipDiagonal = true, flipHorizontal = true})"), "nil");
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.draw(hero, 0, 0, {tilt = 1.2}) graphics2d.drawBatch(hero, {{x = 4, tilt = 0.8}})"), "nil");
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRect({0, 0, 1, 1}, '#FFFFFF', {layr = 1})").find("Unknown option \"layr\""), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'x', 0, 0, {colour = '#FFFFFF'})").find("Unknown option \"colour\""), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'x', 0, 0, {[1] = 'x'})").find("Option tables only accept string keys"), std::string::npos);

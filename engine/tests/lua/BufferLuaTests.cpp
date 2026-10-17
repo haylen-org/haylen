@@ -83,16 +83,18 @@ TEST(SpriteLayoutTest, StoresAndAppliesEveryField) {
         fields.push_back(static_cast<SpriteLayout::Field>(field));
         values.push_back(static_cast<float>(field + 1) * 0.5F);
     }
+    values[static_cast<std::size_t>(SpriteLayout::Field::Texture)] = 9.0F;
     const SpriteLayout layout(fields);
     const SpriteInstance sprite = layout.makeSprite(values, 0);
     EXPECT_EQ(sprite.position, math::Vec2(0.5F, 1.0F));
     EXPECT_EQ(sprite.size, math::Vec2(1.5F, 2.0F));
     EXPECT_EQ(sprite.rotation, 2.5F);
-    EXPECT_EQ(sprite.pivot, math::Vec2(3.0F, 3.5F));
-    EXPECT_EQ(sprite.color, (math::Color{4.0F, 4.5F, 5.0F, 5.5F}));
-    EXPECT_EQ(sprite.source, (math::Rect{6.0F, 6.5F, 7.0F, 7.5F}));
+    EXPECT_EQ(sprite.tilt, 3.0F);
+    EXPECT_EQ(sprite.pivot, math::Vec2(3.5F, 4.0F));
+    EXPECT_EQ(sprite.color, (math::Color{4.5F, 5.0F, 5.5F, 6.0F}));
+    EXPECT_EQ(sprite.source, (math::Rect{6.5F, 7.0F, 7.5F, 8.0F}));
     const SpriteData data = layout.makeData(values, 0);
-    EXPECT_EQ(data, (SpriteData{.texture = 7, .values = {8.5F, 9.0F, 9.5F, 10.0F}}));
+    EXPECT_EQ(data, (SpriteData{.texture = 8, .values = {9.0F, 9.5F, 10.0F, 10.5F}}));
     EXPECT_TRUE(layout.hasData());
     EXPECT_FALSE(SpriteLayout({SpriteLayout::Field::X}).hasData());
     EXPECT_TRUE(SpriteLayout({SpriteLayout::Field::X}, {}, {.texture = 1}).hasData());

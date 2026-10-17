@@ -257,6 +257,7 @@ The function `particles2d.newEmitter`, its overrides table and `emitter:configur
 | `stretch` | number | `0` | Lengthens each particle along its width by its speed times this value, which with `alignToVelocity` stretches sparks and rain along their motion. |
 | `rotation` | range | `0` | Rotation at birth in radians, such as `{0, 6.2832}` for random orientations. |
 | `rotationStep` | number | `0` | Snaps every drawn rotation to multiples of this angle, such as `1.5708` for pixel art that only turns by quarter turns. |
+| `tilt` | number | `0` | Lays the particles on a plane through the emitter that leans away from the viewer by this angle in radians, from 0 to 1.5708. Each particle lies on the plane like a sprite drawn with the `tilt` of `graphics2d.draw`, and its position, trail and light come nearer to the emitter along the height of the screen by the cosine of the angle, while the particles move as before. Rings, circles and swirls on the ground keep spinning flat this way. |
 | `alignToVelocity` | boolean | `false` | Adds the angle of the motion to the rotation, so textures that point right follow their motion. A vertical texture takes a `rotation` of `-1.5708`. |
 | `spin` | range | `0` | Rotation speed in radians per second. |
 | `spinCurve` | curve | none | Eases the spin from its full value at birth to 0 at the end of the life, such as `'quadOut'` for a coin that spins down, and `false` removes it. |
@@ -341,6 +342,7 @@ Unknown keys raise `Unknown option "name".`, and an unknown name raises an error
 - `A particle frame rate must be positive and finite.`
 - `Particle color times need one time from 0 to 1 for each color, in growing order.`
 - `A particle end size scale, stretch, rotation step and pixel snap must be at least 0, and an aspect must be positive.`
+- `A particle tilt must be from 0 to 1.5708 radians.`
 - `A particle trail holds at most 64 points, a million points across all the particles of the emitter, and needs a positive lifetime, widths of at least 0 and at least one color.`
 - `A particle light needs a positive radius, an intensity and a flicker speed of at least 0 and a flicker amount from 0 to 1.`
 - `Particle lights need a positive radius, an intensity of at least 0 and at most 1024 lights.`

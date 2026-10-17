@@ -154,6 +154,8 @@ class Emitter final {
     static constexpr std::size_t kMaxTrailLength = 64;
     static constexpr std::size_t kMaxTrailPoints = 1000000;
     static constexpr std::size_t kMaxParticleLights = 1024;
+    // A plane tilted by a right angle lies edge on to the viewer.
+    static constexpr float kMaxTilt = 1.5708F;
     static constexpr std::size_t kParallelGrain = 4096;
     static debug::ObjectCounter& emitterCounter;
     static debug::ObjectCounter& particleCounter;
@@ -204,6 +206,7 @@ class Emitter final {
     // The point of the world that particle positions are relative to, the emitter position for local space emitters.
     [[nodiscard]] math::Vec2 getOrigin() const noexcept;
 
+    [[nodiscard]] math::Vec2 placeOnPlane(math::Vec2 at) const noexcept;
     void drawTrails(graphics2d::Renderer& renderer) const;
     void drawLights(graphics2d::Renderer& renderer) const;
 
@@ -230,6 +233,7 @@ class Emitter final {
 
     bool usesTints = false;
     bool usesAspects = false;
+    float flatten = 1.0F;
     bool usesFrameStarts = false;
     bool usesHits = false;
 

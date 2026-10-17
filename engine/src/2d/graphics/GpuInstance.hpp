@@ -18,7 +18,7 @@ struct TextureResource;
 
 namespace haylen::graphics2d {
 
-// One sprite or glyph as the sprite and text shaders read it from the instance buffer. The four parameter bytes hold the flip bits of a sprite in the first byte, and the outline, weight and softness of a glyph drawn by the text program, while the third byte is the skew of both. A shape fills a record of the same size with fields of its own.
+// One sprite or glyph as the sprite and text shaders read it from the instance buffer. The four parameter bytes hold the flip bits of a sprite in the first byte and how much its tilt shortens it in the fourth, and the outline, weight and softness of a glyph drawn by the text program, while the third byte is the skew of both. A shape fills a record of the same size with fields of its own.
 struct GpuInstance {
     // How a glyph looks beyond its color: the outline, weight and softness in distance field units and the skew as a horizontal shift per unit of height above the baseline.
     struct TextParameters {

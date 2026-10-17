@@ -63,7 +63,7 @@ GpuInstance GpuInstance::make(const graphics::TextureResource& texture, const Sp
         .color = sprite.color.toRgba8(),
         .flash = sprite.flash.toRgba8(),
         .rotation = sprite.rotation,
-        .parameters = {flipBits(sprite.flip), 0, 0, 0},
+        .parameters = {flipBits(sprite.flip), 0, 0, static_cast<std::uint8_t>(std::lround((1.0F - std::fabs(std::cos(sprite.tilt))) * 255.0F))},
         .pivot = {sprite.pivot.x, sprite.pivot.y},
     };
 }

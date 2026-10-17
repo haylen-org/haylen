@@ -269,6 +269,8 @@ void Particles2DLua::readLook(lua_State* L, std::string_view key, EmitterConfig&
         lua::Table::readValue(L, key, config.rotation);
     } else if (key == "rotationStep") {
         lua::Table::readValue(L, key, config.rotationStep);
+    } else if (key == "tilt") {
+        lua::Table::readValue(L, key, config.tilt);
     } else if (key == "alignToVelocity") {
         lua::Table::readValue(L, key, config.alignToVelocity);
     } else if (key == "spin") {
@@ -591,6 +593,7 @@ void Particles2DLua::pushLook(lua_State* L, const EmitterConfig& config) {
     setValue(L, "stretch", config.stretch);
     setValue(L, "rotation", config.rotation);
     setValue(L, "rotationStep", config.rotationStep);
+    setValue(L, "tilt", config.tilt);
     setValue(L, "alignToVelocity", config.alignToVelocity);
     setValue(L, "spin", config.spin);
     if (config.spinCurve) {

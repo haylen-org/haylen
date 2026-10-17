@@ -246,6 +246,7 @@ struct EmitterConfig {
     float stretch = 0.0F;
     math::FloatRange rotation{};
     float rotationStep = 0.0F;
+    float tilt = 0.0F;
     bool alignToVelocity = false;
     math::FloatRange spin{};
     std::optional<math::EasingCurve> spinCurve;

@@ -74,7 +74,7 @@ TEST(Particles2DLuaTest, ReadsAndReturnsEveryOption) {
             attractors = {{x = 1, y = 2, strength = 30, radius = 40, killRadius = 3, space = 'world'}},
             collision = {type = 'bounds', area = {-10, -10, 20, 20}, bounce = 0.8, friction = 0.1, result = 'bounce', lifeLoss = 0.2},
             bounds = {-100, -100, 200, 200}, boundsMode = 'wrap', endSizeScale = {1, 1.5}, sizeCurve = {curve = 'backOut', overshoot = 2},
-            aspect = {1, 3}, stretch = 0.1, rotation = {0, 1}, rotationStep = 0.5, alignToVelocity = true, spinCurve = {steps = 3, position = 'start'},
+            aspect = {1, 3}, stretch = 0.1, rotation = {0, 1}, rotationStep = 0.5, tilt = 1.25, alignToVelocity = true, spinCurve = {steps = 3, position = 'start'},
             colors = {'#FFFF0000', '#FF00FF00'}, colorTimes = {0, 1}, colorBlend = 'steps', tints = {'#FFFFFFFF'}, tintMode = 'cycleTime',
             shape = 'polyline', shapePoints = {{0, 0}, {10, 0}}, shapeAngle = 0.2, shapeArc = {0, 2}, shapeThickness = 3, pixelSnap = 2,
             particleOrder = 'newestFirst', trail = {length = 5, lifetime = 0.3, widthStart = 6, widthEnd = 1, colors = {'#FFFFFFFF'}},
@@ -87,7 +87,7 @@ TEST(Particles2DLuaTest, ReadsAndReturnsEveryOption) {
     // clang-format on
     EXPECT_EQ(fixture.lua("return config.frameGrid.columns .. config.frameMode .. config.frameRate .. ' ' .. config.bursts[1].count[2] .. ' ' .. config.bursts[1].cycles .. ' ' .. config.speedCurve .. ' ' .. config.directionMode"), "1loop6.0 3 2 quadOut tangent");
     EXPECT_EQ(fixture.lua("return config.turbulence.speed .. ' ' .. config.attractors[1].space .. ' ' .. config.collision.type .. ' ' .. config.collision.area.width .. ' ' .. config.bounds.width .. ' ' .. config.boundsMode"), "2.0 world bounds 20.0 200.0 wrap");
-    EXPECT_EQ(fixture.lua("return config.endSizeScale[2] .. ' ' .. config.sizeCurve.curve .. ' ' .. config.sizeCurve.overshoot .. ' ' .. config.spinCurve.steps .. config.spinCurve.position .. ' ' .. config.aspect[2] .. ' ' .. tostring(config.alignToVelocity)"), "1.5 backOut 2.0 3start 3.0 true");
+    EXPECT_EQ(fixture.lua("return config.endSizeScale[2] .. ' ' .. config.sizeCurve.curve .. ' ' .. config.sizeCurve.overshoot .. ' ' .. config.spinCurve.steps .. config.spinCurve.position .. ' ' .. config.aspect[2] .. ' ' .. config.tilt .. ' ' .. tostring(config.alignToVelocity)"), "1.5 backOut 2.0 3start 3.0 1.25 true");
     EXPECT_EQ(fixture.lua("return config.colorBlend .. ' ' .. config.tintMode .. ' ' .. config.shape .. ' ' .. #config.shapePoints .. ' ' .. config.shapeThickness .. ' ' .. config.particleOrder .. ' ' .. config.trail.length"), "steps cycleTime polyline 2 3.0 newestFirst 5");
     EXPECT_EQ(fixture.lua("return string.format('%.1f', config.light.flicker.amount) .. ' ' .. config.light.fade .. ' ' .. config.particleLights.max .. ' ' .. config.visibility .. ' ' .. tostring(config.unshaded) .. ' ' .. config.lightMask .. ' ' .. config.distortion"), "0.4 count 4 4 true 2 0.5");
     EXPECT_EQ(fixture.lua("local sub = config.subEmitters[1] return sub.trigger .. ' ' .. sub.count[2] .. ' ' .. tostring(sub.inheritColor) .. ' ' .. string.format('%.1f', sub.effect.lifetime[1])"), "alive 2 true 0.2");

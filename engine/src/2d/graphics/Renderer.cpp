@@ -238,6 +238,7 @@ void Renderer::draw(const Sprite& sprite) {
         .source = source,
         .pivot = sprite.pivot,
         .rotation = sprite.rotation,
+        .tilt = sprite.tilt,
         .color = sprite.color,
         .flash = sprite.flash,
         .flip = sprite.flip,

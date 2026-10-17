@@ -227,7 +227,7 @@ int Graphics2DLua::endCapture(lua_State* L) {
     return 0;
 }
 
-// Draws a texture immediately with `draw(texture, x, y, {source, width, height, scaleX, scaleY, pivotX, pivotY, rotation, color, flash, flipHorizontal, flipVertical, flipDiagonal, layer, depth, blend})`.
+// Draws a texture immediately with `draw(texture, x, y, {source, width, height, scaleX, scaleY, pivotX, pivotY, rotation, tilt, color, flash, flipHorizontal, flipVertical, flipDiagonal, layer, depth, blend})`.
 int Graphics2DLua::draw(lua_State* L) {
     Sprite sprite;
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
@@ -239,6 +239,7 @@ int Graphics2DLua::draw(lua_State* L) {
         sprite.size = instance.size;
         sprite.pivot = instance.pivot;
         sprite.rotation = instance.rotation;
+        sprite.tilt = instance.tilt;
         sprite.color = instance.color;
         sprite.flash = instance.flash;
         sprite.flip = instance.flip;
@@ -288,6 +289,8 @@ int Graphics2DLua::drawVector(lua_State* L) {
                 lua::Table::readValue(L, key, sprite.pivot.y);
             } else if (key == "rotation") {
                 lua::Table::readValue(L, key, sprite.rotation);
+            } else if (key == "tilt") {
+                lua::Table::readValue(L, key, sprite.tilt);
             } else if (key == "color") {
                 lua::Table::readValue(L, key, sprite.color);
             } else if (key == "flash") {
