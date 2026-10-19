@@ -6,6 +6,7 @@ final class {{NAME}}Plugin: NSObject, HaylenPlugin {
     struct Echo: Codable {
         let message: String
     }
+    {{BLOCK:APPLE_MEMBERS}}
 
     func load(with context: HaylenPluginContext) {
         // Answers `{{ID}}.echo` with the message it receives, and sends it to the app again as the `{{ID}}.echoed` event.
@@ -13,5 +14,6 @@ final class {{NAME}}Plugin: NSObject, HaylenPlugin {
             try context.emit("echoed", params)
             return params
         }
+        {{BLOCK:APPLE_LOAD}}
     }
 }

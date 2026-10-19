@@ -51,6 +51,8 @@ TEMPLATES_DIR = ROOT / "templates"
 COMMON_TEMPLATE = TEMPLATES_DIR / "common"
 APP_KINDS = {"lua": "Lua", "cpp": "C++"}
 PLUGIN_TEMPLATE = TEMPLATES_DIR / "plugin"
+# The features that "plugin new --with" adds to the skeleton, each a folder with its `feature.json`, its files and the code it adds to the parts of the skeleton, and the shared parts that features pull in.
+PLUGIN_FEATURES = TEMPLATES_DIR / "plugin-features"
 # The folder that haylen.py writes inside a platform project, and the only one it writes there.
 GENERATED_FOLDER = "haylen"
 ARTIFACTS_DIR = BUILD_ROOT / "artifacts"
@@ -4071,8 +4073,126 @@ def command_plugin_list(args: argparse.Namespace) -> None:
         terminal.info("\n".join(plugin_status(app, identifier, listed)))
 
 
+def plugin_feature_names() -> list[str]:
+    """The features that "plugin new --with" offers, the folders of `templates/plugin-features` whose `feature.json` is a choice."""
+    return sorted(folder.name for folder in PLUGIN_FEATURES.iterdir() if (folder / "feature.json").is_file() and json.loads((folder / "feature.json").read_text(encoding="utf-8")).get("choice", False))
+
+
+# The blocks of the skeleton that features fill, with how their lines sit among the lines around them: a blank line between the code of two features, one before the block and one after it.
+PLUGIN_BLOCKS = {
+    "APPLE_MEMBERS": (False, True, False), "APPLE_LOAD": (False, True, False),
+    "ANDROID_IMPORTS": (False, False, False), "ANDROID_MEMBERS": (False, False, True), "ANDROID_LOAD": (False, True, False), "ANDROID_HOOKS": (True, True, False), "ANDROID_MANIFEST": (False, False, True),
+    "WEB_IMPORTS": (False, False, True), "WEB_LOAD": (False, True, False),
+    "NATIVE_HANDLERS": (True, True, False), "NATIVE_REGISTER": (False, False, False),
+    "LUA_API": (True, True, False), "README_API": (True, True, False), "README_NATIVE": (False, False, False),
+}
+# The activity hooks of the Android part that features add lines to, with the imports their signatures need.
+PLUGIN_ANDROID_HOOKS = {
+    "onActivityCreated": ("override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?)", ["android.os.Bundle", "dev.haylen.HaylenActivity"]),
+    "onActivityDestroyed": ("override fun onActivityDestroyed(activity: HaylenActivity)", ["dev.haylen.HaylenActivity"]),
+}
+
+
+def plugin_features(chosen: list[str]) -> list[tuple[Path, dict]]:
+    """Returns the folders and descriptions of the chosen features and of the parts they pull in, each part before the features that need it and every one once."""
+    ordered: list[tuple[Path, dict]] = []
+
+    def visit(name: str) -> None:
+        if any(folder.name == name for folder, _ in ordered):
+            return
+        folder = PLUGIN_FEATURES / name
+        feature = json.loads((folder / "feature.json").read_text(encoding="utf-8"))
+        for part in feature.get("parts", []):
+            visit(part)
+        ordered.append((folder, feature))
+
+    for name in chosen:
+        visit(name)
+    return ordered
+
+
+def merge_plugin_manifest(target: dict, addition: dict) -> None:
+    """Merges what a feature adds to `plugin.json` into it: objects merge key by key, lists gain the items they lack and other values must agree."""
+    for key, value in addition.items():
+        if isinstance(value, dict) and isinstance(target.get(key), dict):
+            merge_plugin_manifest(target[key], value)
+        elif isinstance(value, list) and isinstance(target.get(key), list):
+            target[key] += [item for item in value if item not in target[key]]
+        elif key in target and target[key] != value:
+            raise BuildError(f'Two features of the plugin template give "{key}" different values in "plugin.json".')
+        else:
+            target[key] = copy.deepcopy(value)
+
+
+def plugin_blocks(features: list[tuple[Path, dict]]) -> dict[str, list[list[str]]]:
+    """Gathers the lines that every feature adds to each block of the skeleton, one group per feature, with the activity hooks of the Android part turned into the methods that hold them."""
+    blocks: dict[str, list[list[str]]] = {name: [] for name in PLUGIN_BLOCKS}
+    hooks: dict[str, list[str]] = {}
+    for folder, feature in features:
+        for name, lines in feature.get("blocks", {}).items():
+            if name not in PLUGIN_BLOCKS:
+                raise BuildError(f'The feature "{folder.name}" of the plugin template fills the block "{name}", which the skeleton lacks.')
+            blocks[name].append(lines)
+        for hook, lines in feature.get("androidHooks", {}).items():
+            hooks.setdefault(hook, []).extend(lines)
+        for name in ("readme", "lua"):
+            fragment = folder / f"{name}.{'md' if name == 'readme' else 'lua'}"
+            if fragment.is_file():
+                blocks["README_API" if name == "readme" else "LUA_API"].append(fragment.read_text(encoding="utf-8").rstrip("\n").split("\n"))
+    for hook, lines in hooks.items():
+        signature, imports = PLUGIN_ANDROID_HOOKS[hook]
+        blocks["ANDROID_HOOKS"].append([f"{signature} {{", *(f"    {line}" for line in lines), "}"])
+        blocks["ANDROID_IMPORTS"].append([f"import {name}" for name in imports])
+    return blocks
+
+
+def fill_plugin_blocks(text: str, blocks: dict[str, list[list[str]]]) -> str:
+    """Replaces every line that holds only a block token with the lines of its features at the indentation of the token, or drops the line when no feature fills the block, and sorts the imports of a Kotlin file that features added to."""
+    output: list[str] = []
+    for line in text.split("\n"):
+        match = re.fullmatch(r"( *)\{\{BLOCK:([A-Z_]+)\}\}", line)
+        if not match:
+            output.append(line)
+            continue
+        indent, name = match.groups()
+        groups = blocks[name]
+        if not groups:
+            continue
+        between, before, after = PLUGIN_BLOCKS[name]
+        if before:
+            output.append("")
+        for index, group in enumerate(groups):
+            if index and between:
+                output.append("")
+            output += [f"{indent}{entry}" if entry else "" for entry in group]
+        if after:
+            output.append("")
+    imports = [index for index, line in enumerate(output) if line.startswith("import ") and not line.endswith(";")]
+    if imports and imports[-1] - imports[0] + 1 == len(imports):
+        output[imports[0] : imports[-1] + 1] = sorted(set(output[imports[0] : imports[-1] + 1]))
+    return "\n".join(output)
+
+
+def json_document(value: object, depth: int = 0) -> str:
+    """Writes JSON the way the manifests of the repository read, with an indentation of four spaces and the lists of plain values on one line."""
+    pad, inner = "    " * depth, "    " * (depth + 1)
+    if isinstance(value, dict) and value:
+        return "{\n" + ",\n".join(f"{inner}{json.dumps(key, ensure_ascii=False)}: {json_document(item, depth + 1)}" for key, item in value.items()) + f"\n{pad}}}"
+    if isinstance(value, list) and any(isinstance(item, (dict, list)) for item in value):
+        return "[\n" + ",\n".join(f"{inner}{json_document(item, depth + 1)}" for item in value) + f"\n{pad}]"
+    return json.dumps(value, ensure_ascii=False, separators=(", ", ": "))
+
+
+def plugin_parameters_text(parameters: dict) -> str:
+    """The section of the README of a new plugin about its parameters: a table of them, or the sentence that says it has none."""
+    if not parameters:
+        return "The plugin has no parameters, so its entry in `app.json` is an empty object."
+    rows = [f'| `{name}` | {entry["type"]} | `{json.dumps(entry["default"])}` | {entry["description"]} |' for name, entry in parameters.items()]
+    return "\n".join(["Every parameter is optional and takes its default when the entry of the plugin in `app.json` leaves it out.", "", "| Parameter | Type | Default | Meaning |", "| --- | --- | --- | --- |", *rows])
+
+
 def command_plugin_new(args: argparse.Namespace) -> None:
-    """Creates a plugin from `templates/plugin`, with its id in the names of its files, classes and modules."""
+    """Creates a plugin from `templates/plugin`, with its id in the names of its files, classes and modules and the features that "--with" names in every native part."""
     folder = Path(args.folder).expanduser().resolve()
     identifier = args.id or folder.name
     if not PLUGIN_ID.fullmatch(identifier):
@@ -4081,6 +4201,11 @@ def command_plugin_new(args: argparse.Namespace) -> None:
         raise BuildError(f'A plugin folder is named after the id of the plugin, so the folder of "{identifier}" is named "{identifier}", not "{folder.name}".')
     if folder.exists() and any(folder.iterdir()):
         raise BuildError(f"The folder `{shown_path(folder)}` already exists and is not empty. Name a new folder or an empty one.")
+    offered = plugin_feature_names()
+    chosen = [name for entry in args.features for name in entry.split(",") if name]
+    for name in chosen:
+        if name not in offered:
+            raise BuildError(f'The plugin template has no feature "{name}". The features are {", ".join(f"\"{feature}\"" for feature in offered)}.')
 
     words = identifier.split("-")
     tokens = {"{{ID}}": identifier, "{{NAME}}": "".join(word.capitalize() for word in words), "{{TITLE}}": " ".join(word.capitalize() for word in words), "{{PACKAGE}}": "".join(words), "{{SYMBOL}}": "_".join(words), "{{MACRO}}": "_".join(words).upper()}
@@ -4090,11 +4215,22 @@ def command_plugin_new(args: argparse.Namespace) -> None:
             text = text.replace(token, value)
         return text
 
-    for source in sorted(path for path in PLUGIN_TEMPLATE.rglob("*") if path.is_file() and path.name != ".DS_Store"):
-        target = folder / substitute(source.relative_to(PLUGIN_TEMPLATE).as_posix())
+    features = plugin_features(chosen)
+    blocks = plugin_blocks(features)
+    manifest = json.loads(substitute((PLUGIN_TEMPLATE / "plugin.json").read_text(encoding="utf-8")))
+    for _, feature in features:
+        merge_plugin_manifest(manifest, json.loads(substitute(json.dumps(feature.get("plugin", {})))))
+    tokens["{{PARAMETERS}}"] = plugin_parameters_text(manifest["parameters"])
+
+    sources = [(PLUGIN_TEMPLATE, path) for path in sorted(PLUGIN_TEMPLATE.rglob("*")) if path.is_file() and path.name != ".DS_Store"]
+    sources += [(feature_folder, path) for feature_folder, _ in features for path in sorted(feature_folder.rglob("*")) if path.is_file() and path.name not in {".DS_Store", "feature.json", "readme.md", "lua.lua"}]
+    for base, source in sources:
+        target = folder / substitute(source.relative_to(base).as_posix())
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(substitute(source.read_text(encoding="utf-8")), encoding="utf-8")
-    terminal.success(f'Created the plugin "{identifier}" in `{shown_path(folder)}`.')
+        target.write_text(substitute(fill_plugin_blocks(source.read_text(encoding="utf-8"), blocks)), encoding="utf-8")
+    (folder / "plugin.json").write_text(json_document(manifest) + "\n", encoding="utf-8")
+    described = f' with {", ".join(f"\"{name}\"" for name in chosen)}' if chosen else ""
+    terminal.success(f'Created the plugin "{identifier}"{described} in `{shown_path(folder)}`.')
     terminal.info(f'Add it to an app with "{TOOL} plugin add {shown_path(folder)} --app <app folder>".')
 
 
@@ -5104,6 +5240,7 @@ def build_parser() -> argparse.ArgumentParser:
     new_plugin = actions.add_parser("new", parents=[common], help="Create a plugin from templates/plugin.")
     new_plugin.add_argument("folder", help="Folder of the new plugin, named after its id, which must not exist or be empty.")
     new_plugin.add_argument("--id", help='Id of the plugin in "dash-case", the folder name by default.')
+    new_plugin.add_argument("--with", dest="features", action="append", default=[], metavar="features", help=f'Features that the plugin starts with in every native part, separated by commas or given one per "--with": {", ".join(plugin_feature_names())}.')
     new_plugin.set_defaults(handler=command_plugin_new)
 
     platform_project = commands.add_parser("platform", parents=[common], help="Create the project of a platform in an app or compare it with the template.")

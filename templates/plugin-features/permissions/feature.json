@@ -1,0 +1,10 @@
+{
+    "description": "Asks for the permissions of Android through the Activity Result API of the activity, which the features that need a permission share.",
+    "blocks": {
+        "ANDROID_MEMBERS": ["private val permissions = {{NAME}}Permissions()"]
+    },
+    "androidHooks": {
+        "onActivityCreated": ["permissions.register(activity)"],
+        "onActivityDestroyed": ["permissions.unregister()"]
+    }
+}

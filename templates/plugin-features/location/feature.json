@@ -1,0 +1,82 @@
+{
+    "choice": true,
+    "description": "One fix of the location, or every change while the app watches as batched events, after the person allowed the location.",
+    "parts": [
+        "permissions",
+        "desktop-unsupported"
+    ],
+    "blocks": {
+        "APPLE_MEMBERS": [
+            "private let location = {{NAME}}Location()"
+        ],
+        "APPLE_LOAD": [
+            "location.register(context)"
+        ],
+        "ANDROID_MEMBERS": [
+            "private lateinit var location: {{NAME}}Location"
+        ],
+        "ANDROID_LOAD": [
+            "location = {{NAME}}Location(context, permissions)",
+            "location.register()"
+        ],
+        "ANDROID_MANIFEST": [
+            "<!-- The location that \"locate\" and \"watchLocation\" ask the person for, which devices without a location lack while they still install the app. -->",
+            "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />",
+            "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />",
+            "<uses-feature android:name=\"android.hardware.location\" android:required=\"false\" />",
+            "<uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />"
+        ],
+        "WEB_IMPORTS": [
+            "import registerLocation from \"./location.js\";"
+        ],
+        "WEB_LOAD": [
+            "registerLocation(context);"
+        ],
+        "NATIVE_REGISTER": [
+            "api->registerHandler(\"{{ID}}.locate\", {{SYMBOL}}_unsupported, NULL, NULL);",
+            "api->registerHandler(\"{{ID}}.watchLocation\", {{SYMBOL}}_unsupported, NULL, NULL);",
+            "api->registerHandler(\"{{ID}}.stopWatchingLocation\", {{SYMBOL}}_unsupported, NULL, NULL);"
+        ],
+        "README_NATIVE": [
+            "| `{{ID}}.locate` | `{}` | `{latitude, longitude, accuracy}` |",
+            "| `{{ID}}.watchLocation` | `{}` | |",
+            "| `{{ID}}.stopWatchingLocation` | `{}` | |",
+            "| `{{ID}}.located` (batched event) | `{latitude, longitude, accuracy}` | |"
+        ]
+    },
+    "plugin": {
+        "parameters": {
+            "locationUsage": {
+                "type": "string",
+                "platforms": [
+                    "ios",
+                    "catalyst",
+                    "tvos",
+                    "macos"
+                ],
+                "default": "The app uses the location.",
+                "description": "Text of the location permission prompt on Apple platforms."
+            },
+            "macDevices": {
+                "type": "boolean",
+                "platforms": [
+                    "macos"
+                ],
+                "default": true,
+                "description": "Whether the macOS app signs with the entitlements of the hardened runtime that the camera, the microphone and the location of the plugin need. The parameter has a value on macOS alone, so the other platforms leave the entitlements out."
+            }
+        },
+        "apple": {
+            "frameworks": [
+                "CoreLocation.framework"
+            ],
+            "infoPlist": {
+                "NSLocationWhenInUseUsageDescription": "${locationUsage}",
+                "NSLocationUsageDescription": "${locationUsage}"
+            },
+            "entitlements": {
+                "com.apple.security.personal-information.location": "${macDevices}"
+            }
+        }
+    }
+}

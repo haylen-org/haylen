@@ -1,0 +1,16 @@
+{
+    "description": "Fails the methods that the desktop library cannot serve with the code \"unsupported\", which the features that need a device of phones, tablets or browsers share.",
+    "blocks": {
+        "NATIVE_HANDLERS": [
+            "// Fails the methods of the features that the native parts of Apple platforms, Android and the web serve, and the desktop does not.",
+            "static void {{SYMBOL}}_unsupported(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {",
+            "    (void)user;",
+            "    (void)method;",
+            "    (void)paramsJson;",
+            "    (void)buffers;",
+            "    (void)bufferCount;",
+            "    {{SYMBOL}}_api->resolve(call, 0, \"{\\\"message\\\": \\\"This method of the plugin runs on Apple platforms, Android and the web, not on the desktop.\\\", \\\"code\\\": \\\"unsupported\\\"}\", NULL, 0);",
+            "}"
+        ]
+    }
+}

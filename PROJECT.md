@@ -2014,7 +2014,7 @@ Algoritmos e efeitos:
 Plugins e documentação de integração:
 
 - [ ] Um guia `.md` para cada integração, testado: Firebase (Analytics, Messaging e Crashlytics), AdMob, RevenueCat, App Tracking Transparency, PlayGama e Google Analytics, dizendo em que plataformas cada uma serve e como montar o plugin nativo de cada uma.
-- [ ] O esqueleto do `haylen plugin new` como ponto de partida esperto para qualquer plugin: câmera, localização, áudio do dispositivo e os outros casos, com as escolhas que o comando oferece.
+- [x] O esqueleto do `haylen plugin new` como ponto de partida esperto para qualquer plugin: câmera, localização, áudio do dispositivo e os outros casos, com as escolhas que o comando oferece. Feito: `haylen plugin new <pasta> --with camera,microphone,location,banner` traz, de `templates/plugin-features/`, código que funciona em cada parte nativa só com as APIs de cada plataforma: a câmera num stream de vídeo com foto em bytes JPEG, o microfone num stream de áudio, a localização com uma leitura e o acompanhamento em eventos em lote, e uma barra nativa sobre o app com botão que manda evento, com as permissões pedidas pelo prompt do sistema (Activity Result API no Android), as descrições de uso como parâmetros, o `plugin.json` mesclado, a API Lua e o README de cada recurso, e a biblioteca de desktop respondendo `unsupported`. Conferido no player de desktop, no simulador de iOS e de tvOS, no emulador de Android (câmera, foto, microfone, localização e lote), no navegador e na compilação de macOS e Mac Catalyst.
 
 Samples:
 

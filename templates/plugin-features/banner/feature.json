@@ -1,0 +1,42 @@
+{
+    "choice": true,
+    "description": "A native bar over the app with a text and a button that sends an event, placed by the overlay of the plugin.",
+    "parts": [
+        "desktop-unsupported"
+    ],
+    "blocks": {
+        "APPLE_MEMBERS": [
+            "private let banner = {{NAME}}Banner()"
+        ],
+        "APPLE_LOAD": [
+            "banner.register(context)"
+        ],
+        "ANDROID_MEMBERS": [
+            "private lateinit var banner: {{NAME}}Banner"
+        ],
+        "ANDROID_LOAD": [
+            "banner = {{NAME}}Banner(context)",
+            "banner.register()"
+        ],
+        "WEB_IMPORTS": [
+            "import registerBanner from \"./banner.js\";"
+        ],
+        "WEB_LOAD": [
+            "registerBanner(context);"
+        ],
+        "NATIVE_REGISTER": [
+            "api->registerHandler(\"{{ID}}.showBanner\", {{SYMBOL}}_unsupported, NULL, NULL);",
+            "api->registerHandler(\"{{ID}}.hideBanner\", {{SYMBOL}}_unsupported, NULL, NULL);"
+        ],
+        "README_NATIVE": [
+            "| `{{ID}}.showBanner` | `{text, anchor, reserve}` | |",
+            "| `{{ID}}.hideBanner` | `{}` | |",
+            "| `{{ID}}.bannerTapped` (event) | `{count}` | |"
+        ]
+    },
+    "androidHooks": {
+        "onActivityDestroyed": [
+            "banner.activityDestroyed()"
+        ]
+    }
+}

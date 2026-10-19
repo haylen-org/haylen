@@ -22,7 +22,7 @@ haylen plugin new ~/plugins/my-plugin
 | `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names (the default branch otherwise), into `plugins/<id>/` of the app, replacing an earlier copy, without its git history and build outputs. The copy keeps the `.gitignore`, `.editorconfig` and `.clang-format` of the plugin, which never reach the package. It lists the plugin in `app.json` with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in, keeps the values the app already gives, and names the plugins it requires that the app does not list yet. |
 | `plugin remove <id> [--app]` | Deletes `plugins/<id>/` of the app and its entry in `app.json`. |
 | `plugin list [--app]` | Lists the plugins of the app with their version, their platforms and their status: `ok`, the problems that keep a plugin from building for any of its platforms, or a folder that `app.json` does not list. |
-| `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/` in a folder named after its id, with an example method and event on every platform. `--id` defaults to the folder name and must match it. |
+| `plugin new <folder> [--id] [--with <features>]` | Creates a plugin from `templates/plugin/` in a folder named after its id, with an example method and event on every platform and the [features](#features-of-a-new-plugin) that `--with` names, separated by commas or given one per `--with`. `--id` defaults to the folder name and must match it. |
 
 The option `--app` takes an app folder or a sample path from `samples/`, and defaults to the current folder.
 
@@ -212,10 +212,25 @@ The placeholder `${name}` in a string of the `apple` and `android` sections is r
 
 ```sh
 haylen plugin new ~/plugins/my-plugin
+haylen plugin new ~/plugins/device-kit --with camera,location
 haylen plugin add ~/plugins/my-plugin --app ~/apps/my-game
 ```
 
 The command `plugin new` copies `templates/plugin/` with the id in the names of the files, classes and modules: `plugin.json`, a README, `source/init.lua` with the Lua API, `apple/<Name>Plugin.swift`, the Android module with its manifest meta-data and `<Name>Plugin.kt`, `web/<id>.js` and the CMake project of `native/` with `<Name>.c`, the C library that the desktop player and the Windows and Linux apps load, named after the id with its dashes turned into underscores, together with the files that the repository of a plugin keeps at its root: `.gitignore`, which keeps out the build folders of the Android module and of the CMake project in `native/`, the caches of Gradle and Kotlin and the files of Finder and the editors, `.editorconfig`, which sets the style of text files, and `.clang-format`, the C, C++ and Objective-C style of the engine. Each native part answers the method `<id>.echo` and sends the event `<id>.echoed`, so a new plugin works on every platform at once, and the Lua API wraps both with the plugin handle of `platform.plugin(id)` and loads the library of `native/` on the desktops.
+
+#### Features of a new plugin
+
+The option `--with` starts a plugin with working code for a common kind of native plugin in every native part, built on the APIs of each platform alone, so a new plugin begins from code that already asks for its permission, opens its stream or places its view, and the developer changes it instead of writing it from nothing. Each feature lives in `templates/plugin-features/<feature>/`, with its files, the code it adds to the plugin class of each part, what it adds to `plugin.json` and the sections of its Lua API and README:
+
+| Feature | What the plugin starts with |
+| --- | --- |
+| `camera` | `startCamera`, `stopCamera`, `takePhoto` and `cameraStream()`: the camera of AVFoundation, Camera2 and `getUserMedia` into the [video stream](#streams) `camera`, photos as JPEG [bytes](#bytes), the usage description of the camera and the permission of Android. |
+| `microphone` | `startMicrophone`, `stopMicrophone` and `microphoneStream()`: the microphone of AVAudioEngine, `AudioRecord` and an audio worklet into the [audio stream](#streams) `microphone`, which plays as a voice and gives its samples to Lua. |
+| `location` | `locate`, `watchLocation`, `stopWatchingLocation` and `onLocated`: one fix of Core Location, `LocationManager` and `navigator.geolocation`, and every change while the app watches as [batched events](#batched-events). |
+| `banner` | `showBanner`, `hideBanner` and `onBannerTapped`: a native bar with a text and a button that the [overlay](#overlays) places over the app at its top or bottom edge, and whose button sends an event. |
+
+The features that ask for a permission check the usage description of Apple platforms and the manifest of Android first, ask with the prompt of the system through the Activity Result API on Android, whose launcher the shared file `<Name>Permissions.kt` registers for every activity, and fail with the code `permissionDenied` when the person refuses. The usage descriptions are parameters of the plugin, `cameraUsage`, `microphoneUsage` and `locationUsage`, and `macDevices` signs the macOS app with the entitlements of the hardened runtime. The desktop library answers the methods of every feature with the code `unsupported`, since the desktops lack the devices of phones, tablets and browsers, and Apple TV, which has no camera, gives apps no microphone and gives one fix of the location without updates, answers those calls with the same code.
+
 
 ## Lua API of plugins
 

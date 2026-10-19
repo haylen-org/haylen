@@ -49,7 +49,7 @@ The file `haylen` at the root of the repository, a shell script for macOS and Li
 | `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or a plugin repository at a branch, tag or commit, into `plugins/` of an app and lists it in its `app.json`. |
 | `plugin remove <id> [--app]` | Deletes a plugin from an app and from its `app.json`. |
 | `plugin list [--app]` | Lists the plugins of an app with their status. |
-| `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/`. |
+| `plugin new <folder> [--id] [--with <features>]` | Creates a plugin from `templates/plugin/`, with the camera, microphone, location or banner features of `templates/plugin-features/` that `--with` names. |
 
 The argument `app` is the folder of an app, relative to the current folder or absolute. A command without an app, or with a path that holds no `app.json`, stops with an error that says what an app folder is, and never runs another app in its place.
 
@@ -384,6 +384,7 @@ templates/
     src/App.cpp       The starter app, which calls the bridge example and answers it on Windows and Linux.
     src/AppBridge.mm  The Objective-C handler of the bridge example on Apple platforms.
   plugin/             The starter plugin of haylen.py plugin new, with the .gitignore, .editorconfig and .clang-format of a plugin repository.
+  plugin-features/    The features that plugin new --with adds to the starter plugin, with the parts they share.
 ```
 
 The templates of apps are layers. The folder `common` holds what every kind of app shares, and `lua` and `cpp` what only their kind has. An app or a platform project takes the files of `common` first and then those of its kind, and a file of the kind replaces the common file of the same path, while a common file that the kind lacks stays, so no file repeats between the layers. The command `new` copies both layers whole, and `platform add`, `platform diff` and the copies that haylen.py keeps for apps without a project of a platform take `platform/<template>/` of both layers. The platform templates of a kind are the folders under `platform/` of its layers.

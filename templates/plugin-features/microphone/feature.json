@@ -1,0 +1,75 @@
+{
+    "choice": true,
+    "description": "The microphone into an audio stream that plays as a voice and gives its samples to Lua, after the person allowed the microphone.",
+    "parts": [
+        "permissions",
+        "desktop-unsupported"
+    ],
+    "blocks": {
+        "APPLE_MEMBERS": [
+            "private let microphone = {{NAME}}Microphone()"
+        ],
+        "APPLE_LOAD": [
+            "microphone.register(context)"
+        ],
+        "ANDROID_MEMBERS": [
+            "private lateinit var microphone: {{NAME}}Microphone"
+        ],
+        "ANDROID_LOAD": [
+            "microphone = {{NAME}}Microphone(context, permissions)",
+            "microphone.register()"
+        ],
+        "ANDROID_MANIFEST": [
+            "<!-- The microphone that \"startMicrophone\" asks the person for, which devices without a microphone lack while they still install the app. -->",
+            "<uses-permission android:name=\"android.permission.RECORD_AUDIO\" />",
+            "<uses-feature android:name=\"android.hardware.microphone\" android:required=\"false\" />"
+        ],
+        "WEB_IMPORTS": [
+            "import registerMicrophone from \"./microphone.js\";"
+        ],
+        "WEB_LOAD": [
+            "registerMicrophone(context);"
+        ],
+        "NATIVE_REGISTER": [
+            "api->registerHandler(\"{{ID}}.startMicrophone\", {{SYMBOL}}_unsupported, NULL, NULL);",
+            "api->registerHandler(\"{{ID}}.stopMicrophone\", {{SYMBOL}}_unsupported, NULL, NULL);"
+        ],
+        "README_NATIVE": [
+            "| `{{ID}}.startMicrophone` | `{}` | `{sampleRate, channels}` |",
+            "| `{{ID}}.stopMicrophone` | `{}` | |"
+        ]
+    },
+    "plugin": {
+        "parameters": {
+            "microphoneUsage": {
+                "type": "string",
+                "platforms": [
+                    "ios",
+                    "catalyst",
+                    "macos"
+                ],
+                "default": "The app listens to the microphone.",
+                "description": "Text of the microphone permission prompt on Apple platforms."
+            },
+            "macDevices": {
+                "type": "boolean",
+                "platforms": [
+                    "macos"
+                ],
+                "default": true,
+                "description": "Whether the macOS app signs with the entitlements of the hardened runtime that the camera, the microphone and the location of the plugin need. The parameter has a value on macOS alone, so the other platforms leave the entitlements out."
+            }
+        },
+        "apple": {
+            "frameworks": [
+                "AVFoundation.framework"
+            ],
+            "infoPlist": {
+                "NSMicrophoneUsageDescription": "${microphoneUsage}"
+            },
+            "entitlements": {
+                "com.apple.security.device.audio-input": "${macDevices}"
+            }
+        }
+    }
+}

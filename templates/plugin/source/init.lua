@@ -22,5 +22,6 @@ end
 function plugin.onEchoed(listener)
     return handle:on('echoed', listener)
 end
+{{BLOCK:LUA_API}}
 
 return plugin

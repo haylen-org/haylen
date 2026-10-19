@@ -19,6 +19,7 @@ static void {{SYMBOL}}_echo(void* user, uint64_t call, const char* method, const
     {{SYMBOL}}_api->emit("{{ID}}.echoed", paramsJson, NULL, 0, 0);
     {{SYMBOL}}_api->resolve(call, 1, paramsJson, NULL, 0);
 }
+{{BLOCK:NATIVE_HANDLERS}}
 
 // Registers the methods of the plugin and declares the library the native part of `{{ID}}`.
 {{MACRO}}_EXPORT int {{SYMBOL}}_haylen_init(const HaylenNativeApi* api) {
@@ -27,6 +28,7 @@ static void {{SYMBOL}}_echo(void* user, uint64_t call, const char* method, const
     }
     {{SYMBOL}}_api = api;
     api->registerHandler("{{ID}}.echo", {{SYMBOL}}_echo, NULL, NULL);
+    {{BLOCK:NATIVE_REGISTER}}
     api->registerPlugin("{{ID}}");
     return 0;
 }

@@ -29,39 +29,40 @@ The command `plugin add` copies the plugin into `plugins/{{ID}}/` of the app and
 
 ## Parameters
 
-The plugin has no parameters, so its entry in `app.json` is an empty object.
+{{PARAMETERS}}
 
 ## Lua API
 
 ```lua
-local echo = require('{{ID}}')
+local plugin = require('{{ID}}')
 ```
 
-### echo.echo(message)
+### plugin.echo(message)
 
 Sends `message` to the native part of the plugin, which answers with the same message. Returns a platform call of `haylen.platform`, whose `await` gives `{message = message}`, or `nil` and the error of the call.
 
 ```lua
 local async = require('async')
-local echo = require('{{ID}}')
+local plugin = require('{{ID}}')
 
 async.spawn(function()
-    local result, err = echo.echo('hello'):await()
+    local result, err = plugin.echo('hello'):await()
     print(result and result.message or tostring(err))
 end)
 ```
 
-### echo.onEchoed(listener)
+### plugin.onEchoed(listener)
 
 Calls `listener({message = message})` after every echo and returns the connection of the listener, whose `disconnect()` stops it.
 
 ```lua
-local echo = require('{{ID}}')
+local plugin = require('{{ID}}')
 
-local echoes = echo.onEchoed(function(payload)
-    print('echoed ' .. payload.message)
+local echoes = plugin.onEchoed(function(payload)
+    print('Echoed ' .. payload.message)
 end)
 ```
+{{BLOCK:README_API}}
 
 ## Native API
 
@@ -69,3 +70,4 @@ end)
 | --- | --- | --- |
 | `{{ID}}.echo` | `{message}` | `{message}` |
 | `{{ID}}.echoed` (event) | `{message}` | |
+{{BLOCK:README_NATIVE}}

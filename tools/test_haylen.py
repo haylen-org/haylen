@@ -525,7 +525,7 @@ class PluginTemplateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as scratch:
             folder = Path(scratch) / "camera-scanner"
             with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
-                haylen.command_plugin_new(argparse.Namespace(folder=str(folder), id=None))
+                haylen.command_plugin_new(argparse.Namespace(folder=str(folder), id=None, features=[]))
             manifest = json.loads((folder / "plugin.json").read_text())
             self.assertEqual(manifest["platforms"], ["ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux"])
             self.assertEqual(manifest["native"], {"cmake": "native", "platforms": ["macos", "windows", "linux"]})
@@ -537,6 +537,65 @@ class PluginTemplateTest(unittest.TestCase):
             self.assertIn("add_library(camera_scanner CameraScanner.c)", (folder / "native" / "CMakeLists.txt").read_text())
             self.assertIn("native.load('camera_scanner', {init = 'camera_scanner_haylen_init'})", (folder / "source" / "init.lua").read_text())
             self.assertFalse([path for path in folder.rglob("*") if "{{" in path.name or (path.is_file() and "{{" in path.read_text())])
+
+    def test_a_plain_plugin_keeps_the_manifest_of_the_template_as_it_reads(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch) / "plain"
+            with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+                haylen.command_plugin_new(argparse.Namespace(folder=str(folder), id=None, features=[]))
+            template = (haylen.PLUGIN_TEMPLATE / "plugin.json").read_text().replace("{{ID}}", "plain").replace("{{TITLE}}", "Plain").replace("{{NAME}}", "Plain")
+            self.assertEqual((folder / "plugin.json").read_text(), template)
+            self.assertIn("The plugin has no parameters", (folder / "README.md").read_text())
+            self.assertNotIn("\nimport ", (folder / "web" / "plain.js").read_text())
+
+    def test_features_bring_their_code_to_every_native_part_and_merge_their_manifests(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch) / "device-kit"
+            output = io.StringIO()
+            with mock.patch.object(haylen, "terminal", haylen.Terminal(output, io.StringIO(), {})):
+                haylen.command_plugin_new(argparse.Namespace(folder=str(folder), id=None, features=["camera,location", "banner", "microphone"]))
+            self.assertIn('with "camera", "location", "banner", "microphone"', output.getvalue())
+            self.assertFalse([path for path in folder.rglob("*") if "{{" in path.name or (path.is_file() and "{{" in path.read_text())])
+
+            manifest = json.loads((folder / "plugin.json").read_text())
+            self.assertEqual(manifest["apple"]["frameworks"], ["AVFoundation.framework", "CoreLocation.framework"])
+            self.assertEqual(set(manifest["parameters"]), {"cameraUsage", "locationUsage", "microphoneUsage", "macDevices"})
+            self.assertEqual(manifest["parameters"]["macDevices"]["platforms"], ["macos"])
+            self.assertEqual(set(manifest["apple"]["entitlements"].values()), {"${macDevices}"})
+
+            # The shared parts come once, before the features that need them, and the Android hooks hold the lines of every feature.
+            kotlin = (folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitPlugin.kt").read_text()
+            imports = [line for line in kotlin.splitlines() if line.startswith("import ")]
+            self.assertEqual(imports, sorted(imports))
+            self.assertIn("import android.os.Bundle", imports)
+            self.assertEqual(kotlin.count("private val permissions = DeviceKitPermissions()"), 1)
+            self.assertIn("    override fun onActivityDestroyed(activity: HaylenActivity) {\n        permissions.unregister()\n        banner.activityDestroyed()\n    }", kotlin)
+            self.assertTrue((folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitPermissions.kt").is_file())
+            self.assertIn('<uses-permission android:name="android.permission.CAMERA" />', (folder / "android" / "src" / "main" / "AndroidManifest.xml").read_text())
+
+            swift = (folder / "apple" / "DeviceKitPlugin.swift").read_text()
+            self.assertIn("    private let camera = DeviceKitCamera()\n    private let location = DeviceKitLocation()", swift)
+            self.assertIn("        location.register(context)", swift)
+            self.assertIn('import registerCamera from "./camera.js";', (folder / "web" / "device-kit.js").read_text())
+            native = (folder / "native" / "DeviceKit.c").read_text()
+            self.assertEqual(native.count("static void device_kit_unsupported("), 1)
+            self.assertIn('api->registerHandler("device-kit.takePhoto", device_kit_unsupported, NULL, NULL);', native)
+            self.assertIn("function plugin.onLocated(listener)", (folder / "source" / "init.lua").read_text())
+            self.assertIn("| `cameraUsage` | string |", (folder / "README.md").read_text())
+
+    def test_an_unknown_feature_is_refused_with_the_features_there_are(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            with self.assertRaises(haylen.BuildError) as raised:
+                haylen.command_plugin_new(argparse.Namespace(folder=str(Path(scratch) / "kit"), id=None, features=["radar"]))
+            self.assertEqual(str(raised.exception), 'The plugin template has no feature "radar". The features are "banner", "camera", "location", "microphone".')
+
+    def test_the_features_fill_only_the_blocks_of_the_skeleton(self):
+        tokens = {match for path in haylen.PLUGIN_TEMPLATE.rglob("*") if path.is_file() for match in re.findall(r"\{\{BLOCK:([A-Z_]+)\}\}", path.read_text())}
+        self.assertEqual(tokens, set(haylen.PLUGIN_BLOCKS))
+        for folder in haylen.PLUGIN_FEATURES.iterdir():
+            feature = json.loads((folder / "feature.json").read_text())
+            self.assertLessEqual(set(feature.get("blocks", {})), set(haylen.PLUGIN_BLOCKS), folder.name)
+            self.assertLessEqual(set(feature.get("androidHooks", {})), set(haylen.PLUGIN_ANDROID_HOOKS), folder.name)
 
     def test_the_format_command_leaves_the_files_of_the_template_with_tokens_alone(self):
         sources = haylen.format_sources()
