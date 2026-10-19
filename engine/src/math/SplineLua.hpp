@@ -5,9 +5,19 @@
 #include <array>
 #include <string_view>
 
-namespace haylen::math {
+#include "haylen/lua/Type.hpp"
+#include "haylen/math/Spline.hpp"
 
-class Spline;
+namespace haylen::lua {
+
+template <> struct Type<math::Spline> {
+    static constexpr const char* name = "haylen.Spline";
+    using Storage = math::Spline;
+};
+
+} // namespace haylen::lua
+
+namespace haylen::math {
 
 // Installs the `Spline` class of `haylen.math` and its constructor.
 class SplineLua final {
@@ -28,6 +38,7 @@ class SplineLua final {
     static int parameterAtDistance(lua_State* L);
     static int sample(lua_State* L);
     static int sampleByDistance(lua_State* L);
+    static int flatten(lua_State* L);
     static int getLength(lua_State* L);
     static int getKind(lua_State* L);
     static int isClosed(lua_State* L);

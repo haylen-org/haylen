@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <optional>
 #include <string>
 
 #include "core/FloatBufferLua.hpp"
@@ -12,6 +13,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "math/SplineLua.hpp"
 
 namespace haylen::graphics2d {
 
@@ -46,11 +48,14 @@ void StrokeLua::readPoints(lua_State* L, int index, std::vector<math::Vec2>& tar
     }
 }
 
-// Draws with `drawStroke(points, {width, join, cap, ...})`, whose option table also takes the keys of the draw order.
+// Draws with `drawStroke(points, {width, join, cap, ...})` or `drawStroke(spline, {...})`, whose option table also takes the keys of the draw order.
 int StrokeLua::drawStroke(lua_State* L) {
-    readPoints(L, 1, points);
+    const math::Spline* spline = lua::Userdata::test<math::Spline>(L, 1);
+    if (spline == nullptr) {
+        readPoints(L, 1, points);
+    }
     Stroke stroke;
-    std::size_t count = points.size();
+    std::optional<std::size_t> count;
     DrawOrder order;
     widths.clear();
     colors.clear();
@@ -60,7 +65,7 @@ int StrokeLua::drawStroke(lua_State* L) {
         // clang-format off
         lua::Table::readFields(L, 2, kFields, {lua::TypeConverter::kDrawOrderFields}, [L, &stroke, &count](std::string_view key) {
             if (key == "count") {
-                lua::Table::readValue(L, key, count);
+                lua::Table::readValue(L, key, count.emplace());
             } else if (key == "width") {
                 lua::Table::readValue(L, key, stroke.width);
             } else if (key == "widths") {
@@ -91,16 +96,26 @@ int StrokeLua::drawStroke(lua_State* L) {
         });
         // clang-format on
     }
-    if (count > points.size()) {
-        return luaL_error(L, "The stroke draws %d points of the %d it was given.", static_cast<int>(count), static_cast<int>(points.size()));
-    }
-    if (count < 2) {
-        return luaL_error(L, "A stroke needs at least two points.");
-    }
     stroke.widths = widths;
     stroke.colors = colors;
     stroke.dashes = dashes;
-    lua::Runtime::getEngine(L).getRenderer2D().drawStroke(std::span(points).first(count), stroke, order);
+    Renderer& renderer = lua::Runtime::getEngine(L).getRenderer2D();
+    if (spline != nullptr) {
+        if (count) {
+            return luaL_error(L, "A stroke along a spline draws the whole curve, without \"count\".");
+        }
+        renderer.drawStroke(*spline, stroke, order);
+        return 0;
+    }
+
+    const std::size_t drawn = count.value_or(points.size());
+    if (drawn > points.size()) {
+        return luaL_error(L, "The stroke draws %d points of the %d it was given.", static_cast<int>(drawn), static_cast<int>(points.size()));
+    }
+    if (drawn < 2) {
+        return luaL_error(L, "A stroke needs at least two points.");
+    }
+    renderer.drawStroke(std::span(points).first(drawn), stroke, order);
     return 0;
 }
 

@@ -13,11 +13,6 @@
 
 namespace haylen::lua {
 
-template <> struct Type<math::Spline> {
-    static constexpr const char* name = "haylen.Spline";
-    using Storage = math::Spline;
-};
-
 template <> struct EnumNames<math::Spline::Kind> {
     static std::optional<math::Spline::Kind> fromName(std::string_view name) {
         return math::Spline::kindFromName(name);
@@ -76,6 +71,13 @@ int SplineLua::sample(lua_State* L) {
     return 1;
 }
 
+int SplineLua::flatten(lua_State* L) {
+    std::vector<math::Vec2> flattened;
+    lua::Userdata::check<Spline>(L, 1).flatten(lua::Stack::read<float>(L, 2), flattened);
+    lua::Stack::push(L, flattened);
+    return 1;
+}
+
 int SplineLua::sampleByDistance(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<Spline>(L, 1).sampleByDistance(lua::Stack::read<float>(L, 2)));
     return 1;
@@ -107,7 +109,7 @@ int SplineLua::getSegmentCount(lua_State* L) {
 }
 
 void SplineLua::install(lua_State* L) {
-    lua::ClassBuilder<Spline>(L).function("point", &lua::Binding::native<&point>).function("tangent", &lua::Binding::native<&tangent>).function("pointAtDistance", &lua::Binding::native<&pointAtDistance>).function("tangentAtDistance", &lua::Binding::native<&tangentAtDistance>).function("parameterAtDistance", &lua::Binding::native<&parameterAtDistance>).function("sample", &lua::Binding::native<&sample>).function("sampleByDistance", &lua::Binding::native<&sampleByDistance>).property("length", &getLength).property("kind", &getKind).property("closed", &isClosed).property("points", &getPoints).property("segmentCount", &getSegmentCount).install();
+    lua::ClassBuilder<Spline>(L).function("point", &lua::Binding::native<&point>).function("tangent", &lua::Binding::native<&tangent>).function("pointAtDistance", &lua::Binding::native<&pointAtDistance>).function("tangentAtDistance", &lua::Binding::native<&tangentAtDistance>).function("parameterAtDistance", &lua::Binding::native<&parameterAtDistance>).function("sample", &lua::Binding::native<&sample>).function("sampleByDistance", &lua::Binding::native<&sampleByDistance>).function("flatten", &lua::Binding::native<&flatten>).property("length", &getLength).property("kind", &getKind).property("closed", &isClosed).property("points", &getPoints).property("segmentCount", &getSegmentCount).install();
 }
 
 void SplineLua::addFunctions(lua_State* L) {

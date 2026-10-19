@@ -79,6 +79,8 @@ TEST_F(GeometryLuaTest, SamplesSplines) {
     EXPECT_EQ(lua("return tostring(math.abs(curve:tangentAtDistance(10).x - 1) < 0.1) .. ' ' .. loop.kind .. ' ' .. tostring(loop.closed)"), "true bSpline true");
     EXPECT_NE(lua("return m.spline({{0, 0}, {1, 0}}, {kind = 'bezier'})").find("3n + 1"), std::string::npos);
     EXPECT_NE(lua("return m.spline({{0, 0}, {1, 0}}, {kind = 'nurbs'})").find("unknown value 'nurbs'"), std::string::npos);
+    EXPECT_EQ(lua("local points = curve:flatten(0.5) return tostring(#points > 8) .. ' ' .. tostring(points[1] == curve:point(0)) .. ' ' .. tostring(points[#points] == curve:point(1))"), "true true true");
+    EXPECT_NE(lua("return curve:flatten(-1)").find("Flattening a spline needs a finite tolerance above 0."), std::string::npos);
     EXPECT_NE(lua("return curve:sampleByDistance(0 / 0)").find("Sampling by distance needs a finite spacing above 0 that takes at most 16777216 steps along the curve."), std::string::npos);
     EXPECT_NE(lua("return curve:sampleByDistance(1e-30)").find("at most 16777216 steps along the curve"), std::string::npos);
 }

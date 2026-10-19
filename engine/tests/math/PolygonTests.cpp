@@ -231,6 +231,35 @@ TEST(SplineTest, CurvesWithoutLengthStayAtTheirStart) {
     EXPECT_EQ(dot.sampleByDistance(1.0F), std::vector<Vec2>{Vec2{}});
 }
 
+// Flattening keeps every part of the curve within the tolerance of the lines between its points, spends points where the curve bends, and leaves a straight curve with the few points every segment splits into.
+TEST(SplineTest, FlattensWithinTheTolerance) {
+    const Spline curve({{0.0F, 0.0F}, {50.0F, 120.0F}, {150.0F, -80.0F}, {200.0F, 30.0F}}, Spline::Kind::Bezier);
+    std::vector<Vec2> fine;
+    curve.flatten(0.25F, fine);
+    EXPECT_EQ(fine.front(), curve.getPoint(0.0F));
+    EXPECT_EQ(fine.back(), curve.getPoint(1.0F));
+    for (const Vec2 point : curve.sample(2000)) {
+        float nearest = std::numeric_limits<float>::max();
+        for (std::size_t index = 1; index < fine.size(); ++index) {
+            nearest = std::min(nearest, Geometry::distanceToSegment({fine[index - 1], fine[index]}, point));
+        }
+        EXPECT_LE(nearest, 0.3F);
+    }
+    std::vector<Vec2> coarse;
+    curve.flatten(4.0F, coarse);
+    EXPECT_LT(coarse.size(), fine.size());
+
+    std::vector<Vec2> straight;
+    Spline({{0.0F, 0.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {30.0F, 0.0F}}, Spline::Kind::Bezier).flatten(0.01F, straight);
+    EXPECT_EQ(straight.size(), 5U);
+
+    // A closed curve ends one step short of its start, which the stroke joins back.
+    std::vector<Vec2> loop;
+    Spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline::Kind::CatmullRom, true).flatten(0.5F, loop);
+    EXPECT_GT(Vec2::distance(loop.back(), loop.front()), 0.0F);
+    EXPECT_THROW(curve.flatten(0.0F, loop), std::invalid_argument);
+}
+
 // A closed Bezier curve takes 3n points and its last segment ends on the first point.
 TEST(SplineTest, ClosedBezierCurvesReturnToTheirFirstPoint) {
     const Spline loop({{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}}, Spline::Kind::Bezier, true);

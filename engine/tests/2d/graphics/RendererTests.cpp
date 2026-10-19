@@ -27,6 +27,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/math/Insets.hpp"
+#include "haylen/math/Spline.hpp"
 #include "haylen/text/Font.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
@@ -654,6 +655,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
     }
     const graphics2d::StaticSpriteBatch baked = batch.bake(engine.getRenderer2D());
     const std::vector<math::Vec2> line{{0.0F, 0.0F}, {40.0F, 10.0F}, {80.0F, 0.0F}};
+    const math::Spline curve({{0.0F, 0.0F}, {40.0F, 60.0F}, {80.0F, -20.0F}, {120.0F, 30.0F}}, math::Spline::Kind::Bezier);
     const std::vector<math::Vec2> points{{10.0F, 10.0F}, {20.0F, 12.0F}, {30.0F, 8.0F}};
     const std::vector<graphics2d::MeshVertex> mesh{{{0.0F, 0.0F}}, {{10.0F, 0.0F}}, {{0.0F, 10.0F}}};
     const std::vector<std::uint32_t> indices{0, 1, 2};
@@ -703,6 +705,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
         renderer.drawArc({60.0F, 60.0F}, 20.0F, 4.0F, 0.0F, 2.0F, math::Color::white());
         renderer.drawShape({.bounds = {100.0F, 100.0F, 80.0F, 30.0F}, .radii = {8.0F, 8.0F, 8.0F, 8.0F}, .borderWidth = 2.0F, .borderColor = math::Color::black()});
         renderer.drawShape({.kind = graphics2d::Shape::Kind::Ellipse, .bounds = {100.0F, 140.0F, 60.0F, 30.0F}, .texture = texture});
+        renderer.drawStroke(curve, {.width = 4.0F, .cap = graphics2d::Stroke::Cap::Round});
         renderer.drawMesh(texture, mesh, indices);
         renderer.drawText(*current.getDefaultFont(), "Every frame", {10.0F, 200.0F}, {.size = 24.0F, .outlineWidth = 2.0F, .shadowOffset = {2.0F, 2.0F}, .shadowColor = math::Color::black()});
         renderer.popClip();

@@ -2098,6 +2098,18 @@ end
 print(#fence:sample(10)) -- 10
 ```
 
+### spline:flatten(tolerance)
+
+Returns points along the curve whose straight lines stay within `tolerance` world units of it, closer together where it bends and few where it runs straight, from its start to its end, without repeating the start of a closed curve. Every segment splits into 4 to 1024 pieces, so a tiny tolerance stays bounded. A [stroke along a spline](graphics2d.md#graphics2ddrawstrokepoints-options) flattens it within a quarter pixel on its own, and the points also serve as the outline of a polygon or a physics chain. A tolerance that is not finite and above 0 raises `Flattening a spline needs a finite tolerance above 0.`
+
+```lua
+local m = require('haylen.math')
+
+local hill = m.spline({{0, 300}, {200, 100}, {400, 280}, {600, 120}})
+local outline = hill:flatten(1)
+print(#outline, outline[1], outline[#outline])
+```
+
 ## Signal filters
 
 Five filters smooth values that change every frame, such as the position of a finger, the speed of a car or the readings of a sensor. Each one holds from 1 to 4 values, its `dimensions`, 1 by default, and its `update` takes as many numbers and returns them filtered, or takes and returns a `Vec2` when the filter has two dimensions. The filters keep their windows from the start, so an update never allocates. A count of values that differs from the dimensions raises `The filter takes <dimensions> values, not <count>.`, and unknown options raise `Unknown option "<key>".`

@@ -56,11 +56,18 @@ class Spline final {
     // Returns points `spacing` apart along the curve from its start, plus the end point of open curves. Throws `std::invalid_argument` for a spacing that is not finite and above 0 or that would take more than 16777216 steps along the curve.
     [[nodiscard]] std::vector<Vec2> sampleByDistance(float spacing) const;
 
+    // Replaces the points of `target` with points along the curve whose straight lines stay within `tolerance` of it, closer together where it bends, from its start to its end without repeating the start of a closed curve, so a stroke draws the curve smooth at any size. Throws `std::invalid_argument` for a tolerance that is not finite and above 0.
+    void flatten(float tolerance, std::vector<Vec2>& target) const;
+
   private:
     static const std::array<std::pair<std::string_view, Kind>, 3> kKindNames;
     static constexpr std::size_t kStepsPerSegment = 32;
     static constexpr std::size_t kMaxSteps = 16777216;
     static constexpr float kAlpha = 0.5F;
+
+    // Every segment splits at least this many times and at most that many, so a curve that crosses its chord at the middle still bends and no tolerance splits forever.
+    static constexpr int kFlattenMinimumDepth = 2;
+    static constexpr int kFlattenMaximumDepth = 10;
 
     [[nodiscard]] static std::size_t countSegments(std::size_t pointCount, Kind curveKind, bool loop);
     [[nodiscard]] Vec2 controlPoint(std::ptrdiff_t index) const noexcept;
@@ -68,6 +75,7 @@ class Spline final {
     [[nodiscard]] Vec2 catmullRom(std::size_t segment, float u) const noexcept;
     [[nodiscard]] Vec2 bezier(std::size_t segment, float u) const noexcept;
     [[nodiscard]] Vec2 bSpline(std::size_t segment, float u) const noexcept;
+    void subdivide(std::size_t segment, float from, float to, Vec2 start, Vec2 end, float tolerance, int depth, std::vector<Vec2>& target) const;
     void measure();
 
     std::vector<Vec2> points;

@@ -546,7 +546,7 @@ scene.push({
 
 ### graphics2d.drawStroke(points, options)
 
-Draws a line through `points`, a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs, with joins, caps, widths and colors for each point, a texture along its length and dashes. Its edges fade over one pixel of the destination at any zoom, as [Shapes and smooth edges](../graphics/rendering.md#shapes-and-smooth-edges) explains. Points that repeat the point before them are dropped. The argument `options` is optional and also takes the keys of the [draw order](#draw-order):
+Draws a line through `points`, a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs, with joins, caps, widths and colors for each point, a texture along its length and dashes. In place of the points it takes a [`Spline`](math.md#spline), such as a Bézier curve, which it flattens so the curve stays within a quarter pixel of the destination at any zoom, closed when the spline is, with one `width` and one `color` and without `count`. Its edges fade over one pixel of the destination at any zoom, as [Shapes and smooth edges](../graphics/rendering.md#shapes-and-smooth-edges) explains. Points that repeat the point before them are dropped. The argument `options` is optional and also takes the keys of the [draw order](#draw-order):
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -565,14 +565,16 @@ Draws a line through `points`, a flat list `{x1, y1, x2, y2, ...}` or a [`FloatB
 | `dashes` | list or FloatBuffer | none | Lengths drawn and left out in turn, repeated along the stroke, where a list of an odd count repeats twice. A dash of length 0 draws the dot of a round or square cap. |
 | `dashOffset` | number | `0` | Distance into the dash pattern where the stroke starts. |
 
-Fewer than two points raise `A stroke needs at least two points.`, a `count` past the points given raises `The stroke draws n points of the m it was given.`, an odd count of numbers raises `The points are x and y pairs, and n numbers leave one alone.`, `widths` or `colors` of another count raise `A stroke has one width for each of its n points, or none.`, a negative width or texture length or a miter limit under 1 raises `A stroke needs widths and a texture length of zero or more and a miter limit of 1 or more.`, a pattern without length raises `A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset.`, and a pattern that would cut the stroke into more than 65536 dashes raises `A dash pattern makes more than 65536 dashes along the stroke.`
+A spline with `count` raises `A stroke along a spline draws the whole curve, without "count".`, and with `widths` or `colors` raises `A stroke along a spline takes one width and one color, without widths or colors for each point.` Fewer than two points raise `A stroke needs at least two points.`, a `count` past the points given raises `The stroke draws n points of the m it was given.`, an odd count of numbers raises `The points are x and y pairs, and n numbers leave one alone.`, `widths` or `colors` of another count raise `A stroke has one width for each of its n points, or none.`, a negative width or texture length or a miter limit under 1 raises `A stroke needs widths and a texture length of zero or more and a miter limit of 1 or more.`, a pattern without length raises `A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset.`, and a pattern that would cut the stroke into more than 65536 dashes raises `A dash pattern makes more than 65536 dashes along the stroke.`
 
 ```lua
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
+local m = require('haylen.math')
 local scene = require('haylen.scene')
 
 local rope = assets.texture('effects/rope.png', {wrap = 'repeat'})
+local curve = m.spline({{100, 640}, {300, 520}, {500, 700}, {700, 580}}, {kind = 'bezier'})
 
 scene.push({
     render = function(self)
@@ -580,6 +582,7 @@ scene.push({
         graphics2d.drawStroke({100, 500, 300, 420, 500, 520, 700, 440}, {width = 12, join = 'round', cap = 'round', color = '#FF40C0FF'})
         graphics2d.drawStroke({100, 200, 400, 120, 700, 200}, {width = 16, texture = rope, textureMode = 'tile', layer = 1})
         graphics2d.drawStroke({100, 300, 700, 300}, {widths = {2, 20}, colors = {'#FFFFFF00', '#FFFFFFFF'}, dashes = {24, 12}, cap = 'round'})
+        graphics2d.drawStroke(curve, {width = 6, cap = 'round', color = '#FFF2B23A'})
     end,
 })
 ```

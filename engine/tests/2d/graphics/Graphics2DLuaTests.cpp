@@ -448,6 +448,8 @@ TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
         graphics2d.drawStroke(points, {widths = {2, 10, 2}, colors = {'#FF0000', '#00FF00', '#0000FF'}, texture = hero, textureMode = 'tile', dashes = {12, 6}, dashOffset = 3, miterLimit = 2, join = 'bevel'})
         graphics2d.drawStroke({0, 0, 10, 0, 10, 10, 0, 10}, {closed = true})
         graphics2d.drawStroke(points, {count = 2, widths = {1, 4}})
+        graphics2d.drawStroke(m.spline({{0, 0}, {40, 80}, {120, -20}, {160, 40}}, {kind = 'bezier'}), {width = 6, cap = 'round', dashes = {10, 5}})
+        graphics2d.drawStroke(m.spline({{0, 0}, {50, 0}, {50, 50}}, {closed = true}), {width = 2})
         grid = graphics2d.newGridMesh(hero, 4, 2, {x = 10, y = 10, width = 64, height = 32, source = {0, 0, 8, 8}})
         rest = collections.newFloatBuffer(grid.vertexCount * 2)
         grid:readPositions(rest)
@@ -473,6 +475,8 @@ TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1})").find("The points are x and y pairs, and 3 numbers leave one alone."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 'x', 1})").find("The points are a list of numbers, and entry 3 is not a number."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {join = 'sharp'})").find("join"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke(m.spline({{0, 0}, {1, 1}}), {count = 2})").find("A stroke along a spline draws the whole curve, without \"count\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke(m.spline({{0, 0}, {1, 1}}), {widths = {1, 2}})").find("A stroke along a spline takes one width and one color, without widths or colors for each point."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {thickness = 2})").find("Unknown option \"thickness\"."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {widths = {1}})").find("A stroke has one width for each of its 2 points, or none."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawStroke({0, 0, 1, 1}, {dashes = {0}})").find("A dash pattern needs lengths of zero or more that add up to more than zero, and a finite offset."), std::string::npos);

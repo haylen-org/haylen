@@ -192,4 +192,33 @@ std::vector<Vec2> Spline::sampleByDistance(float spacing) const {
     return result;
 }
 
+void Spline::flatten(float tolerance, std::vector<Vec2>& target) const {
+    if (!std::isfinite(tolerance) || tolerance <= 0.0F) {
+        throw std::invalid_argument("Flattening a spline needs a finite tolerance above 0.");
+    }
+    target.clear();
+    target.push_back(evaluate(0, 0.0F));
+    for (std::size_t segment = 0; segment < segmentCount; ++segment) {
+        subdivide(segment, 0.0F, 1.0F, evaluate(segment, 0.0F), evaluate(segment, 1.0F), tolerance, 0, target);
+    }
+    if (closed) {
+        target.pop_back();
+    }
+}
+
+// A piece is flat enough once the curve at its middle lies within the tolerance of its chord, and then only its end joins the points.
+void Spline::subdivide(std::size_t segment, float from, float to, Vec2 start, Vec2 end, float tolerance, int depth, std::vector<Vec2>& target) const {
+    const float middle = (from + to) * 0.5F;
+    const Vec2 point = evaluate(segment, middle);
+    const Vec2 chord = end - start;
+    const float length = chord.getLength();
+    const float deviation = length > 0.0F ? std::fabs(Vec2::cross(point - start, chord)) / length : Vec2::distance(point, start);
+    if (depth >= kFlattenMaximumDepth || (depth >= kFlattenMinimumDepth && deviation <= tolerance)) {
+        target.push_back(end);
+        return;
+    }
+    subdivide(segment, from, middle, start, point, tolerance, depth + 1, target);
+    subdivide(segment, middle, to, point, end, tolerance, depth + 1, target);
+}
+
 } // namespace haylen::math

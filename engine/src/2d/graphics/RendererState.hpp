@@ -135,6 +135,7 @@ struct RendererState {
     std::vector<GpuVertex> scratchVertices;
     std::vector<std::uint32_t> scratchIndices;
     std::vector<NineSlice::Patch> patches;
+    std::vector<math::Vec2> curvePoints;
 
     // Reused by the submission of every frame: the draw items of a canvas in their sorted order, the instance ranges of the commands in draw order, the shadowed lights with their canvases, and the canvases of a destination by their order.
     std::vector<std::uint32_t> itemOrder;

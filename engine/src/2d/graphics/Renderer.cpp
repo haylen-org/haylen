@@ -26,6 +26,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/Math.hpp"
+#include "haylen/math/Spline.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Layout.hpp"
@@ -520,6 +521,19 @@ void Renderer::drawStroke(std::span<const math::Vec2> points, const Stroke& stro
     const graphics::Texture& used = stroke.texture.isValid() ? stroke.texture : state->white;
     state->strokes.build(points, stroke, state->getPixelSize(), used.getSize(), used.getResource()->flipped);
     state->addMesh(used, state->strokes.getVertices(), state->strokes.getIndices(), order);
+}
+
+void Renderer::drawStroke(const math::Spline& spline, const Stroke& stroke, const DrawOrder& order) {
+    if (!stroke.widths.empty() || !stroke.colors.empty()) {
+        throw std::invalid_argument("A stroke along a spline takes one width and one color, without widths or colors for each point.");
+    }
+    if (!state->accepts(order)) {
+        return;
+    }
+    spline.flatten(state->getPixelSize() * 0.25F, state->curvePoints);
+    Stroke along = stroke;
+    along.closed = spline.isClosed();
+    drawStroke(state->curvePoints, along, order);
 }
 
 void Renderer::drawImageBlend(const ImageBlend& blend, const DrawOrder& order) {
