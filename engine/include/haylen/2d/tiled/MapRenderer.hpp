@@ -19,6 +19,7 @@
 #include "haylen/2d/physics/CollisionFilter.hpp"
 #include "haylen/2d/physics/Shape.hpp"
 #include "haylen/2d/spatial/CellGrid.hpp"
+#include "haylen/2d/tiled/AutoMapper.hpp"
 #include "haylen/2d/tiled/Layer.hpp"
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/2d/tiled/Object.hpp"
@@ -82,6 +83,9 @@ class MapRenderer final {
     void fill(std::string_view layer, const spatial2d::CellGrid& grid, std::uint32_t firstGid, int column = 0, int row = 0);
     void setChunk(std::string_view layer, int column, int row, const spatial2d::CellGrid& grid, std::uint32_t firstGid);
     void removeChunk(std::string_view layer, int column, int row);
+
+    // Applies automapping rules to the map, with the random generator for their random outputs and probabilities, and bakes the layers they changed again on their next draw.
+    AutoMapper::Result automap(const AutoMapper& mapper, math::Random& random);
 
     // Paints the terrain color of a Wang set, counted from 1 or 0 to erase, on a cell, and gives the cell and its eight neighbours the tiles of the set whose corners and edges match their new colors best.
     void paintTerrain(std::string_view layer, std::string_view wangSet, int column, int row, int color);
@@ -175,6 +179,8 @@ class MapRenderer final {
 
     // Drops what a layer baked, so it bakes again on its next draw, and gives the collision built from it the cells of a rectangle again.
     void invalidate(const Layer& layer, int left, int top, int width, int height);
+    [[nodiscard]] const Layer* findLayerById(std::uint32_t id) const noexcept;
+    [[nodiscard]] static const Layer* findLayerIn(const std::vector<Layer>& layers, std::uint32_t id) noexcept;
     [[nodiscard]] std::uint32_t nextLayerId() const noexcept;
 
     // Bottom-left corner where a cell places its tile image.

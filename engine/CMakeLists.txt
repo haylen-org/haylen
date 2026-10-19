@@ -199,6 +199,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/spatial/SpatialIndexLua.cpp
   src/2d/spatial/UnionFind.cpp
   src/2d/spatial/VisibilityPolygon.cpp
+  src/2d/tiled/AutoMapper.cpp
   src/2d/tiled/Layer.cpp
   src/2d/tiled/Map.cpp
   src/2d/tiled/MapBuilderLua.cpp

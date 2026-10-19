@@ -1,7 +1,10 @@
 #include "2d/tiled/MapBuilderLua.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <random>
 #include <string>
 #include <utility>
 
@@ -17,6 +20,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/math/Random.hpp"
 
 namespace haylen::tiled {
 
@@ -189,6 +193,24 @@ int MapBuilderLua::fill(lua_State* L) {
     const spatial2d::CellGrid& grid = lua::Userdata::check<spatial2d::CellGrid>(L, 3);
     renderer.fill(lua::Stack::read<std::string_view>(L, 2), grid, static_cast<std::uint32_t>(luaL_optinteger(L, 4, 1)), static_cast<int>(luaL_optinteger(L, 5, 0)), static_cast<int>(luaL_optinteger(L, 6, 0)));
     return 0;
+}
+
+// Applies loaded automapping rules with `automap(rules, {seed})`, and returns how many times rules matched. Without a seed the random outputs differ from call to call.
+int MapBuilderLua::automap(lua_State* L) {
+    MapRenderer& map = lua::Userdata::check<MapRenderer>(L, 1);
+    const AutoMapper& rules = lua::Userdata::check<AutoMapper>(L, 2);
+    std::optional<std::uint64_t> seed;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        // clang-format off
+        lua::Table::readFields(L, 3, kAutomapFields, {}, [L, &seed](std::string_view key) {
+            lua::Table::readValue(L, key, seed.emplace());
+        });
+        // clang-format on
+    }
+    math::Random random(seed.value_or(std::random_device{}()));
+    lua::Stack::push(L, static_cast<lua_Integer>(map.automap(rules, random).matches));
+    return 1;
 }
 
 int MapBuilderLua::paintTerrain(lua_State* L) {

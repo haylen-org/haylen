@@ -18,5 +18,6 @@ return {
         {code = 'TLD-012', title = 'Worlds', description = 'A world file that places listed maps and maps found by a file name pattern.', module = 'worlds'},
         {code = 'TLD-013', title = 'Digging the collision', description = 'Walls dug and built with tile changes while balls bounce, with the merged collision loops traced again around each change.', module = 'digging'},
         {code = 'TLD-014', title = 'Maps built in code', description = 'A map made in code with ground filled from a grid, water painted with a corner Wang set and its Tiled JSON.', module = 'built-map'},
+        {code = 'TLD-015', title = 'Automapping', description = 'A garden painted with plain tiles that the rules of a rule map give shores, random decoration and slimes, with a new seed on every press.', module = 'automapping'},
     },
 }

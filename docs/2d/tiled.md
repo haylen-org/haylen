@@ -27,10 +27,11 @@ Tiles painted in high definition keep a grid of the size the game plays at. The 
 - **Templates**: The `.tj` object templates, whose fields and properties are defaults that each instance overrides one by one. A tile template maps its tile to the map's own copy of the template's tileset.
 - **Properties**: The `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` values, including classes nested in classes and lists nested in lists. Colors become `Color` values, files become paths inside the `content/` folder, object references become object ids, class values become nested tables and lists become sequences of their items. With the `project` option, the classes of the `.tiled-project` file fill in the members Tiled leaves out because they keep their defaults, through `tiled::PropertyTypes` and `Map::applyPropertyTypes` in C++.
 - **Worlds**: `.world` files with listed maps and filename patterns.
+- **Automapping**: Rules files and rule maps of the current rule system, with input, inverted and output layers and their indexes, the special tiles of their `MatchType`, random outputs by probability, rule options and the map properties of Tiled, applied at run time by `tiled::AutoMapper` and `map:automap`. The legacy `regions` layers are refused, and Tiled converts a rule map away from them when its regions are removed.
 
 ## Loading maps
 
-Maps are assets of [`haylen.assets`](../lua-api/assets.md). The asset type `tiled` handles `.tmj` files and `tiledWorld` handles `.world` files, so `assets.load` finds the type from the extension. Loading a map also loads its external tilesets, templates and images.
+Maps are assets of [`haylen.assets`](../lua-api/assets.md). The asset type `tiled` handles `.tmj` files and `tiledWorld` handles `.world` files, so `assets.load` finds the type from the extension, and `tiledRules` loads automapping rules by name. Loading a map also loads its external tilesets, templates and images.
 
 ```lua
 local assets = require('haylen.assets')

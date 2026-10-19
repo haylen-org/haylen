@@ -1,7 +1,10 @@
 #include "plugins/TiledPlugin.hpp"
 
+#include <algorithm>
 #include <map>
 #include <memory>
+#include <ranges>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -9,6 +12,7 @@
 
 #include "2d/tiled/TiledLua.hpp"
 #include "graphics/TextureResource.hpp"
+#include "haylen/2d/tiled/AutoMapper.hpp"
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/2d/tiled/PropertyTypes.hpp"
 #include "haylen/2d/tiled/World.hpp"
@@ -33,6 +37,11 @@ struct TiledPlugin::DecodedMap {
     std::map<std::string, DecodedImage> images;
 };
 
+struct TiledPlugin::DecodedRules {
+    std::shared_ptr<tiled::AutoMapper> mapper;
+    std::map<std::string, DecodedImage> images;
+};
+
 void TiledPlugin::applyColorKey(graphics::Image& image, math::Color key) {
     const std::uint32_t target = key.withAlpha(1.0F).toRgba8();
     for (int y = 0; y < image.getHeight(); ++y) {
@@ -42,6 +51,61 @@ void TiledPlugin::applyColorKey(graphics::Image& image, math::Color key) {
             }
         }
     }
+}
+
+// The images of the tilesets of special automapping tiles never draw, so they stay unread, since the tileset Tiled adds for them names an image of the editor.
+void TiledPlugin::decodeImages(const tiled::Map& map, const io::Package& package, const graphics::Texture::Options& options, std::map<std::string, DecodedImage>& images) {
+    std::set<std::string> skipped;
+    for (const tiled::Map::TilesetReference& reference : map.tilesets) {
+        const tiled::Tileset& tileset = *reference.tileset;
+        // clang-format off
+        const bool special = tileset.tileCount > 0 && std::ranges::all_of(std::views::iota(0, tileset.tileCount), [&tileset](int id) {
+            const tiled::Tile* tile = tileset.findTile(static_cast<std::uint32_t>(id));
+            return tile != nullptr && tile->properties.has("MatchType");
+        });
+        // clang-format on
+        if (special) {
+            skipped.insert(tileset.image);
+            for (const auto& [id, tile] : tileset.tiles) {
+                skipped.insert(tile.image);
+            }
+        }
+    }
+    for (const tiled::Map::Image& entry : map.getImages()) {
+        if (skipped.contains(entry.path) || images.contains(entry.path)) {
+            continue;
+        }
+        DecodedImage image{.image = graphics::Image::decode(package.readAsset(entry.path)), .keyed = entry.transparentColor.has_value()};
+        if (entry.transparentColor) {
+            applyColorKey(image.image, *entry.transparentColor);
+        }
+        if (options.filter == graphics::Texture::Filter::Linear) {
+            image.image.bleed();
+        }
+        if (options.mipmaps) {
+            image.image.buildMipmaps();
+        }
+        images.emplace(entry.path, std::move(image));
+    }
+}
+
+// Images without a color key share the texture cache, and keyed images stay private to the map because their pixels differ from the file. The skipped images of special tiles have no texture.
+void TiledPlugin::attachImages(tiled::Map& map, const std::map<std::string, DecodedImage>& images, assets::Manager& manager, graphics::Device& device, const core::Json& textureJson) {
+    const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(textureJson);
+    // clang-format off
+    map.attachTextures([&](const std::string& path) {
+        const auto found = images.find(path);
+        if (found == images.end()) {
+            return graphics::Texture();
+        }
+        if (found->second.keyed) {
+            return device.createTexture(found->second.image, options);
+        }
+        return graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(manager.share("texture", path, textureJson, [&](const assets::Manager::Request&) {
+            return device.createTexture(found->second.image, options).getResource();
+        })));
+    });
+    // clang-format on
 }
 
 core::Json TiledPlugin::getTextureOptions(const core::Json& options) {
@@ -75,37 +139,37 @@ void TiledPlugin::start(core::Engine& engine) {
             if (request.options.contains("project")) {
                 decoded->map.applyPropertyTypes(tiled::PropertyTypes::parse(reader(request.options.at("project").get<std::string>())));
             }
-            for (const tiled::Map::Image& entry : decoded->map.getImages()) {
-                DecodedImage image{.image = graphics::Image::decode(package.readAsset(entry.path)), .keyed = entry.transparentColor.has_value()};
-                if (entry.transparentColor) {
-                    applyColorKey(image.image, *entry.transparentColor);
-                }
-                if (options.filter == graphics::Texture::Filter::Linear) {
-                    image.image.bleed();
-                }
-                if (options.mipmaps) {
-                    image.image.buildMipmaps();
-                }
-                decoded->images.emplace(entry.path, std::move(image));
-            }
+            decodeImages(decoded->map, package, options, decoded->images);
             return decoded;
         },
         .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
             auto& decoded = *std::static_pointer_cast<DecodedMap>(result);
-            const core::Json textureJson = getTextureOptions(request.options);
-            const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(textureJson);
-
-            // Images without a color key share the texture cache, and keyed images stay private to the map because their pixels differ from the file.
-            decoded.map.attachTextures([&](const std::string& path) {
-                const DecodedImage& image = decoded.images.at(path);
-                if (image.keyed) {
-                    return device.createTexture(image.image, options);
-                }
-                return graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(manager.share("texture", path, textureJson, [&](const assets::Manager::Request&) {
-                    return device.createTexture(image.image, options).getResource();
-                })));
-            });
+            attachImages(decoded.map, decoded.images, manager, device, getTextureOptions(request.options));
             return std::make_shared<tiled::Map>(std::move(decoded.map));
+        },
+    });
+    engine.getAssets().registerType({
+        .name = "tiledRules",
+        .extensions = {},
+        .normalize = [&manager = engine.getAssets()](const core::Json& options) { return manager.normalizeOptions("texture", options); },
+        .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
+            const io::Package& package = *request.package;
+            const auto readText = [&package](const std::string& path) { return package.readAssetText(path); };
+            const auto readJson = [&package](const std::string& path) { return core::Json::parse(package.readAssetText(path)); };
+            auto decoded = std::make_shared<DecodedRules>();
+            decoded->mapper = std::make_shared<tiled::AutoMapper>(tiled::AutoMapper::load(request.path, readText, readJson));
+            const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(request.options);
+            for (const tiled::AutoMapper::RuleMap& ruleMap : decoded->mapper->getRuleMaps()) {
+                decodeImages(*ruleMap.map, package, options, decoded->images);
+            }
+            return decoded;
+        },
+        .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
+            auto& decoded = *std::static_pointer_cast<DecodedRules>(result);
+            for (const tiled::AutoMapper::RuleMap& ruleMap : decoded.mapper->getRuleMaps()) {
+                attachImages(*ruleMap.map, decoded.images, manager, device, request.options);
+            }
+            return decoded.mapper;
         },
     });
     engine.getAssets().registerType({
@@ -125,6 +189,9 @@ void TiledPlugin::start(core::Engine& engine) {
     AssetsPlugin& assetsPlugin = engine.getPlugin<AssetsPlugin>();
     assetsPlugin.registerLuaPusher("tiled", [](lua_State* L, const std::shared_ptr<void>& asset) {
         tiled::TiledLua::pushMap(L, std::static_pointer_cast<tiled::Map>(asset));
+    });
+    assetsPlugin.registerLuaPusher("tiledRules", [](lua_State* L, const std::shared_ptr<void>& asset) {
+        tiled::TiledLua::pushAutoMapper(L, std::static_pointer_cast<tiled::AutoMapper>(asset));
     });
     assetsPlugin.registerLuaPusher("tiledWorld", [](lua_State* L, const std::shared_ptr<void>& asset) {
         tiled::TiledLua::pushWorld(L, *std::static_pointer_cast<tiled::World>(asset));

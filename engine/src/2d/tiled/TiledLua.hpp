@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "haylen/2d/graphics/DrawOrder.hpp"
+#include "haylen/2d/tiled/AutoMapper.hpp"
 #include "haylen/2d/tiled/Layer.hpp"
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/2d/tiled/MapRenderer.hpp"
@@ -26,6 +27,11 @@ namespace haylen::lua {
 template <> struct Type<tiled::Map> {
     static constexpr const char* name = "haylen.Map";
     using Storage = std::shared_ptr<tiled::Map>;
+};
+
+template <> struct Type<tiled::AutoMapper> {
+    static constexpr const char* name = "haylen.AutoMapper";
+    using Storage = std::shared_ptr<tiled::AutoMapper>;
 };
 
 template <> struct Type<tiled::MapRenderer> {
@@ -50,7 +56,11 @@ class TiledLua final {
     // Pushes the maps of a loaded world as `{path, x, y, width, height}` tables.
     static void pushWorld(lua_State* L, const World& world);
 
+    // Pushes loaded automapping rules, whose `ruleMaps` lists `{path, filter}` for each rule map.
+    static void pushAutoMapper(lua_State* L, std::shared_ptr<AutoMapper> mapper);
+
   private:
+    static int autoMapperRuleMaps(lua_State* L);
     static constexpr std::array<std::string_view, 3> kMapDrawFields{"x", "y", "ysort"};
 
     static void setNumber(lua_State* L, const char* key, double value);

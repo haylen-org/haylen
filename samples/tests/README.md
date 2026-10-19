@@ -499,6 +499,7 @@ Tiled maps of every orientation with their layers, objects, properties, collisio
 | `TLD-012` | Worlds | A world file that places listed maps and maps found by a file name pattern. |  |
 | `TLD-013` | Digging the collision | Walls dug and built with tile changes while balls bounce, with the merged collision loops traced again around each change. |  |
 | `TLD-014` | Maps built in code | A map made in code with ground filled from a grid, water painted with a corner Wang set and its Tiled JSON. |  |
+| `TLD-015` | Automapping | A garden painted with plain tiles that the rules of a rule map give shores, random decoration and slimes, with a new seed on every press. |  |
 
 #### Tween (TWN)
 

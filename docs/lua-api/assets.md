@@ -30,8 +30,9 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `prefab` | `.prefab` | `Prefab` from [`haylen.nodes2d`](nodes2d.md#prefab), checked on a worker thread. | None. |
 | `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` and `particles2d.newSystem()` from [`haylen.particles2d`](particles2d.md). | The `filter` and `wrap` of its textures, which replace the ones the file names. |
 | `imageShape` | None, so load an image with the type `'imageShape'` | An `ImageShape` from [`haylen.particles2d`](particles2d.md#imageshape), the visible pixels of the image for the `image` shape of emitters. | The option `source` is the `{x, y, width, height}` part of the image to read, the whole image by default. The option `alphaThreshold` is the alpha a pixel needs to count, `0.5` by default. |
-| `tiled` | `.tmj` | Tiled map data for `tiled.newMapRenderer()` from [`haylen.tiled`](tiled.md). | The `filter` and `wrap` of its tileset and layer images. |
+| `tiled` | `.tmj` | Tiled map data for `tiled.newMapRenderer()` from [`haylen.tiled`](tiled.md). | The `filter` and `wrap` of its tileset and layer images, and the `project` file whose classes fill in default members. |
 | `tiledWorld` | `.world` | List of the maps of a Tiled world. | None. |
+| `tiledRules` | None, so load a rules file or a rule map with the type `'tiledRules'` | Automapping rules for `map:automap()` from [`haylen.tiled`](tiled.md#automapping). | The `filter` and `wrap` of the tileset images of its rule maps. |
 
 Assets are cached by type, path and options. Loading the same asset again returns the same object while anything still holds it, such as a Lua variable, another asset or a preload group, so two loads of one asset compare equal with `==`, whatever its type. Different options load a separate asset. Atlases, skeletons, particle effects and Tiled maps share their images with textures loaded directly with the same `filter` and `wrap`, except Tiled images with a transparent color, which stay private to their map.
 

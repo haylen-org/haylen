@@ -79,6 +79,7 @@ The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 - Custom property types `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` (Tiled 1.12), including lists nested in lists. The classes of a `.tiled-project` file fill in the members a map leaves at their defaults.
 - Worlds with listed maps and patterns.
 - Object factories through `map:spawn`.
+- Automapping with the rules of Tiled through `map:automap`, from rules files and rule maps.
 
 Every layer needs the `id` that Tiled writes. Other load errors: `The orientation of a Tiled map must be "orthogonal", "isometric", "staggered", "hexagonal" or "oblique", not "name".`, `The render order of a Tiled map must be "right-down", "right-up", "left-down" or "left-up", not "name".`, `The type of a Tiled layer must be "tilelayer", "objectgroup", "imagelayer" or "group", not "name".`, `The Tiled map "path" has a negative size.`, `The Tiled map "path" needs a positive tile size.`, `The Tiled tile layer "name" has a negative size.`, `The Tiled tile layer "name" has more cells than a layer can hold.`, `The compression of a tile layer must be "zlib", "gzip" or "zstd", not "name".`, `Tile layer data is not valid base64.`, `Tile layer data could not be decompressed.`, `Tile layer data does not match the layer size.` and `The Tiled color "text" is not a "#RRGGBB" or "#AARRGGBB" color.`
 
@@ -653,6 +654,44 @@ end
 map:fill('ground', grid, first)
 map:paintTerrain('ground', 'rock', 10, 20, 1)
 print(json.encode(map:toJson('maps/cave.tmj')))
+```
+
+## Automapping
+
+Automapping applies the rules of Tiled to a map at run time, the way the editor does when it automaps, so a level painted with plain tiles or made by code gets its borders, corners, decorations and objects. Rules load as an asset of the type `tiledRules`, from a rules file, whose lines name rule maps and other rules files relative to itself, with lines like `[town*]` that apply the lines after them only to maps whose file name matches, where `*` stands for any text, and comments that start with `#` or `//`, or from one rule map. Their tilesets load with the texture options `filter` and `wrap`.
+
+```lua
+local assets = require('haylen.assets')
+local tiled = require('haylen.tiled')
+
+local rules = assets.load('maps/rules/rules.txt', 'tiledRules')
+local map = tiled.newMapRenderer(assets.load('maps/cave.tmj'))
+print(map:automap(rules, {seed = 42}), rules.ruleMaps[1].path)
+```
+
+A rule map holds these layers, and a rule is each group of cells that touch, on a side or a corner, and hold a tile of an input or output layer, or the origin of an output object:
+
+- `input_<layer>` and `inputnot_<layer>`, optionally with an index such as `input2_<layer>`: the tiles one of which the layer of the map must hold at each cell, and the tiles it may not hold. Input layers of the same index and layer are one condition, whose tiles are alternatives at each cell, and a rule matches when the conditions of any one index hold. Empty cells add nothing, unless the layer property `AutoEmpty` or `StrictEmpty` asks for empty cells where other input layers have tiles. The properties `IgnoreHorizontalFlip`, `IgnoreVerticalFlip`, `IgnoreDiagonalFlip` and `IgnoreHexRotate120` let a layer match the flipped and turned tiles too.
+- `output_<layer>`, optionally with an index such as `output1_<layer>`: what a match writes onto the bottom-most layer of that name, which joins the map on top when it lacks it. The outputs without an index always write, and one index among the others is picked at random, weighed by the property `Probability` of its top layer. An output object layer places its objects with the rule, and the other properties of an output layer join the layer it writes.
+- `rule_options`: rectangle objects whose properties `ModX`, `ModY`, `OffsetX`, `OffsetY`, `Probability`, `Disabled` and `NoOverlappingOutput` apply to the rules inside them.
+
+The tiles whose property `MatchType` is `Empty`, `Ignore`, `NonEmpty`, `Other` or `Negate`, such as those of the automapping rules tileset of Tiled, match an empty cell, nothing, any tile, any tile the rule does not use on that layer, or turn the conditions of their cell around, and `Empty` erases where it outputs. The properties of the rule map `DeleteTiles`, `MatchOutsideMap`, `OverflowBorder`, `WrapBorder`, `MatchInOrder` and `NoOverlappingOutput`, and rule options set on the map, act as in Tiled: rules match the map as it was before the rule map and write in the order of their place in the rule map, top to bottom and left to right, unless `MatchInOrder` lets each rule see what the rules before it wrote, and each rule map sees what the ones before it wrote. A tile from a tileset the map lacks brings that tileset to the map.
+
+### map:automap(rules, options)
+
+Applies the rules to the map and returns how many times they matched. The layers they changed bake again on their next draw and trace their collision again. The option `seed` makes the random outputs and probabilities the same every time, and without it they differ from call to call. A rule map without input or output layers raises `The rule map "path" needs an input layer and an output layer.`, a rule map with the legacy `regions` layers raises `The rule map "path" uses the legacy "regions" layers. Remove them, so its rules follow the tiles of their input and output layers.`, an unknown `MatchType` raises `The automapping tile type "name" is unknown. It is "Empty", "Ignore", "NonEmpty", "Other" or "Negate".`, a rules file that includes itself raises `The automapping rules file "path" includes itself.`, and unknown options raise `Unknown option "<key>".`
+
+```lua
+local assets = require('haylen.assets')
+local tiled = require('haylen.tiled')
+
+local map = tiled.newMapRenderer(tiled.newMap({width = 32, height = 24, tileWidth = 16, tileHeight = 16}))
+map:addTileset({name = 'cave', image = 'tiles/cave.png', tileWidth = 16, tileHeight = 16})
+map:addLayer({name = 'ground'})
+for column = 0, 31 do
+    map:setTile('ground', column, 23, 1)
+end
+map:automap(assets.load('maps/rules/cave-rules.tmj', 'tiledRules'), {seed = 1})
 ```
 
 ## Placing the maps of a world

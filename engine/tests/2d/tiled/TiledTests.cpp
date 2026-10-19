@@ -195,6 +195,14 @@ class TiledTest : public ::testing::Test {
         // clang-format on
     }
 
+    // A rule map that shades every ground tile of the island with the terrain tileset of the island, matching with the special tiles of automapping, whose image is an image of the editor that the package lacks.
+    [[nodiscard]] static core::Json automapRules() {
+        return core::Json::parse(R"({"type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 1, "height": 1, "tilewidth": 16, "tileheight": 16,
+            "tilesets": [{"firstgid": 1, "source": "tiles/terrain.tsj"}, {"firstgid": 101, "name": "automap", "tilewidth": 16, "tileheight": 16, "tilecount": 1, "columns": 1, "image": ":/automap-tiles.png", "imagewidth": 16, "imageheight": 16,
+                "tiles": [{"id": 0, "properties": [{"name": "MatchType", "type": "string", "value": "NonEmpty"}]}]}],
+            "layers": [{"id": 1, "type": "tilelayer", "name": "input_ground", "width": 1, "height": 1, "data": [101]}, {"id": 2, "type": "tilelayer", "name": "output_shade", "width": 1, "height": 1, "data": [3]}]})");
+    }
+
     // The classes of the project of the island: the class of the map, the spawn of its properties and the reward each spawn holds, of which the map writes only what differs.
     [[nodiscard]] static core::Json gameProject() {
         return core::Json::parse(R"({"propertyTypes": [
@@ -214,7 +222,7 @@ class TiledTest : public ::testing::Test {
         // clang-format on
         std::string map = orthogonalMap().dump();
         return {
-            {"content/maps/island.tmj", map}, {"content/maps/tiles/terrain.tsj", terrainTileset().dump()}, {"content/maps/templates/rock.tj", rockTemplate().dump()}, {"content/maps/images/terrain.png", png(64, 32, 0xFFFFFFFFU)}, {"content/maps/props/tree.png", png(16, 32, 0x00FF00FFU)}, {"content/maps/props/rock.png", png(16, 16, 0x808080FFU)}, {"content/maps/backgrounds/sky.png", png(8, 8, 0xFF00FFFFU)}, {"content/maps/infinite.tmj", infiniteMap().dump()}, {"content/maps/game.tiled-project", gameProject().dump()}, {"content/maps/world/level_0_0.tmj", map}, {"content/maps/world/level_1_0.tmj", map}, {"content/maps/world/level.world", R"({"type": "world", "maps": [{"fileName": "../island.tmj", "x": -64, "y": 0, "width": 64, "height": 48}], "patterns": [{"regexp": "level_(\\d+)_(\\d+)\\.tmj", "multiplierX": 64, "multiplierY": 48, "offsetX": 0, "offsetY": 0, "mapWidth": 64, "mapHeight": 48}]})"},
+            {"content/maps/island.tmj", map}, {"content/maps/tiles/terrain.tsj", terrainTileset().dump()}, {"content/maps/templates/rock.tj", rockTemplate().dump()}, {"content/maps/images/terrain.png", png(64, 32, 0xFFFFFFFFU)}, {"content/maps/props/tree.png", png(16, 32, 0x00FF00FFU)}, {"content/maps/props/rock.png", png(16, 16, 0x808080FFU)}, {"content/maps/backgrounds/sky.png", png(8, 8, 0xFF00FFFFU)}, {"content/maps/infinite.tmj", infiniteMap().dump()}, {"content/maps/game.tiled-project", gameProject().dump()}, {"content/maps/automap.tmj", automapRules().dump()}, {"content/maps/rules.txt", "# Shade every ground tile\nautomap.tmj\n"}, {"content/maps/world/level_0_0.tmj", map}, {"content/maps/world/level_1_0.tmj", map}, {"content/maps/world/level.world", R"({"type": "world", "maps": [{"fileName": "../island.tmj", "x": -64, "y": 0, "width": 64, "height": 48}], "patterns": [{"regexp": "level_(\\d+)_(\\d+)\\.tmj", "multiplierX": 64, "multiplierY": 48, "offsetX": 0, "offsetY": 0, "mapWidth": 64, "mapHeight": 48}]})"},
         };
     }
 
@@ -1053,6 +1061,10 @@ TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
     EXPECT_EQ(fixture.lua("return tostring(map:tileInfo(1 | tiled.rotateHexagonal).rotateHexagonal) .. ' ' .. tostring(map:tileInfo(1).rotateHexagonal)"), "true false");
     EXPECT_EQ(fixture.lua("local filled = tiled.newMapRenderer(assets.load('maps/island.tmj', nil, {project = 'maps/game.tiled-project'})) return filled.properties.difficulty .. ' ' .. filled.properties.spawn.reward.coins .. ' ' .. tostring(map.properties.difficulty)"), "1 5 nil");
     EXPECT_NE(fixture.lua("assets.load('maps/island.tmj', nil, {project = 3})").find("The \"project\" of a Tiled map is the path of its \".tiled-project\" file."), std::string::npos);
+    // Automapping rules load as an asset of their own and write the map, whose new layer draws with the terrain of the island.
+    fixture.runLua("rules = assets.load('maps/rules.txt', 'tiledRules') shaded = tiled.newMapRenderer(assets.load('maps/island.tmj'))");
+    EXPECT_EQ(fixture.lua("local grounds = 0 for row = 0, shaded.height - 1 do for column = 0, shaded.width - 1 do if shaded:tile('ground', column, row) ~= 0 then grounds = grounds + 1 end end end return tostring(shaded:automap(rules, {seed = 3}) == grounds) .. ' ' .. shaded:tile('shade', 0, 0) .. ' ' .. rules.ruleMaps[1].path .. ' ' .. rules.ruleMaps[1].filter .. '|'"), "true 3 maps/automap.tmj |");
+    EXPECT_NE(fixture.lua("shaded:automap(rules, {seeds = 1})").find("Unknown option \"seeds\"."), std::string::npos);
     EXPECT_EQ(fixture.lua("return string.format('%X %X %X %X %X', tiled.flipHorizontal, tiled.flipVertical, tiled.flipDiagonal, tiled.rotateHexagonal, tiled.flagMask)"), "80000000 40000000 20000000 10000000 F0000000");
     EXPECT_EQ(fixture.lua("return tiled.tileId(5 | tiled.flipHorizontal | tiled.flipDiagonal) .. ' ' .. tiled.tileId(7)"), "5 7");
 }

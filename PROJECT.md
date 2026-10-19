@@ -2042,8 +2042,8 @@ Ferramentas e plataformas:
 
 Tiled:
 
-- [ ] Suporte completo ao Tiled: todas as propriedades de mapas, camadas, tilesets, objetos, textos, imagens, grupos, propriedades de classe, wang sets, animações, transformações e mapas infinitos, e qualquer mapa abre sem problemas.
-- [ ] Autotile e automapping do Tiled.
+- [ ] Suporte completo ao Tiled: todas as propriedades de mapas, camadas, tilesets, objetos, textos, imagens, grupos, propriedades de classe, wang sets, animações, transformações e mapas infinitos, e qualquer mapa abre sem problemas. Feito até aqui: cor das camadas de objetos, `grid` e `transformations` dos tilesets, sublinhado, tachado e negrito e itálico desenhados nos textos, `rotateHexagonal` no `tileInfo` e os membros padrão das classes pelo arquivo `.tiled-project` (opção `project`). Falta: os modos de mistura que precisam ler o que está por baixo (`overlay`, `darken` e os outros), que hoje recusam o mapa com mensagem clara.
+- [x] Autotile e automapping do Tiled. O autotile é a pintura com Wang sets (`map:paintTerrain`), e o automapping aplica em tempo de execução as regras do Tiled (`tiled::AutoMapper` e `map:automap(rules, {seed})`): arquivos `rules.txt` com filtros `[nome*]`, mapas de regras com `input`, `inputnot` e `output` com índices, os tiles especiais pelo `MatchType` (`Empty`, `Ignore`, `NonEmpty`, `Other`, `Negate`), saídas aleatórias por `Probability`, `rule_options` (`ModX`, `ModY`, `OffsetX`, `OffsetY`, `Probability`, `Disabled`, `NoOverlappingOutput`), objetos de saída e as propriedades `DeleteTiles`, `MatchOutsideMap`, `OverflowBorder`, `WrapBorder` e `MatchInOrder`, com o tipo de asset `tiledRules`. O sistema antigo de camadas `regions` é recusado com mensagem clara. Teste `TLD-015`.
 
 README e documentação:
 

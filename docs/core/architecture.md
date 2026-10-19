@@ -90,7 +90,7 @@ The class `plugins::BuiltInPlugins` in `engine/src/plugins/BuiltInPlugins.cpp` r
 | `particles2d` | `haylen.particles2d` | Registers the `particles` and `imageShape` asset types. |
 | `audio` | `haylen.audio` | Registers the `sound` asset type. |
 | `video` | `haylen.video` | Opens the videos of the app with the decoder of the platform and keeps each one current at the start of every frame until it is released. |
-| `physics2d`, `tiled`, `spatial2d`, `navigation2d` | `haylen.physics2d`, `haylen.tiled`, `haylen.spatial2d`, `haylen.navigation2d` | `tiled` registers the `tiled` and `tiledWorld` asset types. |
+| `physics2d`, `tiled`, `spatial2d`, `navigation2d` | `haylen.physics2d`, `haylen.tiled`, `haylen.spatial2d`, `haylen.navigation2d` | `tiled` registers the `tiled`, `tiledWorld` and `tiledRules` asset types. |
 | `nodes2d` | `haylen.nodes2d` | Registers the `prefab` asset type. |
 | `localization` | `haylen.localization` | |
 | `storage` | `haylen.storage`, `haylen.preferences` | Loads preferences on start and writes them on suspend and stop. |

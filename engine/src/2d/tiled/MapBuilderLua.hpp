@@ -16,6 +16,7 @@ class MapBuilderLua final {
     static int removeLayer(lua_State* L);
     static int fill(lua_State* L);
     static int paintTerrain(lua_State* L);
+    static int automap(lua_State* L);
     static int setChunk(lua_State* L);
     static int removeChunk(lua_State* L);
     static int toJson(lua_State* L);
@@ -25,6 +26,7 @@ class MapBuilderLua final {
     static constexpr std::array<std::string_view, 15> kTilesetFields{"name", "image", "texture", "tileWidth", "tileHeight", "margin", "spacing", "tileCount", "filter", "wrap", "offsetX", "offsetY", "renderGridSize", "preserveAspect", "wangSets"};
     static constexpr std::array<std::string_view, 4> kWangSetFields{"name", "type", "colors", "tiles"};
     static constexpr std::array<std::string_view, 2> kWangTileFields{"tile", "wangId"};
+    static constexpr std::array<std::string_view, 1> kAutomapFields{"seed"};
     static constexpr std::array<std::string_view, 10> kLayerFields{"name", "kind", "visible", "opacity", "offsetX", "offsetY", "parallaxX", "parallaxY", "tint", "blend"};
 };
 

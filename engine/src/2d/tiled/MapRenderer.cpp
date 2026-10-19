@@ -347,6 +347,45 @@ void MapRenderer::removeChunk(std::string_view name, int column, int row) {
 }
 
 // The cell takes the color on every corner and edge, its neighbours on the corners and edges they share with it, and each of the nine cells takes the tile of the set whose colors match the most, among the corners for a corner set, the edges for an edge set and both for a mixed one.
+const Layer* MapRenderer::findLayerById(std::uint32_t id) const noexcept {
+    return findLayerIn(map.layers, id);
+}
+
+const Layer* MapRenderer::findLayerIn(const std::vector<Layer>& layers, std::uint32_t id) noexcept {
+    for (const Layer& layer : layers) {
+        if (layer.id == id) {
+            return &layer;
+        }
+        if (const Layer* found = findLayerIn(layer.layers, id)) {
+            return found;
+        }
+    }
+    return nullptr;
+}
+
+// A changed tile layer bakes again over its whole area and traces its collision again, and a changed object layer sorts its objects again.
+AutoMapper::Result MapRenderer::automap(const AutoMapper& mapper, math::Random& random) {
+    const AutoMapper::Result result = mapper.apply(map, random);
+    for (const std::uint32_t id : result.layers) {
+        const Layer* layer = findLayerById(id);
+        int left = 0;
+        int top = 0;
+        int right = layer->width;
+        int bottom = layer->height;
+        for (const Layer::Chunk& chunk : layer->chunks) {
+            left = std::min(left, chunk.x);
+            top = std::min(top, chunk.y);
+            right = std::max(right, chunk.x + chunk.width);
+            bottom = std::max(bottom, chunk.y + chunk.height);
+        }
+        invalidate(*layer, left, top, right - left, bottom - top);
+    }
+    for (const std::uint32_t id : result.objectLayers) {
+        objectOrders.erase(id);
+    }
+    return result;
+}
+
 void MapRenderer::paintTerrain(std::string_view name, std::string_view wangSet, int column, int row, int color) {
     Layer& layer = requireTileLayer(name);
     const Map::TilesetReference* owner = nullptr;
