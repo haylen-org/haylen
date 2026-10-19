@@ -1,6 +1,6 @@
 # haylen.math
 
-The module `haylen.math` provides the math types that the rest of the engine uses, `Vec2`, `Rect`, `Color` and `Transform2D`, together with a seeded random generator, gradient and cellular noise, easing curves, scalar helpers, circle and segment tests, ray casts against shapes, polygon utilities, polygon booleans and offsets, marching squares, splines, critically damped springs, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, procedural generation and anything that passes positions, areas or colors to other modules. Lua's standard `math` library stays available for everything else.
+The module `haylen.math` provides the math types that the rest of the engine uses, `Vec2`, `Rect`, `Color` and `Transform2D`, together with a seeded random generator, gradient and cellular noise, easing curves, scalar helpers, circle and segment tests, ray casts against shapes, polygon utilities, signal filters, polygon booleans and offsets, marching squares, splines, critically damped springs, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, procedural generation and anything that passes positions, areas or colors to other modules. Lua's standard `math` library stays available for everything else.
 
 ```lua
 local m = require('haylen.math')
@@ -2096,6 +2096,101 @@ for _, post in ipairs(fence:sampleByDistance(25)) do
     print(post)
 end
 print(#fence:sample(10)) -- 10
+```
+
+## Signal filters
+
+Five filters smooth values that change every frame, such as the position of a finger, the speed of a car or the readings of a sensor. Each one holds from 1 to 4 values, its `dimensions`, 1 by default, and its `update` takes as many numbers and returns them filtered, or takes and returns a `Vec2` when the filter has two dimensions. The filters keep their windows from the start, so an update never allocates. A count of values that differs from the dimensions raises `The filter takes <dimensions> values, not <count>.`, and unknown options raise `Unknown option "<key>".`
+
+| Filter | Best for |
+| --- | --- |
+| `m.lowPassFilter` | Steady smoothing at any frame rate, such as a camera that follows a target or a gauge. |
+| `m.movingAverage` | The average of the last readings, such as frames per second or a speed shown to the player. |
+| `m.medianFilter` | Readings with single wrong values, keeping steps sharp. |
+| `m.hampelFilter` | Removing spikes while every other value passes exactly. |
+| `m.kalmanFilter` | Noisy measurements of a value that drifts, such as the tracked position of a finger or a hand. |
+
+### m.lowPassFilter(options)
+
+Returns a `LowPassFilter`, which lets changes slower than its `cutoff` in hertz through and damps faster ones, 5 by default. Its `update(dt, ...)` takes the seconds since the last update first, so the smoothing is the same at any frame rate, and the first update returns its values as they are. A higher cutoff follows faster. The property `cutoff` changes it, `dimensions` reads its dimensions, and `reset()` forgets the past values. A cutoff that is not positive raises `The cutoff of a low-pass filter is a positive number of hertz.`
+
+```lua
+local input = require('haylen.input')
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+-- A cursor that follows the mouse smoothly.
+local smooth = m.lowPassFilter({cutoff = 8, dimensions = 2})
+
+scene.push({
+    update = function(self, dt)
+        self.x, self.y = smooth:update(dt, input.mousePosition())
+    end,
+})
+```
+
+### m.movingAverage(options)
+
+Returns a `MovingAverage` of the last `window` updates, 10 by default and from 1 to 1024, which follows a steady change with a delay of half the window. Until the window fills, it averages the updates so far. It has `update(...)`, `reset()` and the properties `window` and `dimensions`. A window out of range raises `The window of a filter holds from 1 to 1024 updates, not <window>.`
+
+```lua
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+local frames = m.movingAverage({window = 60})
+
+scene.push({
+    update = function(self, dt)
+        self.fps = 1 / frames:update(dt)
+    end,
+})
+```
+
+### m.medianFilter(options)
+
+Returns a `MedianFilter`, the median of the last `window` updates, 5 by default and from 1 to 255, which drops single wrong readings and keeps steps sharp, where an average would smear both. It has `update(...)`, `reset()`, `window` and `dimensions`.
+
+```lua
+local m = require('haylen.math')
+
+local distance = m.medianFilter({window = 3})
+print(distance:update(1.0), distance:update(9.0), distance:update(1.1)) -- 1 5 1.1
+```
+
+### m.hampelFilter(options)
+
+Returns a `HampelFilter`, which lets every value through as it is unless it lies farther from the median of the last `window` updates, 7 by default and from 1 to 255, than `threshold` times their spread, 3 by default, where it returns the median instead. The property `outlier` tells whether the last update replaced a value, and it has `reset()`, `window`, `threshold` and `dimensions`. A threshold that is not positive raises `The threshold of a Hampel filter is a positive number of spreads.`
+
+```lua
+local m = require('haylen.math')
+
+local speed = m.hampelFilter({window = 5, threshold = 3})
+for _, reading in ipairs({20, 21, 20.5, 21.2, 300, 20.8}) do
+    local value = speed:update(reading)
+    print(value, speed.outlier) -- 300 becomes the median, and the rest pass as they are
+end
+```
+
+### m.kalmanFilter(options)
+
+Returns a `KalmanFilter`, which estimates values that drift from measurements with noise, weighing each measurement against its estimate by their uncertainties. A larger `processNoise`, 0.01 by default, follows real changes faster, and a larger `measurementNoise`, 1 by default, smooths more. The first update returns its values as they are, and the property `uncertainty` reads how sure the filter is of the first value, which falls as measurements arrive. It has `reset()` and `dimensions`. A noise that is not positive raises `The process noise and the measurement noise of a Kalman filter are positive numbers.`
+
+```lua
+local input = require('haylen.input')
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+-- The first finger on the screen, tracked without the jitter of its readings.
+local finger = m.kalmanFilter({processNoise = 0.5, measurementNoise = 20, dimensions = 2})
+
+scene.push({
+    update = function(self, dt)
+        local touch = input.touches()[1]
+        if touch then
+            self.x, self.y = finger:update(touch.x, touch.y)
+        end
+    end,
+})
 ```
 
 ## Spring

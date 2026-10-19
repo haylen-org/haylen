@@ -138,6 +138,7 @@ set(HAYLEN_TEST_SOURCES
   lua/TweenLuaTests.cpp
   lua/YieldTests.cpp
   math/ColorTransformTests.cpp
+  math/SignalFilterTests.cpp
   math/PolygonTests.cpp
   math/ProceduralTests.cpp
   math/RaycastTests.cpp

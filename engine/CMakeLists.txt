@@ -442,7 +442,12 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Easing.cpp
   src/math/EasingCurve.cpp
   src/math/Geometry.cpp
+  src/math/HampelFilter.cpp
+  src/math/KalmanFilter.cpp
+  src/math/LowPassFilter.cpp
   src/math/MarchingSquares.cpp
+  src/math/MedianFilter.cpp
+  src/math/MovingAverage.cpp
   src/math/MathLua.cpp
   src/math/Noise2D.cpp
   src/math/PoissonDisk.cpp
@@ -452,6 +457,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Raycast.cpp
   src/math/RaycastLua.cpp
   src/math/ShuffleBag.cpp
+  src/math/SignalFilterLua.cpp
   src/math/Spline.cpp
   src/math/SplineLua.cpp
   src/math/Spring.cpp

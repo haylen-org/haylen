@@ -20,6 +20,7 @@
 #include "math/ChoiceLua.hpp"
 #include "math/PolygonLua.hpp"
 #include "math/RaycastLua.hpp"
+#include "math/SignalFilterLua.hpp"
 #include "math/SplineLua.hpp"
 #include "math/SpringLua.hpp"
 
@@ -585,6 +586,7 @@ void MathLua::installClasses(lua_State* L) {
 
     SplineLua::install(L);
     SpringLua::install(L);
+    SignalFilterLua::install(L);
     ChoiceLua::install(L);
 }
 
@@ -597,6 +599,7 @@ int MathLua::open(lua_State* L) {
     PolygonLua::addFunctions(L);
     SplineLua::addFunctions(L);
     SpringLua::addFunctions(L);
+    SignalFilterLua::addFunctions(L);
     ChoiceLua::addFunctions(L);
     lua_pushnumber(L, Math::kPi);
     lua_setfield(L, -2, "pi");
