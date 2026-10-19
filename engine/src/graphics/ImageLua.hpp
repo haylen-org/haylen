@@ -3,11 +3,14 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string_view>
 
 #include "haylen/graphics/Device.hpp"
+#include "haylen/graphics/Gradient.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/ImageFilters.hpp"
+#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 
 struct lua_State;
@@ -21,6 +24,15 @@ namespace haylen::lua {
 template <> struct Type<graphics::Image> {
     static constexpr const char* name = "haylen.Image";
     using Storage = std::shared_ptr<graphics::Image>;
+};
+
+template <> struct EnumNames<graphics::Gradient::Kind> {
+    static std::optional<graphics::Gradient::Kind> fromName(std::string_view name) {
+        return graphics::Gradient::kindFromName(name);
+    }
+    static std::string_view name(graphics::Gradient::Kind value) {
+        return graphics::Gradient::kindName(value);
+    }
 };
 
 } // namespace haylen::lua
@@ -52,6 +64,7 @@ class ImageLua final {
   private:
     static constexpr std::array<std::string_view, 2> kBlitFields{"source", "blend"};
     static constexpr std::array<std::string_view, 2> kPlaceholderFields{"columns", "rows"};
+    static constexpr std::array<std::string_view, 7> kGradientFields{"kind", "stops", "colors", "angle", "center", "radius", "dither"};
     static constexpr std::array<std::string_view, 4> kAdjustFields{"brightness", "contrast", "saturation", "hue"};
     // The keys of each effect of `applyAsync`, after its `effect`.
     static constexpr std::array<std::string_view, 2> kBlurEffectFields{"effect", "radius"};
@@ -66,6 +79,8 @@ class ImageLua final {
     static constexpr int kSwatchColors = 16;
 
     [[nodiscard]] static Image::Area readArea(lua_State* L, int index, const Image& image);
+    [[nodiscard]] static Gradient readGradient(lua_State* L, int index);
+    static void readStops(lua_State* L, std::vector<Gradient::Stop>& stops);
 
     // Returns the callback of a read that settles the promise with the image or the failure.
     [[nodiscard]] static Device::ReadCallback settle(const std::shared_ptr<varn::async::Promise>& promise);
@@ -88,6 +103,7 @@ class ImageLua final {
     static int adjust(lua_State* L);
     static int grayscale(lua_State* L);
     static int invert(lua_State* L);
+    static int fillGradient(lua_State* L);
     static int tint(lua_State* L);
     static int pixelate(lua_State* L);
     static int outline(lua_State* L);

@@ -99,6 +99,82 @@ int ImageLua::fill(lua_State* L) {
     return 0;
 }
 
+// Paints a gradient over an area with `fillGradient({kind, stops, colors, angle, center, radius, dither}, rect)`, the whole image without a rectangle.
+int ImageLua::fillGradient(lua_State* L) {
+    const Gradient gradient = readGradient(L, 2);
+    Image& image = checkWritable(L, 1);
+    gradient.paint(image, readArea(L, 3, image));
+    return 0;
+}
+
+// Reads the stops as a list of offset and color pairs, or the colors spread evenly, but never both.
+Gradient ImageLua::readGradient(lua_State* L, int index) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    Gradient::Kind kind = Gradient::Kind::Linear;
+    std::optional<std::vector<Gradient::Stop>> stops;
+    std::optional<std::vector<math::Color>> colors;
+    float angle = 0.0F;
+    math::Vec2 center{0.5F, 0.5F};
+    std::optional<math::Vec2> radius;
+    bool dither = true;
+    // clang-format off
+    lua::Table::readFields(L, index, kGradientFields, {}, [&](std::string_view key) {
+        if (key == "kind") {
+            lua::Table::readValue(L, key, kind);
+        } else if (key == "stops") {
+            readStops(L, stops.emplace());
+        } else if (key == "colors") {
+            lua::Table::readValue(L, key, colors.emplace());
+        } else if (key == "angle") {
+            lua::Table::readValue(L, key, angle);
+        } else if (key == "center") {
+            lua::Table::readValue(L, key, center);
+        } else if (key == "radius") {
+            if (lua_type(L, -1) == LUA_TNUMBER) {
+                const auto both = static_cast<float>(lua_tonumber(L, -1));
+                radius = math::Vec2{both, both};
+            } else {
+                lua::Table::readValue(L, key, radius.emplace());
+            }
+        } else if (key == "dither") {
+            lua::Table::readValue(L, key, dither);
+        }
+    });
+    // clang-format on
+    if (stops.has_value() == colors.has_value()) {
+        throw std::invalid_argument("A gradient takes its colors from either \"stops\" or \"colors\".");
+    }
+
+    Gradient gradient = stops ? Gradient(std::move(*stops), kind) : Gradient::fromColors(*colors, kind);
+    gradient.setAngle(angle);
+    gradient.setCenter(center);
+    if (radius) {
+        gradient.setRadius(*radius);
+    }
+    gradient.setDithered(dither);
+    return gradient;
+}
+
+void ImageLua::readStops(lua_State* L, std::vector<Gradient::Stop>& stops) {
+    if (!lua_istable(L, -1)) {
+        throw std::invalid_argument("The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.");
+    }
+    const auto count = static_cast<lua_Integer>(lua_rawlen(L, -1));
+    for (lua_Integer index = 1; index <= count; ++index) {
+        lua_rawgeti(L, -1, index);
+        if (!lua_istable(L, -1) || lua_rawlen(L, -1) != 2) {
+            throw std::invalid_argument("The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.");
+        }
+        Gradient::Stop stop;
+        lua_rawgeti(L, -1, 1);
+        lua::Table::readValue(L, "stops", stop.offset);
+        lua_rawgeti(L, -2, 2);
+        lua::Table::readValue(L, "stops", stop.color);
+        lua_pop(L, 3);
+        stops.push_back(stop);
+    }
+}
+
 // Draws another image into this one with `blit(source, x, y, {source = rect, blend = false})`.
 int ImageLua::blit(lua_State* L) {
     const std::shared_ptr<Image> source = lua::Userdata::checkShared<Image>(L, 2);
@@ -436,7 +512,7 @@ int ImageLua::height(lua_State* L) {
 }
 
 void ImageLua::install(lua_State* L) {
-    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).function("palette", &lua::Binding::native<&palette>).function("swatches", &lua::Binding::native<&swatches>).function("placeholder", &lua::Binding::native<&placeholder>).function("blur", &lua::Binding::native<&blur>).function("sharpen", &lua::Binding::native<&sharpen>).function("adjust", &lua::Binding::native<&adjust>).function("grayscale", &lua::Binding::native<&grayscale>).function("invert", &lua::Binding::native<&invert>).function("tint", &lua::Binding::native<&tint>).function("pixelate", &lua::Binding::native<&pixelate>).function("outline", &lua::Binding::native<&outline>).function("applyAsync", &lua::Binding::native<&applyAsync>).property("width", &width).property("height", &height).install();
+    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("fillGradient", &lua::Binding::native<&fillGradient>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).function("palette", &lua::Binding::native<&palette>).function("swatches", &lua::Binding::native<&swatches>).function("placeholder", &lua::Binding::native<&placeholder>).function("blur", &lua::Binding::native<&blur>).function("sharpen", &lua::Binding::native<&sharpen>).function("adjust", &lua::Binding::native<&adjust>).function("grayscale", &lua::Binding::native<&grayscale>).function("invert", &lua::Binding::native<&invert>).function("tint", &lua::Binding::native<&tint>).function("pixelate", &lua::Binding::native<&pixelate>).function("outline", &lua::Binding::native<&outline>).function("applyAsync", &lua::Binding::native<&applyAsync>).property("width", &width).property("height", &height).install();
 }
 
 } // namespace haylen::graphics

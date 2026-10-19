@@ -110,6 +110,7 @@ set(HAYLEN_TEST_SOURCES
   debug/InspectorTests.cpp
   debug/StatsTests.cpp
   debug/TraceRecorderTests.cpp
+  graphics/GradientTests.cpp
   graphics/GraphicsLuaTests.cpp
   graphics/GraphicsTests.cpp
   graphics/ImageFiltersTests.cpp

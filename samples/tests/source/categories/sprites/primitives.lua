@@ -1,4 +1,5 @@
--- Primitives: lines of several widths, open and closed polylines, filled and outlined rectangles, circles of every size, rings, arcs that fill up, concave and regular polygons, meshes with vertex colors and a texture, shapes: rounded rectangles with borders, a soft shadow, a turning capsule and a pill rounded on one side, and ellipses: filled, a turning outline, a sector and a portrait inside an ellipse.
+-- Primitives: lines of several widths, open and closed polylines, filled and outlined rectangles, circles of every size, rings, arcs that fill up, concave and regular polygons, meshes with vertex colors and a texture, shapes: rounded rectangles with a gradient and borders, a soft shadow, a turning capsule and a pill rounded on one side, and ellipses: filled, a turning outline, a sector and a portrait inside an ellipse.
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -15,7 +16,8 @@ graphics2d.drawLine(x1, y1, x2, y2, 4, color)  graphics2d.drawPolyline(points, 3
 graphics2d.drawCircle(x, y, 40, color)  graphics2d.drawRing(x, y, 40, 8, color)  graphics2d.drawArc(x, y, 40, 10, start, start + m.tau * progress, color)
 graphics2d.drawPolygon(star, color)  graphics2d.drawMesh(nil, {{x = 0, y = 0, color = '#FFFF0000'}, ...}, {1, 2, 3})
 graphics2d.drawShape(rect, {radius = 14, color = color, borderWidth = 3, borderColor = border, softness = 0, rotation = 0})
-graphics2d.drawEllipse(x, y, 60, 30, color)  graphics2d.drawShape(rect, {kind = 'ellipse', texture = hero, borderWidth = 3, borderColor = border})]]
+graphics2d.drawEllipse(x, y, 60, 30, color)  graphics2d.drawShape(rect, {kind = 'ellipse', texture = hero, borderWidth = 3, borderColor = border})
+image:fillGradient({angle = math.pi / 2, colors = {top, bottom}})  graphics2d.drawShape(rect, {radius = 14, texture = gradient})]]
 
 -- The points of a regular polygon around a center, with its first corner at the angle of the turn.
 function Primitives.regular(x, y, radius, sides, turn)
@@ -40,6 +42,9 @@ end
 
 function Primitives:enter()
     self.hero = SpriteTest.texture('images/hero.png')
+    local gradient = graphics.newImage(8, 128)
+    gradient:fillGradient({angle = math.pi / 2, stops = {{0, '#FF3A4E8C'}, {0.55, '#FF233056'}, {1, '#FF141A2E'}}})
+    self.gradient = graphics.newTexture(gradient, {filter = 'linear'})
     self.time = 0
     self:frame{code = Primitives.code, hint = 'Each cell draws with the function named on it, and the shapes move with the time.'}
 end
@@ -107,7 +112,7 @@ function Primitives:cell(index, x, y, size)
     elseif index == 9 then
         local card = {x - half, y - half * 0.85, half * 2, half}
         graphics2d.drawShape({card[1], card[2] + 8, card[3], card[4]}, {radius = 14, color = '#90000000', softness = 18})
-        graphics2d.drawShape(card, {radius = 14, color = Test.surface, borderWidth = 3, borderColor = Test.accent})
+        graphics2d.drawShape(card, {radius = 14, texture = self.gradient, borderWidth = 3, borderColor = Test.accent})
         graphics2d.drawShape({x - half * 0.8, y + half * 0.45 - 10, half * 1.6, 20}, {radius = 10, rotation = math.sin(time) * 0.4, color = Test.warm})
         graphics2d.drawShape({x - half, y + half * 0.8 - 14, half, 28}, {radius = {14, 0, 0, 14}, color = Test.green})
     else

@@ -236,6 +236,7 @@ An `Image` holds RGBA pixels on the CPU, for art that code makes, composes or pa
 | `image:pixel(x, y)` | Returns the `Color` of a pixel, transparent outside the image. |
 | `image:setPixel(x, y, color)` | Sets a pixel, and does nothing outside the image. |
 | `image:fill(color, area)` | Fills the part of the area inside the image, the whole image without an area. |
+| `image:fillGradient(gradient, area)` | Paints a [gradient](#gradients) laid over the whole area into the part of it inside the image, the whole image without an area. |
 | `image:blit(source, x, y, options)` | Copies the image `source`, or the area `options.source` of it, to `x`, `y`, clipped to both images, replacing the pixels it covers, or blending over them by alpha with `options.blend = true`. Other keys raise `Unknown option "name".` |
 | `image:blitAsync(source, x, y, options)` | Returns a promise of a copy of the image with the blit done, both made on the task pool, while the image stays as it is. |
 | `image:crop(area)` | Returns a new image of the area, which raises `The area x, y, w by h is not inside the image of w by h pixels.` outside it. |
@@ -271,6 +272,45 @@ async.spawn(function()
     locked:outline('#FF1E2A44', 3)
     print(graphics.newTexture(backdrop, {filter = 'linear'}).width, locked.width)
 end)
+```
+
+### Gradients
+
+The method `image:fillGradient(gradient, area)` paints colors that blend from stop to stop, which a texture then shows, such as the background of a menu, the sky behind a level, a button or the [image of a shape](graphics2d.md#graphics2ddrawshaperect-options), whose edge stays smooth at any size. The colors blend premultiplied by their alpha, so a stop that fades out never darkens its neighbours. The table `gradient` takes these keys:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `kind` | string | `'linear'` | The kind `'linear'` runs along `angle` across the whole area, from the corner behind its direction to the corner ahead of it, `'radial'` grows from `center` to `radius`, and `'conic'` turns around `center` clockwise from `angle`. |
+| `stops` | list | none | The colors as pairs of an offset from 0 to 1 and a color, in increasing order, such as `{{0, '#FF1E2A44'}, {0.6, '#FF4A78C8'}, {1, '#FFF6C26B'}}`. Two stops at one offset switch colors there. |
+| `colors` | list of Color | none | The colors spread evenly from 0 to 1, in place of `stops`. |
+| `angle` | number | `0` | The direction of a linear gradient and the start of a conic one, in radians clockwise from the x axis, so `math.pi / 2` runs from the top down. |
+| `center` | Vec2 | `{0.5, 0.5}` | The center of a radial or conic gradient as a share of the area on each axis. |
+| `radius` | number or Vec2 | `0.5` | The radius of a radial gradient as a share of the width and of the height of the area, so the default reaches the middle of every side, and a number sets both. |
+| `dither` | boolean | `true` | Spreads the rounding of every pixel to 8 bits with an ordered pattern, so wide gradients show no bands. |
+
+The first color holds before the first stop and the last one after the last stop. A table with both `stops` and `colors` or neither raises `A gradient takes its colors from either "stops" or "colors".`, a stop that is not a pair raises `The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.`, offsets out of 0 to 1 or out of order raise `The stops of a gradient need offsets from 0 to 1 in increasing order.`, a radius that is not above 0 raises `A radial gradient needs a radius above 0 on both axes.`, and unknown keys raise `Unknown option "<key>".`
+
+```lua
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local sky = graphics.newImage(4, 256)
+sky:fillGradient({angle = math.pi / 2, stops = {{0, '#FF1E2A44'}, {0.7, '#FF4A78C8'}, {1, '#FFF6C26B'}}})
+local skyTexture = graphics.newTexture(sky, {filter = 'linear'})
+
+local glow = graphics.newImage(128, 128)
+glow:fillGradient({kind = 'radial', stops = {{0, '#FFFFE9A0'}, {1, '#00FFB040'}}})
+local glowTexture = graphics.newTexture(glow, {filter = 'linear'})
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.draw(skyTexture, 0, 0, {width = 1280, height = 720, pivotX = 0, pivotY = 0})
+        graphics2d.drawShape({480, 300, 320, 72}, {radius = 36, texture = skyTexture, borderWidth = 3, borderColor = '#FFFFFFFF'})
+        graphics2d.drawShape({1000, 120, 160, 160}, {kind = 'ellipse', texture = glowTexture, blend = 'additive'})
+    end,
+})
 ```
 
 ```lua

@@ -458,7 +458,7 @@ Draws a rectangle with rounded corners or an ellipse, turned around its center, 
 | `startAngle` | number | `0` | Where the sector the sweep keeps starts, in radians clockwise from the x axis of the shape after its rotation. |
 | `sweep` | number | `mmath.tau` | Keeps the sector that starts at `startAngle` and turns clockwise by this angle, with straight sides from the center, such as the part of a ring that shows progress or a triangle cut from a rectangle around its corners. A full turn keeps the whole shape. |
 | `color` | Color | `'#FFFFFFFF'` | The fill. |
-| `texture` | Texture | none | An image stretched over `rect` under the fill color, such as a portrait inside a circle, which turns with the shape. |
+| `texture` | Texture | none | An image stretched over `rect` under the fill color, such as a portrait inside a circle or a [gradient](graphics.md#gradients), which turns with the shape. |
 | `borderWidth` | number | `0` | The width of the border, which runs inside the edge, at most half the shorter side. |
 | `borderColor` | Color | `'#00000000'` | The color of the border. A clear fill with a border draws an outline. |
 | `softness` | number | `0` | Widens the fade of the edge to this many units, centered on the edge, such as for a soft shadow. |
