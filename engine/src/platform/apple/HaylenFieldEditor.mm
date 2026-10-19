@@ -33,6 +33,17 @@ using haylen::platform::TextInput;
     return nil;
 }
 
+// The engine picks the cursor of the pointer itself, the text cursor over the fields of the UI, so the invisible editor never sets one, neither through its cursor rects nor through the moves of the mouse, which reach it as the first responder and go on to the view of the app.
+- (void)resetCursorRects {
+}
+
+- (void)cursorUpdate:(NSEvent*)event {
+}
+
+- (void)mouseMoved:(NSEvent*)event {
+    [self.nextResponder mouseMoved:event];
+}
+
 - (void)edit:(const TextInput::Field&)value {
     NSWindow* window = (__bridge NSWindow*)sapp_macos_get_window();
     NSView* host = window.contentView;

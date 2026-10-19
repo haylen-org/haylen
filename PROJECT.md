@@ -1985,7 +1985,7 @@ Licença e contribuições:
 UI, texto e input:
 
 - [ ] Atalhos de texto nos campos: Ctrl+A ou Cmd+A seleciona tudo, Ctrl+C, Ctrl+V e Ctrl+X (Cmd no macOS) copiam, colam e cortam, e os outros atalhos comuns de cada sistema (desfazer, refazer, palavra anterior e seguinte, início e fim), em todas as plataformas, com testes.
-- [ ] O cursor do mouse fica como cursor de texto depois de sair de um campo: voltar ao cursor normal assim que o ponteiro sai do campo ou o campo perde o foco.
+- [x] O cursor do mouse fica como cursor de texto depois de sair de um campo: voltar ao cursor normal assim que o ponteiro sai do campo ou o campo perde o foco. A causa era o editor de texto invisível do macOS (`HaylenFieldEditor`), que como primeiro respondedor da janela definia o cursor de texto pelas áreas dele e a cada movimento do mouse, enquanto a engine só troca o cursor quando o que ela quer muda, então o cursor de texto ficava. Agora o editor não define cursor nenhum e repassa os movimentos à view do app, e a engine, que pede o cursor de texto sobre os campos, decide sempre. O AppKit não roda no host headless e conferir na tela exigiria mover o mouse que o dono usa, então a correção foi compilada e não conferida com um teste.
 - [ ] Ajuste automático do tamanho do texto (`autoSize`) nos rótulos e no texto 2D: o texto diminui até caber na caixa, com mínimo e máximo, em C++ e Lua.
 - [ ] Mobile: tocar num campo de texto não abre o teclado. Corrigir no iOS e no Android, conferindo no simulador e no emulador.
 - [ ] Mobile: arrastar começando sobre um campo de texto não rola a lista. O arrasto tem de rolar a lista e só um toque sem movimento foca o campo.
