@@ -1,21 +1,14 @@
 <p align="center">
-    <a href="https://github.com/haylen-org/haylen" target="_blank" rel="noopener noreferrer">
-        <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="extras/images/logo-v-dark.svg">
-            <img width="200" src="extras/images/logo-v.svg" alt="Haylen">
-        </picture>
-    </a>
+    <a href="https://github.com/haylen-org/haylen" target="_blank" rel="noopener noreferrer"><img width="120" src="extras/images/symbol.svg" alt=""></a>
 </p>
+
+<h1 align="center">Haylen</h1>
 
 <p align="center">
     <a href="https://github.com/haylen-org/haylen/actions/workflows/ci.yml"><img src="https://github.com/haylen-org/haylen/actions/workflows/ci.yml/badge.svg" alt="Haylen - CI"></a>
     <a href="https://github.com/haylen-org/haylen/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
     <a href="https://isocpp.org"><img src="https://img.shields.io/badge/C%2B%2B-20-00599C.svg" alt="C++ 20"></a>
     <a href="https://github.com/varn-org/varn"><img src="https://img.shields.io/badge/Lua-Varn-000080.svg" alt="Lua through Varn"></a>
-</p>
-
-<p align="center">
-    <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20iOS%20%7C%20tvOS%20%7C%20Android%20%7C%20Web-555555.svg" alt="Supported platforms">
 </p>
 
 <p align="center">
@@ -30,26 +23,42 @@ Haylen is a reusable engine for games, multimedia apps and applications. It is 2
 
 An app is a package: a folder or a zip file with `app.json`, its Lua modules under `source/` and its assets under `content/`. The same package runs on every platform, the engine is built once into prebuilt artifacts, and the project of each platform belongs to the developer, who edits it like any native project.
 
-## Features
+## Made with AI in mind
 
-- **2D rendering.** Batched sprites, sprite batches, shapes, meshes, nine-slices, cameras with smoothing and shake, parallax layers, render targets, custom shaders and materials, lit canvases with normal maps, post-processing and y-sorted draw order.
-- **Animation and effects.** Frame animations, tweens of fields and engine properties with timelines, particle emitters and effect files, and 2D lights with shadows and occluders.
-- **Physics.** Rigid bodies, shapes, joints, contacts, sensors and every kind of ray and shape cast, stepped on several threads and drawn smoothly between fixed steps, with ready-made ropes, bridges, ragdolls, side and top-down vehicles, character movers, grabbers, force fields, one-way platforms, conveyors, explosions, destructible terrain and fluids.
-- **Tiled maps.** Maps and worlds in every orientation, animated tiles, parallax, collision, object spawning and ray casts against tiles and objects.
-- **World and gameplay.** Path finding on grids, waypoint graphs and navigation meshes, steering and crowds, spatial queries, procedural generation, state machines, behavior trees and utility selectors.
-- **UI and themes.** Themed menus, HUDs, dialogs, lists and touch controls with focus navigation that works with every device, layouts that follow the safe area, mirroring for right-to-left languages, and debug panels for tools.
-- **Text.** Text shaped in every script and ordered in both directions, distance field fonts, bitmap fonts, rich text with effects, localization with plural forms and native text fields with input methods and on-screen keyboards.
-- **Audio.** Sounds, streamed music, buses, effects, positional audio, pause modes and the audio sessions and interruptions of mobile platforms.
-- **Input.** Keyboard, mouse, touch, gestures, gamepads and TV remotes behind one action map, with virtual touch controls.
-- **Networking.** HTTP, sockets and WebSocket connections that never block the frame, with promises and coroutines.
-- **Native plugins.** Plugins that bring a Lua API with its Swift or Objective-C, Kotlin or Java, JavaScript and C or C++ parts, an asynchronous bridge with typed errors, timeouts and cancellation, and native libraries called from Lua.
-- **Platform services.** System information, native dialogs, opening URLs, vibration, the app lifecycle, safe areas, orientation, and desktop windows that are frameless, transparent, always on top or click-through.
-- **Web runtime.** WebAssembly with WebGPU or WebGL2, packages loaded at runtime, restart and hot reload without reloading the page, and logs, statistics and errors with Lua stack traces forwarded to JavaScript.
-- **Tools.** One command line, `haylen.py`, that creates, runs, checks and packages apps, builds the engine for every platform, compiles shaders, signs Android apps, serves web pages and runs the tests, with hot reload and an error screen that keeps the app alive.
+Haylen is built so that coding agents write correct apps and extend the engine with confidence. The names of the C++ and Lua APIs follow one vocabulary, every Lua module has a complete reference with a runnable example of every capability, error messages say what was wrong and what is expected, and [`AGENTS.md`](AGENTS.md) holds the rules that every change follows. One command, `haylen`, builds, runs, checks and tests everything, the headless player runs a whole app without a window, and the test project shows every feature with a code, so an agent can verify what it built.
 
 ## Platforms
 
-macOS, Windows, Linux, iOS and iPadOS, Mac Catalyst, tvOS, Android phones, tablets and TVs from one APK, and the web with WebGPU or WebGL2. visionOS runs the iPad app. The [distribution guide](docs/tools/distribution.md#platform-support) lists the minimum versions and how each platform runs.
+| | Platform | Renderer |
+| --- | --- | --- |
+| 🍎 | macOS | Metal |
+| 🪟 | Windows | Direct3D 11 |
+| 🐧 | Linux | OpenGL |
+| 📱 | iOS and iPadOS | Metal |
+| 💻 | Mac Catalyst | Metal |
+| 📺 | tvOS | Metal |
+| 🤖 | Android phones, tablets and TVs from one APK | OpenGL ES 3 |
+| 🌐 | Web | WebGPU, or WebGL2 where the browser lacks it |
+| 🥽 | visionOS | Metal, running the iPad app |
+
+The [distribution guide](docs/tools/distribution.md#platform-support) lists the minimum versions and how each platform runs.
+
+## Features
+
+- 🎨 **2D rendering:** sprites, batches, shapes with smooth edges, meshes, nine-slices, cameras, parallax, render targets, custom shaders, lighting with shadows and post-processing.
+- 🎞️ **Animation:** frame animations, state graphs, skeletons, tweens and timelines, particle effects and chains for procedural animation.
+- 🧱 **Physics:** bodies, joints, sensors and casts on several threads, with ropes, ragdolls, vehicles, character movers, destructible terrain and fluids.
+- 🗺️ **Tiled maps:** every orientation, animated tiles, parallax, collision, objects and worlds.
+- 🧭 **Gameplay:** path finding, navigation meshes, crowds, spatial queries, procedural generation, behavior trees and utility AI.
+- 🧩 **UI:** themed components, focus navigation for every device, safe areas, right-to-left layouts and screen readers.
+- 🔤 **Text:** every script in both directions, distance field and bitmap fonts, rich text and localization.
+- 🔊 **Audio:** sounds, streamed music, buses, effects, positional audio and mobile audio sessions.
+- 🎮 **Input:** keyboard, mouse, touch, gestures, gamepads and TV remotes behind one action map.
+- 🌍 **Network:** HTTP, sockets and WebSocket connections that never block the frame.
+- 📦 **Content:** protected releases, on-demand downloads and updates that apply on the next start.
+- 🔌 **Native plugins:** Swift, Objective-C, Kotlin, Java, JavaScript and C++ behind one Lua API.
+- 🔁 **Development:** hot reload, an error screen that keeps the app alive and a debug overlay.
+- 🛠️ **Tools:** one command that creates, runs, checks, packages and tests apps on every platform.
 
 ## Quick start
 
@@ -90,10 +99,16 @@ scene.push({
 
 The [documentation index](docs/README.md) follows the modules of the engine, with the guides and the Lua reference of each one:
 
-- [Core](docs/README.md#core): the [architecture](docs/core/architecture.md), the [lifecycle](docs/core/lifecycle.md) and the [Lua guide](docs/core/lua.md)
-- [Graphics](docs/README.md#graphics) and the [2D modules](docs/README.md#2d): rendering, shaders, text, nodes, animation, particles, lighting, physics, Tiled maps, navigation, spatial queries and procedural generation
-- [UI](docs/README.md#ui), [audio](docs/README.md#audio), [input](docs/README.md#input), [platform](docs/README.md#platform), [network](docs/README.md#network) and [content](docs/README.md#content)
-- [Tools](docs/README.md#tools): building the engine, distributing apps, [installers in CI](docs/ci-installers.md), embedding the engine in C++ projects, testing and the [API policy](docs/api-policy.md)
+| Module | Start here |
+| --- | --- |
+| Core | [Architecture](docs/core/architecture.md), [lifecycle](docs/core/lifecycle.md) and [Lua](docs/core/lua.md) |
+| Graphics | [Graphics and text](docs/README.md#graphics) |
+| 2D | [Animation, particles, lighting, physics, Tiled maps, navigation and procedural generation](docs/README.md#2d) |
+| UI | [Components, themes and focus](docs/README.md#ui) |
+| Audio and input | [Audio](docs/README.md#audio) and [input](docs/README.md#input) |
+| Platform | [Hosts, plugins and services](docs/README.md#platform) |
+| Network and content | [Network](docs/README.md#network) and [content](docs/README.md#content) |
+| Tools | [Building, distribution, testing](docs/README.md#tools) and the [API policy](docs/api-policy.md) |
 
 ## License
 
