@@ -1964,7 +1964,7 @@ Efeitos de partículas:
 Arte e animações dos samples:
 
 - [ ] Animação do herói travada: o "run" e os outros loops do teste de animação (`loop`, `once`, `pingPong`) tremem porque os quadros estão em baixa resolução e desalinhados, então o personagem não anda naturalmente. Gerar de novo as folhas em alta resolução com os quadros alinhados pela base e pelo centro, e conferir que o loop corre liso.
-- [ ] Remover qualquer sprite que não tenha sido feito para o projeto, como os do pacote externo de espadas pequenas, e toda menção a ele no repositório, trocando pela arte própria.
+- [x] Remover qualquer sprite que não tenha sido feito para o projeto, como os do pacote externo de espadas pequenas, e toda menção a ele no repositório, trocando pela arte própria. Conferido: os personagens, o mundo e os efeitos do Tiny Island já são arte própria pintada no Codex, a ferramenta que importava o pacote não existe mais, nenhuma imagem do repositório vem de fora, nenhum arquivo menciona o pacote e os créditos guardam só a licença da fonte, e os testes de `tools/test_haylen.py` conferem nomes de terceiros em todo o repositório.
 - [ ] Sprites que dançam porque não foram gerados alinhados: a tocha, a moeda e os outros sprites animados dos samples. Regra nova no `AGENTS.md`: os quadros de uma folha têm o mesmo pivô (a base no centro para personagens e objetos no chão, o centro para itens que giram), e uma ferramenta confere o alinhamento de cada folha.
 - [ ] O "now playing" do teste de música mostra um pedaço de madeira como capa: usar o logo da engine ou uma capa própria que tenha a ver com música.
 - [ ] Os sprites do parallax: algumas camadas ficaram com fundo verde e formas sem sentido. Refazer as camadas ruins com arte própria limpa.
