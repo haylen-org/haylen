@@ -7,6 +7,7 @@
 #include "text/LayoutBuilder.hpp"
 #include "text/LayoutCache.hpp"
 #include "text/Segmenter.hpp"
+#include "text/TextFit.hpp"
 
 namespace haylen::text {
 
@@ -87,7 +88,7 @@ std::shared_ptr<const Layout> FontFamily::layout(std::string_view text, const St
     if (std::shared_ptr<const Layout> cached = layouts->find(text, style)) {
         return cached;
     }
-    return layouts->store(text, style, LayoutBuilder::layoutPlainText(text, style, this, nullptr));
+    return layouts->store(text, style, TextFit::layout(style, [this, text](const Style& laid) { return LayoutBuilder::layoutPlainText(text, laid, this, nullptr); }));
 }
 
 math::Vec2 FontFamily::measure(std::string_view text, const Style& style) {

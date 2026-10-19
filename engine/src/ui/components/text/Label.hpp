@@ -49,7 +49,7 @@ class Label final : public Component {
     std::optional<math::Color> outline;
     float outlineWidth = 2.0F;
 
-    // A label that does not wrap draws a text wider than its bounds smaller, down to this share of its font size, before it shortens the text.
+    // A label draws wrapped lines taller than its bounds, or a text that does not wrap wider than them, smaller, down to this share of its font size, and a text that does not wrap and still does not fit ends with an ellipsis.
     float minScale = 1.0F;
 };
 

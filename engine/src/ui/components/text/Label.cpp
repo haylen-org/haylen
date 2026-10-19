@@ -29,11 +29,11 @@ math::Vec2 Label::measureContent(Context& context, float availableWidth) {
     return Typography::measureParagraph(context, font, context.getText(text), wrap ? availableWidth : -1.0F);
 }
 
-// Without wrapping every line of the text keeps its own line, a text wider than the label draws smaller down to the smallest scale, a line that still does not fit ends with an ellipsis, and the block of lines sits in the middle of the height.
+// Wrapped lines taller than the label draw smaller down to the smallest scale. Without wrapping every line of the text keeps its own line, a text wider than the label draws smaller down to the smallest scale, a line that still does not fit ends with an ellipsis, and the block of lines sits in the middle of the height.
 void Label::render(Context& context, const math::Rect& bounds) {
     const std::string_view full = context.getText(text);
     if (wrap) {
-        Typography::drawParagraph(context, font, bounds, context.getColor(color.value_or(Theme::Color::Text)), full, textAlign, outline, outlineWidth);
+        Typography::drawParagraph(context, font, bounds, context.getColor(color.value_or(Theme::Color::Text)), full, textAlign, outline, outlineWidth, 1.0F, minScale);
         return;
     }
     std::string_view shown = full;

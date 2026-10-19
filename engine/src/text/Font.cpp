@@ -2,6 +2,7 @@
 
 #include "text/LayoutBuilder.hpp"
 #include "text/LayoutCache.hpp"
+#include "text/TextFit.hpp"
 
 namespace haylen::text {
 
@@ -31,7 +32,7 @@ std::shared_ptr<const Layout> Font::layout(std::string_view text, const Style& s
     if (std::shared_ptr<const Layout> cached = layouts->find(text, style)) {
         return cached;
     }
-    return layouts->store(text, style, LayoutBuilder::layoutPlainText(text, style, nullptr, this));
+    return layouts->store(text, style, TextFit::layout(style, [this, text](const Style& laid) { return LayoutBuilder::layoutPlainText(text, laid, nullptr, this); }));
 }
 
 math::Vec2 Font::measure(std::string_view text, const Style& style) {

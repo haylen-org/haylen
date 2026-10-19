@@ -198,9 +198,15 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             .shadowColor = color(*found, "shadowColor", math::Color::transparent(), path, "text"),
             .shadowBlur = number(*found, "shadowBlur", 0.0F, path, "text"),
             .maxWidth = number(*found, "maxWidth", 0.0F, path, "text"),
+            .maxHeight = number(*found, "maxHeight", 0.0F, path, "text"),
+            .minScale = number(*found, "minScale", 1.0F, path, "text"),
+            .wrap = flag(*found, "wrap", true, path, "text"),
             .lineSpacing = number(*found, "lineSpacing", 1.2F, path, "text"),
             .anchor = pair(*found, "anchor", {}, path, "text"),
         };
+        if (!(style.minScale > 0.0F && style.minScale <= 1.0F)) {
+            throw std::invalid_argument(describe(path, "text", "minScale") + " must be above 0 and at most 1.");
+        }
         if (const std::string align = text(*found, "align", path, "text"); !align.empty()) {
             const auto alignment = text::Style::alignmentFromName(align);
             if (!alignment) {
@@ -391,6 +397,9 @@ void NodeSerializer::writeContent(core::Json& object, const Node& node, const st
             part["align"] = text::Style::alignmentName(style.align);
         }
         put("maxWidth", style.maxWidth, 0.0F);
+        put("maxHeight", style.maxHeight, 0.0F);
+        put("minScale", style.minScale, 1.0F);
+        put("wrap", style.wrap, true);
         put("lineSpacing", style.lineSpacing, 1.2F);
         if (!style.anchor.isZero()) {
             part["anchor"] = {style.anchor.x, style.anchor.y};

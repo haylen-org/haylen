@@ -52,7 +52,7 @@ class NodeSerializer final {
     static constexpr std::array<std::string_view, 13> kNodeKeys{"name", "x", "y", "rotation", "scaleX", "scaleY", "color", "visible", "layer", "depth", "sortOffset", "children", "sprite"};
     static constexpr std::array<std::string_view, 3> kContentKeys{"text", "frame", "particles"};
     static constexpr std::array<std::string_view, 17> kSpriteKeys{"texture", "filter", "wrap", "source", "x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "color", "flipHorizontal", "flipVertical", "layer"};
-    static constexpr std::array<std::string_view, 14> kTextKeys{"font", "text", "size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "layer"};
+    static constexpr std::array<std::string_view, 17> kTextKeys{"font", "text", "size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "maxHeight", "minScale", "wrap", "lineSpacing", "anchor", "layer"};
     static constexpr std::array<std::string_view, 13> kFrameKeys{"texture", "filter", "wrap", "source", "borders", "fill", "width", "height", "pivotX", "pivotY", "color", "borderScale", "layer"};
 
     // Throws for the first key of an object that the lists leave out, naming the node.

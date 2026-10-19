@@ -552,6 +552,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/text/RichTextRegistry.cpp
   src/text/Segmenter.cpp
   src/text/Style.cpp
+  src/text/TextFit.cpp
   src/text/TrueTypeFont.cpp
   src/ui/AccessibilityTree.cpp
   src/ui/Anchor.cpp

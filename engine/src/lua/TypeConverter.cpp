@@ -474,6 +474,15 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
             Table::readValue(L, key, style.align);
         } else if (key == "maxWidth") {
             Table::readValue(L, key, style.maxWidth);
+        } else if (key == "maxHeight") {
+            Table::readValue(L, key, style.maxHeight);
+        } else if (key == "minScale") {
+            Table::readValue(L, key, style.minScale);
+            if (!(style.minScale > 0.0F && style.minScale <= 1.0F)) {
+                luaL_error(L, "The \"minScale\" of a text style is a share of its size above 0 and at most 1.");
+            }
+        } else if (key == "wrap") {
+            Table::readValue(L, key, style.wrap);
         } else if (key == "lineSpacing") {
             Table::readValue(L, key, style.lineSpacing);
         } else if (key == "anchor") {

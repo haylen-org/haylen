@@ -169,7 +169,7 @@ The 2D camera following, framing, shaking, turning and splitting the view, with 
 
 #### Text and fonts (TXT)
 
-TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wrapping, rich text, effects and measuring. The tests are in `source/categories/text/`.
+TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wrapping, fitting text in a box, rich text, effects and measuring. The tests are in `source/categories/text/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -186,6 +186,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 | `TXT-011` | Custom effects | Text effects and inline icons registered from Lua. |  |
 | `TXT-012` | Measuring text | Text sizes, glyph quads, ascent, baseline and line height, glyph metrics, shaped advances with kerning, and rich text layouts. |  |
 | `TXT-013` | Outlines and small text | Outlines that reach the letters beside them at every size, and small text that moves at its exact place or snapped to whole pixels. |  |
+| `TXT-014` | Fitting text in a box | A name that shrinks to fit the width of its plate and a story that shrinks until its lines fit the height of its box, down to the smallest scale. |  |
 
 #### Lighting (LIT)
 

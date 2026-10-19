@@ -88,4 +88,20 @@ TEST_F(LabelTest, ShrinksATextThatIsTooWideBeforeItShortensIt) {
     EXPECT_LE(shortened.front().getRight(), box.getRight() + spread);
 }
 
+// A label whose wrapped lines are taller than its height draws them smaller, down to its smallest scale, until they fit.
+TEST_F(LabelTest, ShrinksWrappedLinesThatAreTallerThanTheLabel) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "story", "width": 300, "height": 90, "minScale": 0.3, "text": "The tide rose over the reef while the crew counted the coins of the old wreck and sang."}]})");
+    const math::Rect box = getBounds(*gui, "story");
+    const float spread = getUi().getTheme().getFont(Theme::Font::Body).size * 0.2F;
+
+    const std::vector<math::Rect> fitted = drawText();
+    ASSERT_EQ(fitted.size(), 1U);
+    EXPECT_LE(fitted.front().height, box.height + spread * 2.0F);
+
+    gui->set("story", {{"minScale", 1}});
+    const std::vector<math::Rect> full = drawText();
+    ASSERT_EQ(full.size(), 1U);
+    EXPECT_GT(full.front().height, box.height + spread * 2.0F);
+}
+
 } // namespace haylen::ui

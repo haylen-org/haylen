@@ -91,10 +91,14 @@ math::Vec2 Typography::measureParagraph(Context& context, Theme::Font font, std:
     return measure(context, font, text, width);
 }
 
-void Typography::drawParagraph(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal, std::optional<math::Color> outline, float outlineWidth, float scale) {
+void Typography::drawParagraph(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal, std::optional<math::Color> outline, float outlineWidth, float scale, float minScale) {
     const text::Alignment align = horizontal == Alignment::Center ? text::Alignment::Center : (horizontal == Alignment::End ? text::Alignment::End : text::Alignment::Start);
     text::Style style = getStyle(context, font, bounds.width, align);
     style.size *= scale;
+    if (minScale < 1.0F) {
+        style.maxHeight = bounds.height;
+        style.minScale = minScale;
+    }
     style.color = color;
     if (outline) {
         style.outlineWidth = outlineWidth;

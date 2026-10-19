@@ -185,6 +185,10 @@ A layout is cached by its width and scale, and a few widths stay cached, so a UI
 
 Plain text lays out the same way, as a document of one paragraph per line, where the carriage return of CRLF stays at the end of its line and draws nothing, so the characters of the layout keep counting the code points of the text. Every font and every family keeps its 512 most recent plain text layouts, by the text and the style fields that change the layout: size, wrap width, line spacing, alignment, direction, language, bold and italic. The size, the wrap width and the line spacing must be finite numbers. Text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
 
+## Fitting text in a box
+
+A text style whose `minScale` is below 1 fits the text in its box, as [`graphics2d.drawText`](../lua-api/graphics2d.md#graphics2ddrawtextfont-text-x-y-style) describes: the layout takes the largest size down to that share of `size` where wrapped lines fit `maxHeight`, or where text that does not wrap, with `wrap = false`, fits `maxWidth` and `maxHeight`. The search halves the range of sizes a few times when the layout is first made, and the fitted layout stays in the layout cache of its font, so text drawn every frame fits once. The same options fit the text of nodes, and labels of the UI fit their text into their bounds through their `minScale`.
+
 ## Drawing in 2D
 
 The function `graphics2d.newRichText(markup, options)` makes a `RichText` that an app keeps, updates and draws every frame, and `graphics2d.drawRichText` draws markup once, which suits text that changes every frame. The options of a `RichText` are also properties, such as `text.color`, `text.bold` or `text.family`, and setting one lays the text out again and starts its reveal over. Both place the top-left corner of the block at the position. The renderer draws rich text in layers, backgrounds, glows, shadows, images, glyphs and then underlines and strikes, and neighbouring glyphs of one font share a draw call.

@@ -48,6 +48,28 @@ class FontFileTest : public ::testing::Test {
 
 } // namespace
 
+// A minimum scale lays text out at the largest size that fits its box, keeps text that fits at its size, and takes the smallest size for text that never fits.
+TEST(FontTest, FitsTextInItsBox) {
+    test::EngineFixture fixture;
+    text::Font& font = *fixture.engine().getDefaultFont();
+    const std::string_view title = "Treasure of the deep";
+    const float natural = font.layout(title, {.size = 40.0F})->size.x;
+
+    const std::shared_ptr<const text::Layout> line = font.layout(title, {.size = 40.0F, .maxWidth = natural * 0.6F, .minScale = 0.25F, .wrap = false});
+    EXPECT_EQ(line->lineCount, 1U);
+    EXPECT_LE(line->size.x, natural * 0.6F);
+    EXPECT_GE(line->size.x, natural * 0.58F);
+
+    const std::string_view story = "The tide rose over the reef while the crew counted the coins of the old wreck.";
+    const std::shared_ptr<const text::Layout> paragraph = font.layout(story, {.size = 40.0F, .maxWidth = 300.0F, .maxHeight = 120.0F, .minScale = 0.25F});
+    EXPECT_GT(paragraph->lineCount, 1U);
+    EXPECT_LE(paragraph->size.y, 120.0F);
+    EXPECT_GT(font.layout(story, {.size = 40.0F, .maxWidth = 300.0F})->size.y, 120.0F);
+
+    EXPECT_EQ(font.layout(title, {.size = 40.0F, .maxWidth = natural + 10.0F, .minScale = 0.5F, .wrap = false})->size, font.layout(title, {.size = 40.0F})->size);
+    EXPECT_EQ(font.layout(title, {.size = 40.0F, .maxWidth = 10.0F, .minScale = 0.5F, .wrap = false})->size, font.layout(title, {.size = 20.0F})->size);
+}
+
 TEST(FontTest, LaysOutWrapsAndAlignsText) {
     test::EngineFixture fixture;
     text::Font& font = *fixture.engine().getDefaultFont();

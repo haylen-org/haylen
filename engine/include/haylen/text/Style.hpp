@@ -13,7 +13,7 @@
 
 namespace haylen::text {
 
-// How a block of text looks and where it sits. A positive maximum width wraps lines where the Unicode line breaking rules allow, and the anchor is a fraction of the block size that lands on the draw position, where the rotation turns the block and the scale stretches it without laying the text out again. Outlines and blurred shadows need a font with a distance field. Bold and italic pick those faces of a family, synthesized when it lacks them. The direction reads every paragraph left to right, right to left, or from its first strong letter, and the language, a BCP 47 tag such as `ar`, `hi` or `ja`, picks the letter forms and line breaks of its script. Pixel snapping puts the left edge and the baseline of every line on whole pixels of the destination, which keeps small text crisp, when neither the text nor its canvas turns.
+// How a block of text looks and where it sits. A positive maximum width wraps lines where the Unicode line breaking rules allow, unless wrapping is off, where every line stays whole. A minimum scale below 1 fits the block in its box, the maximum width and a positive maximum height, by laying it out at the largest size down to that share of the size where it fits: wrapped text until its lines fit the height, and text that does not wrap until its widest line fits the width too, while text that fits at the size keeps it, and the anchor is a fraction of the block size that lands on the draw position, where the rotation turns the block and the scale stretches it without laying the text out again. Outlines and blurred shadows need a font with a distance field. Bold and italic pick those faces of a family, synthesized when it lacks them. The direction reads every paragraph left to right, right to left, or from its first strong letter, and the language, a BCP 47 tag such as `ar`, `hi` or `ja`, picks the letter forms and line breaks of its script. Pixel snapping puts the left edge and the baseline of every line on whole pixels of the destination, which keeps small text crisp, when neither the text nor its canvas turns.
 struct Style {
     float size = 32.0F;
     math::Color color = math::Color::white();
@@ -24,6 +24,9 @@ struct Style {
     float shadowBlur = 0.0F;
     Alignment align = Alignment::Start;
     float maxWidth = 0.0F;
+    float maxHeight = 0.0F;
+    float minScale = 1.0F;
+    bool wrap = true;
     float lineSpacing = 1.2F;
     math::Vec2 anchor{};
     float rotation = 0.0F;

@@ -314,7 +314,7 @@ print(pixel.nativeSize, pixel.distanceField, pixel.pageCount)
 
 ### font:measure(text, style)
 
-Returns the width and height of `text` shaped and laid out with `style`, stretched by its `scale`, which is the block `graphics2d.drawText` covers. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option "name".` because a font draws nothing itself. A `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`.
+Returns the width and height of `text` shaped and laid out with `style`, stretched by its `scale`, which is the block `graphics2d.drawText` covers. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option "name".` because a font draws nothing itself. A `size`, `maxWidth`, `maxHeight`, `minScale` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width, maximum height, minimum scale and line spacing.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

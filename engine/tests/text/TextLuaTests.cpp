@@ -83,10 +83,18 @@ TEST_F(TextLuaTest, RejectsFontOptionsAndLengthsOutOfRange) {
     EXPECT_NE(lua("graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'A', cellWidth = 8, cellHeight = 8, margin = {20, 20}})").find("The grid font image holds 0 cells, fewer than its 1 characters."), std::string::npos);
 
     // A length that is not a number could never be found in the layout cache again.
-    EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {size = 0 / 0})").find("Text needs a finite size, maximum width and line spacing."), std::string::npos);
-    EXPECT_NE(lua("font:layout('x', {maxWidth = math.huge})").find("Text needs a finite size, maximum width and line spacing."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {size = 0 / 0})").find("Text needs a finite size, maximum width, maximum height, minimum scale and line spacing."), std::string::npos);
+    EXPECT_NE(lua("font:layout('x', {maxWidth = math.huge})").find("Text needs a finite size, maximum width, maximum height, minimum scale and line spacing."), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('x', {maxWidth = 0 / 0})").find("Rich text needs a finite maximum width."), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('x').maxWidth = math.huge").find("Rich text needs a finite maximum width."), std::string::npos);
+}
+
+TEST_F(TextLuaTest, FitsTextInItsBox) {
+    EXPECT_EQ(lua("local w = graphics2d.measureText(nil, 'Treasure of the deep', {size = 40}) local fw, fh = graphics2d.measureText(nil, 'Treasure of the deep', {size = 40, maxWidth = w / 2, minScale = 0.25, wrap = false}) return fw <= w / 2 and fw > w * 0.45"), "true");
+    EXPECT_EQ(lua("local _, h = graphics2d.measureText(nil, string.rep('Coins and gems. ', 12), {size = 40, maxWidth = 300, maxHeight = 120, minScale = 0.25}) return h <= 120"), "true");
+    EXPECT_EQ(lua("return font:layout('Treasure of the deep', {size = 40, maxWidth = 50, minScale = 0.5, wrap = false}).lineCount"), "1");
+    EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {minScale = 0})").find("The \"minScale\" of a text style is a share of its size above 0 and at most 1."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {minScale = 2})").find("The \"minScale\" of a text style is a share of its size above 0 and at most 1."), std::string::npos);
 }
 
 TEST_F(TextLuaTest, EndsParagraphsAtEverySeparatorAndHidesControlCharacters) {

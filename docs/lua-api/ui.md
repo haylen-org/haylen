@@ -1638,7 +1638,7 @@ Text in one of the theme fonts.
 | `wrap` | boolean | `true` | Wraps long text onto more lines. Without wrapping every line of the text, each one ended by a line break, stays on its own line and ends with an ellipsis when it does not fit, and the block of lines sits in the middle of the height of the label. |
 | `outline` | color | none | Draws an outline around the letters in this color. |
 | `outlineWidth` | number from 0 to 16 | `2` | Thickness of the outline. |
-| `minScale` | number from 0.25 to 1 | `1` | Without wrapping, a text wider than the label draws smaller, down to this share of its font size, before it ends with an ellipsis, so a translation that runs long still shows whole in a fixed space. |
+| `minScale` | number from 0.25 to 1 | `1` | A text that does not fit the label draws smaller, down to this share of its font size, so a translation that runs long still shows whole in a fixed space: wrapped lines until they fit the height of the label, and without wrapping a text wider than the label, which ends with an ellipsis when it still does not fit. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -1648,6 +1648,7 @@ ui.mount(ui.column{
     ui.label{text = {key = 'story.intro'}, textAlign = 'center'},
     ui.label{text = 'A very long hint that stays on one line', wrap = false, width = 300},
     ui.label{text = 'A title that shrinks to fit', wrap = false, width = 200, minScale = 0.6},
+    ui.label{text = 'A long story that shrinks until all of its lines fit the box', width = 300, height = 90, minScale = 0.5},
     ui.label{text = 'Over the sea', outline = '#FF000000', outlineWidth = 3},
 })
 ```

@@ -89,7 +89,7 @@ A description is a table, or the JSON of a `.prefab` file, with the local state 
 | `layer` | integer | `0` | Added to the layers of the ancestors. |
 | `depth`, `sortOffset` | number | `0` | Added to the depth and the sort offset of what the node shows. |
 | `sprite` | table | none | A sprite: `texture` (its package path), `filter`, `wrap`, `source` (`[x, y, width, height]`), `x`, `y`, `width`, `height`, `scaleX`, `scaleY`, `pivotX`, `pivotY`, `rotation`, `color`, `flipHorizontal`, `flipVertical` and `layer`. |
-| `text` | table | none | A block of text: `text`, `font` (a package path, the default font when absent), `size`, `color`, `outlineWidth`, `outlineColor`, `shadowOffset` (`[x, y]`), `shadowColor`, `shadowBlur`, `align`, `maxWidth`, `lineSpacing`, `anchor` (`[x, y]`) and `layer`. |
+| `text` | table | none | A block of text: `text`, `font` (a package path, the default font when absent), `size`, `color`, `outlineWidth`, `outlineColor`, `shadowOffset` (`[x, y]`), `shadowColor`, `shadowBlur`, `align`, `maxWidth`, `maxHeight`, `minScale`, `wrap`, `lineSpacing`, `anchor` (`[x, y]`) and `layer`, where `minScale` fits the text into its box as the [text style](graphics2d.md#graphics2ddrawtextfont-text-x-y-style) describes. |
 | `frame` | table | none | A nine-slice frame: `texture`, `filter`, `wrap`, `source`, `borders` (`[left, top, right, bottom]`), `fill`, `width`, `height`, `pivotX`, `pivotY`, `color`, `borderScale` and `layer`. |
 | `particles` | string | none | The package path of a `.particles` effect file. |
 | `children` | list | none | The descriptions of the children, in order. |

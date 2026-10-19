@@ -15,7 +15,7 @@ namespace haylen::text {
 // Keeps the layouts of plain text a font or family made most recently, by text and by the fields of the style that change the layout, so labels and text drawn every frame shape once.
 class LayoutCache final {
   public:
-    // Returns the cached layout of the text in the style, or nothing, without allocating. A size, maximum width or line spacing that is not finite throws `std::invalid_argument`.
+    // Returns the cached layout of the text in the style, or nothing, without allocating. A size, maximum width, maximum height, minimum scale or line spacing that is not finite throws `std::invalid_argument`.
     [[nodiscard]] std::shared_ptr<const Layout> find(std::string_view text, const Style& style);
 
     // Caches the layout of the text in the style and returns it.
@@ -27,6 +27,9 @@ class LayoutCache final {
         std::string_view text;
         float size = 0.0F;
         float maxWidth = 0.0F;
+        float maxHeight = 0.0F;
+        float minScale = 0.0F;
+        bool wrap = true;
         float lineSpacing = 0.0F;
         Alignment align = Alignment::Start;
         Direction direction = Direction::Auto;
