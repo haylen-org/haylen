@@ -495,6 +495,19 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 | `PHY-065` | Playground | A room to try every value of a body and of the world: bodies dropped, grabbed, pushed and shot, a card that reads the mass, material, damping, gravity scale and speed of the chosen body, and sliders that change it as it moves. |  |
 | `PHY-066` | Two worlds | Two worlds side by side, one pulling down and one pulling up, where a body that crosses the border moves to the other world with its speed, spin, material and data and obeys that world from then on. |  |
 
+#### Procedural generation (GEN)
+
+Worlds, people, critters, monsters and climbing creatures made from a seed and drawn with shapes, whose legs, arms, bodies, antennae and tentacles bend on the chains of `haylen.animation2d`. The tests are in `source/categories/procedural/`, with the cave of distance fields in `cave.lua`, the surface walker in `crawler.lua`, the stepping leg and its gait in `leg.lua` and the names made of syllables in `names.lua`.
+
+| Code | Test | What it shows | Unsupported on |
+| --- | --- | --- | --- |
+| `GEN-001` | World map | Islands from layered noise with biomes, rivers that run downhill to the sea, towns with generated names and roads that avoid water and mountains. |  |
+| `GEN-002` | Characters | A crowd of people built from a seed, with their build, skin, hair, face, clothes and accessories, whose arms bend on chains to wave at the pointer. |  |
+| `GEN-003` | Critters | Bugs built from a seed with their bodies, colors, legs, antennae and wings, which scurry on legs that step in turns and flee the pointer. |  |
+| `GEN-004` | Monsters | Monsters built from a seed with their bodies, eyes, mouths, horns, spikes, legs and tentacles, which walk or float and roar when touched. |  |
+| `GEN-005` | Spider | A spider with eight legs on chains that climbs the floor, walls, ceiling and rocks of a generated cave and leaps between rocks on a thread. |  |
+| `GEN-006` | Centipede | A centipede whose body follows its head on a chain around the rocks of a generated cave, up walls and across the ceiling, on dozens of stepping legs. |  |
+
 #### Tiled (TLD)
 
 Tiled maps of every orientation with their layers, objects, properties, collision, spawning, y sorting, ray casts, worlds and maps built in code. The tests are in `source/categories/tiled/`.
