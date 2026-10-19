@@ -75,7 +75,7 @@ void haylen_vertex_main() {
     haylen_flash = vec4(0.0);
     haylen_text_style = vec3(0.0);
     haylen_transform = vec2(0.0);
-    haylen_source = vec4(0.0);
+    haylen_source = vec4(0.0, 0.0, 1.0, 1.0);
     haylen_data = vec4(0.0);
 #elif defined(HAYLEN_SHAPE)
     // The quad reaches past the edge by the margin, where the edge fades out, and turns with the shape around its center, while the texture coordinates go from 0 to 1 across the rectangle of the shape. The fragment stage measures from the center in the frame of the shape, where the border and the radii of the corners take their shares of the shorter half side, and from the same point turned so the sector lies around the x axis.
