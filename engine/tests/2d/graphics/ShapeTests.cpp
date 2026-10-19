@@ -196,6 +196,22 @@ TEST(ShapeDrawTest, DrawsEveryCurveAsOneQuadOfOneCall) {
     EXPECT_EQ(stats.sprites, 0U);
     EXPECT_EQ(stats.drawCalls, 1U);
 
+    // Points draw as one shape quad each, one color for all or one for each, in the call of the other shapes.
+    const std::vector<math::Vec2> stars{{10.0F, 10.0F}, {20.0F, 30.0F}, {40.0F, 5.0F}};
+    const std::vector<math::Color> tones{math::Color::white(), math::Color::black(), math::Color::white()};
+    // clang-format off
+    const Renderer::Stats dotted = test::FrameRenderer::renderOnce(fixture, [&stars, &tones](core::Engine& engine) {
+        Renderer& renderer = engine.getRenderer2D();
+        renderer.beginScreen();
+        renderer.drawCircle({50.0F, 50.0F}, 20.0F, math::Color::white());
+        renderer.drawPoints(stars, 2.0F, tones);
+        renderer.drawPoints(stars, 1.0F, std::span(tones).first(1));
+        renderer.drawPoints(stars, 0.0F, tones);
+    });
+    // clang-format on
+    EXPECT_EQ(dotted.instances, 7U);
+    EXPECT_EQ(dotted.drawCalls, 1U);
+
     // A shape with a texture of its own draws in a call of that texture, after the shapes of the white texture.
     const graphics::Texture portrait = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
     // clang-format off
@@ -214,6 +230,7 @@ TEST(ShapeDrawTest, DrawsEveryCurveAsOneQuadOfOneCall) {
     EXPECT_THROW(renderer.drawShape({.bounds = {0.0F, 0.0F, 10.0F, 10.0F}, .radii = {-1.0F, 0.0F, 0.0F, 0.0F}}), std::invalid_argument);
     EXPECT_THROW(renderer.drawShape({.bounds = {0.0F, 0.0F, 10.0F, 10.0F}, .borderWidth = -1.0F}), std::invalid_argument);
     EXPECT_THROW(renderer.drawShape({.bounds = {0.0F, 0.0F, 10.0F, 10.0F}, .softness = -1.0F}), std::invalid_argument);
+    EXPECT_THROW(renderer.drawPoints(stars, 1.0F, std::span(tones).first(2)), std::invalid_argument);
     fixture.frames(1);
 }
 

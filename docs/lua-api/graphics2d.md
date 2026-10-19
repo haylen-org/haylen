@@ -410,6 +410,40 @@ scene.push({
 })
 ```
 
+### graphics2d.drawPoints(points, options)
+
+Fills a circle at every point of `points`, a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs, such as the stars of a sky, the dots of a chart or the sparks of a simulation. Every point is one quad of the shape program with the smooth edge of a circle, and all of them go into one draw call with the other shapes. The argument `options` is optional and also takes the keys of the [draw order](#draw-order):
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `radius` | number | `1` | The radius of every point. A radius of 0 or less draws nothing. |
+| `color` | Color | white | The color of every point. |
+| `colors` | list of Color | none | One color for each point, in place of `color`. |
+| `count` | integer | every point | Number of points to draw from the start, so a buffer of a fixed size holds points that grow. |
+
+Points with both `color` and `colors` raise `Points take either one "color" or "colors" for each point.`, `colors` of another count raise `Points take one color for each of their n points.`, a `count` past the points given raises `The points draw n of the m they were given.`, and the points raise the errors of the points of [`drawStroke`](#graphics2ddrawstrokepoints-options).
+
+```lua
+local collections = require('haylen.collections')
+local graphics2d = require('haylen.graphics2d')
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+local random = m.random(7)
+local stars = collections.newFloatBuffer(400)
+for index = 1, 400, 2 do
+    stars[index], stars[index + 1] = random:range(0, 1280), random:range(0, 720)
+end
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawPoints(stars, {radius = 1.5, color = '#C0FFFFFF'})
+        graphics2d.drawPoints({200, 500, 260, 440, 320, 470}, {radius = 6, colors = {'#FFFF6060', '#FF60FF90', '#FF6090FF'}})
+    end,
+})
+```
+
 ### graphics2d.drawRing(x, y, radius, thickness, color, order)
 
 Draws a circle outline `thickness` units wide whose middle line lies at `radius` from the center. A ring thicker than twice its radius fills the whole circle, and a thickness of 0 or less draws nothing.

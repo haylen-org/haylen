@@ -138,7 +138,7 @@ After sorting, the renderer walks the draws of each canvas and merges neighbours
 | Sprite batches with several textures, or with sprite data and a material | batch | Their textures, up to 8, which each sprite picks from. |
 | Sprites with an `effect` | effect | Their texture. |
 | `graphics2d.drawRect`, `drawRectOutline`, `drawLine`, `drawPolyline` | sprite | The white texture. |
-| `graphics2d.drawCircle`, `drawEllipse`, `drawRing`, `drawArc`, `drawShape` | shape | The white texture, or the `texture` of a shape. |
+| `graphics2d.drawCircle`, `drawEllipse`, `drawPoints`, `drawRing`, `drawArc`, `drawShape` | shape | The white texture, or the `texture` of a shape. |
 | `graphics2d.drawPolygon` | mesh | The white texture. |
 | `graphics2d.drawMesh` | mesh | Its texture, or the white texture. |
 | `graphics2d.drawText` | text for TrueType fonts, sprite for bitmap fonts | The font's atlas or its pages. |
@@ -155,7 +155,7 @@ The functions `graphics2d.stats()` in Lua and `Renderer::getStats()` in C++ repo
 
 ## Shapes and smooth edges
 
-Every curve the renderer draws has an edge that fades over one pixel of its destination, at any size, zoom, rotation, screen density and backend, without multisampling. A circle, an ellipse, a ring, an arc and every shape of `Renderer::drawShape`, `graphics2d.drawShape` in Lua, which the [UI](../ui/ui.md#smooth-edges) draws the curves of its components with too, is one quad around a rectangle with rounded corners or an ellipse, a `graphics2d::Shape` (`engine/include/haylen/2d/graphics/Shape.hpp`):
+Every curve the renderer draws has an edge that fades over one pixel of its destination, at any size, zoom, rotation, screen density and backend, without multisampling. A circle, an ellipse, a point of `drawPoints`, a ring, an arc and every shape of `Renderer::drawShape`, `graphics2d.drawShape` in Lua, which the [UI](../ui/ui.md#smooth-edges) draws the curves of its components with too, is one quad around a rectangle with rounded corners or an ellipse, a `graphics2d::Shape` (`engine/include/haylen/2d/graphics/Shape.hpp`):
 
 - The record of a shape holds its center, half size and rotation, its softness and margin as half floats, its fill and border colors, its border width, its sweep and the angle the sweep starts at, its flags, which say whether it is an ellipse and whether its texture is flipped, and the radius of each corner. The vertex stage grows the quad by the margin, one pixel of the destination past the edge plus half the softness, which the renderer works out from the view of the canvas and the size of its pass when the shape is drawn.
 - The fragment stage measures the exact signed distance from the center of each pixel to the edge of the rectangle, with the radius of the corner it lies near, or the distance to the edge of the ellipse from the value of its equation over its gradient, which is exact at the edge, cut to the sector of the sweep, and turns it into coverage over the size of one pixel, which it takes from the screen-space derivatives of the point, so the fade stays one pixel wide inside render targets, captures, lit canvases and turned or zoomed cameras alike. The softness widens the fade, which is how soft shadows draw.

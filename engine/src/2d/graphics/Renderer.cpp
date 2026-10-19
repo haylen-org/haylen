@@ -708,6 +708,24 @@ void Renderer::drawShape(const Shape& shape, const DrawOrder& order) {
     }
 }
 
+void Renderer::drawPoints(std::span<const math::Vec2> points, float radius, std::span<const math::Color> colors, const DrawOrder& order) {
+    if (colors.size() != 1 && colors.size() != points.size()) {
+        throw std::invalid_argument(std::format("Points take one color, or one for each of their {} points.", points.size()));
+    }
+    if (points.empty() || !(radius > 0.0F) || !state->accepts(order)) {
+        return;
+    }
+
+    const float margin = state->getPixelSize();
+    std::vector<GpuInstance>& dots = state->scratchInstances;
+    dots.clear();
+    for (std::size_t index = 0; index < points.size(); ++index) {
+        const Shape dot{.bounds = math::Rect::fromCenter(points[index], {radius * 2.0F, radius * 2.0F}), .radii = {radius, radius, radius, radius}, .color = colors[colors.size() == 1 ? 0 : index]};
+        dots.push_back(GpuInstance::makeShape(dot, margin, false));
+    }
+    state->addInstances(Program::Shape, order, state->white, dots, lowestPoint(points) + radius);
+}
+
 void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order) {
     if (!state->accepts(order)) {
         return;

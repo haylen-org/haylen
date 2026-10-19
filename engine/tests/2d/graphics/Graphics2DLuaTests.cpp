@@ -66,10 +66,16 @@ TEST_F(Graphics2DLuaTest, DrawsShapesWithTheirOptions) {
         graphics2d.drawShape({200, 10, 80, 40}, {kind = 'ellipse', borderWidth = 3, borderColor = '#FFFFFFFF'})
         graphics2d.drawEllipse(300, 100, 40, 20, '#FF4080FF')
         graphics2d.drawShape({300, 10, 64, 64}, {kind = 'ellipse', texture = graphics.newTexture(graphics.newImage(4, 4, '#FFFF0000')), layer = 2})
+        graphics2d.drawPoints({10, 10, 20, 20, 30, 30}, {radius = 3, colors = {'#FFFF0000', '#FF00FF00', '#FF0000FF'}})
+        graphics2d.drawPoints({10, 10, 20, 20, 30, 30}, {radius = 2, color = '#FFFFFFFF', count = 2})
     )";
     // clang-format on
     EXPECT_EQ(render(body), "nil");
-    EXPECT_EQ(lua("local s = graphics2d.stats() return s.instances .. ' ' .. s.vertices .. ' ' .. s.drawCalls"), "7 0 2");
+    EXPECT_EQ(lua("local s = graphics2d.stats() return s.instances .. ' ' .. s.vertices .. ' ' .. s.drawCalls"), "12 0 2");
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawPoints({0, 0, 1, 1}, {color = '#FFFFFFFF', colors = {'#FFFFFFFF', '#FFFFFFFF'}})").find("Points take either one \"color\" or \"colors\" for each point."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawPoints({0, 0, 1, 1}, {colors = {'#FFFFFFFF'}})").find("Points take one color for each of their 2 points."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawPoints({0, 0, 1, 1}, {count = 3})").find("The points draw 3 of the 2 they were given."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawPoints({0, 0, 1, 1}, {size = 3})").find("Unknown option \"size\"."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {kind = 'oval'})").find("oval"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {radius = {1, 2}})").find("The option \"radius\" of a shape takes one radius for every corner or four, from the top-left corner clockwise."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {radius = -1})").find("A shape needs corner radii, a border width and a softness of zero or more."), std::string::npos);

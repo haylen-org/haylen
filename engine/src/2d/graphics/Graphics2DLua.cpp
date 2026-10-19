@@ -1,6 +1,7 @@
 #include "2d/graphics/Graphics2DLua.hpp"
 
 #include <algorithm>
+#include <format>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -381,6 +382,51 @@ int Graphics2DLua::drawEllipse(lua_State* L) {
     return 0;
 }
 
+// Draws with `drawPoints(points, {radius, color, colors, count, layer, ...})`, whose points come from a flat list of numbers or a float buffer.
+int Graphics2DLua::drawPoints(lua_State* L) {
+    StrokeLua::readPoints(L, 1, pointScratch);
+    float radius = 1.0F;
+    std::optional<std::size_t> count;
+    std::optional<math::Color> color;
+    bool eachColor = false;
+    colorScratch.clear();
+    DrawOrder order;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        order = lua::TypeConverter::readDrawOrder(L, 2, {kPointFields});
+        // clang-format off
+        lua::Table::readFields(L, 2, kPointFields, {lua::TypeConverter::kDrawOrderFields}, [L, &radius, &count, &color, &eachColor](std::string_view key) {
+            if (key == "radius") {
+                lua::Table::readValue(L, key, radius);
+            } else if (key == "color") {
+                lua::Table::readValue(L, key, color.emplace());
+            } else if (key == "colors") {
+                lua::Table::readValue(L, key, colorScratch);
+                eachColor = true;
+            } else {
+                lua::Table::readValue(L, key, count.emplace());
+            }
+        });
+        // clang-format on
+    }
+    if (color && eachColor) {
+        throw std::invalid_argument("Points take either one \"color\" or \"colors\" for each point.");
+    }
+    if (eachColor && colorScratch.size() != pointScratch.size()) {
+        throw std::invalid_argument(std::format("Points take one color for each of their {} points.", pointScratch.size()));
+    }
+    if (!eachColor) {
+        colorScratch.push_back(color.value_or(math::Color::white()));
+    }
+    const std::size_t drawn = count.value_or(pointScratch.size());
+    if (drawn > pointScratch.size()) {
+        throw std::invalid_argument(std::format("The points draw {} of the {} they were given.", drawn, pointScratch.size()));
+    }
+    const std::span<const math::Color> used = eachColor ? std::span<const math::Color>(colorScratch).first(drawn) : std::span<const math::Color>(colorScratch);
+    getRenderer(L).drawPoints(std::span(pointScratch).first(drawn), radius, used, order);
+    return 0;
+}
+
 int Graphics2DLua::drawRing(lua_State* L) {
     getRenderer(L).drawRing({lua::Stack::read<float>(L, 1), lua::Stack::read<float>(L, 2)}, lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), lua::Stack::read<math::Color>(L, 5), lua::TypeConverter::readDrawOrder(L, 6));
     return 0;
@@ -677,7 +723,7 @@ int Graphics2DLua::defaultFont(lua_State* L) {
 
 int Graphics2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newSprite", &lua::Binding::native<&newSprite>}, {"newSpriteBatch", &lua::Binding::native<&newSpriteBatch>}, {"newTileLayer", &lua::Binding::native<&TileLayerLua::create>}, {"newMesh", &lua::Binding::native<&MeshLua::create>}, {"newCameraRig", &lua::Binding::native<&CameraRigLua::create>}, {"newPixelCanvas", &lua::Binding::native<&PixelCanvasLua::create>}, {"newGridMesh", &lua::Binding::native<&MeshLua::createGrid>}, {"newCamera", &newCamera}, {"newNineSlice", &lua::Binding::native<&newNineSlice>}, {"newParallax", &lua::Binding::native<&newParallax>}, {"blendCameras", &blendCameras}, {"beginWorld", &lua::Binding::native<&beginWorld>}, {"beginScreen", &lua::Binding::native<&beginScreen>}, {"beginTarget", &lua::Binding::native<&beginTarget>}, {"beginCapture", &lua::Binding::native<&beginCapture>}, {"endCapture", &lua::Binding::native<&endCapture>}, {"draw", &lua::Binding::native<&draw>}, {"drawVector", &lua::Binding::native<&drawVector>}, {"drawBatch", &lua::Binding::native<&drawBatch>}, {"drawStatic", &lua::Binding::native<&drawStatic>}, {"drawRect", &lua::Binding::native<&drawRect>}, {"drawRectOutline", &lua::Binding::native<&drawRectOutline>}, {"drawLine", &lua::Binding::native<&drawLine>}, {"drawCircle", &lua::Binding::native<&drawCircle>}, {"drawEllipse", &lua::Binding::native<&drawEllipse>}, {"drawRing", &lua::Binding::native<&drawRing>}, {"drawArc", &lua::Binding::native<&drawArc>}, {"drawShape", &lua::Binding::native<&drawShape>}, {"drawPolygon", &lua::Binding::native<&drawPolygon>}, {"drawPolyline", &lua::Binding::native<&drawPolyline>}, {"drawMesh", &lua::Binding::native<&drawMesh>}, {"drawStroke", &lua::Binding::native<&StrokeLua::drawStroke>}, {"drawText", &lua::Binding::native<&drawText>}, {"measureText", &lua::Binding::native<&measureText>}, {"drawNineSlice", &lua::Binding::native<&drawNineSlice>}, {"drawLight", &lua::Binding::native<&drawLight>}, {"drawOccluder", &lua::Binding::native<&drawOccluder>}, {"drawMetaballs", &lua::Binding::native<&drawMetaballs>}, {"newMaterial", &lua::Binding::native<&MaterialLua::newMaterial>}, {"drawImageBlend", &lua::Binding::native<&drawImageBlend>}, {"pushClip", &lua::Binding::native<&pushClip>}, {"popClip", &lua::Binding::native<&popClip>}, {"pushLayerOffset", &lua::Binding::native<&pushLayerOffset>}, {"beginGroup", &lua::Binding::native<&GroupLua::beginGroup>}, {"endGroup", &lua::Binding::native<&GroupLua::endGroup>}, {"pushMask", &GroupLua::pushMask}, {"popMask", &lua::Binding::native<&GroupLua::popMask>}, {"popLayerOffset", &lua::Binding::native<&popLayerOffset>}, {"stats", &stats}, {"drawn", &lua::Binding::native<&drawn>}, {"canvasBounds", &canvasBounds}, {"canvasUnitSize", &lua::Binding::native<&canvasUnitSize>}, {"canvasLit", &lua::Binding::native<&canvasLit>}, {"capturing", &capturing}, {"lightTexture", &lightTexture}, {"hdrLighting", &hdrLighting}, {"defaultFont", &defaultFont}, {"newRichText", &lua::Binding::native<&RichTextLua::newRichText>}, {"drawRichText", &lua::Binding::native<&RichTextLua::drawRichText>}, {"measureRichText", &lua::Binding::native<&RichTextLua::measureRichText>}, {"registerTextEffect", &lua::Binding::native<&RichTextLua::registerTextEffect>}, {"registerTextIcon", &lua::Binding::native<&RichTextLua::registerTextIcon>}, {"textEffectNames", &lua::Binding::native<&RichTextLua::textEffectNames>}, {nullptr, nullptr},
+        {"newSprite", &lua::Binding::native<&newSprite>}, {"newSpriteBatch", &lua::Binding::native<&newSpriteBatch>}, {"newTileLayer", &lua::Binding::native<&TileLayerLua::create>}, {"newMesh", &lua::Binding::native<&MeshLua::create>}, {"newCameraRig", &lua::Binding::native<&CameraRigLua::create>}, {"newPixelCanvas", &lua::Binding::native<&PixelCanvasLua::create>}, {"newGridMesh", &lua::Binding::native<&MeshLua::createGrid>}, {"newCamera", &newCamera}, {"newNineSlice", &lua::Binding::native<&newNineSlice>}, {"newParallax", &lua::Binding::native<&newParallax>}, {"blendCameras", &blendCameras}, {"beginWorld", &lua::Binding::native<&beginWorld>}, {"beginScreen", &lua::Binding::native<&beginScreen>}, {"beginTarget", &lua::Binding::native<&beginTarget>}, {"beginCapture", &lua::Binding::native<&beginCapture>}, {"endCapture", &lua::Binding::native<&endCapture>}, {"draw", &lua::Binding::native<&draw>}, {"drawVector", &lua::Binding::native<&drawVector>}, {"drawBatch", &lua::Binding::native<&drawBatch>}, {"drawStatic", &lua::Binding::native<&drawStatic>}, {"drawRect", &lua::Binding::native<&drawRect>}, {"drawRectOutline", &lua::Binding::native<&drawRectOutline>}, {"drawLine", &lua::Binding::native<&drawLine>}, {"drawCircle", &lua::Binding::native<&drawCircle>}, {"drawEllipse", &lua::Binding::native<&drawEllipse>}, {"drawPoints", &lua::Binding::native<&drawPoints>}, {"drawRing", &lua::Binding::native<&drawRing>}, {"drawArc", &lua::Binding::native<&drawArc>}, {"drawShape", &lua::Binding::native<&drawShape>}, {"drawPolygon", &lua::Binding::native<&drawPolygon>}, {"drawPolyline", &lua::Binding::native<&drawPolyline>}, {"drawMesh", &lua::Binding::native<&drawMesh>}, {"drawStroke", &lua::Binding::native<&StrokeLua::drawStroke>}, {"drawText", &lua::Binding::native<&drawText>}, {"measureText", &lua::Binding::native<&measureText>}, {"drawNineSlice", &lua::Binding::native<&drawNineSlice>}, {"drawLight", &lua::Binding::native<&drawLight>}, {"drawOccluder", &lua::Binding::native<&drawOccluder>}, {"drawMetaballs", &lua::Binding::native<&drawMetaballs>}, {"newMaterial", &lua::Binding::native<&MaterialLua::newMaterial>}, {"drawImageBlend", &lua::Binding::native<&drawImageBlend>}, {"pushClip", &lua::Binding::native<&pushClip>}, {"popClip", &lua::Binding::native<&popClip>}, {"pushLayerOffset", &lua::Binding::native<&pushLayerOffset>}, {"beginGroup", &lua::Binding::native<&GroupLua::beginGroup>}, {"endGroup", &lua::Binding::native<&GroupLua::endGroup>}, {"pushMask", &GroupLua::pushMask}, {"popMask", &lua::Binding::native<&GroupLua::popMask>}, {"popLayerOffset", &lua::Binding::native<&popLayerOffset>}, {"stats", &stats}, {"drawn", &lua::Binding::native<&drawn>}, {"canvasBounds", &canvasBounds}, {"canvasUnitSize", &lua::Binding::native<&canvasUnitSize>}, {"canvasLit", &lua::Binding::native<&canvasLit>}, {"capturing", &capturing}, {"lightTexture", &lightTexture}, {"hdrLighting", &hdrLighting}, {"defaultFont", &defaultFont}, {"newRichText", &lua::Binding::native<&RichTextLua::newRichText>}, {"drawRichText", &lua::Binding::native<&RichTextLua::drawRichText>}, {"measureRichText", &lua::Binding::native<&RichTextLua::measureRichText>}, {"registerTextEffect", &lua::Binding::native<&RichTextLua::registerTextEffect>}, {"registerTextIcon", &lua::Binding::native<&RichTextLua::registerTextIcon>}, {"textEffectNames", &lua::Binding::native<&RichTextLua::textEffectNames>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

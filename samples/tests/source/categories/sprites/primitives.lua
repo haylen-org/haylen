@@ -1,4 +1,4 @@
--- Primitives: lines of several widths, open and closed polylines, filled and outlined rectangles, circles of every size, rings, arcs that fill up, concave and regular polygons, meshes with vertex colors and a texture, shapes: rounded rectangles with a gradient and borders, a soft shadow, a turning capsule and a pill rounded on one side, ellipses: filled, a turning outline, a sector and a portrait inside an ellipse, and strokes along a Bézier curve whose controls move and a dashed closed curve.
+-- Primitives: lines of several widths, open and closed polylines, filled and outlined rectangles, circles of every size, rings, arcs that fill up, concave and regular polygons, meshes with vertex colors and a texture, shapes: rounded rectangles with a gradient and borders, a soft shadow, a turning capsule and a pill rounded on one side, ellipses: filled, a turning outline, a sector and a portrait inside an ellipse, strokes along a Bézier curve whose controls move and a dashed closed curve, and a field of points in many colors that twinkle.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -9,7 +9,9 @@ local Test = require('harness.test')
 
 local Primitives = haylen.class('Primitives', SpriteTest)
 
-Primitives.names = {'drawLine', 'drawPolyline', 'drawRect', 'drawCircle', 'drawRing', 'drawArc', 'drawPolygon', 'drawMesh', 'drawShape', 'drawEllipse', 'drawStroke'}
+Primitives.dotCount = 90
+
+Primitives.names = {'drawLine', 'drawPolyline', 'drawRect', 'drawCircle', 'drawRing', 'drawArc', 'drawPolygon', 'drawMesh', 'drawShape', 'drawEllipse', 'drawStroke', 'drawPoints'}
 
 Primitives.code = [[
 graphics2d.drawLine(x1, y1, x2, y2, 4, color)  graphics2d.drawPolyline(points, 3, color, true)  graphics2d.drawRectOutline(rect, 4, color)
@@ -18,7 +20,7 @@ graphics2d.drawPolygon(star, color)  graphics2d.drawMesh(nil, {{x = 0, y = 0, co
 graphics2d.drawShape(rect, {radius = 14, color = color, borderWidth = 3, borderColor = border, softness = 0, rotation = 0})
 graphics2d.drawEllipse(x, y, 60, 30, color)  graphics2d.drawShape(rect, {kind = 'ellipse', texture = hero, borderWidth = 3, borderColor = border})
 image:fillGradient({angle = math.pi / 2, colors = {top, bottom}})  graphics2d.drawShape(rect, {radius = 14, texture = gradient})
-graphics2d.drawStroke(m.spline({start, control, control, finish}, {kind = 'bezier'}), {width = 6, cap = 'round'})]]
+graphics2d.drawStroke(m.spline({start, control, control, finish}, {kind = 'bezier'}), {width = 6, cap = 'round'})  graphics2d.drawPoints(points, {radius = 3, colors = colors})]]
 
 -- The points of a regular polygon around a center, with its first corner at the angle of the turn.
 function Primitives.regular(x, y, radius, sides, turn)
@@ -46,6 +48,12 @@ function Primitives:enter()
     local gradient = graphics.newImage(8, 128)
     gradient:fillGradient({angle = math.pi / 2, stops = {{0, '#FF3A4E8C'}, {0.55, '#FF233056'}, {1, '#FF141A2E'}}})
     self.gradient = graphics.newTexture(gradient, {filter = 'linear'})
+    self.dots, self.dotColors, self.dotSeeds = {}, {}, {}
+    local random = m.random(11)
+    for index = 1, Primitives.dotCount do
+        self.dotSeeds[index] = {random:range(-1, 1), random:range(-1, 1), random:range(0, m.tau)}
+        self.dotColors[index] = m.fromHsv(random:range(0, 1), 0.55, 1)
+    end
     self.time = 0
     self:frame{code = Primitives.code, hint = 'Each cell draws with the function named on it, and the shapes move with the time.'}
 end
@@ -123,12 +131,20 @@ function Primitives:cell(index, x, y, size)
         local portrait = {x + half * 0.05, y - half * 0.6, half * 0.9, half * 1.2}
         graphics2d.drawShape(portrait, {kind = 'ellipse', color = Test.surface})
         graphics2d.drawShape(portrait, {kind = 'ellipse', texture = self.hero, borderWidth = 4, borderColor = Test.accent, layer = 1})
-    else
+    elseif index == 11 then
         local swing = math.sin(time * 1.5) * half * 0.9
         local curve = m.spline({{x - half, y - half * 0.2}, {x - half * 0.4, y - half - swing}, {x + half * 0.4, y - half * 0.2 + swing}, {x + half, y - half * 0.8}}, {kind = 'bezier'})
         graphics2d.drawStroke(curve, {width = 6, cap = 'round', color = Test.warm})
         local loop = m.spline({{x - half * 0.8, y + half * 0.5}, {x, y + half * 0.15}, {x + half * 0.8, y + half * 0.5}, {x, y + half * 0.85}}, {closed = true})
         graphics2d.drawStroke(loop, {width = 4, color = Test.green, dashes = {14, 8}, dashOffset = -time * 40, cap = 'round'})
+    else
+        -- Every point drifts around its place, and its color dims and brightens with its own phase.
+        for index, seed in ipairs(self.dotSeeds) do
+            self.dots[index * 2 - 1] = x + seed[1] * half + math.sin(time + seed[3]) * 6
+            self.dots[index * 2] = y + seed[2] * half + math.cos(time * 0.8 + seed[3]) * 6
+            self.dotColors[index].a = 0.45 + 0.55 * (0.5 + 0.5 * math.sin(time * 3 + seed[3]))
+        end
+        graphics2d.drawPoints(self.dots, {radius = 3, colors = self.dotColors})
     end
 end
 

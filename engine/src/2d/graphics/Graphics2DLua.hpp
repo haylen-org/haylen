@@ -3,6 +3,7 @@
 #include <array>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
@@ -46,10 +47,15 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 4> kNineSliceFields{"source", "borders", "pieces", "fill"};
     static constexpr std::array<std::string_view, 1> kCaptureFields{"clear"};
     static constexpr std::array<std::string_view, 1> kNineSliceDrawFields{"borderScale"};
+    static constexpr std::array<std::string_view, 4> kPointFields{"radius", "color", "colors", "count"};
     static constexpr std::array<std::string_view, 10> kShapeFields{"kind", "radius", "rotation", "startAngle", "sweep", "color", "texture", "borderWidth", "borderColor", "softness"};
     static constexpr std::array<std::string_view, 15> kVectorFields{"x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "tilt", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
+
+    // Kept from draw to draw on the frame thread, so points drawn every frame allocate nothing once they have grown.
+    inline static std::vector<math::Vec2> pointScratch;
+    inline static std::vector<math::Color> colorScratch;
 
     // Returns the font at the index, or the default font of the engine where the argument is nil.
     [[nodiscard]] static text::Font& fontArgument(lua_State* L, int index);
@@ -80,6 +86,7 @@ class Graphics2DLua final {
     static int drawLine(lua_State* L);
     static int drawCircle(lua_State* L);
     static int drawEllipse(lua_State* L);
+    static int drawPoints(lua_State* L);
     static int drawRing(lua_State* L);
     static int drawArc(lua_State* L);
     static int drawShape(lua_State* L);

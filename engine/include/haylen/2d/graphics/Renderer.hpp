@@ -207,6 +207,9 @@ class Renderer final {
     void drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order = {});
     void drawShape(const Shape& shape, const DrawOrder& order = {});
 
+    // Fills a circle of the radius at every point, all of the one color of `colors` or each of its own, as one quad each of the shape program, which merge into one draw call. Throws `std::invalid_argument` for colors of another count.
+    void drawPoints(std::span<const math::Vec2> points, float radius, std::span<const math::Color> colors, const DrawOrder& order = {});
+
     // A polygon fills the triangles of its outline and fades its edge out over one pixel of the destination.
     void drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order = {});
 
