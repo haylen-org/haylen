@@ -52,6 +52,9 @@ struct Layer {
     std::vector<Object> objects;
     bool indexDrawOrder = false;
 
+    // The color Tiled shows the objects of an object layer in, which apps may use for their own drawings of the layer.
+    std::optional<math::Color> color;
+
     std::string image;
     std::optional<math::Color> transparentColor;
     math::Vec2 imageSize{};

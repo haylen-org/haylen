@@ -287,6 +287,9 @@ Object MapParser::readObject(const core::Json& source, std::string_view director
             .color = readOptionalColor(text, "color").value_or(math::Color::black()),
             .bold = text.value("bold", false),
             .italic = text.value("italic", false),
+            .underline = text.value("underline", false),
+            .strikeout = text.value("strikeout", false),
+            .kerning = text.value("kerning", true),
             .horizontalAlign = text.value("halign", std::string("left")),
             .verticalAlign = text.value("valign", std::string("top")),
         };
@@ -338,6 +341,16 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
     tileset->objectAlignment = document.value("objectalignment", std::string("unspecified"));
     tileset->renderGridSize = document.value("tilerendersize", std::string("tile")) == "grid";
     tileset->preserveAspect = document.value("fillmode", std::string("stretch")) == "preserve-aspect-fit";
+    if (document.contains("grid")) {
+        const core::Json& grid = document.at("grid");
+        tileset->grid = {.isometric = grid.value("orientation", std::string("orthogonal")) == "isometric", .size = {grid.value("width", tileset->tileSize.x), grid.value("height", tileset->tileSize.y)}};
+    } else {
+        tileset->grid.size = tileset->tileSize;
+    }
+    if (document.contains("transformations")) {
+        const core::Json& turns = document.at("transformations");
+        tileset->transformations = {.flipHorizontal = turns.value("hflip", false), .flipVertical = turns.value("vflip", false), .rotate = turns.value("rotate", false), .preferUntransformed = turns.value("preferuntransformed", false)};
+    }
     tileset->properties = readProperties(document, directory);
 
     for (const core::Json& entry : document.value("tiles", core::Json::array())) {
@@ -412,6 +425,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
     } else if (kind == "objectgroup") {
         layer.kind = Layer::Kind::Object;
         layer.indexDrawOrder = entry.value("draworder", std::string("topdown")) == "index";
+        layer.color = readOptionalColor(entry, "color");
         for (const core::Json& object : entry.value("objects", core::Json::array())) {
             layer.objects.push_back(readObject(object, directory));
         }

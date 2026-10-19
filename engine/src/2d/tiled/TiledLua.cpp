@@ -131,7 +131,7 @@ void TiledLua::pushObject(lua_State* L, const Object& object) {
     lua_setfield(L, -2, "points");
     setProperties(L, object.properties);
     if (object.shape == Object::Shape::Text) {
-        lua_createtable(L, 0, 9);
+        lua_createtable(L, 0, 12);
         setString(L, "text", object.text.text);
         setString(L, "fontFamily", object.text.fontFamily);
         setNumber(L, "pixelSize", object.text.pixelSize);
@@ -140,6 +140,9 @@ void TiledLua::pushObject(lua_State* L, const Object& object) {
         lua_setfield(L, -2, "color");
         setBoolean(L, "bold", object.text.bold);
         setBoolean(L, "italic", object.text.italic);
+        setBoolean(L, "underline", object.text.underline);
+        setBoolean(L, "strikeout", object.text.strikeout);
+        setBoolean(L, "kerning", object.text.kerning);
         setString(L, "horizontalAlign", object.text.horizontalAlign);
         setString(L, "verticalAlign", object.text.verticalAlign);
         lua_setfield(L, -2, "text");
@@ -198,6 +201,7 @@ void TiledLua::pushLayer(lua_State* L, const Layer& layer) {
         pushObjects(L, layer.objects);
         lua_setfield(L, -2, "objects");
         setBoolean(L, "indexDrawOrder", layer.indexDrawOrder);
+        setOptionalColor(L, "color", layer.color);
         break;
     case Layer::Kind::Image:
         setString(L, "image", layer.image);
@@ -242,6 +246,17 @@ void TiledLua::pushTileset(lua_State* L, const Tileset& tileset, std::uint32_t f
     setString(L, "objectAlignment", tileset.objectAlignment);
     setBoolean(L, "renderGridSize", tileset.renderGridSize);
     setBoolean(L, "preserveAspect", tileset.preserveAspect);
+    lua_createtable(L, 0, 3);
+    setString(L, "orientation", tileset.grid.isometric ? "isometric" : "orthogonal");
+    setNumber(L, "width", tileset.grid.size.x);
+    setNumber(L, "height", tileset.grid.size.y);
+    lua_setfield(L, -2, "grid");
+    lua_createtable(L, 0, 4);
+    setBoolean(L, "flipHorizontal", tileset.transformations.flipHorizontal);
+    setBoolean(L, "flipVertical", tileset.transformations.flipVertical);
+    setBoolean(L, "rotate", tileset.transformations.rotate);
+    setBoolean(L, "preferUntransformed", tileset.transformations.preferUntransformed);
+    lua_setfield(L, -2, "transformations");
     setString(L, "image", tileset.image);
     lua::Stack::push(L, tileset.imageSize);
     lua_setfield(L, -2, "imageSize");
@@ -466,6 +481,7 @@ int TiledLua::mapTileInfo(lua_State* L) {
     setBoolean(L, "flipHorizontal", (gid & Map::kFlipHorizontal) != 0);
     setBoolean(L, "flipVertical", (gid & Map::kFlipVertical) != 0);
     setBoolean(L, "flipDiagonal", (gid & Map::kFlipDiagonal) != 0);
+    setBoolean(L, "rotateHexagonal", (gid & Map::kRotateHexagonal) != 0);
     lua::Stack::push(L, reference->tileset->getSource(localId));
     lua_setfield(L, -2, "source");
     setString(L, "type", tile != nullptr ? tile->type : std::string{});

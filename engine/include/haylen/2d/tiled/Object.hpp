@@ -32,6 +32,9 @@ struct Object {
         math::Color color = math::Color::black();
         bool bold = false;
         bool italic = false;
+        bool underline = false;
+        bool strikeout = false;
+        bool kerning = true;
         std::string horizontalAlign = "left";
         std::string verticalAlign = "top";
     };

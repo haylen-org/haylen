@@ -106,7 +106,7 @@ core::Json MapWriter::writeObject(const Object& object, std::string_view directo
         entry["polyline"] = writePoints(object.points);
         break;
     case Object::Shape::Text:
-        entry["text"] = {{"text", object.text.text}, {"fontfamily", object.text.fontFamily}, {"pixelsize", object.text.pixelSize}, {"wrap", object.text.wrap}, {"color", object.text.color.toHex()}, {"bold", object.text.bold}, {"italic", object.text.italic}, {"halign", object.text.horizontalAlign}, {"valign", object.text.verticalAlign}};
+        entry["text"] = {{"text", object.text.text}, {"fontfamily", object.text.fontFamily}, {"pixelsize", object.text.pixelSize}, {"wrap", object.text.wrap}, {"color", object.text.color.toHex()}, {"bold", object.text.bold}, {"italic", object.text.italic}, {"underline", object.text.underline}, {"strikeout", object.text.strikeout}, {"kerning", object.text.kerning}, {"halign", object.text.horizontalAlign}, {"valign", object.text.verticalAlign}};
         break;
     case Object::Shape::Rectangle:
     case Object::Shape::Tile:
@@ -132,6 +132,13 @@ core::Json MapWriter::writeTileset(const Tileset& tileset, std::uint32_t firstGi
     }
     if (!tileset.tileOffset.isZero()) {
         entry["tileoffset"] = {{"x", tileset.tileOffset.x}, {"y", tileset.tileOffset.y}};
+    }
+    if (tileset.grid.isometric || tileset.grid.size != tileset.tileSize) {
+        entry["grid"] = {{"orientation", tileset.grid.isometric ? "isometric" : "orthogonal"}, {"width", tileset.grid.size.x}, {"height", tileset.grid.size.y}};
+    }
+    const Tileset::Transformations& turns = tileset.transformations;
+    if (turns.flipHorizontal || turns.flipVertical || turns.rotate || turns.preferUntransformed) {
+        entry["transformations"] = {{"hflip", turns.flipHorizontal}, {"vflip", turns.flipVertical}, {"rotate", turns.rotate}, {"preferuntransformed", turns.preferUntransformed}};
     }
     if (!tileset.properties.getItems().empty()) {
         entry["properties"] = writeProperties(tileset.properties, directory);
@@ -225,6 +232,9 @@ core::Json MapWriter::writeLayer(const Layer& layer, std::string_view directory)
             objects.push_back(writeObject(object, directory));
         }
         entry["draworder"] = layer.indexDrawOrder ? "index" : "topdown";
+        if (layer.color) {
+            entry["color"] = layer.color->toHex();
+        }
         entry["objects"] = std::move(objects);
         break;
     }

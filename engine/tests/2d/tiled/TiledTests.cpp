@@ -128,13 +128,13 @@ class TiledTest : public ::testing::Test {
                                  encodeTiles(std::vector<std::uint32_t>(12, 0), "zstd") + R"("},
             {"id": 4, "name": "raw", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "data": ")" +
                                  encodeTiles(std::vector<std::uint32_t>(12, 0), "") + R"("},
-            {"id": 5, "name": "things", "type": "objectgroup", "draworder": "topdown", "class": "entities", "objects": [
+            {"id": 5, "name": "things", "type": "objectgroup", "draworder": "topdown", "color": "#FFA0C040", "class": "entities", "objects": [
                 {"id": 1, "name": "spawn", "type": "player", "x": 10, "y": 20, "point": true, "properties": [{"name": "hp", "type": "int", "value": 3}]},
                 {"id": 2, "name": "zone", "type": "collision", "x": 0, "y": 0, "width": 8, "height": 8, "rotation": 90, "properties": [{"name": "sensor", "type": "bool", "value": true}]},
                 {"id": 3, "name": "pond", "type": "collision", "x": 20, "y": 20, "width": 10, "height": 6, "ellipse": true},
                 {"id": 4, "name": "wall", "type": "collision", "x": 30, "y": 0, "polygon": [{"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 5, "y": 5}]},
                 {"id": 5, "name": "fence", "type": "collision", "x": 0, "y": 40, "polyline": [{"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 10, "y": 10}]},
-                {"id": 6, "name": "sign", "x": 5, "y": 5, "width": 40, "height": 20, "text": {"text": "Hi", "pixelsize": 12, "wrap": true, "color": "#FF00FF00", "halign": "center", "valign": "bottom", "bold": true}},
+                {"id": 6, "name": "sign", "x": 5, "y": 5, "width": 40, "height": 20, "text": {"text": "Hi", "pixelsize": 12, "wrap": true, "color": "#FF00FF00", "halign": "center", "valign": "bottom", "bold": true, "underline": true, "strikeout": true, "kerning": false}},
                 {"id": 7, "name": "tree", "x": 16, "y": 48, "width": 16, "height": 32, "gid": 100},
                 {"id": 8, "template": "templates/rock.tj", "x": 40, "y": 48},
                 {"id": 9, "template": "templates/rock.tj", "x": 44, "y": 48, "name": "big rock", "properties": [{"name": "size", "type": "int", "value": 3}]}
@@ -152,6 +152,7 @@ class TiledTest : public ::testing::Test {
         "type": "tileset", "name": "terrain", "tilewidth": 16, "tileheight": 16, "tilecount": 8, "columns": 4,
         "image": "../images/terrain.png", "imagewidth": 64, "imageheight": 32, "margin": 0, "spacing": 0,
         "tileoffset": {"x": 0, "y": 0}, "properties": [{"name": "theme", "type": "string", "value": "grass"}],
+        "grid": {"orientation": "isometric", "width": 32, "height": 16}, "transformations": {"hflip": true, "vflip": false, "rotate": true, "preferuntransformed": true},
         "tiles": [
             {"id": 1, "type": "water", "properties": [{"name": "deep", "type": "bool", "value": true}],
              "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "width": 16, "height": 16}]}},
@@ -543,13 +544,13 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     };
     // clang-format on
 
-    // Eleven ground tiles, two decor tiles, one nested tile, three tile objects, eight sky copies and two glyphs of text.
+    // Eleven ground tiles, two decor tiles, one nested tile, three tile objects, eight sky copies, and two glyphs of text with the lines under and through them.
     const tiled::MapRenderer::View view{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
     const graphics2d::Renderer::Stats all = render(view);
-    EXPECT_EQ(all.sprites, 27U);
+    EXPECT_EQ(all.sprites, 29U);
 
     map.setLayerVisible("ground", false);
-    EXPECT_EQ(render(view).sprites, 16U);
+    EXPECT_EQ(render(view).sprites, 18U);
     map.setLayerVisible("ground", true);
 
     EXPECT_EQ(map.getTile("ground", 0, 1), 3U);
@@ -635,7 +636,7 @@ TEST_F(MapRendererTest, PlacesMapsAtAWorldOffset) {
     const tiled::MapRenderer::View home{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
     const tiled::MapRenderer::View away{.center = {1032.0F, 24.0F}, .visible = {1000.0F, 0.0F, 64.0F, 48.0F}};
     const std::size_t all = render(home, {});
-    EXPECT_EQ(all, 27U);
+    EXPECT_EQ(all, 29U);
     EXPECT_EQ(render(away, {1000.0F, 0.0F}), all);
     EXPECT_LT(render(home, {1000.0F, 0.0F}), 16U);
 }
@@ -674,7 +675,7 @@ TEST_F(MapRendererTest, SortsRowsAndObjectsByTheYTheyStandOn) {
     // clang-format on
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 27U);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 29U);
 }
 
 TEST_F(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
@@ -691,8 +692,8 @@ TEST_F(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
     // clang-format on
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
-    // Eleven ground tiles, two decor tiles, one nested tile, three tile objects and two glyphs, with the sky hidden.
-    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 19U);
+    // Eleven ground tiles, two decor tiles, one nested tile, three tile objects and two glyphs with their two lines, with the sky hidden.
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 21U);
 }
 
 TEST_F(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
@@ -1036,6 +1037,9 @@ TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
     EXPECT_EQ(fixture.lua("return tostring(map:layer('things').indexDrawOrder) .. ' ' .. #map:layer('ground').chunks .. ' ' .. map:layer('sky').imageSize.x .. ' ' .. map:layer('sky').transparentColor:toHex() .. ' ' .. tostring(map:layer('things').objects[1].propertyTypes.hp)"), "false 0 8.0 #FFFF00FF nil");
     EXPECT_EQ(fixture.lua("local chunks = endless:layer('ground').chunks return #chunks .. ' ' .. chunks[1].x .. ',' .. chunks[1].y .. ' ' .. chunks[1].width .. 'x' .. chunks[1].height .. ' ' .. table.concat(chunks[1].gids, ',') .. ' ' .. chunks[2].gids[4]"), "2 -2,0 2x2 1,2,3,4 8");
 
+    EXPECT_EQ(fixture.lua("local t = map:tilesets()[1] return t.grid.orientation .. ' ' .. t.grid.width .. 'x' .. t.grid.height .. ' ' .. tostring(t.transformations.flipHorizontal) .. ' ' .. tostring(t.transformations.flipVertical) .. ' ' .. tostring(t.transformations.rotate) .. ' ' .. tostring(t.transformations.preferUntransformed)"), "isometric 32.0x16.0 true false true true");
+    EXPECT_EQ(fixture.lua("local layer = map:layer('things') local sign for _, object in ipairs(layer.objects) do if object.name == 'sign' then sign = object end end return layer.color:toHex() .. ' ' .. tostring(sign.text.underline) .. ' ' .. tostring(sign.text.strikeout) .. ' ' .. tostring(sign.text.kerning) .. ' ' .. tostring(map:layer('ground').color)"), "#FFA0C040 true true false nil");
+    EXPECT_EQ(fixture.lua("return tostring(map:tileInfo(1 | tiled.rotateHexagonal).rotateHexagonal) .. ' ' .. tostring(map:tileInfo(1).rotateHexagonal)"), "true false");
     EXPECT_EQ(fixture.lua("return string.format('%X %X %X %X %X', tiled.flipHorizontal, tiled.flipVertical, tiled.flipDiagonal, tiled.rotateHexagonal, tiled.flagMask)"), "80000000 40000000 20000000 10000000 F0000000");
     EXPECT_EQ(fixture.lua("return tiled.tileId(5 | tiled.flipHorizontal | tiled.flipDiagonal) .. ' ' .. tiled.tileId(7)"), "5 7");
 }
@@ -1091,6 +1095,18 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
     }
     EXPECT_EQ(things.objects[8].name, "big rock");
     EXPECT_TRUE(things.objects[8].properties.getBool("hard", false));
+
+    // The color of an object layer, the grid and the turns of a tileset and the decorations of text read back too.
+    EXPECT_EQ(things.color, before.color);
+    EXPECT_EQ(copy.tilesets[0].tileset->grid.size, math::Vec2(32.0F, 16.0F));
+    EXPECT_TRUE(copy.tilesets[0].tileset->grid.isometric);
+    EXPECT_TRUE(copy.tilesets[0].tileset->transformations.preferUntransformed);
+    EXPECT_FALSE(copy.tilesets[0].tileset->transformations.flipVertical);
+    EXPECT_EQ(copy.tilesets[1].tileset->grid.size, copy.tilesets[1].tileset->tileSize);
+    const auto sign = std::ranges::find(things.objects, std::string("sign"), &tiled::Object::name);
+    ASSERT_NE(sign, things.objects.end());
+    EXPECT_TRUE(sign->text.underline && sign->text.strikeout);
+    EXPECT_FALSE(sign->text.kerning);
 
     const tiled::Map infinite = tiled::Map::parse(tiled::MapWriter::write(tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader()), "maps/infinite.tmj"), "maps/infinite.tmj", reader());
     EXPECT_TRUE(infinite.infinite);

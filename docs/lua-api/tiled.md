@@ -63,7 +63,8 @@ The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 - Layer blend modes: `normal`, `add`, `multiply` and `screen`. Every other Tiled mode, such as `overlay`, `darken` or `lighten`, is rejected when the map loads with `The Tiled layer "name" uses the blend mode "mode", which Haylen cannot draw. Layers can use "normal", "add", "multiply" or "screen".` Tiled draws every layer of a group with that layer's own mode and never blends a group as a whole, so a group layer with a mode other than `normal` is rejected with `The Tiled group layer "name" uses the blend mode "mode", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.`
 - Tilesets embedded in the map or stored in external files, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image and keep the ids of removed tiles unused, transparent colors, object alignment, tile render size `grid` with the fill mode `preserve-aspect-fit`, tile classes, properties, animations, collision shapes and Wang sets.
 - Tile flip flags: Horizontal, vertical and diagonal, plus the 120-degree rotation flag of hexagonal maps.
-- Objects: Rectangles, ellipses, capsules, points, polygons, polylines, text and tile objects, with rotation, visibility, opacity, classes and custom properties.
+- Objects: Rectangles, ellipses, capsules, points, polygons, polylines, text with every text setting and tile objects, with rotation, visibility, opacity, classes and custom properties, and the color of object layers.
+- Tileset grids, which say where Tiled places tile objects drawn for isometric maps, and tileset transformations, which say how Wang painting may flip and rotate the tiles.
 - Object templates, whose fields and properties are defaults that each instance overrides one by one. Tile templates map their tile to the map's own copy of the template's tileset, and a template whose tileset the map does not list raises `A tile template uses the tileset "path", which the map does not list.`
 - Custom property types `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` (Tiled 1.12), including lists nested in lists.
 - Worlds with listed maps and patterns.
@@ -74,7 +75,7 @@ Every layer needs the `id` that Tiled writes. Other load errors: `The orientatio
 ## Drawing rules
 
 - Tile layers are baked into static batches in regions of 32 by 32 cells the first time they draw. When a camera is given, only the regions inside the area the active canvas shows are drawn, which is the visible area around the camera on a world canvas and the target size around it on a render target canvas. The method `map:setTile` bakes only the region of its cell again, on the next draw. Animated tiles are drawn every frame with the frame that matches the map time.
-- Object layers draw their visible tile objects and text objects. Other shapes are data for the app and for collision. Objects sort by their y position unless the layer draw order is `index`. Tile objects are placed by the tileset object alignment, which defaults to bottom-left, or bottom-center on isometric maps. Text objects use the engine's default font with their size, color, wrapping, alignment, rotation and opacity. Their font family, bold and italic settings are not applied.
+- Object layers draw their visible tile objects and text objects. Other shapes are data for the app and for collision. Objects sort by their y position unless the layer draw order is `index`. Tile objects are placed by the tileset object alignment, which defaults to bottom-left, or bottom-center on isometric maps. Text objects use the engine's default font with their size, color, wrapping, alignment, rotation, opacity, bold, italic, underline and strikeout, while their font family names a font the map renderer does not hold and their kerning stays on.
 - Image layers draw their image at the layer offset. Layers that repeat on an axis cover the camera's visible area and need a camera, otherwise drawing raises `Repeated image layers need the visible area of the view.`
 - A layer with a parallax factor other than 1 shifts by the distance between the camera position and the map parallax origin, times one minus the factor. On a map drawn with an offset, the parallax origin moves with the map.
 - Every layer draws with the draw order given to `map:draw` or `map:drawLayer`, with its blend replaced by the layer's blend mode. Later map layers cover earlier ones because they are drawn later.
@@ -334,6 +335,7 @@ Every layer table has these fields:
 | `chunks` | table | Tile layers only. The chunks of an infinite map, each with `x` and `y` (its first cell), `width`, `height` and `gids`, the global tile ids row by row with their flip flags. Empty on other maps. |
 | `objects` | table | Object layers only. List of object tables. |
 | `indexDrawOrder` | boolean | Object layers only. The value is `true` when objects draw in list order, `false` when they sort by their y position. |
+| `color` | Color or nil | Object layers only. The color Tiled shows the objects of the layer in, for the app's own drawings of the layer, or `nil` when the layer keeps the default. |
 | `image`, `repeatX`, `repeatY` | string, boolean, boolean | Image layers only. Image path inside the content folder and repetition. |
 | `imageSize` | Vec2 | Image layers only. Image size written in the map. |
 | `transparentColor` | Color or nil | Image layers only. Color drawn as transparent, or absent. |
@@ -375,7 +377,7 @@ Every object table has these fields:
 | `template` | string | Template path inside the content folder, or an empty string. |
 | `points` | table | Polygon and polyline points as `{x, y}` tables relative to the object position. Empty for other shapes. |
 | `properties`, `propertyTypes` | table | Custom properties, merged with the template's, and their type names. |
-| `text` | table | Text objects only. Fields `text`, `fontFamily`, `pixelSize`, `wrap`, `color` (a `Color`), `bold`, `italic`, `horizontalAlign` and `verticalAlign`. |
+| `text` | table | Text objects only. Fields `text`, `fontFamily`, `pixelSize`, `wrap`, `color` (a `Color`), `bold`, `italic`, `underline`, `strikeout`, `kerning`, `horizontalAlign` and `verticalAlign`. |
 
 ```lua
 local assets = require('haylen.assets')
@@ -427,6 +429,7 @@ Describes a global tile id, or returns `nil` for 0 and for ids no tileset holds.
 | `id` | integer | Tile id inside its tileset. |
 | `tileset` | string | Tileset name. |
 | `flipHorizontal`, `flipVertical`, `flipDiagonal` | boolean | Flip flags of the gid, named like the flips of a sprite. |
+| `rotateHexagonal` | boolean | The 120-degree rotation flag of the gid, which hexagonal maps use. |
 | `source` | Rect | Tile rectangle inside its image. |
 | `type` | string | Tile class, or an empty string. |
 | `image` | string | Image path of a tile from an image collection, or an empty string. |
@@ -463,6 +466,8 @@ Returns the tilesets of the map in first gid order. Every tileset table has thes
 | `objectAlignment` | string | Anchor of tile objects, such as `'unspecified'`, `'bottomleft'`, `'bottom'` or `'center'`. |
 | `renderGridSize` | boolean | The value is `true` when tiles are drawn at the map grid size instead of their image size, with their offsets and collision shapes scaled the same way. |
 | `preserveAspect` | boolean | The value is `true` when grid sized tiles keep their aspect ratio. |
+| `grid` | table | The grid Tiled places tile objects of the tileset on, with `orientation` (`'orthogonal'` or `'isometric'`), `width` and `height`, the tile size unless the tileset sets another. |
+| `transformations` | table | How Wang painting may turn the tiles, with `flipHorizontal`, `flipVertical`, `rotate` and `preferUntransformed`, all `false` unless the tileset allows them. |
 | `image` | string | Image path inside the content folder, or an empty string for image collections. |
 | `imageSize` | Vec2 | Image size written in the tileset. |
 | `transparentColor` | Color or nil | Color drawn as transparent, or absent. |
