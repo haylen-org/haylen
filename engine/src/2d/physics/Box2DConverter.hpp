@@ -7,6 +7,7 @@
 
 #include "haylen/2d/physics/Body.hpp"
 #include "haylen/2d/physics/CollisionFilter.hpp"
+#include "haylen/2d/physics/ContactManifold.hpp"
 #include "haylen/2d/physics/Shape.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -20,6 +21,12 @@ class Box2DConverter final {
 
     [[nodiscard]] static b2Vec2 toMeters(math::Vec2 value, float scale) noexcept;
     [[nodiscard]] static math::Vec2 toPixels(b2Vec2 value, float scale) noexcept;
+
+    // Reads a manifold that the last step solved between the bodies of its two shapes, in world units, with the force of the impulses of its last sub-step, and without the relative velocity for null bodies.
+    [[nodiscard]] static ContactManifold toManifold(const b2Manifold& manifold, b2BodyId first, b2BodyId second, float scale, float subStepSeconds) noexcept;
+
+    // Reads the manifold that the last step solved between two shapes that still touch, or the recorded one of an event whose contact ended within the step.
+    [[nodiscard]] static ContactManifold toSolvedManifold(b2ShapeId first, b2ShapeId second, const b2Manifold& recorded, float scale, float subStepSeconds);
     [[nodiscard]] static b2BodyType toBodyType(Body::Type type) noexcept;
     [[nodiscard]] static b2Filter toFilter(const CollisionFilter& filter) noexcept;
     [[nodiscard]] static b2QueryFilter toQueryFilter(const CollisionFilter& filter) noexcept;
@@ -48,6 +55,10 @@ class Box2DConverter final {
     [[nodiscard]] static b2Polygon toHullPolygon(std::span<const b2Vec2> points);
 
     [[nodiscard]] static bool isFiniteAndNotNegative(float value) noexcept;
+
+  private:
+    // Kept from read to read on the frame thread, so reading contact events allocates nothing once it has grown.
+    inline static std::vector<b2ContactData> contactData;
 };
 
 } // namespace haylen::physics2d

@@ -273,7 +273,7 @@ TEST_F(PhysicsFeaturesLuaTest, ChangesBodiesShapesAndJointsWhileRunning) {
     // clang-format on
     EXPECT_EQ(lua("return string.format('%.2f', surface.rollingResistance) .. ' ' .. tostring(surface.contactEvents) .. ' ' .. tostring(surface.hitEvents) .. ' ' .. tostring(surface.sensorEvents)"), "0.10 false false true");
     EXPECT_EQ(lua("skin.friction = 0.2 skin.restitution = 0.3 skin.density = 2 skin.rollingResistance = 0.05 skin.hitEvents = false return string.format('%.2f %.2f %.2f %.2f ', skin.friction, skin.restitution, skin.density, skin.rollingResistance) .. tostring(skin.hitEvents)"), "0.20 0.30 2.00 0.05 false");
-    EXPECT_EQ(lua("local contacts = box:contacts() return #contacts .. ' ' .. tostring(contacts[1].other == ground) .. ' ' .. tostring(contacts[1].otherShape == surface) .. ' ' .. contacts[1].normalY .. ' ' .. tostring(contacts[1].impulse > 0)"), "1 true true 1.0 true");
+    EXPECT_EQ(lua("local contacts = box:contacts() return #contacts .. ' ' .. tostring(contacts[1].other == ground) .. ' ' .. tostring(contacts[1].otherShape == surface) .. ' ' .. contacts[1].normalY .. ' ' .. tostring(contacts[1].force > 0)"), "1 true true 1.0 true");
     EXPECT_EQ(lua("local inside = trigger:overlaps() return #inside .. ' ' .. tostring(inside[1].body == box)"), "1 true");
 
     EXPECT_EQ(lua("local mass = box.mass box.mass = mass * 2 return tostring(math.abs(box.mass - mass * 2) < 1e-4) .. ' ' .. tostring(box.inertia > 0)"), "true true");

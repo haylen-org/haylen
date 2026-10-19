@@ -413,20 +413,14 @@ std::vector<Body::Contact> Body::getContacts() const {
         if (contact.manifold.pointCount == 0) {
             continue;
         }
-        // The manifold normal points from the first shape to the second, and the contact reads from the shape of this body.
+        // The manifold reads from the first shape toward the second, and the contact reads from the shape of this body.
         const bool first = B2_ID_EQUALS(b2Shape_GetBody(contact.shapeIdA), body);
-        float impulse = 0.0F;
-        for (int index = 0; index < contact.manifold.pointCount; ++index) {
-            impulse += contact.manifold.points[index].totalNormalImpulse;
+        const b2BodyId other = b2Shape_GetBody(first ? contact.shapeIdB : contact.shapeIdA);
+        ContactManifold manifold = Box2DConverter::toManifold(contact.manifold, body, other, scale, world->getLastStep() / static_cast<float>(world->getSubSteps()));
+        if (!first) {
+            manifold.normal = -manifold.normal;
         }
-        const math::Vec2 normal{contact.manifold.normal.x, contact.manifold.normal.y};
-        contacts.push_back({
-            .shape = {world, b2StoreShapeId(first ? contact.shapeIdA : contact.shapeIdB)},
-            .other = {world, b2StoreShapeId(first ? contact.shapeIdB : contact.shapeIdA)},
-            .point = Box2DConverter::toPixels(contact.manifold.points[0].point, scale),
-            .normal = first ? normal : -normal,
-            .impulse = impulse * scale,
-        });
+        contacts.push_back({.shape = {world, b2StoreShapeId(first ? contact.shapeIdA : contact.shapeIdB)}, .other = {world, b2StoreShapeId(first ? contact.shapeIdB : contact.shapeIdA)}, .manifold = manifold});
     }
     return contacts;
 }

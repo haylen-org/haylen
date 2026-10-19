@@ -2024,7 +2024,7 @@ Samples:
 - [ ] Cada sample mostra também o código de como fazer o que mostra, organizado na tela para ir do que se vê ao código.
 - [ ] Gráficos de todos os tipos comuns (linha, área, barra, barra empilhada, pizza, rosca, dispersão, radar, histograma, velas, mapa de calor), sem bugs com dados malucos (vazios, negativos, enormes, NaN, um só ponto).
 - [ ] Sample de física com fichas das propriedades para brincar (gravidade, massa, densidade, atrito, restituição, amortecimento, impulsos e tiros) e entender o efeito de cada valor.
-- [ ] Detecção completa de colisões: impacto, ponto, normal, direção de onde veio, velocidade relativa e força, como nas engines grandes, exposta e documentada.
+- [x] Detecção completa de colisões: impacto, ponto, normal, direção de onde veio, velocidade relativa e força, como nas engines grandes, exposta e documentada. Os contatos de `onContactBegin`, `onHit` e `body:contacts()` trazem os pontos (um ou dois, com separação e impulsos normal e tangente), a normal que diz de que lado cada corpo foi atingido, a velocidade de aproximação (a força do impacto, que no começo do contato antes era sempre 0), a velocidade relativa dos corpos no ponto e a força que aperta as formas no fim do passo (o peso de um corpo parado). Em C++ é `physics2d::ContactManifold`. O teste `PHY-064` mostra tudo.
 - [ ] Física avançada: um objeto lançado de um mundo físico para outro, que passa a obedecer o mundo em que chega, e outros exemplos avançados.
 - [ ] Seção de geração procedural: mapas, personagens, bichos, monstros, aranha com várias patas e centopeia que sobem pelas paredes.
 

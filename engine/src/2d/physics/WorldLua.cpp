@@ -92,21 +92,12 @@ CollisionFilter WorldLua::readQueryFilter(lua_State* L, int index) {
 }
 
 void WorldLua::pushContact(lua_State* L, int worldIndex, const ContactEvent& event) {
-    lua_createtable(L, 0, 7);
+    lua_createtable(L, 0, 12);
     Physics2DLua::push(L, worldIndex, event.first);
     lua_setfield(L, -2, "shapeA");
     Physics2DLua::push(L, worldIndex, event.second);
     lua_setfield(L, -2, "shapeB");
-    lua::Stack::push(L, event.point.x);
-    lua_setfield(L, -2, "x");
-    lua::Stack::push(L, event.point.y);
-    lua_setfield(L, -2, "y");
-    lua::Stack::push(L, event.normal.x);
-    lua_setfield(L, -2, "normalX");
-    lua::Stack::push(L, event.normal.y);
-    lua_setfield(L, -2, "normalY");
-    lua::Stack::push(L, event.speed);
-    lua_setfield(L, -2, "speed");
+    Physics2DLua::setManifold(L, event.manifold);
 }
 
 void WorldLua::pushBodyOf(lua_State* L, int worldIndex, const Shape& shape) {

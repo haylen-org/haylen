@@ -332,23 +332,14 @@ int BodyLua::contacts(lua_State* L) {
     lua_createtable(L, static_cast<int>(found.size()), 0);
     for (std::size_t index = 0; index < found.size(); ++index) {
         const Body::Contact& contact = found[index];
-        lua_createtable(L, 0, 8);
+        lua_createtable(L, 0, 13);
         Physics2DLua::push(L, world, contact.shape);
         lua_setfield(L, -2, "shape");
         Physics2DLua::push(L, world, contact.other);
         lua_setfield(L, -2, "otherShape");
         Physics2DLua::push(L, world, contact.other.getBody());
         lua_setfield(L, -2, "other");
-        lua::Stack::push(L, contact.point.x);
-        lua_setfield(L, -2, "x");
-        lua::Stack::push(L, contact.point.y);
-        lua_setfield(L, -2, "y");
-        lua::Stack::push(L, contact.normal.x);
-        lua_setfield(L, -2, "normalX");
-        lua::Stack::push(L, contact.normal.y);
-        lua_setfield(L, -2, "normalY");
-        lua::Stack::push(L, contact.impulse);
-        lua_setfield(L, -2, "impulse");
+        Physics2DLua::setManifold(L, contact.manifold);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
     return 1;

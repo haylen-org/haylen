@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/2d/physics/ContactManifold.hpp"
 #include "haylen/2d/physics/Shape.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -48,13 +49,11 @@ class Body final {
         float inertia = 0.0F;
     };
 
-    // A contact of the body that touches now: its own shape, the other shape, the first contact point, the normal from the shape of the body toward the other one and the impulse that pushed them apart in the last step.
+    // A contact of the body that touches now: its own shape, the other shape and what the contact did in the last step, read from this body, so the normal points from its shape toward the other one and the relative velocity is that of the other body.
     struct Contact {
         Shape shape;
         Shape other;
-        math::Vec2 point{};
-        math::Vec2 normal{};
-        float impulse = 0.0F;
+        ContactManifold manifold;
     };
 
     Body() = default;

@@ -492,7 +492,7 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
         crate:addBox(32, 32, {density = 2, restitution = 0, offsetX = 0, offsetY = 0, rotation = 0})
         crate.data = {name = 'crate'}
         events = {}
-        world.onContactBegin = function(a, b, contact) events[#events + 1] = 'begin ' .. (a.data or b.data).name end
+        world.onContactBegin = function(a, b, contact) events[#events + 1] = 'begin ' .. (a.data or b.data).name begun = contact end
         world.onContactEnd = function() events[#events + 1] = 'end' end
         world.onHit = function(a, b, contact) hitSpeed = contact.speed end
         world.onSensorBegin = function(sensor, visitor, shapes) events[#events + 1] = 'sensed ' .. visitor.data.name .. ' ' .. tostring(shapes.sensorShape.sensor) end
@@ -504,6 +504,10 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
     EXPECT_EQ(fixture.lua("return table.concat(events, ',')"), "sensed crate true,left,begin crate");
     EXPECT_EQ(fixture.lua("return math.floor(crate.y + 0.5) .. ' ' .. tostring(hitSpeed > 0) .. ' ' .. world.bodyCount .. ' ' .. world.pixelsPerMeter"), "374 true 3 64.0");
     EXPECT_EQ(fixture.lua("return crate.type .. ' ' .. tostring(crate.valid) .. ' ' .. tostring(crate.world == world) .. ' ' .. tostring(crate.fixedRotation) .. ' ' .. tostring(crate.mass > 0)"), "dynamic true true true true");
+
+    // A contact that begins tells how fast the crate landed, where, from which side and with what force, point by point, and the contacts of a body tell the same while it rests.
+    EXPECT_EQ(fixture.lua("return tostring(begun.speed > 100) .. ' ' .. #begun.points .. ' ' .. tostring(begun.points[1].approachSpeed > 100) .. ' ' .. math.abs(begun.normalY) .. ' ' .. type(begun.relativeVelocityX) .. ' ' .. tostring(begun.force > 0) .. ' ' .. tostring(begun.points[1].separation < 1)"), "true 2 true 1.0 number true true");
+    EXPECT_EQ(fixture.lua("local c = crate:contacts()[1] return #c.points .. ' ' .. tostring(c.force > 0) .. ' ' .. c.normalY .. ' ' .. tostring(c.speed < 20) .. ' ' .. type(c.points[2].tangentImpulse)"), "2 true 1.0 true number");
 
     fixture.runLua("crate.x = 50 crate.y = 100 crate.rotation = 0 crate.velocity = {10, 0} crate.angularVelocity = 0 crate.linearDamping = 0 crate.angularDamping = 0 crate.gravityScale = 0 crate.bullet = true crate.awake = true crate.enabled = true");
     EXPECT_EQ(fixture.lua("return crate.position.x .. ' ' .. crate.velocity.x .. ' ' .. crate.gravityScale .. ' ' .. tostring(crate.bullet) .. ' ' .. tostring(crate.awake) .. ' ' .. tostring(crate.enabled)"), "50.0 10.0 0.0 true true true");

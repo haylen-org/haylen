@@ -34,6 +34,7 @@ set(HAYLEN_TEST_SOURCES
   2d/particles/Particles2DTests.cpp
   2d/physics/AssemblyTests.cpp
   2d/physics/BodyMotionTests.cpp
+  2d/physics/ContactTests.cpp
   2d/physics/DestructionTests.cpp
   2d/physics/FluidTests.cpp
   2d/physics/ForceFieldTests.cpp

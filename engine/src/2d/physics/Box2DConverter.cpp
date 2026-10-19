@@ -1,5 +1,6 @@
 #include "2d/physics/Box2DConverter.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -11,6 +12,45 @@ b2Vec2 Box2DConverter::toMeters(math::Vec2 value, float scale) noexcept {
 
 math::Vec2 Box2DConverter::toPixels(b2Vec2 value, float scale) noexcept {
     return {value.x * scale, value.y * scale};
+}
+
+// Box2D keeps the relative normal velocity of each point from before the solve, negative while the shapes close in, and the impulses of the last sub-step.
+ContactManifold Box2DConverter::toManifold(const b2Manifold& manifold, b2BodyId first, b2BodyId second, float scale, float subStepSeconds) noexcept {
+    ContactManifold result{.pointCount = static_cast<std::size_t>(std::clamp(manifold.pointCount, 0, static_cast<int>(ContactManifold::kMaxPoints))), .normal = {manifold.normal.x, manifold.normal.y}};
+    for (std::size_t index = 0; index < result.pointCount; ++index) {
+        const b2ManifoldPoint& source = manifold.points[index];
+        ContactPoint& point = result.points[index];
+        point.point = toPixels(source.point, scale);
+        point.separation = source.separation * scale;
+        point.normalImpulse = source.normalImpulse * scale;
+        point.tangentImpulse = source.tangentImpulse * scale;
+        point.approachSpeed = std::max(-source.normalVelocity, 0.0F) * scale;
+        result.force += point.normalImpulse;
+        result.approachSpeed = std::max(result.approachSpeed, point.approachSpeed);
+    }
+    if (result.pointCount > 0 && B2_IS_NON_NULL(first) && B2_IS_NON_NULL(second)) {
+        const b2Vec2 at = manifold.points[0].point;
+        result.relativeVelocity = toPixels(b2Sub(b2Body_GetWorldPointVelocity(second, at), b2Body_GetWorldPointVelocity(first, at)), scale);
+    }
+    result.force = subStepSeconds > 0.0F ? result.force / subStepSeconds : 0.0F;
+    return result;
+}
+
+// The manifold of an event comes from before the solver, so the contact that is still there after the step gives the impulses and approach speeds. A shape destroyed after the step leaves the recorded manifold without the velocity of its body.
+ContactManifold Box2DConverter::toSolvedManifold(b2ShapeId first, b2ShapeId second, const b2Manifold& recorded, float scale, float subStepSeconds) {
+    if (!b2Shape_IsValid(first) || !b2Shape_IsValid(second)) {
+        return toManifold(recorded, b2_nullBodyId, b2_nullBodyId, scale, subStepSeconds);
+    }
+    const b2BodyId firstBody = b2Shape_GetBody(first);
+    const b2BodyId secondBody = b2Shape_GetBody(second);
+    contactData.resize(static_cast<std::size_t>(b2Shape_GetContactCapacity(first)));
+    contactData.resize(static_cast<std::size_t>(b2Shape_GetContactData(first, contactData.data(), static_cast<int>(contactData.size()))));
+    for (const b2ContactData& contact : contactData) {
+        if (B2_ID_EQUALS(contact.shapeIdA, first) && B2_ID_EQUALS(contact.shapeIdB, second) && contact.manifold.pointCount > 0) {
+            return toManifold(contact.manifold, firstBody, secondBody, scale, subStepSeconds);
+        }
+    }
+    return toManifold(recorded, firstBody, secondBody, scale, subStepSeconds);
 }
 
 b2BodyType Box2DConverter::toBodyType(Body::Type type) noexcept {

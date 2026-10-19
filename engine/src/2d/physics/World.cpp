@@ -531,11 +531,7 @@ void World::readContactEvents() const {
     const b2ContactEvents contacts = b2World_GetContactEvents(b2LoadWorldId(handle));
     for (int index = 0; index < contacts.beginCount; ++index) {
         const b2ContactBeginTouchEvent& event = contacts.beginEvents[index];
-        ContactEvent begin{.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .normal = {event.manifold.normal.x, event.manifold.normal.y}};
-        if (event.manifold.pointCount > 0) {
-            begin.point = Box2DConverter::toPixels(event.manifold.points[0].point, pixelsPerMeter);
-        }
-        events.contactBegins.push_back(begin);
+        events.contactBegins.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = Box2DConverter::toSolvedManifold(event.shapeIdA, event.shapeIdB, event.manifold, pixelsPerMeter, lastStep / static_cast<float>(subSteps))});
     }
     for (int index = 0; index < contacts.endCount; ++index) {
         const b2ContactEndTouchEvent& event = contacts.endEvents[index];
@@ -543,7 +539,11 @@ void World::readContactEvents() const {
     }
     for (int index = 0; index < contacts.hitCount; ++index) {
         const b2ContactHitEvent& event = contacts.hitEvents[index];
-        events.contactHits.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .point = Box2DConverter::toPixels(event.point, pixelsPerMeter), .normal = {event.normal.x, event.normal.y}, .speed = event.approachSpeed * pixelsPerMeter});
+        b2Manifold point{.normal = event.normal, .pointCount = 1};
+        point.points[0].point = event.point;
+        ContactManifold hit = Box2DConverter::toSolvedManifold(event.shapeIdA, event.shapeIdB, point, pixelsPerMeter, lastStep / static_cast<float>(subSteps));
+        hit.approachSpeed = event.approachSpeed * pixelsPerMeter;
+        events.contactHits.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = hit});
     }
 }
 

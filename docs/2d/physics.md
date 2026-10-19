@@ -119,6 +119,18 @@ Bodies that touch or are joined to each other form an island, and an island fall
 
 The threshold is 0.05 meters per second by default, 3.2 units per second at the default scale, and `sleepThreshold` changes it per body. A body that should never sleep, such as a player character driven by forces, sets `sleepEnabled = false`, and `world.sleepEnabled = false` keeps every body awake, which turns sleeping off for a whole level that must keep moving. Force fields never wake a body when they push it, and fluid particles wake a body only when they change its speed by more than 0.05 meters per second, so crates that float in still water fall asleep. A change the solver does not see by itself, such as a rule of the app that makes resting bodies fall again, calls `world:wakeAll()`.
 
+## Collision information
+
+Every contact tells what happened in the step that solved it, through the contact tables of `onContactBegin` and `onHit` and the list of `body:contacts()`, as the [Lua reference](../lua-api/physics2d.md#contact-tables) lists:
+
+- The points where the shapes touch, one for a circle on a floor and two for a box lying flat, each with the distance between the surfaces, negative while they overlap.
+- The normal, from the first shape toward the second, which tells the side each shape was hit from, such as whether a character landed on an enemy or ran into it.
+- The approach speed, how fast the shapes closed in along the normal before the step solved them, which tells how hard an impact was and suits damage, sounds and shaking, and is about 0 for bodies that rest.
+- The relative velocity of the bodies at the contact after the step, such as how fast a crate slides along the floor or a wheel spins on it.
+- The force that presses the shapes together at the end of the step, which is the weight of a body at rest, so a pressure plate, a scale or a crate that crushes what is under it reads it, and the impulses of each point along the normal and along the surface.
+
+Box2D records the manifold of a contact that begins before it solves the step, so the engine reads the contact as the step left it, with its impulses and approach speeds, and keeps the manifold of the event for a contact that ended within the same step. The class `physics2d::ContactManifold` holds the same values in C++, in the `manifold` of a `ContactEvent` and of a `Body::Contact`. The test project shows them in `PHY-064`.
+
 ## Common problems and their solutions
 
 Each problem below names the option or helper that solves it. The [test project](../../samples/tests/README.md) shows each one in the test named at its end, most of them with the problem and the solution side by side.

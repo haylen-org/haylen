@@ -144,8 +144,8 @@ TEST_F(BodyMotionTest, ListsItsContactsAndTheShapesInsideSensors) {
     simulate(1.0F);
     const std::vector<Body::Contact> contacts = crate.getContacts();
     ASSERT_EQ(contacts.size(), 1U);
-    EXPECT_NEAR(contacts[0].normal.y, 1.0F, 1e-3F);
-    EXPECT_GT(contacts[0].impulse, 0.0F);
+    EXPECT_NEAR(contacts[0].manifold.normal.y, 1.0F, 1e-3F);
+    EXPECT_GT(contacts[0].manifold.force, 0.0F);
     EXPECT_EQ(sensor.getOverlaps().size(), 1U);
     EXPECT_THROW((void)contacts[0].other.getOverlaps(), std::logic_error);
 }

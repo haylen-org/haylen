@@ -819,16 +819,34 @@ Assign a function to a callback property of the world to receive its events. Eve
 
 Shapes decide which events they raise with the switches of [Shape options](#shape-options). A contact calls `onContactBegin` and `onContactEnd` when either of its shapes has `contactEvents` on and `onHit` when either has `hitEvents` on, so quiet shapes such as the debris of an explosion turn them off on both sides. A sensor reports a visitor only when both shapes have `sensorEvents` on.
 
-### world.onContactBegin(a, b, contact)
+### Contact tables
 
-Called when two solid shapes start touching. The arguments `a` and `b` are the bodies of `contact.shapeA` and `contact.shapeB`.
+The contact tables of `onContactBegin` and `onHit` and the tables of [`body:contacts()`](#bodycontacts) tell everything the contact did in the last step, in world units:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `shapeA`, `shapeB` | Shape | The two shapes. |
-| `x`, `y` | number | The first contact point, or `0, 0` when Box2D reports no point. |
-| `normalX`, `normalY` | number | The contact normal, pointing from `shapeA` to `shapeB`. |
-| `speed` | number | Always 0 for this event. |
+| `x`, `y` | number | The first contact point, or `0, 0` without points. |
+| `normalX`, `normalY` | number | The contact normal as a unit vector, pointing from the first shape toward the second, so the second shape was hit from the side the normal points away from, and the first from the side it points to. |
+| `speed` | number | How fast the shapes closed in along the normal before the step solved them, the fastest over the points, in world units per second, which tells how hard an impact was, and 0 for shapes that rest or move apart. |
+| `relativeVelocityX`, `relativeVelocityY` | number | The velocity of the second body relative to the first at the first point after the step, in world units per second, such as how fast a box slides along the floor. |
+| `force` | number | The force that presses the shapes together at the end of the step, in kilograms times world units per second squared, which is the weight of a body at rest, `body.mass` times the gravity. |
+| `points` | list | The one or two points of the contact, each a table with `x`, `y`, `separation`, the distance between the surfaces there, negative while they overlap, `normalImpulse` and `tangentImpulse`, the impulses that pushed the shapes apart and held them along the surface in the last sub-step, in kilograms times world units per second, and `approachSpeed`, how fast they closed in at that point. |
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local world = physics2d.newWorld()
+world.onContactBegin = function(a, b, contact)
+    -- Damage grows with the speed of the impact, and the normal tells which side took it.
+    if contact.speed > 300 then
+        print('hard landing', contact.speed, contact.normalY > 0 and 'on top' or 'from below', #contact.points)
+    end
+end
+```
+
+### world.onContactBegin(a, b, contact)
+
+Called when two solid shapes start touching. The arguments `a` and `b` are the bodies of `contact.shapeA` and `contact.shapeB`, and `contact` holds `shapeA`, `shapeB` and the fields of a [contact table](#contact-tables), where `speed` is how fast they met.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -851,7 +869,7 @@ end
 
 ### world.onContactEnd(a, b, contact)
 
-Called when two solid shapes stop touching. The contact table carries only `shapeA` and `shapeB`, and its point, normal and speed are 0. When a shape was destroyed during the step, its body argument is `nil` and its shape handle reports `valid == false`.
+Called when two solid shapes stop touching. The contact table carries `shapeA` and `shapeB`, and its point, normal, speed, velocity and force are 0 and its `points` empty. When a shape was destroyed during the step, its body argument is `nil` and its shape handle reports `valid == false`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -866,7 +884,7 @@ end
 
 ### world.onHit(a, b, contact)
 
-Called when two solid shapes hit each other faster than the hit threshold of the world, `world.hitThreshold`, which is one meter per second, or `pixelsPerMeter` world units per second, unless the world sets it. The contact table has the fields of `onContactBegin`, with the hit point, the normal and `speed`, the approach speed in world units per second. Use it for impact sounds and damage.
+Called when two solid shapes hit each other faster than the hit threshold of the world, `world.hitThreshold`, which is one meter per second, or `pixelsPerMeter` world units per second, unless the world sets it. The contact table has the fields of `onContactBegin`, with the hit point, the normal and `speed`, the approach speed in world units per second, and the points, velocity and force of the contact it hit with. Use it for impact sounds and damage.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1091,16 +1109,7 @@ scene.push({
 
 ### body:contacts()
 
-Returns a list of the contacts of the body that touch, one table for each pair of touching shapes. Unlike the events, the list tells at any moment what a body stands on or pushes against.
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `shape` | Shape | The shape of this body. |
-| `otherShape` | Shape | The shape it touches. |
-| `other` | Body | The body of `otherShape`. |
-| `x`, `y` | number | The first contact point. |
-| `normalX`, `normalY` | number | The contact normal as a unit vector, pointing from `shape` toward `otherShape`. |
-| `impulse` | number | The impulse that pushed the shapes apart in the last step, in kilograms times units per second. |
+Returns a list of the contacts of the body that touch, one table for each pair of touching shapes, with `shape`, the shape of this body, `otherShape`, the shape it touches, `other`, the body of `otherShape`, and the fields of a [contact table](#contact-tables) read from this body, so the normal points from `shape` toward `otherShape` and the relative velocity is that of `other`. Unlike the events, the list tells at any moment what a body stands on, pushes against and how hard.
 
 ```lua
 local physics2d = require('haylen.physics2d')

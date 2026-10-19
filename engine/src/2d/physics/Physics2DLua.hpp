@@ -11,6 +11,7 @@
 
 #include "2d/physics/ScriptedHandle.hpp"
 #include "haylen/2d/physics/Body.hpp"
+#include "haylen/2d/physics/ContactManifold.hpp"
 #include "haylen/2d/physics/Joint.hpp"
 #include "haylen/2d/physics/Shape.hpp"
 #include "haylen/2d/physics/World.hpp"
@@ -77,6 +78,9 @@ class Physics2DLua final {
     static void install(lua_State* L);
 
     // Pushes a body, shape or joint handle that belongs to the Lua world object at `worldIndex`.
+    // Sets the fields of a contact manifold on the table on top of the stack: `x`, `y`, `normalX`, `normalY`, `speed`, `relativeVelocityX`, `relativeVelocityY`, `force` and `points`, a list of `{x, y, separation, normalImpulse, tangentImpulse, approachSpeed}`.
+    static void setManifold(lua_State* L, const ContactManifold& manifold);
+
     template <typename Handle> static void push(lua_State* L, int worldIndex, Handle handle) {
         const int owner = lua_absindex(L, worldIndex);
         lua::Userdata::emplace<ScriptedHandle<Handle>>(L, ScriptedHandle<Handle>{lua::Userdata::checkShared<World>(L, owner), handle});

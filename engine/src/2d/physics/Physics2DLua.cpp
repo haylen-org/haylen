@@ -18,11 +18,44 @@
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "plugins/Physics2DPlugin.hpp"
 
 namespace haylen::physics2d {
+
+void Physics2DLua::setManifold(lua_State* L, const ContactManifold& manifold) {
+    const math::Vec2 point = manifold.getPoint();
+    // clang-format off
+    const auto setNumber = [L](const char* name, float value) {
+        lua::Stack::push(L, value);
+        lua_setfield(L, -2, name);
+    };
+    // clang-format on
+    setNumber("x", point.x);
+    setNumber("y", point.y);
+    setNumber("normalX", manifold.normal.x);
+    setNumber("normalY", manifold.normal.y);
+    setNumber("speed", manifold.approachSpeed);
+    setNumber("relativeVelocityX", manifold.relativeVelocity.x);
+    setNumber("relativeVelocityY", manifold.relativeVelocity.y);
+    setNumber("force", manifold.force);
+
+    lua_createtable(L, static_cast<int>(manifold.pointCount), 0);
+    for (std::size_t index = 0; index < manifold.pointCount; ++index) {
+        const ContactPoint& contact = manifold.points[index];
+        lua_createtable(L, 0, 6);
+        setNumber("x", contact.point.x);
+        setNumber("y", contact.point.y);
+        setNumber("separation", contact.separation);
+        setNumber("normalImpulse", contact.normalImpulse);
+        setNumber("tangentImpulse", contact.tangentImpulse);
+        setNumber("approachSpeed", contact.approachSpeed);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    lua_setfield(L, -2, "points");
+}
 
 // Creates a world with `newWorld({gravity = {0, 980}, pixelsPerMeter = 64, subSteps = 4, threads, continuous, sleepEnabled, interpolate, ...})`, stepped on the job system of the engine.
 int Physics2DLua::newWorld(lua_State* L) {
