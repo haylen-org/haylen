@@ -217,16 +217,12 @@ void Scroll::followFinger(Context& context, const math::Rect& bounds, bool under
         return;
     }
 
-    // A text field being edited keeps the finger.
+    // A field being edited keeps editing while the finger scrolls the area, and any other item lets the finger go.
     if (!dragging) {
         if (scroller.getMaximum() <= 0.0 || !context.takeDrag(ImGui::GetCurrentWindow()->ID, bounds, horizontal)) {
             return;
         }
-        if (state.ActiveId != 0 && io.WantTextInput) {
-            pressed = false;
-            return;
-        }
-        if (state.ActiveId != 0) {
+        if (state.ActiveId != 0 && !io.WantTextInput) {
             ImGui::ClearActiveID();
         }
         dragging = true;

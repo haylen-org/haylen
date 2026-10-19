@@ -58,12 +58,16 @@ void TextSession::receiveEdit(platform::TextInput::Edit edit) {
     }
 }
 
-void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds) {
+void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds, bool pressed) {
     viewport = frameViewport;
     origin = frameViewport.getVisibleRect().getMin();
     scale = uiScale;
     fields.clear();
     activeThisFrame = false;
+
+    if (pressed) {
+        return;
+    }
 
     // The field was drawn moved by the offset of the last frame, so its place without the offset decides how far the UI must move, and the field never leaves the top of the screen.
     float target = 0.0F;

@@ -41,13 +41,14 @@ using haylen::platform::TextInput;
     textField = [[HaylenTextField alloc] initWithFrame:CGRectMake(0.0, 0.0, 1.0, 1.0)];
     textField.editor = self;
     textField.delegate = self;
-    textField.alpha = 0.0;
+    // The editors stay hidden rather than transparent, since the system draws the caret, the selection, the bubbles of autocorrection and the inline predictions of a field in views of its own, which only a hidden field keeps from the screen, and the engine draws the field with its composition itself.
+    textField.hidden = YES;
     [textField addTarget:self action:@selector(textChanged:) forControlEvents:UIControlEventEditingChanged];
 #if !TARGET_OS_TV
     textView = [[HaylenTextView alloc] initWithFrame:CGRectMake(0.0, 0.0, 1.0, 1.0) textContainer:nil];
     textView.editor = self;
     textView.delegate = self;
-    textView.alpha = 0.0;
+    textView.hidden = YES;
     NSNotificationCenter* center = NSNotificationCenter.defaultCenter;
     [center addObserver:self selector:@selector(keyboardChanged:) name:UIKeyboardWillChangeFrameNotification object:nil];
     [center addObserver:self selector:@selector(keyboardChanged:) name:UIKeyboardWillHideNotification object:nil];

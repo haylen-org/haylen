@@ -54,6 +54,14 @@ class TextInputTest : public ::testing::Test {
         return getInput().getPublished().back();
     }
 
+    void touch(platform::Event::Type type, math::Vec2 point) {
+        platform::Event event;
+        event.type = type;
+        event.touchCount = 1;
+        event.touches[0] = {.id = 1, .position = getEngine().getViewport().toFramebuffer(point + getEngine().getViewport().getVisibleRect().getMin()), .changed = true};
+        getEngine().handleEvent(event);
+    }
+
     std::shared_ptr<Gui> mount(const std::string& json) {
         auto gui = getUi().createGui(core::Json::parse(json), Placement::Screen);
         getUi().mount(gui);
@@ -351,6 +359,60 @@ TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
     send({.type = platform::Event::Type::KeyboardChanged});
     fixture.frames(60);
     EXPECT_EQ(gui->find("name")->getBounds(), resting);
+}
+
+// A tap on a button next to a field ends the editing and hides the keyboard while the finger is still down, so the UI stays where it was until the finger lifts, and the button it pressed takes the tap.
+TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "row", "children": [{"kind": "textField", "id": "draft", "grow": 1}, {"kind": "button", "id": "send", "text": "Send"}]}]})");
+    focus(*gui, "draft");
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    fixture.frames(60);
+
+    const math::Vec2 button = gui->find("send")->getBounds().getCenter();
+    touch(platform::Event::Type::TouchBegan, button);
+    fixture.frames(2);
+    send({.type = platform::Event::Type::KeyboardChanged});
+    fixture.frames(20);
+    EXPECT_EQ(gui->find("send")->getBounds().getCenter(), button);
+    touch(platform::Event::Type::TouchEnded, button);
+    fixture.frames(3);
+    EXPECT_NE(std::ranges::find(events, std::string("send:click {}")), events.end());
+}
+
+// A finger edits a field once it taps it, with the caret where it lifted, and a finger that only presses the field edits nothing yet.
+TEST_F(TextInputTest, StartsEditingAFieldWhenAFingerTapsIt) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
+    const math::Rect field = gui->find("name")->getBounds();
+    const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(3);
+    EXPECT_FALSE(getInput().isEditing());
+
+    touch(platform::Event::Type::TouchEnded, start);
+    fixture.frames(3);
+    ASSERT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().selectionStart, getPublished().selectionEnd);
+    EXPECT_LT(getPublished().selectionStart, 4);
+}
+
+// A finger that drags a list over the field being edited scrolls the list and leaves the field editing.
+TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "textField", "id": "name"}, {"kind": "spacer", "height": 4000}]}]})");
+    focus(*gui, "name");
+    fixture.frames(2);
+    ASSERT_TRUE(getInput().isEditing());
+    const math::Vec2 field = gui->find("name")->getBounds().getCenter();
+    const float top = gui->find("content")->getBounds().y;
+    touch(platform::Event::Type::TouchBegan, field);
+    fixture.frames(2);
+    for (int step = 1; step <= 10; ++step) {
+        touch(platform::Event::Type::TouchMoved, field - math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
+        fixture.frames(1);
+    }
+    touch(platform::Event::Type::TouchEnded, field - math::Vec2{0.0F, 80.0F});
+    fixture.frames(2);
+    EXPECT_LT(gui->find("content")->getBounds().y, top - 40.0F);
+    EXPECT_TRUE(getInput().isEditing());
 }
 
 // The caret of a focused field takes the theme color for it, which a style changes like any other color.

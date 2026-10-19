@@ -72,12 +72,13 @@ int TextEditor::callback(ImGuiInputTextCallbackData* data) {
     return 0;
 }
 
-// ImGui places the caret by its own glyphs, which know no shaping or direction, so the caret moves again here by the shaped text: a press puts it at the character under the pointer, a second press selects the word there, a drag selects up to the pointer, and the arrow keys move it one character on screen. Word jumps with a modifier key keep the reading order of ImGui.
+// ImGui places the caret by its own glyphs, which know no shaping or direction, so the caret moves again here by the shaped text: a press, or the tap of a finger that began the editing, puts it at the character under the pointer, a second press selects the word there, a drag of the mouse selects up to the pointer, and the arrow keys move it one character on screen. Word jumps with a modifier key keep the reading order of ImGui.
 void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& editing) {
     const ImGuiIO& io = ImGui::GetIO();
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
-    const bool pressed = ImGui::IsMouseClicked(0) && editing.bounds.contains(pointer);
-    const bool dragged = ImGui::IsMouseDragging(0) && editing.bounds.contains(math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y}) && io.MouseClickedCount[0] == 1;
+    const math::Vec2 point = editing.tap.value_or(pointer);
+    const bool pressed = editing.tap.has_value() || (ImGui::IsMouseClicked(0) && editing.bounds.contains(pointer));
+    const bool dragged = io.MouseSource != ImGuiMouseSource_TouchScreen && ImGui::IsMouseDragging(0) && editing.bounds.contains(math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y}) && io.MouseClickedCount[0] == 1;
     const bool arrows = editing.cursor >= 0 && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper;
     const bool left = arrows && ImGui::IsKeyPressed(ImGuiKey_LeftArrow);
     const bool right = arrows && ImGui::IsKeyPressed(ImGuiKey_RightArrow);
@@ -107,8 +108,8 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
     // clang-format on
 
     if (pressed) {
-        const int caret = toBytes(field.hitTest(pointer - origin));
-        if (io.MouseClickedCount[0] == 2) {
+        const int caret = toBytes(field.hitTest(point - origin));
+        if (!editing.tap && io.MouseClickedCount[0] == 2) {
             const auto [begin, end] = field.getWord(toPosition(caret));
             select(toBytes(begin), toBytes(end));
             return;
@@ -175,7 +176,19 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {paddingX, paddingY});
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0F);
-    if (options.focus) {
+    // A finger edits a field only once it taps it, as on a phone, so while a finger presses a field that is not editing the field waits as a plain button, which a drag lets go of for the area that scrolls, and a tap starts the editing in the next frame with the caret where the finger lifted.
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImGuiID tapped = ImGui::GetID("##tapped");
+    const ImGuiID tapX = ImGui::GetID("##tapX");
+    const ImGuiID tapY = ImGui::GetID("##tapY");
+    const bool fingerPress = !focused && io.MouseSource == ImGuiMouseSource_TouchScreen && (io.MouseDown[0] || io.MouseReleased[0]) && bounds.contains(math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y});
+    // The focus reaches the field a frame or two after it is asked for, so the tap waits until the field edits and places the caret in the frame the editing starts.
+    if (storage.GetBool(tapped) && focused) {
+        storage.SetBool(tapped, false);
+    } else if (storage.GetBool(tapped)) {
+        editing.tap = math::Vec2{storage.GetFloat(tapX), storage.GetFloat(tapY)};
+        ImGui::SetKeyboardFocusHere();
+    } else if (options.focus) {
         ImGui::SetKeyboardFocusHere();
     }
 
@@ -184,7 +197,13 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         flags |= ImGuiInputTextFlags_Password;
     }
     bool submitted = false;
-    if (multiline) {
+    if (fingerPress) {
+        if (ImGui::InvisibleButton("##press", ImGuiConverter::toImVec2(inner.getSize()))) {
+            storage.SetBool(tapped, true);
+            storage.SetFloat(tapX, io.MousePos.x);
+            storage.SetFloat(tapY, io.MousePos.y);
+        }
+    } else if (multiline) {
         (void)ImGui::InputTextMultiline("##field", &value, ImGuiConverter::toImVec2(inner.getSize()), flags, &callback, &editing);
     } else {
         ImGui::SetNextItemWidth(inner.width);

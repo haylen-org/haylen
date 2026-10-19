@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -59,6 +60,9 @@ class TextEditor final {
         bool multiline = false;
         int cursor = -1;
         int anchor = -1;
+
+        // Where a finger tapped the field that the tap began to edit, which places the caret once the field edits.
+        std::optional<math::Vec2> tap;
     };
 
     // The caret keeps this far from the edges of the field while the text scrolls under it.

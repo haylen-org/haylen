@@ -1002,11 +1002,8 @@ void Collection::takeInput(Context& context) {
         if ((scroller->getMaximum() <= 0.0 && !(refreshable && isVertical())) || !context.takeDrag(ImGui::GetID(this), viewport, !isVertical())) {
             return;
         }
-        if (state.ActiveId != 0 && io.WantTextInput) {
-            pressed = false;
-            return;
-        }
-        if (state.ActiveId != 0) {
+        // A field being edited keeps editing while the finger scrolls the list, and any other item lets the finger go.
+        if (state.ActiveId != 0 && !io.WantTextInput) {
             ImGui::ClearActiveID();
         }
         dragging = true;

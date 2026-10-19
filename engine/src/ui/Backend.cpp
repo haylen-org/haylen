@@ -673,7 +673,8 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     }
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
 
-    textSession->beginFrame(viewport, scale, deltaSeconds);
+    // ImGui takes in the presses and releases of this frame in its new frame, so a press that lets go now still holds the UI in place for the frame of its release.
+    textSession->beginFrame(viewport, scale, deltaSeconds, std::ranges::any_of(io.MouseDown, [](bool down) { return down; }));
     closeAbandonedPopups();
     feedGamepad(input, navigation);
 

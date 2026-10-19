@@ -233,6 +233,22 @@ TEST_F(LayoutTest, FlingsAScrollWithAFingerAndSpringsBackFromPastItsEnds) {
     EXPECT_LT(getBounds(*gui, "content").y, released - 300.0F);
 }
 
+// A finger that presses a text field of a list and then drags slowly scrolls the list, as on a phone, where only a tap edits the field.
+TEST_F(LayoutTest, ScrollsAListThatAFingerDragsFromOneOfItsFields) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "textField", "id": "name"}, {"kind": "spacer", "height": 4000}]}]})");
+    const math::Vec2 field = getBounds(*gui, "name").getCenter();
+    const float top = getBounds(*gui, "content").y;
+    touch(platform::Event::Type::TouchBegan, 1, field);
+    frames(10);
+    for (int step = 1; step <= 20; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, field - math::Vec2{0.0F, 4.0F * static_cast<float>(step)});
+        frames();
+    }
+    EXPECT_LT(getBounds(*gui, "content").y, top - 40.0F);
+    touch(platform::Event::Type::TouchEnded, 1, field - math::Vec2{0.0F, 80.0F});
+    frames(2);
+}
+
 TEST_F(LayoutTest, StretchesAScrollPulledPastItsStartAndSpringsBack) {
     auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "spacer", "height": 4000}]}]})");
     const math::Vec2 center = getBounds(*gui, "page").getCenter();
