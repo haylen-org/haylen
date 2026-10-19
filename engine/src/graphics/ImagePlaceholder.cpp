@@ -98,7 +98,7 @@ Image ImagePlaceholder::decode(std::string_view code, int width, int height) {
     }
 
     Image image(width, height);
-    const std::span<std::uint8_t> pixels = image.getPixels();
+    const std::span<std::uint8_t> pixels = image.getWritablePixels();
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             Linear color{};

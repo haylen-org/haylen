@@ -104,6 +104,15 @@ TEST(ImageFiltersTest, OutlinesWhatShows) {
     EXPECT_THROW(ImageFilters::outline(image, math::Color::black(), ImageFilters::kMaxThickness + 1.0F), std::invalid_argument);
 }
 
+// An effect changes the pixels the mipmaps were made from, so the image drops them and a texture made from it makes them again.
+TEST(ImageFiltersTest, DropsTheMipmapsOfTheImageItChanges) {
+    Image image(8, 8, math::Color::white());
+    image.buildMipmaps();
+    ASSERT_FALSE(image.getMipmaps().empty());
+    ImageFilters::invert(image);
+    EXPECT_TRUE(image.getMipmaps().empty());
+}
+
 TEST(ImageFiltersLuaTest, AppliesEffectsInPlaceAndOnTheTaskPool) {
     test::EngineFixture fixture;
     fixture.runLua("graphics = require('haylen.graphics') async = require('async') image = graphics.newImage(4, 4, '#FF0A141E')");

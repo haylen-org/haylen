@@ -57,7 +57,10 @@ class Image final {
     [[nodiscard]] std::span<const std::uint8_t> getPixels() const noexcept {
         return pixels;
     }
-    [[nodiscard]] std::span<std::uint8_t> getPixels() noexcept {
+
+    // Returns the pixels to change in place, which drops the mipmaps made from them.
+    [[nodiscard]] std::span<std::uint8_t> getWritablePixels() noexcept {
+        mipmaps.clear();
         return pixels;
     }
 

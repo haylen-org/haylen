@@ -46,7 +46,7 @@ void ImageFilters::sharpen(Image& image, float amount) {
 }
 
 void ImageFilters::adjust(Image& image, const Adjustment& adjustment) noexcept {
-    const std::span<std::uint8_t> bytes = image.getPixels();
+    const std::span<std::uint8_t> bytes = image.getWritablePixels();
     for (std::size_t offset = 0; offset < bytes.size(); offset += 4) {
         math::Color color = math::Color::fromRgba8(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
         if (adjustment.hue != 0.0F) {
@@ -69,7 +69,7 @@ void ImageFilters::grayscale(Image& image, float amount) noexcept {
 }
 
 void ImageFilters::invert(Image& image) noexcept {
-    const std::span<std::uint8_t> bytes = image.getPixels();
+    const std::span<std::uint8_t> bytes = image.getWritablePixels();
     for (std::size_t offset = 0; offset < bytes.size(); offset += 4) {
         for (std::size_t channel = 0; channel < 3; ++channel) {
             bytes[offset + channel] = static_cast<std::uint8_t>(255 - bytes[offset + channel]);
@@ -80,7 +80,7 @@ void ImageFilters::invert(Image& image) noexcept {
 void ImageFilters::tint(Image& image, math::Color color, float amount) noexcept {
     const float share = std::clamp(amount, 0.0F, 1.0F) * std::clamp(color.a, 0.0F, 1.0F);
     const std::array<float, 3> target{color.r * 255.0F, color.g * 255.0F, color.b * 255.0F};
-    const std::span<std::uint8_t> bytes = image.getPixels();
+    const std::span<std::uint8_t> bytes = image.getWritablePixels();
     for (std::size_t offset = 0; offset < bytes.size(); offset += 4) {
         for (std::size_t channel = 0; channel < 3; ++channel) {
             const float value = static_cast<float>(bytes[offset + channel]);
@@ -135,7 +135,7 @@ void ImageFilters::outline(Image& image, math::Color color, float thickness) {
     }
     const int width = image.getWidth();
     const int height = image.getHeight();
-    const std::span<std::uint8_t> bytes = image.getPixels();
+    const std::span<std::uint8_t> bytes = image.getWritablePixels();
     constexpr float kFar = std::numeric_limits<float>::max() / 4.0F;
     constexpr float kDiagonal = std::numbers::sqrt2_v<float>;
     std::vector<float> distances(static_cast<std::size_t>(width * height));
@@ -203,7 +203,7 @@ ImageFilters::Pixels ImageFilters::premultiplied(const Image& image) {
 }
 
 void ImageFilters::store(Image& image, const Pixels& pixels) noexcept {
-    const std::span<std::uint8_t> bytes = image.getPixels();
+    const std::span<std::uint8_t> bytes = image.getWritablePixels();
     for (std::size_t index = 0; index < pixels.size(); ++index) {
         const float alpha = pixels[index][3];
         const float scale = alpha > 0.0F ? 1.0F / alpha : 0.0F;
