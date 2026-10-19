@@ -138,6 +138,13 @@ Orientation Services::getOrientation() {
 
 void Services::lockOrientation(Orientation) {}
 
+// Linux desktops have no status bar over the window of an app.
+void Services::setStatusBar(Window::StatusBar) {}
+
+float Services::getStatusBarHeight() {
+    return 0.0F;
+}
+
 // A Linux app opens its window at once, without a launch screen.
 void Services::endSplashScreen(float) {}
 

@@ -57,11 +57,23 @@ class Window {
         Regions,
     };
 
+    // How the status bar of a phone or tablet shows over the top of the app: hidden, or shown with the light or dark content that the theme of the system picks or that the app asks for.
+    enum class StatusBar : std::uint8_t {
+        Hidden,
+        Auto,
+        Light,
+        Dark,
+    };
+
     virtual ~Window() = default;
 
     // Resolves the orientation names `landscape`, `portrait` and `any` that `app.json` and Lua share.
     [[nodiscard]] static std::optional<Orientation> orientationFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view orientationName(Orientation value) noexcept;
+
+    // Resolves the status bar names `hidden`, `auto`, `light` and `dark` that `app.json` and Lua share.
+    [[nodiscard]] static std::optional<StatusBar> statusBarFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view statusBarName(StatusBar value) noexcept;
 
     [[nodiscard]] virtual math::Vec2 getFramebufferSize() const noexcept = 0;
     [[nodiscard]] virtual float getDpiScale() const noexcept = 0;
@@ -86,6 +98,10 @@ class Window {
 
     // The fold of a foldable or dual-screen device across the window where the platform reports one, which Android does through Jetpack WindowManager and browsers through the Viewport Segments and Device Posture APIs, and none elsewhere.
     [[nodiscard]] virtual std::optional<Fold> getFold() const = 0;
+
+    // Shows or hides the status bar where the platform has one, which iPhones, iPads and Android do, and keeps reporting the value that was set elsewhere.
+    [[nodiscard]] virtual StatusBar getStatusBar() const noexcept = 0;
+    virtual void setStatusBar(StatusBar value) = 0;
 
     [[nodiscard]] virtual TextInput& getTextInput() noexcept = 0;
 
@@ -126,6 +142,7 @@ class Window {
 
   private:
     static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;
+    static const std::array<std::pair<std::string_view, StatusBar>, 4> kStatusBarNames;
 };
 
 } // namespace haylen::platform

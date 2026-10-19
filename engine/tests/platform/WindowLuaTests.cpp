@@ -29,6 +29,21 @@ TEST(WindowLuaTest, ChangesTheDesktopOptions) {
     EXPECT_NE(fixture.lua("window.setDecorated(1)").find("error: "), std::string::npos);
 }
 
+TEST(WindowLuaTest, ShowsTheStatusBarWithItsContentAndColor) {
+    test::EngineFixture fixture;
+    fixture.runLua("window = require('haylen.window')");
+    EXPECT_EQ(fixture.lua("return window.statusBar() .. ' ' .. tostring(window.statusBarColor())"), "hidden nil");
+
+    fixture.runLua("window.setStatusBar('dark') window.setStatusBarColor('#FFFFFF')");
+    EXPECT_EQ(fixture.host().getStatusBar(), Window::StatusBar::Dark);
+    EXPECT_EQ(fixture.engine().getStatusBarColor(), math::Color::white());
+    EXPECT_EQ(fixture.lua("return window.statusBar() .. ' ' .. window.statusBarColor().r"), "dark 1.0");
+
+    fixture.runLua("window.setStatusBarColor(nil)");
+    EXPECT_FALSE(fixture.engine().getStatusBarColor().has_value());
+    EXPECT_NE(fixture.lua("window.setStatusBar('white')").find("error: "), std::string::npos);
+}
+
 TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
     test::EngineFixture fixture;
     fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");

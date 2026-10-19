@@ -121,6 +121,14 @@ class HeadlessHost final : public Host {
     void setFold(std::optional<Fold> value) noexcept {
         fold = value;
     }
+
+    // The headless screen has a status bar of the height a test gives it, which covers the top of the screen while it shows, like the status bar of a phone.
+    [[nodiscard]] StatusBar getStatusBar() const noexcept override {
+        return statusBar;
+    }
+    void setStatusBar(StatusBar value) override {
+        statusBar = value;
+    }
     [[nodiscard]] HeadlessTextInput& getTextInput() noexcept override {
         return textInput;
     }
@@ -198,6 +206,9 @@ class HeadlessHost final : public Host {
     }
     [[nodiscard]] math::Insets getSafeAreaInsets() const override {
         return safeAreaInsets;
+    }
+    [[nodiscard]] float getStatusBarHeight() const override {
+        return statusBar == StatusBar::Hidden ? 0.0F : statusBarHeight;
     }
     void pollGamepads(std::span<input::GamepadState> states) override;
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) override;
@@ -289,6 +300,9 @@ class HeadlessHost final : public Host {
     }
     void setSafeAreaInsets(const math::Insets& value) noexcept {
         safeAreaInsets = value;
+    }
+    void setStatusBarHeight(float value) noexcept {
+        statusBarHeight = value;
     }
     void setGamepad(std::size_t index, input::GamepadState state) {
         gamepads.at(index) = std::move(state);
@@ -445,6 +459,8 @@ class HeadlessHost final : public Host {
     math::Vec2 framebufferSize;
     float dpiScale = 1.0F;
     math::Insets safeAreaInsets{};
+    StatusBar statusBar = StatusBar::Hidden;
+    float statusBarHeight = 0.0F;
     std::optional<Fold> fold;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
     std::vector<PlatformCall> platformCalls;

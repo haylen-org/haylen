@@ -54,6 +54,7 @@ int SokolRuntime::run(int argc, char* argv[]) {
     sapp_desc desc = describe(argc, argv);
 #if defined(__APPLE__)
     desc.apple.delegate_class = AppleRuntime::getDelegateClass();
+    desc.apple.view_controller_class = AppleRuntime::getViewControllerClass();
 #endif
     sapp_run(&desc);
     return getExitStatus();

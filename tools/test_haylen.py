@@ -146,6 +146,31 @@ class ProjectGenerationTest(unittest.TestCase):
             self.assertNotEqual(haylen.apple_project_inputs(root), first)
 
 
+class StatusBarTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.app = self.scratch / "app"
+        self.app.mkdir()
+        self.root = self.scratch / "apple"
+        for folder, _, _ in haylen.APPLE_TEMPLATES.values():
+            (self.root / folder).mkdir(parents=True, exist_ok=True)
+            (self.root / folder / "Info.plist").write_bytes(plistlib.dumps({}))
+
+    def launch(self, window: dict) -> dict:
+        (self.app / "app.json").write_text(json.dumps({"name": "App", "identifier": "com.example.app", "version": "1.0", "window": window}))
+        generated = self.scratch / "generated"
+        haylen.write_apple_plists(haylen.App(self.app, "ios"), self.root, generated)
+        return plistlib.loads((generated / "ios" / "Info.plist").read_bytes())
+
+    def test_the_app_launches_with_the_status_bar_of_app_json(self):
+        self.assertTrue(self.launch({})["UIStatusBarHidden"])
+        shown = self.launch({"statusBar": "dark"})
+        self.assertEqual((shown["UIStatusBarHidden"], shown["UIStatusBarStyle"]), (False, "UIStatusBarStyleDarkContent"))
+        with self.assertRaises(haylen.BuildError):
+            self.launch({"statusBar": "white"})
+
+
 class SplashTest(unittest.TestCase):
     def test_the_dark_background_becomes_the_dark_appearance_and_the_night_resources(self):
         colorset = haylen.apple_colorset((16, 20, 24, 255), (0, 0, 0, 255))

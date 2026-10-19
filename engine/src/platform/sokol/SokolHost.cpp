@@ -136,6 +136,15 @@ std::optional<Fold> SokolHost::getFold() const {
     return Services::getFold();
 }
 
+Window::StatusBar SokolHost::getStatusBar() const noexcept {
+    return statusBar;
+}
+
+void SokolHost::setStatusBar(StatusBar value) {
+    statusBar = value;
+    Services::setStatusBar(value);
+}
+
 TextInput& SokolHost::getTextInput() noexcept {
     return Services::getTextInput();
 }
@@ -263,6 +272,10 @@ void SokolHost::persistUserData() {
 
 math::Insets SokolHost::getSafeAreaInsets() const {
     return Services::getSafeAreaInsets();
+}
+
+float SokolHost::getStatusBarHeight() const {
+    return Services::getStatusBarHeight();
 }
 
 void SokolHost::pollGamepads(std::span<input::GamepadState> gamepads) {

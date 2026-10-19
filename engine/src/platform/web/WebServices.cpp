@@ -255,6 +255,13 @@ void Services::lockOrientation(Orientation value) {
     haylen_js_lock_orientation(static_cast<int>(value));
 }
 
+// The status bar of a phone belongs to the browser, which shows it above the page.
+void Services::setStatusBar(Window::StatusBar) {}
+
+float Services::getStatusBarHeight() {
+    return 0.0F;
+}
+
 // The page shows its own splash, which it fades out when the runtime tells it.
 void Services::endSplashScreen(float fadeOutSeconds) {
     haylen_js_end_splash(fadeOutSeconds);

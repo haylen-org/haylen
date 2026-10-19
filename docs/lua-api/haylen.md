@@ -66,6 +66,8 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `window.showInTaskbar` | boolean | `true` | Whether the window has a taskbar button or a Dock icon. |
 | `window.focusable` | boolean | `true` | Whether clicking the window activates the app. |
 | `window.mousePassthrough` | boolean | `false` | Whether clicks start passing through the window. |
+| `window.statusBar` | string | `'hidden'` | How the status bar of phones and tablets showed when the app launched. |
+| `window.statusBarColor` | string | absent | The color painted behind the status bar when the app launched, present only when `app.json` sets it. |
 | `window.position` | table | absent | Where the desktop window opened, present only when `app.json` sets it, as `{x, y}` or `{anchor, area, monitor, offset, fill}`. |
 | `design.width` | number | `1920` | Design resolution width in units. |
 | `design.height` | number | `1080` | Design resolution height in units. |

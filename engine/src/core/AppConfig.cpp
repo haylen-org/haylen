@@ -228,7 +228,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("window")) {
         const Json& windowJson = document.at("window");
-        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "position"}, "the \"window\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "position", "statusBar", "statusBarColor"}, "the \"window\" section of \"app.json\"");
         readValue(windowJson, "title", config.window.title);
         readValue(windowJson, "width", config.window.width);
         readValue(windowJson, "height", config.window.height);
@@ -246,6 +246,23 @@ AppConfig AppConfig::fromJson(const Json& document) {
         requirePositive(config.window.width, "window.width");
         requirePositive(config.window.height, "window.height");
         requirePositive(config.window.sampleCount, "window.sampleCount");
+        std::string statusBarText;
+        readValue(windowJson, "statusBar", statusBarText);
+        if (!statusBarText.empty()) {
+            const std::optional<platform::Window::StatusBar> statusBar = platform::Window::statusBarFromName(statusBarText);
+            if (!statusBar) {
+                throw std::invalid_argument("The \"window.statusBar\" value \"" + statusBarText + "\" in \"app.json\" is unknown. It is \"hidden\", \"auto\", \"light\" or \"dark\".");
+            }
+            config.window.statusBar = *statusBar;
+        }
+        std::string statusBarColorText;
+        readValue(windowJson, "statusBarColor", statusBarColorText);
+        if (!statusBarColorText.empty()) {
+            config.window.statusBarColor = math::Color::parse(statusBarColorText);
+            if (!config.window.statusBarColor) {
+                throw std::invalid_argument("The \"window.statusBarColor\" value \"" + statusBarColorText + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
+            }
+        }
         if (windowJson.contains("position")) {
             try {
                 config.window.position = platform::WindowPlacement::fromJson(windowJson.at("position"));
@@ -456,6 +473,10 @@ Json AppConfig::toJson() const {
         splashJson["darkBackground"] = splash.darkBackground->toHex();
     }
     Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}};
+    windowJson["statusBar"] = platform::Window::statusBarName(window.statusBar);
+    if (window.statusBarColor) {
+        windowJson["statusBarColor"] = window.statusBarColor->toHex();
+    }
     if (window.position) {
         windowJson["position"] = window.position->toJson();
     }

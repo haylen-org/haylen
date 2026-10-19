@@ -282,6 +282,10 @@ class Engine final {
     [[nodiscard]] bool canBackLeaveApp() const noexcept;
     [[nodiscard]] bool isBackCaptured() const;
 
+    // The color that the engine paints behind the status bar while it shows, over everything the app drew there, or none to leave what the app drew. Only the visible area of the viewport takes it, so the clear color shows where letterbox bars cover the top of the screen.
+    void setStatusBarColor(std::optional<math::Color> value) noexcept;
+    [[nodiscard]] std::optional<math::Color> getStatusBarColor() const noexcept;
+
     Signal<const lua::Error&> errorRaised;
     Signal<bool> pausedChanged;
     Signal<AppState> appStateChanged;
@@ -310,6 +314,7 @@ class Engine final {
     [[nodiscard]] Json toDesignJson(const math::Rect& pixels) const;
     void dispatchEvent(const platform::Event& event);
     void render(std::size_t plugins);
+    void paintStatusBar(math::Color color);
     void renderScenes(std::size_t plugins);
     void setAppState(AppState value);
     void releaseHeldInput();

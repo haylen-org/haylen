@@ -109,6 +109,7 @@ struct EngineState {
     std::optional<platform::FoldSimulation> foldSimulation;
     std::optional<platform::Fold> fold;
     bool backLeavesApp = true;
+    std::optional<math::Color> statusBarColor;
     math::Rect keyboardFrame;
     Engine::NetworkState network = Engine::NetworkState::Unknown;
     std::array<std::optional<std::string>, input::Input::kMaxGamepads> gamepadNames;

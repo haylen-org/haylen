@@ -1,11 +1,14 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
@@ -137,6 +140,23 @@ TEST_F(WindowConfigTest, RejectsInvalidDesktopOptions) {
     }
 }
 
+TEST_F(WindowConfigTest, ReadsTheStatusBarOfAppJson) {
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"statusBar": "dark", "statusBarColor": "#F0F0F0"}})"));
+    EXPECT_EQ(config.window.statusBar, Window::StatusBar::Dark);
+    EXPECT_EQ(config.window.statusBarColor, math::Color::fromHex(0xF0F0F0FFU));
+    EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
+
+    const core::AppConfig defaults = core::AppConfig::fromJson(core::Json::object());
+    EXPECT_EQ(defaults.window.statusBar, Window::StatusBar::Hidden);
+    EXPECT_FALSE(defaults.window.statusBarColor.has_value());
+    EXPECT_EQ(defaults.toJson().at("window").at("statusBar"), "hidden");
+    EXPECT_FALSE(defaults.toJson().at("window").contains("statusBarColor"));
+
+    for (const char* document : {R"({"window": {"statusBar": "white"}})", R"({"window": {"statusBar": true}})", R"({"window": {"statusBarColor": "white"}})"}) {
+        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
+    }
+}
+
 TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfAMonitor) {
     EXPECT_EQ(place(R"("center")"), (math::Rect{760.0F, 470.0F, 400.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "bottom"})"), (math::Rect{760.0F, 940.0F, 400.0F, 100.0F}));
@@ -210,6 +230,29 @@ TEST(WindowEngineTest, OpensAnOrdinaryWindowByDefault) {
     EXPECT_TRUE(host.isShownInTaskbar());
     EXPECT_TRUE(host.isFocusable());
     EXPECT_EQ(host.getMousePassthrough(), Window::Passthrough::Off);
+}
+
+// The engine paints the color behind the status bar on a canvas of its own, only while the status bar shows over the visible area.
+TEST(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
+    test::EngineFixture fixture({{"app.json", R"({"window": {"statusBar": "light", "statusBarColor": "#102030"}})"}});
+    HeadlessHost& host = fixture.host();
+    EXPECT_EQ(host.getStatusBar(), Window::StatusBar::Light);
+    EXPECT_EQ(fixture.engine().getStatusBarColor(), math::Color::fromHex(0x102030FFU));
+    fixture.frames(1);
+    const std::size_t canvases = fixture.engine().getRenderer2D().getStats().canvases;
+
+    host.setStatusBarHeight(90.0F);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().canvases, canvases + 1);
+
+    host.setStatusBar(Window::StatusBar::Hidden);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().canvases, canvases);
+
+    host.setStatusBar(Window::StatusBar::Dark);
+    fixture.engine().setStatusBarColor(std::nullopt);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().canvases, canvases);
 }
 
 TEST(WindowEngineTest, TurnsTransparencyOffAndOnAgain) {

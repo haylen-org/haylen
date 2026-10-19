@@ -558,6 +558,15 @@ template <> struct EnumNames<platform::Event::Type> {
     }
 };
 
+template <> struct EnumNames<platform::Window::StatusBar> {
+    static std::optional<platform::Window::StatusBar> fromName(std::string_view name) {
+        return platform::Window::statusBarFromName(name);
+    }
+    static std::string_view name(platform::Window::StatusBar value) {
+        return platform::Window::statusBarName(value);
+    }
+};
+
 template <> struct EnumNames<platform::Orientation> {
     static std::optional<platform::Orientation> fromName(std::string_view name) {
         return platform::Window::orientationFromName(name);

@@ -183,6 +183,8 @@ APPLE_RUNS = {
 }
 
 ANDROID_ORIENTATIONS = {"landscape": "sensorLandscape", "portrait": "sensorPortrait", "any": "fullSensor"}
+STATUS_BARS = ("hidden", "auto", "light", "dark")
+IOS_STATUS_BAR_STYLES = {"auto": "UIStatusBarStyleDefault", "light": "UIStatusBarStyleLightContent", "dark": "UIStatusBarStyleDarkContent"}
 IOS_ORIENTATIONS = {
     "landscape": (["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"], ["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]),
     "portrait": (["UIInterfaceOrientationPortrait"], ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown"]),
@@ -1070,6 +1072,9 @@ class App:
         window = document.get("window", {})
         self.transparent: bool = window.get("transparent", False)
         self.show_in_taskbar: bool = window.get("showInTaskbar", True)
+        self.status_bar: str = window.get("statusBar", "hidden")
+        if self.status_bar not in STATUS_BARS:
+            raise BuildError(f'The "window.statusBar" of `{where}` must be "hidden", "auto", "light" or "dark".')
         splash = document.get("splash", {})
         self.background = parse_color(splash.get("background", document.get("clearColor", "#00000000" if self.transparent else "#FF000000")))
         self.dark_background = parse_color(splash["darkBackground"]) if "darkBackground" in splash else None
@@ -2242,9 +2247,10 @@ def read_plist(path: Path) -> dict:
 
 
 def write_apple_plists(app: App, root: Path, generated: Path) -> None:
-    """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations and the Dock setting of `app.json` and the `infoPlist` keys of the plugins, where the values of the developer win."""
+    """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations, the status bar the app launches with and the Dock setting of `app.json` and the `infoPlist` keys of the plugins, where the values of the developer win."""
     phone, pad = IOS_ORIENTATIONS[app.orientation]
-    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad}, "tvos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
+    status_bar = {"UIStatusBarHidden": True} if app.status_bar == "hidden" else {"UIStatusBarHidden": False, "UIStatusBarStyle": IOS_STATUS_BAR_STYLES[app.status_bar]}
+    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, **status_bar}, "tvos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
     warnings: list[str] = []
     for template, (folder, platforms, _) in APPLE_TEMPLATES.items():
         own = root / folder / "Info.plist"
@@ -2829,7 +2835,7 @@ def write_android_splash(app: App, resources: Path) -> None:
 
 
 def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path | None = None) -> None:
-    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version and orientation of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
+    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version, orientation and status bar of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Android project `{shown_path(root)}`")
     for name in ("assets", "res", "jniLibs", "plugins"):
@@ -2852,6 +2858,7 @@ def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path
         "versionName": app.version,
         "versionCode": str(app.version_code),
         "orientation": ANDROID_ORIENTATIONS[app.orientation],
+        "statusBar": app.status_bar,
         "library": library,
         "buildDirectory": (app.build_folder / "gradle").as_posix(),
         **prepare_android_plugins(app, root),

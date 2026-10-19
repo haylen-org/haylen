@@ -46,6 +46,10 @@ class Host : public Window {
     [[nodiscard]] virtual std::filesystem::path getUserDataDirectory(std::string_view identifier) = 0;
     virtual void persistUserData() = 0;
     [[nodiscard]] virtual math::Insets getSafeAreaInsets() const = 0;
+
+    // The height in framebuffer pixels of the status bar that shows over the top of the app, or 0 while none shows.
+    [[nodiscard]] virtual float getStatusBarHeight() const = 0;
+
     virtual void pollGamepads(std::span<input::GamepadState> gamepads) = 0;
     // Hands a platform call to the handlers of the platform, with the byte buffers that its parameters refer to, which stay valid until it returns.
     virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) = 0;

@@ -52,6 +52,8 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `window.showInTaskbar` | boolean | `true` | Whether the window has a taskbar button, and on macOS whether the app has a Dock icon and a menu bar. |
 | `window.focusable` | boolean | `true` | Whether clicking the window activates the app and gives it the keyboard. |
 | `window.mousePassthrough` | boolean | `false` | Lets every click pass through the window to what is behind it, until the app gives regions that keep the mouse. |
+| `window.statusBar` | string | `"hidden"` | How the status bar of phones and tablets shows when the app launches: `"hidden"`, or `"auto"`, `"light"` or `"dark"` content, described in [`window.setStatusBar`](../lua-api/window.md#windowsetstatusbarvalue). |
+| `window.statusBarColor` | string | absent | The color such as `"#FF1E2A44"` that the engine paints behind the status bar while it shows, described in [`window.setStatusBarColor`](../lua-api/window.md#windowsetstatusbarcolorcolor). |
 | `window.position` | string or object | centered | Where the desktop window opens: `"center"`, a point `{"x": 40, "y": 60}` in desktop points, or an anchored placement such as `{"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}`, described in the [desktop guide](../platform/desktop.md#placing-the-window). |
 | `design.width`, `design.height` | number | `1920`, `1080` | Design resolution, the coordinate space the app draws and receives input in. |
 | `design.scaling` | string | `"expand"` | One of `"fit"`, `"fill"`, `"stretch"`, `"expand"`, `"pixelPerfect"`, `"fitWidth"` or `"none"`, described in [`haylen.viewport`](../lua-api/viewport.md). |

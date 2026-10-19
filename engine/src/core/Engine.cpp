@@ -208,6 +208,8 @@ void Engine::applyWindowOptions() {
     host.setAlwaysOnTop(window.alwaysOnTop);
     host.setShowInTaskbar(window.showInTaskbar);
     host.setFocusable(window.focusable);
+    host.setStatusBar(window.statusBar);
+    current.statusBarColor = window.statusBarColor;
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
     host.setMouseLocked(false);
     host.setCursorVisible(true);
@@ -431,6 +433,9 @@ void Engine::render(std::size_t plugins) {
     if (current.errorScreen) {
         current.errorScreen->render();
     }
+    if (current.statusBarColor) {
+        paintStatusBar(*current.statusBarColor);
+    }
     try {
         for (std::size_t index = 0; index < plugins; ++index) {
             current.plugins[index].renderOverlay(*this);
@@ -471,6 +476,19 @@ void Engine::render(std::size_t plugins) {
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+}
+
+// The status bar lies over the top of the screen, so its background covers the part of the visible area under it.
+void Engine::paintStatusBar(math::Color color) {
+    EngineState& current = *state;
+    const graphics::Viewport& viewport = current.viewport;
+    const float covered = current.host.getStatusBarHeight() - viewport.getPixelRect().y;
+    if (covered <= 0.0F) {
+        return;
+    }
+    const math::Rect visible = viewport.getVisibleRect();
+    current.renderer->beginScreen();
+    current.renderer->drawRect({visible.x, visible.y, visible.width, covered / viewport.getPixelsPerUnit().y}, color);
 }
 
 // Each view renders its scenes, with the drawing of the plugins in the current view and the interface of the plugins in every view. During a transition the views before the last one go into their own images, and the last one draws the effect on the screen before its own scenes.
@@ -875,6 +893,14 @@ std::vector<std::string> Engine::getNativePlugins() const {
     std::ranges::sort(ids);
     ids.erase(std::ranges::unique(ids).begin(), ids.end());
     return ids;
+}
+
+void Engine::setStatusBarColor(std::optional<math::Color> value) noexcept {
+    state->statusBarColor = value;
+}
+
+std::optional<math::Color> Engine::getStatusBarColor() const noexcept {
+    return state->statusBarColor;
 }
 
 void Engine::setBackLeavesApp(bool value) noexcept {

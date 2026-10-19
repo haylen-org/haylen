@@ -19,6 +19,7 @@
 #include "haylen/platform/FoldSimulation.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
+#include "haylen/platform/Window.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
 #include "haylen/ui/Scaling.hpp"
 
@@ -30,7 +31,7 @@ namespace haylen::core {
 
 // App settings read from `app.json` before any script runs, because the window exists before `source/main.lua`.
 struct AppConfig {
-    // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless `clearColor` says otherwise. The desktop options change at run time through the window, and `position` places the window when it opens.
+    // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless `clearColor` says otherwise. The desktop options change at run time through the window, and `position` places the window when it opens. The status bar of phones and tablets launches as `statusBar` says, and the engine paints `statusBarColor` behind it while it shows.
     struct Window {
         std::string title = "Haylen";
         int width = 1280;
@@ -47,6 +48,8 @@ struct AppConfig {
         bool focusable = true;
         bool mousePassthrough = false;
         std::optional<platform::WindowPlacement> position;
+        platform::Window::StatusBar statusBar = platform::Window::StatusBar::Hidden;
+        std::optional<math::Color> statusBarColor;
     };
 
     // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color, and another one while the system uses dark colors. It stays until the app drew its first frame and at least the duration in seconds since the launch, and fades out into the app over the fade-out in seconds. The script `haylen.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.

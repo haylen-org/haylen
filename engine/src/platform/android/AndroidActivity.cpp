@@ -11,6 +11,7 @@ std::atomic<bool> AndroidActivity::framePresented = false;
 std::atomic<float> AndroidActivity::splashFadeOut = 0.0F;
 std::atomic<bool> AndroidActivity::television = false;
 std::atomic<float> AndroidActivity::density = 1.0F;
+std::atomic<float> AndroidActivity::statusBarHeight = 0.0F;
 std::atomic<Orientation> AndroidActivity::orientation = Orientation::Landscape;
 
 const GameActivity& AndroidActivity::getNative() {
@@ -35,6 +36,14 @@ math::Rect AndroidActivity::toFramebuffer(const math::Rect& value) noexcept {
 math::Insets AndroidActivity::getSafeAreaInsets() {
     const std::scoped_lock lock(mutex);
     return safeAreaInsets;
+}
+
+void AndroidActivity::setStatusBarHeight(float value) noexcept {
+    statusBarHeight.store(value, std::memory_order_release);
+}
+
+float AndroidActivity::getStatusBarHeight() noexcept {
+    return statusBarHeight.load(std::memory_order_acquire);
 }
 
 void AndroidActivity::receiveFold(const FoldReport& report) {

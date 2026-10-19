@@ -13,13 +13,17 @@
 
 namespace haylen::platform {
 
-// The `GameActivity` of the app and what its Java side reports: the safe area, the orientation and the fold of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
+// The `GameActivity` of the app and what its Java side reports: the safe area, the status bar, the orientation and the fold of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
 class AndroidActivity final {
   public:
     [[nodiscard]] static const GameActivity& getNative();
 
     static void setSafeAreaInsets(const math::Insets& value);
     [[nodiscard]] static math::Insets getSafeAreaInsets();
+
+    // The height in window pixels of the status bar while it shows, which the activity reports with the safe area.
+    static void setStatusBarHeight(float value) noexcept;
+    [[nodiscard]] static float getStatusBarHeight() noexcept;
 
     // Turn the window pixels that the Java side reports into framebuffer pixels, which are fewer when the app turns high DPI off. They run on the frame thread, which owns the size of the framebuffer.
     [[nodiscard]] static math::Insets toFramebuffer(const math::Insets& value) noexcept;
@@ -69,6 +73,7 @@ class AndroidActivity final {
     static std::atomic<float> splashFadeOut;
     static std::atomic<bool> television;
     static std::atomic<float> density;
+    static std::atomic<float> statusBarHeight;
     static std::atomic<Orientation> orientation;
 };
 

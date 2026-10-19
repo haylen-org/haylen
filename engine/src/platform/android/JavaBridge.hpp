@@ -46,6 +46,9 @@ class JavaBridge final {
     // Takes 0 for landscape, 1 for portrait and 2 for any orientation.
     static void lockOrientation(int value);
 
+    // Takes the value of `Window::StatusBar`: 0 hides the status bar, and 1, 2 and 3 show it with the content of the theme of the system, light content or dark content.
+    static void setStatusBar(int value);
+
     // Tells the activity whether the app takes the back button, which on Android 13 and later decides whether back reaches the app or leaves it with the back animation of the system.
     static void captureBack(bool value);
 
@@ -127,6 +130,7 @@ class JavaBridge final {
     static jmethodID finishMethod;
     static jclass activityClass;
     static jmethodID lockOrientationMethod;
+    static jmethodID setStatusBarMethod;
     static jmethodID captureBackMethod;
     static jmethodID systemInfoMethod;
     static jmethodID openUrlMethod;

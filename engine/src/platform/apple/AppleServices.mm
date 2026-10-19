@@ -31,6 +31,7 @@
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleSplash.hpp"
+#import "platform/apple/AppleStatusBar.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/AppleVideoDecoder.hpp"
@@ -234,6 +235,21 @@ Orientation Services::getOrientation() {
 void Services::lockOrientation([[maybe_unused]] Orientation value) {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleOrientation::lock(value);
+#endif
+}
+
+// Only iPhones and iPads show a status bar, while Macs, Mac Catalyst windows and TVs have none over the app.
+void Services::setStatusBar([[maybe_unused]] Window::StatusBar value) {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    AppleStatusBar::set(value);
+#endif
+}
+
+float Services::getStatusBarHeight() {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    return AppleStatusBar::getHeight();
+#else
+    return 0.0F;
 #endif
 }
 

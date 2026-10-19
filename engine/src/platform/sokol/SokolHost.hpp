@@ -39,6 +39,8 @@ class SokolHost final : public Host {
     [[nodiscard]] Orientation getOrientation() const override;
     void lockOrientation(Orientation value) override;
     [[nodiscard]] std::optional<Fold> getFold() const override;
+    [[nodiscard]] StatusBar getStatusBar() const noexcept override;
+    void setStatusBar(StatusBar value) override;
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
@@ -66,6 +68,7 @@ class SokolHost final : public Host {
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
     void persistUserData() override;
     [[nodiscard]] math::Insets getSafeAreaInsets() const override;
+    [[nodiscard]] float getStatusBarHeight() const override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) override;
     void cancelPlatformCall(std::uint64_t id) override;
@@ -129,6 +132,7 @@ class SokolHost final : public Host {
     std::uint64_t keyboardRevision = 0;
     WindowStyle style;
     Passthrough passthrough = Passthrough::Off;
+    StatusBar statusBar = StatusBar::Hidden;
     bool focusable = true;
 };
 

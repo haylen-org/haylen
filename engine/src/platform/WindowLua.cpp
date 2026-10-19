@@ -222,6 +222,31 @@ int WindowLua::hasPointerDevice(lua_State* L) {
     return 1;
 }
 
+int WindowLua::statusBar(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getWindow().getStatusBar());
+    return 1;
+}
+
+int WindowLua::setStatusBar(lua_State* L) {
+    lua::Runtime::getEngine(L).getWindow().setStatusBar(lua::Stack::read<Window::StatusBar>(L, 1));
+    return 0;
+}
+
+int WindowLua::statusBarColor(lua_State* L) {
+    const std::optional<math::Color> color = lua::Runtime::getEngine(L).getStatusBarColor();
+    if (color) {
+        lua::Stack::push(L, *color);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+int WindowLua::setStatusBarColor(lua_State* L) {
+    lua::Runtime::getEngine(L).setStatusBarColor(lua_isnoneornil(L, 1) ? std::nullopt : std::optional(lua::Stack::read<math::Color>(L, 1)));
+    return 0;
+}
+
 int WindowLua::backLeavesApp(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).canBackLeaveApp());
     return 1;
@@ -366,7 +391,7 @@ int WindowLua::currentMonitor(lua_State* L) {
 
 int WindowLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"framebufferSize", &framebufferSize}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"setKeyboardVisible", &lua::Binding::native<&setKeyboardVisible>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"fold", &lua::Binding::native<&fold>}, {"posture", &lua::Binding::native<&posture>}, {"segments", &lua::Binding::native<&segments>}, {"foldSimulation", &lua::Binding::native<&foldSimulation>}, {"setFoldSimulation", &lua::Binding::native<&setFoldSimulation>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {"monitors", &lua::Binding::native<&monitors>}, {"currentMonitor", &lua::Binding::native<&currentMonitor>}, {nullptr, nullptr},
+        {"framebufferSize", &framebufferSize}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"setKeyboardVisible", &lua::Binding::native<&setKeyboardVisible>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"statusBar", &statusBar}, {"setStatusBar", &lua::Binding::native<&setStatusBar>}, {"statusBarColor", &lua::Binding::native<&statusBarColor>}, {"setStatusBarColor", &lua::Binding::native<&setStatusBarColor>}, {"fold", &lua::Binding::native<&fold>}, {"posture", &lua::Binding::native<&posture>}, {"segments", &lua::Binding::native<&segments>}, {"foldSimulation", &lua::Binding::native<&foldSimulation>}, {"setFoldSimulation", &lua::Binding::native<&setFoldSimulation>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {"monitors", &lua::Binding::native<&monitors>}, {"currentMonitor", &lua::Binding::native<&currentMonitor>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

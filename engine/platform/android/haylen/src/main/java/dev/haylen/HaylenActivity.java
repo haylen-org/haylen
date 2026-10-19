@@ -40,6 +40,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.google.androidgamesdk.GameActivity;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -54,6 +55,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     // The extra of the launch intent that names the development server of a debuggable app.
     private static final String DEVELOPMENT_SERVER_EXTRA = "dev.haylen.developmentServer";
 
+    // The names of the values of the status bar, in the order of `Window::StatusBar` in the engine.
+    private static final String[] STATUS_BARS = {"hidden", "auto", "light", "dark"};
+    private static final int STATUS_BAR_HIDDEN = 0;
+    private static final int STATUS_BAR_AUTO = 1;
+    private static final int STATUS_BAR_DARK = 3;
+
     // The link that `HaylenLinkActivity` received while no activity ran, which the next activity of the process takes. A launch that brings an existing task to the front keeps the intent that the task started with, even when Android restores its activity after the end of the process, so the link waits here instead of in the intent. Only the main thread reaches it.
     private static Intent pendingLink;
 
@@ -67,6 +74,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private HaylenNetwork network;
     private HaylenFold fold;
     private OnBackPressedCallback backCallback;
+    private int statusBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,7 +132,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
-    // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
+    // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, besides the status bar that the app shows, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
     @Override
     protected void onSetUpWindow() {
         Window window = getWindow();
@@ -137,6 +145,31 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         controller.hide(WindowInsetsCompat.Type.systemBars());
         controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        statusBar = launchStatusBar();
+        applyStatusBar();
+    }
+
+    // The meta-data `dev.haylen.statusBar` of the activity, which the template fills from `app.json`, launches the app with its status bar until the engine applies the same value, and without it the status bar starts hidden.
+    private int launchStatusBar() {
+        try {
+            Bundle metaData = getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA).metaData;
+            String name = metaData == null ? null : metaData.getString("dev.haylen.statusBar");
+            return Math.max(0, Arrays.asList(STATUS_BARS).indexOf(name));
+        } catch (PackageManager.NameNotFoundException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    // A hidden status bar shows over the app for a while after a swipe, like the navigation bar, and a status bar that shows has light or dark content, which follows the night mode of the system for `auto`.
+    private void applyStatusBar() {
+        Window window = getWindow();
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+        if (statusBar == STATUS_BAR_HIDDEN) {
+            controller.hide(WindowInsetsCompat.Type.statusBars());
+            return;
+        }
+        controller.show(WindowInsetsCompat.Type.statusBars());
+        controller.setAppearanceLightStatusBars(statusBar == STATUS_BAR_DARK || (statusBar == STATUS_BAR_AUTO && !isDark(getResources().getConfiguration())));
     }
 
     @Override
@@ -175,6 +208,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeDensity(configuration.densityDpi / (float) DisplayMetrics.DENSITY_DEFAULT);
         nativeOrientation(configuration.orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(configuration));
+        applyStatusBar();
         accessibility.report();
         overlays.refresh();
         HaylenPlugins.configurationChanged(configuration);
@@ -264,6 +298,18 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
         int requested = value == 0 ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : value == 1 ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR;
         activity.runOnUiThread(() -> activity.setRequestedOrientation(requested));
+    }
+
+    // Called from the frame thread of the engine with the value of `Window::StatusBar`, which follows the order of the names in `STATUS_BARS`.
+    static void setStatusBar(int value) {
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity == null) {
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            activity.statusBar = value;
+            activity.applyStatusBar();
+        });
     }
 
     // Called from the frame thread of the engine whenever the app starts or stops taking the back button, which it takes while it captures back or edits a text field. The back callback takes back while it is enabled, and otherwise Android leaves the app with its predictive back animation.
@@ -461,7 +507,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     // Hidden bars only appear transiently over the app, so the safe area covers the cutout and any bars that stay visible, as in multi-window mode.
     private WindowInsetsCompat applyInsets(View view, WindowInsetsCompat insets) {
         Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
-        nativeSafeArea(safe.left, safe.top, safe.right, safe.bottom);
+        nativeSafeArea(safe.left, safe.top, safe.right, safe.bottom, insets.getInsets(WindowInsetsCompat.Type.statusBars()).top);
         overlays.setSafeArea(safe);
 
         boolean keyboardShown = insets.isVisible(WindowInsetsCompat.Type.ime());
@@ -520,7 +566,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
-    private static native void nativeSafeArea(int left, int top, int right, int bottom);
+    private static native void nativeSafeArea(int left, int top, int right, int bottom, int statusBar);
 
     private static native void nativeControllerAdded(int deviceId, byte[] name, int vendorId);
 

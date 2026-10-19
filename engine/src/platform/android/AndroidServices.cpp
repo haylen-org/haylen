@@ -126,6 +126,14 @@ void Services::lockOrientation(Orientation value) {
     JavaBridge::lockOrientation(static_cast<int>(value));
 }
 
+void Services::setStatusBar(Window::StatusBar value) {
+    JavaBridge::setStatusBar(static_cast<int>(value));
+}
+
+float Services::getStatusBarHeight() {
+    return AndroidActivity::getStatusBarHeight() * sapp_dpi_scale();
+}
+
 std::optional<Fold> Services::getFold() {
     std::optional<Fold> fold = AndroidActivity::getFold();
     if (fold) {
@@ -263,8 +271,9 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenPluginContext_nativeUncoverApp(JNIE
     haylen::platform::SokolHost::getNativeViews().uncoverApp();
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeSafeArea(JNIEnv*, jclass, jint left, jint top, jint right, jint bottom) {
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeSafeArea(JNIEnv*, jclass, jint left, jint top, jint right, jint bottom, jint statusBar) {
     haylen::platform::AndroidActivity::setSafeAreaInsets({.left = static_cast<float>(left), .top = static_cast<float>(top), .right = static_cast<float>(right), .bottom = static_cast<float>(bottom)});
+    haylen::platform::AndroidActivity::setStatusBarHeight(static_cast<float>(statusBar));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTelevision(JNIEnv*, jclass, jboolean television) {

@@ -30,9 +30,9 @@
 	<key>UIRequiresFullScreen</key>
 	<true/>
 	<key>UIStatusBarHidden</key>
-	<true/>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
+	<@HAYLEN_STATUS_BAR_HIDDEN@/>
+	<key>UIStatusBarStyle</key>
+	<string>@HAYLEN_STATUS_BAR_STYLE@</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 @HAYLEN_ORIENTATIONS@	</array>

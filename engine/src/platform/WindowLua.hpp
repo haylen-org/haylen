@@ -36,6 +36,10 @@ class WindowLua final {
     static int setKeyboardVisible(lua_State* L);
     static int orientation(lua_State* L);
     static int lockOrientation(lua_State* L);
+    static int statusBar(lua_State* L);
+    static int setStatusBar(lua_State* L);
+    static int statusBarColor(lua_State* L);
+    static int setStatusBarColor(lua_State* L);
     static int fold(lua_State* L);
     static int posture(lua_State* L);
     static int segments(lua_State* L);

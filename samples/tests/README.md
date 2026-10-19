@@ -586,7 +586,7 @@ The orientation of the screen with its events and its lock, a layout that adapts
 
 #### Safe area (SAF)
 
-The anchors of the interface against the safe area and the whole screen, drawing edge to edge, the debug overlay and the simulated devices. The tests are in `source/categories/safe-area/`.
+The anchors of the interface against the safe area and the whole screen, drawing edge to edge, the debug overlay, the simulated devices and the status bar. The tests are in `source/categories/safe-area/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -594,6 +594,7 @@ The anchors of the interface against the safe area and the whole screen, drawing
 | `SAF-002` | Edge to edge | The app draws under the notch, the rounded corners and the home indicator while the controls stay in the safe area. |  |
 | `SAF-003` | Debug overlay | The debug view that shades what lies outside the safe area and prints its insets. |  |
 | `SAF-004` | Device simulations | An iPhone with a notch or a dynamic island, an iPad, an Android phone with a gesture bar, a TV and custom insets, switched while the app runs. |  |
+| `SAF-005` | Status bar | The status bar of phones and tablets shown with automatic, light or dark content, a color painted behind it and the safe area below it. |  |
 
 ### System
 

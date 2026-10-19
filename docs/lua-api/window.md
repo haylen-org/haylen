@@ -194,6 +194,52 @@ window.lockOrientation('portrait')
 window.lockOrientation('any')
 ```
 
+### window.statusBar()
+
+Returns how the status bar of a phone or tablet shows over the top of the app: `'hidden'`, or `'auto'`, `'light'` or `'dark'` for a status bar that shows with the content color of the theme of the system, light content or dark content. The value `window.statusBar` of `app.json` sets it when the app starts, `'hidden'` by default. Platforms without a status bar keep reporting the value that was set.
+
+```lua
+local window = require('haylen.window')
+
+if window.statusBar() ~= 'hidden' then
+    print('the header sits below the status bar')
+end
+```
+
+### window.setStatusBar(value)
+
+Hides the status bar with `'hidden'`, or shows it with `'auto'`, `'light'` or `'dark'` content, where `'auto'` takes the dark content of the light theme of the system and the light content of its dark theme, `'light'` suits a dark background and `'dark'` a light one. iPhones and iPads show it through the view controller of the window, which UIKit also hides in landscape on an iPhone, and Android shows it over the app, which keeps drawing edge to edge, while a hidden status bar shows for a while after a swipe from the top edge, like the navigation bar. The safe area of [`haylen.viewport`](viewport.md#viewportsaferect) leaves the status bar out while it shows, so UI anchored to the safe area moves below it and `windowSafeAreaChanged` reports the change. Desktops, Mac Catalyst, TVs and browsers, whose status bar belongs to the browser, ignore it. An unknown name raises an error.
+
+```lua
+local window = require('haylen.window')
+
+-- The light header of a shop shows the clock in dark content, and a dark game hides it.
+window.setStatusBar('dark')
+window.setStatusBar('hidden')
+```
+
+### window.statusBarColor()
+
+Returns the color the engine paints behind the status bar as a `Color`, or `nil` while it paints none and the app shows what it draws there. The value `window.statusBarColor` of `app.json` sets it when the app starts.
+
+```lua
+local window = require('haylen.window')
+
+print(window.statusBarColor())
+```
+
+### window.setStatusBarColor(color)
+
+Paints the color behind the status bar while it shows, over everything the app drew there, or stops painting it with `nil`. The status bar of current iPhones, iPads and Android devices has no background of its own, since the app draws under it, so the engine paints the color over the part of the visible area that the status bar covers, on every platform with a status bar. Where the letterbox bars of the [design scaling](viewport.md) cover the top of the screen, the clear color of the bars shows behind the status bar instead.
+
+```lua
+local window = require('haylen.window')
+
+window.setStatusBar('light')
+window.setStatusBarColor('#FF1E2A44')
+window.setStatusBarColor(nil)
+```
+
 ### window.clipboard()
 
 Returns the text on the system clipboard, or an empty string when it holds no text. iOS shows its notice that the app pasted, Android gives the clipboard only to the app with the focus, and an Apple TV, which has no clipboard, keeps the text inside the app. Browsers give a page the text that the person pastes into it, so the function returns the text of the last paste of the page. The engine reserves 64 KiB for clipboard text on macOS, Windows, Linux, the Apple TV and the web.

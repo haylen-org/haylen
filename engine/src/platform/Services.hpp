@@ -97,6 +97,10 @@ class Services final {
     [[nodiscard]] static Orientation getOrientation();
     static void lockOrientation(Orientation value);
 
+    // Shows or hides the status bar with its content color where the platform has one, and returns its height in framebuffer pixels, or 0 while none shows.
+    static void setStatusBar(Window::StatusBar value);
+    [[nodiscard]] static float getStatusBarHeight();
+
     // Returns the fold of a foldable or dual-screen device across the window, as `Window::getFold` describes.
     [[nodiscard]] static std::optional<Fold> getFold();
 

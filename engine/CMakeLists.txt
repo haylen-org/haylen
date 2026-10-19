@@ -816,6 +816,7 @@ if(APPLE)
     src/platform/apple/AppleScreens.mm
     src/platform/apple/AppleServices.mm
     src/platform/apple/AppleSplash.mm
+    src/platform/apple/AppleStatusBar.mm
     src/platform/apple/AppleSystem.mm
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/AppleTheme.mm
@@ -846,6 +847,7 @@ if(APPLE)
     src/platform/apple/HaylenTextView.mm
     src/platform/apple/HaylenVideoLoader.mm
     src/platform/apple/HaylenThemeView.mm
+    src/platform/apple/HaylenViewController.mm
     src/platform/apple/HaylenVideoStream.mm
   )
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.m ${HAYLEN_APPLE_SOURCES})

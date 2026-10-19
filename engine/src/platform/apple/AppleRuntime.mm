@@ -9,6 +9,7 @@
 #import "platform/apple/HaylenAppDelegate.h"
 #else
 #import "platform/apple/HaylenSceneDelegate.h"
+#import "platform/apple/HaylenViewController.h"
 #endif
 
 namespace haylen::platform {
@@ -19,6 +20,15 @@ const char* AppleRuntime::getDelegateClass() noexcept {
     return class_getName([HaylenAppDelegate class]);
 #else
     return class_getName([HaylenSceneDelegate class]);
+#endif
+}
+
+// Only iPhones and iPads show a status bar, which the view controller of the window answers UIKit about.
+const char* AppleRuntime::getViewControllerClass() noexcept {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    return class_getName([HaylenViewController class]);
+#else
+    return nullptr;
 #endif
 }
 

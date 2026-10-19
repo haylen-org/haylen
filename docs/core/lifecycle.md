@@ -282,7 +282,7 @@ Every event of the engine reaches the app on every platform where its source exi
 | `windowFullscreenChanged` | Never, because the app always fills its window. |
 | `windowOrientationChanged` | The configuration of the activity. |
 | `windowFoldChanged` | Jetpack WindowManager, on foldable and dual-screen devices, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. |
-| `windowSafeAreaChanged` | The insets of the cutout and of the system bars that stay visible, and the native views of plugins. |
+| `windowSafeAreaChanged` | The insets of the cutout, of the status bar while it shows and of the system bars that stay visible, and the native views of plugins. |
 | `windowMoved`, `windowMonitorsChanged` | Never, because the window has no desktop. |
 | `keyboardShown`, `keyboardHidden` | The insets of the input method while a text field edits. |
 | `networkOnline`, `networkOffline` | The connectivity manager, with the permission `ACCESS_NETWORK_STATE`. |

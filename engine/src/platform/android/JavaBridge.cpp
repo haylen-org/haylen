@@ -26,6 +26,7 @@ jmethodID JavaBridge::editMethod = nullptr;
 jmethodID JavaBridge::finishMethod = nullptr;
 jclass JavaBridge::activityClass = nullptr;
 jmethodID JavaBridge::lockOrientationMethod = nullptr;
+jmethodID JavaBridge::setStatusBarMethod = nullptr;
 jmethodID JavaBridge::captureBackMethod = nullptr;
 jmethodID JavaBridge::systemInfoMethod = nullptr;
 jmethodID JavaBridge::openUrlMethod = nullptr;
@@ -77,6 +78,7 @@ jint JavaBridge::load(JavaVM* vm) {
     editMethod = findMethod(*env, editorClass, "edit", "([B)V");
     finishMethod = findMethod(*env, editorClass, "finish", "()V");
     lockOrientationMethod = findMethod(*env, activityClass, "lockOrientation", "(I)V");
+    setStatusBarMethod = findMethod(*env, activityClass, "setStatusBar", "(I)V");
     captureBackMethod = findMethod(*env, activityClass, "captureBack", "(Z)V");
     systemInfoMethod = findMethod(*env, activityClass, "systemInfo", "()[B");
     openUrlMethod = findMethod(*env, activityClass, "openUrl", "(J[B)V");
@@ -94,7 +96,7 @@ jint JavaBridge::load(JavaVM* vm) {
     announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
     updateMediaSessionMethod = findMethod(*env, mediaSessionClass, "update", "([B[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -193,6 +195,12 @@ void JavaBridge::lockOrientation(int value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, lockOrientationMethod, static_cast<jint>(value));
     clearException(env, "dev.haylen.HaylenActivity.lockOrientation");
+}
+
+void JavaBridge::setStatusBar(int value) {
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(activityClass, setStatusBarMethod, static_cast<jint>(value));
+    clearException(env, "dev.haylen.HaylenActivity.setStatusBar");
 }
 
 void JavaBridge::captureBack(bool value) {

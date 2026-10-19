@@ -5,6 +5,7 @@
 namespace haylen::platform {
 
 const std::array<std::pair<std::string_view, Orientation>, 3> Window::kOrientationNames{{{"landscape", Orientation::Landscape}, {"portrait", Orientation::Portrait}, {"any", Orientation::Any}}};
+const std::array<std::pair<std::string_view, Window::StatusBar>, 4> Window::kStatusBarNames{{{"hidden", StatusBar::Hidden}, {"auto", StatusBar::Auto}, {"light", StatusBar::Light}, {"dark", StatusBar::Dark}}};
 
 std::optional<Orientation> Window::orientationFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kOrientationNames, name, &std::pair<std::string_view, Orientation>::first);
@@ -13,6 +14,15 @@ std::optional<Orientation> Window::orientationFromName(std::string_view name) no
 
 std::string_view Window::orientationName(Orientation value) noexcept {
     return std::ranges::find(kOrientationNames, value, &std::pair<std::string_view, Orientation>::second)->first;
+}
+
+std::optional<Window::StatusBar> Window::statusBarFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kStatusBarNames, name, &std::pair<std::string_view, StatusBar>::first);
+    return found != kStatusBarNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Window::statusBarName(StatusBar value) noexcept {
+    return std::ranges::find(kStatusBarNames, value, &std::pair<std::string_view, StatusBar>::second)->first;
 }
 
 Monitor Window::getCurrentMonitor() const {
