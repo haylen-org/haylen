@@ -72,9 +72,13 @@ function Stacking:build()
     end
 end
 
--- Hangs the next block under the dropper as a kinematic body whose shapes collide with nothing until it drops.
+function Stacking:dropperX()
+    return math.sin(self.phase * 1.1) * kSwing
+end
+
+-- Hangs the next block under the dropper, where it is now, as a kinematic body whose shapes collide with nothing until it drops.
 function Stacking:hang()
-    local body = self.world:createBody({type = 'kinematic', x = 0, y = kDropperY + 70})
+    local body = self.world:createBody({type = 'kinematic', x = self:dropperX(), y = kDropperY + 70})
     local shapes = kKinds[self.random:integer(1, #kKinds)](body)
     body.data.shapes = shapes
     for _, shape in ipairs(shapes) do
@@ -141,12 +145,13 @@ end
 function Stacking:fixedUpdate(step)
     self.phase = self.phase + step * self.speed
     self.cooldown = math.max(0, self.cooldown - step)
-    self.held:setTransform(math.sin(self.phase * 1.1) * kSwing, kDropperY + 70, 0)
+    self.held:setTransform(self:dropperX(), kDropperY + 70, 0)
     self:simulate(self.world, step)
-    for index = #self.blocks, 1, -1 do
-        local body = self.blocks[index]
-        if body.y > kBaseTop + 30 and body.velocity:length() < kSettled then
-            table.remove(self.blocks, index):destroy()
+
+    -- A block that missed the stand stays where it settled on the ground and counts once as dropped off, until the oldest blocks make room.
+    for _, body in ipairs(self.blocks) do
+        if not body.data.off and body.y > kBaseTop + 30 and body.velocity:length() < kSettled then
+            body.data.off = true
             self.dropped = self.dropped + 1
         end
     end
@@ -160,10 +165,11 @@ function Stacking:draw(area)
     graphics2d.drawRect({x - 40, kDropperY - 14, 80, 28}, '#FFFFB74D', {layer = 2})
     graphics2d.drawLine(x, kDropperY + 14, x, kDropperY + 30, 4, '#FFB0BEC5', {layer = 2})
     parts.draw(self.held, {layer = 2})
-    for _, mark in ipairs({{self.height, '#FF6FDCA0', 'Height'}, {self.best, '#FFFFD54F', 'Best'}}) do
+    -- The height reads on the left of its line and the best on the right, so the two never cover each other while they are close.
+    for _, mark in ipairs({{self.height, '#FF6FDCA0', 'Height', -270, {1, 0.5}}, {self.best, '#FFFFD54F', 'Best', 270, {0, 0.5}}}) do
         local y = kBaseTop - mark[1]
         graphics2d.drawLine(-260, y, 260, y, 2, mark[2], {layer = 3})
-        Stacking.caption(string.format('%s %.0f', mark[3], mark[1]), 270, y, {anchor = {0, 0.5}, color = mark[2]})
+        Stacking.caption(string.format('%s %.0f', mark[3], mark[1]), mark[4], y, {anchor = mark[5], color = mark[2]})
     end
     if self.messageTime > 0 then
         graphics2d.drawText(nil, self.message, 0, -200, {size = 52, color = '#FFFF8A84', anchor = {0.5, 0.5}, layer = 4})
