@@ -2,6 +2,8 @@
 
 This guide gives a complete GitHub Actions workflow that builds an app made with Haylen and produces what each platform ships: a macOS app and disk image signed with Developer ID and notarized, the installer package of the Mac App Store, the Windows installer, the Debian package and the AppImage of Linux, the iOS and tvOS archives of the App Store, a signed Android App Bundle and the web site. It explains every secret the workflow reads and how to make each one. The workflow belongs to the repository of the app: the CI of the engine repository only tests and publishes nothing.
 
+Every step runs `haylen.py` with `--verbose`, so the log of the job holds the whole output of every tool, which a terminal otherwise keeps in `build/logs`.
+
 ## What the workflow builds
 
 | Job | Runner | Result |
@@ -119,8 +121,8 @@ jobs:
           key: haylen-apple-${{ env.HAYLEN_REF }}
       - name: Build the engine artifacts of Apple platforms and of this Mac
         run: |
-          python haylen/haylen.py engine --platform apple
-          python haylen/haylen.py engine --platform desktop
+          python haylen/haylen.py --verbose engine --platform apple
+          python haylen/haylen.py --verbose engine --platform desktop
 
   macos:
     needs: engine-apple
@@ -168,7 +170,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN"
           security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
       - name: Write the protected release and the bootstrap into the Apple project
-        run: python haylen/haylen.py prepare "$APP" --platform macos --config Release
+        run: python haylen/haylen.py --verbose prepare "$APP" --platform macos --config Release
       - name: Archive the app signed with Developer ID
         env:
           SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
@@ -272,7 +274,7 @@ jobs:
           done
           echo "PROFILE_UUID=$uuid" >> "$GITHUB_ENV"
       - name: Write the protected release and the bootstrap into the Apple project
-        run: python haylen/haylen.py prepare "$APP" --platform macos --config Release
+        run: python haylen/haylen.py --verbose prepare "$APP" --platform macos --config Release
       - name: Archive the app and export the installer package for the Mac App Store
         env:
           MAS_APP_IDENTITY: ${{ secrets.MAS_APP_IDENTITY }}
@@ -357,7 +359,7 @@ jobs:
           echo "ASC_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
           printf '%s' "$ASC_API_KEY" > "$RUNNER_TEMP/AuthKey.p8"
       - name: Write the protected release and the bootstrap into the Apple project
-        run: python haylen/haylen.py prepare "$APP" --platform ${{ matrix.platform }} --config Release
+        run: python haylen/haylen.py --verbose prepare "$APP" --platform ${{ matrix.platform }} --config Release
       - name: Archive the app and export it for App Store Connect, signed in the cloud
         env:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -439,10 +441,10 @@ jobs:
           echo "HAYLEN_RELEASE_STORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
           echo "$ANDROID_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
       - name: Write the protected release and the library of the app into the Android project
-        run: python haylen/haylen.py prepare "$APP" --platform android --config Release
+        run: python haylen/haylen.py --verbose prepare "$APP" --platform android --config Release
       - name: Build the App Bundle signed with the upload key
         run: |
-          python haylen/haylen.py tools --gradle
+          python haylen/haylen.py --verbose tools --gradle
           gradle=$(find haylen/.tools -path "*/bin/gradle" -type f | head -n 1)
           "$gradle" -p "$APP/platform/android" :app:bundleRelease
           mkdir -p dist
@@ -494,7 +496,7 @@ jobs:
           [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
       - name: Build the signed installer
         shell: pwsh
-        run: python haylen/haylen.py dist $env:APP --platform windows --output dist
+        run: python haylen/haylen.py --verbose dist $env:APP --platform windows --output dist
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -533,7 +535,7 @@ jobs:
           mkdir -p "$HAYLEN_KEYS_DIR"
           echo "$HAYLEN_CONTENT_KEYS" | base64 --decode | tar -x -C "$HAYLEN_KEYS_DIR"
       - name: Build the Debian package and the AppImage
-        run: python haylen/haylen.py dist "$APP" --platform linux --output dist
+        run: python haylen/haylen.py --verbose dist "$APP" --platform linux --output dist
       - uses: actions/upload-artifact@v7
         with:
           name: linux
@@ -572,8 +574,8 @@ jobs:
           echo "$HAYLEN_CONTENT_KEYS" | base64 --decode | tar -x -C "$HAYLEN_KEYS_DIR"
       - name: Build the site with the protected release and check it
         run: |
-          python haylen/haylen.py prepare "$APP" --platform web --config Release
-          python haylen/haylen.py check "$APP" --platform web --config Release
+          python haylen/haylen.py --verbose prepare "$APP" --platform web --config Release
+          python haylen/haylen.py --verbose check "$APP" --platform web --config Release
           mkdir -p dist
           cp -R haylen/build/apps/"$APP"-*/web/. dist/
       - uses: actions/upload-artifact@v7
