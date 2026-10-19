@@ -163,7 +163,7 @@ templates/
     platform/web/         Loading page with the app or engine logo, the progress bar, the backend choice and the error screen.
   cpp/                    The layer of C++ apps: the CMake project that compiles the engine with haylen_add_app, its sources and its Objective-C bridge handler.
   plugin/                 The skeleton of a native plugin that haylen.py plugin new copies, with a working part for every platform in apple/, android/, web/ and native/, and the .gitignore, .editorconfig and .clang-format of a plugin repository.
-tools/                    The PNG reader and writer of the tools that draw sample art, the checkers of the pivots of the animated sheets and of the edges of the images of the samples with what they declare, and test_haylen.py, the tests of the rules of haylen.py and the repository.
+tools/                    The PNG reader and writer of the tools that draw sample art, the checkers of the pivots of the animated sheets and of the edges of the images of the samples with what they declare, the tool that joins the ends of a painted strip of scenery so it repeats without a seam, and test_haylen.py, the tests of the rules of haylen.py and the repository.
 docs/                     The index of the docs, the guides in one folder per engine module, the Lua API reference in lua-api/, the API policy and the guide to installers in CI.
 extras/images/            Brand images: the vertical and horizontal logos, the symbol, and the logo variants with a white wordmark for dark backgrounds.
 ```

@@ -14,7 +14,7 @@ return {
         {code = 'CAM-008', title = 'Split screen', description = 'Two walkers, each with a camera in its own half of the play area.', module = 'split-screen'},
         {code = 'CAM-009', title = 'Minimap', description = 'A second camera in a corner viewport that leaves details out with visibility bits.', module = 'minimap'},
         {code = 'CAM-010', title = 'Blending cameras', description = 'Smooth cuts between a walker camera and a landmark camera.', module = 'blend'},
-        {code = 'CAM-011', title = 'Parallax layers', description = 'Mountains, hills, clouds and grass scrolling at their own rates.', module = 'parallax'},
+        {code = 'CAM-011', title = 'Parallax layers', description = 'Mountains, hills, clouds, the ground and grass scrolling at their own rates.', module = 'parallax'},
         {code = 'CAM-012', title = 'Pixel snap', description = 'Pixel art with and without snapping the view to whole pixels.', module = 'pixel-snap'},
         {code = 'CAM-013', title = 'Screen to world', description = 'Picking objects under the pointer in a zoomed and rotated view.', module = 'picking'},
         {code = 'CAM-014', title = 'Debug drawing', description = 'The view, the limits and the drag box drawn from a zoomed-out camera.', module = 'debug'},

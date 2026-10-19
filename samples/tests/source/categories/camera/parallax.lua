@@ -1,4 +1,4 @@
--- Parallax layers: each layer follows the camera by its scroll scale and repeats to fill the view, so far layers drift slowly, near ones race by and clouds scroll by themselves.
+-- Parallax layers: each layer follows the camera by its scroll scale and repeats to fill the view, so far layers drift slowly, the ground moves with the camera, near grass races by and clouds scroll by themselves.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -23,7 +23,8 @@ function Parallax:init(entry)
     self.layers = {
         {name = 'Clouds 0.05 and autoscroll', layer = graphics2d.newParallax(Parallax.texture('clouds'), {position = {0, -540}, size = {1024, 322}, scrollScale = {0.05, 1}, repeatX = true, autoscroll = {-60, 0}, color = '#D0FFFFFF'}), order = -4},
         {name = 'Mountains 0.15', layer = graphics2d.newParallax(Parallax.texture('mountains'), {position = {0, -366}, size = {1024, 458}, scrollScale = {0.15, 1}, repeatX = true}), order = -3},
-        {name = 'Hills 0.45', layer = graphics2d.newParallax(Parallax.texture('hills'), {position = {0, Parallax.ground - 538}, size = {1024, 538}, scrollScale = {0.45, 1}, repeatX = true}), order = -2},
+        {name = 'Hills 0.45', layer = graphics2d.newParallax(Parallax.texture('hills'), {position = {0, Parallax.ground - 524}, size = {1096, 538}, scrollScale = {0.45, 1}, repeatX = true}), order = -2},
+        {name = 'Ground 1', layer = graphics2d.newParallax(Parallax.texture('ground'), {position = {0, Parallax.ground - 52}, size = {1076, 256}, scrollScale = {1, 1}, repeatX = true}), order = -1},
         {name = 'Grass 1.35', layer = graphics2d.newParallax(Parallax.texture('grass'), {position = {0, Parallax.ground + 21}, size = {512, 227}, scrollScale = {1.35, 1}, repeatX = true}), order = 5},
     }
 end
@@ -81,7 +82,8 @@ function Parallax:draw(area)
     for _, entry in ipairs(self.layers) do
         entry.layer:draw(self.camera, {layer = entry.order})
     end
-    graphics2d.drawRect({view.x, Parallax.ground, view.width, 600}, '#FF5A8A3A')
+    -- The earth of the ground strip goes on below it to the bottom of the view.
+    graphics2d.drawRect({view.x, Parallax.ground + 200, view.width, 600}, '#FF81411F', {layer = -1})
     graphics2d.drawCircle(self.walker.x, Parallax.ground - 30, 30, '#FFFFD040', {layer = 1})
     for post = math.floor(view.x / 400) * 400, view:right(), 400 do
         graphics2d.drawRect({post - 8, Parallax.ground - 80, 16, 80}, '#FF6A4A2A')
