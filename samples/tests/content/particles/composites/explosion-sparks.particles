@@ -1,6 +1,6 @@
 {
     "texture": "../library/textures/effects.png",
-    "frames": [[528, 1304, 128, 128]],
+    "frames": [[1320, 2084, 128, 128]],
     "filter": "linear",
     "rate": 0,
     "bursts": [{"time": 0, "count": [50, 70]}],

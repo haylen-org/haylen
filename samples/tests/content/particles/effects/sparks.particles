@@ -1,6 +1,6 @@
 {
     "texture": "../library/textures/effects.png",
-    "frames": [[68, 1432, 64, 64]],
+    "frames": [[204, 2300, 64, 64]],
     "rate": 0,
     "bursts": [{"time": 0, "count": 48}, {"time": 0.6, "count": 24}],
     "duration": 1.2,
