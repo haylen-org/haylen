@@ -237,6 +237,7 @@ class FocusNavigator final {
         const Component* component = nullptr;
         ImGuiID id = 0;
         bool focusable = true;
+        bool ring = true;
         std::optional<std::size_t> node;
         std::optional<std::size_t> scope;
     };

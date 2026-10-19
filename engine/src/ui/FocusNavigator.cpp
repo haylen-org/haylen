@@ -169,9 +169,11 @@ void FocusNavigator::enter(const Component& component, ImGuiID node, const math:
     Level level{.component = &component, .id = node};
     if (!levels.empty()) {
         level.focusable = levels.back().focusable;
+        level.ring = levels.back().ring;
         level.scope = levels.back().scope;
     }
     level.focusable = level.focusable && common.focusable;
+    level.ring = level.ring && common.focusRing;
     if (common.focusScope || common.focusWrap != FocusWrap::None) {
         building.scopes.push_back({.id = node, .bounds = bounds, .trap = common.focusScope, .wrap = common.focusWrap, .parent = level.scope});
         level.scope = building.scopes.size() - 1;
@@ -411,7 +413,7 @@ std::optional<math::Rect> FocusNavigator::findFocusIn(const math::Rect& area) co
 }
 
 bool FocusNavigator::isRingShown(ImGuiID item) const {
-    return ringVisible && item == GImGui->NavId;
+    return ringVisible && item == GImGui->NavId && (levels.empty() || levels.back().ring);
 }
 
 std::optional<FocusDirection> FocusNavigator::takeDirection(ImGuiID node) {

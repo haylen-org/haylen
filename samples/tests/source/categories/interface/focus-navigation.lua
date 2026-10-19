@@ -1,4 +1,4 @@
--- The nearest control in a direction, neighbours named by id, a focus scope that keeps the focus until it is left, a row that wraps and going back, with the bindings of keyboards, gamepads and TV remotes.
+-- The nearest control in a direction, neighbours named by id, a focus scope that keeps the focus until it is left, a row that wraps and draws its focus its own way, and going back, with the bindings of keyboards, gamepads and TV remotes.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
@@ -16,6 +16,7 @@ A direction goes to the nearest control that way, preferring controls in line wi
 The properties [color=gold]focusLeft[/color], [color=gold]focusRight[/color], [color=gold]focusUp[/color] and [color=gold]focusDown[/color] name the neighbour instead.
 A node with [color=gold]focusScope[/color] keeps the focus until the player leaves it, and hears cancel.
 The property [color=gold]focusWrap[/color] wraps a move off one end of a row or a column to its other end.
+The property [color=gold]focusRing[/color] set to false hides the ring, so a node shows its focus its own way from its focus and blur events.
 Cancel reaches the innermost scope, and then the root of the GUI, which goes back to the test list.
 The ring shows once the player navigates, and always on a TV, where there is no pointer.
 [/ul]]==]
@@ -85,14 +86,19 @@ function FocusNavigation:scope()
     })
 end
 
+-- The cards of the row leave the ring out and show their focus by turning primary and growing, as a menu of a TV may.
 function FocusNavigation:wrap()
     local cards = {}
     for index = 1, 5 do
-        cards[index] = ui.button{id = 'w' .. index, text = index, width = 80, onClick = function(event) self:pressed(event) end}
+        local id = 'w' .. index
+        cards[index] = ui.button{id = id, text = index, width = 80, height = 64, onClick = function(event) self:pressed(event) end,
+            onFocus = function(event) event.gui:set(id, {variant = 'primary', width = 96, height = 76}) end,
+            onBlur = function(event) event.gui:set(id, {variant = 'default', width = 80, height = 64}) end,
+        }
     end
-    return layout.section('Wrapping row', {grow = 1,
-        ui.label{text = 'Right from 5 wraps to 1, and left from 1 to 5.', color = 'textMuted'},
-        ui.row{gap = 12, focusWrap = 'horizontal', children = cards},
+    return layout.section('Wrapping row with its own focus', {grow = 1,
+        ui.label{text = 'Right from 5 wraps to 1, and left from 1 to 5. The cards hide the ring and show the focus themselves.', color = 'textMuted'},
+        ui.row{gap = 12, focusWrap = 'horizontal', focusRing = false, children = cards},
     })
 end
 

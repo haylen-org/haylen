@@ -62,6 +62,9 @@ class Component {
         bool focusScope = false;
         FocusWrap focusWrap = FocusWrap::None;
 
+        // Whether the focus ring shows around the node and its children, so an app can draw the focus itself.
+        bool focusRing = true;
+
         // The node ids the focus moves to from this node, in the order of `FocusDirection`, where an empty id leaves the choice to the search.
         std::array<std::string, 4> focusNeighbors;
 

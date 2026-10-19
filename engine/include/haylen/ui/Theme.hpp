@@ -187,6 +187,7 @@ class Theme final {
         Scrollbar,
         ScrollbarHover,
         ScrollbarTrack,
+        FocusRing,
     };
 
     // The font a role draws with, its size and the style of its face, where a font without a face for the style draws with its regular face.
@@ -215,7 +216,7 @@ class Theme final {
     static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::InformationText) + 1;
     static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::ScrollLine) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
-    static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::ScrollbarTrack) + 1;
+    static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::FocusRing) + 1;
 
     // The built-in themes. The dark and light themes name their high contrast variants, which keep their metrics and fonts with colors of stronger contrast.
     [[nodiscard]] static Theme dark();
@@ -451,6 +452,7 @@ class Theme final {
         "scrollbar",
         "scrollbarHover",
         "scrollbarTrack",
+        "focusRing",
     };
     // clang-format on
     static constexpr std::array<float, kFontCount> kFontSizes{30.0F, 24.0F, 30.0F, 38.0F, 56.0F, 26.0F};

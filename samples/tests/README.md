@@ -549,7 +549,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-013` | Slot grid | An inventory, a hotbar in another GUI and a chest list that trade items by drag and drop. |  |
 | `GUI-014` | Rich text | Markup with styles, links, hints, images, icons, lists, tables, effects and a typewriter reveal. |  |
 | `GUI-015` | Themes | The dark and light themes and a textured theme drawn with nine-slice surfaces. |  |
-| `GUI-016` | Focus navigation | Directional and explicit neighbours, focus scopes, wrapping and going back with keys, gamepads and TV remotes. |  |
+| `GUI-016` | Focus navigation | Directional and explicit neighbours, focus scopes, wrapping, a row that draws its own focus and going back with keys, gamepads and TV remotes. |  |
 | `GUI-017` | UI tweens | Node transforms that move, scale, fade and tint controls with native tweens. |  |
 | `GUI-018` | Text input | The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform. |  |
 | `GUI-019` | Touch controls | Two touch sticks at once, one that follows the finger drawn with images and one fixed drawn with circles, and touch buttons that drive actions of the action map next to keys and gamepads. |  |

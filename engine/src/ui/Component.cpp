@@ -122,6 +122,7 @@ void Component::readFocus(PropertyReader& reader) {
     reader.read("focusable", common.focusable);
     reader.read("autofocus", common.autofocus);
     reader.read("focusScope", common.focusScope);
+    reader.read("focusRing", common.focusRing);
     reader.readChoice<FocusWrap>("focusWrap", common.focusWrap, kFocusWraps);
     for (std::size_t index = 0; index < kNeighborKeys.size(); ++index) {
         reader.read(kNeighborKeys[index], common.focusNeighbors[index]);

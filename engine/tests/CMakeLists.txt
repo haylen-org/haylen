@@ -200,6 +200,7 @@ set(HAYLEN_TEST_SOURCES
   ui/CollectionLuaTests.cpp
   ui/CollectionTests.cpp
   ui/ComponentTests.cpp
+  ui/FocusRingTests.cpp
   ui/GuiTests.cpp
   ui/ImageLibraryTests.cpp
   ui/LabelTests.cpp

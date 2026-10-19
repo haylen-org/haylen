@@ -112,8 +112,13 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
         const math::Rect shown = shape.apply(ring);
         window->DrawList->PushClipRect(ImGuiConverter::toImVec2(shown.getMin()), ImGuiConverter::toImVec2(shown.getMax()));
     }
+    // A theme with a focus ring surface frames the control with its image instead of the line.
     const float rounding = radius + distance;
-    Surfaces::drawShape(context, {.bounds = ring, .radii = {rounding, rounding, rounding, rounding}, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Focus)});
+    if (const Theme::Image* image = context.getSurface(Theme::Surface::FocusRing)) {
+        Surfaces::drawNineSlice(context, *image, ring, context.getColor(Theme::Color::Focus));
+    } else {
+        Surfaces::drawShape(context, {.bounds = ring, .radii = {rounding, rounding, rounding, rounding}, .color = math::Color::transparent(), .borderWidth = width, .borderColor = context.getColor(Theme::Color::Focus)});
+    }
     if (clipped) {
         window->DrawList->PopClipRect();
     }

@@ -19,7 +19,7 @@ return {
         {code = 'GUI-013', title = 'Slot grid', description = 'An inventory, a hotbar in another GUI and a chest list that trade items by drag and drop.', module = 'slot-grid'},
         {code = 'GUI-014', title = 'Rich text', description = 'Markup with styles, links, hints, images, icons, lists, tables, effects and a typewriter reveal.', module = 'rich-text'},
         {code = 'GUI-015', title = 'Themes', description = 'The dark and light themes and a textured theme drawn with nine-slice surfaces.', module = 'themes'},
-        {code = 'GUI-016', title = 'Focus navigation', description = 'Directional and explicit neighbours, focus scopes, wrapping and going back with keys, gamepads and TV remotes.', module = 'focus-navigation'},
+        {code = 'GUI-016', title = 'Focus navigation', description = 'Directional and explicit neighbours, focus scopes, wrapping, a row that draws its own focus and going back with keys, gamepads and TV remotes.', module = 'focus-navigation'},
         {code = 'GUI-017', title = 'UI tweens', description = 'Node transforms that move, scale, fade and tint controls with native tweens.', module = 'tweens'},
         {code = 'GUI-018', title = 'Text input', description = 'The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform.', module = 'text-input'},
         {code = 'GUI-019', title = 'Touch controls', description = 'Two touch sticks at once, one that follows the finger drawn with images and one fixed drawn with circles, and touch buttons that drive actions of the action map next to keys and gamepads.', module = 'touch-controls'},
