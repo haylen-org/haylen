@@ -6,7 +6,8 @@ import random
 from pathlib import Path
 
 import tilesets as t
-from maps_views import PROPS, PROPS_GID, TERRAIN, gid
+import transitions as tr
+from maps_views import PROPS, PROPS_GID, TERRAIN, TRANSITIONS, TRANSITIONS_GID, gid, transition
 from tiled_json import MapBuilder, item, prop
 
 
@@ -129,11 +130,15 @@ def spawning(folder: Path) -> None:
 
 
 def ysort(folder: Path) -> None:
-    builder = MapBuilder(36, 22).tileset(1, TERRAIN).tileset(PROPS_GID, PROPS)
+    builder = MapBuilder(36, 22).tileset(1, TERRAIN).tileset(PROPS_GID, PROPS).tileset(TRANSITIONS_GID, TRANSITIONS)
     rng = random.Random(99)
 
+    # The paths cross on the corners of the cells, so the transitions wear their edges into the grass.
+    def worn(column: int, line: int) -> int:
+        return int(line in (10, 11, 12) or column in (17, 18, 19))
+
     def ground(column: int, row: int) -> int:
-        return gid(t.DIRT if row in (10, 11) or column in (17, 18) else (t.FLOWERS if rng.random() < 0.06 else t.GRASS))
+        return gid(t.FLOWERS if rng.random() < 0.06 else t.GRASS)
 
     def fences(column: int, row: int) -> int:
         return gid(t.FENCE) if row in (4, 16) and 3 <= column <= 13 else 0
@@ -141,11 +146,11 @@ def ysort(folder: Path) -> None:
     trees = []
     for _ in range(46):
         column, row = rng.randrange(1, 35), rng.randrange(2, 22)
-        if row in (10, 11, 12) or column in (17, 18):
+        if row in (9, 10, 11, 12, 13) or column in (16, 17, 18, 19):
             continue
         kind = rng.choice([t.TREE, t.TREE, t.PINE, t.LAMP])
         trees.append(builder.object(name="tree" if kind != t.LAMP else "lamp", type="tree", gid=PROPS_GID + kind, x=column * 32 + rng.randrange(-8, 8), y=row * 32, width=32, height=64))
-    builder.add(builder.tiles("ground", ground), builder.tiles("fences", fences), builder.objects("props", trees))
+    builder.add(builder.tiles("ground", ground), builder.tiles("paths", transition(tr.PATH, worn)), builder.tiles("fences", fences), builder.objects("props", trees))
     builder.save(folder / "ysort.tmj")
 
 

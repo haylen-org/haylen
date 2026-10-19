@@ -6,11 +6,14 @@ import random
 from pathlib import Path
 
 import tilesets as t
+import transitions as tr
 from tiled_json import MapBuilder, noise, prop, save
 
 TERRAIN = "../tilesets/terrain.tsj"
 PROPS = "../tilesets/props.tsj"
 PROPS_GID = 33
+TRANSITIONS = "../tilesets/transitions.tsj"
+TRANSITIONS_GID = 41
 
 
 def gid(tile: int) -> int:
@@ -33,20 +36,41 @@ def landscape(width: int, height: int, seed: int, offset: int = 0):
     return cell
 
 
+def transition(row: int, holds):
+    """A cell of a layer of the transitions tileset, whose tile the terrain at the four corners of the cell picks."""
+
+    def cell(column: int, line: int) -> int:
+        tile = tr.corner(row, holds, column, line)
+        return 0 if tile is None else TRANSITIONS_GID + tile
+
+    return cell
+
+
 def orthogonal(folder: Path) -> None:
-    builder = MapBuilder(30, 18).tileset(1, TERRAIN)
-    ground = landscape(30, 18, 11)
+    builder = MapBuilder(30, 18).tileset(1, TERRAIN).tileset(TRANSITIONS_GID, TRANSITIONS)
+    heights = noise(31, 19, 7, 11)
+    details = noise(30, 18, 2, 12)
     rng = random.Random(12)
     ruins = {(column, 4) for column in range(18, 26)} | {(18, row) for row in range(4, 10)} | {(25, row) for row in range(4, 10)}
+
+    # The water and its sand lie on the corners of the cells, so the transitions blend them into the grass.
+    def wet(column: int, line: int) -> int:
+        return int(heights(column, line) < 0.36)
+
+    def sandy(column: int, line: int) -> int:
+        return int(heights(column, line) < 0.43)
+
+    def ground(column: int, row: int) -> int:
+        return gid(t.FLOWERS if details(column, row) > 0.72 and not any(sandy(column + dx, row + dy) for dx in (0, 1) for dy in (0, 1)) else t.GRASS)
 
     def decor(column: int, row: int) -> int:
         if (column, row) in ruins:
             return gid(t.TORCH if (column, row) in {(20, 4), (23, 4)} else t.WALL)
-        if ground(column, row) == gid(t.GRASS) and rng.random() < 0.06:
+        if ground(column, row) == gid(t.GRASS) and not any(sandy(column + dx, row + dy) for dx in (0, 1) for dy in (0, 1)) and rng.random() < 0.06:
             return gid(rng.choice([t.BUSH, t.ROCK]))
         return 0
 
-    builder.add(builder.tiles("ground", ground), builder.tiles("decor", decor))
+    builder.add(builder.tiles("ground", ground), builder.tiles("sand", transition(tr.SAND, sandy)), builder.tiles("water", transition(tr.WATER, wet)), builder.tiles("decor", decor))
     builder.save(folder / "orthogonal.tmj")
 
 

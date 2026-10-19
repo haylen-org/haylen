@@ -1,0 +1,980 @@
+{
+ "columns": 16,
+ "image": "../tiles/transitions.png",
+ "imageheight": 792,
+ "imagewidth": 2112,
+ "margin": 2,
+ "name": "transitions",
+ "spacing": 4,
+ "tilecount": 96,
+ "tiledversion": "1.12.0",
+ "tileheight": 128,
+ "tilewidth": 128,
+ "type": "tileset",
+ "version": "1.12",
+ "tiles": [
+  {
+   "id": 1,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 1,
+     "duration": 180
+    },
+    {
+     "tileid": 17,
+     "duration": 180
+    },
+    {
+     "tileid": 33,
+     "duration": 180
+    },
+    {
+     "tileid": 49,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 2,
+     "duration": 180
+    },
+    {
+     "tileid": 18,
+     "duration": 180
+    },
+    {
+     "tileid": 34,
+     "duration": 180
+    },
+    {
+     "tileid": 50,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 3,
+     "duration": 180
+    },
+    {
+     "tileid": 19,
+     "duration": 180
+    },
+    {
+     "tileid": 35,
+     "duration": 180
+    },
+    {
+     "tileid": 51,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 4,
+     "duration": 180
+    },
+    {
+     "tileid": 20,
+     "duration": 180
+    },
+    {
+     "tileid": 36,
+     "duration": 180
+    },
+    {
+     "tileid": 52,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 5,
+     "duration": 180
+    },
+    {
+     "tileid": 21,
+     "duration": 180
+    },
+    {
+     "tileid": 37,
+     "duration": 180
+    },
+    {
+     "tileid": 53,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 6,
+     "duration": 180
+    },
+    {
+     "tileid": 22,
+     "duration": 180
+    },
+    {
+     "tileid": 38,
+     "duration": 180
+    },
+    {
+     "tileid": 54,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 7,
+     "duration": 180
+    },
+    {
+     "tileid": 23,
+     "duration": 180
+    },
+    {
+     "tileid": 39,
+     "duration": 180
+    },
+    {
+     "tileid": 55,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 8,
+     "duration": 180
+    },
+    {
+     "tileid": 24,
+     "duration": 180
+    },
+    {
+     "tileid": 40,
+     "duration": 180
+    },
+    {
+     "tileid": 56,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 9,
+     "duration": 180
+    },
+    {
+     "tileid": 25,
+     "duration": 180
+    },
+    {
+     "tileid": 41,
+     "duration": 180
+    },
+    {
+     "tileid": 57,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 10,
+     "duration": 180
+    },
+    {
+     "tileid": 26,
+     "duration": 180
+    },
+    {
+     "tileid": 42,
+     "duration": 180
+    },
+    {
+     "tileid": 58,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 11,
+     "duration": 180
+    },
+    {
+     "tileid": 27,
+     "duration": 180
+    },
+    {
+     "tileid": 43,
+     "duration": 180
+    },
+    {
+     "tileid": 59,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 12,
+     "duration": 180
+    },
+    {
+     "tileid": 28,
+     "duration": 180
+    },
+    {
+     "tileid": 44,
+     "duration": 180
+    },
+    {
+     "tileid": 60,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 13,
+     "duration": 180
+    },
+    {
+     "tileid": 29,
+     "duration": 180
+    },
+    {
+     "tileid": 45,
+     "duration": 180
+    },
+    {
+     "tileid": 61,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 14,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 14,
+     "duration": 180
+    },
+    {
+     "tileid": 30,
+     "duration": 180
+    },
+    {
+     "tileid": 46,
+     "duration": 180
+    },
+    {
+     "tileid": 62,
+     "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "type": "water",
+   "animation": [
+    {
+     "tileid": 15,
+     "duration": 180
+    },
+    {
+     "tileid": 31,
+     "duration": 180
+    },
+    {
+     "tileid": 47,
+     "duration": 180
+    },
+    {
+     "tileid": 63,
+     "duration": 180
+    }
+   ]
+  }
+ ],
+ "tilerendersize": "grid",
+ "wangsets": [
+  {
+   "name": "water",
+   "type": "corner",
+   "tile": -1,
+   "colors": [
+    {
+     "name": "water",
+     "color": "#ff2fb3c4",
+     "tile": 15,
+     "probability": 1
+    }
+   ],
+   "wangtiles": [
+    {
+     "tileid": 1,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 2,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 3,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 4,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 5,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 6,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 7,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 8,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 9,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 10,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 11,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 12,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 13,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 14,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 15,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sand",
+   "type": "corner",
+   "tile": -1,
+   "colors": [
+    {
+     "name": "sand",
+     "color": "#fff3d58d",
+     "tile": 79,
+     "probability": 1
+    }
+   ],
+   "wangtiles": [
+    {
+     "tileid": 65,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 66,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 67,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 68,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 69,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 70,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 71,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 72,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 73,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 74,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 75,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 76,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 77,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 78,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 79,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "path",
+   "type": "corner",
+   "tile": -1,
+   "colors": [
+    {
+     "name": "path",
+     "color": "#ff8a5a32",
+     "tile": 95,
+     "probability": 1
+    }
+   ],
+   "wangtiles": [
+    {
+     "tileid": 81,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 82,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 83,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 84,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 85,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 86,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 87,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 88,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 89,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 90,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 91,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 92,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 93,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 94,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 95,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    }
+   ]
+  }
+ ]
+}

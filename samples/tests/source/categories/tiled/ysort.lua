@@ -68,6 +68,7 @@ function YSort:draw(area)
     graphics2d.beginWorld(self.camera, {sort = self.sorting and 'y' or 'layer'})
     local map, camera = self.map, self.camera
     map:drawLayer('ground', camera, {layer = 0})
+    map:drawLayer('paths', camera, {layer = 0})
     map:drawLayer('fences', camera, {layer = 1, ysort = self.sorting})
     map:drawLayer('props', camera, {layer = 1, ysort = self.sorting})
     self.hero:draw()
