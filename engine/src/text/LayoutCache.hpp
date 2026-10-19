@@ -36,6 +36,8 @@ class LayoutCache final {
         std::string_view language;
         bool bold = false;
         bool italic = false;
+        bool underline = false;
+        bool strike = false;
 
         friend bool operator==(const Key&, const Key&) = default;
     };

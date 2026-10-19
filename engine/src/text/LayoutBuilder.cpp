@@ -16,7 +16,7 @@ LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptio
 
 // The carriage return of CRLF stays at the end of its paragraph, where it draws nothing, so the characters keep counting the code points of the text.
 Layout LayoutBuilder::layoutPlainText(std::string_view text, const Style& style, const FontFamily* baseFamily, Font* baseFont) {
-    RichTextDocument plain{.styles = {RichTextDocument::Style{}}};
+    RichTextDocument plain{.styles = {RichTextDocument::Style{.underline = style.underline, .strike = style.strike}}};
     const std::u32string codePoints = core::Utf8::decode(text);
     // clang-format off
     const auto endsParagraph = [&codePoints](std::size_t index) {

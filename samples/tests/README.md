@@ -175,7 +175,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 | --- | --- | --- | --- |
 | `TXT-001` | TrueType and OpenType sizes | A TrueType and an OpenType font from 12 to 96 units, and one word zoomed from 8 to 320, all from one distance field atlas. |  |
 | `TXT-002` | Outline, shadow and glow | Outlines, shadows with blur and glows drawn from the distance field of the font. |  |
-| `TXT-003` | Font families | A family with real bold, italic and mono faces next to families whose bold and italic are synthesized. |  |
+| `TXT-003` | Font families | A family with real bold, italic and mono faces next to families whose bold and italic are synthesized, and plain text underlined and struck through. |  |
 | `TXT-004` | Fallback fonts | Japanese, Chinese and symbols drawn by fallback fonts that the family resolves character by character. |  |
 | `TXT-005` | Bitmap fonts | A bitmap font in the text format, a colored bitmap font in the binary format and a grid font of LCD digits. |  |
 | `TXT-006` | Alignment | Left, center, right and fill alignment, and the anchor point of a text block. |  |

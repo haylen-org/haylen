@@ -643,6 +643,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `direction` | string | `'auto'` | Direction of every paragraph: `'auto'` takes the direction of its first strong letter, `'leftToRight'` and `'rightToLeft'` force it, which decides the order of mixed runs and the side of `'start'`. |
 | `language` | string | `''` | BCP 47 language tag of the text, such as `'ar'`, `'fa'`, `'ur'` or `'sr'`, which the shaper uses to pick the forms a language prefers. |
 | `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` synthesizes them. |
+| `underline`, `strike` | boolean | `false` | Draw a line under the text or through it, in its color, across every line it wraps into. |
 | `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. The value `{0.5, 0.5}` centers the text. |
 | `rotation` | number | `0` | Rotation in radians. |
 | `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |

@@ -6,7 +6,7 @@ return {
     tests = {
         {code = 'TXT-001', title = 'TrueType and OpenType sizes', description = 'A TrueType and an OpenType font from 12 to 96 units, and one word zoomed from 8 to 320, all from one distance field atlas.', module = 'sizes'},
         {code = 'TXT-002', title = 'Outline, shadow and glow', description = 'Outlines, shadows with blur and glows drawn from the distance field of the font.', module = 'sdf-effects'},
-        {code = 'TXT-003', title = 'Font families', description = 'A family with real bold, italic and mono faces next to families whose bold and italic are synthesized.', module = 'families'},
+        {code = 'TXT-003', title = 'Font families', description = 'A family with real bold, italic and mono faces next to families whose bold and italic are synthesized, and plain text underlined and struck through.', module = 'families'},
         {code = 'TXT-004', title = 'Fallback fonts', description = 'Japanese, Chinese and symbols drawn by fallback fonts that the family resolves character by character.', module = 'fallback'},
         {code = 'TXT-005', title = 'Bitmap fonts', description = 'A bitmap font in the text format, a colored bitmap font in the binary format and a grid font of LCD digits.', module = 'bitmap'},
         {code = 'TXT-006', title = 'Alignment', description = 'Left, center, right and fill alignment, and the anchor point of a text block.', module = 'alignment'},

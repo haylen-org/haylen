@@ -33,6 +33,10 @@ struct Style {
     math::Vec2 scale{1.0F, 1.0F};
     bool bold = false;
     bool italic = false;
+
+    // Draws a line under the text or through it, in its color.
+    bool underline = false;
+    bool strike = false;
     Direction direction = Direction::Auto;
     std::string language;
     bool pixelSnap = false;

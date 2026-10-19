@@ -495,6 +495,10 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
             Table::readValue(L, key, style.bold);
         } else if (key == "italic") {
             Table::readValue(L, key, style.italic);
+        } else if (key == "underline") {
+            Table::readValue(L, key, style.underline);
+        } else if (key == "strike") {
+            Table::readValue(L, key, style.strike);
         } else if (key == "direction") {
             Table::readValue(L, key, style.direction);
         } else if (key == "language") {

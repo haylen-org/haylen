@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -106,6 +107,21 @@ TEST(FontTest, LaysOutWrapsAndAlignsText) {
     EXPECT_THROW(text::TrueTypeFont(fixture.engine().getGraphics(), test::TestFiles::bytes("not a font")), std::runtime_error);
     EXPECT_THROW(text::TrueTypeFont(fixture.engine().getGraphics(), {}), std::runtime_error);
     EXPECT_THROW(text::TrueTypeFont(fixture.engine().getGraphics(), {0, 1, 0}), std::runtime_error);
+}
+
+// Plain text draws a line under itself or through itself across every line it wraps into, and a layout without the lines stays apart in the cache.
+TEST(FontTest, UnderlinesAndStrikesPlainText) {
+    test::EngineFixture fixture;
+    text::Font& font = *fixture.engine().getDefaultFont();
+    const auto count = [](const text::Layout& layout, text::Layout::Box::Kind kind) { return std::ranges::count(layout.boxes, kind, &text::Layout::Box::kind); };
+    const std::shared_ptr<const text::Layout> plain = font.layout("Read me twice", {.size = 32.0F, .maxWidth = 140.0F});
+    const std::shared_ptr<const text::Layout> underlined = font.layout("Read me twice", {.size = 32.0F, .maxWidth = 140.0F, .underline = true});
+    const std::shared_ptr<const text::Layout> struck = font.layout("Read me twice", {.size = 32.0F, .strike = true});
+    EXPECT_EQ(count(*plain, text::Layout::Box::Kind::Underline), 0);
+    EXPECT_EQ(count(*underlined, text::Layout::Box::Kind::Underline), static_cast<std::ptrdiff_t>(underlined->lineCount));
+    EXPECT_GT(underlined->lineCount, 1U);
+    EXPECT_EQ(count(*struck, text::Layout::Box::Kind::Strike), 1);
+    EXPECT_EQ(underlined->size, plain->size);
 }
 
 TEST(FontTest, GrowsTheAtlasWhenGlyphsDoNotFit) {

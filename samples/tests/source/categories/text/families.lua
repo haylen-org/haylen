@@ -1,4 +1,4 @@
--- Font families: rich text picks the face of each run from its style. Crimson Text has real bold, italic and bold italic faces and Space Mono for code, while Lilita One and the bitmap Haylen Pixel have one face, so their bold and italic are synthesized.
+-- Font families: rich text picks the face of each run from its style. Crimson Text has real bold, italic and bold italic faces and Space Mono for code, while Lilita One and the bitmap Haylen Pixel have one face, so their bold and italic are synthesized. Plain text underlines and strikes itself through its style too.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 
@@ -53,6 +53,10 @@ function Families:draw(area)
         local _, paragraphHeight = row.paragraph:size()
         y = y + 90 + height + paragraphHeight
     end
+    Test.caption('Plain text with "underline" and "strike"', 0, y, {size = 26, color = Test.accent})
+    graphics2d.drawText(fonts.family('crimson'), 'Read the map carefully', 0, y + 40, {size = 36, underline = true, color = Test.ink})
+    graphics2d.drawText(fonts.family('crimson'), 'Old price 120 coins', 520, y + 40, {size = 36, strike = true, color = Test.muted})
+    graphics2d.drawText(fonts.family('lilita'), 'Both at once', 960, y + 40, {size = 36, underline = true, strike = true, color = Test.accent})
 end
 
 return Families
