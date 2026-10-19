@@ -40,8 +40,8 @@ endif()
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/81d26fce992c7c6d06ea9bbfb35fcbf64009f789.tar.gz"
-  URL_HASH SHA256=96c638455c2355ea16ab477336e17ac449ef435cc079ebb5de8224c794c02ef2
+  URL "https://github.com/varn-org/varn/archive/71902142765f41afab1e550ecfca1c4f15947723.tar.gz"
+  URL_HASH SHA256=771b25a698e2ebcf9fb6c9efd54087c0b8de77da1c130510d3ab7c6500193866
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
