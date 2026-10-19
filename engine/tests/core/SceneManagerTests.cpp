@@ -413,11 +413,13 @@ TEST(SceneManagerTest, ReportsBothHalvesOfAnEffectThatShowsBothScenes) {
     fixture.frames(1);
     const EventRecorder events(fixture.engine(), log);
     scenes.replace(std::make_shared<test::RecordingScene>("game", log), {.transition = {.duration = 1.0F, .effect = std::make_shared<test::RecordingEffect>(0.0F, 0.5F)}});
+    // clang-format off
     const auto transitions = [&log] {
         std::vector<std::string> found;
         std::ranges::copy_if(log, std::back_inserter(found), [](const std::string& entry) { return entry.starts_with("transition"); });
         return found;
     };
+    // clang-format on
 
     fixture.frames(1, 0.25);
     EXPECT_EQ(transitions(), (std::vector<std::string>{"transitionOutStarted menu>game", "transitionInStarted menu>game"}));
