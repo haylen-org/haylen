@@ -329,10 +329,10 @@ void SceneManager::publish(std::string_view name, const Scene& scene) {
     (void)engine.getEvents().emitWith(name, scene);
 }
 
-// Cover and hold events carry the scene the change brings on top, and reveal events the scene on top once the change applied or restored the stack.
+// The events of the out phase carry the scene the change brings on top, and the events of the in phase the scene on top once the change applied or restored the stack.
 void SceneManager::publishPhase(std::string_view name, const Change& change) {
     const Scene* to = change.scene.get();
-    if (change.phase == Phase::Reveal || (!change.scene && change.phase == Phase::Hold)) {
+    if (change.phase == Phase::In || (!change.scene && change.phase == Phase::Covered)) {
         to = getTop();
     } else if (!change.scene) {
         const std::size_t keep = getKeptLevel(change);
@@ -413,14 +413,14 @@ bool SceneManager::step(const std::shared_ptr<Change>& change, float& remaining)
             switchScenes(change);
         }
         return true;
-    case Phase::Cover:
+    case Phase::Out:
         change->elapsed += std::exchange(remaining, 0.0F);
         if (!isFinished(*change) && getProgress(*change) < change->options.transition.effect->getSwitchProgress()) {
             return false;
         }
         coverScreen(change);
         return true;
-    case Phase::Hold:
+    case Phase::Covered:
         if (!waitForLoad(change, remaining)) {
             return false;
         }
@@ -433,11 +433,15 @@ bool SceneManager::step(const std::shared_ptr<Change>& change, float& remaining)
             revealScene(change);
         }
         return true;
-    case Phase::Reveal:
+    case Phase::In:
         change->elapsed += std::exchange(remaining, 0.0F);
         if (!change->exited && (isFinished(*change) || getProgress(*change) >= change->options.transition.effect->getExitProgress())) {
             change->exited = true;
             exitLeaving();
+            if (pending == change && !change->outFinished) {
+                change->outFinished = true;
+                publishPhase(LifecycleEvent::kTransitionOutFinished, *change);
+            }
             return true;
         }
         if (!isFinished(*change)) {
@@ -496,9 +500,9 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
         return;
     }
 
-    // The scenes that leave the stack start exiting, the top scene hears that the transition takes it off the screen, and the next scene loads during the cover unless the replaced scene unloads first.
+    // The scenes that leave the stack start exiting, the top scene hears that the transition takes it off the screen, and the next scene loads during the out phase unless the replaced scene unloads first.
     prepareImages();
-    change->phase = Phase::Cover;
+    change->phase = Phase::Out;
     for (std::size_t level = keep; level < stack.size(); ++level) {
         stack[level]->state = Scene::State::Exiting;
     }
@@ -512,7 +516,7 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
             return;
         }
     }
-    publishPhase(LifecycleEvent::kSceneCoverStarted, *change);
+    publishPhase(LifecycleEvent::kTransitionOutStarted, *change);
     const bool unloadFirst = change->operation == Operation::Replace && change->options.unloadBeforeLoad && change->from;
     if (pending == change && !unloadFirst && needsLoad(scene.get())) {
         startLoad(scene, std::move(change->options.params));
@@ -542,7 +546,7 @@ bool SceneManager::waitForLoad(const std::shared_ptr<Change>& change, float delt
             change->blocked = true;
             return false;
         }
-        if (change->phase == Phase::Hold && change->faded < change->options.loadingFadeOut) {
+        if (change->phase == Phase::Covered && change->faded < change->options.loadingFadeOut) {
             change->fading = true;
             change->blocked = true;
             return false;
@@ -584,12 +588,13 @@ SceneLoad::Progress SceneManager::getLoadingProgress(const Change& change) {
 
 // At full cover the stack changes: a pushed-over scene is covered, a replaced scene exits and unloads before the next scene loads or waits in the leaving list, and popped scenes exit and unload while the scene below them resumes.
 void SceneManager::coverScreen(const std::shared_ptr<Change>& change) {
-    publishPhase(LifecycleEvent::kSceneCoverFinished, *change);
+    change->outFinished = true;
+    publishPhase(LifecycleEvent::kTransitionOutFinished, *change);
     if (pending != change) {
         return;
     }
 
-    // A load that already failed changes nothing, and the hold reveals the scenes on the stack again.
+    // A load that already failed changes nothing, and the covered screen shows the scenes on the stack again.
     if (!change->failure) {
         const std::size_t keep = getKeptLevel(*change);
         switch (change->operation) {
@@ -623,15 +628,10 @@ void SceneManager::coverScreen(const std::shared_ptr<Change>& change) {
             return;
         }
     }
-    change->phase = Phase::Hold;
-    publishPhase(LifecycleEvent::kSceneHoldStarted, *change);
+    change->phase = Phase::Covered;
 }
 
 void SceneManager::revealScene(const std::shared_ptr<Change>& change) {
-    publishPhase(LifecycleEvent::kSceneHoldFinished, *change);
-    if (pending != change) {
-        return;
-    }
     exitLeaving();
     if (pending != change) {
         return;
@@ -642,17 +642,12 @@ void SceneManager::revealScene(const std::shared_ptr<Change>& change) {
             return;
         }
     }
-    change->phase = Phase::Reveal;
-    publishPhase(LifecycleEvent::kSceneRevealStarted, *change);
+    change->phase = Phase::In;
+    publishPhase(LifecycleEvent::kTransitionInStarted, *change);
 }
 
-// The scene that was on top comes back when it is still alive, whether the cover covered it, left it waiting to exit or never reached it, and otherwise the scene below the replaced one does.
+// The scene that was on top comes back when it is still alive, whether the out phase covered it, left it waiting to exit or never reached it, and otherwise the scene below the replaced one does.
 void SceneManager::restoreScenes(const std::shared_ptr<Change>& change) {
-    publishPhase(LifecycleEvent::kSceneHoldFinished, *change);
-    if (pending != change) {
-        return;
-    }
-
     const std::shared_ptr<Scene>& from = change->from;
     const bool waiting = from && std::ranges::find(leaving, from) != leaving.end();
     const bool kept = waiting || (from && find(*from));
@@ -672,8 +667,8 @@ void SceneManager::restoreScenes(const std::shared_ptr<Change>& change) {
     if (pending != change) {
         return;
     }
-    change->phase = Phase::Reveal;
-    publishPhase(LifecycleEvent::kSceneRevealStarted, *change);
+    change->phase = Phase::In;
+    publishPhase(LifecycleEvent::kTransitionInStarted, *change);
 }
 
 // Without an effect the stack changes at once, and an effect that shows both scenes starts with the outgoing scenes alive in the outgoing image until its exit point.
@@ -734,13 +729,18 @@ void SceneManager::switchScenes(const std::shared_ptr<Change>& change) {
         finish(change);
         return;
     }
-    change->phase = Phase::Reveal;
-    publishPhase(LifecycleEvent::kSceneRevealStarted, *change);
+    // An effect that shows both scenes hides the current scenes while it shows the next ones, so both halves start together.
+    change->phase = Phase::In;
+    publishPhase(LifecycleEvent::kTransitionOutStarted, *change);
+    if (pending != change) {
+        return;
+    }
+    publishPhase(LifecycleEvent::kTransitionInStarted, *change);
 }
 
 void SceneManager::finish(const std::shared_ptr<Change>& change) {
     if (change->options.transition.effect) {
-        publishPhase(LifecycleEvent::kSceneRevealFinished, *change);
+        publishPhase(LifecycleEvent::kTransitionInFinished, *change);
         if (pending != change) {
             return;
         }
@@ -936,7 +936,7 @@ bool SceneManager::isAlive(const Scene& scene) const noexcept {
 }
 
 bool SceneManager::isEffectShown() const noexcept {
-    return pending && pending->options.transition.effect && (pending->phase == Phase::Cover || pending->phase == Phase::Hold || pending->phase == Phase::Reveal);
+    return pending && pending->options.transition.effect && (pending->phase == Phase::Out || pending->phase == Phase::Covered || pending->phase == Phase::In);
 }
 
 // Both images have the pixel size of the viewport, so a captured frame looks the same as the screen would.
@@ -967,7 +967,7 @@ void SceneManager::endTransition() noexcept {
     loadingImage = {};
 }
 
-// The cover renders the current scenes into the outgoing image with the incoming image empty, the hold draws the covered frame with the loading view on top and no scene renders, and the reveal renders the scenes after the change into the incoming image, next to the scenes still leaving through an effect that shows both scenes.
+// The out phase renders the current scenes into the outgoing image with the incoming image empty, the covered screen draws the covered frame with the loading view on top and no scene renders, and the in phase renders the scenes after the change into the incoming image, next to the scenes still leaving through an effect that shows both scenes.
 void SceneManager::prepareViews() {
     if (!isEffectShown()) {
         resetViews(1);
@@ -979,7 +979,7 @@ void SceneManager::prepareViews() {
     prepareImages();
     const std::shared_ptr<Change> change = pending;
     switch (change->phase) {
-    case Phase::Cover:
+    case Phase::Out:
         resetViews(3);
         copyVisible(views[0].scenes);
         views[0].target = outgoingImage;
@@ -987,7 +987,7 @@ void SceneManager::prepareViews() {
         views[1].target = incomingImage;
         views[2].effect = true;
         break;
-    case Phase::Hold:
+    case Phase::Covered:
         if (change->fading) {
             prepareLoadingImage();
             resetViews(2);
@@ -1003,7 +1003,7 @@ void SceneManager::prepareViews() {
         break;
     case Phase::Start:
     case Phase::Load:
-    case Phase::Reveal: {
+    case Phase::In: {
         const std::size_t incoming = change->exited ? 0 : 1;
         resetViews(incoming + 2);
         if (incoming != 0) {
@@ -1055,7 +1055,7 @@ void SceneManager::renderUi(const SceneView& view) {
     }
 }
 
-// The hold draws the effect at its switch progress, where it covers the screen, and the reveal of an effect that covers the screen never goes back below it.
+// The covered screen draws the effect at its switch progress, where it covers the screen, and the in phase of an effect that covers the screen never goes back below it.
 void SceneManager::renderTransition(graphics2d::Renderer& renderer, const SceneView& view) {
     if (!isEffectShown()) {
         return;
@@ -1064,9 +1064,9 @@ void SceneManager::renderTransition(graphics2d::Renderer& renderer, const SceneV
     const std::shared_ptr<Change> change = pending;
     const std::shared_ptr<TransitionEffect> effect = change->options.transition.effect;
     float progress = getProgress(*change);
-    if (change->phase == Phase::Hold) {
+    if (change->phase == Phase::Covered) {
         progress = effect->getSwitchProgress();
-    } else if (change->covering && change->phase == Phase::Reveal) {
+    } else if (change->covering && change->phase == Phase::In) {
         progress = std::max(progress, effect->getSwitchProgress());
     }
     effect->render(renderer, {.outgoing = outgoingImage.getTexture(), .incoming = incomingImage.getTexture()}, progress);

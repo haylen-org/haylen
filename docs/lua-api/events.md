@@ -184,9 +184,8 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `scenePaused`, `sceneResumed` | A scene was covered by a pushed scene, or is on top again. | `{scene}` |
 | `sceneExitTransitionStarted` | A change started to take the top scene off the screen. | `{scene}` |
 | `sceneEnterTransitionFinished` | A change ended and its transition finished, on the top scene after it. | `{scene}` |
-| `sceneCoverStarted`, `sceneCoverFinished` | The cover of an effect that covers the screen started, or reached full cover. | The table `{from, to}`, the top scenes before and after the change. |
-| `sceneHoldStarted`, `sceneHoldFinished` | The covered screen started to wait for the next scene, or stopped waiting. | `{from, to}` |
-| `sceneRevealStarted`, `sceneRevealFinished` | The effect started or finished showing the scenes after the change, which is the whole effect for effects that show both scenes. | The table `{from, to}`, where `to` is the scene the change put or left on top. |
+| `transitionOutStarted`, `transitionOutFinished` | The out half of a transition started hiding the current scenes, or finished: at full cover for an effect that covers the screen, where the next scene then loads, and at the exit point for an effect that shows both scenes. | The table `{from, to}`, the top scenes before and after the change. |
+| `transitionInStarted`, `transitionInFinished` | The in half of a transition started showing the scenes after the change, or finished, which ends the change. An effect that shows both scenes starts both halves together. | The table `{from, to}`, where `to` is the scene the change put or left on top. |
 | `pluginStarted`, `pluginStopped` | A plugin started or stopped. Built-in plugins start before any script runs. | `{name}` |
 | `autoloadStarted`, `autoloadStopped` | An autoload started or stopped. | `{name}` |
 | `windowResized` | The framebuffer changed size. | The table `{width, height}` in pixels. |

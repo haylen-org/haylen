@@ -202,7 +202,7 @@ TEST(SceneLuaTest, LoadsScenesInCoroutinesBehindALoadingView) {
             update = function(self, dt, progress, message) self.progress, self.message, self.lowest = progress, message, math.min(self.lowest or 1, scene.loadingViewOpacity()) end,
             render = function(self, progress) self.rendered = progress end,
         }
-        for _, name in ipairs({'sceneCoverStarted', 'sceneHoldStarted', 'sceneRevealFinished'}) do
+        for _, name in ipairs({'transitionOutStarted', 'transitionOutFinished', 'transitionInFinished'}) do
             events.on(name, function(transfer) phases[#phases + 1] = name .. ' ' .. (transfer.from and transfer.from.name or 'none') .. '>' .. (transfer.to == level and 'level' or 'other') end)
         end
         scene.push(menu)
@@ -220,7 +220,7 @@ TEST(SceneLuaTest, LoadsScenesInCoroutinesBehindALoadingView) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(done)") == "true"; }));
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "load forest, view enter, loaded, view exit, enter forest, finished");
     EXPECT_EQ(fixture.lua("return tostring(view.lowest < 1) .. ' ' .. scene.loadingViewOpacity()"), "true 0.0");
-    EXPECT_EQ(fixture.lua("return table.concat(phases, ', ')"), "sceneCoverStarted menu>level, sceneHoldStarted menu>level, sceneRevealFinished menu>level");
+    EXPECT_EQ(fixture.lua("return table.concat(phases, ', ')"), "transitionOutStarted menu>level, transitionOutFinished menu>level, transitionInFinished menu>level");
     EXPECT_EQ(fixture.lua("return scene.state(level) .. ' ' .. scene.loadProgress(level)"), "active 1.0");
     EXPECT_NE(fixture.lua("level.context:progress(1)").find("haylen.SceneLoad\" was already released."), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);

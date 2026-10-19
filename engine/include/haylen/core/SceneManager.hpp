@@ -194,12 +194,13 @@ class SceneManager final {
         PopTo,
     };
 
+    // A change starts, loads first for an effect that shows both scenes, hides the current scenes in its out phase, waits on the covered screen for the next scene with an effect that covers it, and shows the next scenes in its in phase.
     enum class Phase : std::uint8_t {
         Start,
         Load,
-        Cover,
-        Hold,
-        Reveal,
+        Out,
+        Covered,
+        In,
     };
 
     struct Change {
@@ -218,6 +219,7 @@ class SceneManager final {
         bool viewShown = false;
         bool fading = false;
         bool exited = true;
+        bool outFinished = false;
 
         // The change had to wait for its load in an earlier update, so the time of the update that ends the wait went to waiting too.
         bool blocked = false;

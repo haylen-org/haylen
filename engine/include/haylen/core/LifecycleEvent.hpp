@@ -30,12 +30,10 @@ class LifecycleEvent final {
     static constexpr std::string_view kSceneResumed = "sceneResumed";
     static constexpr std::string_view kSceneExitTransitionStarted = "sceneExitTransitionStarted";
     static constexpr std::string_view kSceneEnterTransitionFinished = "sceneEnterTransitionFinished";
-    static constexpr std::string_view kSceneCoverStarted = "sceneCoverStarted";
-    static constexpr std::string_view kSceneCoverFinished = "sceneCoverFinished";
-    static constexpr std::string_view kSceneHoldStarted = "sceneHoldStarted";
-    static constexpr std::string_view kSceneHoldFinished = "sceneHoldFinished";
-    static constexpr std::string_view kSceneRevealStarted = "sceneRevealStarted";
-    static constexpr std::string_view kSceneRevealFinished = "sceneRevealFinished";
+    static constexpr std::string_view kTransitionOutStarted = "transitionOutStarted";
+    static constexpr std::string_view kTransitionOutFinished = "transitionOutFinished";
+    static constexpr std::string_view kTransitionInStarted = "transitionInStarted";
+    static constexpr std::string_view kTransitionInFinished = "transitionInFinished";
 
     static constexpr std::string_view kPluginStarted = "pluginStarted";
     static constexpr std::string_view kPluginStopped = "pluginStopped";

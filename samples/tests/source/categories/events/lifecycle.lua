@@ -24,8 +24,8 @@ Lifecycle.processMode = 'always'
 local kEvents = {
     'appActive', 'appInactive', 'appBackground', 'appLowMemory', 'appQuitRequested', 'paused', 'unpaused',
     'sceneLoading', 'sceneLoaded', 'sceneLoadFailed', 'sceneEntered', 'sceneExited', 'sceneUnloaded', 'scenePaused', 'sceneResumed',
-    'sceneExitTransitionStarted', 'sceneEnterTransitionFinished', 'sceneCoverStarted', 'sceneCoverFinished',
-    'sceneHoldStarted', 'sceneHoldFinished', 'sceneRevealStarted', 'sceneRevealFinished', 'autoloadStarted', 'autoloadStopped',
+    'sceneExitTransitionStarted', 'sceneEnterTransitionFinished', 'transitionOutStarted', 'transitionOutFinished',
+    'transitionInStarted', 'transitionInFinished', 'autoloadStarted', 'autoloadStopped',
     'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowMonitorsChanged',
     'guiMounted', 'guiUnmounted', 'gamepadConnected', 'gamepadDisconnected', 'audioInterrupted', 'audioResumed', 'audioRouteChanged',
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'systemThemeChanged', 'batteryChanged', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
@@ -33,7 +33,7 @@ local kEvents = {
 }
 local kColors = {app = Test.warm, scene = Test.accent, window = Test.green, asset = '#FFC9A0FF', webSocket = Test.red}
 local kCode = [[
-events.on('sceneHoldStarted', function(transfer) print(transfer.from, transfer.to) end, {owner = self})
+events.on('transitionOutFinished', function(transfer) print(transfer.from, transfer.to) end, {owner = self})
 scene.push(room, {duration = 0.8, loading = view, loadingDelay = 0.1, minimumLoadingTime = 0.6})
 function room:load(context) context:progress(0.5, 'Building the room') async.sleep(100):await() end]]
 

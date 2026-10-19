@@ -1,4 +1,4 @@
--- Loading screen that fades out: an island map that raises its terrain in its "load" hook behind a full-screen loading screen, which fades out over the finished map once the load is done and the screen stayed its minimum time. The map lists the events of the change in the order they came, so the right events show the right moments: the load, the hold, the fade of the loading screen and the reveal.
+-- Loading screen that fades out: an island map that raises its terrain in its "load" hook behind a full-screen loading screen, which fades out over the finished map once the load is done and the screen stayed its minimum time. The map lists the events of the change in the order they came, so the right events show the right moments: the out half of the transition, the load on the covered screen, the fade of the loading screen and the in half.
 local async = require('async')
 local events = require('haylen.events')
 local graphics = require('haylen.graphics')
@@ -16,7 +16,7 @@ local Test = require('harness.test')
 local LoadingScreen = haylen.class('LoadingScreen', SceneTest)
 
 local kColumns, kRows, kCell = 96, 54, 20
-local kEvents = {'sceneLoading', 'sceneLoaded', 'sceneHoldStarted', 'sceneHoldFinished', 'sceneEntered', 'sceneRevealStarted', 'sceneRevealFinished', 'sceneEnterTransitionFinished', 'appBackground', 'appActive'}
+local kEvents = {'sceneLoading', 'sceneLoaded', 'transitionOutFinished', 'sceneEntered', 'transitionInStarted', 'transitionInFinished', 'sceneEnterTransitionFinished', 'appBackground', 'appActive'}
 local kTerrain = {{-1, '#FF1B4F7A'}, {0.02, '#FF2E6F9E'}, {0.08, '#FFE3D19A'}, {0.22, '#FF5E9C4A'}, {0.42, '#FF3B7038'}, {0.6, '#FF7C7A72'}, {2, '#FFF0F0F0'}}
 local kTips = {'Tip: the fire keeps the night away.', 'Tip: sheep follow the one who feeds them.', 'Tip: the tide hides the reef at dusk.'}
 

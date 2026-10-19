@@ -150,7 +150,7 @@ Every change takes an optional table of options. Unknown keys raise `Unknown opt
 | `direction` | string | `'left'` | Where the motion, wipe, wave or page turn of a built-in effect goes: `'left'`, `'right'`, `'up'`, `'down'`, `'upLeft'`, `'upRight'`, `'downLeft'` or `'downRight'`. |
 | `reducedMotion` | string | `'keep'` | What the transition does when it starts while the system asks for [reduced motion](accessibility.md): `'keep'` plays it as it is, `'shorten'` plays it in a quarter of its time and `'skip'` switches at once without its effect. |
 | `color` | Color | `'#FF000000'` | The color that fades and irises pass through, which also shows behind effects that uncover the screen, given as a `Color`, a `'#AARRGGBB'` string or a color table of `haylen.math`. |
-| `blockInput` | boolean | `true` | Holds input back from the scenes and the action map until the change ends, from the start of the load to the end of the reveal. Actions whose bindings are still held when the change ends stay up until they are released. |
+| `blockInput` | boolean | `true` | Holds input back from the scenes and the action map until the change ends, from the start of the load to the end of the in phase. Actions whose bindings are still held when the change ends stay up until they are released. |
 | `onComplete` | function | `nil` | Called with `true` once the change ended, or with `false` when it was dropped or failed. |
 | `params` | any | `nil` | Reaches the `load` and `enter` hooks of the next scene. A preloaded scene keeps the `params` of its preload. |
 | `loading` | table | `nil` | A [loading view](#loading-views) to show while the next scene loads. |
@@ -166,9 +166,9 @@ A negative `loadingDelay`, `minimumLoadingTime` or `loadingFadeOut` raises `The 
 
 The fade and the other effects that show one scene at a time run in three phases.
 
-1. **Cover**: The top scene receives `exitTransitionStarted` and the effect takes it off the screen, while it still updates and renders. The next scene of a `push` starts loading now, and so does the next scene of a `replace` that keeps its scene loaded.
-2. **Hold**: At full cover the stack changes. A replaced scene exits and unloads, and then the next scene starts loading, a pushed-over scene receives `pause`, and popped scenes exit and unload while the scene below them receives `resume`. The effect holds the covered frame, drawing no scene at all, until the next scene loaded, with the loading view over it once the delay passed, which then fades out into the covered frame.
-3. **Reveal**: The next scene receives `enter` and the rest of the effect shows it. Once the effect ends, it receives `enterTransitionFinished`.
+1. **Out**: The top scene receives `exitTransitionStarted` and the effect takes it off the screen, while it still updates and renders, between `transitionOutStarted` and `transitionOutFinished`. The next scene of a `push` starts loading now, and so does the next scene of a `replace` that keeps its scene loaded.
+2. **Covered**: At full cover the stack changes. A replaced scene exits and unloads, and then the next scene starts loading, a pushed-over scene receives `pause`, and popped scenes exit and unload while the scene below them receives `resume`. The effect keeps the covered frame, drawing no scene at all, until the next scene loaded, with the loading view over it once the delay passed, which then fades out into the covered frame.
+3. **In**: The next scene receives `enter` and the rest of the effect shows it, between `transitionInStarted` and `transitionInFinished`. Once the effect ends, it receives `enterTransitionFinished`.
 
 The transition itself is the loading screen when the change has no loading view: the covered frame, such as the color of a fade, stays until the load is done.
 
@@ -330,7 +330,7 @@ scene.pop({effect = 'iris', color = '#FF000000', duration = 0.6})
 scene.replace(level('Boss', '#FF5E1B1B'), {effect = 'fadeTiles', direction = 'upRight', duration = 0.7})
 ```
 
-The drawing of the engine plugins, such as mounted GUIs, autoloads and the debug overlay, goes with the current scenes: into the outgoing image during the cover, over the covered frame during the hold, and into the incoming image during the reveal. A GUI mounted with the scene as its `owner` goes away when the scene unloads, and a covered scene hides the GUIs it keeps in `pause`.
+The drawing of the engine plugins, such as mounted GUIs, autoloads and the debug overlay, goes with the current scenes: into the outgoing image during the out phase, over the covered frame while the screen stays covered, and into the incoming image during the in phase. A GUI mounted with the scene as its `owner` goes away when the scene unloads, and a covered scene hides the GUIs it keeps in `pause`.
 
 ### Custom effects
 

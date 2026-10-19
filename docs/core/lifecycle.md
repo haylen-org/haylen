@@ -367,31 +367,30 @@ A scene that unloaded can load again, since the same scene table may be pushed a
 
 ### Effects that cover the screen
 
-The fade and the other effects that show one scene at a time cover, hold and reveal. The next scene of a `replace` loads only once the replaced scene unloaded at full cover, for a lower peak of memory, unless `unloadBeforeLoad` is `false`, and the next scene of a `push` loads during the cover.
+The fade and the other effects that show one scene at a time hide the current scene in their out phase, keep the screen covered while the next scene loads, and show it in their in phase. The next scene of a `replace` loads only once the replaced scene unloaded at full cover, for a lower peak of memory, unless `unloadBeforeLoad` is `false`, and the next scene of a `push` loads during the cover.
 
 ```text
 scene.replace(game, {duration = 1, loading = view, loadingDelay = 0.2, minimumLoadingTime = 0.5})
 
   time   menu (on top)              game (next)                  screen                          events
   ----   -------------------------  ---------------------------  ------------------------------  -----------------------------------------
-  0      exitTransitionStarted                                    cover: the menu fades out        sceneExitTransitionStarted menu
-                                                                                                   sceneCoverStarted
+  0      exitTransitionStarted                                    out: the menu fades out          sceneExitTransitionStarted menu
+                                                                                                   transitionOutStarted
   ...    update, render                                           the menu, fading
-  0.5    exit                                                     full cover                       sceneCoverFinished, sceneExited menu
+  0.5    exit                                                     full cover                       transitionOutFinished, sceneExited menu
          unload                     load starts                                                    sceneUnloaded menu, sceneLoading game
-                                                                                                   sceneHoldStarted
-  ...                               load runs, :await()           hold: the covered frame
+  ...                               load runs, :await()           the covered frame
   0.7                               progress reaches the view     view:enter, then view:update     (the view appears after loadingDelay)
   ...                               loaded                        the view stays its minimum time  sceneLoaded game
   1.2                                                             the view fades out
-  1.45                              enter                         view:exit, reveal starts         sceneHoldFinished, sceneEntered game
-                                                                                                   sceneRevealStarted
+  1.45                              enter                         view:exit, in starts             sceneEntered game
+                                                                                                   transitionInStarted
   ...                               update, render                the game fades in
-  1.95                              enterTransitionFinished       the change ended                 sceneRevealFinished
+  1.95                              enterTransitionFinished       the change ended                 transitionInFinished
                                                                                                    sceneEnterTransitionFinished game
 ```
 
-The hold draws the effect at its switch point with the last frame of the outgoing scenes and no scene at all, so the transition itself is the loading screen when the change has no loading view, and waiting costs almost no GPU work. Once the load is done and the view stayed its minimum time, the view fades out into the covered frame over `loadingFadeOut` seconds, 0.25 by default, so the reveal starts from the covered frame without a cut. During the fade the view, the autoloads and the GUIs render over the covered frame into an image of their own, which the effect blends over the covered frame with the opacity left, and a `loadingFadeOut` of 0 takes the view away at once. A view over the current scenes, before an effect that shows both scenes or a change without an effect, goes away at once, since the scenes under it keep running. A pushed-over scene only receives `pause` at full cover and `resume` when the pushed scene pops, and popped scenes exit and unload at full cover while the scene below them receives `resume`.
+While the screen stays covered, the effect draws at its switch point with the last frame of the outgoing scenes and no scene at all, so the transition itself is the loading screen when the change has no loading view, and waiting costs almost no GPU work. Once the load is done and the view stayed its minimum time, the view fades out into the covered frame over `loadingFadeOut` seconds, 0.25 by default, so the in phase starts from the covered frame without a cut. During the fade the view, the autoloads and the GUIs render over the covered frame into an image of their own, which the effect blends over the covered frame with the opacity left, and a `loadingFadeOut` of 0 takes the view away at once. A view over the current scenes, before an effect that shows both scenes or a change without an effect, goes away at once, since the scenes under it keep running. A pushed-over scene only receives `pause` at full cover and `resume` when the pushed scene pops, and popped scenes exit and unload at full cover while the scene below them receives `resume`.
 
 ### Effects that show both scenes
 
@@ -406,10 +405,10 @@ scene.replace(game, {effect = 'slideIn', duration = 0.5})
   ...    update, render             load runs, :await()          the menu, and the view if any
   0.3                               loaded                                                         sceneLoaded game
          exitTransitionStarted      enter                        the effect starts                sceneExitTransitionStarted menu
-                                                                                                   sceneEntered game, sceneRevealStarted
+                                                                                                   sceneEntered game, transitionOutStarted, transitionInStarted
   ...    render (outgoing image)    update, render (incoming)    both scenes, each in its image
   0.8    exit, unload               enterTransitionFinished      exit point at the end            sceneExited menu, sceneUnloaded menu
-                                                                                                   sceneRevealFinished
+                                                                                                   transitionOutFinished, transitionInFinished
                                                                                                    sceneEnterTransitionFinished game
 ```
 
@@ -417,7 +416,7 @@ The scenes that leave the stack exit at the exit point of the effect, in the upd
 
 ### Loading, preloading and errors
 
-The hook `load` runs as a task that the scene owns, so it can wait on promises with `:await()`, and it can also return a promise. The load context reports progress with `context:progress(value, message)`, reads the `params` of the change and preloads asset groups with `context:preload(groups)`, whose progress folds into the progress of the load. The asset manager decodes on the worker pools and creates GPU resources within the upload budget of each frame, so the frame never stalls and the reveal stays smooth right after the load. The function `scene.preload(scene, params)` starts a load in the background without changing the stack, and a later change that takes the scene is instant, or waits only for the rest of its load. Preloaded groups whose assets download later bring them first, as the [loading guide](../content/loading.md#scenes) describes.
+The hook `load` runs as a task that the scene owns, so it can wait on promises with `:await()`, and it can also return a promise. The load context reports progress with `context:progress(value, message)`, reads the `params` of the change and preloads asset groups with `context:preload(groups)`, whose progress folds into the progress of the load. The asset manager decodes on the worker pools and creates GPU resources within the upload budget of each frame, so the frame never stalls and the in phase stays smooth right after the load. The function `scene.preload(scene, params)` starts a load in the background without changing the stack, and a later change that takes the scene is instant, or waits only for the rest of its load. Preloaded groups whose assets download later bring them first, as the [loading guide](../content/loading.md#scenes) describes.
 
 A failed load, an error in `load`, a rejected promise it returned or an asset of a group it preloads that failed, unloads the scene, publishes `sceneLoadFailed` and ends the change without it: its promise rejects and `onComplete` receives `false`. When the scene that was on top is still alive, the change keeps it, an effect that covers the screen reveals it again, and the failure goes to the `onError` of the change or to the log. When it already unloaded, the failure goes to `onError`, which may route the app to another scene, and to the error screen without one.
 
@@ -449,7 +448,7 @@ local function tracked(name)
     }
 end
 
-for _, name in ipairs({'sceneCoverStarted', 'sceneHoldStarted', 'sceneRevealStarted', 'sceneRevealFinished'}) do
+for _, name in ipairs({'transitionOutStarted', 'transitionOutFinished', 'transitionInStarted', 'transitionInFinished'}) do
     events.on(name, function(transfer) print(name) end)
 end
 
