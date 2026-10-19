@@ -6,6 +6,7 @@
 
 #include "2d/animation/AnimatedBatchLua.hpp"
 #include "2d/animation/AtlasBuilderLua.hpp"
+#include "2d/animation/ChainLua.hpp"
 #include "2d/animation/SkeletonLua.hpp"
 #include "2d/animation/StateGraphLua.hpp"
 #include "2d/nodes/Nodes2DLua.hpp"
@@ -537,7 +538,7 @@ int Animation2DLua::atlasAnimationFromFrames(lua_State* L) {
 
 int Animation2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"fromGrid", &lua::Binding::native<&fromGrid>}, {"fromFrames", &lua::Binding::native<&fromFrames>}, {"newAnimator", &newAnimator}, {"newAnimatedBatch", &lua::Binding::native<&AnimatedBatchLua::create>}, {"newStateGraph", &lua::Binding::native<&StateGraphLua::create>}, {"newSkeletonData", &lua::Binding::native<&SkeletonLua::newData>}, {"newSkeleton", &lua::Binding::native<&SkeletonLua::newSkeleton>}, {"newAtlasBuilder", &AtlasBuilderLua::create}, {nullptr, nullptr},
+        {"fromGrid", &lua::Binding::native<&fromGrid>}, {"fromFrames", &lua::Binding::native<&fromFrames>}, {"newAnimator", &newAnimator}, {"newAnimatedBatch", &lua::Binding::native<&AnimatedBatchLua::create>}, {"newStateGraph", &lua::Binding::native<&StateGraphLua::create>}, {"newSkeletonData", &lua::Binding::native<&SkeletonLua::newData>}, {"newSkeleton", &lua::Binding::native<&SkeletonLua::newSkeleton>}, {"newAtlasBuilder", &AtlasBuilderLua::create}, {"newChain", &lua::Binding::native<&ChainLua::create>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -545,6 +546,7 @@ int Animation2DLua::open(lua_State* L) {
 
 void Animation2DLua::install(lua_State* L) {
     AtlasBuilderLua::install(L);
+    ChainLua::install(L);
     lua::ClassBuilder<Animation>(L).property("duration", &animationDuration).property("cycleDuration", &animationCycleDuration).property("frameCount", &animationFrameCount).property("texture", &animationTexture).field<&Animation::loop>("loop").function("frame", &animationFrame).function("frameAt", &animationFrameAt).function("frameData", &animationFrameData).function("addEvent", &lua::Binding::native<&animationAddEvent>).property("countsTicks", &animationCountsTicks).install();
 
     lua::ClassBuilder<Animator>(L).function("add", &lua::Binding::native<&animatorAdd>).function("play", &lua::Binding::native<&animatorPlay>).function("queue", &lua::Binding::native<&animatorQueue>).function("clearQueue", &lua::Binding::native<&animatorClearQueue>).property("queuedCount", &animatorQueuedCount).function("stop", &animatorStop).function("has", &animatorHas).function("animation", &lua::Binding::native<&animatorAnimation>).function("update", &lua::Binding::native<&animatorUpdate>).function("step", &lua::Binding::native<&animatorStep>).function("apply", &lua::Binding::native<&animatorApply>).function("box", &lua::Binding::native<&animatorBox>).function("point", &lua::Binding::native<&animatorPoint>).property("current", &animatorCurrent).property("frame", &animatorFrame).property("time", &animatorTime).property("playing", &animatorPlaying).property("finished", &animatorFinished).field<&Animator::speed>("speed").nestedField<&Animator::pivot, &math::Vec2::x>("pivotX").nestedField<&Animator::pivot, &math::Vec2::y>("pivotY").property("onFrame", &animatorGetOnFrame, &animatorSetOnFrame).property("onComplete", &animatorGetOnComplete, &animatorSetOnComplete).property("onEvent", &animatorGetOnEvent, &animatorSetOnEvent).install();

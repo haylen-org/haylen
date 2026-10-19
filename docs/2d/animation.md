@@ -16,10 +16,15 @@ Frames carry the data that action games read at a given frame: a pivot, named bo
 | Many sprites of one texture, such as a crowd, bullets or coins. | An `AnimatedBatch`, which advances and draws every sprite in C++ with one call from Lua per frame. |
 | A character whose animation follows its state, such as idle, run, jump and fall. | A `StateGraph` with a `StateGraphPlayer` for each character, which evaluates the conditions of its transitions in C++ and drives an animator, a sprite of a batch or a track of a skeleton, so only the changes of state reach Lua. |
 | A character made of parts, with smooth motion, aiming and equipment. | A `Skeleton` of a `.skeleton` file, with tracks that mix animations, cross fades, inverse kinematics, skins and events. |
+| Legs, arms, bodies, tails and tentacles moved by code alone, such as procedural creatures. | A `Chain`, which reaches a target from its root or follows its head, as [procedural animation](#procedural-animation) explains. |
 
 ## Skeletons
 
 A `SkeletonData` holds the bones, slots, skins, constraints and animations of a `.skeleton` file and is shared by every `Skeleton` made from it, each with its own pose. Tracks play animations over each other with their own time, loop and weight, inverse kinematics bends a chain of bones toward a target, and events fire as the tracks pass them, reaching listeners of `skeleton:on('event')` as one table. A draw sends the slots as meshes of the atlas texture, so lit canvases light them and neighbouring slots of one blend mode share a draw call. The [skeletons section](../lua-api/animation2d.md#skeletons) of the reference describes the format and every option.
+
+## Procedural animation
+
+A `Chain` animates with code alone, so a creature needs no images or keys for its motion: each leg is a chain that reaches the point where its foot stands, with a `pole` that keeps its knee bending the right way, and a body, a tail or a tentacle is a chain that follows its head. A walking creature keeps its feet planted and moves a foot only when the body has carried its hip too far from it, a few feet at a time, which makes a gait without a walk cycle. The bend limit keeps a body from folding onto itself as it turns, and both ways of bending run in C++ without allocating, so many creatures cost one call per chain each frame. The test project shows a spider and a centipede that climb the walls of a cave this way, as [the reference](../lua-api/animation2d.md#chains) describes.
 
 ## Atlases at run time
 
@@ -31,4 +36,4 @@ Animated batches and skeletons do their work in C++, a batch advances a large cr
 
 ## C++
 
-The C++ types live in `haylen/2d/animation/`: `Animation`, `SpriteFrame`, `Animator`, `AnimatedBatch`, `StateGraph`, `StateGraphPlayer`, `SkeletonData`, `Skeleton`, `SkeletonAnimation`, `SpriteAtlas` and `AtlasBuilder` in the namespace `haylen::animation2d`.
+The C++ types live in `haylen/2d/animation/`: `Animation`, `SpriteFrame`, `Animator`, `AnimatedBatch`, `StateGraph`, `StateGraphPlayer`, `SkeletonData`, `Skeleton`, `SkeletonAnimation`, `SpriteAtlas`, `AtlasBuilder` and `Chain` in the namespace `haylen::animation2d`.

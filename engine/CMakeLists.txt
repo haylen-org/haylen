@@ -49,6 +49,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/animation/AtlasBuilderLua.cpp
   src/2d/animation/Animation2DLua.cpp
   src/2d/animation/Animator.cpp
+  src/2d/animation/Chain.cpp
+  src/2d/animation/ChainLua.cpp
   src/2d/animation/Skeleton.cpp
   src/2d/animation/SkeletonAnimation.cpp
   src/2d/animation/SkeletonData.cpp

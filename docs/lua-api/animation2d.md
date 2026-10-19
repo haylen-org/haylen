@@ -1,6 +1,6 @@
 # haylen.animation2d
 
-The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads sprite atlas JSON files with their frame tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Use it for characters, effects and animated UI. The [animation guide](../2d/animation.md) explains which player suits which need.
+The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads sprite atlas JSON files with their frame tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Its chains bend legs, bodies and tails for procedural animation. Use it for characters, effects and animated UI. The [animation guide](../2d/animation.md) explains which player suits which need.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -1029,6 +1029,98 @@ local assets = require('haylen.assets')
 local atlas = assets.load('ui/hero.json', 'atlas')
 local blink = atlas:animationFromFrames({'hero 1', 'hero 2', 'hero 1'}, {framesPerSecond = 6, loop = 'once'})
 print(blink.duration)
+```
+
+## Chains
+
+A `Chain` is a row of points joined by segments of fixed lengths, which procedural animation bends without any images or keys: legs and arms that reach where a foot or a hand must go, and bodies, tails, tentacles and ropes that trail behind a head. It bends in two ways, and both run in C++ without allocating:
+
+- `chain:reach(x, y, options)` keeps the first point at the root and bends the chain so its last point reaches the target, with the joints bending toward the `pole` when one is given, such as a point above the knee of a leg.
+- `chain:follow(x, y)` moves the first point as a head and drags every other point behind it, so the chain follows the path of its head like the body of a snake or a centipede.
+
+The bend between two segments in a row never passes `maxBend`, which keeps a body from folding onto itself.
+
+### animation2d.newChain(options)
+
+Returns a `Chain` that lies straight from its root along `angle`. The table `options` takes:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y` | number | `0` | The root, its first point. |
+| `lengths` | list of numbers | | The length of each segment, from the root on. |
+| `segments`, `length` | integer, number | | A number of segments of the same length, in place of `lengths`. |
+| `angle` | number | `0` | The direction in radians the chain lies along from the root when it is made. |
+| `maxBend` | number | `math.pi` | The largest bend in radians between two segments in a row, from 0, which keeps the chain straight, to `math.pi`, which lets it fold. |
+
+Both `lengths` and `segments`, or neither, raise `A chain takes the lengths of its segments either as "lengths" or as "segments" of the same "length".`, fewer than one segment raises `A chain needs at least one segment in "segments".` and a length that is not a number greater than zero raises `Every segment of a chain needs a finite length greater than zero.`
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `x`, `y` | number | The root. Writing it moves the whole chain with it. |
+| `count` | integer | Points of the chain, one more than its segments, read-only. |
+| `length` | number | The sum of the lengths of its segments, read-only. |
+| `maxBend` | number | The largest bend between two segments in a row, kept between 0 and `math.pi`. |
+
+### chain:reach(x, y, options)
+
+Bends the chain from its root toward the point and returns whether its end reached it within the tolerance. A point out of reach stretches the chain straight toward it. The table `options` is optional and is read in one pass, so a reach for every leg in every frame costs little:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `pole` | vector | | A point on the side the joints bend toward. Without it the joints keep the side they bend to. |
+| `iterations` | integer | `10` | The most passes of the solver, at least 1. |
+| `tolerance` | number | `0.01` | How near the end must come to the point. |
+
+### chain:follow(x, y)
+
+Moves the first point to the head and drags each point after it to the length of its segment from the one before, within `maxBend`.
+
+### chain:straighten(angle)
+
+Lays the chain straight from its root along the angle in radians.
+
+### chain:point(index) and chain:angle(segment)
+
+Return the `x` and `y` of a point, numbered from 1 at the root to `chain.count` at the end, and the angle in radians of a segment, numbered from 1, which runs from its point to the next one.
+
+### chain:setPoint(index, x, y)
+
+Places one point without moving the others, such as a point of a body pushed out of a wall or onto the ground, and the next `reach` or `follow` restores the lengths of the segments from there.
+
+### chain:writePoints(buffer, first)
+
+Writes the `x` and `y` of every point in order into a [`FloatBuffer`](collections.md#float-buffers) from the value at `first` on, which defaults to 1, so many chains reach Lua in one call each. A buffer too small raises `The buffer holds n values, and the n points of the chain need n from value n on.`
+
+```lua
+local animation2d = require('haylen.animation2d')
+local graphics2d = require('haylen.graphics2d')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local leg = animation2d.newChain({x = 400, y = 200, lengths = {90, 90}})
+local snake = animation2d.newChain({x = 200, y = 300, segments = 24, length = 14, angle = math.pi, maxBend = 0.5})
+local pole = {400, 0}
+
+scene.push({
+    update = function(self, dt)
+        local x, y = input.mousePosition()
+        leg:reach(x, y, {pole = pole})
+        snake:follow(x, y)
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        for index = 1, snake.count - 1 do
+            local x1, y1 = snake:point(index)
+            local x2, y2 = snake:point(index + 1)
+            graphics2d.drawLine(x1, y1, x2, y2, 18 - index * 0.5, '#FF35B37E')
+        end
+        local hipX, hipY = leg:point(1)
+        local kneeX, kneeY = leg:point(2)
+        local footX, footY = leg:point(3)
+        graphics2d.drawLine(hipX, hipY, kneeX, kneeY, 10, '#FFE8A93A')
+        graphics2d.drawLine(kneeX, kneeY, footX, footY, 8, '#FFE8A93A')
+    end,
+})
 ```
 
 ## Performance
