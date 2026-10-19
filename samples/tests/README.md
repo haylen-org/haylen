@@ -376,7 +376,7 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 
 #### Components (CMP)
 
-Small parts of a game written in Lua, each in one file of `source/categories/components/` that needs only the engine and copies as it is into another project: `label-up.lua`, the numbers and words that pop out of what was hit, healed or collected, `health-bar.lua`, the bar over a character or across the screen, `ecs.lua`, a small entity component system of packed pools and systems, and `composition.lua`, entities made of small behaviors that each do one thing. The tests are in `source/categories/components/`.
+Small parts of a game written in Lua, each in one file of `source/categories/components/` that needs only the engine and copies as it is into another project: `label-up.lua`, the numbers and words that pop out of what was hit, healed or collected, `health-bar.lua`, the bar over a character or across the screen, `ecs.lua`, a small entity component system of packed pools and systems, `composition.lua`, entities made of small behaviors that each do one thing, and `charts.lua`, eleven kinds of chart that survive any data. The tests are in `source/categories/components/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -384,6 +384,7 @@ Small parts of a game written in Lua, each in one file of `source/categories/com
 | `CMP-002` | Health bar | Bars that ease to the health with a trail of the health just lost, colors by the share left, ticks, a shield, a flash on hits and a bar that hides while it is full. |  |
 | `CMP-003` | Entities, components and systems | Hundreds of balls whose behavior comes only from their components and the systems that run over them, with systems switched off and components taken away while it runs. |  |
 | `CMP-004` | Composition | Four entities built from the same small behaviors, which follow, wander, circle, bob, shoot and take hits, with behaviors given to an entity and taken away while it runs. |  |
+| `CMP-005` | Charts | Line, area, bar, stacked bar, pie, donut, scatter, radar, histogram, candlestick and heat map charts with data that is empty, negative, huge, missing, a single value or all equal. |  |
 
 #### Events (EVT)
 
