@@ -12,6 +12,7 @@ set(HAYLEN_TEST_SOURCES
   2d/graphics/GroupTests.cpp
   2d/graphics/NineSliceTests.cpp
   2d/graphics/StrokeBuilderTests.cpp
+  2d/graphics/SceneTransitionTests.cpp
   2d/graphics/TileLayerTests.cpp
   2d/graphics/PartMaskTests.cpp
   2d/graphics/PostProcessTests.cpp

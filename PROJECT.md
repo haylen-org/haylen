@@ -1975,7 +1975,7 @@ Nomes, eventos e testes do projeto:
 
 - [ ] Revisar os nomes de eventos, callbacks e ciclo de vida da engine contra os nomes que o mercado usa: trocar nomes estranhos como `revealStarted` e `sceneHold` por nomes convencionais (por exemplo `transitionStarted`, `transitionFinished`, `sceneLoading`), em todo o C++, o Lua, os testes, os samples e as docs, sem aliases.
 - [ ] Teste `SCN-004` (pilha e hooks): só o botão "Push" funciona, "Pop", "Replace", "Pop to number" e "Pop to the test" não fazem nada. Corrigir para que cada botão faça o que diz e a pilha na tela mostre o resultado.
-- [ ] Transição "out in/out": ao terminar, pisca a tela menor no canto inferior direito, ao diminuir a atual e ao diminuir a seguinte. Achar a causa na engine e corrigir, conferindo todas as transições.
+- [x] Transição "out in/out": ao terminar, pisca a tela menor no canto inferior direito, ao diminuir a atual e ao diminuir a seguinte. Achar a causa na engine e corrigir, conferindo todas as transições. A causa: um sprite sem tamanho desenha a textura no tamanho dela, então a imagem que encolhia até zero no fim do `outIn` (e no começo do `inOut`) aparecia inteira a partir do centro. As transições não desenham mais imagens sem tamanho, com teste.
 - [ ] Teste de pilha de jogo (`game stacks`): pisca a cada clique, mostra algo, deixa a peça cair e some. Corrigir.
 
 Licença e contribuições:

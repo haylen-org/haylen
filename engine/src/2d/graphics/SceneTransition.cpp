@@ -217,7 +217,11 @@ void SceneTransition::render(Renderer& renderer, const Frames& frames, float pro
     }
 }
 
+// A sprite without a size or a source draws the whole texture at its own size, so an image that shrank to nothing draws nothing.
 void SceneTransition::drawImage(Renderer& renderer, const graphics::Texture& texture, const math::Rect& target, math::Color tint, const math::Rect& part) {
+    if (target.width <= 0.0F || target.height <= 0.0F) {
+        return;
+    }
     renderer.draw({.texture = texture, .source = getSource(texture, part), .position = target.getMin(), .size = target.getSize(), .pivot = {}, .color = tint, .order = kCapturedOrder});
 }
 
