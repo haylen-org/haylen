@@ -178,6 +178,34 @@ Creates an [`Image`](#image) of the size, every pixel `fill`, transparent by def
 
 Decodes the bytes of a PNG, JPG, TGA, BMP or GIF file into an [`Image`](#image), on the frame thread, or on the task pool with a promise of the image. The `image` asset type of [`haylen.assets`](assets.md) loads images of the package the same way, with `assets.loadAsync(path, 'image')` off the frame thread. Bytes that are no image raise `The image could not be decoded, and the decoder reported "reason".`
 
+### graphics.decodePlaceholder(code, width, height)
+
+Decodes a text of `image:placeholder` into a blurred [`Image`](#image) of `width` by `height` pixels, from 1 to 512 on each side, which a texture shows scaled up with the `'linear'` filter until the real image arrives. A placeholder may come from anywhere, so a text that is not one raises `The text is not an image placeholder.`, and a size out of range raises `An image placeholder decodes to a size from 1 to 512 pixels on each side.`
+
+```lua
+local assets = require('haylen.assets')
+local async = require('async')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local http = require('http')
+
+-- A product of a list shows its placeholder at once, and its picture with the vivid color of the picture once it downloads.
+local product = {name = 'Trail shoes', placeholder = 'FUqTgEQNZQ1lDWUAaw1lDWUNZQMlDWUNZQ1l'}
+local cover = graphics.newTexture(graphics.decodePlaceholder(product.placeholder, 32, 24), {filter = 'linear'})
+
+async.spawn(function()
+    local response = http.get('https://example.com/shoes.png'):await()
+    local image = graphics.decodeImageAsync(response.body):await()
+    local swatches = image:swatches()
+    product.tint = swatches.vibrant or swatches.dominant
+    cover = graphics.newTexture(image, {filter = 'linear'})
+end)
+
+function render()
+    graphics2d.draw(cover, 40, 40, {width = 320, height = 240})
+end
+```
+
 ### graphics.readTarget(target) and graphics.captureScreen()
 
 Return a promise of an [`Image`](#image) of the pixels of the render target `target` as the current frame renders it, or of everything the screen shows of the next frame the app renders, the interface and the debug overlay included. The GPU copies the pixels after the frame is submitted without the frame thread waiting for it, where the backend allows, as the [rendering guide](../graphics/rendering.md#reading-pixels-back) describes, and the task pool turns them into straight colors with the top row first, so the promise settles a frame or more later. An image saves as a PNG file with `image:encodePngAsync()` and [`storage.writeTextAsync`](storage.md).
@@ -216,6 +244,9 @@ An `Image` holds RGBA pixels on the CPU, for art that code makes, composes or pa
 | `image:clone()` | Returns a copy. |
 | `image:encodePng()` | Returns the bytes of a PNG file of the image. |
 | `image:encodePngAsync()` | Returns a promise of the bytes of a PNG file, encoded on the task pool from the image as it is now. |
+| `image:palette(count)` | Returns up to `count` colors of the visible pixels, 8 by default and from 1 to 64, the most common first, each as `{color, population}` with the share of the pixels it stands for, or an empty list for an image without visible pixels. The colors come from a median cut over a sample of at most 64 pixels per side, so a large image costs what a small one does. A count out of range raises `A palette has from 1 to 64 colors, not <count>.` |
+| `image:swatches(count)` | Returns the colors that an interface takes from the image, picked from a palette of `count` colors, 16 by default: `dominant`, the most common color, and `vibrant`, `darkVibrant`, `lightVibrant`, `muted`, `darkMuted` and `lightMuted`, the colors closest to each target of lightness and saturation, each one absent when no color of the palette fits it. |
+| `image:placeholder(options)` | Returns a short text that stands for the image while it loads, made of a few cosines of its colors on each axis: `columns` and `rows`, from 1 to 9, 4 and 3 by default, where more keep more of the shapes in a longer text. The text holds only letters, digits, `-` and `_`, 36 characters with the defaults, so a server sends it next to the address of the image. Options out of range raise `An image placeholder keeps from 1 to 9 cosines on each axis.`, and unknown keys raise `Unknown option "<key>".` |
 
 ```lua
 local assets = require('haylen.assets')

@@ -46,6 +46,13 @@ TEST(ColorTest, ConvertsEveryHueSector) {
     }
 }
 
+TEST(ColorLuaTest, ReadsLuminanceContrastAndTheContrastingColor) {
+    test::EngineFixture fixture;
+    fixture.runLua("m = require('haylen.math') night = m.color('#FF1E2A44')");
+    EXPECT_EQ(fixture.lua("return tostring(night:dark()) .. ' ' .. night:contrastingColor():toHex() .. ' ' .. string.format('%.1f', m.contrast(m.black(), m.white()))"), "true #FFFFFFFF 21.0");
+    EXPECT_EQ(fixture.lua("return string.format('%.3f', m.white():luminance())"), "1.000");
+}
+
 TEST(ColorLuaTest, ConvertsToHsvAndBlendsAroundTheHueCircle) {
     test::EngineFixture fixture;
     fixture.runLua("m = require('haylen.math')");
@@ -56,6 +63,22 @@ TEST(ColorLuaTest, ConvertsToHsvAndBlendsAroundTheHueCircle) {
     // A gray takes the hue of the other color, so only the saturation changes, whichever end it is.
     EXPECT_EQ(fixture.lua("return tostring(m.color(1, 1, 1):lerpHsv({1, 0, 0}, 0.5))"), "#FFFF8080");
     EXPECT_EQ(fixture.lua("return tostring(m.color(1, 0, 0):lerpHsv({1, 1, 1}, 0.5))"), "#FFFF8080");
+}
+
+// The contrast rules of accessibility read luminance in linear light, and the text color of a background is the one of black and white with the higher contrast.
+TEST(ColorTest, MeasuresLuminanceAndContrast) {
+    EXPECT_FLOAT_EQ(Color::black().getLuminance(), 0.0F);
+    EXPECT_FLOAT_EQ(Color::white().getLuminance(), 1.0F);
+    EXPECT_NEAR(Color::fromHex(0x777777FFU).getLuminance(), 0.1845F, 0.001F);
+    EXPECT_FLOAT_EQ(Color::contrast(Color::black(), Color::white()), 21.0F);
+    EXPECT_FLOAT_EQ(Color::contrast(Color::white(), Color::black()), 21.0F);
+    EXPECT_NEAR(Color::contrast(Color::fromHex(0x767676FFU), Color::white()), 4.54F, 0.01F);
+
+    EXPECT_TRUE(Color::fromHex(0x1E2A44FFU).isDark());
+    EXPECT_FALSE(Color::fromHex(0xF4EFE3FFU).isDark());
+    EXPECT_FALSE(Color::fromHex(0xFFD54FFFU).isDark());
+    EXPECT_EQ(Color::fromHex(0x1E2A4480U).getContrastingColor(), Color::white().withAlpha(Color::fromHex(0x1E2A4480U).a));
+    EXPECT_EQ(Color::fromHex(0xFFD54FFFU).getContrastingColor(), Color::black());
 }
 
 TEST(Transform2DTest, ComposesAndInverts) {

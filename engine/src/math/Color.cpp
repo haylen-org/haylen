@@ -61,6 +61,32 @@ Color Color::fromHsv(float hue, float saturation, float value, float alpha) noex
     }
 }
 
+// The channels of sRGB turn into linear light before they add up, with the weights of the eye for red, green and blue.
+float Color::getLuminance() const noexcept {
+    // clang-format off
+    const auto linear = [](float channel) {
+        const float clamped = std::clamp(channel, 0.0F, 1.0F);
+        return clamped <= 0.04045F ? clamped / 12.92F : std::pow((clamped + 0.055F) / 1.055F, 2.4F);
+    };
+    // clang-format on
+    return 0.2126F * linear(r) + 0.7152F * linear(g) + 0.0722F * linear(b);
+}
+
+float Color::contrast(const Color& first, const Color& second) noexcept {
+    const float lighter = std::max(first.getLuminance(), second.getLuminance());
+    const float darker = std::min(first.getLuminance(), second.getLuminance());
+    return (lighter + 0.05F) / (darker + 0.05F);
+}
+
+// White reads better than black exactly where the contrast with white is higher, which is below the luminance whose contrast with both is the same.
+bool Color::isDark() const noexcept {
+    return contrast(*this, white()) > contrast(*this, black());
+}
+
+Color Color::getContrastingColor() const noexcept {
+    return (isDark() ? white() : black()).withAlpha(a);
+}
+
 Color::Hsv Color::toHsv() const noexcept {
     const float high = std::max({r, g, b});
     const float low = std::min({r, g, b});

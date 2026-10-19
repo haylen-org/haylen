@@ -36,6 +36,7 @@ class ImageLua final {
     // Decodes the bytes of an image file with `graphics.decodeImage(bytes)`, and on the task pool with `graphics.decodeImageAsync(bytes)`, which returns a promise of the image.
     static int decode(lua_State* L);
     static int decodeAsync(lua_State* L);
+    static int decodePlaceholder(lua_State* L);
 
     // Returns the image at the index as one Lua may change.
     [[nodiscard]] static Image& checkWritable(lua_State* L, int index);
@@ -48,6 +49,10 @@ class ImageLua final {
 
   private:
     static constexpr std::array<std::string_view, 2> kBlitFields{"source", "blend"};
+    static constexpr std::array<std::string_view, 2> kPlaceholderFields{"columns", "rows"};
+    // The colors a palette and the swatches take from an image without a count of their own.
+    static constexpr int kPaletteColors = 8;
+    static constexpr int kSwatchColors = 16;
 
     [[nodiscard]] static Image::Area readArea(lua_State* L, int index, const Image& image);
 
@@ -64,6 +69,9 @@ class ImageLua final {
     static int clone(lua_State* L);
     static int encodePng(lua_State* L);
     static int encodePngAsync(lua_State* L);
+    static int palette(lua_State* L);
+    static int swatches(lua_State* L);
+    static int placeholder(lua_State* L);
     static int width(lua_State* L);
     static int height(lua_State* L);
 };

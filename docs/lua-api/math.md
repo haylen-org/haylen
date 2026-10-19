@@ -273,6 +273,17 @@ print(m.fromHsv(1 / 3, 1, 1)) -- #FF00FF00
 print(rainbow())
 ```
 
+### m.contrast(first, second)
+
+Returns the ratio of the luminances of two colors, from 1 for the same color to 21 for black and white. The contrast rules of accessibility ask for at least 4.5 between text and its background, and 3 for large text and icons.
+
+```lua
+local m = require('haylen.math')
+
+local text, background = m.color('#FF767676'), m.white()
+print(m.contrast(text, background) >= 4.5) -- true
+```
+
 ### m.transform(position, rotation, scale, skew)
 
 Returns a new `Transform2D` that scales by `scale`, then skews by `skew`, then rotates by `rotation` radians, then moves by `position`. The argument `position` is a `Vec2` and is required. The argument `rotation` defaults to `0`, and `scale` is a `Vec2` that defaults to `{1, 1}`. The argument `skew` is a `Vec2` of angles in radians that defaults to `{0, 0}`. The field `skew.x` turns the local y axis and `skew.y` turns the local x axis by that angle, in the same direction as `rotation`, which shears the shape.
@@ -1487,6 +1498,41 @@ local storage = require('haylen.storage')
 
 local favorite = m.fromHsv(0.6, 0.7, 0.9)
 storage.writeJson('settings/theme.json', {accent = favorite:toHex()})
+```
+
+### color:luminance()
+
+Returns the relative luminance of the color in linear light, from 0 for black to 1 for white, the measure that the contrast rules of accessibility read.
+
+```lua
+local m = require('haylen.math')
+
+print(m.color('#FF777777'):luminance()) -- about 0.18
+```
+
+### color:dark()
+
+Returns whether white reads better on the color than black, which makes the color dark: a header of that color takes light text and light icons.
+
+```lua
+local m = require('haylen.math')
+local window = require('haylen.window')
+
+local header = m.color('#FF1E2A44')
+window.setStatusBar(header:dark() and 'light' or 'dark')
+```
+
+### color:contrastingColor()
+
+Returns black or white, whichever has the higher contrast on the color, with the alpha of the color, the color of text and icons that sit on it.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local m = require('haylen.math')
+
+local badge = m.color('#FFFFD54F')
+graphics2d.drawRect({40, 40, 220, 60}, badge)
+graphics2d.drawText(nil, 'New level', 150, 70, {size = 28, color = badge:contrastingColor(), anchor = {0.5, 0.5}})
 ```
 
 ### Color operators

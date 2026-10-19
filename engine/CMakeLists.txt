@@ -359,6 +359,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/Gpu.cpp
   src/graphics/GraphicsLua.cpp
   src/graphics/ImageLua.cpp
+  src/graphics/ImagePalette.cpp
+  src/graphics/ImagePlaceholder.cpp
   src/graphics/Image.cpp
   src/graphics/RenderTarget.cpp
   src/graphics/RenderTargetResource.cpp

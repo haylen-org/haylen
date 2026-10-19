@@ -32,5 +32,6 @@ return {
         {code = 'ALG-026', title = 'Ray casts without physics', description = 'Rays against segments, rectangles, circles, polygons, chains, grids and spatial trees, with bounces and fans.', module = 'raycasts'},
         {code = 'ALG-027', title = 'Overlap boxes', description = 'Fighters of two teams on a belt of depth rows whose punch boxes reach the other team within a depth band, with rests after every hit, without physics.', module = 'overlap-boxes'},
         {code = 'ALG-028', title = 'Conversation', description = 'A smith who greets once and then in variants, sells swords while the gold lasts, tells a rumor once, hands commands to the test and saves the walk to resume it.', module = 'conversation'},
+        {code = 'ALG-029', title = 'Colors of a picture', description = 'The palette of a picture by median cut, the swatches an interface takes from it, its placeholder text decoded into a blurred image, and text that reads best on each swatch with its contrast.', module = 'colors'},
     },
 }

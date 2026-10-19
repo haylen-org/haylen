@@ -55,6 +55,18 @@ struct Color {
 
     [[nodiscard]] Hsv toHsv() const noexcept;
 
+    // The relative luminance of the color in linear light, from 0 for black to 1 for white, which the contrast rules of accessibility read.
+    [[nodiscard]] float getLuminance() const noexcept;
+
+    // The ratio of the luminances of two colors, from 1 to 21, which the contrast rules of accessibility ask to be at least 4.5 for text on its background and 3 for large text.
+    [[nodiscard]] static float contrast(const Color& first, const Color& second) noexcept;
+
+    // Whether white reads better on the color than black, the color then being dark.
+    [[nodiscard]] bool isDark() const noexcept;
+
+    // Black or white, whichever has the higher contrast on the color, with the alpha of the color.
+    [[nodiscard]] Color getContrastingColor() const noexcept;
+
     [[nodiscard]] constexpr bool operator==(const Color&) const noexcept = default;
 
     [[nodiscard]] constexpr Color operator*(const Color& other) const noexcept {

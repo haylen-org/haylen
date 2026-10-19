@@ -3,12 +3,16 @@
 #include <lua.hpp>
 
 #include <cmath>
+#include <cstddef>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "haylen/graphics/ImagePalette.hpp"
+#include "haylen/graphics/ImagePlaceholder.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
@@ -231,6 +235,54 @@ Device::ReadCallback ImageLua::settle(const std::shared_ptr<varn::async::Promise
     // clang-format on
 }
 
+int ImageLua::palette(lua_State* L) {
+    const Image& image = lua::Userdata::check<Image>(L, 1);
+    const std::vector<ImagePalette::Swatch> colors = ImagePalette::extract(image, static_cast<int>(luaL_optinteger(L, 2, kPaletteColors)));
+    lua_createtable(L, static_cast<int>(colors.size()), 0);
+    for (std::size_t index = 0; index < colors.size(); ++index) {
+        lua_createtable(L, 0, 2);
+        lua::Stack::push(L, colors[index].color);
+        lua_setfield(L, -2, "color");
+        lua::Stack::push(L, colors[index].population);
+        lua_setfield(L, -2, "population");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    return 1;
+}
+
+int ImageLua::swatches(lua_State* L) {
+    const Image& image = lua::Userdata::check<Image>(L, 1);
+    const ImagePalette::Swatches found = ImagePalette::choose(ImagePalette::extract(image, static_cast<int>(luaL_optinteger(L, 2, kSwatchColors))));
+    lua_createtable(L, 0, 7);
+    lua::Stack::push(L, found.dominant);
+    lua_setfield(L, -2, "dominant");
+    for (const auto& [name, color] : {std::pair{"vibrant", found.vibrant}, std::pair{"darkVibrant", found.darkVibrant}, std::pair{"lightVibrant", found.lightVibrant}, std::pair{"muted", found.muted}, std::pair{"darkMuted", found.darkMuted}, std::pair{"lightMuted", found.lightMuted}}) {
+        if (color) {
+            lua::Stack::push(L, *color);
+            lua_setfield(L, -2, name);
+        }
+    }
+    return 1;
+}
+
+int ImageLua::placeholder(lua_State* L) {
+    const Image& image = lua::Userdata::check<Image>(L, 1);
+    ImagePlaceholder::Options options;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kPlaceholderFields});
+        lua::Table::readField(L, 2, "columns", options.columns);
+        lua::Table::readField(L, 2, "rows", options.rows);
+    }
+    lua::Stack::push(L, ImagePlaceholder::encode(image, options));
+    return 1;
+}
+
+int ImageLua::decodePlaceholder(lua_State* L) {
+    push(L, ImagePlaceholder::decode(lua::Stack::read<std::string_view>(L, 1), static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3))));
+    return 1;
+}
+
 int ImageLua::width(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<Image>(L, 1).getWidth());
     return 1;
@@ -242,7 +294,7 @@ int ImageLua::height(lua_State* L) {
 }
 
 void ImageLua::install(lua_State* L) {
-    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).property("width", &width).property("height", &height).install();
+    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).function("palette", &lua::Binding::native<&palette>).function("swatches", &lua::Binding::native<&swatches>).function("placeholder", &lua::Binding::native<&placeholder>).property("width", &width).property("height", &height).install();
 }
 
 } // namespace haylen::graphics

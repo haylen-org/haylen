@@ -112,6 +112,7 @@ set(HAYLEN_TEST_SOURCES
   debug/TraceRecorderTests.cpp
   graphics/GraphicsLuaTests.cpp
   graphics/GraphicsTests.cpp
+  graphics/ImagePaletteTests.cpp
   graphics/ShaderTests.cpp
   graphics/VectorImageTests.cpp
   graphics/VideoTests.cpp
@@ -260,7 +261,7 @@ gtest_discover_tests(haylen_tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats, of input recordings and of MessagePack run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings, of MessagePack and of image placeholders run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen_content_fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen_content_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -280,4 +281,10 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen_messagepack_fuzzer PRIVATE haylen::engine)
   target_link_options(haylen_messagepack_fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen_messagepack_fuzzer)
+
+  add_executable(haylen_placeholder_fuzzer fuzz/ImagePlaceholderFuzzer.cpp)
+  set_target_properties(haylen_placeholder_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen_placeholder_fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen_placeholder_fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen_placeholder_fuzzer)
 endif()

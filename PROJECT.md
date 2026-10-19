@@ -2005,7 +2005,7 @@ Plataforma e sistema:
 
 Algoritmos e efeitos:
 
-- [ ] Algoritmos de cor rápidos em C++ com bind Lua: cor predominante de uma imagem e as variações dela (paleta), escolher preto ou branco para contraste, escuro ou claro, contraste entre duas cores pelas regras de acessibilidade, e os placeholders desfocados de imagem que se carregam antes da imagem real (um código curto em texto que vira uma imagem borrada).
+- [x] Algoritmos de cor rápidos em C++ com bind Lua: cor predominante de uma imagem e as variações dela (paleta), escolher preto ou branco para contraste, escuro ou claro, contraste entre duas cores pelas regras de acessibilidade, e os placeholders desfocados de imagem que se carregam antes da imagem real (um código curto em texto que vira uma imagem borrada). `Color` ganhou `getLuminance`, `isDark`, `getContrastingColor` e `Color::contrast` (regra de contraste de acessibilidade), `graphics::ImagePalette` tira a paleta por median cut, a cor dominante e as amostras (vibrante, escura, clara, suave), e `graphics::ImagePlaceholder` faz o texto curto (36 caracteres no padrão) que vira a imagem borrada, com fuzzer e testes de entrada hostil. Lua: `color:luminance()`, `color:dark()`, `color:contrastingColor()`, `m.contrast`, `image:palette`, `image:swatches`, `image:placeholder` e `graphics.decodePlaceholder`. Teste `ALG-029`.
 - [ ] Filtros de sinais: Kalman, mediana, passa-baixa, média móvel e Hampel, em C++ com bind Lua, para suavizar posições, velocidades e leituras.
 - [ ] Efeitos de imagem comuns em C++ com bind para não ter que fazer em Lua: blur, e os outros do dia a dia.
 - [ ] Mais shaders de jogos, dezenas deles, incluindo neon para flechas, balas e rastros.
