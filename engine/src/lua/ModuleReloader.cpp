@@ -112,7 +112,9 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     const bool functions = lua_isfunction(state, live) && lua_isfunction(state, fresh);
     const bool empty = lua_isboolean(state, live) && lua_toboolean(state, live) != 0 && lua_isboolean(state, fresh) && lua_toboolean(state, fresh) != 0;
     if (!tables && !functions && !empty) {
-        std::string reason = "The module \"" + name + "\" now returns a " + std::string(getKind(state, fresh)) + " instead of a " + std::string(getKind(state, live)) + ".";
+        const std::string freshKind(getKind(state, fresh));
+        const std::string liveKind(getKind(state, live));
+        std::string reason = freshKind == liveKind ? "The module \"" + name + "\" returns a " + freshKind + ", which cannot change in place." : "The module \"" + name + "\" now returns a " + freshKind + " instead of a " + liveKind + ".";
         abandon();
         return {.status = Status::Restart, .reason = std::move(reason)};
     }

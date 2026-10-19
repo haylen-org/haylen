@@ -813,6 +813,14 @@ TEST_F(ModuleReloadTest, RestartsWhenTheReturnKindChanges) {
     EXPECT_TRUE(logged("The module \"kind\" now returns a function instead of a table."));
 }
 
+TEST_F(ModuleReloadTest, RestartsWhenAModuleReturnsAnotherPlainValue) {
+    start({{"source/level.lua", "return 'forest'"}, {"source/main.lua", "require('level')"}});
+    recordLog();
+    edit({{"source/level.lua", "return 'cave'"}});
+    EXPECT_TRUE(restarted());
+    EXPECT_TRUE(logged("The module \"level\" returns a string, which cannot change in place."));
+}
+
 TEST_F(ModuleReloadTest, RestartsForRemovedModules) {
     start({{"source/gone.lua", "return {}"}, {"source/main.lua", "require('gone')"}});
     remove("source/gone.lua");
