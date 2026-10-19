@@ -38,7 +38,8 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "slash",
@@ -85,7 +86,14 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF5A70",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "crescent",
@@ -128,7 +136,8 @@
                 0,
                 6.2832
             ],
-            "spin": 4
+            "spin": 4,
+            "emission": 1
         },
         {
             "name": "core",
@@ -175,7 +184,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -228,7 +238,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

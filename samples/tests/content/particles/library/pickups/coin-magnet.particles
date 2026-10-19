@@ -95,7 +95,14 @@
             "offset": [
                 0,
                 -60
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 500,
+                "color": "#FFFFC93C",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

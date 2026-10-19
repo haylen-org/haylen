@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF5C8DFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "bolt",
@@ -93,7 +100,8 @@
                 0.5,
                 0.65,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "flash",
@@ -140,7 +148,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "ring",
@@ -179,7 +188,8 @@
                 0.08,
                 1
             ],
-            "tilt": 1.15
+            "tilt": 1.15,
+            "emission": 1
         },
         {
             "name": "sparks",
@@ -231,7 +241,8 @@
                 1
             ],
             "alignToVelocity": true,
-            "stretch": 0.04
+            "stretch": 0.04,
+            "emission": 1
         }
     ]
 }

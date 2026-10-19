@@ -45,7 +45,14 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 350,
+                "color": "#FFFFF1B8",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "stars",
@@ -103,7 +110,8 @@
                 0.05,
                 0.8,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "left",

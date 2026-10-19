@@ -42,7 +42,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "trail",
@@ -86,7 +87,14 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF7FE8FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "sparks",
@@ -141,7 +149,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF2E4D",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "flare",
@@ -86,7 +93,8 @@
                 0.1,
                 1
             ],
-            "unshaded": true
+            "unshaded": true,
+            "emission": 1
         },
         {
             "name": "core",
@@ -134,7 +142,8 @@
                 0.1,
                 1
             ],
-            "unshaded": true
+            "unshaded": true,
+            "emission": 1
         },
         {
             "name": "sparks",
@@ -188,7 +197,8 @@
             "alignToVelocity": true,
             "stretch": 0.04,
             "direction": 3.1416,
-            "unshaded": true
+            "unshaded": true,
+            "emission": 1
         }
     ]
 }

@@ -34,7 +34,14 @@
                 1
             ],
             "tilt": 1.15,
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFB05CFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "icons",
@@ -99,7 +106,8 @@
             "rotation": [
                 -0.25,
                 0.25
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "cores",
@@ -159,7 +167,8 @@
             "rotation": [
                 -0.25,
                 0.25
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

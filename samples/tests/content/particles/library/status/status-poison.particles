@@ -34,7 +34,14 @@
                 1
             ],
             "tilt": 1.15,
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF7CFF3B",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "clouds",
@@ -169,7 +176,8 @@
                 0.15,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "bubbles",

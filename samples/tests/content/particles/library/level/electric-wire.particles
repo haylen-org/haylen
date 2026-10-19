@@ -46,7 +46,14 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 275,
+                "color": "#FFBFD4FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "sparks",
@@ -99,7 +106,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

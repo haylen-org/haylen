@@ -52,7 +52,14 @@
                 0.2,
                 0.7,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

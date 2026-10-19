@@ -48,7 +48,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "glow",
@@ -82,7 +83,14 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFC86AFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

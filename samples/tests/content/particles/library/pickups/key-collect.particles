@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFC93C",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "rays",
@@ -85,7 +92,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "key",
@@ -189,7 +197,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

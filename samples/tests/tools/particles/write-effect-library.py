@@ -684,14 +684,48 @@ PIXEL_EFFECTS = [
     ("scifi", "data-bits", "Data bits", "loop"),
 ]
 
+def largest(value: object) -> float:
+    """The largest number of a value that is a number or a list of numbers."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, list) and value and all(isinstance(item, (int, float)) for item in value):
+        return float(max(value))
+    return 0.0
+
+
+def brightness(value: str) -> float:
+    red, green, blue = (int(value[index:index + 2], 16) for index in (3, 5, 7))
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def light_glowing(layers: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
+    """Gives an effect that glows, one with layers that add their light, emission on those layers and a light in the brightest color of the largest of them, which fades with its particles, so it lights what stands around it at night."""
+    glowing = [layer for _, layer in layers if layer.get("blend", "additive") == "additive" and "colors" in layer]
+    if not glowing:
+        return layers
+    lit = [(name, dict(layer)) for name, layer in layers]
+    for _, layer in lit:
+        if layer.get("blend", "additive") == "additive" and "colors" in layer:
+            layer.setdefault("emission", 1)
+    if any("light" in layer or "particleLights" in layer for _, layer in lit):
+        return lit
+    candidates = [layer for _, layer in lit if layer.get("blend", "additive") == "additive" and "colors" in layer]
+    main = max(candidates, key=lambda layer: max(largest(layer.get("startSize", 0)), largest(layer.get("endSize", 0))))
+    size = max(largest(main.get("startSize", 0)), largest(main.get("endSize", 0)))
+    brightest = max(main["colors"], key=lambda value: (int(value[1:3], 16) > 0, brightness(value)))
+    main["light"] = {"radius": round(min(max(size * 2.5, 220.0), 520.0)), "color": "#FF" + brightest[3:9], "intensity": 1.4, "fade": "count"}
+    return lit
+
+
 def write_effect(entry: Effect) -> None:
     folder = LIBRARY / entry.category
     folder.mkdir(exist_ok=True)
     # An offset belongs to an entry of a composite file, so a single layer with one stays in a composite.
-    if len(entry.layers) == 1 and "offset" not in entry.layers[0][1]:
-        document = entry.layers[0][1]
+    layers = light_glowing(entry.layers)
+    if len(layers) == 1 and "offset" not in layers[0][1]:
+        document = layers[0][1]
     else:
-        document = {"emitters": [{"name": name, **layer} for name, layer in entry.layers]}
+        document = {"emitters": [{"name": name, **layer} for name, layer in layers]}
     (folder / f"{entry.id}.particles").write_text(json.dumps(document, indent=4) + "\n")
 
 

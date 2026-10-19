@@ -40,7 +40,14 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 475,
+                "color": "#FF7FE8FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "flash",
@@ -91,7 +98,8 @@
             "offset": [
                 30,
                 -60
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparks",
@@ -149,7 +157,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

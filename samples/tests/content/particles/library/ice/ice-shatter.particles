@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF5CC8FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "flash",
@@ -85,7 +92,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "ring",
@@ -123,7 +131,8 @@
                 0,
                 0.08,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "shards",
@@ -183,7 +192,8 @@
                 0.02,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -236,7 +246,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

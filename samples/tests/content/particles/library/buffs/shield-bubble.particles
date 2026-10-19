@@ -33,7 +33,14 @@
                 0.45,
                 1
             ],
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFC93C",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "inside",
@@ -68,7 +75,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "rim",
@@ -103,7 +111,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "bands",
@@ -145,7 +154,8 @@
                 0,
                 0.2,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "shine",
@@ -189,7 +199,8 @@
                 0,
                 0.2,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

@@ -43,7 +43,14 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFBFF4FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "ring",
@@ -82,7 +89,8 @@
                 0.08,
                 1
             ],
-            "tilt": 1.25
+            "tilt": 1.25,
+            "emission": 1
         },
         {
             "name": "gather",
@@ -136,7 +144,8 @@
                 0,
                 0.2,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "flash",
@@ -188,7 +197,8 @@
             "offset": [
                 0,
                 -60
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

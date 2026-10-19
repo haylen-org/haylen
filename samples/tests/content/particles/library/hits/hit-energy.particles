@@ -38,7 +38,8 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "spikes",
@@ -88,7 +89,14 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF4C8DFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "core",
@@ -138,7 +146,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -191,7 +200,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

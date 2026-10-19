@@ -46,7 +46,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "stars",
@@ -103,7 +104,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "ring",
@@ -142,7 +144,14 @@
                 0.08,
                 1
             ],
-            "tilt": 1.25
+            "tilt": 1.25,
+            "emission": 1,
+            "light": {
+                "radius": 400,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

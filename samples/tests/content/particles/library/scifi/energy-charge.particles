@@ -33,7 +33,14 @@
                 0.45,
                 1
             ],
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF2EC8FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "core",
@@ -69,7 +76,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "pull",
@@ -116,7 +124,8 @@
                 0,
                 0.2,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "arcs",
@@ -154,7 +163,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

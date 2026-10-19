@@ -42,7 +42,14 @@
             "offset": [
                 0,
                 -60
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFC93C",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "flag",
@@ -228,7 +235,8 @@
                 0.15,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

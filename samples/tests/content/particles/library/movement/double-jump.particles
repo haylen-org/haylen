@@ -37,7 +37,14 @@
                 0.08,
                 1
             ],
-            "tilt": 1.25
+            "tilt": 1.25,
+            "emission": 1,
+            "light": {
+                "radius": 450,
+                "color": "#FFBFF4FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "flash",
@@ -84,7 +91,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "feathers",
@@ -205,7 +213,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

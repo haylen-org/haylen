@@ -34,7 +34,14 @@
                 1
             ],
             "tilt": 1.15,
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF3B5C",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "disc",
@@ -71,7 +78,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "circle",
@@ -108,7 +116,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "ring",
@@ -145,7 +154,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -201,7 +211,8 @@
                 0.15,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

@@ -76,7 +76,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 225,
+                "color": "#FFFFD27A",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "smoke",

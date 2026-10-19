@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFC93C",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "star",
@@ -136,7 +143,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -193,7 +201,8 @@
             "gravity": [
                 0,
                 500
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

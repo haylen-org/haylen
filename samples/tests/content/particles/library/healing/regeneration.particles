@@ -33,7 +33,14 @@
                 0.45,
                 1
             ],
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF4CFF5E",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "base",
@@ -74,7 +81,8 @@
             "offset": [
                 0,
                 70
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "crosses",
@@ -130,7 +138,8 @@
                 0.15,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -186,7 +195,8 @@
                 0.15,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

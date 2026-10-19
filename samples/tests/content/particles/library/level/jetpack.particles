@@ -36,7 +36,14 @@
             "offset": [
                 0,
                 20
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 400,
+                "color": "#FFFF9A2E",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "flames",

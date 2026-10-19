@@ -67,7 +67,13 @@
                 0.45,
                 0.8,
                 1
-            ]
+            ],
+            "light": {
+                "radius": 220,
+                "color": "#FFFFC24A",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "core",

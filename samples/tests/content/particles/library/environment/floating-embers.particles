@@ -57,7 +57,13 @@
                 0.1,
                 0.7,
                 1
-            ]
+            ],
+            "light": {
+                "radius": 220,
+                "color": "#FFFFC24A",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

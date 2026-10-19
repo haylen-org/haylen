@@ -220,13 +220,13 @@ function LibraryBrowser:update(dt)
     self:report('%s, "%s"   Effect %d of %d   Emitters %d   Particles %d', category.title, self.path, self.effectIndex, #category.effects, #self.emitters, self.system.count)
 end
 
--- A grid behind the effects shows how distortion effects bend the image.
-function LibraryBrowser.drawGrid(area)
+-- A grid behind the effects shows how distortion effects bend the image, in dark lines on the light floor of the night.
+function LibraryBrowser.drawGrid(area, color)
     for x = area.x - area.x % 80, area:right(), 80 do
-        graphics2d.drawLine(x, area.y, x, area:bottom(), 2, '#30FFFFFF', {layer = -9})
+        graphics2d.drawLine(x, area.y, x, area:bottom(), 2, color, {layer = -9})
     end
     for y = area.y - area.y % 80, area:bottom(), 80 do
-        graphics2d.drawLine(area.x, y, area:right(), y, 2, '#30FFFFFF', {layer = -9})
+        graphics2d.drawLine(area.x, y, area:right(), y, 2, color, {layer = -9})
     end
 end
 
@@ -241,8 +241,14 @@ end
 
 function LibraryBrowser:draw(area)
     local bounds = graphics2d.canvasBounds()
-    ParticleTest.backdrop({0.05, 0.06, 0.11}, {0.1, 0.11, 0.2})
-    LibraryBrowser.drawGrid(bounds)
+    -- At night the floor is light stone that the darkness covers, so the lights of the effects show it, its grid and the counter around them.
+    if self.lit then
+        ParticleTest.backdrop({0.5, 0.52, 0.6}, {0.62, 0.62, 0.68})
+        LibraryBrowser.drawGrid(bounds, '#50101828')
+    else
+        ParticleTest.backdrop({0.05, 0.06, 0.11}, {0.1, 0.11, 0.2})
+        LibraryBrowser.drawGrid(bounds, '#30FFFFFF')
+    end
     if self.floor then
         local y = self.system.y + self.floor * self.system.scale
         graphics2d.drawRect({bounds.x, y, bounds.width, bounds:bottom() - y}, '#FF2A2F45', {layer = -8})

@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF6A1F",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "flash",
@@ -85,7 +92,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "fireball",
@@ -162,7 +170,8 @@
                 0.25,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "smoke",
@@ -282,7 +291,8 @@
                 0.08,
                 1
             ],
-            "tilt": 1.15
+            "tilt": 1.15,
+            "emission": 1
         },
         {
             "name": "rocks",
@@ -419,7 +429,8 @@
             "gravity": [
                 0,
                 400
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

@@ -138,7 +138,14 @@
                 0.02,
                 0.85,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFC8F0FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "sparkles",
@@ -195,7 +202,8 @@
             "offset": [
                 0,
                 -30
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

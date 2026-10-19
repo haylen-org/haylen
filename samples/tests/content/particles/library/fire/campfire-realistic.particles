@@ -36,7 +36,8 @@
             "offset": [
                 0,
                 -40
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "flames",

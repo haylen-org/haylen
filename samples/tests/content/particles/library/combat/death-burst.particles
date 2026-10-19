@@ -49,7 +49,14 @@
             "offset": [
                 0,
                 -60
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "orbs",
@@ -108,7 +115,8 @@
                 0,
                 0.02,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "ring",
@@ -150,7 +158,8 @@
             "offset": [
                 0,
                 -60
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -207,7 +216,8 @@
             "offset": [
                 0,
                 -60
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

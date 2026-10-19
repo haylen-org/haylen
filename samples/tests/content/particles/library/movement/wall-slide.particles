@@ -126,7 +126,13 @@
                 0,
                 0.4,
                 1
-            ]
+            ],
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF9A2E",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "rays",
@@ -91,7 +98,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "flare",
@@ -141,7 +149,8 @@
                 0,
                 0.1,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparks",
@@ -193,7 +202,8 @@
                 1
             ],
             "alignToVelocity": true,
-            "stretch": 0.04
+            "stretch": 0.04,
+            "emission": 1
         }
     ]
 }

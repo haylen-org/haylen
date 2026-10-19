@@ -33,7 +33,14 @@
                 0.45,
                 1
             ],
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF8A1F",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "core",
@@ -68,7 +75,8 @@
                 0.2,
                 0.8,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "trail",
@@ -114,7 +122,8 @@
                 0.15,
                 0.6,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparks",

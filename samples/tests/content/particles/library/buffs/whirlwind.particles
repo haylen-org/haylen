@@ -37,7 +37,14 @@
                 0,
                 -20
             ],
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFC24A",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "funnel",
@@ -87,7 +94,8 @@
                 0.15,
                 0.7,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "dust",

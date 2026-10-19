@@ -38,7 +38,14 @@
                 0.12,
                 0.45,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF4F7A",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "heart",
@@ -141,7 +148,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "ring",
@@ -179,7 +187,8 @@
                 0,
                 0.08,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

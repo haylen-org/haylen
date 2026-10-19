@@ -132,7 +132,14 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

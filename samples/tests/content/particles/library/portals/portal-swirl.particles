@@ -33,7 +33,14 @@
                 0.45,
                 1
             ],
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF3BD6",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "spiral",
@@ -69,7 +76,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "rim",
@@ -105,7 +113,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "pull",
@@ -151,7 +160,8 @@
                 0,
                 0.2,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }

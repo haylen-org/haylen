@@ -40,7 +40,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "streaks",
@@ -100,7 +101,8 @@
                 0,
                 0.05,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "flash",
@@ -151,7 +153,14 @@
             "offset": [
                 0,
                 -60
-            ]
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 500,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "dust",

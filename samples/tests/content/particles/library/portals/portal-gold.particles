@@ -33,7 +33,14 @@
                 0.45,
                 1
             ],
-            "localSpace": true
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFB52E",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         },
         {
             "name": "swirl",
@@ -71,7 +78,8 @@
                 0,
                 0.2,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "core",
@@ -106,7 +114,8 @@
                 0.25,
                 0.75,
                 1
-            ]
+            ],
+            "emission": 1
         },
         {
             "name": "sparkles",
@@ -155,7 +164,8 @@
                 0,
                 0.2,
                 1
-            ]
+            ],
+            "emission": 1
         }
     ]
 }
