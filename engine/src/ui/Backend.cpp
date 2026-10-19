@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cfloat>
+#include <cmath>
 #include <cstring>
 #include <stdexcept>
 #include <utility>
@@ -518,8 +519,12 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     switch (event.type) {
     case platform::Event::Type::TouchBegan:
         for (const platform::TouchPoint& touch : touches) {
+            if (primaryTouch && touch.changed && touch.id != *primaryTouch) {
+                touchShared = true;
+            }
             if (!primaryTouch && touch.changed) {
                 primaryTouch = touch.id;
+                touchShared = false;
                 io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
                 place(touch.position);
                 io.AddMouseButtonEvent(0, true);
@@ -676,6 +681,8 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     std::swap(blockedPrevious, blocked);
     blocked.clear();
     requestedCursor.reset();
+    dragKeeper = 0;
+    immediateWindows.clear();
     frameTextures.clear();
     renderCalls.clear();
     draws.clear();
@@ -702,6 +709,25 @@ math::Rect Backend::getDisplayRect() const noexcept {
 
 void Backend::setTransparentWindow() {
     transparentWindow = ImGui::GetCurrentWindow()->ID;
+}
+
+void Backend::markImmediateWindow() {
+    immediateWindows.push_back(ImGui::GetCurrentWindow()->RootWindow->ID);
+}
+
+// A finger that travels past the slop or shares the screen is a swipe, a drag or a pinch, never a tap, so the item it pressed lets it go unless the item follows it, the way a touch screen tells taps from gestures.
+void Backend::releaseTravelledTouch() {
+    const ImGuiContext& state = *imguiContext;
+    if (!primaryTouch || state.ActiveId == 0 || state.ActiveId == dragKeeper || state.DragDropActive || state.ActiveIdWindow == nullptr) {
+        return;
+    }
+    if (std::ranges::find(immediateWindows, state.ActiveIdWindow->RootWindow->ID) != immediateWindows.end()) {
+        return;
+    }
+    const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
+    if (touchShared || std::hypot(moved.x, moved.y) >= ScrollArbiter::kDragSlop) {
+        ImGui::ClearActiveID();
+    }
 }
 
 void Backend::blockPointer(const math::Rect& area) {
@@ -844,6 +870,7 @@ void Backend::render(graphics2d::Renderer& renderer) {
     if (!frameActive) {
         return;
     }
+    releaseTravelledTouch();
     ImGui::Render();
     frameActive = false;
 

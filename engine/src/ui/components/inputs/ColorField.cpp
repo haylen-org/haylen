@@ -5,6 +5,7 @@
 #include <optional>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
@@ -52,6 +53,9 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
             context.emit(*this, "change", {{"value", value.toHex()}});
         }
         pickerHeight = ImGui::GetItemRectSize().y;
+        if (GImGui->ActiveId != 0 && GImGui->ActiveIdWindow == ImGui::GetCurrentWindow()) {
+            context.keepDrag(GImGui->ActiveId);
+        }
         popup.end(context);
     }
 }

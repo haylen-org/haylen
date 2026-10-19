@@ -137,6 +137,7 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     // The title bar moves the window while the pointer holds it, and the new place is reported once it lets go.
     const Widgets::Interaction drag = Widgets::interact(context, grip, 0.0F, "##title", ImGuiButtonFlags_NoNavFocus);
     if (drag.held) {
+        context.keepDrag(ImGui::GetItemID());
         const ImVec2 delta = ImGui::GetIO().MouseDelta;
         position = *position + math::Vec2{delta.x, delta.y};
         dragging = true;

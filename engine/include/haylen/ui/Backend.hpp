@@ -145,6 +145,12 @@ class Backend final {
     // Marks the window being built as transparent to the pointer outside its items and blocked areas, which suits a window that hosts app GUIs.
     void setTransparentWindow();
 
+    // Tells that the item that holds the pointer follows it while held, such as a slider, so a finger that travels keeps it. Every other item lets go of a finger that travels past the slop or shares the screen with another finger, so a swipe or a pinch never clicks it. The windows of `haylen.imgui` keep every finger.
+    void keepDrag(ImGuiID item) noexcept {
+        dragKeeper = item;
+    }
+    void markImmediateWindow();
+
     // Returns an ImGui reference for an app texture, valid until the end of the frame.
     [[nodiscard]] ImTextureRef getTextureReference(const graphics::Texture& texture);
 
@@ -297,6 +303,7 @@ class Backend final {
 
     // Closes every popup that no component drew in the last frame, such as the dialog of a node that was hidden or of a GUI that was unmounted, so it never keeps the pointer and cancel from the windows under it.
     static void closeAbandonedPopups();
+    void releaseTravelledTouch();
     void updateTextures(ImDrawData& data);
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
     void drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists);
@@ -340,7 +347,10 @@ class Backend final {
     std::vector<math::Rect> blocked;
     std::vector<math::Rect> blockedPrevious;
     ImGuiID transparentWindow = 0;
+    ImGuiID dragKeeper = 0;
+    std::vector<ImGuiID> immediateWindows;
     std::optional<std::uint64_t> primaryTouch;
+    bool touchShared = false;
     std::optional<math::Vec2> pointerPosition;
     std::string clipboard;
     platform::Window::Cursor cursor = platform::Window::Cursor::Default;

@@ -74,6 +74,7 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
         Widgets::focusItem(context);
     }
     if (swipe.held) {
+        context.keepDrag(ImGui::GetItemID());
         dragged += ImGui::GetIO().MouseDelta.x;
         waited = 0.0F;
     } else if (dragged != 0.0F) {

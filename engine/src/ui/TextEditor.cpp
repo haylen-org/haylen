@@ -191,6 +191,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         submitted = ImGui::InputText("##field", &value, flags | ImGuiInputTextFlags_EnterReturnsTrue, &callback, &editing);
     }
     const bool edited = ImGui::IsItemEdited();
+    if (ImGui::IsItemActive()) {
+        context.keepDrag(ImGui::GetItemID());
+    }
 
     // A submit, cancel or dismiss of the platform ends the editing, and only a submit reports the text.
     if (const std::optional<platform::TextInput::Action> action = session.takeAction(id)) {

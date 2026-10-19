@@ -48,7 +48,7 @@ int ImGuiLua::returnChanged(lua_State* L, bool changed, int values) {
 
 // Opens a window with `beginWindow(name[, {x, y, width, height, closable, noTitleBar, noResize, noMove, autoResize}])` and returns whether it is visible and, for closable windows, whether it is still open.
 int ImGuiLua::beginWindow(lua_State* L) {
-    (void)requireFrame(L);
+    Backend& backend = requireFrame(L);
     ImGuiWindowFlags flags = ImGuiWindowFlags_None;
     bool closable = false;
     if (!lua_isnoneornil(L, 2)) {
@@ -84,6 +84,7 @@ int ImGuiLua::beginWindow(lua_State* L) {
     }
     bool open = true;
     const bool visible = ImGui::Begin(readLabel(L, 1), closable ? &open : nullptr, flags);
+    backend.markImmediateWindow();
     lua::Stack::push(L, visible);
     lua::Stack::push(L, open);
     return 2;

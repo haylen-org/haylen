@@ -119,6 +119,10 @@ Context::WheelScroll Context::takeWheel(ImGuiID area, const math::Rect& bounds, 
     return {.distance = wheel.lines * getMetric(Theme::Metric::ScrollLine) + wheel.points / getBackend().getPointsPerUnit(), .momentum = wheel.momentum / getBackend().getPointsPerUnit(), .motion = motion, .touched = wheel.touched, .lifted = wheel.lifted};
 }
 
+void Context::keepDrag(ImGuiID item) {
+    getBackend().keepDrag(item);
+}
+
 bool Context::takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal) {
     return getBackend().getScrollArbiter().takeDrag(area, bounds, horizontal);
 }

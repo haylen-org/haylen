@@ -215,7 +215,7 @@ function Browse:zoomBy(factor)
     self.camera.zoom = {zoom, zoom}
 end
 
--- A drag on the map pans it, the wheel and a pinch zoom it, and a tap on a pin opens its listing.
+-- A drag on the map pans it, the wheel and a pinch zoom it, and a tap on a pin opens its listing. The taps come from the gestures of the engine, so a drag, a swipe or the fingers of a pinch never open a pin.
 function Browse:readPointer()
     local area = self.gui:bounds('map')
     if not area then
@@ -231,28 +231,20 @@ function Browse:readPointer()
         local touch = touches[1]
         if touch.phase == 'began' then
             self.dragging = inside(touch.x, touch.y) and not ui.usingPointer()
-            self.moved = 0
         elseif self.dragging then
             camera.position = {camera.x - touch.dx / camera.zoom.x, camera.y - touch.dy / camera.zoom.x}
-            self.moved = self.moved + math.abs(touch.dx) + math.abs(touch.dy)
-            if touch.phase == 'ended' and self.moved < 12 then
-                self:tapAt(touch.x, touch.y)
-            end
         end
     elseif #touches == 0 then
         if input.mousePressed('left') then
             self.dragging = inside(mouseX, mouseY) and not ui.usingPointer()
-            self.moved = 0
         elseif self.dragging and input.mouseDown('left') then
             local dx, dy = input.mouseDelta()
             camera.position = {camera.x - dx / camera.zoom.x, camera.y - dy / camera.zoom.x}
-            self.moved = self.moved + math.abs(dx) + math.abs(dy)
-        elseif self.dragging and input.mouseReleased('left') then
+        else
             self.dragging = false
-            if self.moved < 12 then
-                self:tapAt(mouseX, mouseY)
-            end
         end
+    else
+        self.dragging = false
     end
     local _, wheel = input.mouseScroll()
     if wheel ~= 0 and inside(mouseX, mouseY) and not ui.usingPointer() then
@@ -263,6 +255,8 @@ function Browse:readPointer()
             self.pinchBase = self.pinchBase or camera.zoom.x
             local zoom = math.max(0.3, math.min(2.5, self.pinchBase * gesture.scale))
             camera.zoom = {zoom, zoom}
+        elseif gesture.type == 'tap' and inside(gesture.x, gesture.y) and not ui.usingPointer() then
+            self:tapAt(gesture.x, gesture.y)
         end
     end
     if #touches < 2 then

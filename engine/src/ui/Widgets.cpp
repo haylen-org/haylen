@@ -371,6 +371,9 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
     const double before = value;
     ImGui::SliderBehavior(box, id, ImGuiDataType_Double, &value, reversed ? &maximum : &minimum, reversed ? &minimum : &maximum, "%.4f", ImGuiSliderFlags_NoInput, &grab);
     ImGui::PopStyleVar();
+    if (GImGui->ActiveId == id) {
+        context.keepDrag(id);
+    }
 
     // Only a value the player moves lands on the step, so a value given off the step stays as it is until then.
     if (value != before) {

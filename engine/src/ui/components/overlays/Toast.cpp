@@ -463,6 +463,7 @@ void Toast::followSwipe(Context& context, Notice& notice, float width) {
         }
         if (notice.swiping) {
             notice.swipe = dragged.x;
+            context.keepDrag(ImGui::GetItemID());
         }
         return;
     }

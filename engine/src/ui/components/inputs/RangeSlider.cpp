@@ -83,6 +83,9 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     Surfaces::draw(context, Theme::Surface::TrackFill, {std::min(from, to), groove.y, std::fabs(to - from), groove.height}, context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
     const bool ring = context.getFocus().isRingShown(itemId);
     const bool pressed = GImGui->ActiveId == itemId;
+    if (pressed) {
+        context.keepDrag(itemId);
+    }
     drawKnob(context, area, toPosition(context, low, track), ring && !highActive, pressed && !highActive);
     drawKnob(context, area, toPosition(context, high, track), ring && highActive, pressed && highActive);
     if (showValue) {

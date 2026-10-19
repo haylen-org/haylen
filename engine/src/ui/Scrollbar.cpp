@@ -90,7 +90,9 @@ std::optional<double> Scrollbar::interact(Context& context, const math::Rect& ar
             return std::clamp(offset + (backward ? -viewLength : viewLength), 0.0, maximum);
         }
     }
-    if (!held) {
+    if (held) {
+        context.keepDrag(id);
+    } else {
         grabbing = false;
     }
     if (!grabbing || travel <= 0.0F) {

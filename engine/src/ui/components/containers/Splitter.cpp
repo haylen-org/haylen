@@ -47,6 +47,7 @@ void Splitter::render(Context& context, const math::Rect& bounds) {
         ImGui::SetMouseCursor(vertical ? ImGuiMouseCursor_ResizeNS : ImGuiMouseCursor_ResizeEW);
     }
     if (state.held) {
+        context.keepDrag(ImGui::GetItemID());
         const ImVec2 mouse = ImGui::GetIO().MousePos;
         const float offset = vertical ? mouse.y - bounds.y : (context.isRightToLeft() ? bounds.getRight() - mouse.x : mouse.x - bounds.x);
         ratio = std::clamp((offset - gutter * 0.5F) / std::max(1.0F, span - gutter), 0.05F, 0.95F);

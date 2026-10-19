@@ -144,6 +144,8 @@ class Context final {
     [[nodiscard]] WheelScroll takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered);
     // Returns whether the finger that drags belongs to an area that it pressed and that can scroll along `horizontal`. The finger goes to the innermost such area once it travels past the slop along that axis more than across it, and stays with it until it lifts.
     [[nodiscard]] bool takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal);
+    // Keeps the finger that holds `item` when it travels or shares the screen, for a control that follows the pointer while held, such as a slider. A finger lets go of every other item then, so a swipe or a pinch never clicks it.
+    void keepDrag(ImGuiID item);
     // Returns how far an area scrolls in this frame, toward its bottom or right end when positive, while the player drags an item near one of its ends: within a quarter of its length or the theme metric `listRowHeight`, whichever is shorter, in the innermost area that can move that way, faster the closer the item gets to the edge. The `position` is how far the area shows from its top or left end, out of `maximum`.
     [[nodiscard]] float takeEdgeScroll(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum);
     // Holds an item that the pointer drags outside drag and drop, such as the lifted item of a collection, for the next frame, so it scrolls the areas it nears.

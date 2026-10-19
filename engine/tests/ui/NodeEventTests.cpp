@@ -118,6 +118,54 @@ TEST_F(NodeEventTest, EndsTheHoverWhenAFingerLifts) {
     EXPECT_EQ(findLastEvent("hover").value, (core::Json{{"hovered", false}}));
 }
 
+// A finger that travels past the slop is a swipe and a finger that shares the screen is part of a pinch, so neither clicks the button it pressed, even when it lifts over the button, while a finger that stays taps it.
+TEST_F(NodeEventTest, NeverClicksAButtonAFingerSwipedOrPinched) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "wide", "text": "Wide", "width": 600, "height": 200}]})");
+    const math::Vec2 center = getBounds(*gui, "wide").getCenter();
+
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames(2);
+    for (int step = 1; step <= 4; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
+        frames();
+    }
+    touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{80.0F, 0.0F});
+    frames(3);
+    EXPECT_EQ(countEvents("wide:click"), 0);
+
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames(2);
+    touch(platform::Event::Type::TouchBegan, 2, center + math::Vec2{200.0F, 0.0F});
+    frames(2);
+    touch(platform::Event::Type::TouchEnded, 2, center + math::Vec2{200.0F, 0.0F});
+    touch(platform::Event::Type::TouchEnded, 1, center);
+    frames(3);
+    EXPECT_EQ(countEvents("wide:click"), 0);
+
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames(2);
+    touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{4.0F, 3.0F});
+    frames();
+    touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{4.0F, 3.0F});
+    frames(3);
+    EXPECT_EQ(countEvents("wide:click"), 1);
+}
+
+// A control that follows the finger keeps it however far it travels.
+TEST_F(NodeEventTest, KeepsTheFingerThatDragsASlider) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "slider", "id": "volume", "value": 0, "width": 600}]})");
+    const math::Rect track = getBounds(*gui, "volume");
+    touch(platform::Event::Type::TouchBegan, 1, {track.x + 4.0F, track.getCenter().y});
+    frames(2);
+    for (int step = 1; step <= 6; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, {track.x + 4.0F + 50.0F * static_cast<float>(step), track.getCenter().y});
+        frames();
+    }
+    touch(platform::Event::Type::TouchEnded, 1, {track.x + 304.0F, track.getCenter().y});
+    frames(2);
+    EXPECT_GT(findLastEvent("change").value["value"].get<double>(), 0.4);
+}
+
 TEST_F(NodeEventTest, ReportsThePointerOverANode) {
     const std::vector<Notice> pointing{Notice::Hover, Notice::Press, Notice::Drag, Notice::Release, Notice::Scroll};
     auto gui = mountListening(R"({"kind": "column", "children": [{"kind": "card", "id": "card", "width": 300, "height": 200, "children": [{"kind": "button", "id": "inner", "text": "Inner"}]}, {"kind": "label", "id": "away", "text": "Away"}]})", {{"card", pointing}, {"inner", {Notice::Press}}});
