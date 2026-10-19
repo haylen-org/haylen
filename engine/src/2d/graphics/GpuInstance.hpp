@@ -51,8 +51,8 @@ struct GpuInstance {
     // Packs the effect of a sprite into the record that follows its own, which the effect program reads at the same instance. The reach grows the quad of the sprite by the outline and the glow, as a share of its source of `sourceSize` pixels.
     [[nodiscard]] static GpuInstance makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept;
 
-    // Packs a shape for the shape program, whose quad reaches past the edge of the shape by the margin, so the fade of the edge fits inside it.
-    [[nodiscard]] static GpuInstance makeShape(const Shape& shape, float margin) noexcept;
+    // Packs a shape for the shape program, whose quad reaches past the edge of the shape by the margin, so the fade of the edge fits inside it. A flipped texture, a render target of a backend that starts at the bottom row, draws upright.
+    [[nodiscard]] static GpuInstance makeShape(const Shape& shape, float margin, bool flipped) noexcept;
 
     // Multiplies the alpha of the colors of a sprite or of a shape, such as by the strength of a distortion draw.
     void fade(float amount) noexcept;
@@ -87,7 +87,7 @@ struct GpuInstance {
         std::uint8_t unused[32];
     };
 
-    // The center, half size and rotation of a shape in canvas units, its softness and margin as half floats, its fill and border colors, its border width as a share of its shorter half side, its sweep and the angle the sweep starts at as shares of a full turn, and the radii of its corners as shares of its shorter half side.
+    // The center, half size and rotation of a shape in canvas units, its softness and margin as half floats, its fill and border colors, its border width as a share of its shorter half side, its sweep and the angle the sweep starts at as shares of a full turn, its flags, and the radii of its corners as shares of its shorter half side.
     struct ShapeRecord {
         float center[2];
         float halfSize[2];
@@ -103,6 +103,10 @@ struct GpuInstance {
     static constexpr float kWeightScale = 256.0F;
     static constexpr float kSkewScale = 127.0F;
     static constexpr float kMaximumReach = 0.48F;
+
+    // The flags of a shape, which the shape program reads from the last number of its form.
+    static constexpr std::uint16_t kEllipseFlag = 1;
+    static constexpr std::uint16_t kFlippedFlag = 2;
 
     // The largest finite half float, the smallest normal one and the steps of the subnormal halves below it.
     static constexpr float kLargestHalf = 65504.0F;

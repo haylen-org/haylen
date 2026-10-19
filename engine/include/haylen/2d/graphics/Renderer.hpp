@@ -193,8 +193,9 @@ class Renderer final {
     void drawLine(math::Vec2 from, math::Vec2 to, float thickness, math::Color color, const DrawOrder& order = {});
     void drawPolyline(std::span<const math::Vec2> points, float thickness, math::Color color, bool closed = false, const DrawOrder& order = {});
 
-    // Circles, rings, arcs and shapes draw as one quad each, whose edges the shader covers exactly, so they fade over one pixel of the destination at any size.
+    // Circles, ellipses, rings, arcs and shapes draw as one quad each, whose edges the shader covers, so they fade over one pixel of the destination at any size.
     void drawCircle(math::Vec2 center, float radius, math::Color color, const DrawOrder& order = {});
+    void drawEllipse(math::Vec2 center, math::Vec2 radii, math::Color color, const DrawOrder& order = {});
     void drawRing(math::Vec2 center, float radius, float thickness, math::Color color, const DrawOrder& order = {});
     void drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order = {});
     void drawShape(const Shape& shape, const DrawOrder& order = {});

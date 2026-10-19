@@ -702,6 +702,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
         renderer.drawCircle({60.0F, 60.0F}, 10.0F, math::Color::white());
         renderer.drawArc({60.0F, 60.0F}, 20.0F, 4.0F, 0.0F, 2.0F, math::Color::white());
         renderer.drawShape({.bounds = {100.0F, 100.0F, 80.0F, 30.0F}, .radii = {8.0F, 8.0F, 8.0F, 8.0F}, .borderWidth = 2.0F, .borderColor = math::Color::black()});
+        renderer.drawShape({.kind = graphics2d::Shape::Kind::Ellipse, .bounds = {100.0F, 140.0F, 60.0F, 30.0F}, .texture = texture});
         renderer.drawMesh(texture, mesh, indices);
         renderer.drawText(*current.getDefaultFont(), "Every frame", {10.0F, 200.0F}, {.size = 24.0F, .outlineWidth = 2.0F, .shadowOffset = {2.0F, 2.0F}, .shadowColor = math::Color::black()});
         renderer.popClip();

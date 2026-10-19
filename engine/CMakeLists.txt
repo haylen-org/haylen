@@ -84,6 +84,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/RendererState.cpp
   src/2d/graphics/RichTextLua.cpp
   src/2d/graphics/SceneTransition.cpp
+  src/2d/graphics/Shape.cpp
   src/2d/graphics/SpriteBatch.cpp
   src/2d/graphics/SpriteBatchLua.cpp
   src/2d/graphics/SpriteEffect.cpp

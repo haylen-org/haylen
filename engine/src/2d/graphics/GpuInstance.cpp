@@ -107,20 +107,21 @@ GpuInstance GpuInstance::makeEffect(const SpriteEffect& effect, math::Vec2 sourc
     });
 }
 
-GpuInstance GpuInstance::makeShape(const Shape& shape, float margin) noexcept {
+GpuInstance GpuInstance::makeShape(const Shape& shape, float margin, bool flipped) noexcept {
     static_assert(sizeof(ShapeRecord) == sizeof(GpuInstance));
     const math::Vec2 center = shape.bounds.getCenter();
     const math::Vec2 half = shape.bounds.getSize() * 0.5F;
     const float shorter = std::min(half.x, half.y);
     const auto share = [shorter](float value) { return unorm16(shorter > 0.0F ? value / shorter : 0.0F); };
     const float start = std::fmod(shape.startAngle, math::Math::kTau);
+    const auto flags = static_cast<std::uint16_t>((shape.kind == Shape::Kind::Ellipse ? kEllipseFlag : 0U) | (flipped ? kFlippedFlag : 0U));
     return std::bit_cast<GpuInstance>(ShapeRecord{
         .center = {center.x, center.y},
         .halfSize = {half.x, half.y},
         .rotation = shape.rotation,
         .reach = {toHalf(shape.softness), toHalf(margin)},
         .colors = {shape.color.toRgba8(), shape.borderColor.toRgba8()},
-        .form = {share(shape.borderWidth), unorm16(shape.sweep / math::Math::kTau), unorm16((start < 0.0F ? start + math::Math::kTau : start) / math::Math::kTau), 0},
+        .form = {share(shape.borderWidth), unorm16(shape.sweep / math::Math::kTau), unorm16((start < 0.0F ? start + math::Math::kTau : start) / math::Math::kTau), flags},
         .radii = {share(shape.radii[0]), share(shape.radii[1]), share(shape.radii[2]), share(shape.radii[3])},
     });
 }

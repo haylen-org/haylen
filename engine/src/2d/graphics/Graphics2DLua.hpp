@@ -1,12 +1,28 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <string_view>
 
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/Shape.hpp"
+#include "haylen/lua/EnumNames.hpp"
 #include "haylen/math/Vec2.hpp"
 
 struct lua_State;
+
+namespace haylen::lua {
+
+template <> struct EnumNames<graphics2d::Shape::Kind> {
+    static std::optional<graphics2d::Shape::Kind> fromName(std::string_view name) {
+        return graphics2d::Shape::kindFromName(name);
+    }
+    static std::string_view name(graphics2d::Shape::Kind value) {
+        return graphics2d::Shape::kindName(value);
+    }
+};
+
+} // namespace haylen::lua
 
 namespace haylen::text {
 class Font;
@@ -30,7 +46,7 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 4> kNineSliceFields{"source", "borders", "pieces", "fill"};
     static constexpr std::array<std::string_view, 1> kCaptureFields{"clear"};
     static constexpr std::array<std::string_view, 1> kNineSliceDrawFields{"borderScale"};
-    static constexpr std::array<std::string_view, 8> kShapeFields{"radius", "rotation", "startAngle", "sweep", "color", "borderWidth", "borderColor", "softness"};
+    static constexpr std::array<std::string_view, 10> kShapeFields{"kind", "radius", "rotation", "startAngle", "sweep", "color", "texture", "borderWidth", "borderColor", "softness"};
     static constexpr std::array<std::string_view, 15> kVectorFields{"x", "y", "width", "height", "scaleX", "scaleY", "pivotX", "pivotY", "rotation", "tilt", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
@@ -63,6 +79,7 @@ class Graphics2DLua final {
     static int drawRectOutline(lua_State* L);
     static int drawLine(lua_State* L);
     static int drawCircle(lua_State* L);
+    static int drawEllipse(lua_State* L);
     static int drawRing(lua_State* L);
     static int drawArc(lua_State* L);
     static int drawShape(lua_State* L);

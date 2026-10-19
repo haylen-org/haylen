@@ -76,7 +76,7 @@ TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
         .borderColor = math::Color::fromHex(0x10203040U),
         .softness = 3.0F,
     };
-    const GpuInstance packed = GpuInstance::makeShape(shape, 1.5F);
+    const GpuInstance packed = GpuInstance::makeShape(shape, 1.5F, false);
     EXPECT_FLOAT_EQ(at<float>(packed, 0), 30.0F);
     EXPECT_FLOAT_EQ(at<float>(packed, 4), 28.0F);
     EXPECT_FLOAT_EQ(at<float>(packed, 8), 20.0F);
@@ -91,14 +91,15 @@ TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
     EXPECT_NEAR(share(packed, 32), 0.25F, 0.0001F);
     EXPECT_NEAR(share(packed, 34), 0.5F, 0.0001F);
     EXPECT_NEAR(share(packed, 36), 0.75F, 0.0001F);
+    EXPECT_EQ(at<std::uint16_t>(packed, 38), 0U);
     EXPECT_NEAR(share(packed, 40), 0.5F, 0.0001F);
     EXPECT_NEAR(share(packed, 42), 1.0F, 0.0001F);
     EXPECT_NEAR(share(packed, 44), 1.0F, 0.0001F);
     EXPECT_NEAR(share(packed, 46), 0.0F, 0.0001F);
 
     // Half floats keep tiny pixels of zoomed canvases and clamp huge ones.
-    EXPECT_NEAR(half(GpuInstance::makeShape(shape, 0.0003F), 22), 0.0003F, 0.000001F);
-    EXPECT_FLOAT_EQ(half(GpuInstance::makeShape(shape, 1.0e9F), 22), 65504.0F);
+    EXPECT_NEAR(half(GpuInstance::makeShape(shape, 0.0003F, false), 22), 0.0003F, 0.000001F);
+    EXPECT_FLOAT_EQ(half(GpuInstance::makeShape(shape, 1.0e9F, false), 22), 65504.0F);
 
     // A distortion draw lowers the coverage of the fill and of the border alike.
     GpuInstance faded = packed;
@@ -106,6 +107,16 @@ TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
     EXPECT_EQ(at<std::uint32_t>(faded, 24) >> 24U, 0x60U);
     EXPECT_EQ(at<std::uint32_t>(faded, 28) >> 24U, 0x20U);
     EXPECT_EQ(at<std::uint32_t>(faded, 24) & 0x00FFFFFFU, shape.color.toRgba8() & 0x00FFFFFFU);
+}
+
+// The last number of the form tells the shape program to measure an ellipse instead of the rounded rectangle and to turn a flipped texture upright, while the radii of an ellipse go unused.
+TEST_F(ShapeRecordTest, PacksTheKindAndTheFlipOfItsTexture) {
+    EXPECT_EQ(at<std::uint16_t>(GpuInstance::makeShape({.kind = Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, false), 38), 1U);
+    EXPECT_EQ(at<std::uint16_t>(GpuInstance::makeShape({.bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, true), 38), 2U);
+    EXPECT_EQ(at<std::uint16_t>(GpuInstance::makeShape({.kind = Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, true), 38), 3U);
+    EXPECT_EQ(Shape::kindFromName("ellipse"), Shape::Kind::Ellipse);
+    EXPECT_EQ(Shape::kindName(Shape::Kind::Rectangle), "rectangle");
+    EXPECT_FALSE(Shape::kindFromName("oval").has_value());
 }
 
 // The fade of an edge spans one pixel of the destination, so the quad of a shape reaches one pixel past its edge, plus half its softness, whatever the zoom of the canvas and the density of the screen.
@@ -173,15 +184,30 @@ TEST(ShapeDrawTest, DrawsEveryCurveAsOneQuadOfOneCall) {
         renderer.drawRing({50.0F, 50.0F}, 20.0F, 4.0F, math::Color::white());
         renderer.drawArc({50.0F, 50.0F}, 20.0F, 4.0F, 0.0F, 1.0F, math::Color::white());
         renderer.drawShape({.bounds = {0.0F, 0.0F, 120.0F, 40.0F}, .radii = {8.0F, 8.0F, 0.0F, 0.0F}, .rotation = 0.3F, .borderWidth = 2.0F, .borderColor = math::Color::black(), .softness = 4.0F});
+        renderer.drawEllipse({50.0F, 50.0F}, {30.0F, 10.0F}, math::Color::white());
+        renderer.drawEllipse({50.0F, 50.0F}, {30.0F, 0.0F}, math::Color::white());
         renderer.drawCircle({50.0F, 50.0F}, 0.0F, math::Color::white());
         renderer.drawRing({50.0F, 50.0F}, 20.0F, 0.0F, math::Color::white());
         renderer.drawShape({.bounds = {0.0F, 0.0F, 0.0F, 40.0F}});
     });
     // clang-format on
-    EXPECT_EQ(stats.instances, 5U);
+    EXPECT_EQ(stats.instances, 6U);
     EXPECT_EQ(stats.vertices, 0U);
     EXPECT_EQ(stats.sprites, 0U);
     EXPECT_EQ(stats.drawCalls, 1U);
+
+    // A shape with a texture of its own draws in a call of that texture, after the shapes of the white texture.
+    const graphics::Texture portrait = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+    // clang-format off
+    const Renderer::Stats textured = test::FrameRenderer::renderOnce(fixture, [&portrait](core::Engine& engine) {
+        Renderer& renderer = engine.getRenderer2D();
+        renderer.beginScreen();
+        renderer.drawCircle({50.0F, 50.0F}, 20.0F, math::Color::white());
+        renderer.drawShape({.kind = Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 40.0F}, .texture = portrait}, {.layer = 1});
+    });
+    // clang-format on
+    EXPECT_EQ(textured.instances, 2U);
+    EXPECT_EQ(textured.drawCalls, 2U);
 
     Renderer& renderer = fixture.engine().getRenderer2D();
     renderer.beginScreen();

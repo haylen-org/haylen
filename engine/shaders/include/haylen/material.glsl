@@ -78,13 +78,17 @@ void haylen_vertex_main() {
     haylen_source = vec4(0.0, 0.0, 1.0, 1.0);
     haylen_data = vec4(0.0);
 #elif defined(HAYLEN_SHAPE)
-    // The quad reaches past the edge by the margin, where the edge fades out, and turns with the shape around its center, while the texture coordinates go from 0 to 1 across the rectangle of the shape. The fragment stage measures from the center in the frame of the shape, where the border and the radii of the corners take their shares of the shorter half side, and from the same point turned so the sector lies around the x axis.
+    // The quad reaches past the edge by the margin, where the edge fades out, and turns with the shape around its center, while the texture coordinates go from 0 to 1 across the rectangle of the shape, upright on a flipped texture. The flags of the form say whether the shape is an ellipse and whether its texture is flipped. The fragment stage measures from the center in the frame of the shape, where the border and the radii of the corners take their shares of the shorter half side, and from the same point turned so the sector lies around the x axis.
     vec2 local = (corner * 2.0 - 1.0) * (shape_half_size + shape_reach.y);
     float sine = sin(shape_rotation);
     float cosine = cos(shape_rotation);
     vec2 world = shape_center + vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
+    float flags = floor(shape_form.w * 65535.0 + 0.5);
     uv = local / shape_half_size * 0.5 + 0.5;
+    if (flags >= 2.0) {
+        uv.y = 1.0 - uv.y;
+    }
     color = shape_color;
     haylen_flash = vec4(0.0);
     haylen_text_style = vec3(0.0);
@@ -95,7 +99,7 @@ void haylen_vertex_main() {
     float middle = (shape_form.z + shape_form.y * 0.5) * 6.28318531;
     haylen_shape_frame = vec4(local, shape_half_size);
     haylen_shape_sector_point = vec4(local.x * cos(middle) + local.y * sin(middle), local.y * cos(middle) - local.x * sin(middle), shape_form.y, 0.0);
-    haylen_shape_form = vec4(shape_form.x * shorter, shape_reach.x, shorter, 0.0);
+    haylen_shape_form = vec4(shape_form.x * shorter, shape_reach.x, shorter, mod(flags, 2.0));
     haylen_shape_radii = shape_radii * shorter;
     haylen_shape_border = shape_border_color;
 #else
@@ -187,8 +191,19 @@ in vec4 haylen_shape_form;
 in vec4 haylen_shape_radii;
 in vec4 haylen_shape_border;
 
-// The signed distance from a point in the frame of the shape to the edge of its rounded rectangle, negative inside, with the radius of the corner of the quarter the point lies in.
+// The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, from the value of the implicit ellipse over its gradient, which is exact at the edge and close to it across the border.
+float haylen_shape_ellipse(vec2 point) {
+    vec2 radii = haylen_shape_frame.zw;
+    float scaled = length(point / radii);
+    float slope = length(point / (radii * radii));
+    return slope > 0.000001 ? scaled * (scaled - 1.0) / slope : -min(radii.x, radii.y);
+}
+
+// The signed distance from a point in the frame of the shape to the edge of its rounded rectangle, negative inside, with the radius of the corner of the quarter the point lies in, or to the edge of its ellipse.
 float haylen_shape_box(vec2 point) {
+    if (haylen_shape_form.w > 0.5) {
+        return haylen_shape_ellipse(point);
+    }
     vec4 radii = haylen_shape_radii;
     float radius = point.x < 0.0 ? (point.y < 0.0 ? radii.x : radii.w) : (point.y < 0.0 ? radii.y : radii.z);
     vec2 corner = abs(point) - haylen_shape_frame.zw + radius;
@@ -291,10 +306,12 @@ vec2 haylen_texture_size() {
     return vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
 }
 
-// Moves a point inside the texels of the source rectangle of the draw, so filtering never reads the texels around it, such as the neighbours of a region of an atlas or the borders of a stretched nine-slice center. Meshes and shapes keep their texture coordinates.
+// Moves a point inside the texels of the source rectangle of the draw, so filtering never reads the texels around it, such as the neighbours of a region of an atlas or the borders of a stretched nine-slice center. Meshes keep their texture coordinates, and shapes keep theirs inside the texture, so the fade past their edge never wraps around a repeating texture.
 vec2 haylen_inside(vec2 point) {
-#if defined(HAYLEN_MESH) || defined(HAYLEN_SHAPE)
+#if defined(HAYLEN_MESH)
     return point;
+#elif defined(HAYLEN_SHAPE)
+    return clamp(point, 0.0, 1.0);
 #else
     vec2 margin = 0.5 / haylen_texture_size();
     vec2 middle = (haylen_source.xy + haylen_source.zw) * 0.5;

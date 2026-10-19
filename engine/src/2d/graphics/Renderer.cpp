@@ -656,6 +656,12 @@ void Renderer::drawCircle(math::Vec2 center, float radius, math::Color color, co
     }
 }
 
+void Renderer::drawEllipse(math::Vec2 center, math::Vec2 radii, math::Color color, const DrawOrder& order) {
+    if (radii.x > 0.0F && radii.y > 0.0F) {
+        drawShape({.kind = Shape::Kind::Ellipse, .bounds = math::Rect::fromCenter(center, radii * 2.0F), .color = color}, order);
+    }
+}
+
 void Renderer::drawRing(math::Vec2 center, float radius, float thickness, math::Color color, const DrawOrder& order) {
     drawArc(center, radius, thickness, 0.0F, math::Math::kTau, color, order);
 }

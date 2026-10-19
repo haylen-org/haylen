@@ -364,10 +364,11 @@ void RendererState::addInstances(Program program, const DrawOrder& order, const 
 }
 
 void RendererState::addShape(const Shape& shape, const DrawOrder& order) {
-    const GpuInstance packed = GpuInstance::makeShape(shape, getPixelSize() + shape.softness * 0.5F);
+    const graphics::Texture& texture = shape.texture.isValid() ? shape.texture : white;
+    const GpuInstance packed = GpuInstance::makeShape(shape, getPixelSize() + shape.softness * 0.5F, texture.getResource()->flipped);
     const math::Vec2 half = shape.bounds.getSize() * 0.5F;
     const float lowest = shape.bounds.getCenter().y + std::fabs(std::sin(shape.rotation)) * half.x + std::fabs(std::cos(shape.rotation)) * half.y;
-    addInstances(Program::Shape, order, white, std::span(&packed, 1), lowest);
+    addInstances(Program::Shape, order, texture, std::span(&packed, 1), lowest);
 }
 
 void RendererState::scaleCoverage(std::span<GpuInstance> data, Program program, float distortion) noexcept {
