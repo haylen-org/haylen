@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import collections
 import contextlib
 import copy
 import dataclasses
@@ -55,6 +56,8 @@ GENERATED_FOLDER = "haylen"
 ARTIFACTS_DIR = BUILD_ROOT / "artifacts"
 ENGINE_BUILDS_DIR = BUILD_ROOT / "engine"
 APPS_DIR = BUILD_ROOT / "apps"
+# The folder of the logs that keep the whole output of the tools a command of haylen.py runs, one per command, such as `build/logs/run.log`, which the terminal shows only with "--verbose".
+LOGS_DIR = BUILD_ROOT / "logs"
 CPP_BUILDS_DIR = BUILD_ROOT / "cpp"
 ANDROID_LIBRARY_PROJECT = ENGINE_DIR / "platform" / "android"
 ENGINE_LOGO = ENGINE_DIR / "platform" / "web" / "haylen-logo.svg"
@@ -226,6 +229,9 @@ class Terminal:
         self.stderr = stderr
         self.stdout_color = Terminal.shows_color(stdout, environment)
         self.stderr_color = Terminal.shows_color(stderr, environment)
+        # Whether the tools print their whole output in the terminal, which "--verbose" turns on, and the log that keeps it otherwise.
+        self.verbose = False
+        self.log = LOGS_DIR / "haylen.log"
 
     @staticmethod
     def shows_color(stream: TextIO, environment: Mapping[str, str]) -> bool:
@@ -295,6 +301,16 @@ class Terminal:
             lines.append(Terminal.paint(details, self.stderr_color, Terminal.COMMAND))
         print("\n".join(lines), file=self.stderr, flush=True)
 
+    def progress(self, line: str) -> None:
+        """Shows the latest line of a quiet tool in place on a terminal with color, cut to the width of the terminal, and nothing elsewhere."""
+        if self.stdout_color:
+            width = shutil.get_terminal_size().columns - 1
+            print(f"\r\x1b[2K{Terminal.paint(line.strip()[:width], True, Terminal.COMMAND)}", end="", file=self.stdout, flush=True)
+
+    def end_progress(self) -> None:
+        if self.stdout_color:
+            print("\r\x1b[2K", end="", file=self.stdout, flush=True)
+
     def verbatim(self, text: str, error: bool = False) -> None:
         """Prints text that must stay as it is, such as a snippet to copy or a diff."""
         print(text, file=self.stderr if error else self.stdout, flush=True)
@@ -322,9 +338,13 @@ def missing_command(executable: str) -> str:
     return f'The command "{Path(executable).name}" was not found. Install it, or add its folder to "PATH".'
 
 
-def run(command: list, *, cwd: Path = ROOT, env: dict[str, str] | None = None, echo: bool = True) -> None:
-    """Runs a command with its output in the terminal, after printing the command unless the caller describes it in a step of its own, and stops with an error that names the command when it fails."""
+def run(command: list, *, cwd: Path = ROOT, env: dict[str, str] | None = None, echo: bool = True, stream: bool = False) -> None:
+    """Runs a command and stops with an error that names the command when it fails. A command whose output the developer reads, such as the log of an app or the results of tests, streams it with `stream`, and so does every command with "--verbose", after printing the command unless the caller describes it in a step of its own. Any other command writes its output to the log of the terminal, shows its latest line in place, and on a failure prints its last lines and where the whole output is."""
     parts = [str(part) for part in command]
+    name = Path(parts[0]).name
+    if not (stream or terminal.verbose):
+        run_quietly(parts, cwd, env, name)
+        return
     if echo:
         terminal.command(parts)
     try:
@@ -332,10 +352,38 @@ def run(command: list, *, cwd: Path = ROOT, env: dict[str, str] | None = None, e
     except FileNotFoundError as error:
         raise BuildError(missing_command(parts[0])) from error
     except subprocess.CalledProcessError as error:
-        name = Path(parts[0]).name
         if error.returncode < 0:
             raise BuildError(f'The command "{name}" was stopped by the signal {-error.returncode}.') from error
         raise BuildError(f'The command "{name}" failed with exit code {error.returncode}, and its output above shows why.') from error
+
+
+# The last lines of a quiet command that a failure prints.
+FAILURE_LINES = 60
+
+
+def run_quietly(parts: list[str], cwd: Path, env: dict[str, str] | None, name: str) -> None:
+    terminal.log.parent.mkdir(parents=True, exist_ok=True)
+    tail: collections.deque[str] = collections.deque(maxlen=FAILURE_LINES)
+    with terminal.log.open("a", encoding="utf-8") as log:
+        log.write(f"$ {Terminal.command_line(parts)}\n")
+        try:
+            process = subprocess.Popen(parts, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
+        except FileNotFoundError as error:
+            raise BuildError(missing_command(parts[0])) from error
+        with process:
+            try:
+                for line in process.stdout:
+                    log.write(line)
+                    tail.append(line.rstrip("\n"))
+                    if line.strip():
+                        terminal.progress(line)
+                code = process.wait()
+            finally:
+                terminal.end_progress()
+    if code < 0:
+        raise BuildError(f'The command "{name}" was stopped by the signal {-code}.')
+    if code != 0:
+        raise BuildError(f'The command "{name}" failed with exit code {code}. Its last lines follow, and `{shown_path(terminal.log)}` holds its whole output.', "\n".join(tail))
 
 
 def capture(command: list, *, cwd: Path = ROOT) -> str:
@@ -617,7 +665,7 @@ def command_test(args: argparse.Namespace) -> None:
     args.target = "haylen_tests"
     command_build(args)
     terminal.step("Running the engine tests")
-    run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)])
+    run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)], stream=True)
     terminal.success("The engine tests passed.")
 
 
@@ -647,7 +695,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     profiles = directory / "coverage"
     shutil.rmtree(profiles, ignore_errors=True)
     terminal.step("Running the engine tests")
-    run(["ctest", "--test-dir", directory, "--output-on-failure", "--parallel", str(args.jobs)])
+    run(["ctest", "--test-dir", directory, "--output-on-failure", "--parallel", str(args.jobs)], stream=True)
 
     raw = sorted(profiles.glob("*.profraw"))
     if not raw:
@@ -659,7 +707,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     binary = directory / "bin" / "haylen_tests"
     ignore = r"(_deps|\.cache|engine/tests|engine/src/platform/(apple|android|web|windows|linux|sokol)|generated)"
     report = [llvm_tool("llvm-cov"), "report", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}"]
-    run(report)
+    run(report, stream=True)
     run([llvm_tool("llvm-cov"), "show", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}", "-format=html", f"-output-dir={profiles / 'html'}"])
     terminal.success(f"The coverage report is in `{shown_path(profiles / 'html' / 'index.html')}`.")
 
@@ -727,20 +775,20 @@ def command_bench(args: argparse.Namespace) -> None:
         build = build_options(host_name(), "Release", CPU_BENCHMARKS[args.suite], args.jobs)
         command_build(build)
         terminal.step(f'Running the "{args.suite}" benchmark')
-        run([build_dir(build.platform, build.config) / "bin" / executable_name(build.target)])
+        run([build_dir(build.platform, build.config) / "bin" / executable_name(build.target)], stream=True)
         return
 
     if args.suite == "lua":
         build = build_options(host_name(), "Release", "haylen-lua-benchmark", args.jobs)
         command_build(build)
         terminal.step('Running the "lua" benchmark')
-        run([build_dir(build.platform, build.config) / "bin" / executable_name(build.target), ENGINE_DIR / "bench" / "lua-benchmark"])
+        run([build_dir(build.platform, build.config) / "bin" / executable_name(build.target), ENGINE_DIR / "bench" / "lua-benchmark"], stream=True)
         return
 
     build = build_options(host_name(), "Release", "haylen-sprite-benchmark", args.jobs)
     command_build(build)
     terminal.step('Running the "sprites" benchmark')
-    run([cmake_app_executable(build_dir(build.platform, build.config), build.target)])
+    run([cmake_app_executable(build_dir(build.platform, build.config), build.target)], stream=True)
 
 
 def sdk_dir(platform_name: str, config: str) -> Path:
@@ -2596,10 +2644,10 @@ def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None,
     info = plistlib.loads((bundle / "Contents" / "Info.plist" if desktop else bundle / "Info.plist").read_bytes())
     executable, identifier = info["CFBundleExecutable"], info["CFBundleIdentifier"]
     if args.platform == "macos":
-        run([bundle / "Contents" / "MacOS" / executable, *arguments])
+        run([bundle / "Contents" / "MacOS" / executable, *arguments], stream=True)
     elif args.platform == "catalyst":
         with unified_log(executable, []):
-            run([bundle / "Contents" / "MacOS" / executable, *arguments])
+            run([bundle / "Contents" / "MacOS" / executable, *arguments], stream=True)
     elif simulator:
         udid = simulator["udid"]
         terminal.step(f'Launching "{identifier}" on the simulator "{simulator["name"]}"')
@@ -2608,13 +2656,13 @@ def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None,
         run(["xcrun", "simctl", "bootstatus", udid, "-b"])
         run(["xcrun", "simctl", "install", udid, bundle])
         with unified_log(executable, ["xcrun", "simctl", "spawn", udid]):
-            run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *arguments])
+            run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *arguments], stream=True)
     else:
         if not args.device:
             raise BuildError('Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.')
         terminal.step(f'Launching "{identifier}" on the device "{args.device}"')
         run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
-        run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier, *arguments])
+        run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier, *arguments], stream=True)
 
 
 def apple_product(app: App, platform: str, config: str) -> Path:
@@ -2913,7 +2961,7 @@ def launch_android(apk: Path, args: argparse.Namespace, device: str, arguments: 
     run([adb(), "-s", device, "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", f"{package}/dev.haylen.HaylenActivity", *extras])
     process = capture([adb(), "-s", device, "shell", "pidof", package]).strip()
     if process:
-        run([adb(), "-s", device, "logcat", "--pid", process])
+        run([adb(), "-s", device, "logcat", "--pid", process], stream=True)
 
 
 def android_manifest(apk: Path) -> dict[str, set[str]]:
@@ -3582,7 +3630,7 @@ def run_desktop(app: App, root: Path, args: argparse.Namespace) -> None:
     report_requirements(requirements)
     executable = desktop_folder(app, args.platform) / DESKTOP_LAYOUTS[args.platform][1].format(executable=app.executable)
     with device_development(app, root / GENERATED_FOLDER / "app", args) as arguments:
-        run([executable, *arguments], cwd=executable.parent)
+        run([executable, *arguments], cwd=executable.parent, stream=True)
 
 
 def ensure_appimage_tools() -> dict[str, Path]:
@@ -3705,7 +3753,7 @@ def command_run(args: argparse.Namespace) -> None:
         threading.Thread(target=watch_app_shaders, args=(app, stop), daemon=True).start()
         terminal.step(f"Running `{shown_path(app)}` in the player with hot reload, until the app quits or Ctrl+C stops it")
         try:
-            run([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), "--dev", *native_options, app])
+            run([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), "--dev", *native_options, app], stream=True)
         finally:
             stop.set()
         return
@@ -4093,7 +4141,7 @@ def command_run_cpp(args: argparse.Namespace) -> None:
             stop_on_release_problems(cpp_release_problems(app, bundle, "Contents/Resources/app") if bundle else cpp_release_problems(app, executable.parent, "app"))
         if not args.build_only:
             terminal.step(f'Running "{target}"')
-            run([executable])
+            run([executable], stream=True)
 
 
 def cpp_release_options(args: argparse.Namespace) -> list[str]:
@@ -4968,25 +5016,30 @@ def add_app_argument(parser: argparse.ArgumentParser) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="haylen", description="Builds, tests and runs the Haylen engine, and creates, runs, checks and packages the apps that a developer names by their folder.")
     parser.add_argument("--version", action="version", version=f"Haylen {engine_version()}", help="Show the version of the engine and exit.")
+    verbose_help = 'Show the whole output of every tool in the terminal, which a command otherwise keeps in its log in "build/logs", such as "build/logs/run.log".'
+    parser.add_argument("--verbose", action="store_true", help=verbose_help)
+    # Every command takes "--verbose" too, where it adds to the value before the command instead of replacing it.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--verbose", action="store_true", default=argparse.SUPPRESS, help=verbose_help)
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
 
-    tools = commands.add_parser("tools", help="Download the pinned build tools.")
+    tools = commands.add_parser("tools", parents=[common], help="Download the pinned build tools.")
     tools.add_argument("--emsdk", action="store_true", help=f"Install Emscripten {EMSDK_VERSION} into .tools.")
     tools.add_argument("--gradle", action="store_true", help=f"Install Gradle {GRADLE_VERSION} into .tools.")
     tools.set_defaults(handler=command_tools)
 
     for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, "Build and run the engine tests on this machine.")):
-        sub = commands.add_parser(name, help=help_text)
+        sub = commands.add_parser(name, parents=[common], help=help_text)
         add_build_options(sub)
         sub.set_defaults(handler=handler)
 
-    engine = commands.add_parser("engine", help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")
+    engine = commands.add_parser("engine", parents=[common], help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")
     engine.add_argument("--platform", default="all", choices=[*ARTIFACT_PLATFORMS, "all"], help='Platform of the artifacts, "all" by default.')
     engine.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the artifacts, "Release" by default.')
     add_jobs_option(engine)
     engine.set_defaults(handler=command_engine)
 
-    new = commands.add_parser("new", help="Create an app with the starter code and a project of every platform template, which the developer owns.")
+    new = commands.add_parser("new", parents=[common], help="Create an app with the starter code and a project of every platform template, which the developer owns.")
     new.add_argument("folder", help="Folder of the new app, which must not exist or be empty.")
     new.add_argument("--name", help="Display name, from the folder name by default.")
     new.add_argument("--identifier", help='Reverse domain identifier, "com.example.<folder>" by default.')
@@ -4994,37 +5047,37 @@ def build_parser() -> argparse.ArgumentParser:
     new.add_argument("--kind", default="lua", choices=list(APP_KINDS), help='Kind of the app: "lua", whose code is Lua, or "cpp", a CMake project whose C++ code compiles the engine. "lua" by default.')
     new.set_defaults(handler=command_new)
 
-    plugin = commands.add_parser("plugin", help="Add plugins to an app, remove them, list them or create a plugin.")
+    plugin = commands.add_parser("plugin", parents=[common], help="Add plugins to an app, remove them, list them or create a plugin.")
     actions = plugin.add_subparsers(dest="action", required=True, metavar="action")
-    add_plugin = actions.add_parser("add", help='Copy a plugin folder or a plugin repository into "plugins" of an app and list it in "app.json".')
+    add_plugin = actions.add_parser("add", parents=[common], help='Copy a plugin folder or a plugin repository into "plugins" of an app and list it in "app.json".')
     add_plugin.add_argument("plugin", help="A plugin folder, or the git repository of a plugin, such as https://github.com/haylen-org/<plugin>.git.")
     add_plugin.add_argument("--ref", help="Branch, tag or commit of the repository, its default branch otherwise.")
     add_plugin.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     add_plugin.set_defaults(handler=command_plugin_add)
-    remove_plugin = actions.add_parser("remove", help='Delete a plugin from "plugins" of an app and from its "app.json".')
+    remove_plugin = actions.add_parser("remove", parents=[common], help='Delete a plugin from "plugins" of an app and from its "app.json".')
     remove_plugin.add_argument("id", help="Id of the plugin.")
     remove_plugin.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     remove_plugin.set_defaults(handler=command_plugin_remove)
-    list_plugins = actions.add_parser("list", help="List the plugins of an app with their status.")
+    list_plugins = actions.add_parser("list", parents=[common], help="List the plugins of an app with their status.")
     list_plugins.add_argument("--app", default=".", help="The app folder, the current folder by default.")
     list_plugins.set_defaults(handler=command_plugin_list)
-    new_plugin = actions.add_parser("new", help="Create a plugin from templates/plugin.")
+    new_plugin = actions.add_parser("new", parents=[common], help="Create a plugin from templates/plugin.")
     new_plugin.add_argument("folder", help="Folder of the new plugin, named after its id, which must not exist or be empty.")
     new_plugin.add_argument("--id", help='Id of the plugin in "dash-case", the folder name by default.')
     new_plugin.set_defaults(handler=command_plugin_new)
 
-    platform_project = commands.add_parser("platform", help="Create the project of a platform in an app or compare it with the template.")
+    platform_project = commands.add_parser("platform", parents=[common], help="Create the project of a platform in an app or compare it with the template.")
     platform_actions = platform_project.add_subparsers(dest="action", required=True, metavar="action")
-    add_platform = platform_actions.add_parser("add", help='Create "platform/<template>" of an app from the template of the platform.')
+    add_platform = platform_actions.add_parser("add", parents=[common], help='Create "platform/<template>" of an app from the template of the platform.')
     add_app_argument(add_platform)
     add_platform.add_argument("template", choices=platform_templates(), help="The platform template to copy.")
     add_platform.set_defaults(handler=command_platform_add)
-    diff_platform = platform_actions.add_parser("diff", help='Show how "platform/<template>" of an app differs from the current template, without changing anything.')
+    diff_platform = platform_actions.add_parser("diff", parents=[common], help='Show how "platform/<template>" of an app differs from the current template, without changing anything.')
     add_app_argument(diff_platform)
     diff_platform.add_argument("--template", required=True, choices=platform_templates(), help="The platform template to compare with.")
     diff_platform.set_defaults(handler=command_platform_diff)
 
-    run_app = commands.add_parser("run", help="Run an app: in the player of this machine with hot reload, or built from its project for a platform.")
+    run_app = commands.add_parser("run", parents=[common], help="Run an app: in the player of this machine with hot reload, or built from its project for a platform.")
     add_app_argument(run_app)
     run_app.add_argument("--platform", choices=list(RUN_TARGETS), help="Build the project of the app for a platform. Without it the desktop player runs the app folder in development mode.")
     run_app.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
@@ -5034,7 +5087,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_web_server_options(run_app, 8000)
     run_app.set_defaults(handler=command_run)
 
-    prepare = commands.add_parser("prepare", help='Write the folder "haylen" of the project of a platform, or the site or folder of the app, and nothing else.')
+    prepare = commands.add_parser("prepare", parents=[common], help='Write the folder "haylen" of the project of a platform, or the site or folder of the app, and nothing else.')
     add_app_argument(prepare)
     prepare.add_argument("--platform", required=True, choices=list(RUN_TARGETS), help="The platform whose project to prepare.")
     prepare.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
@@ -5042,7 +5095,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_jobs_option(prepare)
     prepare.set_defaults(handler=command_prepare)
 
-    xcodegen = commands.add_parser("xcodegen", help='Write "haylen" of the Apple project of an app and generate its "App.xcodeproj" again from "project.yml".')
+    xcodegen = commands.add_parser("xcodegen", parents=[common], help='Write "haylen" of the Apple project of an app and generate its "App.xcodeproj" again from "project.yml".')
     xcodegen.add_argument("app", nargs="?", default=".", help="The app folder, the current folder by default.")
     xcodegen.add_argument("--platform", default="macos", choices=list(APPLE_RUNS), help="Apple platform whose native libraries the project gets.")
     xcodegen.add_argument("--template", action="store_true", help='Generate the "App.xcodeproj" of the Apple template of the engine instead, after a change to its "project.yml".')
@@ -5051,14 +5104,14 @@ def build_parser() -> argparse.ArgumentParser:
     add_jobs_option(xcodegen)
     xcodegen.set_defaults(handler=command_xcodegen)
 
-    check = commands.add_parser("check", help="Check the last build of an app for a platform against what the engine and its plugins need.")
+    check = commands.add_parser("check", parents=[common], help="Check the last build of an app for a platform against what the engine and its plugins need.")
     add_app_argument(check)
     check.add_argument("--platform", required=True, choices=[name for name, target in RUN_TARGETS.items() if target.check], help="The platform whose last build to check.")
     check.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the build to check.")
     check.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header that the server of the site sends, on the web.')
     check.set_defaults(handler=command_check)
 
-    android_key = commands.add_parser("android-key", help='Create the upload key of release builds, or the debug key, in "platform/android/keystore" of an app, with its certificate and the properties that sign its builds.')
+    android_key = commands.add_parser("android-key", parents=[common], help='Create the upload key of release builds, or the debug key, in "platform/android/keystore" of an app, with its certificate and the properties that sign its builds.')
     add_app_argument(android_key)
     kinds = android_key.add_mutually_exclusive_group()
     kinds.add_argument("--release", dest="kind", action="store_const", const="release", help="Create the upload key that signs release builds, which is the default.")
@@ -5070,7 +5123,7 @@ def build_parser() -> argparse.ArgumentParser:
     android_key.add_argument("--force", action="store_true", help="Replace a key that the project already has.")
     android_key.set_defaults(handler=command_android_key)
 
-    run_cpp = commands.add_parser("run-cpp", help="Build and run a C++ app project, which compiles the engine through CMake.")
+    run_cpp = commands.add_parser("run-cpp", parents=[common], help="Build and run a C++ app project, which compiles the engine through CMake.")
     run_cpp.add_argument("project", nargs="?", help='The folder of a CMake project that adds the engine and calls "haylen_add_app", relative to the current folder or absolute.')
     run_cpp.add_argument("--platform", default=host_name(), choices=CPP_RUN_PLATFORMS, help="The platform to build and run on, this machine by default.")
     run_cpp.add_argument("--target", default="main", help='The "haylen_add_app" target, "main" by default, as the C++ template names it.')
@@ -5082,41 +5135,41 @@ def build_parser() -> argparse.ArgumentParser:
     add_web_server_options(run_cpp, 8000)
     run_cpp.set_defaults(handler=command_run_cpp)
 
-    content = commands.add_parser("content", help="Build, verify, inspect, compare, publish and compact the protected releases of an app, and show or rotate its keys.")
+    content = commands.add_parser("content", parents=[common], help="Build, verify, inspect, compare, publish and compact the protected releases of an app, and show or rotate its keys.")
     content_actions = content.add_subparsers(dest="action", required=True, metavar="action")
     content_platforms = list(CONTENT_PROFILES)
-    content_build = content_actions.add_parser("build", help="Build the protected release of an app for a platform into its build folder.")
+    content_build = content_actions.add_parser("build", parents=[common], help="Build the protected release of an app for a platform into its build folder.")
     add_app_argument(content_build)
     content_build.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose release to build.")
     content_build.set_defaults(handler=command_content_build)
-    content_verify = content_actions.add_parser("verify", help="Check every manifest, shard and file of a protected release with the keys of the app.")
+    content_verify = content_actions.add_parser("verify", parents=[common], help="Check every manifest, shard and file of a protected release with the keys of the app.")
     add_app_argument(content_verify)
     content_verify.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose last release to verify.")
     content_verify.add_argument("--release", help="A release folder to verify instead of the last release of the platform.")
     content_verify.set_defaults(handler=command_content_verify)
-    content_inspect = content_actions.add_parser("inspect", help="List the manifests, shards and files of a protected release with their sizes, chunks and deduplication.")
+    content_inspect = content_actions.add_parser("inspect", parents=[common], help="List the manifests, shards and files of a protected release with their sizes, chunks and deduplication.")
     add_app_argument(content_inspect)
     content_inspect.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose last release to inspect.")
     content_inspect.add_argument("--release", help="A release folder to inspect instead of the last release of the platform.")
     content_inspect.add_argument("--chunks", action="store_true", help="List every chunk of every file too.")
     content_inspect.set_defaults(handler=command_content_inspect)
-    content_diff = content_actions.add_parser("diff", help="Compare two protected releases of an app: the chunks they share, add and drop, the files that changed and what an update downloads.")
+    content_diff = content_actions.add_parser("diff", parents=[common], help="Compare two protected releases of an app: the chunks they share, add and drop, the files that changed and what an update downloads.")
     add_app_argument(content_diff)
     content_diff.add_argument("earlier", help="The folder of the earlier release.")
     content_diff.add_argument("later", help="The folder of the later release.")
     content_diff.set_defaults(handler=command_content_diff)
-    content_publish = content_actions.add_parser("publish", help="Publish the content of an app as the next generation of an update channel in a tree of static files for a web server or content delivery network.")
+    content_publish = content_actions.add_parser("publish", parents=[common], help="Publish the content of an app as the next generation of an update channel in a tree of static files for a web server or content delivery network.")
     add_app_argument(content_publish)
     content_publish.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose apps take the content.")
     content_publish.add_argument("--channel", default="stable", help='The update channel, "stable" by default.')
     content_publish.add_argument("--output", required=True, help="The folder of the publication tree, which keeps every earlier generation.")
     content_publish.set_defaults(handler=command_content_publish)
-    content_compact = content_actions.add_parser("compact", help="Delete the manifests and packs of a publication tree that no channel reaches within its last generations.")
+    content_compact = content_actions.add_parser("compact", parents=[common], help="Delete the manifests and packs of a publication tree that no channel reaches within its last generations.")
     add_app_argument(content_compact)
     content_compact.add_argument("tree", help="The folder of the publication tree.")
     content_compact.add_argument("--keep", type=int, default=CONTENT_KEPT_GENERATIONS, help=f"The generations of every channel to keep, {CONTENT_KEPT_GENERATIONS} by default.")
     content_compact.set_defaults(handler=command_content_compact)
-    content_keys = content_actions.add_parser("keys", help="Show the key folder and the key IDs of an app, which are created when it has none, or add a new content key.")
+    content_keys = content_actions.add_parser("keys", parents=[common], help="Show the key folder and the key IDs of an app, which are created when it has none, or add a new content key.")
     add_app_argument(content_keys)
     content_keys.add_argument("--rotate", action="store_true", help="Add a content key, which encrypts the content of later releases while the earlier keys stay for installed content.")
     content_keys.set_defaults(handler=command_content_keys)
@@ -5124,7 +5177,7 @@ def build_parser() -> argparse.ArgumentParser:
         action.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the content tool of the desktop artifacts.")
         add_jobs_option(action)
 
-    dist = commands.add_parser("dist", help='Build the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the ".deb" and the AppImage of Linux.')
+    dist = commands.add_parser("dist", parents=[common], help='Build the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the ".deb" and the AppImage of Linux.')
     add_app_argument(dist)
     dist.add_argument("--platform", required=True, choices=["windows", "linux"], help="The platform whose packages to build, which is this machine.")
     dist.add_argument("-o", "--output", help='Folder of the packages, "dist" in the app folder by default.')
@@ -5132,7 +5185,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_jobs_option(dist)
     dist.set_defaults(handler=command_dist)
 
-    steam = commands.add_parser("steam", help="Build the release of an app for a desktop platform and stage its depots and build scripts for SteamPipe.")
+    steam = commands.add_parser("steam", parents=[common], help="Build the release of an app for a desktop platform and stage its depots and build scripts for SteamPipe.")
     add_app_argument(steam)
     steam.add_argument("--platform", required=True, choices=STEAM_PLATFORMS, help="The desktop platform of the depot of the app.")
     steam.add_argument("--app-id", required=True, help="The ID of the app on Steam.")
@@ -5144,36 +5197,36 @@ def build_parser() -> argparse.ArgumentParser:
     add_jobs_option(steam)
     steam.set_defaults(handler=command_steam)
 
-    package = commands.add_parser("package", help='Zip the "app.json", "source" and "content" of an app.')
+    package = commands.add_parser("package", parents=[common], help='Zip the "app.json", "source" and "content" of an app.')
     add_app_argument(package)
     package.add_argument("-o", "--output", default="app.zip", help="Zip file to write, app.zip in the current folder by default.")
     package.set_defaults(handler=command_package)
 
-    shaders = commands.add_parser("shaders", help='Compile the shaders under "content/shaders" of an app into ".shader" files for every backend.')
+    shaders = commands.add_parser("shaders", parents=[common], help='Compile the shaders under "content/shaders" of an app into ".shader" files for every backend.')
     add_app_argument(shaders)
     shaders.add_argument("--force", action="store_true", help="Compile every shader, including the ones that are up to date.")
     shaders.set_defaults(handler=command_shaders)
 
-    serve_folder = commands.add_parser("serve", help="Serve a folder with the headers WebAssembly pages need.")
+    serve_folder = commands.add_parser("serve", parents=[common], help="Serve a folder with the headers WebAssembly pages need.")
     serve_folder.add_argument("directory", help="The folder of the web page.")
     add_web_server_options(serve_folder, 8000)
     serve_folder.set_defaults(handler=command_serve)
 
-    coverage = commands.add_parser("coverage", help="Measure engine code coverage with LLVM source-based coverage.")
+    coverage = commands.add_parser("coverage", parents=[common], help="Measure engine code coverage with LLVM source-based coverage.")
     add_jobs_option(coverage)
     add_sanitizer_option(coverage)
     coverage.set_defaults(handler=command_coverage)
 
-    formatter = commands.add_parser("format", help='Format the C, C++ and Objective-C sources with "clang-format".')
+    formatter = commands.add_parser("format", parents=[common], help='Format the C, C++ and Objective-C sources with "clang-format".')
     formatter.add_argument("--check", action="store_true", help="Fail instead of rewriting files.")
     formatter.set_defaults(handler=command_format)
 
-    bench = commands.add_parser("bench", help="Build and run a benchmark of the engine in Release on this machine.")
+    bench = commands.add_parser("bench", parents=[common], help="Build and run a benchmark of the engine in Release on this machine.")
     bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "animation", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content, node or animation benchmark on the CPU or the Lua sprite benchmark on the CPU.")
     add_jobs_option(bench)
     bench.set_defaults(handler=command_bench)
 
-    sdk = commands.add_parser("sdk", help='Build the engine SDK and install it for "find_package(haylen)", and check that other projects consume the engine.')
+    sdk = commands.add_parser("sdk", parents=[common], help='Build the engine SDK and install it for "find_package(haylen)", and check that other projects consume the engine.')
     sdk.add_argument("--platform", default=host_name(), choices=sorted(DESKTOP_PLATFORMS | WEB_PLATFORMS), help="Platform of the SDK, this machine by default.")
     sdk.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the SDK, "Release" by default.')
     sdk.add_argument("--output", help="Install prefix, build/sdk/haylen-<platform>-<config> by default.")
@@ -5181,12 +5234,15 @@ def build_parser() -> argparse.ArgumentParser:
     add_jobs_option(sdk)
     sdk.set_defaults(handler=command_sdk)
 
-    commands.add_parser("clean", help="Remove every build tree, the engine artifacts and the build folders of apps.").set_defaults(handler=command_clean)
+    commands.add_parser("clean", parents=[common], help="Remove every build tree, the engine artifacts and the build folders of apps.").set_defaults(handler=command_clean)
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
+    terminal.verbose = args.verbose
+    terminal.log = LOGS_DIR / f"{args.command}.log"
+    terminal.log.unlink(missing_ok=True)
     # The OpenSSL build that Varn adds is one step of the build, which runs as many jobs as `CMAKE_BUILD_PARALLEL_LEVEL` named when the tree was configured, so the commands never see the variable and every build keeps to its `--jobs`.
     os.environ.pop("CMAKE_BUILD_PARALLEL_LEVEL", None)
     try:

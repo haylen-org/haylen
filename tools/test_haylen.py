@@ -344,6 +344,37 @@ class TerminalTest(unittest.TestCase):
         self.assertNotIn("Traceback", stderr.getvalue())
 
 
+class QuietCommandTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.stdout = io.StringIO()
+        self.terminal = haylen.Terminal(self.stdout, io.StringIO(), {"NO_COLOR": "1"})
+        self.terminal.log = self.scratch / "logs" / "run.log"
+        patcher = mock.patch.object(haylen, "terminal", self.terminal)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_a_tool_keeps_its_output_in_the_log_of_the_command(self):
+        haylen.run([sys.executable, "-c", "print('compiled 3 files')"])
+        self.assertEqual(self.stdout.getvalue(), "")
+        self.assertIn("compiled 3 files", self.terminal.log.read_text())
+
+    def test_a_failure_shows_the_last_lines_and_names_the_log(self):
+        with self.assertRaises(haylen.BuildError) as raised:
+            haylen.run([sys.executable, "-c", "import sys; print('\\n'.join(f'line {n}' for n in range(100))); sys.exit(2)"])
+        self.assertIn("failed with exit code 2", str(raised.exception))
+        self.assertIn(haylen.shown_path(self.terminal.log), str(raised.exception))
+        self.assertTrue(raised.exception.details.endswith("line 99"))
+        self.assertNotIn("line 39\n", raised.exception.details + "\n")
+
+    def test_verbose_and_streamed_commands_print_their_output(self):
+        self.terminal.verbose = True
+        haylen.run([sys.executable, "-c", "print('compiled')"])
+        self.assertFalse(self.terminal.log.exists())
+        self.assertIn("$ ", self.stdout.getvalue())
+
+
 class AppArgumentTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp()).resolve()
