@@ -2018,9 +2018,9 @@ Plugins e documentação de integração:
 
 Samples:
 
-- [ ] Componentes reutilizáveis nos samples, fáceis de copiar para outros projetos: texto que sobe com o dano ou o ganho (`label-up`) e barra de vida (`health-bar`).
-- [ ] Exemplos de ECS (entidade, componente e sistema).
-- [ ] Exemplos de composição para reaproveitar componentes em outras entidades.
+- [x] Componentes reutilizáveis nos samples, fáceis de copiar para outros projetos: texto que sobe com o dano ou o ganho (`label-up`) e barra de vida (`health-bar`). Feito: uma categoria nova do projeto de testes, Components (`CMP`), com `label-up.lua` (dano, crítico, cura, ouro e erro que saltam, sobem, empilham em sequências rápidas e somem, de um pool que não aloca por quadro) e `health-bar.lua` (a barra que corre até a vida com um rastro da vida perdida, cor pela fração que resta, marcas, escudo que absorve primeiro, clarão no golpe e a opção de sumir quando cheia), cada um num arquivo só que depende apenas da engine, e os testes `CMP-001` e `CMP-002` que os mostram com o código de uso.
+- [x] Exemplos de ECS (entidade, componente e sistema). Feito: `ecs.lua` na categoria Components, um sistema de entidades e componentes com piscinas compactas por componente, sistemas que andam pela menor piscina do que pedem e entidades destruídas só no fim do quadro, e o teste `CMP-003` com centenas de bolas cujo comportamento vem só dos componentes (gravidade, perseguição do cursor, tempo de vida), sistemas que se desligam e componentes tirados enquanto roda.
+- [x] Exemplos de composição para reaproveitar componentes em outras entidades. Feito: `composition.lua`, entidades feitas de comportamentos pequenos (seguir, vagar, orbitar, flutuar, atirar e vida com a barra de `health-bar.lua`), e o teste `CMP-004` com quatro entidades montadas dos mesmos comportamentos, que ganham e perdem comportamentos enquanto rodam.
 - [ ] Cada sample mostra também o código de como fazer o que mostra, organizado na tela para ir do que se vê ao código.
 - [ ] Gráficos de todos os tipos comuns (linha, área, barra, barra empilhada, pizza, rosca, dispersão, radar, histograma, velas, mapa de calor), sem bugs com dados malucos (vazios, negativos, enormes, NaN, um só ponto).
 - [ ] Sample de física com fichas das propriedades para brincar (gravidade, massa, densidade, atrito, restituição, amortecimento, impulsos e tiros) e entender o efeito de cada valor.

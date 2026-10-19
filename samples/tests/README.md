@@ -373,6 +373,17 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 | `AUD-009` | Loudness and output | Thirty explosions with the limiter of the master bus on and off, its threshold and the gain it takes away, and the state and latency of the output with the unlock of a browser. |  |
 | `AUD-010` | Now playing | A track in the now-playing controls of the system with its artwork, length and position, whose commands from the controls, media keys, headsets and remotes change what plays. |  |
 
+#### Components (CMP)
+
+Small parts of a game written in Lua, each in one file of `source/categories/components/` that needs only the engine and copies as it is into another project: `label-up.lua`, the numbers and words that pop out of what was hit, healed or collected, `health-bar.lua`, the bar over a character or across the screen, `ecs.lua`, a small entity component system of packed pools and systems, and `composition.lua`, entities made of small behaviors that each do one thing. The tests are in `source/categories/components/`.
+
+| Code | Test | What it shows | Unsupported on |
+| --- | --- | --- | --- |
+| `CMP-001` | Label up | Damage, criticals, heals, gold and misses that pop out of a target, rise, stack and fade, from one pool that allocates nothing per frame. |  |
+| `CMP-002` | Health bar | Bars that ease to the health with a trail of the health just lost, colors by the share left, ticks, a shield, a flash on hits and a bar that hides while it is full. |  |
+| `CMP-003` | Entities, components and systems | Hundreds of balls whose behavior comes only from their components and the systems that run over them, with systems switched off and components taken away while it runs. |  |
+| `CMP-004` | Composition | Four entities built from the same small behaviors, which follow, wander, circle, bob, shoot and take hits, with behaviors given to an entity and taken away while it runs. |  |
+
 #### Events (EVT)
 
 Signals, the event bus, owners that end their listeners, scene scopes, the engine lifecycle, the pause, autoloads and classes. The tests are in `source/categories/events/`.
