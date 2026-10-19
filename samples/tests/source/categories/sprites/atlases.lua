@@ -18,7 +18,7 @@ Atlases.code = [[
 local gems = assets.load('sprites/atlases/gems.json', 'atlas')  gems:apply(sprite, 'gem-red.png')
 local coin = gems:animationFromFrames({'coin-0.png', 'coin-1.png', ...}, {framesPerSecond = 10})
 local slime = assets.load('sprites/atlases/slime.json', 'atlas')  animator:add('hop', slime:animation('hop'))  local bubble = slime:slice('bubble')
-local run = animation2d.fromGrid(assets.texture('sprites/sheets/walker.png'), {frameWidth = 128, frameHeight = 128, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12})]]
+local run = animation2d.fromGrid(assets.texture('sprites/sheets/walker.png'), {frameWidth = 256, frameHeight = 256, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12})]]
 
 -- An animator that plays one animation on its own sprite.
 function Atlases.player(texture, name, animation)
@@ -47,7 +47,7 @@ function Atlases:enter()
     for _, tag in ipairs(Atlases.tags) do
         self.players[tag] = Atlases.player(self.slime.texture, tag, self.slime:animation(tag))
     end
-    self.players.walker = Atlases.player(self.sheet, 'run', animation2d.fromGrid(self.sheet, {frameWidth = 128, frameHeight = 128, cells = Atlases.runCells, framesPerSecond = 12}))
+    self.players.walker = Atlases.player(self.sheet, 'run', animation2d.fromGrid(self.sheet, {frameWidth = 256, frameHeight = 256, cells = Atlases.runCells, framesPerSecond = 12}))
 
     -- The splat plays once, so it starts over a moment after it finishes.
     local splat = self.players.splat.animator
@@ -58,7 +58,7 @@ function Atlases:enter()
     for _, entry in pairs(self.players) do
         entry.sprite.scaleX, entry.sprite.scaleY = 1.25, 1.25
     end
-    self.players.walker.sprite.scaleX, self.players.walker.sprite.scaleY = 1, 1
+    self.players.walker.sprite.scaleX, self.players.walker.sprite.scaleY = 0.5, 0.5
     self:frame{code = Atlases.code, hint = 'Outlines on the images mark the frames each file describes.'}
 end
 
@@ -123,7 +123,7 @@ function Atlases:draw(area)
     local cells = {}
     for row = 0, 2 do
         for columnIndex = 0, 7 do
-            cells[#cells + 1] = {x = columnIndex * 128, y = row * 128, width = 128, height = 128}
+            cells[#cells + 1] = {x = columnIndex * 256, y = row * 256, width = 256, height = 256}
         end
     end
     Atlases.drawSheet(self.sheet, column * 2 + 30, 70, (column - 60) / self.sheet.width, cells, Atlases.runCells[self.players.walker.animator.frame])

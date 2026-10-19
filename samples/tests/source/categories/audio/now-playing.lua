@@ -14,7 +14,7 @@ local Test = require('harness.test')
 local NowPlaying = haylen.class('NowPlaying', AudioTest)
 
 NowPlaying.length = 32
-NowPlaying.artwork = 'interface/images/sign.png'
+NowPlaying.artwork = 'audio/cover.png'
 
 function NowPlaying:enter()
     self.journal = Journal(16)
@@ -28,7 +28,7 @@ function NowPlaying:enter()
             ui.button{id = 'clear', text = 'Leave the controls', onClick = function() self:leave() end},
             ui.label{text = 'iOS shows the lock screen only for an audio session that plays, which this test project leaves as ambient. Linux has no controls the engine reaches.', color = 'textMuted', font = 'caption'},
         },
-        code = "system.setNowPlaying({title = 'Calm loop', artist = 'Haylen', duration = 32, position = audio.cursor(voice), playing = true, artwork = assets.bytes('interface/images/sign.png')})\nevents.on('mediaCommand', function(event) print(event.command, event.position) end)",
+        code = "system.setNowPlaying({title = 'Calm loop', artist = 'Haylen', duration = 32, position = audio.cursor(voice), playing = true, artwork = assets.bytes('audio/cover.png')})\nevents.on('mediaCommand', function(event) print(event.command, event.position) end)",
     }
     events.on('mediaCommand', function(event) self:command(event) end, {owner = self})
 end

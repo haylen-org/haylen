@@ -1,0 +1,10 @@
+{
+    "hardEdges": {
+        "samples/tests/content/camera/knight.png": "The pixel snap tests draw a knight of pixel art.",
+        "samples/tests/content/particles/library/textures/pixel.png": "The pixel art pieces of the particle library.",
+        "samples/tests/content/shaders/images/hero.png": "The pixel art hero that the shader tests read pixel by pixel.",
+        "samples/tests/content/text/haylen-pixel-0.png": "The page of a pixel art bitmap font.",
+        "samples/tests/content/text/haylen-pixel-gold-0.png": "The page of a pixel art bitmap font.",
+        "samples/tests/content/text/lcd-digits.png": "The segments of a grid font of digits, read cell by cell."
+    }
+}

@@ -1,4 +1,4 @@
-"""Reads and writes 8-bit RGBA PNG images with the Python standard library alone, for the tools that draw the art of the samples."""
+"""Reads 8-bit RGBA, RGB and palette PNG images and writes 8-bit RGBA ones with the Python standard library alone, for the tools that draw and check the art of the samples."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# The bytes of one pixel of each color type the reader takes: RGB, palette and RGBA.
+BYTES_PER_PIXEL = {2: 3, 3: 1, 6: 4}
 
 
 @dataclass
@@ -68,32 +70,39 @@ def read(path: Path | bytes) -> Image:
 
     offset = len(SIGNATURE)
     compressed = bytearray()
-    width = height = 0
+    width = height = color = 0
+    palette = b""
+    transparency = b""
     while offset < len(data):
         length, kind = struct.unpack(">I4s", data[offset : offset + 8])
         chunk = data[offset + 8 : offset + 8 + length]
         offset += 12 + length
         if kind == b"IHDR":
             width, height, depth, color, _, _, interlace = struct.unpack(">IIBBBBB", chunk)
-            if (depth, color, interlace) != (8, 6, 0):
-                raise ValueError("Only 8-bit RGBA PNG images without interlacing are supported.")
+            if depth != 8 or color not in BYTES_PER_PIXEL or interlace:
+                raise ValueError("Only 8-bit RGBA, RGB and palette PNG images without interlacing are supported.")
+        elif kind == b"PLTE":
+            palette = chunk
+        elif kind == b"tRNS":
+            transparency = chunk
         elif kind == b"IDAT":
             compressed += chunk
         elif kind == b"IEND":
             break
 
     raw = zlib.decompress(bytes(compressed))
-    stride = width * 4
-    pixels = bytearray(height * stride)
+    step = BYTES_PER_PIXEL[color]
+    stride = width * step
+    unfiltered = bytearray(height * stride)
     previous = bytearray(stride)
     for row in range(height):
         start = row * (stride + 1)
         kind = raw[start]
         line = bytearray(raw[start + 1 : start + 1 + stride])
         for index in range(stride):
-            left = line[index - 4] if index >= 4 else 0
+            left = line[index - step] if index >= step else 0
             up = previous[index]
-            corner = previous[index - 4] if index >= 4 else 0
+            corner = previous[index - step] if index >= step else 0
             if kind == 1:
                 line[index] = (line[index] + left) & 0xFF
             elif kind == 2:
@@ -102,14 +111,46 @@ def read(path: Path | bytes) -> Image:
                 line[index] = (line[index] + ((left + up) >> 1)) & 0xFF
             elif kind == 4:
                 line[index] = (line[index] + _paeth(left, up, corner)) & 0xFF
-        pixels[row * stride : (row + 1) * stride] = line
+        unfiltered[row * stride : (row + 1) * stride] = line
         previous = line
-    return Image(width, height, pixels)
+    return Image(width, height, _rgba(unfiltered, color, palette, transparency))
+
+
+def _rgba(unfiltered: bytearray, color: int, palette: bytes, transparency: bytes) -> bytearray:
+    """Expands unfiltered RGB or palette pixels to RGBA, where the transparency chunk gives the alpha of the palette entries it lists."""
+    if color == 6:
+        return unfiltered
+    pixels = bytearray(len(unfiltered) // BYTES_PER_PIXEL[color] * 4)
+    if color == 2:
+        for index in range(len(unfiltered) // 3):
+            pixels[index * 4 : index * 4 + 4] = unfiltered[index * 3 : index * 3 + 3] + b"\xff"
+        return pixels
+    entries = [palette[index * 3 : index * 3 + 3] + bytes((transparency[index] if index < len(transparency) else 255,)) for index in range(len(palette) // 3)]
+    for index, entry in enumerate(unfiltered):
+        pixels[index * 4 : index * 4 + 4] = entries[entry]
+    return pixels
+
+
+def _filtered(line: bytes, previous: bytes) -> bytes:
+    """Returns the row with the filter that leaves the smallest sum of its bytes as signed values, which is the row that compresses best, after the byte of that filter."""
+    left = bytes(4) + line[:-4]
+    corner = bytes(4) + previous[:-4]
+    candidates = [
+        bytes(line),
+        bytes((value - before) & 0xFF for value, before in zip(line, left)),
+        bytes((value - above) & 0xFF for value, above in zip(line, previous)),
+        bytes((value - ((before + above) >> 1)) & 0xFF for value, before, above in zip(line, left, previous)),
+        bytes((value - _paeth(before, above, diagonal)) & 0xFF for value, before, above, diagonal in zip(line, left, previous, corner)),
+    ]
+    costs = [sum(value if value < 128 else 256 - value for value in candidate) for candidate in candidates]
+    kind = costs.index(min(costs))
+    return bytes((kind,)) + candidates[kind]
 
 
 def write(image: Image, path: Path) -> None:
     stride = image.width * 4
-    raw = b"".join(b"\x00" + bytes(image.pixels[row * stride : (row + 1) * stride]) for row in range(image.height))
+    rows = [bytes(image.pixels[row * stride : (row + 1) * stride]) for row in range(image.height)]
+    raw = b"".join(_filtered(line, rows[index - 1] if index else bytes(stride)) for index, line in enumerate(rows))
 
     def chunk(kind: bytes, payload: bytes) -> bytes:
         return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)

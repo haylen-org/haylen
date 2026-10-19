@@ -7,6 +7,7 @@ import dataclasses
 import contextlib
 import functools
 import http.client
+import importlib.util
 import http.server
 import io
 import json
@@ -284,6 +285,68 @@ class WritingTest(unittest.TestCase):
         names = re.compile(b"|".join(re.escape(word) for word in words), re.IGNORECASE)
         found = [name for name in self.tracked() if name != "PROJECT.md" and (self.root / name).is_file() and names.search((self.root / name).read_bytes())]
         self.assertEqual(found, [], "These files name another engine, a third-party SDK or the author or tool of third-party art.")
+
+
+class SpriteSheetTest(unittest.TestCase):
+    @staticmethod
+    def checker():
+        path = Path(__file__).resolve().parent / "check-sprite-sheets.py"
+        spec = importlib.util.spec_from_file_location("check_sprite_sheets", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_every_animated_sheet_of_the_samples_is_declared_and_holds_its_pivots(self):
+        checker = self.checker()
+        sheets = json.loads(checker.MANIFEST.read_text())["sheets"]
+        self.assertEqual(checker.undeclared(sheets) + checker.check(sheets), [], "Run \"python3 tools/check-sprite-sheets.py\" and align or paint again the frames of these clips.")
+
+    def test_a_frame_off_the_pivot_of_its_clip_drifts_and_aligned_frames_hold_it(self):
+        checker = self.checker()
+        image = checker.Image.blank(64, 32)
+        frames = [checker.Frame(0, 0, 32, 32), checker.Frame(32, 0, 32, 32)]
+
+        def square(left: int, top: int) -> None:
+            for y in range(top, top + 8):
+                for x in range(left, left + 8):
+                    image.pixels[(y * 64 + x) * 4 + 3] = 255
+
+        square(12, 12)
+        square(32 + 18, 12)
+        self.assertIn("6.0 pixels sideways", checker.drift(frames, image, "center"))
+        image = checker.Image.blank(64, 32)
+        square(12, 12)
+        square(32 + 12, 12)
+        self.assertIsNone(checker.drift(frames, image, "center"))
+
+
+class ImageEdgeTest(unittest.TestCase):
+    @staticmethod
+    def checker():
+        path = Path(__file__).resolve().parent / "check-image-edges.py"
+        spec = importlib.util.spec_from_file_location("check_image_edges", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_every_image_of_the_samples_and_templates_has_clean_edges(self):
+        self.assertEqual(self.checker().check(), [], "Run \"python3 tools/check-image-edges.py\" and clean or paint again these images.")
+
+    def test_magenta_left_from_the_background_and_jagged_edges_are_found(self):
+        checker = self.checker()
+        image = checker.Image.blank(16, 16)
+        image.pixels[(8 * 16 + 8) * 4 : (8 * 16 + 8) * 4 + 4] = bytes((250, 10, 245, 90))
+        self.assertEqual(checker.leftovers(image), [8 * 16 + 8])
+
+        smooth = checker.Image.blank(32, 32)
+        stairs = checker.Image.blank(32, 32)
+        for y in range(32):
+            for x in range(32):
+                inside = (x - 16) ** 2 + (y - 16) ** 2
+                smooth.pixels[(y * 32 + x) * 4 + 3] = 255 if inside < 100 else (128 if inside < 144 else 0)
+                stairs.pixels[(y * 32 + x) * 4 + 3] = 255 if x + y < 32 and x > 2 and y > 2 else 0
+        self.assertEqual(checker.jagged(smooth), 0.0)
+        self.assertGreater(checker.jagged(stairs), checker.JAGGED_SHARE)
 
 
 class TerminalStream(io.StringIO):

@@ -1,0 +1,20 @@
+{
+    "sheets": [
+        {"atlas": "samples/games/tiny-island/content/characters/archer.json", "pivot": "base", "free": {"attack": "The archer leans into the shot.", "cast": "The archer kneels to fire the volley.", "hurt": "The archer is knocked back.", "death": "The archer falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/bomber.json", "pivot": "base", "free": {"attack": "The bomber winds up and throws.", "hurt": "The bomber is knocked back.", "death": "The bomber falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/brute.json", "pivot": "base", "free": {"attack": "The brute swings its club overhead.", "hurt": "The brute is knocked back.", "death": "The brute falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/imp.json", "pivot": "base", "free": {"attack": "The imp leaps at its target.", "hurt": "The imp is knocked back.", "death": "The imp falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/lancer.json", "pivot": "base", "free": {"attack": "The lancer lunges with the lance.", "cast": "The lancer charges.", "hurt": "The lancer is knocked back.", "death": "The lancer falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/mage.json", "pivot": "base", "free": {"attack": "The mage swings the staff.", "cast": "The mage rises as the spell gathers.", "hurt": "The mage is knocked back.", "death": "The mage falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/sheep.json", "pivot": "base", "free": {"idle": "The sheep lowers its head to graze.", "hurt": "The sheep jumps when it is hit.", "death": "The sheep falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/thrower.json", "pivot": "base", "free": {"attack": "The thrower winds up and throws.", "hurt": "The thrower is knocked back.", "death": "The thrower falls."}},
+        {"atlas": "samples/games/tiny-island/content/characters/warrior.json", "pivot": "base", "free": {"attack": "The warrior lunges with the sword.", "cast": "The warrior spins with the sword.", "hurt": "The warrior is knocked back.", "death": "The warrior falls."}},
+        {"tileset": "samples/games/tiny-island/content/maps/foam.tsj", "pivot": "center", "free": {"0": "The foam swells and breaks into irregular blobs around the shore."}},
+        {"atlas": "samples/games/taskbar-quest/content/images/quest.json", "pivot": "base", "pivots": {"coin spin": "center"}, "free": {"hero attack": "The hero lunges with the sword.", "decorations": "A set of props drawn one at a time, not an animation."}},
+        {"atlas": "samples/tests/content/animation/fighter.json", "pivot": "base", "free": {"punch": "The punch throws the body forward."}},
+        {"atlas": "samples/tests/content/sprites/atlases/slime.json", "pivot": "base", "free": {"hop": "The slime leaves the ground.", "splat": "The slime squashes flat."}},
+        {"atlas": "samples/tests/content/sprites/atlases/gems.json", "pivot": "center"},
+        {"grid": "samples/tests/content/sprites/sheets/walker.png", "frame": [256, 256], "pivot": "base", "clips": {"idle": [1, 2, 3, 4], "run": [9, 10, 11, 12, 13, 14, 15, 16], "attack": [17, 18, 19, 20, 21, 22]}, "free": {"attack": "The walker swings the sword."}},
+        {"tileset": "samples/tests/content/tiled/tilesets/terrain.tsj", "pivot": "center", "pivots": {"slime": "base", "wall": "foot"}, "behind": {"wall": 5}}
+    ]
+}
