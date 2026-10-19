@@ -1284,6 +1284,37 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertIn("Gold 50", output.getvalue())
         self.assertIn("There is no command.", output.getvalue())
 
+    def test_the_console_keys_send_what_changed_and_restart_the_apps(self):
+        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        sent = []
+        client = mock.Mock(send=lambda opcode, payload: sent.append(json.loads(payload)) or True, send_batch=mock.Mock(return_value=True))
+        server.clients.append(client)
+        output = io.StringIO()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
+            self.write("source/level.lua", "return {edited = true}")
+            server.read_lines(io.StringIO("r\nR\nr\n"))
+        self.assertEqual([file["path"] for file in client.send_batch.call_args.args[0]["files"]], ["source/level.lua"])
+        self.assertEqual(sent, [{"type": "restart"}])
+        self.assertIn("Nothing changed since the last files the apps received.", output.getvalue())
+
+    def test_an_app_whose_connection_resets_leaves_and_the_server_goes_on(self):
+        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        hello = json.dumps({"type": "hello", "session": server.session, "revision": server.revision}).encode()
+
+        class Resetting(io.BytesIO):
+            def read(self, size=-1):
+                data = super().read(size)
+                if not data:
+                    raise ConnectionResetError(54, "Connection reset by peer")
+                return data
+
+        handler = mock.Mock(path=f"{haylen.DEVELOPMENT_PATH}?token={server.token}", headers={"Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==", "Upgrade": "websocket"}, wfile=io.BytesIO(), rfile=Resetting(bytes([0x81, len(hello)]) + hello))
+        output = io.StringIO()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
+            server.accept(handler)
+        self.assertEqual(server.clients, [])
+        self.assertIn("An app left the development server.", output.getvalue())
+
     def test_connections_need_the_token_and_receive_every_batch(self):
         server = haylen.DevelopmentServer(self.folder, self.manifest)
         handler = functools.partial(type("Handler", (haylen.WebHandler,), {"development": server, "log_message": lambda *arguments: None}), directory=self.scratch.name)

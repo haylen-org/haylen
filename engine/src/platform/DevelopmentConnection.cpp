@@ -64,6 +64,10 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
         submitLine(message);
         return;
     }
+    if (type == "restart") {
+        session.requestRestart();
+        return;
+    }
     if (type != "files" || !isBatch(message)) {
         core::Log::warning("The development server sent a message that this engine does not know.");
         return;

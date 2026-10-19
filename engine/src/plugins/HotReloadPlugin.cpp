@@ -53,6 +53,13 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
         return;
     }
     session->pump();
+    if (session->takeRestartRequest()) {
+        const Report report{.restarted = true, .reason = "The developer restarted the app from the development server."};
+        core::Log::info("{}", report.reason);
+        engine.requestRestart();
+        finish(report);
+        return;
+    }
     const auto now = std::chrono::steady_clock::now();
     if (now - lastScan >= kScanInterval) {
         if (const std::shared_ptr<platform::DevelopmentSession::Scan> scan = session->beginScan()) {

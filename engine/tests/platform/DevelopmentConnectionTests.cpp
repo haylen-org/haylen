@@ -24,7 +24,7 @@
 
 namespace haylen::platform {
 
-// A development server that pushes one batch to every app that says hello, with a module, an asset and a path outside the package, and keeps the messages the app sends.
+// A development server that pushes one batch to every app that says hello, with a module, an asset and a path outside the package, restarts the app once it reports the batch, as the developer asks with R, and keeps the messages the app sends.
 class PushingServer final {
   public:
     PushingServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new Factory(*this), listener, new Poco::Net::HTTPServerParams()) {
@@ -67,6 +67,9 @@ class PushingServer final {
                     server.record(message);
                     if (message.at("type") == "hello") {
                         push(socket);
+                    } else if (message.at("type") == "report" && !message.value("restarted", false)) {
+                        const std::string restart = R"({"type": "restart"})";
+                        socket.sendFrame(restart.data(), static_cast<int>(restart.size()), Poco::Net::WebSocket::FRAME_TEXT);
                     }
                 }
             } catch (const Poco::Exception&) {}
@@ -140,6 +143,10 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     const auto report = std::ranges::find_if(messages, [](const core::Json& message) { return message.at("type") == "report"; });
     EXPECT_EQ(report->at("revision"), 1);
     EXPECT_EQ(report->at("modules"), core::Json::array({"source/counter.lua"}));
+
+    // The restart that the server asks for restarts the app, which tells the server why.
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().isRestartRequested(); }));
+    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const core::Json& message) { return message.at("type") == "report" && message.value("restarted", false); }); }));
     core::Log::removeListener(listener);
     const std::scoped_lock lock(linesMutex);
     EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("The development server sent the path \"../secret.lua\", which is not a file of the package, so it was refused.") != std::string::npos; }));

@@ -3271,6 +3271,10 @@ def development_address(platform_name: str, host: str, port: int, token: str) ->
     return listen, f"ws://{reached}:{port}{DEVELOPMENT_PATH}?token={token}"
 
 
+# What the terminal of a run in development offers.
+DEVELOPMENT_CONSOLE = '{subject} in development, and every file saved in the app reloads {where}. Type "r" to send what changed at once, "R" to restart, and any other line to run it in {console} developer console.'
+
+
 def start_console_input(development: DevelopmentServer) -> None:
     """Reads the lines the developer types in an interactive terminal and sends them to the developer console of the connected apps."""
     if sys.stdin.isatty():
@@ -3313,7 +3317,7 @@ def device_development(app: App, package: Path, args: argparse.Namespace, device
     start_console_input(development)
     if device is not None:
         run([adb(), "-s", device, "reverse", f"tcp:{args.port}", f"tcp:{args.port}"])
-    terminal.info("The app runs in development, and every file saved in the app reloads in it. Lines typed here run in its developer console.")
+    terminal.info(DEVELOPMENT_CONSOLE.format(subject="The app runs", where="in it", console="its"))
     try:
         yield ["--dev-server", address]
     finally:
@@ -3334,7 +3338,7 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
     start_console_input(development)
-    terminal.info("The page runs in development, and every file saved in the app reloads in the open pages. Lines typed here run in their developer console.")
+    terminal.info(DEVELOPMENT_CONSOLE.format(subject="The page runs", where="in the open pages", console="their"))
     try:
         serve(site, args.host, args.port, args.coep, args.coop, args.open, development)
     finally:
@@ -4786,6 +4790,8 @@ class DevelopmentServer:
         self.revision = 0
         self.clients: list[DevelopmentClient] = []
         self.lock = threading.Lock()
+        # The watcher and a reload that the developer asks for scan the package in turn, since a scan replaces the snapshot it compares with.
+        self.scanning = threading.Lock()
         self.files = self.snapshot()
         self.lines = 0
 
@@ -4879,9 +4885,24 @@ class DevelopmentServer:
                     terminal.error(str(error), error.details)
                     for client in list(self.clients):
                         client.send(WEBSOCKET_TEXT, json.dumps({"type": "shaderError", "path": "content/shaders", "message": f"{error} {error.details}".strip()}).encode())
+            with self.scanning:
+                changed, removed = self.scan()
+                if changed or removed:
+                    self.broadcast(changed, removed)
+
+    def reload(self) -> None:
+        """Scans the package at once and sends what changed, for a save that the watcher has not seen yet."""
+        with self.scanning:
             changed, removed = self.scan()
             if changed or removed:
                 self.broadcast(changed, removed)
+                return
+        terminal.info("Nothing changed since the last files the apps received.")
+
+    def restart(self) -> None:
+        """Asks every connected app to start again from its package with a fresh Lua state."""
+        if self.send_all(json.dumps({"type": "restart"}).encode()) == 0:
+            terminal.warning("No app is connected to the development server, so no app restarted.")
 
     def report(self, message: dict) -> None:
         """Prints what a batch did in an app."""
@@ -4907,8 +4928,17 @@ class DevelopmentServer:
         handler.wfile.flush()
         handler.close_connection = True
         client = DevelopmentClient(handler.wfile)
+        try:
+            self.serve(client, handler.rfile)
+        except OSError:
+            pass
+        self.drop(client)
+        terminal.info("An app left the development server.")
+
+    def serve(self, client: DevelopmentClient, stream) -> None:
+        """Answers the frames of an app until it closes the connection or the connection ends, such as when the app stops or restarts."""
         message = b""
-        while (frame := read_websocket_frame(handler.rfile)) is not None:
+        while (frame := read_websocket_frame(stream)) is not None:
             final, opcode, payload = frame
             if opcode == WEBSOCKET_CLOSE:
                 client.send(WEBSOCKET_CLOSE, payload[:2])
@@ -4922,13 +4952,10 @@ class DevelopmentServer:
             text, message = message, b""
             with contextlib.suppress(ValueError):
                 self.receive(client, json.loads(text))
-        self.drop(client)
 
-    def send_line(self, line: str) -> int:
-        """Sends a line of the developer console to every connected app, which runs it and answers with its result, and returns how many apps it reached."""
+    def send_all(self, message: bytes) -> int:
+        """Sends a text message to every connected app and returns how many it reached, dropping the apps whose connection ended."""
         with self.lock:
-            self.lines += 1
-            message = json.dumps({"type": "console", "id": self.lines, "line": line}).encode()
             clients = list(self.clients)
         reached = 0
         for client in clients:
@@ -4936,15 +4963,28 @@ class DevelopmentServer:
                 reached += 1
             else:
                 self.drop(client)
+        return reached
+
+    def send_line(self, line: str) -> int:
+        """Sends a line of the developer console to every connected app, which runs it and answers with its result, and returns how many apps it reached."""
+        with self.lock:
+            self.lines += 1
+            message = json.dumps({"type": "console", "id": self.lines, "line": line}).encode()
+        reached = self.send_all(message)
         if reached == 0:
             terminal.warning("No app is connected to the development server, so the line ran nowhere.")
         return reached
 
     def read_lines(self, stream) -> None:
-        """Sends every line the developer types in the terminal to the connected apps as a line of their developer console, until the input ends."""
+        """Takes the lines the developer types in the terminal until the input ends: "r" sends the files saved since the last batch at once, "R" restarts the connected apps, and every other line runs in their developer console. A line that fails to reach the apps never stops the reading."""
         for line in stream:
-            if line.strip():
-                self.send_line(line.strip())
+            text = line.strip()
+            if text == "r":
+                self.reload()
+            elif text == "R":
+                self.restart()
+            elif text:
+                self.send_line(text)
 
     def receive(self, client: DevelopmentClient, message: dict) -> None:
         if message.get("type") == "report":

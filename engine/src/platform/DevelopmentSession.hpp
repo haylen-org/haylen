@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -74,6 +75,14 @@ class DevelopmentSession final {
     // Delivers what the development server sent since the last call, on the frame thread.
     void pump();
 
+    // Records that the developer asked the development server to restart the app, which the frame thread takes once.
+    void requestRestart() noexcept {
+        restartRequested = true;
+    }
+    [[nodiscard]] bool takeRestartRequest() noexcept {
+        return std::exchange(restartRequested, false);
+    }
+
   private:
     std::unique_ptr<io::PackageWatcher> watcher;
     std::unique_ptr<DevelopmentConnection> connection;
@@ -82,6 +91,7 @@ class DevelopmentSession final {
     mutable std::mutex mutex;
     std::vector<std::string> pending;
     std::vector<Reporter> reporters;
+    bool restartRequested = false;
 };
 
 } // namespace haylen::platform
