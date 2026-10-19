@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "haylen/2d/graphics/DrawOrder.hpp"
@@ -319,6 +320,8 @@ class World final {
     // The pre-solve callback of Box2D reads these while the world steps, maybe on several threads, so they only change between steps.
     std::unordered_map<std::uint64_t, OneWayPlatform> oneWayShapes;
     std::unordered_map<std::uint64_t, float> droppingBodies;
+    // The bodies created with fast rotation, which Box2D does not report, so a body that moves to another world keeps it.
+    std::unordered_set<std::uint64_t> fastBodies;
     std::unique_ptr<OneWayFilter> oneWayFilter;
 
     debug::TrackedCount liveBodies{bodyCounter};

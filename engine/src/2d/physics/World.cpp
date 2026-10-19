@@ -173,6 +173,9 @@ Body World::createBody(const Body::Options& options) {
         def.sleepThreshold = Box2DConverter::toSpeed(*options.sleepThreshold, pixelsPerMeter);
     }
     const Body body{this, b2StoreBodyId(b2CreateBody(b2LoadWorldId(handle), &def))};
+    if (options.fastRotation) {
+        fastBodies.insert(body.getId());
+    }
     countObjects();
     return body;
 }
@@ -598,6 +601,7 @@ void World::takeDestroyedBodies(std::vector<std::uint64_t>& ids) {
 void World::forgetBody(std::uint64_t id) {
     destroyedBodies.push_back(id);
     droppingBodies.erase(id);
+    fastBodies.erase(id);
 }
 
 void World::checkTransforms(std::span<const Body> bodies, std::size_t valueCount) const {

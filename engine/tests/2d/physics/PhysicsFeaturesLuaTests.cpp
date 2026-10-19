@@ -54,6 +54,26 @@ TEST_F(PhysicsFeaturesLuaTest, BuildsRopesBridgesRagdollsAndVehicles) {
     EXPECT_NE(lua("return car.motorSpeed").find("has no member \"motorSpeed\""), std::string::npos);
 }
 
+TEST_F(PhysicsFeaturesLuaTest, MovesABodyToAnotherWorldWithItsData) {
+    // clang-format off
+    fixture.runLua(R"(
+        space = physics2d.newWorld({gravity = {0, 0}})
+        floor = space:createBody({type = 'static', x = 0, y = 200})
+        floor:addBox(400, 20)
+        touched = 0
+        space.onContactBegin = function(event) touched = touched + 1 end
+        ball = world:createBody({x = 0, y = 0, vy = 300})
+        ball:addCircle(10, {restitution = 0.5})
+        ball.data = {name = 'ball'}
+        moved = ball:moveToWorld(space)
+        for i = 1, 60 do space:step(1 / 60) end
+    )");
+    // clang-format on
+    EXPECT_EQ(lua("return tostring(ball.valid) .. ' ' .. tostring(moved.valid) .. ' ' .. tostring(moved.world == space) .. ' ' .. moved.data.name"), "false true true ball");
+    EXPECT_EQ(lua("return tostring(touched > 0) .. ' ' .. moved:shapes()[1].restitution"), "true 0.5");
+    EXPECT_EQ(lua("local ok, message = pcall(moved.moveToWorld, moved, space) return message"), "A body moves only to another world.");
+}
+
 TEST_F(PhysicsFeaturesLuaTest, OneWayPlatformsAndConveyors) {
     // clang-format off
     fixture.runLua(R"(

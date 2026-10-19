@@ -1347,6 +1347,23 @@ enemy:destroy()
 print(enemy.valid)
 ```
 
+### body:moveToWorld(world)
+
+Moves the body to another `PhysicsWorld`, where it obeys that world from the next step, such as an object thrown through a portal into a world of other gravity, and returns the body there. The body keeps its type, place, rotation, velocities, damping, gravity scale, flags, mass and every shape with its material, filter, sensor, events, tangent speed and one-way side, all in world units, so a world of another `pixelsPerMeter` keeps its size and speed, and its `data` goes along. The body of this world is destroyed with its joints, which cannot cross worlds, so the old handle reports `valid` as `false`. A body moved to the world it is in raises `A body moves only to another world.`.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local land = physics2d.newWorld({gravity = {0, 980}})
+local space = physics2d.newWorld({gravity = {0, 0}})
+local rock = land:createBody({x = 0, y = 0, vx = 400})
+rock:addCircle(16, {restitution = 0.4})
+rock.data = {name = 'rock'}
+
+rock = rock:moveToWorld(space)  -- It floats on from here, with the speed it had.
+print(rock.world == space, rock.data.name)
+```
+
 ### Body properties
 
 | Property | Type | Access | Meaning |

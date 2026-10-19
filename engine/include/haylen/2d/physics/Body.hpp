@@ -142,6 +142,9 @@ class Body final {
     [[nodiscard]] std::vector<Shape::Outline> getOutlines() const;
     void destroy();
 
+    // Moves the body to another world, where it obeys that world from then on. It keeps its type, place, velocities, damping, gravity scale, flags, mass and shapes with their materials, filters, sensors, events, conveyor speeds and one-way sides, in world units, so worlds of different scales keep its size and speed. The body of this world is destroyed with its joints, which cannot cross worlds. Returns the body in the other world. Throws `std::invalid_argument` when the world is the one the body is in.
+    Body moveToWorld(World& target);
+
     [[nodiscard]] std::uint64_t getId() const noexcept {
         return id;
     }
@@ -159,6 +162,10 @@ class Body final {
     // Applies the options that Box2D sets after a shape exists.
     [[nodiscard]] Shape finishShape(std::uint64_t shapeId, const Shape::Options& options);
     [[nodiscard]] Shape::Outline getChainOutline(std::uint64_t chainId) const;
+    // Returns the points of a chain in the space of the body, as `addChain` takes them, and whether the chain is a loop.
+    [[nodiscard]] std::pair<std::vector<math::Vec2>, bool> getChainPoints(std::uint64_t chainId) const;
+    [[nodiscard]] static Shape::Options readShapeOptions(const Shape& shape);
+    void copyShapesTo(Body& target) const;
 
     World* world = nullptr;
     std::uint32_t worldHandle = 0;

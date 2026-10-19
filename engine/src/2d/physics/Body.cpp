@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ranges>
 #include <stdexcept>
 
 #include "2d/physics/Box2DConverter.hpp"
@@ -461,6 +462,85 @@ Shape::Outline Body::getChainOutline(std::uint64_t chainId) const {
         outline.closed = true;
     }
     return outline;
+}
+
+// A loop ends where its first segment starts, and an open chain lists its ends without the points that Box2D keeps beyond them, which `addChain` adds again.
+std::pair<std::vector<math::Vec2>, bool> Body::getChainPoints(std::uint64_t chainId) const {
+    const b2ChainId chain = b2LoadChainId(chainId);
+    std::vector<b2ShapeId> segments(static_cast<std::size_t>(b2Chain_GetSegmentCount(chain)));
+    b2Chain_GetSegments(chain, segments.data(), static_cast<int>(segments.size()));
+
+    std::vector<math::Vec2> points;
+    for (const b2ShapeId segment : segments) {
+        const std::vector<math::Vec2> ends = Shape(world, b2StoreShapeId(segment)).getPoints();
+        if (points.empty()) {
+            points.push_back(ends[0]);
+        }
+        points.push_back(ends[1]);
+    }
+    const bool loop = points.size() > 2 && points.front() == points.back();
+    if (loop) {
+        points.pop_back();
+    }
+    return {points, loop};
+}
+
+Shape::Options Body::readShapeOptions(const Shape& shape) {
+    return {.density = shape.getDensity(), .friction = shape.getFriction(), .restitution = shape.getRestitution(), .rollingResistance = shape.getRollingResistance(), .filter = shape.getFilter(), .sensor = shape.isSensor(), .tangentSpeed = shape.getTangentSpeed(), .oneWay = shape.getOneWay(), .contactEvents = shape.hasContactEvents(), .hitEvents = shape.hasHitEvents(), .sensorEvents = shape.hasSensorEvents()};
+}
+
+// Every shape keeps its points in the space of the body in world units, so it lands the same in a world of another scale. The segments of a chain go over as one chain. Box2D lists the newest shape first, so the shapes go over from the last listed to keep their order.
+void Body::copyShapesTo(Body& target) const {
+    std::vector<std::uint64_t> chains;
+    const std::vector<Shape> shapes = getShapes();
+    for (const Shape& shape : std::views::reverse(shapes)) {
+        Shape::Options options = readShapeOptions(shape);
+        const std::vector<math::Vec2> points = shape.getPoints();
+        switch (shape.getKind()) {
+        case Shape::Kind::Circle:
+            options.offset = points[0];
+            (void)target.addCircle(shape.getRadius(), options);
+            break;
+        case Shape::Kind::Capsule:
+            (void)target.addCapsule(points[0], points[1], shape.getRadius(), options);
+            break;
+        case Shape::Kind::Segment:
+            (void)target.addSegment(points[0], points[1], options);
+            break;
+        case Shape::Kind::Polygon:
+            (void)target.addPolygon(points, options);
+            break;
+        case Shape::Kind::ChainSegment: {
+            const std::uint64_t chain = b2StoreChainId(b2Shape_GetParentChain(b2LoadShapeId(shape.getId())));
+            if (std::ranges::find(chains, chain) == chains.end()) {
+                chains.push_back(chain);
+                const auto [chainPoints, loop] = getChainPoints(chain);
+                (void)target.addChain(chainPoints, loop, options);
+            }
+            break;
+        }
+        }
+    }
+}
+
+Body Body::moveToWorld(World& target) {
+    (void)checkedId();
+    if (&target == world) {
+        throw std::invalid_argument("A body moves only to another world.");
+    }
+
+    Body moved = target.createBody({.type = getType(), .position = getPosition(), .rotation = getRotation(), .velocity = getVelocity(), .angularVelocity = getAngularVelocity(), .linearDamping = getLinearDamping(), .angularDamping = getAngularDamping(), .gravityScale = getGravityScale(), .fixedRotation = isFixedRotation(), .bullet = isBullet(), .fastRotation = world->fastBodies.contains(id), .sleepEnabled = isSleepEnabled(), .sleepThreshold = getSleepThreshold()});
+    // The rotation goes over as the cosine and sine Box2D holds, since an angle read back and made into a rotation again drifts a little.
+    b2Body_SetTransform(b2LoadBodyId(moved.getId()), Box2DConverter::toMeters(getPosition(), target.getPixelsPerMeter()), b2Body_GetRotation(b2LoadBodyId(id)));
+    copyShapesTo(moved);
+    // A mass, center or inertia set by hand goes along, and the shapes give the same values otherwise.
+    if (getType() == Type::Dynamic) {
+        moved.setMassData(getMassData());
+    }
+    moved.setEnabled(isEnabled());
+    moved.setAwake(isAwake());
+    destroy();
+    return moved;
 }
 
 Shape Body::finishShape(std::uint64_t shapeId, const Shape::Options& options) {

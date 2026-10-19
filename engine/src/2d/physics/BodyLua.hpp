@@ -93,6 +93,7 @@ class BodyLua final {
     static int shapes(lua_State* L);
     static int outlines(lua_State* L);
     static int destroy(lua_State* L);
+    static int moveToWorld(lua_State* L);
     static int equal(lua_State* L);
 };
 
