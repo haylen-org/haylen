@@ -6,9 +6,10 @@ namespace haylen::platform {
 
 const std::array<std::pair<std::string_view, SystemInfo::Os>, 8> SystemInfo::kOsNames{{{"macOs", Os::MacOs}, {"windows", Os::Windows}, {"linux", Os::Linux}, {"ios", Os::Ios}, {"ipadOs", Os::IpadOs}, {"tvOs", Os::TvOs}, {"android", Os::Android}, {"web", Os::Web}}};
 const std::array<std::pair<std::string_view, SystemInfo::DeviceKind>, 5> SystemInfo::kDeviceKindNames{{{"desktop", DeviceKind::Desktop}, {"phone", DeviceKind::Phone}, {"tablet", DeviceKind::Tablet}, {"tv", DeviceKind::Tv}, {"browser", DeviceKind::Browser}}};
+const std::array<std::pair<std::string_view, SystemInfo::Architecture>, 6> SystemInfo::kArchitectureNames{{{"arm64", Architecture::Arm64}, {"arm", Architecture::Arm}, {"x64", Architecture::X64}, {"x86", Architecture::X86}, {"wasm32", Architecture::Wasm32}, {"wasm64", Architecture::Wasm64}}};
 
 core::Json SystemInfo::toJson() const {
-    core::Json json{{"os", osName(os)}, {"deviceKind", deviceKindName(deviceKind)}, {"languages", languages}};
+    core::Json json{{"os", osName(os)}, {"deviceKind", deviceKindName(deviceKind)}, {"architecture", architectureName(architecture)}, {"bits", bits}, {"languages", languages}};
     const std::array<std::pair<const char*, const std::string*>, 7> texts{{{"osVersion", &osVersion}, {"deviceModel", &deviceModel}, {"manufacturer", &manufacturer}, {"cpuName", &cpuName}, {"gpuName", &gpuName}, {"locale", &locale}, {"timeZone", &timeZone}}};
     for (const auto& [key, text] : texts) {
         if (!text->empty()) {
@@ -26,6 +27,10 @@ core::Json SystemInfo::toJson() const {
 
 std::string_view SystemInfo::osName(Os value) noexcept {
     return std::ranges::find(kOsNames, value, &std::pair<std::string_view, Os>::second)->first;
+}
+
+std::string_view SystemInfo::architectureName(Architecture value) noexcept {
+    return std::ranges::find(kArchitectureNames, value, &std::pair<std::string_view, Architecture>::second)->first;
 }
 
 std::string_view SystemInfo::deviceKindName(DeviceKind value) noexcept {

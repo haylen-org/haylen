@@ -32,6 +32,15 @@ struct SystemInfo {
         Browser,
     };
 
+    enum class Architecture : std::uint8_t {
+        Arm64,
+        Arm,
+        X64,
+        X86,
+        Wasm32,
+        Wasm64,
+    };
+
     Os os = Os::MacOs;
     std::string osVersion;
     std::string deviceModel;
@@ -39,6 +48,10 @@ struct SystemInfo {
     DeviceKind deviceKind = DeviceKind::Desktop;
     std::string cpuName;
     int cpuCores = 0;
+
+    // The processor architecture the process runs on and the width of its pointers, which the build of the engine decides, so a 32-bit Android library on a 64-bit phone reports `Arm` and 32.
+    Architecture architecture = processArchitecture();
+    int bits = static_cast<int>(sizeof(void*) * 8);
 
     // The total memory of the device.
     std::uint64_t memoryBytes = 0;
@@ -56,10 +69,30 @@ struct SystemInfo {
 
     [[nodiscard]] static std::string_view osName(Os value) noexcept;
     [[nodiscard]] static std::string_view deviceKindName(DeviceKind value) noexcept;
+    [[nodiscard]] static std::string_view architectureName(Architecture value) noexcept;
+
+    [[nodiscard]] static constexpr Architecture processArchitecture() noexcept {
+#if defined(__aarch64__) || defined(_M_ARM64)
+        return Architecture::Arm64;
+#elif defined(__arm__) || defined(_M_ARM)
+        return Architecture::Arm;
+#elif defined(__x86_64__) || defined(_M_X64)
+        return Architecture::X64;
+#elif defined(__i386__) || defined(_M_IX86)
+        return Architecture::X86;
+#elif defined(__wasm64__)
+        return Architecture::Wasm64;
+#elif defined(__wasm32__)
+        return Architecture::Wasm32;
+#else
+#error "The engine does not know the processor architecture of this build."
+#endif
+    }
 
   private:
     static const std::array<std::pair<std::string_view, Os>, 8> kOsNames;
     static const std::array<std::pair<std::string_view, DeviceKind>, 5> kDeviceKindNames;
+    static const std::array<std::pair<std::string_view, Architecture>, 6> kArchitectureNames;
 };
 
 } // namespace haylen::platform

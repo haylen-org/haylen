@@ -32,7 +32,11 @@ TEST(AndroidDeviceInfoTest, TellsTheKindOfDeviceAndLeavesTheRestUnknown) {
     EXPECT_TRUE(empty.cpuName.empty());
     EXPECT_EQ(empty.memoryBytes, 0U);
     EXPECT_TRUE(empty.languages.empty());
-    EXPECT_EQ(empty.toJson().dump(), R"({"deviceKind":"phone","languages":[],"os":"android"})");
+    const core::Json json = empty.toJson();
+    EXPECT_EQ(json.size(), 5U);
+    EXPECT_EQ(json["deviceKind"], "phone");
+    EXPECT_EQ(json["os"], "android");
+    EXPECT_TRUE(json["languages"].empty());
 }
 
 } // namespace haylen::platform

@@ -29,7 +29,7 @@ class SystemTest : public ::testing::Test {
 
     // An iPad that tells everything about itself.
     [[nodiscard]] static SystemInfo makeTablet() {
-        return {.os = SystemInfo::Os::IpadOs, .osVersion = "17.5", .deviceModel = "iPad14,1", .manufacturer = "Apple", .deviceKind = SystemInfo::DeviceKind::Tablet, .cpuName = "Apple M2", .cpuCores = 8, .memoryBytes = 8589934592, .gpuName = "Reported by the platform", .locale = "pt-BR", .languages = {"pt-BR", "en"}, .timeZone = "America/Sao_Paulo"};
+        return {.os = SystemInfo::Os::IpadOs, .osVersion = "17.5", .deviceModel = "iPad14,1", .manufacturer = "Apple", .deviceKind = SystemInfo::DeviceKind::Tablet, .cpuName = "Apple M2", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm, .bits = 32, .memoryBytes = 8589934592, .gpuName = "Reported by the platform", .locale = "pt-BR", .languages = {"pt-BR", "en"}, .timeZone = "America/Sao_Paulo"};
     }
 };
 
@@ -57,12 +57,16 @@ TEST_F(SystemTest, ReportsThePlatformWithTheGpuOfTheGraphicsDevice) {
 }
 
 TEST_F(SystemTest, WritesOnlyWhatThePlatformReportsAsJson) {
-    EXPECT_EQ(SystemInfo{}.toJson(), (core::Json{{"os", "macOs"}, {"deviceKind", "desktop"}, {"languages", core::Json::array()}}));
+    // The architecture and the width of pointers are those of the build that runs, which every platform reports without asking the system.
+    const std::string_view architecture = SystemInfo::architectureName(SystemInfo::processArchitecture());
+    const int bits = static_cast<int>(sizeof(void*) * 8);
+    EXPECT_EQ(SystemInfo{}.toJson(), (core::Json{{"os", "macOs"}, {"deviceKind", "desktop"}, {"architecture", architecture}, {"bits", bits}, {"languages", core::Json::array()}}));
 
     SystemInfo tablet = makeTablet();
-    EXPECT_EQ(tablet.toJson(), (core::Json{{"os", "ipadOs"}, {"osVersion", "17.5"}, {"deviceModel", "iPad14,1"}, {"manufacturer", "Apple"}, {"deviceKind", "tablet"}, {"cpuName", "Apple M2"}, {"cpuCores", 8}, {"memoryBytes", 8589934592}, {"gpuName", "Reported by the platform"}, {"locale", "pt-BR"}, {"languages", {"pt-BR", "en"}}, {"timeZone", "America/Sao_Paulo"}}));
+    EXPECT_EQ(tablet.toJson(), (core::Json{{"os", "ipadOs"}, {"osVersion", "17.5"}, {"deviceModel", "iPad14,1"}, {"manufacturer", "Apple"}, {"deviceKind", "tablet"}, {"cpuName", "Apple M2"}, {"cpuCores", 8}, {"architecture", "arm"}, {"bits", 32}, {"memoryBytes", 8589934592}, {"gpuName", "Reported by the platform"}, {"locale", "pt-BR"}, {"languages", {"pt-BR", "en"}}, {"timeZone", "America/Sao_Paulo"}}));
     EXPECT_EQ(SystemInfo::osName(SystemInfo::Os::TvOs), "tvOs");
     EXPECT_EQ(SystemInfo::deviceKindName(SystemInfo::DeviceKind::Tv), "tv");
+    EXPECT_EQ(SystemInfo::architectureName(SystemInfo::Architecture::X64), "x64");
 
     EXPECT_EQ(Battery{}.toJson(), (core::Json{{"charging", false}, {"state", "unknown"}}));
     EXPECT_EQ((Battery{.level = 0.6F, .charging = true, .state = Battery::State::Charging}.toJson()), (core::Json{{"level", 0.6}, {"charging", true}, {"state", "charging"}}));
@@ -156,7 +160,7 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     EXPECT_EQ(fixture.lua("return system.theme()"), "light");
     EXPECT_EQ(fixture.lua("local battery = system.battery() return tostring(battery.level) .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "nil false unknown");
 
-    fixture.host().setSystemInfo({.os = SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Phone 9", .manufacturer = "Maker", .deviceKind = SystemInfo::DeviceKind::Phone, .cpuName = "Chip G4", .cpuCores = 8, .memoryBytes = 12884901888, .locale = "pt-BR", .languages = {"pt-BR", "en-US"}, .timeZone = "America/Sao_Paulo"});
+    fixture.host().setSystemInfo({.os = SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Phone 9", .manufacturer = "Maker", .deviceKind = SystemInfo::DeviceKind::Phone, .cpuName = "Chip G4", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm64, .memoryBytes = 12884901888, .locale = "pt-BR", .languages = {"pt-BR", "en-US"}, .timeZone = "America/Sao_Paulo"});
     fixture.restart();
     // clang-format off
     fixture.runLua(R"(
@@ -166,10 +170,10 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
         events.on('systemThemeChanged', function(data) heard[#heard + 1] = data.theme end)
         events.on('batteryChanged', function(data) heard[#heard + 1] = data.state .. ' ' .. tostring(data.level) end)
         local info = system.info()
-        summary = table.concat({info.os, info.osVersion, info.deviceModel, info.manufacturer, info.deviceKind, info.cpuName, info.cpuCores, info.memoryBytes, info.locale, table.concat(info.languages, ','), info.timeZone}, '|')
+        summary = table.concat({info.os, info.osVersion, info.deviceModel, info.manufacturer, info.deviceKind, info.cpuName, info.cpuCores, info.architecture, info.bits, info.memoryBytes, info.locale, table.concat(info.languages, ','), info.timeZone}, '|')
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return summary"), "android|16|Phone 9|Maker|phone|Chip G4|8|12884901888|pt-BR|pt-BR,en-US|America/Sao_Paulo");
+    EXPECT_EQ(fixture.lua("return summary"), "android|16|Phone 9|Maker|phone|Chip G4|8|arm64|64|12884901888|pt-BR|pt-BR,en-US|America/Sao_Paulo");
 
     fixture.host().setTheme(Theme::Dark);
     fixture.host().setBattery({.level = 0.5F, .charging = true, .state = Battery::State::Charging});
