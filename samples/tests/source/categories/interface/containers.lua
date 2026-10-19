@@ -38,7 +38,7 @@ function Containers:columns()
                 ui.row{ui.label{text = 'Start'}, ui.spacer{grow = 1}, ui.label{text = 'A spacer pushes this to the end'}},
                 ui.divider{},
                 ui.row{gap = 16, ui.label{text = 'Wood 12'}, ui.divider{vertical = true, height = 40, color = 'borderStrong'}, ui.label{text = 'Stone 4'}, ui.divider{vertical = true, height = 40}, ui.label{text = 'Rope 2'}},
-                ui.row{gap = 12, ui.button{id = 'grow-one', text = 'Grow 1', grow = 1}, ui.button{text = 'Grow 2', grow = 2}},
+                ui.row{wrap = true, gap = 12, ui.button{id = 'grow-one', text = 'Grow 1', grow = 1}, ui.button{text = 'Grow 2', grow = 2}},
             }),
             layout.section('Component "grid" with four columns', {ui.grid{columns = 4, gap = 12, children = cells()}}),
             ui.panel{gap = 8, ui.label{text = 'A panel', font = 'button'}, ui.label{text = 'Panels and cards keep the pointer from reaching the app behind them.', color = 'textMuted'}},
@@ -53,7 +53,7 @@ function Containers:columns()
             }),
             layout.section('Component "scroll"', {
                 ui.scroll{id = 'log', height = 260, ui.column{gap = 6, children = logLines()}},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{text = 'Day 25', onClick = function(event) event.gui:command('log', 'scrollTo', {node = 'day-25', align = 'center'}) end},
                     ui.button{text = 'Top', onClick = function(event) event.gui:command('log', 'scrollTo', {offset = 0}) end},
                 },

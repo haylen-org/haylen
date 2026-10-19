@@ -74,7 +74,7 @@ function Flight:enter()
         },
         controls = {
             ui.toggle{id = 'autopilot', text = 'Autopilot', checked = true, onChange = function(event) self.autopilot = event.checked end},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'zoomOut', text = 'Zoom out', grow = 1, onClick = function() self:zoomBy(0.5) end},
                 ui.button{id = 'zoomIn', text = 'Zoom in', grow = 1, onClick = function() self:zoomBy(2) end},
             },

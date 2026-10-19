@@ -28,7 +28,7 @@ function Rotation:enter()
         hint = 'Turn with Q and E or the right stick, or a quarter turn at a time with the button. Walk with WASD, the arrows, the left stick or by holding the mouse button or a finger.',
         play = true,
         controls = {
-            ui.row{gap = 8,
+            ui.row{wrap = true, gap = 8,
                 ui.button{id = 'quarter', text = 'Quarter turn', grow = 1, onClick = function() camera.rotation = camera.rotation + math.pi / 2 end},
                 ui.button{id = 'shake', text = 'Shake', grow = 1, onClick = function() camera:addTrauma(0.8) end},
             },

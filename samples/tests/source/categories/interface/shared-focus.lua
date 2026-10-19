@@ -47,7 +47,7 @@ end
 
 function SharedFocus:barTree()
     return ui.panel{anchor = 'bottomRight', margin = 24, padding = 12,
-        ui.row{gap = 12,
+        ui.row{wrap = true, gap = 12,
             ui.button{id = 'previous', text = 'Previous', onClick = function() self:skip(-1) end},
             ui.button{id = 'play', text = 'Play', variant = 'primary', onClick = function() self:toggle() end},
             ui.button{id = 'next', text = 'Next', onClick = function() self:skip(1) end},

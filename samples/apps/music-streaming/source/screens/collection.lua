@@ -29,7 +29,7 @@ function Collection:enter()
                             ui.label{part = 'name', bind = {text = 'name'}, font = 'title'},
                             ui.label{part = 'caption', bind = {text = 'caption'}, color = 'textMuted'},
                             ui.label{part = 'description', bind = {text = 'description'}, font = 'caption', color = 'textMuted'},
-                            ui.row{gap = 10, margin = {10, 0, 0, 0},
+                            ui.row{wrap = true, gap = 10, margin = {10, 0, 0, 0},
                                 ui.button{part = 'play', text = 'Play', icon = Shell.icon('play'), variant = 'primary'},
                                 ui.button{part = 'shuffle', text = 'Shuffle', icon = Shell.icon('shuffle'), iconColor = 'text'},
                             },

@@ -24,11 +24,11 @@ function WebSocket:enter()
     self:frame{
         hint = 'Connect, then send text, binary data or a ping. The echo server sends everything back. Close ends the connection with the code 1000, or 4000 for a code of the app.',
         focus = 'connect',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.statusIndicator{id = 'state', text = 'Not connected', tone = 'neutral'},
                 ui.label{text = services.echo, font = 'monospace', color = 'textMuted'},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'connect', text = 'Connect', variant = 'primary', grow = 1, onClick = function()
                         self:connect()
                     end},

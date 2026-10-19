@@ -27,7 +27,7 @@ function Shake:enter()
         hint = 'A click or a tap on the play area, F or the X button adds trauma too. Walk with WASD, the arrows or the left stick to feel the shake while moving.',
         play = true,
         controls = {
-            ui.row{gap = 8,
+            ui.row{wrap = true, gap = 8,
                 ui.button{id = 'hit', text = 'Hit', grow = 1, onClick = function() camera:addTrauma(0.35) end},
                 ui.button{id = 'blast', text = 'Blast', grow = 1, onClick = function() camera:addTrauma(0.9) end},
                 ui.button{id = 'recoil', text = 'Recoil', grow = 1, onClick = function() camera:shake(0.7, 1, 0) end},

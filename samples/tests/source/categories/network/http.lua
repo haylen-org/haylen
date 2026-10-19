@@ -21,7 +21,7 @@ function Http:enter()
     self:frame{
         hint = 'Send a GET or a POST to the echo service, or type any address. Switch between the body and the headers of the response with the tabs.',
         focus = 'get',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Echo service'},
                 ui.label{text = services.get, font = 'monospace', color = 'textMuted'},

@@ -47,7 +47,7 @@ function Themes:nodes()
         layout.columns{
             ui.panel{grow = 1, gap = 16,
                 ui.pageHeader{title = 'Harbor', caption = 'A banner header', banner = true},
-                ui.row{gap = 12, ui.button{text = 'Default'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Delete', variant = 'destructive'}},
+                ui.row{wrap = true, gap = 12, ui.button{text = 'Default'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Delete', variant = 'destructive'}},
                 ui.row{gap = 24, ui.checkbox{text = 'Check', checked = true}, ui.checkbox{text = 'Box'}},
                 ui.toggle{text = 'Toggle', checked = true},
                 ui.row{gap = 12, ui.chip{text = 'Chip', selected = true}, ui.chip{text = 'Another'}, ui.badge{text = 'Badge', tone = 'accent'}, ui.badge{text = '3', tone = 'danger', solid = true}},
@@ -65,7 +65,7 @@ function Themes:nodes()
                     ui.label{text = 'The map tab'},
                 },
                 ui.segmentedControl{items = {{id = 'day', text = 'Day'}, {id = 'night', text = 'Night'}}, selected = 'day'},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{text = 'Dialog', onClick = function(event) event.gui:set('dialog', {open = true}) end},
                     ui.button{text = 'Toast', onClick = function(event) event.gui:set('toast', {open = true}) end},
                     ui.button{text = 'Tooltip', tooltip = 'Tooltips take the tooltip surface'},

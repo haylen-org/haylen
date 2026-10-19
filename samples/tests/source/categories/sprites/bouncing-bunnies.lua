@@ -36,11 +36,11 @@ function BouncingBunnies:enter()
         play = true,
         controls = {
             ui.segmentedControl{id = 'mode', items = BouncingBunnies.modes, selected = 'bulk', onChange = function(event) self.mode = event.value end},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'add', text = 'Add 1,000', grow = 1, variant = 'primary', onClick = function() self:add(1000) end},
                 ui.button{id = 'many', text = 'Add 10,000', grow = 1, onClick = function() self:add(10000) end},
             },
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'remove', text = 'Remove 1,000', grow = 1, onClick = function() self:remove(1000) end},
                 ui.button{id = 'few', text = 'Just 10', grow = 1, onClick = function() self:keep(10) end},
             },

@@ -62,7 +62,7 @@ function Events:enter()
     self:frame{
         hint = 'Open and close sockets and watch both kinds of events arrive. The counters on the left add up every event this visit heard.',
         focus = 'echo',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 760, align = 'stretch', gap = 12,
                 ui.grid{columns = 2, gap = 12,
                     ui.button{id = 'echo', text = 'Open the echo socket', align = 'stretch', onClick = function()

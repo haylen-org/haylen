@@ -33,7 +33,7 @@ function OneShots:enter()
         focus = 'play',
         controls = {
             ui.formField{label = 'Sound', ui.combo{id = 'sound', items = sounds.items(sounds.effects), selected = self.sound.id, onChange = function(event) self.sound = sounds.find(sounds.effects, event.value) end}},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'play', text = 'Play', variant = 'primary', onClick = function() self:play(self.options.pan) end},
                 ui.button{id = 'stopAll', text = 'Stop every voice', onClick = function() self:stopAll() end},
             },

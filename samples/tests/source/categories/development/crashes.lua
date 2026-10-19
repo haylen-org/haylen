@@ -15,7 +15,7 @@ function Crashes:enter()
     end)
     self:frame{
         hint = 'Add breadcrumbs, then crash the app and start it again to read the report of the crash.',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'add', text = 'Add a breadcrumb', align = 'stretch', onClick = function() self:add() end},
                 ui.button{id = 'crash', text = 'Crash the app natively', align = 'stretch', variant = 'destructive', onClick = function() self:crash() end},

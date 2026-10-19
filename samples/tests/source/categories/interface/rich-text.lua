@@ -77,7 +77,7 @@ function RichText:columns()
             layout.section('Lists, rules and tables', {ui.richText{text = RichText.blocks}}),
             layout.section('Typewriter reveal', {
                 ui.richText{id = 'dialogue', text = RichText.dialogue[1], revealSpeed = 30, font = 'heading'},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'next', text = 'Next line', variant = 'primary', onClick = function(event)
                         self.line = self.line % #RichText.dialogue + 1
                         event.gui:set('dialogue', {text = RichText.dialogue[self.line]})

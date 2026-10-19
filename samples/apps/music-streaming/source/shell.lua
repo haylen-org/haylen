@@ -149,7 +149,7 @@ function Shell.playerBar()
     return ui.column{id = 'playerBar', visible = false, gap = 0,
         ui.progress{id = 'playerProgress', value = 0, style = {metrics = {progressHeight = 4}, colors = {track = '#00000000'}}},
         ui.panel{padding = {6, 12, 6, 12}, style = Shell.flatBar,
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.imageButton{id = 'playerCover', image = Shell.blankCover, scale = 0.28, accessibilityLabel = 'Open the player', onClick = function()
                     Shell.openPlayer()
                 end},

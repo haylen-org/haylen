@@ -15,7 +15,7 @@ function Library:enter()
     self.section = 'playlists'
     self.created = 0
     self:mountGui(Shell.frame('library', ui.column{grow = 1, gap = 10, padding = {14, 0, 0, 0},
-        ui.row{gap = 12, padding = {0, 16, 0, 20},
+        ui.row{wrap = true, gap = 12, padding = {0, 16, 0, 20},
             ui.label{text = 'Your library', font = 'title', grow = 1, wrap = false},
             ui.button{id = 'new', icon = Shell.icon('plus'), variant = 'icon', tooltip = 'New playlist', accessibilityLabel = 'New playlist', onClick = function(event)
                 event.gui:set('newDialog', {open = true})

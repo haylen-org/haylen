@@ -18,7 +18,7 @@ function Relayout:content()
         ui.card{width = 900, align = 'start', gap = 20,
             ui.label{id = 'title', text = {key = 'menu.title'}, font = 'heading', wrap = false, width = 420, minScale = 0.5},
             ui.label{id = 'intro', text = {key = 'layout.intro'}},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'save', text = {key = 'layout.save'}, variant = 'primary'},
                 ui.button{id = 'cancel', text = {key = 'layout.cancel'}},
                 ui.button{id = 'options', text = {key = 'layout.options'}},

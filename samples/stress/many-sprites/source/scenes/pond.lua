@@ -90,7 +90,7 @@ function Pond:enter()
             {id = 'handOverTime', label = 'Hand-over'},
         },
         controls = {
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'add', text = 'Add ' .. Hud.count(Pond.step), variant = 'primary', grow = 1, onClick = function() self:addFish() end},
                 ui.button{id = 'remove', text = 'Remove ' .. Hud.count(Pond.step), grow = 1, onClick = function() self:removeFish() end},
             },

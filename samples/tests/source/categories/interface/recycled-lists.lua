@@ -77,7 +77,7 @@ end
 function RecycledLists:columns()
     return layout.columns{
         layout.section('Mixed list with sticky sections', {grow = 3, align = 'stretch',
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'insert', text = 'Insert above', onClick = function() self:insertAbove() end},
                 ui.button{id = 'remove', text = 'Remove', onClick = function() self:removeFocused() end},
                 ui.button{id = 'move', text = 'Move', onClick = function() self:moveFirst() end},

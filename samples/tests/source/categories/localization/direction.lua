@@ -28,7 +28,7 @@ function Direction:content()
                 {id = 'inbox', text = {key = 'direction.inbox'}, caption = {key = 'direction.inboxCaption'}},
                 {id = 'profile', text = {key = 'direction.profile'}, caption = {key = 'direction.profileCaption'}},
             }, selected = 'inbox'},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'save', text = {key = 'direction.save'}, variant = 'primary'},
                 ui.button{id = 'cancel', text = {key = 'direction.cancel'}},
             },

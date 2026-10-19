@@ -31,7 +31,7 @@ function UiNodes:enter()
         ui.label{id = 'title', text = 'Treasure found', font = 'title'},
         ui.label{id = 'reward', text = '+250 coins', font = 'heading', color = 'accentText'},
         ui.progress{id = 'bar', value = 0.6, tone = 'success', text = 'Level 3'},
-        ui.row{gap = 12,
+        ui.row{wrap = true, gap = 12,
             ui.button{id = 'claim', text = 'Claim', variant = 'primary', grow = 1},
             ui.button{id = 'later', text = 'Later', grow = 1},
         },

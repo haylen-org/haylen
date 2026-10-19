@@ -40,13 +40,13 @@ function Browser:enter()
     self:frame{
         hint = 'Pick a folder to open it and a file to preview it, with the mouse, a finger, the arrows or the directional pad. The first row goes up a folder.',
         focus = 'entries',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 760, align = 'stretch', gap = 12,
                 ui.label{id = 'path', text = '', font = 'monospace', color = 'accentText'},
                 ui.scroll{grow = 1, ui.list{id = 'entries', items = {}, onSelect = function(event)
                     self:pick(event.item)
                 end}},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'newFolder', text = 'New folder', onClick = function()
                         self:create(true)
                     end},

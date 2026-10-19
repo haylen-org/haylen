@@ -57,7 +57,7 @@ function ToastStacks:enter()
                     },
                 }),
                 layout.section('A queue', {
-                    ui.row{gap = 12,
+                    ui.row{wrap = true, gap = 12,
                         ui.button{id = 'burst', text = 'Six at the top', onClick = function() self:burst() end},
                         ui.button{text = 'One that stays', onClick = function(event) event.gui:set('sticky', {open = true}) end},
                         ui.button{text = 'Let it go', variant = 'link', onClick = function(event) event.gui:set('sticky', {open = false}) end},

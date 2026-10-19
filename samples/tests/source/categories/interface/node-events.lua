@@ -23,7 +23,7 @@ function NodeEvents:enter()
         content = {layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('The card', {ui.stack{id = 'room', height = 420, self:card()}}),
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'hide', text = 'Hide', onClick = function() self:set('box', {visible = false}) end},
                     ui.button{text = 'Show', onClick = function() self:set('box', {visible = true}) end},
                     ui.button{text = 'Replace', onClick = function() self:replace() end},

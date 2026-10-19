@@ -12,7 +12,7 @@ function MessagePack:enter()
     self.lines = {}
     self:frame{
         hint = 'Encode a match state, decode a large message off the frame thread, or feed broken bytes.',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'small', text = 'Encode and decode a state', align = 'stretch', onClick = function() self:roundTrip() end},
                 ui.button{id = 'large', text = 'Decode 20000 frames off the frame thread', align = 'stretch', onClick = function() self:decodeLarge() end},

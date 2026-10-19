@@ -25,11 +25,11 @@ function Timelines:enter()
         code = kCode,
         controls = {
             ui.button{id = 'restart', text = 'Restart', variant = 'primary', onClick = function() self:play() end},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'pause', text = 'Pause', grow = 1, onClick = function() self.cutscene:pause() end},
                 ui.button{id = 'resume', text = 'Resume', grow = 1, onClick = function() self.cutscene:resume() end},
             },
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'reverse', text = 'Reverse', grow = 1, onClick = function() self.cutscene:reverse() end},
                 ui.button{id = 'fight', text = 'Seek fight', grow = 1, onClick = function() self.cutscene:seek('fight') end},
             },

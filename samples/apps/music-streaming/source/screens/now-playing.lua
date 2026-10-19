@@ -16,7 +16,7 @@ NowPlaying.sleepItems = {{id = 'off', text = 'Off'}, {id = '5', text = 'In 5 min
 
 function NowPlaying:enter()
     self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
-        ui.row{gap = 8, padding = {10, 12},
+        ui.row{wrap = true, gap = 8, padding = {10, 12},
             ui.button{id = 'close', icon = Shell.icon('down'), variant = 'icon', accessibilityLabel = 'Close the player', tooltip = 'Close', onClick = Shell.back},
             ui.label{text = 'Now playing', font = 'button', textAlign = 'center', grow = 1},
             ui.button{id = 'queue', icon = Shell.icon('queue'), variant = 'icon', accessibilityLabel = 'Queue', tooltip = 'Queue', onClick = function()
@@ -26,7 +26,7 @@ function NowPlaying:enter()
         ui.scroll{grow = 1, height = 0,
             Shell.centered(560, ui.column{gap = 14, padding = {4, 24, 24, 24},
                 ui.image{id = 'cover', image = Shell.blankCover, align = 'stretch', aspectRatio = 1, maxHeight = 520, radius = 22, fit = 'contain'},
-                ui.row{gap = 12, margin = {8, 0, 0, 0},
+                ui.row{wrap = true, gap = 12, margin = {8, 0, 0, 0},
                     ui.column{gap = 0, grow = 1,
                         ui.label{id = 'title', text = '', font = 'heading', wrap = false},
                         ui.button{id = 'artist', text = '', variant = 'link', align = 'start', style = {metrics = {controlPaddingX = 0}}, onClick = function()
@@ -51,7 +51,7 @@ function NowPlaying:enter()
                     end
                 end},
                 ui.row{gap = 8, ui.label{id = 'elapsed', text = '0:00', font = 'caption', color = 'textMuted', grow = 1}, ui.label{id = 'length', text = '0:00', font = 'caption', color = 'textMuted'}},
-                ui.row{gap = 6, justify = 'center',
+                ui.row{wrap = true, gap = 6, justify = 'center',
                     ui.button{id = 'shuffle', icon = Shell.icon('shuffle'), variant = 'toolbar', accessibilityLabel = 'Shuffle', tooltip = 'Shuffle', onClick = function()
                         Player.setShuffle(not Player.shuffle)
                     end},

@@ -156,7 +156,7 @@ function LibraryBrowser:enter()
                 end
             end
         end},
-        ui.row{gap = 8,
+        ui.row{wrap = true, gap = 8,
             ui.button{id = 'previous', text = 'Previous', onClick = function() self:step(0, -1) end},
             ui.button{id = 'fire', text = 'Fire again', onClick = function() self:fire() end},
             ui.button{id = 'next', text = 'Next', onClick = function() self:step(0, 1) end},

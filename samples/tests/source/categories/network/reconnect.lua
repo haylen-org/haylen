@@ -24,13 +24,13 @@ function Reconnect:enter()
     self:frame{
         hint = 'Pick a server and start. The unreachable server shows every attempt and its wait until the socket gives up, and the echo server connects and stays up.',
         focus = 'target',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.segmentedControl{id = 'target', items = Reconnect.targets, selected = self.target, onChange = function(event)
                     self.target = event.value
                 end},
                 ui.label{id = 'url', text = '', font = 'monospace', color = 'textMuted'},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'start', text = 'Start', variant = 'primary', grow = 1, onClick = function()
                         self:start()
                     end},

@@ -22,7 +22,7 @@ function SaveSlots:enter()
     self:frame{
         hint = 'Change the game, pick a slot in the table and save, load or delete it. Damage a slot saved twice to see its backup take its place, and one saved once to see how a broken file is reported.',
         focus = 'day',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 460, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'The game'},
                 ui.label{id = 'game', text = ''},
@@ -47,7 +47,7 @@ function SaveSlots:enter()
                 end},
                 ui.label{id = 'newest', text = '', color = 'textMuted'},
                 ui.alert{id = 'problem', tone = 'danger', title = 'The slot could not be read', message = '', visible = false},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'save', text = 'Save', variant = 'primary', onClick = function()
                         self:save()
                     end},

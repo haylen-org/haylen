@@ -31,7 +31,7 @@ function EdgeToEdge:enter()
         ui.safeArea{
             ui.column{padding = 24,
                 ui.spacer{grow = 2},
-                ui.row{gap = 16,
+                ui.row{wrap = true, gap = 16,
                     ui.circularProgress{value = 0.8, size = 72, tone = 'success', text = 'HP'},
                     ui.label{text = 'Day 3', font = 'heading', color = 'onAccent', outline = '#FF000000', outlineWidth = 3},
                     ui.badge{text = '12 coins', tone = 'warning', solid = true},

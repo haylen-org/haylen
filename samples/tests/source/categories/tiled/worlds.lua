@@ -25,7 +25,7 @@ function Worlds:enter()
     self:frame{
         hint = 'Drag, or use the arrows, the directional pad or the left stick, to pan, and the mouse wheel or the buttons to zoom. The map under the pointer is outlined with its path and its place in the world, and R or the X button shows the whole world.',
         controls = {
-            ui.row{
+            ui.row{wrap = true,
                 ui.button{id = 'in', text = 'Zoom in', onClick = function() self.pan:zoom(1.25) end},
                 ui.button{id = 'out', text = 'Zoom out', onClick = function() self.pan:zoom(0.8) end},
             },

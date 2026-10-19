@@ -18,13 +18,13 @@ function Conversation:enter()
     end
     self:frame{
         hint = 'Talk to the smith: continue, buy swords while the gold lasts, ask once for news, or save and resume the conversation.',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.label{id = 'speaker', text = '', font = 'heading'},
                 ui.label{id = 'line', text = ''},
                 ui.button{id = 'continue', text = 'Continue', align = 'stretch', variant = 'primary', onClick = function() self:advance() end},
                 ui.column{gap = 8, align = 'stretch', table.unpack(choices)},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'save', text = 'Save', onClick = function() self.saved = self.state:save() self:note('Saved the conversation in the node "' .. self.state.node .. '".') end},
                     ui.button{id = 'resume', text = 'Resume', onClick = function() self:resume() end},
                     ui.button{id = 'restart', text = 'Start again', onClick = function() self:begin() end},

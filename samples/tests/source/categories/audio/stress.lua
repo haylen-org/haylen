@@ -24,7 +24,7 @@ function Stress:enter()
         hint = 'Start a burst or a rain of voices and watch the count stop at the limit while the music plays on.',
         focus = 'burst32',
         controls = {
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'burst32', text = 'Burst of 32', variant = 'primary', onClick = function() self:burst(32) end},
                 ui.button{id = 'burst160', text = 'Burst of 160', variant = 'primary', onClick = function() self:burst(160) end},
             },

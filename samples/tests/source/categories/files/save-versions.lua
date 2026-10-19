@@ -17,7 +17,7 @@ function SaveVersions:enter()
     end)
     self:frame{
         hint = 'Write a slot as version 1, then read it as version 3, damage it, and move it to another device.',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'old', text = 'Write as version 1', align = 'stretch', onClick = function() self:writeOld() end},
                 ui.button{id = 'upgrade', text = 'Read as version 3', align = 'stretch', onClick = function() self:readUpgraded() end},

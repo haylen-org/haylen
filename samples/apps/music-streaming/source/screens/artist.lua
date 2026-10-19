@@ -38,7 +38,7 @@ function Artist:enter()
                     ui.column{gap = 6, minWidth = 260, grow = 1,
                         ui.label{part = 'name', bind = {text = 'name'}, font = 'title'},
                         ui.label{part = 'caption', bind = {text = 'caption'}, color = 'textMuted'},
-                        ui.row{gap = 10, margin = {8, 0, 0, 0},
+                        ui.row{wrap = true, gap = 10, margin = {8, 0, 0, 0},
                             ui.button{part = 'play', text = 'Play', icon = Shell.icon('play'), variant = 'primary'},
                             ui.button{part = 'follow', bind = {text = 'followText'}, text = 'Follow'},
                         },

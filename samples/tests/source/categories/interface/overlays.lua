@@ -44,7 +44,7 @@ function Overlays:columns()
             }),
             layout.section('Component "toast"', {
                 ui.row{gap = 12, children = toneButtons},
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{text = 'At the bottom', onClick = self:toast('bottom', 'Saved at the bottom of the safe area')},
                     ui.button{text = 'Until closed', onClick = self:toast('sticky', 'This toast stays until the button below closes it')},
                     ui.button{text = 'Close it', variant = 'link', onClick = function(event) event.gui:set('sticky', {open = false}) end},
@@ -53,7 +53,7 @@ function Overlays:columns()
         },
         ui.column{grow = 1, gap = 24,
             layout.section('Component "tooltip"', {
-                ui.row{gap = 16,
+                ui.row{wrap = true, gap = 16,
                     ui.button{text = 'Hover me', tooltip = 'Tooltips show after the pointer rests for half a second.'},
                     ui.button{icon = 'interface/themes/fantasy/icons/gear.png', variant = 'icon', tooltip = 'Settings'},
                     ui.icon{image = 'interface/themes/fantasy/icons/coin.png', size = 56, tooltip = 'Twelve gold coins'},

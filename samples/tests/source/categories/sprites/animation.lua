@@ -51,7 +51,7 @@ function Animation:enter()
         code = Animation.code,
         hint = 'Click or tap the play area to attack. Queued clips start when the current pass ends.',
         controls = {
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'idle', text = 'Idle', grow = 1, onClick = function() self:play('idle') end},
                 ui.button{id = 'run', text = 'Run', grow = 1, onClick = function() self:play('run') end},
                 ui.button{id = 'attack', text = 'Attack', grow = 1, variant = 'primary', onClick = function() self:play('attack') end},

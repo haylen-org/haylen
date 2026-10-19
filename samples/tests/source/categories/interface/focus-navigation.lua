@@ -57,7 +57,7 @@ function FocusNavigation:explicit()
     local press = function(event) self:pressed(event) end
     return layout.section('Explicit neighbours', {grow = 1,
         ui.label{text = 'Right from A skips to C, and down from any of them goes to the scope entry.', color = 'textMuted'},
-        ui.row{gap = 16,
+        ui.row{wrap = true, gap = 16,
             ui.button{id = 'a', text = 'A', width = 120, focusRight = 'c', focusDown = 'enter-scope', onClick = press},
             ui.button{id = 'b', text = 'B', width = 120, focusDown = 'enter-scope', onClick = press},
             ui.button{id = 'c', text = 'C', width = 120, focusLeft = 'a', focusDown = 'enter-scope', onClick = press},
@@ -77,7 +77,7 @@ function FocusNavigation:scope()
             self.last = ' Left the scope with cancel.'
         end,
             ui.label{text = 'Moves stay inside this panel. Cancel leaves it.', color = 'textMuted'},
-            ui.row{gap = 12, ui.button{id = 'scoped-1', text = 'Inside 1', onClick = press}, ui.button{id = 'scoped-2', text = 'Inside 2', onClick = press}},
+            ui.row{wrap = true, gap = 12, ui.button{id = 'scoped-1', text = 'Inside 1', onClick = press}, ui.button{id = 'scoped-2', text = 'Inside 2', onClick = press}},
             ui.button{id = 'leave-scope', text = 'Leave', variant = 'link', onClick = function(event)
                 event.gui:command('enter-scope', 'focus')
             end},

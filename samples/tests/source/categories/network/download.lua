@@ -27,7 +27,7 @@ function Download:enter()
     self:frame{
         hint = 'Pick what to download, then stream it with progress or fetch it in one piece. The file is saved in the downloads folder of the user folder.',
         focus = 'files',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.list{id = 'files', items = items, selected = self.choice.id, onSelect = function(event)
                     for _, choice in ipairs(services.downloads) do

@@ -74,11 +74,11 @@ function Playroom:enter()
             {id = 'waiting', label = 'Waiting in the chutes'},
         },
         controls = {
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'add', text = 'Pour ' .. Hud.count(Playroom.step), variant = 'primary', grow = 1, onClick = function() self.bin:pour(Playroom.step) end},
                 ui.button{id = 'remove', text = 'Remove ' .. Hud.count(Playroom.step), grow = 1, onClick = function() self.bin:remove(Playroom.step) end},
             },
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'blast', text = 'Blast', grow = 1, onClick = function() self:blastPile() end},
                 ui.button{id = 'shake', text = 'Shake', grow = 1, onClick = function() self:shake() end},
                 ui.button{id = 'fit', text = 'Fit view', grow = 1, onClick = function() self.zoomed = false end},

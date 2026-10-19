@@ -69,7 +69,7 @@ end
 function SmoothCurves:cards()
     return {
         layout.section('Buttons and badges', {
-            ui.row{gap = 12, ui.button{id = 'button', text = 'Default'}, ui.button{id = 'primary', text = 'Primary', variant = 'primary'}},
+            ui.row{wrap = true, gap = 12, ui.button{id = 'button', text = 'Default'}, ui.button{id = 'primary', text = 'Primary', variant = 'primary'}},
             ui.row{gap = 12, ui.chip{id = 'chip', text = 'Chip', selected = true, removable = true}, ui.badge{id = 'badge', text = '12', tone = 'danger', solid = true}, ui.badge{text = 'New', tone = 'accent'}},
         }),
         layout.section('Choices', {

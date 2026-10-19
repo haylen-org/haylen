@@ -27,7 +27,7 @@ function Console:enter()
 
     self:frame{
         hint = 'Open the console with the grave accent key, four fingers or the button, and type "gold 50", "god true" or "help".',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.label{id = 'state', text = self:describe(), font = 'heading'},
                 ui.button{id = 'open', text = 'Open the console', align = 'stretch', variant = 'primary', onClick = function() self:open() end},

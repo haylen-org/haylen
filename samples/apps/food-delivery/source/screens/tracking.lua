@@ -35,7 +35,7 @@ function Tracking:enter()
     end
     local order = self.order
     self:mountGui(ui.stack{onCancel = Shell.back,
-        ui.row{align = 'start', padding = 12, gap = 10,
+        ui.row{wrap = true, align = 'start', padding = 12, gap = 10,
             ui.card{padding = 4, ui.button{id = 'back', icon = Shell.icon('back'), variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = Shell.back}},
             ui.card{padding = 4, ui.button{id = 'recenter', icon = Shell.icon('locate'), variant = 'icon', accessibilityLabel = 'Show the whole route', tooltip = 'Show the whole route', onClick = function()
                 self.zoomFactor = 1
@@ -52,7 +52,7 @@ function Tracking:enter()
             },
             ui.row(steps),
             ui.divider{},
-            ui.row{gap = 14,
+            ui.row{wrap = true, gap = 14,
                 ui.avatar{name = order.courier.name, size = 56},
                 ui.column{gap = 0, grow = 1,
                     ui.label{text = order.courier.name, font = 'button', wrap = false},

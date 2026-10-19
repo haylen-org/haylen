@@ -22,7 +22,7 @@ function Playback:enter()
         hint = 'The square crosses the screen once a second and the tone rises with it.',
         controls = {
             ui.sectionTitle{text = 'Playback'},
-            ui.row{gap = 8,
+            ui.row{wrap = true, gap = 8,
                 ui.button{text = 'Play', onClick = function() self.clip:play() end},
                 ui.button{text = 'Pause', onClick = function() self.clip:pause() end},
                 ui.button{text = 'Start', onClick = function() self.clip:seek(0) end},

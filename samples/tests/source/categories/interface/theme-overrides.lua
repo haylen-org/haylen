@@ -58,7 +58,7 @@ function ThemeOverrides:columns()
                     end
                     self:apply()
                 end},
-                ui.row{gap = 12, ui.button{text = 'Theme'}, ui.button{text = 'Theme', variant = 'primary'}},
+                ui.row{wrap = true, gap = 12, ui.button{text = 'Theme'}, ui.button{text = 'Theme', variant = 'primary'}},
                 ui.row{id = 'styled', gap = 12, wrap = true, lineGap = 12,
                     ui.button{text = 'Styled'},
                     ui.button{text = 'Styled', variant = 'primary'},
@@ -94,7 +94,7 @@ end
 -- A card in another theme with controls in their normal, selected, focused and disabled states.
 function ThemeOverrides:sampler(theme)
     return ui.card{theme = theme, gap = 12,
-        ui.row{gap = 12, ui.button{text = 'Button'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Off', enabled = false}},
+        ui.row{wrap = true, gap = 12, ui.button{text = 'Button'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Off', enabled = false}},
         ui.row{gap = 24, ui.checkbox{text = 'Check', checked = true}, ui.toggle{text = 'Toggle', checked = true}, ui.toggle{text = 'Off', enabled = false}},
         ui.row{gap = 12, ui.textField{placeholder = 'A field', grow = 1}, ui.chip{text = 'Chip', selected = true}, ui.badge{text = '7', tone = 'danger', solid = true}},
     }

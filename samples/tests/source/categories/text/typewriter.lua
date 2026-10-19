@@ -50,7 +50,7 @@ function Typewriter:enter()
                 self.line = self.line % #Typewriter.dialogue + 1
                 self:say()
             end},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'skip', text = 'Skip', grow = 1, onClick = function() self.spoken.visibleCharacters = -1 end},
                 ui.button{id = 'replay', text = 'Replay', grow = 1, onClick = function() self:say() end},
             },

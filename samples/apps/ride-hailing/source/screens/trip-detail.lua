@@ -60,7 +60,7 @@ function TripDetail:enter()
                     ui.divider{},
                     self:costRow('Total', trip.price, 'heading'),
                 },
-                ui.row{gap = 12,
+                ui.row{wrap = true, gap = 12,
                     ui.button{id = 'help', text = 'Get help', icon = Shell.icon('info'), iconColor = 'text', grow = 1, onClick = function()
                         Shell.notify('Our team answers questions about this trip in the chat.', 'information')
                     end},

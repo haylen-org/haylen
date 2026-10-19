@@ -16,7 +16,7 @@ function Inspector:enter()
     debugging.watch('camera', self.lens)
     self:frame{
         hint = 'Open the inspector and edit "watched.player.speed", or type "inspect watched.player" in the console.',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.label{id = 'state', text = self:describe(), font = 'heading'},
                 ui.button{id = 'open', text = 'Open the inspector', align = 'stretch', variant = 'primary', onClick = function() self:open() end},

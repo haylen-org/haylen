@@ -17,7 +17,7 @@ function Infinite:enter()
         hint = 'Drag the map, or use WASD, the arrows, the directional pad or the left stick, and the mouse wheel zooms. The cell under the pointer can be negative, and R or the X button comes back to the origin.',
         controls = {
             ui.checkbox{id = 'chunks', text = 'Show the chunks', checked = true, onChange = function(event) self.showChunks = event.checked end},
-            ui.row{
+            ui.row{wrap = true,
                 ui.button{id = 'in', text = 'Zoom in', onClick = function() self.pan:zoom(1.25) end},
                 ui.button{id = 'out', text = 'Zoom out', onClick = function() self.pan:zoom(0.8) end},
             },

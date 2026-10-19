@@ -23,7 +23,7 @@ function Nested:enter()
         code = kCode,
         controls = {
             ui.button{id = 'restart', text = 'Restart', variant = 'primary', onClick = function() self:play() end},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'pause', text = 'Pause', grow = 1, onClick = function() self.parent:pause() end},
                 ui.button{id = 'resume', text = 'Resume', grow = 1, onClick = function() self.parent:resume() end},
             },

@@ -32,7 +32,7 @@ function hud.new(owner, actions)
             id = 'actions',
             anchor = 'topRight',
             margin = 8,
-            ui.row{
+            ui.row{wrap = true,
                 gap = 6,
                 focusable = false,
                 ui.button{id = 'sword', icon = 'images/icon-sword.png', onClick = actions.sword},

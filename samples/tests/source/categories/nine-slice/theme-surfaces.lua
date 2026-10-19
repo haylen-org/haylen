@@ -73,7 +73,7 @@ function ThemeSurfaces:enter()
     self.demo = ui.mount(ui.column{id = 'demo', anchor = 'topLeft', width = ThemeSurfaces.demoWidth, gap = 16, onCancel = function() self:cancel() end,
         ui.pageHeader{title = 'Workshop', caption = 'Every surface is a nine-slice', banner = true, textAlign = 'center'},
         ui.panel{gap = 14,
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'default', text = 'Default', grow = 1},
                 ui.button{id = 'accept', text = 'Primary', variant = 'primary', grow = 1},
                 ui.button{id = 'delete', text = 'Destructive', variant = 'destructive', grow = 1},

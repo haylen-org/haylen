@@ -41,7 +41,7 @@ function Reset:enter()
     self:frame{
         hint = 'Change some values to see them marked, then reset the audio group or every setting of these tests. The table reads the stored preferences every time.',
         focus = 'change',
-        content = {ui.row{grow = 1, gap = 24,
+        content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'change', text = 'Change some values', align = 'stretch', onClick = function()
                     self:change()

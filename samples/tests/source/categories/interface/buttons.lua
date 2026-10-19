@@ -35,17 +35,17 @@ function Buttons:columns()
     return layout.columns{
         ui.column{grow = 1, gap = 24,
             layout.section('Button variants', {
-                ui.row{gap = 16,
+                ui.row{wrap = true, gap = 16,
                     ui.button{id = 'default', text = 'Default', onClick = self:pressed('"default"')},
                     ui.button{text = 'Primary', variant = 'primary', onClick = self:pressed('"primary"')},
                     ui.button{text = 'Destructive', variant = 'destructive', onClick = self:pressed('"destructive"')},
                 },
-                ui.row{gap = 16,
+                ui.row{wrap = true, gap = 16,
                     ui.button{text = 'With icon', icon = 'interface/icons/sword.png', onClick = self:pressed('the button with an icon')},
                     ui.button{text = 'Link', variant = 'link', onClick = self:pressed('"link"')},
                     ui.button{text = 'Disabled', enabled = false},
                 },
-                ui.row{gap = 8,
+                ui.row{wrap = true, gap = 8,
                     ui.button{id = 'hammer', icon = 'interface/icons/hammer.png', variant = 'toolbar', checked = true, tooltip = 'Build', onClick = function(event)
                         local checked = not event.gui:get('hammer').checked
                         event.gui:set('hammer', {checked = checked})
@@ -57,7 +57,7 @@ function Buttons:columns()
                 },
             }),
             layout.section('Icon placement and justify', {
-                ui.row{gap = 0,
+                ui.row{wrap = true, gap = 0,
                     ui.button{text = 'Island', icon = 'interface/themes/fantasy/icons/star.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Island" tab')},
                     ui.button{text = 'Forge', icon = 'interface/icons/hammer.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Forge" tab')},
                     ui.button{text = 'Settings', icon = 'interface/themes/fantasy/icons/gear.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Settings" tab')},

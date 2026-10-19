@@ -20,7 +20,7 @@ function Fonts:content()
             ui.label{id = 'theme', text = '', font = 'monospace', color = 'accentText'},
             ui.label{text = {key = 'fonts.sample'}, font = 'title'},
             ui.label{text = {key = 'story.chapters.first.text'}},
-            ui.row{gap = 12,
+            ui.row{wrap = true, gap = 12,
                 ui.button{id = 'play', text = {key = 'menu.play'}, variant = 'primary'},
                 ui.button{id = 'settings', text = {key = 'menu.settings'}},
             },

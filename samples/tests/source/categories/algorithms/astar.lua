@@ -31,7 +31,7 @@ function AStar:enter()
             ui.label{text = 'Weight of weighted A*', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'weight', value = 2, min = 1, max = 5, step = 0.25, showValue = true, onChange = function(event) self:setOption('weight', event.value) end},
             ui.checkbox{id = 'diagonal', text = 'Diagonal steps', checked = true, onChange = function(event) self:setOption('diagonal', event.checked) end},
-            ui.row{ui.button{id = 'random', text = 'Random walls', onClick = function() self:randomize() end}, ui.button{id = 'clear', text = 'Clear', onClick = function() self:clear() end}},
+            ui.row{wrap = true, ui.button{id = 'random', text = 'Random walls', onClick = function() self:randomize() end}, ui.button{id = 'clear', text = 'Clear', onClick = function() self:clear() end}},
         },
         focus = 'brush',
     }

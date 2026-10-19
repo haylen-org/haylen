@@ -35,7 +35,7 @@ function Trip:enter()
     self:mountGui(ui.stack{onCancel = function()
         Shell.back()
     end,
-        ui.row{align = 'start', padding = 12, gap = 10,
+        ui.row{wrap = true, align = 'start', padding = 12, gap = 10,
             ui.card{padding = 4, ui.button{id = 'back', icon = Shell.icon('back'), variant = 'icon', accessibilityLabel = 'Back to the map', tooltip = 'Back', onClick = Shell.back}},
             ui.card{padding = 4, ui.button{id = 'recenter', icon = Shell.icon('locate'), variant = 'icon', accessibilityLabel = 'Show the whole route', tooltip = 'Show the whole route', onClick = function()
                 self.map:reset()
@@ -58,7 +58,7 @@ function Trip:enter()
                 },
                 ui.badge{text = driver.plate, tone = 'accent', solid = true},
             },
-            ui.row{id = 'actions', gap = 10,
+            ui.row{wrap = true, id = 'actions', gap = 10,
                 ui.button{id = 'chat', text = 'Chat', icon = Shell.icon('chat'), iconColor = 'text', grow = 1, onClick = function(event)
                     event.gui:set('chatDialog', {open = true})
                 end},

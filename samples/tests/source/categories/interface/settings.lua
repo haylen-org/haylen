@@ -56,7 +56,7 @@ end
 
 function Settings:form()
     local values = self.values
-    return ui.row{
+    return ui.row{wrap = true,
         justify = 'center',
         ui.panel{width = 1100, align = 'start',
             ui.settingsForm{

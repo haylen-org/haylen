@@ -32,7 +32,7 @@ function Simulations:enter()
         },
         ui.column{anchor = 'right', margin = 16, width = 300, gap = 16,
             ui.panel{height = 160, ui.label{text = 'Map', textAlign = 'center', align = 'stretch'}},
-            ui.row{gap = 16, ui.button{text = 'Jump', variant = 'primary', focusable = false}, ui.button{text = 'Attack', variant = 'destructive', focusable = false}},
+            ui.row{wrap = true, gap = 16, ui.button{text = 'Jump', variant = 'primary', focusable = false}, ui.button{text = 'Attack', variant = 'destructive', focusable = false}},
         },
     }, {layer = -1, owner = self})
 end
