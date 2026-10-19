@@ -210,6 +210,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/Object.cpp
   src/2d/tiled/ObjectFactories.cpp
   src/2d/tiled/Properties.cpp
+  src/2d/tiled/PropertyTypes.cpp
   src/2d/tiled/TileCollision.cpp
   src/2d/tiled/TiledLua.cpp
   src/2d/tiled/Tileset.cpp

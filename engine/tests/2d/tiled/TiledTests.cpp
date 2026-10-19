@@ -17,6 +17,7 @@
 #include "haylen/2d/tiled/MapRenderer.hpp"
 #include "haylen/2d/tiled/MapWriter.hpp"
 #include "haylen/2d/tiled/ObjectFactories.hpp"
+#include "haylen/2d/tiled/PropertyTypes.hpp"
 #include "haylen/2d/tiled/World.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/SceneManager.hpp"
@@ -194,6 +195,16 @@ class TiledTest : public ::testing::Test {
         // clang-format on
     }
 
+    // The classes of the project of the island: the class of the map, the spawn of its properties and the reward each spawn holds, of which the map writes only what differs.
+    [[nodiscard]] static core::Json gameProject() {
+        return core::Json::parse(R"({"propertyTypes": [
+            {"id": 1, "name": "level", "type": "class", "useAs": ["map"], "members": [{"name": "difficulty", "type": "int", "value": 1}, {"name": "title", "type": "string", "value": "Untitled"}]},
+            {"id": 2, "name": "Spawn", "type": "class", "useAs": ["property"], "members": [{"name": "count", "type": "int", "value": 1}, {"name": "kind", "type": "string", "value": "slime"}, {"name": "reward", "type": "class", "propertyType": "Reward", "value": {}}]},
+            {"id": 3, "name": "Reward", "type": "class", "useAs": ["property"], "members": [{"name": "coins", "type": "int", "value": 5}, {"name": "gem", "type": "bool", "value": false}]},
+            {"id": 4, "name": "Kind", "type": "enum", "storageType": "string", "values": ["slime", "goblin"]}
+        ]})");
+    }
+
     [[nodiscard]] static std::map<std::string, std::string> packageFiles() {
         // clang-format off
         const auto png = [](int width, int height, std::uint32_t color) {
@@ -203,7 +214,7 @@ class TiledTest : public ::testing::Test {
         // clang-format on
         std::string map = orthogonalMap().dump();
         return {
-            {"content/maps/island.tmj", map}, {"content/maps/tiles/terrain.tsj", terrainTileset().dump()}, {"content/maps/templates/rock.tj", rockTemplate().dump()}, {"content/maps/images/terrain.png", png(64, 32, 0xFFFFFFFFU)}, {"content/maps/props/tree.png", png(16, 32, 0x00FF00FFU)}, {"content/maps/props/rock.png", png(16, 16, 0x808080FFU)}, {"content/maps/backgrounds/sky.png", png(8, 8, 0xFF00FFFFU)}, {"content/maps/infinite.tmj", infiniteMap().dump()}, {"content/maps/world/level_0_0.tmj", map}, {"content/maps/world/level_1_0.tmj", map}, {"content/maps/world/level.world", R"({"type": "world", "maps": [{"fileName": "../island.tmj", "x": -64, "y": 0, "width": 64, "height": 48}], "patterns": [{"regexp": "level_(\\d+)_(\\d+)\\.tmj", "multiplierX": 64, "multiplierY": 48, "offsetX": 0, "offsetY": 0, "mapWidth": 64, "mapHeight": 48}]})"},
+            {"content/maps/island.tmj", map}, {"content/maps/tiles/terrain.tsj", terrainTileset().dump()}, {"content/maps/templates/rock.tj", rockTemplate().dump()}, {"content/maps/images/terrain.png", png(64, 32, 0xFFFFFFFFU)}, {"content/maps/props/tree.png", png(16, 32, 0x00FF00FFU)}, {"content/maps/props/rock.png", png(16, 16, 0x808080FFU)}, {"content/maps/backgrounds/sky.png", png(8, 8, 0xFF00FFFFU)}, {"content/maps/infinite.tmj", infiniteMap().dump()}, {"content/maps/game.tiled-project", gameProject().dump()}, {"content/maps/world/level_0_0.tmj", map}, {"content/maps/world/level_1_0.tmj", map}, {"content/maps/world/level.world", R"({"type": "world", "maps": [{"fileName": "../island.tmj", "x": -64, "y": 0, "width": 64, "height": 48}], "patterns": [{"regexp": "level_(\\d+)_(\\d+)\\.tmj", "multiplierX": 64, "multiplierY": 48, "offsetX": 0, "offsetY": 0, "mapWidth": 64, "mapHeight": 48}]})"},
         };
     }
 
@@ -1040,6 +1051,8 @@ TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
     EXPECT_EQ(fixture.lua("local t = map:tilesets()[1] return t.grid.orientation .. ' ' .. t.grid.width .. 'x' .. t.grid.height .. ' ' .. tostring(t.transformations.flipHorizontal) .. ' ' .. tostring(t.transformations.flipVertical) .. ' ' .. tostring(t.transformations.rotate) .. ' ' .. tostring(t.transformations.preferUntransformed)"), "isometric 32.0x16.0 true false true true");
     EXPECT_EQ(fixture.lua("local layer = map:layer('things') local sign for _, object in ipairs(layer.objects) do if object.name == 'sign' then sign = object end end return layer.color:toHex() .. ' ' .. tostring(sign.text.underline) .. ' ' .. tostring(sign.text.strikeout) .. ' ' .. tostring(sign.text.kerning) .. ' ' .. tostring(map:layer('ground').color)"), "#FFA0C040 true true false nil");
     EXPECT_EQ(fixture.lua("return tostring(map:tileInfo(1 | tiled.rotateHexagonal).rotateHexagonal) .. ' ' .. tostring(map:tileInfo(1).rotateHexagonal)"), "true false");
+    EXPECT_EQ(fixture.lua("local filled = tiled.newMapRenderer(assets.load('maps/island.tmj', nil, {project = 'maps/game.tiled-project'})) return filled.properties.difficulty .. ' ' .. filled.properties.spawn.reward.coins .. ' ' .. tostring(map.properties.difficulty)"), "1 5 nil");
+    EXPECT_NE(fixture.lua("assets.load('maps/island.tmj', nil, {project = 3})").find("The \"project\" of a Tiled map is the path of its \".tiled-project\" file."), std::string::npos);
     EXPECT_EQ(fixture.lua("return string.format('%X %X %X %X %X', tiled.flipHorizontal, tiled.flipVertical, tiled.flipDiagonal, tiled.rotateHexagonal, tiled.flagMask)"), "80000000 40000000 20000000 10000000 F0000000");
     EXPECT_EQ(fixture.lua("return tiled.tileId(5 | tiled.flipHorizontal | tiled.flipDiagonal) .. ' ' .. tiled.tileId(7)"), "5 7");
 }
@@ -1112,6 +1125,29 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
     EXPECT_TRUE(infinite.infinite);
     EXPECT_EQ(infinite.findLayer("ground")->getGid(-1, 1), 4U);
     EXPECT_EQ(infinite.findLayer("ground")->getGid(1, 0), 6U);
+}
+
+// A project fills in the members the map leaves at their defaults, in the properties of its class and in class values, nested classes and the class items of lists alike, and keeps what the map sets.
+TEST_F(MapTest, FillsInTheClassMembersOfItsProject) {
+    tiled::Map map = tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
+    map.applyPropertyTypes(tiled::PropertyTypes::parse(gameProject()));
+    EXPECT_EQ(map.properties.getNumber("difficulty", 0.0), 1.0);
+    EXPECT_EQ(map.properties.getString("title", ""), "Island");
+    const core::Json& spawn = map.properties.find("spawn")->value;
+    EXPECT_EQ(spawn.at("count"), 2);
+    EXPECT_EQ(spawn.at("kind"), "goblin");
+    EXPECT_EQ(spawn.at("reward").at("coins"), 5);
+    EXPECT_EQ(spawn.at("reward").at("gem"), false);
+    const core::Json& bat = map.properties.find("loot")->value[4].at("value");
+    EXPECT_EQ(bat.at("kind"), "bat");
+    EXPECT_EQ(bat.at("count"), 1);
+
+    const tiled::PropertyTypes types = tiled::PropertyTypes::parse(gameProject());
+    EXPECT_EQ(types.getClasses().size(), 3U);
+    EXPECT_EQ(types.findClass("Kind"), nullptr);
+    const tiled::PropertyTypes looping = tiled::PropertyTypes::parse(core::Json::parse(R"({"propertyTypes": [{"name": "Node", "type": "class", "members": [{"name": "next", "type": "class", "propertyType": "Node", "value": {}}]}]})"));
+    EXPECT_THROW((void)looping.complete(tiled::Properties({{.name = "head", .type = "class", .propertyType = "Node", .value = core::Json::object()}}), ""), std::invalid_argument);
+    EXPECT_THROW((void)tiled::PropertyTypes::parse(core::Json::parse(R"({"propertyTypes": [{"type": "class", "members": []}]})")), std::invalid_argument);
 }
 
 TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {

@@ -38,6 +38,16 @@ async.spawn(function()
 end)
 ```
 
+Tiled writes only the members of a custom class that differ from their defaults, in class values and in the properties of a map, layer, tileset, tile, Wang set or object whose class it is. The option `project` names the `.tiled-project` file of the map inside the content folder, whose classes fill in those members at their defaults, in nested classes and in the class items of lists too, so `map.properties.spawn.reward.coins` holds the default the project gives it. A `project` that is not a path raises `The "project" of a Tiled map is the path of its ".tiled-project" file.`, and a class that holds itself raises `The class "name" of the Tiled project holds itself.`
+
+```lua
+local assets = require('haylen.assets')
+local tiled = require('haylen.tiled')
+
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj', nil, {project = 'maps/game.tiled-project', filter = 'linear'}))
+print(map.properties.difficulty)
+```
+
 The loaded asset is a `Map` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. The function `tiled.newMapRenderer` makes a playable `MapRenderer` from it.
 
 A Tiled world file with the `.world` extension loads as a plain list with one table per map, each with `path` (the map path inside the content folder), `x`, `y`, `width` and `height` (the map area in world pixels). Maps listed in `maps` keep their order, followed by the maps that `patterns` match. A pattern's `regexp` is matched against the files in the world's folder, its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, and `mapWidth` and `mapHeight` give the size. World loading accepts no options, and any key raises `Unknown option "name".`
@@ -66,7 +76,7 @@ The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 - Objects: Rectangles, ellipses, capsules, points, polygons, polylines, text with every text setting and tile objects, with rotation, visibility, opacity, classes and custom properties, and the color of object layers.
 - Tileset grids, which say where Tiled places tile objects drawn for isometric maps, and tileset transformations, which say how Wang painting may flip and rotate the tiles.
 - Object templates, whose fields and properties are defaults that each instance overrides one by one. Tile templates map their tile to the map's own copy of the template's tileset, and a template whose tileset the map does not list raises `A tile template uses the tileset "path", which the map does not list.`
-- Custom property types `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` (Tiled 1.12), including lists nested in lists.
+- Custom property types `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` (Tiled 1.12), including lists nested in lists. The classes of a `.tiled-project` file fill in the members a map leaves at their defaults.
 - Worlds with listed maps and patterns.
 - Object factories through `map:spawn`.
 

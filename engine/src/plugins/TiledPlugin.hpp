@@ -1,5 +1,6 @@
 #pragma once
 
+#include "haylen/core/Json.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/plugins/Plugin.hpp"
 
@@ -24,6 +25,9 @@ class TiledPlugin final : public Plugin {
 
     // Clears every pixel that matches the transparent color, the way Tiled shows images without an alpha channel.
     static void applyColorKey(graphics::Image& image, math::Color key);
+
+    // Returns the options of a map without its `project`, the options its images load with.
+    [[nodiscard]] static core::Json getTextureOptions(const core::Json& options);
 };
 
 } // namespace haylen::plugins

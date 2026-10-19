@@ -12,6 +12,7 @@
 
 #include "haylen/2d/tiled/Layer.hpp"
 #include "haylen/2d/tiled/Properties.hpp"
+#include "haylen/2d/tiled/PropertyTypes.hpp"
 #include "haylen/2d/tiled/Tileset.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -79,6 +80,9 @@ class Map final {
     // Hands every tileset, tile and image layer its texture.
     void attachTextures(const TextureLoader& load);
 
+    // Fills in the members of the classes of the project that the map, its layers, objects, tilesets, tiles and Wang sets and their class values leave at their defaults.
+    void applyPropertyTypes(const PropertyTypes& types);
+
     // Finds the tileset that holds a global tile id, ignoring its flip flags, or returns null when no tileset holds it.
     [[nodiscard]] const TilesetReference* findTileset(std::uint32_t gid) const noexcept;
     [[nodiscard]] const Layer* findLayer(std::string_view name) const noexcept;
@@ -119,6 +123,7 @@ class Map final {
     [[nodiscard]] static int positiveModulo(int value, int divisor) noexcept;
     static void collectImages(const Layer& layer, std::vector<Image>& images);
     static void attachLayer(Layer& layer, const TextureLoader& load);
+    static void applyToLayer(Layer& layer, const PropertyTypes& types);
 
     // Searches groups depth first and keeps the constness of the layers it walks.
     template <typename Layers> [[nodiscard]] static auto findIn(Layers& candidates, std::string_view name) noexcept -> decltype(&candidates.front());

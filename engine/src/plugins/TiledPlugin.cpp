@@ -2,6 +2,7 @@
 
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -9,6 +10,7 @@
 #include "2d/tiled/TiledLua.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/tiled/Map.hpp"
+#include "haylen/2d/tiled/PropertyTypes.hpp"
 #include "haylen/2d/tiled/World.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
@@ -42,18 +44,37 @@ void TiledPlugin::applyColorKey(graphics::Image& image, math::Color key) {
     }
 }
 
+core::Json TiledPlugin::getTextureOptions(const core::Json& options) {
+    core::Json texture = options;
+    texture.erase("project");
+    return texture;
+}
+
 void TiledPlugin::start(core::Engine& engine) {
     // clang-format off
     engine.getAssets().registerType({
         .name = "tiled",
         .extensions = {".tmj"},
-        .normalize = [&manager = engine.getAssets()](const core::Json& options) { return manager.normalizeOptions("texture", options); },
+        .normalize = [&manager = engine.getAssets()](const core::Json& options) {
+            core::Json normalized = manager.normalizeOptions("texture", getTextureOptions(options));
+            if (options.contains("project")) {
+                const core::Json& project = options.at("project");
+                if (!project.is_string() || project.get<std::string>().empty()) {
+                    throw std::invalid_argument("The \"project\" of a Tiled map is the path of its \".tiled-project\" file.");
+                }
+                normalized["project"] = io::Path::normalize(project.get<std::string>());
+            }
+            return normalized;
+        },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
             const io::Package& package = *request.package;
             const auto reader = [&package](const std::string& path) { return core::Json::parse(package.readAssetText(path)); };
             auto decoded = std::make_shared<DecodedMap>();
-            const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(request.options);
+            const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(getTextureOptions(request.options));
             decoded->map = tiled::Map::parse(core::Json::parse(request.bytes.begin(), request.bytes.end()), request.path, reader);
+            if (request.options.contains("project")) {
+                decoded->map.applyPropertyTypes(tiled::PropertyTypes::parse(reader(request.options.at("project").get<std::string>())));
+            }
             for (const tiled::Map::Image& entry : decoded->map.getImages()) {
                 DecodedImage image{.image = graphics::Image::decode(package.readAsset(entry.path)), .keyed = entry.transparentColor.has_value()};
                 if (entry.transparentColor) {
@@ -71,7 +92,8 @@ void TiledPlugin::start(core::Engine& engine) {
         },
         .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
             auto& decoded = *std::static_pointer_cast<DecodedMap>(result);
-            const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(request.options);
+            const core::Json textureJson = getTextureOptions(request.options);
+            const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(textureJson);
 
             // Images without a color key share the texture cache, and keyed images stay private to the map because their pixels differ from the file.
             decoded.map.attachTextures([&](const std::string& path) {
@@ -79,7 +101,7 @@ void TiledPlugin::start(core::Engine& engine) {
                 if (image.keyed) {
                     return device.createTexture(image.image, options);
                 }
-                return graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(manager.share("texture", path, request.options, [&](const assets::Manager::Request&) {
+                return graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(manager.share("texture", path, textureJson, [&](const assets::Manager::Request&) {
                     return device.createTexture(image.image, options).getResource();
                 })));
             });

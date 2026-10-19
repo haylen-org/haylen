@@ -249,4 +249,34 @@ math::Rect Map::getPixelBounds() const noexcept {
     return {0.0F, 0.0F, columns * tileSize.x + tileSize.x * 0.5F, rows * rowHeight + (tileSize.y - rowHeight)};
 }
 
+void Map::applyPropertyTypes(const PropertyTypes& types) {
+    properties = types.complete(properties, type);
+    for (Layer& layer : layers) {
+        applyToLayer(layer, types);
+    }
+    for (const TilesetReference& reference : tilesets) {
+        Tileset& tileset = *reference.tileset;
+        tileset.properties = types.complete(tileset.properties, tileset.type);
+        for (auto& [id, tile] : tileset.tiles) {
+            tile.properties = types.complete(tile.properties, tile.type);
+        }
+        for (WangSet& set : tileset.wangSets) {
+            set.properties = types.complete(set.properties, set.type);
+            for (WangSet::Color& color : set.colors) {
+                color.properties = types.complete(color.properties, color.type);
+            }
+        }
+    }
+}
+
+void Map::applyToLayer(Layer& layer, const PropertyTypes& types) {
+    layer.properties = types.complete(layer.properties, layer.type);
+    for (Object& object : layer.objects) {
+        object.properties = types.complete(object.properties, object.type);
+    }
+    for (Layer& child : layer.layers) {
+        applyToLayer(child, types);
+    }
+}
+
 } // namespace haylen::tiled
