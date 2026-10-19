@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local WindowsPages = haylen.class('WindowsPages', Test)
 
+WindowsPages.code = [[
+ui.window{id = 'bag', title = 'Bag', x = 1240, y = 380, width = 620, closable = true, onClose = function() log.info('The bag closed.') end}
+gui:set('bag', {open = true})
+ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food'}, foodRow, toolsRow}
+ui.carousel{height = 230, loop = true, interval = 5, dayPage, duskPage, nightPage}
+ui.scroll{axis = 'horizontal', snap = true, ui.row{gap = 24, children = levelCards}}]]
+
 local function levels()
     local cards = {}
     for index = 1, 10 do
@@ -27,6 +34,7 @@ end
 function WindowsPages:enter()
     self:frame{
         hint = 'Drag the window by its title bar and close it with its button or Escape while the focus is inside. Swipe or drag the carousel, or focus its dots and press left and right. Drag the level row and let go: it settles on the nearest card.',
+        code = WindowsPages.code,
         focus = 'open-window',
         content = {self:columns()},
     }

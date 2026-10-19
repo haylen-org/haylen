@@ -11,11 +11,20 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Ropes = haylen.class('Ropes', PhysicsTest)
 
+Ropes.code = [[
+local rope = physics2d.newRope(world, {from = {-560, -388}, to = {-560, -60}, segments = 16, thickness = 6, pinStart = true, endBody = lamp})
+physics2d.newRope(world, {from = {-260, 200}, to = {100, 200}, segments = 24, thickness = 8, pinStart = true, pinEnd = true})
+physics2d.newRope(world, {from = {300, -388}, to = {300, 5}, segments = 10, thickness = 14, planks = true, pinStart = true, endBody = crate})
+physics2d.newRope(world, {from = {480, 360}, to = {700, 360}, segments = 12, thickness = 5, startBody = left, endBody = right})  -- A bola.
+local joints = rope:joints()
+joints[#joints // 2 + 1]:destroy()  -- Cuts it in the middle.]]
+
 local kRopeColor = '#FFBCAAA4'
 local kPlankColor = '#FF8D6E63'
 
 function Ropes:enter()
     self:frame{
+        code = Ropes.code,
         hint = 'Drag the lamp, the crate or the bola to swing the ropes. Cut snaps every rope in the middle, R or the X button ties them again.',
         controls = {
             ui.button{id = 'cut', text = 'Cut the ropes', onClick = function() self:cut() end},

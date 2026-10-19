@@ -9,6 +9,13 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Scatter = haylen.class('Scatter', AlgorithmTest)
 
+Scatter.code = [[
+local points = procedural2d.scatterAsync({  -- Points of x, y and a type from 1.
+    region = {polygon = island}, method = 'poisson', spacing = 22, maximumSpacing = 90, densityMap = {seed = 1, frequency = 0.004},
+    exclude = {{center = {-300, -60}, radius = 110}, {60, -200, 220, 150}}, weights = {3, 2, 1, 2},
+    biome = {seed = 8, frequency = 0.003}, layers = {{minimum = -1, maximum = 0, weights = {5, 3, 0, 0}}, {minimum = 0, maximum = 1, weights = {0, 1, 2, 4}}},
+}):await()]]
+
 local kIsland = {{-700, -120}, {-560, -340}, {-200, -390}, {160, -330}, {520, -380}, {720, -160}, {640, 160}, {700, 330}, {300, 390}, {-120, 330}, {-480, 380}, {-720, 200}}
 local kLakes = {{center = {-300, -60}, radius = 110}, {center = {330, 150}, radius = 80}}
 local kVillage = {60, -200, 220, 150}
@@ -22,6 +29,7 @@ local kTypes = {
 function Scatter:enter()
     self:frame{
         hint = 'Every change scatters again on a worker thread. Biomes give forests of trees and bushes and meadows of rocks and flowers, and density follows noise. R or the X button takes a new seed.',
+        code = Scatter.code,
         controls = {
             ui.radioGroup{id = 'method', items = {{id = 'random', text = 'Random by density'}, {id = 'grid', text = 'Jittered grid'}, {id = 'poisson', text = 'Poisson spacing'}}, selected = 'poisson', onChange = function(event) self:change('method', event.value) end},
             ui.label{text = 'Density', font = 'caption', color = 'textMuted'},

@@ -12,6 +12,13 @@ local LightingTest = require('categories.lighting.lighting-test')
 
 local Occluders = haylen.class('Occluders', LightingTest)
 
+Occluders.code = [[
+local walls = lighting2d.occludersFromMap(map, 'walls')  -- One per object of the layer, in world coordinates.
+local shapes = lighting2d.occludersFromBody(world, crate)
+for _, shape in ipairs(shapes) do shape.x, shape.y, shape.rotation = crate.x, crate.y, crate.rotation end  -- Follows the body.
+graphics2d.drawOccluder(walls[1])
+graphics2d.drawLight({x = x, y = y, radius = 1100, shadows = true, shadowFilter = 'pcf5'})]]
+
 Occluders.maxCrates = 40
 
 -- Culls the edges of closed occluders that face the light, whatever their winding, so walls and crates stay lit and only what lies behind them is dark.
@@ -42,6 +49,7 @@ function Occluders:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. A click, a tap, E, Enter or the south button drops a crate at the cursor.',
+        code = Occluders.code,
         cursor = true,
         view = {bounds.width, bounds.height},
         controls = {ui.button{id = 'remove', text = 'Remove the crates', onClick = function()

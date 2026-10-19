@@ -10,6 +10,12 @@ local actions = require('categories.camera.actions')
 
 local Picking = haylen.class('Picking', Test)
 
+Picking.code = [[
+local x, y = input.mousePosition()
+local worldX, worldY = camera:screenToWorld(x, y)  -- Through the zoom and the rotation of the view.
+local screenX, screenY = camera:worldToScreen(selected.x, selected.y)
+graphics2d.drawText(nil, selected.name, screenX, screenY - 60, {size = 30, anchor = {0.5, 1}})  -- On a screen canvas.]]
+
 Picking.cursorSpeed = 900
 
 function Picking:init(entry)
@@ -29,6 +35,7 @@ function Picking:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Point with the mouse, a finger, WASD, the arrows or the left stick, and select with a click, a tap, F or the X button. Q and E turn the view, Z and X zoom it.',
+        code = Picking.code,
         play = true,
     }
 end

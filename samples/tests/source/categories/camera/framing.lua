@@ -10,6 +10,12 @@ local actions = require('categories.camera.actions')
 
 local Framing = haylen.class('Framing', Test)
 
+Framing.code = [[
+camera.positionSmoothing = true
+camera.minZoom, camera.maxZoom = 0.3, 1.4
+camera:frame({{yellow.x, yellow.y}, {blue.x, blue.y}, {red.x, red.y}}, 220, dt)  -- Fits every point with 220 units around.
+camera:update(dt)]]
+
 Framing.names = {'Frame yellow', 'Frame blue', 'Frame red'}
 
 function Framing:init(entry)
@@ -35,6 +41,7 @@ function Framing:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Yellow walks with WASD, the arrows or the left stick, blue with IJKL or the right stick, and red wanders by itself. Uncheck a walker to leave it out of the frame.',
+        code = Framing.code,
         play = true,
         controls = checks,
     }

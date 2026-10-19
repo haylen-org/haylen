@@ -9,6 +9,12 @@ local Room = require('categories.lighting.room')
 
 local Hdr = haylen.class('Hdr', LightingTest)
 
+Hdr.code = [[
+local lamp = lighting2d.newLight({x = 520, y = -40, radius = 260, color = '#FFFFD8A0', intensity = 4})
+print(graphics2d.hdrLighting())  -- Whether the light map holds light past 1 on this backend.
+graphics2d.beginWorld(camera, {ambientLight = '#FF202430'})
+graphics2d.drawLight(lamp)]]
+
 function Hdr:init(entry)
     Hdr.super.init(self, entry)
     self.room = Room()
@@ -23,6 +29,7 @@ end
 function Hdr:enter()
     self:frame{
         hint = 'The fixed lights shine with intensity 1, 2 and 4. Move the cursor light and raise its intensity to overexpose the floor.',
+        code = Hdr.code,
         cursor = true,
         controls = {ui.formField{label = 'Intensity of the cursor light', ui.slider{id = 'intensity', min = 0, max = 6, value = self.held.intensity, showValue = true, onChange = function(event)
             self.held.intensity = event.value

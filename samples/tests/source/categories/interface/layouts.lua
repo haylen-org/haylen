@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local Layouts = haylen.class('Layouts', Test)
 
+Layouts.code = [[
+ui.row{justify = 'spaceBetween', alignItems = 'center', padding = {12, 24}, gap = 8, children = boxes}
+ui.card{grow = 1, minWidth = 160, maxWidth = 220, margin = {0, 40}}
+ui.row{wrap = true, gap = 8, lineGap = 12, children = tags}
+ui.grid{minColumnWidth = 160, gap = 8, alignItems = 'stretch', children = cells}
+ui.card{aspectRatio = 16 / 9, height = 120}]]
+
 Layouts.justify = {'start', 'center', 'end', 'spaceBetween', 'spaceAround', 'spaceEvenly'}
 Layouts.align = {'start', 'center', 'end', 'stretch'}
 Layouts.tags = {'Wood', 'Stone', 'Rope', 'Iron ore', 'Fish', 'Coconut', 'Sail cloth', 'Gold', 'Clay', 'Shells', 'Torch', 'Map piece'}
@@ -37,6 +44,7 @@ end
 function Layouts:enter()
     self:frame{
         hint = 'Change the width of the examples with the slider, and the justify and alignItems of the first row with the steppers. Every row, grid and stack below follows at once.',
+        code = Layouts.code,
         focus = 'width',
         content = {self:columns()},
     }

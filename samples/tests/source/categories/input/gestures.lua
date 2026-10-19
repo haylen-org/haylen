@@ -9,6 +9,13 @@ local Test = require('harness.test')
 
 local Gestures = haylen.class('Gestures', Test)
 
+Gestures.code = [[
+input.setGestureSettings({longPressDuration = 0.5, swipeMinDistance = 120, mouse = true})
+for _, gesture in ipairs(input.gestures()) do
+    if gesture.type == 'pinch' then card.scale, card.angle = baseScale * gesture.scale, baseAngle + gesture.rotation end
+    if gesture.type == 'doubleTap' then card.scale, card.angle = 1, 0 end
+end]]
+
 local kTypes = {'tap', 'doubleTap', 'longPress', 'swipe', 'pinch'}
 local kColors = {tap = Test.accent, doubleTap = Test.warm, longPress = Test.violet, swipe = Test.green, pinch = Test.red}
 local kLife = 0.9
@@ -41,7 +48,7 @@ function Gestures:enter()
         input.setGestureSettings({mouse = event.checked})
     end}
     controls[#controls + 1] = ui.button{id = 'reset', text = 'Reset the thresholds', onClick = function() self:reset() end}
-    self:frame({hint = 'Tap, double tap, hold, swipe or pinch the stage. The left mouse button acts as a finger.', controls = controls, focus = 'longPressDuration'})
+    self:frame({code = Gestures.code, hint = 'Tap, double tap, hold, swipe or pinch the stage. The left mouse button acts as a finger.', controls = controls, focus = 'longPressDuration'})
 end
 
 function Gestures:exit()

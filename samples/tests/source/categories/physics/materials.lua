@@ -11,12 +11,19 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Materials = haylen.class('Materials', PhysicsTest)
 
+Materials.code = [[
+box:addBox(40, 40, {friction = 0.05})  -- Slides down the ramp.
+ball:addCircle(24, {restitution = 0.75})  -- Keeps three quarters of its speed in a bounce.
+heavy:addBox(40, 40, {density = 12})  -- Outweighs a large box of density 0.5.
+world:createJoint('revolute', pivot, plank, {ax = 540, ay = 290, enableLimit = true, lower = -0.4, upper = 0.4})]]
+
 local kFrictions = {0, 0.05, 0.1, 0.3, 0.6}
 local kRestitutions = {0, 0.25, 0.5, 0.75, 0.95}
 local kLabel = {size = 19, color = '#FFE8EAF2', anchor = {0.5, 0}, layer = 10}
 
 function Materials:enter()
     self:frame{
+        code = Materials.code,
         hint = 'Watch each material play out, and drag the bodies to try again. R or the X button replays the scene.',
         controls = {
             ui.button{id = 'replay', text = 'Replay', onClick = function() self:build() end},

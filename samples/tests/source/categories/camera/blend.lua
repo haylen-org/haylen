@@ -11,6 +11,12 @@ local actions = require('categories.camera.actions')
 
 local Blend = haylen.class('Blend', Test)
 
+Blend.code = [[
+local landmark = graphics2d.newCamera()
+landmark.position, landmark.zoom, landmark.rotation = {600, -300}, {0.55, 0.55}, 0.25
+tween.to(cut, 1.4, {amount = 1}, {ease = 'cubicInOut', owner = self})  -- Cuts from the walker to the pond.
+graphics2d.beginWorld(graphics2d.blendCameras(camera, landmark, cut.amount))]]
+
 function Blend:init(entry)
     Blend.super.init(self, entry)
     self.world = World()
@@ -28,6 +34,7 @@ function Blend:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Cut to the pond and back. The walker keeps walking with WASD, the arrows or the left stick while the view blends.',
+        code = Blend.code,
         play = true,
         controls = {
             ui.button{id = 'pond', text = 'Cut to the pond', onClick = function() self:blendTo(1) end},

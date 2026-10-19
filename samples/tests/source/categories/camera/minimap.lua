@@ -10,6 +10,14 @@ local actions = require('categories.camera.actions')
 
 local Minimap = haylen.class('Minimap', Test)
 
+Minimap.code = [[
+local minimap = graphics2d.newCamera()
+minimap.zoom = {0.1, 0.1}
+minimap.viewport = {1400, 750, 480, 290}  -- A corner of the screen.
+graphics2d.beginWorld(minimap, {order = 1, visibilityMask = 1})
+graphics2d.drawCircle(600, -300, 320, '#FF3A70B0', {visibility = 1})  -- Terrain shows.
+graphics2d.drawCircle(tree.x, tree.y, 40, '#FF2E6E34', {layer = 2, visibility = 2})  -- Details are left out.]]
+
 function Minimap:init(entry)
     Minimap.super.init(self, entry)
     self.world = World()
@@ -25,6 +33,7 @@ function Minimap:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Walk with WASD, the arrows, the left stick or by holding the mouse button or a finger. The frame on the minimap is what the main camera sees.',
+        code = Minimap.code,
         play = true,
         controls = {ui.toggle{id = 'details', text = 'Details on the minimap', onChange = function(event)
             self.details = event.checked

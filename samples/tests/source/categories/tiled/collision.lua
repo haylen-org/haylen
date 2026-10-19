@@ -10,6 +10,13 @@ local MapTest = require('categories.tiled.map-test')
 
 local Collision = haylen.class('Collision', MapTest)
 
+Collision.code = [[
+local world = physics2d.newWorld({gravity = {0, 0}})
+local walls = map:buildCollision(world)  -- One static body per tile layer that collides and per object layer with collision.
+world.onSensorBegin = function(sensor, visitor) if visitor.data then visitor.data.wet = true end end  -- Water and the pit are sensors.
+local ball = world:createBody({x = x, y = y, vx = 320, linearDamping = 0.3})
+ball:addCircle(10, {restitution = 0.8, mask = ~2})  -- Passes the fences, whose layer puts them in category 2.]]
+
 local kFenceCategory = 2
 local kMaxBalls = 60
 
@@ -18,6 +25,7 @@ function Collision:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Tap or click to throw a ball from there. Blue balls pass the fences, whose layer puts them in their own category. Balls in the water or the pit turn gold while they overlap the sensor. R or the X button clears the balls.',
+        code = Collision.code,
         controls = {
             ui.checkbox{id = 'bodies', text = 'Show the collision', checked = true, onChange = function(event) self.showBodies = event.checked end},
             ui.button{id = 'rain', text = 'Throw ten balls', onClick = function() self:rain() end},

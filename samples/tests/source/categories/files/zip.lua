@@ -12,6 +12,13 @@ local readout = require('categories.files.readout')
 
 local Zip = haylen.class('Zip', Test)
 
+Zip.code = [[
+async.spawn(function()
+    zip.create(base .. '/bundle.zip', {{file = storage.root() .. '/zip-demo/files/data/map.txt', entry = 'data/map.txt'}}):await()
+    for _, entry in ipairs(zip.list(base .. '/bundle.zip'):await()) do print(entry.name, entry.size, entry.compressedSize) end
+    zip.extract(base .. '/bundle.zip', base .. '/extracted'):await()
+end)]]
+
 Zip.files = {
     ['readme.txt'] = 'An archive made by the zip test of Haylen Tests.\n',
     ['data/scores.json'] = '{"best": 4200, "runs": [1200, 3100, 4200]}\n',
@@ -50,6 +57,7 @@ function Zip:enter()
         end}
     end
     self:frame{
+        code = Zip.code,
         hint = 'Write the files, create the archive, list it and extract it, or unpack the postcards shipped in the package. Every step is awaited in a task of the scene.',
         focus = 'files',
         content = {ui.row{grow = 1, gap = 24,

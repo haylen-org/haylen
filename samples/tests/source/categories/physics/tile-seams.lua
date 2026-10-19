@@ -10,6 +10,11 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local TileSeams = haylen.class('TileSeams', PhysicsTest)
 
+TileSeams.code = [[
+floor:addBox(40, 40, {offsetX = x, offsetY = y})  -- One box per tile catches sliding boxes on the joints.
+floor:addChain({{left, top}, {right, top}, {right, top + 40}, {left, top + 40}}, true)  -- One loop per row lets them slide.
+local walls = map:buildCollision(world)  -- Merges the tiles of a Tiled map into loops like this.]]
+
 local kTile = 40
 local kTiles = 18
 local kRows = {-230, -20, 190}
@@ -19,6 +24,7 @@ local kLifetime = 3
 
 function TileSeams:enter()
     self:frame{
+        code = TileSeams.code,
         hint = 'Every 1.2 seconds each row launches a body along its tiles: a box that may tumble, a box that stays upright and a ball. The joints between the tiles stop the boxes on the left, while the chains on the right carry them to the end. R or the X button starts over.',
         controls = {
             ui.label{text = 'Launch speed in units per second', font = 'caption', color = 'textMuted'},

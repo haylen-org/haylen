@@ -12,12 +12,18 @@ local picture = require('categories.algorithms.picture')
 
 local MarchingSquares = haylen.class('MarchingSquares', AlgorithmTest)
 
+MarchingSquares.code = [[
+local outlines = m.marchingSquares.trace(heights, 80, 44, {threshold = 0.5, spacing = 18})
+local solid = m.marchingSquares.traceBitmap(pixels, 80, 44, {spacing = 18})  -- Pixels that are not zero are solid.
+local simpler = m.polygon.simplify(outlines[1], 4)  -- Ramer-Douglas-Peucker.]]
+
 local kColumns, kRows, kSpacing = 80, 44, 18
 local kBrush = 3.5
 
 function MarchingSquares:enter()
     self:frame{
         hint = 'Hold on the field to raise it, or to lower it with the other brush. The outlines follow the threshold between the samples. R or the X button makes a new field.',
+        code = MarchingSquares.code,
         controls = {
             ui.radioGroup{id = 'brush', horizontal = true, items = {{id = 'raise', text = 'Raise'}, {id = 'lower', text = 'Lower'}}, selected = 'raise', onChange = function(event) self.brush = event.value end},
             ui.radioGroup{id = 'source', items = {{id = 'field', text = 'Trace the field'}, {id = 'bitmap', text = 'Trace the bitmap'}}, selected = 'field', onChange = function(event) self:change('source', event.value) end},

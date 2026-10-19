@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local LightsShading = haylen.class('LightsShading', ParticleTest)
 
+LightsShading.code = [[
+local flames = particles2d.newEmitter({texture = flame, rate = 40, light = {radius = 520, color = '#FFFFB060', intensity = 1.4, offset = {0, -40}, flicker = {speed = 7, amount = 0.3}}, emission = 1, blend = 'additive'})
+local embers = particles2d.newEmitter({texture = dot, rate = 16, particleLights = {radius = 50, intensity = 0.8, max = 24}, emission = 1.5})
+local runes = particles2d.newEmitter({texture = runeSheet, frameGrid = {columns = 4, rows = 1}, frameMode = 'random', unshaded = true})  -- Keeps its colors in the dark.
+graphics2d.beginWorld(camera, {ambientLight = '#FF141828'})  -- Lights draw only in a lit canvas.]]
+
 LightsShading.night = {ambientLight = '#FF141828'}
 LightsShading.campfire = {-160, 340}
 LightsShading.ground = {-1000, 360, 2000, 300}
@@ -44,6 +50,7 @@ end
 function LightsShading:enter()
     self:frame{
         hint = 'The fire lights the clearing and flickers, the embers and the fireflies carry small lights, the flames glow by their emission and the runes over the stones keep their colors because they are unshaded. Switch to the unlit canvas to see the same emitters without light.',
+        code = LightsShading.code,
         controls = {
             ui.toggle{id = 'lit', text = 'Lit canvas', checked = self.lit, onChange = function(event)
                 self.lit = event.checked

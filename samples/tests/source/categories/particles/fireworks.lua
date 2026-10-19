@@ -8,6 +8,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Fireworks = haylen.class('Fireworks', ParticleTest)
 
+Fireworks.code = [[
+rocket.trail.position = {rocket.x, rocket.y}  -- A trail emitter follows each rocket.
+rocket.trail.emitting = false  -- At the top, its live sparks keep fading.
+local stars = particles2d.newEmitter({texture = dot, rate = 0, bursts = {{time = 0, count = 110}}, duration = 0.1, speed = {260, 420}, spread = m.tau, gravity = {0, 160}, damping = 1.3, colors = {'#FFFFFFFF', color, tint:withAlpha(0)}, blend = 'additive'})
+local crackle = particles2d.newEmitter({texture = sparkle, rate = 0, bursts = {{time = 0.5, count = 40}}, duration = 0.6})  -- Crackles half a second later.]]
+
 Fireworks.gravity = 620
 
 function Fireworks:init(entry)
@@ -19,7 +25,7 @@ function Fireworks:init(entry)
 end
 
 function Fireworks:enter()
-    self:frame{hint = 'A click, a tap, E, Enter or the south button launches a rocket toward the cursor. Rockets also launch on their own.', cursor = true}
+    self:frame{hint = 'A click, a tap, E, Enter or the south button launches a rocket toward the cursor. Rockets also launch on their own.', code = Fireworks.code, cursor = true}
 end
 
 function Fireworks:launch(targetX)

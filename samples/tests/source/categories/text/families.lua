@@ -8,6 +8,12 @@ local fonts = require('categories.text.fonts')
 
 local Families = haylen.class('Families', TextTest)
 
+Families.code = [[
+local family = graphics.newFontFamily({regular = assets.font('fonts/crimson-text-regular.ttf'), bold = assets.font('fonts/crimson-text-bold.ttf'), mono = assets.font('fonts/space-mono-regular.ttf')})
+local line = graphics2d.newRichText('Regular [b]Bold[/b] [i]Italic[/i] [code]mono()[/code]', {family = family, size = 44})
+local face, syntheticBold, syntheticItalic = family:select({italic = true})  -- The italic is synthesized.
+graphics2d.drawText(family, 'Old price 120 coins', 520, 700, {size = 36, strike = true})]]
+
 Families.markup = 'Regular [b]Bold[/b] [i]Italic[/i] [b][i]Bold italic[/i][/b] [code]mono()[/code]'
 Families.paragraph = 'The keeper wrote: [i]"The beacon went dark on the [b]third[/b] night."[/i] Call [code]light(beacon)[/code] before dawn.'
 Families.styles = {{'Bold', {bold = true}}, {'italic', {italic = true}}, {'bold italic', {bold = true, italic = true}}}
@@ -39,7 +45,7 @@ function Families:init(entry)
 end
 
 function Families:enter()
-    self:frame{hint = 'A distance field face grows its strokes for bold and leans its glyphs for italic, and a bitmap face draws a bold glyph twice a pixel apart. The captions come from "family:select", which tells which faces are real.'}
+    self:frame{code = Families.code, hint = 'A distance field face grows its strokes for bold and leans its glyphs for italic, and a bitmap face draws a bold glyph twice a pixel apart. The captions come from "family:select", which tells which faces are real.'}
 end
 
 function Families:draw(area)

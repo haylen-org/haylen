@@ -10,6 +10,12 @@ local actions = require('categories.camera.actions')
 
 local Zoom = haylen.class('Zoom', Test)
 
+Zoom.code = [[
+camera.minZoom, camera.maxZoom = 0.25, 4
+local _, wheel = input.mouseScroll()
+local x, y = input.mousePosition()
+camera:zoomAt(1.15 ^ wheel, x, y)  -- The world point under the pointer stays in place.]]
+
 function Zoom:init(entry)
     Zoom.super.init(self, entry)
     self.world = World()
@@ -22,6 +28,7 @@ function Zoom:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Zoom with the wheel or a pinch toward the pointer, or with Z and X, minus and plus or the shoulders and triggers toward the middle. Pan with WASD, the arrows, the left stick or by dragging.',
+        code = Zoom.code,
         play = true,
         controls = {ui.button{id = 'reset', text = 'Reset the view', onClick = function()
             self.camera.zoom = {1, 1}

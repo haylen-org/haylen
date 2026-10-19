@@ -7,6 +7,13 @@ local Test = require('harness.test')
 
 local SaveVersions = haylen.class('SaveVersions', Test)
 
+SaveVersions.code = [[
+storage.setSaveVersion(3)
+storage.addMigration(1, function(data) data.inventory, data.items = data.items, nil return data end)
+storage.addMigration(2, function(data) data.stamina = 100 return data end)
+local data = storage.readSlot('versions')  -- A version 1 slot comes back as version 3.
+local imported = storage.importSlot('versions', storage.exportSlot('versions'), {policy = 'replace'})]]
+
 local kSlot = 'versions'
 local kCopy = 'versions-copy'
 
@@ -16,6 +23,7 @@ function SaveVersions:enter()
         self:note(string.format('Event "saveSlotWritten" for "%s", revision %d, version %d.', info.slot, info.revision, info.version))
     end)
     self:frame{
+        code = SaveVersions.code,
         hint = 'Write a slot as version 1, then read it as version 3, damage it, and move it to another device.',
         content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
@@ -24,7 +32,6 @@ function SaveVersions:enter()
                 ui.button{id = 'write', text = 'Write again as version 3', align = 'stretch', onClick = function() self:writeNew() end},
                 ui.button{id = 'damage', text = 'Damage the file and read it', align = 'stretch', onClick = function() self:damage() end},
                 ui.button{id = 'export', text = 'Import on another device', align = 'stretch', onClick = function() self:transfer() end},
-                ui.label{font = 'monospace', text = "storage.setSaveVersion(3)\nstorage.addMigration(1, fn)\nstorage.exportSlot(slot)\nstorage.importSlot(slot, bytes)"},
             },
             ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
         }},

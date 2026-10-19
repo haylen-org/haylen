@@ -13,6 +13,11 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Conveyors = haylen.class('Conveyors', PhysicsTest)
 
+Conveyors.code = [[
+local belt = world:createBody({type = 'static', x = -250, y = -250})
+local surface = belt:addBox(800, 22, {friction = 0.9, tangentSpeed = 140})
+surface.tangentSpeed = -surface.tangentSpeed  -- Turns the belt around.]]
+
 local kBelts = {{-250, -250, 800, 140}, {250, -90, 800, -140}, {-250, 70, 800, 140}, {250, 230, 800, -160}}
 local kBeltHeight = 22
 local kStripeGap = 40
@@ -20,6 +25,7 @@ local kMaxCrates = 30
 
 function Conveyors:enter()
     self:frame{
+        code = Conveyors.code,
         hint = 'Crates ride the belts from the top down. Drag them against the flow, and change the speed or turn the belts around. R or the X button clears the crates.',
         controls = {
             ui.label{text = 'Belt speed', font = 'caption', color = 'textMuted'},

@@ -11,6 +11,13 @@ local actions = require('categories.camera.actions')
 
 local Rotation = haylen.class('Rotation', Test)
 
+Rotation.code = [[
+camera.rotationSmoothing = true
+camera.rotationSmoothingSpeed = 4
+camera.rotation = camera.rotation + math.pi / 2  -- The drawn angle eases there the short way around.
+camera.ignoreRotation = true  -- Keeps the view upright.
+camera:update(dt)]]
+
 function Rotation:init(entry)
     Rotation.super.init(self, entry)
     self.world = World()
@@ -26,6 +33,7 @@ function Rotation:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Turn with Q and E or the right stick, or a quarter turn at a time with the button. Walk with WASD, the arrows, the left stick or by holding the mouse button or a finger.',
+        code = Rotation.code,
         play = true,
         controls = {
             ui.row{wrap = true, gap = 8,

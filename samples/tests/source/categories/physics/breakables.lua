@@ -10,6 +10,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Breakables = haylen.class('Breakables', PhysicsTest)
 
+Breakables.code = [[
+world.onHit = function(a, b, contact)
+    if a == vase and contact.speed > 220 then physics2d.fracture(vase, {pieces = 7, impact = {contact.x, contact.y}}) end
+end
+local points, hit = world:predictPath(-720, 300, vx, vy, {steps = 120, radius = 20})]]
+
 -- Each kind breaks above its impact speed into its number of pieces.
 local kKinds = {
     glass = {speed = 160, pieces = 10, color = '#9981D4FA'},
@@ -24,6 +30,7 @@ local kMaxPieces = 160
 
 function Breakables:enter()
     self:frame{
+        code = Breakables.code,
         hint = 'Hold on the stage to aim along the arc and let go to throw a ball. Glass breaks at the gentlest hit, vases at a harder one and crates only at a strong one. R or the X button sets everything up again.',
         controls = {
             ui.button{id = 'throw', text = 'Throw at the next target', onClick = function() self:throwAtTarget() end},

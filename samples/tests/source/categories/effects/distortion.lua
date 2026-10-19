@@ -10,6 +10,12 @@ local Scenery = require('categories.effects.scenery')
 
 local Distortion = haylen.class('Distortion', ParticleTest)
 
+Distortion.code = [[
+graphics2d.beginWorld(camera, {postProcess = {distortion = 40}})  -- How far the distortion draws move pixels.
+haze:draw()  -- The particles of `fire/heat-haze` bend the image instead of drawing colors.
+ring:restart()  -- A ring of `explosions/shockwave-distortion` pushes the image outward.
+graphics2d.draw(bubble, x, y, {width = 280, height = 280, distortion = 0.8})]]
+
 Distortion.library = 'particles/library/'
 Distortion.rings = 4
 Distortion.fire = {-520, 360}
@@ -46,6 +52,7 @@ end
 function Distortion:enter()
     self:frame{
         hint = 'A click, a tap, E, Enter, Space or the south button sends a shock ring from the cursor.',
+        code = Distortion.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Bend distance', ui.slider{id = 'distance', min = 0, max = 64, value = self.post.distortion, showValue = true, decimals = 0, onChange = function(event)

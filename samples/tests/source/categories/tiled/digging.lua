@@ -10,6 +10,13 @@ local MapTest = require('categories.tiled.map-test')
 
 local Digging = haylen.class('Digging', MapTest)
 
+Digging.code = [[
+local bodies = map:buildCollision(world)  -- Touching solid tiles merge into chain loops.
+local column, row = map:worldToCell(x, y)
+map:setTile('walls', column, row, 0)  -- Digs the cell, and the loops around it trace again.
+map:setTile('walls', column, row, wallGid)  -- Builds a wall back.
+print(#bodies[2]:outlines())]]
+
 local kWallLayer = 'walls'
 local kBalls = 24
 local kRadius = 9
@@ -20,6 +27,7 @@ function Digging:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Tap or click a wall to dig it away and an empty cell to build a wall there. The lines are the collision loops, traced again around the regions each change touches. R or the X button restores the map.',
+        code = Digging.code,
         controls = {
             ui.button{id = 'dig', text = 'Dig a random wall', onClick = function() self:digRandom() end},
             ui.button{id = 'reset', text = 'Restore the map', onClick = function() self:build() end},

@@ -13,6 +13,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Filtering = haylen.class('Filtering', PhysicsTest)
 
+Filtering.code = [[
+floor:addBox(900, 18, {category = 2, mask = 2})  -- The red floor stops only red bodies.
+ball:addCircle(18, {category = 2, mask = 1 | 2})  -- A red ball meets the ground and its floor.
+shape.mask = 1 | 2 | 4 | 8  -- Now it hits the other balls too.
+box:addBox(70, 70, {category = 16, mask = 1 | 16, group = -1})  -- A shared negative group never collides.
+box:addBox(70, 70, {category = 16, mask = 1, group = 1})  -- A shared positive group always does.]]
+
 local kColors = {
     {name = 'red', category = 2, color = '#FFE57373', floor = -120},
     {name = 'green', category = 4, color = '#FF81C784', floor = 80},
@@ -23,6 +30,7 @@ local kMaxBalls = 45
 
 function Filtering:enter()
     self:frame{
+        code = Filtering.code,
         hint = 'Red bodies land on the red floor, green on the green one and blue on the blue one, since each floor masks every other color. The switches let a color collide with the other balls too.',
         controls = {
             ui.toggle{id = 'red', text = 'Red hits other balls', onChange = function(event) self:setSocial(1, event.checked) end},

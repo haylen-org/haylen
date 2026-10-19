@@ -10,6 +10,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local CratePushing = haylen.class('CratePushing', PhysicsTest)
 
+CratePushing.code = [[
+local world = physics2d.newWorld({gravity = {0, 0}})
+local crate = world:createBody({x = 150, y = -150, linearDamping = 4, angularDamping = 8})
+local hero = world:createBody({x = -350, y = -50, fixedRotation = true, sleepEnabled = false})
+hero:applyForce(fx, fy)  -- Steers toward the stick with a limited force.
+local goal = pad:addBox(70, 70, {sensor = true})
+local filled = #goal:overlaps() > 0]]
+
 CratePushing.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
 }
@@ -34,6 +42,7 @@ local kOnGoal = 22
 
 function CratePushing:enter()
     self:frame{
+        code = CratePushing.code,
         hint = 'Walk with WASD, the arrows, the left stick or the touch stick and push the four crates onto the pads. The crates are heavy and slow down by their damping, and the character pushes with a limited force.',
         controls = {
             ui.label{text = 'Crate damping', font = 'caption', color = 'textMuted'},

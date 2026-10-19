@@ -10,6 +10,13 @@ local actions = require('categories.camera.actions')
 
 local Smoothing = haylen.class('Smoothing', Test)
 
+Smoothing.code = [[
+camera.positionSmoothing = true
+camera.positionSmoothingSpeed = 4
+camera.lookAheadTime = 0.4  -- Leads the walker by 0.4 seconds of its velocity.
+camera.maxLookAhead = 360
+camera:follow(walker.x, walker.y, dt)]]
+
 function Smoothing:init(entry)
     Smoothing.super.init(self, entry)
     self.world = World()
@@ -26,6 +33,7 @@ function Smoothing:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Walk with WASD, the arrows, the left stick or by holding the mouse button or a finger, then stop suddenly: the view catches up smoothly and leads where you walk.',
+        code = Smoothing.code,
         play = true,
         controls = {
             ui.toggle{id = 'smoothing', text = 'Position smoothing', checked = true, onChange = function(event)

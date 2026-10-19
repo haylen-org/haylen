@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local TurbulenceAttractors = haylen.class('TurbulenceAttractors', ParticleTest)
 
+TurbulenceAttractors.code = [[
+local smoke = particles2d.newEmitter({texture = puff, rate = 14, turbulence = {strength = 260, frequency = 0.004, speed = 0.6}})
+local coins = particles2d.newEmitter({texture = coin, rate = 5, damping = 1.2, attractors = {{x = 0, y = 0, strength = 2800, radius = 2600, killRadius = 40, space = 'world'}}})
+coins:setAttractor(1, cursorX, cursorY)  -- Every frame, in the space of the attractor.
+coins:burst(24)]]
+
 TurbulenceAttractors.killRadius = 40
 TurbulenceAttractors.chest = {460, 360, 140, 90}
 TurbulenceAttractors.chimney = {-560, 300, 120, 260}
@@ -39,6 +45,7 @@ end
 function TurbulenceAttractors:enter()
     self:frame{
         hint = 'The coins fly to the cursor and vanish inside its ring: move it with the mouse, a finger, the arrows, WASD or a stick, and a click, a tap, E, Enter or the south button throws a handful more. The smoke curls more as the turbulence grows.',
+        code = TurbulenceAttractors.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Turbulence strength', ui.slider{id = 'strength', min = 0, max = 800, value = self.strength, showValue = true, decimals = 0, onChange = function(event)

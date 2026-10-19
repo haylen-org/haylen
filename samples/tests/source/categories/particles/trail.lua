@@ -6,6 +6,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Trail = haylen.class('Trail', ParticleTest)
 
+Trail.code = [[
+local pen = particles2d.newEmitter({texture = dot, rate = 240, lifetime = {0.7, 0.9}, speed = {0, 20}, spread = 6.2832, startSize = {34, 40}, endSize = 0, blend = 'additive', maxParticles = 512})
+pen.position = {cursorX, cursorY}  -- Particles stay where they were born, so they draw a trail.
+pen:update(dt)]]
+
 function Trail:init(entry)
     Trail.super.init(self, entry)
     local soft = 'soft-dot'
@@ -16,7 +21,7 @@ function Trail:init(entry)
 end
 
 function Trail:enter()
-    self:frame{hint = 'Draw with the cursor: move it with the mouse, a finger, the arrows, WASD or a stick. The comet circles on its own.', cursor = true}
+    self:frame{hint = 'Draw with the cursor: move it with the mouse, a finger, the arrows, WASD or a stick. The comet circles on its own.', code = Trail.code, cursor = true}
 end
 
 function Trail:update(dt)

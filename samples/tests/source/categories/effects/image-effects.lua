@@ -9,6 +9,12 @@ local Test = require('harness.test')
 
 local ImageEffects = haylen.class('ImageEffects', Test)
 
+ImageEffects.code = [[
+local picture = assets.load('interface/images/landscape.png', 'image')
+local copy = picture:applyAsync({{effect = 'blur', radius = 4}, {effect = 'adjust', brightness = 0.1, contrast = 1.2, saturation = 1.3, hue = 0}, {effect = 'pixelate', size = 6}}):await()
+local outlined = sprite:applyAsync({{effect = 'outline', color = '#FF1E2A44', thickness = 4}}):await()
+texture = graphics.newTexture(copy, {filter = 'linear'})]]
+
 ImageEffects.view = {1600, 860}
 ImageEffects.sliders = {
     {'blur', 'Blur radius', 0, 16, 0, 1},
@@ -38,6 +44,7 @@ function ImageEffects:enter()
     end}
     self:frame{
         hint = 'Every control changes a copy of the picture and of the sprite on the task pool, so the frame keeps running while the effects work.',
+        code = ImageEffects.code,
         controls = controls,
         view = ImageEffects.view,
         focus = 'blur',

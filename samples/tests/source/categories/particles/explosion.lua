@@ -7,6 +7,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Explosion = haylen.class('Explosion', ParticleTest)
 
+Explosion.code = [[
+local flash = particles2d.newEmitter({texture = dot, rate = 0, bursts = {{time = 0, count = 1}}, duration = 0.1, lifetime = 0.25, speed = 0, startSize = 420, endSize = 600, blend = 'additive'})
+local debris = particles2d.newEmitter({texture = spark, rate = 0, bursts = {{time = 0, count = 60}}, duration = 0.1, speed = {300, 800}, spread = m.tau, gravity = {0, 700}})
+flash.position, debris.position = {x, y}, {x, y}
+if not debris.alive then table.remove(blasts, index) end  -- Drops the emitter once its last particle is gone.]]
+
 function Explosion:init(entry)
     Explosion.super.init(self, entry)
     self.random = m.random(5)
@@ -17,7 +23,7 @@ function Explosion:init(entry)
 end
 
 function Explosion:enter()
-    self:frame{hint = 'A click, a tap, E, Enter or the south button makes a blast at the cursor. Without input a blast goes off every two seconds.', cursor = true}
+    self:frame{hint = 'A click, a tap, E, Enter or the south button makes a blast at the cursor. Without input a blast goes off every two seconds.', code = Explosion.code, cursor = true}
 end
 
 -- Returns an emitter that bursts once at a point and stops.

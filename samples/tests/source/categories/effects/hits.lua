@@ -10,6 +10,13 @@ local Scenery = require('categories.effects.scenery')
 
 local Hits = haylen.class('Hits', ParticleTest)
 
+Hits.code = [[
+camera.traumaDecay, camera.maxShakeOffset = 1.5, 48
+camera:addTrauma(0.6)  -- The shake grows with the square of the trauma.
+camera:flash('#B0FFFFFF', 0.3)
+camera:update(dt)
+graphics2d.draw(robot, x, y, {pivotY = 1, flash = {1, 1, 1, flash}})  -- Turns the robot white.]]
+
 Hits.kinds = {
     {id = 'light', text = 'Light hit, a little trauma', trauma = 0.25},
     {id = 'heavy', text = 'Heavy hit, a white flash', trauma = 0.6, flash = '#B0FFFFFF'},
@@ -45,6 +52,7 @@ function Hits:enter()
     end
     self:frame{
         hint = 'A click, a tap, E, Enter, Space or the south button hits the robot nearest the cursor.',
+        code = Hits.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Hit', ui.radioGroup{id = 'kind', items = kinds, selected = self.kind.id, onChange = function(event)

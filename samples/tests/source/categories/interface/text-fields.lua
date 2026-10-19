@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local TextFields = haylen.class('TextFields', Test)
 
+TextFields.code = [[
+ui.textField{keyboard = 'email', returnKey = 'send', placeholder = 'captain@island.dev', onSubmit = function(event) send(event.value) end}
+ui.textField{placeholder = 'Short code', maxLength = 12, autocorrect = false, autocapitalize = 'characters'}
+ui.secretField{placeholder = 'Password', returnKey = 'go'}
+ui.filterField{placeholder = 'Filter recipes', onChange = function(event) filter(event.value) end}
+ui.textArea{rows = 6, value = 'Dear diary,\nthe raft is ready.'}]]
+
 -- Every keyboard of `textField`, each with one of the return key labels.
 TextFields.fields = {
     {keyboard = 'text', returnKey = 'next', placeholder = 'Island name', autocapitalize = 'words'},
@@ -21,6 +28,7 @@ TextFields.fields = {
 function TextFields:enter()
     self:frame{
         hint = 'Phones, tablets, TVs and mobile browsers open the keyboard each field asks for, with the return key it names. Tab, or a return key labelled "next", moves to the next field, and Escape brings back the text a field had when it took the focus.',
+        code = TextFields.code,
         focus = 'field-text',
         content = {self:columns()},
     }

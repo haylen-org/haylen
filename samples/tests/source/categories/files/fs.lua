@@ -10,6 +10,15 @@ local readout = require('categories.files.readout')
 
 local Fs = haylen.class('Fs', Test)
 
+Fs.code = [[
+async.spawn(function()
+    local base = storage.root() .. '/fs-demo'
+    fs.mkdir(base .. '/logs/archive'):await()
+    fs.writeFile(base .. '/logs/run.txt', 'Run started\n'):await()
+    fs.append(base .. '/logs/run.txt', 'All is well\n'):await()
+    local text, failure = fs.readFile(base .. '/logs/run.txt'):await()
+end)]]
+
 Fs.chunk = 64 * 1024
 Fs.chunks = 32
 
@@ -49,6 +58,7 @@ function Fs:enter()
         end}
     end
     self:frame{
+        code = Fs.code,
         hint = 'Press the buttons with the mouse, a finger, or the arrows and Enter or the south button. Each result shows how many frames the operation took.',
         focus = 'mkdir',
         content = {ui.row{grow = 1, gap = 24,

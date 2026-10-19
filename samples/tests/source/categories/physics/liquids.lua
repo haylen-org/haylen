@@ -13,12 +13,20 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Liquids = haylen.class('Liquids', PhysicsTest)
 
+Liquids.code = [[
+local water = physics2d.newFluid(world, {radius = 6, smoothingRadius = 22, maxParticles = 4000, viscosity = 0.25})
+water:fill({-620, 40, 380, 320})
+water:spawn(x, y, 0, 120)  -- Pours where the pointer holds.
+crate:addBox(70, 50, {density = 0.4})  -- Lighter than the water, so it floats.
+water:draw({radius = 14.4, color = '#D04FA3F7', outlineColor = '#FFB3E5FC', outlineWidth = 0.08, threshold = 0.5})]]
+
 local kRadius = 6
 local kMaxParticles = 4000
 local kPourRate = 8
 
 function Liquids:enter()
     self:frame{
+        code = Liquids.code,
         hint = 'Hold on the stage to pour water where you point, and drag the crates into it: the light ones float and the heavy one sinks. R or the X button refills the tank.',
         controls = {
             ui.button{id = 'flood', text = 'Pour a wave', onClick = function() self.water:fill({-560, -380, 300, 160}, 200, 0) end},

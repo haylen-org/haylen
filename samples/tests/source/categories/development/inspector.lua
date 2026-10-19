@@ -8,6 +8,13 @@ local Test = require('harness.test')
 
 local Inspector = haylen.class('Inspector', Test)
 
+Inspector.code = [[
+local player = {speed = 220, name = 'Hero', alive = true}
+debugging.watch('player', player)  -- Held weakly under the root `watched`.
+for _, entry in ipairs(debugging.inspect('watched.player')) do print(entry.key, entry.type) end
+debugging.runCommand('set watched.player.speed 300')
+debugging.setInspectorVisible(true)]]
+
 function Inspector:enter()
     self.lines = {}
     self.player = {speed = 220, name = 'Hero', alive = true, items = {'axe', 'rope'}}
@@ -16,13 +23,13 @@ function Inspector:enter()
     debugging.watch('camera', self.lens)
     self:frame{
         hint = 'Open the inspector and edit "watched.player.speed", or type "inspect watched.player" in the console.',
+        code = Inspector.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.label{id = 'state', text = self:describe(), font = 'heading'},
                 ui.button{id = 'open', text = 'Open the inspector', align = 'stretch', variant = 'primary', onClick = function() self:open() end},
                 ui.button{id = 'edit', text = 'Set the speed to 300', align = 'stretch', onClick = function() self:run('set watched.player.speed 300') end},
                 ui.button{id = 'refuse', text = 'Set the smallest zoom to -1', align = 'stretch', onClick = function() self:run('set watched.camera.minZoom -1') end},
-                ui.label{font = 'monospace', text = "debug.watch(name, value)\ndebug.inspect(path)\ndebug.setInspectorVisible(true)"},
             },
             ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
         }},

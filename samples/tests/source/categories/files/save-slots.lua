@@ -8,6 +8,12 @@ local readout = require('categories.files.readout')
 
 local SaveSlots = haylen.class('SaveSlots', Test)
 
+SaveSlots.code = [[
+storage.writeSlot('slot-1', game, {day = 4, wood = 12, place = 'Beach'})
+for _, info in ipairs(storage.listSlots()) do print(info.slot, info.summary.day) end  -- Newest first.
+local loaded = storage.readSlot('slot-1')
+storage.removeSlot('slot-1')]]
+
 SaveSlots.slots = {'slot-1', 'slot-2', 'slot-3', 'auto_save'}
 SaveSlots.places = {'Beach', 'Forest', 'Cave', 'Lighthouse'}
 
@@ -20,6 +26,7 @@ end
 
 function SaveSlots:enter()
     self:frame{
+        code = SaveSlots.code,
         hint = 'Change the game, pick a slot in the table and save, load or delete it. Damage a slot saved twice to see its backup take its place, and one saved once to see how a broken file is reported.',
         focus = 'day',
         content = {ui.row{wrap = true, grow = 1, gap = 24,

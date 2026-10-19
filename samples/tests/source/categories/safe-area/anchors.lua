@@ -8,6 +8,12 @@ local areas = require('categories.safe-area.areas')
 
 local Anchors = haylen.class('Anchors', Test)
 
+Anchors.code = [[
+ui.mount(ui.stack{
+    ui.alert{anchor = 'topRight', anchorTo = 'safe', margin = 24, title = 'Saved'},
+    ui.panel{anchor = 'stretchBottom', anchorTo = 'screen', height = 120},  -- Reaches the edges of the screen.
+}, {placement = 'screen', owner = self})]]
+
 Anchors.points = {'topLeft', 'top', 'topRight', 'left', 'center', 'right', 'bottomLeft', 'bottom', 'bottomRight'}
 Anchors.stretches = {'stretch', 'stretchTop', 'stretchBottom', 'stretchLeft', 'stretchRight', 'stretchHorizontal', 'stretchVertical'}
 
@@ -26,6 +32,7 @@ function Anchors:enter()
     self.simulation = areas.simulate()
     self:frame{
         hint = 'Pick a preset with the stepper, or with left and right while it has the focus. Blue nodes anchor to the safe area and orange ones to the whole screen, and the red bands mark what lies outside the safe area.',
+        code = Anchors.code,
         focus = 'anchor',
         content = {ui.row{ui.spacer{grow = 1}, ui.card{width = 900, gap = 16, children = self:controls()}, ui.spacer{grow = 1}}},
     }

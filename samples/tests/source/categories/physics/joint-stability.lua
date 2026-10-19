@@ -11,12 +11,19 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local JointStability = haylen.class('JointStability', PhysicsTest)
 
+JointStability.code = [[
+local world = physics2d.newWorld({subSteps = 8})
+physics2d.newRope(world, {from = {0, -324}, to = {0, -30}, segments = 16, thickness = 6, startBody = anchor, endBody = weight, limitLength = true})
+link:addBox(8, 22, {density = 10})  -- Links closer in mass to the load.
+joint.constraintHertz = 240  -- Stiffer than the default of 60.]]
+
 local kTop = -330
 local kRopeLength, kRopeSegments = 300, 16
 local kLinks, kLinkLength = 12, 22
 
 function JointStability:enter()
     self:frame{
+        code = JointStability.code,
         hint = 'Drag the weights and the balls to load the joints harder, or make the loads heavier. The numbers show how long each rope and chain is against its rest length. R or the X button starts over.',
         controls = {
             ui.label{text = 'Density of the loads', font = 'caption', color = 'textMuted'},

@@ -10,6 +10,13 @@ local actions = require('categories.camera.actions')
 
 local Parallax = haylen.class('Parallax', Test)
 
+Parallax.code = [[
+local texture = assets.texture('camera/hills.png', {filter = 'linear', wrap = 'repeat'})
+local hills = graphics2d.newParallax(texture, {position = {0, -224}, size = {1096, 538}, scrollScale = {0.45, 1}, repeatX = true})
+local clouds = graphics2d.newParallax(cloudTexture, {scrollScale = {0.05, 1}, repeatX = true, autoscroll = {-60, 0}})
+clouds:update(dt)  -- Advances the autoscroll.
+hills:draw(camera, {layer = -2})]]
+
 Parallax.ground = 300
 
 function Parallax.texture(name)
@@ -33,6 +40,7 @@ function Parallax:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Walk with A and D, the arrows, the left stick or by holding the mouse button or a finger on either side, or let the camera travel by itself.',
+        code = Parallax.code,
         play = true,
         view = {1920, 1080},
         controls = {ui.toggle{id = 'travel', text = 'Camera travels by itself', checked = true, onChange = function(event)

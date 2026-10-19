@@ -9,6 +9,13 @@ local Pan = require('categories.tiled.pan')
 
 local Groups = haylen.class('Groups', MapTest)
 
+Groups.code = [[
+map:draw(camera)  -- Each group passes its offset, opacity, tint and parallax on to its layers.
+map:setLayerVisible('upstairs', false)  -- Hides the group and its children.
+for _, layer in ipairs(map:layer('town').layers) do
+    print(layer.name, layer.kind, layer.offsetX, layer.parallaxX, layer.opacity)
+end]]
+
 local kSway = 160
 
 function Groups:enter()
@@ -16,6 +23,7 @@ function Groups:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'The camera sways so the parallax of the groups shows: the background lags and the roofs lead. Drag, or use the arrows, the directional pad or the left stick, to move it yourself, and switch the groups on and off. R or the X button centers the camera.',
+        code = Groups.code,
         controls = {
             ui.checkbox{id = 'background', text = 'Background group', checked = true, onChange = function(event) self.map:setLayerVisible('background', event.checked) end},
             ui.checkbox{id = 'town', text = 'Town group', checked = true, onChange = function(event) self.map:setLayerVisible('town', event.checked) end},

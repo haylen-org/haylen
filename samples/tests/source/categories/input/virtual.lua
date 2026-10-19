@@ -10,6 +10,12 @@ local Test = require('harness.test')
 
 local Virtual = haylen.class('Virtual', Test)
 
+Virtual.code = [[
+input.loadActions({actions = {{name = 'move', type = 'vector', bindings = {'stick:left', 'virtualStick:move'}}, {name = 'jump', type = 'button', bindings = {'key:space', 'virtual:jump'}}}})
+ui.touchStick{action = 'move', mode = 'floating', anchor = 'bottomLeft', radius = 110, deadZone = 0.15}
+ui.touchButton{action = 'jump', text = 'Jump', size = 130, touchOnly = true}
+local mx, my = input.vector('move')]]
+
 local kSpeed = 480
 local kShotSpeed = 900
 
@@ -21,6 +27,7 @@ function Virtual:enter()
         return function() self.journal:add(text, color) end
     end
     self:frame({
+        code = Virtual.code,
         hint = 'Drag the stick and press the buttons with fingers, or with the mouse when no finger is down. The keys and gamepads drive the same actions.',
         play = true,
         controls = {
@@ -36,8 +43,6 @@ function Virtual:enter()
                     self:set(id, {touchOnly = event.checked})
                 end
             end},
-            ui.sectionTitle{text = 'Wiring'},
-            ui.label{font = 'monospace', text = "ui.touchStick{action = 'move'}\nui.touchButton{action = 'jump'}\n-- The action map binds\n-- `virtualStick:move`\n-- `virtual:jump` and `virtual:dash`."},
         },
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 420, height = 420},

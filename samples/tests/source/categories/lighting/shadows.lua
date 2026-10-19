@@ -9,6 +9,13 @@ local Room = require('categories.lighting.room')
 
 local Shadows = haylen.class('Shadows', LightingTest)
 
+Shadows.code = [[
+local lamp = lighting2d.newLight({radius = 900, intensity = 1.3, shadows = true, shadowFilter = 'pcf5', shadowSmoothness = 1, shadowColor = '#FF102050'})
+local wall = lighting2d.newOccluder({points = {760, -420, 760, -120, 880, 0}, closed = false})  -- An open outline.
+local crate = lighting2d.newOccluder({points = {-565, -165, -475, -165, -475, -75, -565, -75}, cull = 'counterClockwise'})  -- Its lit sides cast no shadow.
+graphics2d.drawOccluder(wall)
+graphics2d.drawLight(lamp)]]
+
 Shadows.colors = {black = '#FF000000', blue = '#FF102050', soft = '#80000000'}
 
 function Shadows:init(entry)
@@ -24,6 +31,7 @@ end
 function Shadows:enter()
     self:frame{
         hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. The wall on the right is an open outline and the door turns.',
+        code = Shadows.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Filter', ui.radioGroup{id = 'filter', horizontal = true, selected = 'pcf5', items = {{id = 'none', text = 'None'}, {id = 'pcf5', text = 'PCF5'}, {id = 'pcf13', text = 'PCF13'}}, onChange = function(event)

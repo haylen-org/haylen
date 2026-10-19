@@ -9,6 +9,14 @@ local Test = require('harness.test')
 
 local Replay = haylen.class('Replay', Test)
 
+Replay.code = [[
+local recorder = input.newRecorder({buttons = {'left', 'right', 'jump'}, data = random:state()})
+recorder:write(1, input.actions())  -- Each fixed step records the buttons of player 1.
+recorder:advance(hash)
+local playback = input.newPlayback(input.loadRecording(recorder:bytes()))
+local mask = playback:mask(1)  -- Bit 1 is `left`, bit 2 is `right` and bit 3 is `jump`.
+playback:advance()]]
+
 local kButtons = {'left', 'right', 'jump'}
 local kActions = {actions = {
     {name = 'left', type = 'button', bindings = {'key:a', 'key:left', 'button:dpadLeft', 'axis:leftX-', 'virtual:left'}},
@@ -24,13 +32,12 @@ function Replay:enter()
     self:loadActions(kActions)
     self:startRecording()
     self:frame({
+        code = Replay.code,
         hint = 'Move and jump to record a run of up to 20 seconds, then replay it: the hopper and its sparks repeat every step.',
         play = true,
         controls = {
             ui.button{id = 'record', text = 'Record again', onClick = function() self:startRecording() end},
             ui.button{id = 'replay', text = 'Replay the run', onClick = function() self:startReplay() end},
-            ui.sectionTitle{text = 'Recording and replay'},
-            ui.label{font = 'monospace', text = "recorder:write(1, input.actions())\nrecorder:advance(hash)\ninput.loadRecording(bytes)\nplayback:mask(1)"},
         },
         overlay = {
             ui.row{anchor = 'bottomRight', margin = {0, 40, 110, 0}, gap = 16,

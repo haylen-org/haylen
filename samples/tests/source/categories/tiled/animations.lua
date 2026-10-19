@@ -7,11 +7,19 @@ local MapTest = require('categories.tiled.map-test')
 
 local Animations = haylen.class('Animations', MapTest)
 
+Animations.code = [[
+local map = tiled.newMapRenderer(assets.load('tiled/maps/animations.tmj', nil, {filter = 'linear'}))
+map:update(dt * speed)  -- Advances the time of every animated tile.
+local info = map:tileInfo(map:tile('ground', column, row))
+for _, frame in ipairs(info.animation) do print(frame.tileId, frame.duration) end
+map:draw(camera)]]
+
 function Animations:enter()
     self.map = MapTest.loadMap('tiled/maps/animations.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Water, lava and torches animate on tile layers, and the coins and slimes are animated tile objects. Point at a tile to read its frames. R or the X button sets the speed back to 1.',
+        code = Animations.code,
         controls = {
             ui.toggle{id = 'play', text = 'Play', checked = true, onChange = function(event) self.playing = event.checked end},
             ui.label{text = 'Speed', font = 'caption', color = 'textMuted'},

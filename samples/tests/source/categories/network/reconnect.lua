@@ -10,6 +10,11 @@ local services = require('categories.network.services')
 
 local Reconnect = haylen.class('Reconnect', SocketTest)
 
+Reconnect.code = [[
+local socket = net.connectWebSocket(url, {reconnect = {initialDelay = 0.5, maxDelay = 6, multiplier = 2, jitter = 0.25, maxAttempts = 6}})
+socket:on('reconnecting', function(attempt, delay) print(attempt, delay) end)
+socket:on('close', function(code, reason) print('Gave up with ' .. code) end)]]
+
 Reconnect.settings = {initialDelay = 0.5, maxDelay = 6, multiplier = 2, jitter = 0.25, maxAttempts = 6}
 Reconnect.targets = {{id = 'unreachable', text = 'Unreachable server'}, {id = 'echo', text = 'Echo server'}}
 
@@ -22,6 +27,7 @@ end
 
 function Reconnect:enter()
     self:frame{
+        code = Reconnect.code,
         hint = 'Pick a server and start. The unreachable server shows every attempt and its wait until the socket gives up, and the echo server connects and stays up.',
         focus = 'target',
         content = {ui.row{wrap = true, grow = 1, gap = 24,

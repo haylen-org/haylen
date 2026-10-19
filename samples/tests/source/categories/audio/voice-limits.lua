@@ -23,6 +23,7 @@ function VoiceLimits:enter()
     self.peakVoices, self.lineVoice = 0, nil
     self:applyLimit()
     self:frame({
+        code = kCode,
         hint = 'Collect a hundred coins with and without the limit and compare the voices, fill every voice while the line plays, and let the tone stop and resume quickly.',
         controls = {
             ui.toggle{id = 'limit', text = 'Limit the coin sound to four voices', checked = true, onChange = function(event)
@@ -33,7 +34,6 @@ function VoiceLimits:enter()
             ui.button{id = 'line', text = 'Play a line with priority 255', onClick = function() self:playLine() end},
             ui.button{id = 'burst', text = 'Fill every voice', onClick = function() self:fill() end},
             ui.toggle{id = 'flicker', text = 'Stop and resume a tone every 50 milliseconds', onChange = function(event) self:setFlicker(event.checked) end},
-            ui.label{text = kCode, font = 'monospace'},
         },
     })
 end

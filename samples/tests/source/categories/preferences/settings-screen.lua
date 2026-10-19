@@ -12,6 +12,15 @@ local settings = require('categories.preferences.settings')
 
 local SettingsScreen = haylen.class('SettingsScreen', Test)
 
+SettingsScreen.code = [[
+ui.settingsForm{
+    ui.settingsRow{label = {key = 'settings.music'}, ui.slider{id = 'music', value = audio.busVolume('music'), onChange = function(event)
+        audio.setBusVolume('music', event.value)  preferences.capture()  -- Changes the engine at once.
+    end}},
+    ui.settingsRow{label = {key = 'settings.difficulty'}, ui.segmentedControl{id = 'difficulty', items = levels, onChange = function(event) preferences.set('game.difficulty', event.value) end}},
+}
+function screen:exit() if preferences.dirty() then preferences.save() end end  -- Saves what is still unsaved.]]
+
 SettingsScreen.languages = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}, {id = 'es', text = 'Español'}}
 SettingsScreen.textFonts = {small = 'caption', medium = 'body', large = 'heading'}
 SettingsScreen.windowed = {macos = true, windows = true, linux = true, web = true}
@@ -32,6 +41,7 @@ function SettingsScreen:enter()
     settings.start(self)
     self:frame{
         hint = 'Change anything, then Save, or just leave: unsaved changes are saved on the way out. Close the app and open this test again to see every value come back.',
+        code = SettingsScreen.code,
         focus = 'master',
         content = {ui.row{grow = 1, gap = 24,
             ui.panel{grow = 1, align = 'stretch', gap = 12,

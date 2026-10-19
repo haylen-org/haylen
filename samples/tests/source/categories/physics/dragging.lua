@@ -10,6 +10,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Dragging = haylen.class('Dragging', PhysicsTest)
 
+Dragging.code = [[
+local hand = physics2d.newGrabber(world, {strength = 8})
+hand:grab(x, y)  hand:moveTo(x, y)  hand:release()
+-- A mouse joint sized to one limb only drags the figure.
+local joint = world:createJoint('mouse', anchor, limb, {bx = x, by = y, maxMotorForce = 8 * limb.mass * 9.8 * world.pixelsPerMeter, hertz = 5, dampingRatio = 0.7})
+joint.target = {x, y}]]
+
 local kStrength = 8
 local kStandardGravity = 9.80665
 local kSteps, kStepWidth, kStepHeight = 5, 70, 50
@@ -18,6 +25,7 @@ local kReach = 28
 
 function Dragging:enter()
     self:frame{
+        code = Dragging.code,
         hint = 'Drag a ragdoll or the crate on either side. Every five seconds both sides pull the hand of their ragdoll to the top of the stairs by themselves. R or the X button starts over.',
         controls = {
             ui.checkbox{id = 'automatic', text = 'Pull the hands by themselves', checked = true, onChange = function(event) self.automatic = event.checked end},

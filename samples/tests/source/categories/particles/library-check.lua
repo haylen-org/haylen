@@ -8,6 +8,13 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local LibraryCheck = haylen.class('LibraryCheck', ParticleTest)
 
+LibraryCheck.code = [[
+local load = assets.loadAsync('particles/library/fire/torch-flame.particles')  -- Decodes on a worker thread.
+local ok, problem = pcall(function()
+    local system = particles2d.newSystem(load:await(), {seed = 1})  -- Validates every value of the effect.
+    for _ = 1, 30 do system:update(1 / 30) end
+end)]]
+
 LibraryCheck.folder = 'particles/library'
 LibraryCheck.steps = 30
 
@@ -35,6 +42,7 @@ end
 function LibraryCheck:enter()
     self:frame{
         stage = false,
+        code = LibraryCheck.code,
         content = {
             ui.label{id = 'summary', text = string.format('Checking %d effect files.', #self.paths), font = 'heading'},
             ui.progress{id = 'progress', value = 0},

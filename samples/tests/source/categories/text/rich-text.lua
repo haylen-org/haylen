@@ -9,6 +9,12 @@ local fonts = require('categories.text.fonts')
 
 local RichText = haylen.class('RichText', TextTest)
 
+RichText.code = [[
+graphics2d.registerTextIcon('south', assets.texture('text/prompts.png', {filter = 'linear'}), {source = {0, 0, 64, 64}})
+local text = graphics2d.newRichText('[b]Bold[/b], [color=gold]gold[/color], [url=manual]a link[/url] and [icon=south].', {family = family, size = 30, maxWidth = 880, fonts = {pixel = pixelFamily}})
+text:draw(0, 0)
+local link, hint = text:linkAt(x, y), text:hintAt(x, y)]]
+
 RichText.prompts = {'south', 'east', 'west', 'north'}
 RichText.blocksLeft = 960
 
@@ -55,7 +61,7 @@ function RichText:enter()
     for index, name in ipairs(RichText.prompts) do
         graphics2d.registerTextIcon(name, prompts, {source = {(index - 1) * 64, 0, 64, 64}})
     end
-    self:frame{hint = 'Move the pointer over a link or the hint: "text:linkAt" and "text:hintAt" report what lies under it in the status line. In a GUI the same links take the focus and the hint shows as a tooltip.'}
+    self:frame{code = RichText.code, hint = 'Move the pointer over a link or the hint: "text:linkAt" and "text:hintAt" report what lies under it in the status line. In a GUI the same links take the focus and the hint shows as a tooltip.'}
 end
 
 function RichText:update(dt)

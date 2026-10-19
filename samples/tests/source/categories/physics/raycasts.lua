@@ -11,6 +11,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Raycasts = haylen.class('Raycasts', PhysicsTest)
 
+Raycasts.code = [[
+local hit = world:raycast(x1, y1, x2, y2, {mask = kWalls | kCrates})
+local pierced = world:raycastAll(x1, y1, x2, y2, {limit = 3})
+local bounces, endX, endY = world:bounceRay(x, y, dx, dy, 4000, 8)
+local fan = world:rayFan(x, y, angle, math.rad(70), 31, 900)
+local swept = world:castCircle(x, y, 24, dx * 1500, dy * 1500)
+world:raycastBatch(rays)  local visible = world:lineOfSight(x1, y1, x2, y2, {mask = kWalls})]]
+
 local kWalls, kGlass, kCrates = 2, 4, 8
 local kOrigin = {-680, 0}
 local kLength = 1500
@@ -32,6 +40,7 @@ local casts = {}
 
 function Raycasts:enter()
     self:frame{
+        code = Raycasts.code,
         hint = 'Aim with the mouse or a finger. Q and E or the shoulder buttons switch the cast. Blue walls, cyan glass and orange crates have their own categories.',
         controls = {
             ui.radioGroup{id = 'mode', items = kModes, selected = 'closest', onChange = function(event) self.mode = event.value end},

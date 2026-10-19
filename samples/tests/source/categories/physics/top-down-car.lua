@@ -9,6 +9,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local TopDownCar = haylen.class('TopDownCar', PhysicsTest)
 
+TopDownCar.code = [[
+local world = physics2d.newWorld({gravity = {0, 0}})
+local car = physics2d.newTopDownVehicle(world, {x = 0, y = 660, rotation = math.pi, length = 84, width = 42, drive = 'rear', grip = 1400, topSpeed = 1100, acceleration = 800})
+car.throttle, car.steering, car.handbrake = input.value('throttle'), input.value('steer'), input.down('handbrake')
+print(car.speed, car.slip, car.steeringAngle, car.drifting)
+walls:addChain(outer, true, {restitution = 0.3})  -- Listed counterclockwise, so it holds the car inside.]]
+
 TopDownCar.actions = {
     {name = 'throttle', type = 'axis', positive = {'key:w', 'key:up', 'axis:rightTrigger+', 'virtual:gas'}, negative = {'key:s', 'key:down', 'axis:leftTrigger+', 'virtual:reverse'}},
     {name = 'steer', type = 'axis', positive = {'key:d', 'key:right', 'axis:leftX+', 'button:dpadRight', 'virtual:right'}, negative = {'key:a', 'key:left', 'axis:leftX-', 'button:dpadLeft', 'virtual:left'}},
@@ -22,6 +29,7 @@ local kMaxMarks = 600
 
 function TopDownCar:enter()
     self:frame{
+        code = TopDownCar.code,
         hint = 'Accelerate with W, the up arrow or the right trigger, reverse and brake with S, the down arrow or the left trigger, steer with A and D, the arrows or the left stick, and pull the handbrake with Space or the south button. Touch screens show pedals and arrows. R or the X button puts the car back on the start line.',
         controls = {
             ui.radioGroup{id = 'drive', items = {{id = 'rear', text = 'Rear wheel drive'}, {id = 'front', text = 'Front wheel drive'}, {id = 'all', text = 'All wheel drive'}}, selected = 'rear', onChange = function(event)

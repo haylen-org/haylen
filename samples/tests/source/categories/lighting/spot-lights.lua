@@ -9,6 +9,12 @@ local Room = require('categories.lighting.room')
 
 local SpotLights = haylen.class('SpotLights', LightingTest)
 
+SpotLights.code = [[
+local lamp = lighting2d.newLight({type = 'spot', x = -60, y = 40, radius = 900, intensity = 1.4, shadows = true})
+lamp.rotation = math.atan(y - lamp.y, x - lamp.x)  -- Aims at a point.
+lamp.outerAngle, lamp.innerAngle = math.rad(60), math.rad(30)  -- Full inside the inner angle, fading out at the outer one.
+graphics2d.drawLight(lamp)]]
+
 function SpotLights:init(entry)
     SpotLights.super.init(self, entry)
     self.room = Room()
@@ -26,6 +32,7 @@ end
 function SpotLights:enter()
     self:frame{
         hint = 'The lamp in the middle aims at the cursor: move it with the mouse, a finger, the arrows, WASD or a stick. Two searchlights sweep on their own.',
+        code = SpotLights.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Cone angle in degrees', ui.slider{id = 'cone', min = 10, max = 180, value = math.deg(self.cone), showValue = true, decimals = 0, onChange = function(event)

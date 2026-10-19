@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Slingshot = haylen.class('Slingshot', PhysicsTest)
 
+Slingshot.code = [[
+local shot = world:createBody({type = 'kinematic', x = pouchX + pullX, y = pouchY + pullY})  -- Held in the pouch.
+local points, hit = world:predictPath(shot.x, shot.y, -pullX * 7.5, -pullY * 7.5, {steps = 150, radius = 20, mask = kWorld | kTarget})
+shot.type = 'dynamic'
+shot.velocity = {-pullX * 7.5, -pullY * 7.5}  -- Follows the predicted path.
+world.onHit = function(a, b, contact) if contact.speed > 260 then pop(a, b) end end]]
+
 Slingshot.actions = {
     {name = 'aim', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:aim'}},
     {name = 'launch', type = 'button', bindings = {'key:space', 'button:south', 'virtual:launch'}},
@@ -29,6 +36,7 @@ local kPuffLife = 0.5
 
 function Slingshot:enter()
     self:frame{
+        code = Slingshot.code,
         hint = 'Drag the shot back from the pouch and let go, or aim with the arrows, WASD or the left stick and launch with Space or the south button. The dotted line is the predicted path. R or the X button builds the targets again.',
         controls = {
             ui.button{id = 'launch', text = 'Launch', onClick = function() self:launch() end},

@@ -9,6 +9,13 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Smoothing = haylen.class('Smoothing', AlgorithmTest)
 
+Smoothing.code = [[
+local lowPass = m.lowPassFilter({cutoff = 1.5})
+local hampel = m.hampelFilter({window = 9, threshold = 3})
+local kalman = m.kalmanFilter({processNoise = 0.002, measurementNoise = 0.05})
+local smooth = lowPass:update(dt, measured)  -- The low-pass filter takes the time step.
+local clean, tracked = hampel:update(measured), kalman:update(measured)]]
+
 Smoothing.samples = 360
 Smoothing.rate = 60
 Smoothing.width, Smoothing.height = 1500, 300
@@ -35,6 +42,7 @@ function Smoothing:enter()
     end
     self:frame{
         hint = 'The gray dots are the measurements of the white wave. Turn the noise and the spikes up and down, and pick the filters to compare their delay, their smoothness and how they handle spikes. R or the X button starts the plot again.',
+        code = Smoothing.code,
         controls = controls,
         focus = 'noise',
     }

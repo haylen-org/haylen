@@ -13,6 +13,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Cloth = haylen.class('Cloth', PhysicsTest)
 
+Cloth.code = [[
+knot:addCircle(6, {group = -1, density = 0.5})
+world:createJoint('distance', a, b, {ax = a.x, ay = a.y, bx = b.x, by = b.y, breakForce = 3000})
+world:createJoint('revolute', peg, knot, {ax = knot.x, ay = knot.y, breakForce = 9000})  -- Pins the top row.
+world.onJointBreak = function(joint, info) tear(info.bodyB.x, info.bodyB.y) end
+world:readTransforms(knots, buffer)  -- Every knot in one call to draw the threads.]]
+
 local kColumns, kRows, kSpacing = 21, 10, 30
 local kLeft, kTop = -300, -300
 local kPinEvery = 5
@@ -22,6 +29,7 @@ local kMaxLoads = 12
 
 function Cloth:enter()
     self:frame{
+        code = Cloth.code,
         hint = 'Drop balls and crates into the net or drag a knot to pull it: a joint that holds more than the break force snaps, and the net tears there. R or the X button weaves it again.',
         controls = {
             ui.button{id = 'ball', text = 'Drop a ball', onClick = function() self:drop('ball') end},

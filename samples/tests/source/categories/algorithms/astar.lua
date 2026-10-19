@@ -13,6 +13,14 @@ local picture = require('categories.algorithms.picture')
 
 local AStar = haylen.class('AStar', AlgorithmTest)
 
+AStar.code = [[
+local grid = navigation2d.newGrid(30, 36)
+grid:setWalkable(4, 7, false)
+grid:setCost(5, 7, 5)  -- Mud that costs 5.
+local path, cost = grid:findPath(2, 2, 27, 33, {heuristic = 'octile', diagonal = true})
+local quick = grid:findPath(2, 2, 27, 33, {weight = 2})  -- Weighted A*.
+local jumped = grid:findPath(2, 2, 27, 33, {jumpPoint = true})  -- Needs grid.uniformCost.]]
+
 local kColumns, kRows, kCell = 30, 36, 14
 local kMudCost = 5
 local kColors = {floor = '#FF2B3240', wall = '#FF90A4AE', mud = '#FF6D4C41'}
@@ -25,6 +33,7 @@ local kPanels = {
 function AStar:enter()
     self:frame{
         hint = 'Paint on any of the three grids with the selected brush, and R or the X button paints new random walls. Every search runs again at once and shows its path, cost and time.',
+        code = AStar.code,
         controls = {
             ui.radioGroup{id = 'brush', items = {{id = 'wall', text = 'Paint walls'}, {id = 'mud', text = 'Paint mud that costs 5'}, {id = 'floor', text = 'Erase'}, {id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}}, selected = 'wall', onChange = function(event) self.brush = event.value end},
             ui.combo{id = 'heuristic', items = {{id = 'octile', text = 'Octile'}, {id = 'manhattan', text = 'Manhattan'}, {id = 'euclidean', text = 'Euclidean'}, {id = 'chebyshev', text = 'Chebyshev'}}, selected = 'octile', onChange = function(event) self:setOption('heuristic', event.value) end},

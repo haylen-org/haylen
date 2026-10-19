@@ -11,6 +11,14 @@ local services = require('categories.network.services')
 
 local Download = haylen.class('Download', Test)
 
+Download.code = [[
+async.spawn(function()
+    local done, failure = http.client.stream({url = url, timeoutSeconds = 30, onResponse = function(status, headers)
+        expected = tonumber(headers['content-length'])
+    end}, function(chunk) chunks[#chunks + 1] = chunk end):await()
+    fs.writeFile(storage.root() .. '/downloads/large-file.bin', table.concat(chunks)):await()
+end)]]
+
 function Download:init(entry)
     Download.super.init(self, entry)
     self.choice = services.downloads[1]
@@ -25,6 +33,7 @@ function Download:enter()
         items[index] = {id = choice.id, text = choice.text, caption = choice.caption}
     end
     self:frame{
+        code = Download.code,
         hint = 'Pick what to download, then stream it with progress or fetch it in one piece. The file is saved in the downloads folder of the user folder.',
         focus = 'files',
         content = {ui.row{wrap = true, grow = 1, gap = 24,

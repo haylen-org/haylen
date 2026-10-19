@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Vehicle = haylen.class('Vehicle', PhysicsTest)
 
+Vehicle.code = [[
+local car = physics2d.newVehicle(world, {x = 0, y = 200, chassisWidth = 170, chassisHeight = 36, wheelRadius = 30, rearWheel = {-65, 34}, frontWheel = {65, 34}, drive = 'all', acceleration = 700, topSpeed = 1400, suspensionHertz = 4, suspensionTravel = 16, antiRoll = 0.5})
+car.throttle = input.value('throttle')  -- From -1 to 1.
+car.brake = input.down('brake') and 1 or 0
+print(car.speed, car.grounded)
+road:addChain(points, false, {friction = 0.9})]]
+
 Vehicle.actions = {
     {name = 'throttle', type = 'axis', positive = {'key:d', 'key:right', 'axis:rightTrigger+', 'axis:leftX+', 'button:dpadRight', 'virtual:gas'}, negative = {'key:a', 'key:left', 'axis:leftTrigger+', 'axis:leftX-', 'button:dpadLeft', 'virtual:reverse'}},
     {name = 'brake', type = 'button', bindings = {'key:space', 'key:s', 'key:down', 'button:south', 'virtual:brake'}},
@@ -22,6 +29,7 @@ local kOutline = {{-85, 18}, {-85, -18}, {-40, -18}, {-20, -48}, {40, -48}, {62,
 
 function Vehicle:enter()
     self:frame{
+        code = Vehicle.code,
         hint = 'Drive with D and A, the arrows, the left stick or the triggers, brake with Space, S or the south button, or use the pedals on a touch screen. R or the X button puts the car back on its wheels.',
         controls = {
             ui.radioGroup{id = 'drive', items = {{id = 'rear', text = 'Rear wheel drive'}, {id = 'front', text = 'Front wheel drive'}, {id = 'all', text = 'All wheel drive'}}, selected = 'all', onChange = function(event)

@@ -12,6 +12,13 @@ local settings = require('categories.preferences.settings')
 
 local Reset = haylen.class('Reset', Test)
 
+Reset.code = [[
+local changed = preferences.get('game.difficulty', 'normal') ~= 'normal'
+preferences.remove('audio')  -- Drops the whole group, such as `audio.volume.music`.
+audio.setBusVolume('music', 0.8)  audio.setBusMuted('master', false)
+preferences.capture()  -- Stores the default mix again.
+preferences.save()]]
+
 -- Reads the first binding of jump from an action map document, stored or default.
 local function jumpKey(document)
     for _, action in ipairs(document and document.actions or {}) do
@@ -40,6 +47,7 @@ function Reset:enter()
     settings.start(self)
     self:frame{
         hint = 'Change some values to see them marked, then reset the audio group or every setting of these tests. The table reads the stored preferences every time.',
+        code = Reset.code,
         focus = 'change',
         content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,

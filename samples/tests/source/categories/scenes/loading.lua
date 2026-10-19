@@ -10,6 +10,13 @@ local Test = require('harness.test')
 
 local Loading = haylen.class('Loading', SceneTest)
 
+Loading.code = [[
+scene.push(card, {effect = 'iris', duration = 0.8, loading = LoadingView(), loadingDelay = 0.2, minimumLoadingTime = 0.6})
+scene.spawn(self, function()
+    if scene.preload(card, 'preloaded'):await() then scene.push(card, {effect = 'crossFade', duration = 0.5}) end
+end)
+scene.push(broken, {effect = 'fade', duration = 0.6, onError = function(message) scene.push(ErrorCard(message)) end})]]
+
 -- The custom loading view: a panel with a bar, the percentage and the message of the load, sliding in when it appears.
 local LoadingView = haylen.class('LoadingView')
 
@@ -41,6 +48,7 @@ end
 function Loading:enter()
     self:frame{
         hint = 'Each card takes about two seconds to load. Escape or the B button pops a card, and cards pop by themselves after a moment.',
+        code = Loading.code,
         controls = {
             ui.button{id = 'fade', text = 'Behind the fade', align = 'stretch', onClick = function() self:fade() end},
             ui.button{id = 'view', text = 'With a loading view', align = 'stretch', onClick = function() self:withView() end},

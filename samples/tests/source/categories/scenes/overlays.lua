@@ -9,6 +9,12 @@ local SceneTest = require('categories.scenes.scene-test')
 
 local Overlays = haylen.class('Overlays', SceneTest)
 
+Overlays.code = [[
+local Overlay = haylen.class('Overlay', scene.Scene)
+function Overlay:init() self.transparent = true end  -- The scenes below keep rendering.
+function Overlay:update(dt) if input.pressed('back') then scene.pop() end end  -- Only the top scene updates.
+scene.push(Overlay())]]
+
 -- An overlay that dims what is below and shows a panel over the play area of the test, cascaded by its depth.
 local Overlay = haylen.class('Overlay', scene.Scene)
 
@@ -53,6 +59,7 @@ function Overlays:enter()
     self.depth = scene.size()
     self:frame{
         hint = 'Push overlays on the world. The balls move in "update" and stop under an overlay, while the wheel turns in "render" and keeps turning. Escape or the B button pops the top overlay.',
+        code = Overlays.code,
         controls = {
             ui.button{id = 'hud', text = 'Push a HUD overlay', align = 'stretch', onClick = function() self:push('hud') end},
             ui.button{id = 'dialog', text = 'Push a dialog overlay', align = 'stretch', onClick = function() self:push('dialog') end},

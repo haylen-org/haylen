@@ -8,6 +8,13 @@ local layout = require('categories.interface.layout')
 
 local ToastStacks = haylen.class('ToastStacks', Test)
 
+ToastStacks.code = [[
+ui.toast{id = 'top', position = 'topEnd', arrangement = 'deck', duration = 4, onDismiss = function(event) log.info(event.notice .. ' left, ' .. event.reason .. '.') end}
+gui:command('top', 'show', {notice = 'stored', text = 'Wood stored in the camp', tone = 'success', indicator = 'icon'})
+gui:command('top', 'show', {text = 'The map was deleted.', tone = 'danger', variant = 'outline', action = 'Undo', closable = true, duration = 0})
+gui:command('top', 'update', {notice = 'upload', progress = 0.5})  -- Fills the ring of a notice with the indicator "progress".
+gui:command('top', 'hide', {})]]
+
 ToastStacks.positions = {'topStart', 'top', 'topEnd', 'bottomStart', 'bottom', 'bottomEnd'}
 ToastStacks.names = {topStart = 'Top start', top = 'Top', topEnd = 'Top end', bottomStart = 'Bottom start', bottom = 'Bottom', bottomEnd = 'Bottom end'}
 ToastStacks.tones = {'information', 'success', 'warning', 'danger', 'neutral', 'accent'}
@@ -39,6 +46,7 @@ function ToastStacks:enter()
     end
     self:frame{
         hint = 'Every button adds a notice at its position. A list shows three notices at most while the next ones wait, and a deck puts the newest in front, opens under the pointer or a finger or, as the other deck, keeps its depth while each press takes the front notice away. The time of a stack stops while the pointer or a finger is on it, a press closes a notice, and a sideways drag swipes it away.',
+        code = ToastStacks.code,
         focus = 'show-top',
         content = {ui.scroll{grow = 1, height = 0, layout.columns{
             ui.column{grow = 1, gap = 24,

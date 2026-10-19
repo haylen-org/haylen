@@ -11,6 +11,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Planets = haylen.class('Planets', PhysicsTest)
 
+Planets.code = [[
+local world = physics2d.newWorld({gravity = {0, 0}})
+physics2d.newForceField(world, {kind = 'radial', x = -330, y = 40, radius = 560, strength = 1400, falloff = 'inverseSquare', minDistance = 120})
+local speed = math.sqrt(1400 * 120 ^ 2 / distance)  -- The speed of a circular orbit.
+local moon = world:createBody({x = -330, y = 40 - distance, vx = speed})]]
+
 -- The gravity of each planet is the acceleration at its surface, and its moons are listed by orbit radius and size.
 local kPlanets = {
     {x = -330, y = 40, radius = 120, reach = 560, gravity = 1400, color = '#FF4F86C6', moons = {{220, 18}, {320, 14}}},
@@ -27,6 +33,7 @@ local kWreckTime = 3
 
 function Planets:enter()
     self:frame{
+        code = Planets.code,
         hint = 'Drag from where a ship starts toward where it heads and let go to launch it. The dock launches at the speed of a circular orbit times the slider. R or the X button starts over.',
         controls = {
             ui.button{id = 'dock', text = 'Launch from the dock', onClick = function() self:launchFromDock() end},

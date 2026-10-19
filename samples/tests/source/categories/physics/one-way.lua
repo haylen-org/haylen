@@ -10,6 +10,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local OneWay = haylen.class('OneWay', PhysicsTest)
 
+OneWay.code = [[
+platform:addBox(260, 16, {oneWay = {0, -1}, friction = 0.8})  -- Solid only from above.
+hero:dropThrough(0.3)  -- Falls through the platform it stands on.
+shape.oneWay = nil  -- Makes the platform solid from every side.
+lift.velocity = {math.cos(time * 0.8) * 100, 0}  -- A kinematic one-way platform that the character rides.]]
+
 local kHero = 1
 local kSolid = 2
 local kOneWay = 4
@@ -26,6 +32,7 @@ OneWay.actions = {
 
 function OneWay:enter()
     self:frame{
+        code = OneWay.code,
         hint = 'Move with A and D, the arrows or the left stick, jump with Space, W or the south button, and hold down while jumping to drop through a platform. Climb from platform to platform up to the top one, or ride the lift.',
         controls = {
             ui.checkbox{id = 'solid', text = 'Make the platforms solid', onChange = function(event) self:setSolid(event.checked) end},

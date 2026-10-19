@@ -8,6 +8,13 @@ local LightingTest = require('categories.lighting.lighting-test')
 
 local Masks = haylen.class('Masks', LightingTest)
 
+Masks.code = [[
+local lamp = lighting2d.newLight({radius = 1400, intensity = 1.4, itemMask = 7, layerMin = 1, layerMax = 3})
+graphics2d.drawRect({-80, 60, 160, 160}, '#FFE8E0D0', {layer = 2, lightMask = 4})  -- Lit, since 4 is a bit of 7 and 2 lies in 1 to 3.
+graphics2d.drawRect({-1600, -900, 3200, 1800}, '#FF7A7A82', {lightMask = 8})  -- The lamp never reaches it.
+graphics2d.drawLight(lamp)
+print(lamp:affects(8, 0))  -- Prints false.]]
+
 -- The floor has the mask 8, which only the fill light reaches, so it stays the same whatever the test light selects.
 Masks.floorMask = 8
 Masks.layers = {{id = '1', text = '1'}, {id = '2', text = '2'}, {id = '3', text = '3'}}
@@ -30,6 +37,7 @@ function Masks:enter()
     end
     self:frame{
         hint = 'Columns have the light masks 1, 2 and 4, and rows sit on the layers 1, 2 and 3. Move the light with the mouse, a finger, the arrows, WASD or a stick.',
+        code = Masks.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Item mask of the light', ui.column{gap = 8, children = checks}},

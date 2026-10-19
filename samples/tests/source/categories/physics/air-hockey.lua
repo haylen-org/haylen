@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local AirHockey = haylen.class('AirHockey', PhysicsTest)
 
+AirHockey.code = [[
+local paddle = world:createBody({type = 'kinematic', x = -500, y = 0})
+paddle:moveTo(targetX, targetY)  -- Once per fixed step, so the paddle hits the puck instead of teleporting.
+local puck = world:createBody({linearDamping = 0.15, bullet = true})
+net:addBox(40, 220, {sensor = true})
+world.onSensorBegin = function(sensor, visitor) if visitor == puck then score = score + 1 end end]]
+
 AirHockey.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
 }
@@ -26,6 +33,7 @@ local kServeDelay = 1
 
 function AirHockey:enter()
     self:frame{
+        code = AirHockey.code,
         hint = 'Move your paddle on the left half with the mouse, a finger, the keys or the left stick, and hit the puck into the goal on the right. The first to 7 wins. R or the X button starts a new match.',
         controls = {
             ui.button{id = 'reset', text = 'New match', onClick = function() self:build() end},

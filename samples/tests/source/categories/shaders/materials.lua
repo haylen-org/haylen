@@ -8,6 +8,12 @@ local ShaderTest = require('categories.shaders.shader-test')
 
 local Materials = haylen.class('Materials', ShaderTest)
 
+Materials.code = [[
+local outline = graphics2d.newMaterial(assets.shader('shaders/outline.shader'), {outline_color = '#FFFFE040', texel = {1 / hero.width, 1 / hero.height}, thickness = 1})
+local flash = graphics2d.newMaterial(assets.shader('shaders/flash.shader'), {flash_color = '#FFFFFFFF'})
+flash:set('amount', 1)  -- A hit sets it to 1, and it fades back to 0.
+graphics2d.draw(hero, 500, 200, {width = 240, height = 240, material = outline})]]
+
 -- The colors of the hero image, and the palettes the swap turns them into.
 Materials.source = {'#FF1B1E2B', '#FF3AA86B', '#FF2A7A4E', '#FF8FE0A0', '#FFFFFFFF', '#FFE0543A'}
 Materials.palettes = {
@@ -55,6 +61,7 @@ end
 
 function Materials:enter()
     self:frame{
+        code = Materials.code,
         hint = 'A click or a tap on the play area, E, Enter or the south button flashes the hero. The palette button swaps its colors.',
         presses = true,
         controls = {

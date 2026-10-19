@@ -11,6 +11,13 @@ local Scenery = require('categories.effects.scenery')
 
 local PostProcessing = haylen.class('PostProcessing', ParticleTest)
 
+PostProcessing.code = [[
+local lut = graphics.newTexture(256, 16, {pixels = strip, filter = 'linear'})  -- One 16 by 16 cell per step of blue.
+graphics2d.beginWorld(camera, {postProcess = {
+    bloomStrength = 1.2, bloomThreshold = 0.55, bloomRadius = 28, vignetteStrength = 0.35, saturation = 1.25,
+    colorLut = lut, colorLutStrength = 0.8, chromaticAberration = 3, pixelate = 6, blur = 2, grain = 0.12, dither = true,
+}})]]
+
 PostProcessing.library = 'particles/library/'
 PostProcessing.lutSteps = 16
 PostProcessing.sliders = {
@@ -144,6 +151,7 @@ function PostProcessing:enter()
     end
     self:frame{
         hint = 'The torch follows the cursor, and a click, a tap, E, Enter, Space or the south button sets off a bright burst there.',
+        code = PostProcessing.code,
         cursor = true,
         controls = controls,
     }

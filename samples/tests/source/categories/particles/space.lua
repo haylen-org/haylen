@@ -8,6 +8,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Space = haylen.class('Space', ParticleTest)
 
+Space.code = [[
+local trail = particles2d.newEmitter({texture = dot, rate = 120, speed = {40, 90}, spread = 6.2832, localSpace = false})  -- Particles stay where they were born.
+local shield = particles2d.newEmitter({texture = dot, rate = 120, speed = {40, 90}, spread = 6.2832, localSpace = true})  -- Particles move with the emitter.
+shield.position = {x + math.cos(time) * 220, y + math.sin(time) * 220}]]
+
 function Space:init(entry)
     Space.super.init(self, entry)
     self.speed = 2
@@ -23,6 +28,7 @@ end
 function Space:enter()
     self:frame{
         hint = 'Both emitters are the same except "localSpace". Change how fast they circle.',
+        code = Space.code,
         controls = {ui.formField{label = 'Circling speed', ui.slider{id = 'speed', min = 0, max = 6, value = self.speed, showValue = true, onChange = function(event)
             self.speed = event.value
         end}}},

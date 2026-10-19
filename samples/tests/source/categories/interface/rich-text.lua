@@ -9,6 +9,12 @@ local layout = require('categories.interface.layout')
 
 local RichText = haylen.class('RichText', Test)
 
+RichText.code = [[
+graphics2d.registerTextIcon('coin', assets.texture('interface/themes/fantasy/icons/coin.png'))
+ui.richText{text = '[b]Bold[/b], [color=gold]gold[/color], [wave]waves[/wave], the [url=map]map[/url] and [icon=coin] coins.', onLink = function(event) open(event.link) end}
+ui.richText{id = 'dialogue', text = '[b]Keeper:[/b] You made it.[pause=0.5] Few do.', revealSpeed = 30}
+gui:set('dialogue', {visibleCharacters = -1})  -- Shows the rest at once.]]
+
 RichText.styles = [==[
 [b]Bold[/b], [i]italic[/i], [u]underline[/u], [s]strike[/s] and [code]code()[/code].
 [color=#FF6A6A]Colors[/color], [bgcolor=#604C7DFF] backgrounds [/bgcolor], [size=150%]sizes[/size] and [alpha=0.5]alpha[/alpha].
@@ -49,6 +55,7 @@ function RichText:enter()
     graphics2d.registerTextIcon('confirm', assets.texture('interface/themes/fantasy/icons/star.png'))
     self:frame{
         hint = 'Click, tap or focus a link and press Enter to follow it, and rest the pointer on FAQ for its hint. Next line reveals the next line of the dialogue, and Skip shows the rest at once.',
+        code = RichText.code,
         focus = 'next',
         content = {self:columns()},
     }

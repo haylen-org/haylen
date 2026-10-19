@@ -10,6 +10,14 @@ local Test = require('harness.test')
 
 local Window = haylen.class('Window', Test)
 
+Window.code = [[
+print(haylen.platform, haylen.backend, window.orientation(), window.hasPointerDevice(), haylen.appState())
+local safe = viewport.safeRect()  -- The visible area minus notches, bars and rounded corners.
+window.setFullscreen(true)  window.setKeyboardVisible(true)
+viewport.setSafeAreaSimulation('iphoneNotch')
+events.on('keyboardShown', function(frame) print(frame.y, frame.height) end, {owner = self})
+events.on('networkOffline', function() showOffline() end, {owner = self})]]
+
 Window.events = {
     windowResized = Test.muted, windowFocusGained = Test.accent, windowFocusLost = Test.accent, windowFullscreenChanged = Test.warm,
     windowOrientationChanged = Test.warm, windowSafeAreaChanged = Test.violet, keyboardShown = Test.green, keyboardHidden = Test.green,
@@ -42,6 +50,7 @@ function Window:enter()
     end
     self:frame{
         hint = 'Resize the window, turn the device, open the keyboard or change the network.',
+        code = Window.code,
         focus = 'fullscreen',
         controls = {
             ui.toggle{id = 'fullscreen', text = 'Fullscreen', checked = self.fullscreen, onChange = function(event) window.setFullscreen(event.checked) end},

@@ -10,6 +10,13 @@ local Test = require('harness.test')
 
 local Stack = haylen.class('Stack', SceneTest)
 
+Stack.code = [[
+scene.push(card, {effect = 'slideIn', direction = 'left', duration = 0.45, params = 'from depth 2'})
+scene.replace(card, {effect = 'fade', duration = 0.5})
+scene.pop({effect = 'slideIn', direction = 'right', duration = 0.45})
+scene.popTo(2)  -- Or scene.popToRoot().
+print(scene.size(), scene.top().title, #scene.list(), scene.transitioning())]]
+
 Stack.colors = {'#FF2E5E8A', '#FF8A3E5E', '#FF3E8A5E', '#FF8A6E2E', '#FF5E3E8A'}
 Stack.transitions = {
     none = {},
@@ -38,6 +45,7 @@ function Stack:enter(params)
     self.depth = scene.size()
     self:frame{
         hint = 'Change the stack with the buttons. Escape or the B button pops the top card, and Back returns to the list once this test is on top again.',
+        code = Stack.code,
         controls = {
             ui.formField{label = 'Transition', ui.combo{id = 'transition', selected = 'slide', items = {{id = 'none', text = 'Instant'}, {id = 'slide', text = 'Slide'}, {id = 'fade', text = 'Fade'}}, onChange = function(event)
                 self.transition = Stack.transitions[event.value]

@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local Text = haylen.class('Text', Test)
 
+Text.code = [[
+ui.label{text = 'Outlined', font = 'heading', color = 'onAccent', outline = '#FF000000', outlineWidth = 4}
+ui.label{text = 'Center', textAlign = 'center', align = 'stretch'}
+ui.pageHeader{title = 'Page header', caption = 'With a banner', banner = true, textAlign = 'center'}
+ui.emptyState{image = 'interface/themes/fantasy/icons/key.png', title = 'Nothing here', message = 'Open a chest to find items.'}
+ui.alert{tone = 'warning', title = 'Warning', message = 'Night is coming.'}]]
+
 Text.long = 'A long hint that wraps onto several lines because the label is narrower than its text.'
 
 local function roles()
@@ -28,6 +35,7 @@ end
 function Text:enter()
     self:frame{
         hint = 'Labels take a font role and a theme color, so a theme restyles every text at once. Rich text has its own test.',
+        code = Text.code,
         content = {layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('Font roles', roles()),

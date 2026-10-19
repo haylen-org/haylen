@@ -9,6 +9,13 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Polygons = haylen.class('Polygons', AlgorithmTest)
 
+Polygons.code = [[
+local ring = {outside, inside}  -- An outline and a hole wound the other way.
+local result = m.polygon.subtract(star, ring)  -- Or unite, intersect and exclude.
+result = m.polygon.offset(result, -12, {join = 'miter'})  -- Shrinking can split it apart.
+local pieces = m.polygon.decompose(result)  -- Convex pieces of at most 8 points.
+local area = m.polygon.area(result)]]
+
 local kOperations = {{id = 'unite', text = 'Union'}, {id = 'subtract', text = 'Difference'}, {id = 'intersect', text = 'Intersection'}, {id = 'exclude', text = 'Exclusion'}}
 local kJoins = {{id = 'round', text = 'Round corners'}, {id = 'miter', text = 'Miter corners'}, {id = 'square', text = 'Square corners'}, {id = 'bevel', text = 'Bevel corners'}}
 
@@ -36,6 +43,7 @@ end
 function Polygons:enter()
     self:frame{
         hint = 'Drag with the pointer to move the ring over the star. The offset grows the result or shrinks it, and shrinking can split it apart.',
+        code = Polygons.code,
         controls = {
             ui.radioGroup{id = 'operation', items = kOperations, selected = 'subtract', onChange = function(event) self:change('operation', event.value) end},
             ui.label{text = 'Offset', font = 'caption', color = 'textMuted'},

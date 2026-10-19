@@ -9,6 +9,11 @@ local Test = require('harness.test')
 
 local PixelSnap = haylen.class('PixelSnap', Test)
 
+PixelSnap.code = [[
+camera.zoom = {4, 4}
+camera.pixelSnap = true  -- Rounds the drawn position to whole view pixels.
+local drawn = camera:renderPosition()]]
+
 function PixelSnap:init(entry)
     PixelSnap.super.init(self, entry)
     local tiles = assets.texture('camera/tiles.png')
@@ -36,6 +41,7 @@ end
 function PixelSnap:enter()
     self:frame{
         hint = 'Both halves drift at the same slow speed. The left one draws at fractions of a pixel, the right one snaps to whole pixels.',
+        code = PixelSnap.code,
         controls = {ui.formField{label = 'Speed in world pixels per second', ui.slider{id = 'speed', min = 0, max = 40, value = self.speed, showValue = true, decimals = 1, onChange = function(event)
             self.speed = event.value
         end}}},

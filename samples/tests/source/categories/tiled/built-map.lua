@@ -12,6 +12,14 @@ local MapTest = require('categories.tiled.map-test')
 
 local BuiltMap = haylen.class('BuiltMap', MapTest)
 
+BuiltMap.code = [[
+local map = tiled.newMapRenderer(tiled.newMap({width = 40, height = 24, tileWidth = 32, tileHeight = 32}))
+local first = map:addTileset({name = 'terrain', image = 'tiled/tiles/terrain.png', tileWidth = 128, tileHeight = 128, margin = 2, spacing = 4, renderGridSize = true})
+map:addLayer({name = 'ground'})
+map:fill('ground', grid, first)  -- A CellGrid of local tile ids.
+map:paintTerrain('water', 'water', column, row, 1)  -- Paints water on a cell, and 0 erases it.
+local text = json.encode(map:toJson('tiled/maps/built.tmj'))]]
+
 local kColumns, kRows, kTile = 40, 24, 32
 local kGround, kWater = 'ground', 'water'
 
@@ -38,6 +46,7 @@ function BuiltMap:enter()
     self:build()
     self:frame{
         hint = 'Hold the pointer on the map to paint water, whose shores follow the painted corners. The toggle erases instead, and R or the X button generates new ground.',
+        code = BuiltMap.code,
         controls = {
             ui.toggle{id = 'erase', text = 'Erase water', onChange = function(event) self.erasing = event.checked end},
             ui.button{id = 'generate', text = 'Generate new ground', onClick = function() self:generate() end},

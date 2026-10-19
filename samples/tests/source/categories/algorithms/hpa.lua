@@ -13,6 +13,12 @@ local picture = require('categories.algorithms.picture')
 
 local Hpa = haylen.class('Hpa', AlgorithmTest)
 
+Hpa.code = [[
+local router = grid:hierarchicalPathfinder({clusterSize = 16})
+local path, cost = router:findPath(4, 4, 251, 251)
+grid:setWalkable(120, 40, false)
+router:update(120, 40)  -- Rebuilds only the cluster of the changed cell.]]
+
 local kSize = 256
 local kCell = 3.3
 local kClusterSize = 16
@@ -25,6 +31,7 @@ local kSearches = {
 function Hpa:enter()
     self:frame{
         hint = 'Tap or click to move the goal, or paint walls with the wall brush. Releasing a stroke rebuilds only the clusters it touched. R or the X button makes a new map.',
+        code = Hpa.code,
         controls = {
             ui.radioGroup{id = 'brush', items = {{id = 'goal', text = 'Move the goal'}, {id = 'start', text = 'Move the start'}, {id = 'wall', text = 'Paint walls'}}, selected = 'goal', onChange = function(event) self.brush = event.value end},
             ui.checkbox{id = 'clusters', text = 'Show the clusters', checked = true, onChange = function(event) self.showClusters = event.checked end},

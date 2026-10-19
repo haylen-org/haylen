@@ -7,9 +7,18 @@ local layout = require('categories.interface.layout')
 
 local Overlays = haylen.class('Overlays', Test)
 
+Overlays.code = [[
+ui.dialog{id = 'confirm', title = 'Delete the save?', buttons = {{id = 'keep', text = 'Keep it'}, {id = 'delete', text = 'Delete', variant = 'destructive'}},
+    onAnswer = function(event) if event.button == 'delete' then erase() end end}
+gui:set('confirm', {open = true})
+gui:set('notice', {open = true, tone = 'success', text = 'Saved.'})  -- The toast is ui.toast{id = 'notice', duration = 3}.
+ui.button{text = 'Hover me', tooltip = 'Shows after the pointer rests.'}
+ui.contextMenu{items = {{id = 'rename', text = 'Rename'}, {id = 'erase', text = 'Erase'}}, onSelect = function(event) act(event.item) end, ui.button{text = 'Save slot 1'}}]]
+
 function Overlays:enter()
     self:frame{
         hint = 'Escape or the east button closes a dismissible dialog, a popover or a menu first. Rest the pointer on a control for its tooltip. Right click or long press the save slot, or focus it and press the menu key or the north button, for its context menu.',
+        code = Overlays.code,
         focus = 'delete',
         content = {self:columns()},
     }

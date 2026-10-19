@@ -15,6 +15,12 @@ local Test = require('harness.test')
 
 local Errors = haylen.class('Errors', Test)
 
+Errors.code = [[
+haylen.setRecoverable(true)  -- The error screen offers `Back to the app`.
+timer.after(0.05, function() error('A timer failed.') end, {owner = self})
+events.on('appError', function(error) print(error.message, error.file, error.line, #error.frames) end, {owner = self})
+events.on('appRecovered', function(error) scene.clear() scene.push(Menu()) end)]]
+
 Errors.file = 'source/categories/development/errors.lua'
 Errors.rowHeight = 36
 Errors.messageLength = 90
@@ -138,7 +144,7 @@ function Errors:enter()
             Errors.raise[kind.id](self)
         end}
     end
-    self:frame{hint = 'Each button raises an error from one kind of code. The error screen shows it with its stack, and "Back to the app" returns to the test list, where this test opens again with the row filled in.', controls = controls, focus = Errors.kinds[1].id}
+    self:frame{hint = 'Each button raises an error from one kind of code. The error screen shows it with its stack, and "Back to the app" returns to the test list, where this test opens again with the row filled in.', code = Errors.code, controls = controls, focus = Errors.kinds[1].id}
 
     events.on('appError', function(error)
         if self.pending then

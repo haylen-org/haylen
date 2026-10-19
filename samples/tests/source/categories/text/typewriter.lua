@@ -9,6 +9,12 @@ local fonts = require('categories.text.fonts')
 
 local Typewriter = haylen.class('Typewriter', TextTest)
 
+Typewriter.code = [[
+local wave = graphics2d.newRichText('[wave amp=8 freq=2]A gentle swell[/wave]', {family = family, size = 44})
+local spoken = graphics2d.newRichText('[b]Keeper:[/b] You made it.[pause=0.6] [speed=0.3]Be careful...[/speed]', {family = family, size = 40, maxWidth = 1300, revealSpeed = 30})
+spoken:update(dt)  -- Reveals 30 characters per second.
+spoken.visibleCharacters = -1  -- Skips to the end.]]
+
 Typewriter.effects = {
     {'[wave]', '[wave]The sea rolls[/wave]'},
     {'[wave amp=8 freq=2]', '[wave amp=8 freq=2]A gentle swell[/wave]'},
@@ -44,6 +50,7 @@ end
 
 function Typewriter:enter()
     self:frame{
+        code = Typewriter.code,
         hint = 'Next line reveals the next line of the dialogue, Skip shows the rest at once and Replay starts the line over. The speed slider sets the characters per second, and "[speed]" tags change it inside a line.',
         controls = {
             ui.button{id = 'next', text = 'Next line', variant = 'primary', align = 'stretch', onClick = function()

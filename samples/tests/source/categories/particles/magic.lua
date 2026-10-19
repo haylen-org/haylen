@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Magic = haylen.class('Magic', ParticleTest)
 
+Magic.code = [[
+local vortex = particles2d.newEmitter({texture = dot, rate = 160, speed = {0, 20}, spread = 6.2832, shape = 'ring', shapeSize = {220, 0}, blend = 'additive'})
+vortex:configure({tangentialAcceleration = 260, radialAcceleration = -180})  -- Swirls around the orb and falls into it.
+local stars = particles2d.newEmitter({texture = atlas.texture, frames = twinkle, rate = 14, shape = 'circle', shapeSize = {260, 0}, blend = 'additive'})  -- Each star plays its frames over its life.
+vortex.position = {orb.x, orb.y}]]
+
 function Magic:init(entry)
     Magic.super.init(self, entry)
     self.orb = {x = 0, y = 0}
@@ -28,6 +34,7 @@ end
 function Magic:enter()
     self:frame{
         hint = 'The orb drifts after the cursor. Turn the swirl and the pull to reshape the vortex.',
+        code = Magic.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Swirl, tangential acceleration', ui.slider{id = 'swirl', min = -600, max = 600, value = self.swirl, showValue = true, decimals = 0, onChange = function(event)

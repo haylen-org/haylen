@@ -8,6 +8,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Shapes = haylen.class('Shapes', ParticleTest)
 
+Shapes.code = [[
+local circle = particles2d.newEmitter({texture = dot, rate = 90, spread = 6.2832, shape = 'circle', shapeSize = {110, 0}})  -- A radius of 110.
+local box = particles2d.newEmitter({texture = dot, shape = 'rectangle', shapeSize = {110, 70}})  -- Half the width and half the height.
+local cone = particles2d.newEmitter({texture = dot, shape = 'cone', shapeSize = {140, 0}, spread = 1.2})  -- The sector of the direction and the spread.]]
+
 Shapes.list = {
     {name = 'point', size = {0, 0}},
     {name = 'circle', size = {110, 0}},
@@ -30,6 +35,7 @@ end
 function Shapes:enter()
     self:frame{
         hint = 'Slow particles show where each shape spawns them. Raise the speed to see them leave the shape.',
+        code = Shapes.code,
         controls = {ui.formField{label = 'Speed', ui.slider{id = 'speed', min = 0, max = 200, value = self.speed, showValue = true, decimals = 0, onChange = function(event)
             self.speed = event.value
             for _, emitter in ipairs(self.emitters) do

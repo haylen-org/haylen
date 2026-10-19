@@ -9,6 +9,12 @@ local Test = require('harness.test')
 
 local Players = haylen.class('Players', Test)
 
+Players.code = [[
+local seat = input.newActionMap({keyboard = false, mouse = false, virtual = false, gamepad = 2, actions = document})
+local pad = input.findGamepadPress('start')  -- The gamepad that pressed it, or `nil`.
+local dx, dy = seat:vector('move')
+local mask = seat:stepButtons({'jump', 'dash'})  -- In `fixedUpdate`.]]
+
 local kSeats = 9
 local kButtons = {'jump', 'dash'}
 
@@ -32,12 +38,9 @@ function Players:enter()
         end
     end)
     self:frame({
+        code = Players.code,
         hint = 'Press start or south on a gamepad to join its seat. Each seat moves with its own devices only.',
         play = true,
-        controls = {
-            ui.sectionTitle{text = 'One map per player'},
-            ui.label{font = 'monospace', text = "input.newActionMap({gamepad = 2})\ninput.findGamepadPress('start')\nmap:vector('move')\nmap:stepButtons({'jump', 'dash'})"},
-        },
         overlay = {
             ui.touchStick{action = 'seat.move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 240, height = 240},
             ui.touchButton{anchor = 'bottomRight', margin = {0, 40, 110, 0}, action = 'seat.jump', text = 'Jump'},

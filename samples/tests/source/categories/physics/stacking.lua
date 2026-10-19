@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Stacking = haylen.class('Stacking', PhysicsTest)
 
+Stacking.code = [[
+local block = world:createBody({type = 'kinematic', x = dropperX, y = -310})
+shape.mask = 0  -- Hangs under the dropper and collides with nothing.
+block:setTransform(dropperX, -310, 0)
+block.type = 'dynamic'  shape.mask = -1  -- Drops it.
+local top = shape.bounds.y  -- The top of a settled block measures the tower.]]
+
 Stacking.actions = {
     {name = 'drop', type = 'button', bindings = {'key:space', 'button:south', 'virtual:drop'}},
 }
@@ -35,6 +42,7 @@ local kKinds = {
 
 function Stacking:enter()
     self:frame{
+        code = Stacking.code,
         hint = 'Drop the block that hangs from the moving dropper with a click, a tap, Space or the south button, and build the highest tower on the stand. R or the X button clears the stand.',
         controls = {
             ui.button{id = 'drop', text = 'Drop the block', onClick = function() self:drop() end},

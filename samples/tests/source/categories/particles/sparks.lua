@@ -8,6 +8,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Sparks = haylen.class('Sparks', ParticleTest)
 
+Sparks.code = [[
+local sparks = particles2d.newEmitter({texture = dot, rate = 400, lifetime = {0.4, 1.1}, speed = {500, 1100}, direction = -0.5, spread = 0.7, gravity = {0, 1400}, damping = 1.2, shape = 'cone', shapeSize = {12, 0}, blend = 'additive', maxParticles = 2048})
+sparks.position = {x, y}
+sparks.emitting = input.down('fire')  -- Live sparks keep flying when it stops.]]
+
 function Sparks:init(entry)
     Sparks.super.init(self, entry)
     self.onlyHeld = false
@@ -18,6 +23,7 @@ end
 function Sparks:enter()
     self:frame{
         hint = 'The grinder follows the cursor. With the switch on, sparks fly only while you hold the mouse button, a finger, E, Enter or the south button.',
+        code = Sparks.code,
         cursor = true,
         controls = {ui.toggle{id = 'held', text = 'Only while held', onChange = function(event)
             self.onlyHeld = event.checked

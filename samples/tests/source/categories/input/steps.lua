@@ -9,6 +9,11 @@ local Test = require('harness.test')
 
 local Steps = haylen.class('Steps', Test)
 
+Steps.code = [[
+input.loadActions({actions = {{name = 'jump', type = 'button', bindings = {'key:space', 'button:south'}, buffer = 0.15}}})
+if input.stepPressed('jump') then presses = presses + 1 end  -- In `fixedUpdate`, each press counts once.
+if grounded and input.consumePress('jump') then velocity = -1100 end  -- A press stays in the buffer for 0.15 seconds.]]
+
 local kScales = {{id = '0.25', text = '0.25'}, {id = '0.5', text = '0.5'}, {id = '1', text = '1'}, {id = '2', text = '2'}, {id = '4', text = '4'}}
 local kGravity = 2600
 local kJumpSpeed = 1100
@@ -25,6 +30,7 @@ function Steps:enter()
     self.counts = {frame = 0, fixedFrame = 0, fixedStep = 0}
     self.hopper = {y = 0, velocity = 0, jumps = 0}
     self:frame({
+        code = Steps.code,
         hint = 'Press jump many times at each time scale: the step edges count every press once, while frame edges read in fixed steps miss presses below 1 and double them above it.',
         play = true,
         controls = {
@@ -35,8 +41,6 @@ function Steps:enter()
                 self.counts = {frame = 0, fixedFrame = 0, fixedStep = 0}
                 self.hopper.jumps = 0
             end},
-            ui.sectionTitle{text = 'Reading presses in fixed steps'},
-            ui.label{font = 'monospace', text = "input.stepPressed('jump')\ninput.stepDown('jump')\ninput.consumePress('jump')"},
         },
         overlay = {
             ui.touchButton{anchor = 'bottomRight', margin = {0, 40, 110, 0}, action = 'jump', text = 'Jump'},

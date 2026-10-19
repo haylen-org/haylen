@@ -8,6 +8,12 @@ local areas = require('categories.safe-area.areas')
 
 local Simulations = haylen.class('Simulations', Test)
 
+Simulations.code = [[
+viewport.setSafeAreaSimulation('iphoneDynamicIsland')  -- Or `iphoneNotch`, `ipad`, `androidGestureBar` and `television`.
+viewport.setSafeAreaSimulation({60, 0, 40, 120})  -- Top, right, bottom and left in window points.
+viewport.setSafeAreaSimulation(nil)  -- The safe area of the device again.
+print(viewport.safeAreaSimulation(), viewport.safeRect())]]
+
 Simulations.sides = {'top', 'right', 'bottom', 'left'}
 
 function Simulations:init(entry)
@@ -22,6 +28,7 @@ function Simulations:enter()
     self.device = current == nil and 'device' or (type(current) == 'string' and current or 'custom')
     self:frame{
         hint = 'The HUD is anchored to the safe area, so it moves with every device. Custom insets are window points: top, right, bottom and left. Leaving the test puts the safe area of the device back.',
+        code = Simulations.code,
         focus = 'device',
         content = {ui.row{ui.spacer{grow = 1}, ui.card{width = 900, gap = 16, children = self:controls()}, ui.spacer{grow = 1}}},
     }

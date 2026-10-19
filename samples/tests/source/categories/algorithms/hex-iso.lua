@@ -10,6 +10,13 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local HexIso = haylen.class('HexIso', AlgorithmTest)
 
+HexIso.code = [[
+local hexes = navigation2d.newGrid(18, 14, {topology = 'hexagonal'})  -- Shifted rows.
+local columns = navigation2d.newGrid(22, 12, {topology = 'hexagonal', staggerX = true})
+local diamonds = navigation2d.newGrid(12, 26, {topology = 'staggered'})
+local isometric = navigation2d.newGrid(14, 14)  -- Isometric maps step like square ones.
+local path, cost = hexes:findPath(0, 0, 17, 13)  -- Steps through the six sides.]]
+
 local kRadius = 26
 local kSqrt3 = math.sqrt(3)
 local kTile = 72
@@ -34,6 +41,7 @@ local kLayouts = {
 function HexIso:enter()
     self:frame{
         hint = 'Tap or click cells with the selected brush. The path steps through six sides on hexagons and through sides and corners on diamonds. R or the X button places new walls.',
+        code = HexIso.code,
         controls = {
             ui.radioGroup{id = 'layout', items = {{id = 'hexRows', text = 'Hex, shifted rows'}, {id = 'hexColumns', text = 'Hex, shifted columns'}, {id = 'isometric', text = 'Isometric'}, {id = 'staggered', text = 'Staggered isometric'}}, selected = 'hexRows', onChange = function(event) self:build(event.value) end},
             ui.radioGroup{id = 'brush', items = {{id = 'wall', text = 'Toggle walls'}, {id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}}, selected = 'wall', onChange = function(event) self.brush = event.value end},

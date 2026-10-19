@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Claw = haylen.class('Claw', PhysicsTest)
 
+Claw.code = [[
+local slider = world:createJoint('prismatic', cabinet, carriage, {ax = 0, ay = -380, axisX = 1, axisY = 0, enableLimit = true, lower = -680, upper = 680, enableMotor = true, maxMotorForce = 2e5})
+local cable = world:createJoint('prismatic', carriage, head, {ax = 0, ay = -300, axisX = 0, axisY = 1, enableLimit = true, lower = 0, upper = 595, enableMotor = true, maxMotorForce = 2e4})
+local finger = world:createJoint('revolute', head, hook, {ax = 28, ay = -285, enableLimit = true, lower = -0.35, upper = 0.45, enableMotor = true, maxMotorTorque = 60000})
+slider.motorSpeed, cable.motorSpeed = moveX * 320, moveY * 260
+finger.motorSpeed = closed and 3 or -3  -- The fingers hold the prize by friction.]]
+
 Claw.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
     {name = 'grip', type = 'button', bindings = {'key:space', 'key:enter', 'button:south', 'virtual:grip'}},
@@ -26,6 +33,7 @@ local kPrizeColors = {'#FFF06292', '#FF4FC3F7', '#FFAED581', '#FFFFD54F', '#FFBA
 
 function Claw:enter()
     self:frame{
+        code = Claw.code,
         hint = 'Move the claw with the arrows, WASD, the left stick or the touch stick, where up and down raise and lower it, and close or open it with Space, Enter or the south button. Drop prizes in the chute on the left.',
         controls = {
             ui.label{text = 'Grip strength', font = 'caption', color = 'textMuted'},

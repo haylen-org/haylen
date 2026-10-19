@@ -9,6 +9,13 @@ local layout = require('categories.interface.layout')
 
 local RuntimeImages = haylen.class('RuntimeImages', Test)
 
+RuntimeImages.code = [[
+local minimap = graphics.newRenderTarget(240, 160)
+graphics2d.beginTarget(minimap, camera, {clear = '#FF1B5E20'})  -- Every frame, in render.
+local portrait = graphics.newImage(96, 96, '#FF283593')  portrait:fill('#FFFFCC80', {32, 20, 32, 32})
+ui.setImage('@minimap', minimap)  ui.setImage('@portrait', portrait)  ui.setImage('@badge', graphics.newVectorImage(svg))
+ui.image{image = '@minimap', width = 360, height = 240, radius = 12}  ui.button{text = 'With the badge', icon = '@badge'}]]
+
 RuntimeImages.badge = [[<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#FFB300"/><path d="M24 10 L28 20 L39 20 L30 27 L33 38 L24 31 L15 38 L18 27 L9 20 L20 20 Z" fill="#FFFFFF"/></svg>]]
 
 function RuntimeImages:enter()
@@ -26,6 +33,7 @@ function RuntimeImages:enter()
 
     self:frame{
         hint = 'The minimap renders every frame into a render target that the image component shows, and the portrait and the badge were made in code.',
+        code = RuntimeImages.code,
         content = {layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('A render target', {ui.image{id = 'minimap', image = '@minimap', width = 360, height = 240, radius = 12}}),

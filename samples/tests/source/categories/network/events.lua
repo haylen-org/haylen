@@ -9,6 +9,12 @@ local services = require('categories.network.services')
 
 local Events = haylen.class('Events', SocketTest)
 
+Events.code = [[
+socket:on('reconnecting', function(attempt, delay) print(attempt, delay) end)
+events.on('webSocketReconnecting', function(info) print(info.url, info.attempt, info.delay) end, {owner = self})
+events.on('networkOffline', function() showBanner() end, {owner = self})
+local open = net.openSocketCount()]]
+
 Events.socketEvents = {'open', 'message', 'error', 'disconnect', 'reconnecting', 'close'}
 Events.busEvents = {'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting', 'networkOnline', 'networkOffline', 'appBackground', 'appActive'}
 
@@ -60,6 +66,7 @@ function Events:enter()
     end
     self.counters = counters
     self:frame{
+        code = Events.code,
         hint = 'Open and close sockets and watch both kinds of events arrive. The counters on the left add up every event this visit heard.',
         focus = 'echo',
         content = {ui.row{wrap = true, grow = 1, gap = 24,

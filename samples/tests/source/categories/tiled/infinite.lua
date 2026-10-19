@@ -10,11 +10,19 @@ local Pan = require('categories.tiled.pan')
 
 local Infinite = haylen.class('Infinite', MapTest)
 
+Infinite.code = [[
+local map = tiled.newMapRenderer(assets.load('tiled/maps/infinite.tmj', nil, {filter = 'linear'}))
+for _, chunk in ipairs(map:layer('ground').chunks) do print(chunk.x, chunk.y, chunk.width, chunk.height) end
+local column, row = map:worldToCell(x, y)  -- Negative left of and above the origin.
+local gid = tiled.tileId(map:tile('ground', column, row))
+map:draw(camera)  -- Draws only the chunks the camera sees.]]
+
 function Infinite:enter()
     self.map = MapTest.loadMap('tiled/maps/infinite.tmj')
     self.chunks = self.map:layer('ground').chunks
     self:frame{
         hint = 'Drag the map, or use WASD, the arrows, the directional pad or the left stick, and the mouse wheel zooms. The cell under the pointer can be negative, and R or the X button comes back to the origin.',
+        code = Infinite.code,
         controls = {
             ui.checkbox{id = 'chunks', text = 'Show the chunks', checked = true, onChange = function(event) self.showChunks = event.checked end},
             ui.row{wrap = true,

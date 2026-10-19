@@ -9,6 +9,10 @@ local Scenery = require('categories.effects.scenery')
 
 local OutlineGlow = haylen.class('OutlineGlow', ParticleTest)
 
+OutlineGlow.code = [[
+graphics2d.draw(texture, x, y, {pivotY = 1, effect = {outlineWidth = 8, outlineColor = '#FFFFC830'}})
+graphics2d.draw(texture, x, y, {pivotY = 1, effect = {glowSize = 36, glowColor = '#E040E0FF'}})]]
+
 OutlineGlow.subjects = {
     {name = 'Robot', path = 'sprites/images/hero.png', x = -720, scale = 1.3, glowing = true},
     {name = 'Bunny', path = 'sprites/images/bunny.png', x = -360, scale = 2.5},
@@ -70,6 +74,7 @@ end
 function OutlineGlow:enter()
     self:frame{
         hint = 'The sprite nearest the cursor shows its outline. A click, a tap, E, Enter, Space or the south button makes it glow or stop glowing.',
+        code = OutlineGlow.code,
         cursor = true,
         controls = {
             ui.toggle{id = 'night', text = 'Night', checked = self.night, onChange = function(event) self.night = event.checked end},

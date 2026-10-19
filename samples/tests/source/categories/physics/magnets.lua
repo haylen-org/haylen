@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Magnets = haylen.class('Magnets', PhysicsTest)
 
+Magnets.code = [[
+local magnet = physics2d.newForceField(world, {kind = 'radial', x = -300, y = 80, radius = 340, strength = 2600, falloff = 'linear', linearDrag = 1.5, mask = kSteel})
+crate:addBox(54, 54, {category = kSteel, density = 2})  -- Wood takes another category and feels nothing.
+magnet.strength = -2600  -- Pushes instead of pulling.
+magnet.enabled = false
+magnet.position = {x, y + 40}  -- Follows its kinematic body.]]
+
 local kSteel, kWood, kMagnet = 2, 4, 8
 local kSteelColor, kWoodColor = '#FF90A4AE', '#FFBC8F5A'
 local kRadius = 340
@@ -21,6 +28,7 @@ local kCrate = 54
 
 function Magnets:enter()
     self:frame{
+        code = Magnets.code,
         hint = 'Drag a magnet over the crates: the red one pulls the steel crates, the blue one pushes them away, and the wooden crates feel neither. R or the X button rebuilds.',
         controls = {
             ui.checkbox{id = 'pull', text = 'Red magnet on', checked = true, onChange = function(event) self:switch(1, event.checked) end},

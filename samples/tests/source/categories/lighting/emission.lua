@@ -8,6 +8,12 @@ local LightingTest = require('categories.lighting.lighting-test')
 
 local Emission = haylen.class('Emission', LightingTest)
 
+Emission.code = [[
+graphics2d.beginWorld(camera, {ambientLight = '#FF141A30'})
+graphics2d.drawRect({x, y, 60, 80}, '#FFFFD27A', {layer = 2, emission = 1})  -- A window that glows at night.
+graphics2d.drawPolygon(sign, '#FF30A0FF', {layer = 2, unshaded = true})  -- Keeps its color whatever the light.
+graphics2d.drawLight(lamp)]]
+
 Emission.houses = {
     {x = -820, width = 420, height = 460, color = '#FF7A6A5A'},
     {x = -300, width = 360, height = 620, color = '#FF6A7488'},
@@ -26,6 +32,7 @@ end
 function Emission:enter()
     self:frame{
         hint = 'The street lamp on the cursor lights the houses: move it with the mouse, a finger, the arrows, WASD or a stick. Windows and the neon sign use emission, and the road signs are unshaded.',
+        code = Emission.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Emission of windows and neon', ui.slider{id = 'emission', min = 0, max = 3, value = self.emission, showValue = true, onChange = function(event)

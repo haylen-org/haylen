@@ -9,6 +9,12 @@ local fonts = require('categories.text.fonts')
 
 local ComplexScripts = haylen.class('ComplexScripts', TextTest)
 
+ComplexScripts.code = [[
+local family = graphics.newFontFamily({regular = assets.font('fonts/fira-sans-regular.otf'), fallbacks = {assets.font('fonts/noto-sans-arabic-regular.ttf'), assets.font('fonts/noto-sans-thai-regular.ttf')}})
+graphics2d.drawText(family, arabic, 130, 0, {size = 32, language = 'ar'})
+graphics2d.drawText(family, mixed, 130, 400, {size = 30, maxWidth = 560, direction = 'rightToLeft'})  -- Numbers and English keep their order.
+local paragraph = graphics2d.newRichText(markup, {family = family, size = 30, maxWidth = 460, direction = 'rightToLeft', language = 'ar'})]]
+
 ComplexScripts.lines = {
     {'Arabic', 'مرحبا بالعالم، هذه لغة جميلة', 'ar'},
     {'Persian', 'سلام دنیا، زبان فارسی زیباست', 'fa'},
@@ -34,6 +40,7 @@ end
 
 function ComplexScripts:enter()
     self:frame{
+        code = ComplexScripts.code,
         hint = 'Drag the width slider to wrap the paragraphs again, pick the direction of the mixed line, and replay the right-to-left typewriter.',
         controls = {
             ui.formField{label = 'Paragraph width', ui.slider{id = 'width', min = 240, max = 600, step = 10, value = self.width, showValue = true, decimals = 0, onChange = function(event)

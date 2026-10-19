@@ -8,6 +8,14 @@ local Test = require('harness.test')
 
 local Adaptive = haylen.class('Adaptive', Test)
 
+Adaptive.code = [[
+local visible = viewport.visibleRect()
+local shape = visible.height > visible.width and 'portrait' or 'landscape'
+if shape ~= self.shape then
+    self.shape = shape
+    gui:replaceChildren('layout', {layout(shape)})  -- One column in portrait, two side by side in landscape.
+end]]
+
 local function tall()
     local visible = viewport.visibleRect()
     return visible.height > visible.width
@@ -23,6 +31,7 @@ function Adaptive:enter()
     self.shape = tall() and 'portrait' or 'landscape'
     self:frame{
         hint = 'Turn a phone or a tablet, or make a desktop window taller than wide: the "expand" policy shows more design units along the long side, and the screen lays itself out again.',
+        code = Adaptive.code,
         focus = 'equip',
         content = {ui.column{id = 'layout', grow = 1, self:layout(self.shape)}},
     }

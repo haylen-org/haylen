@@ -9,6 +9,13 @@ local Test = require('harness.test')
 
 local Touch = haylen.class('Touch', Test)
 
+Touch.code = [[
+input.setMouseAsTouch(true)  -- The left button acts as a finger.
+for _, touch in ipairs(input.touches()) do
+    trails[touch.id]:push({touch.x, touch.y})
+    local lifted = touch.phase == 'ended' or touch.phase == 'cancelled'
+end]]
+
 local kColors = {'#FF8FB0FF', '#FFF2B23A', '#FF6FDCA0', '#FFFF8A84', '#FFC9A0FF', '#FF5ED3E8', '#FFFFD166', '#FFB8E986', '#FFFF9ED8', '#FFE8EAF2'}
 local kFade = 0.8
 
@@ -18,13 +25,12 @@ function Touch:enter()
     self.events = 0
     self.most = 0
     self:frame({
+        code = Touch.code,
         hint = 'Put up to ten fingers on the screen, or turn on the mouse as a finger to touch the stage with the left button.',
         focus = 'mouseAsTouch',
         controls = {
             ui.toggle{id = 'mouseAsTouch', text = 'The mouse acts as a finger', checked = input.mouseAsTouch(), onChange = function(event) input.setMouseAsTouch(event.checked) end},
             ui.button{id = 'clear', text = 'Clear the trails', onClick = function() self.trails = {} end},
-            ui.sectionTitle{text = 'Reading touches'},
-            ui.label{font = 'monospace', text = 'for _, touch in ipairs(input.touches()) do\n  touch.id, touch.phase\n  touch.x, touch.y\n  touch.startX, touch.startY\n  touch.dx, touch.dy\n  touch.duration\nend'},
         },
     })
 end

@@ -10,6 +10,12 @@ local actions = require('categories.camera.actions')
 
 local Limits = haylen.class('Limits', Test)
 
+Limits.code = [[
+camera.limits = {-1800, -1000, 3600, 2000}
+camera.positionSmoothing = true
+camera.limitSmoothing = true  -- Eases into the edge instead of stopping at it.
+camera:follow(walker.x, walker.y, dt)]]
+
 Limits.sizes = {wide = {-1800, -1000, 3600, 2000}, narrow = {-500, -400, 1000, 800}}
 
 function Limits:init(entry)
@@ -27,6 +33,7 @@ function Limits:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Walk to an edge of the meadow with WASD, the arrows, the left stick or by holding the mouse button or a finger. The dark frame is the limit rectangle.',
+        code = Limits.code,
         play = true,
         controls = {
             ui.toggle{id = 'smoothing', text = 'Limit smoothing', checked = true, onChange = function(event)

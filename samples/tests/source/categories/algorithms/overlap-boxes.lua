@@ -10,6 +10,14 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local OverlapBoxes = haylen.class('OverlapBoxes', AlgorithmTest)
 
+OverlapBoxes.code = [[
+local world = spatial2d.newOverlapWorld({kinds = {'body', 'hit'}, cellSize = 160})
+local punching = world:defineSet({{kind = 'body', x = -18, y = -78, width = 36, height = 78, layers = 1, depth = 12}, {kind = 'hit', x = 12, y = -62, width = 40, height = 14, layers = 0, mask = 2}})
+world:placeAll(placements)  -- Groups of entity, x, y, depth, facing and set.
+local count = world:contacts(contacts)  -- Groups of eight numbers per contact.
+world:rest(source, target, 20)  -- The pair rests 20 steps after a hit.
+world:step()]]
+
 local kFighters = 60
 local kMaxContacts = 256
 local kRest = 20
@@ -18,10 +26,10 @@ local kTeams = {{layers = 1, mask = 2, color = '#FF8FB0FF'}, {layers = 2, mask =
 function OverlapBoxes:enter()
     self:frame{
         hint = 'Fighters of two teams wander a belt of depth rows and punch. A punch lands only on the other team within the depth band, and a pair rests after each hit.',
+        code = OverlapBoxes.code,
         controls = {
             ui.toggle{id = 'boxes', text = 'Draw the boxes', checked = true, onChange = function(event) self.drawBoxes = event.checked end},
             ui.formField{label = 'Depth reach of a body', ui.slider{id = 'reach', min = 0, max = 60, step = 2, value = 12, showValue = true, onChange = function(event) self:defineSets(event.value) end}},
-            ui.label{font = 'monospace', text = "world:placeAll(placements)\nworld:contacts(contacts)\nworld:rest(source, target, ticks)"},
         },
     }
     self.drawBoxes = true

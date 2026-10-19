@@ -7,6 +7,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Bursts = haylen.class('Bursts', ParticleTest)
 
+Bursts.code = [[
+local pops = particles2d.newEmitter({texture = dot, rate = 0, bursts = {{time = 0, count = 40}, {time = 0.5, count = 12}, {time = 1.2, count = 60}}, duration = 2, loop = true})
+local plume = particles2d.newEmitter({texture = smoke, rate = 10, lifetime = {3, 4}, prewarm = 4})  -- Starts four seconds grown.
+local once = particles2d.newEmitter({texture = dot, rate = 80, duration = 1.2})  -- Without "loop" it stops after 1.2 seconds.
+once:restart()  log.info(once.emitting, once.alive, pops.cycleTime)]]
+
 function Bursts:init(entry)
     Bursts.super.init(self, entry)
     local soft, smoke = 'soft-dot', 'smoke'
@@ -27,6 +33,7 @@ end
 function Bursts:enter()
     self:frame{
         hint = 'Restart the emitters to compare a prewarmed plume with a cold one and to replay the one-shot cycle.',
+        code = Bursts.code,
         controls = {
             ui.button{id = 'plumes', text = 'Restart the plumes', onClick = function()
                 self.warm:restart()

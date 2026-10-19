@@ -7,6 +7,12 @@ local layout = require('categories.interface.layout')
 
 local SvgPictures = haylen.class('SvgPictures', Test)
 
+SvgPictures.code = [[
+ui.icon{image = 'sprites/vector/heart.svg', size = 96}  -- Drawn again for the pixels it covers.
+ui.button{text = 'Tinted', icon = 'sprites/vector/bolt.svg', iconColor = 'accent'}
+ui.image{image = 'interface/images/landscape.png', width = 220, height = 140, fit = 'cover', radius = 24}
+ui.panel{style = {surfaces = {panel = {image = 'sprites/vector/frame.svg', slice = 28, padding = 18}}}}]]
+
 SvgPictures.icons = {'heart', 'star', 'leaf', 'bolt', 'chat', 'gear'}
 SvgPictures.sizes = {16, 24, 32, 48, 64, 96, 128}
 
@@ -22,6 +28,7 @@ end
 function SvgPictures:enter()
     self:frame{
         hint = 'Move the UI scale to see the icons draw again for the size they cover instead of blurring. The buttons tint their icons with "iconColor", the bolt of the list takes the color of the text of its row, and the photo rounds its corners with "radius".',
+        code = SvgPictures.code,
         focus = 'scale',
         content = {self:columns()},
     }

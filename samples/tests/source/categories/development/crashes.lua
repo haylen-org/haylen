@@ -7,6 +7,12 @@ local Test = require('harness.test')
 
 local Crashes = haylen.class('Crashes', Test)
 
+Crashes.code = [[
+debugging.addBreadcrumb('Opened the shop.', {items = 12})
+events.on('breadcrumbAdded', function(crumb) reporter.add(crumb.message, crumb.data) end, {owner = self})  -- A crash reporting plugin forwards it.
+local crash = debugging.lastCrash()  -- The native crash that ended the last run, or nil.
+if crash then print(crash.reason, #crash.context.breadcrumbs) end]]
+
 function Crashes:enter()
     self.lines = {}
     self.heard = 0
@@ -15,11 +21,11 @@ function Crashes:enter()
     end)
     self:frame{
         hint = 'Add breadcrumbs, then crash the app and start it again to read the report of the crash.',
+        code = Crashes.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'add', text = 'Add a breadcrumb', align = 'stretch', onClick = function() self:add() end},
                 ui.button{id = 'crash', text = 'Crash the app natively', align = 'stretch', variant = 'destructive', onClick = function() self:crash() end},
-                ui.label{font = 'monospace', text = "debug.addBreadcrumb(message, data)\ndebug.breadcrumbs()\ndebug.lastCrash()"},
             },
             ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
         }},

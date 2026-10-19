@@ -7,6 +7,12 @@ local fonts = require('categories.text.fonts')
 
 local Bitmap = haylen.class('Bitmap', Test)
 
+Bitmap.code = [[
+local pixel = assets.font('text/haylen-pixel.fnt', {filter = 'nearest'})
+graphics2d.drawText(pixel, 'PRESS START to play!', 24, 58, {size = pixel.nativeSize * 3, color = '#FFFF6A6A'})
+local lcd = assets.load('text/lcd-digits.png', 'gridFont', {characters = '0123456789:.-', cellWidth = 12, cellHeight = 20, advance = 13, baseline = 19, filter = 'nearest'})
+graphics2d.drawText(lcd, '12:04.5', 30, 56, {size = 60})]]
+
 Bitmap.line = 'PRESS START to play!'
 
 function Bitmap:init(entry)
@@ -18,7 +24,7 @@ function Bitmap:init(entry)
 end
 
 function Bitmap:enter()
-    self:frame{hint = 'Bitmap fonts draw their own images pixel for pixel at their native size and scale with nearest filtering at whole multiples of it. They have no distance field, so they take no outline or glow, and their shadow is the silhouette of their glyphs.'}
+    self:frame{code = Bitmap.code, hint = 'Bitmap fonts draw their own images pixel for pixel at their native size and scale with nearest filtering at whole multiples of it. They have no distance field, so they take no outline or glow, and their shadow is the silhouette of their glyphs.'}
 end
 
 function Bitmap:update(dt)

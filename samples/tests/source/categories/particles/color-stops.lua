@@ -8,6 +8,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local ColorStops = haylen.class('ColorStops', ParticleTest)
 
+ColorStops.code = [[
+local column = particles2d.newEmitter({texture = dot, lifetime = 3.2, colors = {'#FFFF4060', '#FFFFC040', '#FF40E080', '#FF40A0FF'}, colorTimes = {0, 0.6, 0.8, 1}})
+column:configure({colorBlend = 'steps'})  -- Each color holds until the next stop.
+local confetti = particles2d.newEmitter({texture = strip, frameMode = 'loopRandomStart', rate = 70, tints = {'#FFFF4060', '#FFFFD030', '#FF40D080'}, tintMode = 'random'})
+confetti:configure({tintMode = 'cycleTime'})  -- Or "cycle", in order.]]
+
 ColorStops.colors = {'#FFFF4060', '#FFFFC040', '#FF40E080', '#FF40A0FF'}
 ColorStops.tints = {'#FFFF4060', '#FFFFD030', '#FF40D080', '#FF40A0FF', '#FFC060FF'}
 ColorStops.tintModes = {{id = 'random', text = 'Random'}, {id = 'cycle', text = 'In order'}, {id = 'cycleTime', text = 'By cycle time'}}
@@ -50,6 +56,7 @@ end
 function ColorStops:enter()
     self:frame{
         hint = 'The columns rise with the same four colors over a life of 3.2 seconds, and the marks show where the stops sit. The confetti cannon tints every new piece with one of five colors.',
+        code = ColorStops.code,
         controls = {
             ui.formField{label = 'Time of the second color stop', ui.slider{id = 'stop', min = 0.05, max = 0.9, value = self.stop, showValue = true, onChange = function(event)
                 self.stop = event.value

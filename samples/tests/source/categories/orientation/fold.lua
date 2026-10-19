@@ -9,6 +9,13 @@ local Test = require('harness.test')
 
 local Folds = haylen.class('Folds', Test)
 
+Folds.code = [[
+local segments = window.segments()  -- Two areas when a fold separates the window.
+local map, instruments = segments[1], segments[2] or segments[1]
+local fold = window.fold()  -- With bounds, axis, state, separating and occluding.
+events.on('windowFoldChanged', function(change) print(change.posture, #change.segments) end, {owner = self})
+window.setFoldSimulation('book')  -- Or `tabletop`, `flat`, `dualScreen` and nil for the device.]]
+
 local kSimulations = {
     {id = 'device', text = 'The fold of the device'},
     {id = 'book', text = 'Book'},
@@ -38,6 +45,7 @@ function Folds:enter()
     end
     self:frame{
         hint = 'The map and the instruments move to each side of the fold. Fold or turn a foldable device, or pick a simulated fold.',
+        code = Folds.code,
         controls = controls,
         focus = 'book',
     }

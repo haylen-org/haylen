@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local ShapesDirections = haylen.class('ShapesDirections', ParticleTest)
 
+ShapesDirections.code = [[
+local arc = particles2d.newEmitter({texture = dot, shape = 'arc', shapeSize = {120, 0}, shapeArc = {-2.8, -0.35}, directionMode = 'outward', spread = 0.3})
+arc:configure({shapeAngle = 0.5, shapeThickness = 40, directionMode = 'tangent'})  -- Or "fixed" and "inward".
+local path = particles2d.newEmitter({texture = dot, shape = 'polyline', shapePoints = {{-140, 60}, {-70, -60}, {0, 40}, {70, -60}}})
+path:setShapePoints(points)  -- Follows the cursor.]]
+
 ShapesDirections.modes = {{id = 'fixed', text = 'Fixed'}, {id = 'outward', text = 'Outward'}, {id = 'inward', text = 'Inward'}, {id = 'tangent', text = 'Tangent'}}
 ShapesDirections.shapes = {
     {name = 'ellipse', size = {150, 70}, color = '#FF80E0FF'},
@@ -90,6 +96,7 @@ end
 function ShapesDirections:enter()
     self:frame{
         hint = 'The top row spawns on five shapes and sends the particles the way of the direction mode. The bottom line follows the cursor: move it with the mouse, a finger, the arrows, WASD or a stick.',
+        code = ShapesDirections.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Direction mode', ui.radioGroup{id = 'mode', items = ShapesDirections.modes, selected = self.mode, onChange = function(event)

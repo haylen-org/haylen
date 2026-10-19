@@ -9,6 +9,12 @@ local readout = require('categories.files.readout')
 
 local Package = haylen.class('Package', Test)
 
+Package.code = [[
+local paths = assets.list('files/data')
+local notes = assets.text('files/data/notes.txt')
+local islands = assets.json('files/data/islands.json')
+local magic, version, width, height = string.unpack('<c4I2I2I2', assets.bytes('files/data/level.bin'))]]
+
 Package.folder = 'files/data'
 
 -- The file that is not in the package, which shows the error a missing file raises.
@@ -59,6 +65,7 @@ function Package:enter()
         items[index] = {id = path, text = path, caption = caption}
     end
     self:frame{
+        code = Package.code,
         hint = 'Pick a file with the mouse, a finger, the arrows or the directional pad and Enter or the south button. The last file is missing on purpose.',
         focus = 'files',
         content = {ui.row{grow = 1, gap = 24,

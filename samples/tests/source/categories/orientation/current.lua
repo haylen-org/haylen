@@ -10,6 +10,12 @@ local Test = require('harness.test')
 
 local Current = haylen.class('Current', Test)
 
+Current.code = [[
+window.lockOrientation('any')
+print(window.orientation())  -- Prints `portrait` or `landscape`.
+events.on('windowOrientationChanged', function(event) layOut(event.orientation) end, {owner = self})
+events.on('windowResized', function(event) print(event.width, event.height) end, {owner = self})]]
+
 Current.lineCount = 8
 
 local function tall()
@@ -27,6 +33,7 @@ function Current:enter()
     window.lockOrientation('any')
     self:frame{
         hint = 'Turn a phone or a tablet, or resize a browser on one. Desktop windows, Mac Catalyst and TVs always count as landscape, so resizing a desktop window reports "windowResized" but never a turn.',
+        code = Current.code,
         panelWidth = 760,
         controls = {
             ui.sectionTitle{text = 'Now'},

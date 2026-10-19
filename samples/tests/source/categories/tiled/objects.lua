@@ -8,6 +8,13 @@ local outlines = require('categories.tiled.outlines')
 
 local Objects = haylen.class('Objects', MapTest)
 
+Objects.code = [[
+for _, object in ipairs(map:objects()) do
+    print(object.name, object.shape, object.type, object.x, object.y, object.rotation)
+    print(object.template, #object.points)  -- The template path, and the points of polygons and polylines.
+end
+map:draw(camera)  -- Draws the tile and text objects itself.]]
+
 local kColors = {rectangle = '#FF4FC3F7', ellipse = '#FF81C784', capsule = '#FFBA68C8', point = '#FFFFD54F', polygon = '#FFFF8A65', polyline = '#FFE57373', text = '#FFB0BEC5', tile = '#FFFFFFFF'}
 
 function Objects:enter()
@@ -15,6 +22,7 @@ function Objects:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Point at an object to read it. The lamps and the signs come from templates, and the second lamp and the second sign override what their template says.',
+        code = Objects.code,
         controls = {
             ui.checkbox{id = 'outlines', text = 'Outline every object', checked = true, onChange = function(event) self.showOutlines = event.checked end},
             ui.label{id = 'details', text = '', color = 'textMuted'},

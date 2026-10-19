@@ -9,6 +9,13 @@ local layout = require('categories.interface.layout')
 
 local FocusNavigation = haylen.class('FocusNavigation', Test)
 
+FocusNavigation.code = [[
+ui.button{id = 'a', text = 'A', focusRight = 'c', focusDown = 'enter-scope'}
+ui.panel{focusScope = true, onCancel = function(event) event.gui:command('enter-scope', 'focus') end, insideButtons}
+ui.row{focusWrap = 'horizontal', focusRing = false, children = cards}
+ui.button{id = 'w1', text = '1', onFocus = function(event) event.gui:set('w1', {variant = 'primary'}) end}
+local focus = ui.focused()  -- The GUI and the id of the focused node.]]
+
 FocusNavigation.help = [==[
 [b]How the focus moves[/b]
 [ul]
@@ -29,6 +36,7 @@ end
 function FocusNavigation:enter()
     self:frame{
         hint = 'Keyboard: arrows move, Tab walks in drawing order, Enter or Space presses. Gamepad: the directional pad or left stick moves and south presses. Apple TV: swipe or click the edges of the remote and click to press. Android TV: the directional pad moves and select presses.',
+        code = FocusNavigation.code,
         focus = 'n5',
         content = {layout.columns{
             ui.column{grow = 3, gap = 24, layout.columns{self:neighbours(), self:explicit()}, layout.columns{self:scope(), self:wrap()}},

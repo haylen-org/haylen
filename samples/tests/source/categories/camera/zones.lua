@@ -10,6 +10,13 @@ local actions = require('categories.camera.actions')
 
 local Zones = haylen.class('Zones', Test)
 
+Zones.code = [[
+local rig = graphics2d.newCameraRig({limits = {-1800, -1000, 3600, 2000}, blendTime = 0.6})
+rig:addZone({name = 'pond', area = {200, -1000, 900, 1000}, zoom = 1.6})
+rig:addZone({name = 'shrine', area = {600, 300, 400, 300}, limits = {500, 200, 600, 500}, zoom = 1.2, priority = 1})
+rig:setRail({-1600, 0, -400, -300, 600, 200, 1700, 0})
+rig:update(camera, walker.x, walker.y, dt)]]
+
 Zones.zones = {
     {name = 'meadow', area = {-1800, -1000, 2000, 2000}, color = '#FF7CB342'},
     {name = 'pond', area = {200, -1000, 900, 1000}, zoom = 1.6, color = '#FF29B6F6'},
@@ -35,6 +42,7 @@ function Zones:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Walk through the meadow with WASD, the arrows, the left stick or by holding the mouse button or a finger. Each colored area is a zone with limits, zoom and offset of its own, and the shrine wins where it overlaps the ridge.',
+        code = Zones.code,
         play = true,
         controls = {
             ui.toggle{id = 'rail', text = 'Follow along the rail', onChange = function(event)

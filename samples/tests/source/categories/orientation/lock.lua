@@ -7,6 +7,11 @@ local Test = require('harness.test')
 
 local Lock = haylen.class('Lock', Test)
 
+Lock.code = [[
+window.lockOrientation('portrait')  -- Or `landscape` and `any`, which lets the screen turn.
+window.setFullscreen(true)  -- Browsers usually lock only a fullscreen page.
+print(window.orientation())]]
+
 Lock.platforms = [==[
 [table=2][cell padding=6][b]Platform[/b][/cell][cell padding=6][b]What the lock does[/b][/cell][cell padding=6]Android[/cell][cell padding=6]Locks the activity with "setRequestedOrientation".[/cell][cell padding=6]iPhone and iPad[/cell][cell padding=6]Asks UIKit for the new orientations and turns the screen at once.[/cell][cell padding=6]Browsers[/cell][cell padding=6]The Screen Orientation API, which usually works only for a fullscreen page on a phone.[/cell][cell padding=6]Desktop, Mac Catalyst and TVs[/cell][cell padding=6]Ignore it, since their screens do not turn.[/cell][/table]]==]
 
@@ -19,6 +24,7 @@ end
 function Lock:enter()
     self:frame{
         hint = 'The file "app.json" sets the orientation an app starts with, "landscape" in this project, and leaving this test locks the screen to landscape again. Browsers usually lock only a fullscreen page on a phone, so turn fullscreen on first there.',
+        code = Lock.code,
         focus = 'lock',
         content = {ui.row{gap = 24, grow = 1, align = 'stretch',
             ui.card{width = 760, align = 'start', gap = 12,

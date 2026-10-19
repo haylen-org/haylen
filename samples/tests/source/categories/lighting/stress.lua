@@ -10,6 +10,14 @@ local Room = require('categories.lighting.room')
 
 local Stress = haylen.class('Stress', LightingTest)
 
+Stress.code = [[
+for index, entry in ipairs(lights) do
+    entry.light.x = math.sin(time * entry.speedX + entry.phase) * 900
+    entry.light.shadows = index <= 16  -- Each light with shadows casts a shadow map on the CPU.
+    graphics2d.drawLight(entry.light)  -- One quad each in the light pass.
+end
+print(graphics2d.stats().lights, graphics2d.stats().shadows)]]
+
 Stress.maxLights = 2048
 
 function Stress:init(entry)
@@ -34,6 +42,7 @@ end
 function Stress:enter()
     self:frame{
         hint = 'Raise the number of lights and give shadows to the first sixteen to see what they cost.',
+        code = Stress.code,
         controls = {
             ui.formField{label = 'Lights', ui.slider{id = 'lights', min = 16, max = Stress.maxLights, step = 16, value = self.count, showValue = true, decimals = 0, onChange = function(event)
                 self.count = math.floor(event.value)

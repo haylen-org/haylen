@@ -11,6 +11,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Collision = haylen.class('Collision', ParticleTest)
 
+Collision.code = [[
+sparks:configure({collision = {type = 'floor', y = 560, bounce = 0.5, friction = 0.2, result = 'bounce'}})  -- Or "stick" and "die".
+balls:configure({collision = {type = 'bounds', area = {-230, -230, 460, 460}, bounce = 0.9}})
+local drops = particles2d.newEmitter({texture = droplet, rate = 110, gravity = {0, 1000}, collision = {type = 'world', bounce = 0.35, friction = 0.1}})
+drops:setCollisionWorld(world)  -- The shapes of a physics world.]]
+
 Collision.results = {{id = 'bounce', text = 'Bounce'}, {id = 'stick', text = 'Stick'}, {id = 'die', text = 'Die'}}
 Collision.floor = 360
 Collision.spout = -200
@@ -59,6 +65,7 @@ end
 function Collision:enter()
     self:frame{
         hint = 'The sparks hit a floor, the balls stay inside the walls of the box and the drops hit the circle, the plank, the turning paddle and the ground of a physics world.',
+        code = Collision.code,
         controls = {
             ui.formField{label = 'What a spark does on the floor', ui.radioGroup{id = 'result', items = Collision.results, selected = self.result, onChange = function(event)
                 self.result = event.value

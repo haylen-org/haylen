@@ -12,6 +12,13 @@ local Test = require('harness.test')
 
 local Pause = haylen.class('Pause', SceneTest)
 
+Pause.code = [[
+local PauseMenu = {transparent = true, processMode = 'whenPaused'}
+function PauseMenu:enter() haylen.setPaused(true) end
+function PauseMenu:exit() haylen.setPaused(false) end
+scene.push(PauseMenu)
+timer.every(0.1, count, {owner = self, processMode = 'always'})  -- Keeps counting while paused.]]
+
 -- The pause menu: transparent over the world, running only while the game is paused.
 local PauseMenu = haylen.class('PauseMenu', scene.Scene)
 
@@ -75,6 +82,7 @@ end
 function Pause:enter()
     self:frame{
         hint = 'Pause with the button, P or the Y button. The world, its spawner timer and its tween stop, the "always" timer keeps counting and the menu animates.',
+        code = Pause.code,
         play = true,
         controls = {ui.button{id = 'pause', text = 'Pause', onClick = function() self:openMenu() end}},
     }

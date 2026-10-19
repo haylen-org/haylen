@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Stress = haylen.class('Stress', ParticleTest)
 
+Stress.code = [[
+local fountain = particles2d.newEmitter({texture = dot, rate = 2000, lifetime = {2.2, 2.8}, speed = {500, 900}, gravity = {0, 600}, blend = 'additive', maxParticles = 25000})
+fountain:update(dt)  -- Large emitters simulate on worker threads.
+fountain:draw()  -- One batch for the whole emitter.
+log.info(fountain.count, graphics2d.stats().drawCalls)]]
+
 Stress.fountains = 4
 
 function Stress:init(entry)
@@ -26,6 +32,7 @@ end
 function Stress:enter()
     self:frame{
         hint = 'Raise the rate to fill the screen. Four fountains share the particles, up to 25000 each.',
+        code = Stress.code,
         controls = {ui.formField{label = 'Particles per second', ui.slider{id = 'rate', min = 500, max = 40000, step = 500, value = self.rate, showValue = true, decimals = 0, onChange = function(event)
             self.rate = event.value
             for _, emitter in ipairs(self.emitters) do

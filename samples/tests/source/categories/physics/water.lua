@@ -12,6 +12,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Water = haylen.class('Water', PhysicsTest)
 
+Water.code = [[
+local pool = physics2d.newForceField(world, {kind = 'buoyancy', x = 0, y = 185, width = 1480, height = 410, density = 1, linearDrag = 1.5, angularDrag = 1.5})
+crate:addBox(70, 70, {density = 0.4})  -- Floats, deeper the denser it is.
+anvil:addPolygon(points, {density = 7})  -- Sinks.
+pool.flow = {current + math.sin(time * 1.6) * 60, math.cos(time * 1.6) * 45}  -- A current with waves.]]
+
 local kSurface, kBottom, kLeft, kRight = -20, 390, -740, 740
 local kWaveSpeed = 1.6
 local kMaxBodies = 30
@@ -20,6 +26,7 @@ local kHull = {{-95, -12}, {95, -12}, {70, 24}, {-70, 24}}
 
 function Water:enter()
     self:frame{
+        code = Water.code,
         hint = 'Drop things into the pool and drag them under: the lighter a crate, the higher it floats, and the anvil sinks. The current and the waves move the flow of the water. R or the X button refills the pool.',
         controls = {
             ui.button{id = 'crate', text = 'Drop a crate', onClick = function() self:dropCrate(self.random:range(-500, 500), -300, self.random:integer(1, 9) / 10) end},

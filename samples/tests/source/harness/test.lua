@@ -35,7 +35,7 @@ function Test:init(entry)
     self.camera.anchor = 'topLeft'
 end
 
--- Mounts the frame. The table `options` takes the `hint`, the `controls` of the panel and its `panelWidth`, `stage = false` for tests without a play area, `content`, nodes that take the place of the play area, `code`, the Lua code the test runs, shown in a card under the play area, `play = true` for tests that read the keyboard, gamepads or remotes as game input, which gives the play area the first focus, the id of another control to `focus` first, `view`, the width and height of a world centered on the origin that the camera fits into the play area, and `overlay`, nodes such as touch controls drawn over the play area.
+-- Mounts the frame. The table `options` takes the `hint`, the `controls` of the panel and its `panelWidth`, `stage = false` for tests without a play area, `content`, nodes that take the place of the play area, `code`, the Lua code the test runs, shown in a card under the play area or the content, `play = true` for tests that read the keyboard, gamepads or remotes as game input, which gives the play area the first focus, the id of another control to `focus` first, `view`, the width and height of a world centered on the origin that the camera fits into the play area, and `overlay`, nodes such as touch controls drawn over the play area.
 function Test:frame(options)
     options = options or {}
     local entry = self.entry
@@ -48,17 +48,18 @@ function Test:frame(options)
         self.camera.anchor = 'center'
     end
 
-    local middle = {ui.spacer{grow = 1}}
-    if stage and options.code then
-        middle[1] = ui.column{grow = 1, gap = 12, align = 'stretch',
-            ui.playArea{id = 'stage', grow = 1, align = 'stretch'},
-            ui.card{ui.label{id = 'code', text = options.code, font = 'monospace'}},
-        }
-    elseif stage then
-        middle[1] = ui.playArea{id = 'stage', grow = 1, align = 'stretch'}
-    elseif options.content then
-        middle[1] = ui.column{grow = 1, align = 'stretch', gap = 12, children = options.content}
+    local nodes = {}
+    if stage then
+        nodes[1] = ui.playArea{id = 'stage', grow = 1, align = 'stretch'}
+    else
+        for index, node in ipairs(options.content or {}) do
+            nodes[index] = node
+        end
     end
+    if options.code then
+        nodes[#nodes + 1] = ui.card{ui.label{id = 'code', text = options.code, font = 'monospace'}}
+    end
+    local middle = {#nodes > 0 and ui.column{grow = 1, gap = 12, align = 'stretch', children = nodes} or ui.spacer{grow = 1}}
     if options.controls then
         middle[2] = ui.panel{id = 'panel', width = options.panelWidth or Test.panelWidth, align = 'stretch', ui.scroll{grow = 1, height = 0, ui.column{gap = 12, children = options.controls}}}
     end

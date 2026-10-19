@@ -9,6 +9,13 @@ local ShaderTest = require('categories.shaders.shader-test')
 
 local LibraryBrowser = haylen.class('LibraryBrowser', ShaderTest)
 
+LibraryBrowser.code = [[
+local fire = graphics2d.newMaterial(assets.shader('shaders/library/fire.shader'), {speed = 1.6, intensity = 1.5, hot_color = '#FFFFC040', cool_color = '#FFE0301A'})
+fire:set('time', haylen.elapsed())
+graphics2d.draw(graphics.whiteTexture(), 670, 380, {width = 520, height = 560, material = fire, blend = 'additive'})
+local glow = graphics2d.newMaterial(assets.shader('shaders/library/neon-glow.shader'), {radius = 20, glow_color = '#FF40E0FF', texel = {1 / bullet.width, 1 / bullet.height}})
+graphics2d.draw(bullet, 400, 320, {width = 240, height = 108, material = glow, blend = 'additive'})]]
+
 LibraryBrowser.folder = 'shaders/library/'
 LibraryBrowser.targets = {sprite = 'on a sprite', bullet = 'on bullets', stroke = 'on a trail', disc = 'on a shield', quad = 'on a rectangle', picture = 'on a picture'}
 LibraryBrowser.trailPoints = 48
@@ -128,6 +135,7 @@ function LibraryBrowser:enter()
         categories[index] = {id = category.id, text = category.title}
     end
     self:frame{
+        code = LibraryBrowser.code,
         hint = 'Pick a category and a shader, and move its sliders. The shaders are ordinary material shaders that any app copies with their "common.glsl".',
         controls = {
             ui.formField{label = 'Category', ui.combo{id = 'libraryCategory', items = categories, selected = self.catalog[1].id, onChange = function(event)

@@ -9,6 +9,14 @@ local layout = require('categories.interface.layout')
 
 local GameControls = haylen.class('GameControls', Test)
 
+GameControls.code = [[
+ui.stepper{value = 2, min = 1, max = 4, onChange = function(event) players = event.value end}
+ui.segmentedControl{items = {{id = 'daily', text = 'Daily'}, {id = 'weekly', text = 'Weekly'}}, selected = 'daily'}
+ui.rangeSlider{min = 0, max = 500, low = 50, high = 300, step = 10, onChange = function(event) filter(event.low, event.high) end}
+ui.keyCapture{value = 'key:space', sources = {'key', 'mouse', 'button'}, onChange = function(event)
+    input.defineAction({name = 'jump', type = 'button', bindings = {event.value}})
+end}]]
+
 GameControls.bindings = {
     {action = 'jump', label = 'Jump', value = 'key:space', sources = {'key', 'mouse', 'button'}},
     {action = 'dash', label = 'Dash', value = 'button:west', sources = {'button', 'axis'}},
@@ -31,6 +39,7 @@ function GameControls:enter()
     self:loadActions({actions = actions})
     self:frame{
         hint = 'Left and right change a focused stepper, segmented control or range slider, and Enter or the south button moves on or switches the knob. Press a binding field, then a key, a mouse button or a gamepad button to rebind its action, and press the binding on the play area to see the action fire. Escape cancels a capture.',
+        code = GameControls.code,
         focus = 'players',
         panelWidth = 1060,
         controls = self:controls(),

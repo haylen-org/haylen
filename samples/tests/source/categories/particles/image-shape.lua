@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local ImageShapes = haylen.class('ImageShapes', ParticleTest)
 
+ImageShapes.code = [[
+local shape = assets.load('sprites/images/hero.png', 'imageShape', {alphaThreshold = 0.5})
+local sparkles = particles2d.newEmitter({texture = sparkle, rate = 30, shape = 'image', shapeImage = shape, shapeSize = {384, 384}, blend = 'additive'})
+local pieces = particles2d.newEmitter({texture = pixel, rate = 0, directionMode = 'outward', gravity = {0, 900}, shape = 'image', shapeImage = shape, shapeSize = {384, 384}, colorFromImage = true, maxParticles = 4096})
+pieces:burst(2400)  log.info(shape.count, shape.width, shape.height)]]
+
 ImageShapes.path = 'sprites/images/hero.png'
 ImageShapes.size = 384
 ImageShapes.y = 100
@@ -50,6 +56,7 @@ end
 function ImageShapes:enter()
     self:frame{
         hint = 'A click, a tap, E, Enter, the south button or the button of the panel breaks the hero apart, and it comes back after a moment. Without input it breaks by itself.',
+        code = ImageShapes.code,
         cursor = true,
         controls = {
             ui.button{id = 'break', text = 'Break apart', onClick = function()

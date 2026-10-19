@@ -10,6 +10,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Pool = haylen.class('Pool', PhysicsTest)
 
+Pool.code = [[
+local world = physics2d.newWorld({gravity = {0, 0}})
+local ball = world:createBody({x = 300, y = 0, linearDamping = 0.9, angularDamping = 1.5, sleepThreshold = 12})
+ball:addCircle(18, {restitution = 0.95, friction = 0.05, category = kBall})
+local hit = world:castCircle(cue.x, cue.y, 18, dx * 1600, dy * 1600, {mask = kCushion | kBall})  -- Where the guide ends.
+pocket:addCircle(30, {sensor = true, category = kPocket})
+cue:applyImpulse(dx * power * cue.mass, dy * power * cue.mass)]]
+
 Pool.actions = {
     {name = 'turn', type = 'axis', positive = {'key:d', 'key:right', 'button:dpadRight'}, negative = {'key:a', 'key:left', 'button:dpadLeft'}},
     {name = 'aim', type = 'vector', bindings = {'stick:left', 'virtualStick:aim'}},
@@ -27,6 +35,7 @@ local kHead = {-330, 0}
 
 function Pool:enter()
     self:frame{
+        code = Pool.code,
         hint = 'Drag back from the cue ball and let go to shoot, or turn the cue with A and D, the arrows or the left stick and hold Space or the south button to charge the shot. R or the X button racks the balls again.',
         controls = {
             ui.button{id = 'rack', text = 'Rack the balls', onClick = function() self:build() end},

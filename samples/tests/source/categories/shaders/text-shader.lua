@@ -6,6 +6,11 @@ local ShaderTest = require('categories.shaders.shader-test')
 
 local TextShader = haylen.class('TextShader', ShaderTest)
 
+TextShader.code = [[
+local dissolve = graphics2d.newMaterial(assets.shader('shaders/dissolve.shader'), {edge_color = '#FFFF7020', edge_width = 0.05, noise_scale = 6, noise_texture = noise})
+dissolve:set('amount', 0.5 + 0.5 * math.sin(haylen.elapsed() * 0.8))
+graphics2d.drawText(nil, 'Words that burn away and come back', 670, 400, {size = 64, anchor = {0.5, 0.5}, material = dissolve})]]
+
 function TextShader:init(entry)
     TextShader.super.init(self, entry)
     self.rainbow = ShaderTest.material('rainbow', {spread = 0.0015})
@@ -15,7 +20,7 @@ function TextShader:init(entry)
 end
 
 function TextShader:enter()
-    self:frame{hint = 'A click or a tap on the play area, E, Enter or the south button flashes the last line.', presses = true}
+    self:frame{code = TextShader.code, hint = 'A click or a tap on the play area, E, Enter or the south button flashes the last line.', presses = true}
 end
 
 function TextShader:update(dt)

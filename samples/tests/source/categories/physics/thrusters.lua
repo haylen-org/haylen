@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Thrusters = haylen.class('Thrusters', PhysicsTest)
 
+Thrusters.code = [[
+local lander = world:createBody({x = -560, y = -300, angularDamping = 4})
+lander:applyForce(math.sin(lander.rotation) * force, -math.cos(lander.rotation) * force, nozzleX, nozzleY)  -- Off center, so one thruster also turns it.
+pad:addBox(200, 60, {offsetY = -38, sensor = true})
+world.onSensorBegin = function(sensor, visitor) if visitor == lander then over = over + 1 end end
+world.onHit = function(a, b, contact) if contact.speed > 150 then crashed = true end end]]
+
 Thrusters.actions = {
     {name = 'leftThruster', type = 'button', bindings = {'key:a', 'key:left', 'axis:leftTrigger+', 'button:dpadLeft', 'virtual:leftThruster'}},
     {name = 'rightThruster', type = 'button', bindings = {'key:d', 'key:right', 'axis:rightTrigger+', 'button:dpadRight', 'virtual:rightThruster'}},
@@ -29,6 +36,7 @@ local kGround = {{-800, -430}, {-800, 200}, {-650, 260}, {-500, 180}, {-380, 300
 
 function Thrusters:enter()
     self:frame{
+        code = Thrusters.code,
         hint = 'A, the left arrow or the left trigger fires the left thruster, which turns the lander right, D, the right arrow or the right trigger fires the right one, and W, Space or the south button fires both. Land slowly and upright on the pad.',
         controls = {
             ui.label{text = 'Thruster acceleration', font = 'caption', color = 'textMuted'},

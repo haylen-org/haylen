@@ -9,6 +9,13 @@ local readout = require('categories.network.readout')
 
 local Errors = haylen.class('Errors', Test)
 
+Errors.code = [[
+local response, failure = http.client.get('https://no-such-host.invalid/', {timeoutSeconds = 10}):await()  -- No response, and the reason.
+local missing = http.client.get('https://httpbin.org/status/404'):await()  -- A response whose `ok` is `false`.
+local late = async.timeout(http.client.get('https://httpbin.org/delay/5'), 1500):await()
+local page = http.client.get('https://httpbin.org/html'):await()
+local ok, problem = pcall(page.json)  -- The body is not JSON, so it raises.]]
+
 -- Each case sends one request and turns what came back into a line of text.
 Errors.cases = {
     {id = 'host', text = 'Unknown host', call = "http.client.get('https://no-such-host.invalid/')", run = function()
@@ -59,6 +66,7 @@ function Errors:enter()
         end}
     end
     self:frame{
+        code = Errors.code,
         hint = 'Try each failure. Every result shows the call, what came back and how long it took, and the app keeps running whatever the network does.',
         focus = 'host',
         content = {ui.row{grow = 1, gap = 24,

@@ -10,6 +10,14 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Waypoints = haylen.class('Waypoints', AlgorithmTest)
 
+Waypoints.code = [[
+local graph = navigation2d.newGraph()
+graph:addPoint(1, 0, 0)  graph:addPoint(2, 180, 0)  graph:addPoint(3, 180, 180, 4)  -- A weight of 4 makes point 3 heavy.
+graph:connect(1, 2)  graph:connect(2, 3, false)  -- The road from 2 to 3 is one way.
+graph:setEnabled(2, false)  -- A closed door blocks every path through it.
+local route, cost = graph:findPath(1, 3)
+local costs = graph:distances(1)]]
+
 local kColumns, kRows = 8, 5
 local kSpacing = 180
 local kHeavy = 4
@@ -18,6 +26,7 @@ local kPickDistance = 50
 function Waypoints:enter()
     self:frame{
         hint = 'Tap or click a point with the selected brush. Closed doors block every path, and heavy points cost four times their distance. R or the X button builds new roads.',
+        code = Waypoints.code,
         controls = {
             ui.radioGroup{id = 'brush', items = {{id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}, {id = 'door', text = 'Open or close a door'}, {id = 'weight', text = 'Make a point heavy'}}, selected = 'goal', onChange = function(event) self.brush = event.value end},
             ui.checkbox{id = 'costs', text = 'Show Dijkstra costs', checked = true, onChange = function(event) self.showCosts = event.checked end},

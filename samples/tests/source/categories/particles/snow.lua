@@ -8,6 +8,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Snow = haylen.class('Snow', ParticleTest)
 
+Snow.code = [[
+local far = particles2d.newEmitter({texture = flake, rate = 70, prewarm = 12, lifetime = {12, 14}, speed = {40, 70}, direction = 1.5708, startSize = {8, 12}, endSize = {8, 12}, colors = {'#90D8E8FF'}, shape = 'rectangle', shapeSize = {1300, 10}, layer = 1})
+local near = particles2d.newEmitter({texture = flake, rate = 25, prewarm = 12, speed = {90, 140}, direction = 1.5708, startSize = {20, 30}, endSize = {20, 30}, colors = {'#F0FFFFFF'}, shape = 'rectangle', shapeSize = {1300, 10}, layer = 3})
+far:configure({gravity = {wind * 0.5, 4}})  near:configure({gravity = {wind, 4}})]]
+
 function Snow:init(entry)
     Snow.super.init(self, entry)
     self.wind = 30
@@ -32,6 +37,7 @@ end
 function Snow:enter()
     self:frame{
         hint = 'Blow the snow with the wind. The far layer is smaller, dimmer and slower, which reads as depth.',
+        code = Snow.code,
         controls = {ui.formField{label = 'Wind', ui.slider{id = 'wind', min = -150, max = 150, value = self.wind, showValue = true, decimals = 0, onChange = function(event)
             self.wind = event.value
             self:blow()

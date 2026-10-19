@@ -9,6 +9,12 @@ local Room = require('categories.lighting.room')
 
 local Flicker = haylen.class('Flicker', LightingTest)
 
+Flicker.code = [[
+local torch = lighting2d.newLight({x = -380, y = -330, radius = 380, color = '#FFFFA050', intensity = 1.2})
+local wave = lighting2d.flicker(haylen.elapsed(), {speed = 8, amount = 0.25, seed = 3})  -- A seed of its own for each torch.
+torch.intensity = 1.2 * wave
+graphics2d.drawLight(torch)]]
+
 function Flicker:init(entry)
     Flicker.super.init(self, entry)
     self.room = Room()
@@ -27,6 +33,7 @@ end
 function Flicker:enter()
     self:frame{
         hint = 'Tune how fast and how deep the flames waver. With one seed for every torch they all flicker together.',
+        code = Flicker.code,
         controls = {
             ui.formField{label = 'Speed', ui.slider{id = 'speed', min = 1, max = 24, value = self.speed, showValue = true, decimals = 1, onChange = function(event)
                 self.speed = event.value

@@ -11,6 +11,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local SpaceShip = haylen.class('SpaceShip', PhysicsTest)
 
+SpaceShip.code = [[
+local world = physics2d.newWorld({gravity = {0, 0}})
+ship.angularVelocity = turn * 4
+ship:applyForce(math.cos(ship.rotation) * ship.mass * 520, math.sin(ship.rotation) * ship.mass * 520)
+local shot = world:createBody({x = noseX, y = noseY, vx = dx * 900, vy = dy * 900, bullet = true})
+physics2d.fracture(rock, {pieces = 3, impact = {shot.x, shot.y}, minimumArea = 300})
+if math.abs(body.x) > 830 then body.x = body.x - m.sign(body.x) * 1660 end  -- Wraps around the edge.]]
+
 SpaceShip.actions = {
     {name = 'turn', type = 'axis', positive = {'key:d', 'key:right', 'axis:leftX+', 'button:dpadRight', 'virtual:turnRight'}, negative = {'key:a', 'key:left', 'axis:leftX-', 'button:dpadLeft', 'virtual:turnLeft'}},
     {name = 'thrust', type = 'button', bindings = {'key:w', 'key:up', 'axis:rightTrigger+', 'button:north', 'virtual:thrust'}},
@@ -29,6 +37,7 @@ local kRockColors = {'#FF8D8F99', '#FFA1887F', '#FFB0BEC5'}
 
 function SpaceShip:enter()
     self:frame{
+        code = SpaceShip.code,
         hint = 'Turn with A and D, the arrows or the left stick, thrust with W, the up arrow, the right trigger or the north button, and fire with Space or the south button. Everything wraps around the edges.',
         controls = {
             ui.button{id = 'reset', text = 'Start over', onClick = function() self:build() end},

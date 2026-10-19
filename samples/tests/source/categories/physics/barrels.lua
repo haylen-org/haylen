@@ -11,6 +11,11 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Barrels = haylen.class('Barrels', PhysicsTest)
 
+Barrels.code = [[
+local hits = physics2d.explode(world, {x = barrel.x, y = barrel.y, radius = 300, impulse = 700, falloff = 'linear'})
+for _, hit in ipairs(hits) do if hit.body.data.barrel then hit.body.data.fuse = 0.2 end end  -- Lights the barrels it reached.
+world.onHit = function(a, b, contact) if contact.speed > 600 then light(a, b) end end]]
+
 local kRadius = 300
 local kHitSpeed = 600
 local kBlastLife = 0.6
@@ -18,6 +23,7 @@ local kBarrelColor = '#FFE53935'
 
 function Barrels:enter()
     self:frame{
+        code = Barrels.code,
         hint = 'Tap or click a barrel to set it off. A blast lights the barrels it reaches, and a barrel hit hard enough by flying debris goes off too. R or the X button rebuilds.',
         controls = {
             ui.button{id = 'fire', text = 'Set off a barrel', onClick = function() self:lightFirst() end},

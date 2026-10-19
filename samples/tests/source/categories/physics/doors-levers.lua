@@ -12,6 +12,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local DoorsLevers = haylen.class('DoorsLevers', PhysicsTest)
 
+DoorsLevers.code = [[
+world:createJoint('revolute', beam, door, {ax = x, ay = -170, enableLimit = true, lower = -1.3, upper = 1.3, enableSpring = true, hertz = 1.5, dampingRatio = 0.6})
+local gate = world:createJoint('prismatic', beam, slab, {ax = 40, ay = -115, axisX = 0, axisY = 1, enableLimit = true, lower = -120, upper = 0, enableMotor = true, motorSpeed = 300, maxMotorForce = 2e4})
+local lever = world:createJoint('revolute', ground, handle, {ax = -560, ay = 300, enableLimit = true, lower = 0, upper = 1.2, enableMotor = true, maxMotorTorque = 8e4})  -- Speed 0 holds it like friction.
+gate.motorSpeed = lever.angle >= 1.15 and -300 or 300
+drawbridge.motorSpeed = #plate:overlaps() > 0 and -1.5 or 1.5]]
+
 local kWorld, kBeam = 1, 2
 local kDoors = {-300, -170}
 local kGateX = 40
@@ -25,6 +32,7 @@ local kMaxBalls = 14
 
 function DoorsLevers:enter()
     self:frame{
+        code = DoorsLevers.code,
         hint = 'Balls roll down through the flap doors. Drag the lever to its right end to open the gate and back to close it, and put a crate on the plate to raise the drawbridge. R or the X button starts over.',
         controls = {
             ui.toggle{id = 'rain', text = 'Roll balls', checked = true, onChange = function(event) self.raining = event.checked end},

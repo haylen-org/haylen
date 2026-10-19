@@ -11,6 +11,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Elevators = haylen.class('Elevators', PhysicsTest)
 
+Elevators.code = [[
+local lift = world:createJoint('prismatic', rail, platform, {ax = -300, ay = 400, axisX = 0, axisY = 1, enableLimit = true, lower = -560, upper = 0, enableMotor = true, maxMotorForce = 2e6})
+lift.motorSpeed = m.clamp((floorTop - 390 - lift.translation) * 5, -220, 220)  -- Slows down at the floor.
+local hero = physics2d.newMover(world, {x = -650, y = 353, radius = 18, height = 72, stepHeight = 12, snapDistance = 10, pushForce = 30000})
+local velocity = hero:clip(moveX * 320, fall + 1800 * step)
+hero:move(velocity.x * step, velocity.y * step)
+local riding = hero.groundBody == platform]]
+
 Elevators.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
     {name = 'jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
@@ -27,6 +35,7 @@ local kWait = 2
 
 function Elevators:enter()
     self:frame{
+        code = Elevators.code,
         hint = 'Walk with A and D, the arrows or the left stick and jump with Space or the south button. Press up beside a lift door to call it, and up or down inside a lift to ride it. R or the X button starts over.',
         controls = {
             ui.button{id = 'leftUp', text = 'Left lift up', onClick = function() self:send(1, 1) end},

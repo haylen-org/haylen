@@ -8,6 +8,12 @@ local MapTest = require('categories.tiled.map-test')
 
 local Spawning = haylen.class('Spawning', MapTest)
 
+Spawning.code = [[
+local entities = map:spawn({
+    coin = function(object) return {kind = 'coin', x = object.worldX, y = object.worldY, value = object.properties.value} end,
+    chest = function(object) return {kind = 'chest', x = object.worldX, y = object.worldY, loot = object.properties.loot} end,
+}, 'entities')  -- Objects of other classes, such as the marker, are skipped.]]
+
 local kTouchDistance = 28
 
 function Spawning:enter()
@@ -16,6 +22,7 @@ function Spawning:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Tap or click entities: coins are collected, chests open and slimes get squashed. The layer of the objects is hidden, so only the spawned entities show, and the marker has no factory. R or the X button spawns them again.',
+        code = Spawning.code,
         controls = {
             ui.button{id = 'respawn', text = 'Spawn again', onClick = function() self:populate() end},
         },

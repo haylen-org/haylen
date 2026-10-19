@@ -9,6 +9,13 @@ local Test = require('harness.test')
 
 local Gamepads = haylen.class('Gamepads', Test)
 
+Gamepads.code = [[
+if input.gamepadConnected(2) then print(input.gamepadName(2), input.gamepadLabels(2)) end
+local x, y = input.gamepadStick('left', 2)
+local jump, brake = input.gamepadPressed('south', 2), input.gamepadAxis('leftTrigger', 2)
+input.rumble(2, {low = 0.7, high = 0.7, seconds = 0.4})
+input.setGamepadDeadzone(0.2)]]
+
 local kButtons = {'south', 'east', 'west', 'north', 'leftShoulder', 'rightShoulder', 'leftStick', 'rightStick', 'back', 'start', 'guide', 'dpadUp', 'dpadDown', 'dpadLeft', 'dpadRight'}
 local kFace = {north = {0, -1}, south = {0, 1}, west = {-1, 0}, east = {1, 0}}
 local kPad = {dpadUp = {0, -1}, dpadDown = {0, 1}, dpadLeft = {-1, 0}, dpadRight = {1, 0}}
@@ -39,6 +46,7 @@ function Gamepads:enter()
     self:listen('gamepadConnected', function(pad) self.journal:add('Event "gamepadConnected" for gamepad ' .. pad.gamepad .. ': ' .. pad.name, Test.green) end)
     self:listen('gamepadDisconnected', function(pad) self.journal:add('Event "gamepadDisconnected" for gamepad ' .. pad.gamepad .. ': ' .. pad.name, Test.red) end)
     self:frame({
+        code = Gamepads.code,
         hint = 'Plug in up to eight gamepads. A browser shows a gamepad once one of its buttons is pressed. A tap on the B button shows on the card, and holding it for a second goes back.',
         play = true,
         controls = {
@@ -48,8 +56,6 @@ function Gamepads:enter()
             ui.label{text = 'Movement inside the dead zone reads 0 and does not make the gamepad the last device. The rest is rescaled to the full range, and sticks apply it to their radius, which keeps diagonals smooth.', color = 'textMuted', font = 'caption'},
             ui.sectionTitle{text = 'Rumble every connected gamepad'},
             ui.row{gap = 8, children = self:rumbleButtons()},
-            ui.sectionTitle{text = 'Reading gamepads'},
-            ui.label{font = 'monospace', text = "input.gamepadConnected(2)\ninput.gamepadName(2)\ninput.gamepadLabels(2)\ninput.rumble(2, {low = 0.7, high = 0.7, seconds = 0.4})\ninput.gamepadDown('south', 2)\ninput.gamepadAxis('leftTrigger', 2)\ninput.gamepadStick('left', 2)\ninput.setGamepadDeadzone(0.2)"},
         },
     })
 end

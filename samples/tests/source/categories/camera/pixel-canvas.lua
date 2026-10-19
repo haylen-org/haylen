@@ -9,6 +9,12 @@ local Test = require('harness.test')
 
 local PixelCanvas = haylen.class('PixelCanvas', Test)
 
+PixelCanvas.code = [[
+local pixels = graphics2d.newPixelCanvas(240, 135, {smooth = true})
+pixels:begin(lowCamera, {clear = '#FF101418'})  -- In render, then draw the art in canvas pixels.
+graphics2d.drawStatic(ground)
+pixels:draw(area.x, area.y, area.width, area.height)  -- In renderUi, scaled up to the play area.]]
+
 PixelCanvas.width = 240
 PixelCanvas.height = 135
 
@@ -34,6 +40,7 @@ end
 function PixelCanvas:enter()
     self:frame{
         hint = 'Both halves show the same low-resolution canvas drifting slowly. The left one moves in whole pixels of the canvas, the right one shifts by the part of a pixel the camera lies between.',
+        code = PixelCanvas.code,
         controls = {ui.formField{label = 'Speed in canvas pixels per second', ui.slider{id = 'speed', min = 0, max = 40, value = self.speed, showValue = true, decimals = 1, onChange = function(event)
             self.speed = event.value
         end}}},

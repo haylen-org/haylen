@@ -10,6 +10,15 @@ local sounds = require('categories.audio.sounds')
 local Test = require('harness.test')
 
 local Buses = haylen.class('Buses', AudioTest)
+
+Buses.code = [[
+audio.createBus('footsteps', 'sfx')
+audio.setBusVolume('music', 0.6, 0.1)  audio.setBusMuted('ambience', true)
+audio.setBusProcessMode('ui', 'always')  -- Plays on while the game is paused.
+audio.play(step, {bus = 'footsteps', volume = 0.7, pitchVariation = 0.05})
+haylen.setPaused(true)  -- Holds the voices of the pausable buses in place.
+for _, stats in ipairs(audio.busStats()) do print(stats.name, stats.processing, stats.voices) end]]
+
 -- The test keeps updating while the game is paused, so its statistics stay live.
 Buses.processMode = 'always'
 
@@ -68,7 +77,7 @@ function Buses:enter()
         }
         controls[#controls + 1] = ui.combo{id = bus.name .. 'Mode', items = kModes, selected = audio.busProcessMode(bus.name), onChange = function(event) audio.setBusProcessMode(bus.name, event.value) end}
     end
-    self:frame({hint = 'Pause the game, change the modes and listen to which buses stop.', focus = 'paused', controls = controls})
+    self:frame({hint = 'Pause the game, change the modes and listen to which buses stop.', code = Buses.code, focus = 'paused', controls = controls})
 end
 
 function Buses:exit()

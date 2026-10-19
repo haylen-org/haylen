@@ -9,6 +9,13 @@ local readout = require('categories.files.readout')
 
 local Storage = haylen.class('Storage', Test)
 
+Storage.code = [[
+storage.writeText('notes/today.txt', 'Collected 12 wood')  -- The folder `notes` is created on the way.
+local text = storage.exists('notes/today.txt') and storage.readText('notes/today.txt')
+storage.writeJson('profile/player.json', {name = 'Ana', coins = 420})
+local profile = storage.readJson('profile/player.json')
+storage.remove('notes/today.txt')]]
+
 Storage.note = 'notes/today.txt'
 Storage.profile = 'profile/player.json'
 Storage.folders = {'notes', 'profile'}
@@ -40,6 +47,7 @@ function Storage:enter()
         end}
     end
     self:frame{
+        code = Storage.code,
         hint = 'Press the buttons with the mouse, a finger, or the arrows and Enter or the south button. Every call and its result goes to the activity on the right.',
         focus = 'write',
         content = {ui.row{grow = 1, gap = 24,

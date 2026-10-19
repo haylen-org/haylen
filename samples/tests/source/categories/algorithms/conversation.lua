@@ -7,6 +7,13 @@ local Test = require('harness.test')
 
 local Conversation = haylen.class('Conversation', Test)
 
+Conversation.code = [[
+local talk = assets.load('algorithms/smith.conversation')
+local state = talk:start('greeting', {seed = 7})  -- The seed picks the same variants.
+state:on('command', function(name, arguments) log.info('The command "' .. name .. '" ran.') end, {owner = self})
+if #state.choices > 0 then state:choose(1) else state:advance() end  -- The line shows in state.line.
+state = talk:restore(state:save())  -- Resumes where the walk stood.]]
+
 Conversation.choiceCount = 3
 
 function Conversation:enter()
@@ -18,6 +25,7 @@ function Conversation:enter()
     end
     self:frame{
         hint = 'Talk to the smith: continue, buy swords while the gold lasts, ask once for news, or save and resume the conversation.',
+        code = Conversation.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.label{id = 'speaker', text = '', font = 'heading'},

@@ -12,12 +12,20 @@ local Board = require('categories.algorithms.board')
 
 local FieldOfView = haylen.class('FieldOfView', AlgorithmTest)
 
+FieldOfView.code = [[
+local map = spatial2d.newCellGrid(56, 30)
+map:set(14, 6, 1)  -- Solid cells block sight.
+local visible = spatial2d.fieldOfView(map, 2, 2, 10)
+local sight, ring = spatial2d.line(2, 2, 31, 17), spatial2d.circle(2, 2, 10)
+local polygon = spatial2d.visibilityPolygon({120, 40}, {{{300, 200}, {300, 400}}}, {-740, -400, 1480, 800})]]
+
 local kColumns, kRows, kCell = 56, 30, 26
 local kBounds = {-740, -400, 1480, 800}
 
 function FieldOfView:enter()
     self:frame{
         hint = 'Move the pointer to look around. The grid remembers the cells it saw, and the guard sees you exactly when you see it. R or the X button builds a new map.',
+        code = FieldOfView.code,
         controls = {
             ui.radioGroup{id = 'mode', items = {{id = 'grid', text = 'Shadowcasting on a grid'}, {id = 'polygon', text = 'Visibility polygon'}}, selected = 'grid', onChange = function(event) self.mode = event.value end},
             ui.label{text = 'Sight radius in cells', font = 'caption', color = 'textMuted'},

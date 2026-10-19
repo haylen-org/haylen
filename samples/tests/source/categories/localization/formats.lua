@@ -7,6 +7,13 @@ local Test = require('harness.test')
 
 local Formats = haylen.class('Formats', Test)
 
+Formats.code = [[
+localization.formatNumber(1234.5, {style = 'currency', currency = 'EUR', language = 'de'})
+localization.formatNumber(1530000, {style = 'compact'})
+localization.formatDate(os.time(), {date = 'long', time = true})
+localization.formatList({'Ada', 'Grace', 'Hedy'}, {type = 'or'})
+localization.pluralCategory(21, {language = 'ru'})  localization.pluralCategory(2, {ordinal = true})]]
+
 local kLanguages = {
     {id = 'en', text = 'English'}, {id = 'en-GB', text = 'British English'}, {id = 'de', text = 'German'}, {id = 'fr', text = 'French'}, {id = 'pt-BR', text = 'Brazilian Portuguese'},
     {id = 'ru', text = 'Russian'}, {id = 'pl', text = 'Polish'}, {id = 'ar', text = 'Arabic'}, {id = 'ja', text = 'Japanese'}, {id = 'hi', text = 'Hindi'},
@@ -17,6 +24,7 @@ function Formats:enter()
     self.language = 'en'
     self:frame{
         hint = 'Pick a language to see how it writes numbers, dates, lists and plural categories.',
+        code = Formats.code,
         content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 420, align = 'stretch', gap = 12,
                 ui.formField{label = 'Language', ui.radioGroup{id = 'language', items = kLanguages, selected = self.language, onChange = function(event)

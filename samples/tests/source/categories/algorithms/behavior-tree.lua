@@ -10,6 +10,14 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local BehaviorTree = haylen.class('BehaviorTree', AlgorithmTest)
 
+BehaviorTree.code = [[
+local guard = ai.newBehaviorTree(ai.selector({
+    ai.sequence({ai.condition(function(board) return board.seesPlayer end), ai.action(chase), ai.succeeder(ai.cooldown(ai.action(shout), 2))}),
+    ai.sequence({ai.condition(function(board) return board.energy < 0.3 end), ai.action(rest)}),
+    ai.action(patrol),
+}), {energy = 1, shouts = 0})
+guard:tick(dt)  -- Starts over from the root once a branch finishes.]]
+
 local kSight = 300
 local kSpeed = 150
 local kWalls = {{{-300, -250}, {-300, 100}}, {{100, -100}, {400, -100}}, {{0, 150}, {0, 380}}, {{-600, 0}, {-420, 0}}, {{450, 100}, {650, 250}}}
@@ -86,6 +94,7 @@ end
 function BehaviorTree:enter()
     self:frame{
         hint = 'The white dot follows the pointer and plays the intruder. Each guard ticks its own tree, and a guard that chases shouts at most every two seconds. R or the X button resets the trees.',
+        code = BehaviorTree.code,
         controls = {
             ui.button{id = 'tired', text = 'Tire every guard', onClick = function() self:tire() end},
             ui.button{id = 'reset', text = 'Reset the trees', onClick = function() self:build() end},

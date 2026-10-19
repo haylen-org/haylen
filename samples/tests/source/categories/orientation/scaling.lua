@@ -9,6 +9,13 @@ local Test = require('harness.test')
 
 local Scaling = haylen.class('Scaling', Test)
 
+Scaling.code = [[
+-- The file `app.json` sets `"design": {"width": 1920, "height": 1080, "scaling": "expand"}`.
+viewport.setScaling('fit')
+local width, height = viewport.designSize()
+local visible = viewport.visibleRect()  -- Larger than the design area with `expand`.
+local unitX, unitY = viewport.pixelsPerUnit()]]
+
 Scaling.policies = {{id = 'fit', text = 'Fit'}, {id = 'fill', text = 'Fill'}, {id = 'stretch', text = 'Stretch'}, {id = 'expand', text = 'Expand'}, {id = 'pixelPerfect', text = 'Pixel perfect'}, {id = 'fitWidth', text = 'Fit width'}, {id = 'none', text = 'None'}}
 Scaling.screens = {
     {id = 'phone-portrait', text = 'Phone in portrait', width = 1170, height = 2532},
@@ -33,6 +40,7 @@ function Scaling:enter()
     end
     self:frame{
         hint = 'Left and right change the focused stepper. The policy is "design.scaling" in "app.json", and this project uses "expand". The preview draws the design area of 1920 by 1080 on a simulated screen: black bars are letterboxing, the striped band is the extra visible area of "expand", and whatever leaves the screen is cropped.',
+        code = Scaling.code,
         focus = 'policy',
         panelWidth = 760,
         controls = {

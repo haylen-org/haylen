@@ -12,6 +12,12 @@ local picture = require('categories.algorithms.picture')
 
 local Wfc = haylen.class('Wfc', AlgorithmTest)
 
+Wfc.code = [[
+local allow = {{3, 4, 'right'}, {3, 4, 'down'}}  -- Forest (4) may sit right of and below grass (3).
+local fixed = spatial2d.newCellGrid(64, 34, -1)  -- The value -1 leaves a cell free.
+fixed:set(20, 10, 5)  -- Pins a mountain.
+local map = procedural2d.waveFunctionCollapseAsync({tiles = 6, allow = allow, weights = {2, 3, 1.5, 4, 3, 1.5}, width = 64, height = 34, fixed = fixed, seed = 1}):await()]]
+
 local kColumns, kRows, kCell = 64, 34, 23
 local kTiles = {
     {name = 'Deep water', color = '#FF0D3B66'},
@@ -44,6 +50,7 @@ function Wfc:enter()
     end
     self:frame{
         hint = 'Tap or click cells to pin the selected tile there, then the map collapses again around every pin. Mountains never touch water. R or the X button takes a new seed.',
+        code = Wfc.code,
         controls = {
             ui.label{text = 'Tile to pin', font = 'caption', color = 'textMuted'},
             ui.combo{id = 'tile', items = items, selected = '5', onChange = function(event) self.pin = tonumber(event.value) end},

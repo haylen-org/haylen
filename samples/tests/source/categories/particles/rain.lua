@@ -8,6 +8,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Rain = haylen.class('Rain', ParticleTest)
 
+Rain.code = [[
+local drops = particles2d.newEmitter({texture = streak, rate = 500, lifetime = 0.95, speed = {1150, 1350}, direction = 1.62, spread = 0.02, shape = 'rectangle', shapeSize = {1100, 10}, maxParticles = 2048})
+local splashes = particles2d.newEmitter({texture = dot, rate = 260, speed = {80, 200}, spread = 1.4, gravity = {0, 900}, shape = 'rectangle', shapeSize = {1000, 4}})
+drops.position, splashes.position = {-40, -820}, {0, 330}
+drops:configure({rate = 500 * intensity})]]
+
 Rain.ground = 330
 
 function Rain:init(entry)
@@ -22,6 +28,7 @@ end
 function Rain:enter()
     self:frame{
         hint = 'Change how hard it rains. The streaks start above the view and fall behind the ground, and the splashes come from a line along it.',
+        code = Rain.code,
         controls = {ui.formField{label = 'Intensity', ui.slider{id = 'intensity', min = 0, max = 3, value = self.intensity, showValue = true, onChange = function(event)
             self.intensity = event.value
             self.drops:configure({rate = 500 * event.value})

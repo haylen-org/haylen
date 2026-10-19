@@ -11,11 +11,20 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Bodies = haylen.class('Bodies', PhysicsTest)
 
+Bodies.code = [[
+crate:addBox(70, 50, {density = 1, friction = 0.5})
+ball:addCircle(30, {restitution = 0.3})
+pill:addCapsule(-30, 0, 30, 0, 20)
+star:addPolygon(points)  -- A concave outline splits into convex pieces.
+ramp:addSegment(420, 120, 780, 300)
+hills:addChain(outline, false)]]
+
 local kStar = {{0, -46}, {13, -15}, {46, -12}, {20, 9}, {28, 42}, {0, 24}, {-28, 42}, {-20, 9}, {-46, -12}, {-13, -15}}
 local kPentagon = {{0, -34}, {32, -10}, {20, 28}, {-20, 28}, {-32, -10}}
 
 function Bodies:enter()
     self:frame{
+        code = Bodies.code,
         hint = 'Drag any body with the mouse or a finger. The buttons drop new bodies, and R or the X button starts over.',
         controls = {
             ui.button{id = 'box', text = 'Drop a box', onClick = function() self:drop('box') end},

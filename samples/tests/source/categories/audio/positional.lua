@@ -12,6 +12,12 @@ local Test = require('harness.test')
 
 local Positional = haylen.class('Positional', AudioTest)
 
+Positional.code = [[
+audio.setSpatialization({model = 'inverse', minDistance = 200, maxDistance = 1500, rolloff = 1, panDistance = 900, doppler = 1})
+audio.followCamera(camera)  -- Or audio.setListener(x, y).
+local fire = audio.play(crackle, {bus = 'ambience', loop = true, x = -700, y = -350})
+audio.setPosition(hum, x, y)  -- A moving sound pans and gets the Doppler pitch.]]
+
 Positional.walk = {name = 'walk', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'stick:right', 'virtualStick:walk'}}
 
 local kModels = {{id = 'linear', text = 'Linear'}, {id = 'inverse', text = 'Inverse'}, {id = 'exponential', text = 'Exponential'}}
@@ -64,6 +70,7 @@ function Positional:enter()
     end}
     self:frame({
         hint = 'Walk with the arrows, WASD, a stick or the directional pad, with the touch stick, or click where to go.',
+        code = Positional.code,
         play = true,
         controls = controls,
         overlay = {ui.touchStick{id = 'stick', action = 'walk', mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300}},

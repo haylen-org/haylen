@@ -8,16 +8,22 @@ local Test = require('harness.test')
 
 local MessagePack = haylen.class('MessagePack', Test)
 
+MessagePack.code = [[
+local bytes = net.encodeMessagePack({tick = 812, players = {{id = 1, x = 40.5, hp = 3}}})
+local state = net.decodeMessagePack(bytes)
+local replay = net.decodeMessagePackAsync(large):await()  -- Decodes on the task pool.
+local ok, message = pcall(net.decodeMessagePack, '\193')  -- Broken bytes raise.]]
+
 function MessagePack:enter()
     self.lines = {}
     self:frame{
+        code = MessagePack.code,
         hint = 'Encode a match state, decode a large message off the frame thread, or feed broken bytes.',
         content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'small', text = 'Encode and decode a state', align = 'stretch', onClick = function() self:roundTrip() end},
                 ui.button{id = 'large', text = 'Decode 20000 frames off the frame thread', align = 'stretch', onClick = function() self:decodeLarge() end},
                 ui.button{id = 'broken', text = 'Decode broken bytes', align = 'stretch', onClick = function() self:decodeBroken() end},
-                ui.label{font = 'monospace', text = "net.encodeMessagePack(value)\nnet.decodeMessagePack(bytes)\nnet.decodeMessagePackAsync(bytes)"},
             },
             ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
         }},

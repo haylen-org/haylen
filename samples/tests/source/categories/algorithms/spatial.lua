@@ -11,6 +11,13 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Spatial = haylen.class('Spatial', AlgorithmTest)
 
+Spatial.code = [[
+local hash = spatial2d.newHashGrid(80)  -- Or newQuadTree, newAabbTree and newKdTree.
+hash:set(enemy, {enemy.x - 16, enemy.y - 16, 32, 32})  -- Setting it again moves it.
+local inside = hash:query({x - 150, y - 100, 300, 200})
+local around, nearest = hash:queryCircle(x, y, 150), hash:kNearest(x, y, 5)
+local hits = hash:raycast(-760, 0, x, y, 3)  -- Each hit holds its value.]]
+
 local kCount = 400
 local kArea = {-760, -410, 1520, 820}
 local kHashCell = 80
@@ -31,6 +38,7 @@ local kQueries = {
 function Spatial:enter()
     self:frame{
         hint = 'The query follows the pointer. Q and E or the shoulder buttons switch the query, and the moving boxes update the structure every frame.',
+        code = Spatial.code,
         controls = {
             ui.combo{id = 'structure', items = kStructures, selected = 'hash', onChange = function(event) self:use(event.value) end},
             ui.radioGroup{id = 'query', items = kQueries, selected = 'rect', onChange = function(event) self.query = event.value end},

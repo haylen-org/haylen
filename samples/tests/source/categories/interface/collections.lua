@@ -7,6 +7,12 @@ local layout = require('categories.interface.layout')
 
 local Collections = haylen.class('Collections', Test)
 
+Collections.code = [[
+ui.list{items = {{id = 'slot1', text = 'Slot 1', caption = 'Day 12, 3 hours', image = 'interface/themes/fantasy/icons/star.png'}}, onSelect = function(event) load(event.item) end}
+ui.list{id = 'quests', draggable = true, items = quests, onDrop = function(event) move(event.sourceItem, event.item) end}  -- The app reorders and sets the items.
+ui.tree{items = {{id = 'tools', text = 'Tools', children = {{id = 'hammer', text = 'Hammer'}}}}, expanded = {'tools'}}
+ui.table{columns = {{text = 'Captain'}, {text = 'Score', width = 160, align = 'end'}}, rows = {{id = 'ana', cells = {'Ana', 12040}}}, selected = 'ana'}]]
+
 function Collections:init(entry)
     Collections.super.init(self, entry)
     self.quests = {'Light the beacon', 'Chop ten trees', 'Build a raft', 'Catch a fish', 'Find the key'}
@@ -18,6 +24,7 @@ end
 function Collections:enter()
     self:frame{
         hint = 'Pick rows with a click, a tap or Enter. Drag a quest onto another to reorder the list of 200 quests, which draws only the rows in view, or choose it with Enter or the south button, pick it up with a second press, move with the arrows and drop it with Enter again.',
+        code = Collections.code,
         focus = 'saves',
         content = {self:columns()},
     }

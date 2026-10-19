@@ -8,6 +8,13 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Splines = haylen.class('Splines', AlgorithmTest)
 
+Splines.code = [[
+local track = m.spline(points, {kind = 'catmullRom', closed = false})  -- Or 'bezier' and 'bSpline'.
+local curve = track:sample(160)
+local even = track:sampleByDistance(60)  -- A point every 60 units.
+traveled = (traveled + 380 * dt) % track.length
+local position, direction = track:pointAtDistance(traveled), track:tangentAtDistance(traveled)]]
+
 local kPoints = {{-620, 200}, {-420, -260}, {-160, 240}, {60, -300}, {280, 200}, {480, -220}, {640, 180}}
 local kPickDistance = 40
 local kSpeed = 380
@@ -15,6 +22,7 @@ local kSpeed = 380
 function Splines:enter()
     self:frame{
         hint = 'Drag the control points. Bezier curves pass through every third point and bend toward the others, and a closed Bezier uses the first six points.',
+        code = Splines.code,
         controls = {
             ui.radioGroup{id = 'kind', items = {{id = 'catmullRom', text = 'Catmull-Rom'}, {id = 'bezier', text = 'Bezier'}, {id = 'bSpline', text = 'B-spline'}}, selected = 'catmullRom', onChange = function(event) self:change('kind', event.value) end},
             ui.checkbox{id = 'closed', text = 'Closed curve', onChange = function(event) self:change('closed', event.checked) end},

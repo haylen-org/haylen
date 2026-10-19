@@ -12,6 +12,13 @@ local outlines = require('categories.tiled.outlines')
 
 local Raycasts = haylen.class('Raycasts', MapTest)
 
+Raycasts.code = [[
+local tileHit = map:raycastTiles('walls', x1, y1, x2, y2, function(gid)
+    return map:tileInfo(gid).type ~= 'water'  -- Rays pass over water.
+end)
+local objectHit = map:raycastObjects('obstacles', x1, y1, x2, y2)
+if tileHit then print(tileHit.column, tileHit.row, tileHit.gid, tileHit.distance) end]]
+
 local kFanRays = 48
 local kLength = 1200
 
@@ -20,6 +27,7 @@ function Raycasts:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'The ray aims at the pointer, and tapping or clicking moves the eye. Tile hits show the cell and its tile, object hits the name of the object. R or the X button puts the eye back.',
+        code = Raycasts.code,
         controls = {
             ui.radioGroup{id = 'mode', items = {{id = 'single', text = 'One ray'}, {id = 'fan', text = 'A fan of rays'}}, selected = 'single', onChange = function(event) self.mode = event.value end},
             ui.checkbox{id = 'water', text = 'Water stops rays', onChange = function(event) self.waterBlocks = event.checked end},

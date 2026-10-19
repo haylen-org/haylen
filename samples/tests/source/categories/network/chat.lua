@@ -10,6 +10,13 @@ local services = require('categories.network.services')
 
 local Chat = haylen.class('Chat', SocketTest)
 
+Chat.code = [[
+local socket = net.connectWebSocket('wss://echo.websocket.org', {reconnect = true})
+socket:on('open', function() flush(queue) end)  -- Sends what waited while the connection was down.
+socket:on('message', function(data, binary) add(json.decode(data)) end)
+local message = json.encode({name = 'Ana', text = 'Hello'})
+if socket.state == 'open' then socket:send(message) else queue[#queue + 1] = message end]]
+
 Chat.limit = 40
 Chat.states = {open = {'Connected', 'success'}, connecting = {'Connecting', 'information'}, reconnecting = {'Reconnecting', 'warning'}, closing = {'Closing', 'warning'}, closed = {'Offline', 'danger'}}
 
@@ -24,6 +31,7 @@ end
 -- The socket reconnects forever with the default waits, so the chat comes back whenever the network does.
 function Chat:enter()
     self:frame{
+        code = Chat.code,
         hint = 'Type a message and press Enter or Send. The newest message is at the top. The echo server sends every message back, and messages written while the connection is down wait for it.',
         focus = 'message',
         content = {ui.panel{grow = 1, align = 'stretch', gap = 12,

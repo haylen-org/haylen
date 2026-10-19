@@ -10,6 +10,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local GrapplingHook = haylen.class('GrapplingHook', PhysicsTest)
 
+GrapplingHook.code = [[
+local hit = world:raycast(hero.x, hero.y, hero.x + dx * 760, hero.y + dy * 760, {mask = kSolid})
+-- A spring of 0 hertz with a limit is a rope that goes slack.
+local rope = world:createJoint('distance', hit.body, hero, {ax = hit.x, ay = hit.y, bx = hero.x, by = hero.y, enableSpring = true, enableLimit = true, lower = 20, upper = hit.distance})
+rope.upper = rope.upper + moveY * 420 * dt  -- Reels in and out.
+hero:applyForce(moveX * hero.mass * 900, 0)  -- Swings.
+rope:destroy()  -- Lets go.]]
+
 GrapplingHook.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
     {name = 'jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
@@ -28,6 +36,7 @@ local kBlocks = {{0, -410, 1600, 40}, {-450, -150, 180, 40}, {0, -240, 220, 40},
 
 function GrapplingHook:enter()
     self:frame{
+        code = GrapplingHook.code,
         hint = 'Walk with A and D, the arrows or the left stick and jump with Space or the south button. Click, tap or press the right trigger to fire the hook at the pointer, or press F or the north button to fire it up ahead. While hanging, W and S reel in and out, sideways input swings and jump lets go.',
         controls = {
             ui.button{id = 'release', text = 'Let go', onClick = function() self:release() end},

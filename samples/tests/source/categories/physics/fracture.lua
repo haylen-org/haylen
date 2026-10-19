@@ -10,10 +10,18 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Fracture = haylen.class('Fracture', PhysicsTest)
 
+Fracture.code = [[
+local pieces = physics2d.fracture(body, {pieces = 10, impact = {x, y}, seed = 1})
+world.onHit = function(a, b, contact)
+    if contact.speed > 500 and a.valid then physics2d.fracture(a, {pieces = 10, impact = {contact.x, contact.y}}) end
+end
+local shape = world:pick(camera, pointerX, pointerY)[1]  -- The object under a tap.]]
+
 local kBreakSpeed = 500
 
 function Fracture:enter()
     self:frame{
+        code = Fracture.code,
         hint = 'Tap or click an object to break it where you hit it, or swing the wrecking ball. Pieces draw with the debug outlines of the world. R or the X button rebuilds.',
         controls = {
             ui.label{text = 'Pieces', font = 'caption', color = 'textMuted'},

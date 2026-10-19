@@ -9,6 +9,13 @@ local fonts = require('categories.text.fonts')
 
 local Measuring = haylen.class('Measuring', TextTest)
 
+Measuring.code = [[
+local width, height = graphics2d.measureText(font, 'Voyage to Tiny Island', {size = 96})
+local baseline = y + font:ascent(96)
+local layout = font:layout('Voyage to Tiny Island', {size = 96})  -- The quad of every glyph is in `layout.quads`.
+local glyph = font:glyph('g')  -- It holds its `source`, `offset` and `advance`.
+local kerning = font:shape('AV')[1].advance - font:glyph('A').advance]]
+
 Measuring.size = 96
 Measuring.text = 'Voyage to Tiny Island'
 Measuring.rich = '[b]Quest[/b] complete: [color=gold]12 coins[/color] [img=text/coin.png height=34]\nand a [url=map]map[/url] of the [i]northern reef[/i].'
@@ -25,7 +32,7 @@ function Measuring:init(entry)
 end
 
 function Measuring:enter()
-    self:frame{hint = 'Move the pointer over the measured line to pick a glyph from the quads of "font:layout". Blue boxes are measured sizes, red lines are baselines, green boxes are glyph quads and orange marks the advance.'}
+    self:frame{code = Measuring.code, hint = 'Move the pointer over the measured line to pick a glyph from the quads of "font:layout". Blue boxes are measured sizes, red lines are baselines, green boxes are glyph quads and orange marks the advance.'}
 end
 
 -- Returns how much kerning shortens the advance of the first letter of a pair.

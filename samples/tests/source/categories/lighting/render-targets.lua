@@ -8,6 +8,12 @@ local LightingTest = require('categories.lighting.lighting-test')
 
 local RenderTargets = haylen.class('RenderTargets', LightingTest)
 
+RenderTargets.code = [[
+local garden = graphics.newRenderTarget(640, 360, {filter = 'linear'})
+graphics2d.beginTarget(garden, camera, {ambientLight = '#FF303C5C', clear = '#FF000000', postProcess = {vignetteStrength = 0.7}})
+graphics2d.drawLight(firefly)  -- Lit offscreen.
+graphics2d.draw(garden.texture, -740, -180, {pivotX = 0, pivotY = 0})  -- Shows it in another canvas.]]
+
 RenderTargets.width = 640
 RenderTargets.height = 360
 
@@ -36,6 +42,7 @@ end
 function RenderTargets:enter()
     self:frame{
         hint = 'Point at a screen with the mouse, a finger, the arrows, WASD or a stick: the torch of the cellar and the fireflies of the garden follow the cursor inside it.',
+        code = RenderTargets.code,
         cursor = true,
     }
 end

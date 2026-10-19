@@ -10,6 +10,13 @@ local settings = require('categories.preferences.settings')
 
 local Values = haylen.class('Values', Test)
 
+Values.code = [[
+preferences.set('profile.stats.coins', 120)  -- Stores `{profile = {stats = {coins = 120}}}`.
+print(preferences.get('profile.stats').coins, preferences.has('profile.name'), preferences.dirty())
+preferences.remove('profile.name')
+preferences.save()  -- Writes `preferences.json`.
+preferences.load()  -- Reads it back and drops unsaved changes.]]
+
 -- Examples to try, each with a key, a value as typed and how to read it.
 Values.examples = {
     {id = 'name', key = 'profile.name', value = 'Ana', kind = 'text'},
@@ -94,6 +101,7 @@ function Values:enter()
     end
     self:frame{
         hint = 'Type a dotted key and a value, or pick an example, then set, read, remove, save or load. The middle column is memory and the right column is the file.',
+        code = Values.code,
         focus = 'examples',
         content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,

@@ -11,6 +11,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Bowling = haylen.class('Bowling', PhysicsTest)
 
+Bowling.code = [[
+local world = physics2d.newWorld({gravity = {0, 0}})  -- Seen from above.
+local ball = world:createBody({x = -650, y = 0, linearDamping = 0.12, angularDamping = 0.5})
+ball:addCircle(26, {density = 6, restitution = 0.1, friction = 0.2})
+pin:addCircle(13, {density = 0.4, restitution = 0.5, friction = 0.3})
+ball:applyImpulse(math.cos(aim) * power * ball.mass, math.sin(aim) * power * ball.mass)
+gutter:addBox(1440, 60, {sensor = true})]]
+
 Bowling.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
     {name = 'throw', type = 'button', bindings = {'key:space', 'button:south', 'virtual:throw'}},
@@ -29,6 +37,7 @@ local kSettleTime = 2
 
 function Bowling:enter()
     self:frame{
+        code = Bowling.code,
         hint = 'Drag back from the ball and let go to throw, or move it across the line with W and S, aim with A and D or the left stick and hold Space or the south button to charge the throw. R or the X button sets the pins again.',
         controls = {
             ui.button{id = 'reset', text = 'Set the pins again', onClick = function() self:rack() end},

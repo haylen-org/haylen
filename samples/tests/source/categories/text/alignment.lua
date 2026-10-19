@@ -8,6 +8,12 @@ local fonts = require('categories.text.fonts')
 
 local Alignment = haylen.class('Alignment', TextTest)
 
+Alignment.code = [[
+local font = assets.font('fonts/crimson-text-regular.ttf')
+graphics2d.drawText(font, story, 0, 34, {size = 30, maxWidth = 400, align = 'fill'})  -- The values `left`, `center` and `right` align too.
+graphics2d.drawText(font, 'Turned', 1150, 450, {size = 44, anchor = {0.5, 0.5}, rotation = 0.3})
+local rich = graphics2d.newRichText('[center]A centered paragraph.[/center]\n[p align=fill]A filled one.[/p]', {family = family, size = 30, maxWidth = 500})]]
+
 Alignment.text = 'The ferry leaves the harbor at noon, and the keeper lights the beacon when the sun goes down over the western cliffs.'
 Alignment.width = 400
 Alignment.aligns = {'left', 'center', 'right', 'fill'}
@@ -20,7 +26,7 @@ function Alignment:init(entry)
 end
 
 function Alignment:enter()
-    self:frame{hint = 'Fill stretches the spaces of every wrapped line to both edges and leaves the last line of a paragraph at the left. The crosses mark the position each anchored block is drawn at, and the last block also turns around it.'}
+    self:frame{code = Alignment.code, hint = 'Fill stretches the spaces of every wrapped line to both edges and leaves the last line of a paragraph at the left. The crosses mark the position each anchored block is drawn at, and the last block also turns around it.'}
 end
 
 function Alignment.cross(x, y)

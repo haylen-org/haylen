@@ -44,6 +44,7 @@ function Effects:enter()
     self:start()
     self:build()
     self:frame({
+        code = kCode,
         hint = 'Pick an effect and a target, move the sliders or sweep the main parameter.',
         focus = 'kind',
         controls = {
@@ -51,7 +52,6 @@ function Effects:enter()
             ui.formField{label = 'On', ui.segmentedControl{id = 'target', items = kTargets, selected = self.target, onChange = function(event) self:retarget(event.value) end}},
             ui.toggle{id = 'sweep', text = 'Sweep the main parameter', onChange = function(event) self:setSweep(event.checked) end},
             ui.column{id = 'params', gap = 12},
-            ui.label{text = kCode, font = 'monospace'},
         },
     })
     self:showParams()

@@ -8,6 +8,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local RotationFrames = haylen.class('RotationFrames', ParticleTest)
 
+RotationFrames.code = [[
+local shards = particles2d.newEmitter({texture = shard, rotation = {0, 6.2832}, spin = {-1.6, 1.6}, rotationStep = 0.7854})
+local streaks = particles2d.newEmitter({texture = streak, speed = {520, 800}, gravity = {0, 900}, alignToVelocity = true, stretch = 0.03})
+local dots = particles2d.newEmitter({texture = dot, aspect = {0.3, 3}})
+local runes = particles2d.newEmitter({texture = runeSheet, frameGrid = {columns = 4, rows = 1}, frameMode = 'loop', frameRate = 3})  -- Or "overLife", "loopRandomStart" and "random".]]
+
 RotationFrames.frameModes = {'overLife', 'loop', 'loopRandomStart', 'random'}
 RotationFrames.columns = {-720, -240, 240, 720}
 
@@ -45,6 +51,7 @@ end
 function RotationFrames:enter()
     self:frame{
         hint = 'The top row turns and shapes its particles, and the bottom row cuts a sheet of four runes with "frameGrid" and plays it in each frame mode. Frame rates only change the two looping modes.',
+        code = RotationFrames.code,
         controls = {
             ui.formField{label = 'Rotation step in radians', ui.slider{id = 'rotationStep', min = 0, max = 1.5708, value = self.rotationStep, showValue = true, onChange = function(event)
                 self.rotationStep = event.value

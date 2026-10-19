@@ -8,6 +8,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Curves = haylen.class('Curves', ParticleTest)
 
+Curves.code = [[
+pops:configure({sizeCurve = {curve = 'backOut', overshoot = 3}})  -- Or {points = {0, 1.45, 0.85, 1}}.
+local stars = particles2d.newEmitter({texture = star, startSize = {12, 70}, endSizeScale = 1})  -- Each star keeps its own size.
+dust:configure({speedCurve = 'expoOut'})  -- The dust stops early.
+coins:configure({spinCurve = 'quadOut'})  -- The coins spin down, and "false" removes the curve.]]
+
 Curves.sizeCurves = {
     linear = 'linear',
     quadOut = 'quadOut',
@@ -56,6 +62,7 @@ end
 function Curves:enter()
     self:frame{
         hint = 'The pops grow from nothing to 130 units along the picked curve. The stars are born from 12 to 70 units wide and either all end at 40 or keep their own size. The dust stops early along its curve, and the coins spin down.',
+        code = Curves.code,
         controls = {
             ui.formField{label = 'Size curve of the pops', ui.radioGroup{id = 'sizeCurve', items = Curves.sizeItems, selected = self.sizeCurve, onChange = function(event)
                 self.sizeCurve = event.value

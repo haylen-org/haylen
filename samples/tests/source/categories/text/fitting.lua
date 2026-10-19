@@ -9,6 +9,10 @@ local fonts = require('categories.text.fonts')
 
 local Fitting = haylen.class('Fitting', TextTest)
 
+Fitting.code = [[
+graphics2d.drawText(font, 'Captain Marigold of the Northern Sea', 260, 90, {size = 56, maxWidth = 520, wrap = false, minScale = 0.4, anchor = {0.5, 0.5}})
+graphics2d.drawText(font, story, 0, 240, {size = 44, maxWidth = 520, maxHeight = 220, minScale = 0.4})]]
+
 Fitting.name = 'Captain Marigold of the Northern Sea'
 Fitting.story = 'On the third night the keeper climbed the lighthouse stairs, lit the great lamp and watched the ships find the harbor, one sail after another, until the last boat was home.'
 
@@ -23,6 +27,7 @@ end
 
 function Fitting:enter()
     self:frame{
+        code = Fitting.code,
         hint = 'Drag the sliders, or focus them and press left and right. The boxes are the space the text has, and with sweep on they change size by themselves.',
         controls = {
             ui.formField{label = 'Width of the boxes', ui.slider{id = 'width', min = 200, max = 640, step = 10, value = self.width, showValue = true, decimals = 0, onChange = function(event)

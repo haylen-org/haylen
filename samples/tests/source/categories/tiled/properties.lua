@@ -8,6 +8,13 @@ local outlines = require('categories.tiled.outlines')
 
 local Properties = haylen.class('Properties', MapTest)
 
+Properties.code = [[
+print(map.properties.level, map.properties.tint, map.properties.stats.spawn.x)  -- An integer, a Color and a class member.
+print(map.properties.loot[6][1], map.propertyTypes.weather)  -- A list inside a list, and the name of an enum type.
+print(map:layer('ground').properties.season)
+local guard = map:objects('things')[2]
+print(guard.properties.watches, guard.properties.route[2])  -- An object id, and an item of a list.]]
+
 local kTreeHeight = 560
 
 -- Class values arrive as tables of their members and lists as sequences, so both open into children.
@@ -57,6 +64,7 @@ function Properties:enter()
     local bounds = map.pixelBounds
     self:frame{
         hint = 'Open the entries of the tree to read every value. Picking an object entry outlines the object on the map, and object properties hold the id of the object they point to.',
+        code = Properties.code,
         controls = {
             ui.scroll{height = kTreeHeight, ui.tree{id = 'properties', items = tree, expanded = {'map', 'map/stats', 'map/loot'}, onSelect = function(event) self:select(event.item) end}},
         },

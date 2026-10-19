@@ -9,6 +9,13 @@ local services = require('categories.network.services')
 
 local Http = haylen.class('Http', Test)
 
+Http.code = [[
+async.spawn(function()
+    local response, failure = http.client.get('https://httpbin.org/get', {query = {test = 'haylen'}, timeoutSeconds = 15}):await()
+    if response then print(response.status, response.headers['content-type'], response.body) end
+    local posted = http.client.post('https://httpbin.org/post', {json = {player = 'Ana', score = 4200}}):await()
+end)]]
+
 Http.timeout = 15
 
 function Http:init(entry)
@@ -19,6 +26,7 @@ end
 
 function Http:enter()
     self:frame{
+        code = Http.code,
         hint = 'Send a GET or a POST to the echo service, or type any address. Switch between the body and the headers of the response with the tabs.',
         focus = 'get',
         content = {ui.row{wrap = true, grow = 1, gap = 24,

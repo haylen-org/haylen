@@ -7,6 +7,10 @@ local Test = require('harness.test')
 
 local ColorVision = haylen.class('ColorVision', Test)
 
+ColorVision.code = [[
+graphics2d.beginWorld(camera, {postProcess = {colorVision = 'deuteranopia'}})  -- Shows what that eye sees.
+graphics2d.beginWorld(camera, {postProcess = {colorVision = 'protanopia', correctColorVision = true}})  -- Corrects for it.]]
+
 ColorVision.pairs = {
     {'#FFD03B2F', '#FF3F9B3A', 'Red and green'},
     {'#FFE88A2E', '#FF8DB33A', 'Orange and lime'},
@@ -20,6 +24,7 @@ function ColorVision:enter()
     self.correct = false
     self:frame{
         hint = 'Pick a deficiency to see the swatches as it sees them, and turn the correction on to shift what it loses into colors it sees.',
+        code = ColorVision.code,
         controls = {
             ui.sectionTitle{text = 'Color vision'},
             ui.radioGroup{id = 'vision', selected = 'normal', items = {{id = 'normal', text = 'Normal'}, {id = 'protanopia', text = 'Protanopia, no red cones'}, {id = 'deuteranopia', text = 'Deuteranopia, no green cones'}, {id = 'tritanopia', text = 'Tritanopia, no blue cones'}}, onChange = function(event) self.vision = event.value end},

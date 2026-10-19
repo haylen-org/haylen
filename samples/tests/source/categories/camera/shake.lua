@@ -11,6 +11,13 @@ local actions = require('categories.camera.actions')
 
 local Shake = haylen.class('Shake', Test)
 
+Shake.code = [[
+camera.maxShakeOffset = 40
+camera.shakeFrequency = 25
+camera:addTrauma(0.35)  -- A hit, whose shake grows with the square of the trauma.
+camera:shake(0.7, 1, 0)  -- A recoil along x.
+camera:update(dt)]]
+
 function Shake:init(entry)
     Shake.super.init(self, entry)
     self.world = World()
@@ -25,6 +32,7 @@ function Shake:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'A click or a tap on the play area, F or the X button adds trauma too. Walk with WASD, the arrows or the left stick to feel the shake while moving.',
+        code = Shake.code,
         play = true,
         controls = {
             ui.row{wrap = true, gap = 8,

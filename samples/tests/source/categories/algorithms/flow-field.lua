@@ -13,6 +13,13 @@ local picture = require('categories.algorithms.picture')
 
 local FlowField = haylen.class('FlowField', AlgorithmTest)
 
+FlowField.code = [[
+async.spawn(function()
+    field = grid:flowFieldAsync({{32, 17}}):await()  -- Computed on a worker thread.
+end)
+local direction = field:direction(unit.x // 24, unit.y // 24)  -- Each unit reads only its cell.
+unit.x, unit.y = unit.x + direction.x * 150 * dt, unit.y + direction.y * 150 * dt]]
+
 local kColumns, kRows, kCell = 64, 34, 24
 local kUnits = 800
 local kSpeed = 150
@@ -20,6 +27,7 @@ local kSpeed = 150
 function FlowField:enter()
     self:frame{
         hint = 'Move the pointer, or tap, to call every unit to that cell. Each new goal computes a field on a worker thread while the units keep walking the old one. R or the X button builds new walls.',
+        code = FlowField.code,
         controls = {
             ui.checkbox{id = 'arrows', text = 'Show the field', checked = true, onChange = function(event) self.showArrows = event.checked end},
             ui.checkbox{id = 'distance', text = 'Show the distances', onChange = function(event) self.showDistance = event.checked end},

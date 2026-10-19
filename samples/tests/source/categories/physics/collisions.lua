@@ -12,6 +12,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Collisions = haylen.class('Collisions', PhysicsTest)
 
+Collisions.code = [[
+world.onContactBegin = function(a, b, contact)
+    mark(contact.points, contact.normalX, contact.normalY, contact.relativeVelocityX, contact.relativeVelocityY)
+    print(contact.speed, contact.force)  -- How fast they met and how hard they press.
+end
+for _, contact in ipairs(crate:contacts()) do if contact.normalY > 0.5 then weight = weight + contact.force end end]]
+
 -- Impacts slower than this many units per second only push, so the marks show the landings and not the settling.
 Collisions.slowest = 40
 Collisions.marks = 8
@@ -21,6 +28,7 @@ Collisions.velocityScale = 0.12
 
 function Collisions:enter()
     self:frame{
+        code = Collisions.code,
         hint = 'Throw balls and crates, or drag them, and every impact marks its points in white, the normal it pushed along in yellow and the velocity the bodies kept in blue. Each crate shows the force its weight presses down with. R or the X button starts over.',
         controls = {
             ui.button{id = 'ball', text = 'Throw a ball', onClick = function() self:throw('ball') end},

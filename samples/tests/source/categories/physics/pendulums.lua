@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Pendulums = haylen.class('Pendulums', PhysicsTest)
 
+Pendulums.code = [[
+local world = physics2d.newWorld({restitutionThreshold = 20})
+ball:addCircle(30, {density = 8, friction = 0, restitution = 1})
+world:createJoint('distance', bar, ball, {ax = x, ay = -330, bx = x, by = 50})  -- The string of a cradle ball.
+world:createJoint('revolute', arm, tip, {ax = elbowX, ay = elbowY})  -- The elbow of the double pendulum.
+seat:applyImpulse(seat.mass * 140, 0)  -- A push along the swing.]]
+
 Pendulums.actions = {
     {name = 'push', type = 'button', bindings = {'key:p', 'button:north'}},
 }
@@ -30,6 +37,7 @@ local kRope = '#FFB0BEC5'
 
 function Pendulums:enter()
     self:frame{
+        code = Pendulums.code,
         hint = 'Lift balls of the cradle and let them go, or drag any ball, arm or the seat. P or the north button pushes the swing along its motion. R or the X button starts over.',
         controls = {
             ui.button{id = 'one', text = 'Lift one ball', onClick = function() self:lift(1) end},

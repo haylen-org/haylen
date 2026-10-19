@@ -10,6 +10,12 @@ local Test = require('harness.test')
 
 local Keyboard = haylen.class('Keyboard', Test)
 
+Keyboard.code = [[
+if input.keyPressed('space') then hero:jump() end
+local running = input.keyDown('w') and input.modifiers().shift
+typed = typed .. input.text()  -- The characters typed this frame.
+window.setKeyboardVisible(true)]]
+
 -- Each row lists key names with an optional label and width in key units.
 local kRows = {
     {{'escape', 'Esc'}, {'digit1', '1'}, {'digit2', '2'}, {'digit3', '3'}, {'digit4', '4'}, {'digit5', '5'}, {'digit6', '6'}, {'digit7', '7'}, {'digit8', '8'}, {'digit9', '9'}, {'digit0', '0'}, {'minus', '-'}, {'equal', '='}, {'backspace', 'Back', 1.6}},
@@ -36,6 +42,7 @@ function Keyboard:enter()
     self.presses = 0
     self.journal = Journal(60)
     self:frame({
+        code = Keyboard.code,
         hint = 'Type anything: held keys light up, presses flash yellow and releases flash red.',
         play = true,
         controls = {
@@ -45,8 +52,6 @@ function Keyboard:enter()
                 self.text = ''
                 self.journal:clear()
             end},
-            ui.sectionTitle{text = 'Reading keys'},
-            ui.label{font = 'monospace', text = "input.keyDown('w')\ninput.keyPressed('space')\ninput.keyReleased('space')\ninput.anyKeyPressed()\ninput.modifiers().shift\ninput.text()"},
         },
     })
 end

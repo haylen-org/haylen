@@ -10,6 +10,14 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local LibraryBrowser = haylen.class('LibraryBrowser', ParticleTest)
 
+LibraryBrowser.code = [[
+local system = particles2d.newSystem(assets.load('particles/library/fire/torch-flame.particles'), {seed = 7})
+for _, emitter in ipairs(system:emitters()) do
+    local base = emitter.config
+    emitter:configure({rate = base.rate * 2, speed = {base.speed[1] * 2, base.speed[2] * 2}})
+end
+system.scale = 1.5  system:restart()  -- A one-shot effect fires again.]]
+
 LibraryBrowser.folder = 'particles/library/'
 LibraryBrowser.styles = {casual = 'Casual', realistic = 'Realistic', pixel = 'Pixel art', neon = 'Neon'}
 LibraryBrowser.kinds = {loop = 'loop', once = 'one shot', cycle = 'cycle'}
@@ -180,6 +188,7 @@ function LibraryBrowser:enter()
 
     self:frame{
         hint = 'A click, a tap, E, Enter, Space or the south button fires the effect at the cursor. Z and X, the page keys or the shoulder buttons pick the previous and next effect, and C or the north button the next category.',
+        code = LibraryBrowser.code,
         cursor = true,
         controls = controls,
     }

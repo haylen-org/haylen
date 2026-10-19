@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local ThemeOverrides = haylen.class('ThemeOverrides', Test)
 
+ThemeOverrides.code = [[
+ui.row{style = {colors = {accent = '#FF2E9E62', accentHover = '#FF3DBE7A'}, metrics = {controlRadius = 36}}, ui.button{text = 'Styled', variant = 'primary'}}
+ui.column{style = {fonts = {button = {size = 34, bold = true}}}, ui.row{style = {metrics = {controlHeight = 56}}, ui.button{text = 'Short and bold'}}}
+ui.button{text = 'Painted', style = {surfaces = {button = {image = 'interface/themes/fantasy/atlas.png', source = {0, 392, 360, 120}, slice = {44, 56, 40, 56}, scale = 0.6}}}}
+ui.card{theme = 'light', ui.button{text = 'Button'}}
+ui.button{text = 'Resize', cursor = 'resizeHorizontal'}]]
+
 ThemeOverrides.accents = {
     {id = 'green', text = 'Green', accent = '#FF2E9E62', hover = '#FF3DBE7A', strong = '#FF23804E'},
     {id = 'coral', text = 'Coral', accent = '#FFE0604A', hover = '#FFF07A64', strong = '#FFB84A38'},
@@ -28,6 +35,7 @@ function ThemeOverrides:enter()
     ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')
     self:frame{
         hint = 'The radius slider and the accent control restyle the first group at once, while the buttons around it keep the theme. Hover the cursor buttons with a mouse to see their shapes.',
+        code = ThemeOverrides.code,
         focus = 'radius',
         content = {ui.scroll{grow = 1, height = 0, self:columns()}},
     }

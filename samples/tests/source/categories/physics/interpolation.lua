@@ -10,12 +10,18 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Interpolation = haylen.class('Interpolation', PhysicsTest)
 
+Interpolation.code = [[
+local world = physics2d.newWorld({interpolate = true})
+local x, y, rotation = ball:renderTransform()  -- Between the last two steps.
+haylen.setTimeScale(0.1)  -- Slow motion, with several frames for each fixed step.]]
+
 local kOffset = 400
 local kBallRadius = 26
 local kBar = {width = 260, height = 18}
 
 function Interpolation:enter()
     self:frame{
+        code = Interpolation.code,
         hint = 'Slow the time down to see the steps. The world is the same on both sides, only the drawing differs. R or the X button starts over.',
         controls = {
             ui.label{text = 'Time scale', font = 'caption', color = 'textMuted'},

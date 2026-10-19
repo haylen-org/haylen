@@ -8,6 +8,13 @@ local MapTest = require('categories.tiled.map-test')
 
 local Orientations = haylen.class('Orientations', MapTest)
 
+Orientations.code = [[
+local map = tiled.newMapRenderer(assets.load('tiled/maps/hexagonal.tmj', nil, {filter = 'linear'}))
+print(map.orientation, map.hexSideLength, map.staggerX, map.staggerEven)
+local column, row = map:worldToCell(x, y)  -- The nearest cell center on staggered and hexagonal maps.
+local cornerX, cornerY = map:cellToWorld(column, row)
+map:draw(camera)]]
+
 local kMaps = {
     {id = 'orthogonal', text = 'Orthogonal'},
     {id = 'isometric', text = 'Isometric'},
@@ -24,6 +31,7 @@ function Orientations:enter()
     end
     self:frame{
         hint = 'Move the pointer over the map to see the cell under it. Q and E or the shoulder buttons switch the map.',
+        code = Orientations.code,
         controls = {
             ui.radioGroup{id = 'map', items = kMaps, selected = 'orthogonal', onChange = function(event) self:show(event.value) end},
             ui.label{id = 'details', text = '', color = 'textMuted'},

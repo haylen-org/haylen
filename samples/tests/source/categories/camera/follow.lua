@@ -10,6 +10,13 @@ local actions = require('categories.camera.actions')
 
 local Follow = haylen.class('Follow', Test)
 
+Follow.code = [[
+camera.deadZone = {420, 260}  -- The walker moves inside this box without moving the view.
+camera.dragHorizontal, camera.dragVertical = true, true
+camera.dragMargins = {0.5, 0.35, 0.5, 0.35}  -- Or inside margins in fractions of half the view.
+camera:follow(walker.x, walker.y, dt)
+camera:drawDebug({layer = 10})]]
+
 Follow.modes = {{id = 'none', text = 'Nothing, locked on'}, {id = 'deadZone', text = 'Dead zone of 420 by 260'}, {id = 'drag', text = 'Drag margins of half the view'}}
 
 function Follow:init(entry)
@@ -25,6 +32,7 @@ function Follow:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Walk with WASD, the arrows, the left stick or by holding the mouse button or a finger. The box of "camera:drawDebug" is where the walker moves without moving the view.',
+        code = Follow.code,
         play = true,
         controls = {ui.formField{label = 'Follow with', ui.radioGroup{id = 'mode', selected = self.mode, items = Follow.modes, onChange = function(event)
             self.mode = event.value

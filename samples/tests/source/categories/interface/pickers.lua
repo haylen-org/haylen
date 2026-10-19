@@ -7,9 +7,16 @@ local layout = require('categories.interface.layout')
 
 local Pickers = haylen.class('Pickers', Test)
 
+Pickers.code = [[
+ui.combo{items = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}}, selected = 'en', onChange = function(event) setLanguage(event.value) end}
+ui.colorField{value = '#FF2E7D32', alpha = false, onChange = function(event) gui:set('flag', {tint = event.value}) end}
+ui.numberField{value = 12.5, min = 0, max = 40, step = 0.5, decimals = 1}
+ui.slider{value = 30, min = 0, max = 100, step = 10, showValue = true, decimals = 0}]]
+
 function Pickers:enter()
     self:frame{
         hint = 'Open a combo or a color field with a click, a tap or Enter. Number fields step with their buttons or take typed digits, and sliders move with a drag or with left and right while focused.',
+        code = Pickers.code,
         focus = 'language',
         content = {self:columns()},
     }

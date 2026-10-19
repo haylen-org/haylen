@@ -10,6 +10,11 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Tunneling = haylen.class('Tunneling', PhysicsTest)
 
+Tunneling.code = [[
+local world = physics2d.newWorld({continuous = true})  -- Fast bodies stop at thin static walls.
+local ball = world:createBody({x = -330, y = 0, vx = 6000, gravityScale = 0, bullet = true})  -- Also stops at moving bodies.
+wall:addSegment(250, -70, 250, 70)]]
+
 local kInterval = 0.6
 local kLifetime = 1.5
 local kWallX = 250
@@ -18,6 +23,7 @@ local kLanes = {'Static wall', 'Moving plate', 'Thin floor'}
 
 function Tunneling:enter()
     self:frame{
+        code = Tunneling.code,
         hint = 'Every 0.6 seconds both worlds shoot a ball at a thin static wall, a ball at a thin moving plate and drop a crate onto a thin floor. Raise the speed to see more of them pass on the left. R or the X button starts over.',
         controls = {
             ui.label{text = 'Speed of the shots in units per second', font = 'caption', color = 'textMuted'},

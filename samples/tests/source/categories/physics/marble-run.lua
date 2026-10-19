@@ -12,6 +12,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local MarbleRun = haylen.class('MarbleRun', PhysicsTest)
 
+MarbleRun.code = [[
+track:addChain({{-680, -240}, {-660, -160}, {-100, -90}}, false, {friction = 0.4})  -- Solid on top, listed from left to right.
+world:createJoint('revolute', hub, wheel, {ax = 60, ay = 120, enableMotor = true, motorSpeed = 2, maxMotorTorque = 1e7})
+lift:moveTo(680, y, rotation)  -- A kinematic lift that carries the marbles up.
+marble:addCircle(14, {density = 2, friction = 0.4, restitution = 0.15, rollingResistance = 0.02})
+gate.enabled = false  -- Lets the waiting marbles roll onto the lift.]]
+
 -- Chains collide on their upper side when listed from left to right, and the short first segments are lips that turn marbles back.
 local kTrack = {
     {{-520, -190}, {600, -295}},
@@ -29,6 +36,7 @@ local kStates = {loading = 'loading', rising = 'rising', dumping = 'tipping out'
 
 function MarbleRun:enter()
     self:frame{
+        code = MarbleRun.code,
         hint = 'Marbles roll down the ramps, drop through the funnel, ride over the paddle wheel and wait at the gate for the lift that carries them back to the top. Drag marbles anywhere. R or the X button starts over.',
         controls = {
             ui.button{id = 'marble', text = 'Add a marble', onClick = function() self:addMarble(self.random:range(-400, 400), -380) end},

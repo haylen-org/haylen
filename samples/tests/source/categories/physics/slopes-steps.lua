@@ -10,6 +10,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local SlopesSteps = haylen.class('SlopesSteps', PhysicsTest)
 
+SlopesSteps.code = [[
+local hero = physics2d.newMover(world, {x = 240, y = 100, radius = 14, height = 56, stepHeight = 20, snapDistance = 20, maxSlope = math.rad(50)})
+local velocity = hero:clip(move * 320, vy + 1800 * step)
+hero:move(velocity.x * step, velocity.y * step)  -- Stands on slopes and climbs steps.
+vy = hero:clip(velocity.x, velocity.y).y
+print(hero.grounded, hero.groundNormal.x, hero.groundNormal.y)]]
+
 SlopesSteps.actions = {
     {name = 'move', type = 'axis', positive = {'key:d', 'key:right', 'button:dpadRight', 'axis:leftX+', 'virtual:right'}, negative = {'key:a', 'key:left', 'button:dpadLeft', 'axis:leftX-', 'virtual:left'}},
     {name = 'jump', type = 'button', bindings = {'key:space', 'key:w', 'key:up', 'button:south', 'virtual:jump'}},
@@ -25,6 +32,7 @@ local kGround = {{-380, -420}, {-380, 200}, {-260, 200}, {-60, 85}, {20, 85}, {2
 
 function SlopesSteps:enter()
     self:frame{
+        code = SlopesSteps.code,
         hint = 'Both characters start on the hill. Walk with A and D, the arrows, the left stick or the touch buttons, and jump with Space, W or the south button. Both characters get the same input. R or the X button starts over.',
         controls = {
             ui.label{text = 'Steepest slope the mover walks, in degrees', font = 'caption', color = 'textMuted'},

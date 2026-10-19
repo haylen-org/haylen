@@ -10,6 +10,13 @@ local actions = require('categories.camera.actions')
 
 local Debug = haylen.class('Debug', Test)
 
+Debug.code = [[
+local overview = graphics2d.newCamera()
+overview.zoom = {0.11, 0.11}
+overview.viewport = {1380, 760, 520, 300}  -- A corner of the screen.
+graphics2d.beginWorld(overview, {order = 1})
+camera:drawDebug({layer = 10})  -- The view, the limits, the free box and the target of the main camera.]]
+
 function Debug:init(entry)
     Debug.super.init(self, entry)
     self.world = World()
@@ -30,6 +37,7 @@ function Debug:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Walk with WASD, the arrows, the left stick or by holding the mouse button or a finger. The overview in the corner shows what the main camera does.',
+        code = Debug.code,
         play = true,
         controls = {ui.toggle{id = 'main', text = 'Draw on the main view', onChange = function(event)
             self.onMain = event.checked

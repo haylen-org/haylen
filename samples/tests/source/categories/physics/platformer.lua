@@ -11,6 +11,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Platformer = haylen.class('Platformer', PhysicsTest)
 
+Platformer.code = [[
+local hero = physics2d.newMover(world, {x = 0, y = 340, radius = 16, height = 60, stepHeight = 22, snapDistance = 16, maxSlope = math.rad(50)})
+local velocity = hero:clip(vx, vy + 2400 * step)
+if jumpPressed and (hero.grounded or coyote > 0) then velocity.y = -900 + math.min(0, hero.groundVelocity.y) end
+hero:move(velocity.x * step, velocity.y * step)
+velocity = hero:clip(velocity.x, velocity.y)
+ledge:addBox(200, 16, {oneWay = {0, -1}})  -- Jumps pass up through it, and "hero:dropThrough()" drops down.]]
+
 Platformer.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
     {name = 'jump', type = 'button', bindings = {'key:space', 'key:k', 'button:south', 'virtual:jump'}},
@@ -28,6 +36,7 @@ local kFlag = {3000, 400}
 
 function Platformer:enter()
     self:frame{
+        code = Platformer.code,
         hint = 'Run with A and D, the arrows, the left stick or the touch stick, and jump with Space, K or the south button. Hold the jump to jump higher, and hold down while jumping to drop through a platform. R or the X button starts over.',
         controls = {
             ui.checkbox{id = 'assists', text = 'Jump before landing and after leaving a ledge', checked = true, onChange = function(event) self.assists = event.checked end},

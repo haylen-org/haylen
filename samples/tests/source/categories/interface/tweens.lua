@@ -9,6 +9,13 @@ local layout = require('categories.interface.layout')
 
 local Tweens = haylen.class('Tweens', Test)
 
+Tweens.code = [[
+local title = gui:transform('title')
+tween.fromTo(title, 0.6, {offset = m.vec2(0, -80), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {ease = 'backOut'})
+tween.to(gui:transform('pulse'), 0.6, {scale = m.vec2(1.06, 1.06)}, {repeatCount = -1, loopMode = 'yoyo', ease = 'sineInOut'})
+tween.shake(gui:transform('target'), 0.5, 14, {field = 'offset', vibrato = 16})
+tween.to(gui:transform('target'), 0.4, {tint = '#FF80D8FF'})  -- The layout around it never moves.]]
+
 Tweens.tints = {'#FFFFFFFF', '#FFFF8A80', '#FF80D8FF', '#FFFFE57F'}
 Tweens.icons = {'sword', 'shield', 'potion', 'gem', 'coin'}
 
@@ -21,6 +28,7 @@ end
 function Tweens:enter()
     self:frame{
         hint = 'Each button plays a tween on a transform. Transforms only change how a node looks and where it takes input, so the layout around it never moves.',
+        code = Tweens.code,
         focus = 'replay',
         content = {self:columns()},
     }

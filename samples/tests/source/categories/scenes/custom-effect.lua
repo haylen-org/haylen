@@ -11,6 +11,14 @@ local Test = require('harness.test')
 
 local CustomEffect = haylen.class('CustomEffect', SceneTest)
 
+CustomEffect.code = [[
+local blinds = {switchProgress = 0, exitProgress = 1, render = function(self, progress, outgoing, incoming)
+    graphics2d.beginScreen()
+    local area = graphics2d.canvasBounds()
+    graphics2d.draw(outgoing, area.x, area.y, {pivotX = 0, pivotY = 0, width = area.width, height = area.height})
+end}  -- Draws the incoming image over it in bands that open with the progress.
+scene.push(card, {effect = blinds, duration = 1.1, ease = 'cubicInOut'})]]
+
 -- Blinds: the incoming scene opens in horizontal bands, from the top band to the bottom one.
 CustomEffect.blinds = {
     switchProgress = 0,
@@ -56,6 +64,7 @@ end
 function CustomEffect:enter()
     self:frame{
         hint = 'Push a card with either effect. Both show the two scenes during the whole transition, so they switch at 0 and exit at 1.',
+        code = CustomEffect.code,
         controls = {
             ui.button{id = 'blinds', text = 'Push with blinds', onClick = function() self:push('blinds') end},
             ui.button{id = 'curtain', text = 'Push with the curtain', onClick = function() self:push('curtain') end},

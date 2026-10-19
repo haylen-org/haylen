@@ -11,6 +11,13 @@ local Test = require('harness.test')
 
 local Stress = haylen.class('Stress', AudioTest)
 
+Stress.code = [[
+for _ = 1, 160 do  -- Past 128 voices, a new voice stops the oldest one that is not music.
+    audio.play(chop, {bus = 'sfx', volume = 0.12, pitchVariation = 0.2, pan = math.random() * 2 - 1})
+end
+print(audio.voiceCount(), audio.music() ~= nil)
+audio.stopAll(0.2)]]
+
 local kLimit = 128
 local kBuses = {'sfx', 'ui', 'ambience'}
 local kShort = {'audio/effects/chop.ogg', 'audio/effects/hit-1.ogg', 'audio/effects/footstep-1.ogg', 'audio/ui/click.ogg', 'audio/effects/wood-pickup.ogg'}
@@ -22,6 +29,7 @@ function Stress:enter()
     audio.playMusic(sounds.track(sounds.tracks[1].path), {fade = 1, volume = 0.4})
     self:frame({
         hint = 'Start a burst or a rain of voices and watch the count stop at the limit while the music plays on.',
+        code = Stress.code,
         focus = 'burst32',
         controls = {
             ui.row{wrap = true, gap = 12,

@@ -13,6 +13,13 @@ local picture = require('categories.algorithms.picture')
 
 local Influence = haylen.class('Influence', AlgorithmTest)
 
+Influence.code = [[
+local blue = ai.newInfluenceMap({columns = 64, rows = 34, cellSize = 23, x = -736, y = -391})
+blue:stamp(unit.x, unit.y, 1, 200, 'linear')  -- Every unit stamps its strength.
+blue:propagate(0.35, 0.5)  -- Spreads it with decay.
+balance:add(blue)  balance:add(red, -1)
+local x, y = red:findLowest(unit.x, unit.y, 150)  -- The safest cell nearby.]]
+
 local kColumns, kRows, kCell = 64, 34, 23
 local kOrigin = {-kColumns * kCell / 2, -kRows * kCell / 2}
 local kSpeed = 70
@@ -21,6 +28,7 @@ local kTeams = {blue = {color = '#FF42A5F5', sign = 1}, red = {color = '#FFEF535
 function Influence:enter()
     self:frame{
         hint = 'Tap or click to drop a unit of the selected army. Blue areas belong to the blue army and red ones to the red army, and units retreat where the enemy is weakest. R or the X button raises new armies.',
+        code = Influence.code,
         controls = {
             ui.radioGroup{id = 'team', horizontal = true, items = {{id = 'blue', text = 'Blue'}, {id = 'red', text = 'Red'}}, selected = 'blue', onChange = function(event) self.team = event.value end},
             ui.label{text = 'Spread decay', font = 'caption', color = 'textMuted'},

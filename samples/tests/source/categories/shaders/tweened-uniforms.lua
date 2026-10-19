@@ -9,6 +9,13 @@ local ShaderTest = require('categories.shaders.shader-test')
 
 local TweenedUniforms = haylen.class('TweenedUniforms', ShaderTest)
 
+TweenedUniforms.code = [[
+local values = {dissolve = 0, glow = m.color('#FFFF4040')}
+tween.to(values, 1.6, {dissolve = 1}, {ease = 'sineInOut', loopMode = 'yoyo', repeatCount = -1, owner = self})
+tween.to(values, 3, {glow = '#FF4080FF'}, {colorSpace = 'hsv', loopMode = 'yoyo', repeatCount = -1, owner = self})
+dissolve:set('amount', values.dissolve)  -- Every frame, before the draw.
+outline:set('outline_color', values.glow)]]
+
 TweenedUniforms.shown = {
     {'Yoyo dissolve', 'planet', 'dissolve'},
     {'Outline color in HSV', 'hero', 'outline'},
@@ -45,6 +52,7 @@ function TweenedUniforms:enter()
         :join(tween.to(values, 0.5, {flash = 0}))
         :append(0.6)
     self:frame{
+        code = TweenedUniforms.code,
         hint = 'Each value on screen comes from a tween. Replay the timeline to watch the hero dissolve, flash and come back.',
         controls = {ui.button{id = 'replay', text = 'Replay the timeline', onClick = function()
             self.timeline:restart()

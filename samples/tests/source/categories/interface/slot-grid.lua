@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local SlotGrid = haylen.class('SlotGrid', Test)
 
+SlotGrid.code = [[
+ui.slotGrid{id = 'bag', columns = 4, slots = {{id = 'bag-1', image = 'interface/themes/fantasy/icons/potion.png', count = 3}, {id = 'bag-2'}},
+    onDrop = function(event) move(event.source, event.sourceItem, event.id, event.item) end}  -- The grid only reports the move.
+gui:set('bag', {slots = slots})  -- The app sets the new slots after the drop.
+local hotbar = ui.mount(ui.slotGrid{id = 'hotbar', anchor = 'bottom', columns = 6, slotSize = 88, slots = slots, onDrop = onDrop}, {owner = self})
+ui.list{id = 'chest', draggable = true, items = items, onDrop = onDrop}]]
+
 SlotGrid.bagSize = 12
 SlotGrid.hotbarSize = 6
 
@@ -83,6 +90,7 @@ function SlotGrid:enter()
     end
     self:frame{
         hint = 'Drag items between slots, the hotbar and the chest. With keys, a gamepad or a remote, Enter or the south button picks up and drops, and Escape puts back.',
+        code = SlotGrid.code,
         focus = 'bag',
         content = {layout.columns{
             justify = 'center',

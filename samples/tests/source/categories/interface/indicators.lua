@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local Indicators = haylen.class('Indicators', Test)
 
+Indicators.code = [[
+ui.badge{text = 'New', tone = 'success', solid = true}
+ui.progress{id = 'health', value = 0.72, tone = 'success', text = 'Health'}
+ui.circularProgress{id = 'cooldown', variant = 'cooldown', image = 'interface/icons/sword.png', size = 96}
+gui:set('cooldown', {value = left / 3, text = math.ceil(left)})  -- Shades the icon as the seconds pass.
+ui.avatar{name = 'Ana Souza'}  ui.image{image = 'interface/images/landscape.png', fit = 'cover'}]]
+
 Indicators.tones = {'neutral', 'accent', 'success', 'warning', 'danger', 'information'}
 Indicators.cooldowns = {sword = 3, potion = 5, gem = 8}
 
@@ -27,6 +34,7 @@ end
 function Indicators:enter()
     self:frame{
         hint = 'The bars and rings fill on their own. Press Use on an ability to start its cooldown, which shades the icon and counts the seconds down.',
+        code = Indicators.code,
         focus = 'use-sword',
         content = {self:columns()},
     }

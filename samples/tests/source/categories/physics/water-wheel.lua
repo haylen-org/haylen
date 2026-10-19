@@ -13,6 +13,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local WaterWheel = haylen.class('WaterWheel', PhysicsTest)
 
+WaterWheel.code = [[
+local water = physics2d.newFluid(world, {radius = 4, smoothingRadius = 16, maxParticles = 2600, viscosity = 0.2})
+water:fill({-705, -250, 370, 125})  -- The reservoir behind the dam.
+world:createJoint('revolute', axle, wheel, {ax = 110, ay = 120, enableMotor = true, motorSpeed = 0, maxMotorTorque = 3000})  -- Friction in the bearing.
+gate:moveTo(-320, gate.y - 400 * step, 0)  -- Slides the dam open.
+water:positions(buffer)  water:remove(index)  water:spawn(x, y)  -- The pump.]]
+
 local kRadius = 4
 local kMaxParticles = 2600
 local kWheel = {110, 120}
@@ -23,6 +30,7 @@ local kPumpEvery = 2
 
 function WaterWheel:enter()
     self:frame{
+        code = WaterWheel.code,
         hint = 'Open the dam to let the water pour down the chute onto the wheel, whose bearing has some friction. The pump carries the water from the basin back into the reservoir while the dam is open. Drag the wheel to turn it by hand. R or the X button refills.',
         controls = {
             ui.button{id = 'dam', text = 'Open the dam', onClick = function() self:setDam(not self.damOpen) end},

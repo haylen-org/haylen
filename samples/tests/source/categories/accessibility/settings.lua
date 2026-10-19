@@ -9,6 +9,12 @@ local Test = require('harness.test')
 
 local Settings = haylen.class('Settings', Test)
 
+Settings.code = [[
+local settings = accessibility.settings()
+print(settings.textScale, settings.reducedMotion, settings.highContrast, settings.reducedTransparency, settings.screenReader)
+events.on('accessibilitySettingsChanged', function(settings) print(settings.textScale) end, {owner = self})
+tween.to(dot, 1.5, {x = 1}, {ease = 'sineInOut', owner = self, reducedMotion = 'skip'})  -- Jumps to the end under reduced motion.]]
+
 local function describe(settings)
     return string.format('Text scale %.2f\nReduced motion %s\nHigh contrast %s\nReduced transparency %s\nScreen reader %s', settings.textScale, tostring(settings.reducedMotion), tostring(settings.highContrast), tostring(settings.reducedTransparency), tostring(settings.screenReader))
 end
@@ -23,6 +29,7 @@ end
 function Settings:enter()
     self:frame{
         hint = 'Change the text size, the motion, the contrast or the transparency in the accessibility settings of the system while the test shows.',
+        code = Settings.code,
         controls = {
             ui.sectionTitle{text = 'Settings'},
             ui.label{id = 'settings', text = describe(accessibility.settings()), font = 'monospace'},

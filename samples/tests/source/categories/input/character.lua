@@ -10,6 +10,13 @@ local Test = require('harness.test')
 
 local Character = haylen.class('Character', Test)
 
+Character.code = [[
+local mx = input.vector('move')  -- Keys, sticks and the touch stick at once.
+if input.pressed('jump') then hero.buffer = 0.12 end
+if input.released('jump') and hero.vy < 0 then hero.vy = hero.vy * 0.45 end  -- A short press jumps lower.
+if input.pressed('dash') and hero.cooldown <= 0 then hero.dash = 0.18 end
+local prompt = prompts[input.lastDevice()]  -- The value is `keyboardMouse`, `gamepad` or `touch`.]]
+
 local kWidth, kHeight = 48, 64
 local kRun, kAcceleration = 520, 4200
 local kGravity, kJump, kCut = 2600, 1080, 0.45
@@ -25,6 +32,7 @@ function Character:enter()
     self.trail = collections.newRingBuffer(12)
     self.coins = 0
     self:frame({
+        code = Character.code,
         hint = 'Run, jump and dash with any device and collect the coins.',
         play = true,
         controls = {
@@ -35,8 +43,6 @@ function Character:enter()
             end}},
             ui.button{id = 'respawn', text = 'Put the hero back', onClick = function() self:respawn() end},
             ui.label{text = 'Holding jump jumps higher, a jump pressed just before landing still counts, and a jump just after running off a ledge too.', color = 'textMuted', font = 'caption'},
-            ui.sectionTitle{text = 'All it reads'},
-            ui.label{font = 'monospace', text = "local x = input.vector('move')\ninput.pressed('jump')\ninput.released('jump')\ninput.pressed('dash')\ninput.lastDevice()"},
         },
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},

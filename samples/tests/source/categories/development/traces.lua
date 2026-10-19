@@ -11,17 +11,25 @@ local Test = require('harness.test')
 
 local Traces = haylen.class('Traces', Test)
 
+Traces.code = [[
+debugging.startTrace({frames = 60})
+scene.spawn(self, function()
+    while debugging.tracing() do async.sleep(50):await() end
+    local trace = debugging.stopTraceAsync('traces/level.json'):await()  -- Written on the I/O pool.
+    print(trace.path, trace.spans, trace.dropped, debugging.frame().gpuMilliseconds)
+end)]]
+
 Traces.path = 'traces/test-project.json'
 
 function Traces:enter()
     self.lines = {}
     self:frame{
         hint = 'Record a trace of 60 frames while workers decode messages, then open the file in the profiler of a browser.',
+        code = Traces.code,
         content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'record', text = 'Record 60 frames', align = 'stretch', variant = 'primary', onClick = function() self:record() end},
                 ui.label{id = 'gpu', text = 'GPU time of a frame: not measured yet.'},
-                ui.label{font = 'monospace', text = "debug.startTrace({frames = 60})\ndebug.stopTraceAsync(path)\ndebug.frame().gpuMilliseconds"},
             },
             ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
         }},

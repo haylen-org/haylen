@@ -8,6 +8,14 @@ local Test = require('harness.test')
 
 local Commands = haylen.class('Commands', Test)
 
+Commands.code = [[
+local buffer = input.newCommandBuffer({buttons = {'defend', 'up', 'down', 'left', 'right', 'jump', 'attack'}, lifetime = 10, directions = {back = 'left', forward = 'right'}, commands = {
+    {name = 'run', steps = {'forward', 'forward'}, maxTicks = 9, priority = 1},
+    {name = 'forwardSpecial', steps = {'defend', 'forward', 'attack'}, priority = 3, lifetime = false},
+}})
+buffer:update(input.actions())  -- Once in every fixed step.
+local typed = buffer:peek()]]
+
 local kButtons = {'defend', 'up', 'down', 'left', 'right', 'jump', 'attack'}
 local kActions = {actions = {
     {name = 'up', type = 'button', bindings = {'key:w', 'key:up', 'button:dpadUp', 'axis:leftY-', 'virtual:up'}},
@@ -40,6 +48,7 @@ function Commands:enter()
     self.history = {}
     self.shown, self.age = nil, 0
     self:frame({
+        code = Commands.code,
         hint = 'Type commands with WASD or the arrows, J, K and L, a gamepad with the d-pad, west, south and north, or the touch buttons. Double tap forward to run, press jump and attack together, or press defend, a direction and attack or jump for the specials.',
         play = true,
         controls = {
@@ -55,8 +64,6 @@ function Commands:enter()
                     self.buffer:consume(typed)
                 end
             end},
-            ui.sectionTitle{text = 'Reading commands'},
-            ui.label{font = 'monospace', text = "buffer:update(input.actions())\nbuffer:peek()\nbuffer:consume(name)"},
         },
         overlay = {
             ui.row{anchor = 'bottomRight', margin = {0, 40, 110, 0}, gap = 16,

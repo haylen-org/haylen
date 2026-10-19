@@ -11,6 +11,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Terrain = haylen.class('Terrain', PhysicsTest)
 
+Terrain.code = [[
+local terrain = physics2d.newTerrain(world, {columns = 321, rows = 141, cellSize = 5, x = -800, y = -300, chunkSize = 32})
+terrain.samples = function(column, row) return row * 5 > 180 + noise:fractal(column / 70, 0.3, 4) * 140 and 1 or 0 end
+terrain:explode(x, y, 60, {impulse = 900})  -- Carves a crater and pushes the crates.
+terrain:carve(x, y, 36)  terrain:fill(x, y, 36)
+local rebuilt = terrain:update()  -- Only the chunks that changed.
+for _, outline in ipairs(terrain:outlines()) do graphics2d.drawPolygon(outline, '#FF6D4C41') end]]
+
 local kCellSize = 5
 local kColumns, kRows = 321, 141
 local kOrigin = {x = -800, y = -300}
@@ -20,6 +28,7 @@ local kSky = '#FF1A2029'
 
 function Terrain:enter()
     self:frame{
+        code = Terrain.code,
         hint = 'Tap, click or hold on the ground with the selected tool. Bombs also push the crates away. R or the X button grows new hills.',
         controls = {
             ui.radioGroup{id = 'tool', items = {{id = 'bomb', text = 'Bomb'}, {id = 'dig', text = 'Dig'}, {id = 'fill', text = 'Fill'}}, selected = 'bomb', onChange = function(event) self.tool = event.value end},

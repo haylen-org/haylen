@@ -12,12 +12,19 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local BreakingJoints = haylen.class('BreakingJoints', PhysicsTest)
 
+BreakingJoints.code = [[
+local weight = crate.mass * 980  -- The weight of one crate.
+world:createJoint('weld', wall, shelf, {ax = -740, ay = -150, breakForce = weight * 12, breakTorque = weight * 480})
+world:createJoint('revolute', plank, nextPlank, {ax = x, ay = 110, breakForce = weight * 12})
+world.onJointBreak = function(joint, info) spark(info.bodyB, math.sqrt(info.forceX ^ 2 + info.forceY ^ 2)) end]]
+
 local kSparkLife = 0.6
 local kPlanks = 11
 local kPitch = 64
 
 function BreakingJoints:enter()
     self:frame{
+        code = BreakingJoints.code,
         hint = 'Drop weights on the shelves and the bridge, or drag the lamps and pull. Each joint holds up to its break force in weights of its load. R or the X button rebuilds everything.',
         controls = {
             ui.button{id = 'drop', text = 'Drop a weight', onClick = function() self:drop() end},

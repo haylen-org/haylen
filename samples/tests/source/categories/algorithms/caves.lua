@@ -12,12 +12,18 @@ local picture = require('categories.algorithms.picture')
 
 local Caves = haylen.class('Caves', AlgorithmTest)
 
+Caves.code = [[
+local cave = procedural2d.cellularAutomatonAsync({width = 128, height = 68, fillChance = 0.45, steps = 5, seed = 1}):await()
+local tunnels = procedural2d.drunkardWalkAsync({width = 128, height = 68, coverage = 0.45, walkers = 5, seed = 1}):await()
+local labels, caves = spatial2d.components(cave, {background = 1})  -- Walls are 1 and form no cave.]]
+
 local kColumns, kRows, kCell = 128, 68, 11
 local kRegenerateDelay = 0.2
 
 function Caves:enter()
     self:frame{
         hint = 'Every change grows a new map on a worker thread while this one stays on screen. The colors tell the caves that do not connect apart. R or the X button takes a new seed.',
+        code = Caves.code,
         controls = {
             ui.radioGroup{id = 'method', items = {{id = 'automaton', text = 'Cellular automaton'}, {id = 'walk', text = 'Drunkard walk'}}, selected = 'automaton', onChange = function(event) self:change('method', event.value) end},
             ui.label{text = 'Wall chance, or coverage of the walk', font = 'caption', color = 'textMuted'},

@@ -9,6 +9,12 @@ local fonts = require('categories.text.fonts')
 
 local Sizes = haylen.class('Sizes', TextTest)
 
+Sizes.code = [[
+local serif = assets.font('fonts/crimson-text-regular.ttf')  -- One distance field atlas serves every size.
+graphics2d.drawText(serif, 'Black sphinx', 56, y, {size = 12})
+graphics2d.drawText(serif, 'Aa', 465, 500, {size = 320, anchor = {0.5, 0}})
+y = y + serif:lineHeight(12) + 6]]
+
 Sizes.sizes = {12, 16, 20, 24, 32, 48, 64, 96}
 Sizes.line = 'Black sphinx'
 Sizes.word = 'Aa'
@@ -23,6 +29,7 @@ end
 
 function Sizes:enter()
     self:frame{
+        code = Sizes.code,
         hint = 'Drag the zoom slider, or focus it and press left and right. With pulse on, the word breathes between 8 and 320 units, and no size needs an atlas of its own.',
         controls = {
             ui.formField{label = 'Zoom', ui.slider{id = 'zoom', min = 8, max = 320, value = self.zoom, step = 1, showValue = true, decimals = 0, onChange = function(event)

@@ -9,6 +9,12 @@ local MapTest = require('categories.tiled.map-test')
 
 local Automapping = haylen.class('Automapping', MapTest)
 
+Automapping.code = [[
+local rules = assets.load('tiled/rules/rules.txt', 'tiledRules', {filter = 'linear'})
+local map = tiled.newMapRenderer(assets.load('tiled/maps/garden.tmj', nil, {filter = 'linear'}))
+local matches = map:automap(rules, {seed = 7})  -- The same seed gives the same garden.
+map:draw(camera)]]
+
 Automapping.mapPath = 'tiled/maps/garden.tmj'
 Automapping.rulesPath = 'tiled/rules/rules.txt'
 
@@ -19,6 +25,7 @@ function Automapping:enter()
     self:automap()
     self:frame{
         hint = 'The rules turn grass beside water into sand, scatter bushes, rocks and flowers over open grass and put a slime on the path now and then. R or the X button automaps again with a new seed.',
+        code = Automapping.code,
         controls = {
             ui.button{id = 'again', text = 'Automap with a new seed', onClick = function() self:next() end},
             ui.toggle{id = 'plain', text = 'Show the plain map', onChange = function(event) self.plain = event.checked end},

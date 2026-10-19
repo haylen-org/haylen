@@ -10,6 +10,14 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Utility = haylen.class('Utility', AlgorithmTest)
 
+Utility.code = [[
+local brain = ai.newUtilitySelector({
+    {name = 'eat', considerations = {{input = function(villager) return villager.hunger end, curve = {shape = 'logistic', slope = 10, shift = 0.6}}}},
+    {name = 'work', weight = 0.7, considerations = {{input = function(villager) return villager.tiredness end, curve = {slope = -1, offset = 1}}}},
+})
+local task = brain:choose(villager, random, 0.85)  -- A Random picks among the options within 85 percent of the best.
+local hunger = brain:score('eat', villager)]]
+
 local kSpeed = 170
 local kPlaces = {
     eat = {x = -520, y = -250, color = '#55FFB74D', label = 'Tavern'},
@@ -39,6 +47,7 @@ end
 function Utility:enter()
     self:frame{
         hint = 'Tap or click a villager to see its scores. Villagers walk to the place of their best option and choose again when the need is met. R or the X button makes everyone bored.',
+        code = Utility.code,
         controls = {
             ui.button{id = 'hungry', text = 'Make everyone hungry', onClick = function() self:everyone('hunger') end},
             ui.button{id = 'bored', text = 'Make everyone bored', onClick = function() self:everyone('boredom') end},

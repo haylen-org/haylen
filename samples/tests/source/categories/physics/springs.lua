@@ -12,6 +12,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Springs = haylen.class('Springs', PhysicsTest)
 
+Springs.code = [[
+trampoline:addBox(280, 14, {restitution = 1, friction = 0.4})  -- Keeps the speed of what lands on it.
+local spring = world:createJoint('prismatic', base, platform, {ax = -150, ay = 250, axisX = 0, axisY = 1, enableSpring = true, hertz = 2.5, dampingRatio = 0.1, enableLimit = true, lower = -40, upper = 100})
+pad:addBox(110, 30, {offsetY = -22, sensor = true})
+world.onSensorBegin = function(sensor, visitor) visitor.velocity = {-420, -1150} end  -- A jump pad.
+spring.hertz = 4  -- Stiffens the spring while it runs.]]
+
 local kSpawnInterval = 0.7
 local kMaxBodies = 20
 local kFlashLife = 0.3
@@ -20,6 +27,7 @@ local kPads = {{430, -420, -1150}, {640, -250, -1250}}
 
 function Springs:enter()
     self:frame{
+        code = Springs.code,
         hint = 'Crates and balls rain on a trampoline, two spring platforms and two jump pads. Drag them to throw them again. R or the X button clears them.',
         controls = {
             ui.toggle{id = 'rain', text = 'Drop bodies', checked = true, onChange = function(event) self.raining = event.checked end},

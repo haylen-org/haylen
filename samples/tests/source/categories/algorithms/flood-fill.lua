@@ -13,12 +13,19 @@ local picture = require('categories.algorithms.picture')
 
 local FloodFill = haylen.class('FloodFill', AlgorithmTest)
 
+FloodFill.code = [[
+local filled = spatial2d.floodFill(map, 10, 6, {diagonal = false, value = 2})  -- The paint bucket.
+local labels, count = spatial2d.components(map, {background = 0})
+local sets = spatial2d.newUnionFind(count)
+sets:unite(labels:get(3, 4), labels:get(40, 20))  -- A bridge joins two islands.]]
+
 local kColumns, kRows, kCell = 64, 34, 23
 local kColors = {[0] = '#FF1E3A5F', '#FF7CB342', '#FFFFB74D', '#FFE57373', '#FFBA68C8', '#FF4DD0E1'}
 
 function FloodFill:enter()
     self:frame{
         hint = 'Tap or click with the selected tool. The bucket fills every connected cell of the same color, the regions view numbers each island, and joining islands unites their sets. R or the X button makes new islands.',
+        code = FloodFill.code,
         controls = {
             ui.radioGroup{id = 'tool', items = {{id = 'bucket', text = 'Paint bucket'}, {id = 'regions', text = 'Show the regions'}, {id = 'join', text = 'Join two islands'}}, selected = 'bucket', onChange = function(event) self:setTool(event.value) end},
             ui.radioGroup{id = 'color', horizontal = true, items = {{id = '2', text = 'Sand'}, {id = '3', text = 'Clay'}, {id = '4', text = 'Rose'}}, selected = '2', onChange = function(event) self.color = tonumber(event.value) end},

@@ -7,6 +7,14 @@ local Test = require('harness.test')
 
 local Console = haylen.class('Console', Test)
 
+Console.code = [[
+debugging.addCommand('gold', function(amount)
+    player.gold = player.gold + amount
+    return 'Gold ' .. player.gold
+end, {help = 'Adds gold to the player.', args = {'integer'}, owner = self})
+local ok, output = debugging.runCommand('gold 50')
+print(table.concat(debugging.completeCommand('go'), ', '))  debugging.setConsoleVisible(true)]]
+
 function Console:enter()
     self.lines = {}
     self.gold = 0
@@ -27,13 +35,13 @@ function Console:enter()
 
     self:frame{
         hint = 'Open the console with the grave accent key, four fingers or the button, and type "gold 50", "god true" or "help".',
+        code = Console.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.label{id = 'state', text = self:describe(), font = 'heading'},
                 ui.button{id = 'open', text = 'Open the console', align = 'stretch', variant = 'primary', onClick = function() self:open() end},
                 ui.button{id = 'run', text = 'Run "gold 10" from code', align = 'stretch', onClick = function() self:run('gold 10') end},
                 ui.button{id = 'wrong', text = 'Run "gold ten" from code', align = 'stretch', onClick = function() self:run('gold ten') end},
-                ui.label{font = 'monospace', text = "debug.addCommand(name, fn, options)\ndebug.runCommand(line)\ndebug.completeCommand(line)\ndebug.setConsoleVisible(true)"},
             },
             ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
         }},

@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Timing = haylen.class('Timing', ParticleTest)
 
+Timing.code = [[
+local flame = particles2d.newEmitter({texture = flameSoft, rate = 70, delay = 0.5, duration = 1.6})  -- Starts half a second after the smoke.
+local crackle = particles2d.newEmitter({texture = star, rate = 0, bursts = {{time = 0, count = {4, 10}, cycles = 12, interval = 0.07, probability = 0.6}}, duration = 1.6, loop = true})
+local pulse = particles2d.newEmitter({texture = droplet, rate = 0, bursts = {{time = 0, count = {18, 26}, cycles = 3, interval = 0.25}}, duration = 1.5, loop = true})
+flame:restart()  -- Arms the delay again.]]
+
 Timing.launch = {-600, 360}
 Timing.pad = {-720, 360, 240, 30}
 Timing.order = {layer = 1}
@@ -70,6 +76,7 @@ end
 function Timing:enter()
     self:frame{
         hint = 'A click, a tap, E, Enter, the south button or the button of the panel fires everything again. The launch on the left also fires again a moment after its last part ends, with the delays of the slider.',
+        code = Timing.code,
         cursor = true,
         controls = {
             ui.button{id = 'fire', text = 'Fire again', onClick = function()

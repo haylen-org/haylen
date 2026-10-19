@@ -9,12 +9,19 @@ local layout = require('categories.interface.layout')
 
 local UiScale = haylen.class('UiScale', Test)
 
+UiScale.code = [[
+ui.setScaleMode('physical')  -- A UI unit keeps three quarters of a point on every screen.
+ui.setScale(1.25)
+local factor, scale, points = ui.scale()
+local tall = gui:bounds('sample').height / scale * points  -- The height of the button in points.]]
+
 UiScale.modes = {{id = 'design', text = 'Design'}, {id = 'physical', text = 'Physical'}}
 
 function UiScale:enter()
     self.started = {mode = ui.scaleMode(), factor = ui.scale()}
     self:frame{
         hint = 'Pick the scale mode and the factor, then resize the window or run the test on a phone and a tablet. In the physical mode the sample button keeps the same size in points on every screen, and the frame of the test reflows into the room it has.',
+        code = UiScale.code,
         focus = 'mode',
         content = {ui.scroll{grow = 1, height = 0, layout.columns{
             ui.column{grow = 1, gap = 24,

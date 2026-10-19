@@ -20,6 +20,7 @@ function Output:enter()
     self.reduction, self.unlocks = 0, 0
     self:listen('audioUnlocked', function() self.unlocks = self.unlocks + 1 end)
     self:frame({
+        code = kCode,
         hint = 'Play thirty explosions at once with the limiter on and off, and listen for the crackle it removes.',
         controls = {
             ui.button{id = 'boom', text = 'Thirty explosions at once', variant = 'primary', onClick = function() self:explode() end},
@@ -30,7 +31,6 @@ function Output:enter()
                     self.limiter.threshold = event.value
                 end
             end}},
-            ui.label{text = kCode, font = 'monospace'},
         },
     })
 end

@@ -13,6 +13,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Stress = haylen.class('Stress', PhysicsTest)
 
+Stress.code = [[
+local world = physics2d.newWorld({subSteps = 4})
+local body = world:createBody({x = x, y = -420, rotation = angle})
+body:addBox(18, 18, {friction = 0.5})
+sprite.x, sprite.y, sprite.rotation = body.x, body.y, body.rotation  -- One sprite of a batch for each body.
+print(world.bodyCount, world:stats().stepMilliseconds)]]
+
 local kBox = 18
 local kBall = 10
 local kSpawnPerFrame = 40
@@ -35,6 +42,7 @@ end
 
 function Stress:enter()
     self:frame{
+        code = Stress.code,
         hint = 'Add bodies and watch the step time grow. Every body is drawn from one of two sprite batches. R or the X button clears the pile.',
         controls = {
             ui.button{id = 'boxes', text = 'Add 250 boxes', onClick = function() self:queue('box', 250) end},

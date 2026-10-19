@@ -6,6 +6,12 @@ local Test = require('harness.test')
 
 local SharedFocus = haylen.class('SharedFocus', Test)
 
+SharedFocus.code = [[
+local page = ui.mount(pageTree, {owner = self, sharedFocus = true})
+local bar = ui.mount(ui.panel{anchor = 'bottomRight', margin = 24, ui.button{id = 'play', text = 'Play'}}, {owner = self, layer = 1, sharedFocus = true})
+ui.panel{id = 'sheet', anchor = 'stretchBottom', height = 220, focusScope = true, onCancel = close}  -- It comes after the scroll, so it covers it.
+ui.scroll{grow = 1, height = 0, ui.column{maxWidth = 560, children = rows}}]]
+
 SharedFocus.tracks = {'Morning tide', 'Paper lanterns', 'Slow river', 'Copper sky'}
 
 function SharedFocus:enter()
@@ -13,6 +19,7 @@ function SharedFocus:enter()
     self.playing = false
     self:frame{
         hint = 'Press down from the form to reach the bar at the bottom right, a GUI of its own that shares the focus with this page. The sheet covers the scrolling form.',
+        code = SharedFocus.code,
         focus = 'name',
         content = {ui.scroll{grow = 1, height = 0, self:form()}},
         overlay = {self:sheet()},

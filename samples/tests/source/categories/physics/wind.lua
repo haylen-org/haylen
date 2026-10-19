@@ -12,6 +12,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Wind = haylen.class('Wind', PhysicsTest)
 
+Wind.code = [[
+local fan = physics2d.newForceField(world, {kind = 'directional', x = -210, y = 320, width = 1100, height = 140, direction = {1, 0}, strength = 14, acceleration = false})
+fan.strength = 14 * (1 + 0.9 * noise:perlin(time * 0.6, 7))  -- A gust.
+physics2d.newForceField(world, {kind = 'vortex', x = 450, y = -230, radius = 170, strength = 7, acceleration = false})
+leaf:addBox(34, 10, {density = 0.1})  -- The same force throws a leaf far and leaves a crate still.]]
+
 -- Each fan blows through a rectangle from its housing, given by the center, size and direction of the rectangle and the place of the housing.
 local kFans = {
     {x = -210, y = 320, width = 1100, height = 140, direction = {1, 0}, hub = {-772, 320}, group = 'floor'},
@@ -24,6 +30,7 @@ local kMaxLeaves = 40
 
 function Wind:enter()
     self:frame{
+        code = Wind.code,
         hint = 'Fans push every body with the same force: leaves fly, balloons drift, the cardboard box slides in the gusts and the crate never moves. Drag anything around. R or the X button rebuilds.',
         controls = {
             ui.checkbox{id = 'floor', text = 'Floor fans', checked = true, onChange = function(event) self:switch('floor', event.checked) end},

@@ -10,6 +10,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local WreckingBall = haylen.class('WreckingBall', PhysicsTest)
 
+WreckingBall.code = [[
+local boom = world:createJoint('revolute', mast, arm, {ax = -560, ay = -40, enableLimit = true, lower = 0, upper = 1.8, enableMotor = true, maxMotorTorque = 5e7})
+boom.motorSpeed = swing * 1.2
+physics2d.newRope(world, {from = {tipX, tipY}, to = {tipX, tipY + 320}, segments = 12, thickness = 10, density = 2, startBody = arm, endBody = ball, group = -1})
+ball:addCircle(45, {density = 12, group = -1})  -- Shares the group of the boom and the chain, so they never collide.]]
+
 WreckingBall.actions = {
     {name = 'swing', type = 'axis', positive = {'key:d', 'key:right', 'button:dpadRight', 'axis:leftX+', 'virtual:right'}, negative = {'key:a', 'key:left', 'button:dpadLeft', 'axis:leftX-', 'virtual:left'}},
 }
@@ -26,6 +32,7 @@ local kCrane = -1
 
 function WreckingBall:enter()
     self:frame{
+        code = WreckingBall.code,
         hint = 'Turn the boom with A and D, the arrows, the left stick or the touch buttons, or let it swing by itself. R or the X button builds the wall again.',
         controls = {
             ui.toggle{id = 'auto', text = 'Swing by itself', checked = true, onChange = function(event) self.auto = event.checked end},

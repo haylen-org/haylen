@@ -7,6 +7,13 @@ local layout = require('categories.interface.layout')
 
 local Choices = haylen.class('Choices', Test)
 
+Choices.code = [[
+ui.checkbox{text = 'Show hints', checked = true, onChange = function(event) hints = event.checked end}
+ui.toggle{text = 'Music', checked = true, onChange = function(event) music = event.checked end}
+ui.radioGroup{items = {{id = 'easy', text = 'Easy'}, {id = 'normal', text = 'Normal'}, {id = 'hard', text = 'Hard'}}, selected = 'normal',
+    onChange = function(event) difficulty = event.value end}
+ui.radioGroup{items = {{id = 'left', text = 'Left hand'}, {id = 'right', text = 'Right hand'}}, selected = 'right', horizontal = true}]]
+
 function Choices:init(entry)
     Choices.super.init(self, entry)
     self.values = {hints = true, camera = false, music = true, vibration = false, difficulty = 'normal', hand = 'right'}
@@ -16,6 +23,7 @@ function Choices:enter()
     local difficulties = {{id = 'easy', text = 'Easy'}, {id = 'normal', text = 'Normal'}, {id = 'hard', text = 'Hard'}, {id = 'nightmare', text = 'Nightmare', enabled = false}}
     self:frame{
         hint = 'Click or tap a choice, or focus it and press Enter, Space or the south button. In a radio group the arrows move between the options.',
+        code = Choices.code,
         focus = 'hints',
         content = {layout.columns{
             layout.section('Component "checkbox"', {grow = 1,

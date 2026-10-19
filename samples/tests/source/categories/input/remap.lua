@@ -9,6 +9,14 @@ local Test = require('harness.test')
 
 local Remap = haylen.class('Remap', Test)
 
+Remap.code = [[
+ui.keyCapture{value = 'key:space', sources = {'key', 'mouse'}, prompt = 'Press a key or button', onChange = function(event)
+    local definition = input.actionDefinition('jump')
+    definition.bindings = {event.value, 'button:south'}
+    input.defineAction(definition)
+end}
+preferences.set('controls', input.saveActions())]]
+
 local kGroups = {key = 'keyboard', mouse = 'keyboard', button = 'gamepad', axis = 'gamepad'}
 local kSources = {keyboard = {'key', 'mouse'}, gamepad = {'button', 'axis'}}
 local kSpeed = 420
@@ -42,7 +50,7 @@ function Remap:enter()
         ui.label{id = 'saved', text = self:savedText(), color = 'textMuted', grow = 1},
     }
     rows[#rows + 1] = ui.label{text = 'Press a field, then the key, mouse button or gamepad control to bind. Escape stops listening, and so does Start for a gamepad field. Each field replaces every binding of its device in that list, and the stick and touch bindings stay.', color = 'textMuted', font = 'caption'}
-    self:frame({hint = 'Rebind the controls, then click the stage or press Tab and move the hero with them.', focus = 'keyboard1', panelWidth = 860, controls = rows})
+    self:frame({code = Remap.code, hint = 'Rebind the controls, then click the stage or press Tab and move the hero with them.', focus = 'keyboard1', panelWidth = 860, controls = rows})
 end
 
 function Remap:savedText()

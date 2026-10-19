@@ -10,6 +10,11 @@ local Room = require('categories.lighting.room')
 
 local PointLights = haylen.class('PointLights', LightingTest)
 
+PointLights.code = [[
+local lamp = lighting2d.newLight({x = -560, y = -260, radius = 260, color = '#FF70C0FF', intensity = 1.2})
+graphics2d.beginWorld(camera, {ambientLight = '#FF141820'})
+graphics2d.drawLight(lamp)]]
+
 PointLights.colors = {'#FFFFB070', '#FF70C0FF', '#FFFF6AA0', '#FF90FF8A', '#FFFFE890', '#FFB890FF'}
 
 function PointLights:init(entry)
@@ -26,6 +31,7 @@ end
 function PointLights:enter()
     self:frame{
         hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. A click, a tap, E, Enter or the south button places a copy.',
+        code = PointLights.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Radius', ui.slider{id = 'radius', min = 60, max = 700, value = self.held.radius, showValue = true, decimals = 0, onChange = function(event)

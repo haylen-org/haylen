@@ -9,6 +9,13 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local SubEmitters = haylen.class('SubEmitters', ParticleTest)
 
+SubEmitters.code = [[
+local rain = particles2d.newEmitter({texture = streak, collision = {type = 'floor', y = 900, result = 'die'}, subEmitters = {{effect = splash, trigger = 'death', count = {3, 5}}}})
+local rockets = particles2d.newEmitter({texture = dot, tints = neon, subEmitters = {{effect = stars, trigger = 'death', count = {40, 60}, inheritColor = true}}})
+local debris = particles2d.newEmitter({texture = rock, collision = {type = 'floor', y = 60, bounce = 0.35}, subEmitters = {{effect = dust, trigger = 'collision', count = {1, 2}}}})
+local comets = particles2d.newEmitter({texture = dot, subEmitters = {{effect = sparkleDust, trigger = 'alive', rate = 60, inheritVelocity = 0.2}}})
+-- Each "effect" is an options table or a loaded effect, and may have sub-emitters of its own.]]
+
 SubEmitters.ground = 400
 SubEmitters.floor = {-1000, 400, 2000, 200}
 SubEmitters.order = {layer = 1}
@@ -51,6 +58,7 @@ end
 function SubEmitters:enter()
     self:frame{
         hint = 'The drops splash where they die on the ground, the rockets burst into stars that crackle, the debris raises dust at every hit and the comets leave dust behind them.',
+        code = SubEmitters.code,
         controls = {
             ui.toggle{id = 'inheritColor', text = 'Stars take the color of their rocket', checked = self.inheritColor, onChange = function(event)
                 self.inheritColor = event.checked

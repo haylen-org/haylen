@@ -12,6 +12,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Traps = haylen.class('Traps', PhysicsTest)
 
+Traps.code = [[
+blade:moveTo(-60, 380, blade.rotation + 6 * step)  -- A kinematic blade turned each fixed step.
+local piston = world:createJoint('prismatic', ground, crusher, {ax = 500, ay = -100, axisX = 0, axisY = 1, enableLimit = true, lower = 0, upper = 430, enableMotor = true, motorSpeed = 700, maxMotorForce = 4e4})
+piston.motorSpeed = -160  -- Lifts the crusher again.
+physics2d.newRagdoll(world, {x = 20, y = -330, height = 140, group = -1, stiffness = 0.3})
+boulder:addCircle(50, {density = 3, friction = 0.8})]]
+
 local kBlades = {{x = -60, y = 380, radius = 80, speed = 6}, {x = 180, y = 20, radius = 70, speed = -4}}
 local kCrusher = {x = 500, top = -100, depth = 430, down = 700, up = 160, slam = 1, cycle = 3}
 local kBoulderStart = {-730, -140}
@@ -30,6 +37,7 @@ local kBones = {
 
 function Traps:enter()
     self:frame{
+        code = Traps.code,
         hint = 'Drop ragdolls and crates into the traps and drag them around. The blades turn by kinematic moves, the crusher rides a prismatic motor and the boulder comes back to the top every few seconds. R or the X button clears everything.',
         controls = {
             ui.button{id = 'ragdoll', text = 'Drop a ragdoll', onClick = function() self:dropRagdoll() end},

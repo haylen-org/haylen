@@ -7,9 +7,17 @@ local layout = require('categories.interface.layout')
 
 local Buttons = haylen.class('Buttons', Test)
 
+Buttons.code = [[
+ui.button{text = 'Primary', variant = 'primary', onClick = function(event) log.info('Pressed.') end}
+ui.button{text = 'Forge', icon = 'interface/icons/hammer.png', iconPlacement = 'top', variant = 'toolbar'}
+ui.imageButton{image = 'interface/images/sign.png', hoverImage = 'interface/images/sign-hover.png', pressedImage = 'interface/images/sign-pressed.png', text = 'Start'}
+ui.chip{id = 'coast', text = 'Coast', removable = true, onRemove = function(event) event.gui:set('coast', {visible = false}) end}
+ui.menuButton{text = 'File', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}}, onSelect = function(event) log.info(event.item) end}]]
+
 function Buttons:enter()
     self:frame{
         hint = 'Click, tap or press Enter, Space or the south button on a focused button. The hammer toolbar button stays checked, and the status line names the last press.',
+        code = Buttons.code,
         focus = 'default',
         content = {self:columns()},
     }

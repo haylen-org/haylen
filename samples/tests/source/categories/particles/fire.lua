@@ -7,6 +7,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Fire = haylen.class('Fire', ParticleTest)
 
+Fire.code = [[
+local flames = particles2d.newEmitter({texture = dot, rate = 90, lifetime = {0.5, 0.9}, speed = {90, 170}, gravity = {0, -120}, startSize = {100, 140}, endSize = {14, 24}, colors = {'#FFFFF0B0', '#FFFFA030', '#C0FF4010', '#00801000'}, shape = 'circle', shapeSize = {24, 0}, blend = 'additive', layer = 2})
+local smoke = particles2d.newEmitter({texture = puff, rate = 14, gravity = {0, -30}, startSize = {40, 60}, endSize = {140, 180}, colors = {'#00303030', '#60404040', '#00202020'}, layer = 1})
+flames.x, flames.y = x, y  -- Live particles stay in the world, so the flames lean.
+flames:configure({rate = 90 * strength})]]
+
 Fire.rates = {smoke = 14, flames = 90, embers = 18}
 
 function Fire:init(entry)
@@ -23,6 +29,7 @@ end
 function Fire:enter()
     self:frame{
         hint = 'The fire follows the cursor: move it with the mouse, a finger, the arrows, WASD or a stick. The flames lean as it moves because particles stay in world space.',
+        code = Fire.code,
         cursor = true,
         controls = {ui.formField{label = 'Strength', ui.slider{id = 'strength', min = 0.2, max = 3, value = self.strength, showValue = true, onChange = function(event)
             self.strength = event.value

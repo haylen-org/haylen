@@ -11,11 +11,18 @@ local picture = require('categories.algorithms.picture')
 
 local Dungeon = haylen.class('Dungeon', AlgorithmTest)
 
+Dungeon.code = [[
+local dungeon = procedural2d.dungeonAsync({method = 'bsp', width = 96, height = 52, minimumRoomSize = 4, maximumRoomSize = 12, seed = 1}):await()
+local wall = dungeon.grid:get(10, 20) == 1  -- Floors are 0 and walls are 1.
+local room = dungeon.rooms[1]  -- A table of x, y, width and height.
+local link = dungeon.connections[1]  -- The positions of two rooms that a corridor joins.]]
+
 local kColumns, kRows, kCell = 96, 52, 15
 
 function Dungeon:enter()
     self:frame{
         hint = 'Pick a method and room sizes. The lines join the rooms the corridors connect, so every room reaches every other one. R or the X button takes a new seed.',
+        code = Dungeon.code,
         controls = {
             ui.radioGroup{id = 'method', items = {{id = 'bsp', text = 'Binary space partitioning'}, {id = 'placement', text = 'Random placement'}}, selected = 'bsp', onChange = function(event) self:change('method', event.value) end},
             ui.label{text = 'Largest room side', font = 'caption', color = 'textMuted'},

@@ -8,6 +8,12 @@ local Test = require('harness.test')
 
 local HotReload = haylen.class('HotReload', ShaderTest)
 
+HotReload.code = [[
+local material = graphics2d.newMaterial(assets.shader('shaders/live.shader'))
+material:set('time', haylen.elapsed())  -- The values stay when the shader reloads.
+graphics2d.draw(planet, 670, 190, {width = 300, height = 300, material = material})
+-- With `--dev`, saving `live.glsl` compiles and reloads `live.shader` in place.]]
+
 HotReload.steps = {
     '1. Run the test project on the desktop with "haylen run tests".',
     '2. Open "samples/tests/content/shaders/live.glsl" and change the colors or the stripe count.',
@@ -30,7 +36,7 @@ function HotReload:init(entry)
 end
 
 function HotReload:enter()
-    self:frame{hint = 'Keep this test open in a desktop run and edit "content/shaders/live.glsl": the stripes change as soon as the file is saved.'}
+    self:frame{code = HotReload.code, hint = 'Keep this test open in a desktop run and edit "content/shaders/live.glsl": the stripes change as soon as the file is saved.'}
 end
 
 function HotReload:update(dt)

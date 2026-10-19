@@ -11,12 +11,19 @@ local picture = require('categories.algorithms.picture')
 
 local Mazes = haylen.class('Mazes', AlgorithmTest)
 
+Mazes.code = [[
+local maze = procedural2d.mazeAsync({width = 47, height = 25, algorithm = 'prim', seed = 1}):await()
+local tiles = maze:toGrid()  -- Cell x, y sits on tile 2x + 1, 2y + 1.
+local deadEnd = maze:openings(3, 4) == procedural2d.north  -- It opens to the north alone.
+local path = grid:findPath(1, 1, 93, 49, {diagonal = false})  -- A grid walkable where the tiles are 0.]]
+
 local kWidth, kHeight = 47, 25
 local kColumns, kRows, kCell = kWidth * 2 + 1, kHeight * 2 + 1, 15
 
 function Mazes:enter()
     self:frame{
         hint = 'The backtracker makes long winding corridors, while Prim and Kruskal make many short dead ends. Exactly one path joins the two corners. R or the X button takes a new seed.',
+        code = Mazes.code,
         controls = {
             ui.radioGroup{id = 'algorithm', items = {{id = 'backtracker', text = 'Recursive backtracker'}, {id = 'prim', text = 'Prim'}, {id = 'kruskal', text = 'Kruskal'}}, selected = 'backtracker', onChange = function(event)
                 self.algorithm = event.value

@@ -8,6 +8,11 @@ local areas = require('categories.safe-area.areas')
 
 local DebugOverlay = haylen.class('DebugOverlay', Test)
 
+DebugOverlay.code = [[
+ui.setSafeAreaVisible(true)  -- Or `"debug": {"showSafeArea": true}` in `app.json`.
+events.on('windowSafeAreaChanged', function(safe) print(safe.x, safe.y, safe.width, safe.height) end, {owner = self})
+local visible, safe = viewport.visibleRect(), viewport.safeRect()]]
+
 function DebugOverlay:init(entry)
     DebugOverlay.super.init(self, entry)
     self.changes = 0
@@ -21,6 +26,7 @@ function DebugOverlay:enter()
     local simulation = viewport.safeAreaSimulation()
     self:frame{
         hint = 'The overlay is a debugging aid that "app.json" turns on at start with "debug.showSafeArea". Switch the device to watch the overlay and the event follow the new safe area.',
+        code = DebugOverlay.code,
         focus = 'overlay',
         content = {ui.row{ui.spacer{grow = 1}, ui.card{width = 900, gap = 16,
             ui.toggle{id = 'overlay', text = 'Show the safe area overlay', checked = true, onChange = function(event)

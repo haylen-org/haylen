@@ -8,11 +8,18 @@ local Test = require('harness.test')
 
 local Prefetch = haylen.class('Prefetch', Test)
 
+Prefetch.code = [[
+-- The file `app.json` holds `"content": {"delivery": [{"match": "delivery/prefetched/**", "mode": "prefetch"}]}`.
+print(content.isLocal('delivery/prefetched/track-1.json'))
+local done, err = content.prefetch(paths, function(progress) print(progress.receivedBytes, progress.totalBytes) end, {owner = self}):await()
+local track = assets.json('delivery/prefetched/track-1.json')  -- Loads at once, since it is on the device.]]
+
 Prefetch.paths = {'delivery/prefetched/track-1.json', 'delivery/prefetched/track-2.json', 'delivery/prefetched/track-3.json'}
 
 function Prefetch:enter()
     self:frame{
         stage = false,
+        code = Prefetch.code,
         content = {ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Tracks that a release prefetches'},
             ui.label{id = 'before', text = ''},
@@ -21,7 +28,6 @@ function Prefetch:enter()
             ui.button{id = 'again', text = 'Prefetch again', onClick = function()
                 self:prefetch()
             end},
-            ui.card{ui.label{text = "content.prefetch(paths, function(progress)\n    print(progress.receivedBytes, progress.totalBytes)\nend):await()", font = 'monospace'}},
         }},
         focus = 'again',
     }

@@ -11,6 +11,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Cannon = haylen.class('Cannon', PhysicsTest)
 
+Cannon.code = [[
+local shot = world:createBody({x = muzzleX, y = muzzleY, bullet = true})
+shot:addCircle(14, {density = 10, restitution = 0.1})
+shot.velocity = {dx * power, dy * power}
+carriage:applyImpulse(-dx * shot.mass * power, -dy * shot.mass * power, trunnionX, trunnionY)  -- The recoil.
+world:createJoint('distance', stake, carriage, {ax = -760, ay = 350, bx = -635, by = 336, enableSpring = true, hertz = 1.2, dampingRatio = 0.5})]]
+
 Cannon.actions = {
     {name = 'adjust', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:adjust'}},
     {name = 'fire', type = 'button', bindings = {'key:space', 'button:south', 'virtual:fire'}},
@@ -25,6 +32,7 @@ local kFlashLife = 0.15
 
 function Cannon:enter()
     self:frame{
+        code = Cannon.code,
         hint = 'Raise and lower the barrel with W and S, the arrows or the left stick, change the power with A and D, and hold Space or the south button to fire. R or the X button builds the tower again.',
         controls = {
             ui.label{text = 'Angle in degrees', font = 'caption', color = 'textMuted'},

@@ -9,6 +9,11 @@ local Room = require('categories.lighting.room')
 
 local Ambient = haylen.class('Ambient', LightingTest)
 
+Ambient.code = [[
+self.ambientLight = m.color('#FFFFFFFF')  -- White shows the room unchanged.
+tween.to(self, 0.8, {ambientLight = '#FF28325A'}, {ease = 'sineInOut', owner = self})  -- Eases into night.
+graphics2d.beginWorld(camera, {ambientLight = self.ambientLight})]]
+
 Ambient.presets = {
     {id = 'noon', text = 'Noon', color = '#FFFFFFFF'},
     {id = 'dusk', text = 'Dusk', color = '#FFD08A60'},
@@ -30,6 +35,7 @@ function Ambient:enter()
     end
     self:frame{
         hint = 'Pick an ambient color. The change eases over 0.8 seconds with a tween of the color.',
+        code = Ambient.code,
         controls = {ui.formField{label = 'Ambient light', ui.radioGroup{id = 'preset', items = items, selected = 'night', onChange = function(event)
             self:choose(event.value)
         end}}},

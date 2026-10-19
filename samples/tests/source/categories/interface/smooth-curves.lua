@@ -11,6 +11,13 @@ local layout = require('categories.interface.layout')
 
 local SmoothCurves = haylen.class('SmoothCurves', Test)
 
+SmoothCurves.code = [[
+graphics2d.drawCircle(76, 40, 26, '#FF4CAF50')
+graphics2d.drawArc(190, 40, 24, 8, math.pi * 0.5, math.pi * 1.9, '#FFE53935')
+graphics2d.drawShape({4, 96, 110, 52}, {radius = 12, color = '#90000000', softness = 14})  -- A soft shadow.
+graphics2d.drawShape({4, 90, 110, 52}, {radius = 12, color = '#FF2C3147', borderWidth = 2, borderColor = '#FF4C7DFF'})
+ui.setScaleMode('physical')  ui.setScale(2)  -- Every edge still fades over one pixel.]]
+
 SmoothCurves.scales = {{id = 'design', text = 'Design 1x'}, {id = 'double', text = 'Design 2x'}, {id = 'physical', text = 'Physical'}}
 SmoothCurves.settings = {design = {mode = 'design', factor = 1}, double = {mode = 'design', factor = 2}, physical = {mode = 'physical', factor = 1}}
 
@@ -52,6 +59,7 @@ function SmoothCurves:enter()
     end
     self:frame{
         hint = 'Pick a scale and compare the edges: every curve fades over about one pixel of the screen, the same at every scale, with no steps and no seams where shapes meet. The crops on the right magnify the top-left corner or the left side of each control.',
+        code = SmoothCurves.code,
         focus = 'scale',
         content = {
             ui.row{gap = 24,

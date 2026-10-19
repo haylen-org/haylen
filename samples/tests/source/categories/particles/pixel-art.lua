@@ -9,6 +9,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local PixelArt = haylen.class('PixelArt', ParticleTest)
 
+PixelArt.code = [[
+local atlas = assets.load('particles/library/textures/pixel.json', 'atlas', {filter = 'nearest'})
+local flame = particles2d.newEmitter({texture = atlas.texture, frames = {atlas:source('pixel-flame-1'), atlas:source('pixel-flame-2')}, frameMode = 'loopRandomStart', frameRate = 8, colors = {'#FFFFF8C0', '#FFFFC040', '#FFF06020', '#00402018'}})
+flame:configure({pixelSnap = 5, rotationStep = 1.5708, colorBlend = 'steps'})  -- On the grid of the art, by quarter turns, inside the palette.]]
+
 PixelArt.pixel = 5
 PixelArt.fire = {'#FFFFF8C0', '#FFFFC040', '#FFF06020', '#FF902828', '#00402018'}
 PixelArt.smoke = {'#00A8A8B8', '#C0A8A8B8', '#C0707080', '#00484858'}
@@ -68,6 +73,7 @@ end
 function PixelArt:enter()
     self:frame{
         hint = 'Every effect of the left half snaps to a grid of 5 units, the size of one pixel of its art, turns by quarter turns and holds the colors of its palette. A click, a tap, E, Enter, the south button or the button of the panel sets off both explosions.',
+        code = PixelArt.code,
         cursor = true,
         controls = {
             ui.button{id = 'explode', text = 'Set off the explosions', onClick = function()

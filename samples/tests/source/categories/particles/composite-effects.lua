@@ -9,6 +9,13 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local CompositeEffects = haylen.class('CompositeEffects', ParticleTest)
 
+CompositeEffects.code = [[
+local campfire = particles2d.newSystem(assets.load('particles/composites/campfire.particles'), {seed = 311})
+campfire.x, campfire.y = x, y
+campfire.scale, campfire.rotation = 1.5, 0.3  -- Every part scales and turns with the system.
+campfire:emitter('smoke').emitting = false  -- A part by its name.
+campfire:update(dt)  campfire:draw()  explosion:restart()]]
+
 CompositeEffects.spots = {{-560, -60}, {520, 120}, {-200, 220}, {300, -220}}
 CompositeEffects.interval = 2.2
 CompositeEffects.logs = {layer = 1}
@@ -50,6 +57,7 @@ end
 function CompositeEffects:enter()
     self:frame{
         hint = 'The campfire follows the cursor: move it with the mouse, a finger, the arrows, WASD or a stick. A click, a tap, E, Enter, the south button or the button of the panel sets off the explosion at the cursor, and it also goes off by itself.',
+        code = CompositeEffects.code,
         cursor = true,
         controls = {
             ui.button{id = 'explode', text = 'Set off the explosion', onClick = function()

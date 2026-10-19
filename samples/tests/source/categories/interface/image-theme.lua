@@ -9,6 +9,12 @@ local layout = require('categories.interface.layout')
 
 local ImageTheme = haylen.class('ImageTheme', Test)
 
+ImageTheme.code = [[
+ui.setTheme(ui.loadTheme('interface/themes/fantasy/theme.json', 'dark'))  -- It starts from "dark" and lists what it changes.
+-- The theme file cuts each surface out of one atlas, as in "button": {"image": "interface/themes/fantasy/atlas.png", "source": [324, 144, 360, 120], "slice": [44, 56, 40, 56], "scale": 0.6}.
+ui.setScale(1.25)
+ui.button{text = 'Shop', icon = 'interface/themes/fantasy/icons/coin.png'}  -- Drawn from the atlas.]]
+
 ImageTheme.themes = {{id = 'dark', text = 'Default'}, {id = 'fantasy', text = 'Fantasy'}}
 ImageTheme.scales = {{id = '0.75', text = '0.75x'}, {id = '1', text = '1x'}, {id = '1.25', text = '1.25x'}, {id = '1.5', text = '1.5x'}}
 ImageTheme.backgrounds = {dark = '#FF101418', fantasy = '#FF1A1D30'}
@@ -19,6 +25,7 @@ function ImageTheme:enter()
     ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')
     self:frame{
         hint = 'Pick the theme and the UI scale. Hold a button or a switch to see it pressed, walk the controls with the arrows to see the focus ring, and open the overlays with their buttons.',
+        code = ImageTheme.code,
         focus = 'theme',
         content = self:nodes(),
     }

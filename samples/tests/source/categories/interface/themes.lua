@@ -9,6 +9,12 @@ local layout = require('categories.interface.layout')
 
 local Themes = haylen.class('Themes', Test)
 
+Themes.code = [[
+ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')  -- Adds the theme "fantasy", which starts from "dark".
+ui.setTheme('fantasy')  -- Every GUI restyles at once.
+local height, body = ui.themeMetric('controlHeight'), ui.themeFont('body')
+local painted = ui.themeSurface('button') ~= nil]]
+
 Themes.names = {'dark', 'light', 'fantasy'}
 Themes.backgrounds = {dark = '#FF101418', light = '#FFDDE2EC', fantasy = '#FF262A45'}
 
@@ -16,6 +22,7 @@ function Themes:enter()
     ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')
     self:frame{
         hint = 'Switch the theme with the segmented control, or with left and right while it has the focus. Every GUI restyles at once, the frame of the test included, and leaving the test goes back to the dark theme.',
+        code = Themes.code,
         focus = 'theme',
         content = self:nodes(),
     }

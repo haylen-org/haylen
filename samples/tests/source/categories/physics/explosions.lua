@@ -11,11 +11,16 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Explosions = haylen.class('Explosions', PhysicsTest)
 
+Explosions.code = [[
+local hits = physics2d.explode(world, {x = x, y = y, radius = 280, impulse = 900, falloff = 'quadratic', occlusion = true})
+for _, hit in ipairs(hits) do arrow(hit.x, hit.y, hit.impulseX, hit.impulseY) end  -- The impulse each body took.]]
+
 local kRadius = 280
 local kBlastLife = 0.5
 
 function Explosions:enter()
     self:frame{
+        code = Explosions.code,
         hint = 'Tap or click anywhere to set off a blast. The arrows show the impulse each body took. R or the X button rebuilds the tower.',
         controls = {
             ui.label{text = 'Falloff', font = 'caption', color = 'textMuted'},

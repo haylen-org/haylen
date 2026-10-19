@@ -21,6 +21,7 @@ The menu lists the categories by section with their prefixes and the number of t
 - Mouse, touch, keyboard, gamepads and TV remotes reach every screen. A test goes back to its list with Escape, the east gamepad button, the Menu button of a TV remote, the back button of Android or the Back button in the safe area, and the list goes back to the menu the same way.
 - A test that reads the keyboard, gamepads or remotes as game input gives its play area the first focus, so the arrows, WASD, the d-pad, the sticks, Space and Enter move the game while the controls of the test stay out of the way. Tab walks the controls and the play area, and the View button of gamepads, the pause key and the Play/Pause button of TV remotes move the focus between the play area and the controls. A click or a tap on a control gives it the focus, and one on the play area gives the focus back to the game.
 - A test that a platform cannot run opens a page with the exact reason instead of the test, and the list marks it.
+- Every test shows, in a card under its play area or its content, a few lines of the Lua that does what it shows, with the real calls and options of the API.
 - An error in a test shows the error screen of the engine. `Back to the app` on it, or Escape, the east button and the back button, returns to the list of the test without restarting the project, and the log keeps the error with the code of the test.
 
 ## Layout

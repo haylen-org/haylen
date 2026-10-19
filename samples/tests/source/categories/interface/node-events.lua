@@ -8,6 +8,14 @@ local layout = require('categories.interface.layout')
 
 local NodeEvents = haylen.class('NodeEvents', Test)
 
+NodeEvents.code = [[
+local note = function(event) log.info(event.name) end  -- Such as "press", "drag", "hide" or "unmount".
+ui.card{id = 'box', width = 320, height = 200, onMount = note, onUnmount = note, onShow = note, onHide = note,
+    onHover = note, onPress = note, onRelease = note, onScroll = note, onDrag = function(event)
+        local shape = event.gui:transform('box')
+        shape.offset = shape.offset + m.vec2(event.deltaX, event.deltaY)
+    end}]]
+
 NodeEvents.logSize = 12
 
 function NodeEvents:init(entry)
@@ -19,6 +27,7 @@ end
 function NodeEvents:enter()
     self:frame{
         hint = 'Hover, press, drag and scroll the card with the mouse or a finger. The buttons hide it, show it and replace it, and the log lists every event it reports in order.',
+        code = NodeEvents.code,
         focus = 'hide',
         content = {layout.columns{
             ui.column{grow = 1, gap = 24,

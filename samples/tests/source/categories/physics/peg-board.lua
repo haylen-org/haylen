@@ -11,6 +11,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local PegBoard = haylen.class('PegBoard', PhysicsTest)
 
+PegBoard.code = [[
+board:addCircle(6, {offsetX = x, offsetY = y, restitution = 0.4})  -- One static body holds every peg.
+slot:addBox(44, 16, {sensor = true})
+slot.data = {slot = 3}
+world.onSensorBegin = function(sensor, visitor) counts[sensor.data.slot] = counts[sensor.data.slot] + 1 end]]
+
 local kCenter = -200
 local kSpacing = 52
 local kRows = 12
@@ -23,6 +29,7 @@ local kChart = {x = 210, bottom = 380, width = 40, gap = 6, height = 560}
 
 function PegBoard:enter()
     self:frame{
+        code = PegBoard.code,
         hint = 'Balls fall from the top center. Click or tap above the board to drop one where you point. R or the X button clears the counts.',
         controls = {
             ui.toggle{id = 'rain', text = 'Rain balls', checked = true, onChange = function(event) self.raining = event.checked end},

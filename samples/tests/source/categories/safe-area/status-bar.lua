@@ -8,6 +8,11 @@ local areas = require('categories.safe-area.areas')
 
 local StatusBar = haylen.class('StatusBar', Test)
 
+StatusBar.code = [[
+window.setStatusBar('light')  -- Or `hidden`, `auto` and `dark`, which `window.statusBar` of `app.json` sets at start.
+window.setStatusBarColor('#FF1E2A44')  -- Painted behind it, since the app draws under it.
+print(window.statusBar(), viewport.safeRect().y)  -- The safe area starts below it.]]
+
 -- The background "none" has no color, so the engine paints nothing behind the status bar.
 StatusBar.colors = {night = '#FF1E2A44', paper = '#FFF4EFE3', leaf = '#FF4C8B3F'}
 
@@ -25,6 +30,7 @@ end
 function StatusBar:enter()
     self:frame{
         hint = 'The file "app.json" hides the status bar of this project, and leaving this test hides it again. Light content suits a dark background and dark content a light one, while automatic content follows the theme of the system.',
+        code = StatusBar.code,
         focus = 'bar',
         content = {ui.row{gap = 24, grow = 1, align = 'stretch',
             ui.card{width = 760, align = 'start', gap = 12,

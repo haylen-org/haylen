@@ -9,6 +9,13 @@ local MapTest = require('categories.tiled.map-test')
 
 local YSort = haylen.class('YSort', MapTest)
 
+YSort.code = [[
+local hero = graphics2d.newSprite(texture, {pivotY = 1, width = 32, height = 48, layer = 1})  -- Sorts by its feet.
+graphics2d.beginWorld(camera, {sort = 'y'})
+map:drawLayer('ground', camera, {layer = 0})
+map:drawLayer('props', camera, {layer = 1, ysort = true})
+hero:draw()]]
+
 local kSpeed = 220
 local kArrive = 6
 
@@ -18,6 +25,7 @@ function YSort:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'Walk with WASD, the arrows, the directional pad, the left stick or the touch stick, or tap or click where the hero should go. Switch y sorting off to see the hero drawn over everything.',
+        code = YSort.code,
         controls = {
             ui.toggle{id = 'sort', text = 'Sort by y', checked = true, onChange = function(event) self.sorting = event.checked end},
             ui.checkbox{id = 'feet', text = 'Mark the sort lines', onChange = function(event) self.showFeet = event.checked end},

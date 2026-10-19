@@ -11,11 +11,20 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Joints = haylen.class('Joints', PhysicsTest)
 
+Joints.code = [[
+world:createJoint('distance', anchor, ball, {ax = -660, ay = -312, bx = -660, by = -160, enableSpring = true, hertz = 1.5, dampingRatio = 0.1})
+world:createJoint('revolute', hub, blade, {ax = -200, ay = -210, enableMotor = true, motorSpeed = 1.5, maxMotorTorque = 1e8})
+world:createJoint('prismatic', rail, lift, {ax = 600, ay = -130, axisX = 0, axisY = 1, enableLimit = true, lower = -170, upper = 60, enableMotor = true, motorSpeed = -120, maxMotorForce = 1e6})
+world:createJoint('weld', wall, beam, {ax = -710, ay = 190, hertz = 6, dampingRatio = 0.3})
+world:createJoint('wheel', cart, wheel, {ax = -260, ay = 330, axisX = 0, axisY = 1, enableSpring = true, hertz = 3, dampingRatio = 0.4, enableMotor = true, motorSpeed = 3, maxMotorTorque = 2e6})
+world:createJoint('motor', leader, follower, {maxMotorForce = 3000, maxMotorTorque = 30000})  world:createJoint('filter', lower, upper)]]
+
 local kLabel = {size = 24, color = '#FFFFD54F', anchor = {0.5, 0}, layer = 10}
 local kLiftTop, kLiftBottom = -290, -80
 
 function Joints:enter()
     self:frame{
+        code = Joints.code,
         hint = 'Drag any body to feel its joint: the mouse joint that drags it is a joint too. Reverse turns every motor around, R or the X button rebuilds the stations.',
         controls = {
             ui.button{id = 'reverse', text = 'Reverse the motors', onClick = function() self:reverse() end},

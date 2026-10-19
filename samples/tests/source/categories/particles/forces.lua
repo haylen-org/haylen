@@ -8,6 +8,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Forces = haylen.class('Forces', ParticleTest)
 
+Forces.code = [[
+local fountain = particles2d.newEmitter({texture = dot, rate = 180, speed = {220, 280}, direction = -1.5708, spread = 0.5, gravity = {0, 300}})
+fountain:configure({radialAcceleration = -200})  -- Negative values pull particles back to the emitter.
+fountain:configure({tangentialAcceleration = 300, damping = 1.5})  -- Turns them around it and slows them.]]
+
 Forces.defaults = {gravityX = 0, gravityY = 300, radial = 0, tangential = 0, damping = 0}
 Forces.sliders = {
     {'gravityX', 'Gravity x', -600, 600},
@@ -42,7 +47,7 @@ function Forces:enter()
             self:apply()
         end}}
     end
-    self:frame{hint = 'Move the sliders and watch the stream bend. Negative radial acceleration pulls particles back toward the emitter.', controls = controls, focus = 'gravityX'}
+    self:frame{hint = 'Move the sliders and watch the stream bend. Negative radial acceleration pulls particles back toward the emitter.', code = Forces.code, controls = controls, focus = 'gravityX'}
 end
 
 function Forces:update(dt)

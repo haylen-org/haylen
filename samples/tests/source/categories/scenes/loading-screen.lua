@@ -15,6 +15,13 @@ local Test = require('harness.test')
 
 local LoadingScreen = haylen.class('LoadingScreen', SceneTest)
 
+LoadingScreen.code = [[
+local IslandMap = haylen.class('IslandMap', scene.Scene)
+function IslandMap:load(context)
+    context:progress(row / rows, 'Raising the island')  -- The loading screen shows it.
+end
+scene.push(IslandMap(), {effect = 'fade', duration = 0.6, loading = TitleScreen(), loadingDelay = 0, minimumLoadingTime = 1.5, loadingFadeOut = 0.6})]]
+
 local kColumns, kRows, kCell = 96, 54, 20
 local kEvents = {'sceneLoading', 'sceneLoaded', 'transitionOutFinished', 'sceneEntered', 'transitionInStarted', 'transitionInFinished', 'sceneEnterTransitionFinished', 'appBackground', 'appActive'}
 local kTerrain = {{-1, '#FF1B4F7A'}, {0.02, '#FF2E6F9E'}, {0.08, '#FFE3D19A'}, {0.22, '#FF5E9C4A'}, {0.42, '#FF3B7038'}, {0.6, '#FF7C7A72'}, {2, '#FFF0F0F0'}}
@@ -133,6 +140,7 @@ function LoadingScreen:enter()
     end
     self:frame{
         hint = 'The loading screen appears at once, stays at least a second and a half and fades out over the finished map. Escape or the B button returns from the map.',
+        code = LoadingScreen.code,
         controls = {
             ui.button{id = 'open', text = 'Open the island map', variant = 'primary', align = 'stretch', onClick = function() self:open() end},
         },

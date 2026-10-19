@@ -7,6 +7,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local BlendModes = haylen.class('BlendModes', ParticleTest)
 
+BlendModes.code = [[
+local glow = particles2d.newEmitter({texture = dot, rate = 40, startSize = {50, 70}, endSize = {20, 30}, colors = {'#FFFF9040', '#80FF5020', '#00FF2010'}, blend = 'additive'})
+glow:configure({blend = 'multiply'})  -- Or "alpha", "screen" and "premultiplied".
+local soft = particles2d.newEmitter({texture = premultipliedDot, colors = {'#FFFF9040', '#80802810', '#00000000'}, blend = 'premultiplied'})  -- Colors already multiplied by their alpha.]]
+
 BlendModes.modes = {'alpha', 'additive', 'multiply', 'screen', 'premultiplied'}
 BlendModes.straight = {piece = 'soft-dot', colors = {'#FFFF9040', '#80FF5020', '#00FF2010'}}
 BlendModes.premultiplied = {piece = 'soft-dot-premultiplied', colors = {'#FFFF9040', '#80802810', '#00000000'}}
@@ -24,7 +29,7 @@ function BlendModes:init(entry)
 end
 
 function BlendModes:enter()
-    self:frame{hint = 'Each column blends the same orange particles its own way over the light and the dark band.'}
+    self:frame{hint = 'Each column blends the same orange particles its own way over the light and the dark band.', code = BlendModes.code}
 end
 
 function BlendModes:update(dt)

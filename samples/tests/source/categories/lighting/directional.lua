@@ -10,6 +10,12 @@ local Room = require('categories.lighting.room')
 
 local Directional = haylen.class('Directional', LightingTest)
 
+Directional.code = [[
+local sun = lighting2d.newLight({type = 'directional', color = '#FFFFE6C0', intensity = 1.1, shadows = true, shadowFilter = 'pcf13', shadowColor = '#B0000000'})
+sun.rotation = math.atan(y, x)  -- The direction the light travels.
+graphics2d.drawOccluder({points = {-565, -165, -475, -165, -475, -75, -565, -75}, cull = 'counterClockwise'})
+graphics2d.drawLight(sun)  -- Its shadows run across the whole view.]]
+
 function Directional:init(entry)
     Directional.super.init(self, entry)
     self.room = Room()
@@ -21,6 +27,7 @@ end
 function Directional:enter()
     self:frame{
         hint = 'The sun travels from the middle of the room toward the cursor. Move it with the mouse, a finger, the arrows, WASD or a stick, or let the sun turn by itself.',
+        code = Directional.code,
         cursor = true,
         controls = {
             ui.toggle{id = 'turn', text = 'Turn by itself', onChange = function(event)

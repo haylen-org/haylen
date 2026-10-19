@@ -8,6 +8,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Smoke = haylen.class('Smoke', ParticleTest)
 
+Smoke.code = [[
+local chimney = particles2d.newEmitter({texture = puff, rate = 10, prewarm = 6, lifetime = {4, 6}, speed = {50, 80}, gravity = {40, -8}, damping = 0.2, startSize = {50, 70}, endSize = {220, 300}, spin = {-0.4, 0.4}, colors = {'#00202020', '#C0303034', '#00101010'}})
+chimney:configure({gravity = {wind, -8}})  -- The wind pushes the plume.
+chimney:configure({colors = {'#00FFFFFF', '#A0E8ECF0', '#00FFFFFF'}})  -- Steam.]]
+
 Smoke.kinds = {
     steam = {'#00FFFFFF', '#A0E8ECF0', '#00FFFFFF'},
     smoke = {'#00202020', '#C0303034', '#00101010'},
@@ -29,6 +34,7 @@ end
 function Smoke:enter()
     self:frame{
         hint = 'Change the wind and the kind of smoke. The plumes were already tall on the first frame thanks to prewarm.',
+        code = Smoke.code,
         controls = {
             ui.formField{label = 'Wind', ui.slider{id = 'wind', min = -120, max = 120, value = self.wind, showValue = true, decimals = 0, onChange = function(event)
                 self.wind = event.value

@@ -9,6 +9,13 @@ local services = require('categories.network.services')
 
 local WebSocket = haylen.class('WebSocket', SocketTest)
 
+WebSocket.code = [[
+local socket = net.connectWebSocket('wss://echo.websocket.org')
+socket:on('open', function() socket:send('Hello from Haylen!') end)
+socket:on('message', function(data, binary) print(binary and #data .. ' bytes' or data) end)
+socket:sendBinary(string.char(0x48, 0x4C, 0x00, 0xFF))
+socket:close(4000, 'the app is done')]]
+
 WebSocket.tones = {connecting = 'information', open = 'success', reconnecting = 'warning', closing = 'warning', closed = 'danger'}
 WebSocket.ping = 'ping '
 
@@ -22,6 +29,7 @@ end
 
 function WebSocket:enter()
     self:frame{
+        code = WebSocket.code,
         hint = 'Connect, then send text, binary data or a ping. The echo server sends everything back. Close ends the connection with the code 1000, or 4000 for a code of the app.',
         focus = 'connect',
         content = {ui.row{wrap = true, grow = 1, gap = 24,

@@ -9,6 +9,13 @@ local fonts = require('categories.text.fonts')
 
 local CustomEffects = haylen.class('CustomEffects', TextTest)
 
+CustomEffects.code = [[
+graphics2d.registerTextEffect('bounce', function(glyph, attributes)
+    glyph.offsetY = glyph.offsetY - math.abs(math.sin(glyph.time * 5 + glyph.index * 0.45)) * (attributes.height or 16)
+end)
+graphics2d.registerTextIcon('coin', assets.texture('text/coin.png', {filter = 'linear'}))
+local line = graphics2d.newRichText('[bounce height=20]Treasure found[/bounce] [icon=coin]', {family = family, size = 52})]]
+
 CustomEffects.lines = {
     {'[ghost speed=2]', '[ghost speed=2]The ghost of the old keeper[/ghost]'},
     {'[bounce height=20]', '[bounce height=20]Jump over the waves![/bounce]'},
@@ -79,7 +86,7 @@ function CustomEffects:init(entry)
 end
 
 function CustomEffects:enter()
-    self:frame{hint = 'Each effect is a few lines of Lua in "source/categories/text/custom-effects.lua". An effect sees the glyph index inside its tag, the character in the whole text, the pen position and the time, and the same time always gives the same picture.'}
+    self:frame{code = CustomEffects.code, hint = 'Each effect is a few lines of Lua in "source/categories/text/custom-effects.lua". An effect sees the glyph index inside its tag, the character in the whole text, the pen position and the time, and the same time always gives the same picture.'}
 end
 
 function CustomEffects:update(dt)

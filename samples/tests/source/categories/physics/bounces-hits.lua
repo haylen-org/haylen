@@ -9,6 +9,11 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local BouncesHits = haylen.class('BouncesHits', PhysicsTest)
 
+BouncesHits.code = [[
+local world = physics2d.newWorld({restitutionThreshold = 4, hitThreshold = 8})
+ball:addCircle(22, {restitution = 0.9})
+world.onHit = function(a, b, contact) flash(a, b) end  -- Every impact faster than 8 units per second.]]
+
 local kFloorY = 360
 local kRadius = 22
 local kHeights = {1, 2, 5, 30, 200}
@@ -16,6 +21,7 @@ local kFlash = 0.15
 
 function BouncesHits:enter()
     self:frame{
+        code = BouncesHits.code,
         hint = 'Each ball flashes when its world reports a hit. Drop the balls again to start the bounces over. R or the X button starts over.',
         controls = {
             ui.button{id = 'drop', text = 'Drop the balls again', onClick = function() self:drop() end},

@@ -12,11 +12,17 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Bridge = haylen.class('Bridge', PhysicsTest)
 
+Bridge.code = [[
+local bridge = physics2d.newBridge(world, {from = {-560, -2}, to = {560, -2}, segments = 22, thickness = 16, density = 2, friction = 0.8})
+for _, segment in ipairs(bridge:segments()) do drawPlank(segment.x, segment.y, segment.rotation, segment.length) end
+graphics2d.drawPolyline(bridge:points(), 3, '#FF6D4C41')  -- The ropes along the planks.]]
+
 local kPlankColor = '#FFA1887F'
 local kThickness = 16
 
 function Bridge:enter()
     self:frame{
+        code = Bridge.code,
         hint = 'Drop loads on the bridge and drag them along it. R or the X button rebuilds the bridge.',
         controls = {
             ui.button{id = 'crate', text = 'Drop a crate', onClick = function() self:drop('crate') end},

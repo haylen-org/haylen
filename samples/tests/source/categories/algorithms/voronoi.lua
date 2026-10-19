@@ -11,12 +11,19 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Voronoi = haylen.class('Voronoi', AlgorithmTest)
 
+Voronoi.code = [[
+local mesh = procedural2d.delaunay(points)  -- Three point positions per triangle in mesh.triangles.
+local cells = procedural2d.voronoiAsync(points, {-740, -400, 1480, 800}):await()
+local relaxed = procedural2d.relaxAsync(points, {-740, -400, 1480, 800}, 1):await()  -- Lloyd relaxation.
+local cell = mesh:findNearest({120, 40})  -- The cell that holds a position.]]
+
 local kBounds = {-740, -400, 1480, 800}
 local kGlide = 0.35
 
 function Voronoi:enter()
     self:frame{
         hint = 'Tap or click to add a point. Relax moves every point to the center of its cell, which evens the cells out after a few steps. R or the X button relaxes once.',
+        code = Voronoi.code,
         controls = {
             ui.button{id = 'relax', text = 'Relax once', onClick = function() self:relax() end},
             ui.checkbox{id = 'cells', text = 'Voronoi cells', checked = true, onChange = function(event) self.showCells = event.checked end},

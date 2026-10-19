@@ -9,6 +9,13 @@ local Test = require('harness.test')
 
 local Actions = haylen.class('Actions', Test)
 
+Actions.code = [[
+input.loadActions({actions = {{name = 'jump', type = 'button', bindings = {'key:space', 'button:south'}}}})
+if input.pressed('jump') then jump() end  -- Every binding feeds the same action.
+local dx, dy = input.vector('move')  local throttle = input.value('throttle')
+input.setPressThreshold(0.5)  input.actions().devices = {gamepad = 2}
+local device = input.lastDevice()  -- Picks the prompts to show.]]
+
 local kLists = {button = {'bindings'}, axis = {'positive', 'negative'}, vector = {'up', 'down', 'left', 'right', 'bindings'}}
 local kPrompts = {
     keyboardMouse = 'Keyboard and mouse: WASD or the arrows move, Space or a left click jumps, Left Shift or a right click dashes, E and Q throttle.',
@@ -33,6 +40,7 @@ function Actions:enter()
         self.rows[#self.rows + 1] = {name = name, type = definition.type, bindings = table.concat(lists, '\n'), pressed = 0, released = 0}
     end
     self:frame({
+        code = Actions.code,
         hint = 'Use any device, or several at once: every binding feeds the same actions.',
         play = true,
         controls = {
@@ -47,8 +55,6 @@ function Actions:enter()
                     self:set(id, {touchOnly = event.checked})
                 end
             end}},
-            ui.sectionTitle{text = 'Reading actions'},
-            ui.label{font = 'monospace', text = "input.down('jump')\ninput.pressed('dash')\ninput.value('throttle')\ninput.vector('move')\ninput.lastDevice()"},
         },
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 260, height = 260},

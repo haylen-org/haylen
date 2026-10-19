@@ -9,6 +9,14 @@ local layout = require('categories.interface.layout')
 
 local LongLists = haylen.class('LongLists', Test)
 
+LongLists.code = [[
+ui.collection{id = 'entries', placeholder = 'loading', types = {entry = {template = row, estimatedSize = 76}, loading = {template = spinner, interactive = false}}}
+local entries = gui:collection('entries')
+entries:setPages{count = 100000, pageSize = 100, load = function(first, count)
+    return jobs.spawn(function() return buildPage(first, count) end)  -- Its rows show the placeholder until it resolves.
+end}
+entries:scrollTo(50000, {align = 'center'})]]
+
 LongLists.count = 100000
 LongLists.pageSize = 100
 
@@ -22,6 +30,7 @@ end
 function LongLists:enter()
     self:frame{
         hint = 'Fling or drag the scrollbar across the hundred thousand entries, or type a number and press Go. Page Up, Page Down, Home, End and the shoulder buttons page through the entries with the focus.',
+        code = LongLists.code,
         focus = 'target',
         content = {self:columns()},
     }

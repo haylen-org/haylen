@@ -10,6 +10,11 @@ local Scenery = require('categories.effects.scenery')
 
 local Dissolve = haylen.class('Dissolve', ParticleTest)
 
+Dissolve.code = [[
+local options = {pivotY = 1, effect = {dissolve = 0, dissolveEdge = 0.08, dissolveSize = 10, dissolveColor = '#FFFF9A30'}}
+options.effect.dissolve = m.moveToward(options.effect.dissolve, 1, dt / 1.2)  -- Runs from 0, whole, to 1, gone.
+graphics2d.draw(texture, x, y, options)]]
+
 Dissolve.subjects = {
     {name = 'Robot', path = 'sprites/images/hero.png', x = -600, scale = 1.4},
     {name = 'Rock', path = 'sprites/images/rock.png', x = -200, scale = 2.25},
@@ -57,6 +62,7 @@ function Dissolve:enter()
     end
     self:frame{
         hint = 'A click, a tap, E, Enter, Space or the south button dissolves the sprite nearest the cursor or brings it back.',
+        code = Dissolve.code,
         cursor = true,
         controls = {
             ui.toggle{id = 'automatic', text = 'Dissolve by themselves', checked = self.automatic, onChange = function(event) self.automatic = event.checked end},

@@ -9,6 +9,13 @@ local layout = require('categories.interface.layout')
 
 local ScrollBars = haylen.class('ScrollBars', Test)
 
+ScrollBars.code = [[
+ui.scroll{height = 160, ui.column{gap = 8, children = rows}}  -- The bar runs in a lane of its own beside the rows.
+ui.scroll{axis = 'horizontal', ui.row{gap = 12, children = buttons}}
+ui.scroll{height = 120, style = {metrics = {scrollbarGap = 0}}, ui.column{children = rows}}  -- The engine still keeps 4 points.
+ui.setScaleMode('physical')  ui.setScale(2)
+local gap = ui.themeMetric('scrollbarGap')]]
+
 ScrollBars.scales = {{id = 'design', text = 'Design 1x'}, {id = 'double', text = 'Design 2x'}, {id = 'physical', text = 'Physical'}}
 ScrollBars.settings = {design = {mode = 'design', factor = 1}, double = {mode = 'design', factor = 2}, physical = {mode = 'physical', factor = 1}}
 ScrollBars.minimumGap = 4
@@ -52,6 +59,7 @@ function ScrollBars:enter()
     self.immediate = ScrollBars.lines('Immediate line', 40)
     self:frame{
         hint = 'Pick a scale and look at every bar: its lane runs beside the content, which ends the gap before it. Open the combo, the menu, the popover and the dialog to see their bars, and right click or long press the quest card for its menu. The wheel, a drag of a thumb and a press on a track scroll each one.',
+        code = ScrollBars.code,
         focus = 'scale',
         content = {
             ui.row{gap = 24,

@@ -9,6 +9,11 @@ local fonts = require('categories.text.fonts')
 
 local Wrapping = haylen.class('Wrapping', TextTest)
 
+Wrapping.code = [[
+graphics2d.drawText(latin, story, 0, 34, {size = 34, maxWidth = 520, lineSpacing = 1.2})
+graphics2d.drawText(cjk, japanese, 940, 34, {size = 34, maxWidth = 520})  -- Japanese breaks between characters.
+local lines = latin:layout(story, {size = 34, maxWidth = 520}).lineCount]]
+
 Wrapping.english = 'On the third night the keeper climbed the lighthouse stairs, lit the great lamp and watched the ships find the harbor.\nA new paragraph starts after a line break.'
 Wrapping.japanese = '灯台守は三日目の夜に階段を上り、大きなランプに火をともして、船が港へ帰るのを見守った。'
 Wrapping.long = 'Pneumonoultramicroscopicsilicovolcanoconiosis is a word that breaks only because it must.'
@@ -24,6 +29,7 @@ end
 
 function Wrapping:enter()
     self:frame{
+        code = Wrapping.code,
         hint = 'Drag the sliders, or focus them and press left and right. The dashed line is the maximum width, and with sweep on it moves by itself.',
         controls = {
             ui.formField{label = 'Maximum width', ui.slider{id = 'width', min = 160, max = 640, step = 10, value = self.width, showValue = true, decimals = 0, onChange = function(event)

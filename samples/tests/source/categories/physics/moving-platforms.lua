@@ -10,11 +10,19 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local MovingPlatforms = haylen.class('MovingPlatforms', PhysicsTest)
 
+MovingPlatforms.code = [[
+local platform = world:createBody({type = 'kinematic'})
+platform:addBox(200, 16, {friction = 0.9})
+platform:moveTo(x, y, rotation)  -- Each fixed step, so friction carries its loads.
+platform:setTransform(x, y, rotation)  -- A teleport slides out from under them.
+local riding = mover.groundBody == platform  -- A mover rides it too.]]
+
 local kGravity = 1600
 local kRadius, kHeight = 14, 56
 
 function MovingPlatforms:enter()
     self:frame{
+        code = MovingPlatforms.code,
         hint = 'The platforms on both sides follow the same paths. Drop new loads on them with the button. R or the X button starts over.',
         controls = {
             ui.label{text = 'Speed of the platforms', font = 'caption', color = 'textMuted'},

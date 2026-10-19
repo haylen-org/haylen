@@ -8,6 +8,14 @@ local layout = require('categories.interface.layout')
 
 local RecycledLists = haylen.class('RecycledLists', Test)
 
+RecycledLists.code = [[
+ui.collection{id = 'list', reorderable = true, types = {
+    header = {template = ui.sectionTitle{part = 'title', bind = {text = 'title'}}, sticky = true, interactive = false},
+    note = {template = ui.label{part = 'title', bind = {text = 'title'}}},
+}, onReorder = function(event) event.gui:collection('list'):move(event.from, event.to) end}
+local list = gui:collection('list')
+list:setItems(rows)  list:insert(1, {{id = 'new-1', type = 'note', title = 'New note'}})  list:scrollTo(150, {align = 'center'})]]
+
 RecycledLists.sections = {'Harbor', 'Forest', 'Cliffs', 'Village', 'Caves', 'Lighthouse'}
 RecycledLists.rowsPerSection = 40
 RecycledLists.tiles = 600
@@ -60,6 +68,7 @@ end
 function RecycledLists:enter()
     self:frame{
         hint = 'Scroll with the wheel, the scrollbar or a finger, which flings the lists. Arrows, the directional pad and remotes move between items, Page Up, Page Down, Home, End and the shoulder buttons page, and Enter or the south button selects tiles. Drag a row, or press it twice with Enter or the south button, to move it. The "More" link of a shell opens its menu.',
+        code = RecycledLists.code,
         focus = 'list',
         content = {self:columns()},
     }

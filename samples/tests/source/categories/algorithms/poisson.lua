@@ -11,6 +11,12 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Poisson = haylen.class('Poisson', AlgorithmTest)
 
+Poisson.code = [[
+local points = procedural2d.scatterAsync({region = {-720, -390, 1440, 780}, method = 'poisson', spacing = 14, maximumSpacing = 70, densityMap = {seed = 1, frequency = 0.0035, octaves = 3}}):await()
+local crowded = m.poissonDisk({area = {-720, -390, 1440, 780}, minimumDistance = 14, maximumDistance = 70, seed = 1, distance = function(point)
+    return m.lerp(14, 70, m.smoothstep(0, 400, point:distance({0, 0})))  -- The spacing grows away from the focus.
+end})]]
+
 local kArea = {-720, -390, 1440, 780}
 local kNearest, kFarthest = 14, 70
 local kResampleDelay = 0.25
@@ -18,6 +24,7 @@ local kResampleDelay = 0.25
 function Poisson:enter()
     self:frame{
         hint = 'With the focus mode, tap or click to pick where points crowd together. Points are never closer than the spacing wanted where each of them stands. R or the X button takes a new seed.',
+        code = Poisson.code,
         controls = {
             ui.radioGroup{id = 'mode', items = {{id = 'noise', text = 'Density from noise'}, {id = 'focus', text = 'Density around a focus'}}, selected = 'noise', onChange = function(event)
                 self.mode = event.value

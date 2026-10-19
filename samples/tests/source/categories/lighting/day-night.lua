@@ -9,6 +9,14 @@ local LightingTest = require('categories.lighting.lighting-test')
 
 local DayNight = haylen.class('DayNight', LightingTest)
 
+DayNight.code = [[
+local sun = lighting2d.newLight({type = 'directional', color = '#FFFFF0D0', shadows = true, shadowFilter = 'pcf5'})
+local arc = (hour - 6) / 12  -- The sun rises at 6 and sets at 18.
+sun.rotation, sun.intensity = arc * math.pi, math.max(0, math.sin(arc * math.pi)) * 0.9
+local ambient = m.color('#FFE08060'):lerp(m.color('#FF2E3060'), t)  -- From dusk into night.
+graphics2d.beginWorld(camera, {ambientLight = ambient})
+graphics2d.drawLight(sun)]]
+
 -- Hours of the day with the ambient light and the sky color the clock blends between.
 DayNight.keys = {
     {hour = 0, ambient = '#FF1C2244', sky = '#FF0A0E24'},
@@ -48,6 +56,7 @@ function DayNight:enter()
     end
     self:frame{
         hint = 'The clock runs by itself. Jump to a time of day or change how many hours pass per second.',
+        code = DayNight.code,
         controls = {
             ui.toggle{id = 'running', text = 'Clock runs', checked = true, onChange = function(event)
                 self.running = event.checked

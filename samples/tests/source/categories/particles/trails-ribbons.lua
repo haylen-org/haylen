@@ -7,6 +7,13 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local TrailsRibbons = haylen.class('TrailsRibbons', ParticleTest)
 
+TrailsRibbons.code = [[
+local sparks = particles2d.newEmitter({texture = dot, rate = 14, trail = {length = 16, lifetime = 0.35, widthStart = 10, widthEnd = 0, colors = {'#FFFFFFFF', '#00FFFFFF'}}})
+local blade = particles2d.newTrail({lifetime = 0.3, minDistance = 6, maxPoints = 96, widthStart = 36, widthEnd = 0, colors = {'#FFFFFFFF', '#C080E0FF', '#002060FF'}, texture = glowLine, blend = 'additive'})
+blade.x, blade.y = cursorX, cursorY
+blade:update(dt)  blade:draw()
+blade:configure({widthStart = 60})]]
+
 TrailsRibbons.neon = {'#FFFF40C0', '#FF40E0FF', '#FFB0FF40', '#FFFFB030'}
 
 function TrailsRibbons:init(entry)
@@ -27,6 +34,7 @@ end
 function TrailsRibbons:enter()
     self:frame{
         hint = 'The blade follows the cursor: swing it with the mouse, a finger, the arrows, WASD or a stick. The neon sparks on the left draw a ribbon each, and a wisp circles on the right.',
+        code = TrailsRibbons.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Width of the blade', ui.slider{id = 'width', min = 4, max = 90, value = self.width, showValue = true, decimals = 0, onChange = function(event)

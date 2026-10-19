@@ -11,6 +11,13 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Crowd = haylen.class('Crowd', AlgorithmTest)
 
+Crowd.code = [[
+local crowd = navigation2d.newCrowd({separation = 0.2, alignment = 0, cohesion = 0})
+crowd:addObstacle({{-40, -40}, {40, -40}, {40, 40}, {-40, 40}})
+local id = crowd:addAgent({x = -650, y = 120, radius = 9, maxSpeed = 120})
+crowd:setTarget(id, 650, 120)
+crowd:step(dt)  -- Moves every agent without overlaps.]]
+
 local kAgents = 360
 local kRadius = 9
 local kPillars = {{-250, -120}, {250, 120}, {0, 0}, {-250, 160}, {250, -160}}
@@ -18,6 +25,7 @@ local kPillars = {{-250, -120}, {250, 120}, {0, 0}, {-250, 160}, {250, -160}}
 function Crowd:enter()
     self:frame{
         hint = 'Pick where the agents go. With the pointer mode they flock to the pointer, and the sliders weigh the flocking forces on top of the collision avoidance. R or the X button sends them again.',
+        code = Crowd.code,
         controls = {
             ui.radioGroup{id = 'mode', items = {{id = 'swap', text = 'Swap sides'}, {id = 'circle', text = 'Cross a circle'}, {id = 'pointer', text = 'Follow the pointer'}}, selected = 'swap', onChange = function(event) self:setMode(event.value) end},
             ui.label{text = 'Separation', font = 'caption', color = 'textMuted'},

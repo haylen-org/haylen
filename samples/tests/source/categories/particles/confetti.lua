@@ -8,6 +8,13 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Confetti = haylen.class('Confetti', ParticleTest)
 
+Confetti.code = [[
+for _, color in ipairs({'#FFFF4060', '#FFFFD030', '#FF40D080'}) do  -- One emitter for each color.
+    local piece = particles2d.newEmitter({texture = atlas.texture, frames = strip, rate = 0, bursts = {{time = 0, count = 28}}, duration = 0.1, speed = {700, 1200}, direction = -1.1, spread = 0.5, gravity = {0, 520}, damping = 1.6, spin = {-6, 6}, colors = {color, color, m.color(color):withAlpha(0)}, shape = 'cone', shapeSize = {20, 0}})
+    piece.position = {x, y}
+end
+-- Drop each emitter once "piece.alive" turns false.]]
+
 Confetti.colors = {'#FFFF4060', '#FFFFD030', '#FF40D080', '#FF40A0FF', '#FFC060FF'}
 
 function Confetti:init(entry)
@@ -23,7 +30,7 @@ function Confetti:init(entry)
 end
 
 function Confetti:enter()
-    self:frame{hint = 'A click, a tap, E, Enter or the south button fires both cannons. They also fire every three seconds.', cursor = true}
+    self:frame{hint = 'A click, a tap, E, Enter or the south button fires both cannons. They also fire every three seconds.', code = Confetti.code, cursor = true}
 end
 
 -- Fires one cannon: a burst of every color from a cone that aims up and inward.

@@ -12,6 +12,11 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Seesaw = haylen.class('Seesaw', PhysicsTest)
 
+Seesaw.code = [[
+local hinge = world:createJoint('revolute', fulcrum, plank, {ax = -380, ay = 320, enableLimit = true, lower = -0.3, upper = 0.3})
+local catapult = world:createJoint('revolute', post, arm, {ax = 320, ay = 300, enableLimit = true, lower = -0.7, upper = 0})  -- The stone leaves at the limit.
+for _, contact in ipairs(plank:contacts()) do load = load + contact.other.mass end  -- The masses on the plank.]]
+
 local kCenter = -380
 local kWeights = {
     light = {size = 50, density = 1, color = '#FFB0BEC5'},
@@ -25,6 +30,7 @@ local kStoneSpot = {358, -31}
 
 function Seesaw:enter()
     self:frame{
+        code = Seesaw.code,
         hint = 'Drop weights on either end of the seesaw, or drag them where you like. Drop the catapult weight on the short end of its arm to throw the stone. R or the X button starts over.',
         controls = {
             ui.radioGroup{id = 'mass', items = {{id = 'light', text = 'Light weight'}, {id = 'medium', text = 'Medium weight'}, {id = 'heavy', text = 'Heavy weight'}}, selected = 'medium', onChange = function(event) self.mass = event.value end},

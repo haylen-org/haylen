@@ -8,6 +8,12 @@ local ShaderTest = require('categories.shaders.shader-test')
 
 local PostProcessing = haylen.class('PostProcessing', ShaderTest)
 
+PostProcessing.code = [[
+local grading = graphics2d.newMaterial(assets.shader('shaders/grading.shader'), {shadows = '#FF2A6A80', highlights = '#FFFFB070', strength = 0.8})
+local crt = graphics2d.newMaterial(assets.shader('shaders/crt.shader'), {curvature = 0.08, scanlines = 0.25})
+crt:set('time', haylen.elapsed())
+graphics2d.beginWorld(camera, {clear = '#FF203048', postProcess = {vignetteStrength = 0.7, materials = {blurX, blurY, grading, crt}}})]]
+
 PostProcessing.view = {1920, 1080}
 PostProcessing.passes = {{'vignette', 'Built-in vignette'}, {'blur', 'Blur, two passes'}, {'grading', 'Color grading'}, {'crt', 'Tube screen'}}
 
@@ -37,6 +43,7 @@ function PostProcessing:enter()
         end
     end
     self:frame{
+        code = PostProcessing.code,
         hint = 'Turn the passes on and off. The chain runs in the order listed: blur, color grading, then the tube screen.',
         view = PostProcessing.view,
         controls = controls,

@@ -11,6 +11,14 @@ local Test = require('harness.test')
 
 local Mouse = haylen.class('Mouse', Test)
 
+Mouse.code = [[
+local x, y = input.mousePosition()
+local dx, dy = input.mouseDelta()
+local scrollX, scrollY = input.mouseScroll()
+if input.mousePressed('left') and not input.pointerCaptured() then fire(x, y) end
+window.setCursor('pointingHand')
+window.setMouseLocked(true)  -- Hides the cursor and reports only the movement.]]
+
 local kButtons = {'left', 'middle', 'right'}
 local kCursors = {'default', 'arrow', 'iBeam', 'crosshair', 'pointingHand', 'resizeHorizontal', 'resizeVertical', 'resizeDiagonalDown', 'resizeDiagonalUp', 'resizeAll', 'notAllowed'}
 local kFlash = 0.3
@@ -27,6 +35,7 @@ function Mouse:enter()
     self.cursor = 'default'
     self.scrollSpeed = input.scrollSpeed()
     self:frame({
+        code = Mouse.code,
         hint = 'Hover a zone to change the cursor, click, scroll and move the mouse. On a touch screen, turn on the finger as the mouse to drive the buttons with the first finger down.',
         focus = 'visible',
         controls = {
@@ -37,8 +46,6 @@ function Mouse:enter()
             ui.button{id = 'reset', text = 'Reset the wheel totals', onClick = function() self.scrollX, self.scrollY = 0, 0 end},
             ui.label{text = 'Scroll speed', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'scrollSpeed', value = self.scrollSpeed, min = 0.25, max = 3, step = 0.25, showValue = true, onChange = function(event) input.setScrollSpeed(event.value) end},
-            ui.sectionTitle{text = 'Reading the mouse'},
-            ui.label{font = 'monospace', text = "input.mouseDown('left')\ninput.mousePosition()\ninput.mouseDelta()\ninput.mouseScroll()\ninput.setScrollSpeed(1.5)\ninput.pointerCaptured()\nwindow.setCursor('iBeam')\nwindow.setMouseLocked(true)"},
         },
     })
 end

@@ -11,6 +11,13 @@ local Test = require('harness.test')
 
 local Lifecycle = haylen.class('Lifecycle', AudioTest)
 
+Lifecycle.code = [[
+haylen.setLifecycle({muteOnFocusLoss = true, pauseOnFocusLoss = false, pauseOnBackground = true})
+events.on('audioInterrupted', function() showPaused() end, {owner = self})  -- Every voice paused.
+events.on('audioResumed', function() hidePaused() end, {owner = self})
+events.on('audioRouteChanged', function() audio.pauseAll() end, {owner = self})  -- Headphones were unplugged.
+print(haylen.appState(), audio.interrupted(), audio.outputAvailable())]]
+
 local kEvents = {
     audioInterrupted = Test.red,
     audioResumed = Test.green,
@@ -50,7 +57,7 @@ function Lifecycle:enter()
     for _, note in ipairs(kNotes) do
         controls[#controls + 1] = ui.label{text = note, color = 'textMuted', font = 'caption'}
     end
-    self:frame({hint = 'Switch to another app or tab, take a call or unplug headphones while the music plays.', focus = 'chime', controls = controls})
+    self:frame({hint = 'Switch to another app or tab, take a call or unplug headphones while the music plays.', code = Lifecycle.code, focus = 'chime', controls = controls})
 end
 
 function Lifecycle:exit()

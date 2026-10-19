@@ -9,6 +9,13 @@ local Room = require('categories.lighting.room')
 
 local BlendModes = haylen.class('BlendModes', LightingTest)
 
+BlendModes.code = [[
+graphics2d.beginWorld(camera, {ambientLight = '#FF6A6A78'})
+graphics2d.drawLight({x = -660, y = 0, radius = 300, color = '#FFFFB060', blend = 'add'})  -- Brightens.
+graphics2d.drawLight({x = -220, y = 0, radius = 300, intensity = 0.8, blend = 'subtract'})  -- Darkens.
+graphics2d.drawLight({x = 220, y = 0, radius = 300, color = '#FF3070FF', blend = 'mix'})  -- Replaces by its strength.
+graphics2d.drawLight({x = 660, y = 0, radius = 300, color = '#FFFFD070', blend = 'max'})  -- Keeps the brighter.]]
+
 BlendModes.modes = {{id = 'add', text = 'Add'}, {id = 'subtract', text = 'Subtract'}, {id = 'mix', text = 'Mix'}, {id = 'max', text = 'Max'}}
 
 function BlendModes:init(entry)
@@ -27,6 +34,7 @@ end
 function BlendModes:enter()
     self:frame{
         hint = 'Four fixed lights show each mode. The light on the cursor takes the mode you pick, so move it over the others to see how they combine.',
+        code = BlendModes.code,
         cursor = true,
         controls = {ui.formField{label = 'Blend of the cursor light', ui.radioGroup{id = 'blend', items = BlendModes.modes, selected = 'add', onChange = function(event)
             self.held.blend = event.value

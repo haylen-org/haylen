@@ -7,6 +7,14 @@ local layout = require('categories.interface.layout')
 
 local Containers = haylen.class('Containers', Test)
 
+Containers.code = [[
+ui.row{gap = 16, ui.label{text = 'Start'}, ui.spacer{grow = 1}, ui.label{text = 'End'}}
+ui.grid{columns = 4, gap = 12, children = cells}
+ui.scroll{id = 'log', height = 260, ui.column{gap = 6, children = lines}}
+gui:command('log', 'scrollTo', {node = 'day-25', align = 'center'})
+ui.tabs{items = {{id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}}, selected = 'quests', questsPage, mapPage}
+ui.splitter{height = 200, ratio = 0.35, onResize = function(event) log.info(event.ratio) end, list, details}]]
+
 local function cells()
     local list = {}
     for index = 1, 8 do
@@ -26,6 +34,7 @@ end
 function Containers:enter()
     self:frame{
         hint = 'Scroll the log with the wheel or a finger, or with its buttons to day 25 and back to the top, pick tabs, type a name of at least three letters and drag the splitter handle. The arrow keys and the directional pad move between the controls.',
+        code = Containers.code,
         focus = 'grow-one',
         content = {self:columns()},
     }

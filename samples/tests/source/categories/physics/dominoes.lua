@@ -11,6 +11,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Dominoes = haylen.class('Dominoes', PhysicsTest)
 
+Dominoes.code = [[
+domino:addBox(14, 64, {density = 2, friction = 0.6})
+ground:addChain(profile, false, {friction = 0.8})  -- The valley and the steps, without seams.
+domino:applyImpulse(domino.mass * 120, 0, domino.x, domino.y - 32)  -- A push at the top.
+local done = world.awakeBodyCount == 0  -- The chain came to rest.]]
+
 Dominoes.actions = {
     {name = 'push', type = 'button', bindings = {'key:space', 'button:north'}},
 }
@@ -23,6 +29,7 @@ local kPush = 120
 
 function Dominoes:enter()
     self:frame{
+        code = Dominoes.code,
         hint = 'Push the first domino, or click or tap any domino to push it. Space or the north button pushes the first one. R or the X button stands them up again.',
         controls = {
             ui.button{id = 'push', text = 'Push the first domino', onClick = function() self:push(self.dominoes[1].body) end},

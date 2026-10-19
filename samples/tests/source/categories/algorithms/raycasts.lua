@@ -11,6 +11,14 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Raycasts = haylen.class('Raycasts', AlgorithmTest)
 
+Raycasts.code = [[
+local hit = m.raycastCircle({-700, 0}, {900, 0}, {center = {-180, 200}, radius = 80})  -- A hit table or nil.
+local pierced = m.raycastSegmentsAll(from, to, walls, 4)  -- The first four segments it crosses.
+local bounces, endX, endY = m.bounceRay(from, {1, -0.4}, 5000, 10, walls)
+local fan = m.rayFan(from, angle, math.rad(80), 41, 1200, walls)  -- A hit or false per ray.
+local cell = spatial2d.raycastGrid(cells, from, to, 32)  -- The hit also has its column and row.
+local boxes = tree:raycast(from[1], from[2], to[1], to[2], 3)]]
+
 local kOrigin = {-700, 0}
 local kLength = 1600
 local kRect = {-420, -300, 140, 90}
@@ -57,6 +65,7 @@ end
 function Raycasts:enter()
     self:frame{
         hint = 'Aim with the pointer. Q and E or the shoulder buttons switch the cast. The closest cast asks every shape and keeps the nearest hit.',
+        code = Raycasts.code,
         controls = {
             ui.radioGroup{id = 'mode', items = kModes, selected = 'closest', onChange = function(event) self.mode = event.value end},
         },

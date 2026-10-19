@@ -8,6 +8,13 @@ local sources = require('categories.platform.event-sources')
 
 local EventChecklist = haylen.class('EventChecklist', Test)
 
+EventChecklist.code = [[
+events.on('appBackground', function() preferences.save() end, {owner = self})
+events.on('appLowMemory', function() assets.unloadGroup('level') end, {owner = self})
+events.on('systemThemeChanged', function(change) ui.setTheme(change.theme) end, {owner = self})
+events.on('gamepadConnected', function(info) print(info.gamepad, info.name) end, {owner = self})
+events.on('batteryChanged', function(battery) print(battery.level, battery.charging) end, {owner = self})]]
+
 -- Mac Catalyst apps run the iOS platform on a Mac.
 local function platformName()
     if haylen.platform == 'ios' and system.info().os == 'macOs' then
@@ -50,6 +57,7 @@ function EventChecklist:enter()
 
     self:frame{
         hint = string.format('The checklist of "%s". Switch apps, resize, turn or fold the device, open the keyboard, change the network, the theme or the audio output, and connect a gamepad.', self.platform),
+        code = EventChecklist.code,
         content = {ui.scroll{grow = 1, ui.column{gap = 10, padding = {0, 24, 0, 0}, children = rows}}},
     }
 end

@@ -7,6 +7,13 @@ local Test = require('harness.test')
 
 local ScreenReader = haylen.class('ScreenReader', Test)
 
+ScreenReader.code = [[
+ui.slider{id = 'volume', value = 0.5, step = 0.1, accessibilityLabel = 'Volume'}
+ui.icon{image = 'icons/star.png', accessibilityHidden = true}  -- Decoration that screen readers skip.
+accessibility.setTreeEnabled(true)  -- Builds the elements even without a screen reader.
+for _, element in ipairs(accessibility.elements()) do print(element.role, element.label, element.value) end
+accessibility.perform(element.id, 'increment')  accessibility.announce('The profile was saved.')]]
+
 ScreenReader.shown = 14
 
 local function find(label)
@@ -36,6 +43,7 @@ function ScreenReader:enter()
     self:frame{
         stage = false,
         hint = 'With VoiceOver, TalkBack or a screen reader of the browser, move through the form and act on it, and the UI moves its focus along.',
+        code = ScreenReader.code,
         content = {
             ui.panel{gap = 12,
                 ui.pageHeader{title = 'Audio', caption = 'How the game sounds'},

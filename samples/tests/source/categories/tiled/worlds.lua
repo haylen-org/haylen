@@ -11,6 +11,14 @@ local Pan = require('categories.tiled.pan')
 
 local Worlds = haylen.class('Worlds', MapTest)
 
+Worlds.code = [[
+for _, entry in ipairs(assets.load('tiled/maps/world/overworld.world')) do
+    placed[#placed + 1] = {map = tiled.newMapRenderer(assets.load(entry.path)), x = entry.x, y = entry.y}
+end
+for _, part in ipairs(placed) do
+    part.map:draw(camera, {x = part.x, y = part.y})  -- Maps the camera does not see are culled.
+end]]
+
 local kMargin = 96
 
 function Worlds:enter()
@@ -24,6 +32,7 @@ function Worlds:enter()
     self.worldArea = area
     self:frame{
         hint = 'Drag, or use the arrows, the directional pad or the left stick, to pan, and the mouse wheel or the buttons to zoom. The map under the pointer is outlined with its path and its place in the world, and R or the X button shows the whole world.',
+        code = Worlds.code,
         controls = {
             ui.row{wrap = true,
                 ui.button{id = 'in', text = 'Zoom in', onClick = function() self.pan:zoom(1.25) end},

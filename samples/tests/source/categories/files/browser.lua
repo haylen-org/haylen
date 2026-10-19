@@ -9,6 +9,15 @@ local readout = require('categories.files.readout')
 
 local Browser = haylen.class('Browser', Test)
 
+Browser.code = [[
+async.spawn(function()
+    for _, name in ipairs(fs.readdir(storage.root()):await()) do
+        local info = fs.stat(storage.root() .. '/' .. name):await()  -- Holds `isDir`, `size` and `mtime`.
+    end
+    local handle = fs.open(path, 'r'):await()
+    local start = handle:read(4096):await()  -- Only the start of a large file.
+end)]]
+
 Browser.up = '..'
 Browser.previewBytes = 2048
 
@@ -38,6 +47,7 @@ end
 
 function Browser:enter()
     self:frame{
+        code = Browser.code,
         hint = 'Pick a folder to open it and a file to preview it, with the mouse, a finger, the arrows or the directional pad. The first row goes up a folder.',
         focus = 'entries',
         content = {ui.row{wrap = true, grow = 1, gap = 24,

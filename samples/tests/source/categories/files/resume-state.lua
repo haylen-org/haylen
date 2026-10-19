@@ -7,11 +7,17 @@ local Test = require('harness.test')
 
 local ResumeState = haylen.class('ResumeState', Test)
 
+ResumeState.code = [[
+storage.setResumeState({screen = 'shop', coins = 12})  -- Reaches the disk when the app goes to the background.
+local value, age = storage.resumeState()  -- Found only after the system ended the app.
+if value and age < 600 then openScreen(value.screen) end]]
+
 ResumeState.screens = {{id = 'map', text = 'Map'}, {id = 'shop', text = 'Shop'}, {id = 'inventory', text = 'Inventory'}}
 
 function ResumeState:enter()
     self.state = {screen = 'map', coins = 0}
     self:frame{
+        code = ResumeState.code,
         hint = 'Pick a screen and earn coins, send the app to the background, end it from the system and open it again, and this test shows what the app kept. A launch after the app quit by itself finds nothing.',
         focus = 'screen',
         content = {ui.panel{align = 'stretch', gap = 12,

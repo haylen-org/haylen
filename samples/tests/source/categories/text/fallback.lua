@@ -9,6 +9,11 @@ local fonts = require('categories.text.fonts')
 
 local Fallback = haylen.class('Fallback', TextTest)
 
+Fallback.code = [[
+local family = graphics.newFontFamily({regular = assets.font('fonts/crimson-text-regular.ttf'), fallbacks = {assets.font('fonts/mplus-1p-regular.ttf'), assets.font('fonts/noto-sans-symbols-2-regular.ttf')}})
+local line = graphics2d.newRichText(japanese, {family = family, size = 34})  -- Each character takes the first font that has it.
+local font, syntheticBold = family:resolve(character, {bold = true})]]
+
 Fallback.lines = {
     {'Japanese', '日本語のテキスト、ひらがなとカタカナと漢字。'},
     {'Chinese', '我在學習繁體中文。春夏秋冬。'},
@@ -45,7 +50,7 @@ function Fallback:init(entry)
 end
 
 function Fallback:enter()
-    self:frame{hint = 'M PLUS 1p comes first among the fallbacks, so it draws the symbols it has and Noto Sans Symbols 2 draws the rest. A fallback font synthesizes the bold and italic its run asks for, as "family:resolve" reports on the right.'}
+    self:frame{code = Fallback.code, hint = 'M PLUS 1p comes first among the fallbacks, so it draws the symbols it has and Noto Sans Symbols 2 draws the rest. A fallback font synthesizes the bold and italic its run asks for, as "family:resolve" reports on the right.'}
 end
 
 function Fallback:draw(area)

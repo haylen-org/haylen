@@ -15,6 +15,12 @@ local picture = require('categories.algorithms.picture')
 
 local Dijkstra = haylen.class('Dijkstra', AlgorithmTest)
 
+Dijkstra.code = [[
+local chase = grid:dijkstraMap({{x = 10, y = 5}, {x = 30, y = 12, value = -6}})  -- The player and the gold.
+local flee = grid:dijkstraMap({{x = 10, y = 5}})
+flee:flee()
+local x, y = chase:next(monster.x, monster.y)  -- One step downhill.]]
+
 local kColumns, kRows, kCell = 48, 26, 30
 local kMonsters = 10
 local kStepTime = 0.15
@@ -22,6 +28,7 @@ local kStepTime = 0.15
 function Dijkstra:enter()
     self:frame{
         hint = 'The player follows the pointer. Red monsters chase it on the Dijkstra map, blue ones flee it on the flee map, and the gold pulls the chasers when it is on. R or the X button digs new caves.',
+        code = Dijkstra.code,
         controls = {
             ui.radioGroup{id = 'view', items = {{id = 'chase', text = 'Show the chase map'}, {id = 'flee', text = 'Show the flee map'}, {id = 'none', text = 'Show the map only'}}, selected = 'chase', onChange = function(event)
                 self.shownMap = event.value

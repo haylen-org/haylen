@@ -6,6 +6,11 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local OverLife = haylen.class('OverLife', ParticleTest)
 
+OverLife.code = [[
+local fade = particles2d.newEmitter({texture = dot, lifetime = 2.4, colors = {'#FFFF4040', '#FFFFC040', '#FF40FF80', '#FF40A0FF', '#00C060FF'}})
+local grow = particles2d.newEmitter({texture = dot, lifetime = 2.4, startSize = 8, endSize = 90})
+local twinkle = particles2d.newEmitter({texture = atlas.texture, frames = {atlas:source('sparkle-1'), atlas:source('sparkle-2'), atlas:source('sparkle-3'), atlas:source('sparkle-4')}})  -- Plays once from birth to death.]]
+
 OverLife.rise = {rate = 30, lifetime = 2.4, speed = {110, 130}, spread = 0.15, layer = 2}
 
 function OverLife:init(entry)
@@ -29,7 +34,7 @@ function OverLife:init(entry)
 end
 
 function OverLife:enter()
-    self:frame{hint = 'Each column changes one thing over the lifetime of its particles.'}
+    self:frame{hint = 'Each column changes one thing over the lifetime of its particles.', code = OverLife.code}
 end
 
 function OverLife:update(dt)

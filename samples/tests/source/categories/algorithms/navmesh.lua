@@ -11,12 +11,20 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local NavMesh = haylen.class('NavMesh', AlgorithmTest)
 
+NavMesh.code = [[
+local mesh = navigation2d.buildNavMeshAsync(boundary, rocks):await()  -- Inside a coroutine.
+local crate = mesh:addObstacle({{100, 0}, {180, 0}, {180, 60}, {100, 60}})
+local x, y = mesh:closestPoint(400, 380)
+local path, length = mesh:findPath(agent.x, agent.y, x, y, 20)  -- Keeps a radius of 20 clear.
+mesh:removeObstacle(crate)]]
+
 local kBoundary = {{-740, -400}, {740, -400}, {740, 400}, {140, 400}, {140, 300}, {-140, 300}, {-140, 400}, {-740, 400}}
 local kSpeed = 260
 
 function NavMesh:enter()
     self:frame{
         hint = 'Tap or click to send the agent there, or to add and remove crates with the other brushes. The rocks come from the first build on a worker thread. Paths turn only at corners and skip gaps narrower than the agent. R or the X button places new obstacles.',
+        code = NavMesh.code,
         controls = {
             ui.radioGroup{id = 'brush', items = {{id = 'walk', text = 'Walk there'}, {id = 'add', text = 'Add a crate'}, {id = 'remove', text = 'Remove a crate'}}, selected = 'walk', onChange = function(event) self.brush = event.value end},
             ui.label{text = 'Agent radius', font = 'caption', color = 'textMuted'},

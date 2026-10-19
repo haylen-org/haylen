@@ -11,11 +11,18 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local CenterOfMass = haylen.class('CenterOfMass', PhysicsTest)
 
+CenterOfMass.code = [[
+block:addBox(70, 150, {friction = 0.8})
+block.centerOfMass = {0, 60}  -- Low in the body, so the block rocks back upright.
+block:applyAngularImpulse(block.inertia * 2.5)  -- Tips it over.
+local center = block.worldCenter  -- The dot drawn on each block.]]
+
 local kWidth, kHeight = 70, 150
 local kTilts = {0.5, 0.8, 1.1}
 
 function CenterOfMass:enter()
     self:frame{
+        code = CenterOfMass.code,
         hint = 'Tip the blocks with the button or drag them. A dot marks the center of mass of each block. R or the X button stands them up again.',
         controls = {
             ui.button{id = 'tip', text = 'Tip them over', onClick = function() self:tip() end},

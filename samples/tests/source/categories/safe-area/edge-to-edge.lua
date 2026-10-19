@@ -9,6 +9,14 @@ local areas = require('categories.safe-area.areas')
 
 local EdgeToEdge = haylen.class('EdgeToEdge', Test)
 
+EdgeToEdge.code = [[
+graphics2d.beginScreen()
+graphics2d.drawRect(viewport.visibleRect(), '#FF3B3A7A')  -- The world reaches under the notch.
+ui.mount(ui.stack{
+    ui.label{text = 'Under the notch', anchor = 'left', anchorTo = 'screen', margin = 12},
+    ui.safeArea{ui.row{gap = 16, ui.badge{text = '12 coins', tone = 'warning'}, ui.button{text = 'Map'}}},
+}, {placement = 'screen', owner = self})]]
+
 function EdgeToEdge:init(entry)
     EdgeToEdge.super.init(self, entry)
     self.edge = true
@@ -20,6 +28,7 @@ function EdgeToEdge:enter()
     self.simulation = areas.simulate()
     self:frame{
         hint = 'Turn edge to edge off to see the world boxed into the safe area, which leaves the edges of the screen empty. The HUD stays in the safe area either way, and one label is anchored to the screen on purpose.',
+        code = EdgeToEdge.code,
         focus = 'edge',
         content = {ui.row{ui.spacer{grow = 1}, ui.card{width = 760, gap = 16,
             ui.toggle{id = 'edge', text = 'Draw the world edge to edge', checked = self.edge, onChange = function(event) self.edge = event.checked end},

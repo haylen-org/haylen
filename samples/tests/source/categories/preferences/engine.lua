@@ -14,6 +14,13 @@ local settings = require('categories.preferences.settings')
 
 local Engine = haylen.class('Engine', Test)
 
+Engine.code = [[
+audio.setBusVolume('music', 0.4)  audio.setBusMuted('sfx', false)  window.setFullscreen(true)
+input.defineAction({name = 'jump', type = 'button', bindings = {'key:k'}})
+preferences.capture()  -- Stores `audio.volume`, `audio.muted`, `window.fullscreen` and `input.actions`.
+preferences.save()
+preferences.apply()  -- At startup, after the buses and the default action map.]]
+
 Engine.clickInterval = 0.12
 Engine.keys = {'key:j', 'key:k', 'key:up', 'key:enter'}
 
@@ -43,6 +50,7 @@ function Engine:enter()
     end
     self:frame{
         hint = 'Move the sliders and toggles, rebind jump and press it on the play area. Capture and save stores the engine state, Mix it up changes it without saving and Apply brings the stored state back.',
+        code = Engine.code,
         focus = 'volume-master',
         panelWidth = 1100,
         controls = {

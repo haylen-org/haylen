@@ -9,6 +9,13 @@ local layout = require('categories.interface.layout')
 
 local TextInput = haylen.class('TextInput', Test)
 
+TextInput.code = [[
+ui.textField{id = 'message', placeholder = 'Say hello to the keeper', returnKey = 'send', onSubmit = function(event)
+    event.gui:set('message', {value = ''})
+end}  -- It edits through a hidden native field, and the GUIs move above the keyboard.
+events.on('keyboardShown', function(frame) log.info('The keyboard starts at ' .. frame.y .. '.') end, {owner = self})
+window.setKeyboardVisible(true)  -- The plain keyboard sends "character" and "keyDown" events.]]
+
 TextInput.platforms = [==[
 [b]Where the hidden field lives[/b]
 [ul]
@@ -32,6 +39,7 @@ end
 function TextInput:enter()
     self:frame{
         hint = 'Focus the message field: on a phone or a tablet the keyboard opens and every GUI moves up above it. Try an input method such as Japanese, whose composing text shows underlined. The plain keyboard button types into the line above it without a text field.',
+        code = TextInput.code,
         focus = 'message',
         content = {self:columns()},
     }

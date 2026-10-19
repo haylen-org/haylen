@@ -10,6 +10,14 @@ local actions = require('categories.camera.actions')
 
 local SplitScreen = haylen.class('SplitScreen', Test)
 
+SplitScreen.code = [[
+left.viewport = {area.x, area.y, area.width / 2, area.height}
+right.viewport = {area.x + area.width / 2, area.y, area.width / 2, area.height}
+for _, camera in ipairs({left, right}) do
+    graphics2d.beginWorld(camera)  -- Each camera draws the world into its half.
+    drawWorld()
+end]]
+
 function SplitScreen:init(entry)
     SplitScreen.super.init(self, entry)
     self.world = World()
@@ -28,6 +36,7 @@ function SplitScreen:enter()
     self:loadActions(actions)
     self:frame{
         hint = 'Yellow walks with WASD, the arrows or the left stick, blue with IJKL or the right stick, and each half follows the pointer held inside it.',
+        code = SplitScreen.code,
         play = true,
         controls = {ui.formField{label = 'Split', ui.radioGroup{id = 'split', selected = 'vertical', items = {{id = 'vertical', text = 'Side by side'}, {id = 'horizontal', text = 'Stacked'}}, onChange = function(event)
             self.vertical = event.value == 'vertical'

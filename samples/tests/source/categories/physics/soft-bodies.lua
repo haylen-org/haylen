@@ -13,6 +13,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local SoftBodies = haylen.class('SoftBodies', PhysicsTest)
 
+SoftBodies.code = [[
+node:addCircle(9, {group = -1, friction = 0.8})  -- The parts of one blob never collide.
+world:createJoint('distance', center, node, {ax = center.x, ay = center.y, bx = node.x, by = node.y, enableSpring = true, hertz = 5, dampingRatio = 0.4, enableLimit = true, lower = 28, upper = 87.5})
+world:createJoint('distance', node, neighbor, {ax = node.x, ay = node.y, bx = neighbor.x, by = neighbor.y, enableSpring = true, hertz = 10, dampingRatio = 0.4})
+world:readTransforms(blob, buffer)  -- Every node of the blob in one call.
+joint.hertz = 8  -- Stiffens the spring while it runs.]]
+
 local kNodes = 16
 local kRadius = 70
 local kNodeRadius = 9
@@ -22,6 +29,7 @@ local kRestArea = kNodes * kRadius ^ 2 * math.sin(math.pi * 2 / kNodes) / 2
 
 function SoftBodies:enter()
     self:frame{
+        code = SoftBodies.code,
         hint = 'Drag a blob by its rim or its middle and throw it: it squashes on impact and springs back. The stiffness changes the springs of every blob while they run. R or the X button starts over.',
         controls = {
             ui.button{id = 'drop', text = 'Drop a blob', onClick = function() self:blob(self.random:range(-600, 500), -300) end},

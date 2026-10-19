@@ -9,6 +9,13 @@ local Test = require('harness.test')
 
 local TouchControls = haylen.class('TouchControls', Test)
 
+TouchControls.code = [[
+input.defineAction({name = 'move', type = 'vector', bindings = {'stick:left', 'virtualStick:move'}})
+input.defineAction({name = 'jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}})
+ui.touchStick{action = 'move', mode = 'following', radius = 130, anchor = 'bottomLeft'}
+ui.touchButton{action = 'jump', image = 'interface/themes/fantasy/icons/star.png', size = 170}
+local x, y = input.vector('move')  -- The same for the touch stick, the keys and a gamepad.]]
+
 TouchControls.speed = 520
 TouchControls.radius = 40
 TouchControls.actions = {actions = {
@@ -34,6 +41,7 @@ function TouchControls:enter()
     self:loadActions(TouchControls.actions)
     self:frame{
         hint = 'Move with the left stick, which follows a finger that leaves its ring, or with WASD or the left stick of a gamepad, and aim with the right stick, the arrows or the right stick of a gamepad. Jump with the round button, Space or the south button, and dash with the other button, Shift or the west button. Every control follows its own finger.',
+        code = TouchControls.code,
         play = true,
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', mode = 'following', radius = 130, width = 520, height = 320, anchor = 'bottomLeft', margin = {0, 0, 150, 40}, style = {surfaces = TouchControls.art}},

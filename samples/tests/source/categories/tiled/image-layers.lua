@@ -8,6 +8,13 @@ local Pan = require('categories.tiled.pan')
 
 local ImageLayers = haylen.class('ImageLayers', MapTest)
 
+ImageLayers.code = [[
+local map = tiled.newMapRenderer(assets.load('tiled/maps/parallax.tmj', nil, {filter = 'linear'}))
+camera.x = camera.x + 160 * dt
+map:draw(camera)  -- Image layers repeat and scroll by the parallax factor of their layer.
+local hills = map:layer('far hills')
+print(hills.kind, hills.parallaxX, hills.repeatX, hills.repeatY)]]
+
 local kScrollSpeed = 160
 
 function ImageLayers:enter()
@@ -15,6 +22,7 @@ function ImageLayers:enter()
     local bounds = self.map.pixelBounds
     self:frame{
         hint = 'The camera travels along the map. Drag it, or use the arrows, the directional pad or the left stick, to see the far layers move less than the near ones. R or the X button goes back to the start.',
+        code = ImageLayers.code,
         controls = {
             ui.toggle{id = 'travel', text = 'Travel', checked = true, onChange = function(event) self.traveling = event.checked end},
             ui.checkbox{id = 'clouds', text = 'Clouds', checked = true, onChange = function(event) self.map:setLayerVisible('clouds', event.checked) end},

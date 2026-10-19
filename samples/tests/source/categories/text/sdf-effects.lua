@@ -9,6 +9,12 @@ local fonts = require('categories.text.fonts')
 
 local SdfEffects = haylen.class('SdfEffects', TextTest)
 
+SdfEffects.code = [[
+local font = assets.font('fonts/lilita-one-regular.ttf', {bakeSize = 64, spread = 16})
+graphics2d.drawText(font, 'Outline', 40, 50, {size = 112, outlineWidth = 8, outlineColor = '#FF8A1E1E'})
+graphics2d.drawText(font, 'Shadow', 960, 50, {size = 112, shadowOffset = {10, 12}, shadowColor = '#E0000000', shadowBlur = 8})
+local glow = graphics2d.newRichText('[glow=14 color=#FFFF8A00]Glow[/glow]', {family = family, size = 112})]]
+
 SdfEffects.size = 112
 
 function SdfEffects:init(entry)
@@ -30,6 +36,7 @@ end
 
 function SdfEffects:enter()
     self:frame{
+        code = SdfEffects.code,
         hint = 'Drag the sliders, or focus them and press left and right. An effect grows until it reaches the spread of the distance field, as the status line shows in distance units, where 0.5 spans the whole spread.',
         controls = {self:slider('outline', 'Outline width', 24), self:slider('blur', 'Shadow blur', 20), self:slider('glow', 'Glow reach', 28)},
         focus = 'outline',

@@ -9,6 +9,12 @@ local ShaderTest = require('categories.shaders.shader-test')
 
 local TextureUniforms = haylen.class('TextureUniforms', ShaderTest)
 
+TextureUniforms.code = [[
+local material = graphics2d.newMaterial(assets.shader('shaders/texture-map.shader'), {ramp_texture = assets.texture('shaders/images/ramp-fire.png'), pattern_texture = stripes, pattern_scale = 3})
+local live = graphics.newRenderTarget(256, 4, {filter = 'linear'})
+material:set('ramp_texture', live.texture)  -- A render target redrawn every frame.
+graphics2d.draw(planet, 223, 360, {width = 300, height = 300, material = material})]]
+
 function TextureUniforms:init(entry)
     TextureUniforms.super.init(self, entry)
     self.hero = ShaderTest.hero()
@@ -26,6 +32,7 @@ end
 
 function TextureUniforms:enter()
     self:frame{
+        code = TextureUniforms.code,
         hint = 'Pick the gradient the brightness maps through and the pattern laid over it. The live gradient is a render target drawn every frame.',
         controls = {
             ui.formField{label = 'Gradient texture', ui.radioGroup{id = 'ramp', selected = 'fire', items = {{id = 'fire', text = 'Fire'}, {id = 'ice', text = 'Ice'}, {id = 'toxic', text = 'Toxic'}, {id = 'live', text = 'Live render target'}}, onChange = function(event)

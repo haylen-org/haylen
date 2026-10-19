@@ -12,6 +12,12 @@ local Board = require('categories.algorithms.board')
 
 local Autotile = haylen.class('Autotile', AlgorithmTest)
 
+Autotile.code = [[
+local sides = procedural2d.autotile4(cells, 1)  -- The 4-bit mask of every cell that holds 1.
+local blobs = procedural2d.autotile8(cells, 1)  -- One of the 47 blob tiles, or -1.
+local set = {kind = 'corner', tiles = {{tileId = 5, wangId = {0, 1, 0, 2, 0, 1, 0, 2}}}}  -- Or a wang set of a Tiled tileset.
+local tiles = procedural2d.autotileWang(corners, set, 3)  -- Corners sit on a grid one cell wider and taller.]]
+
 local kColumns, kRows, kCell = 38, 21, 38
 local kWater, kShore, kLand = '#FF1E6091', '#FFE9D8A6', '#FF7CB342'
 local kInset = 8
@@ -30,6 +36,7 @@ end
 function Autotile:enter()
     self:frame{
         hint = 'Paint land on the water with the pointer, starting on water to add land and on land to remove it. The Wang mode paints the corners of the cells. R or the X button raises a new island.',
+        code = Autotile.code,
         controls = {
             ui.radioGroup{id = 'mode', items = {{id = 'mask4', text = '4-bit masks'}, {id = 'blob', text = '47-tile blob masks'}, {id = 'wang', text = 'Corner Wang set'}}, selected = 'blob', onChange = function(event)
                 self.mode = event.value

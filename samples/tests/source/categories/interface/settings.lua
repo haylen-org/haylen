@@ -6,6 +6,14 @@ local Test = require('harness.test')
 
 local Settings = haylen.class('Settings', Test)
 
+Settings.code = [[
+ui.settingsForm{
+    ui.sectionTitle{text = 'Audio and language'},
+    ui.settingsRow{label = 'Music', caption = 'The volume of the songs', ui.slider{id = 'music', value = 0.7, width = 420}},
+    ui.settingsActions{ui.button{text = 'Cancel'}, ui.button{text = 'Save', variant = 'primary', onClick = save}},
+}
+gui:set('music', {value = 0.7})  -- Puts a control back to its saved value.]]
+
 Settings.defaults = {subtitles = true, music = 0.7, effects = 0.9, language = 'en', difficulty = 'normal'}
 
 function Settings:init(entry)
@@ -21,6 +29,7 @@ end
 function Settings:enter()
     self:frame{
         hint = 'Change the settings and press Save to keep them, Cancel to go back to the saved ones or Defaults to start over. The arrows move between rows, and left and right change sliders and steppers.',
+        code = Settings.code,
         focus = 'subtitles',
         content = {self:form()},
     }

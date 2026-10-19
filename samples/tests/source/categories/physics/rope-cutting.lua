@@ -11,6 +11,12 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local RopeCutting = haylen.class('RopeCutting', PhysicsTest)
 
+RopeCutting.code = [[
+local rope = physics2d.newRope(world, {from = {-300, -380}, to = {0, -60}, segments = 14, thickness = 6, density = 0.5, pinStart = true, endBody = candy, limitLength = false, category = kRope})
+for _, hit in ipairs(world:raycastAll(lastX, lastY, x, y, {mask = kRope})) do cut(hit.body) end  -- The segments the swipe crossed.
+rope:joints()[index]:destroy()  -- Cuts the rope after that segment.
+basket:addBox(180, 80, {sensor = true})]]
+
 local kRope = 2
 local kCandy = {0, -60, 30}
 local kPins = {{-300, -380}, {40, -400}, {330, -360}}
@@ -20,6 +26,7 @@ local kRopeColors = {'#FFBCAAA4', '#FFA1887F', '#FFD7CCC8'}
 
 function RopeCutting:enter()
     self:frame{
+        code = RopeCutting.code,
         hint = 'Swipe across a rope to cut it where you cross it, and drop the candy into the basket. R or the X button hangs a new candy.',
         controls = {
             ui.button{id = 'left', text = 'Cut the left rope', onClick = function() self:cutMiddle(1) end},

@@ -13,12 +13,20 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Sensors = haylen.class('Sensors', PhysicsTest)
 
+Sensors.code = [[
+zone:addBox(520, 160, {sensor = true})  -- Reports overlaps and never collides.
+world.onSensorBegin = function(sensor, visitor) inside = inside + 1 end
+world.onSensorEnd = function(sensor, visitor) inside = inside - 1 end
+world.onContactBegin = function(a, b, contact) begun = begun + 1 end
+world.onHit = function(a, b, contact) spark(contact.x, contact.y, contact.speed) end]]
+
 local kMaxBalls = 40
 local kLogLines = 6
 local kSparkLife = 0.4
 
 function Sensors:enter()
     self:frame{
+        code = Sensors.code,
         hint = 'Balls fall through the green sensor zone, which counts them without touching them. Drag balls in and out, R or the X button clears them.',
         controls = {
             ui.toggle{id = 'rain', text = 'Rain balls', checked = true, onChange = function(event) self.raining = event.checked end},

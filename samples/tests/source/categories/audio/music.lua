@@ -20,6 +20,7 @@ function Music:enter()
     self.segments = {}
     self.pauses = {}
     self:frame({
+        code = kCode,
         hint = 'Start a track, then the other one to hear the crossfade.',
         focus = 'calm',
         controls = {
@@ -40,7 +41,6 @@ function Music:enter()
                 ui.button{id = 'forward', text = 'Forward 10 seconds', onClick = function() self:seek(10) end},
             },
             ui.label{text = 'Asking for the track that already plays keeps it going on the same voice and only changes its volume, which the volume slider uses. Pause and Resume hold only the music, through the voice that "playMusic" returns.', color = 'textMuted', font = 'caption'},
-            ui.label{text = kCode, font = 'monospace'},
         },
     })
 end

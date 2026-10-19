@@ -12,6 +12,13 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Ragdoll = haylen.class('Ragdoll', PhysicsTest)
 
+Ragdoll.code = [[
+local doll = physics2d.newRagdoll(world, {x = -740, y = -200, height = 240, stiffness = 0.2, group = -1, vx = 260})
+local other = physics2d.newRagdoll(world, {x = -100, y = -250, height = 240, group = -2})  -- Its own group, so the two collide.
+local chest = doll:body('chest')
+chest:applyImpulse(chest.mass * 500, -chest.mass * 600)  -- Throws the figure.
+for part, body in pairs(doll:bodies()) do drawBone(part, body.x, body.y) end]]
+
 local kMaxDolls = 8
 local kHeight = 240
 local kSteps, kStepWidth, kStepHeight = 6, 100, 70
@@ -29,6 +36,7 @@ local kBones = {
 
 function Ragdoll:enter()
     self:frame{
+        code = Ragdoll.code,
         hint = 'Drag a limb to pull a ragdoll up or down the stairs or to throw it. The figures draw as bones between the centers of their parts, and the outlines show the capsules themselves. R or the X button starts over.',
         controls = {
             ui.button{id = 'drop', text = 'Drop a ragdoll', onClick = function() self:drop() end},

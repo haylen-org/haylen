@@ -12,12 +12,21 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Sleeping = haylen.class('Sleeping', PhysicsTest)
 
+Sleeping.code = [[
+local world = physics2d.newWorld({sleepEnabled = true})
+local box = world:createBody({x = 0, y = 365, sleepThreshold = 3.2})
+local asleep = not box.awake
+world:wakeAll()
+local stats = world:stats()
+print(stats.awakeBodies, stats.solveMilliseconds)]]
+
 local kRows = 18
 local kSize = 30
 local kAsleep = '#FF5C6B8A'
 
 function Sleeping:enter()
     self:frame{
+        code = Sleeping.code,
         hint = 'Boxes turn gray while they sleep. Drag a box or drop a ball to wake the boxes it touches, or wake every box at once. R or the X button starts over.',
         controls = {
             ui.button{id = 'ball', text = 'Drop a ball on both piles', onClick = function() self:dropBall() end},

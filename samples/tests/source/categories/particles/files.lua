@@ -8,6 +8,14 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local Files = haylen.class('Files', ParticleTest)
 
+Files.code = [[
+for _, path in ipairs(assets.list('particles/effects')) do
+    if assets.typeForPath(path) == 'particles' then paths[#paths + 1] = path end
+end
+local effect = assets.load('particles/effects/sparks.particles')  -- A ParticleEffect.
+local emitter = particles2d.newEmitter(effect)
+log.info(effect.texturePath, effect.config.rate, effect.config.lifetime[1])]]
+
 function Files:init(entry)
     Files.super.init(self, entry)
     self.paths = {}
@@ -32,6 +40,7 @@ function Files:enter()
     end
     self:frame{
         hint = 'Pick an effect file. The emitter follows the cursor: move it with the mouse, a finger, the arrows, WASD or a stick.',
+        code = Files.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Effect file', ui.radioGroup{id = 'file', items = items, selected = self.path, onChange = function(event)

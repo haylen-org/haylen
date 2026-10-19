@@ -10,6 +10,14 @@ local PhysicsTest = require('categories.physics.physics-test')
 
 local Pinball = haylen.class('Pinball', PhysicsTest)
 
+Pinball.code = [[
+local flipper = world:createJoint('revolute', cabinet, paddle, {ax = -125, ay = 330, enableLimit = true, lower = -0.95, upper = 0, enableMotor = true, maxMotorTorque = 5e6})
+flipper.motorSpeed = input.down('leftFlipper') and -20 or 12
+local plunger = world:createJoint('prismatic', cabinet, rod, {ax = 315, ay = 350, axisX = 0, axisY = 1, enableLimit = true, lower = -10, upper = 70, enableSpring = true, hertz = 3.6, maxMotorForce = 1e5, motorSpeed = 160})
+plunger.enableMotor = input.down('plunger')  -- The spring launches the ball on release.
+gate:addBox(62, 8, {oneWay = {0, -1}})
+world.onContactBegin = function(a, b) if b.data.bumper then a:applyImpulse(awayX * a.mass * 520, awayY * a.mass * 520) end end]]
+
 Pinball.actions = {
     {name = 'leftFlipper', type = 'button', bindings = {'key:a', 'key:left', 'key:leftShift', 'button:leftShoulder', 'axis:leftTrigger+', 'virtual:leftFlipper'}},
     {name = 'rightFlipper', type = 'button', bindings = {'key:d', 'key:right', 'key:rightShift', 'button:rightShoulder', 'axis:rightTrigger+', 'virtual:rightFlipper'}},
@@ -29,6 +37,7 @@ local kPullTime = 0.7
 
 function Pinball:enter()
     self:frame{
+        code = Pinball.code,
         hint = 'Hold Space, S or the south button to pull the plunger and let go to launch. The left flipper takes A, the left arrow, Shift, the left shoulder or the left trigger, and the right flipper the same keys on the right. R or the X button starts a new game.',
         controls = {
             ui.button{id = 'launch', text = 'Launch the ball', onClick = function() self.autoPull = kPullTime end},

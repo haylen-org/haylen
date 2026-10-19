@@ -9,6 +9,11 @@ local LightingTest = require('categories.lighting.lighting-test')
 
 local NormalMaps = haylen.class('NormalMaps', LightingTest)
 
+NormalMaps.code = [[
+local lamp = lighting2d.newLight({radius = 700, color = '#FFFFEAD0', intensity = 1.6, height = 90})  -- Low lights graze the relief.
+graphics2d.draw(bricks, x, y, {normalMap = brickNormals, specular = 1, shininess = 32})
+graphics2d.drawLight(lamp)]]
+
 NormalMaps.size = 128
 
 -- Builds a color texture and its normal map from functions of a pixel. The height gives the relief, and the shine goes to the alpha of the normal map, which scales the specular highlight.
@@ -92,6 +97,7 @@ end
 function NormalMaps:enter()
     self:frame{
         hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. Low lights graze the surface and show the relief, high ones flatten it.',
+        code = NormalMaps.code,
         cursor = true,
         controls = {
             ui.toggle{id = 'normalMaps', text = 'Normal maps', checked = true, onChange = function(event)

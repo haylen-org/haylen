@@ -8,6 +8,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local MovingEmitters = haylen.class('MovingEmitters', ParticleTest)
 
+MovingEmitters.code = [[
+local exhaust = particles2d.newEmitter({texture = flame, rate = 140, speed = {260, 340}, direction = 1.5708, inheritVelocity = 0.8})
+local trail = particles2d.newEmitter({texture = dot, rate = 0, rateOverDistance = 0.25, speed = 0})  -- One particle every 4 units.
+exhaust.x, exhaust.y = shipX, shipY + 30  -- The emitter measures its own velocity.
+exhaust.scale, exhaust.rotation = 1.5, 0.4  -- Applies to what it spawns from now on.]]
+
 MovingEmitters.wing = 130
 MovingEmitters.hull = {layer = 4}
 MovingEmitters.legendStyle = {size = 26, anchor = {0, 0.5}, outlineWidth = 3, layer = 20}
@@ -32,6 +38,7 @@ end
 function MovingEmitters:enter()
     self:frame{
         hint = 'The ship follows the cursor: move it fast with the mouse, a finger, the arrows, WASD or a stick, or turn on the autopilot. The orange trail spawns by time and breaks up at speed, and the blue one spawns by distance.',
+        code = MovingEmitters.code,
         cursor = true,
         controls = {
             ui.formField{label = 'Velocity the exhaust inherits', ui.slider{id = 'inherit', min = -1, max = 1.5, value = self.inherit, showValue = true, onChange = function(event)

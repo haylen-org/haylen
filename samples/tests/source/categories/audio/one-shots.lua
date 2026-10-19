@@ -29,6 +29,7 @@ function OneShots:enter()
         end}}
     end
     self:frame({
+        code = kCode,
         hint = 'Click or tap the stage, or aim with the right stick and press the right trigger, to play at the pan of that spot.',
         focus = 'play',
         controls = {
@@ -46,7 +47,6 @@ function OneShots:enter()
             ui.formField{label = 'Voices of one sound at once', ui.stepper{id = 'limit', min = 1, max = 8, value = self.limit, onChange = function(event) self.limit = event.value end}},
             ui.toggle{id = 'loop', text = 'Loop, to hear the fades', onChange = function(event) self.loop = event.checked end},
             ui.button{id = 'seed', text = 'Seed the variation with 7', onClick = function() audio.seedVariation(7) end},
-            ui.label{text = kCode, font = 'monospace'},
         },
     })
     self:loadActions({actions = Pointer.actions})

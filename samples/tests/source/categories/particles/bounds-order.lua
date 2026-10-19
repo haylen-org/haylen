@@ -9,6 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 
 local BoundsOrder = haylen.class('BoundsOrder', ParticleTest)
 
+BoundsOrder.code = [[
+local rain = particles2d.newEmitter({texture = streak, rate = 150, speed = {950, 1100}, direction = 1.62, bounds = {-400, -20, 800, 800}, boundsMode = 'kill'})
+local snow = particles2d.newEmitter({texture = flake, gravity = {60, 30}, bounds = {-260, -300, 520, 600}, boundsMode = 'wrap'})  -- Flakes come back on the other side.
+local smoke = particles2d.newEmitter({texture = puff, rate = 12, startSize = {60, 80}, endSize = {180, 220}, particleOrder = 'newestFirst'})  -- New puffs draw below the older ones.
+rain:configure({bounds = false})  -- Removes the bounds.]]
+
 BoundsOrder.cloud = -480
 BoundsOrder.snowBox = {-220, -330, 520, 600}
 BoundsOrder.order = {layer = 1}
@@ -46,6 +52,7 @@ end
 function BoundsOrder:enter()
     self:frame{
         hint = 'The rain dies where it reaches the ground because its bounds end there, and falls through it without them. The snow wraps around its box in the wind. The left smoke draws each new puff on top and the right one below the older puffs.',
+        code = BoundsOrder.code,
         controls = {
             ui.toggle{id = 'bounded', text = 'Bounds on the rain', checked = self.bounded, onChange = function(event)
                 self.bounded = event.checked

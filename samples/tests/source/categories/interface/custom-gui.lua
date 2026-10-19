@@ -11,6 +11,14 @@ local Test = require('harness.test')
 
 local CustomGui = haylen.class('CustomGui', Test)
 
+CustomGui.code = [[
+local x, y = input.mousePosition()
+local over = x >= rect[1] and x < rect[1] + rect[3] and y >= rect[2] and y < rect[2] + rect[4]
+graphics2d.drawNineSlice(slice, rect, over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 0.4})
+if over and input.mouseReleased('left') then sail() end
+window.setCursor(over and 'pointingHand' or 'default')
+input.editText({text = name, selectionStart = caret, x = 40, y = 330, width = 560, height = 72, returnKey = 'done'})]]
+
 CustomGui.harbor = {'North pier', 'Fish market', 'Lighthouse', 'Old warehouse', 'Shipyard', 'Customs house', 'Rope maker', 'Sail loft', 'Tavern', 'Watchtower', 'Boat ramp', 'Fuel dock'}
 
 function CustomGui:init(entry)
@@ -24,6 +32,7 @@ function CustomGui:enter()
     self.controls = Immediate(function(x, y) return self:toStage(x, y) end, function(x, y) return self.camera:worldToScreen(x, y) end)
     self:frame{
         hint = 'Every control on the stage is drawn by Lua each frame. Click or tap them, drag the slider and the list, type a name with the keyboard or an input method, and walk the focus with Tab, the arrows, the gamepad or the remote, pressing with Enter or the south button.',
+        code = CustomGui.code,
         play = true,
     }
 end
