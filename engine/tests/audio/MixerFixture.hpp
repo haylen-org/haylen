@@ -142,6 +142,16 @@ class MixerFixture : public ::testing::Test {
         return positions;
     }
 
+    // Polls the job system until the failures arrived or a deadline passed, since a job that fails ends its voice at once while its failure reaches the frame thread through the event loop.
+    [[nodiscard]] bool awaitJobErrors(std::size_t count) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (jobErrors.size() < count && std::chrono::steady_clock::now() < deadline) {
+            runtime.getRuntime().poll();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return jobErrors.size() >= count;
+    }
+
     // Mixes the frames and returns the left channel.
     [[nodiscard]] std::vector<float> renderLeft(std::size_t frames) {
         std::vector<float> samples(frames * mixer.getChannels());

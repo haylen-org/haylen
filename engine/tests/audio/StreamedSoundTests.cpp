@@ -177,6 +177,7 @@ TEST_F(StreamedSoundTest, EndsAVoiceWhoseReadsFail) {
     EXPECT_GT(played.size(), 0U);
     EXPECT_LT(played.size(), 4 * kRate);
     EXPECT_TRUE(isContinuous(played, 4 * kRate));
+    ASSERT_TRUE(awaitJobErrors(1));
     ASSERT_EQ(jobErrors.size(), 1U);
     EXPECT_EQ(jobErrors.front(), "The record of the file failed its checks.");
     jobErrors.clear();
