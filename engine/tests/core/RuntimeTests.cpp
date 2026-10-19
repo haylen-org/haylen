@@ -230,4 +230,16 @@ TEST(LogTest, FiltersByLevel) {
     EXPECT_EQ(lines[3].first, core::Log::Level::Debug);
 }
 
+// A line carries its time, its level and its message, and never the name of the library that writes it.
+TEST(LogTest, WritesLinesWithTheirTimeAndLevelOnly) {
+    std::string line;
+    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level, std::string_view message) { line = std::string(message); });
+    core::Log::info("Ready");
+    core::Log::removeListener(listener);
+
+    EXPECT_TRUE(line.starts_with("[")) << line;
+    EXPECT_TRUE(line.ends_with("] [info] Ready")) << line;
+    EXPECT_EQ(line.find("varn"), std::string::npos) << line;
+}
+
 } // namespace haylen::core

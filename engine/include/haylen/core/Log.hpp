@@ -55,6 +55,8 @@ class Log final {
     struct Listeners;
 
     static constexpr Level kDefaultLevel = Level::Info;
+    // The name of the log of the platform, which tags logcat on Android and is the category of the unified log on the Apple platforms, the same tag the Java side of the engine uses.
+    static constexpr std::string_view kPlatformName = "haylen";
 
     // Varn's logger starts at `Debug`, so the engine default reaches it at startup and lines from Varn's own log module obey the same level.
     static std::atomic<Level> currentLevel;
@@ -67,7 +69,7 @@ class Log final {
     }
 
     [[nodiscard]] static Listeners& getListeners();
-    [[nodiscard]] static Level applyDefaultLevel();
+    [[nodiscard]] static Level applyDefaults();
     [[nodiscard]] static Level fromVarnLevel(varn::log::Level value) noexcept;
     [[nodiscard]] static varn::log::Level toVarnLevel(Level value) noexcept;
     static void dispatch(varn::log::Level level, std::string_view line);

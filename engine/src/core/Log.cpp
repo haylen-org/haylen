@@ -17,7 +17,7 @@ struct Log::Listeners {
     bool installed = false;
 };
 
-std::atomic<Log::Level> Log::currentLevel{applyDefaultLevel()};
+std::atomic<Log::Level> Log::currentLevel{applyDefaults()};
 
 // The listeners are never destroyed, because an `exit()` on another thread runs the destructors of static objects while the frame thread still logs.
 Log::Listeners& Log::getListeners() {
@@ -25,7 +25,8 @@ Log::Listeners& Log::getListeners() {
     return instance;
 }
 
-Log::Level Log::applyDefaultLevel() {
+Log::Level Log::applyDefaults() {
+    varn::log::Log::setName(kPlatformName);
     varn::log::Log::setLevel(toVarnLevel(kDefaultLevel));
     return kDefaultLevel;
 }
