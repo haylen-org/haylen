@@ -379,6 +379,25 @@ The numbers say this:
 - Reading 5000 transforms in bulk costs about 5 nanoseconds per body.
 - Stepping from Lua costs what the step costs, and the hit and contact callbacks of a pile of 2000 boxes add less than the noise of the run.
 
+### A frame of thousands of bodies
+
+The stress sample `samples/stress/many-bodies` shows what a whole frame of a physics game costs: a bin of 8000 toys of four shapes, every one a Box2D body, kept awake by a blast every three seconds, with 28,500 contacts, drawn from one sprite batch that `world:readTransforms` fills, with interpolation, under its UI. These are its readouts after the pour, with the Release engine of each platform:
+
+| Platform | Physics step | Average frame | Notes |
+| --- | --- | --- | --- |
+| macOS on an Apple M5 Pro, 5 performance and 10 efficiency cores | 2.68 ms on the job system | 8.32 ms, the 120 Hz of the display | The step waits for its workers, and the rest of the frame waits for the next drawable. |
+| Chrome on the same Mac, WebGPU | 4.86 ms on the one thread of the web | 6.19 ms, 60 frames per second | The web build steps on one thread, about 1.8 times the time of the native step. |
+| Android emulator on the same Mac, arm64 | 6.15 ms | 12.30 ms | The emulator runs arm code natively but draws without a window on a software GPU, so its frame rate says nothing of a device, and its step runs on the cores the emulator gives it. |
+
+A sample of the main thread of the macOS run, taken with `sample` over eight seconds, splits the frame like this: the physics step takes 28 percent of the samples, most of them waiting for the tasks of Box2D on the workers, waiting for the next drawable of the display takes 23 percent, the Lua update of the scene with `readTransforms` and the batch takes 5 percent, and the renderer, the UI and the submission take about 2 percent together. On the workers, the solver of contacts, the collision of polygons and the splitting of islands for sleeping take most of the time, all inside Box2D.
+
+What follows from it:
+
+- The step of Box2D is the whole cost of a physics game, and the engine adds about a tenth of it around the step: the reading of thousands of transforms in one call, the batch that draws them and the Lua of the scene.
+- The step scales over the job system up to about four threads, and the web build, which has one thread, pays about 1.8 times the native step, so a web game keeps about half the awake bodies of its desktop version within the same frame.
+- Letting the pile sleep is still the largest saving, since a settled bin of 8000 toys steps in no time once it sleeps, and the blasts of the sample keep it awake on purpose.
+- The emulators and simulators measure the CPU of the Mac, not the device, so the budget of awake bodies of a phone or a TV comes from the readout of the sample on the device itself.
+
 ## From C++
 
 The C++ API lives in `haylen/2d/physics/` in the `haylen::physics2d` namespace. A `World` takes its `World::Settings` and, for more than one thread, the job system of the engine, as in `physics2d::World world({.threads = 4}, &engine.getJobs())`, and a world of more than one thread without a job system throws `std::invalid_argument` with `A physics world with more than one thread needs a job system.`. `Body`, `Shape` and `Joint` are handles that turn invalid when what they refer to or their world goes. `Rope`, `Ragdoll`, `Vehicle`, `TopDownVehicle`, `Mover`, `Grabber`, `ForceField`, `Fluid`, `Terrain`, `Explosion`, `Fracture`, `PathPredictor`, `Raycaster` and `RayBatch` are the helpers the Lua module wraps, with the same options and errors. Code that acts on a world every step adds a function with `World::addStepHook(World::StepPhase::Before, hook)`, which runs before Box2D advances, where forces apply, or with `StepPhase::After`, where the positions of the step are known, and removes it with `removeStepHook`, which is how vehicles, force fields and fluids work. `World::getInterpolatedTransform` blends one body, `World::computeStateHash` hashes a list of bodies and `World::getStats` returns the counts and times of the last step. Code that moves through a world by queries, as the mover does, follows the rules of one-way platforms with `World::kOneWayThreshold`, the least lean toward the open side of a platform at which a contact holds, `World::kOneWayDepth`, how deep in meters a body may be inside a platform and still land on it, and `World::isDroppingThrough(body)`, which tells whether `Body::dropThrough` lets a body pass every platform.
