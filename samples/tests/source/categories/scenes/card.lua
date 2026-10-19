@@ -1,4 +1,4 @@
--- A full-screen scene with a color, a title and a caption, which the scene tests push, replace and pop. It reports its hooks to a listener, can take a while to load and can leave by itself.
+-- A scene with a color, a title and a caption over the whole screen or over the play area of a test, which the scene tests push, replace and pop. It reports its hooks to a listener, can take a while to load and can leave by itself.
 local async = require('async')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
@@ -9,7 +9,7 @@ local timer = require('haylen.timer')
 
 local Card = haylen.class('Card', scene.Scene)
 
--- Options: `title`, `caption`, `color`, `listener` (a function of the card, the hook name and a detail), `work` (seconds the load takes, in ten steps), `fail` (a message the load fails with), `stay` (seconds before the card pops itself) and `leave` (the transition it pops with).
+-- Options: `title`, `caption`, `color`, `listener` (a function of the card, the hook name and a detail), `work` (seconds the load takes, in ten steps), `fail` (a message the load fails with), `stay` (seconds before the card pops itself), `leave` (the transition it pops with) and `stage` (the screen rectangle of a play area, which makes the card a transparent panel over it, so the test and its controls stay visible and usable under the card).
 function Card:init(options)
     self.title = options.title
     self.caption = options.caption or ''
@@ -19,6 +19,8 @@ function Card:init(options)
     self.fail = options.fail
     self.stay = options.stay
     self.leave = options.leave
+    self.stage = options.stage
+    self.transparent = self.stage ~= nil
 end
 
 function Card:report(hook, detail)
@@ -82,18 +84,21 @@ function Card:update(dt)
     end
 end
 
+-- Everything scales with the area, which is 1920 units wide when the card covers the screen.
 function Card:render()
     graphics2d.beginScreen()
-    local area = graphics2d.canvasBounds()
+    local area = self.stage or graphics2d.canvasBounds()
+    local scale = math.min(area.width / 1920, area.height / 1080)
+    local centerX, centerY = area.x + area.width / 2, area.y + area.height / 2
     graphics2d.drawRect(area, self.color)
     local time = haylen.elapsed()
     for index = 0, 5 do
         local angle = time * 0.4 + index * math.pi / 3
-        local x, y = area.x + area.width * 0.5 + math.cos(angle) * 520, area.y + area.height * 0.55 + math.sin(angle) * 260
-        graphics2d.draw(graphics.whiteTexture(), x, y, {width = 120, height = 120, rotation = angle, color = '#30FFFFFF'})
+        local x, y = centerX + math.cos(angle) * 520 * scale, area.y + area.height * 0.55 + math.sin(angle) * 260 * scale
+        graphics2d.draw(graphics.whiteTexture(), x, y, {width = 120 * scale, height = 120 * scale, rotation = angle, color = '#30FFFFFF'})
     end
-    graphics2d.drawText(nil, self.title, area.x + area.width / 2, area.y + area.height * 0.5, {size = 120, anchor = {0.5, 0.5}, outlineWidth = 5, outlineColor = '#80000000', layer = 1})
-    graphics2d.drawText(nil, self.caption, area.x + area.width / 2, area.y + area.height * 0.5 + 110, {size = 40, anchor = {0.5, 0.5}, color = '#E0FFFFFF', layer = 1})
+    graphics2d.drawText(nil, self.title, centerX, centerY, {size = 120 * scale, anchor = {0.5, 0.5}, outlineWidth = 5 * scale, outlineColor = '#80000000', layer = 1})
+    graphics2d.drawText(nil, self.caption, centerX, centerY + 110 * scale, {size = 40 * scale, anchor = {0.5, 0.5}, color = '#E0FFFFFF', layer = 1})
 end
 
 return Card

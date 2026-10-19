@@ -93,6 +93,22 @@ TEST_F(SceneGuiTest, HidesTheGuiOfACoveredSceneUntilItShowsAgain) {
     EXPECT_EQ(findLastEvent("click").id, "play");
 }
 
+// A scene under a transparent scene keeps rendering, so its GUI keeps showing and taking clicks, such as the buttons that pop the panel on top.
+TEST_F(SceneGuiTest, KeepsTheGuiOfASceneUnderATransparentSceneClickable) {
+    class Panel final : public core::Scene {
+      public:
+        [[nodiscard]] bool isTransparent() const override {
+            return true;
+        }
+    };
+    getEngine().getScenes().push(std::make_shared<Panel>());
+    frames(3);
+    EXPECT_TRUE(hasDrawn("##haylen-guis"));
+    clearEvents();
+    click(*gui, "play");
+    EXPECT_EQ(findLastEvent("click").id, "play");
+}
+
 TEST_F(SceneGuiTest, GivesTheFocusBackOnceItsSceneShowsAgain) {
     gui->command(getUi().getContext(), "play", "focus", core::Json::object());
     frames(2);

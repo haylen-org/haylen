@@ -1,4 +1,4 @@
--- Stack and hooks: the operations of `haylen.scene` on the cards above this test, with the stack and the last hooks each scene received listed next to the buttons. The test sits on the menus of the project, so "Pop to the test" is the `popTo` that "popToRoot" would be in an app of its own.
+-- Stack and hooks: the operations of `haylen.scene` on the cards above this test, with the stack and the last hooks each scene received listed next to the buttons. Each card is a transparent panel over the play area, so the buttons of the test stay visible and usable while cards cover it. The test sits on the menus of the project, so "Pop to the test" is the `popTo` that "popToRoot" would be in an app of its own.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local scene = require('haylen.scene')
@@ -27,7 +27,7 @@ function Stack:init(entry)
 end
 
 function Stack:operation(id, text, action)
-    return ui.button{id = id, text = text, onClick = function()
+    return ui.button{id = id, text = text, align = 'stretch', onClick = function()
         if not scene.transitioning() then
             action()
         end
@@ -42,7 +42,7 @@ function Stack:enter(params)
             ui.formField{label = 'Transition', ui.combo{id = 'transition', selected = 'slide', items = {{id = 'none', text = 'Instant'}, {id = 'slide', text = 'Slide'}, {id = 'fade', text = 'Fade'}}, onChange = function(event)
                 self.transition = Stack.transitions[event.value]
             end}},
-            ui.grid{columns = 2, gap = 8, children = {
+            ui.column{gap = 8, children = {
                 self:operation('push', 'Push', function() scene.push(self:card(), self:arrival()) end),
                 self:operation('pop', 'Pop', function() if scene.size() > self.depth then scene.pop(self.transition.leave) end end),
                 self:operation('replace', 'Replace', function() if scene.size() > self.depth then scene.replace(self:card(), self:arrival()) end end),
@@ -59,7 +59,7 @@ end
 
 function Stack:card()
     self.cards = self.cards + 1
-    return Card({title = 'Card ' .. self.cards, caption = 'The "params" of its change say where it came from', color = Stack.colors[self.cards % #Stack.colors + 1], leave = self.transition.leave, listener = function(card, hook, detail)
+    return Card({title = 'Card ' .. self.cards, caption = 'The "params" of its change say where it came from', color = Stack.colors[self.cards % #Stack.colors + 1], leave = self.transition.leave, stage = self.stage, listener = function(card, hook, detail)
         self:record(card.title, hook, detail)
     end})
 end
