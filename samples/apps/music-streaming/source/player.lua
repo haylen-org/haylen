@@ -72,6 +72,11 @@ function Player.load(startAt)
     if not track then
         return
     end
+    -- The song that played stops as soon as another one is chosen, so its time never counts for the next one while that one is made.
+    if Player.voice and Player.voiceTrack ~= track then
+        audio.stop(Player.voice, 0.25)
+        Player.voice = nil
+    end
     Player.playing = true
     Player.position = startAt or 0
     Player.loading = Player.cache[track.id] == nil
@@ -83,6 +88,7 @@ function Player.load(startAt)
         end
         Player.loading = false
         Player.voice = audio.playMusic(sound, {loop = Player.repeatMode == 'one', fade = 0.25, startAt = startAt or 0})
+        Player.voiceTrack = track
         if not Player.playing then
             audio.pause(Player.voice)
         end

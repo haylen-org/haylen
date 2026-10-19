@@ -1,4 +1,4 @@
--- The automatic run of the headless platform: it plays a mix, opens the player, seeks, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the liked songs, an artist, the search, a genre and the library, adds a song to a playlist and switches the theme, logs each step and quits, so an unattended run checks every path of the app.
+-- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the liked songs, an artist, the search, a genre and the library, adds a song to a playlist and switches the theme, logs each step and quits, so an unattended run checks every path of the app.
 local haylen = require('haylen')
 local log = require('haylen.log')
 local scene = require('haylen.scene')
@@ -20,6 +20,7 @@ function Tour.steps()
         {'Play a mix', function() Player.playList(Catalog.mixes[2].tracks, 1) end},
         {'Open the player', function() Shell.openPlayer() end},
         {'Seek into the song', function() Player.seek(Player.current().length / 2) end},
+        {'Pick a shorter song near the end of this one', function() Tour.pickShorterSong() end},
         {'Skip to the next song', function() Player.next() end},
         {'Shuffle and repeat', function() Player.setShuffle(true) Player.cycleRepeat() end},
         {'Set the sleep timer', function() scene.top():setSleep('15') end},
@@ -42,6 +43,25 @@ function Tour.steps()
         {'Player in the light theme', function() Shell.openPlayer() end},
         {'Back to the night', function() ui.setTheme('musicNight') Shell.showTab('home') end},
     }
+end
+
+-- Plays a song shorter than the time the current song reached, as a player who taps another song does, and checks that the time of the old song never counts for the new one while the new one is made, which the bar of the player shows.
+function Tour.pickShorterSong()
+    local current = Player.current()
+    local shortest
+    for _, artist in ipairs(Catalog.artists) do
+        for _, track in ipairs(artist.tracks) do
+            if track.id ~= current.id and (not shortest or track.length < shortest.length) then
+                shortest = track
+            end
+        end
+    end
+    Player.seek(math.min(current.length - 1, shortest.length + 5))
+    Player.addToQueue(shortest, true)
+    Player.next()
+    if Player.elapsed() > Player.current().length then
+        error('The time of the song before counts for the picked song while it is made.')
+    end
 end
 
 function Tour.start()

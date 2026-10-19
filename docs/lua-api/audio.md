@@ -106,7 +106,7 @@ audio.play(click, {bus = 'ui', processMode = 'always', effects = {audio.newEffec
 
 ### audio.stop(voice, fadeOut)
 
-Stops a voice, fading it out over `fadeOut` seconds when given. The fade defaults to 0, which still ramps the voice down over a few milliseconds so it never clicks, and its effects stay with it until the ramp ends. A fade a fade below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, as it does for every fade of this module.
+Stops a voice, fading it out over `fadeOut` seconds when given. The fade defaults to 0, which still ramps the voice down over a few milliseconds so it never clicks, and its effects stay with it until the ramp ends. A fade below 0, longer than a day or not a number raises `Audio needs a fade from 0 to 86400 seconds.`, as it does for every fade of this module.
 
 ```lua
 local assets = require('haylen.assets')

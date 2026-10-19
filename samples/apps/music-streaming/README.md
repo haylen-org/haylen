@@ -16,7 +16,7 @@ The commands run from the root of the repository:
 | Browser | `haylen run samples/apps/music-streaming --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/apps/music-streaming --frames 8000` |
 
-On the headless platform the app runs a tour by itself: it plays a mix, opens the player, seeks, skips, shuffles, repeats, sets the sleep timer, likes a song, reorders the queue, scrolls the liked songs, opens an artist, adds a song to a playlist, searches, opens a genre and the library, makes a playlist, switches the theme, logs every step and quits.
+On the headless platform the app runs a tour by itself: it plays a mix, opens the player, seeks, picks a shorter song near the end of the one that plays and checks that the time of the old song never counts for the new one, skips, shuffles, repeats, sets the sleep timer, likes a song, reorders the queue, scrolls the liked songs, opens an artist, adds a song to a playlist, searches, opens a genre and the library, makes a playlist, switches the theme, logs every step and quits.
 
 ## Screens
 
