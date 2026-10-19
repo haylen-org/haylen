@@ -1,0 +1,233 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": 0.4,
+            "speed": 0,
+            "startSize": 280.0,
+            "endSize": 400,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#002E7BFF",
+                "#802E7BFF",
+                "#2D2E7BFF",
+                "#002E7BFF"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "burst",
+            "texture": "../textures/sequences.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1304,
+                    260,
+                    256,
+                    256
+                ],
+                [
+                    1564,
+                    260,
+                    256,
+                    256
+                ],
+                [
+                    0,
+                    516,
+                    256,
+                    256
+                ],
+                [
+                    260,
+                    516,
+                    256,
+                    256
+                ],
+                [
+                    520,
+                    516,
+                    256,
+                    256
+                ],
+                [
+                    780,
+                    520,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.34,
+            "speed": 0,
+            "startSize": 420,
+            "endSize": 460,
+            "sizeCurve": "quadOut",
+            "frameMode": "overLife",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "unshaded": true,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFBFD4FF",
+                "#004C7CFF"
+            ],
+            "colorTimes": [
+                0,
+                0.4,
+                1
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "arcs",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1548,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 4
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 6,
+            "lifetime": [
+                0.12,
+                0.2
+            ],
+            "speed": 0,
+            "startSize": [
+                140,
+                200
+            ],
+            "endSize": [
+                140,
+                200
+            ],
+            "sizeCurve": "quadOut",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "unshaded": true,
+            "colors": [
+                "#00DFF8FF",
+                "#FFDFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1320,
+                    2084,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 12
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 24,
+            "lifetime": [
+                0.15,
+                0.3
+            ],
+            "speed": [
+                420,
+                760
+            ],
+            "spread": 6.2832,
+            "damping": 3.5,
+            "startSize": [
+                24,
+                38
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "rotation": 0,
+            "colors": [
+                "#00BFD4FF",
+                "#FFBFD4FF",
+                "#00BFD4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "alignToVelocity": true,
+            "stretch": 0.04,
+            "unshaded": true,
+            "emission": 1
+        }
+    ]
+}

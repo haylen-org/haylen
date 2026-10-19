@@ -1,19 +1,121 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[90, 92, 8, 8]],
-    "filter": "nearest",
-    "rate": 300,
-    "maxParticles": 1024,
-    "lifetime": 0.9,
-    "speed": [800, 900],
-    "direction": 1.5708,
-    "spread": 0,
-    "bounds": [-1100, 0, 2200, 1100],
-    "boundsMode": "kill",
-    "startSize": 32,
-    "endSize": 32,
-    "colors": ["#FF9BE7FF"],
-    "shape": "rectangle",
-    "shapeSize": [1000, 8],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "drops",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    90,
+                    92,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 32,
+            "endSize": 32,
+            "rotationStep": 0,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 160,
+            "prewarm": 1.0,
+            "maxParticles": 400,
+            "lifetime": 0.9,
+            "speed": [
+                800,
+                900
+            ],
+            "direction": 1.5708,
+            "spread": 0,
+            "shape": "rectangle",
+            "shapeSize": [
+                1000,
+                8
+            ],
+            "offset": [
+                0,
+                -560
+            ],
+            "rotation": -0.785,
+            "alignToVelocity": true,
+            "colors": [
+                "#C09BE7FF",
+                "#C09BE7FF"
+            ],
+            "colorTimes": [
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "splashes",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    72,
+                    80,
+                    8,
+                    8
+                ],
+                [
+                    82,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    92,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    102,
+                    82,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 8,
+            "endSize": 8,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 40,
+            "prewarm": 0.5,
+            "maxParticles": 64,
+            "lifetime": 0.25,
+            "speed": [
+                40,
+                80
+            ],
+            "direction": -1.5708,
+            "spread": 1.2,
+            "gravity": [
+                0,
+                600
+            ],
+            "shape": "rectangle",
+            "shapeSize": [
+                1000,
+                0
+            ],
+            "offset": [
+                0,
+                360
+            ],
+            "frameMode": "random",
+            "colors": [
+                "#C09BE7FF",
+                "#009BE7FF"
+            ],
+            "colorTimes": [
+                0.0,
+                1.0
+            ]
+        }
+    ]
 }

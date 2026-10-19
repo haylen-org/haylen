@@ -1,19 +1,199 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[72, 80, 8, 8], [82, 82, 8, 8], [92, 82, 8, 8], [102, 82, 8, 8]],
-    "filter": "nearest",
-    "rate": 30,
-    "maxParticles": 32,
-    "lifetime": [0.6, 0.9],
-    "speed": 0,
-    "radialAcceleration": -80,
-    "tangentialAcceleration": 400,
-    "startSize": 32,
-    "endSize": 32,
-    "colors": ["#FFB45AF2", "#FFFF7BD5", "#FFFFFFFF"],
-    "colorBlend": "steps",
-    "shape": "ring",
-    "shapeSize": [64, 0],
-    "localSpace": true,
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "rings",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    52,
+                    52,
+                    16,
+                    16
+                ],
+                [
+                    70,
+                    52,
+                    16,
+                    16
+                ],
+                [
+                    88,
+                    54,
+                    16,
+                    16
+                ],
+                [
+                    106,
+                    54,
+                    16,
+                    16
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 160,
+            "endSize": 48,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 2,
+            "prewarm": 1.2,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "frameMode": "overLife",
+            "tints": [
+                "#FFB05CFF"
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.333,
+                0.667,
+                1.0
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 400,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "pull",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    72,
+                    80,
+                    8,
+                    8
+                ],
+                [
+                    82,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    92,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    102,
+                    82,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 8,
+            "endSize": 8,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 16,
+            "prewarm": 1.0,
+            "maxParticles": 32,
+            "lifetime": 0.7,
+            "speed": [
+                100,
+                130
+            ],
+            "shape": "ring",
+            "shapeSize": [
+                90,
+                0
+            ],
+            "directionMode": "inward",
+            "spread": 0,
+            "tangentialAcceleration": 200,
+            "frameMode": "overLife",
+            "tints": [
+                "#FFE6B8FF",
+                "#FFFFFFFF"
+            ],
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1
+        },
+        {
+            "name": "stars",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    50,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    60,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    70,
+                    90,
+                    8,
+                    8
+                ],
+                [
+                    80,
+                    92,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 12,
+            "endSize": 12,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 6,
+            "prewarm": 1.0,
+            "maxParticles": 12,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "shape": "ring",
+            "shapeSize": [
+                70,
+                0
+            ],
+            "frameMode": "overLife",
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1
+        }
+    ]
 }

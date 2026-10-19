@@ -1,20 +1,119 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[0, 68, 16, 16], [18, 70, 16, 16], [36, 70, 16, 16], [54, 70, 16, 16]],
-    "filter": "nearest",
-    "rate": 0,
-    "bursts": [{"time": 0, "count": 6}],
-    "duration": 0.05,
-    "maxParticles": 8,
-    "lifetime": [0.4, 0.6],
-    "speed": [30, 60],
-    "direction": -1.5708,
-    "spread": 6.2832,
-    "damping": 3,
-    "startSize": 64,
-    "endSize": 64,
-    "colors": ["#FFFFFFFF"],
-    "shape": "circle",
-    "shapeSize": [8, 0],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "puffs",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    0,
+                    68,
+                    16,
+                    16
+                ],
+                [
+                    18,
+                    70,
+                    16,
+                    16
+                ],
+                [
+                    36,
+                    70,
+                    16,
+                    16
+                ],
+                [
+                    54,
+                    70,
+                    16,
+                    16
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 40,
+            "endSize": 64,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 7
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 10,
+            "lifetime": [
+                0.6,
+                0.9
+            ],
+            "speed": [
+                60,
+                140
+            ],
+            "spread": 6.2832,
+            "damping": 3,
+            "frameMode": "overLife",
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ]
+        },
+        {
+            "name": "bits",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    122,
+                    72,
+                    4,
+                    4
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 4,
+            "endSize": 4,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 10,
+            "lifetime": [
+                0.4,
+                0.7
+            ],
+            "speed": [
+                100,
+                220
+            ],
+            "spread": 6.2832,
+            "damping": 3,
+            "colors": [
+                "#FFC8C4CC",
+                "#FF8C8494",
+                "#008C8494"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ]
+        }
+    ]
 }

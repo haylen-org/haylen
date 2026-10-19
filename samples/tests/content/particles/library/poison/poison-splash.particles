@@ -1,0 +1,235 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": 0.6,
+            "speed": 0,
+            "startSize": 251.99999999999997,
+            "endSize": 360,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#007CFF3B",
+                "#597CFF3B",
+                "#1F7CFF3B",
+                "#007CFF3B"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF7CFF3B",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "crown",
+            "texture": "../textures/sequences.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1040,
+                    520,
+                    256,
+                    256
+                ],
+                [
+                    1300,
+                    520,
+                    256,
+                    256
+                ],
+                [
+                    1560,
+                    520,
+                    256,
+                    256
+                ],
+                [
+                    0,
+                    776,
+                    256,
+                    256
+                ],
+                [
+                    260,
+                    776,
+                    256,
+                    256
+                ],
+                [
+                    520,
+                    776,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.7,
+            "speed": 0,
+            "startSize": 280,
+            "endSize": 300,
+            "sizeCurve": "quadOut",
+            "frameMode": "overLife",
+            "offset": [
+                0,
+                -120.6
+            ],
+            "colors": [
+                "#F2D8FF9C",
+                "#D98CE04C",
+                "#004CA82E"
+            ],
+            "colorTimes": [
+                0,
+                0.5,
+                1
+            ]
+        },
+        {
+            "name": "drops",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    204,
+                    2300,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 18
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 20,
+            "lifetime": [
+                0.6,
+                0.9
+            ],
+            "speed": [
+                300,
+                520
+            ],
+            "direction": -1.5708,
+            "spread": 1.2,
+            "gravity": [
+                0,
+                1400
+            ],
+            "startSize": [
+                8,
+                16
+            ],
+            "endSizeScale": 0.7,
+            "colors": [
+                "#008CE04C",
+                "#FF8CE04C",
+                "#FF8CE04C",
+                "#008CE04C"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.85,
+                1
+            ]
+        },
+        {
+            "name": "bubbles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1820,
+                    1048,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 16,
+            "lifetime": [
+                0.8,
+                1.2
+            ],
+            "speed": [
+                80,
+                180
+            ],
+            "spread": 6.2832,
+            "damping": 2,
+            "startSize": [
+                10,
+                18
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "colors": [
+                "#00B8FF8A",
+                "#FFB8FF8A",
+                "#00B8FF8A"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "gravity": [
+                0,
+                -120
+            ]
+        }
+    ]
+}

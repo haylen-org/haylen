@@ -1,0 +1,325 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 0.4,
+            "maxParticles": 4,
+            "lifetime": 0.4,
+            "speed": 0,
+            "startSize": 210.0,
+            "endSize": 300,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00FF8A1F",
+                "#4CFF8A1F",
+                "#1BFF8A1F",
+                "#00FF8A1F"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                200,
+                -80
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFFF8A1F",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "flames",
+            "texture": "../textures/sequences.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1824,
+                    0,
+                    192,
+                    256
+                ],
+                [
+                    1824,
+                    260,
+                    192,
+                    256
+                ],
+                [
+                    1820,
+                    520,
+                    192,
+                    256
+                ],
+                [
+                    780,
+                    780,
+                    192,
+                    256
+                ],
+                [
+                    976,
+                    780,
+                    192,
+                    256
+                ],
+                [
+                    1172,
+                    780,
+                    192,
+                    256
+                ],
+                [
+                    1368,
+                    780,
+                    192,
+                    256
+                ],
+                [
+                    1564,
+                    780,
+                    192,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 40,
+            "prewarm": 0.6,
+            "maxParticles": 48,
+            "lifetime": [
+                0.45,
+                0.6
+            ],
+            "speed": [
+                700,
+                820
+            ],
+            "direction": 0,
+            "spread": 0.1,
+            "damping": 1.6,
+            "startSize": [
+                40,
+                50
+            ],
+            "endSize": [
+                170,
+                210
+            ],
+            "sizeCurve": "quadOut",
+            "aspect": 0.75,
+            "rotation": 1.5708,
+            "frameMode": "loopRandomStart",
+            "frameRate": 16,
+            "offset": [
+                0,
+                -80
+            ],
+            "colors": [
+                "#00FFF4C8",
+                "#F2FFE7A8",
+                "#D9FFB52E",
+                "#80FF5A1F",
+                "#00801010"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.4,
+                0.8,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "core",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1564,
+                    1952,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 30,
+            "prewarm": 0.4,
+            "maxParticles": 24,
+            "lifetime": 0.16,
+            "speed": [
+                600,
+                700
+            ],
+            "direction": 0,
+            "spread": 0.04,
+            "startSize": 26,
+            "endSize": 56,
+            "rotation": 1.5708,
+            "offset": [
+                0,
+                -80
+            ],
+            "colors": [
+                "#00DFF4FF",
+                "#E6DFF4FF",
+                "#00DFF4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "smoke",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1040,
+                    1560,
+                    256,
+                    256
+                ],
+                [
+                    1300,
+                    1560,
+                    256,
+                    256
+                ],
+                [
+                    1560,
+                    1560,
+                    256,
+                    256
+                ],
+                [
+                    0,
+                    1808,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 10,
+            "prewarm": 1.2,
+            "maxParticles": 24,
+            "lifetime": [
+                0.8,
+                1.2
+            ],
+            "speed": [
+                280,
+                380
+            ],
+            "direction": -0.12,
+            "spread": 0.2,
+            "damping": 2,
+            "gravity": [
+                0,
+                -90
+            ],
+            "offset": [
+                220,
+                -90
+            ],
+            "startSize": [
+                70,
+                90
+            ],
+            "endSize": [
+                170,
+                230
+            ],
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "frameMode": "random",
+            "particleOrder": "newestFirst",
+            "colors": [
+                "#005A5650",
+                "#804A4642",
+                "#4C3A3836",
+                "#002A2826"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.7,
+                1
+            ]
+        },
+        {
+            "name": "embers",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1300,
+                    1952,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 1.0,
+            "maxParticles": 32,
+            "lifetime": [
+                0.6,
+                1.0
+            ],
+            "speed": [
+                500,
+                700
+            ],
+            "direction": -0.05,
+            "spread": 0.3,
+            "damping": 1.5,
+            "gravity": [
+                0,
+                -60
+            ],
+            "startSize": [
+                6,
+                10
+            ],
+            "endSize": 2,
+            "offset": [
+                0,
+                -80
+            ],
+            "colors": [
+                "#FFFFF4C8",
+                "#E6FF9A2E",
+                "#00E0401F"
+            ],
+            "colorTimes": [
+                0,
+                0.5,
+                1
+            ],
+            "emission": 1
+        }
+    ]
+}

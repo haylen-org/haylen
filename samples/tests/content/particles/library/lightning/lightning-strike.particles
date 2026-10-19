@@ -22,10 +22,10 @@
             ],
             "duration": 0.05,
             "maxParticles": 4,
-            "lifetime": 0.6,
+            "lifetime": 0.7,
             "speed": 0,
-            "startSize": 350.0,
-            "endSize": 500,
+            "startSize": 392.0,
+            "endSize": 560,
             "sizeCurve": "quadOut",
             "colors": [
                 "#005C8DFF",
@@ -39,24 +39,18 @@
                 0.45,
                 1
             ],
-            "emission": 1,
-            "light": {
-                "radius": 520,
-                "color": "#FF5C8DFF",
-                "intensity": 1.4,
-                "fade": "count"
-            }
+            "emission": 1
         },
         {
-            "name": "bolt",
+            "name": "column",
             "texture": "../textures/effects.png",
             "filter": "linear",
             "frames": [
                 [
-                    1548,
-                    260,
-                    256,
-                    256
+                    1056,
+                    2080,
+                    128,
+                    128
                 ]
             ],
             "blend": "additive",
@@ -64,41 +58,107 @@
             "bursts": [
                 {
                     "time": 0,
-                    "count": 2
+                    "count": 1
                 }
             ],
             "duration": 0.05,
-            "maxParticles": 4,
-            "lifetime": 0.3,
+            "maxParticles": 2,
+            "lifetime": 0.4,
             "speed": 0,
-            "startSize": [
-                260,
-                320
-            ],
-            "endSize": [
-                260,
-                320
-            ],
-            "rotation": [
-                -0.4,
-                0.4
-            ],
+            "startSize": 700,
+            "endSize": 700,
+            "sizeCurve": "quadOut",
+            "aspect": 0.3,
             "offset": [
                 0,
-                -40
+                -330
             ],
             "colors": [
-                "#FFFFFFFF",
-                "#FFBFD4FF",
-                "#336C9CFF",
-                "#E6BFD4FF",
-                "#004C7CFF"
+                "#006C9CFF",
+                "#596C9CFF",
+                "#006C9CFF"
             ],
             "colorTimes": [
                 0,
-                0.3,
-                0.5,
-                0.65,
+                0.05,
+                1
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF6C9CFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "bolt",
+            "texture": "../textures/sequences.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    0,
+                    192,
+                    512
+                ],
+                [
+                    196,
+                    0,
+                    192,
+                    512
+                ],
+                [
+                    392,
+                    0,
+                    192,
+                    512
+                ],
+                [
+                    588,
+                    0,
+                    192,
+                    512
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                },
+                {
+                    "time": 0.1,
+                    "count": 1
+                },
+                {
+                    "time": 0.2,
+                    "count": 1
+                }
+            ],
+            "duration": 0.3,
+            "maxParticles": 4,
+            "lifetime": 0.13,
+            "speed": 0,
+            "startSize": 660,
+            "endSize": 660,
+            "sizeCurve": "quadOut",
+            "aspect": 0.375,
+            "frameMode": "random",
+            "offset": [
+                0,
+                -263.6
+            ],
+            "unshaded": true,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFBFD4FF",
+                "#006C9CFF"
+            ],
+            "colorTimes": [
+                0,
+                0.6,
                 1
             ],
             "emission": 1
@@ -125,10 +185,10 @@
             ],
             "duration": 0.05,
             "maxParticles": 8,
-            "lifetime": 0.22,
+            "lifetime": 0.26,
             "speed": 0,
             "startSize": 0,
-            "endSize": 260,
+            "endSize": 320,
             "sizeCurve": {
                 "points": [
                     0,
@@ -173,10 +233,10 @@
             ],
             "duration": 0.05,
             "maxParticles": 8,
-            "lifetime": 0.36,
+            "lifetime": 0.45,
             "speed": 0,
             "startSize": 60,
-            "endSize": 300,
+            "endSize": 340,
             "sizeCurve": "quadOut",
             "colors": [
                 "#009CC4FF",
@@ -189,6 +249,49 @@
                 1
             ],
             "tilt": 1.15,
+            "emission": 1
+        },
+        {
+            "name": "arcs",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1548,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 3
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 4,
+            "lifetime": 0.2,
+            "speed": 0,
+            "startSize": 120,
+            "endSize": 160,
+            "sizeCurve": "quadOut",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "colors": [
+                "#00DFF8FF",
+                "#E6DFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
             "emission": 1
         },
         {
@@ -208,20 +311,20 @@
             "bursts": [
                 {
                     "time": 0,
-                    "count": 12
+                    "count": 14
                 }
             ],
             "duration": 0.05,
-            "maxParticles": 24,
+            "maxParticles": 28,
             "lifetime": [
-                0.15,
-                0.3
+                0.2,
+                0.36
             ],
             "speed": [
                 400,
                 760
             ],
-            "spread": 6.2832,
+            "spread": 2.4,
             "damping": 3.5,
             "startSize": [
                 24,
@@ -239,6 +342,11 @@
                 0,
                 0.05,
                 1
+            ],
+            "direction": -1.5708,
+            "gravity": [
+                0,
+                900
             ],
             "alignToVelocity": true,
             "stretch": 0.04,

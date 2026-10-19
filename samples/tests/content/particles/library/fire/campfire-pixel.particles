@@ -1,18 +1,260 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[70, 34, 16, 16], [88, 36, 16, 16], [106, 36, 16, 16], [34, 52, 16, 16]],
-    "filter": "nearest",
-    "rate": 16,
-    "maxParticles": 32,
-    "lifetime": [0.45, 0.7],
-    "speed": [40, 70],
-    "direction": -1.5708,
-    "spread": 0.3,
-    "gravity": [0, -40],
-    "startSize": 64,
-    "endSize": 64,
-    "colors": ["#FFFFFFFF"],
-    "shape": "rectangle",
-    "shapeSize": [12, 2],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "flames",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    70,
+                    34,
+                    16,
+                    16
+                ],
+                [
+                    88,
+                    36,
+                    16,
+                    16
+                ],
+                [
+                    106,
+                    36,
+                    16,
+                    16
+                ],
+                [
+                    34,
+                    52,
+                    16,
+                    16
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 64,
+            "endSize": 24,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 14,
+            "prewarm": 1.0,
+            "maxParticles": 24,
+            "lifetime": [
+                0.6,
+                0.9
+            ],
+            "speed": [
+                60,
+                100
+            ],
+            "direction": -1.5708,
+            "spread": 0.2,
+            "shape": "rectangle",
+            "shapeSize": [
+                24,
+                0
+            ],
+            "frameMode": "loopRandomStart",
+            "frameRate": 8,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "core",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    70,
+                    34,
+                    16,
+                    16
+                ],
+                [
+                    88,
+                    36,
+                    16,
+                    16
+                ],
+                [
+                    106,
+                    36,
+                    16,
+                    16
+                ],
+                [
+                    34,
+                    52,
+                    16,
+                    16
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 40,
+            "endSize": 16,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 6,
+            "prewarm": 1.0,
+            "maxParticles": 8,
+            "lifetime": [
+                0.4,
+                0.5
+            ],
+            "speed": [
+                30,
+                50
+            ],
+            "direction": -1.5708,
+            "spread": 0.1,
+            "frameMode": "loopRandomStart",
+            "frameRate": 10,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1
+        },
+        {
+            "name": "embers",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    122,
+                    72,
+                    4,
+                    4
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 4,
+            "endSize": 4,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 6,
+            "prewarm": 1.6,
+            "maxParticles": 16,
+            "lifetime": [
+                1.0,
+                1.6
+            ],
+            "speed": [
+                60,
+                120
+            ],
+            "direction": -1.5708,
+            "spread": 0.5,
+            "turbulence": {
+                "strength": 60,
+                "frequency": 0.02,
+                "speed": 1
+            },
+            "colors": [
+                "#FFFFF8E0",
+                "#FFFFD84A",
+                "#FFFF9A2E",
+                "#FFE8452C",
+                "#00E8452C"
+            ],
+            "colorTimes": [
+                0.0,
+                0.25,
+                0.5,
+                0.75,
+                1.0
+            ],
+            "emission": 1
+        },
+        {
+            "name": "smoke",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    0,
+                    68,
+                    16,
+                    16
+                ],
+                [
+                    18,
+                    70,
+                    16,
+                    16
+                ],
+                [
+                    36,
+                    70,
+                    16,
+                    16
+                ],
+                [
+                    54,
+                    70,
+                    16,
+                    16
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 32,
+            "endSize": 64,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 3,
+            "prewarm": 2.4,
+            "maxParticles": 12,
+            "lifetime": [
+                1.6,
+                2.2
+            ],
+            "speed": [
+                40,
+                70
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "offset": [
+                0,
+                -56
+            ],
+            "frameMode": "overLife",
+            "colors": [
+                "#00FFFFFF",
+                "#C0FFFFFF",
+                "#80FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.333,
+                0.667,
+                1.0
+            ]
+        }
+    ]
 }

@@ -1,6 +1,6 @@
-"""Packs the particle pieces of the effect library into its two atlases and moves the frames of every effect file with them.
+"""Packs the particle pieces of the effect library into its three atlases and moves the frames of every effect file with them.
 
-The pieces are the images painted for the library with the "codex" command line, following the style guide in the README of the test project, one 8-bit RGBA PNG per piece: every name of SMOOTH and PIXEL, where a sheet of frames is the pieces `<name>-1` to `<name>-<count>`. Run it with `python3 samples/tests/tools/particles/pack-particle-textures.py <folder of the pieces>`. The tool writes `effects.png` and `pixel.png` with their atlas files into `content/particles/library/textures/`, adds the premultiplied copy of the soft dot, writes the glow line and the sheet of the runes, which tests draw whole, as files of their own, and rewrites the `frames` of every effect file that draws from an atlas, which it finds through the atlas files it replaces. The same pieces always make the same files.
+The pieces are the images painted for the library with the "codex" command line, following the style guide in the README of the test project, one 8-bit RGBA PNG per piece: every name of SMOOTH, SEQUENCES and PIXEL, where a sheet of frames is the pieces `<name>-1` to `<name>-<count>`. Run it with `python3 samples/tests/tools/particles/pack-particle-textures.py <folder of the pieces>`. The tool writes `effects.png`, `sequences.png` and `pixel.png` with their atlas files into `content/particles/library/textures/`, adds the premultiplied copy of the soft dot, writes the glow line and the sheet of the runes, which tests draw whole, as files of their own, and rewrites the `frames` of every effect file that draws from an atlas, which it finds through the atlas files it replaces. The same pieces always make the same files.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from png_image import Image, read, write  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content"
 TEXTURES = CONTENT / "particles" / "library" / "textures"
-WIDTH = {"effects": 2048, "pixel": 128}
-GAP = {"effects": 4, "pixel": 2}
+WIDTH = {"effects": 2048, "sequences": 2048, "pixel": 128}
+GAP = {"effects": 4, "sequences": 4, "pixel": 2}
 PREMULTIPLIED = ("soft-dot", "soft-dot-premultiplied")
 # Textures that tests draw whole, as the ribbon of a trail and the sheet that "frameGrid" cuts, stay files of their own.
 GLOW_LINE = "glow-line"
@@ -38,6 +38,8 @@ SMOOTH = {
     "debris": 4, "dust": 4, "smoke": 4, "flame": 4, "fireball": 4, "key": 1, "heart-red": 1, "star-gold": 1, "gem-cyan": 1, "brick": 2, "plank": 2,
     "casing": 1, "stone": 1, "ice-cube": 1, "slime": 1, "lava-blob": 1, "flag": 1, "bone": 1, "nut": 1,
 }
+# The animated sequences, whose frames play over the life of a particle, such as an explosion that billows and fades or a bolt that crackles.
+SEQUENCES = {"explosion-burst": 6, "impact-burst": 6, "flame-loop": 8, "lightning-bolt": 4, "electric-beam": 4, "splash-crown": 6}
 PIXEL = {
     "pixel-bolt": 4, "pixel-bubble": 1, "pixel-coin": 4, "pixel-dot": 4, "pixel-drop": 1, "pixel-explosion": 4, "pixel-flame": 4,
     "pixel-leaf": 4, "pixel-ring": 4, "pixel-smoke": 4, "pixel-spark": 1, "pixel-square": 1, "pixel-star": 4, "pixel-streak": 1,
@@ -116,7 +118,7 @@ def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("Name the folder of the pieces, such as \"python3 pack-particle-textures.py pieces\".")
     folder = Path(sys.argv[1])
-    for atlas, pieces in (("effects", SMOOTH), ("pixel", PIXEL)):
+    for atlas, pieces in (("effects", SMOOTH), ("sequences", SEQUENCES), ("pixel", PIXEL)):
         order = names(pieces)
         images = {name: read(folder / f"{name}.png") for name in order}
         if atlas == "effects":

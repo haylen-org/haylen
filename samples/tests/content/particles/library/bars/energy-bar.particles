@@ -1,0 +1,192 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 0.6,
+            "maxParticles": 8,
+            "lifetime": 0.6,
+            "speed": 0,
+            "startSize": 70,
+            "endSize": 70,
+            "sizeCurve": "quadOut",
+            "aspect": 7,
+            "unshaded": true,
+            "colors": [
+                "#002EC8FF",
+                "#662EC8FF",
+                "#662EC8FF",
+                "#002EC8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.3,
+                0.7,
+                1
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FF2EC8FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "flow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    204,
+                    2300,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "additive",
+            "rate": 40,
+            "prewarm": 1.0,
+            "maxParticles": 64,
+            "lifetime": [
+                0.6,
+                0.9
+            ],
+            "speed": [
+                380,
+                460
+            ],
+            "direction": 0,
+            "spread": 0,
+            "shape": "rectangle",
+            "shapeSize": [
+                220,
+                14
+            ],
+            "startSize": [
+                5,
+                8
+            ],
+            "endSize": 2,
+            "trail": {
+                "length": 8,
+                "lifetime": 0.12,
+                "widthStart": 5,
+                "widthEnd": 0
+            },
+            "unshaded": true,
+            "colors": [
+                "#00BFF6FF",
+                "#FFBFF6FF",
+                "#FFBFF6FF",
+                "#00BFF6FF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.8,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "shine",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.6,
+            "prewarm": 0.6,
+            "maxParticles": 2,
+            "lifetime": 0.6,
+            "speed": 900,
+            "direction": 0,
+            "spread": 0,
+            "startSize": 40,
+            "endSize": 40,
+            "aspect": 3,
+            "offset": [
+                -240,
+                0
+            ],
+            "unshaded": true,
+            "colors": [
+                "#00FFFFFF",
+                "#B2FFFFFF",
+                "#B2FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.7,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1584,
+                    2104,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 0.5,
+            "maxParticles": 8,
+            "lifetime": 0.4,
+            "shape": "rectangle",
+            "shapeSize": [
+                220,
+                14
+            ],
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 18,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "unshaded": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ],
+            "emission": 1
+        }
+    ]
+}

@@ -1,20 +1,177 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[40, 88, 8, 8]],
-    "filter": "nearest",
-    "rate": 0,
-    "bursts": [{"time": 0, "count": 8}],
-    "duration": 0.05,
-    "maxParticles": 8,
-    "lifetime": [0.2, 0.4],
-    "speed": [120, 240],
-    "direction": -1.5708,
-    "spread": 6.2832,
-    "gravity": [0, 600],
-    "damping": 2,
-    "startSize": 32,
-    "endSize": 32,
-    "colors": ["#FFFFF8E0", "#FFFFD84A", "#FFFF9A2E"],
-    "colorBlend": "steps",
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "flash",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    50,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    60,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    70,
+                    90,
+                    8,
+                    8
+                ],
+                [
+                    80,
+                    92,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 24,
+            "endSize": 24,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.2,
+            "speed": 0,
+            "frameMode": "overLife",
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    40,
+                    88,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 8,
+            "endSize": 8,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 12
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 16,
+            "lifetime": [
+                0.4,
+                0.7
+            ],
+            "speed": [
+                260,
+                520
+            ],
+            "direction": -1.5708,
+            "spread": 2.4,
+            "gravity": [
+                0,
+                900
+            ],
+            "colors": [
+                "#FFFFF8E0",
+                "#FFFFD84A",
+                "#FFFF9A2E",
+                "#FFE8452C",
+                "#00E8452C"
+            ],
+            "colorTimes": [
+                0.0,
+                0.25,
+                0.5,
+                0.75,
+                1.0
+            ],
+            "emission": 1
+        },
+        {
+            "name": "streaks",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    90,
+                    92,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 16,
+            "endSize": 16,
+            "rotationStep": 0,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 6
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": [
+                0.2,
+                0.3
+            ],
+            "speed": [
+                400,
+                600
+            ],
+            "spread": 6.2832,
+            "alignToVelocity": true,
+            "rotation": -0.785,
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFD84A",
+                "#00FF9A2E"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1
+        }
+    ]
 }

@@ -1,18 +1,137 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[72, 70, 8, 8]],
-    "filter": "nearest",
-    "rate": 4,
-    "maxParticles": 16,
-    "lifetime": [2, 3],
-    "speed": [30, 50],
-    "direction": -1.5708,
-    "spread": 0.2,
-    "boundsMode": "kill",
-    "startSize": 32,
-    "endSize": 32,
-    "colors": ["#FFFFFFFF"],
-    "shape": "rectangle",
-    "shapeSize": [100, 4],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "bubbles",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    72,
+                    70,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": [
+                16,
+                28
+            ],
+            "endSize": [
+                16,
+                28
+            ],
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 6,
+            "prewarm": 2.0,
+            "maxParticles": 24,
+            "lifetime": [
+                1.4,
+                2.0
+            ],
+            "speed": [
+                60,
+                100
+            ],
+            "direction": -1.5708,
+            "spread": 0.2,
+            "shape": "rectangle",
+            "shapeSize": [
+                80,
+                0
+            ],
+            "turbulence": {
+                "strength": 50,
+                "frequency": 0.02,
+                "speed": 0.8
+            },
+            "tints": [
+                "#FF9BE7FF",
+                "#FFFFFFFF"
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.333,
+                0.667,
+                1.0
+            ]
+        },
+        {
+            "name": "specks",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    72,
+                    80,
+                    8,
+                    8
+                ],
+                [
+                    82,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    92,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    102,
+                    82,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 8,
+            "endSize": 8,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 6,
+            "prewarm": 1.0,
+            "maxParticles": 16,
+            "lifetime": [
+                0.6,
+                1.0
+            ],
+            "speed": [
+                40,
+                80
+            ],
+            "direction": -1.5708,
+            "spread": 0.4,
+            "shape": "rectangle",
+            "shapeSize": [
+                80,
+                0
+            ],
+            "frameMode": "random",
+            "tints": [
+                "#FF9BE7FF"
+            ],
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ]
+        }
+    ]
 }

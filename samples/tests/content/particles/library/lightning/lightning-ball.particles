@@ -1,0 +1,178 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 237.99999999999997,
+            "endSize": 340,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#005C8DFF",
+                "#805C8DFF",
+                "#2D5C8DFF",
+                "#005C8DFF"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF5C8DFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "core",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    520,
+                    1548,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 130,
+            "endSize": 150,
+            "sizeCurve": "quadOut",
+            "localSpace": true,
+            "unshaded": true,
+            "colors": [
+                "#00DFF8FF",
+                "#FFDFF8FF",
+                "#FFDFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "arcs",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1548,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 20,
+            "prewarm": 0.3,
+            "maxParticles": 8,
+            "lifetime": 0.1,
+            "speed": 0,
+            "startSize": [
+                150,
+                210
+            ],
+            "endSize": [
+                150,
+                210
+            ],
+            "sizeCurve": "quadOut",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "localSpace": true,
+            "unshaded": true,
+            "colors": [
+                "#00BFD4FF",
+                "#FFBFD4FF",
+                "#00BFD4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1320,
+                    2084,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 0.6,
+            "maxParticles": 24,
+            "lifetime": [
+                0.2,
+                0.4
+            ],
+            "speed": [
+                200,
+                360
+            ],
+            "spread": 6.2832,
+            "shape": "circle",
+            "shapeSize": [
+                50,
+                0
+            ],
+            "startSize": [
+                14,
+                22
+            ],
+            "endSize": 4,
+            "alignToVelocity": true,
+            "localSpace": true,
+            "unshaded": true,
+            "colors": [
+                "#00DFF8FF",
+                "#FFDFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "emission": 1
+        }
+    ]
+}

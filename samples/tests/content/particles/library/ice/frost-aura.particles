@@ -1,0 +1,325 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.2,
+            "prewarm": 1.6,
+            "maxParticles": 4,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 237.99999999999997,
+            "endSize": 340,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#005CC8FF",
+                "#4C5CC8FF",
+                "#1B5CC8FF",
+                "#005CC8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                -40
+            ],
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF5CC8FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "base",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    516,
+                    512,
+                    512
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.2,
+            "prewarm": 1.6,
+            "maxParticles": 6,
+            "lifetime": 1.6,
+            "speed": 0,
+            "startSize": 240,
+            "endSize": 240,
+            "sizeCurve": "quadOut",
+            "spin": 0.4,
+            "tilt": 1.15,
+            "localSpace": true,
+            "colors": [
+                "#00BDEBFF",
+                "#E6BDEBFF",
+                "#E6BDEBFF",
+                "#00BDEBFF"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "mist",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 1.6,
+            "maxParticles": 64,
+            "lifetime": [
+                1.2,
+                1.6
+            ],
+            "speed": [
+                40,
+                70
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                100,
+                30.0
+            ],
+            "startSize": [
+                70,
+                100
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#007FD8FF",
+                "#597FD8FF",
+                "#597FD8FF",
+                "#007FD8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "rising",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1200,
+                    2216,
+                    96,
+                    96
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 6,
+            "prewarm": 1.6,
+            "maxParticles": 64,
+            "lifetime": [
+                1.2,
+                1.6
+            ],
+            "speed": [
+                50,
+                90
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                110,
+                33.0
+            ],
+            "startSize": [
+                14,
+                24
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ],
+            "spin": [
+                -2,
+                2
+            ]
+        },
+        {
+            "name": "flakes",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1200,
+                    2216,
+                    96,
+                    96
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 14,
+            "prewarm": 1.6,
+            "maxParticles": 32,
+            "lifetime": [
+                1.2,
+                1.6
+            ],
+            "speed": [
+                60,
+                90
+            ],
+            "shape": "ring",
+            "shapeSize": [
+                90,
+                0
+            ],
+            "directionMode": "tangent",
+            "spread": 0,
+            "radialAcceleration": -20,
+            "gravity": [
+                0,
+                -50
+            ],
+            "startSize": [
+                16,
+                28
+            ],
+            "endSize": 4,
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -2,
+                2
+            ],
+            "localSpace": true,
+            "colors": [
+                "#00FFFFFF",
+                "#F2FFFFFF",
+                "#F2FFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.7,
+                1
+            ]
+        },
+        {
+            "name": "sparkles",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1584,
+                    2104,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 8,
+            "prewarm": 1.2,
+            "maxParticles": 64,
+            "lifetime": [
+                0.8,
+                1.2
+            ],
+            "speed": [
+                50,
+                90
+            ],
+            "direction": -1.5708,
+            "spread": 0.3,
+            "shape": "ellipse",
+            "shapeSize": [
+                100,
+                30.0
+            ],
+            "startSize": [
+                8,
+                14
+            ],
+            "endSizeScale": 0.6,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.2,
+                    1
+                ]
+            },
+            "colors": [
+                "#00E6F8FF",
+                "#FFE6F8FF",
+                "#FFE6F8FF",
+                "#00E6F8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                0.6,
+                1
+            ],
+            "emission": 1
+        }
+    ]
+}

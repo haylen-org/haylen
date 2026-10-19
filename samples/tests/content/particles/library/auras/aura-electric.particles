@@ -1,0 +1,197 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 1.0,
+            "maxParticles": 4,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 237.99999999999997,
+            "endSize": 340,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#002E7BFF",
+                "#592E7BFF",
+                "#1F2E7BFF",
+                "#002E7BFF"
+            ],
+            "colorTimes": [
+                0,
+                0.12,
+                0.45,
+                1
+            ],
+            "offset": [
+                0,
+                -40
+            ],
+            "localSpace": true,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FF2E7BFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "ring",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    516,
+                    1032,
+                    512,
+                    512
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1.6,
+            "prewarm": 1.2,
+            "maxParticles": 6,
+            "lifetime": 1.2,
+            "speed": 0,
+            "startSize": 220,
+            "endSize": 220,
+            "sizeCurve": "quadOut",
+            "spin": 2,
+            "tilt": 1.15,
+            "localSpace": true,
+            "colors": [
+                "#009CC4FF",
+                "#B29CC4FF",
+                "#B29CC4FF",
+                "#009CC4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "arcs",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1548,
+                    260,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 26,
+            "prewarm": 0.3,
+            "maxParticles": 8,
+            "lifetime": 0.12,
+            "shape": "ellipse",
+            "shapeSize": [
+                80,
+                90
+            ],
+            "offset": [
+                0,
+                -50
+            ],
+            "speed": 0,
+            "startSize": [
+                100,
+                150
+            ],
+            "endSize": [
+                100,
+                150
+            ],
+            "sizeCurve": "quadOut",
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "frameMode": "random",
+            "localSpace": true,
+            "unshaded": true,
+            "colors": [
+                "#00DFF8FF",
+                "#FFDFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1320,
+                    2084,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 12,
+            "prewarm": 0.6,
+            "maxParticles": 24,
+            "lifetime": [
+                0.25,
+                0.45
+            ],
+            "speed": [
+                160,
+                280
+            ],
+            "spread": 6.2832,
+            "shape": "ellipse",
+            "shapeSize": [
+                80,
+                90
+            ],
+            "offset": [
+                0,
+                -50
+            ],
+            "startSize": [
+                12,
+                20
+            ],
+            "endSize": 4,
+            "alignToVelocity": true,
+            "localSpace": true,
+            "unshaded": true,
+            "colors": [
+                "#00BFD4FF",
+                "#FFBFD4FF",
+                "#00BFD4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "emission": 1
+        }
+    ]
+}

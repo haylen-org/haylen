@@ -1,18 +1,123 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[102, 0, 16, 16], [102, 18, 16, 16], [34, 34, 16, 16], [52, 34, 16, 16]],
-    "filter": "nearest",
-    "frameMode": "random",
-    "rate": 8,
-    "maxParticles": 4,
-    "lifetime": [0.1, 0.2],
-    "speed": 0,
-    "startSize": 64,
-    "endSize": 64,
-    "rotation": [0, 6.2832],
-    "rotationStep": 1.5708,
-    "colors": ["#FFFFFFFF"],
-    "shape": "circle",
-    "shapeSize": [24, 0],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "bolts",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    102,
+                    0,
+                    16,
+                    16
+                ],
+                [
+                    102,
+                    18,
+                    16,
+                    16
+                ],
+                [
+                    34,
+                    34,
+                    16,
+                    16
+                ],
+                [
+                    52,
+                    34,
+                    16,
+                    16
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 64,
+            "endSize": 64,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 16,
+            "prewarm": 0.3,
+            "maxParticles": 8,
+            "lifetime": 0.1,
+            "speed": 0,
+            "shape": "rectangle",
+            "shapeSize": [
+                40,
+                30
+            ],
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "frameMode": "random",
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    40,
+                    88,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 8,
+            "endSize": 8,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 10,
+            "prewarm": 0.5,
+            "maxParticles": 16,
+            "lifetime": [
+                0.25,
+                0.4
+            ],
+            "speed": [
+                160,
+                300
+            ],
+            "spread": 6.2832,
+            "shape": "rectangle",
+            "shapeSize": [
+                40,
+                30
+            ],
+            "tints": [
+                "#FF9BE7FF"
+            ],
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1
+        }
+    ]
 }

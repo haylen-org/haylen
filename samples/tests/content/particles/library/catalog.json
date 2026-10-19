@@ -59,6 +59,20 @@
      "style": "casual",
      "kind": "once",
      "view": "any"
+    },
+    {
+     "id": "impact-animated",
+     "name": "Animated impact",
+     "style": "casual",
+     "kind": "once",
+     "view": "any"
+    },
+    {
+     "id": "impact-electric",
+     "name": "Electric impact",
+     "style": "neon",
+     "kind": "once",
+     "view": "any"
     }
    ]
   },
@@ -148,6 +162,20 @@
      "style": "casual",
      "kind": "loop",
      "view": "top"
+    },
+    {
+     "id": "defense-up",
+     "name": "Defense up",
+     "style": "casual",
+     "kind": "once",
+     "view": "top"
+    },
+    {
+     "id": "level-up-burst",
+     "name": "Level up burst",
+     "style": "casual",
+     "kind": "once",
+     "view": "top"
     }
    ]
   },
@@ -225,6 +253,13 @@
      "view": "top"
     },
     {
+     "id": "heal-aura",
+     "name": "Healing aura",
+     "style": "casual",
+     "kind": "loop",
+     "view": "top"
+    },
+    {
      "id": "heal-pixel",
      "name": "Healing",
      "style": "pixel",
@@ -287,6 +322,20 @@
      "view": "any"
     },
     {
+     "id": "explosion-animated",
+     "name": "Animated explosion",
+     "style": "casual",
+     "kind": "once",
+     "view": "top"
+    },
+    {
+     "id": "explosion-magic",
+     "name": "Magic explosion",
+     "style": "casual",
+     "kind": "once",
+     "view": "any"
+    },
+    {
      "id": "explosion-pixel",
      "name": "Explosion",
      "style": "pixel",
@@ -323,6 +372,13 @@
     {
      "id": "portal-gold",
      "name": "Golden portal",
+     "style": "casual",
+     "kind": "loop",
+     "view": "any"
+    },
+    {
+     "id": "portal-void",
+     "name": "Void portal",
      "style": "casual",
      "kind": "loop",
      "view": "any"
@@ -383,6 +439,20 @@
      "view": "any"
     },
     {
+     "id": "flame-animated",
+     "name": "Animated flame",
+     "style": "casual",
+     "kind": "loop",
+     "view": "any"
+    },
+    {
+     "id": "blue-fire",
+     "name": "Blue fire",
+     "style": "casual",
+     "kind": "loop",
+     "view": "any"
+    },
+    {
      "id": "campfire-pixel",
      "name": "Campfire",
      "style": "pixel",
@@ -403,6 +473,20 @@
      "view": "any"
     },
     {
+     "id": "frost-nova",
+     "name": "Frost nova",
+     "style": "casual",
+     "kind": "once",
+     "view": "top"
+    },
+    {
+     "id": "frost-aura",
+     "name": "Frost aura",
+     "style": "casual",
+     "kind": "loop",
+     "view": "top"
+    },
+    {
      "id": "ice-shatter-pixel",
      "name": "Ice shatter",
      "style": "pixel",
@@ -421,6 +505,13 @@
      "style": "casual",
      "kind": "once",
      "view": "top"
+    },
+    {
+     "id": "lightning-ball",
+     "name": "Ball lightning",
+     "style": "neon",
+     "kind": "loop",
+     "view": "any"
     },
     {
      "id": "electric-pixel",
@@ -447,7 +538,7 @@
      "name": "Splash",
      "style": "pixel",
      "kind": "once",
-     "view": "any"
+     "view": "side"
     }
    ]
   },
@@ -962,6 +1053,13 @@
      "style": "casual",
      "kind": "loop",
      "view": "side"
+    },
+    {
+     "id": "explosion-ground",
+     "name": "Ground explosion",
+     "style": "casual",
+     "kind": "once",
+     "view": "side"
     }
    ]
   },
@@ -1098,6 +1196,169 @@
    ]
   },
   {
+   "id": "auras",
+   "title": "Auras",
+   "effects": [
+    {
+     "id": "aura-flame",
+     "name": "Flame aura",
+     "style": "casual",
+     "kind": "loop",
+     "view": "top"
+    },
+    {
+     "id": "aura-electric",
+     "name": "Electric aura",
+     "style": "neon",
+     "kind": "loop",
+     "view": "top"
+    },
+    {
+     "id": "aura-pixel",
+     "name": "Aura",
+     "style": "pixel",
+     "kind": "loop",
+     "view": "any"
+    }
+   ]
+  },
+  {
+   "id": "poison",
+   "title": "Poison",
+   "effects": [
+    {
+     "id": "poison-cloud",
+     "name": "Poison cloud",
+     "style": "casual",
+     "kind": "loop",
+     "view": "any"
+    },
+    {
+     "id": "poison-splash",
+     "name": "Poison splash",
+     "style": "casual",
+     "kind": "once",
+     "view": "any"
+    },
+    {
+     "id": "poison-pixel",
+     "name": "Poison",
+     "style": "pixel",
+     "kind": "loop",
+     "view": "any"
+    }
+   ]
+  },
+  {
+   "id": "weapons",
+   "title": "Weapons",
+   "effects": [
+    {
+     "id": "flamethrower",
+     "name": "Flamethrower",
+     "style": "casual",
+     "kind": "loop",
+     "view": "side"
+    },
+    {
+     "id": "laser-beam",
+     "name": "Laser beam",
+     "style": "neon",
+     "kind": "loop",
+     "view": "side"
+    },
+    {
+     "id": "laser-shot",
+     "name": "Laser shot",
+     "style": "neon",
+     "kind": "once",
+     "view": "side"
+    },
+    {
+     "id": "plasma-shot",
+     "name": "Plasma shot",
+     "style": "neon",
+     "kind": "once",
+     "view": "side"
+    },
+    {
+     "id": "rifle-burst",
+     "name": "Rifle burst",
+     "style": "realistic",
+     "kind": "cycle",
+     "view": "side"
+    },
+    {
+     "id": "lightning-beam",
+     "name": "Lightning beam",
+     "style": "neon",
+     "kind": "loop",
+     "view": "side"
+    }
+   ]
+  },
+  {
+   "id": "bars",
+   "title": "Bars and strips",
+   "effects": [
+    {
+     "id": "energy-bar",
+     "name": "Energy bar",
+     "style": "neon",
+     "kind": "loop",
+     "view": "any"
+    },
+    {
+     "id": "charge-bar",
+     "name": "Charging bar",
+     "style": "casual",
+     "kind": "loop",
+     "view": "any"
+    },
+    {
+     "id": "damage-bar",
+     "name": "Damage flash",
+     "style": "casual",
+     "kind": "once",
+     "view": "any"
+    }
+   ]
+  },
+  {
+   "id": "character",
+   "title": "Around a character",
+   "effects": [
+    {
+     "id": "shield-side",
+     "name": "Shield bubble",
+     "style": "casual",
+     "kind": "loop",
+     "view": "side"
+    },
+    {
+     "id": "energy-outline",
+     "name": "Energy outline",
+     "style": "neon",
+     "kind": "loop",
+     "view": "side"
+    },
+    {
+     "id": "electrocuted",
+     "name": "Electrocuted",
+     "style": "neon",
+     "kind": "loop",
+     "view": "side"
+    },
+    {
+     "id": "rage-aura",
+     "name": "Rage aura",
+     "style": "casual",
+     "kind": "loop",
+     "view": "side"
+    }
+   ]
+  },
+  {
    "id": "dust",
    "title": "Dust and debris",
    "effects": [
@@ -1106,7 +1367,7 @@
      "name": "Landing dust",
      "style": "pixel",
      "kind": "once",
-     "view": "any"
+     "view": "side"
     }
    ]
   },
@@ -1130,19 +1391,6 @@
     {
      "id": "pixel-sparkle",
      "name": "Sparkles",
-     "style": "pixel",
-     "kind": "loop",
-     "view": "any"
-    }
-   ]
-  },
-  {
-   "id": "poison",
-   "title": "Poison",
-   "effects": [
-    {
-     "id": "poison-pixel",
-     "name": "Poison",
      "style": "pixel",
      "kind": "loop",
      "view": "any"
@@ -1196,19 +1444,6 @@
    ]
   },
   {
-   "id": "auras",
-   "title": "Auras",
-   "effects": [
-    {
-     "id": "aura-pixel",
-     "name": "Aura",
-     "style": "pixel",
-     "kind": "loop",
-     "view": "any"
-    }
-   ]
-  },
-  {
    "id": "vehicles",
    "title": "Vehicles",
    "effects": [
@@ -1217,7 +1452,7 @@
      "name": "Exhaust",
      "style": "pixel",
      "kind": "loop",
-     "view": "any"
+     "view": "side"
     }
    ]
   }

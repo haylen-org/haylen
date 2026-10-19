@@ -1,21 +1,161 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[82, 72, 8, 8], [92, 72, 8, 8], [102, 72, 8, 8], [112, 72, 8, 8]],
-    "filter": "nearest",
-    "frameMode": "loop",
-    "frameRate": 10,
-    "rate": 0,
-    "bursts": [{"time": 0, "count": 8}],
-    "duration": 0.05,
-    "maxParticles": 8,
-    "lifetime": [0.8, 1.0],
-    "speed": [250, 400],
-    "direction": -1.5708,
-    "spread": 1.2,
-    "gravity": [0, 1200],
-    "collision": {"type": "floor", "y": 40, "bounce": 0.4, "result": "bounce"},
-    "startSize": 32,
-    "endSize": 32,
-    "colors": ["#FFFFFFFF"],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "coins",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    82,
+                    72,
+                    8,
+                    8
+                ],
+                [
+                    92,
+                    72,
+                    8,
+                    8
+                ],
+                [
+                    102,
+                    72,
+                    8,
+                    8
+                ],
+                [
+                    112,
+                    72,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 24,
+            "endSize": 24,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 10
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 12,
+            "lifetime": [
+                1.0,
+                1.4
+            ],
+            "speed": [
+                300,
+                480
+            ],
+            "direction": -1.5708,
+            "spread": 1.1,
+            "gravity": [
+                0,
+                1300
+            ],
+            "rotation": 0,
+            "frameMode": "loopRandomStart",
+            "frameRate": 10,
+            "collision": {
+                "type": "floor",
+                "y": 60,
+                "bounce": 0.45
+            },
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.333,
+                0.667,
+                1.0
+            ]
+        },
+        {
+            "name": "stars",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    50,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    60,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    70,
+                    90,
+                    8,
+                    8
+                ],
+                [
+                    80,
+                    92,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 12,
+            "endSize": 12,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 8
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 10,
+            "lifetime": [
+                0.4,
+                0.6
+            ],
+            "speed": [
+                120,
+                240
+            ],
+            "spread": 6.2832,
+            "damping": 2,
+            "frameMode": "overLife",
+            "tints": [
+                "#FFFFE36E"
+            ],
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        }
+    ]
 }

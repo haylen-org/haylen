@@ -1,22 +1,91 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[0, 86, 8, 8], [10, 88, 8, 8], [20, 88, 8, 8], [30, 88, 8, 8]],
-    "filter": "nearest",
-    "frameMode": "loopRandomStart",
-    "frameRate": 4,
-    "rate": 2,
-    "prewarm": 8,
-    "maxParticles": 24,
-    "lifetime": [6, 8],
-    "speed": [30, 50],
-    "direction": 1.5708,
-    "spread": 0.6,
-    "gravity": [10, 0],
-    "startSize": 32,
-    "endSize": 32,
-    "colors": ["#FFFF9A2E"],
-    "tints": ["#FFFF9A2E", "#FFE8452C", "#FFFFD84A"],
-    "shape": "rectangle",
-    "shapeSize": [900, 8],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "leaves",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    0,
+                    86,
+                    8,
+                    8
+                ],
+                [
+                    10,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    20,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    30,
+                    88,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 32,
+            "endSize": 32,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 5,
+            "prewarm": 4.0,
+            "maxParticles": 32,
+            "lifetime": 4,
+            "speed": [
+                60,
+                100
+            ],
+            "direction": 1.5708,
+            "spread": 0.4,
+            "shape": "rectangle",
+            "shapeSize": [
+                400,
+                0
+            ],
+            "offset": [
+                0,
+                -360
+            ],
+            "turbulence": {
+                "strength": 60,
+                "frequency": 0.006,
+                "speed": 0.5
+            },
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": [
+                -2.5,
+                2.5
+            ],
+            "frameMode": "random",
+            "tints": [
+                "#FF9CC84C",
+                "#FFE89A3C",
+                "#FFD0603C"
+            ],
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.333,
+                0.667,
+                1.0
+            ]
+        }
+    ]
 }

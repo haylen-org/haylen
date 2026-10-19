@@ -1,0 +1,175 @@
+{
+    "emitters": [
+        {
+            "name": "inside",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1032,
+                    512,
+                    512
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1,
+            "prewarm": 2.0,
+            "maxParticles": 4,
+            "lifetime": 2.0,
+            "speed": 0,
+            "startSize": 220,
+            "endSize": 220,
+            "sizeCurve": "quadOut",
+            "offset": [
+                0,
+                -70
+            ],
+            "localSpace": true,
+            "colors": [
+                "#002E8BFF",
+                "#592E8BFF",
+                "#592E8BFF",
+                "#002E8BFF"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "rim",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    516,
+                    1032,
+                    512,
+                    512
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1,
+            "prewarm": 2.0,
+            "maxParticles": 4,
+            "lifetime": 2.0,
+            "speed": 0,
+            "startSize": 230,
+            "endSize": 230,
+            "sizeCurve": "quadOut",
+            "offset": [
+                0,
+                -70
+            ],
+            "localSpace": true,
+            "colors": [
+                "#00BFE0FF",
+                "#FFBFE0FF",
+                "#FFBFE0FF",
+                "#00BFE0FF"
+            ],
+            "colorTimes": [
+                0,
+                0.25,
+                0.75,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "shine",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1584,
+                    2104,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 2,
+            "prewarm": 0.6,
+            "maxParticles": 4,
+            "lifetime": 0.6,
+            "shape": "ring",
+            "shapeSize": [
+                100,
+                0
+            ],
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 26,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "offset": [
+                0,
+                -70
+            ],
+            "localSpace": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "ripple",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    516,
+                    1032,
+                    512,
+                    512
+                ]
+            ],
+            "blend": "additive",
+            "rate": 1,
+            "prewarm": 1.0,
+            "maxParticles": 8,
+            "lifetime": 1.0,
+            "speed": 0,
+            "startSize": 80,
+            "endSize": 260,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00BFE0FF",
+                "#80BFE0FF",
+                "#00BFE0FF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "localSpace": true,
+            "tilt": 1.38,
+            "emission": 1,
+            "light": {
+                "radius": 520,
+                "color": "#FFBFE0FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        }
+    ]
+}

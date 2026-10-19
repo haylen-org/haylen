@@ -1,0 +1,171 @@
+{
+    "emitters": [
+        {
+            "name": "muzzle",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1292,
+                    1300,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.16,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 170,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": 0,
+            "colors": [
+                "#007CFFB8",
+                "#FF7CFFB8",
+                "#007CFFB8"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "offset": [
+                20,
+                -80
+            ],
+            "unshaded": true,
+            "emission": 1,
+            "light": {
+                "radius": 425,
+                "color": "#FF7CFFB8",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.8,
+            "speed": 900,
+            "direction": 0,
+            "spread": 0,
+            "startSize": 170,
+            "endSize": 170,
+            "offset": [
+                0,
+                -80
+            ],
+            "unshaded": true,
+            "colors": [
+                "#002EFF8A",
+                "#662EFF8A",
+                "#662EFF8A",
+                "#002EFF8A"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "ball",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    520,
+                    1548,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.8,
+            "speed": 900,
+            "direction": 0,
+            "spread": 0,
+            "startSize": 64,
+            "endSize": 64,
+            "spin": 8,
+            "offset": [
+                0,
+                -80
+            ],
+            "trail": {
+                "length": 12,
+                "lifetime": 0.18,
+                "widthStart": 44,
+                "widthEnd": 0,
+                "colors": [
+                    "#FFB8FFD8",
+                    "#002EFF8A"
+                ]
+            },
+            "unshaded": true,
+            "colors": [
+                "#00B8FFD8",
+                "#FFB8FFD8",
+                "#FFB8FFD8",
+                "#00B8FFD8"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ],
+            "emission": 1
+        }
+    ]
+}

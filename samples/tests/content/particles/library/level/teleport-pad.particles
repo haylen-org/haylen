@@ -26,8 +26,8 @@
             "localSpace": true,
             "colors": [
                 "#002EC8FF",
-                "#992EC8FF",
-                "#992EC8FF",
+                "#802EC8FF",
+                "#802EC8FF",
                 "#002EC8FF"
             ],
             "colorTimes": [
@@ -39,38 +39,41 @@
             "emission": 1
         },
         {
-            "name": "pulse",
+            "name": "runes",
             "texture": "../textures/effects.png",
             "filter": "linear",
             "frames": [
                 [
-                    516,
-                    1032,
+                    0,
+                    0,
                     512,
                     512
                 ]
             ],
             "blend": "additive",
-            "rate": 1.6,
-            "prewarm": 0.9,
-            "maxParticles": 8,
-            "lifetime": 0.9,
+            "rate": 1.25,
+            "prewarm": 1.6,
+            "maxParticles": 6,
+            "lifetime": 1.6,
             "speed": 0,
-            "startSize": 60,
+            "startSize": 220,
             "endSize": 220,
             "sizeCurve": "quadOut",
+            "spin": 0.6,
+            "tilt": 1.15,
+            "localSpace": true,
             "colors": [
                 "#00BFF6FF",
-                "#FFBFF6FF",
+                "#E6BFF6FF",
+                "#E6BFF6FF",
                 "#00BFF6FF"
             ],
             "colorTimes": [
                 0,
-                0.08,
+                0.25,
+                0.75,
                 1
             ],
-            "localSpace": true,
-            "tilt": 1.15,
             "emission": 1
         },
         {
@@ -91,18 +94,18 @@
             "maxParticles": 4,
             "lifetime": 1.2,
             "speed": 0,
-            "startSize": 300,
-            "endSize": 320,
+            "startSize": 320,
+            "endSize": 340,
             "aspect": 1.6,
             "offset": [
                 0,
-                -102.3
+                -108.9
             ],
             "localSpace": true,
             "colors": [
                 "#007FE8FF",
-                "#997FE8FF",
-                "#997FE8FF",
+                "#B27FE8FF",
+                "#B27FE8FF",
                 "#007FE8FF"
             ],
             "colorTimes": [
@@ -120,6 +123,45 @@
             }
         },
         {
+            "name": "bands",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    516,
+                    1032,
+                    512,
+                    512
+                ]
+            ],
+            "blend": "additive",
+            "rate": 3,
+            "prewarm": 1.0,
+            "maxParticles": 8,
+            "lifetime": 1.0,
+            "speed": [
+                120,
+                140
+            ],
+            "direction": -1.5708,
+            "spread": 0,
+            "startSize": 180,
+            "endSize": 120,
+            "tilt": 1.15,
+            "localSpace": true,
+            "colors": [
+                "#00BFF6FF",
+                "#CCBFF6FF",
+                "#00BFF6FF"
+            ],
+            "colorTimes": [
+                0,
+                0.15,
+                1
+            ],
+            "emission": 1
+        },
+        {
             "name": "sparkles",
             "texture": "../textures/effects.png",
             "filter": "linear",
@@ -132,7 +174,7 @@
                 ]
             ],
             "blend": "additive",
-            "rate": 14,
+            "rate": 16,
             "prewarm": 1.1,
             "maxParticles": 64,
             "lifetime": [
@@ -140,15 +182,15 @@
                 1.1
             ],
             "speed": [
-                100,
-                180
+                120,
+                200
             ],
             "direction": -1.5708,
             "spread": 0.3,
             "shape": "ellipse",
             "shapeSize": [
-                80,
-                24.0
+                70,
+                21.0
             ],
             "startSize": [
                 8,

@@ -1,6 +1,61 @@
 {
     "emitters": [
         {
+            "name": "fall",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    612,
+                    2304,
+                    64,
+                    64
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 44,
+            "prewarm": 1.0,
+            "maxParticles": 64,
+            "lifetime": [
+                0.36,
+                0.44
+            ],
+            "speed": [
+                900,
+                1100
+            ],
+            "direction": 1.5708,
+            "spread": 0.02,
+            "shape": "rectangle",
+            "shapeSize": [
+                70,
+                0
+            ],
+            "offset": [
+                0,
+                -420
+            ],
+            "alignToVelocity": true,
+            "rotation": -1.5708,
+            "startSize": [
+                70,
+                100
+            ],
+            "endSizeScale": 1,
+            "colors": [
+                "#00D8F4FF",
+                "#BFD8F4FF",
+                "#BFD8F4FF",
+                "#00D8F4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.85,
+                1
+            ]
+        },
+        {
             "name": "mist",
             "texture": "../textures/effects.png",
             "filter": "linear",
@@ -13,39 +68,40 @@
                 ]
             ],
             "blend": "alpha",
-            "rate": 14,
+            "rate": 16,
             "prewarm": 2.0,
-            "maxParticles": 40,
+            "maxParticles": 48,
             "lifetime": [
-                1.2,
-                1.8
+                1.4,
+                2.0
             ],
             "speed": [
                 40,
                 90
             ],
             "direction": -1.5708,
-            "spread": 1.4,
+            "spread": 1.0,
             "shape": "rectangle",
             "shapeSize": [
-                90,
+                100,
                 0
             ],
-            "gravity": [
-                0,
-                -20
-            ],
+            "turbulence": {
+                "strength": 30,
+                "frequency": 0.01,
+                "speed": 0.6
+            },
             "startSize": [
-                40,
-                60
+                50,
+                70
             ],
             "endSize": [
-                100,
-                140
+                140,
+                190
             ],
             "colors": [
                 "#00EAF8FF",
-                "#66EAF8FF",
+                "#4CEAF8FF",
                 "#00EAF8FF"
             ],
             "colorTimes": [
@@ -55,72 +111,73 @@
             ]
         },
         {
-            "name": "foam",
-            "texture": "../textures/effects.png",
+            "name": "crowns",
+            "texture": "../textures/sequences.png",
             "filter": "linear",
             "frames": [
                 [
-                    1820,
-                    1312,
-                    128,
-                    128
+                    1040,
+                    520,
+                    256,
+                    256
                 ],
                 [
-                    1820,
-                    1444,
-                    128,
-                    128
+                    1300,
+                    520,
+                    256,
+                    256
                 ],
                 [
-                    1820,
-                    1576,
-                    128,
-                    128
+                    1560,
+                    520,
+                    256,
+                    256
                 ],
                 [
-                    1820,
-                    1708,
-                    128,
-                    128
+                    0,
+                    776,
+                    256,
+                    256
+                ],
+                [
+                    260,
+                    776,
+                    256,
+                    256
+                ],
+                [
+                    520,
+                    776,
+                    256,
+                    256
                 ]
             ],
             "blend": "alpha",
-            "rate": 8,
-            "prewarm": 1.0,
-            "maxParticles": 16,
-            "lifetime": [
-                0.5,
-                0.8
-            ],
-            "speed": [
-                60,
-                120
-            ],
-            "direction": -1.5708,
-            "spread": 1.6,
+            "rate": 7,
+            "prewarm": 0.8,
+            "maxParticles": 12,
+            "lifetime": 0.6,
             "shape": "rectangle",
             "shapeSize": [
-                80,
+                60,
                 0
             ],
-            "startSize": [
-                30,
-                44
+            "speed": 0,
+            "startSize": 160,
+            "endSize": 180,
+            "sizeCurve": "quadOut",
+            "frameMode": "overLife",
+            "offset": [
+                0,
+                -70.7
             ],
-            "endSize": [
-                50,
-                64
-            ],
-            "frameMode": "random",
             "colors": [
-                "#00FFFFFF",
-                "#E6FFFFFF",
-                "#E6FFFFFF",
-                "#00FFFFFF"
+                "#F2F2FCFF",
+                "#D9B8E8FF",
+                "#007CCCFF"
             ],
             "colorTimes": [
                 0,
-                0.1,
                 0.5,
                 1
             ]
@@ -138,22 +195,22 @@
                 ]
             ],
             "blend": "alpha",
-            "rate": 24,
+            "rate": 26,
             "prewarm": 1.0,
-            "maxParticles": 40,
+            "maxParticles": 48,
             "lifetime": [
                 0.5,
                 0.8
             ],
             "speed": [
-                200,
-                340
+                220,
+                380
             ],
             "direction": -1.5708,
-            "spread": 1.4,
+            "spread": 1.5,
             "gravity": [
                 0,
-                1200
+                1300
             ],
             "shape": "rectangle",
             "shapeSize": [
@@ -184,6 +241,197 @@
                 0.9,
                 1
             ]
+        },
+        {
+            "name": "foam-left",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 8,
+            "prewarm": 0.8,
+            "maxParticles": 12,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                80,
+                160
+            ],
+            "direction": 3.1416,
+            "spread": 0.1,
+            "damping": 2.5,
+            "shape": "rectangle",
+            "shapeSize": [
+                40,
+                0
+            ],
+            "startSize": [
+                24,
+                34
+            ],
+            "endSize": [
+                44,
+                60
+            ],
+            "aspect": 2.2,
+            "colors": [
+                "#00FFFFFF",
+                "#CCFFFFFF",
+                "#CCFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.5,
+                1
+            ]
+        },
+        {
+            "name": "foam-right",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 8,
+            "prewarm": 0.8,
+            "maxParticles": 12,
+            "lifetime": [
+                0.5,
+                0.8
+            ],
+            "speed": [
+                80,
+                160
+            ],
+            "direction": 0,
+            "spread": 0.1,
+            "damping": 2.5,
+            "shape": "rectangle",
+            "shapeSize": [
+                40,
+                0
+            ],
+            "startSize": [
+                24,
+                34
+            ],
+            "endSize": [
+                44,
+                60
+            ],
+            "aspect": 2.2,
+            "colors": [
+                "#00FFFFFF",
+                "#CCFFFFFF",
+                "#CCFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                0.5,
+                1
+            ]
+        },
+        {
+            "name": "ripples",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    516,
+                    1032,
+                    512,
+                    512
+                ]
+            ],
+            "blend": "alpha",
+            "rate": 2.5,
+            "prewarm": 0.9,
+            "maxParticles": 8,
+            "lifetime": 0.9,
+            "speed": 0,
+            "startSize": 60,
+            "endSize": 300,
+            "sizeCurve": "quadOut",
+            "colors": [
+                "#00BFEFFF",
+                "#80BFEFFF",
+                "#00BFEFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.08,
+                1
+            ],
+            "localSpace": true,
+            "tilt": 1.38
+        },
+        {
+            "name": "glints",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1584,
+                    2104,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 6,
+            "prewarm": 0.6,
+            "maxParticles": 8,
+            "lifetime": [
+                0.3,
+                0.5
+            ],
+            "speed": [
+                100,
+                200
+            ],
+            "direction": -1.5708,
+            "spread": 1.2,
+            "startSize": [
+                8,
+                14
+            ],
+            "endSize": 0,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
         }
     ]
 }

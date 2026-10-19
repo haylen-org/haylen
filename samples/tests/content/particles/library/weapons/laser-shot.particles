@@ -1,0 +1,210 @@
+{
+    "emitters": [
+        {
+            "name": "muzzle",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1552,
+                    1040,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 8,
+            "lifetime": 0.12,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 150,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": [
+                -0.2,
+                0.2
+            ],
+            "spin": 0,
+            "colors": [
+                "#00FF8A9A",
+                "#FFFF8A9A",
+                "#00FF8A9A"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "offset": [
+                20,
+                -80
+            ],
+            "unshaded": true,
+            "emission": 1,
+            "light": {
+                "radius": 375,
+                "color": "#FFFF8A9A",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.6,
+            "speed": 1400,
+            "direction": 0,
+            "spread": 0,
+            "startSize": 60,
+            "endSize": 60,
+            "aspect": 4,
+            "offset": [
+                0,
+                -80
+            ],
+            "unshaded": true,
+            "colors": [
+                "#00FF2E4D",
+                "#80FF2E4D",
+                "#80FF2E4D",
+                "#00FF2E4D"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "bolt",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.6,
+            "speed": 1400,
+            "direction": 0,
+            "spread": 0,
+            "startSize": 24,
+            "endSize": 24,
+            "aspect": 8,
+            "offset": [
+                0,
+                -80
+            ],
+            "unshaded": true,
+            "colors": [
+                "#00FF6A7A",
+                "#FFFF6A7A",
+                "#FFFF6A7A",
+                "#00FF6A7A"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "core",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 0,
+            "bursts": [
+                {
+                    "time": 0,
+                    "count": 1
+                }
+            ],
+            "duration": 0.05,
+            "maxParticles": 2,
+            "lifetime": 0.6,
+            "speed": 1400,
+            "direction": 0,
+            "spread": 0,
+            "startSize": 10,
+            "endSize": 10,
+            "aspect": 14,
+            "offset": [
+                0,
+                -80
+            ],
+            "unshaded": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.02,
+                0.9,
+                1
+            ],
+            "emission": 1
+        }
+    ]
+}

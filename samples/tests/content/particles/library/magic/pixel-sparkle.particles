@@ -1,15 +1,148 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[50, 88, 8, 8], [60, 88, 8, 8], [70, 90, 8, 8], [80, 92, 8, 8]],
-    "filter": "nearest",
-    "rate": 8,
-    "maxParticles": 16,
-    "lifetime": [0.4, 0.6],
-    "speed": 0,
-    "startSize": 32,
-    "endSize": 32,
-    "colors": ["#FFFFFFFF"],
-    "shape": "rectangle",
-    "shapeSize": [40, 40],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "stars",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    50,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    60,
+                    88,
+                    8,
+                    8
+                ],
+                [
+                    70,
+                    90,
+                    8,
+                    8
+                ],
+                [
+                    80,
+                    92,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 12,
+            "endSize": 12,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 14,
+            "prewarm": 1.0,
+            "maxParticles": 32,
+            "lifetime": [
+                0.6,
+                1.0
+            ],
+            "speed": [
+                10,
+                30
+            ],
+            "spread": 6.2832,
+            "shape": "rectangle",
+            "shapeSize": [
+                120,
+                80
+            ],
+            "frameMode": "overLife",
+            "tints": [
+                "#FFFFFFFF",
+                "#FFFFD84A",
+                "#FF9BE7FF"
+            ],
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 220,
+                "color": "#FFFFFFFF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "dots",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    72,
+                    80,
+                    8,
+                    8
+                ],
+                [
+                    82,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    92,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    102,
+                    82,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "additive",
+            "startSize": 8,
+            "endSize": 8,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 10,
+            "prewarm": 1.0,
+            "maxParticles": 24,
+            "lifetime": [
+                0.8,
+                1.2
+            ],
+            "speed": [
+                20,
+                40
+            ],
+            "direction": -1.5708,
+            "spread": 0.6,
+            "shape": "rectangle",
+            "shapeSize": [
+                120,
+                80
+            ],
+            "frameMode": "overLife",
+            "colors": [
+                "#FFFFFFFF",
+                "#FFFFE36E",
+                "#00FFE36E"
+            ],
+            "colorTimes": [
+                0.0,
+                0.5,
+                1.0
+            ],
+            "emission": 1
+        }
+    ]
 }

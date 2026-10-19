@@ -1,0 +1,337 @@
+{
+    "emitters": [
+        {
+            "name": "glow",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1056,
+                    2080,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 10,
+            "prewarm": 0.3,
+            "maxParticles": 8,
+            "lifetime": 0.2,
+            "speed": 0,
+            "startSize": [
+                110,
+                130
+            ],
+            "endSize": [
+                110,
+                130
+            ],
+            "sizeCurve": "quadOut",
+            "aspect": 4.4,
+            "offset": [
+                250,
+                -80
+            ],
+            "unshaded": true,
+            "colors": [
+                "#005C8DFF",
+                "#735C8DFF",
+                "#735C8DFF",
+                "#005C8DFF"
+            ],
+            "colorTimes": [
+                0,
+                0.2,
+                0.7,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "bolt",
+            "texture": "../textures/sequences.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1036,
+                    512,
+                    192
+                ],
+                [
+                    516,
+                    1040,
+                    512,
+                    192
+                ],
+                [
+                    1032,
+                    1040,
+                    512,
+                    192
+                ],
+                [
+                    0,
+                    1232,
+                    512,
+                    192
+                ]
+            ],
+            "blend": "additive",
+            "rate": 20,
+            "prewarm": 0.2,
+            "maxParticles": 6,
+            "lifetime": 0.1,
+            "speed": 0,
+            "startSize": [
+                170,
+                190
+            ],
+            "endSize": [
+                170,
+                190
+            ],
+            "sizeCurve": "quadOut",
+            "aspect": 2.67,
+            "frameMode": "random",
+            "offset": [
+                250,
+                -80
+            ],
+            "unshaded": true,
+            "colors": [
+                "#00BFD4FF",
+                "#FFBFD4FF",
+                "#00BFD4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "emission": 1,
+            "light": {
+                "radius": 475,
+                "color": "#FFBFD4FF",
+                "intensity": 1.4,
+                "fade": "count"
+            }
+        },
+        {
+            "name": "core",
+            "texture": "../textures/sequences.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    0,
+                    1036,
+                    512,
+                    192
+                ],
+                [
+                    516,
+                    1040,
+                    512,
+                    192
+                ],
+                [
+                    1032,
+                    1040,
+                    512,
+                    192
+                ],
+                [
+                    0,
+                    1232,
+                    512,
+                    192
+                ]
+            ],
+            "blend": "additive",
+            "rate": 16,
+            "prewarm": 0.2,
+            "maxParticles": 4,
+            "lifetime": 0.07,
+            "speed": 0,
+            "startSize": [
+                80,
+                96
+            ],
+            "endSize": [
+                80,
+                96
+            ],
+            "sizeCurve": "quadOut",
+            "aspect": 2.67,
+            "frameMode": "random",
+            "offset": [
+                250,
+                -80
+            ],
+            "unshaded": true,
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "emission": 1
+        },
+        {
+            "name": "hand",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1552,
+                    1040,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 14,
+            "prewarm": 0.1,
+            "maxParticles": 8,
+            "lifetime": 0.1,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 120,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": 0,
+            "colors": [
+                "#00DFF8FF",
+                "#FFDFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "offset": [
+                0,
+                -80
+            ],
+            "unshaded": true,
+            "emission": 1
+        },
+        {
+            "name": "hit",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1552,
+                    1300,
+                    256,
+                    256
+                ]
+            ],
+            "blend": "additive",
+            "rate": 12,
+            "prewarm": 0.1,
+            "maxParticles": 8,
+            "lifetime": 0.12,
+            "speed": 0,
+            "startSize": 0,
+            "endSize": 140,
+            "sizeCurve": {
+                "points": [
+                    0,
+                    1.15,
+                    1,
+                    0.25
+                ]
+            },
+            "rotation": [
+                0,
+                6.2832
+            ],
+            "spin": 0,
+            "colors": [
+                "#00BFD4FF",
+                "#FFBFD4FF",
+                "#00BFD4FF"
+            ],
+            "colorTimes": [
+                0,
+                0.1,
+                1
+            ],
+            "offset": [
+                500,
+                -80
+            ],
+            "unshaded": true,
+            "emission": 1
+        },
+        {
+            "name": "sparks",
+            "texture": "../textures/effects.png",
+            "filter": "linear",
+            "frames": [
+                [
+                    1320,
+                    2084,
+                    128,
+                    128
+                ]
+            ],
+            "blend": "additive",
+            "rate": 36,
+            "prewarm": 0.3,
+            "maxParticles": 24,
+            "lifetime": [
+                0.15,
+                0.3
+            ],
+            "speed": [
+                300,
+                600
+            ],
+            "spread": 1.6,
+            "damping": 3.5,
+            "startSize": [
+                16,
+                26
+            ],
+            "endSize": 0,
+            "sizeCurve": "quadIn",
+            "rotation": 0,
+            "colors": [
+                "#00DFF8FF",
+                "#FFDFF8FF",
+                "#00DFF8FF"
+            ],
+            "colorTimes": [
+                0,
+                0.05,
+                1
+            ],
+            "alignToVelocity": true,
+            "direction": 3.1416,
+            "offset": [
+                500,
+                -80
+            ],
+            "unshaded": true,
+            "emission": 1
+        }
+    ]
+}

@@ -1,19 +1,83 @@
 {
-    "texture": "../textures/pixel.png",
-    "frames": [[122, 72, 4, 4]],
-    "rate": 40,
-    "prewarm": 10,
-    "maxParticles": 512,
-    "lifetime": [8, 10],
-    "speed": [40, 60],
-    "direction": 1.5708,
-    "spread": 0.3,
-    "turbulence": {"strength": 20, "frequency": 0.006, "speed": 0.3},
-    "boundsMode": "wrap",
-    "startSize": 8,
-    "endSize": 8,
-    "colors": ["#FFFFF8E0"],
-    "shape": "rectangle",
-    "shapeSize": [1000, 8],
-    "pixelSnap": 4
+    "emitters": [
+        {
+            "name": "flakes",
+            "texture": "../textures/pixel.png",
+            "filter": "nearest",
+            "frames": [
+                [
+                    72,
+                    80,
+                    8,
+                    8
+                ],
+                [
+                    82,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    92,
+                    82,
+                    8,
+                    8
+                ],
+                [
+                    102,
+                    82,
+                    8,
+                    8
+                ]
+            ],
+            "blend": "alpha",
+            "startSize": 8,
+            "endSize": 8,
+            "rotationStep": 1.5708,
+            "colorBlend": "steps",
+            "pixelSnap": 4,
+            "rate": 30,
+            "prewarm": 8.0,
+            "maxParticles": 300,
+            "lifetime": [
+                7,
+                9
+            ],
+            "speed": [
+                60,
+                100
+            ],
+            "direction": 1.5708,
+            "spread": 0.3,
+            "shape": "rectangle",
+            "shapeSize": [
+                1100,
+                8
+            ],
+            "offset": [
+                0,
+                -560
+            ],
+            "turbulence": {
+                "strength": 40,
+                "frequency": 0.004,
+                "speed": 0.4
+            },
+            "frameMode": "random",
+            "colors": [
+                "#00FFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#FFFFFFFF",
+                "#00FFFFFF"
+            ],
+            "colorTimes": [
+                0.0,
+                0.25,
+                0.5,
+                0.75,
+                1.0
+            ]
+        }
+    ]
 }
