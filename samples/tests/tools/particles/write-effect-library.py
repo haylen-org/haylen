@@ -13,6 +13,10 @@ from pathlib import Path
 LIBRARY = Path(__file__).resolve().parents[2] / "content" / "particles" / "library"
 TEXTURES = LIBRARY / "textures"
 ATLAS = json.loads((TEXTURES / "effects.json").read_text())["frames"]
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
+import png_image  # noqa: E402
+
+EFFECTS_IMAGE = png_image.read(str(TEXTURES / "effects.png"))
 TAU = 6.2832
 QUARTER = 1.5708
 # Rings, circles and swirls on the ground lie on a plane tilted by this angle.
@@ -25,6 +29,14 @@ def frames(piece: str) -> list[list[int]]:
     if not names:
         sys.exit(f'The atlas has no piece "{piece}".')
     return [[ATLAS[name]["frame"][key] for key in ("x", "y", "w", "h")] for name in names]
+
+
+def standing(piece: str, start: float, end: float) -> list[float]:
+    """The offset that stands a piece on the point of the effect: its brightest row, such as the foot of a beam, lands there halfway through its growth from the start to the end height, so a column rises from the middle of the ring on the ground under it."""
+    frame = ATLAS[piece]["frame"]
+    rows = [sum(EFFECTS_IMAGE.alpha(frame["x"] + column, frame["y"] + row) for column in range(frame["w"])) for row in range(frame["h"])]
+    foot = (rows.index(max(rows)) + 0.5) / frame["h"] - 0.5
+    return [0, round(-foot * (start + end) / 2, 1)]
 
 
 def color(rgb: str, alpha: float = 1.0) -> str:
@@ -202,7 +214,7 @@ effect("buffs", "buff-pillar", "Buff pillar", "casual", "loop",
 effect("buffs", "level-up", "Level up", "casual", "cycle",
        ("glow", halo("FFC93C", 460, 1.4, 0.5, timing={"rate": 0, "bursts": [{"time": 0, "count": 1}], "duration": 1.8, "loop": True})),
        ("flash", flare("flare", "FFFFFF", 260, 0.35, timing={"rate": 0, "bursts": [{"time": 0, "count": 1}], "duration": 1.8, "loop": True})),
-       ("column", emitter("light-beam", rate=0, bursts=[{"time": 0, "count": 3}], duration=1.8, loop=True, maxParticles=6, lifetime=[0.9, 1.2], speed=0, shape="rectangle", shapeSize=[40, 0], startSize=300, endSize=340, aspect=2.4, offset=[0, -120], **fade("FFD24A", 0.8, 0.15))),
+       ("column", emitter("light-beam", rate=0, bursts=[{"time": 0, "count": 3}], duration=1.8, loop=True, maxParticles=6, lifetime=[0.9, 1.2], speed=0, shape="rectangle", shapeSize=[40, 0], startSize=300, endSize=340, aspect=2.4, offset=standing("light-beam", 300, 340), **fade("FFD24A", 0.8, 0.15))),
        ("ring", ring("FFE7A8", 80, 320, 0.7, timing={"rate": 0, "bursts": [{"time": 0, "count": 1}], "duration": 1.8, "loop": True}, tilt=GROUND)),
        ("stars", emitter("star-4point", rate=0, bursts=[{"time": 0.05, "count": 14}], duration=1.8, loop=True, maxParticles=32, lifetime=[0.9, 1.4], speed=[120, 260], direction=-QUARTER, spread=0.9, gravity=[0, 60], damping=1.2, startSize=[14, 30], endSize=0, sizeCurve="quadIn", spin=[-2, 2], **fade("FFF1B8", 1, 0.05))))
 effect("buffs", "speed-up", "Speed up", "casual", "loop",
@@ -513,7 +525,7 @@ effect("pickups", "heart-pickup", "Heart pickup", "casual", "once",
        ("ring", ring("FFC2D2", 40, 160, 0.35)), view="side")
 effect("pickups", "power-up", "Power up", "casual", "once",
        ("glow", halo("FFC93C", 360, 1.0, 0.35, offset=[0, -80])),
-       ("column", emitter("light-beam", **once(2), maxParticles=4, lifetime=[0.7, 0.9], speed=0, shape="rectangle", shapeSize=[30, 0], startSize=320, endSize=360, aspect=2.0, offset=[0, -150], **fade("FFD24A", 0.5, 0.15))),
+       ("column", emitter("light-beam", **once(2), maxParticles=4, lifetime=[0.7, 0.9], speed=0, shape="rectangle", shapeSize=[30, 0], startSize=320, endSize=360, aspect=2.0, offset=standing("light-beam", 320, 360), **fade("FFD24A", 0.5, 0.15))),
        ("spiral", emitter("star-4point", **once(16), maxParticles=20, lifetime=[0.7, 1.0], speed=[60, 90], shape="ring", shapeSize=[60, 0], directionMode="tangent", spread=0, gravity=[0, -500], radialAcceleration=-80, startSize=[12, 22], endSize=0, sizeCurve="quadIn", **fade("FFF1B8", 1, 0.05))),
        ("flash", flare("flare", "FFFFFF", 150, 0.22, offset=[0, -60])), view="side")
 effect("pickups", "checkpoint", "Checkpoint", "casual", "once",
@@ -580,7 +592,7 @@ effect("combat", "death-burst", "Defeat burst", "casual", "once",
        ("ring", ring("FFFFFF", 40, 260, 0.4, offset=[0, -60])),
        ("sparkles", burst("star-4point", "FFFFFF", 8, [160, 280], [0.4, 0.6], [10, 18], offset=[0, -60])), view="side")
 effect("combat", "respawn", "Respawn", "casual", "once",
-       ("beam", emitter("light-beam", **once(2), maxParticles=4, lifetime=[0.6, 0.8], speed=0, startSize=360, endSize=300, aspect=1.6, offset=[0, -170], **fade("BFF4FF", 0.9, 0.1))),
+       ("beam", emitter("light-beam", **once(2), maxParticles=4, lifetime=[0.6, 0.8], speed=0, startSize=360, endSize=300, aspect=1.6, offset=standing("light-beam", 360, 300), **fade("BFF4FF", 0.9, 0.1))),
        ("ring", ring("BFF4FF", 160, 40, 0.5, tilt=1.25)),
        ("gather", emitter("star-4point", **once(14), maxParticles=16, lifetime=0.5, speed=[220, 260], shape="ring", shapeSize=[130, 0], directionMode="inward", spread=0, startSize=[12, 18], endSize=4, offset=[0, -60], **fade("FFFFFF", 1, 0.2))),
        ("flash", flare("flare", "FFFFFF", 220, 0.3, timing=once(1, delay=0.45), offset=[0, -60])), view="side")
@@ -665,7 +677,7 @@ effect("level", "geyser", "Geyser", "casual", "loop",
 effect("level", "teleport-pad", "Teleport pad", "casual", "loop",
        ("pad", ground("disc", "2EC8FF", 200, 1.6, 1.25, 0, alpha=0.6)),
        ("pulse", ring("BFF6FF", 60, 220, 0.9, timing=steady(1.6, 0.9), tilt=GROUND, localSpace=True)),
-       ("beam", emitter("light-beam", **steady(2, 1.2), maxParticles=4, lifetime=1.2, speed=0, startSize=300, endSize=320, aspect=1.6, offset=[0, -140], localSpace=True, **fade("7FE8FF", 0.6, 0.25, 0.75))),
+       ("beam", emitter("light-beam", **steady(2, 1.2), maxParticles=4, lifetime=1.2, speed=0, startSize=300, endSize=320, aspect=1.6, offset=standing("light-beam", 300, 320), localSpace=True, **fade("7FE8FF", 0.6, 0.25, 0.75))),
        ("sparkles", rising("star-4point", "DFFBFF", 14, 80, [100, 180], [0.7, 1.1], [8, 14])), view="side")
 effect("level", "slime-splat", "Slime splat", "casual", "once",
        ("blobs", emitter("slime", blend="alpha", **once(10), maxParticles=12, lifetime=[1.0, 1.4], speed=[260, 460], direction=-QUARTER, spread=1.8, gravity=[0, 1300], startSize=[14, 26], endSizeScale=1, rotation=[0, TAU], collision={"type": "floor", "y": 0, "result": "stick"}, **fade("FFFFFF", 1, 0.02, 0.8))),
