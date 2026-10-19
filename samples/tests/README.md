@@ -268,7 +268,7 @@ Particle emitters from Lua tables, effect files and composite effects: weather, 
 
 #### Screen and sprite effects (EFX)
 
-Camera shake and flashes, distortion, dissolving sprites, outlines and glows, and the post-processing chain of world canvases. The tests are in `source/categories/effects/`, and they draw the landscape of `source/categories/effects/scenery.lua` from the images of the camera and sprite tests.
+Camera shake and flashes, distortion, dissolving sprites, outlines and glows, the post-processing chain of world canvases and the effects of images. The tests are in `source/categories/effects/`, and they draw the landscape of `source/categories/effects/scenery.lua` from the images of the camera and sprite tests.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -277,6 +277,7 @@ Camera shake and flashes, distortion, dissolving sprites, outlines and glows, an
 | `EFX-003` | Dissolve | Sprites that dissolve into noise with a colored edge and come back, with the duration, the edge width, the noise cell size and the edge color on controls. |  |
 | `EFX-004` | Outline and glow | A selection outline on the sprite nearest the cursor and pulsing glows around the sprites picked with a press, by day and by night, with widths, sizes and colors on controls. |  |
 | `EFX-005` | Post-processing chain | Bloom, vignette, saturation, contrast, brightness, color grading through lookup textures made in Lua, chromatic aberration, pixelation, blur, film grain and dithering over a scene with fire and a torch at the cursor, with presets and the whole chain on a switch. |  |
+| `EFX-006` | Image effects | Blur, sharpening, brightness, contrast, saturation, hue, pixelation, inversion and outlines applied to images on the task pool before they become textures. |  |
 
 #### Scenes and transitions (SCN)
 

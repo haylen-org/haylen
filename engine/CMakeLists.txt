@@ -358,6 +358,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/FontLua.cpp
   src/graphics/Gpu.cpp
   src/graphics/GraphicsLua.cpp
+  src/graphics/ImageFilters.cpp
   src/graphics/ImageLua.cpp
   src/graphics/ImagePalette.cpp
   src/graphics/ImagePlaceholder.cpp

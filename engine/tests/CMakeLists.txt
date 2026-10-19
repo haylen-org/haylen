@@ -112,6 +112,7 @@ set(HAYLEN_TEST_SOURCES
   debug/TraceRecorderTests.cpp
   graphics/GraphicsLuaTests.cpp
   graphics/GraphicsTests.cpp
+  graphics/ImageFiltersTests.cpp
   graphics/ImagePaletteTests.cpp
   graphics/ShaderTests.cpp
   graphics/VectorImageTests.cpp

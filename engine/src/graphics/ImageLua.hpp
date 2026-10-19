@@ -1,11 +1,13 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string_view>
 
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
+#include "haylen/graphics/ImageFilters.hpp"
 #include "haylen/lua/Type.hpp"
 
 struct lua_State;
@@ -50,6 +52,15 @@ class ImageLua final {
   private:
     static constexpr std::array<std::string_view, 2> kBlitFields{"source", "blend"};
     static constexpr std::array<std::string_view, 2> kPlaceholderFields{"columns", "rows"};
+    static constexpr std::array<std::string_view, 4> kAdjustFields{"brightness", "contrast", "saturation", "hue"};
+    // The keys of each effect of `applyAsync`, after its `effect`.
+    static constexpr std::array<std::string_view, 2> kBlurEffectFields{"effect", "radius"};
+    static constexpr std::array<std::string_view, 2> kAmountEffectFields{"effect", "amount"};
+    static constexpr std::array<std::string_view, 5> kAdjustEffectFields{"effect", "brightness", "contrast", "saturation", "hue"};
+    static constexpr std::array<std::string_view, 1> kInvertEffectFields{"effect"};
+    static constexpr std::array<std::string_view, 3> kTintEffectFields{"effect", "color", "amount"};
+    static constexpr std::array<std::string_view, 2> kPixelateEffectFields{"effect", "size"};
+    static constexpr std::array<std::string_view, 3> kOutlineEffectFields{"effect", "color", "thickness"};
     // The colors a palette and the swatches take from an image without a count of their own.
     static constexpr int kPaletteColors = 8;
     static constexpr int kSwatchColors = 16;
@@ -72,6 +83,19 @@ class ImageLua final {
     static int palette(lua_State* L);
     static int swatches(lua_State* L);
     static int placeholder(lua_State* L);
+    static int blur(lua_State* L);
+    static int sharpen(lua_State* L);
+    static int adjust(lua_State* L);
+    static int grayscale(lua_State* L);
+    static int invert(lua_State* L);
+    static int tint(lua_State* L);
+    static int pixelate(lua_State* L);
+    static int outline(lua_State* L);
+    static int applyAsync(lua_State* L);
+
+    [[nodiscard]] static ImageFilters::Adjustment readAdjustment(lua_State* L, int index);
+    // Reads an effect of `applyAsync`, a table with the name of its `effect` and its options, as a step that applies it.
+    [[nodiscard]] static std::function<void(Image&)> readEffect(lua_State* L, int index);
     static int width(lua_State* L);
     static int height(lua_State* L);
 };

@@ -244,9 +244,34 @@ An `Image` holds RGBA pixels on the CPU, for art that code makes, composes or pa
 | `image:clone()` | Returns a copy. |
 | `image:encodePng()` | Returns the bytes of a PNG file of the image. |
 | `image:encodePngAsync()` | Returns a promise of the bytes of a PNG file, encoded on the task pool from the image as it is now. |
+| `image:blur(radius)` | Blurs the image as softly as a Gaussian of the radius in pixels, from 0 to 64, with three box blurs whose cost does not grow with the radius. It mixes the colors premultiplied by their alpha, so the transparent pixels around a shape never darken its edge. A radius out of range raises `A blur has a radius from 0 to 64 pixels.` |
+| `image:sharpen(amount)` | Raises the contrast of the details by the amount, 1 by default, by subtracting a blur of one pixel. A negative amount raises `A sharpening has an amount of 0 or more.` |
+| `image:adjust(options)` | Changes the colors with `hue`, which turns the hue by its turns, `saturation`, which scales the distance from gray, 1 by default, `contrast`, which scales the distance from the middle gray, 1 by default, and `brightness`, which adds to every channel, applied in that order. Unknown keys raise `Unknown option "<key>".` |
+| `image:grayscale(amount)` | Moves the colors toward their gray by the amount, 1 by default for full gray. |
+| `image:invert()` | Inverts the colors and keeps the alpha. |
+| `image:tint(color, amount)` | Moves the colors toward `color` by the amount, 1 by default, weighed by the alpha of the color. |
+| `image:pixelate(size)` | Fills every square of `size` pixels with the average of its colors. A size below 1 raises `A pixelation has squares of 1 pixel or more.` |
+| `image:outline(color, thickness)` | Draws an outline of `color` around the pixels that show, solid within `thickness` pixels, 1 by default and up to 32, and fading over the pixel past it, under the pixels that show and inside the image, so a sprite needs a transparent margin as wide as its outline. A thickness out of range raises `An outline has a thickness from 0 to 32 pixels.` |
+| `image:applyAsync(effects)` | Returns a promise of a copy of the image with the effects of the list applied in order on the task pool, while the image stays as it is. Each effect is a table with its name in `effect` and the options of its method: `{effect = 'blur', radius}`, `{effect = 'sharpen', amount}`, `{effect = 'adjust', brightness, contrast, saturation, hue}`, `{effect = 'grayscale', amount}`, `{effect = 'invert'}`, `{effect = 'tint', color, amount}`, `{effect = 'pixelate', size}` and `{effect = 'outline', color, thickness}`. An unknown name raises `The image effect "<name>" is unknown.` with the names, unknown keys raise `Unknown option "<key>".`, and a value out of range rejects the promise with the message of its method. |
 | `image:palette(count)` | Returns up to `count` colors of the visible pixels, 8 by default and from 1 to 64, the most common first, each as `{color, population}` with the share of the pixels it stands for, or an empty list for an image without visible pixels. The colors come from a median cut over a sample of at most 64 pixels per side, so a large image costs what a small one does. A count out of range raises `A palette has from 1 to 64 colors, not <count>.` |
 | `image:swatches(count)` | Returns the colors that an interface takes from the image, picked from a palette of `count` colors, 16 by default: `dominant`, the most common color, and `vibrant`, `darkVibrant`, `lightVibrant`, `muted`, `darkMuted` and `lightMuted`, the colors closest to each target of lightness and saturation, each one absent when no color of the palette fits it. |
 | `image:placeholder(options)` | Returns a short text that stands for the image while it loads, made of a few cosines of its colors on each axis: `columns` and `rows`, from 1 to 9, 4 and 3 by default, where more keep more of the shapes in a longer text. The text holds only letters, digits, `-` and `_`, 36 characters with the defaults, so a server sends it next to the address of the image. Options out of range raise `An image placeholder keeps from 1 to 9 cosines on each axis.`, and unknown keys raise `Unknown option "<key>".` |
+
+```lua
+local assets = require('haylen.assets')
+local async = require('async')
+local graphics = require('haylen.graphics')
+
+-- A blurred and darkened copy of a picture behind a dialog, made on the task pool, and a locked level card in gray.
+async.spawn(function()
+    local picture = assets.loadAsync('images/harbor.png', 'image'):await()
+    local backdrop = picture:applyAsync({{effect = 'blur', radius = 12}, {effect = 'adjust', brightness = -0.2}}):await()
+    local locked = picture:clone()
+    locked:grayscale()
+    locked:outline('#FF1E2A44', 3)
+    print(graphics.newTexture(backdrop, {filter = 'linear'}).width, locked.width)
+end)
+```
 
 ```lua
 local assets = require('haylen.assets')

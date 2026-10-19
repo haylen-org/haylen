@@ -278,6 +278,148 @@ int ImageLua::placeholder(lua_State* L) {
     return 1;
 }
 
+int ImageLua::blur(lua_State* L) {
+    ImageFilters::blur(checkWritable(L, 1), lua::Stack::read<float>(L, 2));
+    return 0;
+}
+
+int ImageLua::sharpen(lua_State* L) {
+    ImageFilters::sharpen(checkWritable(L, 1), static_cast<float>(luaL_optnumber(L, 2, 1.0)));
+    return 0;
+}
+
+ImageFilters::Adjustment ImageLua::readAdjustment(lua_State* L, int index) {
+    ImageFilters::Adjustment adjustment;
+    luaL_checktype(L, index, LUA_TTABLE);
+    lua::Table::checkFields(L, index, {kAdjustFields});
+    lua::Table::readField(L, index, "brightness", adjustment.brightness);
+    lua::Table::readField(L, index, "contrast", adjustment.contrast);
+    lua::Table::readField(L, index, "saturation", adjustment.saturation);
+    lua::Table::readField(L, index, "hue", adjustment.hue);
+    return adjustment;
+}
+
+int ImageLua::adjust(lua_State* L) {
+    Image& image = checkWritable(L, 1);
+    ImageFilters::adjust(image, readAdjustment(L, 2));
+    return 0;
+}
+
+int ImageLua::grayscale(lua_State* L) {
+    ImageFilters::grayscale(checkWritable(L, 1), static_cast<float>(luaL_optnumber(L, 2, 1.0)));
+    return 0;
+}
+
+int ImageLua::invert(lua_State* L) {
+    ImageFilters::invert(checkWritable(L, 1));
+    return 0;
+}
+
+int ImageLua::tint(lua_State* L) {
+    Image& image = checkWritable(L, 1);
+    ImageFilters::tint(image, lua::Stack::read<math::Color>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 1.0)));
+    return 0;
+}
+
+int ImageLua::pixelate(lua_State* L) {
+    ImageFilters::pixelate(checkWritable(L, 1), static_cast<int>(luaL_checkinteger(L, 2)));
+    return 0;
+}
+
+int ImageLua::outline(lua_State* L) {
+    Image& image = checkWritable(L, 1);
+    ImageFilters::outline(image, lua::Stack::read<math::Color>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 1.0)));
+    return 0;
+}
+
+// Every effect reads its options here on the frame thread, and its step runs on the task pool, where a value out of range rejects the promise.
+std::function<void(Image&)> ImageLua::readEffect(lua_State* L, int index) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    lua_getfield(L, index, "effect");
+    const std::string effect = luaL_checkstring(L, -1);
+    lua_pop(L, 1);
+    // clang-format off
+    const auto number = [L, index](const char* key, float fallback) {
+        float value = fallback;
+        lua::Table::readField(L, index, key, value);
+        return value;
+    };
+    const auto color = [L, index](const char* key) {
+        lua_getfield(L, index, key);
+        const math::Color value = lua::Stack::read<math::Color>(L, -1);
+        lua_pop(L, 1);
+        return value;
+    };
+    // clang-format on
+    if (effect == "blur") {
+        lua::Table::checkFields(L, index, {kBlurEffectFields});
+        return [radius = number("radius", 0.0F)](Image& image) { ImageFilters::blur(image, radius); };
+    }
+    if (effect == "sharpen") {
+        lua::Table::checkFields(L, index, {kAmountEffectFields});
+        return [amount = number("amount", 1.0F)](Image& image) { ImageFilters::sharpen(image, amount); };
+    }
+    if (effect == "adjust") {
+        lua::Table::checkFields(L, index, {kAdjustEffectFields});
+        ImageFilters::Adjustment adjustment{.brightness = number("brightness", 0.0F), .contrast = number("contrast", 1.0F), .saturation = number("saturation", 1.0F), .hue = number("hue", 0.0F)};
+        return [adjustment](Image& image) { ImageFilters::adjust(image, adjustment); };
+    }
+    if (effect == "grayscale") {
+        lua::Table::checkFields(L, index, {kAmountEffectFields});
+        return [amount = number("amount", 1.0F)](Image& image) { ImageFilters::grayscale(image, amount); };
+    }
+    if (effect == "invert") {
+        lua::Table::checkFields(L, index, {kInvertEffectFields});
+        return [](Image& image) { ImageFilters::invert(image); };
+    }
+    if (effect == "tint") {
+        lua::Table::checkFields(L, index, {kTintEffectFields});
+        return [tinted = color("color"), amount = number("amount", 1.0F)](Image& image) { ImageFilters::tint(image, tinted, amount); };
+    }
+    if (effect == "pixelate") {
+        lua::Table::checkFields(L, index, {kPixelateEffectFields});
+        return [size = static_cast<int>(number("size", 1.0F))](Image& image) { ImageFilters::pixelate(image, size); };
+    }
+    if (effect == "outline") {
+        lua::Table::checkFields(L, index, {kOutlineEffectFields});
+        return [outlined = color("color"), thickness = number("thickness", 1.0F)](Image& image) { ImageFilters::outline(image, outlined, thickness); };
+    }
+    luaL_error(L, "The image effect \"%s\" is unknown. It is \"blur\", \"sharpen\", \"adjust\", \"grayscale\", \"invert\", \"tint\", \"pixelate\" or \"outline\".", effect.c_str());
+    return {};
+}
+
+// Returns a promise of a copy of this image with the effects of the list applied in order on the task pool, while this image stays as it is.
+int ImageLua::applyAsync(lua_State* L) {
+    const std::shared_ptr<const Image> source = lua::Userdata::checkShared<Image>(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    std::vector<std::function<void(Image&)>> steps;
+    for (lua_Integer index = 1; lua_rawgeti(L, 2, index) != LUA_TNIL; ++index) {
+        steps.push_back(readEffect(L, lua_gettop(L)));
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    // clang-format off
+    engine.getJobs().run([source, steps = std::move(steps)] {
+        Image result = *source;
+        for (const std::function<void(Image&)>& step : steps) {
+            step(result);
+        }
+        return result;
+    }, [promise](core::JobSystem::Result<Image> result) {
+        if (!result.isOk()) {
+            promise->reject(result.error);
+            return;
+        }
+        auto image = std::make_shared<Image>(std::move(*result.value));
+        promise->resolveCustom([image](lua_State* state) { lua::Userdata::emplace<Image>(state, image); });
+    });
+    // clang-format on
+    varn::async::Promise::push(L, promise);
+    return 1;
+}
+
 int ImageLua::decodePlaceholder(lua_State* L) {
     push(L, ImagePlaceholder::decode(lua::Stack::read<std::string_view>(L, 1), static_cast<int>(luaL_checkinteger(L, 2)), static_cast<int>(luaL_checkinteger(L, 3))));
     return 1;
@@ -294,7 +436,7 @@ int ImageLua::height(lua_State* L) {
 }
 
 void ImageLua::install(lua_State* L) {
-    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).function("palette", &lua::Binding::native<&palette>).function("swatches", &lua::Binding::native<&swatches>).function("placeholder", &lua::Binding::native<&placeholder>).property("width", &width).property("height", &height).install();
+    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).function("palette", &lua::Binding::native<&palette>).function("swatches", &lua::Binding::native<&swatches>).function("placeholder", &lua::Binding::native<&placeholder>).function("blur", &lua::Binding::native<&blur>).function("sharpen", &lua::Binding::native<&sharpen>).function("adjust", &lua::Binding::native<&adjust>).function("grayscale", &lua::Binding::native<&grayscale>).function("invert", &lua::Binding::native<&invert>).function("tint", &lua::Binding::native<&tint>).function("pixelate", &lua::Binding::native<&pixelate>).function("outline", &lua::Binding::native<&outline>).function("applyAsync", &lua::Binding::native<&applyAsync>).property("width", &width).property("height", &height).install();
 }
 
 } // namespace haylen::graphics
