@@ -124,6 +124,14 @@ void SokolHost::requestQuit() {
     sapp_request_quit();
 }
 
+bool SokolHost::canQuit() const noexcept {
+#if defined(__EMSCRIPTEN__) || (defined(__APPLE__) && !TARGET_OS_OSX)
+    return false;
+#else
+    return true;
+#endif
+}
+
 Orientation SokolHost::getOrientation() const {
     return Services::getOrientation();
 }

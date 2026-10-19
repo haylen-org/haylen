@@ -31,7 +31,7 @@ On the headless platform the app runs a tour by itself: it browses a category wi
 | Orders | The orders with their state. |
 | Order | The van on a map of the city drawn into a render target that the page shows as a picture, the stages of the delivery and the products. |
 | Wishlist | The products saved with the heart. |
-| Account | The profile, the dark theme, the notices, the address and help. |
+| Account | The profile, the dark theme, the notices, the address, help and, where quitting closes the app, a button that quits it. |
 
 ## Controls
 

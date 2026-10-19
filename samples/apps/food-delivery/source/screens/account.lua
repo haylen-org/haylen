@@ -51,6 +51,8 @@ function AccountPage:enter()
                 ui.button{id = 'signOut', text = 'Sign out', icon = Shell.icon('logout'), variant = 'destructive', align = 'start', onClick = function(event)
                     event.gui:set('confirmSignOut', {open = true})
                 end},
+                -- Where quitting closes the app, the account offers it, so the way the app ends can be tried.
+                haylen.canQuit() and ui.button{id = 'quit', text = 'Quit the app', align = 'start', onClick = function() haylen.quit() end} or nil,
             },
         },
         ui.dialog{id = 'confirmSignOut', title = 'Sign out?', message = 'This sample keeps you signed in, so nothing changes.',

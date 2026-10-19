@@ -27,6 +27,8 @@ function Profile:enter()
                     preferences.set('dark', event.checked)
                     ui.setTheme(event.checked and 'marketDark' or 'marketLight')
                 end},
+                -- Where quitting closes the app, the profile offers it, so the way the app ends can be tried.
+                haylen.canQuit() and ui.button{id = 'quit', text = 'Quit the app', align = 'start', onClick = function() haylen.quit() end} or nil,
             },
             ui.sectionTitle{text = string.format('Your listings, %d', #me.listings)},
         }),

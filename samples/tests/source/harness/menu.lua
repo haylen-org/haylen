@@ -40,7 +40,7 @@ function Menu:resume()
     end
 end
 
--- The search, the way back to the test opened last and the automatic run of every test.
+-- The search, the way back to the test opened last, the automatic run of every test and a Quit button where quitting closes the app.
 function Menu:actions()
     local nodes = {
         ui.filterField{id = 'search', placeholder = 'Search by code or title, such as "PHY-004" or "ragdoll"', grow = 1, onChange = function(event)
@@ -61,6 +61,9 @@ function Menu:actions()
     nodes[#nodes + 1] = ui.button{id = 'runAll', text = 'Run all', onClick = function()
         require('harness.runner').start()
     end}
+    if haylen.canQuit() then
+        nodes[#nodes + 1] = ui.button{id = 'quit', text = 'Quit', onClick = function() haylen.quit() end}
+    end
     return nodes
 end
 

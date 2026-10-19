@@ -86,7 +86,7 @@ many-bodies/
     main.lua             Sets the playroom theme of the panel and opens the playroom.
     scenes/playroom.lua  The playroom: textures, the camera, input, blasts, the panel and the drawing.
     toy-bin.lua          The bin: the world, the chutes, the toys, the blast, the shake and the sprite batch.
-    hud.lua              The panel with the readout, refreshed four times per second, and the controls.
+    hud.lua              The panel with the readout, refreshed four times per second, the controls and a Quit button where quitting closes the app.
     tour.lua             The automatic run of the headless platform.
   content/
     room/                The atlas of the toys, the plank and the chute, and the wallpaper.

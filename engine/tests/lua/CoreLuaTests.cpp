@@ -53,6 +53,7 @@ TEST(CoreLuaTest, QuitsWithAnExitStatus) {
     EXPECT_NE(fixture.lua("haylen.quit({status = -1})").find("The option \"status\" of \"quit\" is invalid: expected a non-negative integer."), std::string::npos);
     EXPECT_NE(fixture.lua("haylen.quit({status = 256})").find("The option \"status\" of \"quit\" is invalid: integer out of range."), std::string::npos);
     EXPECT_TRUE(fixture.engine().isRunning());
+    EXPECT_EQ(fixture.lua("return haylen.canQuit()"), "true");
 
     fixture.runLua("haylen.quit({status = 3})");
     EXPECT_FALSE(fixture.engine().isRunning());

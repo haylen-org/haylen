@@ -29,7 +29,7 @@ On the headless platform the app runs a tour by itself: it searches, opens a res
 | Checkout | The address, the delivery speed, the payment, the tip, a note for the courier and the total. |
 | Tracking | The map of the city with the route and the courier, under a sheet with the stage, the minutes left, the courier and the order, which moves to the side on wide windows. |
 | Orders | The orders on their way, which open the tracker, and the past orders, which open their restaurant again. |
-| Account | The profile, the dark theme, the notices, the saved addresses and the ways to pay. |
+| Account | The profile, the dark theme, the notices, the saved addresses, the ways to pay and, where quitting closes the app, a button that quits it. |
 
 ## Controls
 

@@ -86,7 +86,7 @@ streamed-map/
     scenes/flight.lua    The flight: the camera, the autopilot, input, the panel and the drawing.
     chunks.lua           The streaming: wanted chunks, builds, baking, unloading and the outlines.
     terrain.lua          The terrain from the seed: tiles, shading and decorations.
-    hud.lua              The panel with the readout, refreshed four times per second, and the controls.
+    hud.lua              The panel with the readout, refreshed four times per second, the controls and a Quit button where quitting closes the app.
     tour.lua             The automatic run of the headless platform.
   content/
     terrain/terrain.png  The atlas of the tiles and the decorations.

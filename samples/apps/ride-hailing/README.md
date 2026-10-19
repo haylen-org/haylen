@@ -29,7 +29,7 @@ On the headless platform the app runs a tour by itself: it searches a destinatio
 | Activity | The 520 past trips in a recycled list under sticky months. |
 | Trip details | The route on a map drawn into a render target that the page shows as a picture, the places, the driver and the receipt. |
 | Wallet | The balance with a dialog that adds funds, the ways to pay and the movements. |
-| Account | An invitation, the day theme, the safety options and the trusted contacts. |
+| Account | An invitation, the day theme, the safety options, the trusted contacts and, where quitting closes the app, a button that quits it. |
 
 ## Controls
 

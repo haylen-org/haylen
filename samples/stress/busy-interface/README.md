@@ -84,7 +84,7 @@ busy-interface/
     scenes/dashboard.lua The dashboard: the GUI, the live values, the lists, the table, the feed and the charts.
     port.lua             The made-up port: metrics, vessels, containers, berths and events.
     charts.lua           The line, bar and ring charts drawn with graphics2d.
-    hud.lua              The panel with the readout, refreshed four times per second, and the controls.
+    hud.lua              The panel with the readout, refreshed four times per second, the controls and a Quit button where quitting closes the app.
     tour.lua             The automatic run of the headless platform.
   content/
     dashboard/           The logo and the chart icons.

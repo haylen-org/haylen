@@ -1,5 +1,6 @@
 -- The panel beside the dashboard: the title, a readout of the frame and of the counts of the app, refreshed a few times per second, and the controls that raise and lower the load.
 local debugging = require('haylen.debug')
+local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Hud = {}
@@ -51,6 +52,10 @@ function Hud.new(owner, options)
     }
     for _, control in ipairs(options.controls) do
         panel[#panel + 1] = control
+    end
+    -- Where quitting closes the app, the panel offers it, so the way the app ends can be tried.
+    if haylen.canQuit() then
+        panel[#panel + 1] = ui.button{id = 'quit', text = 'Quit', align = 'stretch', onClick = function() haylen.quit() end}
     end
     panel[#panel + 1] = ui.label{text = options.hint, font = 'caption', color = 'textMuted'}
 

@@ -24,7 +24,7 @@ On the headless platform the app runs a tour by itself: it plays a mix, opens th
 | --- | --- |
 | Home | A greeting with the settings, the card of the week, and shelves of playlists, daily mixes, new releases, popular artists and albums. |
 | Search | The genres to browse while the field is empty, and the artists, albums and songs that match the typed text in one recycled list. |
-| Library | The playlists, albums and artists in a recycled grid, and a dialog that makes a new playlist. |
+| Library | The playlists, albums and artists in a recycled grid, a dialog that makes a new playlist and, where quitting closes the app, a button that quits it. |
 | Album, playlist, mix and genre | The cover with the buttons that play and shuffle, over the songs in a recycled list that holds all 2,400 liked songs. |
 | Artist | The picture, the listeners, the follow button, the popular songs and the albums in one recycled grid of mixed cells. |
 | Now playing | The cover, the song with its heart, the position to drag, the controls with shuffle and repeat, the sleep timer and the volume. |

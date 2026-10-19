@@ -20,6 +20,8 @@ function Library:enter()
             ui.button{id = 'new', icon = Shell.icon('plus'), variant = 'icon', tooltip = 'New playlist', accessibilityLabel = 'New playlist', onClick = function(event)
                 event.gui:set('newDialog', {open = true})
             end},
+            -- Where quitting closes the app, the library offers it, so the way the app ends can be tried.
+            haylen.canQuit() and ui.button{id = 'quit', text = 'Quit', onClick = function() haylen.quit() end} or nil,
         },
         ui.row{padding = {0, 20}, ui.segmentedControl{id = 'section', items = Library.sections, selected = 'playlists', grow = 1, maxWidth = 640, onChange = function(event)
             self.section = event.value

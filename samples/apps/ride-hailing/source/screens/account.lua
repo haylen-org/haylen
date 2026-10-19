@@ -46,6 +46,8 @@ function Account:enter()
                 ui.button{id = 'signOut', text = 'Sign out', icon = Shell.icon('close'), variant = 'destructive', align = 'start', onClick = function()
                     Shell.notify('This sample keeps you signed in.', 'information')
                 end},
+                -- Where quitting closes the app, the account offers it, so the way the app ends can be tried.
+                haylen.canQuit() and ui.button{id = 'quit', text = 'Quit the app', align = 'start', onClick = function() haylen.quit() end} or nil,
             },
         },
     }))

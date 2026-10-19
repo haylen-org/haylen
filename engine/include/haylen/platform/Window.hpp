@@ -90,6 +90,9 @@ class Window {
     [[nodiscard]] virtual std::string getClipboard() const = 0;
     virtual void requestQuit() = 0;
 
+    // Whether a quit closes the app, which desktops, Android and the headless host do, while iPhones, iPads, TVs, Mac Catalyst windows and web pages close only through the system or the browser.
+    [[nodiscard]] virtual bool canQuit() const noexcept = 0;
+
     // Returns `Landscape` or `Portrait`. Desktop windows always count as landscape.
     [[nodiscard]] virtual Orientation getOrientation() const = 0;
 

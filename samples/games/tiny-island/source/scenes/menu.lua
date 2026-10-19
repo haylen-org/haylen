@@ -41,7 +41,7 @@ function menu:enter()
             end))
         end, {variant = 'default'}),
     }
-    if preferences.desktop() then
+    if haylen.canQuit() then
         buttons[#buttons + 1] = widgets.button('quit', 'menu.quit', haylen.quit, {variant = 'destructive'})
     end
 

@@ -36,6 +36,7 @@ class SokolHost final : public Host {
     void setClipboard(std::string_view value) override;
     [[nodiscard]] std::string getClipboard() const override;
     void requestQuit() override;
+    [[nodiscard]] bool canQuit() const noexcept override;
     [[nodiscard]] Orientation getOrientation() const override;
     void lockOrientation(Orientation value) override;
     [[nodiscard]] std::optional<Fold> getFold() const override;

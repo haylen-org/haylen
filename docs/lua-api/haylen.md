@@ -419,9 +419,22 @@ local music = haylen.autoload('soundtrack', 'systems.music')
 print(haylen.autoloads.soundtrack == music, require('systems.music') == music) -- true true
 ```
 
+### haylen.canQuit()
+
+Returns whether [`haylen.quit`](#haylenquitoptions) closes the app, which it does on macOS, Windows, Linux, Android and the headless player. iPhones, iPads, Apple TVs, Mac Catalyst windows and web pages close only through the system or the browser, so there the function returns `false` and a quit only stops the app. An app shows its own Quit button only where this returns `true`.
+
+```lua
+local haylen = require('haylen')
+local ui = require('haylen.ui')
+
+if haylen.canQuit() then
+    ui.mount(ui.button{text = 'Quit', anchor = 'topRight', margin = 16, onClick = function() haylen.quit() end})
+end
+```
+
 ### haylen.quit(options)
 
-Stops the app and asks the platform to close it. No further frames run. On Android the activity of the app finishes. The optional `options` table holds the exit status of the process, and unknown keys raise `Unknown option "<key>".`
+Stops the app and asks the platform to close it. No further frames run. On Android the activity of the app finishes, and where [`haylen.canQuit`](#haylencanquit) returns `false` the app only stops. The optional `options` table holds the exit status of the process, and unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |

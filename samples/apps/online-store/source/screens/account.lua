@@ -38,6 +38,8 @@ function Account:enter()
                 ui.card{padding = 6, ui.list{id = 'help', items = {{id = 'returns', text = 'Returns and refunds', image = Shell.icon('truck')}, {id = 'sizes', text = 'Size guide', image = Shell.icon('ruler')}, {id = 'contact', text = 'Contact us', image = Shell.icon('chat')}}, onSelect = function()
                     Shell.notify('Help pages are not part of this sample.', 'information')
                 end}},
+                -- Where quitting closes the app, the account offers it, so the way the app ends can be tried.
+                haylen.canQuit() and ui.button{id = 'quit', text = 'Quit the app', align = 'start', onClick = function() haylen.quit() end} or nil,
             },
         },
     }))

@@ -105,6 +105,9 @@ class HeadlessHost final : public Host {
     void requestQuit() override {
         quitRequested = true;
     }
+    [[nodiscard]] bool canQuit() const noexcept override {
+        return true;
+    }
 
     // The headless screen turns with its framebuffer, like the screen of a phone.
     [[nodiscard]] Orientation getOrientation() const override {

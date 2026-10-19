@@ -104,7 +104,7 @@ many-sprites/
     main.lua             Sets the pond theme of the panel and opens the pond.
     scenes/pond.lua      The pond: textures, the bait, input, the panel and the drawing.
     swarm.lua            The school: its arrays, the simulation modes and the hand-over modes.
-    hud.lua              The panel with the readout, refreshed four times per second, and the controls.
+    hud.lua              The panel with the readout, refreshed four times per second, the controls and a Quit button where quitting closes the app.
     tour.lua             The automatic run of the headless platform.
   content/
     sprites/pond.png     The atlas of the fish, the lily pad and the blossom.

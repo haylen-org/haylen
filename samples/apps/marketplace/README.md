@@ -82,7 +82,7 @@ marketplace/
     random.lua           The seeded generator of the fake data.
     tour.lua             The automatic run of the headless platform.
     data/market.lua      The categories, the listings, the sellers, their reviews and the person.
-    screens/             Browse, listing, seller, inbox, chat, sell, saved and profile.
+    screens/             Browse, listing, seller, inbox, chat, sell, saved and profile, which quits the app where quitting closes it.
   content/
     goods/               The goods and their backdrops.
     icons/               The line icons.
