@@ -189,8 +189,8 @@ IOS_ORIENTATIONS = {
     "any": (["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"], ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]),
 }
 
-# Varn names the engine in the unified log of Apple platforms with this subsystem.
-APPLE_LOG_SUBSYSTEM = "dev.varn.engine"
+# The engine writes to the unified log of Apple platforms under the bundle identifier of the app as the subsystem and this category.
+APPLE_LOG_CATEGORY = "haylen"
 LOG_STREAM_GRACE_SECONDS = 1.0
 
 MIME_TYPES = {".wasm": "application/wasm", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".zip": "application/zip", ".html": "text/html", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".data": "application/octet-stream"}
@@ -823,10 +823,10 @@ def read_manifest() -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"platforms": {}}
 
 
-def write_manifest(platform_name: str, config: str, sources: str) -> None:
+def write_manifest(platform_name: str, entry: dict) -> None:
     manifest = read_manifest()
     manifest["version"] = engine_version()
-    manifest["platforms"][platform_name] = {"config": config, "sources": sources}
+    manifest["platforms"][platform_name] = entry
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
     (ARTIFACTS_DIR / "manifest.json").write_text(json.dumps(manifest, indent=4) + "\n", encoding="utf-8")
 
@@ -842,14 +842,21 @@ def apple_slice_options(slice_name: str, arch: str) -> list[str]:
     return options
 
 
-def build_apple_artifacts(config: str, jobs: int) -> None:
-    """Builds one static library per architecture, joins the architectures of every slice with lipo and creates `Haylen.xcframework`."""
+def apple_slice_library(slice_name: str, config: str) -> Path:
+    """The static library of one slice of `Haylen.xcframework`, which lipo joins from the libraries of its architectures when it has several."""
+    architectures = APPLE_SLICES[slice_name]
+    if len(architectures) == 1:
+        return ENGINE_BUILDS_DIR / f"apple-{slice_name}-{architectures[0]}-{config.lower()}" / "framework" / "lib" / "libhaylen.a"
+    return ENGINE_BUILDS_DIR / f"apple-{slice_name}-{config.lower()}" / "libhaylen.a"
+
+
+def build_apple_artifacts(config: str, jobs: int, slices: list[str]) -> None:
+    """Builds one static library per architecture of the slices, joins the architectures of every slice with lipo and creates `Haylen.xcframework` from every slice built so far, so a run that needs one slice builds only that one."""
     require_host("apple")
-    libraries: list[Path] = []
     headers: Path | None = None
-    for slice_name, architectures in APPLE_SLICES.items():
+    for slice_name in slices:
         archives: list[Path] = []
-        for arch in architectures:
+        for arch in APPLE_SLICES[slice_name]:
             directory = ENGINE_BUILDS_DIR / f"apple-{slice_name}-{arch}-{config.lower()}"
             if not (directory / "CMakeCache.txt").exists():
                 run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_FRAMEWORK=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *apple_slice_options(slice_name, arch)])
@@ -859,19 +866,18 @@ def build_apple_artifacts(config: str, jobs: int) -> None:
             if headers is None:
                 run(["cmake", "--install", directory, "--component", "haylen_sdk", "--prefix", directory / "sdk"])
                 headers = directory / "sdk" / "include"
-
-        library = archives[0]
         if len(archives) > 1:
-            library = ENGINE_BUILDS_DIR / f"apple-{slice_name}-{config.lower()}" / "libhaylen.a"
+            library = apple_slice_library(slice_name, config)
             library.parent.mkdir(parents=True, exist_ok=True)
             run(["lipo", "-create", *archives, "-output", library])
-        libraries.append(library)
 
     output = ARTIFACTS_DIR / "apple" / "Haylen.xcframework"
     shutil.rmtree(output, ignore_errors=True)
     command: list = ["xcodebuild", "-create-xcframework"]
-    for library in libraries:
-        command += ["-library", library, "-headers", headers]
+    for slice_name in APPLE_SLICES:
+        library = apple_slice_library(slice_name, config)
+        if library.is_file():
+            command += ["-library", library, "-headers", headers]
     run(command + ["-output", output])
     # Apps link the system frameworks of the engine and declare its privacy reasons from the files next to the framework.
     shutil.copy2(headers.parent.parent / "framework" / "share" / "haylen" / "haylen-frameworks.json", output.parent)
@@ -960,21 +966,38 @@ def build_desktop_artifacts(config: str, jobs: int) -> None:
     run(["cmake", "--install", directory, "--config", config, "--component", "haylen_sdk", "--prefix", desktop_sdk()])
 
 
-ARTIFACT_BUILDERS = {"apple": build_apple_artifacts, "android": build_android_artifacts, "web": build_web_artifacts, "desktop": build_desktop_artifacts}
+ARTIFACT_BUILDERS = {"android": build_android_artifacts, "web": build_web_artifacts, "desktop": build_desktop_artifacts}
 
 
-def build_artifacts(platform_name: str, config: str, jobs: int) -> None:
+def build_artifacts(platform_name: str, config: str, jobs: int, slices: list[str] | None = None) -> None:
+    """Builds the artifacts of a platform, or of the slices of `Haylen.xcframework` given for Apple, all of them by default, and records them in the manifest with the sources they were built from, slice by slice for Apple."""
     terminal.step(f'Building the "{platform_name}" artifacts of Haylen {engine_version()} in the "{config}" configuration')
     sources = engine_sources_hash()
-    ARTIFACT_BUILDERS[platform_name](config, jobs)
-    write_manifest(platform_name, config, sources)
+    if platform_name == "apple":
+        built = slices or list(APPLE_SLICES)
+        build_apple_artifacts(config, jobs, built)
+        entry = read_manifest()["platforms"].get("apple", {})
+        recorded = entry.get("slices", {}) if entry.get("config") == config else {}
+        write_manifest("apple", {"config": config, "slices": {**recorded, **{name: sources for name in built}}})
+    else:
+        ARTIFACT_BUILDERS[platform_name](config, jobs)
+        write_manifest(platform_name, {"config": config, "sources": sources})
     terminal.success(f'The "{platform_name}" artifacts of Haylen {engine_version()} are in `{shown_path(ARTIFACTS_DIR / platform_name)}`.')
 
 
-def ensure_artifacts(platform_name: str, config: str, jobs: int) -> None:
-    """Builds the artifacts of a platform when they are missing, were built with another configuration or are older than the engine sources."""
-    entry = read_manifest()["platforms"].get(platform_name)
-    if entry == {"config": config, "sources": engine_sources_hash()}:
+def ensure_artifacts(platform_name: str, config: str, jobs: int, slices: list[str] | None = None) -> None:
+    """Builds the artifacts of a platform when they are missing, were built with another configuration or are older than the engine sources. For Apple only the slices of `Haylen.xcframework` given, all of them by default, must be current, so a run on one platform builds only its slice."""
+    entry = read_manifest()["platforms"].get(platform_name, {})
+    sources = engine_sources_hash()
+    if platform_name == "apple":
+        recorded = entry.get("slices", {}) if entry.get("config") == config else {}
+        stale = [name for name in slices or list(APPLE_SLICES) if recorded.get(name) != sources]
+        if not stale:
+            return
+        terminal.info(f'The slices {", ".join(f"\"{name}\"" for name in stale)} of the Apple artifacts are missing or older than the engine sources, so they build first.')
+        build_artifacts(platform_name, config, jobs, stale)
+        return
+    if entry == {"config": config, "sources": sources}:
         return
     terminal.info(f'The "{platform_name}" artifacts of the engine are missing or older than its sources, so they build first.')
     build_artifacts(platform_name, config, jobs)
@@ -2547,7 +2570,7 @@ def relay_unified_log(stream: subprocess.Popen) -> None:
 @contextlib.contextmanager
 def unified_log(executable: str, prefix: list):
     """Relays what the engine of an app process writes to the unified log, where it logs on iOS, tvOS and Mac Catalyst, while the block runs. The prefix runs `log` inside a simulator."""
-    predicate = f'process == "{executable}" AND subsystem == "{APPLE_LOG_SUBSYSTEM}"'
+    predicate = f'process == "{executable}" AND category == "{APPLE_LOG_CATEGORY}"'
     stream = subprocess.Popen([str(part) for part in [*prefix, "log", "stream", "--style", "ndjson", "--level", "debug", "--predicate", predicate]], stdout=subprocess.PIPE, text=True)
     # The stream names its filter on the first line and delivers events from then on, so the app starts after that line.
     stream.stdout.readline()
@@ -3682,7 +3705,7 @@ def command_run(args: argparse.Namespace) -> None:
 
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
-    ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
+    ensure_artifacts(target.artifacts, args.engine_config, args.jobs, [APPLE_NATIVE_SLICES[args.platform]] if target.artifacts == "apple" else None)
     target.run(info, target.prepare(info, args), args)
 
 

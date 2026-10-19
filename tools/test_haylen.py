@@ -364,6 +364,21 @@ class AppArgumentTest(unittest.TestCase):
             self.assertEqual(builds[-1].config, config)
 
 
+class ArtifactsTest(unittest.TestCase):
+    def test_a_run_builds_only_the_apple_slice_it_needs_and_a_project_every_stale_slice(self):
+        manifest = {"platforms": {"apple": {"config": "Release", "slices": {"ios-simulator": "current", "tvos": "old"}}}}
+        builds = []
+        with mock.patch.object(haylen, "read_manifest", return_value=manifest), mock.patch.object(haylen, "engine_sources_hash", return_value="current"), mock.patch.object(haylen, "build_artifacts", side_effect=lambda *arguments: builds.append(arguments)):
+            haylen.ensure_artifacts("apple", "Release", 4, ["ios-simulator"])
+            self.assertEqual(builds, [])
+            haylen.ensure_artifacts("apple", "Release", 4, ["tvos"])
+            self.assertEqual(builds[-1], ("apple", "Release", 4, ["tvos"]))
+            haylen.ensure_artifacts("apple", "Release", 4)
+            self.assertEqual(builds[-1], ("apple", "Release", 4, [name for name in haylen.APPLE_SLICES if name != "ios-simulator"]))
+            haylen.ensure_artifacts("apple", "Debug", 4, ["ios-simulator"])
+            self.assertEqual(builds[-1], ("apple", "Debug", 4, ["ios-simulator"]))
+
+
 class LauncherTest(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "The shell launcher runs on macOS and Linux.")
     def test_the_launcher_runs_the_tool_from_any_folder_and_through_a_link(self):
