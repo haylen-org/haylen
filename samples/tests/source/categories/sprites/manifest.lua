@@ -23,5 +23,6 @@ return {
         {code = 'SPR-017', title = 'Images and runtime atlases', description = 'A badge composed from images off the frame thread, sprites drawn from separate textures or one atlas packed at run time, and mipmaps.', module = 'atlases-runtime'},
         {code = 'SPR-018', title = 'Screen capture', description = 'The whole screen captured into an image without the frame thread waiting, shown and saved as a PNG file.', module = 'screen-capture'},
         {code = 'SPR-019', title = 'Batches of several textures', description = 'A meadow of sprites from four separate images in one batch and one draw call, swayed by a material through the data of each sprite.', module = 'batch-textures'},
+        {code = 'SPR-020', title = 'Blend modes', description = 'Every blend mode of a group over the same picture, from the blends of the GPU to overlay, darken, lighten, the dodges and burns, the lights, difference and exclusion, which mix with what lies below.', module = 'blend-modes'},
     },
 }

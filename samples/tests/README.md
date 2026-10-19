@@ -126,6 +126,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-017` | Images and runtime atlases | A badge composed from images off the frame thread, sprites drawn from separate textures or one atlas packed at run time, and mipmaps. |  |
 | `SPR-018` | Screen capture | The whole screen captured into an image without the frame thread waiting, shown and saved as a PNG file. |  |
 | `SPR-019` | Batches of several textures | A meadow of sprites from four separate images in one batch and one draw call, swayed by a material through the data of each sprite. |  |
+| `SPR-020` | Blend modes | Every blend mode of a group over the same picture, from the blends of the GPU to overlay, darken, lighten, the dodges and burns, the lights, difference and exclusion, which mix with what lies below. |  |
 
 #### Animation (ANI)
 
@@ -529,6 +530,7 @@ Tiled maps of every orientation with their layers, objects, properties, collisio
 | `TLD-013` | Digging the collision | Walls dug and built with tile changes while balls bounce, with the merged collision loops traced again around each change. |  |
 | `TLD-014` | Maps built in code | A map made in code with ground filled from a grid, water painted with a corner Wang set and its Tiled JSON. |  |
 | `TLD-015` | Automapping | A garden painted with plain tiles that the rules of a rule map give shores, random decoration and slimes, with a new seed on every press. |  |
+| `TLD-016` | Layer blend modes | A map built in code whose water layer lies over the ground with each of the thirteen blend modes of Tiled, from normal, add, multiply and screen to overlay, darken, lighten, the dodges and burns, the lights, difference and exclusion. |  |
 
 #### Tween (TWN)
 
