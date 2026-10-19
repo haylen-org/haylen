@@ -85,7 +85,7 @@ The file `haylen/material.glsl` holds what every material shares. It defines the
 | `color` | `in vec4` | Color of the draw, or of the mesh vertex. |
 | `sprite_texture`, `sprite_sampler` | texture and sampler at binding 0 | The texture of the draw, the image before the pass in post-processing, and the atlas of text. |
 | `haylen_texture(vec2 point)` | `vec4` | The texture of the draw at a point, which a sprite of a batch with several textures picks by its own texture. |
-| `haylen_source` | `in vec4` | The source rectangle of the draw in texture coordinates, with its smallest corner in `xy` and its largest in `zw`, and the whole texture for meshes and shapes. |
+| `haylen_source` | `in vec4` | The source rectangle of the draw in texture coordinates, with its smallest corner in `xy` and its largest in `zw`, and the whole texture for meshes, strokes and shapes. |
 | `haylen_data` | `in vec4` | The four numbers of the [sprite data](#sprite-data) of a sprite of a batch, and zeros in the other draws. |
 | `haylen_inside(vec2 point)` | `vec2` | The point moved inside the texels of the source rectangle of the draw, half a texel in from its sides, so filtering never reads the texels around the region of a sprite, such as its neighbours in an atlas. Meshes and shapes keep their point. |
 | `haylen_sprite(vec2 point)` | `vec4` | The texture color inside the source of the draw times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. A shape paints its border color over it in the band along its edge. |
@@ -246,6 +246,20 @@ scene.push({
     end,
 })
 ```
+
+## Game shaders
+
+The test project keeps a library of forty-five material shaders of games under `samples/tests/content/shaders/library/`, which test `SHD-008` shows by category with a slider for each of their numbers. Each one is an ordinary source that an app copies into its own `content/shaders/` with `common.glsl`, the hashes, noise and helpers they share, and compiles with `haylen.py shaders`:
+
+| Category | Shaders | Drawn on |
+| --- | --- | --- |
+| Neon and energy | Neon glow, neon trail, laser beam, plasma bolt, electric arc, energy shield, charge fill, neon sign, teleport | Bullets with a transparent margin for their glow, strokes, a square for the shield, and sprites. |
+| Elements | Fire, water ripple, lava, frozen, poison, burn away | Rectangles of the white texture for fire and lava, a picture, and sprites. |
+| Status and looks | Stone, gold, shine sweep, ghost, invisibility, silhouette, damage blink, drop shadow, inner glow, rim light, spectrum, gradient map | Sprites. |
+| Styles | Posterize, sepia, night vision, thermal, X-ray, dither, halftone, sketch, emboss, color split, glitch, VHS | Pictures. |
+| Motion and deformation | Flag wave, jelly, swirl, shockwave, heat haze, melt | Pictures and sprites. |
+
+The shaders measure the draw through `haylen_source`, as a share from 0 to 1 of its source rectangle on each axis, so they shade a region of an atlas like a whole texture. A stroke draws as a mesh, whose texture coordinates go from 0 to 1 along its length with the default `textureMode` of `'stretch'` and from 0 to 1 across its width, which is what the trail shaders read. The shaders that reach past the pixels of a sprite, such as the glows, outlines and drop shadow, draw inside its quad, so the image needs a transparent margin as wide as what they draw. The ones that read the pixels around them take a `texel` uniform, the size of a pixel of the texture, which the app sets from the width and height of the texture.
 
 ## The .shader file
 

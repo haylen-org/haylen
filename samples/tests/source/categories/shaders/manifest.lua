@@ -2,7 +2,7 @@
 return {
     prefix = 'SHD',
     title = 'Shaders',
-    description = 'Custom fragment shaders compiled into ".shader" files: materials on sprites and text, uniforms from tweens and textures, post-processing chains and hot reload.',
+    description = 'Custom fragment shaders compiled into ".shader" files: materials on sprites and text, uniforms from tweens and textures, post-processing chains, hot reload and a library of game shaders.',
     tests = {
         {code = 'SHD-001', title = 'Sprite materials', description = 'Dissolve, outline, hit flash, wave distortion, palette swap, hologram and pixelation shaders on sprites.', module = 'materials'},
         {code = 'SHD-002', title = 'Uniforms with tweens', description = 'Shader values driven by tweens, yoyos, elastic curves and a timeline.', module = 'tweened-uniforms'},
@@ -11,5 +11,6 @@ return {
         {code = 'SHD-005', title = 'Shaders on text', description = 'Rainbow, dissolve and flash materials on text drawn from its distance field.', module = 'text-shader'},
         {code = 'SHD-006', title = 'Hot reload', description = 'How a desktop run of the player recompiles and reloads a shader while the app keeps running.', module = 'hot-reload'},
         {code = 'SHD-007', title = 'Shader load time', description = 'Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the backend of the platform.', module = 'load-time'},
+        {code = 'SHD-008', title = 'Shader library', description = 'Forty-five material shaders of games by category, from neon trails, lasers and shields to fire, frost, gold, glitches and shockwaves, with their numbers on sliders.', module = 'library-browser'},
     },
 }

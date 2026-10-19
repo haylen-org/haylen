@@ -295,7 +295,7 @@ The scene stack with every transition effect, custom effects, loading with progr
 
 #### Shaders (SHD)
 
-Custom fragment shaders compiled into ".shader" files: materials on sprites and text, uniforms from tweens and textures, post-processing chains and hot reload. The tests are in `source/categories/shaders/`.
+Custom fragment shaders compiled into ".shader" files: materials on sprites and text, uniforms from tweens and textures, post-processing chains, hot reload and a library of game shaders. The tests are in `source/categories/shaders/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -306,6 +306,7 @@ Custom fragment shaders compiled into ".shader" files: materials on sprites and 
 | `SHD-005` | Shaders on text | Rainbow, dissolve and flash materials on text drawn from its distance field. |  |
 | `SHD-006` | Hot reload | How a desktop run of the player recompiles and reloads a shader while the app keeps running. |  |
 | `SHD-007` | Shader load time | Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the backend of the platform. |  |
+| `SHD-008` | Shader library | Forty-five material shaders of games by category, from neon trails, lasers and shields to fire, frost, gold, glitches and shockwaves, with their numbers on sliders. |  |
 
 #### Video (VID)
 

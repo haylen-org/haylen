@@ -1,0 +1,1141 @@
+{
+ "categories": [
+  {
+   "id": "energy",
+   "title": "Neon and energy",
+   "shaders": [
+    {
+     "id": "neon-glow",
+     "name": "Neon glow",
+     "target": "bullet",
+     "blend": "additive",
+     "description": "Turns a shape into a neon light: a white core and a halo of the glow color around it that pulses, for bullets, arrows and pickups drawn with the additive blend.",
+     "floats": [
+      {
+       "name": "radius",
+       "label": "Glow radius",
+       "min": 1,
+       "max": 26,
+       "value": 20
+      },
+      {
+       "name": "intensity",
+       "label": "Intensity",
+       "min": 0,
+       "max": 6,
+       "value": 3.5
+      },
+      {
+       "name": "pulse",
+       "label": "Pulse",
+       "min": 0,
+       "max": 0.6,
+       "value": 0.2
+      }
+     ],
+     "colors": {
+      "glow_color": "#FF40E0FF"
+     },
+     "vectors": {},
+     "texel": true,
+     "time": true
+    },
+    {
+     "id": "neon-trail",
+     "name": "Neon trail",
+     "target": "stroke",
+     "blend": "additive",
+     "description": "Shades a stroke as a neon trail: a white core along its middle, a glow that fades toward its sides and a tail that fades toward its start, with a flicker that runs along it.",
+     "floats": [
+      {
+       "name": "core_width",
+       "label": "Core width",
+       "min": 0.05,
+       "max": 0.8,
+       "value": 0.2
+      },
+      {
+       "name": "fade",
+       "label": "Tail fade",
+       "min": 0,
+       "max": 4,
+       "value": 0.8
+      },
+      {
+       "name": "flicker",
+       "label": "Flicker",
+       "min": 0,
+       "max": 0.8,
+       "value": 0.3
+      }
+     ],
+     "colors": {
+      "glow_color": "#FFFF4FD8"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "laser-beam",
+     "name": "Laser beam",
+     "target": "stroke",
+     "blend": "additive",
+     "description": "Shades a stroke as a laser beam: a hard white core, a halo of the beam color and ripples that run along it.",
+     "floats": [
+      {
+       "name": "width",
+       "label": "Core width",
+       "min": 0.1,
+       "max": 1,
+       "value": 0.5
+      },
+      {
+       "name": "speed",
+       "label": "Ripple speed",
+       "min": 0,
+       "max": 60,
+       "value": 30
+      }
+     ],
+     "colors": {
+      "beam_color": "#FFFF3030"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "plasma-bolt",
+     "name": "Plasma bolt",
+     "target": "bullet",
+     "blend": "alpha",
+     "description": "Fills a shape with swirling plasma between two colors, for magic projectiles and power cores.",
+     "floats": [
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 3,
+       "value": 1
+      }
+     ],
+     "colors": {
+      "inner_color": "#FFFFF0A0",
+      "outer_color": "#FF8A2BE2"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "electric-arc",
+     "name": "Electric arc",
+     "target": "stroke",
+     "blend": "additive",
+     "description": "Shades a stroke as a jagged electric arc that jumps to a new shape many times a second, with a white core and a glow.",
+     "floats": [
+      {
+       "name": "jitter",
+       "label": "Jitter",
+       "min": 0,
+       "max": 0.8,
+       "value": 0.45
+      },
+      {
+       "name": "thickness",
+       "label": "Thickness",
+       "min": 0.01,
+       "max": 0.2,
+       "value": 0.07
+      }
+     ],
+     "colors": {
+      "arc_color": "#FF7FD4FF"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "energy-shield",
+     "name": "Energy shield",
+     "target": "disc",
+     "blend": "additive",
+     "description": "Draws an energy shield over a square: a glowing rim, a honeycomb that a wave lights as it passes, and a faint fill, round whatever the image.",
+     "floats": [
+      {
+       "name": "rim",
+       "label": "Rim",
+       "min": 0.02,
+       "max": 0.5,
+       "value": 0.2
+      },
+      {
+       "name": "hex_scale",
+       "label": "Honeycomb size",
+       "min": 2,
+       "max": 20,
+       "value": 8
+      }
+     ],
+     "colors": {
+      "shield_color": "#FF40B0FF"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "charge-fill",
+     "name": "Charge fill",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Fills a sprite clockwise from the top up to a share, with a glowing edge, and grays the rest, for cooldowns and charging abilities.",
+     "floats": [
+      {
+       "name": "progress",
+       "label": "Charge",
+       "min": 0,
+       "max": 1,
+       "value": 0.65
+      },
+      {
+       "name": "glow",
+       "label": "Edge glow",
+       "min": 0,
+       "max": 2,
+       "value": 1
+      }
+     ],
+     "colors": {
+      "fill_color": "#FFFFD54F"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "neon-sign",
+     "name": "Neon sign",
+     "target": "sprite",
+     "blend": "additive",
+     "description": "Keeps only a glowing tube along the edges of a sprite, like a neon sign, which flickers now and then.",
+     "floats": [
+      {
+       "name": "thickness",
+       "label": "Tube width",
+       "min": 1,
+       "max": 8,
+       "value": 3
+      }
+     ],
+     "colors": {
+      "neon_color": "#FFFF4FD8"
+     },
+     "vectors": {},
+     "texel": true,
+     "time": true
+    },
+    {
+     "id": "teleport",
+     "name": "Teleport",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Builds a sprite from the bottom up behind a bright scan line with digital noise, as it teleports in, and takes it apart as the progress falls.",
+     "floats": [
+      {
+       "name": "progress",
+       "label": "Progress",
+       "min": 0,
+       "max": 1,
+       "value": 0.6
+      }
+     ],
+     "colors": {
+      "beam_color": "#FF40FFD0"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    }
+   ]
+  },
+  {
+   "id": "elements",
+   "title": "Elements",
+   "shaders": [
+    {
+     "id": "fire",
+     "name": "Fire",
+     "target": "quad",
+     "blend": "additive",
+     "description": "Draws a flame that rises over a rectangle from noise, hot at its core and cooler toward its tips.",
+     "floats": [
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 4,
+       "value": 1.6
+      },
+      {
+       "name": "intensity",
+       "label": "Intensity",
+       "min": 0.5,
+       "max": 3,
+       "value": 1.5
+      }
+     ],
+     "colors": {
+      "hot_color": "#FFFFC040",
+      "cool_color": "#FFE0301A"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "water-ripple",
+     "name": "Water ripple",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Bends an image with rings that spread from its middle, with bright crests, like a drop on water.",
+     "floats": [
+      {
+       "name": "amplitude",
+       "label": "Amplitude",
+       "min": 0,
+       "max": 0.03,
+       "value": 0.01
+      },
+      {
+       "name": "frequency",
+       "label": "Rings",
+       "min": 10,
+       "max": 80,
+       "value": 40
+      },
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 10,
+       "value": 4
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "lava",
+     "name": "Lava",
+     "target": "quad",
+     "blend": "alpha",
+     "description": "Fills a rectangle with flowing lava: a dark crust broken by glowing cracks that move.",
+     "floats": [
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 2,
+       "value": 0.6
+      }
+     ],
+     "colors": {
+      "crust_color": "#FF2A1410",
+      "glow_color": "#FFFF5A1A"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "frozen",
+     "name": "Frozen",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Covers a sprite with ice: a cold tint, frost from noise and sparkles that come and go.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Ice",
+       "min": 0,
+       "max": 1,
+       "value": 0.85
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "poison",
+     "name": "Poison",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Tints a sprite a sick green that pulses, with bubbles that rise through it.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Poison",
+       "min": 0,
+       "max": 1,
+       "value": 0.8
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "burn-away",
+     "name": "Burn away",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Burns a sprite away from noise as the progress grows, with glowing embers along the edge and charred color behind them.",
+     "floats": [
+      {
+       "name": "progress",
+       "label": "Burn",
+       "min": 0,
+       "max": 1,
+       "value": 0.45
+      },
+      {
+       "name": "edge_width",
+       "label": "Ember width",
+       "min": 0.01,
+       "max": 0.2,
+       "value": 0.06
+      }
+     ],
+     "colors": {
+      "ember_color": "#FFFF8A20"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": false
+    }
+   ]
+  },
+  {
+   "id": "status",
+   "title": "Status and looks",
+   "shaders": [
+    {
+     "id": "stone",
+     "name": "Stone",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Turns a sprite into gray stone with grain, for petrified enemies and statues.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Stone",
+       "min": 0,
+       "max": 1,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "gold",
+     "name": "Gold",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Turns a sprite into polished gold with a shine that sweeps across it, for trophies and rare items.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Gold",
+       "min": 0,
+       "max": 1,
+       "value": 1
+      },
+      {
+       "name": "shine_speed",
+       "label": "Shine speed",
+       "min": 0,
+       "max": 3,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "shine-sweep",
+     "name": "Shine sweep",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Sweeps a diagonal band of light across a sprite, for buttons, cards and items that call for a tap.",
+     "floats": [
+      {
+       "name": "width",
+       "label": "Band width",
+       "min": 0.02,
+       "max": 0.4,
+       "value": 0.12
+      },
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 3,
+       "value": 1
+      }
+     ],
+     "colors": {
+      "shine_color": "#B0FFFFFF"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "ghost",
+     "name": "Ghost",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Makes a sprite a translucent, bluish ghost that wobbles and flickers.",
+     "floats": [
+      {
+       "name": "opacity",
+       "label": "Opacity",
+       "min": 0,
+       "max": 1,
+       "value": 0.55
+      },
+      {
+       "name": "wobble",
+       "label": "Wobble",
+       "min": 0,
+       "max": 2,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "invisibility",
+     "name": "Invisibility",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Hides a sprite but its shimmering edges, like a cloak of invisibility, by the amount.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Invisibility",
+       "min": 0,
+       "max": 1,
+       "value": 0.9
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": true,
+     "time": true
+    },
+    {
+     "id": "silhouette",
+     "name": "Silhouette",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Fills a sprite with one color, for a character seen behind a wall or a locked item.",
+     "floats": [],
+     "colors": {
+      "silhouette_color": "#C02A4060"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "damage-blink",
+     "name": "Damage blink",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Blinks a sprite between its colors and the blink color at a rate, for the moments a character cannot be hit.",
+     "floats": [
+      {
+       "name": "rate",
+       "label": "Blinks per second",
+       "min": 0.5,
+       "max": 12,
+       "value": 6
+      }
+     ],
+     "colors": {
+      "blink_color": "#FFFF4040"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "drop-shadow",
+     "name": "Drop shadow",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Draws a soft shadow of a sprite under it at an offset in pixels, which needs a transparent margin in its image.",
+     "floats": [
+      {
+       "name": "softness",
+       "label": "Softness",
+       "min": 0,
+       "max": 6,
+       "value": 2
+      }
+     ],
+     "colors": {
+      "shadow_color": "#A0000000"
+     },
+     "vectors": {
+      "offset": [
+       8,
+       10
+      ]
+     },
+     "texel": true,
+     "time": false
+    },
+    {
+     "id": "inner-glow",
+     "name": "Inner glow",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Lights the inside of the edges of a sprite with a color, for selected and powered-up characters.",
+     "floats": [
+      {
+       "name": "radius",
+       "label": "Glow width",
+       "min": 1,
+       "max": 12,
+       "value": 5
+      }
+     ],
+     "colors": {
+      "glow_color": "#FFFFE040"
+     },
+     "vectors": {},
+     "texel": true,
+     "time": false
+    },
+    {
+     "id": "rim-light",
+     "name": "Rim light",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Lights the edges of a sprite that face a direction, as if a light stood on that side.",
+     "floats": [
+      {
+       "name": "angle",
+       "label": "Light angle",
+       "min": -3.14,
+       "max": 3.14,
+       "value": -0.8
+      },
+      {
+       "name": "width",
+       "label": "Rim width",
+       "min": 1,
+       "max": 10,
+       "value": 4
+      }
+     ],
+     "colors": {
+      "rim_color": "#FFFFF0C0"
+     },
+     "vectors": {},
+     "texel": true,
+     "time": false
+    },
+    {
+     "id": "spectrum",
+     "name": "Spectrum",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Runs the colors of the spectrum across a sprite in bands that move, keeping its light and shade.",
+     "floats": [
+      {
+       "name": "bands",
+       "label": "Bands",
+       "min": 0.2,
+       "max": 4,
+       "value": 1
+      },
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 4,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "gradient-map",
+     "name": "Gradient map",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Maps the light of a sprite onto a gradient between two colors, for team colors and moods.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Amount",
+       "min": 0,
+       "max": 1,
+       "value": 1
+      }
+     ],
+     "colors": {
+      "dark_color": "#FF201040",
+      "light_color": "#FFFFB060"
+     },
+     "vectors": {},
+     "texel": false,
+     "time": false
+    }
+   ]
+  },
+  {
+   "id": "styles",
+   "title": "Styles",
+   "shaders": [
+    {
+     "id": "posterize",
+     "name": "Posterize",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Reduces every channel to a few levels, for a flat look of cartoons and posters.",
+     "floats": [
+      {
+       "name": "levels",
+       "label": "Levels",
+       "min": 2,
+       "max": 12,
+       "value": 4
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "sepia",
+     "name": "Sepia",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Turns the colors into the browns of an old photograph, by the amount.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Amount",
+       "min": 0,
+       "max": 1,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "night-vision",
+     "name": "Night vision",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Shows an image through night vision goggles: bright green, grainy, with scan lines and a dark rim.",
+     "floats": [
+      {
+       "name": "grain",
+       "label": "Grain",
+       "min": 0,
+       "max": 0.6,
+       "value": 0.25
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "thermal",
+     "name": "Thermal",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Shows the light of an image as heat, from cold blues through reds to white.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Amount",
+       "min": 0,
+       "max": 1,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "x-ray",
+     "name": "X-ray",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Shows an image as an x-ray: the light inverted in a cold blue, with a glow.",
+     "floats": [
+      {
+       "name": "glow",
+       "label": "Glow",
+       "min": 0,
+       "max": 1,
+       "value": 0.3
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "dither",
+     "name": "Dither",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Reduces the colors to a few levels with an ordered dither pattern, for the look of old screens.",
+     "floats": [
+      {
+       "name": "levels",
+       "label": "Levels",
+       "min": 1,
+       "max": 8,
+       "value": 3
+      },
+      {
+       "name": "scale",
+       "label": "Pixel size",
+       "min": 1,
+       "max": 6,
+       "value": 2
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "halftone",
+     "name": "Halftone",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Prints an image as dots of ink on paper, larger where it is darker, like a comic book.",
+     "floats": [
+      {
+       "name": "cell",
+       "label": "Dot size",
+       "min": 3,
+       "max": 16,
+       "value": 7
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    },
+    {
+     "id": "sketch",
+     "name": "Sketch",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Draws the edges of an image as pencil lines on paper.",
+     "floats": [
+      {
+       "name": "strength",
+       "label": "Line strength",
+       "min": 0.5,
+       "max": 6,
+       "value": 2.5
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": true,
+     "time": false
+    },
+    {
+     "id": "emboss",
+     "name": "Emboss",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Raises an image like a stamp in metal, from the difference of its light across a diagonal.",
+     "floats": [
+      {
+       "name": "strength",
+       "label": "Depth",
+       "min": 0.5,
+       "max": 8,
+       "value": 3
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": true,
+     "time": false
+    },
+    {
+     "id": "chromatic-split",
+     "name": "Color split",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Moves the red and blue channels of an image apart by a count of pixels, like a cheap lens or a hit.",
+     "floats": [
+      {
+       "name": "offset",
+       "label": "Offset",
+       "min": 0,
+       "max": 16,
+       "value": 5
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": true,
+     "time": false
+    },
+    {
+     "id": "glitch",
+     "name": "Glitch",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Breaks an image into rows that jump sideways now and then with their colors apart, like a broken signal.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Amount",
+       "min": 0,
+       "max": 0.5,
+       "value": 0.2
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "vhs",
+     "name": "VHS",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Shows an image as an old video tape: rows that wobble, colors that bleed and lines of noise.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Amount",
+       "min": 0,
+       "max": 2,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    }
+   ]
+  },
+  {
+   "id": "motion",
+   "title": "Motion and deformation",
+   "shaders": [
+    {
+     "id": "flag-wave",
+     "name": "Flag wave",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Waves an image like a flag on a pole at its left side, with the folds shaded.",
+     "floats": [
+      {
+       "name": "amplitude",
+       "label": "Amplitude",
+       "min": 0,
+       "max": 0.12,
+       "value": 0.05
+      },
+      {
+       "name": "frequency",
+       "label": "Folds",
+       "min": 2,
+       "max": 20,
+       "value": 10
+      },
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 8,
+       "value": 4
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "jelly",
+     "name": "Jelly",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Squashes and stretches a sprite from its feet like jelly, for idle creatures and bounces.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Wobble",
+       "min": 0,
+       "max": 0.4,
+       "value": 0.15
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "swirl",
+     "name": "Swirl",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Twists an image around its middle, more toward the center, like a portal or a whirlpool.",
+     "floats": [
+      {
+       "name": "strength",
+       "label": "Strength",
+       "min": 0,
+       "max": 8,
+       "value": 4
+      },
+      {
+       "name": "radius",
+       "label": "Radius",
+       "min": 0.1,
+       "max": 0.8,
+       "value": 0.45
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "shockwave",
+     "name": "Shockwave",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Pushes an image outward in a round ring that grows with the progress and fades as it spreads, with a bright front, for explosions and stomps.",
+     "floats": [
+      {
+       "name": "progress",
+       "label": "Progress",
+       "min": 0,
+       "max": 1,
+       "value": 0.4
+      },
+      {
+       "name": "width",
+       "label": "Ring width",
+       "min": 0.01,
+       "max": 0.3,
+       "value": 0.1
+      },
+      {
+       "name": "strength",
+       "label": "Strength",
+       "min": 0,
+       "max": 2,
+       "value": 1
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": true,
+     "time": false
+    },
+    {
+     "id": "heat-haze",
+     "name": "Heat haze",
+     "target": "picture",
+     "blend": "alpha",
+     "description": "Shimmers an image like air over hot ground.",
+     "floats": [
+      {
+       "name": "amount",
+       "label": "Amount",
+       "min": 0,
+       "max": 2,
+       "value": 1
+      },
+      {
+       "name": "speed",
+       "label": "Speed",
+       "min": 0,
+       "max": 8,
+       "value": 3
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": true
+    },
+    {
+     "id": "melt",
+     "name": "Melt",
+     "target": "sprite",
+     "blend": "alpha",
+     "description": "Melts a sprite down in drips of different lengths as the progress grows.",
+     "floats": [
+      {
+       "name": "progress",
+       "label": "Melt",
+       "min": 0,
+       "max": 1,
+       "value": 0.3
+      }
+     ],
+     "colors": {},
+     "vectors": {},
+     "texel": false,
+     "time": false
+    }
+   ]
+  }
+ ]
+}
