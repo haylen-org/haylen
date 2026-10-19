@@ -68,5 +68,6 @@ return {
         {code = 'PHY-062', title = 'Traps', description = 'Spinning blades moved as kinematic bodies, a crusher on a prismatic joint and a rolling boulder that throw ragdolls and crates around.', module = 'traps'},
         {code = 'PHY-063', title = 'Crate pushing', description = 'A top-down puzzle where a character driven by a limited force pushes heavy damped crates onto goal sensors with keys, a gamepad or a touch stick.', module = 'crate-pushing'},
         {code = 'PHY-064', title = 'Collision report', description = 'Balls and crates whose impacts mark their points, the normal they pushed along and the velocity the bodies kept, with how fast they met, from which side and how hard they press, and crates at rest that show their weight as the force of their contacts.', module = 'collisions'},
+        {code = 'PHY-065', title = 'Playground', description = 'A room to try every value of a body and of the world: bodies dropped, grabbed, pushed and shot, a card that reads the mass, material, damping, gravity scale and speed of the chosen body, and sliders that change it as it moves.', module = 'playground'},
     },
 }

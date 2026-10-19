@@ -492,6 +492,7 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 | `PHY-062` | Traps | Spinning blades moved as kinematic bodies, a crusher on a prismatic joint and a rolling boulder that throw ragdolls and crates around. |  |
 | `PHY-063` | Crate pushing | A top-down puzzle where a character driven by a limited force pushes heavy damped crates onto goal sensors with keys, a gamepad or a touch stick. |  |
 | `PHY-064` | Collision report | Balls and crates whose impacts mark their points, the normal they pushed along and the velocity the bodies kept, with how fast they met, from which side and how hard they press, and crates at rest that show their weight as the force of their contacts. |  |
+| `PHY-065` | Playground | A room to try every value of a body and of the world: bodies dropped, grabbed, pushed and shot, a card that reads the mass, material, damping, gravity scale and speed of the chosen body, and sliders that change it as it moves. |  |
 
 #### Tiled (TLD)
 
