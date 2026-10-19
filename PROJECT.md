@@ -1934,17 +1934,125 @@ O trabalho na base da engine tem prioridade sobre os samples, que vêm em segund
 - [x] No teste `GUI-023` (pilhas de toasts), o conteúdo era mais alto que a tela e passava por cima do texto de status e da dica do rodapé, a partir da seção do diálogo com fundo. Agora o conteúdo fica numa área que rola, entre o cabeçalho e o rodapé, conferido em captura do player de desktop e no projeto de testes no player headless.
 - [x] A sombra dos toasts estava exagerada, com o mesmo alcance e a mesma força da sombra de diálogos e janelas, e escurecia as notícias empilhadas. Agora `Surfaces::drawShadow` aceita uma elevação, que encolhe o alcance, aproxima o deslocamento e clareia a cor, e o toast desenha a sua com 40% da sombra dos diálogos. Testado em `SmoothEdgeTest.CastsALowShadowUnderANotice`, que falha sem a correção, documentado no guia de UI e na referência do `shadowSize`, e conferido em captura do player de desktop.
 - [x] A sombra dos diálogos (e das janelas, popups e tooltips) estava forte demais: a cor chegava inteira na borda da superfície e formava uma faixa escura colada nela. Agora a sombra é a forma da superfície descida pelo `shadowOffset`, com a borda que esmaece por duas vezes o `shadowSize`, centrada na borda da superfície como um desfoque, então começa com metade da cor na borda e some a `shadowSize` dela, com o mesmo alcance. Testado em `SmoothEdgeTest.CastsOneSoftShadowUnderFloatingSurfaces`, que falha sem a correção, documentado no guia de UI e na referência do `shadowSize`, e conferido em capturas do player de desktop nos temas claro e escuro.
-- [ ] Os efeitos de partículas da biblioteca estão feios e não têm a cara de jogos profissionais: refazer a biblioteca no nível das referências de efeitos casuais que o dono mandou (halos grandes e suaves, flares de quatro pontas, raios de luz, anéis que se abrem, círculos mágicos e anéis de buff deitados no chão girando, colunas de luz, redemoinhos e tornados, nuvens com contorno, caveiras, corações, notas e raios em ícones, explosões com pedras e poeira, portais em espiral, escudos em bolha), sem copiar nome, arte ou aparência exata de nenhum pacote, em estilos por gênero (casual, realista, pixel art e neon). Subitens:
+- [x] Os efeitos de partículas da biblioteca estão feios e não têm a cara de jogos profissionais: refazer a biblioteca no nível das referências de efeitos casuais que o dono mandou (halos grandes e suaves, flares de quatro pontas, raios de luz, anéis que se abrem, círculos mágicos e anéis de buff deitados no chão girando, colunas de luz, redemoinhos e tornados, nuvens com contorno, caveiras, corações, notas e raios em ícones, explosões com pedras e poeira, portais em espiral, escudos em bolha), sem copiar nome, arte ou aparência exata de nenhum pacote, em estilos por gênero (casual, realista, pixel art e neon). Subitens:
   - [x] Conferir os efeitos atuais em capturas e listar o que estava ruim: efeitos de uma camada só, tamanhos pequenos demais, cores lavadas, chamas, fumaça e nuvens com contorno azul-marinho somadas com brilho aditivo (a fogueira virava uma mancha branca), faíscas que quase não apareciam e efeitos que não lembravam o nome, como o respingo de água feito de bolhas e o level-up de confete solto.
   - [x] Engine: partículas e sprites deitados num plano inclinado (`tilt`), para que anéis e círculos no chão girem como elipses sem que a elipse gire junto. O `SpriteInstance` e o `Sprite` ganharam o `tilt`, que o quarto byte dos parâmetros da instância leva aos shaders de sprite e de efeito, que encurtam a altura do quad já girado pelo cosseno do ângulo. O Lua aceita o `tilt` no `graphics2d.draw`, no `drawVector`, na classe `Sprite`, nas tabelas dos lotes e nos campos dos buffers de floats, e o emissor ganhou a opção `tilt` (de 0 a 1,5708), nos arquivos `.particles` também, que deita as partículas, as posições, os rastros, as luzes e o lugar onde os sub-emissores nascem num plano que passa pelo emissor. Testado em `GpuInstanceTest`, `ParticlesTest.TiltedEmittersLayTheirParticlesOnAPlane`, `SpriteLayoutTest`, `Graphics2DLuaTest` e `Particles2DLuaTest`, documentado nas referências de `haylen.graphics2d` e `haylen.particles2d` e no guia de partículas, e conferido no player de desktop com um hexágono girando deitado e um anel de estrelas de um emissor inclinado.
   - [x] Kit de texturas próprias geradas no Codex em seis folhas de 16 peças, cortadas, aparadas e empacotadas pelo `pack-particle-textures.py` num atlas de 2048 por 1500: peças de luz brancas sem contorno pintadas sobre preto, cujo brilho vira o alfa (brilho suave, flares, estrela de brilho, raios, anéis fino, grosso e com lâminas, disco, traço de redemoinho, espiral, corte em arco, risco de faísca, estrela, cruz, seta, círculos mágicos de hexagrama, estrela, glifos e ganchos, coração, caveira, notas, raio, orbe, feixe, arco elétrico, escudo, garras, estrela de impacto e chama suave), peças realistas em tons de cinza (chamas, bola de fogo, fumaça, voluta, brasa, coroa de respingo e poeira) e peças sólidas com sombreado de cartoon sem contorno escuro (nuvens com borda azul-clara, fumaça cartoon, pedras, poeira, folhas, pétalas, gota, bolha, floco, pena, moeda, gema e confete). O guia de estilo do README do projeto de testes foi reescrito com essas regras.
   - [x] Refazer os efeitos em camadas (halo, núcleo, flare, raios, anel, disco no chão, brilhos, faíscas, fumaça, detritos e ícones) com tempo e tamanho de jogo profissional, pelo gerador `samples/tests/tools/particles/write-effect-library.py`, que escreve cada efeito e o `catalog.json`: 66 efeitos casuais, realistas e neon em 21 categorias, conferidos em capturas congeladas no começo, no pico e no fim e em capturas ao vivo, mantendo os nomes que os testes de distorção e pós-processamento carregam. O navegador `PRT-034` mostra os estilos novos.
-  - [ ] Docs do guia de partículas e do README do projeto de testes, `PRT-035` passando, e conferir no player de desktop, na web e nos simuladores.
+  - [x] Docs do guia de partículas e do README do projeto de testes, `PRT-035` passando, e conferir no player de desktop e na web, onde WebGPU e WebGL2 desenham o mesmo quadro que o Metal. Os simuladores ficaram no grupo AW.
 - [x] Uns 50 efeitos de partículas para vista de plataforma (de lado), não só para vista de cima: efeitos que caem num chão de verdade e andam na horizontal, como pulo, pulo duplo, aterrissagem, corrida, dash, deslizar na parede, pisão no chão, mola, linhas de velocidade, coleta de moeda, gema, chave, coração, power-up e checkpoint, corte e tiro de lado, impacto na parede, cápsula caindo, pisão em inimigo, morte e reaparecimento, blocos e caixotes quebrando, lava, cachoeira, respingo na água visto de lado, jetpack e foguete. O catálogo diz a vista de cada efeito (de cima, de lado ou as duas), o navegador `PRT-034` mostra, e cada efeito é conferido em capturas e ao vivo. Feito: 54 efeitos de vista lateral nas categorias `movement`, `pickups`, `combat` e `level`, escritos pelo gerador com camadas que caem com gravidade e quicam, grudam ou se desfazem num chão (`collision` de chão) e andam pelo chão para os lados, e uma folha nova de peças pintada no Codex (chave, coração, estrela, gema, tijolos, tábuas, cápsula, pedra, gelo, gosma, lava, bandeira, osso e porca). O catálogo ganhou a vista de cada efeito (`top`, `side` ou `any`), que o navegador `PRT-034` mostra na legenda e que o guia de partículas explica, e a biblioteca passou a ter 147 efeitos em 32 categorias. O empacotador move os quadros de cada emissor dos arquivos compostos. Conferido em capturas congeladas e ao vivo e no projeto de testes no player headless.
 - [x] Os testes `PLT-001` e `PLT-002` passam mesmo sem o plugin `platform-sample`, porque só demonstram e não conferem nada: fazer cada um conferir as respostas do plugin e falhar quando ele faltar. Agora conferem em linhas de resultado: o `PLT-002` confere o eco, a contagem de caracteres, a linguagem que respondeu (Objective-C, Java ou JavaScript) e a falha sem texto, e o `PLT-001` confere os ticks do ticker nativo vindos da linguagem da plataforma e o evento mandado do Lua. Onde o projeto sempre compila o nativo (iOS, tvOS, Android e web) a falta dele falha o teste, e no player de desktop as linhas do nativo ficam "N/A". Uma linha que falha publica `testCheckFailed`, e o "Run all" e o player headless contam o teste como falho.
 - [x] Servidor de desenvolvimento no Mac Catalyst: uma vez logou "Socket is not connected" logo depois de conectar e reconectou em um segundo. Achar a causa no código de rede. Não reproduzido: o projeto de testes rodou no Mac Catalyst pelo `haylen.py run --platform catalyst` a partir de um `build/apps` limpo e conectou de primeira, sem aviso; os testes `WebSocket*`, `DevelopmentConnection*` e `DevelopmentSession*` passaram em 30 repetições seguidas no macOS; e a leitura do caminho do `PocoWebSocket` (connect sem bloqueio com `poll`, `SO_ERROR`, pedido de upgrade e laço de serviço) não mostrou onde um `ENOTCONN` passaria sem virar falha. Fica registrado, e a reconexão automática da sessão de desenvolvimento cobre o caso se ele voltar.
 
 - [x] O build da web de 32 bits mostrava avisos `-Wshorten-64-to-32` em `engine/src/audio/ReaderSource.cpp`: agora a capacidade do anel e as posições dentro dele usam `std::size_t`, enquanto as contagens de frames do stream continuam em 64 bits, e os builds da web com WebGPU e WebGL2 compilam sem avisos.
+
+#### AW. Efeitos de jogos profissionais, UI, samples, ferramentas, plataformas e revisão geral
+
+Regras que valem para todos os itens: nada de gambiarras, alternativas escondidas, código legado ou compatível com versões anteriores, código legível com uma linha vazia entre blocos, comentários raros e em inglês, nenhuma frase com ponto e vírgula, e cada item só termina implementado, exportado ao Lua, testado e documentado. O que for regra do projeto vai para o `AGENTS.md`.
+
+Efeitos de partículas:
+
+- [ ] Os efeitos com círculo no chão ficam desalinhados com a parte vertical: na coluna de buff, no teletransporte e nos outros, o anel deitado fica abaixo do centro da coluna e a coluna não nasce do meio do círculo. Corrigir para que o círculo deitado e a parte vertical tenham o mesmo centro no chão, no navegador `PRT-034` e em qualquer escala.
+- [ ] As peças dos círculos mágicos estão em baixa resolução e distorcem quando o efeito é escalado: pintar de novo os círculos (hexagrama, estrela, glifos, ganchos), os anéis e os discos em 512 pixels com traços nítidos, e conferir que um círculo de 600 unidades continua nítido no player e na web.
+- [ ] Os botões "Previous", "Fire again" e "Next" do `PRT-034` saem da tela à direita: o painel tem de quebrar a linha ou dividir o espaço para que os três caibam em qualquer largura e escala da UI, e o mesmo corte nos botões de áudio e música ("Pause", "Resume", "Stop", "Back 10 seconds", "Forward") tem de sumir. Procurar o mesmo problema em todo o projeto de testes e corrigir na engine se for o layout da UI que não quebra a linha.
+- [ ] O modo noturno com luzes ("Night with lights") do `PRT-034` só escurece a cena: os efeitos com luz devem iluminar o chão, a grade e o contador em volta deles (`light`, `particleLights` e `emission`), e todos os efeitos de brilho da biblioteca devem ganhar luz e emissão para brilhar no escuro.
+- [ ] Mais efeitos no nível de jogos profissionais, tomando a ideia (nunca o nome, a arte ou a aparência exata) das referências de efeitos casuais: explosões em camadas com anéis e fumaça, curas, buffs, auras, escudos, raios, gelo, veneno, portais, coleta, level-up, com sequências animadas de quadros onde o efeito pede (chamas, explosões, impactos), refeitos os que ficaram ruins, como o teletransporte, a água, o elétrico e a cachoeira.
+- [ ] Efeitos para vista de plataforma do dia a dia dos jogos: barras e faixas de efeito (energia, carga, dano), efeitos em volta do sprite (aura, escudo, contorno de energia, choque), lança-chamas, raios, choque elétrico, laser contínuo e de disparo, tiro de plasma, rajada de arma, explosões animadas por quadros e fogo azul, todos com e sem iluminação.
+- [ ] Os 27 efeitos de pixel art refeitos no mesmo nível dos outros, com peças de pixel art pintadas no Codex.
+- [ ] Conferir a biblioteca nova nos simuladores de iOS e tvOS e no emulador Android, além do player e da web.
+
+Arte e animações dos samples:
+
+- [ ] Animação do herói travada: o "run" e os outros loops do teste de animação (`loop`, `once`, `pingPong`) tremem porque os quadros estão em baixa resolução e desalinhados, então o personagem não anda naturalmente. Gerar de novo as folhas em alta resolução com os quadros alinhados pela base e pelo centro, e conferir que o loop corre liso.
+- [ ] Remover qualquer sprite que não tenha sido feito para o projeto, como os do pacote externo de espadas pequenas, e toda menção a ele no repositório, trocando pela arte própria.
+- [ ] Sprites que dançam porque não foram gerados alinhados: a tocha, a moeda e os outros sprites animados dos samples. Regra nova no `AGENTS.md`: os quadros de uma folha têm o mesmo pivô (a base no centro para personagens e objetos no chão, o centro para itens que giram), e uma ferramenta confere o alinhamento de cada folha.
+- [ ] O "now playing" do teste de música mostra um pedaço de madeira como capa: usar o logo da engine ou uma capa própria que tenha a ver com música.
+- [ ] Os sprites do parallax: algumas camadas ficaram com fundo verde e formas sem sentido. Refazer as camadas ruins com arte própria limpa.
+- [ ] Imagens perfeitas em todo sample: bordas sem serrilhado, sem pixels brancos do fundo em volta, sem halos, conferindo cada imagem dos samples com uma ferramenta que ache franjas de fundo e bordas duras, e regra no `AGENTS.md`.
+- [ ] Os sprites dos mapas do Tiled estão amadores: refazer os tilesets e objetos dos mapas de teste com arte própria polida.
+
+Nomes, eventos e testes do projeto:
+
+- [ ] Revisar os nomes de eventos, callbacks e ciclo de vida da engine contra os nomes que o mercado usa: trocar nomes estranhos como `revealStarted` e `sceneHold` por nomes convencionais (por exemplo `transitionStarted`, `transitionFinished`, `sceneLoading`), em todo o C++, o Lua, os testes, os samples e as docs, sem aliases.
+- [ ] Teste `SCN-004` (pilha e hooks): só o botão "Push" funciona, "Pop", "Replace", "Pop to number" e "Pop to the test" não fazem nada. Corrigir para que cada botão faça o que diz e a pilha na tela mostre o resultado.
+- [ ] Transição "out in/out": ao terminar, pisca a tela menor no canto inferior direito, ao diminuir a atual e ao diminuir a seguinte. Achar a causa na engine e corrigir, conferindo todas as transições.
+- [ ] Teste de pilha de jogo (`game stacks`): pisca a cada clique, mostra algo, deixa a peça cair e some. Corrigir.
+
+Licença e contribuições:
+
+- [ ] Aviso padrão de que toda contribuição de código, imagens, sprites, sons e qualquer outro conteúdo pertence à engine e pode ser usada livremente, pessoal ou comercialmente, e de que a engine é gratuita em todos os termos para sempre, num `CONTRIBUTING.md`, no `README.md` e no `LICENSE` como cabe.
+
+UI, texto e input:
+
+- [ ] Atalhos de texto nos campos: Ctrl+A ou Cmd+A seleciona tudo, Ctrl+C, Ctrl+V e Ctrl+X (Cmd no macOS) copiam, colam e cortam, e os outros atalhos comuns de cada sistema (desfazer, refazer, palavra anterior e seguinte, início e fim), em todas as plataformas, com testes.
+- [ ] O cursor do mouse fica como cursor de texto depois de sair de um campo: voltar ao cursor normal assim que o ponteiro sai do campo ou o campo perde o foco.
+- [ ] Ajuste automático do tamanho do texto (`autoSize`) nos rótulos e no texto 2D: o texto diminui até caber na caixa, com mínimo e máximo, em C++ e Lua.
+- [ ] Mobile: tocar num campo de texto não abre o teclado. Corrigir no iOS e no Android, conferindo no simulador e no emulador.
+- [ ] Mobile: arrastar começando sobre um campo de texto não rola a lista. O arrasto tem de rolar a lista e só um toque sem movimento foca o campo.
+- [ ] Um swipe gera um clique. Um toque que se move além do limiar ou que vira gesto (swipe, pinça, rolagem) nunca vira clique ou tap, como nas plataformas da Apple, inclusive quando o gesto termina sobre um item, como o pin do mapa do marketplace.
+- [ ] Chat do marketplace no mobile: com o teclado aberto, tocar em "Enviar" fecha o teclado e não envia, obrigando a tocar de novo. O toque tem de enviar na primeira vez.
+- [ ] Chat: depois de Enter aparecem marcadores nativos (a sugestão do sistema com o texto e um "x") e texto duplicado sobre o campo. O campo nativo de texto tem de ficar invisível e sem sugestões, autocorreção ou marcadores sobre o campo da engine, e o texto não pode duplicar.
+- [ ] Barra de status no mobile: mostrar a barra com o relógio por padrão quando o app pede, e controlar pelo `app.json` e pelo Lua se ela aparece, a cor do conteúdo (claro ou escuro) e a cor do fundo, no iOS e no Android.
+- [ ] Acessibilidade em mobile, desktop e web onde der: os leitores de tela do sistema (VoiceOver, TalkBack, Narrator, Orca e o navegador) leem a árvore de elementos acessíveis que a UI já monta, conferindo o que falta em cada plataforma.
+- [ ] UI completa: conferir que pais, âncoras, alinhamentos, temas e o visual do foco são 100% configuráveis, que o foco pode ser desenhado como o app quiser, e que montar interface para gamepad, joystick e TV não tem limitação. Corrigir as lacunas achadas.
+- [ ] Erro do app de música: tocar em vários produtos seguidos para tocar um novo quebra com `The property "value" of a "progress" must be from 0 to 1.`, porque o tempo passado fica maior que a duração da faixa nova. Corrigir o sample e conferir se o controle deveria limitar o valor.
+
+Plataforma e sistema:
+
+- [ ] `platform` sem a arquitetura: expor se o processo é de 32 ou 64 bits e o processador (`arm64`, `x86_64`, `x86`, `arm`, `wasm32`), em C++ e Lua.
+- [ ] Identificadores dos apps: trocar `dev.haylen.<produto>` por `com.haylen.<produto>` em todos os apps, samples e templates, com um produto curto (`com.haylen.music`), e regra no `AGENTS.md`.
+- [ ] Botão de fechar o app num lugar visível dos samples, para testar o encerramento.
+
+Algoritmos e efeitos:
+
+- [ ] Algoritmos de cor rápidos em C++ com bind Lua: cor predominante de uma imagem e as variações dela (paleta), escolher preto ou branco para contraste, escuro ou claro, contraste entre duas cores pelas regras de acessibilidade, e os placeholders desfocados de imagem que se carregam antes da imagem real (um código curto em texto que vira uma imagem borrada).
+- [ ] Filtros de sinais: Kalman, mediana, passa-baixa, média móvel e Hampel, em C++ com bind Lua, para suavizar posições, velocidades e leituras.
+- [ ] Efeitos de imagem comuns em C++ com bind para não ter que fazer em Lua: blur, e os outros do dia a dia.
+- [ ] Mais shaders de jogos, dezenas deles, incluindo neon para flechas, balas e rastros.
+- [ ] Primitivas 100% completas e robustas: conferir tudo o que a API de desenho de primitivas oferece (pontos, linhas com espessura e pontas, polilinhas, polígonos convexos e côncavos, curvas de Bézier, arcos, setores, elipses, retângulos arredondados, preenchimento e contorno, gradientes, tracejado) e completar o que faltar.
+
+Plugins e documentação de integração:
+
+- [ ] Um guia `.md` para cada integração, testado: Firebase (Analytics, Messaging e Crashlytics), AdMob, RevenueCat, App Tracking Transparency, PlayGama e Google Analytics, dizendo em que plataformas cada uma serve e como montar o plugin nativo de cada uma.
+- [ ] O esqueleto do `haylen plugin new` como ponto de partida esperto para qualquer plugin: câmera, localização, áudio do dispositivo e os outros casos, com as escolhas que o comando oferece.
+
+Samples:
+
+- [ ] Componentes reutilizáveis nos samples, fáceis de copiar para outros projetos: texto que sobe com o dano ou o ganho (`label-up`) e barra de vida (`health-bar`).
+- [ ] Exemplos de ECS (entidade, componente e sistema).
+- [ ] Exemplos de composição para reaproveitar componentes em outras entidades.
+- [ ] Cada sample mostra também o código de como fazer o que mostra, organizado na tela para ir do que se vê ao código.
+- [ ] Gráficos de todos os tipos comuns (linha, área, barra, barra empilhada, pizza, rosca, dispersão, radar, histograma, velas, mapa de calor), sem bugs com dados malucos (vazios, negativos, enormes, NaN, um só ponto).
+- [ ] Sample de física com fichas das propriedades para brincar (gravidade, massa, densidade, atrito, restituição, amortecimento, impulsos e tiros) e entender o efeito de cada valor.
+- [ ] Detecção completa de colisões: impacto, ponto, normal, direção de onde veio, velocidade relativa e força, como nas engines grandes, exposta e documentada.
+- [ ] Física avançada: um objeto lançado de um mundo físico para outro, que passa a obedecer o mundo em que chega, e outros exemplos avançados.
+- [ ] Seção de geração procedural: mapas, personagens, bichos, monstros, aranha com várias patas e centopeia que sobem pelas paredes.
+
+Ferramentas e plataformas:
+
+- [ ] `haylen run --platform ios` compilou várias plataformas, até o macOS: compilar só o que a plataforma pedida precisa.
+- [ ] Saída da CLI enxuta: mostrar só os passos principais com cores, e o log completo com `--verbose`.
+- [ ] Console de desenvolvimento: depois de `ConnectionResetError` não aceita mais nada, os comandos não funcionam, e `R` diz que não existe. O console tem de continuar aceitando comandos depois que um app cai, e as teclas comuns (`r` para recarregar, `R` para reiniciar) funcionam.
+- [ ] Logs sem "varn": nenhuma linha do log mostra o nome Varn, nem as do próprio Varn, e tudo passa pelo módulo de log da engine.
+- [ ] Atualizar o código fonte das engines de referência em `/Users/paulo/Downloads/engines`.
+- [ ] Preparar a web para o Haylen Studio: o site recebe um zip de app, roda e atualiza no runtime WebAssembly.
+- [ ] App runner (`com.haylen.runner`) num repositório separado, `/Users/paulo/Developer/workspaces/cpp/haylen-runner`, com uma pasta para iOS e outra para Android: uma tela inicial com o logo, o histórico das URLs abertas (únicas, da mais recente para a mais antiga), um campo para digitar ou colar a URL de um zip, um botão para ler o QR code, um botão de confirmar, a versão do app, da Haylen e do sistema, que baixa o zip e roda o app em tela cheia numa tela própria, com um evento que o app manda para voltar à tela inicial. Funciona em qualquer orientação, em celular, tablet, TV e dobráveis, com ícones, e capturas da tela inicial para as lojas nos tamanhos certos e os textos das lojas dentro dos limites de cada campo numa pasta temporária.
+- [ ] Debug nativo da engine: um atalho em modo de desenvolvimento abre um painel para marcar e desmarcar o que mostrar (FPS, chamadas de desenho, memória, formas da física, contadores).
+- [ ] Desempenho de física com milhares de objetos num Mac M5: análise bem detalhada de tudo o que pesa por quadro em todas as plataformas, com medidas, e as otimizações que valerem.
+
+Tiled:
+
+- [ ] Suporte completo ao Tiled: todas as propriedades de mapas, camadas, tilesets, objetos, textos, imagens, grupos, propriedades de classe, wang sets, animações, transformações e mapas infinitos, e qualquer mapa abre sem problemas.
+- [ ] Autotile e automapping do Tiled.
+
+README e documentação:
+
+- [ ] README com o símbolo da marca e o nome escrito em texto, as plataformas suportadas com emojis, os renderers de cada plataforma, as features em lista objetiva, um índice para a documentação e a menção de que a engine foi feita pensando em IA.
+- [ ] Validar toda a documentação procurando inconsistências com o código.
+
+Revisão:
+
+- [ ] Revisar todo o código procurando bugs, erros, falhas, inconsistências, coisas que deveriam funcionar ou aparecer e estão quebradas, e condições de corrida.
 
 #### AT. Documentação
 
