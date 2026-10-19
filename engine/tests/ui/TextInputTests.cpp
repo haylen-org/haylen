@@ -290,6 +290,30 @@ TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheWindow) {
     EXPECT_EQ(events.back(), R"(name:change {"value":"Pasted"})");
 }
 
+// Where the UI edits the text itself, the shortcuts of cutting, undoing, redoing and moving by words work as each system has them.
+TEST_F(TextInputTest, CutsUndoesRedoesAndMovesByWordsThroughTheShortcuts) {
+    getInput().setNative(false);
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Red fox"})");
+    focus(*gui, "name");
+    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    const bool mac = ImGui::GetIO().ConfigMacOSXBehaviors;
+    const input::KeyModifiers shortcut = mac ? input::KeyModifiers{.super = true} : input::KeyModifiers{.control = true};
+    const input::KeyModifiers word = mac ? input::KeyModifiers{.alt = true} : input::KeyModifiers{.control = true};
+
+    press(input::Key::End, 0);
+    press(input::Key::Left, 0, word);
+    EXPECT_EQ(getPublished().selectionStart, 4);
+    press(input::Key::End, 0, {.shift = true});
+    press(input::Key::X, 0, shortcut);
+    EXPECT_EQ(fixture.host().getClipboard(), "fox");
+    EXPECT_EQ(getPublished().text, "Red ");
+
+    press(input::Key::Z, 0, shortcut);
+    EXPECT_EQ(getPublished().text, "Red fox");
+    press(input::Key::Z, 0, {.shift = true, .control = shortcut.control, .super = shortcut.super});
+    EXPECT_EQ(getPublished().text, "Red ");
+}
+
 // A shift press selects from the caret where it stands, also after typing moved it.
 TEST_F(TextInputTest, SelectsFromTheCaretAfterTyping) {
     getInput().setNative(false);

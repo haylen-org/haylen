@@ -51,7 +51,7 @@ using haylen::platform::SokolRuntime;
     }
 }
 
-// The standard menus of a Mac app: the app menu with About, Hide, Hide Others, Show All and Quit, and the Window menu with Minimize, Zoom and Enter Full Screen, which AppKit enables only while the window allows each. An app without a Dock icon has no menu bar, so it quits through its own UI.
+// The standard menus of a Mac app: the app menu with About, Hide, Hide Others, Show All and Quit, the Edit menu with Undo, Redo, Cut, Copy, Paste, Delete and Select All, and the Window menu with Minimize, Zoom and Enter Full Screen, which AppKit enables only while the window allows each. The Edit menu gives the Command shortcuts to the native field that edits a text field of the UI, and while no field edits, AppKit disables its items and the keys reach the app. An app without a Dock icon has no menu bar, so it quits through its own UI.
 - (void)installMainMenu {
     NSString* name = NSRunningApplication.currentApplication.localizedName;
     NSMenu* appMenu = [[NSMenu alloc] initWithTitle:name];
@@ -63,6 +63,16 @@ using haylen::platform::SokolRuntime;
     [appMenu addItem:NSMenuItem.separatorItem];
     [appMenu addItemWithTitle:[@"Quit " stringByAppendingString:name] action:@selector(terminate:) keyEquivalent:@"q"];
 
+    NSMenu* editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+    [editMenu addItemWithTitle:@"Undo" action:@selector(undo:) keyEquivalent:@"z"];
+    [editMenu addItemWithTitle:@"Redo" action:@selector(redo:) keyEquivalent:@"Z"];
+    [editMenu addItem:NSMenuItem.separatorItem];
+    [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+    [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+    [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+    [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
+    [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+
     NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
     [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
     [windowMenu addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
@@ -70,7 +80,7 @@ using haylen::platform::SokolRuntime;
     [windowMenu addItemWithTitle:@"Enter Full Screen" action:@selector(toggleFullScreen:) keyEquivalent:@"f"].keyEquivalentModifierMask = NSEventModifierFlagControl | NSEventModifierFlagCommand;
 
     NSMenu* mainMenu = [NSMenu new];
-    for (NSMenu* menu in @[ appMenu, windowMenu ]) {
+    for (NSMenu* menu in @[ appMenu, editMenu, windowMenu ]) {
         [mainMenu addItemWithTitle:menu.title action:nil keyEquivalent:@""].submenu = menu;
     }
     NSApp.mainMenu = mainMenu;
