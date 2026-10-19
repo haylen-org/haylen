@@ -1980,7 +1980,7 @@ Nomes, eventos e testes do projeto:
 
 Licença e contribuições:
 
-- [ ] Aviso padrão de que toda contribuição de código, imagens, sprites, sons e qualquer outro conteúdo pertence à engine e pode ser usada livremente, pessoal ou comercialmente, e de que a engine é gratuita em todos os termos para sempre, num `CONTRIBUTING.md`, no `README.md` e no `LICENSE` como cabe.
+- [x] Aviso padrão de que toda contribuição de código, imagens, sprites, sons e qualquer outro conteúdo pertence à engine e pode ser usada livremente, pessoal ou comercialmente, e de que a engine é gratuita em todos os termos para sempre, num `CONTRIBUTING.md`, no `README.md` e no `LICENSE` como cabe. O `CONTRIBUTING.md` diz que toda contribuição entra no Haylen sob a mesma licença MIT, livre para uso pessoal e comercial, e que o Haylen é gratuito para sempre, com o README e o `AGENTS.md` apontando para ele e o texto padrão do `LICENSE` mantido.
 
 UI, texto e input:
 

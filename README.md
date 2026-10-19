@@ -97,4 +97,4 @@ The [documentation index](docs/README.md) follows the modules of the engine, wit
 
 ## License
 
-Haylen is released under the license in [LICENSE](LICENSE).
+Haylen is free for personal and commercial work, forever, under the [MIT License](LICENSE). Every contribution, whether code, art, sounds or any other content, becomes part of Haylen under the same license, as [CONTRIBUTING.md](CONTRIBUTING.md) explains.
