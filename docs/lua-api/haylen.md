@@ -46,7 +46,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `name` | string | `'Haylen App'` | Display name of the app. |
-| `identifier` | string | `'dev.haylen.app'` | Unique id, which also names the storage folder. |
+| `identifier` | string | `'com.haylen.app'` | Unique id, which also names the storage folder. |
 | `version` | string | `'1.0.0'` | Version of the app. |
 | `description` | string | The value of `name` | One sentence about the app, which desktops and installers show. |
 | `company` | string | The value of `name` | The person or company that publishes the app. |

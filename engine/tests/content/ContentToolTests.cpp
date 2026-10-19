@@ -17,7 +17,7 @@ namespace haylen::content {
 class ContentToolTest : public ::testing::Test {
   protected:
     ContentToolTest() {
-        app.write("app.json", R"({"name": "Tool Test", "identifier": "dev.haylen.tests", "version": "1.0.0"})");
+        app.write("app.json", R"({"name": "Tool Test", "identifier": "com.haylen.tests", "version": "1.0.0"})");
         app.write("source/main.lua", "loaded = true");
         app.write("content/data/config.json", R"({"level": 3})");
     }
@@ -60,15 +60,15 @@ class ContentToolTest : public ::testing::Test {
 };
 
 TEST_F(ContentToolTest, BuildsInspectsAndPublishesReleases) {
-    ASSERT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "dev.haylen.tests"}), 0) << errors.str();
-    EXPECT_NE(output.str().find("Created the keys of \"dev.haylen.tests\""), std::string::npos) << output.str();
+    ASSERT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "com.haylen.tests"}), 0) << errors.str();
+    EXPECT_NE(output.str().find("Created the keys of \"com.haylen.tests\""), std::string::npos) << output.str();
     expectNoSecret();
 
     const std::vector<std::string> build = {"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--cache", getPath("cache")};
     std::vector<std::string> first = build;
     first.insert(first.end(), {"--output", getPath("first")});
     ASSERT_EQ(run(first), 0) << errors.str();
-    EXPECT_NE(output.str().find("Built the release of \"dev.haylen.tests\" for the profile \"desktop\""), std::string::npos) << output.str();
+    EXPECT_NE(output.str().find("Built the release of \"com.haylen.tests\" for the profile \"desktop\""), std::string::npos) << output.str();
 
     app.write("content/data/config.json", R"({"level": 4})");
     std::vector<std::string> second = build;
@@ -121,11 +121,11 @@ TEST_F(ContentToolTest, ExplainsWhatACommandLacks) {
     EXPECT_EQ(errors.str(), "Error: The command needs the action, \"create\", \"rotate\" or \"show\".\n");
     EXPECT_EQ(run({"keys", "remove", getPath("keys")}), 1);
     EXPECT_EQ(errors.str(), "Error: The keys command takes \"create\", \"rotate\" or \"show\", not \"remove\".\n");
-    EXPECT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "dev.haylen.tests", "--identifier", "dev.haylen.other"}), 1);
+    EXPECT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "com.haylen.tests", "--identifier", "com.haylen.other"}), 1);
     EXPECT_EQ(errors.str(), "Error: The option \"--identifier\" is given twice.\n");
     EXPECT_FALSE(std::filesystem::exists(getPath("keys")));
 
-    ASSERT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "dev.haylen.other"}), 0) << errors.str();
+    ASSERT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "com.haylen.other"}), 0) << errors.str();
     EXPECT_EQ(run({"keys", "show", getPath("keys"), "extra"}), 1);
     EXPECT_EQ(errors.str(), "Error: The command takes no argument \"extra\".\n");
     EXPECT_EQ(run({"keys", "show", getPath("keys"), "--chunks"}), 1);
@@ -133,11 +133,11 @@ TEST_F(ContentToolTest, ExplainsWhatACommandLacks) {
     EXPECT_EQ(run({"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--output", getPath("release")}), 1);
     EXPECT_EQ(errors.str(), "Error: The command needs the option \"--build\".\n");
     EXPECT_EQ(run({"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--output", getPath("release")}), 1);
-    EXPECT_NE(errors.str().find("cannot build with the keys of \"dev.haylen.other\""), std::string::npos) << errors.str();
+    EXPECT_NE(errors.str().find("cannot build with the keys of \"com.haylen.other\""), std::string::npos) << errors.str();
     EXPECT_EQ(run({"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "seven", "--output", getPath("release")}), 1);
     EXPECT_NE(errors.str().find("takes a whole number"), std::string::npos) << errors.str();
     EXPECT_EQ(run({"publish", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--channel", "stable", "--output", getPath("tree")}), 1);
-    EXPECT_EQ(errors.str(), "Error: The app cannot publish with the keys of \"dev.haylen.other\".\n");
+    EXPECT_EQ(errors.str(), "Error: The app cannot publish with the keys of \"com.haylen.other\".\n");
     EXPECT_FALSE(std::filesystem::exists(getPath("tree")));
 }
 

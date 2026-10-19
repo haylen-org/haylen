@@ -1,6 +1,6 @@
 {
     "name": "Lua Benchmark",
-    "identifier": "dev.haylen.luabenchmark",
+    "identifier": "com.haylen.luabenchmark",
     "version": "1.0.0",
     "window": {
         "title": "Haylen Lua benchmark",

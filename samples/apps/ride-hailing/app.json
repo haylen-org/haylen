@@ -1,6 +1,6 @@
 {
     "name": "Ride Hailing",
-    "identifier": "dev.haylen.samples.ridehailing",
+    "identifier": "com.haylen.rides",
     "version": "1.0.0",
     "orientation": "any",
     "window": {

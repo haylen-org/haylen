@@ -76,7 +76,7 @@ Android also freezes the processes of cached apps, which stops every thread of t
 ```json
 {
     "name": "Tiny Island",
-    "identifier": "dev.haylen.tinyisland",
+    "identifier": "com.haylen.tinyisland",
     "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}
 }
 ```
@@ -540,7 +540,7 @@ The `autoload` list of `app.json` names the modules, which load in order before 
 ```json
 {
     "name": "Tiny Island",
-    "identifier": "dev.haylen.tinyisland",
+    "identifier": "com.haylen.tinyisland",
     "autoload": ["state.player-data"]
 }
 ```

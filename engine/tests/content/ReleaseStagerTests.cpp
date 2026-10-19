@@ -24,7 +24,7 @@ class ReleaseStagerTest : public ::testing::Test {
   protected:
     using Files = std::map<std::string, std::vector<std::uint8_t>>;
 
-    static constexpr std::string_view kApp = R"({"name": "Packs", "identifier": "dev.haylen.tests", "content": {"delivery": [{"match": "forest/**", "pack": "forest"}, {"match": "music/**", "mode": "prefetch"}]}})";
+    static constexpr std::string_view kApp = R"({"name": "Packs", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "forest/**", "pack": "forest"}, {"match": "music/**", "mode": "prefetch"}]}})";
 
     ReleaseStagerTest() {
         files.emplace("app.json", test::TestFiles::bytes(std::string(kApp)));

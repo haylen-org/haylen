@@ -261,7 +261,7 @@ TEST(PlatformLuaTest, ReceivesTheBatchedEventsOfAFrameAsOneList) {
 TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"ads-kit": {"testMode": true}, "sign-in": {}}})"},
+        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {"testMode": true}, "sign-in": {}}})"},
         {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.2.0", "parameters": {"testMode": {"type": "boolean", "default": false}, "placement": {"type": "string", "default": "bottom"}, "appId": {"type": "string"}}})"},
         {"plugins/sign-in/plugin.json", R"({"id": "sign-in", "version": "2.0"})"},
         {"plugins/ads-kit/source/init.lua", "local handle = require('haylen.platform').plugin('ads-kit') return {handle = handle}"},
@@ -306,7 +306,7 @@ TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
 TEST(PlatformLuaTest, ExplainsPluginManifestsItCannotRead) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"broken": {}, "unversioned": {}}})"},
+        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"broken": {}, "unversioned": {}}})"},
         {"plugins/broken/plugin.json", "{"},
         {"plugins/unversioned/plugin.json", R"({"id": "unversioned"})"},
     });

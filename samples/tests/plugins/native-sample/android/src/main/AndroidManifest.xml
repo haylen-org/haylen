@@ -4,6 +4,6 @@
         <!-- The provider of the `haylen-plugins` library creates and loads the plugin class that this entry names when the app process starts. -->
         <meta-data
             android:name="dev.haylen.plugin.native-sample"
-            android:value="dev.haylen.samples.nativesample.NativeSamplePlugin" />
+            android:value="com.haylen.plugins.nativesample.NativeSamplePlugin" />
     </application>
 </manifest>

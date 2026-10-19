@@ -107,7 +107,7 @@ void main() {
         // clang-format off
         static const std::vector<std::uint8_t> compiled = [] {
             const test::TemporaryDirectory app;
-            app.write("app.json", R"({"name": "Shaders", "identifier": "dev.haylen.shaders", "version": "1.0.0"})");
+            app.write("app.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
             app.write("content/shaders/tint.glsl", kTintSource);
             if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}).wait() != 0) {
                 throw std::runtime_error("The command \"haylen.py shaders\" failed.");

@@ -318,7 +318,7 @@ TEST(CoreLuaTest, OwnersGiveTheirModeOncePerFrame) {
 TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "autoload": ["state.player-data"]})"},
+        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "autoload": ["state.player-data"]})"},
         {"source/state/player-data.lua", R"(
             local data = {coins = 0, log = {}}
             function data:start() self.log[#self.log + 1] = 'start' end
@@ -355,7 +355,7 @@ TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
 TEST(AutoloadTest, StopsEveryAutoloadWhenOneFails) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "autoload": ["first", "second"]})"},
+        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "autoload": ["first", "second"]})"},
         {"source/first.lua", "return {stop = function() stopped = 'first' end}"},
         {"source/second.lua", "return {stop = function() error('second cannot stop') end}"},
     });
@@ -367,7 +367,7 @@ TEST(AutoloadTest, StopsEveryAutoloadWhenOneFails) {
 }
 
 TEST(AutoloadTest, ReportsModulesThatAreNotTables) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "autoload": ["broken"]})"}, {"source/broken.lua", "return 5"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "autoload": ["broken"]})"}, {"source/broken.lua", "return 5"}});
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("must return a table"), std::string::npos);
 }

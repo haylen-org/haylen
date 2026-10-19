@@ -44,7 +44,7 @@ class ManifestTest : public ::testing::Test {
     [[nodiscard]] static Manifest::Envelope makeEnvelope(Manifest::Domain domain = Manifest::Domain::Content) {
         return {
             .domain = domain,
-            .application = Manifest::identifyApplication("dev.haylen.tests"),
+            .application = Manifest::identifyApplication("com.haylen.tests"),
             .profile = "desktop",
             .channel = "stable",
             .generation = 3,
@@ -206,14 +206,14 @@ TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
 
 TEST_F(ManifestTest, ChecksTheCompatibilityOfTheApp) {
     const Manifest manifest = Manifest::read(write(), trusted);
-    const Compatibility compatibility{.application = Manifest::identifyApplication("dev.haylen.tests"), .appBuild = 5, .profile = "desktop"};
+    const Compatibility compatibility{.application = Manifest::identifyApplication("com.haylen.tests"), .appBuild = 5, .profile = "desktop"};
     compatibility.check(manifest);
     Compatibility newest = compatibility;
     newest.appBuild = 9;
     newest.check(manifest);
 
     Compatibility otherApp = compatibility;
-    otherApp.application = Manifest::identifyApplication("dev.haylen.other");
+    otherApp.application = Manifest::identifyApplication("com.haylen.other");
     Compatibility otherProfile = compatibility;
     otherProfile.profile = "web";
     Compatibility older = compatibility;
@@ -283,7 +283,7 @@ TEST_F(ManifestTest, NeverAcceptsAnOlderGeneration) {
 }
 
 TEST_F(ManifestTest, VerifiesChannelDescriptors) {
-    const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("dev.haylen.tests"), .channel = "beta", .generation = 12, .manifest = Digest::of(test::TestFiles::bytes("manifest"))};
+    const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("com.haylen.tests"), .channel = "beta", .generation = 12, .manifest = Digest::of(test::TestFiles::bytes("manifest"))};
     const std::vector<std::uint8_t> bytes = descriptor.write(signingKey);
     const SigningKey other(test::ReleaseFixture::makeKey(102));
     expectCode(Error::Code::ManifestSignatureInvalid, [&] { (void)ChannelDescriptor::read(bytes, std::vector{other.getVerifyingKey()}); });

@@ -336,7 +336,7 @@ final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
     private let session = AVCaptureSession()
     private let stream: HaylenVideoStream
-    private let queue = DispatchQueue(label: "dev.haylen.plugins.native-demo.camera")
+    private let queue = DispatchQueue(label: "com.haylen.plugins.native-demo.camera")
     private let lock = NSLock()
     private var newest: CVPixelBuffer?
 

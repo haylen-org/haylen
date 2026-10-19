@@ -32,7 +32,7 @@ class UiBenchmark final {
     static int run() {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-ui-benchmark");
         std::map<std::string, std::vector<std::uint8_t>> files;
-        for (const auto& [path, text] : {std::pair<std::string, std::string_view>{"app.json", R"({"name": "UI Benchmark", "identifier": "dev.haylen.uibenchmark"})"}, {"source/main.lua", ""}}) {
+        for (const auto& [path, text] : {std::pair<std::string, std::string_view>{"app.json", R"({"name": "UI Benchmark", "identifier": "com.haylen.uibenchmark"})"}, {"source/main.lua", ""}}) {
             files.emplace(path, std::vector<std::uint8_t>(text.begin(), text.end()));
         }
         const auto package = std::make_shared<io::MemoryPackage>("ui-benchmark", std::move(files));

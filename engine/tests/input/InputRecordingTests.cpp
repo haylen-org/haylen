@@ -19,7 +19,7 @@ namespace haylen::input {
 class InputRecordingTest : public ::testing::Test {
   protected:
     [[nodiscard]] static InputRecording makeRecording() {
-        return InputRecording({.buttons = {"left", "right", "jump"}, .players = 2, .identifier = "dev.haylen.tests", .fixedRate = 30.0, .data = "seed"});
+        return InputRecording({.buttons = {"left", "right", "jump"}, .players = 2, .identifier = "com.haylen.tests", .fixedRate = 30.0, .data = "seed"});
     }
 
     [[nodiscard]] static std::string malformed(const std::vector<std::byte>& bytes) {
@@ -44,7 +44,7 @@ TEST_F(InputRecordingTest, KeepsEveryStepThroughItsBytes) {
     EXPECT_EQ(loaded.getStepCount(), 10000U);
     EXPECT_EQ(loaded.getHeader().buttons, recording.getHeader().buttons);
     EXPECT_EQ(loaded.getHeader().players, 2U);
-    EXPECT_EQ(loaded.getHeader().identifier, "dev.haylen.tests");
+    EXPECT_EQ(loaded.getHeader().identifier, "com.haylen.tests");
     EXPECT_EQ(loaded.getHeader().fixedRate, 30.0);
     EXPECT_EQ(loaded.getHeader().data, "seed");
     for (std::uint32_t step = 0; step < 10000; step += 13) {
@@ -152,7 +152,7 @@ class InputRecordingLuaTest : public ::testing::Test {
 TEST_F(InputRecordingLuaTest, RecordsAndReplaysPlayersIntoACommandBuffer) {
     std::string other;
     {
-        test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "fixedRate": 30})"}});
+        test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
         // clang-format off
     fixture.runLua(R"(
         input = require('haylen.input')
@@ -211,9 +211,9 @@ TEST_F(InputRecordingLuaTest, RecordsAndReplaysPlayersIntoACommandBuffer) {
         other.assign(data, size);
         lua_pop(fixture.lua(), 1);
     }
-    EXPECT_EQ(load(other, R"({"name": "Test App", "identifier": "dev.haylen.tests", "fixedRate": 30})"), "10");
-    EXPECT_NE(load(other, R"({"name": "Other", "identifier": "dev.haylen.other", "fixedRate": 30})").find("The recording belongs to another app."), std::string::npos);
-    EXPECT_NE(load(other, R"({"name": "Test App", "identifier": "dev.haylen.tests", "fixedRate": 60})").find("The recording was made at 30"), std::string::npos);
+    EXPECT_EQ(load(other, R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"), "10");
+    EXPECT_NE(load(other, R"({"name": "Other", "identifier": "com.haylen.other", "fixedRate": 30})").find("The recording belongs to another app."), std::string::npos);
+    EXPECT_NE(load(other, R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 60})").find("The recording was made at 30"), std::string::npos);
 }
 
 } // namespace haylen::input

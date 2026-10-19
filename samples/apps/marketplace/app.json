@@ -1,6 +1,6 @@
 {
     "name": "Marketplace",
-    "identifier": "dev.haylen.samples.marketplace",
+    "identifier": "com.haylen.marketplace",
     "version": "1.0.0",
     "orientation": "any",
     "window": {

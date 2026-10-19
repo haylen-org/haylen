@@ -83,7 +83,7 @@ TEST_F(CryptoTest, IdentifiesChunksAndApps) {
     EXPECT_EQ(ChunkRecord::identifyContent(chunk).toHex(), "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319");
     EXPECT_EQ(ChunkRecord::identifyStored(Compression::Codec::None, Compression::kNoneProfile, chunk).toHex(), "ccbae811613ba1735c5e2b578a784abcc83fcf6cd9bdf7a200cb8e88f315dc6a");
     EXPECT_EQ(ChunkRecord::identifyStored(Compression::Codec::Zstd, Compression::kZstdProfile, chunk).toHex(), "746f0c7ed05639ebf5d7fab9ac222bbfd2d7d6b603c1823f95b809a67fd53f2c");
-    EXPECT_EQ(Manifest::identifyApplication("dev.haylen.tests").toHex(), "eca9d9e46ae5c626b9e92fc6f18bb5ea019e099af1507d50c9fa088303ab3def");
+    EXPECT_EQ(Manifest::identifyApplication("com.haylen.tests").toHex(), "97517523c17b4c9362489ff7c7fbe2a09c62197d9275864e9c5cc3a227c3536e");
 }
 
 TEST_F(CryptoTest, EncryptsWithXChaCha20Poly1305) {

@@ -4,6 +4,6 @@
         <!-- The provider of the `haylen-plugins` library creates and loads the plugin class that this entry names when the app process starts. -->
         <meta-data
             android:name="dev.haylen.plugin.{{ID}}"
-            android:value="dev.haylen.plugins.{{PACKAGE}}.{{NAME}}Plugin" />
+            android:value="com.haylen.plugins.{{PACKAGE}}.{{NAME}}Plugin" />
     </application>
 </manifest>

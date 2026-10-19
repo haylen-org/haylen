@@ -114,7 +114,7 @@ TEST(EnvironmentTest, RequiresModulesFromThePackageOnly) {
 TEST(EnvironmentTest, RequiresTheModulesOfThePluginsOfTheApp) {
     // clang-format off
     test::EngineFixture fixture({
-        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"ads-kit": {}}})"},
+        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"},
         {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.0.0"})"},
         {"plugins/ads-kit/source/init.lua", "return {name = 'ads', banner = require('ads-kit.banner').name}"},
         {"plugins/ads-kit/source/banner.lua", "return {name = 'banner'}"},
@@ -141,7 +141,7 @@ TEST(EnvironmentTest, StopsAnAppWhoseModuleHasTheNameOfAPlugin) {
     {
         // clang-format off
         test::EngineFixture fixture({
-            {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"ads-kit": {}}})"},
+            {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"},
             {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.0.0"})"},
             {"source/ads-kit/about.txt", "Not a module."},
             {"source/ads-kit/banner.lua", "return {}"},
@@ -154,7 +154,7 @@ TEST(EnvironmentTest, StopsAnAppWhoseModuleHasTheNameOfAPlugin) {
         EXPECT_EQ(fixture.lua("return started"), "nil");
     }
 
-    test::EngineFixture shadowed({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"ads-kit": {}}})"}, {"plugins/ads-kit/plugin.json", "{}"}, {"source/ads-kit/init.lua", "return {}"}});
+    test::EngineFixture shadowed({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"ads-kit": {}}})"}, {"plugins/ads-kit/plugin.json", "{}"}, {"source/ads-kit/init.lua", "return {}"}});
     ASSERT_NE(shadowed.engine().getError(), nullptr);
     EXPECT_NE(std::string_view(shadowed.engine().getError()->what()).find("source/ads-kit/init.lua\" has the name \"ads-kit\", which \"require\" resolves to \"plugins/ads-kit/source/init.lua\""), std::string::npos);
 }

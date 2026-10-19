@@ -31,7 +31,7 @@ class ReleaseStreamingTest : public audio::MixerFixture {
 TEST_F(ReleaseStreamingTest, DecryptsOnlyTheChunksAroundTheCursorOfAVoice) {
     constexpr std::uint64_t kFrames = std::uint64_t{1} << 21;
     std::map<std::string, std::vector<std::uint8_t>> files;
-    files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "dev.haylen.tests"})"));
+    files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("return {}"));
     files.emplace("content/music/long.wav", makePositions(kFrames));
     release.build(io::MemoryPackage("source", std::move(files)));

@@ -1,6 +1,6 @@
 {
     "name": "Many Sprites",
-    "identifier": "dev.haylen.samples.manysprites",
+    "identifier": "com.haylen.manysprites",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

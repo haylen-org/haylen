@@ -9,7 +9,7 @@ final class NativeDemoVideo {
     static let fps = 30
 
     private let stream: HaylenVideoStream
-    private let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "dev.haylen.plugins.native-demo.video"))
+    private let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.haylen.plugins.native-demo.video"))
     private var pool: CVPixelBufferPool?
     private var frame = 0
 

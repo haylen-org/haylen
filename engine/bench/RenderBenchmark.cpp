@@ -46,7 +46,7 @@ class RenderBenchmark final {
     static int run() {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-render-benchmark");
         std::map<std::string, std::vector<std::uint8_t>> files;
-        files.emplace("app.json", bytes(R"({"name": "Render Benchmark", "identifier": "dev.haylen.render-benchmark", "design": {"width": 1920, "height": 1080}})"));
+        files.emplace("app.json", bytes(R"({"name": "Render Benchmark", "identifier": "com.haylen.renderbenchmark", "design": {"width": 1920, "height": 1080}})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
         const auto package = std::make_shared<io::MemoryPackage>("render-benchmark", std::move(files));
         core::AppConfig config = core::AppConfig::fromPackage(*package);

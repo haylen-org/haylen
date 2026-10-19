@@ -815,7 +815,7 @@ class TemplateLayersTest(unittest.TestCase):
 
     def test_platform_diff_compares_every_file_of_the_project_with_the_layered_template(self):
         app = self.new_app("game")
-        handler = app / "platform" / "android" / "app" / "src" / "main" / "kotlin" / "dev" / "haylen" / "app" / "App.kt"
+        handler = app / "platform" / "android" / "app" / "src" / "main" / "kotlin" / "com" / "haylen" / "app" / "App.kt"
         handler.write_text(handler.read_text() + "// A change of the developer.\n")
         (app / "platform" / "android" / "haylen").mkdir()
         (app / "platform" / "android" / "haylen" / "haylen.properties").write_text("generated")

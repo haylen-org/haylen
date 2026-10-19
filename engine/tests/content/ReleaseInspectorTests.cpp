@@ -28,7 +28,7 @@ class ReleaseInspectorTest : public ::testing::Test {
     [[nodiscard]] static Files makeFiles() {
         Files files;
         const auto text = [&files](const std::string& path, const std::string& content) { files.emplace(path, test::TestFiles::bytes(content)); };
-        text("app.json", R"({"name": "Release Test", "identifier": "dev.haylen.tests"})");
+        text("app.json", R"({"name": "Release Test", "identifier": "com.haylen.tests"})");
         text("source/main.lua", "loaded = true");
         text("content/data/config.json", R"({"level": 3})");
         text("content/data/removed.json", R"({"removed": true})");
@@ -136,7 +136,7 @@ TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
 
 TEST_F(ReleaseInspectorTest, CountsAShardThatBothDomainsNameOnce) {
     // Content files with the bytes and the order of the files of the app domain seal into the same records, so both domains write one shard file.
-    const std::string config = R"({"name": "Release Test", "identifier": "dev.haylen.tests"})";
+    const std::string config = R"({"name": "Release Test", "identifier": "com.haylen.tests"})";
     const std::vector<std::uint8_t> module = LuaCompiler::compile("loaded = true", "source/main.lua");
     release.build({{"app.json", config}, {"source/main.lua", "loaded = true"}, {"content/a.json", config}, {"content/b.bin", std::string(module.begin(), module.end())}});
     const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());

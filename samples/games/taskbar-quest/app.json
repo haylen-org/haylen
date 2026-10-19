@@ -1,6 +1,6 @@
 {
     "name": "Haylen Taskbar Quest",
-    "identifier": "dev.haylen.samples.taskbarquest",
+    "identifier": "com.haylen.taskbarquest",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

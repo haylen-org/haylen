@@ -145,7 +145,7 @@ class CountingPlugin final : public plugins::Plugin {
 TEST(AppConfigTest, ReadsEveryField) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({
         "name": "Tiny Island",
-        "identifier": "dev.haylen.tinyisland",
+        "identifier": "com.haylen.tinyisland",
         "version": "2.0.0",
         "window": {"title": "Island", "width": 800, "height": 600, "fullscreen": true, "highDpi": false, "resizable": false, "vsync": false, "sampleCount": 4},
         "design": {"width": 1280, "height": 720, "scaling": "fit"},
@@ -160,7 +160,7 @@ TEST(AppConfigTest, ReadsEveryField) {
     })"));
 
     EXPECT_EQ(config.name, "Tiny Island");
-    EXPECT_EQ(config.identifier, "dev.haylen.tinyisland");
+    EXPECT_EQ(config.identifier, "com.haylen.tinyisland");
     EXPECT_EQ(config.version, "2.0.0");
     EXPECT_EQ(config.window.title, "Island");
     EXPECT_EQ(config.window.width, 800);
@@ -452,7 +452,7 @@ TEST(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
 }
 
 TEST(EngineTest, PublishesTheKeyboardAndTheNetwork) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
     core::Engine& engine = fixture.engine();
     std::vector<std::string> log;
     for (const std::string_view name : {core::LifecycleEvent::kKeyboardShown, core::LifecycleEvent::kKeyboardHidden, core::LifecycleEvent::kNetworkOnline, core::LifecycleEvent::kNetworkOffline}) {
@@ -522,7 +522,7 @@ TEST(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
 }
 
 TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}})"}});
     core::Engine& engine = fixture.engine();
     EXPECT_TRUE(engine.getLifecycle().pauseOnBackground);
     EXPECT_TRUE(engine.getLifecycle().pauseOnFocusLoss);
@@ -861,7 +861,7 @@ TEST(EngineTest, ExposesServicesAndPlatformName) {
     test::EngineFixture fixture;
     core::Engine& engine = fixture.engine();
     EXPECT_EQ(engine.getPlatformName(), "headless");
-    EXPECT_EQ(engine.getConfig().identifier, "dev.haylen.tests");
+    EXPECT_EQ(engine.getConfig().identifier, "com.haylen.tests");
     EXPECT_EQ(&engine.getWindow(), &fixture.host());
     EXPECT_EQ(engine.getPackage().getName(), "test");
     EXPECT_NE(engine.getLuaState(), nullptr);

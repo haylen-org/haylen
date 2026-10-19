@@ -31,7 +31,7 @@ class ParticleBenchmark final {
     static int run() {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-particle-benchmark");
         std::map<std::string, std::vector<std::uint8_t>> files;
-        files.emplace("app.json", bytes(R"({"name": "Particle Benchmark", "identifier": "dev.haylen.particle-benchmark"})"));
+        files.emplace("app.json", bytes(R"({"name": "Particle Benchmark", "identifier": "com.haylen.particlebenchmark"})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
         const auto package = std::make_shared<io::MemoryPackage>("particle-benchmark", std::move(files));
         core::AppConfig config = core::AppConfig::fromPackage(*package);

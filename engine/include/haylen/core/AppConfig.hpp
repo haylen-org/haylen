@@ -120,7 +120,7 @@ struct AppConfig {
     };
 
     std::string name = "Haylen App";
-    std::string identifier = "dev.haylen.app";
+    std::string identifier = "com.haylen.app";
     std::string version = "1.0.0";
     std::string description = "Haylen App";
     std::string company = "Haylen App";

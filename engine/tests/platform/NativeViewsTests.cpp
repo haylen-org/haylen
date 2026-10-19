@@ -35,7 +35,7 @@ class AppCoverTest : public ::testing::Test {
 class SafeAreaTest : public ::testing::Test {
   protected:
     static std::string app(std::string_view scaling) {
-        return R"({"name": "Test App", "identifier": "dev.haylen.tests", "design": {"width": 960, "height": 540, "scaling": ")" + std::string(scaling) + R"("}})";
+        return R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": ")" + std::string(scaling) + R"("}})";
     }
 
     static void expectSameRect(const math::Rect& actual, const math::Rect& expected) {
@@ -114,7 +114,7 @@ TEST(ReservedInsetsTest, WidensTheSafeAreaAndPublishesEveryChange) {
 }
 
 TEST(ReservedInsetsTest, ReadsTheReservationsFromLuaInDesignUnits) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
     fixture.host().getNativeViews().reserveInsets("banner", {.left = 20.0F, .bottom = 100.0F});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("local insets = require('haylen.viewport').reservedInsets() return table.concat({insets.left, insets.top, insets.right, insets.bottom}, ',')"), "10.0,0.0,0.0,50.0");

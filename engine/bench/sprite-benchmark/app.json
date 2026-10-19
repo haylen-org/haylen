@@ -1,6 +1,6 @@
 {
     "name": "Sprite Benchmark",
-    "identifier": "dev.haylen.spritebenchmark",
+    "identifier": "com.haylen.spritebenchmark",
     "version": "1.0.0",
     "window": {
         "title": "Haylen sprite benchmark",

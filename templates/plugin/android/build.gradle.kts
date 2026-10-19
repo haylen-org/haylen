@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.haylen.plugins.{{PACKAGE}}"
+    namespace = "com.haylen.plugins.{{PACKAGE}}"
     compileSdk {
         version = release(37) {
             minorApiLevel = 2

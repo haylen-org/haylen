@@ -10,7 +10,7 @@ namespace haylen::platform {
 class HeadlessPlayerTest : public ::testing::Test {
   protected:
     HeadlessPlayerTest() {
-        app.write("app.json", R"({"name": "Player Test", "identifier": "dev.haylen.tests"})");
+        app.write("app.json", R"({"name": "Player Test", "identifier": "com.haylen.tests"})");
     }
 
     // Plays the app with the source of its main module and returns the exit status of the player.

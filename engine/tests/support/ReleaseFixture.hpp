@@ -22,7 +22,7 @@ namespace haylen::test {
 // Builds the protected release of an app package with fixed test keys through the release builder, each build into a folder of its own that reuses the release before it, and opens it again.
 class ReleaseFixture final {
   public:
-    static constexpr std::string_view kIdentifier = "dev.haylen.tests";
+    static constexpr std::string_view kIdentifier = "com.haylen.tests";
     static constexpr std::string_view kProfile = "desktop";
     static constexpr std::uint64_t kAppBuild = 7;
 

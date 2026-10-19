@@ -1,6 +1,6 @@
 {
     "name": "Haylen Tests",
-    "identifier": "dev.haylen.samples.tests",
+    "identifier": "com.haylen.tests",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

@@ -60,7 +60,7 @@ TEST(CoreLuaTest, QuitsWithAnExitStatus) {
 }
 
 TEST(CoreLuaTest, ReportsTheFixedStepClock) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "fixedRate": 30})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
     fixture.runLua("haylen = require('haylen')");
     EXPECT_EQ(fixture.lua("return haylen.config.fixedRate"), "30.0");
     EXPECT_EQ(fixture.lua("return haylen.fixedStep() == 1 / 30"), "true");
@@ -196,7 +196,7 @@ TEST(CoreLuaTest, ConvertsViewportCoordinates) {
 }
 
 TEST(CoreLuaTest, PlacesLetterboxedViewportsInPixels) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "design": {"scaling": "fit"}})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"scaling": "fit"}})"}});
     fixture.host().resize({1000.0F, 540.0F});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(require('haylen.viewport').pixelRect())"), "Rect(20.0, 0.0, 960.0, 540.0)");

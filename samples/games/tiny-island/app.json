@@ -1,6 +1,6 @@
 {
     "name": "Tiny Island",
-    "identifier": "dev.haylen.tinyisland",
+    "identifier": "com.haylen.tinyisland",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

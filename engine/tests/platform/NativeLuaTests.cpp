@@ -269,7 +269,7 @@ TEST_F(NativeLuaTest, DropsCallsThatArriveAfterTheAppStopped) {
 }
 
 TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
     prepare(fixture);
     fixture.runLua("testPlugin = platform.plugin('native-test') nativeBefore = testPlugin.native");
     // clang-format off
@@ -328,7 +328,7 @@ TEST_F(NativeLuaTest, RefusesEventsAndHandlersWithoutNames) {
 }
 
 TEST_F(NativeLuaTest, ExchangesBytesBatchesAndStreamsWithLibraries) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
     prepare(fixture);
     // clang-format off
     fixture.runLua(R"(
@@ -369,7 +369,7 @@ TEST_F(NativeLuaTest, ExchangesBytesBatchesAndStreamsWithLibraries) {
 }
 
 TEST_F(NativeLuaTest, OpensTheScreensOfLibrariesAndCoversTheApp) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
     prepare(fixture);
     // clang-format off
     fixture.runLua(R"(

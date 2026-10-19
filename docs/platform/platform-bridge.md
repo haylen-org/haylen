@@ -260,7 +260,7 @@ This example adds `accessibility.reducedMotion`, which tells the app whether the
 The file `app/src/main/java/dev/haylen/app/MotionPlugin.java` in the [Android project](../tools/distribution.md#the-android-project) of the app:
 
 ```java
-package dev.haylen.app;
+package com.haylen.app;
 
 import android.content.ContentResolver;
 import android.database.ContentObserver;
@@ -293,7 +293,7 @@ final class MotionPlugin {
 The application class of the Android template, `app/src/main/kotlin/dev/haylen/app/App.kt`, which the `<application>` of the manifest names, registers it:
 
 ```kotlin
-package dev.haylen.app
+package com.haylen.app
 
 import android.app.Application
 

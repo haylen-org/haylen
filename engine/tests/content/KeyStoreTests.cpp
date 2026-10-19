@@ -16,7 +16,7 @@ namespace haylen::content {
 class KeyStoreTest : public ::testing::Test {
   protected:
     [[nodiscard]] std::filesystem::path getFolder() const {
-        return directory.getPath() / "keys" / "dev.haylen.tests";
+        return directory.getPath() / "keys" / "com.haylen.tests";
     }
 
     static void expectError(const std::string& message, const std::function<void()>& action) {
@@ -36,7 +36,7 @@ class KeyStoreTest : public ::testing::Test {
 };
 
 TEST_F(KeyStoreTest, CreatesKeysThatOnlyTheirOwnerReads) {
-    const KeyStore created = KeyStore::create(getFolder(), "dev.haylen.tests");
+    const KeyStore created = KeyStore::create(getFolder(), "com.haylen.tests");
     ASSERT_EQ(created.getContentKeyIds().size(), 1U);
     EXPECT_TRUE(created.getContentKeys()->contains(created.getActiveKeyId()));
 
@@ -49,19 +49,19 @@ TEST_F(KeyStoreTest, CreatesKeysThatOnlyTheirOwnerReads) {
 #endif
 
     const KeyStore opened = KeyStore::open(getFolder());
-    EXPECT_EQ(opened.getIdentifier(), "dev.haylen.tests");
+    EXPECT_EQ(opened.getIdentifier(), "com.haylen.tests");
     EXPECT_EQ(opened.getContentKeyIds(), created.getContentKeyIds());
     EXPECT_EQ(opened.getSigningKey()->getVerifyingKey().getId(), created.getSigningKey()->getVerifyingKey().getId());
-    EXPECT_THROW((void)KeyStore::create(getFolder(), "dev.haylen.tests"), std::invalid_argument) << "Existing keys are never replaced.";
+    EXPECT_THROW((void)KeyStore::create(getFolder(), "com.haylen.tests"), std::invalid_argument) << "Existing keys are never replaced.";
 
-    const KeyStore other = KeyStore::create(directory.getPath() / "other", "dev.haylen.tests");
+    const KeyStore other = KeyStore::create(directory.getPath() / "other", "com.haylen.tests");
     EXPECT_NE(other.getActiveKeyId(), created.getActiveKeyId()) << "Every key folder holds keys of its own.";
     expectError("The keys of an app need the identifier of the app.", [&] { (void)KeyStore::create(directory.getPath() / "unnamed", ""); });
     EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "unnamed"));
 }
 
 TEST_F(KeyStoreTest, RotatesContentKeysAndKeepsTheEarlierOnes) {
-    KeyStore store = KeyStore::create(getFolder(), "dev.haylen.tests");
+    KeyStore store = KeyStore::create(getFolder(), "com.haylen.tests");
     const Digest first = store.getActiveKeyId();
     store.rotate();
     EXPECT_NE(store.getActiveKeyId(), first);
@@ -74,7 +74,7 @@ TEST_F(KeyStoreTest, RotatesContentKeysAndKeepsTheEarlierOnes) {
 }
 
 TEST_F(KeyStoreTest, RefusesDamagedKeyFolders) {
-    const KeyStore store = KeyStore::create(getFolder(), "dev.haylen.tests");
+    const KeyStore store = KeyStore::create(getFolder(), "com.haylen.tests");
     const std::filesystem::path contentKey = getFolder() / ("content-" + store.getActiveKeyId().toHex() + ".key");
     EXPECT_THROW((void)KeyStore::open(directory.getPath() / "missing"), std::runtime_error);
 
@@ -103,7 +103,7 @@ TEST_F(KeyStoreTest, RefusesDamagedKeyFolders) {
     std::filesystem::resize_file(contentKey, 16);
     EXPECT_THROW((void)KeyStore::open(getFolder()), std::runtime_error);
 
-    std::ofstream(getFolder() / KeyStore::kIndexFile) << "{\"identifier\": \"dev.haylen.tests\"}";
+    std::ofstream(getFolder() / KeyStore::kIndexFile) << "{\"identifier\": \"com.haylen.tests\"}";
     EXPECT_THROW((void)KeyStore::open(getFolder()), std::runtime_error);
 }
 

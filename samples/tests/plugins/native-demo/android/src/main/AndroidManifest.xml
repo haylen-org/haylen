@@ -15,7 +15,7 @@
         <!-- The provider of the `haylen-plugins` library creates and loads the plugin class that this entry names when the app process starts. -->
         <meta-data
             android:name="dev.haylen.plugin.native-demo"
-            android:value="dev.haylen.plugins.nativedemo.NativeDemoPlugin" />
+            android:value="com.haylen.plugins.nativedemo.NativeDemoPlugin" />
 
         <!-- Joins the link activity of the `haylen-links` library, so links with the `urlScheme` parameter of the plugin, such as `haylendemo://hello`, open the app or reach it while it runs, and the taps on the notifications of the plugin reach the app the same way. -->
         <activity
@@ -31,13 +31,13 @@
 
         <!-- The confirm screen, which only the app starts. -->
         <activity
-            android:name="dev.haylen.plugins.nativedemo.NativeDemoConfirmActivity"
+            android:name="com.haylen.plugins.nativedemo.NativeDemoConfirmActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
 
         <!-- Posts the notification of `notify` when its alarm goes off. -->
         <receiver
-            android:name="dev.haylen.plugins.nativedemo.NativeDemoNotifier"
+            android:name="com.haylen.plugins.nativedemo.NativeDemoNotifier"
             android:exported="false" />
     </application>
 </manifest>

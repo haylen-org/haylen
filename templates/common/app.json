@@ -1,6 +1,6 @@
 {
     "name": "Haylen App",
-    "identifier": "dev.haylen.app",
+    "identifier": "com.haylen.app",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

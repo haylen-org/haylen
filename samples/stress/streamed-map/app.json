@@ -1,6 +1,6 @@
 {
     "name": "Streamed Map",
-    "identifier": "dev.haylen.samples.streamedmap",
+    "identifier": "com.haylen.streamedmap",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

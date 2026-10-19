@@ -1,6 +1,6 @@
 {
     "name": "Busy Interface",
-    "identifier": "dev.haylen.samples.busyinterface",
+    "identifier": "com.haylen.busyinterface",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

@@ -60,7 +60,7 @@ class UpdaterTest : public ::testing::Test {
 
     [[nodiscard]] static Files makeGame() {
         Files files;
-        files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Updates", "identifier": "dev.haylen.tests"})"));
+        files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Updates", "identifier": "com.haylen.tests"})"));
         files.emplace("source/main.lua", test::TestFiles::bytes("return 1"));
         files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));
         files.emplace("content/music/theme.ogg", test::TestFiles::randomBytes(3 * kMegabyte, 11));

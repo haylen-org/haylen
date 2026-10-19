@@ -1,6 +1,6 @@
 {
     "name": "Online Store",
-    "identifier": "dev.haylen.samples.onlinestore",
+    "identifier": "com.haylen.store",
     "version": "1.0.0",
     "orientation": "any",
     "window": {

@@ -63,7 +63,7 @@ class HostileInputTest : public ::testing::Test {
         seeds.push_back(withParser(3, catalog.write()));
 
         seeds.push_back(withParser(4, readFile(release.getFolder() / ReleasePackage::kContentManifestFile)));
-        const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("dev.haylen.tests"), .channel = "stable", .generation = 2};
+        const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("com.haylen.tests"), .channel = "stable", .generation = 2};
         seeds.push_back(withParser(5, descriptor.write(release.getSigningKey())));
         seeds.push_back(withParser(6, StoreState{.application = descriptor.application, .channel = "stable", .acceptedGeneration = 2}.write()));
         const StoreEntry::Bytes entry = StoreEntry{.storedId = Digest::of(plain), .segment = 1, .offset = 16, .size = 200}.write();

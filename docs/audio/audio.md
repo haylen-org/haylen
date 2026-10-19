@@ -330,7 +330,7 @@ On iOS and tvOS, the `audio` object of `app.json` chooses the category of the au
 ```json
 {
     "name": "Night Radio",
-    "identifier": "dev.haylen.nightradio",
+    "identifier": "com.haylen.nightradio",
     "audio": {"iosSession": "playback", "mixWithOthers": false}
 }
 ```

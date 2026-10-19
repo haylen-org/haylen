@@ -29,7 +29,7 @@ class AnimationBenchmark final {
     static int run() {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-animation-benchmark");
         std::map<std::string, std::vector<std::uint8_t>> files;
-        files.emplace("app.json", bytes(R"({"name": "Animation Benchmark", "identifier": "dev.haylen.animation-benchmark"})"));
+        files.emplace("app.json", bytes(R"({"name": "Animation Benchmark", "identifier": "com.haylen.animationbenchmark"})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
         const auto package = std::make_shared<io::MemoryPackage>("animation-benchmark", std::move(files));
         core::AppConfig config = core::AppConfig::fromPackage(*package);

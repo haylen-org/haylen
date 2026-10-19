@@ -33,7 +33,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `name` | string | `"Haylen App"` | Display name of the app. |
-| `identifier` | string | `"dev.haylen.app"` | Unique reverse-domain id. It names the folder where `haylen.storage` and `haylen.preferences` keep their files. |
+| `identifier` | string | `"com.haylen.app"` | Unique reverse-domain id. It names the folder where `haylen.storage` and `haylen.preferences` keep their files. |
 | `version` | string | `"1.0.0"` | Version of the app. |
 | `description` | string | The value of `name` | One sentence about the app, which the Windows and Linux templates give the executable, the desktop entry, the AppStream metainfo and the packages. |
 | `company` | string | The value of `name` | The person or company that publishes the app, in the same places. |
@@ -93,7 +93,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 ```json
 {
     "name": "Tiny Island",
-    "identifier": "dev.haylen.tinyisland",
+    "identifier": "com.haylen.tinyisland",
     "version": "1.0.0",
     "window": {"title": "Tiny Island", "width": 1280, "height": 720},
     "design": {"width": 1920, "height": 1080, "scaling": "expand"},
@@ -195,7 +195,7 @@ Autoloads are modules that load before the first scene and live for the whole ap
 ```json
 {
     "name": "Tiny Island",
-    "identifier": "dev.haylen.tinyisland",
+    "identifier": "com.haylen.tinyisland",
     "autoload": ["state.session"]
 }
 ```

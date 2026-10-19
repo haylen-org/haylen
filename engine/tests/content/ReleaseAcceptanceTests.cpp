@@ -32,7 +32,7 @@ class ReleaseAcceptanceTest : public ::testing::Test {
     [[nodiscard]] static Files makeGame() {
         Files files;
         const auto text = [&files](const std::string& path, std::string_view content) { files.emplace(path, test::TestFiles::bytes(std::string(content))); };
-        text("app.json", R"({"name": "Acceptance", "identifier": "dev.haylen.tests", "autoload": ["state.player"]})");
+        text("app.json", R"({"name": "Acceptance", "identifier": "com.haylen.tests", "autoload": ["state.player"]})");
         text("source/main.lua", "local menu = require('scenes.menu')\nloaded = menu.title");
         text("source/scenes/menu.lua", kMenuSource);
         text("source/scenes/island.lua", "return {title = 'The island of the release test'}");

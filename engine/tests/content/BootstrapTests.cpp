@@ -20,7 +20,7 @@ namespace haylen::content {
 class BootstrapTest : public ::testing::Test {
   protected:
     BootstrapTest() {
-        release.build({{"app.json", R"({"name": "Bootstrap", "identifier": "dev.haylen.tests"})"}, {"source/main.lua", "loaded = true"}, {"content/data/config.json", R"({"level": 3})"}});
+        release.build({{"app.json", R"({"name": "Bootstrap", "identifier": "com.haylen.tests"})"}, {"source/main.lua", "loaded = true"}, {"content/data/config.json", R"({"level": 3})"}});
     }
 
     // The bootstrap that a release build of the test app compiles in.
@@ -97,7 +97,7 @@ TEST_F(BootstrapTest, RefusesReleasesItHasNoKeysFor) {
     expectCode(Error::Code::UnknownKeyId, [&] { (void)ReleasePackage::open(release.getFiles(), other); });
 
     Bootstrap otherApp = makeBootstrap();
-    otherApp.identifier = "dev.haylen.other";
+    otherApp.identifier = "com.haylen.other";
     expectCode(Error::Code::ManifestIncompatible, [&] { (void)ReleasePackage::open(release.getFiles(), otherApp); });
 }
 

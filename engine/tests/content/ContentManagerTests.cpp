@@ -48,7 +48,7 @@ class ContentManagerTest : public ::testing::Test {
     }
 
     [[nodiscard]] Files makeGame() const {
-        const std::string app = R"({"name": "Content", "identifier": "dev.haylen.tests", "content": {"updates": {"baseUrl": ")" + server.getUrl() + R"(", "enabled": false}, "delivery": [{"match": "levels/**", "mode": "onDemand"}, {"match": "music/**", "mode": "prefetch"}]}})";
+        const std::string app = R"({"name": "Content", "identifier": "com.haylen.tests", "content": {"updates": {"baseUrl": ")" + server.getUrl() + R"(", "enabled": false}, "delivery": [{"match": "levels/**", "mode": "onDemand"}, {"match": "music/**", "mode": "prefetch"}]}})";
         Files files;
         files.emplace("app.json", test::TestFiles::bytes(app));
         files.emplace("source/main.lua", test::TestFiles::bytes("started = true\nrequire('haylen.events').on('contentRecovered', function(event) recovered = event.reason end)"));
@@ -340,7 +340,7 @@ class ContentPackTest : public ContentManagerTest {
   protected:
     ContentPackTest() {
         game.erase("content/levels/forest.json");
-        const std::string app = R"({"name": "Packs", "identifier": "dev.haylen.tests", "content": {"delivery": [{"match": "expansion/**", "pack": "expansion"}]}})";
+        const std::string app = R"({"name": "Packs", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "expansion/**", "pack": "expansion"}]}})";
         game["app.json"] = test::TestFiles::bytes(app);
         game.emplace("content/expansion/island.json", test::TestFiles::bytes(R"({"palms": 7})"));
         release.build(io::MemoryPackage("source", game));

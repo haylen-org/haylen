@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.haylen.tinyisland"
+    namespace = "com.haylen.plugins.signin"
     compileSdk {
         version = release(37) {
             minorApiLevel = 2

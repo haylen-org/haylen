@@ -36,7 +36,7 @@ class CoreBenchmark final {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-core-benchmark");
         std::map<std::string, std::vector<std::uint8_t>> files;
         const auto add = [&files](const std::string& path, std::string_view text) { files.insert_or_assign(path, std::vector<std::uint8_t>(text.begin(), text.end())); };
-        add("app.json", R"({"name": "Core Benchmark", "identifier": "dev.haylen.corebenchmark"})");
+        add("app.json", R"({"name": "Core Benchmark", "identifier": "com.haylen.corebenchmark"})");
         add("source/main.lua", "");
         for (int index = 0; index < kAssets; ++index) {
             add("content/data/item-" + std::to_string(index) + ".json", R"({"name": "item", "stats": {"attack": 12, "defense": 7}, "tags": ["melee", "rare"]})");

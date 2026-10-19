@@ -19,7 +19,7 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         headlessHost.enableDevelopment(std::nullopt, options.developmentServer);
     }
     headlessHost.setAudioOutput(options.audioOutput);
-    files.try_emplace("app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests"})");
+    files.try_emplace("app.json", R"({"name": "Test App", "identifier": "com.haylen.tests"})");
     files.try_emplace("source/main.lua", "");
 
     std::map<std::string, std::vector<std::uint8_t>> contents;

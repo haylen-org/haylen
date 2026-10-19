@@ -53,7 +53,7 @@ class LocalStoreTest : public ::testing::Test {
     }
 
     test::TemporaryDirectory folder;
-    Digest application = Manifest::identifyApplication("dev.haylen.tests");
+    Digest application = Manifest::identifyApplication("com.haylen.tests");
     ContentKey key{test::ReleaseFixture::makeKey(1)};
 };
 
@@ -171,7 +171,7 @@ TEST_F(LocalStoreTest, OpensEmptyForAnotherApp) {
         state.acceptedGeneration = 9;
         store->commit(state);
     }
-    const LocalStore store(std::make_unique<FolderStoreFiles>(folder.getPath()), Manifest::identifyApplication("dev.haylen.other"), kAppBuild);
+    const LocalStore store(std::make_unique<FolderStoreFiles>(folder.getPath()), Manifest::identifyApplication("com.haylen.other"), kAppBuild);
     EXPECT_EQ(store.getState().acceptedGeneration, 0U);
 }
 

@@ -46,7 +46,7 @@ class HpakPackageTest : public ::testing::Test {
     [[nodiscard]] static std::map<std::string, std::vector<std::uint8_t>> makeFiles() {
         std::map<std::string, std::vector<std::uint8_t>> files;
         const auto text = [&files](const std::string& path, const std::string& content) { files.emplace(path, test::TestFiles::bytes(content)); };
-        text("app.json", R"({"name": "Release Test", "identifier": "dev.haylen.tests", "plugins": {"ads": {}}})");
+        text("app.json", R"({"name": "Release Test", "identifier": "com.haylen.tests", "plugins": {"ads": {}}})");
         text("source/main.lua", "local menu = require('scenes.menu')\nlocal assets = require('haylen.assets')\nloaded = menu.name .. ' ' .. assets.json('data/config.json').level .. ' ' .. assets.fileSize('world/terrain.bin')");
         text("source/scenes/menu.lua", "return {name = 'menu'}");
         text("plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})");
@@ -368,7 +368,7 @@ TEST_F(HpakPackageTest, ReadsFromManyThreadsAtOnce) {
 // A release of more shards than stay open serves every file from several threads at once through a bounded number of open shard files, and a shard that closed opens again when a file needs it.
 TEST_F(HpakPackageTest, KeepsABoundedNumberOfShardsOpen) {
     std::map<std::string, std::vector<std::uint8_t>> files;
-    files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "dev.haylen.tests"})"));
+    files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("return {}"));
     std::vector<std::string> parts;
     for (std::uint32_t part = 0; part < ShardSet::kMaxOpenShards + 8; ++part) {

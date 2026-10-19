@@ -12,8 +12,8 @@ TEST(WebDialogJsonTest, DescribesDialogsForThePage) {
 
     // The accept attribute lists the extension of every filter with its dot.
     const std::vector<DialogRequest::Filter> filters{{.name = "Images", .extensions = {"png", "jpg"}}, {.name = "Archives", .extensions = {"tar.gz"}}};
-    const std::filesystem::path folder = std::filesystem::path("/persistent") / "dev.haylen.sample" / "tmp" / "dialogs" / "7";
-    EXPECT_EQ(WebDialogJson::describeOpenFiles({.filters = filters, .multiple = true}, folder), (core::Json{{"kind", "openFiles"}, {"accept", ".png,.jpg,.tar.gz"}, {"multiple", true}, {"folder", "/persistent/dev.haylen.sample/tmp/dialogs/7"}}));
+    const std::filesystem::path folder = std::filesystem::path("/persistent") / "com.haylen.sample" / "tmp" / "dialogs" / "7";
+    EXPECT_EQ(WebDialogJson::describeOpenFiles({.filters = filters, .multiple = true}, folder), (core::Json{{"kind", "openFiles"}, {"accept", ".png,.jpg,.tar.gz"}, {"multiple", true}, {"folder", "/persistent/com.haylen.sample/tmp/dialogs/7"}}));
     EXPECT_EQ(WebDialogJson::describeOpenFiles({}, folder).at("accept"), "");
 
     const core::Json images{{"description", "Images"}, {"accept", {{"application/octet-stream", {".png", ".jpg"}}}}};

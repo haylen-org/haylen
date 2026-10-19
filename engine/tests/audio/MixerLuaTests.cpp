@@ -157,7 +157,7 @@ TEST(MixerOutputLuaTest, GuardsTheMasterBusWithALimiterUnlessAppJsonTurnsItOff) 
         EXPECT_NE(fixture.lua("require('haylen.audio').newEffect('limiter', {threshold = 2})").find("A limiter threshold must be above 0 and at most 1."), std::string::npos);
         EXPECT_NE(fixture.lua("require('haylen.audio').newEffect('limiter', {knee = 2})").find("Unknown option \"knee\"."), std::string::npos);
     }
-    test::EngineFixture plain({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "audio": {"limiter": false, "latency": "low"}})"}});
+    test::EngineFixture plain({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "audio": {"limiter": false, "latency": "low"}})"}});
     EXPECT_EQ(plain.lua("return #require('haylen.audio').busEffects('master')"), "0");
 }
 

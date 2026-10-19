@@ -1,6 +1,6 @@
 {
     "name": "C++ Embedding",
-    "identifier": "dev.haylen.cppembedding",
+    "identifier": "com.haylen.embedding",
     "version": "1.0.0",
     "window": {
         "title": "C++ Embedding",

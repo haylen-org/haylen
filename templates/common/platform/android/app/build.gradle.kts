@@ -32,7 +32,7 @@ fun haylenKey(type: String): Map<String, String>? {
 val haylenKeys = listOf("debug", "release").mapNotNull { type -> haylenKey(type)?.let { type to it } }.toMap()
 
 android {
-    namespace = "dev.haylen.app"
+    namespace = "com.haylen.app"
     compileSdk {
         version = release(37) {
             minorApiLevel = 2

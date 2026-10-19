@@ -6,7 +6,7 @@ final class NativeDemoTone {
 
     private let stream: HaylenAudioStream
     private let step: Double
-    private let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "dev.haylen.plugins.native-demo.tone"))
+    private let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.haylen.plugins.native-demo.tone"))
     private let started = DispatchTime.now()
     private var written = 0
     private var phase = 0.0

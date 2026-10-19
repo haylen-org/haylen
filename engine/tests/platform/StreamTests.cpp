@@ -137,7 +137,7 @@ TEST(PluginStreamsTest, OpensEachStreamOnceByPluginAndName) {
 }
 
 TEST(StreamsLuaTest, HandsPluginModulesTheStreamsOfTheirNativeParts) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"cam-kit": {}}})"}, {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0"})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"cam-kit": {}}})"}, {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0"})"}});
     fixture.runLua("platform = require('haylen.platform') collections = require('haylen.collections') audio = require('haylen.audio') cam = platform.plugin('cam-kit')");
     EXPECT_EQ(fixture.lua("return tostring(cam:videoStream('preview')) .. ' ' .. tostring(cam:audioStream('mic'))"), "nil nil");
 

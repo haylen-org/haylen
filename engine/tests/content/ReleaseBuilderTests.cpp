@@ -29,7 +29,7 @@ class ReleaseBuilderTest : public ::testing::Test {
     using Files = std::map<std::string, std::vector<std::uint8_t>>;
 
     static constexpr std::size_t kMegabyte = 1024 * 1024;
-    static constexpr std::string_view kAppJson = R"({"name": "Release Test", "identifier": "dev.haylen.tests", "version": "1.0.0", "plugins": {"ads": {}}})";
+    static constexpr std::string_view kAppJson = R"({"name": "Release Test", "identifier": "com.haylen.tests", "version": "1.0.0", "plugins": {"ads": {}}})";
 
     // A package whose files read as other bytes the second time they open, like files that change while a release builds.
     class ChangingPackage final : public io::Package {
@@ -182,7 +182,7 @@ TEST_F(ReleaseBuilderTest, RefusesFoldersAndAppsItCannotBuild) {
     EXPECT_THROW((void)build(source, "release"), std::invalid_argument) << "A release never builds over another one.";
 
     Files broken = makeFiles();
-    broken["app.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "dev.haylen.tests", "unknown": 1})");
+    broken["app.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "unknown": 1})");
     EXPECT_THROW((void)build(io::MemoryPackage("source", broken), "broken"), std::invalid_argument);
 }
 
@@ -202,7 +202,7 @@ TEST_F(ReleaseBuilderTest, StopsOnADamagedEarlierRelease) {
 }
 
 TEST_F(ReleaseBuilderTest, RefusesEarlierReleasesItCannotReuse) {
-    const Files small{{"app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "dev.haylen.tests"})")}, {"source/main.lua", test::TestFiles::bytes("loaded = true")}};
+    const Files small{{"app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})")}, {"source/main.lua", test::TestFiles::bytes("loaded = true")}};
     try {
         (void)build(io::MemoryPackage("source", small), "first", "missing");
         FAIL() << "An earlier release without manifests must stop the build.";
@@ -212,7 +212,7 @@ TEST_F(ReleaseBuilderTest, RefusesEarlierReleasesItCannotReuse) {
 
     // The release of another app shares no file with this one, even when the same keys sign both.
     Files other = small;
-    other["app.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "dev.haylen.other"})");
+    other["app.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "com.haylen.other"})");
     const ReleaseBuilder::Result foreign = build(io::MemoryPackage("source", other), "other");
     try {
         (void)build(io::MemoryPackage("source", small), "second", "other");

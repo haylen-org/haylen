@@ -151,7 +151,7 @@ TEST(ConsoleLuaTest, OpensOnlyInDevelopmentOrWhenTheAppTurnsItOn) {
         EXPECT_DOUBLE_EQ(fixture.engine().getClock().getTimeScale(), 0.5);
     }
     {
-        test::EngineFixture fixture({{"app.json", R"({"name": "Console", "identifier": "dev.haylen.console", "debug": {"console": true}})"}});
+        test::EngineFixture fixture({{"app.json", R"({"name": "Console", "identifier": "com.haylen.console", "debug": {"console": true}})"}});
         plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
         std::string answer;
         platform::ConsoleRelay::submit("pause true", [&answer](const Console::Result& result) { answer = result.output; });

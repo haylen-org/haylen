@@ -2000,7 +2000,7 @@ UI, texto e input:
 Plataforma e sistema:
 
 - [x] `platform` sem a arquitetura: expor se o processo é de 32 ou 64 bits e o processador, em C++ e Lua. O `platform::SystemInfo` ganhou `architecture` (`arm64`, `arm`, `x64`, `x86`, `wasm32` e `wasm64`, os nomes de uso comum) e `bits` (32 ou 64), que a build do app decide, então toda plataforma preenche sem código próprio e uma biblioteca de 32 bits num celular de 64 bits informa `arm` e 32. O `system.info()` devolve os dois, com testes em `SystemTest`, `SystemLuaTest` e `AndroidDeviceInfoTest` e a referência de `haylen.system`.
-- [ ] Identificadores dos apps: trocar `dev.haylen.<produto>` por `com.haylen.<produto>` em todos os apps, samples e templates, com um produto curto (`com.haylen.music`), e regra no `AGENTS.md`.
+- [x] Identificadores dos apps: trocar `dev.haylen.<produto>` por `com.haylen.<produto>` em todos os apps, samples e templates, com um produto curto (`com.haylen.music`), e regra no `AGENTS.md`. Os apps dos samples, os templates, os benchmarks e os apps dos testes usam `com.haylen.<produto>` curto (`com.haylen.music`, `com.haylen.food`, `com.haylen.store`, `com.haylen.rides`), o código nativo dos plugins dos samples e do template de plugin fica em `com.haylen.plugins`, e o `dev.haylen` ficou só para a engine, com regra no `AGENTS.md`.
 - [ ] Botão de fechar o app num lugar visível dos samples, para testar o encerramento.
 
 Algoritmos e efeitos:

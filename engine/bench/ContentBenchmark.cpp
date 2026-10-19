@@ -84,7 +84,7 @@ class ContentBenchmark final {
     }
 
   private:
-    static constexpr const char* kIdentifier = "dev.haylen.contentbenchmark";
+    static constexpr const char* kIdentifier = "com.haylen.contentbenchmark";
     static constexpr double kMegabyte = 1024.0 * 1024.0;
     static constexpr std::uint64_t kLargeFile = std::uint64_t{64} << 20;
     static constexpr std::uint64_t kTextFile = std::uint64_t{16} << 20;
@@ -114,7 +114,7 @@ class ContentBenchmark final {
 
     // An app with one large incompressible file, one large text file that compresses well and many small files.
     static void writeSource(const std::filesystem::path& folder) {
-        const std::string app = R"({"name": "Content Benchmark", "identifier": "dev.haylen.contentbenchmark"})";
+        const std::string app = R"({"name": "Content Benchmark", "identifier": "com.haylen.contentbenchmark"})";
         writeFile(folder / "app.json", {app.begin(), app.end()});
         writeFile(folder / "source" / "main.lua", {});
         writeFile(folder / "content" / "media" / "large.bin", randomBytes(kLargeFile, 1));

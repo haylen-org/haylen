@@ -20,7 +20,7 @@
         "sources": "apple",
         "frameworks": ["UserNotifications.framework", "AVFoundation.framework", "CoreLocation.framework", "MapKit.framework"],
         "infoPlist": {
-            "CFBundleURLTypes": [{"CFBundleURLName": "dev.haylen.plugins.native-demo", "CFBundleURLSchemes": ["${urlScheme}"]}],
+            "CFBundleURLTypes": [{"CFBundleURLName": "com.haylen.plugins.native-demo", "CFBundleURLSchemes": ["${urlScheme}"]}],
             "NSCameraUsageDescription": "${cameraUsage}",
             "NSMicrophoneUsageDescription": "${microphoneUsage}",
             "NSLocationWhenInUseUsageDescription": "${locationUsage}",

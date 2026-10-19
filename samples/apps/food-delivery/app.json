@@ -1,6 +1,6 @@
 {
     "name": "Food Delivery",
-    "identifier": "dev.haylen.samples.fooddelivery",
+    "identifier": "com.haylen.food",
     "version": "1.0.0",
     "orientation": "any",
     "window": {

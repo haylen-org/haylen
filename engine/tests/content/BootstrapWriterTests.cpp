@@ -53,11 +53,11 @@ class BootstrapWriterTest : public ::testing::Test {
 };
 
 TEST_F(BootstrapWriterTest, WritesTheIdentityAndSealedKeysOfTheApp) {
-    KeyStore keys = KeyStore::create(directory.getPath() / "keys", "dev.haylen.tests");
+    KeyStore keys = KeyStore::create(directory.getPath() / "keys", "com.haylen.tests");
     keys.rotate();
     const std::string source = BootstrapWriter::write(keys, "apple", 1002003);
     EXPECT_EQ(BootstrapWriter::write(keys, "apple", 1002003), source) << "The same keys always write the same bootstrap.";
-    EXPECT_NE(source.find(".identifier = \"dev.haylen.tests\", .appBuild = 1002003U, .profile = \"apple\""), std::string::npos) << source;
+    EXPECT_NE(source.find(".identifier = \"com.haylen.tests\", .appBuild = 1002003U, .profile = \"apple\""), std::string::npos) << source;
     EXPECT_NE(source.find("const bool HaylenBootstrap::kInstalled = HaylenBootstrap::install();"), std::string::npos);
 
     // Each sealed key opens to the key of its file, while the source holds neither a key nor the seed of the signing key in any form.

@@ -357,7 +357,7 @@ TEST_F(InputLuaTest, DefinesActionsOneByOne) {
 }
 
 TEST(InputStepLuaTest, CountsEveryPressOnceInFixedSteps) {
-    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "fixedRate": 30})"}});
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 30})"}});
     // clang-format off
     fixture.runLua(R"(
         input = require('haylen.input')

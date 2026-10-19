@@ -1,6 +1,6 @@
 {
     "name": "Music Streaming",
-    "identifier": "dev.haylen.samples.musicstreaming",
+    "identifier": "com.haylen.music",
     "version": "1.0.0",
     "orientation": "any",
     "window": {

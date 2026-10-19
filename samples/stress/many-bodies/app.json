@@ -1,6 +1,6 @@
 {
     "name": "Many Bodies",
-    "identifier": "dev.haylen.samples.manybodies",
+    "identifier": "com.haylen.manybodies",
     "version": "1.0.0",
     "orientation": "landscape",
     "window": {

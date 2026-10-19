@@ -32,7 +32,7 @@ class ChannelPublisherTest : public ::testing::Test {
 
     [[nodiscard]] static Files makeFiles(const std::string& level) {
         Files files;
-        files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "dev.haylen.tests"})"));
+        files.emplace("app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})"));
         files.emplace("source/main.lua", test::TestFiles::bytes("loaded = true"));
         files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": )" + level + "}"));
         files.emplace("content/world/terrain.bin", test::TestFiles::randomBytes(3 * 1024 * 1024, 1));
@@ -208,7 +208,7 @@ TEST_F(ChannelPublisherTest, RefusesChannelNamesThatLeaveTheChannelsFolder) {
 TEST_F(ChannelPublisherTest, RefusesTheChannelOfAnotherApp) {
     (void)publish("3");
     Files other = makeFiles("3");
-    other["app.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "dev.haylen.other"})");
+    other["app.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "com.haylen.other"})");
     EXPECT_THROW((void)publisher.publish(io::MemoryPackage("source", other), tree.getPath(), {.profile = "desktop", .appBuild = 7, .channel = "stable"}), std::invalid_argument);
 }
 
