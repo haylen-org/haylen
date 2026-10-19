@@ -832,10 +832,15 @@ graphics::Texture Renderer::closeGroup() {
     return state->groupTargets[scope.target].getTexture();
 }
 
-// The image covers the view of the canvas, so its corners follow the view however it turns or stretches.
+// The image covers the view of the canvas, so its corners follow the view however it turns or stretches. Plain transparency composites the premultiplied image as it is, the blends of the GPU take its colors straight, and a blend that mixes with what lies below reads a copy of it.
 void Renderer::composite(const GroupScope& scope, const graphics::Texture& image) {
+    using Mode = graphics::BlendMode::Type;
     DrawOrder order = scope.order;
-    order.blend = graphics::BlendMode::Type::Premultiplied;
+    const bool backdrop = graphics::BlendMode::readsBackdrop(order.blend);
+    if (order.blend == Mode::Alpha || order.blend == Mode::Premultiplied) {
+        order.blend = Mode::Premultiplied;
+    }
+    const bool straighten = !backdrop && order.blend != Mode::Premultiplied;
     if (!state->accepts(order)) {
         return;
     }
@@ -849,10 +854,10 @@ void Renderer::composite(const GroupScope& scope, const graphics::Texture& image
     state->retain(blend.from);
     state->retain(blend.to);
     const float bottom = std::max({origin.y, origin.y + rows.y, origin.y + columns.y, origin.y + rows.y + columns.y});
-    DrawItem& item = state->addItem(Program::ImageBlend, order, image.getResource().get(), bottom);
+    DrawItem& item = state->addItem(backdrop ? Program::Backdrop : Program::ImageBlend, order, image.getResource().get(), bottom);
     item.first = static_cast<std::uint32_t>(state->blends.size());
     item.count = 1;
-    state->blends.push_back({.blend = blend, .origin = origin, .rows = rows, .columns = columns, .opacity = scope.opacity});
+    state->blends.push_back({.blend = blend, .origin = origin, .rows = rows, .columns = columns, .opacity = scope.opacity, .straighten = straighten});
 }
 
 void Renderer::beginGroup(const GroupOptions& options) {

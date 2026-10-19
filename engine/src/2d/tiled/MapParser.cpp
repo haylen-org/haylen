@@ -16,7 +16,7 @@
 
 namespace haylen::tiled {
 
-const std::array<std::pair<std::string_view, graphics::BlendMode::Type>, 4> MapParser::kBlendModes{{{"normal", graphics::BlendMode::Type::Alpha}, {"add", graphics::BlendMode::Type::Additive}, {"multiply", graphics::BlendMode::Type::Multiply}, {"screen", graphics::BlendMode::Type::Screen}}};
+const std::array<std::pair<std::string_view, graphics::BlendMode::Type>, 13> MapParser::kBlendModes{{{"normal", graphics::BlendMode::Type::Alpha}, {"add", graphics::BlendMode::Type::Additive}, {"multiply", graphics::BlendMode::Type::Multiply}, {"screen", graphics::BlendMode::Type::Screen}, {"overlay", graphics::BlendMode::Type::Overlay}, {"darken", graphics::BlendMode::Type::Darken}, {"lighten", graphics::BlendMode::Type::Lighten}, {"color-dodge", graphics::BlendMode::Type::ColorDodge}, {"color-burn", graphics::BlendMode::Type::ColorBurn}, {"hard-light", graphics::BlendMode::Type::HardLight}, {"soft-light", graphics::BlendMode::Type::SoftLight}, {"difference", graphics::BlendMode::Type::Difference}, {"exclusion", graphics::BlendMode::Type::Exclusion}}};
 
 Map MapParser::parse(const core::Json& document, std::string_view file, const Map::JsonReader& reader) {
     Map result;
@@ -175,11 +175,11 @@ std::optional<math::Color> MapParser::readOptionalColor(const core::Json& object
     return color;
 }
 
-// Tiled offers every Qt composition mode, and the ones fixed-function GPU blending cannot reproduce are rejected.
+// The blend modes of the layers of Tiled, which the renderer draws with the blends of the GPU or, for the modes that mix with what lies below, as groups that read it.
 graphics::BlendMode::Type MapParser::readBlendMode(const std::string& mode, std::string_view layer) {
     const auto found = std::ranges::find(kBlendModes, mode, &std::pair<std::string_view, graphics::BlendMode::Type>::first);
     if (found == kBlendModes.end()) {
-        throw std::invalid_argument("The Tiled layer \"" + std::string(layer) + "\" uses the blend mode \"" + mode + "\", which Haylen cannot draw. Layers can use \"normal\", \"add\", \"multiply\" or \"screen\".");
+        throw std::invalid_argument("The Tiled layer \"" + std::string(layer) + "\" uses the blend mode \"" + mode + "\", which Tiled does not offer. Layers can use \"normal\", \"add\", \"multiply\", \"screen\", \"overlay\", \"darken\", \"lighten\", \"color-dodge\", \"color-burn\", \"hard-light\", \"soft-light\", \"difference\" or \"exclusion\".");
     }
     return found->second;
 }
@@ -187,7 +187,7 @@ graphics::BlendMode::Type MapParser::readBlendMode(const std::string& mode, std:
 std::string_view MapParser::blendModeName(graphics::BlendMode::Type value) {
     const auto found = std::ranges::find(kBlendModes, value, &std::pair<std::string_view, graphics::BlendMode::Type>::second);
     if (found == kBlendModes.end()) {
-        throw std::invalid_argument("A Tiled layer blends with \"normal\", \"add\", \"multiply\" or \"screen\", not \"" + std::string(graphics::BlendMode::name(value)) + "\".");
+        throw std::invalid_argument("A Tiled layer blends with \"normal\", \"add\", \"multiply\", \"screen\", \"overlay\", \"darken\", \"lighten\", \"color-dodge\", \"color-burn\", \"hard-light\", \"soft-light\", \"difference\" or \"exclusion\", not \"" + std::string(graphics::BlendMode::name(value)) + "\".");
     }
     return found->first;
 }

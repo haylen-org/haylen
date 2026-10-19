@@ -47,7 +47,7 @@ class MapParser final {
     [[nodiscard]] static std::vector<std::uint32_t> readTileData(const core::Json& layer, const core::Json& data, std::size_t cells);
     [[nodiscard]] static std::optional<math::Color> readOptionalColor(const core::Json& object, const char* key);
     // The blend modes of Tiled layers by the names of the Tiled format.
-    static const std::array<std::pair<std::string_view, graphics::BlendMode::Type>, 4> kBlendModes;
+    static const std::array<std::pair<std::string_view, graphics::BlendMode::Type>, 13> kBlendModes;
 
     [[nodiscard]] static graphics::BlendMode::Type readBlendMode(const std::string& mode, std::string_view layer);
     [[nodiscard]] static core::Json resolveValue(std::string_view type, core::Json value, std::string_view directory);

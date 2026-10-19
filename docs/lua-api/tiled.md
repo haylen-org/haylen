@@ -70,7 +70,7 @@ The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 - Tile layer data as JSON arrays or base64, uncompressed or compressed with zlib, gzip or zstd.
 - Infinite maps, whose tile layers are stored as chunks. Cells may have negative coordinates.
 - Layer types: Tile layers, object layers, image layers and group layers, with visibility, opacity, offsets, tint colors, parallax factors, the map parallax origin, classes and custom properties. Groups pass their offset, parallax, tint, opacity and visibility on to their children.
-- Layer blend modes: `normal`, `add`, `multiply` and `screen`. Every other Tiled mode, such as `overlay`, `darken` or `lighten`, is rejected when the map loads with `The Tiled layer "name" uses the blend mode "mode", which Haylen cannot draw. Layers can use "normal", "add", "multiply" or "screen".` Tiled draws every layer of a group with that layer's own mode and never blends a group as a whole, so a group layer with a mode other than `normal` is rejected with `The Tiled group layer "name" uses the blend mode "mode", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.`
+- Layer blend modes: every mode of Tiled. The modes `normal`, `add`, `multiply` and `screen` draw each tile with the blend of the GPU, and `overlay`, `darken`, `lighten`, `color-dodge`, `color-burn`, `hard-light`, `soft-light`, `difference` and `exclusion` draw the layer into a group of `haylen.graphics2d` that blends with what the layers under it drew, in a canvas without ambient light. A mode Tiled does not offer is rejected when the map loads with `The Tiled layer "name" uses the blend mode "mode", which Tiled does not offer. Layers can use "normal", "add", ... or "exclusion".` Tiled draws every layer of a group with that layer's own mode and never blends a group as a whole, so a group layer with a mode other than `normal` is rejected with `The Tiled group layer "name" uses the blend mode "mode", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.`
 - Tilesets embedded in the map or stored in external files, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image and keep the ids of removed tiles unused, transparent colors, object alignment, tile render size `grid` with the fill mode `preserve-aspect-fit`, tile classes, properties, animations, collision shapes and Wang sets.
 - Tile flip flags: Horizontal, vertical and diagonal, plus the 120-degree rotation flag of hexagonal maps.
 - Objects: Rectangles, ellipses, capsules, points, polygons, polylines, text with every text setting and tile objects, with rotation, visibility, opacity, classes and custom properties, and the color of object layers.
@@ -337,7 +337,7 @@ Every layer table has these fields:
 | `kind` | string | `'tile'`, `'object'`, `'image'` or `'group'`. |
 | `visible` | boolean | Visibility, including changes made with `map:setLayerVisible`. |
 | `opacity` | number | Opacity from 0 to 1. |
-| `blend` | string | Blend mode: `'alpha'`, `'additive'`, `'multiply'` or `'screen'`. |
+| `blend` | string | Blend mode: `'alpha'`, `'additive'`, `'multiply'`, `'screen'`, `'overlay'`, `'darken'`, `'lighten'`, `'colorDodge'`, `'colorBurn'`, `'hardLight'`, `'softLight'`, `'difference'` or `'exclusion'`. |
 | `offsetX`, `offsetY` | number | Layer offset in pixels. |
 | `parallaxX`, `parallaxY` | number | Parallax factors. |
 | `tint` | Color | Tint color. |

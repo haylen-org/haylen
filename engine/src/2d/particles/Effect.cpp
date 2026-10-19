@@ -623,7 +623,7 @@ void Effect::readOrder(const std::string& key, const core::Json& value, EmitterC
     } else {
         const std::string name = value.is_string() ? value.get<std::string>() : value.dump();
         const std::optional<graphics::BlendMode::Type> blend = graphics::BlendMode::parse(name);
-        if (!blend) {
+        if (!blend || graphics::BlendMode::readsBackdrop(*blend)) {
             throw std::invalid_argument("The particle effect value \"blend\" must be \"alpha\", \"additive\", \"multiply\", \"screen\", \"premultiplied\" or \"opaque\", not \"" + name + "\".");
         }
         order.blend = *blend;

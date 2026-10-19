@@ -31,7 +31,7 @@ layout(binding=1) uniform blend_fs_params {
     vec4 color;
     // Image: xy is the pixel size of the first image, z the aspect of the area and w the flip flags, 1 for the first image and 2 for the second.
     vec4 image;
-    // Fade: x is the opacity the whole result takes.
+    // Fade: x is the opacity the whole result takes, and y is 1 when the first image holds premultiplied colors that the blend of the draw takes straight, as the image of a group.
     vec4 fade;
 };
 layout(binding=0) uniform texture2D from_texture;
@@ -155,7 +155,11 @@ void main() {
     } else {
         result = masked(progress);
     }
-    haylen_output(result * fade.x);
+    result *= fade.x;
+    if (fade.y > 0.5) {
+        result.rgb /= max(result.a, 0.0001);
+    }
+    haylen_output(result);
 }
 @end
 

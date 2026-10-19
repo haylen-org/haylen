@@ -52,6 +52,9 @@ struct Canvas {
     std::size_t distortBegin = 0;
     std::size_t distortEnd = 0;
     bool distorted = false;
+
+    // Whether a group of the canvas blends with what lies below it, which it reads from a copy of the image of the canvas.
+    bool backdrop = false;
     std::size_t lightBegin = 0;
     std::size_t lightEnd = 0;
     std::size_t segmentBegin = 0;
@@ -80,9 +83,9 @@ struct Canvas {
         return math::Geometry::bounds(corners);
     }
 
-    // Lit or post-processed canvases render offscreen first and reach their destination through the composite pass.
+    // Lit or post-processed canvases, and canvases with a group that blends with what lies below, render offscreen first and reach their destination through the composite pass.
     [[nodiscard]] bool isComposited() const noexcept {
-        return kind != Kind::Screen && (options.ambientLight || options.postProcess);
+        return backdrop || (kind != Kind::Screen && (options.ambientLight || options.postProcess));
     }
     [[nodiscard]] bool isLit() const noexcept {
         return kind != Kind::Screen && options.ambientLight.has_value();

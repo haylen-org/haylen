@@ -233,7 +233,7 @@ class Renderer final {
     void pushClip(const math::Rect& rect);
     void popClip();
 
-    // Draws what follows until `endGroup` into an image of the open canvas, which then draws as one with the opacity and the draw order of the options, so overlapping parts fade together. A group sorts its draws among themselves like a canvas of its own and composites with premultiplied alpha, unlit and without post-processing of its own, and a canvas that ends closes the groups and masks it has open.
+    // Draws what follows until `endGroup` into an image of the open canvas, which then draws as one with the opacity and the draw order of the options, so overlapping parts fade together. A group sorts its draws among themselves like a canvas of its own and composites with the blend of its order, unlit and without post-processing of its own, a blend that mixes with what lies below reads a copy of what its canvas drew before it, and a canvas that ends closes the groups and masks it has open.
     void beginGroup(const GroupOptions& options);
     void endGroup();
 

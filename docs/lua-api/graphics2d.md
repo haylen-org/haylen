@@ -70,8 +70,13 @@ Visibility bits hide draws from some canvases: draw the world once for the main 
 | `'screen'` | Inverse multiply, which lightens. |
 | `'premultiplied'` | Transparency for colors already multiplied by their alpha. |
 | `'opaque'` | No blending, the draw replaces what is below. |
+| `'overlay'` | Multiplies the dark colors below and screens the light ones, which raises the contrast. |
+| `'darken'`, `'lighten'` | Keeps the darker or the lighter of the two colors, channel by channel. |
+| `'colorDodge'`, `'colorBurn'` | Brightens what is below toward the color, or darkens it toward the color. |
+| `'hardLight'`, `'softLight'` | Multiplies or screens by the color itself, harshly or softly, like a spotlight or a diffused light. |
+| `'difference'`, `'exclusion'` | Subtracts the darker color from the lighter one, or does it with less contrast. |
 
-Every mode but `'premultiplied'` takes straight colors, the way images and colors are usually made, so a partly transparent multiply or screen draw weakens its effect in proportion to its alpha.
+Every mode but `'premultiplied'` takes straight colors, the way images and colors are usually made, so a partly transparent multiply or screen draw weakens its effect in proportion to its alpha. The modes from `'overlay'` on mix each color with the color below it, which the blending of the GPU cannot reach, so only [groups](#graphics2dbegingroupoptions-and-graphics2dendgroup) take them, and any other draw with one raises `The blend mode "overlay" mixes with what lies below, which only groups do. Draw inside "beginGroup" with that blend instead.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -986,7 +991,7 @@ scene.push({
 
 ### graphics2d.beginGroup(options) and graphics2d.endGroup()
 
-Draws everything between the two calls into an image of the active canvas, which then draws as one, so overlapping parts of a character, a panel or an effect fade together instead of showing each other through. The group sorts its draws among themselves like a canvas of its own and draws its image with premultiplied alpha at the place its options give among the draws of the canvas, unlit and without post-processing of its own in a canvas that has them. The clips of the canvas apply to the image and not to the draws inside, which start without clips. The argument `options` is optional and also takes the keys of the [draw order](#draw-order) but `material`:
+Draws everything between the two calls into an image of the active canvas, which then draws as one, so overlapping parts of a character, a panel or an effect fade together instead of showing each other through. The group sorts its draws among themselves like a canvas of its own and draws its image at the place its options give among the draws of the canvas, unlit and without post-processing of its own in a canvas that has them. The image composites with the `blend` of the options, plain transparency by default. A blend from `'overlay'` on mixes the image with what the canvas drew below the group, as a layer of a drawing program does: the canvas renders offscreen and reads a copy of its image for each such group, which a canvas with ambient light cannot do and raises `A group that blends with what lies below draws in a canvas without ambient light.` A group with `'opaque'` replaces everything below it with its image, transparent parts included. The clips of the canvas apply to the image and not to the draws inside, which start without clips. The argument `options` is optional and also takes the keys of the [draw order](#draw-order) but `material`:
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |

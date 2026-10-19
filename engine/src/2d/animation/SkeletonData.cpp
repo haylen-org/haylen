@@ -147,6 +147,9 @@ class SkeletonData::Reader final {
                 if (!found) {
                     throw std::invalid_argument("The slot \"" + name + "\" has the unknown blend mode \"" + blend + "\".");
                 }
+                if (graphics::BlendMode::readsBackdrop(*found)) {
+                    throw std::invalid_argument("The slot \"" + name + "\" has the blend mode \"" + blend + "\", which mixes with what lies below and blends groups alone.");
+                }
                 parsed.blend = *found;
             }
             data.slots.push_back(std::move(parsed));

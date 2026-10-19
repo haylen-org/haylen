@@ -687,7 +687,7 @@ A `.skeleton` file is JSON in pixels and degrees, with y growing downward, and e
 | --- | --- |
 | `atlas` | The path of the [sprite atlas](#loading-sprite-atlases) whose frames the attachments show, relative to the file. |
 | `bones` | A list of bones, parents before their children, each with `name`, `parent` (every bone but the first, the root), `x`, `y`, `rotation`, `scaleX`, `scaleY` and `length`, which inverse kinematics reads. |
-| `slots` | A list of slots in draw order, each with `name`, `bone`, `attachment` (the name it starts with), `color` and `blend`. |
+| `slots` | A list of slots in draw order, each with `name`, `bone`, `attachment` (the name it starts with), `color` and `blend`, one of the blend modes of [draws](graphics2d.md#draw-order) up to `opaque`, since the modes that mix with what lies below blend groups alone. |
 | `skins` | Skins by name, each mapping slot names to attachments by name. The skin `default` always exists, and another skin falls back to it. An attachment has `type` (`'region'`, the default, `'mesh'`, `'point'` or `'boundingBox'`), `frame` (the frame of the atlas, the name of the attachment by default), `x`, `y`, `rotation`, `scaleX`, `scaleY`, `width`, `height` and `color`. A mesh has `uvs` from 0 to 1 over its frame, `triangles`, and `vertices` in the space of its bone or `weights`, a list for each vertex of `{bone, x, y, weight}`. |
 | `ik` | Inverse kinematics constraints, each with `name`, `bones` (one bone, or a bone and its child), `target`, `bendPositive` and `mix`. |
 | `transform` | Transform constraints, each with `name`, `bones`, `target`, `rotateMix`, `translateMix`, `rotation`, `x` and `y`. |

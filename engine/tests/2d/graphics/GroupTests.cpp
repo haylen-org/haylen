@@ -131,6 +131,49 @@ TEST_F(GroupTest, RejectsCallsThatMatchNothing) {
     EXPECT_EQ(errors[6], errors[1]);
 }
 
+TEST_F(GroupTest, BlendsAGroupWithACopyOfWhatLiesBelowIt) {
+    // clang-format off
+    const Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(camera);
+        renderer.drawRect({0.0F, 0.0F, 80.0F, 80.0F}, math::Color::white());
+        renderer.beginGroup({.order = {.layer = 1, .blend = graphics::BlendMode::Type::Overlay}});
+        renderer.drawRect({20.0F, 20.0F, 80.0F, 80.0F}, math::Color(0.2F, 0.4F, 0.8F, 1.0F));
+        renderer.endGroup();
+        renderer.drawRect({60.0F, 60.0F, 20.0F, 20.0F}, math::Color::white(), {.layer = 2});
+    });
+    // clang-format on
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+    // The group renders, the canvas draws offscreen up to the group, copies what it drew, goes on in a pass that keeps it and reaches the screen.
+    EXPECT_EQ(stats.passes, 5U);
+}
+
+TEST_F(GroupTest, KeepsTheModesThatReadWhatLiesBelowForGroups) {
+    std::vector<std::string> errors;
+    // clang-format off
+    test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        Renderer& renderer = engine.getRenderer2D();
+        const auto expect = [&errors](const std::function<void()>& call) {
+            try {
+                call();
+                errors.emplace_back();
+            } catch (const std::exception& error) {
+                errors.emplace_back(error.what());
+            }
+        };
+        renderer.beginWorld(camera, {.ambientLight = math::Color(0.5F, 0.5F, 0.5F, 1.0F)});
+        expect([&renderer] { renderer.drawRect({0.0F, 0.0F, 8.0F, 8.0F}, math::Color::white(), {.blend = graphics::BlendMode::Type::Difference}); });
+        renderer.beginGroup({.order = {.blend = graphics::BlendMode::Type::SoftLight}});
+        renderer.drawRect({0.0F, 0.0F, 8.0F, 8.0F}, math::Color::white());
+        expect([&renderer] { renderer.endGroup(); });
+    });
+    // clang-format on
+    ASSERT_EQ(errors.size(), 2U);
+    EXPECT_EQ(errors[0], "The blend mode \"difference\" mixes with what lies below, which only groups do. Draw inside \"beginGroup\" with that blend instead.");
+    EXPECT_EQ(errors[1], "A group that blends with what lies below draws in a canvas without ambient light.");
+}
+
 TEST_F(GroupTest, DrawsTheSameGroupsEveryFrameWithoutAllocating) {
     // clang-format off
     fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
@@ -145,6 +188,12 @@ TEST_F(GroupTest, DrawsTheSameGroupsEveryFrameWithoutAllocating) {
         renderer.endGroup();
         renderer.popMask();
         renderer.popClip();
+        renderer.beginGroup({.order = {.blend = graphics::BlendMode::Type::Multiply}});
+        renderer.drawRect({10.0F, 10.0F, 50.0F, 50.0F}, math::Color::white());
+        renderer.endGroup();
+        renderer.beginGroup({.order = {.blend = graphics::BlendMode::Type::ColorBurn}});
+        renderer.drawRect({10.0F, 10.0F, 50.0F, 50.0F}, math::Color::white());
+        renderer.endGroup();
     }));
     // clang-format on
     fixture.frames(3);

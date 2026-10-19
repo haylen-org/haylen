@@ -159,8 +159,12 @@ vec4 read_source(vec2 point) {
     return texture(sampler2D(source_texture, filter_sampler), settings.z > 0.5 ? vec2(point.x, 1.0 - point.y) : point);
 }
 
-// Settings: x is 0 to shrink the image to half its size, keeping only what passes the threshold in y when y is not negative, or 1 to blur it along `offset.xy`, and z flips rows. A shrink averages the four texels around each point, half a texel away in `offset.zw`, and a blur weighs nine taps of a Gaussian curve.
+// Settings: x is 0 to shrink the image to half its size, keeping only what passes the threshold in y when y is not negative, 1 to blur it along `offset.xy` or 2 to copy it, and z flips rows. A shrink averages the four texels around each point, half a texel away in `offset.zw`, and a blur weighs nine taps of a Gaussian curve.
 void main() {
+    if (settings.x > 1.5) {
+        frag_color = read_source(uv);
+        return;
+    }
     if (settings.x < 0.5) {
         vec2 texel = offset.zw;
         vec4 sum = read_source(uv + vec2(-texel.x, -texel.y)) + read_source(uv + vec2(texel.x, -texel.y)) + read_source(uv + vec2(-texel.x, texel.y)) + read_source(uv + texel);

@@ -764,6 +764,7 @@ haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/shape.glsl" MODULE sha
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/shape.glsl" MODULE shape_lit DEFINES HAYLEN_SHAPE HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/blend.glsl" MODULE blend)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/blend.glsl" MODULE blend_lit DEFINES HAYLEN_LIT)
+haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/backdrop.glsl" MODULE backdrop)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/metaball.glsl" MODULE metaball)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/metaball.glsl" MODULE metaball_lit DEFINES HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/recolor.glsl" MODULE recolor)

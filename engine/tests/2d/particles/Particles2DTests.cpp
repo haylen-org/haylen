@@ -786,6 +786,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
         {"content/effects/negative.particles", R"({"texture": "../images/spark.png", "bursts": [{"time": 0, "count": -1}]})"},
         {"content/effects/unbounded.particles", R"({"texture": "../images/spark.png", "maxParticles": -1})"},
         {"content/effects/mode.particles", R"({"texture": "../images/spark.png", "boundsMode": "bounce"})"},
+        {"content/effects/overlay.particles", R"({"texture": "../images/spark.png", "blend": "overlay"})"},
         {"content/effects/curve.particles", R"({"texture": "../images/spark.png", "sizeCurve": "wobble"})"},
         {"content/effects/nested-key.particles", R"({"texture": "../images/spark.png", "turbulence": {"strenght": 3}})"},
         {"content/effects/textureless.particles", R"({"rate": 3})"},
@@ -876,6 +877,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(failure("effects/negative.particles"), "The particle effect value \"count\" needs an integer of at least 0.");
     EXPECT_EQ(failure("effects/unbounded.particles"), "The particle effect value \"maxParticles\" needs an integer of at least 0.");
     EXPECT_EQ(failure("effects/mode.particles"), "The particle effect value \"boundsMode\" must be \"kill\" or \"wrap\", not \"bounce\".");
+    EXPECT_EQ(failure("effects/overlay.particles"), "The particle effect value \"blend\" must be \"alpha\", \"additive\", \"multiply\", \"screen\", \"premultiplied\" or \"opaque\", not \"overlay\".");
     EXPECT_EQ(failure("effects/curve.particles"), "The particle effect value \"sizeCurve\" names the unknown curve \"wobble\".");
     EXPECT_EQ(failure("effects/nested-key.particles"), "The particle effect value \"turbulence\" has the unknown option \"strenght\".");
     EXPECT_EQ(failure("effects/textureless.particles"), "The particle effect \"effects/textureless.particles\" needs a texture.");

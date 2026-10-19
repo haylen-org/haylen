@@ -2,7 +2,7 @@
 
 namespace haylen::graphics {
 
-const std::array<std::string_view, 6> BlendMode::kNames = {"alpha", "additive", "multiply", "screen", "premultiplied", "opaque"};
+const std::array<std::string_view, 15> BlendMode::kNames = {"alpha", "additive", "multiply", "screen", "premultiplied", "opaque", "overlay", "darken", "lighten", "colorDodge", "colorBurn", "hardLight", "softLight", "difference", "exclusion"};
 
 std::optional<BlendMode::Type> BlendMode::parse(std::string_view text) noexcept {
     for (std::size_t index = 0; index < kNames.size(); ++index) {

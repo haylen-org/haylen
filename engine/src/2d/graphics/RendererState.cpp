@@ -16,6 +16,7 @@
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "shaders/backdrop.glsl.h"
 #include "shaders/batch.glsl.h"
 #include "shaders/batch_lit.glsl.h"
 #include "shaders/blend.glsl.h"
@@ -42,8 +43,8 @@ namespace haylen::graphics2d {
 debug::ObjectCounter& RendererState::bufferCounter = *new debug::ObjectCounter("RendererBuffers", debug::ObjectCounter::Kind::Native);
 
 std::uint64_t RendererState::submissions = 0;
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc, batch_sprite_shader_desc};
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc, batch_lit_sprite_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc, batch_sprite_shader_desc, backdrop_backdrop_shader_desc};
+const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc, batch_lit_sprite_shader_desc, nullptr};
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
@@ -299,8 +300,14 @@ void RendererState::requireReadable(const graphics::TextureResource* texture) {
 
 DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY, std::span<const graphics::Texture> textures) {
     Canvas& current = getCanvas();
-    if (order.material.isValid() && (program == Program::ImageBlend || program == Program::Metaball)) {
+    if (order.material.isValid() && (program == Program::ImageBlend || program == Program::Backdrop || program == Program::Metaball)) {
         throw std::invalid_argument("Image blends and metaballs do not take a material.");
+    }
+    if (graphics::BlendMode::readsBackdrop(order.blend) && program != Program::Backdrop) {
+        throw std::invalid_argument(std::format("The blend mode \"{}\" mixes with what lies below, which only groups do. Draw inside \"beginGroup\" with that blend instead.", graphics::BlendMode::name(order.blend)));
+    }
+    if (program == Program::Backdrop && current.isLit()) {
+        throw std::invalid_argument("A group that blends with what lies below draws in a canvas without ambient light.");
     }
     if (order.material.isValid() && program == Program::Recolor) {
         throw std::invalid_argument("A draw with a part mask does not take a material.");
@@ -345,6 +352,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         .distortion = distorts,
     };
     current.distorted = current.distorted || distorts;
+    current.backdrop = current.backdrop || program == Program::Backdrop;
     items.push_back(item);
     return items.back();
 }
@@ -429,7 +437,17 @@ sg_blend_state RendererState::blendState(graphics::BlendMode::Type mode) noexcep
         return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_COLOR, .src_factor_alpha = SG_BLENDFACTOR_ONE, .dst_factor_alpha = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
     case Mode::Premultiplied:
         return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, .src_factor_alpha = SG_BLENDFACTOR_ONE, .dst_factor_alpha = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
+    // The modes that mix with what lies below replace the pixels with what the backdrop program computed.
     case Mode::Opaque:
+    case Mode::Overlay:
+    case Mode::Darken:
+    case Mode::Lighten:
+    case Mode::ColorDodge:
+    case Mode::ColorBurn:
+    case Mode::HardLight:
+    case Mode::SoftLight:
+    case Mode::Difference:
+    case Mode::Exclusion:
         return {};
     }
     return {};
@@ -464,6 +482,7 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
         desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLES;
         return;
     case Program::ImageBlend:
+    case Program::Backdrop:
     case Program::Metaball:
         // Each of these draws one quad whose corner is the only attribute.
         desc.layout.buffers[0].stride = 8;
@@ -714,6 +733,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::Batch:
         return lit ? "batch_lit" : "batch";
     case Program::ImageBlend:
+    case Program::Backdrop:
     case Program::Composite:
     case Program::Light:
     case Program::Metaball:

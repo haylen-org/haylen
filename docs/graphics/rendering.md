@@ -124,7 +124,7 @@ scene.push({
 })
 ```
 
-The blend modes are `alpha` (the default), `additive`, `multiply`, `screen`, `premultiplied` and `opaque`, and the [reference](../lua-api/graphics2d.md#draw-order) describes each one. Draws write straight colors, which the shaders multiply by their alpha for `multiply` and `screen`, because those blends need premultiplied colors, so a partly transparent multiply or screen draw weakens its effect instead of brightening what is below. Offscreen images and the clear colors of their passes hold premultiplied colors.
+The blend modes are `alpha` (the default), `additive`, `multiply`, `screen`, `premultiplied` and `opaque`, which the blending of the GPU draws, and `overlay`, `darken`, `lighten`, `colorDodge`, `colorBurn`, `hardLight`, `softLight`, `difference` and `exclusion`, which mix each color with the color below it and so blend groups alone, and the [reference](../lua-api/graphics2d.md#draw-order) describes each one. A canvas with such a group renders offscreen: it stops its pass where the group lies among its draws, copies the image it drew so far, goes on in a pass that keeps that image, and draws the image of the group with a shader that reads the copy, so each such group costs a copy of the canvas and two passes. Draws write straight colors, which the shaders multiply by their alpha for `multiply` and `screen`, because those blends need premultiplied colors, so a partly transparent multiply or screen draw weakens its effect instead of brightening what is below. Offscreen images and the clear colors of their passes hold premultiplied colors.
 
 ## Batching
 

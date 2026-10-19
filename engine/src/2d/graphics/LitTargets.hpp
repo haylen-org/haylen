@@ -14,6 +14,7 @@ struct LitTargets {
     graphics::RenderTarget info;
     graphics::RenderTarget light;
     graphics::RenderTarget distortion;
+    graphics::RenderTarget backdrop;
     std::array<graphics::RenderTarget, 2> post;
     std::array<graphics::RenderTarget, 2> bloom;
     std::array<graphics::RenderTarget, 2> blur;

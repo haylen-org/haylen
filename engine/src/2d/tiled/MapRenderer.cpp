@@ -533,23 +533,35 @@ void MapRenderer::drawTree(graphics2d::Renderer& renderer, const Layer& layer, c
         return;
     }
 
+    // A layer whose blend mixes with what lies below draws into a group that composites with that blend over what the layers under it drew.
+    const bool grouped = graphics::BlendMode::readsBackdrop(layer.blend);
     DrawOptions blended = options;
-    blended.order.blend = layer.blend;
+    blended.order.blend = grouped ? graphics::BlendMode::Type::Alpha : layer.blend;
+    if (grouped) {
+        graphics2d::DrawOrder order = options.order;
+        order.blend = layer.blend;
+        renderer.beginGroup({.order = order});
+    }
+
     switch (layer.kind) {
     case Layer::Kind::Tile:
         drawTiles(renderer, layer, state, view, blended);
-        return;
+        break;
     case Layer::Kind::Object:
         drawObjects(renderer, layer, state, view, blended);
-        return;
+        break;
     case Layer::Kind::Image:
         drawImage(renderer, layer, state, view, blended.order);
-        return;
+        break;
     case Layer::Kind::Group:
         for (const Layer& child : layer.layers) {
             drawTree(renderer, child, state, view, options);
         }
-        return;
+        break;
+    }
+
+    if (grouped) {
+        renderer.endGroup();
     }
 }
 

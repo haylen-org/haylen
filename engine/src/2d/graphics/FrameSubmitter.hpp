@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -88,13 +89,14 @@ class FrameSubmitter final {
     // Draws the finished image of a composited canvas into the pass: the composite, or the last post-processing material over the image before it.
     void drawFinal(const Canvas& canvas, graphics::PassTarget pass);
     // The clear colors of color images are premultiplied by their alpha, like everything drawn into them.
-    void beginOffscreenPass(const graphics::RenderTarget& renderTarget, math::Color clear);
+    void beginOffscreenPass(const graphics::RenderTarget& renderTarget, std::optional<math::Color> clear);
     void beginLitPass(const LitTargets& targets, math::Color clear);
     void endPass();
     void composite(const Canvas& canvas, graphics::PassTarget pass, Stage stage);
 
     // Draws the source into the target with the filter program, which shrinks it to half its size, keeping what passes the threshold when it is not negative, or blurs it along the step in texels of the source.
     void filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step);
+    void copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination);
 
     // Blurs the image of a stage at half its size over the radius in units of the canvas, into the first of the pair of targets.
     void blurInto(const Canvas& canvas, const graphics::RenderTarget& image, const std::array<graphics::RenderTarget, 2>& pair, float threshold, float radius);
@@ -103,6 +105,7 @@ class FrameSubmitter final {
     void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);
     void drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect);
     void drawImageBlend(const Command& command, const Matrix& matrix);
+    void drawBackdrop(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect);
     void drawMetaball(const Command& command, const Matrix& matrix);
     void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
 

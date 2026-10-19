@@ -526,6 +526,21 @@ TEST_F(Graphics2DLuaTest, DrawsGroupsAndMasks) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() end, {mode = 'around'})").find("around"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(5)").find("function expected"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushMask(function() error('Shape failed.') end)").find("Shape failed."), std::string::npos);
+
+    // Groups take every blend mode, and the modes that mix with what lies below take a group.
+    // clang-format off
+    EXPECT_EQ(render(R"(
+        graphics2d.beginScreen()
+        graphics2d.drawRect({0, 0, 40, 40}, '#FF808080')
+        for _, blend in ipairs({'additive', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'colorDodge', 'colorBurn', 'hardLight', 'softLight', 'difference', 'exclusion'}) do
+            graphics2d.beginGroup({blend = blend, opacity = 0.8})
+            graphics2d.drawRect({10, 10, 40, 40}, '#FF3080F0')
+            graphics2d.endGroup()
+        end
+    )"), "nil");
+    // clang-format on
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRect({0, 0, 4, 4}, '#FFFFFFFF', {blend = 'difference'})").find("The blend mode \"difference\" mixes with what lies below, which only groups do. Draw inside \"beginGroup\" with that blend instead."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRect({0, 0, 4, 4}, '#FFFFFFFF', {blend = 'dodge'})").find("dodge"), std::string::npos);
 }
 
 TEST_F(Graphics2DLuaTest, DirectsCamerasThroughZonesAndRailsAndScrollsPixelCanvases) {

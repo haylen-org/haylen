@@ -63,7 +63,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 12;
+    static constexpr std::size_t kProgramCount = 13;
 
     // The submissions numbered so far on the frame thread, where one engine runs at a time.
     static std::uint64_t submissions;

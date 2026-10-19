@@ -16,6 +16,7 @@
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "shaders/backdrop.glsl.h"
 #include "shaders/batch.glsl.h"
 #include "shaders/batch_lit.glsl.h"
 #include "shaders/blend.glsl.h"
@@ -135,6 +136,9 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, co
     }
     if (canvas.distorted && !targets.distortion.isValid()) {
         targets.distortion = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
+    }
+    if (canvas.backdrop && !targets.backdrop.isValid()) {
+        targets.backdrop = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
     }
 
     // Bloom and blur work at half the size, which their filters read with linear filtering.
@@ -286,7 +290,7 @@ void FrameSubmitter::append(const DrawItem& item) {
         command.first = static_cast<std::uint32_t>(state.uploadIndices.size());
         const auto first = state.indices.begin() + static_cast<std::ptrdiff_t>(item.first);
         state.uploadIndices.insert(state.uploadIndices.end(), first, first + static_cast<std::ptrdiff_t>(item.count));
-    } else if (item.program == Program::ImageBlend || item.program == Program::Metaball) {
+    } else if (item.program == Program::ImageBlend || item.program == Program::Backdrop || item.program == Program::Metaball) {
         command.first = item.first;
     } else if (item.batch == nullptr) {
         command.first = static_cast<std::uint32_t>(instanceCursor);
@@ -299,7 +303,7 @@ void FrameSubmitter::append(const DrawItem& item) {
         Command& previous = state.commands.back();
         const bool sameShade = previous.shade == command.shade || state.shades[previous.shade].matches(state.shades[command.shade]);
         const bool sameState = previous.program == command.program && previous.blend == command.blend && previous.clip == command.clip && sameShade && previous.texture == command.texture;
-        const bool single = command.program == Program::ImageBlend || command.program == Program::Metaball;
+        const bool single = command.program == Program::ImageBlend || command.program == Program::Backdrop || command.program == Program::Metaball;
         const bool mergeable = !single && previous.batch == nullptr && command.batch == nullptr && previous.first + previous.count == command.first;
         if (sameState && mergeable) {
             previous.count += command.count;
@@ -597,10 +601,13 @@ void FrameSubmitter::drawFinal(const Canvas& canvas, graphics::PassTarget pass) 
     drawPostMaterial(canvas.postShade + canvas.options.postProcess->materials.size() - 1, targets.post[canvas.postImage].getTexture(), pass);
 }
 
-void FrameSubmitter::beginOffscreenPass(const graphics::RenderTarget& renderTarget, math::Color clear) {
+// A pass without a clear color keeps what the target holds, such as a canvas that goes on after a group read what lies below it.
+void FrameSubmitter::beginOffscreenPass(const graphics::RenderTarget& renderTarget, std::optional<math::Color> clear) {
     sg_pass pass{};
-    pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
-    pass.action.colors[0].clear_value = {clear.r, clear.g, clear.b, clear.a};
+    pass.action.colors[0].load_action = clear ? SG_LOADACTION_CLEAR : SG_LOADACTION_LOAD;
+    if (clear) {
+        pass.action.colors[0].clear_value = {clear->r, clear->g, clear->b, clear->a};
+    }
     pass.attachments.colors[0] = renderTarget.getResource()->attachment;
     pass.label = "haylen-offscreen-pass";
     sg_begin_pass(&pass);
@@ -691,6 +698,20 @@ void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics
     endPass();
 }
 
+void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination) {
+    beginOffscreenPass(destination, math::Color::transparent());
+    sg_apply_pipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
+    sg_bindings bindings{};
+    bindings.views[VIEW_composite_source_texture] = source.getTexture().getResource()->view;
+    bindings.samplers[SMP_composite_filter_sampler] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Nearest});
+    sg_apply_bindings(&bindings);
+    const composite_filter_fs_params_t params{.settings = {2.0F, 0.0F, sg_query_features().origin_top_left ? 0.0F : 1.0F, 0.0F}, .offset = {}};
+    sg_apply_uniforms(UB_composite_filter_fs_params, SG_RANGE(params));
+    sg_draw(0, 3, 1);
+    ++state.stats.drawCalls;
+    endPass();
+}
+
 // Nine taps of the blur span four steps on each side, so the steps of a radius are a quarter of it in texels of the half-size image.
 void FrameSubmitter::blurInto(const Canvas& canvas, const graphics::RenderTarget& image, const std::array<graphics::RenderTarget, 2>& pair, float threshold, float radius) {
     filter(image, pair[0], threshold, {});
@@ -745,6 +766,12 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
     for (std::size_t index = begin; index < end; ++index) {
         const Command& command = state.commands[index];
         const Shade& shade = state.shades[command.shade];
+        if (command.program == Program::Backdrop) {
+            drawBackdrop(canvas, command, matrix, passRect);
+            currentPipeline = {};
+            currentClip.reset();
+            continue;
+        }
         if (command.program == Program::ImageBlend || command.program == Program::Metaball) {
             // These apply their own pipeline, uniforms and clip, so the next command applies them again.
             sg_apply_pipeline(state.getPipeline(command.program, static_cast<std::uint8_t>(command.blend), pass));
@@ -856,9 +883,49 @@ void FrameSubmitter::drawImageBlend(const Command& command, const Matrix& matrix
         .shape = {blend.center.x, blend.center.y, blend.cellSize, blend.blockSize},
         .color = {blend.color.r, blend.color.g, blend.color.b, blend.color.a},
         .image = {static_cast<float>(from.width), static_cast<float>(from.height), columns > 0.0F ? rows / columns : 1.0F, flips},
-        .fade = {draw.opacity, 0.0F, 0.0F, 0.0F},
+        .fade = {draw.opacity, draw.straighten ? 1.0F : 0.0F, 0.0F, 0.0F},
     };
     sg_apply_uniforms(UB_blend_blend_fs_params, SG_RANGE(fragment));
+    sg_draw(0, 4, 1);
+    ++state.stats.drawCalls;
+}
+
+// The canvas stops its pass, copies the image it drew so far and goes on with a pass that keeps it, where the image of the group blends with the copy and replaces the pixels it covers. Only the scene of a canvas without lights holds such a group.
+void FrameSubmitter::drawBackdrop(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect) {
+    const LitTargets& targets = state.litTargets[canvas.litIndex];
+    endPass();
+    copy(targets.scene, targets.backdrop);
+    beginOffscreenPass(targets.scene, std::nullopt);
+    sg_apply_viewportf(passRect.x, passRect.y, passRect.width, passRect.height, true);
+    sg_apply_pipeline(state.getPipeline(Program::Backdrop, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
+    applyClip(canvas, command.clip, passRect);
+
+    const BlendDraw& draw = state.blends[command.first];
+    const graphics::TextureResource& image = *draw.blend.from.getResource();
+    const graphics::TextureResource& mask = *draw.blend.to.getResource();
+    sg_bindings bindings{};
+    bindings.vertex_buffers[0] = state.quad;
+    bindings.views[VIEW_backdrop_image_texture] = image.view;
+    bindings.views[VIEW_backdrop_mask_texture] = mask.view;
+    bindings.views[VIEW_backdrop_backdrop_texture] = targets.backdrop.getTexture().getResource()->view;
+    bindings.samplers[SMP_backdrop_backdrop_sampler] = image.sampler;
+    sg_apply_bindings(&bindings);
+
+    backdrop_backdrop_vs_params_t vertex{};
+    std::copy(matrix.begin(), matrix.end(), vertex.view_projection);
+    vertex.placement[0] = draw.origin.x;
+    vertex.placement[1] = draw.origin.y;
+    vertex.placement[2] = draw.rows.x;
+    vertex.placement[3] = draw.rows.y;
+    vertex.columns[0] = draw.columns.x;
+    vertex.columns[1] = draw.columns.y;
+    sg_apply_uniforms(UB_backdrop_backdrop_vs_params, SG_RANGE(vertex));
+    const float mode = static_cast<float>(static_cast<int>(command.blend) - static_cast<int>(graphics::BlendMode::Type::Overlay));
+    const backdrop_backdrop_fs_params_t fragment{
+        .settings = {mode, draw.blend.progress, draw.blend.reversed ? 1.0F : 0.0F, draw.opacity},
+        .flips = {image.flipped ? 1.0F : 0.0F, mask.flipped ? 1.0F : 0.0F, 0.0F, 0.0F},
+    };
+    sg_apply_uniforms(UB_backdrop_backdrop_fs_params, SG_RANGE(fragment));
     sg_draw(0, 4, 1);
     ++state.stats.drawCalls;
 }

@@ -503,13 +503,18 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
     folded["skewy"] = 16;
     EXPECT_THROW((void)tiled::Map::parse(folded, "maps/folded.tmj", reader()), std::invalid_argument);
 
-    core::Json overlay = orthogonalMap();
-    overlay["layers"][6]["layers"][0]["mode"] = "overlay";
+    // The modes that mix with what lies below read as they are, and a mode Tiled does not offer stops the map.
+    core::Json blended = orthogonalMap();
+    for (const auto& [mode, type] : {std::pair{"overlay", graphics::BlendMode::Type::Overlay}, std::pair{"color-dodge", graphics::BlendMode::Type::ColorDodge}, std::pair{"soft-light", graphics::BlendMode::Type::SoftLight}, std::pair{"exclusion", graphics::BlendMode::Type::Exclusion}}) {
+        blended["layers"][6]["layers"][0]["mode"] = mode;
+        EXPECT_EQ(tiled::Map::parse(blended, "maps/blended.tmj", reader()).findLayer("inner")->blend, type) << mode;
+    }
+    blended["layers"][6]["layers"][0]["mode"] = "glow";
     try {
-        (void)tiled::Map::parse(overlay, "maps/overlay.tmj", reader());
-        FAIL() << "The overlay blend mode was accepted.";
+        (void)tiled::Map::parse(blended, "maps/blended.tmj", reader());
+        FAIL() << "The glow blend mode was accepted.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_EQ(std::string(error.what()), "The Tiled layer \"inner\" uses the blend mode \"overlay\", which Haylen cannot draw. Layers can use \"normal\", \"add\", \"multiply\" or \"screen\".");
+        EXPECT_EQ(std::string(error.what()), "The Tiled layer \"inner\" uses the blend mode \"glow\", which Tiled does not offer. Layers can use \"normal\", \"add\", \"multiply\", \"screen\", \"overlay\", \"darken\", \"lighten\", \"color-dodge\", \"color-burn\", \"hard-light\", \"soft-light\", \"difference\" or \"exclusion\".");
     }
 
     // Tiled draws the layers of a group with their own modes, so a group mode would silently change nothing.
@@ -713,6 +718,38 @@ TEST_F(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
     // Eleven ground tiles, two decor tiles, one nested tile, three tile objects and two glyphs with their two lines, with the sky hidden.
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 21U);
+}
+
+TEST_F(MapRendererTest, DrawsALayerThatMixesWithWhatLiesBelowAsAGroup) {
+    std::map<std::string, std::string> files = packageFiles();
+    core::Json oblique = obliqueMap();
+    for (core::Json& layer : oblique["layers"]) {
+        if (layer.value("name", std::string{}) == "decor") {
+            layer["mode"] = "overlay";
+        }
+    }
+    files["content/maps/island.tmj"] = oblique.dump();
+    test::EngineFixture fixture(files);
+    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
+
+    // clang-format off
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+        map.draw(engine.getRenderer2D(), {});
+    }));
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    const graphics2d::Renderer::Stats stats = fixture.engine().getRenderer2D().getStats();
+    EXPECT_EQ(stats.sprites, 21U);
+
+    // The decor renders into a group, the map draws offscreen up to it, copies what it drew below, goes on and reaches the screen.
+    EXPECT_EQ(stats.passes, 5U);
+    for (const core::Json& layer : tiled::MapWriter::write(map.getMap(), "maps/island.tmj")["layers"]) {
+        if (layer.value("name", std::string{}) == "decor") {
+            EXPECT_EQ(layer.value("mode", std::string{}), "overlay");
+        }
+    }
 }
 
 TEST_F(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
