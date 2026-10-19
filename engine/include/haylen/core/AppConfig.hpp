@@ -84,6 +84,7 @@ struct AppConfig {
         };
 
         debug::StatsDisplay::Mode stats = debug::StatsDisplay::Mode::Off;
+        std::vector<debug::StatsDisplay::Item> statsItems = debug::StatsDisplay::getDefaultItems();
         std::vector<std::string> drawings;
         bool objectEvents = false;
         bool console = false;

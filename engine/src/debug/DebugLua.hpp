@@ -26,6 +26,9 @@ class DebugLua final {
 
     static int setStatsMode(lua_State* L);
     static int statsMode(lua_State* L);
+    static int setStatsItem(lua_State* L);
+    static int statsItem(lua_State* L);
+    static int statsItems(lua_State* L);
     static int setToggleKey(lua_State* L);
     static int toggleKey(lua_State* L);
     static int setDrawing(lua_State* L);

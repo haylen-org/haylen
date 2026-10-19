@@ -184,6 +184,18 @@ void OverlayWindow::drawDrawings(plugins::DebugPlugin& plugin) {
     ImGui::NewLine();
 }
 
+// A checkbox for every item of the compact statistics, which the display shows once the overlay closes into compact mode.
+void OverlayWindow::drawItems(StatsDisplay& display) {
+    for (const auto& [name, item] : StatsDisplay::kItemNames) {
+        bool showing = display.isShowing(item);
+        if (ImGui::Checkbox(std::string(name).c_str(), &showing)) {
+            display.setShowing(item, showing);
+        }
+        ImGui::SameLine();
+    }
+    ImGui::NewLine();
+}
+
 std::size_t OverlayWindow::countStale(const std::vector<core::EventBus::Topic>& topics) noexcept {
     return static_cast<std::size_t>(std::ranges::count_if(topics, [](const core::EventBus::Topic& topic) { return topic.stale > 0; }));
 }
@@ -268,6 +280,9 @@ bool OverlayWindow::draw(core::Engine& engine, const Stats& stats, const std::ve
     }
     if (ImGui::CollapsingHeader("Drawings", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawDrawings(engine.getPlugin<plugins::DebugPlugin>());
+    }
+    if (ImGui::CollapsingHeader("Compact statistics", ImGuiTreeNodeFlags_DefaultOpen)) {
+        drawItems(engine.getPlugin<plugins::DebugPlugin>().getStatsDisplay());
     }
     if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawRendering(stats.rendering);

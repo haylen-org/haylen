@@ -357,6 +357,45 @@ TEST(StatsTest, StartsWithTheModeOfAppJson) {
     EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"graphs": true}})")), std::invalid_argument);
     EXPECT_EQ(StatsDisplay::modeName(StatsDisplay::Mode::Full), "full");
     EXPECT_EQ(StatsDisplay::modeFromName("off"), StatsDisplay::Mode::Off);
+    EXPECT_EQ(plugin.getStatsDisplay().getItems(), StatsDisplay::getDefaultItems());
+}
+
+// The items of the compact display come from the list of the app, which also writes back.
+TEST(StatsTest, StartsWithTheItemsOfAppJson) {
+    test::EngineFixture picked({{"app.json", R"({"name": "Stats", "debug": {"statsItems": ["physics", "frameRate"]}})"}});
+    StatsDisplay& display = picked.engine().getPlugin<plugins::DebugPlugin>().getStatsDisplay();
+    EXPECT_EQ(display.getItems(), (std::vector{StatsDisplay::Item::FrameRate, StatsDisplay::Item::Physics}));
+    EXPECT_EQ(picked.engine().getConfig().toJson()["debug"]["statsItems"], core::Json::parse(R"(["physics", "frameRate"])"));
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"statsItems": ["fps"]}})")), std::invalid_argument);
+    EXPECT_EQ(StatsDisplay::itemFromName("particles"), StatsDisplay::Item::Particles);
+    EXPECT_EQ(StatsDisplay::itemName(StatsDisplay::Item::DrawCalls), "drawCalls");
+}
+
+// The compact display draws a line for each item it shows, so the player picks how much it covers, and nothing at all without items.
+TEST(StatsTest, DrawsALineForEveryItemItShows) {
+    test::EngineFixture fixture;
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    StatsDisplay& display = plugin.getStatsDisplay();
+    fixture.frames(2);
+    const std::size_t quiet = fixture.engine().getRenderer2D().getStats().instances;
+    plugin.setStatsMode(StatsDisplay::Mode::Compact);
+    fixture.frames(2);
+    const std::size_t standard = fixture.engine().getRenderer2D().getStats().instances;
+
+    for (const auto& [name, item] : StatsDisplay::kItemNames) {
+        display.setShowing(item, true);
+    }
+    fixture.frames(2);
+    EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, standard);
+
+    display.setItems({});
+    fixture.frames(2);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().instances, quiet);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+    fixture.runLua("debugging = require('haylen.debug')");
+    EXPECT_EQ(fixture.lua("debugging.setStatsItem('physics', true) debugging.setStatsItem('audio', true) return table.concat(debugging.statsItems(), ' ') .. ' ' .. tostring(debugging.statsItem('memory'))"), "physics audio false");
+    EXPECT_NE(fixture.lua("debugging.setStatsItem('fps', true)").find("unknown value 'fps'"), std::string::npos);
 }
 
 // The compact display draws with the renderer on top of everything, and the full overlay draws the window with every section open.
@@ -414,6 +453,9 @@ TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
     const core::Connection drawer = plugin.addDrawer("marks", [](graphics2d::Renderer& renderer) { renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white()); });
     plugin.setDrawing("marks", true);
     plugin.setStatsMode(StatsDisplay::Mode::Compact);
+    for (const auto& [name, item] : StatsDisplay::kItemNames) {
+        plugin.getStatsDisplay().setShowing(item, true);
+    }
     EXPECT_EQ(measure(), quiet);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }

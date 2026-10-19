@@ -15,10 +15,10 @@ The engine shows its statistics in one of three modes.
 | Mode | What shows |
 | --- | --- |
 | `'off'` | Nothing. Every app starts this way unless `app.json` picks another mode. |
-| `'compact'` | Three lines in the bottom left corner of the safe area: frames per second and the last frame time, draw calls and vertices, and GPU instances. The 2D renderer draws them above everything else, including scene transitions and the error screen, so they work in every app, with or without UI. The numbers change four times per second, so they stay readable, and the frames between allocate nothing. |
-| `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the budget of the poll of the event loop with whether work ran and what it waits for, the profiler scopes of the last frame, the scenes of the stack from the bottom up with their names, states and process modes and whether the scenes below them keep rendering, a checkbox for every [drawing](#drawings), the rendering statistics, the memory of Lua, textures, render targets, static batches, the buffers of the renderer and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
+| `'compact'` | A line for each [item](#compact-items) it shows in the bottom left corner of the safe area, the frame rate, the draw calls and the geometry unless the app or the player picks others. The 2D renderer draws them above everything else, including scene transitions and the error screen, so they work in every app, with or without UI. The numbers change four times per second, so they stay readable, and the frames between allocate nothing. |
+| `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the budget of the poll of the event loop with whether work ran and what it waits for, the profiler scopes of the last frame, the scenes of the stack from the bottom up with their names, states and process modes and whether the scenes below them keep rendering, a checkbox for every [drawing](#drawings) and for every [item](#compact-items) of the compact mode, the rendering statistics, the memory of Lua, textures, render targets, static batches, the buffers of the renderer and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
 
-F3 cycles through `off`, `compact` and `full`, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../core/lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
+F3 cycles through `off`, `compact` and `full`, so it opens the overlay as the panel where the player ticks what the drawings and the compact mode show, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../core/lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
 
 ## Drawings
 
@@ -140,6 +140,36 @@ scene.push({
         end
     end,
 })
+```
+
+### Compact items
+
+The compact mode shows a line for each item that is on, in this order:
+
+| Item | Line |
+| --- | --- |
+| `'frameRate'` | The frames per second and the time of the last frame. |
+| `'drawCalls'` | The draw calls and render passes. |
+| `'geometry'` | The vertices and GPU instances. |
+| `'memory'` | The memory of Lua and of textures. |
+| `'counters'` | The scenes on the stack, the tweens and the timers. |
+| `'physics'` | The physics bodies and contacts. |
+| `'particles'` | The live particles. |
+| `'audio'` | The voices that play. |
+
+The first three are on unless the `app.json` list `"debug": {"statsItems": ["frameRate", "physics"]}` picks others, and the checkboxes of the overlay and these functions change them while the app runs.
+
+### debug.setStatsItem(item, enabled), debug.statsItem(item), debug.statsItems()
+
+The function `setStatsItem` shows or hides an [item](#compact-items) of the compact mode, `statsItem` returns whether it shows, and `statsItems` returns the names of the items that show, in the order they draw. An unknown name raises an error that ends with `(unknown value '<name>')`.
+
+```lua
+local debug = require('haylen.debug')
+
+debug.setStatsMode('compact')
+debug.setStatsItem('physics', true)
+debug.setStatsItem('geometry', false)
+print(table.concat(debug.statsItems(), ', ')) -- frameRate, drawCalls, physics
 ```
 
 ### debug.setToggleKey(key)

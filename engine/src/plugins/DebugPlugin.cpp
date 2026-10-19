@@ -45,6 +45,7 @@ void DebugPlugin::start(core::Engine& engine) {
     breadcrumbsChanged = true;
     listener = core::Log::addListener([this](core::Log::Level level, std::string_view line) { record(level, line); });
     statsMode = engine.getConfig().debug.stats;
+    statsDisplay.setItems(engine.getConfig().debug.statsItems);
     setObjectEvents(engine.getConfig().debug.objectEvents);
     drawings.insert(engine.getConfig().debug.drawings.begin(), engine.getConfig().debug.drawings.end());
     overlay = engine.getRenderer2D().addCanvasOverlay([this, &engine](graphics2d::Renderer& renderer) { drawOverlay(engine, renderer); });
@@ -511,8 +512,7 @@ void DebugPlugin::renderOverlay(core::Engine& engine) {
     if (statsMode != debug::StatsDisplay::Mode::Compact) {
         return;
     }
-    const debug::Profiler& profiler = engine.getProfiler();
-    statsDisplay.drawCompact(engine, {.fps = profiler.getFramesPerSecond(), .milliseconds = profiler.getLastFrameMilliseconds(), .drawCalls = lastRendering.drawCalls, .vertices = lastRendering.vertices, .instances = lastRendering.instances});
+    statsDisplay.drawCompact(engine, lastRendering);
 }
 
 // The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy, kept in a member like the copy of the drawers, and skips the ones removed meanwhile.

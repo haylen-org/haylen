@@ -395,7 +395,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("debug")) {
         const Json& debugJson = document.at("debug");
-        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(debugJson, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload"}, "the \"debug\" section of \"app.json\"");
         std::string stats;
         readValue(debugJson, "stats", stats);
         if (!stats.empty()) {
@@ -404,6 +404,18 @@ AppConfig AppConfig::fromJson(const Json& document) {
                 throw std::invalid_argument("The \"debug.stats\" value \"" + stats + "\" in \"app.json\" is unknown. It is \"off\", \"compact\" or \"full\".");
             }
             config.debug.stats = *mode;
+        }
+        if (debugJson.contains("statsItems")) {
+            std::vector<std::string> items;
+            readValue(debugJson, "statsItems", items);
+            config.debug.statsItems.clear();
+            for (const std::string& name : items) {
+                const std::optional<debug::StatsDisplay::Item> item = debug::StatsDisplay::itemFromName(name);
+                if (!item) {
+                    throw std::invalid_argument("The \"debug.statsItems\" item \"" + name + "\" in \"app.json\" is unknown. It is \"frameRate\", \"drawCalls\", \"geometry\", \"memory\", \"counters\", \"physics\", \"particles\" or \"audio\".");
+                }
+                config.debug.statsItems.push_back(*item);
+            }
         }
         readValue(debugJson, "drawings", config.debug.drawings);
         if (std::ranges::any_of(config.debug.drawings, [](const std::string& drawing) { return drawing.empty(); })) {
@@ -461,7 +473,11 @@ AppConfig AppConfig::fromJson(const Json& document) {
 }
 
 Json AppConfig::toJson() const {
-    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
+    Json statsItems = Json::array();
+    for (const debug::StatsDisplay::Item item : debug.statsItems) {
+        statsItems.push_back(debug::StatsDisplay::itemName(item));
+    }
+    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"statsItems", statsItems}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }

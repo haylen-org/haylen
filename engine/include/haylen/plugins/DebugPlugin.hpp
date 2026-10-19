@@ -80,6 +80,11 @@ class DebugPlugin final : public Plugin {
     [[nodiscard]] debug::StatsDisplay::Mode getStatsMode() const noexcept {
         return statsMode;
     }
+
+    // The display of the compact statistics, whose items the overlay and the API pick.
+    [[nodiscard]] debug::StatsDisplay& getStatsDisplay() noexcept {
+        return statsDisplay;
+    }
     void setToggleKey(std::optional<input::Key> value) noexcept {
         toggleKey = value;
     }

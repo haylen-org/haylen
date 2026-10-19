@@ -39,6 +39,15 @@ template <> struct EnumNames<debug::StatsDisplay::Mode> {
     }
 };
 
+template <> struct EnumNames<debug::StatsDisplay::Item> {
+    static std::optional<debug::StatsDisplay::Item> fromName(std::string_view name) {
+        return debug::StatsDisplay::itemFromName(name);
+    }
+    static std::string_view name(debug::StatsDisplay::Item value) {
+        return debug::StatsDisplay::itemName(value);
+    }
+};
+
 } // namespace haylen::lua
 
 namespace haylen::debug {
@@ -55,6 +64,22 @@ int DebugLua::setStatsMode(lua_State* L) {
 
 int DebugLua::statsMode(lua_State* L) {
     lua::Stack::push(L, getPlugin(L).getStatsMode());
+    return 1;
+}
+
+// Shows or hides an item of the compact statistics with `setStatsItem(name, enabled)`.
+int DebugLua::setStatsItem(lua_State* L) {
+    getPlugin(L).getStatsDisplay().setShowing(lua::Stack::read<StatsDisplay::Item>(L, 1), lua::Stack::read<bool>(L, 2));
+    return 0;
+}
+
+int DebugLua::statsItem(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).getStatsDisplay().isShowing(lua::Stack::read<StatsDisplay::Item>(L, 1)));
+    return 1;
+}
+
+int DebugLua::statsItems(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).getStatsDisplay().getItems());
     return 1;
 }
 
@@ -432,7 +457,7 @@ int DebugLua::recentLog(lua_State* L) {
 
 int DebugLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
+        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setStatsItem", &lua::Binding::native<&setStatsItem>}, {"statsItem", &lua::Binding::native<&statsItem>}, {"statsItems", &lua::Binding::native<&statsItems>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ConsoleLua::addFunctions(L);
