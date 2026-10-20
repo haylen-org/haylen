@@ -1885,7 +1885,7 @@ Decisões: um rollback é publicado como uma geração nova que aponta para o co
 - [ ] Layout automático para o Google Play com asset packs de instalação quando a release passa do limite do módulo base.
 - [ ] Benchmarks e critérios de desempenho que faltam: leituras em várias threads, Zstd e XChaCha isolados, diff de chunks, instalação de update, bytecode contra fonte, dezenas de milhares de arquivos, carga de módulos, texturas, mapas e JSON, memória de pico e do streaming de música, impacto da finalização assíncrona no quadro, bytes de um update pequeno e a avaliação do cooking de assets.
 - [ ] Testes de interrupção (download do manifesto, verificação, troca do ponteiro ativo, limpeza), teste automático de memória da web, release protegida de app C++ em todas as plataformas e o CI com pacotes protegidos de Android e Apple, smoke de C++ Release e fuzzing.
-- [ ] Documentação: o contexto das subchaves, as diferenças de plataforma e os erros de cada configuração, uma saída real de `content diff` e de um update pequeno, e o que ainda precisa de aparelho físico (Apple TV, Android TV).
+- [x] Documentação: o guia de conteúdo explica por que a hierarquia de chaves para no propósito (os registros são endereçados pelo conteúdo e andam entre shards, patches e o store sem mudar, e o contexto entra no nonce e nos dados autenticados), as diferenças de plataforma e cada mensagem de erro das configurações de `content`, uma saída real de `content diff` de um update pequeno que mantém os shards antigos byte a byte, e as conferências que só um aparelho faz (Apple TV e iPhone esvaziando o cache, Android TV com controle remoto, packs de loja, cota de navegador de celular).
 
 #### AU. Engine primeiro
 

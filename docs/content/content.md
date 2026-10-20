@@ -151,6 +151,8 @@ The content of an app is encrypted under its content key, 32 random bytes of its
 | Subkey of a purpose | BLAKE2b-256 keyed with the content key, over the label of the purpose followed by the key ID. |
 | Purposes | `haylen/hpak/v1/chunk` for records, `haylen/hpak/v1/shard-index` for shard indexes, `haylen/hpak/v1/catalog` for catalogs and `haylen/hpak/v1/nonce` for nonces. |
 
+The hierarchy stops at the purpose on purpose. A record is content-addressed: the same chunk keeps the same stored ID, the same nonce and the same bytes in every shard, patch and segment of the local store that holds it, which is what lets a patch reuse the records of earlier shards, the store keep a record once for every manifest that names it, and a collection move records between segments without decrypting them. A subkey for each shard, package or generation would encrypt the same chunk differently in each of them, so every move would rewrite it and every rebuild would change bytes that nothing changed. The context of a message therefore goes into its nonce and its authenticated data instead: a record binds its codec, profile, sizes and IDs, a shard index binds the header of its shard, and a catalog binds the envelope of its manifest, so no two messages share a nonce and none can move to another context unnoticed. Apps are isolated by their keys, since each app has its own, and the generation of a release lives only in its signed manifest, so a new generation changes no record that stayed the same.
+
 Manifests and shard headers name keys by their IDs, never by their bytes. A `content::KeyRing` holds every key an app can decrypt with and finds them by ID, so content under a new key and installed content under the previous one coexist while keys rotate: each shard is opened with the key its header names, and each catalog with the key its manifest names. A key the ring lacks raises `UnknownKeyId` with the ID. The private signing key exists only where content is published, and an app carries only the verifying keys it trusts, each named by its ID, the BLAKE2b-256 digest of the label `haylen/hpak/v1/signing-key-id` followed by the public key.
 
 ### Keys in the app
@@ -447,6 +449,21 @@ Every asset of an app is `required` unless the `content` section of `app.json` s
 | `delivery` | None, so every asset is required. | Rules of a `match` pattern of paths relative to `content/`, where `**` stands for any folders, `*` for any name inside a folder and `?` for one character, and either a `mode` or a `pack`. The first rule that matches an asset decides its delivery or its pack, and an asset that no rule matches is required. Haylen cannot know which content an app needs only in some places, so the app says it. |
 | `delivery[].pack` | None, so the asset belongs to no pack. | The name of a pack that a store delivers on its own, such as an expansion that a desktop store installs on its own, with at most 64 lowercase letters, digits, dashes and dots. A pack never holds back the start of the app, never downloads in the background and never comes with an update: its assets are on the device once its store installs it. |
 
+The settings mean the same on every platform, and only where the downloaded bytes live differs: a folder of the user on desktops, the caches of the app container on Apple platforms, which tvOS and iOS may empty when the device runs out of room, the files of the app on Android and the private file system of the origin on the web, whose quota the browser sets. An app built for a store keeps its server and its rules, and the packs of a store come from that store instead of the server. A page of a release that has no server still downloads, from the place its release stays on the site, so `updates.baseUrl` matters on the web only for updates.
+
+A setting that is wrong stops the app before any Lua runs, on the error screen, with one of these messages, and the build tools refuse it the same way:
+
+| Problem | Message |
+| --- | --- |
+| A key that the section does not know | `Unknown key "<key>" in the "content" section of "app.json".`, and the same for `content.updates` and for a rule of `content.delivery`. |
+| A server that is not `https` and not this machine, or one without the ending slash | `The "content.updates.baseUrl" in "app.json" must be an "https" address that ends with a slash, such as "https://cdn.example.com/my-game/", or an "http" address of this machine, not "<value>".` |
+| A channel with other characters or longer than 64 | `The "content.updates.channel" in "app.json" must have at most 64 lowercase letters, digits, dashes and dots, not "<value>".` |
+| A `delivery` that is not a list of rules | `The "content.delivery" section of "app.json" must be a list of rules with "match" and a "mode" or a "pack".` |
+| A rule with both or neither of `mode` and `pack` | `A rule of "content.delivery" in "app.json" needs either a "mode" or a "pack", since a store delivers a pack on its own.` |
+| A pattern that is empty, absolute, or leaves `content/` | `A rule of "content.delivery" in "app.json" must match paths relative to the "content" folder, such as "world/asia/**", not "<value>".` |
+| A mode other than the three | `The "mode" of a rule of "content.delivery" in "app.json" must be "required", "prefetch" or "onDemand", not "<value>".` |
+| A pack name with other characters or longer than 64 | `The "pack" of a rule of "content.delivery" in "app.json" must have at most 64 lowercase letters, digits, dashes and dots, not "<value>".` |
+
 | Delivery | When the encrypted bytes reach the device |
 | --- | --- |
 | `required` | Before the app starts. They ship with the app, or the engine downloads them while it shows the [update screen](#the-update-screen). |
@@ -644,6 +661,17 @@ Failures of protected content raise `content::Error` of `haylen/content/Error.hp
 | `CacheCorrupt` | A file of the local store is damaged, such as a record that fails its checks, which the store removes so a download replaces it. |
 | `InsufficientStorage` | The device lacks the room an update needs, which the error names with the room that is free. |
 | `StoreAssetUnavailable` | Content is not on the device and the app names no server to download it from, such as an asset of a [pack](#delivery) that its store did not install. |
+
+## Checks that need devices
+
+The tests of the engine run every part of the content system on the desktop, with a local server and folders that behave like the stores of the platforms, and the releases run on the desktop player, the Linux and Windows apps, the iOS and tvOS simulators, Mac Catalyst, the Android emulator and the browsers. A few behaviors belong to devices and stores that no simulator reproduces, so a project checks them on real hardware before it ships:
+
+| Check | Why it needs a device |
+| --- | --- |
+| A tvOS or iOS device that empties the caches of the app when it runs out of room, and the downloads that follow | Simulators never empty the caches on their own, so the tests remove the files of the store themselves instead. |
+| Android TV with a remote, through the update screen and the downloads | The emulator images of Android TV run the same code as phones, and only a TV checks the remote and the overscan of a real screen. |
+| The packs of a store, such as an asset pack of the App Store or an expansion that a desktop store installs | A store installs them only for an app it distributes, so the tests point the engine at folders that stand in for them. |
+| The quota of a browser on a phone and the eviction of the storage of a site | Desktop browsers rarely evict, and phones decide by the room they have left. |
 
 ## Security
 
