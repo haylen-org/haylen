@@ -1,5 +1,5 @@
 # Builds the protected release of an app package with the content tool and lays out what ships with the app, for haylen_add_app with HAYLEN_PROTECTED_RELEASE.
-# Reads TOOL, PACKAGE, IDENTIFIER, KEYS, PROFILE, BUILD, RELEASE, CACHE, SHIPPED, PACKS, SERVER, BOOT and STAMP. BOOT is empty except for web pages, which download the manifests and the app domain it holds before the app starts and stream the rest of RELEASE.
+# Reads TOOL, PACKAGE, IDENTIFIER, KEYS, PROFILE, BUILD, RELEASE, PREVIOUS, CACHE, SHIPPED, PACKS, SERVER, BOOT and STAMP. PREVIOUS names the folder of the last release that shipped, or is empty. BOOT is empty except for web pages, which download the manifests and the app domain it holds before the app starts and stream the rest of RELEASE.
 
 # The keys of an app are created once on the machine of its developer, while continuous integration receives them and never creates them, since every release of an app needs the same keys.
 if(NOT EXISTS "${KEYS}/keys.json")
@@ -10,11 +10,13 @@ if(NOT EXISTS "${KEYS}/keys.json")
   message(WARNING "Created the keys of the protected releases of \"${IDENTIFIER}\" in \"${KEYS}\". Back up this folder, since every release of the app needs its keys, and give continuous integration a copy through \"HAYLEN_KEYS_DIR\".")
 endif()
 
-# A new release reuses the shards of the one before it, so an unchanged asset keeps its shard byte for byte.
+# A new release reuses the shards of the one before it, the one that shipped when PREVIOUS names it, so an unchanged asset keeps its shard byte for byte.
 set(staging "${RELEASE}.new")
 file(REMOVE_RECURSE "${staging}")
 set(previous)
-if(EXISTS "${RELEASE}/app.hmanifest")
+if(NOT PREVIOUS STREQUAL "")
+  set(previous --previous "${PREVIOUS}")
+elseif(EXISTS "${RELEASE}/app.hmanifest")
   set(previous --previous "${RELEASE}")
 endif()
 execute_process(COMMAND "${TOOL}" build "${PACKAGE}" --keys "${KEYS}" --profile "${PROFILE}" --build "${BUILD}" --output "${staging}" --cache "${CACHE}" ${previous} COMMAND_ERROR_IS_FATAL ANY)

@@ -1343,8 +1343,31 @@ class CppReleaseTest(unittest.TestCase):
     def test_turns_the_protected_release_on_only_for_release(self):
         self.assertEqual(haylen.cpp_release_options(mock.Mock(config="Debug")), ["-DHAYLEN_PROTECTED_RELEASE=OFF"])
         with mock.patch.object(haylen, "content_tool", return_value=Path("/tools/haylen-content")):
-            options = haylen.cpp_release_options(mock.Mock(config="Release", engine_config="Release", jobs=2))
-        self.assertEqual(options, ["-DHAYLEN_PROTECTED_RELEASE=ON", "-DHAYLEN_CONTENT_TOOL=/tools/haylen-content"])
+            options = haylen.cpp_release_options(mock.Mock(config="Release", engine_config="Release", jobs=2, previous_release=None))
+            following = haylen.cpp_release_options(mock.Mock(config="Release", engine_config="Release", jobs=2, previous_release="/shipped/app"))
+        self.assertEqual(options, ["-DHAYLEN_PROTECTED_RELEASE=ON", "-DHAYLEN_CONTENT_TOOL=/tools/haylen-content", "-DHAYLEN_PREVIOUS_RELEASE="])
+        self.assertEqual(following[-1], f"-DHAYLEN_PREVIOUS_RELEASE={Path('/shipped/app').resolve().as_posix()}")
+
+    def test_a_release_follows_the_release_that_shipped_before_the_one_of_the_build_folder(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        app = mock.Mock(folder=scratch / "game", build_folder=scratch / "build", version_code=7, content_server=None, content_packs=[])
+        local = haylen.release_folder(app, "desktop")
+        local.mkdir(parents=True)
+        (local / "app.hmanifest").write_bytes(b"")
+        commands = []
+        def build(command, **_):
+            commands.append(command)
+            Path(command[command.index("--output") + 1]).mkdir(parents=True)
+        patches = [mock.patch.object(haylen, "compile_app_shaders"), mock.patch.object(haylen, "content_tool", return_value=Path("haylen-content")), mock.patch.object(haylen, "ensure_keys", return_value=scratch / "keys"), mock.patch.object(haylen, "run", side_effect=build), mock.patch.object(haylen, "warn_store_size"), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {}))]
+        with contextlib.ExitStack() as stack:
+            for patch in patches:
+                stack.enter_context(patch)
+            haylen.build_release(app, "desktop", "Release", 1, str(scratch / "shipped"))
+            (local / "app.hmanifest").write_bytes(b"")
+            haylen.build_release(app, "desktop", "Release", 1, None)
+        self.assertEqual(commands[0][commands[0].index("--previous") + 1], scratch / "shipped")
+        self.assertEqual(commands[1][commands[1].index("--previous") + 1], local)
 
     def test_names_the_build_that_made_no_release(self):
         with tempfile.TemporaryDirectory() as scratch:

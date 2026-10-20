@@ -44,7 +44,7 @@ class ContentBuilderTest : public ::testing::Test {
         ContentBuilder builder(folder, keys.get(keyId), target);
         if (previous != nullptr) {
             const Catalog catalog = Catalog::parse(previous->catalog, previous->shards.size());
-            builder.reuse(catalog, previous->shards);
+            builder.reuse(catalog, previous->shards, std::vector<bool>(previous->shards.size(), true));
         }
         std::vector<ContentBuilder::Input> inputs;
         for (const auto& [path, bytes] : files) {

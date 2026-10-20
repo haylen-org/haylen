@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "content/crypto/Digest.hpp"
 
@@ -10,6 +11,8 @@ namespace haylen::content {
 // How a manifest names one immutable shard: its ID, the size of its file and the BLAKE2b-256 digest of the whole file, which a download checks before it keeps the file.
 class ShardReference final {
   public:
+    static constexpr std::string_view kExtension = ".hpak";
+
     Digest shardId;
     std::uint64_t fileSize = 0;
     Digest fileDigest;

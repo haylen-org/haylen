@@ -16,14 +16,17 @@ namespace haylen::content {
 
 ContentBuilder::ContentBuilder(std::filesystem::path outputFolder, std::shared_ptr<const ContentKey> contentKey, std::uint64_t shardTarget, std::shared_ptr<const RecordCache> recordCache) : folder(std::move(outputFolder)), key(std::move(contentKey)), target(shardTarget), cache(std::move(recordCache)) {}
 
-void ContentBuilder::reuse(const Catalog& catalog, std::span<const ShardReference> earlier) {
+void ContentBuilder::reuse(const Catalog& catalog, std::span<const ShardReference> earlier, const std::vector<bool>& held) {
     const auto first = static_cast<std::uint32_t>(earlierShards.size());
     for (std::uint64_t index = 0; index < catalog.getChunkCount(); ++index) {
         Catalog::Chunk chunk = catalog.getChunk(index);
-        chunk.shard += first;
-        earlierChunks.try_emplace(chunk.contentId, chunk);
+        if (held[chunk.shard]) {
+            chunk.shard += first;
+            earlierChunks.try_emplace(chunk.contentId, chunk);
+        }
     }
     earlierShards.insert(earlierShards.end(), earlier.begin(), earlier.end());
+    earlierHeld.insert(earlierHeld.end(), held.begin(), held.end());
 }
 
 ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vector<Input> inputs) {
@@ -111,6 +114,10 @@ void ContentBuilder::keepEarlierShards(const std::vector<File>& files) {
 
     std::vector<std::optional<std::uint32_t>> positions(earlierShards.size());
     for (std::size_t shard = 0; shard < earlierShards.size(); ++shard) {
+        if (!earlierHeld[shard]) {
+            ++statistics.missingShards;
+            continue;
+        }
         if (live[shard] == 0 || live[shard] < earlierShards[shard].fileSize - earlierShards[shard].fileSize / 2) {
             ++statistics.droppedShards;
             continue;

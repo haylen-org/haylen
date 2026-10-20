@@ -43,6 +43,7 @@ class ContentBuilder final {
         std::uint64_t reusedChunks = 0;
         std::uint64_t reusedBytes = 0;
         std::uint64_t droppedShards = 0;
+        std::uint64_t missingShards = 0;
     };
 
     struct Result {
@@ -57,8 +58,8 @@ class ContentBuilder final {
     // The cache, when given, holds sealed records of earlier builds under the same key, which save sealing their chunks again.
     ContentBuilder(std::filesystem::path outputFolder, std::shared_ptr<const ContentKey> contentKey, std::uint64_t shardTarget = kDefaultShardTarget, std::shared_ptr<const RecordCache> recordCache = nullptr);
 
-    // Lets the build reference the chunks of an earlier release of the same domain, given its catalog and its shard list.
-    void reuse(const Catalog& catalog, std::span<const ShardReference> earlierShards);
+    // Lets the build reference the chunks of an earlier release of the same domain, given its catalog, its shard list and which of its shards the files at hand hold, since only a shard whose file is there can be kept.
+    void reuse(const Catalog& catalog, std::span<const ShardReference> earlier, const std::vector<bool>& held);
 
     // Throws `std::invalid_argument` for a path given twice.
     [[nodiscard]] Result build(const io::Package& source, std::vector<Input> inputs);
@@ -92,6 +93,7 @@ class ContentBuilder final {
 
     // The chunks of the earlier release by their content IDs, with the position of their shard in the earlier list.
     std::vector<ShardReference> earlierShards;
+    std::vector<bool> earlierHeld;
     std::unordered_map<Digest, Catalog::Chunk, Digest::Hash> earlierChunks;
 
     // The shards of the result, the kept earlier ones first, and the chunks the files may reference with their position in that list.

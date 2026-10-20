@@ -123,6 +123,36 @@ TEST_F(ReleaseBuilderTest, ReleasesOnlyThePackageOfTheApp) {
     }
 }
 
+// A clean build machine follows the release that shipped, such as the files of the depots of a store, where packs keep their shards in folders of their own, and builds again only the content whose shards the folder lacks.
+TEST_F(ReleaseBuilderTest, FollowsAReleaseThatAStoreLaidOutInFoldersOfItsOwn) {
+    const io::MemoryPackage source("source", makeFiles());
+    const ReleaseBuilder::Result first = build(source, "first", "", nullptr, 2 * kMegabyte);
+    ASSERT_GE(first.content.shards.size(), 3U);
+    const std::filesystem::path depot = directory.getPath() / "depot";
+    std::filesystem::create_directories(depot / "app");
+    std::filesystem::create_directories(depot / "packs" / "expansion");
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(directory.getPath() / "first")) {
+        std::filesystem::copy_file(entry.path(), depot / "app" / entry.path().filename());
+    }
+    const ShardReference& packed = first.content.shards.front();
+    const ShardReference& lost = first.content.shards.back();
+    std::filesystem::rename(depot / "app" / packed.getFileName(), depot / "packs" / "expansion" / packed.getFileName());
+    std::filesystem::remove(depot / "app" / lost.getFileName());
+
+    const ReleaseBuilder::Result second = build(source, "second", "depot", nullptr, 2 * kMegabyte);
+    EXPECT_EQ(second.content.statistics.missingShards, 1U);
+    EXPECT_EQ(second.content.keptShards, first.content.shards.size() - 1);
+    EXPECT_NE(std::ranges::find(second.content.shards, packed), second.content.shards.end()) << "The shard in the folder of its pack stays as it was.";
+    EXPECT_GT(second.content.statistics.newChunks, 0U) << "The content of the lost shard is built again.";
+    EXPECT_EQ(open("second")->read("content/world/terrain.bin"), makeFiles().at("content/world/terrain.bin"));
+
+    // A folder that holds two releases, or none, names no release to follow.
+    std::filesystem::copy_file(depot / "app" / ReleasePackage::kAppManifestFile, depot / "packs" / ReleasePackage::kAppManifestFile);
+    EXPECT_THROW((void)build(source, "third", "depot"), std::invalid_argument);
+    std::filesystem::create_directories(directory.getPath() / "empty");
+    EXPECT_THROW((void)build(source, "fourth", "empty"), std::invalid_argument);
+}
+
 TEST_F(ReleaseBuilderTest, BuildsTheSameBytesWithAndWithoutItsCache) {
     const io::MemoryPackage source("source", makeFiles());
     const auto cache = std::make_shared<const RecordCache>(directory.getPath() / "cache");
@@ -197,7 +227,7 @@ TEST_F(ReleaseBuilderTest, StopsOnADamagedEarlierRelease) {
         (void)build(source, "update", "base");
         FAIL() << "A damaged earlier shard must stop the build.";
     } catch (const std::runtime_error& error) {
-        EXPECT_NE(std::string(error.what()).find("damaged or missing shard"), std::string::npos) << error.what();
+        EXPECT_NE(std::string(error.what()).find("damaged shard"), std::string::npos) << error.what();
     }
 }
 
@@ -205,9 +235,9 @@ TEST_F(ReleaseBuilderTest, RefusesEarlierReleasesItCannotReuse) {
     const Files small{{"app.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})")}, {"source/main.lua", test::TestFiles::bytes("loaded = true")}};
     try {
         (void)build(io::MemoryPackage("source", small), "first", "missing");
-        FAIL() << "An earlier release without manifests must stop the build.";
-    } catch (const std::runtime_error& error) {
-        EXPECT_EQ(std::string(error.what()), "The manifest \"" + (directory.getPath() / "missing" / ReleasePackage::kAppManifestFile).generic_string() + "\" could not be read.");
+        FAIL() << "A previous release that does not exist must stop the build.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The folder \"" + (directory.getPath() / "missing").generic_string() + "\" of the previous release does not exist.");
     }
 
     // The release of another app shares no file with this one, even when the same keys sign both.

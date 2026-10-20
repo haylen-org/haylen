@@ -40,12 +40,21 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
         earlier = builder.readManifest(options.release / ReleasePackage::kContentManifestFile);
     }
 
+    // The earlier shards are the packs of the tree once the channel has a generation, which must all be there, and before that the shards of the release that ships with the app that its folder holds.
+    ReleaseBuilder::EarlierFiles files;
+    for (const ShardReference& shard : earlier ? earlier->getEnvelope().shards : std::vector<ShardReference>{}) {
+        const std::filesystem::path path = current ? tree / PublicationLayout::getPackPath(shard) : options.release / shard.getFileName();
+        if (current || std::filesystem::exists(path)) {
+            files.emplace(shard.getFileName(), path);
+        }
+    }
+
     // New packs grow in a staging folder of the tree, so moving them into place never copies them, and a failed publish leaves them where the next one clears them.
     const std::filesystem::path staging = tree / kStagingFolder;
     std::filesystem::remove_all(staging);
     std::filesystem::create_directories(staging);
     Manifest::Envelope envelope{.domain = Manifest::Domain::Content, .application = application, .profile = options.profile, .channel = options.channel, .generation = current ? current->generation + 1 : 1, .previousManifest = current ? current->manifest : Digest(), .minimumAppBuild = options.appBuild, .maximumAppBuild = std::numeric_limits<std::uint64_t>::max()};
-    ReleaseBuilder::DomainBuild built = builder.buildDomain(app, ReleaseBuilder::listFiles(app, config, Manifest::Domain::Content), envelope, earlier ? &*earlier : nullptr, staging, options.shardTarget);
+    ReleaseBuilder::DomainBuild built = builder.buildDomain(app, ReleaseBuilder::listFiles(app, config, Manifest::Domain::Content), envelope, earlier ? &*earlier : nullptr, files, staging, options.shardTarget);
 
     Publication publication{.generation = envelope.generation, .statistics = built.result.statistics};
 
@@ -54,7 +63,7 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
         const ShardReference& pack = built.result.shards[index];
         if (!std::filesystem::exists(tree / PublicationLayout::getPackPath(pack))) {
             std::filesystem::create_directories((tree / PublicationLayout::getPackPath(pack)).parent_path());
-            std::filesystem::copy_file(options.release / pack.getFileName(), tree / PublicationLayout::getPackPath(pack));
+            std::filesystem::copy_file(files.at(pack.getFileName()), tree / PublicationLayout::getPackPath(pack));
             publication.newPacks.push_back(pack);
         }
     }

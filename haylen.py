@@ -2508,7 +2508,7 @@ def development_bootstrap(release: str) -> str:
     ])
 
 
-def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_config: str, jobs: int) -> None:
+def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_config: str, jobs: int, previous: str | None) -> None:
     """Writes the folder `haylen/` of an Apple project, with the native libraries of a run platform, and nothing else of the project. The Release configuration writes the protected release of the app and its bootstrap, and the Debug configuration the package as it is."""
     require_host("apple")
     generated = root / GENERATED_FOLDER
@@ -2521,7 +2521,7 @@ def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_c
         link.symlink_to(framework)
     shutil.rmtree(generated / "app", ignore_errors=True)
     if config == "Release":
-        shutil.copytree(build_release(app, CONTENT_PROFILES[run_platform], engine_config, jobs), generated / "app")
+        shutil.copytree(build_release(app, CONTENT_PROFILES[run_platform], engine_config, jobs, previous), generated / "app")
         write_bootstrap(app, CONTENT_PROFILES[run_platform], generated / BOOTSTRAP_SOURCE, engine_config, jobs)
     else:
         copy_package(app, generated / "app")
@@ -2790,7 +2790,7 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
 
 def prepare_apple_run(app: App, args: argparse.Namespace) -> Path:
     root = project_root(app, "apple")
-    prepare_apple(app, root, args.platform, args.config, args.engine_config, args.jobs)
+    prepare_apple(app, root, args.platform, args.config, args.engine_config, args.jobs, args.previous_release)
     return root
 
 
@@ -3129,7 +3129,7 @@ def prepare_android_run(app: App, args: argparse.Namespace) -> Path:
     if args.config != "Release":
         prepare_android(app, root, "haylen", args.jobs)
         return root
-    prepare_android(app, root, ANDROID_RELEASE_LIBRARY, args.jobs, build_release(app, CONTENT_PROFILES["android"], args.engine_config, args.jobs))
+    prepare_android(app, root, ANDROID_RELEASE_LIBRARY, args.jobs, build_release(app, CONTENT_PROFILES["android"], args.engine_config, args.jobs, args.previous_release))
     build_release_library(app, root / GENERATED_FOLDER / "jniLibs", args)
     return root
 
@@ -3196,7 +3196,7 @@ target_link_options(haylen_release PRIVATE --emit-symbol-map)
 
 def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[str]:
     """Places the protected release of an app in `app/` of its site with a runtime of its own for each backend, linked against the web SDK with the bootstrap of the app, and returns the files that download before the app starts: the manifests and the app domain, while the shards of the content stay on the site and stream by range."""
-    release = build_release(app, CONTENT_PROFILES["web"], args.engine_config, args.jobs)
+    release = build_release(app, CONTENT_PROFILES["web"], args.engine_config, args.jobs, args.previous_release)
     shutil.copytree(release_folder(app, CONTENT_PROFILES["web"]), site / "app")
     tool = content_tool(args.engine_config, args.jobs)
     boot = app.build_folder / "release" / "web.boot"
@@ -3566,7 +3566,7 @@ def prepare_desktop(app: App, args: argparse.Namespace) -> Path:
     for name in ("app", "native"):
         shutil.rmtree(generated / name, ignore_errors=True)
     if args.config == "Release":
-        shutil.copytree(build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs), generated / "app")
+        shutil.copytree(build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs, args.previous_release), generated / "app")
         write_bootstrap(app, CONTENT_PROFILES[args.platform], generated / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
     else:
         copy_package(app, generated / "app")
@@ -3836,7 +3836,7 @@ def command_xcodegen(args: argparse.Namespace) -> None:
     info = App(app, RUN_TARGETS[args.platform].plugins)
     ensure_artifacts("apple", args.engine_config, args.jobs)
     root = project_root(info, "apple")
-    prepare_apple(info, root, args.platform, args.config, args.engine_config, args.jobs)
+    prepare_apple(info, root, args.platform, args.config, args.engine_config, args.jobs, args.previous_release)
     generate_apple_project(info, root, forced=True)
     terminal.success(f"Generated `{shown_path(root / 'App.xcodeproj')}` from `{shown_path(root / 'project.yml')}`.")
 
@@ -3849,7 +3849,7 @@ def generate_template_project(args: argparse.Namespace) -> None:
     shutil.rmtree(starter, ignore_errors=True)
     copy_files(layered_files(template_layers("lua")), starter)
     copy = starter / "platform" / "apple"
-    prepare_apple(App(starter, "macos"), copy, "macos", "Debug", args.engine_config, args.jobs)
+    prepare_apple(App(starter, "macos"), copy, "macos", "Debug", args.engine_config, args.jobs, None)
     terminal.step(f"Generating `{shown_path(template / 'App.xcodeproj')}` from \"project.yml\"")
     run([ensure_xcodegen(), "generate", "--quiet", "--spec", copy / "project.yml"], cwd=copy)
     shutil.rmtree(template / "App.xcodeproj")
@@ -4335,7 +4335,8 @@ def cpp_release_options(args: argparse.Namespace) -> list[str]:
     """The options that make the Release configuration of a C++ app ship its protected release, built by the content tool of the desktop artifacts, as Lua apps do, and every other configuration the package as it is."""
     if args.config != "Release":
         return ["-DHAYLEN_PROTECTED_RELEASE=OFF"]
-    return ["-DHAYLEN_PROTECTED_RELEASE=ON", f"-DHAYLEN_CONTENT_TOOL={content_tool(args.engine_config, args.jobs)}"]
+    previous = [f"-DHAYLEN_PREVIOUS_RELEASE={Path(args.previous_release).resolve().as_posix()}"] if args.previous_release else ["-DHAYLEN_PREVIOUS_RELEASE="]
+    return ["-DHAYLEN_PROTECTED_RELEASE=ON", f"-DHAYLEN_CONTENT_TOOL={content_tool(args.engine_config, args.jobs)}", *previous]
 
 
 def cpp_release_app(directory: Path, target: str) -> App:
@@ -4532,8 +4533,8 @@ def release_folder(app: App, profile: str) -> Path:
     return app.build_folder / "release" / profile
 
 
-def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
-    """Builds the protected release of an app for a content profile into its build folder with the content tool, reusing the shards of the release before it and the build cache of the app, and returns the folder that ships with the app: the whole release, or for an app with a content server the part that its required content needs."""
+def build_release(app: App, profile: str, config: str, jobs: int, previous: str | None) -> Path:
+    """Builds the protected release of an app for a content profile into its build folder with the content tool, reusing the shards of the release before it and the build cache of the app, and returns the folder that ships with the app: the whole release, or for an app with a content server the part that its required content needs. The release before it is the one that `previous` names, such as the last build that shipped, or else the last release of the build folder."""
     compile_app_shaders(app.folder)
     tool = content_tool(config, jobs)
     keys = ensure_keys(app, tool)
@@ -4541,7 +4542,9 @@ def build_release(app: App, profile: str, config: str, jobs: int) -> Path:
     staging = folder.with_name(f"{profile}.new")
     shutil.rmtree(staging, ignore_errors=True)
     command = [tool, "build", app.folder, "--keys", keys, "--profile", profile, "--build", str(app.version_code), "--output", staging, "--cache", app.build_folder / "content-cache"]
-    if (folder / "app.hmanifest").is_file():
+    if previous:
+        command += ["--previous", Path(previous).resolve()]
+    elif (folder / "app.hmanifest").is_file():
         command += ["--previous", folder]
     terminal.step(f'Building the protected release of `{shown_path(app.folder)}` for the profile "{profile}"')
     run(command)
@@ -4645,7 +4648,7 @@ def content_release(app: App, args: argparse.Namespace) -> Path:
 
 def command_content_build(args: argparse.Namespace) -> None:
     app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
-    folder = build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs)
+    folder = build_release(app, CONTENT_PROFILES[args.platform], args.engine_config, args.jobs, args.previous_release)
     release = release_folder(app, CONTENT_PROFILES[args.platform])
     shipped = "" if folder == release else f", and the part that ships with the app in `{shown_path(folder)}`"
     terminal.success(f"Built the protected release `{shown_path(release)}`{shipped}.")
@@ -5204,6 +5207,10 @@ def command_clean(_: argparse.Namespace) -> None:
     terminal.success("Cleaned the build folder.")
 
 
+def add_previous_release_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--previous-release", metavar="folder", help="A folder that holds the last release of the app that shipped, such as the files of its Steam depots, its unpacked app or a copy of its release folder, which a Release build follows instead of the last release of the build folder, so a clean machine such as continuous integration keeps the shards of unchanged content byte for byte.")
+
+
 def add_jobs_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--jobs", type=int, default=default_jobs(), help="Parallel jobs of the builds, one less than the processors of this machine by default.")
 
@@ -5306,6 +5313,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project of a platform builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
     run_app.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the engine: of the player that runs the app on this machine, or of the artifacts the project of a platform uses. "Release" by default, and "Debug" only to debug the engine itself, because it runs many times slower.')
     add_jobs_option(run_app)
+    add_previous_release_option(run_app)
     add_web_server_options(run_app, 8000)
     run_app.set_defaults(handler=command_run)
 
@@ -5315,6 +5323,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
     prepare.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
     add_jobs_option(prepare)
+    add_previous_release_option(prepare)
     prepare.set_defaults(handler=command_prepare)
 
     xcodegen = commands.add_parser("xcodegen", parents=[common], help='Write "haylen" of the Apple project of an app and generate its "App.xcodeproj" again from "project.yml".')
@@ -5324,6 +5333,7 @@ def build_parser() -> argparse.ArgumentParser:
     xcodegen.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
     xcodegen.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
     add_jobs_option(xcodegen)
+    add_previous_release_option(xcodegen)
     xcodegen.set_defaults(handler=command_xcodegen)
 
     check = commands.add_parser("check", parents=[common], help="Check the last build of an app for a platform against what the engine and its plugins need.")
@@ -5354,6 +5364,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_cpp.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the "haylen" Android library whose Java classes Android apps use.')
     run_cpp.add_argument("--build-only", action="store_true", help="Build and check the app without launching it, such as in continuous integration.")
     add_jobs_option(run_cpp)
+    add_previous_release_option(run_cpp)
     add_web_server_options(run_cpp, 8000)
     run_cpp.set_defaults(handler=command_run_cpp)
 
@@ -5363,6 +5374,7 @@ def build_parser() -> argparse.ArgumentParser:
     content_build = content_actions.add_parser("build", parents=[common], help="Build the protected release of an app for a platform into its build folder.")
     add_app_argument(content_build)
     content_build.add_argument("--platform", required=True, choices=content_platforms, help="The platform whose release to build.")
+    add_previous_release_option(content_build)
     content_build.set_defaults(handler=command_content_build)
     content_verify = content_actions.add_parser("verify", parents=[common], help="Check every manifest, shard and file of a protected release with the keys of the app.")
     add_app_argument(content_verify)
@@ -5405,6 +5417,7 @@ def build_parser() -> argparse.ArgumentParser:
     dist.add_argument("-o", "--output", help='Folder of the packages, "dist" in the app folder by default.')
     dist.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
     add_jobs_option(dist)
+    add_previous_release_option(dist)
     dist.set_defaults(handler=command_dist)
 
     steam = commands.add_parser("steam", parents=[common], help="Build the release of an app for a desktop platform and stage its depots and build scripts for SteamPipe.")
@@ -5417,6 +5430,7 @@ def build_parser() -> argparse.ArgumentParser:
     steam.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the app links.")
     steam.add_argument("--device", help=argparse.SUPPRESS)
     add_jobs_option(steam)
+    add_previous_release_option(steam)
     steam.set_defaults(handler=command_steam)
 
     package = commands.add_parser("package", parents=[common], help='Zip the "app.json", "source" and "content" of an app.')

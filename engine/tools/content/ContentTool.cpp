@@ -208,6 +208,9 @@ void ContentTool::runBuild(Arguments& arguments) {
 
 void ContentTool::printStatistics(Manifest::Domain domain, const ContentBuilder::Statistics& statistics) {
     output << std::format("The {} domain stores {} new chunks of {} bytes in {} bytes, {} of them from the build cache, and reuses {} chunks of {} bytes, while {} earlier shards leave it.\n", getDomainName(domain), statistics.newChunks, statistics.newBytes, statistics.storedBytes, statistics.cachedChunks, statistics.reusedChunks, statistics.reusedBytes, statistics.droppedShards);
+    if (statistics.missingShards > 0) {
+        output << std::format("The folder of the previous release lacks {} of its shards of the {} domain, so their content was built again.\n", statistics.missingShards, getDomainName(domain));
+    }
 }
 
 ReleaseInspector ContentTool::makeInspector(const KeyStore& store) {

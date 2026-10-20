@@ -3,7 +3,7 @@
 namespace haylen::content {
 
 std::string ShardReference::getFileName() const {
-    return shardId.toHex() + ".hpak";
+    return shardId.toHex() + std::string(kExtension);
 }
 
 } // namespace haylen::content

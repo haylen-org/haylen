@@ -22,15 +22,39 @@ ReleaseBuilder::Result ReleaseBuilder::build(const io::Package& app, const std::
     if (std::filesystem::exists(output)) {
         throw std::invalid_argument("The release folder \"" + output.generic_string() + "\" exists already. Build into a new folder.");
     }
+    const EarlierFiles files = earlier ? findEarlierFiles(*earlier) : EarlierFiles{};
     std::filesystem::create_directories(output);
-    return {.app = buildRelease(app, config, Manifest::Domain::App, output, earlier, options), .content = buildRelease(app, config, Manifest::Domain::Content, output, earlier, options)};
+    return {.app = buildRelease(app, config, Manifest::Domain::App, output, files, options), .content = buildRelease(app, config, Manifest::Domain::Content, output, files, options)};
 }
 
-ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const {
+ReleaseBuilder::EarlierFiles ReleaseBuilder::findEarlierFiles(const std::filesystem::path& folder) {
+    if (!std::filesystem::is_directory(folder)) {
+        throw std::invalid_argument("The folder \"" + folder.generic_string() + "\" of the previous release does not exist.");
+    }
+    EarlierFiles files;
+    for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(folder)) {
+        const std::string name = entry.path().filename().string();
+        const bool manifest = name == ReleasePackage::kAppManifestFile || name == ReleasePackage::kContentManifestFile;
+        if (!entry.is_regular_file() || (!manifest && entry.path().extension() != ShardReference::kExtension)) {
+            continue;
+        }
+        if (!files.emplace(name, entry.path()).second && manifest) {
+            throw std::invalid_argument("The folder \"" + folder.generic_string() + "\" holds \"" + name + "\" more than once, so it holds more than one release. Name the folder of one release.");
+        }
+    }
+    for (const std::string_view manifest : {ReleasePackage::kAppManifestFile, ReleasePackage::kContentManifestFile}) {
+        if (!files.contains(std::string(manifest))) {
+            throw std::invalid_argument("The folder \"" + folder.generic_string() + "\" holds no \"" + std::string(manifest) + "\", so it holds no release to follow.");
+        }
+    }
+    return files;
+}
+
+ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain, const std::filesystem::path& output, const EarlierFiles& earlier, const Options& options) const {
     const std::string_view manifestFile = ReleasePackage::getManifestFile(domain);
     std::optional<Manifest> previous;
-    if (earlier) {
-        previous = readManifest(*earlier / manifestFile);
+    if (!earlier.empty()) {
+        previous = readManifest(earlier.at(std::string(manifestFile)));
     }
 
     // A release that ships with one build of the app serves that build alone, so it names no previous manifest and no channel.
@@ -41,9 +65,9 @@ ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, cons
         compiled = compileModules(app, inputs);
         envelope.luaAbi = LuaBytecodeAbi::get();
     }
-    DomainBuild built = buildDomain(compiled ? *compiled : app, std::move(inputs), std::move(envelope), previous ? &*previous : nullptr, output, options.shardTarget);
+    DomainBuild built = buildDomain(compiled ? *compiled : app, std::move(inputs), std::move(envelope), previous ? &*previous : nullptr, earlier, output, options.shardTarget);
     for (std::size_t shard = 0; shard < built.result.keptShards; ++shard) {
-        keepShard(*earlier, output, built.result.shards[shard]);
+        keepShard(earlier.at(built.result.shards[shard].getFileName()), output, built.result.shards[shard]);
     }
 
     std::ofstream stream(output / manifestFile, std::ios::binary | std::ios::trunc);
@@ -58,14 +82,18 @@ ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, cons
     return {.manifest = id, .shards = std::move(built.result.shards), .keptShards = built.result.keptShards, .statistics = built.result.statistics};
 }
 
-ReleaseBuilder::DomainBuild ReleaseBuilder::buildDomain(const io::Package& source, std::vector<ContentBuilder::Input> inputs, Manifest::Envelope envelope, const Manifest* earlier, const std::filesystem::path& folder, std::uint64_t shardTarget) const {
+ReleaseBuilder::DomainBuild ReleaseBuilder::buildDomain(const io::Package& source, std::vector<ContentBuilder::Input> inputs, Manifest::Envelope envelope, const Manifest* earlier, const EarlierFiles& files, const std::filesystem::path& folder, std::uint64_t shardTarget) const {
     ContentBuilder builder(folder, activeKey, shardTarget, cache);
     if (earlier != nullptr) {
         const Manifest::Envelope& before = earlier->getEnvelope();
         if (before.domain != envelope.domain || before.application != envelope.application) {
             throw std::invalid_argument("The earlier manifest \"" + earlier->getId().toHex() + "\" belongs to another app or domain, so the build cannot reuse it.");
         }
-        builder.reuse(earlier->decryptCatalog(*keys), before.shards);
+        std::vector<bool> held;
+        for (const ShardReference& shard : before.shards) {
+            held.push_back(files.contains(shard.getFileName()));
+        }
+        builder.reuse(earlier->decryptCatalog(*keys), before.shards, held);
     }
 
     DomainBuild built{.result = builder.build(source, std::move(inputs))};
@@ -127,12 +155,11 @@ std::vector<ContentBuilder::Input> ReleaseBuilder::listFiles(const io::Package& 
     return inputs;
 }
 
-void ReleaseBuilder::keepShard(const std::filesystem::path& earlierFolder, const std::filesystem::path& output, const ShardReference& shard) {
+void ReleaseBuilder::keepShard(const std::filesystem::path& source, const std::filesystem::path& output, const ShardReference& shard) {
     // A kept shard is the file the earlier manifest signs, so a damaged one stops the build instead of reaching the new release.
-    const std::filesystem::path source = earlierFolder / shard.getFileName();
     std::error_code error;
     if (std::filesystem::file_size(source, error) != shard.fileSize || error || Digest::ofFile(source) != shard.fileDigest) {
-        throw std::runtime_error("The earlier release \"" + earlierFolder.generic_string() + "\" holds a damaged or missing shard \"" + shard.getFileName() + "\". Delete that folder, and the next build starts afresh.");
+        throw std::runtime_error("The earlier release holds a damaged shard \"" + source.generic_string() + "\". Delete that folder, and the next build starts afresh.");
     }
 
     // Shards never change after they are written, so the new release links the file where the file system can.
