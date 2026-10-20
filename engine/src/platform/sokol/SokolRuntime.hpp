@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -73,6 +74,8 @@ class SokolRuntime final {
 
     // Queues such an event from any thread, or from inside a call of the engine, such as the edits of a native text field. The running app receives it at the start of the next frame.
     static void postEvent(Event event);
+    // Queues a press of the back button of the activity from any thread, which the next frame hands to the app or, in a launched app that does not take back, turns into a quit to the app that launched it.
+    static void postBack();
 
     // Whether the running app takes the next press of the back button of the platform instead of leaving, as the engine decides from its app and its open popups.
     [[nodiscard]] static bool isBackCaptured();
@@ -117,6 +120,7 @@ class SokolRuntime final {
         std::unique_ptr<SokolRuntime> current;
         std::mutex postedMutex;
         std::vector<Event> posted;
+        int backPresses = 0;
         int exitStatus = 0;
     };
 
@@ -125,6 +129,8 @@ class SokolRuntime final {
     [[nodiscard]] static LaunchOptions parseLaunchOptions(int argc, char* argv[]);
     [[nodiscard]] App load(const std::function<std::shared_ptr<io::Package>()>& open);
     [[nodiscard]] static std::vector<Event> takePostedEvents();
+    [[nodiscard]] static int takeBackPresses();
+    void pressBack();
 
     static void onInitialize(void* data);
     static void onFrame(void* data);
@@ -141,12 +147,17 @@ class SokolRuntime final {
     void launch();
     void close() noexcept;
     void replace(App app);
+    void launchPackage(const std::filesystem::path& path);
+    void returnToLauncher();
     void deliver(const Event& event);
 
     SokolHost host;
     App pending;
     std::shared_ptr<io::Package> package;
     std::unique_ptr<core::Engine> engine;
+
+    // The packages of the apps that launched the one that plays, the latest last, each of which starts again when the app it launched quits.
+    std::vector<std::shared_ptr<io::Package>> launchers;
 
     // What the platform reported last, which every new app hears when it starts, so an app that restarts in the background, such as under the activity of a screen on Android, starts there and draws nothing.
     ReportedState reported;

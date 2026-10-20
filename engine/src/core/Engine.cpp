@@ -1011,6 +1011,22 @@ bool Engine::isRestartRequested() const noexcept {
     return state->restartRequested;
 }
 
+void Engine::requestLaunch(const std::filesystem::path& package) {
+    std::error_code error;
+    if (!std::filesystem::exists(package, error)) {
+        throw std::invalid_argument("No app package is at \"" + package.string() + "\". Launch a folder or a zip file that holds \"app.json\".");
+    }
+    state->launchRequest = package;
+}
+
+const std::optional<std::filesystem::path>& Engine::getLaunchRequest() const noexcept {
+    return state->launchRequest;
+}
+
+bool Engine::isLaunched() const noexcept {
+    return state->host.isLaunched();
+}
+
 void Engine::quit(std::uint8_t status) {
     state->running = false;
     state->exitStatus = status;

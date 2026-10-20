@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -239,6 +240,13 @@ class Engine final {
     // Asks the runtime to start the app again from its package once this frame ends, which is how edited scripts reload.
     void requestRestart() noexcept;
     [[nodiscard]] bool isRestartRequested() const noexcept;
+
+    // Asks the runtime to run the app package at the path, a folder or a zip file, in place of this app once this frame ends, and to start this app again when that app quits. Throws `std::invalid_argument` when nothing is at the path.
+    void requestLaunch(const std::filesystem::path& package);
+    [[nodiscard]] const std::optional<std::filesystem::path>& getLaunchRequest() const noexcept;
+
+    // Whether another app launched this one, so that quitting it starts that app again.
+    [[nodiscard]] bool isLaunched() const noexcept;
 
     // Pauses the game: pausable scenes, autoloads, timers and tweens stop, those that run when paused start, and fixed steps stop accumulating. It tells the scenes it stops or starts, emits pausedChanged and publishes the paused or unpaused event.
     void setPaused(bool value);

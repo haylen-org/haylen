@@ -99,6 +99,12 @@ class SokolHost final : public Host {
     [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {
         return developmentSession.get();
     }
+    [[nodiscard]] bool isLaunched() const noexcept override {
+        return launched;
+    }
+    void setLaunched(bool value) noexcept {
+        launched = value;
+    }
 
     // Plays the apps of this runtime in development, with a session that scans the package folder when the app plays from one and connects to the development server whose address the launch gave.
     void enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
@@ -130,6 +136,7 @@ class SokolHost final : public Host {
 
     KeyboardTranslator keyboard;
     std::unique_ptr<DevelopmentSession> developmentSession;
+    bool launched = false;
     std::uint64_t keyboardRevision = 0;
     WindowStyle style;
     Passthrough passthrough = Passthrough::Off;

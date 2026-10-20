@@ -124,6 +124,9 @@ class Host : public Window {
 
     // The development session of a process that plays an app while it is being made, or null for every app that ships. It outlives the apps that restart on the host.
     [[nodiscard]] virtual DevelopmentSession* getDevelopmentSession() const noexcept = 0;
+
+    // Whether the app that plays was launched by another app of the process, which starts again when it quits.
+    [[nodiscard]] virtual bool isLaunched() const noexcept = 0;
 };
 
 } // namespace haylen::platform

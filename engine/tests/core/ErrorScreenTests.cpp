@@ -300,6 +300,32 @@ TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
     EXPECT_FALSE(fixture.engine().isRecoverable());
 }
 
+TEST_F(ErrorScreenTest, ClosesAnAppThatAnotherAppLaunched) {
+    test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
+    ErrorScreen plain(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+    fixture.host().setLaunched(true);
+    ErrorScreen launched(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+
+    // clang-format off
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](Engine&) {
+        plain.render();
+        launched.render();
+    }));
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_GT(launched.getCloseButton().getSize().x, 0.0F);
+
+    EXPECT_GT(plain.getCloseButton().getSize().x, 0.0F);
+    fixture.host().setLaunched(false);
+    fixture.frames(1);
+    EXPECT_EQ(plain.getCloseButton().getSize().x, 0.0F);
+
+    fixture.host().setLaunched(true);
+    fixture.frames(1);
+    point(fixture, launched, platform::Event::Type::MouseDown, launched.getCloseButton().getCenter());
+    EXPECT_FALSE(fixture.engine().isRunning());
+}
+
 TEST_F(ErrorScreenTest, GoesBackWithTheButtonsOfAGamepad) {
     test::EngineFixture fixture({{"source/main.lua", "require('haylen').setRecoverable(true) require('haylen.scene').push({update = function() error('broken', 0) end})"}});
     fixture.frames(2);

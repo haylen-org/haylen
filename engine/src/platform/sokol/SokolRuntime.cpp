@@ -228,6 +228,28 @@ std::vector<Event> SokolRuntime::takePostedEvents() {
     return std::exchange(process.posted, {});
 }
 
+void SokolRuntime::postBack() {
+    Process& process = getProcess();
+    const std::scoped_lock lock(process.postedMutex);
+    ++process.backPresses;
+}
+
+int SokolRuntime::takeBackPresses() {
+    Process& process = getProcess();
+    const std::scoped_lock lock(process.postedMutex);
+    return std::exchange(process.backPresses, 0);
+}
+
+// Back reaches the app as escape, except that a launched app that does not take back quits to the app that launched it.
+void SokolRuntime::pressBack() {
+    if (host.isLaunched() && !engine->isBackCaptured()) {
+        engine->quit();
+        return;
+    }
+    deliver({.type = Event::Type::KeyDown, .key = input::Key::Escape});
+    deliver({.type = Event::Type::KeyUp, .key = input::Key::Escape});
+}
+
 SokolRuntime::Process& SokolRuntime::getProcess() noexcept {
     static Process& process = *new Process();
     return process;
@@ -283,7 +305,8 @@ std::shared_ptr<io::Package> SokolRuntime::withOverlay(std::shared_ptr<io::Packa
     const DevelopmentSession* session = host.getDevelopmentSession();
     const bool overlaid = session != nullptr && session->isConnected();
 #endif
-    if (!overlaid || std::dynamic_pointer_cast<io::OverlayPackage>(source) || std::dynamic_pointer_cast<content::ReleasePackage>(source)) {
+    // A launched app plays as it is, since the development server sends the files of the app that launched it.
+    if (!overlaid || !launchers.empty() || std::dynamic_pointer_cast<io::OverlayPackage>(source) || std::dynamic_pointer_cast<content::ReleasePackage>(source)) {
         return source;
     }
     return std::make_shared<io::OverlayPackage>(std::move(source));
@@ -316,12 +339,19 @@ void SokolRuntime::onFrame(void* data) {
 #endif
         runtime.deliver(event);
     }
+    for (int press = takeBackPresses(); press > 0 && runtime.engine->isRunning(); --press) {
+        runtime.pressBack();
+    }
     runtime.engine->frame(sapp_frame_duration());
     runtime.endSplashScreenWhenDue();
 #if defined(__ANDROID__)
     runtime.reportBackCapture();
 #endif
     if (!runtime.engine->isRunning()) {
+        if (!runtime.launchers.empty()) {
+            runtime.returnToLauncher();
+            return;
+        }
         sapp_quit();
         return;
     }
@@ -329,10 +359,26 @@ void SokolRuntime::onFrame(void* data) {
     WebPage::reportFrame(*runtime.engine);
 #endif
 
-    // A restart happens between frames, where no engine code is on the stack.
+    // A restart or a launch happens between frames, where no engine code is on the stack.
     if (runtime.engine->isRestartRequested()) {
         restart();
+    } else if (const std::optional<std::filesystem::path>& request = runtime.engine->getLaunchRequest()) {
+        runtime.launchPackage(*request);
     }
+}
+
+// The app that launches keeps its package for its return, and the launched app opens like any package, showing the error screen when it cannot.
+void SokolRuntime::launchPackage(const std::filesystem::path& path) {
+    launchers.push_back(package);
+    host.setLaunched(true);
+    replace(load([&path] { return std::shared_ptr<io::Package>(io::Package::open(path)); }));
+}
+
+void SokolRuntime::returnToLauncher() {
+    std::shared_ptr<io::Package> launcher = std::move(launchers.back());
+    launchers.pop_back();
+    host.setLaunched(!launchers.empty());
+    replace(load([&launcher] { return std::move(launcher); }));
 }
 
 // The launch screen of the platform stays until the app drew its first frame and the splash of app.json lasted its duration since the launch.
@@ -365,10 +411,17 @@ void SokolRuntime::onEvent(const sapp_event* source, void* data) {
         return;
     }
 
-    // The back button leaves the app from its root screen, which on the Apple TV means the system takes the press, and goes back inside the app everywhere else.
+    // The back button leaves the app from its root screen, which on the Apple TV means the system takes the press, and goes back inside the app everywhere else. A launched app leaves to the app that launched it instead.
     if (SokolEvents::isPlatformBack(*source)) {
         if (source->type == SAPP_EVENTTYPE_KEY_DOWN) {
             runtime.backCaptured = runtime.engine->isBackCaptured();
+        }
+        if (!runtime.backCaptured && runtime.host.isLaunched()) {
+            sapp_consume_event();
+            if (source->type == SAPP_EVENTTYPE_KEY_UP) {
+                runtime.engine->quit();
+            }
+            return;
         }
         if (!runtime.backCaptured) {
             return;
@@ -382,7 +435,7 @@ void SokolRuntime::onEvent(const sapp_event* source, void* data) {
 
 #if defined(__ANDROID__)
 void SokolRuntime::reportBackCapture() {
-    const bool captured = engine->isBackCaptured() || AndroidTextInput::isEditing();
+    const bool captured = engine->isBackCaptured() || AndroidTextInput::isEditing() || host.isLaunched();
     if (captured == backReported) {
         return;
     }

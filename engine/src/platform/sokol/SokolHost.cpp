@@ -120,13 +120,17 @@ std::string SokolHost::getClipboard() const {
 #endif
 }
 
+// A launched app quits back to the app that launched it, which takes over the same window.
 void SokolHost::requestQuit() {
-    sapp_request_quit();
+    if (!launched) {
+        sapp_request_quit();
+    }
 }
 
+// An app that another app launched quits back to that app on every platform.
 bool SokolHost::canQuit() const noexcept {
 #if defined(__EMSCRIPTEN__) || (defined(__APPLE__) && !TARGET_OS_OSX)
-    return false;
+    return launched;
 #else
     return true;
 #endif

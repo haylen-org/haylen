@@ -739,6 +739,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-004` | System | What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration. |  |
 | `PLT-005` | Dialogs | A native message with three buttons, the pickers of files to open, of the destination of a save and of a folder, and a message that the app gives up. |  |
 | `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |
+| `PLT-007` | Launching apps | A small app package that the test writes into its storage and launches in place of the project with a new engine, whose Back button, quit or back button at its root starts the project again. |  |
 
 #### Plugins (PLG)
 

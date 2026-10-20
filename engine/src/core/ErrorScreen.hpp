@@ -31,7 +31,7 @@ class Engine;
 // What the engine draws in place of the app once a script error stops it: the app and engine it ran on, the message, a source excerpt, the stack and the actions. Content taller than the screen scrolls with the mouse wheel, a drag, the arrow keys and the directional pad. C copies the report and R restarts the app, and in a recoverable app Escape, the east button and the back button of the platform go back to the app. Every action is a button too, the only way to reach it on touch devices. Gamepads and TV remotes move the focus between the buttons with the directional pad, or the arrow keys that TV remotes also send, and press the focused one with the south button or Enter, and the focus starts on going back in a recoverable app and on Restart otherwise. It draws with the renderer alone, so it keeps working when the UI is what failed.
 class ErrorScreen final {
   public:
-    enum class Action { Copy, Restart, Back };
+    enum class Action { Copy, Restart, Back, Close };
 
     struct SourceLine {
         int number = 0;
@@ -78,6 +78,11 @@ class ErrorScreen final {
     [[nodiscard]] const math::Rect& getBackButton() const noexcept {
         return backButton;
     }
+
+    // The button that closes an app that another app launched, which starts again, empty for every other app.
+    [[nodiscard]] const math::Rect& getCloseButton() const noexcept {
+        return closeButton;
+    }
     [[nodiscard]] Action getFocusedAction() const noexcept {
         return focused;
     }
@@ -90,6 +95,7 @@ class ErrorScreen final {
     void copyReport();
     void restartApp();
     void goBack();
+    void closeApp();
 
   private:
     struct Drag {
@@ -163,6 +169,7 @@ class ErrorScreen final {
     math::Rect copyButton{};
     math::Rect restartButton{};
     math::Rect backButton{};
+    math::Rect closeButton{};
     Action focused;
     bool canResume = true;
     bool copied = false;

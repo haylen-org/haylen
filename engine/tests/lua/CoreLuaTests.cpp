@@ -11,6 +11,7 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TemporaryDirectory.hpp"
 
 namespace haylen::core {
 
@@ -58,6 +59,19 @@ TEST(CoreLuaTest, QuitsWithAnExitStatus) {
     fixture.runLua("haylen.quit({status = 3})");
     EXPECT_FALSE(fixture.engine().isRunning());
     EXPECT_EQ(fixture.engine().getExitStatus(), 3);
+}
+
+TEST(CoreLuaTest, LaunchesAnotherAppPackageOnceTheFrameEnds) {
+    test::TemporaryDirectory guest;
+    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.guest"})");
+    test::EngineFixture fixture;
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen').launched())"), "false");
+    EXPECT_FALSE(fixture.engine().getLaunchRequest().has_value());
+    fixture.runLua("require('haylen').launch('" + guest.getPath().generic_string() + "')");
+    EXPECT_EQ(fixture.engine().getLaunchRequest(), guest.getPath());
+    EXPECT_NE(fixture.lua("require('haylen').launch('" + (guest.getPath() / "missing.zip").generic_string() + "')").find("No app package is at"), std::string::npos);
+    fixture.host().setLaunched(true);
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen').launched())"), "true");
 }
 
 TEST(CoreLuaTest, ReportsTheFixedStepClock) {

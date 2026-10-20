@@ -99,6 +99,17 @@ int CoreLua::rootQuit(lua_State* L) {
     return 0;
 }
 
+// Runs the app package at a path of the file system with `haylen.launch(path)` once this frame ends, and the app that launched it starts again when it quits.
+int CoreLua::rootLaunch(lua_State* L) {
+    lua::Runtime::getEngine(L).requestLaunch(lua::Stack::read<std::string_view>(L, 1));
+    return 0;
+}
+
+int CoreLua::rootLaunched(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).isLaunched());
+    return 1;
+}
+
 int CoreLua::rootCanQuit(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getWindow().canQuit());
     return 1;
@@ -259,7 +270,7 @@ int CoreLua::rootAutoload(lua_State* L) {
 int CoreLua::openRoot(lua_State* L) {
     Engine& owner = lua::Runtime::getEngine(L);
     const luaL_Reg functions[] = {
-        {"quit", &rootQuit}, {"canQuit", &rootCanQuit}, {"requestRestart", &rootRequestRestart}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &lua::Binding::native<&rootSetTimeScale>}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"recoverable", &rootRecoverable}, {"setRecoverable", &lua::Binding::native<&rootSetRecoverable>}, {"recover", &rootRecover}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
+        {"quit", &rootQuit}, {"canQuit", &rootCanQuit}, {"launch", &lua::Binding::native<&rootLaunch>}, {"launched", &rootLaunched}, {"requestRestart", &rootRequestRestart}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &lua::Binding::native<&rootSetTimeScale>}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"recoverable", &rootRecoverable}, {"setRecoverable", &lua::Binding::native<&rootSetRecoverable>}, {"recover", &rootRecover}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ClassLua::push(L);

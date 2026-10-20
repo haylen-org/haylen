@@ -1,6 +1,7 @@
 #include "core/ErrorScreen.hpp"
 
 #include <algorithm>
+#include <array>
 #include <exception>
 #include <utility>
 
@@ -147,6 +148,13 @@ void ErrorScreen::goBack() {
     }
 }
 
+// A launched app quits, which starts the app that launched it again.
+void ErrorScreen::closeApp() {
+    if (engine.isLaunched()) {
+        engine.quit();
+    }
+}
+
 void ErrorScreen::run(Action action) {
     switch (action) {
     case Action::Copy:
@@ -158,13 +166,24 @@ void ErrorScreen::run(Action action) {
     case Action::Back:
         goBack();
         break;
+    case Action::Close:
+        closeApp();
+        break;
     }
 }
 
-// The focus moves along the buttons in the order they show, which ends with going back in a recoverable app.
+// The focus moves along the buttons in the order they show, which goes on with going back in a recoverable app and ends with closing a launched app.
 void ErrorScreen::moveFocus(int step) {
-    const int count = engine.isRecoverable() ? 3 : 2;
-    focused = static_cast<Action>(std::clamp(static_cast<int>(focused) + step, 0, count - 1));
+    std::array<Action, 4> shown{Action::Copy, Action::Restart};
+    std::size_t count = 2;
+    if (engine.isRecoverable()) {
+        shown[count++] = Action::Back;
+    }
+    if (engine.isLaunched()) {
+        shown[count++] = Action::Close;
+    }
+    const auto index = std::ranges::find(shown.begin(), shown.begin() + static_cast<std::ptrdiff_t>(count), focused) - shown.begin();
+    focused = shown[static_cast<std::size_t>(std::clamp<std::ptrdiff_t>(index + step, 0, static_cast<std::ptrdiff_t>(count) - 1))];
 }
 
 void ErrorScreen::scrollBy(float amount) {
@@ -187,6 +206,11 @@ void ErrorScreen::handleKey(const platform::Event& event) {
     case input::Key::Escape:
         if (!event.repeat) {
             goBack();
+        }
+        break;
+    case input::Key::Q:
+        if (!event.repeat) {
+            closeApp();
         }
         break;
     case input::Key::Left:
@@ -243,6 +267,10 @@ void ErrorScreen::press(math::Vec2 point) {
     }
     if (backButton.contains(point)) {
         goBack();
+        return;
+    }
+    if (closeButton.contains(point)) {
+        closeApp();
         return;
     }
     dragging = Drag{.pointer = point.y, .scroll = scroll};
@@ -461,6 +489,8 @@ float ErrorScreen::drawFooter(graphics2d::Renderer& renderer, text::Font& font, 
     copyButton = drawAction(renderer, font, {area.x, buttonsTop}, Action::Copy, "C", copied ? "Report copied" : "Copy report", unit);
     restartButton = drawAction(renderer, font, {copyButton.getRight() + gap, buttonsTop}, Action::Restart, "R", "Restart app", unit);
     backButton = engine.isRecoverable() ? drawAction(renderer, font, {restartButton.getRight() + gap, buttonsTop}, Action::Back, "Esc", "Back to the app", unit) : math::Rect{};
+    const float closeLeft = (engine.isRecoverable() ? backButton.getRight() : restartButton.getRight()) + gap;
+    closeButton = engine.isLaunched() ? drawAction(renderer, font, {closeLeft, buttonsTop}, Action::Close, "Q", "Close app", unit) : math::Rect{};
 
     float top = buttonsTop - gap;
     if (isInDevelopment()) {

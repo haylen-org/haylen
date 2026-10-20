@@ -5,6 +5,7 @@
 #include <string_view>
 #include <thread>
 #include <utility>
+#include <vector>
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
@@ -55,11 +56,21 @@ int HeadlessPlayer::play(const Options& options) {
     if (options.development) {
         host.enableDevelopment(package->getDirectory());
     }
-    std::unique_ptr<core::Engine> engine = launch(host, package);
+    std::shared_ptr<io::Package> playing = package;
+    std::unique_ptr<core::Engine> engine = launch(host, playing);
 
+    // An app that another app launched starts that app again when it quits, the way the player does.
+    std::vector<std::shared_ptr<io::Package>> launchers;
     long long frame = 0;
     auto next = std::chrono::steady_clock::now();
-    while (engine->isRunning()) {
+    while (engine->isRunning() || !launchers.empty()) {
+        if (!engine->isRunning()) {
+            playing = std::move(launchers.back());
+            launchers.pop_back();
+            host.setLaunched(!launchers.empty());
+            engine.reset();
+            engine = launch(host, playing);
+        }
         if (options.frames && frame >= *options.frames) {
             core::Log::error("The app did not quit within {} frames.", *options.frames);
             return 1;
@@ -69,7 +80,13 @@ int HeadlessPlayer::play(const Options& options) {
         }
         if (engine->isRestartRequested()) {
             engine.reset();
-            engine = launch(host, package);
+            engine = launch(host, playing);
+        } else if (const std::optional<std::filesystem::path> request = engine->getLaunchRequest()) {
+            launchers.push_back(playing);
+            playing = io::Package::open(*request);
+            host.setLaunched(true);
+            engine.reset();
+            engine = launch(host, playing);
         }
 
         engine->frame(std::chrono::duration<double>(kFrameTime).count());

@@ -292,6 +292,12 @@ class HeadlessHost final : public Host {
     [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {
         return developmentSession.get();
     }
+    [[nodiscard]] bool isLaunched() const noexcept override {
+        return launched;
+    }
+    void setLaunched(bool value) noexcept {
+        launched = value;
+    }
 
     // Plays the apps of this host in development from now on, with a session that scans the package folder when one is given, the way the player does with "--dev", and that connects to a development server when its address is given.
     void enableDevelopment(std::optional<std::filesystem::path> folder = std::nullopt, std::string server = {}) {
@@ -489,6 +495,7 @@ class HeadlessHost final : public Host {
     std::filesystem::path crashReport;
     std::string crashContext;
     std::unique_ptr<DevelopmentSession> developmentSession;
+    bool launched = false;
     const audio::OutputBackend* audioOutput = nullptr;
     bool opensUrls = true;
 

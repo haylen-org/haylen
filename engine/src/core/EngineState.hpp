@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -141,6 +142,7 @@ struct EngineState {
     bool running = true;
     std::uint8_t exitStatus = 0;
     bool restartRequested = false;
+    std::optional<std::filesystem::path> launchRequest;
 };
 
 } // namespace haylen::core

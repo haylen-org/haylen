@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <filesystem>
 #include <string>
 
 #include "platform/headless/HeadlessPlayer.hpp"
@@ -46,6 +47,27 @@ TEST_F(HeadlessPlayerTest, PlaysSoundsOutWithoutADevice) {
             if not audio.active(voice) then haylen.quit() end
         end})
     )", 60), 0);
+    // clang-format on
+}
+
+// A launched app plays until it quits, and the app that launched it starts again from its package, which the shared preferences of the two apps tell apart.
+TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedQuits) {
+    test::TemporaryDirectory guest;
+    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.tests"})");
+    guest.write("source/main.lua", "local haylen = require('haylen') local preferences = require('haylen.preferences') preferences.set('guest', haylen.launched() and haylen.canQuit()) preferences.save() haylen.quit({status = 9})");
+    const std::string path = guest.getPath().generic_string();
+    // clang-format off
+    EXPECT_EQ(play(R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        if preferences.get('guest', false) then
+            preferences.remove('guest')
+            preferences.save()
+            haylen.quit({status = haylen.launched() and 1 or 5})
+        else
+            haylen.launch(')" + path + R"(')
+        end
+    )", 120), 5);
     // clang-format on
 }
 

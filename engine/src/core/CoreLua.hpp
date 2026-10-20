@@ -24,6 +24,8 @@ class CoreLua final {
     static int openLog(lua_State* L);
 
     static int rootQuit(lua_State* L);
+    static int rootLaunch(lua_State* L);
+    static int rootLaunched(lua_State* L);
     static int rootCanQuit(lua_State* L);
     static int rootRequestRestart(lua_State* L);
     static int rootElapsed(lua_State* L);

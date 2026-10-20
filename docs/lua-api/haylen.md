@@ -421,7 +421,7 @@ print(haylen.autoloads.soundtrack == music, require('systems.music') == music) -
 
 ### haylen.canQuit()
 
-Returns whether [`haylen.quit`](#haylenquitoptions) closes the app, which it does on macOS, Windows, Linux, Android and the headless player. iPhones, iPads, Apple TVs, Mac Catalyst windows and web pages close only through the system or the browser, so there the function returns `false` and a quit only stops the app. An app shows its own Quit button only where this returns `true`.
+Returns whether [`haylen.quit`](#haylenquitoptions) closes the app, which it does on macOS, Windows, Linux, Android and the headless player. iPhones, iPads, Apple TVs, Mac Catalyst windows and web pages close only through the system or the browser, so there the function returns `false` and a quit only stops the app, except in an app that [another app launched](#haylenlaunchpath), whose quit goes back to that app everywhere. An app shows its own Quit button only where this returns `true`.
 
 ```lua
 local haylen = require('haylen')
@@ -473,6 +473,39 @@ for _, level in ipairs(levels) do
     end
 end
 haylen.quit({status = broken == 0 and 0 or 1})
+```
+
+### haylen.launch(path)
+
+Runs the app package at `path`, a folder or a zip file of the file system that holds an `app.json`, in place of this app once the current frame ends, with a new engine and Lua state, the way an app that opens other apps does, such as one that downloads a package and plays it. When the launched app quits, through [`haylen.quit`](#haylenquitoptions), the Close button of its error screen or, on Android and Apple TV, the back button at the root of the app, this app starts again from its package, which is how the launched app goes back to it. A launched app can launch another one in turn. Nothing at the path raises `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".`, and a package that cannot open, such as one without a valid `app.json`, shows the error screen in place of the launched app. A launched app plays as it is, without the files that a development server sends to the app that launched it.
+
+```lua
+local async = require('async')
+local fs = require('fs')
+local haylen = require('haylen')
+local http = require('http')
+local storage = require('haylen.storage')
+
+-- Downloads a zipped package into the files of the app and plays it.
+async.spawn(function()
+    local response = http.client.get('https://example.com/apps/demo.zip'):await()
+    local path = storage.root() .. '/demo.zip'
+    fs.writeFile(path, response.body):await()
+    haylen.launch(path)
+end)
+```
+
+### haylen.launched()
+
+Returns whether another app [launched](#haylenlaunchpath) this one, so that quitting it starts that app again, which suits an app that offers a way back only when something launched it.
+
+```lua
+local haylen = require('haylen')
+local ui = require('haylen.ui')
+
+if haylen.launched() then
+    ui.mount(ui.button{text = 'Back', anchor = 'topLeft', margin = 16, onClick = function() haylen.quit() end})
+end
 ```
 
 ### haylen.requestRestart()

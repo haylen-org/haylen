@@ -10,5 +10,6 @@ return {
         {code = 'PLT-004', title = 'System', description = 'What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration.', module = 'system'},
         {code = 'PLT-005', title = 'Dialogs', description = 'A native message with three buttons, the pickers of files to open, of the destination of a save and of a folder, and a message that the app gives up.', module = 'dialogs'},
         {code = 'PLT-006', title = 'Event checklist', description = 'Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason.', module = 'event-checklist'},
+        {code = 'PLT-007', title = 'Launching apps', description = 'A small app package that the test writes into its storage and launches in place of the project with a new engine, whose Back button, quit or back button at its root starts the project again.', module = 'launching'},
     },
 }
