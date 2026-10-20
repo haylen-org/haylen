@@ -2955,15 +2955,24 @@ def missing_android_plugin_files(app: App, root: Path) -> list[tuple[Plugin, Pat
     return [(plugin, source, destination) for plugin in app.plugins if "android" in plugin.manifest for source, destination in android_plugin_files(app, plugin) if not (root / destination).exists()]
 
 
-def build_android(app: App, root: Path, args: argparse.Namespace) -> Path:
-    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project. A file that a plugin needs in the project, such as the configuration of a service, stops the build first with the copy to make, since Gradle would fail without it."""
+def android_device_abi(device: str) -> str:
+    """The ABI that an Android device runs, which must be one the engine builds for."""
+    abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
+    if abi not in ANDROID_ABIS:
+        raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {quoted_names(ANDROID_ABIS)}. Use a device or an emulator of one of those.")
+    return abi
+
+
+def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | None = None) -> Path:
+    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project. A debug build for a device names its ABI with the Gradle property `haylen.abi`, whose debug build type of the template packs only the native libraries of that ABI, so it builds and installs faster and fits a device with little room. A file that a plugin needs in the project, such as the configuration of a service, stops the build first with the copy to make, since Gradle would fail without it."""
     lacking = missing_android_plugin_files(app, root)
     if lacking:
         copies = " ".join(f'The plugin "{plugin.id}" needs "{destination}", so copy `{shown_path(source)}` to `{shown_path(root / destination)}`.' for plugin, source, destination in lacking)
         raise BuildError(f"The Android project lacks files that its plugins need. {copies}")
     variant = "Release" if args.config == "Release" else "Debug"
     terminal.step(f'Building the APK of `{shown_path(root)}` with Gradle in the "{args.config}" configuration')
-    run([ensure_gradle(), "-p", root, f":app:assemble{variant}", f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache"])
+    only = [f"-Phaylen.abi={abi}"] if abi and variant == "Debug" else []
+    run([ensure_gradle(), "-p", root, f":app:assemble{variant}", f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache", *only])
     return android_product(app, args.config)
 
 
@@ -3127,7 +3136,7 @@ def prepare_android_run(app: App, args: argparse.Namespace) -> Path:
 
 def run_android(app: App, root: Path, args: argparse.Namespace) -> None:
     device = android_device(args.device)
-    apk = build_android(app, root, args)
+    apk = build_android(app, root, args, android_device_abi(device))
     requirements = check_android(app, root, args)
     stop_on_release_problems(requirements)
     report_requirements(requirements)
@@ -4417,9 +4426,7 @@ def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: 
 def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
     """Builds the library of a C++ app for the ABI of the Android device and packages it with the package of the app into its Android project, whose activity loads it instead of the Lua player, then installs and launches it like `haylen.py run`."""
     device = android_device(args.device)
-    abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
-    if abi not in ANDROID_ABIS:
-        raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {quoted_names(ANDROID_ABIS)}. Use a device or an emulator of one of those.")
+    abi = android_device_abi(device)
     directory = folder / f"android-{abi}-{args.config.lower()}"
     terminal.step(f'Building the target "{target}" for "{abi}" in `{shown_path(directory)}`')
     run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi), *cpp_release_options(args)])
@@ -4433,7 +4440,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     root = project_root(app, "android")
     prepare_android(app, root, target, args.jobs, release)
     copy_into(built / f"lib{target}.so", root / GENERATED_FOLDER / "jniLibs" / abi)
-    apk = build_android(app, root, args)
+    apk = build_android(app, root, args, abi)
     requirements = check_android(app, root, args)
     report_requirements([requirement for requirement in requirements if requirement.advice != RELEASE_ADVICE])
     stop_on_release_problems(requirements)

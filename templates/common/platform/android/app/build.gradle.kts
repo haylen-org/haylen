@@ -73,6 +73,15 @@ android {
         }
     }
 
+    // A debug build for one device packs only the native libraries of its ABI, which `haylen.py run` names with the Gradle property `haylen.abi`, so it builds, copies and installs faster.
+    providers.gradleProperty("haylen.abi").orNull?.let { abi ->
+        buildTypes.getByName("debug") {
+            ndk {
+                abiFilters += abi
+            }
+        }
+    }
+
     // A project key replaces the debug key of the Android SDK in debug builds, and the upload key signs release builds.
     signingConfigs {
         haylenKeys.forEach { (type, key) ->

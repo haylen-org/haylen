@@ -1313,6 +1313,14 @@ class AndroidPluginsTest(unittest.TestCase):
             haylen.build_android(app, project, arguments)
             run.assert_called_once()
 
+    def test_a_debug_build_for_a_device_packs_only_its_abi(self):
+        app = mock.Mock(plugins=[], plugin_values={}, build_folder=Path("build"))
+        for config, abi, packed in (("Debug", "x86_64", True), ("Debug", None, False), ("Release", "x86_64", False)):
+            arguments = haylen.argparse.Namespace(config=config, jobs=1)
+            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_gradle", return_value=Path("gradle")), mock.patch.object(haylen, "android_product", return_value=Path("app.apk")), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+                haylen.build_android(app, Path("project"), arguments, abi)
+            self.assertEqual("-Phaylen.abi=x86_64" in run.call_args.args[0], packed, (config, abi))
+
 
 class CheckTest(unittest.TestCase):
     """The check of a web site or a Windows or Linux folder looks in the build folder of the app."""
