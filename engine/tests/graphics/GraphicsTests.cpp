@@ -73,6 +73,12 @@ TEST(ImageTest, FillsBlitsCropsAndExtrudesAreas) {
     EXPECT_EQ(corner.getWidth(), 2);
     EXPECT_EQ(corner.getPixel(0, 0), red);
     EXPECT_THROW((void)image.crop({6, 6, 4, 4}), std::out_of_range);
+    // An area whose far edge passes the largest int is outside the image, never a wrapped sum that fits, and a fill clips it to the image.
+    graphics::Image wide(8, 2);
+    EXPECT_THROW((void)wide.crop({2, 0, std::numeric_limits<int>::max() - 1, 1}), std::out_of_range);
+    wide.fill({2, 0, std::numeric_limits<int>::max() - 1, 1}, math::Color::white());
+    EXPECT_EQ(wide.getPixel(7, 0), math::Color::white());
+    EXPECT_EQ(wide.getPixel(1, 0), math::Color::transparent());
 
     graphics::Image sheet(10, 10);
     sheet.fill({3, 3, 4, 4}, red);

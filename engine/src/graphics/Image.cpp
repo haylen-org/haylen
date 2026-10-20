@@ -108,11 +108,12 @@ Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options o
     return image;
 }
 
+// The far edges add up in 64 bits, so an area that reaches past the largest int clips instead of wrapping around.
 Image::Area Image::clip(const Area& area, int columns, int rows) noexcept {
     const int left = std::max(area.x, 0);
     const int top = std::max(area.y, 0);
-    const int right = std::min(area.x + area.width, columns);
-    const int bottom = std::min(area.y + area.height, rows);
+    const auto right = static_cast<int>(std::min<std::int64_t>(std::int64_t{area.x} + area.width, columns));
+    const auto bottom = static_cast<int>(std::min<std::int64_t>(std::int64_t{area.y} + area.height, rows));
     return {left, top, std::max(right - left, 0), std::max(bottom - top, 0)};
 }
 
@@ -161,7 +162,7 @@ void Image::blit(const Image& source, const Area& from, int x, int y, BlitMode m
 }
 
 Image Image::crop(const Area& area) const {
-    if (area.x < 0 || area.y < 0 || area.width < 0 || area.height < 0 || area.x + area.width > width || area.y + area.height > height) {
+    if (area.x < 0 || area.y < 0 || area.width < 0 || area.height < 0 || area.x > width || area.y > height || area.width > width - area.x || area.height > height - area.y) {
         throw std::out_of_range("The area " + std::to_string(area.x) + ", " + std::to_string(area.y) + ", " + std::to_string(area.width) + " by " + std::to_string(area.height) + " is not inside the image of " + std::to_string(width) + " by " + std::to_string(height) + " pixels.");
     }
     Image result(area.width, area.height);
