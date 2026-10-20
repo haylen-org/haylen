@@ -76,7 +76,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.15"
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      # The release that the memory check builds needs the content tool of the desktop artifacts, which links the libraries of Linux windows.
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm
