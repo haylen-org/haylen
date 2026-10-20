@@ -3330,6 +3330,8 @@ def write_android_store_packs(app: App, generated: Path, packs_folder: Path) -> 
         if name in names:
             raise BuildError(f'The packs "{names[name]}" and "{folder.name}" both become the asset pack "{name}" of Google Play, which names packs with letters, digits and underscores. Rename one of them in "content.delivery" of "app.json".')
         names[name] = folder.name
+        if (generated / "asset-packs" / name).exists():
+            raise BuildError(f'The pack "{folder.name}" becomes the asset pack "{name}" of Google Play, which the release already takes for its content shards. Rename the pack in "content.delivery" of "app.json".')
         size = sum(path.stat().st_size for path in folder.iterdir())
         if size > ANDROID_STORE_PACK_LIMIT:
             raise BuildError(f'The pack "{folder.name}" holds {size} bytes, more than the 1.5 GB that Google Play takes in an asset pack. Split its content into several named packs in "content.delivery" of "app.json".')
@@ -3389,22 +3391,27 @@ def read_java_properties(text: str) -> dict[str, str]:
     """Reads the entries of a Java properties file that `java_property` escapes."""
     values = {}
     for line in text.splitlines():
-        line = line.strip()
+        line = line.lstrip()
         if line and not line.startswith(("#", "!")) and "=" in line:
             key, value = line.split("=", 1)
-            values[key.strip()] = value.strip().encode("latin-1").decode("unicode_escape").encode("utf-16", "surrogatepass").decode("utf-16")
+            values[key.strip()] = value.lstrip().encode("latin-1").decode("unicode_escape").encode("utf-16", "surrogatepass").decode("utf-16")
     return values
 
 
 def android_release_key(root: Path) -> dict[str, str]:
-    """Reads the upload key that signs the release builds of an Android project as its Gradle scripts do: the one of `keystore/release.properties`, or else the one that the environment variables `HAYLEN_RELEASE_<VALUE>` give, with the keystore as an absolute path."""
+    """Reads the upload key that signs the release builds of an Android project as its Gradle scripts do: the one of `keystore/release.properties`, or else the one that the Gradle properties `haylen.release.<value>` of the project or of the Gradle home give, or else the environment variables `HAYLEN_RELEASE_<VALUE>`, with the keystore as an absolute path."""
     properties = android_key_files(root, "release")["properties"]
     if properties.is_file():
         values = read_java_properties(properties.read_text(encoding="latin-1"))
         return {**values, "storeFile": str(properties.parent / values["storeFile"])}
-    given = {name: os.environ.get(f"HAYLEN_RELEASE_{suffix}") for name, suffix in ANDROID_KEY_VARIABLES.items()}
+    # The properties of the Gradle home win over those of the project, as Gradle reads them.
+    gradle: dict[str, str] = {}
+    for file in (root / "gradle.properties", Path(os.environ.get("GRADLE_USER_HOME", Path.home() / ".gradle")) / "gradle.properties"):
+        if file.is_file():
+            gradle.update(read_java_properties(file.read_text(encoding="latin-1")))
+    given = {name: gradle.get(f"haylen.release.{name}") or os.environ.get(f"HAYLEN_RELEASE_{suffix}") for name, suffix in ANDROID_KEY_VARIABLES.items()}
     if not all(given.values()):
-        raise BuildError(f'The release build needs the upload key of the app. Create it with "{TOOL} android-key" and the app folder, or give the environment variables {quoted_names([f"HAYLEN_RELEASE_{suffix}" for suffix in ANDROID_KEY_VARIABLES.values()])}.')
+        raise BuildError(f'The release build needs the upload key of the app. Create it with "{TOOL} android-key" and the app folder, or give the Gradle properties {quoted_names([f"haylen.release.{name}" for name in ANDROID_KEY_VARIABLES])} or the environment variables {quoted_names([f"HAYLEN_RELEASE_{suffix}" for suffix in ANDROID_KEY_VARIABLES.values()])}.')
     return {**given, "storeFile": str(root / given["storeFile"])}
 
 

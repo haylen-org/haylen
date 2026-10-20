@@ -1397,6 +1397,11 @@ class AndroidPluginsTest(unittest.TestCase):
         (packs / "chapter.2").mkdir()
         with self.assertRaisesRegex(haylen.BuildError, 'The packs "chapter-2" and "chapter.2" both become the asset pack "chapter_2"'):
             haylen.write_android_store_packs(app, scratch / "collision", packs)
+        shutil.rmtree(packs / "chapter.2")
+        (packs / "haylencontent1").mkdir()
+        app.content_packs.append("haylencontent1")
+        with self.assertRaisesRegex(haylen.BuildError, 'which the release already takes for its content shards'):
+            haylen.write_android_store_packs(app, generated, packs)
 
     def test_the_asset_packs_of_a_plugin_list_the_packs_that_deliver_right_after_the_install(self):
         root = Path(tempfile.mkdtemp()).resolve()
@@ -1413,7 +1418,7 @@ class AndroidPluginsTest(unittest.TestCase):
     def test_bundletool_signs_with_the_upload_key_that_the_gradle_scripts_read(self):
         scratch = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, scratch)
-        self.assertEqual(haylen.read_java_properties(f"# A comment.\nkeyPassword={haylen.java_property('pä\\ss😀')}\n"), {"keyPassword": "pä\\ss😀"})
+        self.assertEqual(haylen.read_java_properties(f"# A comment.\nkeyPassword={haylen.java_property('pä\\ss😀 ')}\n"), {"keyPassword": "pä\\ss😀 "}, "A value keeps its trailing spaces, as Java reads it.")
         variables = {"HAYLEN_RELEASE_STORE_FILE": "keys/upload.jks", "HAYLEN_RELEASE_STORE_PASSWORD": "store", "HAYLEN_RELEASE_KEY_ALIAS": "upload", "HAYLEN_RELEASE_KEY_PASSWORD": "key"}
         with mock.patch.dict(os.environ, variables):
             self.assertEqual(haylen.android_release_key(scratch), {"storeFile": str(scratch / "keys" / "upload.jks"), "storePassword": "store", "keyAlias": "upload", "keyPassword": "key"})
@@ -1422,7 +1427,14 @@ class AndroidPluginsTest(unittest.TestCase):
         files["properties"].write_text(haylen.android_key_properties("release", "upload", "secret"))
         self.assertEqual(haylen.android_release_key(scratch), {"storeFile": str(files["keystore"]), "storePassword": "secret", "keyAlias": "upload", "keyPassword": "secret"})
         files["properties"].unlink()
-        with mock.patch.dict(os.environ, {name: "" for name in variables}), self.assertRaisesRegex(haylen.BuildError, "needs the upload key of the app"):
+        home = scratch / "gradle-home"
+        home.mkdir()
+        (scratch / "gradle.properties").write_text("haylen.release.storeFile=keys/project.jks\nhaylen.release.storePassword=project\nhaylen.release.keyAlias=upload\nhaylen.release.keyPassword=project\n")
+        (home / "gradle.properties").write_text("haylen.release.storePassword=home\n")
+        with mock.patch.dict(os.environ, {**{name: "" for name in variables}, "GRADLE_USER_HOME": str(home)}):
+            self.assertEqual(haylen.android_release_key(scratch), {"storeFile": str(scratch / "keys" / "project.jks"), "storePassword": "home", "keyAlias": "upload", "keyPassword": "project"}, "The Gradle properties give the key, those of the Gradle home first.")
+        (scratch / "gradle.properties").unlink()
+        with mock.patch.dict(os.environ, {**{name: "" for name in variables}, "GRADLE_USER_HOME": str(scratch / "empty")}), self.assertRaisesRegex(haylen.BuildError, "needs the upload key of the app"):
             haylen.android_release_key(scratch)
 
     def test_an_app_extension_of_a_plugin_builds_with_the_identity_of_the_app(self):
