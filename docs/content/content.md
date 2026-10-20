@@ -608,45 +608,57 @@ The command `haylen bench --suite content` measures the work of protected conten
 
 | Measurement | Result | Largest allocation |
 | --- | --- | --- |
-| Building the release of 64 MiB of incompressible data, 16 MiB of text, 2000 small files, a Lua module of 2 MiB, a map and a picture | 90 MiB/s | 4.0 MiB |
-| Opening the release, with both signatures checked and both catalogs decrypted | 1.6 ms | 0.3 MiB |
-| Reading an incompressible file in order | 281 MiB/s | 2.3 MiB |
-| Reading a compressible file in order | 773 MiB/s | 4.0 MiB |
-| Reading the incompressible file on 4 threads at once | 1038 MiB/s | 3.0 MiB |
-| 2000 reads of 4 KiB at random offsets of one file | 8.9 s | 2.4 MiB |
-| Finding 2000 files in the catalog | 0.8 ms | 0 MiB |
-| Compressing the text in chunks of 1 MiB with Zstandard | 1654 MiB/s | 1.0 MiB |
-| Decompressing them | 15658 MiB/s | 1.0 MiB |
-| Encrypting and decrypting them with XChaCha20-Poly1305 | 585 MiB/s | 1.0 MiB |
-| Loading a Lua module of 2 MiB from its text | 21.8 ms | 0 MiB |
-| Loading the same module as bytecode from the release | 6.8 ms | 1.7 MiB |
-| Reading and parsing a map of 1.5 MiB of JSON from the release | 9.4 ms | 6.0 MiB |
-| Reading and decoding a PNG of 1024 by 1024 pixels from the release | 24.3 ms | 4.0 MiB |
-| Reading the same pixels raw from the release | 14.6 ms | 4.0 MiB |
-| Building an update that changed a line of the text and one small file | 483 ms | 4.0 MiB |
+| Building the release of 64 MiB of incompressible data, 16 MiB of text, 2000 small files, a Lua module of 2 MiB, a map and a picture | 129 MiB/s | 4.0 MiB |
+| Opening the release, with both signatures checked and both catalogs decrypted | 1.2 ms | 0.3 MiB |
+| Reading an incompressible file in order from the release | 370 MiB/s | 2.3 MiB |
+| Reading it in order from the folder of the app, as development does | 6186 MiB/s | 1.0 MiB |
+| Reading a compressible file in order from the release | 1039 MiB/s | 4.0 MiB |
+| Reading the incompressible file on 4 threads at once | 1361 MiB/s | 3.0 MiB |
+| 2000 reads of 4 KiB at random offsets of one file | 6.4 s | 2.4 MiB |
+| Finding 2000 files in the catalog | 0.6 ms | 0 MiB |
+| Compressing the text in chunks of 1 MiB with Zstandard | 3120 MiB/s | 1.0 MiB |
+| Decompressing them | 20500 MiB/s | 1.0 MiB |
+| Encrypting and decrypting them with XChaCha20-Poly1305 | 732 MiB/s | 1.0 MiB |
+| Loading a Lua module of 2 MiB from its text in the folder of the app | 14.7 ms | 2.0 MiB |
+| Loading the same module as bytecode from the release | 4.9 ms | 1.7 MiB |
+| Reading and parsing a map of 1.5 MiB of JSON from the folder | 6.5 ms | 6.0 MiB |
+| Reading and parsing it from the release | 6.8 ms | 6.0 MiB |
+| Reading and decoding a PNG of 1024 by 1024 pixels from the folder | 11.3 ms | 4.0 MiB |
+| Reading and decoding it from the release | 19.2 ms | 4.0 MiB |
+| Reading the same pixels raw from the folder | 0.7 ms | 4.0 MiB |
+| Reading them raw from the release | 11.3 ms | 4.0 MiB |
+| Building an update that changed a line of the text and one small file | 244 ms | 4.0 MiB |
 | Bytes that the update stores beyond the release, and the bytes of chunks it reuses | 2.5 KiB, 87.2 MiB | |
-| Planning the download ranges of 100 thousand records | 0.9 ms | 2.0 MiB |
-| Adding 256 records of 256 KiB to the local store | 127 MiB/s | 0.25 MiB |
-| Building a release of 20 thousand files of 512 bytes | 1.5 s | 4.0 MiB |
-| Opening it | 14.5 ms | 3.3 MiB |
-| Finding and reading its 20 thousand files | 155 ms | 1.2 MiB |
+| Planning the download ranges of 100 thousand records | 0.5 ms | 2.0 MiB |
+| Adding 256 records of 256 KiB to the local store | 159 MiB/s | 0.25 MiB |
+| Building a release of 20 thousand files of 512 bytes | 1.0 s | 4.0 MiB |
+| Opening it | 10.8 ms | 3.3 MiB |
+| Finding and reading its 20 thousand files | 91 ms | 1.2 MiB |
+
+The reads from the folder of the app come from the file cache of the system, as the reads of the release do, so the difference between them is what protection adds: each chunk is authenticated, decrypted and checked against its content ID before a byte reaches the app. The command `haylen bench --suite sprites` measures, with the GPU of the machine, what finishing loaded textures on the frame thread costs: while 100 thousand sprites move, a frame takes 8.57 ms on average with 0.36 ms of work on the frame thread, and while 48 textures of 1024 by 1024 pixels load in the background and finish within the upload budget of the asset manager, a frame takes 8.69 ms on average and 12.46 ms at most with 0.55 ms of work, and all 48 are ready after 9 frames.
+
+Measured this way, the changes of the protected content fall into three groups:
+
+- They improve loads where the release holds a cooked form: Lua modules load from bytecode three times faster than from their text, 4.9 ms against 14.7 ms for 2 MiB, and an update stores only the chunks that changed.
+- They are about neutral where parsing outweighs reading: a map of JSON parses in 6.8 ms from the release against 6.5 ms from the folder, opening a release costs about a millisecond, and textures finish within the upload budget whether they come from a folder or a release, so a frame stays near its time while many of them load.
+- They add an unavoidable cost to every byte they read, the price of the authentication and the decryption: an incompressible file reads at 370 MiB/s on one thread and 1.4 GiB/s on four, against 6 GiB/s from the file cache, so a PNG of 1024 pixels decodes in 19.2 ms from the release against 11.3 ms from the folder. That work runs on the threads of the task pool, never on the frame thread, and scales with the cores.
 
 The largest allocation of every read stays at the size of one chunk, at most 4 MiB, whatever the size of the file or the release. A read authenticates, decrypts and decompresses the whole chunk that holds its first byte, so reading a file in order costs each chunk once, while a small read at a random place costs a whole chunk, about 4 ms for a chunk of 1 MiB of incompressible data. Formats that read small pieces at random places, such as a database of many records, keep each piece in a file of its own or read their file in order.
 
 These are the criteria that a change of the content system keeps, which the benchmark shows and the tests check where they can:
 
 - A read never allocates more than one chunk, so the memory of a read never grows with its file, and a music stream holds one window of its file and one chunk, as the `AllocationTracker` tests of the readers check.
-- Opening a release costs milliseconds and grows with the number of its files, never with the bytes of its content, as a release of 20 thousand files that opens in 15 ms shows.
-- Readers on several threads share no lock while they decrypt, so reads scale with the cores, from 281 MiB/s on one thread to more than 1 GiB/s on four.
-- Decryption and decompression cost less than reading the bytes from the disk of a phone: the cipher passes 500 MiB/s and the decoder 15 GiB/s on one core.
+- Opening a release costs milliseconds and grows with the number of its files, never with the bytes of its content, as a release of 20 thousand files that opens in 11 ms shows.
+- Readers on several threads share no lock while they decrypt, so reads scale with the cores, from 370 MiB/s on one thread to more than 1.3 GiB/s on four.
+- Decryption and decompression run off the frame thread: the cipher passes 700 MiB/s and the decoder 20 GiB/s on one core.
 - An update stores only the chunks that changed and reuses every other one, so a change of a line and of a small file stores 2.5 KiB, and the shards of unchanged content keep their bytes for the patches of stores.
 - Lua modules load from bytecode about three times faster than from their text, which is one reason a release ships bytecode.
 - The web never holds more of a download than its budget, as the [memory check of the web](../tools/testing.md#the-memory-check-of-the-web) checks in a browser.
-- Assets that finish loading on the frame thread, such as textures that upload, stay within the upload budget of the asset manager each frame, which the `core` suite of `haylen bench` measures with JSON assets loaded in the background and on the frame thread.
+- Assets that finish loading on the frame thread, such as textures that upload, stay within the upload budget of the asset manager each frame, which the `sprites` suite of `haylen bench` measures with textures on the GPU and the `core` suite with JSON assets loaded in the background and on the frame thread.
 
 ### Cooking assets
 
-Cooking would turn assets into the form that the engine uses at run time when the release builds, such as images into raw pixels or into the block-compressed formats of GPUs, instead of decoding them on the device. The benchmark weighs it with a painted picture of 1024 by 1024 pixels: decoding its PNG from the release takes 24 ms, while reading its raw pixels takes 15 ms, and both take the same room in the release, 2.5 MiB, because the compression of each chunk shrinks raw pixels about as well as PNG does. Raw pixels would save 10 ms of a worker of the task pool per picture of that size, never time of the frame thread, where images never decode, and no byte of a download. Block-compressed textures would cut the memory of textures on the GPU four to eight times and the time of their upload, but each family of GPUs takes formats of its own, ASTC on phones, BC on desktops and ETC2 on older Android devices, so a release would carry a variant per family and its build an encoder for each. So releases ship images as their authors saved them, PNG, JPEG or WebP, and decode them off the frame thread. The content profiles already give each platform a release of its own, so block-compressed variants can join a profile without a change of the format once the memory of textures on the GPU limits an app.
+Cooking would turn assets into the form that the engine uses at run time when the release builds, such as images into raw pixels or into the block-compressed formats of GPUs, instead of decoding them on the device. The benchmark weighs it with a painted picture of 1024 by 1024 pixels: decoding its PNG from the release takes 19 ms, while reading its raw pixels takes 11 ms, and both take the same room in the release, 2.5 MiB, because the compression of each chunk shrinks raw pixels about as well as PNG does. Raw pixels would save 8 ms of a worker of the task pool per picture of that size, never time of the frame thread, where images never decode, and no byte of a download. Block-compressed textures would cut the memory of textures on the GPU four to eight times and the time of their upload, but each family of GPUs takes formats of its own, ASTC on phones, BC on desktops and ETC2 on older Android devices, so a release would carry a variant per family and its build an encoder for each. So releases ship images as their authors saved them, PNG, JPEG or WebP, and decode them off the frame thread. The content profiles already give each platform a release of its own, so block-compressed variants can join a profile without a change of the format once the memory of textures on the GPU limits an app.
 
 ## Limits
 

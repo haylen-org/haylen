@@ -1,13 +1,18 @@
+#include <algorithm>
 #include <any>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
+#include <format>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/assets/Manager.hpp"
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -20,10 +25,11 @@
 
 namespace haylen::bench {
 
-// Draws each phase for a while with vsync off and reports the wall time between frames, which includes the GPU and displays that pace frames themselves, like macOS does. The work column is the CPU time of the frame outside the submit step, where the renderer uploads and waits for the next drawable. Dynamic phases move every sprite every frame, and baked phases draw a static batch.
+// Draws each phase for a while with vsync off and reports the wall time between frames, which includes the GPU and displays that pace frames themselves, like macOS does, and the slowest frame. The work column is the CPU time of the frame outside the submit step, where the renderer uploads and waits for the next drawable. Dynamic phases move every sprite every frame, and baked phases draw a static batch. The last phase loads textures in the background while it draws, and lasts until they are ready, so its frames show what finishing them on the frame thread within the upload budget of the asset manager costs.
 class SpriteBenchmark final : public core::Application {
   public:
     void start(core::Engine& engine) override {
+        registerNoise(engine);
         engine.getScenes().push(std::make_shared<Stage>());
     }
 
@@ -31,26 +37,57 @@ class SpriteBenchmark final : public core::Application {
     struct Phase {
         std::size_t sprites = 0;
         bool baked = false;
+        int textures = 0;
     };
+
+    // Images of noise that `content/noise.json` describes, decoded on a worker and made into a texture on the frame thread like a picture of the app, while their pixels differ by the seed of each load.
+    static void registerNoise(core::Engine& engine) {
+        graphics::Device& device = engine.getGraphics();
+        // clang-format off
+        engine.getAssets().registerType({
+            .name = "noise",
+            .normalize = [](const core::Json& options) { return core::Json{{"seed", options.at("seed").get<std::uint64_t>()}}; },
+            .decode = [](assets::Manager::Request& request) {
+                const int size = core::Json::parse(request.bytes).at("size").get<int>();
+                std::vector<std::uint8_t> pixels(static_cast<std::size_t>(size) * static_cast<std::size_t>(size) * 4);
+                std::uint64_t state = request.options.at("seed").get<std::uint64_t>();
+                for (std::uint8_t& value : pixels) {
+                    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                    value = static_cast<std::uint8_t>(state >> 56);
+                }
+                return std::make_shared<graphics::Image>(size, size, std::move(pixels));
+            },
+            .finalize = [&device](std::shared_ptr<void> decoded, const assets::Manager::Request&) {
+                return std::make_shared<graphics::Texture>(device.createTexture(*std::static_pointer_cast<graphics::Image>(decoded)));
+            },
+        });
+        // clang-format on
+    }
 
     class Stage final : public core::Scene {
       public:
         void enter(core::Engine& engine, const std::any&) override {
             texture = engine.getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
-            core::Log::info("{:>10} {:<8} {:>9} {:>9} {:>14} {:>9}", "sprites", "kind", "ms", "fps", "Msprites/s", "work ms");
+            core::Log::info("{:>10} {:<22} {:>9} {:>9} {:>9} {:>14} {:>9} {:>7}", "sprites", "kind", "ms", "max ms", "fps", "Msprites/s", "work ms", "frames");
             begin(engine);
         }
 
         void update(core::Engine& engine, float) override {
             const auto now = std::chrono::steady_clock::now();
+            const Phase& current = kPhases[phaseIndex];
             if (frame == kWarmupFrames) {
                 measureStart = now;
                 workMilliseconds = 0.0;
+                slowestMilliseconds = 0.0;
+                loadTextures(engine, current.textures);
             } else if (frame > kWarmupFrames) {
                 workMilliseconds += getWorkMilliseconds(engine.getProfiler());
+                slowestMilliseconds = std::max(slowestMilliseconds, std::chrono::duration<double, std::milli>(now - previousFrame).count());
             }
-            if (frame == kWarmupFrames + kMeasuredFrames) {
-                finishPhase(engine, now);
+            previousFrame = now;
+            const bool measured = current.textures > 0 ? frame > kWarmupFrames && loading == 0 : frame == kWarmupFrames + kMeasuredFrames;
+            if (measured) {
+                finishPhase(engine, now, frame - kWarmupFrames);
                 return;
             }
             ++frame;
@@ -72,7 +109,7 @@ class SpriteBenchmark final : public core::Application {
         }
 
       private:
-        static constexpr std::array<Phase, 6> kPhases{{{100'000, false}, {100'000, true}, {1'000'000, false}, {1'000'000, true}, {2'000'000, false}, {2'000'000, true}}};
+        static constexpr std::array<Phase, 7> kPhases{{{100'000, false, 0}, {100'000, true, 0}, {1'000'000, false, 0}, {1'000'000, true, 0}, {2'000'000, false, 0}, {2'000'000, true, 0}, {100'000, false, 48}}};
         static constexpr int kWarmupFrames = 30;
         static constexpr int kMeasuredFrames = 240;
         static constexpr std::size_t kParallelGrain = 16384;
@@ -105,6 +142,19 @@ class SpriteBenchmark final : public core::Application {
             baked = current.baked ? engine.getRenderer2D().createStaticBatch(texture, sprites) : graphics2d::StaticSpriteBatch{};
         }
 
+        void loadTextures(core::Engine& engine, int count) {
+            loading = count;
+            textures.clear();
+            for (int index = 0; index < count; ++index) {
+                // clang-format off
+                engine.getAssets().loadAsync("noise", "noise.json", [this](std::shared_ptr<void> asset, const std::string&) {
+                    textures.push_back(std::move(asset));
+                    --loading;
+                }, core::Json{{"seed", index + 1}});
+                // clang-format on
+            }
+        }
+
         void animate(core::Engine& engine) {
             const float seconds = elapsed;
             // clang-format off
@@ -117,12 +167,14 @@ class SpriteBenchmark final : public core::Application {
             // clang-format on
         }
 
-        void finishPhase(core::Engine& engine, std::chrono::steady_clock::time_point now) {
+        void finishPhase(core::Engine& engine, std::chrono::steady_clock::time_point now, int frames) {
             const Phase& current = kPhases[phaseIndex];
-            const double milliseconds = std::chrono::duration<double, std::milli>(now - measureStart).count() / kMeasuredFrames;
+            const double milliseconds = std::chrono::duration<double, std::milli>(now - measureStart).count() / frames;
             const double fps = 1000.0 / milliseconds;
-            const double work = workMilliseconds / kMeasuredFrames;
-            core::Log::info("{:>10} {:<8} {:>9.2f} {:>9.1f} {:>14.1f} {:>9.2f}", current.sprites, current.baked ? "baked" : "dynamic", milliseconds, fps, static_cast<double>(current.sprites) * fps / 1'000'000.0, work);
+            const double work = workMilliseconds / frames;
+            const std::string kind = current.textures > 0 ? std::format("dynamic, {} textures", current.textures) : current.baked ? "baked" : "dynamic";
+            core::Log::info("{:>10} {:<22} {:>9.2f} {:>9.2f} {:>9.1f} {:>14.1f} {:>9.2f} {:>7}", current.sprites, kind, milliseconds, slowestMilliseconds, fps, static_cast<double>(current.sprites) * fps / 1'000'000.0, work, frames);
+            textures.clear();
 
             if (++phaseIndex == kPhases.size()) {
                 engine.quit();
@@ -140,7 +192,11 @@ class SpriteBenchmark final : public core::Application {
         int frame = 0;
         float elapsed = 0.0F;
         double workMilliseconds = 0.0;
+        double slowestMilliseconds = 0.0;
         std::chrono::steady_clock::time_point measureStart;
+        std::chrono::steady_clock::time_point previousFrame;
+        std::vector<std::shared_ptr<void>> textures;
+        int loading = 0;
     };
 };
 

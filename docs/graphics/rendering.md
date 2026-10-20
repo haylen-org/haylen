@@ -404,20 +404,22 @@ A slot is freed when the last handle to its object goes away, and the object is 
 haylen bench
 ```
 
-The command `bench` builds the `haylen-sprite-benchmark` app in Release for the host and runs it on the local GPU. The app is `engine/bench/SpriteBenchmark.cpp`, written in C++ and added with `haylen_add_app(... CPP ...)` on desktop builds when `HAYLEN_BUILD_BENCHMARKS` is on, with the package `engine/bench/sprite-benchmark`. Its `app.json` opens a 1280 by 720 high-DPI window with vsync off and a 1920 by 1080 design area with the `fit` policy.
+The command `bench` builds the `haylen-sprite-benchmark` app in Release for the host and runs it on the local GPU. The app is `engine/bench/SpriteBenchmark.cpp`, written in C++ and added with `haylen_add_app(... CPP ...)` on desktop builds when `HAYLEN_BUILD_BENCHMARKS` is on, with the package `engine/bench/sprite-benchmark`. Its `app.json` opens a 1280 by 720 high-DPI window with vsync off and a 1920 by 1080 design area with the `fit` policy, and its `content/noise.json` describes the images of the last phase.
 
-The benchmark runs six phases: 100,000, 1,000,000 and 2,000,000 sprites, each first dynamic and then baked. Every phase draws 3 by 3 unit sprites of a tinted 4 by 4 white texture, in a grid dense enough to cover the design area, for 30 warm-up frames and 240 measured frames. Dynamic phases move every sprite every frame with `JobSystem::parallelFor` and draw them with one `drawBatch`, so all instance data is converted and uploaded every frame, 96 MB at 2,000,000 sprites of 48 bytes. Baked phases draw one static batch made with `createStaticBatch` and shift it every frame through the `drawStatic` offset. The app quits after the last phase.
+The benchmark runs six phases: 100,000, 1,000,000 and 2,000,000 sprites, each first dynamic and then baked. Every phase draws 3 by 3 unit sprites of a tinted 4 by 4 white texture, in a grid dense enough to cover the design area, for 30 warm-up frames and 240 measured frames. Dynamic phases move every sprite every frame with `JobSystem::parallelFor` and draw them with one `drawBatch`, so all instance data is converted and uploaded every frame, 96 MB at 2,000,000 sprites of 48 bytes. Baked phases draw one static batch made with `createStaticBatch` and shift it every frame through the `drawStatic` offset. A seventh phase moves 100,000 sprites while it loads 48 textures of 1024 by 1024 pixels in the background through an asset type of the benchmark, which makes the pixels of each image on a worker and its texture on the frame thread within the upload budget of the asset manager, as a picture of an app loads, and it lasts until every texture is ready, so it shows what finishing GPU resources costs a frame. The app quits after the last phase.
 
 Each phase logs one line:
 
 | Column | Meaning |
 | --- | --- |
 | `sprites` | Sprites drawn per frame. |
-| `kind` | `dynamic` or `baked`. |
+| `kind` | `dynamic`, `baked`, or `dynamic` with the textures that load. |
 | `ms` | Wall time between frames, which includes the GPU and, on displays that pace frames themselves like macOS does, the display. |
+| `max ms` | The longest of those times, the worst hitch of the phase. |
 | `fps` | Frames per second from `ms`. |
 | `Msprites/s` | Millions of sprites drawn per second. |
 | `work ms` | CPU time of the frame outside the `submit` step, where the renderer uploads and waits for the next drawable. |
+| `frames` | Frames measured, 240, or until every texture of the last phase is ready. |
 
 The results recorded in `PROJECT.md`, measured on an Apple M5 Pro with Metal in Release:
 
@@ -425,6 +427,7 @@ The results recorded in `PROJECT.md`, measured on an Apple M5 Pro with Metal in 
 | --- | --- | --- |
 | 2,000,000 animated sprites | 105 fps | 4.5 ms |
 | 2,000,000 baked sprites | 120 Hz, the refresh limit of the display | 0.02 ms |
+| 100,000 animated sprites while 48 textures of 1024 pixels load | 115 fps, 12.5 ms at the slowest frame, every texture ready after 9 frames | 0.55 ms, against 0.36 ms without the loads |
 
 ## Render benchmark
 

@@ -81,7 +81,10 @@ class ContentBenchmark final {
         std::unique_ptr<content::ReleasePackage> release;
         report("Open the release", [&] { release = content::ReleasePackage::open(io::Package::openDirectory(root / "release"), keys, std::span(&trusted, 1), compatibility); }, 0.0, "ms");
 
+        // The same reads from the folder of the app, as development reads it, show what protection adds.
+        const std::shared_ptr<const io::Package> folder = io::Package::openDirectory(root / "source");
         report("Read an incompressible file in order", [&] { readInOrder(*release, "content/media/large.bin"); }, static_cast<double>(kLargeFile) / kMegabyte, "MiB/s");
+        report("Read it in order from the folder of the app", [&] { readInOrder(*folder, "content/media/large.bin"); }, static_cast<double>(kLargeFile) / kMegabyte, "MiB/s");
         report("Read a compressible file in order", [&] { readInOrder(*release, "content/data/text.txt"); }, static_cast<double>(kTextFile) / kMegabyte, "MiB/s");
         report("Read the incompressible file on 4 threads at once", [&] { readOnThreads(*release, "content/media/large.bin"); }, static_cast<double>(kLargeFile) / kMegabyte, "MiB/s");
         report("Read 4 KiB at 2000 random offsets", [&] { readAtRandom(*release, "content/media/large.bin"); }, 0.0, "ms");
@@ -94,13 +97,15 @@ class ContentBenchmark final {
         report("Decompress the text in chunks", [&] { decompressChunks(encoded, text.size()); }, static_cast<double>(text.size()) / kMegabyte, "MiB/s");
         report("Encrypt and decrypt the text with XChaCha20-Poly1305", [&] { encryptChunks(text); }, 2.0 * static_cast<double>(text.size()) / kMegabyte, "MiB/s");
 
-        // Lua modules ship as bytecode, and maps and images load from the release the way an app loads them.
-        const std::string module = makeModule();
-        report("Load a Lua module of 2 MiB from its text", [&] { loadChunk({reinterpret_cast<const std::uint8_t*>(module.data()), module.size()}, "t"); }, 0.0, "ms");
+        // Lua modules ship as bytecode, and maps and images load from the folder in development and from the release the way an app loads them.
+        report("Load a Lua module of 2 MiB from its text in the folder", [&] { loadChunk(folder->read("source/world.lua"), "t"); }, 0.0, "ms");
         report("Load the same module as bytecode from the release", [&] { loadChunk(release->read("source/world.lua"), "b"); }, 0.0, "ms");
-        report("Read and parse a map of JSON from the release", [&] { (void)core::Json::parse(release->readAssetText("maps/island.json")); }, 0.0, "ms");
-        report("Read and decode a 1024 px PNG from the release", [&] { (void)graphics::Image::decode(release->read("content/images/scene.png")); }, 0.0, "ms");
-        report("Read the same pixels raw from the release", [&] { (void)release->read("content/images/scene.rgba"); }, 0.0, "ms");
+        report("Read and parse a map of JSON from the folder", [&] { (void)core::Json::parse(folder->readAssetText("maps/island.json")); }, 0.0, "ms");
+        report("Read and parse the map from the release", [&] { (void)core::Json::parse(release->readAssetText("maps/island.json")); }, 0.0, "ms");
+        report("Read and decode a 1024 px PNG from the folder", [&] { (void)graphics::Image::decode(folder->read("content/images/scene.png")); }, 0.0, "ms");
+        report("Read and decode the PNG from the release", [&] { (void)graphics::Image::decode(release->read("content/images/scene.png")); }, 0.0, "ms");
+        report("Read the same pixels raw from the folder", [&] { (void)folder->read("content/images/scene.rgba"); }, 0.0, "ms");
+        report("Read the raw pixels from the release", [&] { (void)release->read("content/images/scene.rgba"); }, 0.0, "ms");
         printValue("Bytes the PNG takes in the release", static_cast<double>(storedSize(*release, "content/images/scene.png")) / kMegabyte, "MiB");
         printValue("Bytes the raw pixels take in the release", static_cast<double>(storedSize(*release, "content/images/scene.rgba")) / kMegabyte, "MiB");
 
