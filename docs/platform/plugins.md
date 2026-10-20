@@ -201,6 +201,7 @@ The placeholder `${name}` in a string of the `apple` and `android` sections is r
 | `gradlePlugins` | Gradle plugins that the app module applies, each as `{"id": ..., "version": ...}`, such as `{"id": "com.example.services", "version": "1.0.0"}`. |
 | `placeholders` | Manifest placeholders by name, whose text values the manifest of the module reads as `${name}`. |
 | `files` | Copies into the Android project, each as `{"from": ..., "to": ...}`. `from` is a path inside the plugin or a reference to a `file` parameter, and `to` is a path inside the project, such as `app/services.json`. |
+| `assetPacks` | Declares that the plugin delivers the named [packs](../content/content.md#delivery) of the content from Google Play, such as `{"fastFollow": "${fastFollowPacks}"}`. The Android release build then writes an asset pack of Google Play for every named pack, which Play downloads right after the install for the packs that `fastFollow` lists, by their names in `content.delivery`, and when the app asks for them for the others, as [distribution](../tools/distribution.md#release-builds) describes. Only one plugin of an app may declare it, and the plugin adds a source of packs with `content.addPackSource` that answers each pack with the folder where Play placed it. |
 
 #### web
 

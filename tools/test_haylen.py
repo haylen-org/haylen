@@ -728,7 +728,7 @@ class RunCppTest(unittest.TestCase):
         with contextlib.ExitStack() as stack:
             mocks = [stack.enter_context(patch) for patch in patches]
             haylen.run_cpp_android(self.scratch / "project", "game", self.scratch, args)
-        self.assertEqual(mocks[-1].call_args.args[2:], ("emulator-5554", []))
+        self.assertEqual(mocks[-1].call_args.args[4:], ("emulator-5554", []))
 
 
     def test_a_build_only_run_builds_the_app_of_this_machine_without_launching_it(self):
@@ -1293,6 +1293,65 @@ class AndroidPluginsTest(unittest.TestCase):
         written = json.loads((assets / haylen.ANDROID_PLUGINS_FILE).read_text())
         self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "config": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "config": {"sandbox": True}}]})
 
+
+    def test_a_plugin_that_delivers_packs_turns_the_named_packs_into_asset_packs_of_google_play(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        packs = scratch / "release.packs"
+        for pack, shards in (("chapter-2", 2), ("intro.music", 1), ("2nd", 1)):
+            for index in range(shards):
+                (packs / pack).mkdir(parents=True, exist_ok=True)
+                (packs / pack / f"{pack}-{index}.hpak").write_bytes(b"s" * 10)
+        generated = scratch / "project" / haylen.GENERATED_FOLDER
+        (generated / "asset-packs" / "haylencontent1").mkdir(parents=True)
+        (generated / "asset-packs" / "haylencontent1" / "build.gradle.kts").write_text(haylen.ANDROID_ASSET_PACK_MODULE.format(name="haylencontent1", delivery="install-time", words="with the app"))
+        delivery = haylen.Plugin(scratch, {"id": "delivery", "version": "1.0.0", "android": {"module": "android", "assetPacks": {"fastFollow": "${fastFollowPacks}"}}}, None)
+        app = mock.Mock(plugins=[delivery], plugin_values={"delivery": {"fastFollowPacks": ["intro.music"]}}, content_packs=["2nd", "chapter-2", "intro.music"])
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            names = haylen.write_android_store_packs(app, generated, packs)
+        self.assertEqual(names, ["pack_2nd", "chapter_2", "intro_music"])
+        self.assertIn('deliveryType.set("fast-follow")', (generated / "asset-packs" / "intro_music" / "build.gradle.kts").read_text())
+        self.assertIn('deliveryType.set("on-demand")', (generated / "asset-packs" / "chapter_2" / "build.gradle.kts").read_text())
+        self.assertEqual(haylen.android_store_packs(scratch / "project"), {"pack_2nd": {"2nd-0.hpak"}, "chapter_2": {"chapter-2-0.hpak", "chapter-2-1.hpak"}, "intro_music": {"intro.music-0.hpak"}}, "The install-time packs are not among them, and the shards sit at the root of the assets of each pack.")
+
+        without = mock.Mock(plugins=[], plugin_values={}, content_packs=app.content_packs)
+        self.assertEqual(haylen.write_android_store_packs(without, scratch / "other", packs), [], "Without a plugin that delivers them, the packs stay for the content server.")
+        app.plugin_values["delivery"]["fastFollowPacks"] = ["chapter-3"]
+        with self.assertRaisesRegex(haylen.BuildError, 'the packs "chapter-3", which "content.delivery"'):
+            haylen.write_android_store_packs(app, scratch / "unknown", packs)
+        app.plugin_values["delivery"]["fastFollowPacks"] = []
+        with mock.patch.object(haylen, "ANDROID_STORE_PACK_LIMIT", 15), self.assertRaisesRegex(haylen.BuildError, 'The pack "chapter-2" holds 20 bytes'):
+            haylen.write_android_store_packs(app, scratch / "large", packs)
+        (packs / "chapter.2").mkdir()
+        with self.assertRaisesRegex(haylen.BuildError, 'The packs "chapter-2" and "chapter.2" both become the asset pack "chapter_2"'):
+            haylen.write_android_store_packs(app, scratch / "collision", packs)
+
+    def test_the_asset_packs_of_a_plugin_list_the_packs_that_deliver_right_after_the_install(self):
+        root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, root)
+        scratch = root / "delivery"
+        (scratch / "android" / "src" / "main").mkdir(parents=True)
+        (scratch / "android" / "build.gradle.kts").write_text("")
+        (scratch / "android" / "src" / "main" / "AndroidManifest.xml").write_text("<manifest />")
+        manifest = {"id": "delivery", "name": "Delivery", "version": "1.0.0", "description": "Delivers packs.", "platforms": ["android"], "parameters": {"fastFollowPacks": {"type": "array", "default": [], "description": "Packs."}}, "android": {"module": "android", "assetPacks": {"fastFollow": "${fastFollowPacks}"}}}
+        self.assertEqual(haylen.PluginManifestCheck.problems_of(scratch, manifest), [])
+        manifest["android"]["assetPacks"] = {"fastFollow": "music", "delivery": "on-demand"}
+        self.assertEqual(haylen.PluginManifestCheck.problems_of(scratch, manifest), ['The key "android.assetPacks.delivery" is not a key of "plugin.json".', 'The key "android.assetPacks.fastFollow" must list the packs that Google Play delivers right after the install, or name an array parameter that lists them.'])
+
+    def test_bundletool_signs_with_the_upload_key_that_the_gradle_scripts_read(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        self.assertEqual(haylen.read_java_properties(f"# A comment.\nkeyPassword={haylen.java_property('pä\\ss😀')}\n"), {"keyPassword": "pä\\ss😀"})
+        variables = {"HAYLEN_RELEASE_STORE_FILE": "keys/upload.jks", "HAYLEN_RELEASE_STORE_PASSWORD": "store", "HAYLEN_RELEASE_KEY_ALIAS": "upload", "HAYLEN_RELEASE_KEY_PASSWORD": "key"}
+        with mock.patch.dict(os.environ, variables):
+            self.assertEqual(haylen.android_release_key(scratch), {"storeFile": str(scratch / "keys" / "upload.jks"), "storePassword": "store", "keyAlias": "upload", "keyPassword": "key"})
+        files = haylen.android_key_files(scratch, "release")
+        files["properties"].parent.mkdir()
+        files["properties"].write_text(haylen.android_key_properties("release", "upload", "secret"))
+        self.assertEqual(haylen.android_release_key(scratch), {"storeFile": str(files["keystore"]), "storePassword": "secret", "keyAlias": "upload", "keyPassword": "secret"})
+        files["properties"].unlink()
+        with mock.patch.dict(os.environ, {name: "" for name in variables}), self.assertRaisesRegex(haylen.BuildError, "needs the upload key of the app"):
+            haylen.android_release_key(scratch)
 
     def test_an_android_project_without_the_files_of_its_plugins_stops_before_gradle(self):
         scratch = Path(tempfile.mkdtemp()).resolve()

@@ -74,6 +74,8 @@ CONSUMER_PROJECT = ENGINE_DIR / "tests" / "consumer"
 CONSUMER_MODES = {"subdirectory": '"add_subdirectory"', "cpm": "CPM", "package": 'the installed SDK and "find_package"'}
 # The keys that `android-key` writes into `keystore/` of an Android project, where the Gradle scripts of the template find them, with the size, validity and default name of a new key.
 ANDROID_KEY_FOLDER = "keystore"
+# The values of a signing key that the Gradle scripts of the template read, each with the suffix of its environment variable.
+ANDROID_KEY_VARIABLES = {"storeFile": "STORE_FILE", "storePassword": "STORE_PASSWORD", "keyAlias": "KEY_ALIAS", "keyPassword": "KEY_PASSWORD"}
 ANDROID_KEY_SIZE = 2048
 ANDROID_KEY_DAYS = 10000
 ANDROID_KEY_NAME = "CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR"
@@ -94,6 +96,9 @@ GRADLE_VERSION = "9.8.1"
 # XcodeGen generates the Apple projects from their `project.yml`. The hash is the one of the `xcodegen.zip` asset of the release.
 XCODEGEN_VERSION = "2.46.0"
 XCODEGEN_SHA256 = "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+# The bundletool of Google installs the bundle of an Android release whose packs Google Play delivers after the install, in the local testing mode of Play. The hash is the one of the `bundletool-all` jar of the release.
+BUNDLETOOL_VERSION = "1.18.3"
+BUNDLETOOL_SHA256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
 # The AppImage generator of CPack packs a Linux app with appimagetool, starts it with the AppImage runtime and points the libraries it bundles at the image with patchelf. The hashes are the ones of the release assets of each architecture.
 APPIMAGETOOL_VERSION = "1.9.1"
 APPIMAGE_RUNTIME_VERSION = "20251108"
@@ -141,7 +146,7 @@ ANDROID_ASSET_PACK_LIMIT = 1024**3
 # The size that the shards of a content profile aim for, when the store of the profile bounds the files that hold them. A shard holds at most twice its target and one record, and the content tool builds the earlier shards that pass that again, so the shards of Android releases always fit an install-time asset pack. The function haylen_add_app of `engine/cmake/haylen-app.cmake` gives C++ apps the same targets.
 CONTENT_SHARD_TARGETS = {"android": 256 * 1024**2}
 ANDROID_ASSET_PACK_NAME = "haylencontent"
-ANDROID_ASSET_PACK_MODULE = """// Written by haylen.py: an asset pack of the protected release of the app, which Google Play installs with it.
+ANDROID_ASSET_PACK_MODULE = """// Written by haylen.py: an asset pack of the protected release of the app, which Google Play delivers {words}.
 plugins {{
     id("com.android.asset-pack")
 }}
@@ -149,10 +154,15 @@ plugins {{
 assetPack {{
     packName.set("{name}")
     dynamicDelivery {{
-        deliveryType.set("install-time")
+        deliveryType.set("{delivery}")
     }}
 }}
 """
+# The delivery of each asset pack that Google Play delivers, with the words that describe it.
+ANDROID_PACK_DELIVERIES = {"install-time": "with the app", "fast-follow": "right after the install", "on-demand": "when the app asks for it"}
+# Google Play takes asset packs that deliver after the install of at most 1.5 GB each, and at most 100 asset packs in an app.
+ANDROID_STORE_PACK_LIMIT = 1500 * 1000**2
+ANDROID_MAXIMUM_ASSET_PACKS = 100
 STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app"), "android": (4 * 1000**3, "the 4 GB that Google Play accepts for the download of an app with its install-time asset packs")}
 # Symbol files, which stay with the developer and never ship.
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
@@ -487,6 +497,17 @@ def ensure_gradle() -> Path:
         package.extractall(TOOLS_DIR)
     archive.unlink()
     target.chmod(0o755)
+    return target
+
+
+def ensure_bundletool() -> Path:
+    """Returns the pinned bundletool, a jar named after its version, which moves into place only once its hash matches."""
+    target = TOOLS_DIR / f"bundletool-{BUNDLETOOL_VERSION}.jar"
+    if target.exists():
+        return target
+    partial = target.with_name(f"{target.name}.{os.getpid()}.part")
+    download(f"https://github.com/google/bundletool/releases/download/{BUNDLETOOL_VERSION}/bundletool-all-{BUNDLETOOL_VERSION}.jar", partial, BUNDLETOOL_SHA256)
+    partial.replace(target)
     return target
 
 
@@ -1886,7 +1907,7 @@ class PluginManifestCheck:
             return
         if "android" not in self.platforms:
             self.report("android", 'needs "android" in "platforms".')
-        self.check_keys("android", android, {"module", "gradlePlugins", "placeholders", "files"}, {"module"})
+        self.check_keys("android", android, {"module", "gradlePlugins", "placeholders", "files", "assetPacks"}, {"module"})
         if "module" in android and self.check_path("android.module", android["module"], "folder"):
             module = self.folder / android["module"]
             if not any((module / name).is_file() for name in ("build.gradle.kts", "build.gradle")) or not (module / "src" / "main" / "AndroidManifest.xml").is_file():
@@ -1913,6 +1934,12 @@ class PluginManifestCheck:
                 self.check_source(f"{key}.from", entry["from"])
             if "to" in entry and (not isinstance(entry["to"], str) or not entry["to"] or Path(entry["to"]).is_absolute() or ".." in Path(entry["to"]).parts):
                 self.report(f"{key}.to", 'must be a path inside the Android project, such as "app/services.json".')
+        packs = android.get("assetPacks", {})
+        if self.is_object("android.assetPacks", packs, 'must be an object, such as {"fastFollow": "${fastFollowPacks}"}.'):
+            self.check_keys("android.assetPacks", packs, {"fastFollow"}, set())
+            fast = packs.get("fastFollow", [])
+            if not (isinstance(fast, list) and all(isinstance(pack, str) for pack in fast)) and not (isinstance(fast, str) and PARAMETER_REFERENCE.fullmatch(fast)):
+                self.report("android.assetPacks.fastFollow", "must list the packs that Google Play delivers right after the install, or name an array parameter that lists them.")
         self.check_references("android", android)
 
     def check_web(self) -> None:
@@ -3052,8 +3079,8 @@ def write_android_splash(app: App, resources: Path) -> None:
         shutil.copy2(app.splash_logo, resources / "drawable" / f"haylen_splash_logo{app.splash_logo.suffix.lower()}")
 
 
-def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, release: Path | None = None) -> None:
-    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version, orientation and status bar of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
+def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, release: Path | None = None, packs_folder: Path | None = None) -> None:
+    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version, orientation and status bar of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, in `asset-packs` the asset packs of the release, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`. The named packs of a release, whose shards wait in `packs_folder`, become asset packs that Google Play delivers after the install when a plugin delivers them."""
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Android project `{shown_path(root)}`")
     for name in ("assets", "res", "jniLibs", "plugins", "asset-packs"):
@@ -3064,6 +3091,10 @@ def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, 
         shutil.copytree(release, generated / "assets" / "app")
         if sum(path.stat().st_size for path in release.iterdir()) > ANDROID_BASE_RELEASE_LIMIT:
             packs = write_android_asset_packs(generated, set(release_app_files(app, release, config, jobs)))
+        if packs_folder is not None and packs_folder.is_dir():
+            packs += write_android_store_packs(app, generated, packs_folder)
+        if len(packs) > ANDROID_MAXIMUM_ASSET_PACKS:
+            raise BuildError(f"The release needs {len(packs)} asset packs, more than the {ANDROID_MAXIMUM_ASSET_PACKS} that Google Play takes. Join named packs of \"content.delivery\" in \"app.json\", or deliver more content from the content server.")
     else:
         files = copy_package(app, generated / "assets" / "app")
         # Android cannot list asset folders recursively, so the runtime reads the files of the package from this index.
@@ -3101,11 +3132,59 @@ def write_android_asset_packs(generated: Path, kept: set[str]) -> list[str]:
             packs.append(f"{ANDROID_ASSET_PACK_NAME}{len(packs) + 1}")
             module = generated / "asset-packs" / packs[-1]
             (module / "src" / "main" / "assets" / "app").mkdir(parents=True)
-            (module / "build.gradle.kts").write_text(ANDROID_ASSET_PACK_MODULE.format(name=packs[-1]), encoding="utf-8")
+            (module / "build.gradle.kts").write_text(ANDROID_ASSET_PACK_MODULE.format(name=packs[-1], delivery="install-time", words=ANDROID_PACK_DELIVERIES["install-time"]), encoding="utf-8")
             filled = 0
         shard.rename(generated / "asset-packs" / packs[-1] / "src" / "main" / "assets" / "app" / shard.name)
         filled += size
     terminal.info(f"The protected release is larger than the share of the base module of Google Play that the app leaves it, so its content shards go into the install-time asset packs {quoted_names(packs)}.")
+    return packs
+
+
+def android_store_pack_name(pack: str) -> str:
+    """The name of the asset pack of Google Play that holds a named pack of the content, since Play names packs with letters, digits and underscores that start with a letter. The native part of a plugin that delivers the packs names them the same way."""
+    name = re.sub(r"[-.]", "_", pack)
+    return f"pack_{name}" if name[0].isdigit() else name
+
+
+def write_android_store_packs(app: App, generated: Path, packs_folder: Path) -> list[str]:
+    """Writes an asset pack of the project for every named pack of a protected release, when a plugin of the app delivers them from Google Play, and returns their names. The packs that the plugin lists in `fastFollow` deliver right after the install, the others when the app asks for them, and the shards of each sit at the root of its assets, the folder that Play gives the plugin once the pack is on the device."""
+    delivering = [(plugin, section["assetPacks"]) for plugin in app.plugins if (section := plugin_section(app, plugin, "android")) is not None and "assetPacks" in section]
+    folders = sorted(path for path in packs_folder.iterdir() if path.is_dir())
+    if not delivering or not folders:
+        return []
+    if len(delivering) > 1:
+        raise BuildError(f"The plugins {quoted_names([plugin.id for plugin, _ in delivering])} all deliver the packs of the app from Google Play. Keep only one of them.")
+    plugin, settings = delivering[0]
+    fast = settings.get("fastFollow", [])
+    if not isinstance(fast, list) or not all(isinstance(pack, str) for pack in fast):
+        raise BuildError(f'The plugin "{plugin.id}" must list in "fastFollow" the names of the packs that Google Play delivers right after the install.')
+    unknown = [pack for pack in fast if pack not in app.content_packs]
+    if unknown:
+        raise BuildError(f'The plugin "{plugin.id}" delivers right after the install the packs {quoted_names(unknown)}, which "content.delivery" of "app.json" does not name. List only the packs of the app.')
+
+    names: dict[str, str] = {}
+    for folder in folders:
+        name = android_store_pack_name(folder.name)
+        if name in names:
+            raise BuildError(f'The packs "{names[name]}" and "{folder.name}" both become the asset pack "{name}" of Google Play, which names packs with letters, digits and underscores. Rename one of them in "content.delivery" of "app.json".')
+        names[name] = folder.name
+        size = sum(path.stat().st_size for path in folder.iterdir())
+        if size > ANDROID_STORE_PACK_LIMIT:
+            raise BuildError(f'The pack "{folder.name}" holds {size} bytes, more than the 1.5 GB that Google Play takes in an asset pack. Split its content into several named packs in "content.delivery" of "app.json".')
+        delivery = "fast-follow" if folder.name in fast else "on-demand"
+        module = generated / "asset-packs" / name
+        shutil.copytree(folder, module / "src" / "main" / "assets")
+        (module / "build.gradle.kts").write_text(ANDROID_ASSET_PACK_MODULE.format(name=name, delivery=delivery, words=ANDROID_PACK_DELIVERIES[delivery]), encoding="utf-8")
+    terminal.info(f'The plugin "{plugin.id}" delivers the named packs of the release from Google Play, in the asset packs {quoted_names(list(names))}.')
+    return list(names)
+
+
+def android_store_packs(root: Path) -> dict[str, set[str]]:
+    """The asset packs of a prepared Android project that Google Play delivers after the install, each with the shards it holds."""
+    packs: dict[str, set[str]] = {}
+    for module in sorted((root / GENERATED_FOLDER / "asset-packs").glob("*/build.gradle.kts")):
+        if 'deliveryType.set("install-time")' not in module.read_text(encoding="utf-8"):
+            packs[module.parent.name] = {path.name for path in (module.parent / "src" / "main" / "assets").iterdir()}
     return packs
 
 
@@ -3134,6 +3213,56 @@ def aapt2() -> Path:
     return tools[-1]
 
 
+def android_bundle(app: App, config: str) -> Path:
+    """Finds the newest bundle of a configuration that Gradle built into the build folder of the app."""
+    variant = "release" if config == "Release" else "debug"
+    folder = app.build_folder / "gradle" / "app" / "outputs" / "bundle"
+    bundles = sorted((path for path in folder.rglob("*.aab") if variant in path.parent.name.lower()), key=lambda path: path.stat().st_mtime) if folder.is_dir() else []
+    if not bundles:
+        raise BuildError(f'No bundle of `{shown_path(app.folder)}` was built in the "{config}" configuration. Build it with "{TOOL} run {shown_path(app.folder)} --platform android --config {config}".')
+    return bundles[-1]
+
+
+def read_java_properties(text: str) -> dict[str, str]:
+    """Reads the entries of a Java properties file that `java_property` escapes."""
+    values = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not line.startswith(("#", "!")) and "=" in line:
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().encode("latin-1").decode("unicode_escape").encode("utf-16", "surrogatepass").decode("utf-16")
+    return values
+
+
+def android_release_key(root: Path) -> dict[str, str]:
+    """Reads the upload key that signs the release builds of an Android project as its Gradle scripts do: the one of `keystore/release.properties`, or else the one that the environment variables `HAYLEN_RELEASE_<VALUE>` give, with the keystore as an absolute path."""
+    properties = android_key_files(root, "release")["properties"]
+    if properties.is_file():
+        values = read_java_properties(properties.read_text(encoding="latin-1"))
+        return {**values, "storeFile": str(properties.parent / values["storeFile"])}
+    given = {name: os.environ.get(f"HAYLEN_RELEASE_{suffix}") for name, suffix in ANDROID_KEY_VARIABLES.items()}
+    if not all(given.values()):
+        raise BuildError(f'The release build needs the upload key of the app. Create it with "{TOOL} android-key" and the app folder, or give the environment variables {quoted_names([f"HAYLEN_RELEASE_{suffix}" for suffix in ANDROID_KEY_VARIABLES.values()])}.')
+    return {**given, "storeFile": str(root / given["storeFile"])}
+
+
+def install_android_bundle(bundle: Path, root: Path, device: str) -> None:
+    """Installs the bundle of a release on a device in the local testing mode of Google Play with bundletool, signed with the upload key of the project: the device receives the APKs of its configuration, and the asset packs that Play delivers after the install wait on the device, where the library of Play delivers them as the store would. The passwords reach bundletool through a file that only its owner reads, which never appears in a command line or a log."""
+    key = android_release_key(root)
+    java, tool = jdk_tool("java"), ensure_bundletool()
+    apks = bundle.with_suffix(".apks")
+    apks.unlink(missing_ok=True)
+    terminal.step(f'Installing the bundle `{shown_path(bundle)}` in the local testing mode of Google Play')
+    with tempfile.TemporaryDirectory() as temporary:
+        passwords = {}
+        for name in ("storePassword", "keyPassword"):
+            passwords[name] = Path(temporary) / name
+            passwords[name].touch(0o600)
+            passwords[name].write_text(key[name], encoding="utf-8")
+        run([java, "-jar", tool, "build-apks", f"--bundle={bundle}", f"--output={apks}", "--local-testing", "--connected-device", f"--device-id={device}", f"--adb={adb()}", f"--ks={key['storeFile']}", f"--ks-pass=file:{passwords['storePassword']}", f"--ks-key-alias={key['keyAlias']}", f"--key-pass=file:{passwords['keyPassword']}"])
+    run([java, "-jar", tool, "install-apks", f"--apks={apks}", f"--device-id={device}", f"--adb={adb()}"])
+
+
 def android_product(app: App, config: str) -> Path:
     """Finds the newest APK of a configuration that Gradle built into the build folder of the app, whatever product flavors the project defines."""
     variant = "release" if config == "Release" else "debug"
@@ -3158,7 +3287,7 @@ def android_device_abi(device: str) -> str:
 
 
 def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | None = None) -> Path:
-    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project. A debug build for a device names its ABI with the Gradle property `haylen.abi`, whose debug build type of the template packs only the native libraries of that ABI, so it builds and installs faster and fits a device with little room. A release whose shards went into asset packs builds the universal APK of the bundle, which holds the asset packs that install with the app, as Google Play installs them. A file that a plugin needs in the project, such as the configuration of a service, stops the build first with the copy to make, since Gradle would fail without it."""
+    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project. A debug build for a device names its ABI with the Gradle property `haylen.abi`, whose debug build type of the template packs only the native libraries of that ABI, so it builds and installs faster and fits a device with little room. A release whose shards went into asset packs builds the universal APK of the bundle, which holds the asset packs that install with the app, as Google Play installs them, and with asset packs that Google Play delivers after the install also the bundle, which holds them. A file that a plugin needs in the project, such as the configuration of a service, stops the build first with the copy to make, since Gradle would fail without it."""
     lacking = missing_android_plugin_files(app, root)
     if lacking:
         copies = " ".join(f'The plugin "{plugin.id}" needs "{destination}", so copy `{shown_path(source)}` to `{shown_path(root / destination)}`.' for plugin, source, destination in lacking)
@@ -3167,16 +3296,21 @@ def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | Non
     terminal.step(f'Building the APK of `{shown_path(root)}` with Gradle in the "{args.config}" configuration')
     only = [f"-Phaylen.abi={abi}"] if abi and variant == "Debug" else []
     packed = variant == "Release" and any((root / GENERATED_FOLDER / "asset-packs").glob("*/build.gradle.kts"))
-    task = f":app:package{variant}UniversalApk" if packed else f":app:assemble{variant}"
-    run([ensure_gradle(), "-p", root, task, f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache", *only])
+    tasks = [f":app:package{variant}UniversalApk" if packed else f":app:assemble{variant}"]
+    if variant == "Release" and android_store_packs(root):
+        tasks.append(f":app:bundle{variant}")
+    run([ensure_gradle(), "-p", root, *tasks, f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache", *only])
     return android_product(app, args.config)
 
 
-def launch_android(apk: Path, args: argparse.Namespace, device: str, arguments: list[str]) -> None:
-    """Installs an APK on a device, starts it and streams the log of its process until it ends. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
+def launch_android(app: App, root: Path, apk: Path, args: argparse.Namespace, device: str, arguments: list[str]) -> None:
+    """Installs an APK on a device, starts it and streams the log of its process until it ends. A release with asset packs that Google Play delivers after the install installs its bundle in the local testing mode of Play instead, which delivers them from the device as Play would. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
     package = capture([aapt2(), "dump", "packagename", apk]).strip()
     terminal.step(f'Launching "{package}" on the Android device "{device}"')
-    run([adb(), "-s", device, "install", "-r", apk])
+    if args.config == "Release" and android_store_packs(root):
+        install_android_bundle(android_bundle(app, args.config), root, device)
+    else:
+        run([adb(), "-s", device, "install", "-r", apk])
     # The launcher intent starts the task of the app, so the launcher icon brings that task back as it is later. The shell of the device reads the command line, so the extra is quoted for it.
     extras = ["--es", ANDROID_DEVELOPMENT_EXTRA, shlex.quote(arguments[arguments.index("--dev-server") + 1])] if "--dev-server" in arguments else []
     run([adb(), "-s", device, "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", f"{package}/dev.haylen.HaylenActivity", *extras])
@@ -3263,6 +3397,11 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         missing += [Requirement(f'The release holds the shard "{name}" compressed, while the runtime reads shards in place.', f'Keep "noCompress" of "hpak" in `{shown_path(root / "app" / "build.gradle.kts")}`.') for name in compressed]
         packs = f'Keep the asset packs of "{GENERATED_FOLDER}/haylen.properties" in `{shown_path(root / "settings.gradle.kts")}` and `{shown_path(root / "app" / "build.gradle.kts")}`, as the template does.'
         missing += [Requirement(f'The built app lacks the shard "{name}" of its protected release.', packs) for name in sorted(android_release_shards(root) - {entry.removeprefix("assets/app/") for entry in entries})]
+        stores = android_store_packs(root)
+        if stores:
+            with zipfile.ZipFile(android_bundle(app, args.config)) as archive:
+                bundled = set(archive.namelist())
+            missing += [Requirement(f'The bundle of the app lacks the shard "{name}" of the asset pack "{pack}".', packs) for pack, names in stores.items() for name in sorted(names) if f"{pack}/assets/{name}" not in bundled]
     return missing
 
 
@@ -3327,7 +3466,8 @@ def prepare_android_run(app: App, args: argparse.Namespace) -> Path:
     if args.config != "Release":
         prepare_android(app, root, "haylen", args.engine_config, args.jobs)
         return root
-    prepare_android(app, root, ANDROID_RELEASE_LIBRARY, args.engine_config, args.jobs, build_release(app, CONTENT_PROFILES["android"], args.engine_config, args.jobs, args.previous_release))
+    release = build_release(app, CONTENT_PROFILES["android"], args.engine_config, args.jobs, args.previous_release)
+    prepare_android(app, root, ANDROID_RELEASE_LIBRARY, args.engine_config, args.jobs, release, release_packs_folder(app, CONTENT_PROFILES["android"]))
     build_release_library(app, root / GENERATED_FOLDER / "jniLibs", args)
     return root
 
@@ -3342,7 +3482,7 @@ def run_android(app: App, root: Path, args: argparse.Namespace) -> None:
     if device is None:
         return
     with device_development(app, root / GENERATED_FOLDER / "assets" / "app", args, device) as arguments:
-        launch_android(apk, args, device, arguments)
+        launch_android(app, root, apk, args, device, arguments)
 
 
 # Web sites: the files of `platform/web` of an app, or of the template, go as they are into the site in the build folder of the app, and the generated files join them there.
@@ -4160,14 +4300,14 @@ def command_platform_diff(args: argparse.Namespace) -> None:
     terminal.success(f'The project differs from the "{args.template}" template in {differences} files.' if differences else f'The project matches the "{args.template}" template.')
 
 
-def keytool() -> Path:
-    """Finds the command `keytool` of the JDK that Gradle uses, the one of `JAVA_HOME`, or else the one on `PATH`."""
+def jdk_tool(name: str) -> Path:
+    """Finds a command of the JDK that Gradle uses, such as `keytool` or `java`, the one of `JAVA_HOME`, or else the one on `PATH`."""
     home = os.environ.get("JAVA_HOME")
-    if home and (Path(home) / "bin" / executable_name("keytool")).is_file():
-        return Path(home) / "bin" / executable_name("keytool")
-    found = shutil.which("keytool")
+    if home and (Path(home) / "bin" / executable_name(name)).is_file():
+        return Path(home) / "bin" / executable_name(name)
+    found = shutil.which(name)
     if found is None:
-        raise BuildError('The command "keytool" of the JDK was not found. Install JDK 17 or newer and set "JAVA_HOME" to its folder.')
+        raise BuildError(f'The command "{name}" of the JDK was not found. Install JDK 17 or newer and set "JAVA_HOME" to its folder.')
     return Path(found)
 
 
@@ -4197,7 +4337,7 @@ def command_android_key(args: argparse.Namespace) -> None:
     existing = [path for path in files.values() if path.exists()]
     if existing and not args.force:
         raise BuildError(f'The Android project already has a {args.kind} key in `{shown_path(existing[0])}`. Keep it, since an app signed with another key cannot update the installed one, or replace it with "--force".')
-    tool = keytool()
+    tool = jdk_tool("keytool")
     if not root.is_dir():
         copy_template(app_kind(app), "android", root)
         terminal.success(f'Created `{shown_path(root)}` from the "android" template.')
@@ -4641,14 +4781,14 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     release = Path((built / "release.txt").read_text(encoding="utf-8").strip()) if args.config == "Release" else None
     ensure_artifacts("android", args.engine_config, args.jobs)
     root = project_root(app, "android")
-    prepare_android(app, root, target, args.engine_config, args.jobs, release)
+    prepare_android(app, root, target, args.engine_config, args.jobs, release, release.parent / "packs" if release else None)
     copy_into(built / f"lib{target}.so", root / GENERATED_FOLDER / "jniLibs" / abi)
     apk = build_android(app, root, args, abi)
     requirements = check_android(app, root, args)
     report_requirements([requirement for requirement in requirements if requirement.advice != RELEASE_ADVICE])
     stop_on_release_problems(requirements)
     if not args.build_only:
-        launch_android(apk, args, device, [])
+        launch_android(app, root, apk, args, device, [])
 
 
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
