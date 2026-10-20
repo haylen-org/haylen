@@ -283,6 +283,7 @@ TEST(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
     EXPECT_EQ(config.content.getDelivery("music/paris.ogg"), content::Delivery::Required);
     EXPECT_EQ(core::AppConfig::fromJson(core::AppConfig::fromJson(core::Json::parse(app)).toJson()).content.delivery.front().group, "asia");
 
+    // clang-format off
     const auto failure = [](const std::string& document, const std::string& groups) {
         io::MemoryPackage broken("app", {{"app.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}});
         try {
@@ -292,6 +293,7 @@ TEST(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
         }
         return std::string();
     };
+    // clang-format on
     const std::string asia = R"({"groups": {"asia": ["world/asia/"]}})";
     EXPECT_NE(failure(R"({"content": {"delivery": [{"group": "asia", "mode": "onDemand"}]}})", asia).find("\"content.groups\" must name the group manifest"), std::string::npos);
     EXPECT_NE(failure(R"({"content": {"groups": "groups.json", "delivery": [{"group": "europe", "mode": "onDemand"}]}})", asia).find("names the group \"europe\", which \"content/groups.json\" does not define"), std::string::npos);
