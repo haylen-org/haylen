@@ -81,10 +81,17 @@ void LocalStore::readJournal() {
         records.insert_or_assign(entry->storedId, Location{.segment = entry->segment, .offset = entry->offset, .size = entry->size, .keyId = entry->keyId});
     }
 
-    // A segment that a platform evicted or that lost its end takes its records with it, which downloads bring back.
+    eraseLostRecords();
+    for (const auto& [storedId, location] : records) {
+        appendSegment = std::max(appendSegment, location.segment);
+    }
+}
+
+// A segment that a platform evicted or that lost its end takes its records with it, which downloads bring back.
+std::size_t LocalStore::eraseLostRecords() {
     std::map<std::uint32_t, std::uint64_t> sizes;
     // clang-format off
-    std::erase_if(records, [this, &sizes](const auto& item) {
+    return std::erase_if(records, [this, &sizes](const auto& item) {
         const Location& location = item.second;
         const auto [found, added] = sizes.try_emplace(location.segment, 0);
         if (added) {
@@ -93,11 +100,12 @@ void LocalStore::readJournal() {
         return location.offset < kSegmentHeader.size() || location.offset + location.size > found->second;
     });
     // clang-format on
-    for (const auto& [segment, size] : sizes) {
-        if (size > 0) {
-            appendSegment = std::max(appendSegment, segment);
-        }
-    }
+}
+
+std::size_t LocalStore::forgetLostRecords() {
+    std::scoped_lock write(writeMutex);
+    std::unique_lock lock(mutex);
+    return eraseLostRecords();
 }
 
 void LocalStore::removeLeftovers() {

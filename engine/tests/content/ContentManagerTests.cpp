@@ -285,6 +285,25 @@ TEST_F(ContentManagerTest, StopsPrefetchingInTheBackgroundAndGoesOnOnceActive) {
     ASSERT_TRUE(frameUntil([this] { return engine->getContent().isLocal("music/theme.ogg"); }));
 }
 
+// iOS and tvOS may empty the caches of an app while it is suspended, so the content that the app needs comes down again once it is active.
+TEST_F(ContentManagerTest, BringsBackTheContentThatTheDeviceRemovedInTheBackground) {
+    run(shipWithoutContent());
+    ASSERT_TRUE(frameUntil([this] { return hasStarted() && engine->getContent().getStatistics().pendingDownloads == 0; }));
+    ASSERT_TRUE(engine->getContent().isLocal("data/config.json"));
+
+    engine->handleEvent({.type = platform::Event::Type::Suspended});
+    std::filesystem::remove_all(storeFolder.getPath() / "segments");
+    server.clearExchanges();
+    engine->handleEvent({.type = platform::Event::Type::Resumed});
+    // clang-format off
+    ASSERT_TRUE(frameUntil([this] {
+        return !server.getExchanges().empty() && engine->getContent().getStatistics().pendingDownloads == 0 && engine->getContent().isLocal("data/config.json");
+    })) << "The removed content downloads again.";
+    // clang-format on
+    EXPECT_EQ(engine->getAssets().json("data/config.json")["level"], 1);
+    EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Idle);
+}
+
 TEST_F(ContentManagerTest, RefusesToBringAnAssetWithoutRoomForIt) {
     storeRoom = 1024;
     run(ship());

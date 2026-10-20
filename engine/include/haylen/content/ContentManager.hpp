@@ -204,6 +204,9 @@ class ContentManager final {
     void pauseBackground();
     void resumeBackground();
 
+    // Brings back the content that the device removed while the app was in the background, such as the caches that iOS and tvOS may empty.
+    void bringBackLost();
+
     // The room that downloading records needs, or the error that tells how much the device lacks.
     [[nodiscard]] std::optional<Error> checkRoom(std::uint64_t downloadBytes, std::uint64_t records, std::uint64_t available) const;
 

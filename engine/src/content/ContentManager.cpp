@@ -165,9 +165,42 @@ void ContentManager::pauseBackground() {
 
 void ContentManager::resumeBackground() {
     inBackground = false;
+    bringBackLost();
     if (prefetchWanted && !prefetching) {
         prefetchRules();
     }
+}
+
+void ContentManager::bringBackLost() {
+    if (!downloader || holdingStart) {
+        return;
+    }
+    const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
+    // clang-format off
+    engine.getJobs().run([store = release->getStore(), content, chunks = Updater::getChunks(*content->catalog, Delivery::Required, settings)] {
+        const std::size_t lost = store->forgetLostRecords();
+        return std::pair(lost, lost > 0 ? Downloader::findMissing(*content->shards, chunks) : std::vector<Catalog::Chunk>{});
+    }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::pair<std::size_t, std::vector<Catalog::Chunk>>> found) {
+        if (owner.expired() || !found.isOk() || found.value->first == 0) {
+            return;
+        }
+        core::Log::warning("The device removed {} downloaded records of the content while the app was in the background, so the content it needs comes down again.", found.value->first);
+        if (!prefetching && !inBackground) {
+            prefetchRules();
+        }
+        if (found.value->second.empty()) {
+            return;
+        }
+        downloader->fetch(content->shards, found.value->second, [this](const ShardReference& pack) { return locate(pack); }, {
+            .onProgress = {},
+            .onComplete = [this, owner](std::optional<Error> failure) {
+                if (!owner.expired() && failure) {
+                    fail(*failure);
+                }
+            },
+        }, Downloader::Priority::Foreground, Downloader::Use::Read);
+    });
+    // clang-format on
 }
 
 std::optional<Error> ContentManager::checkRoom(std::uint64_t downloadBytes, std::uint64_t records, std::uint64_t available) const {
