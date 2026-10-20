@@ -117,11 +117,13 @@ void Carousel::drawPages(Context& context, const math::Rect& area) {
         if (std::fabs(offset) >= 1.0F) {
             continue;
         }
+        // A page that slides out leaves navigation, and so does every page of a carousel whose controls are already left out, such as one in a leaving view.
         const bool current = static_cast<int>(index) == page;
-        context.getFocus().suspendTargets(!current);
+        const bool outside = context.getFocus().areTargetsSuspended();
+        context.getFocus().suspendTargets(outside || !current);
         const math::Rect placed = context.mirror({area.x + offset * area.width, area.y, area.width, area.height}, area);
         shownPage->draw(context, {std::floor(placed.x), area.y, area.width, area.height});
-        context.getFocus().suspendTargets(false);
+        context.getFocus().suspendTargets(outside);
     }
     ImGui::PopClipRect();
 }

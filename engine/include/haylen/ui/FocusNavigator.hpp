@@ -114,6 +114,9 @@ class FocusNavigator final {
     void suspendTargets(bool value) noexcept {
         suspended = value;
     }
+    [[nodiscard]] bool areTargetsSuspended() const noexcept {
+        return suspended;
+    }
 
     // Gives the focus to an item of the window being drawn, as a script or a component asks. The ring shows when the player already navigates, last used a gamepad or has no pointer device.
     void focus(ImGuiID item, const math::Rect& bounds);

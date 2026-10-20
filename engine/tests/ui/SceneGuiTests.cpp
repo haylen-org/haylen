@@ -74,6 +74,18 @@ TEST_F(SceneGuiTest, LeavesWithItsSceneThroughAnEffectThatShowsBothScenes) {
     EXPECT_TRUE(getUi().isMounted(*gui));
 }
 
+// The controls that a leaving GUI draws after a carousel stay out of navigation like the rest of the GUI.
+TEST_F(SceneGuiTest, KeepsEveryControlOfALeavingGuiOutOfNavigation) {
+    const std::shared_ptr<Gui> pages = getUi().createGui(core::Json::parse(R"({"kind": "column", "children": [{"kind": "carousel", "height": 100, "children": [{"kind": "label", "text": "Page"}]}, {"kind": "playArea", "id": "game", "height": 200}]})"), Placement::Screen);
+    getUi().mount(pages, 0, menu);
+    frames(2);
+    push(0.0F, 1.0F);
+    frames(10);
+    ASSERT_TRUE(getEngine().getScenes().isTransitioning());
+    EXPECT_TRUE(hasDrawn("##haylen-leaving"));
+    EXPECT_EQ(getUi().getFocus().getTargetCount(), 0U);
+}
+
 TEST_F(SceneGuiTest, HidesTheGuiOfACoveredSceneUntilItShowsAgain) {
     push(0.5F, 0.5F);
     frames(70);

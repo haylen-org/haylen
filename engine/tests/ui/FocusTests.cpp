@@ -167,6 +167,17 @@ TEST_F(FocusTest, ForgetsAGuiThatWentAwayWithTheFocus) {
     EXPECT_EQ(getUi().getFocus().getFocusedGui(), second.get());
 }
 
+// Tab in the frame after the GUI with the focus went away finds nothing of that GUI to move to and leaves the focus alone.
+TEST_F(FocusTest, TabsNowhereAfterTheGuiWithTheFocusWentAway) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "a", "text": "A", "autofocus": true}, {"kind": "button", "id": "b", "text": "B"}]})");
+    key(input::Key::Tab);
+    ASSERT_TRUE(isFocused(*gui, "b"));
+    getUi().unmount(*gui);
+    gui.reset();
+    key(input::Key::Tab);
+    EXPECT_EQ(getUi().getFocus().getFocusedGui(), nullptr);
+}
+
 TEST_F(FocusTest, SendsCancelToTheTopmostGuiWithoutFocus) {
     mount(R"({"kind": "column", "id": "hud", "children": [{"kind": "label", "text": "HUD"}]})");
     mount(R"({"kind": "column", "id": "pause", "children": [{"kind": "label", "text": "Paused"}]})", Placement::Screen, 1);

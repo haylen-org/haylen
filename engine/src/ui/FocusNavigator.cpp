@@ -644,7 +644,12 @@ void FocusNavigator::tab(const Target& source, bool backward) {
             peers.push_back(&target);
         }
     }
-    const auto position = static_cast<std::size_t>(std::ranges::find(peers, &source) - peers.begin());
+    // A source whose GUI was unmounted since the last frame belongs to no GUI anymore, so it has no peers to move to.
+    const auto found = std::ranges::find(peers, &source);
+    if (found == peers.end()) {
+        return;
+    }
+    const auto position = static_cast<std::size_t>(found - peers.begin());
     const Target& next = *peers[(position + (backward ? peers.size() - 1 : 1)) % peers.size()];
     if (GImGui->ActiveId != 0) {
         ImGui::ClearActiveID();
