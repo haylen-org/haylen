@@ -22,6 +22,19 @@ class ServiceKeyProvider final : public content::KeyProvider {
         return id;
     }
 
+    // The last holder of the provider may be a request that one of its answers ends, as the requests of a composite provider hold their providers, and a thread never waits for itself.
+    ~ServiceKeyProvider() override {
+        for (std::jthread& answer : answers) {
+            if (answer.get_id() == std::this_thread::get_id()) {
+                answer.detach();
+            }
+        }
+    }
+
+    ServiceKeyProvider() = default;
+    ServiceKeyProvider(const ServiceKeyProvider&) = delete;
+    ServiceKeyProvider& operator=(const ServiceKeyProvider&) = delete;
+
     void allow(const Key& key) {
         const std::scoped_lock lock(mutex);
         allowed.emplace(identify(key), key);
