@@ -8,6 +8,7 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/platform/Accessibility.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -88,6 +89,15 @@ TEST(AccessibilityLuaTest, ShortensAndSkipsTheMotionThatOptsIn) {
     fixture.frames(1, 0.125);
     EXPECT_EQ(fixture.lua("return panel.x .. ' ' .. panel.y .. ' ' .. tostring(entered)"), "100.0 50.0 true");
     EXPECT_NE(fixture.lua("tween.to(panel, 1, {x = 0}, {reducedMotion = 'slow'})").find("slow"), std::string::npos);
+}
+
+// The tree that Android and the web receive carries any text an app gives its elements, where bytes that are no UTF-8 become replacement characters instead of stopping the tree.
+TEST(AccessibilityTest, WritesTheTreeOfElementsWhoseTextsAreNotUtf8) {
+    const std::vector<AccessibilityElement> elements{{.id = 1, .role = AccessibilityElement::Role::Button, .label = "Caf\xE9"}, {.id = 2, .parent = 1, .label = "Play"}};
+    const core::Json tree = core::Json::parse(AccessibilityElement::writeTree(elements, 2));
+    EXPECT_EQ(tree.at("focused"), 2);
+    EXPECT_EQ(tree.at("elements").at(0).at("label"), "Caf\xEF\xBF\xBD");
+    EXPECT_EQ(tree.at("elements").at(1).at("parent"), 1);
 }
 
 } // namespace haylen::platform

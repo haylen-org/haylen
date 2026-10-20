@@ -177,8 +177,7 @@ void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& valu
         JavaBridge::updateMediaSession({}, {});
         return;
     }
-    const std::string info = core::Json{{"title", value->title}, {"artist", value->artist}, {"album", value->album}, {"duration", value->duration}, {"position", value->position}, {"playing", value->playing}, {"commands", value->commands}}.dump();
-    JavaBridge::updateMediaSession(info, value->artwork);
+    JavaBridge::updateMediaSession(MediaSession::writeNowPlaying(*value), value->artwork);
 }
 
 bool Services::isAccessibilityTreeWanted() {
@@ -186,11 +185,7 @@ bool Services::isAccessibilityTreeWanted() {
 }
 
 void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
-    core::Json tree{{"focused", focused}, {"elements", core::Json::array()}};
-    for (const AccessibilityElement& element : elements) {
-        tree["elements"].push_back(element.toJson());
-    }
-    JavaBridge::updateAccessibility(tree.dump());
+    JavaBridge::updateAccessibility(AccessibilityElement::writeTree(elements, focused));
 }
 
 void Services::announce(std::string_view text, bool interrupt) {

@@ -12,6 +12,14 @@ core::Json AccessibilityElement::toJson() const {
     };
 }
 
+std::string AccessibilityElement::writeTree(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+    core::Json tree{{"focused", focused}, {"elements", core::Json::array()}};
+    for (const AccessibilityElement& element : elements) {
+        tree["elements"].push_back(element.toJson());
+    }
+    return tree.dump(-1, ' ', false, core::Json::error_handler_t::replace);
+}
+
 std::string_view AccessibilityElement::roleName(Role value) noexcept {
     return std::ranges::find(kRoleNames, value, &std::pair<std::string_view, Role>::second)->first;
 }

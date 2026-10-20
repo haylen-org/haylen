@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "haylen/core/EventBus.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "platform/Host.hpp"
 
@@ -11,6 +12,11 @@ namespace haylen::platform {
 
 std::mutex& MediaSession::mutex = *new std::mutex();
 MediaSession* MediaSession::active = nullptr;
+
+std::string MediaSession::writeNowPlaying(const NowPlaying& value) {
+    const core::Json track{{"title", value.title}, {"artist", value.artist}, {"album", value.album}, {"duration", value.duration}, {"position", value.position}, {"playing", value.playing}, {"commands", value.commands}};
+    return track.dump(-1, ' ', false, core::Json::error_handler_t::replace);
+}
 
 MediaSession::MediaSession(Host& owner, core::EventBus& bus) : host(owner), events(bus) {
     const std::scoped_lock lock(mutex);

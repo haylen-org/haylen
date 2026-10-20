@@ -322,7 +322,7 @@ void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& valu
         haylen_js_now_playing(nullptr, nullptr, 0);
         return;
     }
-    const std::string json = core::Json{{"title", value->title}, {"artist", value->artist}, {"album", value->album}, {"duration", value->duration}, {"position", value->position}, {"playing", value->playing}, {"commands", value->commands}}.dump();
+    const std::string json = MediaSession::writeNowPlaying(*value);
     haylen_js_now_playing(json.c_str(), reinterpret_cast<const std::uint8_t*>(value->artwork.data()), static_cast<int>(value->artwork.size()));
 }
 
@@ -332,11 +332,7 @@ bool Services::isAccessibilityTreeWanted() {
 }
 
 void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
-    core::Json tree{{"focused", focused}, {"elements", core::Json::array()}};
-    for (const AccessibilityElement& element : elements) {
-        tree["elements"].push_back(element.toJson());
-    }
-    haylen_js_update_accessibility(tree.dump().c_str());
+    haylen_js_update_accessibility(AccessibilityElement::writeTree(elements, focused).c_str());
 }
 
 void Services::announce(std::string_view text, bool interrupt) {

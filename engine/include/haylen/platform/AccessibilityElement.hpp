@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -82,6 +83,9 @@ struct AccessibilityElement {
 
     // The element as the JSON that the screen readers of Android and the web receive it in, with its role by name, its bounds as `[x, y, width, height]` and its states and actions as the bits of `State` and `Action`.
     [[nodiscard]] core::Json toJson() const;
+
+    // The tree as the JSON text that the screen readers of Android and the web receive it in, with the focused element, where the bytes of a text that is no UTF-8 become replacement characters, so no text of an app stops the tree.
+    [[nodiscard]] static std::string writeTree(std::span<const AccessibilityElement> elements, std::uint64_t focused);
 
     [[nodiscard]] static std::string_view roleName(Role value) noexcept;
     [[nodiscard]] static std::optional<Role> roleFromName(std::string_view name) noexcept;

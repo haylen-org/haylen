@@ -78,4 +78,13 @@ TEST(MediaSessionTest, TakesWhatPlaysFromLua) {
     EXPECT_FALSE(fixture.host().getNowPlaying().has_value());
 }
 
+// The track that Android and the web receive carries any title an app gives it, where bytes that are no UTF-8 become replacement characters.
+TEST(MediaSessionTest, WritesATrackWhoseTextsAreNotUtf8) {
+    const core::Json track = core::Json::parse(MediaSession::writeNowPlaying({.title = "Ol\xE1", .artist = "Band", .duration = 90.0, .playing = true}));
+    EXPECT_EQ(track.at("title"), "Ol\xEF\xBF\xBD");
+    EXPECT_EQ(track.at("artist"), "Band");
+    EXPECT_EQ(track.at("playing"), true);
+    EXPECT_EQ(track.at("commands"), MediaSession::kAllCommands);
+}
+
 } // namespace haylen::platform

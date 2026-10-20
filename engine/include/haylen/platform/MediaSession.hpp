@@ -81,6 +81,9 @@ class MediaSession final {
     // Publishes the commands the platform sent since the last pump as `mediaCommand` events. The engine calls it at the start of every frame.
     void pump();
 
+    // The track as the JSON text that the media sessions of Android and the web receive it in, without its artwork, where the bytes of a text that is no UTF-8 become replacement characters.
+    [[nodiscard]] static std::string writeNowPlaying(const NowPlaying& value);
+
     [[nodiscard]] static std::optional<Command> commandFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view commandName(Command value) noexcept;
     [[nodiscard]] static constexpr Commands bit(Command value) noexcept {
