@@ -39,6 +39,10 @@ std::filesystem::path UserStorage::resolve(std::string_view path) const {
     if (relative.empty()) {
         throw std::invalid_argument("A storage path cannot be empty.");
     }
+    // Writes go through temporary files with this extension, which the storage removes when it opens.
+    if (relative.ends_with(".tmp")) {
+        throw std::invalid_argument("The storage path \"" + relative + "\" ends with \".tmp\", which the storage keeps for the temporary files of its writes.");
+    }
     return root / relative;
 }
 

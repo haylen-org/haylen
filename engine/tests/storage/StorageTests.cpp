@@ -48,6 +48,8 @@ TEST(UserStorageTest, WritesReadsListsAndRemoves) {
     EXPECT_THROW((void)storage.read("raw.bin"), std::runtime_error);
     EXPECT_THROW(storage.writeText("", "x"), std::invalid_argument);
     EXPECT_THROW(storage.writeText("../escape", "x"), std::invalid_argument);
+    // The extension of the temporary files of writes is the storage's own, so a file named with it would vanish when the storage opens.
+    EXPECT_THROW(storage.writeText("cache/data.tmp", "x"), std::invalid_argument);
 
     storage.flush();
     EXPECT_EQ(persisted, 1);

@@ -30,6 +30,7 @@ Paths are relative to the storage folder of the app and use `/` as the separator
 - An absolute path, such as `'/etc/hosts'` or `'C:/data'`, raises `The path "/etc/hosts" must be relative.`
 - A path that leaves the folder, such as `'../other.txt'`, raises `The path "../other.txt" must stay inside its root folder.`
 - An empty path raises `A storage path cannot be empty.`
+- A path with the `.tmp` extension, such as `'cache/data.tmp'`, raises `The storage path "cache/data.tmp" ends with ".tmp", which the storage keeps for the temporary files of its writes.`
 
 The storage folder is located here on each platform:
 
