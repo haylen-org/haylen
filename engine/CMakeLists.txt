@@ -254,7 +254,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/Bootstrap.cpp
   src/content/Compatibility.cpp
   src/content/CompositeKeyProvider.cpp
-  src/content/ContentBuilder.cpp
   src/content/ContentLua.cpp
   src/content/ContentManager.cpp
   src/content/crypto/Aead.cpp
@@ -262,7 +261,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/crypto/Digest.cpp
   src/content/crypto/Hasher.cpp
   src/content/crypto/KeyRing.cpp
-  src/content/crypto/SigningKey.cpp
   src/content/crypto/VerifyingKey.cpp
   src/content/EmbeddedKeyProvider.cpp
   src/content/KeyProvider.cpp
@@ -271,9 +269,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/format/BinaryReader.cpp
   src/content/format/BinaryWriter.cpp
   src/content/format/Catalog.cpp
-  src/content/format/CatalogWriter.cpp
   src/content/format/ChannelDescriptor.cpp
-  src/content/format/Chunker.cpp
   src/content/format/ChunkRecord.cpp
   src/content/format/Compression.cpp
   src/content/format/Manifest.cpp
@@ -288,17 +284,14 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/HpakPackage.cpp
   src/content/HttpTransport.cpp
   src/content/LocalStore.cpp
-  src/content/LuaCompiler.cpp
+  src/content/LuaBytecodeAbi.cpp
   src/content/LuaPackSource.cpp
   src/content/PublicationLayout.cpp
   src/content/RangePlanner.cpp
-  src/content/RecordCache.cpp
-  src/content/ReleaseBuilder.cpp
   src/content/ReleasePackage.cpp
   src/content/ShardIndexFile.cpp
   src/content/ShardReader.cpp
   src/content/ShardSet.cpp
-  src/content/ShardWriter.cpp
   src/content/StoreFile.cpp
   src/content/StoreFiles.cpp
   src/content/UpdateScreen.cpp
@@ -784,6 +777,26 @@ haylen_embed_file(haylen_engine "${budoux_SOURCE_DIR}/budoux/models/th.json" get
 haylen_enable_warnings(haylen_engine)
 haylen_enable_coverage(haylen_engine)
 
+# The writing side of the content format, which builds, seals, signs and compiles releases on the machines that make them: the content tool, the tests and the benchmarks link it, while apps link only the reading side of the engine, so it builds only for them.
+add_library(haylen_content_writer STATIC EXCLUDE_FROM_ALL
+  src/content/ContentBuilder.cpp
+  src/content/crypto/SigningKey.cpp
+  src/content/format/CatalogWriter.cpp
+  src/content/format/ChannelWriter.cpp
+  src/content/format/Chunker.cpp
+  src/content/format/Compressor.cpp
+  src/content/format/ManifestWriter.cpp
+  src/content/format/RecordSealer.cpp
+  src/content/LuaCompiler.cpp
+  src/content/RecordCache.cpp
+  src/content/ReleaseBuilder.cpp
+  src/content/ShardWriter.cpp
+)
+target_include_directories(haylen_content_writer PUBLIC "${CMAKE_CURRENT_LIST_DIR}/src")
+target_link_libraries(haylen_content_writer PUBLIC haylen_engine PRIVATE haylen_monocypher libzstd_static)
+haylen_enable_warnings(haylen_content_writer)
+haylen_enable_coverage(haylen_content_writer)
+
 # Portable pieces of the runtime, which the tests link without an app entry point. The readers of the platform folders compile everywhere, so every host tests them.
 add_library(haylen_platform STATIC
   src/platform/CrashGuard.cpp
@@ -1035,7 +1048,7 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   # The content benchmark times building, opening and reading a protected release, catalog lookups, the planning of update ranges and the local store, with the largest allocation of each.
   add_executable(haylen-content-benchmark bench/ContentBenchmark.cpp)
   target_include_directories(haylen-content-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-content-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-content-benchmark PRIVATE haylen_content_writer haylen::headless)
   set_target_properties(haylen-content-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-content-benchmark)
 endif()

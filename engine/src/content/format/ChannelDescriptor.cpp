@@ -4,19 +4,9 @@
 #include <format>
 
 #include "content/format/BinaryReader.hpp"
-#include "content/format/BinaryWriter.hpp"
 #include "haylen/content/Error.hpp"
 
 namespace haylen::content {
-
-std::vector<std::uint8_t> ChannelDescriptor::write(const SigningKey& signingKey) const {
-    BinaryWriter writer;
-    writer.writeBytes(kMagic).write(kVersion).writeZeros(sizeof(std::uint16_t));
-    writer.writeDigest(application).writeDigest(signingKey.getVerifyingKey().getId()).write(generation).writeDigest(manifest).writeString(channel);
-    const VerifyingKey::Signature signature = signingKey.sign(writer.getBytes());
-    writer.writeBytes(signature);
-    return writer.take();
-}
 
 ChannelDescriptor ChannelDescriptor::read(std::span<const std::uint8_t> bytes, std::span<const VerifyingKey> trustedKeys) {
     BinaryReader reader(bytes, Error::Code::CorruptManifest, "channel descriptor");

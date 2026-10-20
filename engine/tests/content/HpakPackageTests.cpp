@@ -24,6 +24,7 @@
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/Chunker.hpp"
+#include "content/format/RecordSealer.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "haylen/content/Error.hpp"
 #include "haylen/core/AppConfig.hpp"
@@ -190,7 +191,7 @@ TEST_F(HpakPackageTest, MountsHundredsOfGigabytesInBoundedMemory) {
     test::TemporaryDirectory folder;
     const std::vector<std::uint8_t> zeros(Chunker::kMaximumSize);
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = ChunkRecord::seal(*release.getContentKey(), zeros, ChunkRecord::identifyContent(zeros), ciphertext);
+    const ChunkRecord record = RecordSealer::seal(*release.getContentKey(), zeros, ChunkRecord::identifyContent(zeros), ciphertext);
     ShardWriter writer(folder.getPath(), release.getContentKey());
     writer.add(record, ciphertext);
     const ShardReference reference = writer.finish();
@@ -247,7 +248,7 @@ TEST_F(HpakPackageTest, RefusesChunksOfAnotherSizeThanTheCatalogNames) {
     test::TemporaryDirectory folder;
     const std::vector<std::uint8_t> plain = test::TestFiles::randomBytes(1000, 3);
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = ChunkRecord::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+    const ChunkRecord record = RecordSealer::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
     ShardWriter writer(folder.getPath(), release.getContentKey());
     writer.add(record, ciphertext);
     const ShardReference reference = writer.finish();
@@ -293,7 +294,7 @@ TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
     std::vector<std::vector<std::uint8_t>> records;
     for (const std::vector<std::uint8_t>& plain : {first, second}) {
         std::vector<std::uint8_t> ciphertext;
-        const ChunkRecord record = ChunkRecord::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+        const ChunkRecord record = RecordSealer::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
         catalogWriter.addChunk({.storedId = record.storedId, .contentId = record.contentId, .plainSize = record.plainSize, .encodedSize = record.encodedSize, .codec = record.codec, .profile = record.profile});
         parts.push_back(record.storedId);
         const ChunkRecord::Header header = record.serialize();

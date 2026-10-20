@@ -13,7 +13,6 @@
 #include "content/crypto/ContentKey.hpp"
 #include "content/crypto/Digest.hpp"
 #include "content/crypto/KeyRing.hpp"
-#include "content/crypto/SigningKey.hpp"
 #include "content/crypto/VerifyingKey.hpp"
 #include "content/format/Catalog.hpp"
 #include "content/format/ShardReference.hpp"
@@ -60,9 +59,6 @@ class Manifest final {
     // Tells whether a name suits a profile, a channel or a Lua ABI: at most 64 lowercase letters, digits, dashes and dots.
     [[nodiscard]] static bool isValidName(std::string_view name) noexcept;
 
-    // Encrypts a plain catalog under the content key, signs the envelope with the signing key, and returns the bytes of the manifest. The key IDs of the envelope come from the keys.
-    [[nodiscard]] static std::vector<std::uint8_t> write(Envelope fields, std::span<const std::uint8_t> catalog, const ContentKey& contentKey, const SigningKey& signingKey);
-
     // Verifies the signature with the trusted key of the signing key ID and reads the envelope. Throws `UnsupportedFormat`, `UnsupportedVersion`, `CorruptManifest` or `ManifestSignatureInvalid`.
     [[nodiscard]] static Manifest read(std::vector<std::uint8_t> file, std::span<const VerifyingKey> trustedKeys);
 
@@ -79,6 +75,8 @@ class Manifest final {
     [[nodiscard]] Catalog decryptCatalog(const KeyRing& keys) const;
 
   private:
+    friend class ManifestWriter;
+
     static constexpr std::array<std::uint8_t, 8> kMagic = {'H', 'M', 'A', 'N', 0x0D, 0x0A, 0x1A, 0x0A};
     static constexpr std::size_t kPrefixSize = 16;
     static constexpr std::size_t kSigningKeyOffset = 56;
@@ -88,8 +86,6 @@ class Manifest final {
 
     Manifest() = default;
 
-    // The envelope without its catalog fields, which is the additional data of the catalog encryption.
-    [[nodiscard]] static std::vector<std::uint8_t> writeContext(const Envelope& fields, std::uint32_t envelopeSize);
     [[nodiscard]] static bool belongsToDomain(std::string_view path, Domain domain) noexcept;
     void checkFiles(const Catalog& catalog) const;
     void parseEnvelope(std::span<const std::uint8_t> signedBytes);

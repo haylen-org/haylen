@@ -9,6 +9,7 @@
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/Chunker.hpp"
+#include "content/format/RecordSealer.hpp"
 #include "content/format/ShardIndex.hpp"
 
 namespace haylen::content {
@@ -159,7 +160,7 @@ Digest ContentBuilder::storePiece(io::PackageReader& reader, const File& file, c
         if (ChunkRecord::identifyContent(plain) != piece.contentId) {
             throw std::runtime_error("The file \"" + file.input.path + "\" changed while the release was built. Build the release again.");
         }
-        record = ChunkRecord::seal(*key, plain, piece.contentId, ciphertext);
+        record = RecordSealer::seal(*key, plain, piece.contentId, ciphertext);
         if (cache) {
             cache->store(*key, *record, ciphertext);
         }

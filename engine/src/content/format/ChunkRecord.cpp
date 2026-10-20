@@ -3,7 +3,6 @@
 #include <monocypher.h>
 
 #include <algorithm>
-#include <utility>
 
 #include "content/crypto/Hasher.hpp"
 #include "content/format/BinaryReader.hpp"
@@ -22,29 +21,10 @@ Digest ChunkRecord::identifyStored(Compression::Codec storedCodec, std::uint8_t 
 }
 
 bool ChunkRecord::hasValidSizes(Compression::Codec storedCodec, std::uint64_t plain, std::uint64_t encoded) noexcept {
-    if (plain == 0 || plain > Chunker::kMaximumSize) {
+    if (plain == 0 || plain > kMaximumPlainSize) {
         return false;
     }
     return storedCodec == Compression::Codec::None ? encoded == plain : encoded > 0 && encoded < plain;
-}
-
-ChunkRecord ChunkRecord::seal(const ContentKey& key, std::span<const std::uint8_t> plain, const Digest& plainId, std::vector<std::uint8_t>& ciphertext) {
-    Compression::Encoded encoded = Compression::encode(plain);
-    ChunkRecord record;
-    record.codec = encoded.codec;
-    record.profile = encoded.profile;
-    record.plainSize = plain.size();
-    record.encodedSize = encoded.bytes.size();
-    record.contentId = plainId;
-    record.storedId = identifyStored(encoded.codec, encoded.profile, encoded.bytes);
-
-    // The nonce covers every field before it, and the encryption authenticates every field before the tag.
-    const Header identity = record.serialize();
-    record.nonce = key.deriveNonce(ContentKey::Purpose::Chunk, std::span(identity).first(kNonceOffset));
-    const Header additional = record.serialize();
-    ciphertext = std::move(encoded.bytes);
-    record.tag = Aead::seal(key.getSubkey(ContentKey::Purpose::Chunk), record.nonce, std::span(additional).first(kTagOffset), ciphertext, ciphertext);
-    return record;
 }
 
 ChunkRecord ChunkRecord::parse(std::span<const std::uint8_t, kHeaderSize> header) {

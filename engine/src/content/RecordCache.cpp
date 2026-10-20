@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include "content/format/Compression.hpp"
+#include "content/format/Compressor.hpp"
 #include "haylen/content/Error.hpp"
 
 namespace haylen::content {
@@ -16,7 +16,7 @@ RecordCache::RecordCache(std::filesystem::path cacheFolder) : folder(std::move(c
 
 std::filesystem::path RecordCache::locate(const ContentKey& key, const Digest& contentId) const {
     const std::string name = contentId.toHex();
-    return folder / key.getId().toHex() / Compression::getEncoderName() / name.substr(0, 2) / name;
+    return folder / key.getId().toHex() / Compressor::getName() / name.substr(0, 2) / name;
 }
 
 std::optional<ChunkRecord> RecordCache::find(const ContentKey& key, const Digest& contentId, std::vector<std::uint8_t>& ciphertext) const {

@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "content/crypto/Digest.hpp"
-#include "content/crypto/SigningKey.hpp"
 #include "content/crypto/VerifyingKey.hpp"
 #include "content/format/Manifest.hpp"
 
@@ -25,9 +24,6 @@ class ChannelDescriptor final {
     Digest manifest;
     Digest signingKeyId;
 
-    // Signs the descriptor with the signing key, whose ID it records, and returns its bytes.
-    [[nodiscard]] std::vector<std::uint8_t> write(const SigningKey& signingKey) const;
-
     // Verifies the signature with the trusted key of the signing key ID before it reads any other field. Throws `UnsupportedFormat`, `UnsupportedVersion`, `CorruptManifest` or `ManifestSignatureInvalid`.
     [[nodiscard]] static ChannelDescriptor read(std::span<const std::uint8_t> bytes, std::span<const VerifyingKey> trustedKeys);
 
@@ -38,6 +34,8 @@ class ChannelDescriptor final {
     [[nodiscard]] bool describes(const Manifest& candidate) const noexcept;
 
   private:
+    friend class ChannelWriter;
+
     static constexpr std::array<std::uint8_t, 8> kMagic = {'H', 'C', 'H', 'N', 0x0D, 0x0A, 0x1A, 0x0A};
     static constexpr std::size_t kSigningKeyOffset = 44;
 };

@@ -5,8 +5,8 @@
 #include <system_error>
 #include <utility>
 
+#include "content/crypto/Aead.hpp"
 #include "content/crypto/Hasher.hpp"
-#include "content/format/ShardHeader.hpp"
 
 namespace haylen::content {
 
@@ -64,6 +64,13 @@ Digest ShardWriter::identify() const {
     return hasher.finish();
 }
 
+void ShardWriter::sealIndex(ShardHeader& header, const ContentKey& key, std::span<std::uint8_t> index) {
+    const ShardHeader::Bytes identity = header.serialize();
+    header.indexNonce = key.deriveNonce(ContentKey::Purpose::ShardIndex, Hasher().update(std::span(identity).first(ShardHeader::kNonceOffset)).update(index).finish().getBytes());
+    const ShardHeader::Bytes additional = header.serialize();
+    header.indexTag = Aead::seal(key.getSubkey(ContentKey::Purpose::ShardIndex), header.indexNonce, std::span(additional).first(ShardHeader::kTagOffset), index, index);
+}
+
 ShardReference ShardWriter::finish() {
     ShardHeader header;
     header.shardId = identify();
@@ -73,7 +80,7 @@ ShardReference ShardWriter::finish() {
 
     std::vector<std::uint8_t> index = ShardIndex(entries).serialize();
     header.indexSize = index.size();
-    header.sealIndex(*key, index);
+    sealIndex(header, *key, index);
     write(index);
 
     const ShardHeader::Bytes bytes = header.serialize();

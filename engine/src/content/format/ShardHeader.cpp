@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "content/crypto/Hasher.hpp"
 #include "content/format/BinaryReader.hpp"
 #include "content/format/BinaryWriter.hpp"
 #include "content/format/ShardIndex.hpp"
@@ -54,13 +53,6 @@ ShardHeader::Bytes ShardHeader::serialize() const {
     Bytes bytes{};
     std::ranges::copy(writer.getBytes(), bytes.begin());
     return bytes;
-}
-
-void ShardHeader::sealIndex(const ContentKey& key, std::span<std::uint8_t> index) {
-    const Bytes identity = serialize();
-    indexNonce = key.deriveNonce(ContentKey::Purpose::ShardIndex, Hasher().update(std::span(identity).first(kNonceOffset)).update(index).finish().getBytes());
-    const Bytes additional = serialize();
-    indexTag = Aead::seal(key.getSubkey(ContentKey::Purpose::ShardIndex), indexNonce, std::span(additional).first(kTagOffset), index, index);
 }
 
 void ShardHeader::openIndex(const ContentKey& key, std::span<std::uint8_t> index) const {

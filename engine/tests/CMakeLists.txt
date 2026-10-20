@@ -275,7 +275,7 @@ if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen_content_fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen_content_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   target_include_directories(haylen_content_fuzzer PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
-  target_link_libraries(haylen_content_fuzzer PRIVATE haylen::engine haylen::headless haylen_stb haylen_monocypher)
+  target_link_libraries(haylen_content_fuzzer PRIVATE haylen_content_writer haylen::headless haylen_stb haylen_monocypher)
   target_link_options(haylen_content_fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen_content_fuzzer)
 

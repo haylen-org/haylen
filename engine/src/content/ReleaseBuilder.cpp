@@ -7,8 +7,10 @@
 #include <system_error>
 #include <utility>
 
+#include "content/LuaBytecodeAbi.hpp"
 #include "content/LuaCompiler.hpp"
 #include "content/ReleasePackage.hpp"
+#include "content/format/ManifestWriter.hpp"
 #include "haylen/io/Path.hpp"
 
 namespace haylen::content {
@@ -37,7 +39,7 @@ ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, cons
     std::unique_ptr<io::MemoryPackage> compiled;
     if (domain == Manifest::Domain::App) {
         compiled = compileModules(app, inputs);
-        envelope.luaAbi = LuaCompiler::getAbi();
+        envelope.luaAbi = LuaBytecodeAbi::get();
     }
     DomainBuild built = buildDomain(compiled ? *compiled : app, std::move(inputs), std::move(envelope), previous ? &*previous : nullptr, output, options.shardTarget);
     for (std::size_t shard = 0; shard < built.result.keptShards; ++shard) {
@@ -68,7 +70,7 @@ ReleaseBuilder::DomainBuild ReleaseBuilder::buildDomain(const io::Package& sourc
 
     DomainBuild built{.result = builder.build(source, std::move(inputs))};
     envelope.shards = built.result.shards;
-    built.manifest = Manifest::write(std::move(envelope), built.result.catalog, *activeKey, *signingKey);
+    built.manifest = ManifestWriter::write(std::move(envelope), built.result.catalog, *activeKey, *signingKey);
     return built;
 }
 

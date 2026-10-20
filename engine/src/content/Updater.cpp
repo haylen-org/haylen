@@ -178,7 +178,7 @@ void Updater::requestKey(std::uint64_t generation, const Digest& manifest, std::
 }
 
 std::uint64_t Updater::getRequiredSpace(std::uint64_t downloadBytes, std::uint64_t records) noexcept {
-    const std::uint64_t overhead = records * StoreEntry::kSize + Downloader::kMaximumTransfers * (ChunkRecord::kHeaderSize + Chunker::kMaximumSize);
+    const std::uint64_t overhead = records * StoreEntry::kSize + Downloader::kMaximumTransfers * (ChunkRecord::kHeaderSize + ChunkRecord::kMaximumPlainSize);
     return downloadBytes + overhead + std::max(LocalStore::kSafetyMargin, downloadBytes / 20);
 }
 

@@ -10,7 +10,6 @@
 #include "content/crypto/ContentKey.hpp"
 #include "content/crypto/Digest.hpp"
 #include "content/format/Catalog.hpp"
-#include "content/format/Chunker.hpp"
 #include "content/format/Compression.hpp"
 
 namespace haylen::content {
@@ -20,6 +19,7 @@ class ChunkRecord final {
   public:
     static constexpr std::size_t kHeaderSize = 128;
     static constexpr std::uint16_t kVersion = 1;
+    static constexpr std::size_t kMaximumPlainSize = 4 * 1024 * 1024;
 
     using Header = std::array<std::uint8_t, kHeaderSize>;
 
@@ -37,9 +37,6 @@ class ChunkRecord final {
 
     // The ID of a chunk by the way it is stored: its codec, its profile and its encoded bytes.
     [[nodiscard]] static Digest identifyStored(Compression::Codec storedCodec, std::uint8_t storedProfile, std::span<const std::uint8_t> encoded) noexcept;
-
-    // Encodes and encrypts a plain chunk whose content ID the caller computed already, and replaces the ciphertext with the bytes that follow the header.
-    [[nodiscard]] static ChunkRecord seal(const ContentKey& key, std::span<const std::uint8_t> plain, const Digest& plainId, std::vector<std::uint8_t>& ciphertext);
 
     // Tells whether sizes suit a chunk: a plain size from one byte to the maximum chunk size, the same encoded size when stored as it is, and a smaller one when compressed.
     [[nodiscard]] static bool hasValidSizes(Compression::Codec storedCodec, std::uint64_t plain, std::uint64_t encoded) noexcept;
@@ -60,6 +57,8 @@ class ChunkRecord final {
     }
 
   private:
+    friend class RecordSealer;
+
     static constexpr std::array<std::uint8_t, 4> kMagic = {'H', 'P', 'K', 'R'};
     static constexpr std::size_t kNonceOffset = 88;
     static constexpr std::size_t kTagOffset = 112;

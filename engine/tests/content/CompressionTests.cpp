@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "content/format/Compression.hpp"
+#include "content/format/Compressor.hpp"
 #include "haylen/content/Error.hpp"
 #include "support/TestFiles.hpp"
 
@@ -33,24 +34,24 @@ class CompressionTest : public ::testing::Test {
 
 TEST_F(CompressionTest, CompressesOnlyWhenItSaves) {
     const std::vector<std::uint8_t> text = makeText();
-    const Compression::Encoded compressed = Compression::encode(text);
+    const Compressor::Encoded compressed = Compressor::encode(text);
     EXPECT_EQ(compressed.codec, Compression::Codec::Zstd);
     EXPECT_EQ(compressed.profile, Compression::kZstdProfile);
     EXPECT_LT(compressed.bytes.size(), text.size() / 10);
-    EXPECT_EQ(Compression::encode(text).bytes, compressed.bytes) << "The same chunk always compresses to the same bytes.";
+    EXPECT_EQ(Compressor::encode(text).bytes, compressed.bytes) << "The same chunk always compresses to the same bytes.";
 
     // Data that is compressed already, which random bytes stand for, is stored as it is.
     const std::vector<std::uint8_t> random = test::TestFiles::randomBytes(300000, 1);
-    const Compression::Encoded stored = Compression::encode(random);
+    const Compressor::Encoded stored = Compressor::encode(random);
     EXPECT_EQ(stored.codec, Compression::Codec::None);
     EXPECT_EQ(stored.profile, Compression::kNoneProfile);
     EXPECT_EQ(stored.bytes, random);
-    EXPECT_EQ(Compression::encode(test::TestFiles::bytes("tiny")).codec, Compression::Codec::None);
+    EXPECT_EQ(Compressor::encode(test::TestFiles::bytes("tiny")).codec, Compression::Codec::None);
 }
 
 TEST_F(CompressionTest, DecodesExactlyTheDeclaredSize) {
     const std::vector<std::uint8_t> text = makeText();
-    const Compression::Encoded compressed = Compression::encode(text);
+    const Compressor::Encoded compressed = Compressor::encode(text);
     std::vector<std::uint8_t> plain(text.size());
     Compression::decode(compressed.codec, compressed.bytes, plain);
     EXPECT_EQ(plain, text);
@@ -63,7 +64,7 @@ TEST_F(CompressionTest, DecodesExactlyTheDeclaredSize) {
 
 TEST_F(CompressionTest, RejectsDamagedFrames) {
     const std::vector<std::uint8_t> text = makeText();
-    const Compression::Encoded compressed = Compression::encode(text);
+    const Compressor::Encoded compressed = Compressor::encode(text);
     expectCorrupt(Compression::Codec::Zstd, std::span(compressed.bytes).first(compressed.bytes.size() / 2), text.size());
     expectCorrupt(Compression::Codec::Zstd, test::TestFiles::bytes("not a zstd frame at all"), text.size());
 

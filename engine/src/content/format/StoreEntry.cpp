@@ -35,7 +35,7 @@ std::optional<StoreEntry> StoreEntry::parse(std::span<const std::uint8_t, kSize>
     entry.removed = flags == kRemovedFlag;
 
     // A record is at least a header and at most a header with the largest chunk, and a removal names no place.
-    const bool validRecord = entry.size > ChunkRecord::kHeaderSize && entry.size <= ChunkRecord::kHeaderSize + Chunker::kMaximumSize && entry.offset <= std::numeric_limits<std::uint64_t>::max() - entry.size;
+    const bool validRecord = entry.size > ChunkRecord::kHeaderSize && entry.size <= ChunkRecord::kHeaderSize + ChunkRecord::kMaximumPlainSize && entry.offset <= std::numeric_limits<std::uint64_t>::max() - entry.size;
     if ((flags != 0 && flags != kRemovedFlag) || (!entry.removed && !validRecord)) {
         return std::nullopt;
     }

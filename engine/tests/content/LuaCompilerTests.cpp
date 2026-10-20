@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "content/LuaBytecodeAbi.hpp"
 #include "content/LuaCompiler.hpp"
 
 namespace haylen::content {
@@ -56,9 +57,9 @@ TEST_F(LuaCompilerTest, NamesTheModuleAndTheLineOfASyntaxError) {
     }
 }
 
-TEST_F(LuaCompilerTest, DescribesTheAbiOfItsChunks) {
+TEST(LuaBytecodeAbiTest, NamesTheFormatOfTheChunksOfThisBuild) {
     // Every host that builds releases runs a little-endian Lua with 32-bit instructions and 64-bit integers and numbers.
-    EXPECT_EQ(LuaCompiler::getAbi(), "lua-" + std::to_string(LUA_VERSION_NUM / 100) + "." + std::to_string(LUA_VERSION_NUM % 100) + "-f0-i4-x4-l8-n8-le");
+    EXPECT_EQ(LuaBytecodeAbi::get(), "lua-" + std::to_string(LUA_VERSION_NUM / 100) + "." + std::to_string(LUA_VERSION_NUM % 100) + "-f0-i4-x4-l8-n8-le");
 }
 
 } // namespace haylen::content

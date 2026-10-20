@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <span>
 
+#include "content/format/ChunkRecord.hpp"
+
 namespace haylen::content {
 
 // Splits files into chunks where their content says, with the `fastcdc-v1` algorithm: a gear hash over the bytes after the minimum size, a stricter cut condition before the target size and a looser one after it, and a cut at the maximum size. An insertion moves only the chunks around it, and every chunk after them keeps its bytes and its ID. Files up to the target size stay one chunk, and chunks never cross from one file into another.
@@ -12,7 +14,7 @@ class Chunker final {
   public:
     static constexpr std::size_t kMinimumSize = 256 * 1024;
     static constexpr std::size_t kTargetSize = 1024 * 1024;
-    static constexpr std::size_t kMaximumSize = 4 * 1024 * 1024;
+    static constexpr std::size_t kMaximumSize = ChunkRecord::kMaximumPlainSize;
 
     // Returns the length of the chunk that starts a window, which holds the next bytes of a file: at least `kMaximumSize` of them, or all that remain of the file.
     [[nodiscard]] static std::size_t findCut(std::span<const std::uint8_t> window) noexcept;

@@ -10,6 +10,7 @@
 
 #include "content/crypto/ContentKey.hpp"
 #include "content/format/ChunkRecord.hpp"
+#include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
 #include "content/format/ShardReference.hpp"
 
@@ -36,6 +37,9 @@ class ShardWriter final {
     }
 
     [[nodiscard]] ShardReference finish();
+
+    // Derives the nonce of a plain index from the header and the index, encrypts the index in place and records the nonce and the tag in the header.
+    static void sealIndex(ShardHeader& header, const ContentKey& key, std::span<std::uint8_t> index);
 
   private:
     [[nodiscard]] Digest identify() const;

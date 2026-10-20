@@ -9,12 +9,14 @@
 #include <vector>
 
 #include "content/Compatibility.hpp"
-#include "content/LuaCompiler.hpp"
+#include "content/LuaBytecodeAbi.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/SigningKey.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChannelDescriptor.hpp"
+#include "content/format/ChannelWriter.hpp"
 #include "content/format/Manifest.hpp"
+#include "content/format/ManifestWriter.hpp"
 #include "haylen/content/Error.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -56,7 +58,7 @@ class ManifestTest : public ::testing::Test {
     }
 
     [[nodiscard]] std::vector<std::uint8_t> write(const Manifest::Envelope& envelope, const std::vector<std::uint8_t>& catalog) const {
-        return Manifest::write(envelope, catalog, *keys.get(keyId), signingKey);
+        return ManifestWriter::write(envelope, catalog, *keys.get(keyId), signingKey);
     }
 
     [[nodiscard]] std::vector<std::uint8_t> write() const {
@@ -186,19 +188,19 @@ TEST_F(ManifestTest, KeepsEachDomainToItsOwnFiles) {
 
 TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
     Manifest::Envelope app = makeEnvelope(Manifest::Domain::App);
-    app.luaAbi = LuaCompiler::getAbi();
+    app.luaAbi = LuaBytecodeAbi::get();
     const auto decrypt = [this](const Manifest::Envelope& envelope, const std::string& path) { return Manifest::read(write(envelope, makeCatalog(path, Delivery::Required, Catalog::Kind::LuaBytecode)), trusted).decryptCatalog(keys).getFileCount(); };
     EXPECT_EQ(decrypt(app, "source/main.lua"), 1U);
     EXPECT_EQ(decrypt(app, "source/scenes/menu.lua"), 1U);
     EXPECT_EQ(decrypt(app, "plugins/ads/source/init.lua"), 1U);
-    EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, LuaCompiler::getAbi());
+    EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, LuaBytecodeAbi::get());
     for (const char* path : {"app.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
         expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, path); });
     }
     EXPECT_FALSE(Manifest::isLuaModule("content/script.lua")) << "Only the source folders of the app and its plugins hold modules.";
 
     Manifest::Envelope content = makeEnvelope(Manifest::Domain::Content);
-    content.luaAbi = LuaCompiler::getAbi();
+    content.luaAbi = LuaBytecodeAbi::get();
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(content, "content/script.lua"); });
     app.luaAbi.clear();
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, "source/main.lua"); });
@@ -229,7 +231,7 @@ TEST_F(ManifestTest, ChecksTheCompatibilityOfTheApp) {
     app.luaAbi = "lua-5.4-f0-i4-x4-l8-n8-le";
     const Manifest older54 = Manifest::read(write(app, makeCatalog("source/main.lua", Delivery::Required, Catalog::Kind::LuaBytecode)), trusted);
     expectCode(Error::Code::LuaBytecodeIncompatible, [&] { compatibility.check(older54); });
-    app.luaAbi = LuaCompiler::getAbi();
+    app.luaAbi = LuaBytecodeAbi::get();
     compatibility.check(Manifest::read(write(app, makeCatalog("source/main.lua", Delivery::Required, Catalog::Kind::LuaBytecode)), trusted));
 }
 
@@ -265,7 +267,7 @@ TEST_F(ManifestTest, KeepsTheRulesOfASignedEnvelope) {
 TEST_F(ManifestTest, NeverAcceptsAnOlderGeneration) {
     const Manifest manifest = Manifest::read(write(), trusted);
     const ChannelDescriptor descriptor{.application = manifest.getEnvelope().application, .channel = "stable", .generation = 3, .manifest = manifest.getId()};
-    const ChannelDescriptor read = ChannelDescriptor::read(descriptor.write(signingKey), trusted);
+    const ChannelDescriptor read = ChannelDescriptor::read(ChannelWriter::write(descriptor, signingKey), trusted);
     EXPECT_EQ(read.generation, 3U);
     EXPECT_EQ(read.manifest, manifest.getId());
     EXPECT_EQ(read.signingKeyId, signingKey.getVerifyingKey().getId());
@@ -284,7 +286,7 @@ TEST_F(ManifestTest, NeverAcceptsAnOlderGeneration) {
 
 TEST_F(ManifestTest, VerifiesChannelDescriptors) {
     const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("com.haylen.tests"), .channel = "beta", .generation = 12, .manifest = Digest::of(test::TestFiles::bytes("manifest"))};
-    const std::vector<std::uint8_t> bytes = descriptor.write(signingKey);
+    const std::vector<std::uint8_t> bytes = ChannelWriter::write(descriptor, signingKey);
     const SigningKey other(test::ReleaseFixture::makeKey(102));
     expectCode(Error::Code::ManifestSignatureInvalid, [&] { (void)ChannelDescriptor::read(bytes, std::vector{other.getVerifyingKey()}); });
     for (std::size_t index = 0; index < bytes.size(); ++index) {

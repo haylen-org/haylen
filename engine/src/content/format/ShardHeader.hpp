@@ -33,13 +33,12 @@ class ShardHeader final {
 
     [[nodiscard]] Bytes serialize() const;
 
-    // Derives the nonce of the plain index, encrypts it in place and records the nonce and the tag in the header.
-    void sealIndex(const ContentKey& key, std::span<std::uint8_t> index);
-
     // Authenticates and decrypts the index in place, and throws `CorruptIndex` when it fails.
     void openIndex(const ContentKey& key, std::span<std::uint8_t> index) const;
 
   private:
+    friend class ShardWriter;
+
     static constexpr std::array<std::uint8_t, 8> kMagic = {'H', 'P', 'A', 'K', 0x0D, 0x0A, 0x1A, 0x0A};
     static constexpr std::size_t kNonceOffset = 104;
     static constexpr std::size_t kTagOffset = 144;

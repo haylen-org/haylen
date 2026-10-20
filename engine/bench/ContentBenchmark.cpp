@@ -27,6 +27,7 @@
 #include "content/format/ChunkRecord.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/PackageReader.hpp"
+#include "content/format/RecordSealer.hpp"
 
 namespace haylen::bench {
 
@@ -190,7 +191,7 @@ class ContentBenchmark final {
         for (std::uint32_t index = 0; index < 256; ++index) {
             const std::vector<std::uint8_t> plain = randomBytes(kRecordSize, 100 + index);
             std::vector<std::uint8_t> ciphertext;
-            const content::ChunkRecord record = content::ChunkRecord::seal(key, plain, content::ChunkRecord::identifyContent(plain), ciphertext);
+            const content::ChunkRecord record = content::RecordSealer::seal(key, plain, content::ChunkRecord::identifyContent(plain), ciphertext);
             const content::ChunkRecord::Header header = record.serialize();
             std::vector<std::uint8_t> bytes(header.begin(), header.end());
             bytes.insert(bytes.end(), ciphertext.begin(), ciphertext.end());

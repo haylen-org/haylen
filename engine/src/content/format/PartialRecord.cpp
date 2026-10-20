@@ -29,7 +29,7 @@ PartialRecord PartialRecord::parse(std::span<const std::uint8_t> file) {
     PartialRecord partial{.shardId = reader.readDigest(), .recordOffset = reader.read<std::uint64_t>(), .recordSize = reader.read<std::uint64_t>()};
     partial.validator = std::string(reader.readString(kMaximumValidatorLength));
     const std::span<const std::uint8_t> held = reader.readBytes(reader.getRemaining());
-    if (partial.recordSize <= ChunkRecord::kHeaderSize || partial.recordSize > ChunkRecord::kHeaderSize + Chunker::kMaximumSize || held.empty() || held.size() >= partial.recordSize || partial.validator.empty()) {
+    if (partial.recordSize <= ChunkRecord::kHeaderSize || partial.recordSize > ChunkRecord::kHeaderSize + ChunkRecord::kMaximumPlainSize || held.empty() || held.size() >= partial.recordSize || partial.validator.empty()) {
         reader.fail("has sizes that are not those of a record that stopped part way");
     }
     partial.bytes.assign(held.begin(), held.end());

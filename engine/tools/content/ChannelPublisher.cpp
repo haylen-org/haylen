@@ -14,7 +14,8 @@
 #include "content/PublicationLayout.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/ShardSet.hpp"
-#include "content/format/Chunker.hpp"
+#include "content/format/ChannelWriter.hpp"
+#include "content/format/ChunkRecord.hpp"
 #include "haylen/content/Error.hpp"
 #include "haylen/core/AppConfig.hpp"
 
@@ -72,7 +73,7 @@ ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, 
 
     // The channel moves to the new generation only now that every file it reaches is in place and verified.
     const ChannelDescriptor descriptor{.application = application, .channel = options.channel, .generation = envelope.generation, .manifest = manifest.getId()};
-    writeFile(staging / "channel", descriptor.write(*signingKey));
+    writeFile(staging / "channel", ChannelWriter::write(descriptor, *signingKey));
     std::filesystem::create_directories((tree / PublicationLayout::getChannelPath(options.channel)).parent_path());
     std::filesystem::rename(staging / "channel", tree / PublicationLayout::getChannelPath(options.channel));
     std::filesystem::remove_all(staging);
@@ -123,7 +124,7 @@ void ChannelPublisher::verify(const std::filesystem::path& tree, const Manifest&
         return files->openReader(PublicationLayout::getPackPath(pack));
     }));
     // clang-format on
-    std::vector<std::uint8_t> buffer(Chunker::kMaximumSize);
+    std::vector<std::uint8_t> buffer(ChunkRecord::kMaximumPlainSize);
     for (const std::string& path : package.list("")) {
         const std::unique_ptr<io::PackageReader> reader = package.openReader(path);
         for (std::uint64_t offset = 0; offset < reader->getSize(); offset += buffer.size()) {

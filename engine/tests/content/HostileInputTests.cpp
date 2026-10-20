@@ -14,8 +14,10 @@
 #include "content/format/BinaryWriter.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChannelDescriptor.hpp"
+#include "content/format/ChannelWriter.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/PartialRecord.hpp"
+#include "content/format/RecordSealer.hpp"
 #include "content/format/ShardIndex.hpp"
 #include "content/format/StoreEntry.hpp"
 #include "content/format/StoreState.hpp"
@@ -46,7 +48,7 @@ class HostileInputTest : public ::testing::Test {
 
         const std::vector<std::uint8_t> plain = test::TestFiles::bytes("chunk");
         std::vector<std::uint8_t> ciphertext;
-        const ChunkRecord::Header header = ChunkRecord::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext).serialize();
+        const ChunkRecord::Header header = RecordSealer::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext).serialize();
         seeds.push_back(withParser(0, {header.begin(), header.end()}));
 
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(release.getFolder())) {
@@ -64,7 +66,7 @@ class HostileInputTest : public ::testing::Test {
 
         seeds.push_back(withParser(4, readFile(release.getFolder() / ReleasePackage::kContentManifestFile)));
         const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("com.haylen.tests"), .channel = "stable", .generation = 2};
-        seeds.push_back(withParser(5, descriptor.write(release.getSigningKey())));
+        seeds.push_back(withParser(5, ChannelWriter::write(descriptor, release.getSigningKey())));
         seeds.push_back(withParser(6, StoreState{.application = descriptor.application, .channel = "stable", .acceptedGeneration = 2}.write()));
         const StoreEntry::Bytes entry = StoreEntry{.storedId = Digest::of(plain), .segment = 1, .offset = 16, .size = 200}.write();
         seeds.push_back(withParser(7, {entry.begin(), entry.end()}));

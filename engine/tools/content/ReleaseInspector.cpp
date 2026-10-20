@@ -12,7 +12,6 @@
 #include "content/Compatibility.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/format/ChunkRecord.hpp"
-#include "content/format/Chunker.hpp"
 #include "haylen/content/Error.hpp"
 #include "haylen/io/Package.hpp"
 
@@ -90,7 +89,7 @@ ReleaseInspector::Verification ReleaseInspector::verify(const std::filesystem::p
     const Manifest::Envelope& envelope = app.getEnvelope();
     const Compatibility compatibility{.application = envelope.application, .appBuild = envelope.minimumAppBuild, .profile = envelope.profile};
     const std::unique_ptr<io::Package> package = ReleasePackage::open(io::Package::openDirectory(folder), keys, trusted, compatibility);
-    std::vector<std::uint8_t> buffer(Chunker::kMaximumSize);
+    std::vector<std::uint8_t> buffer(ChunkRecord::kMaximumPlainSize);
     for (const std::string& path : package->list("")) {
         const std::unique_ptr<io::PackageReader> reader = package->openReader(path);
         for (std::uint64_t offset = 0; offset < reader->getSize();) {

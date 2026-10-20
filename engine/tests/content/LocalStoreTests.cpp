@@ -14,6 +14,7 @@
 #include "content/crypto/ContentKey.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/PartialRecord.hpp"
+#include "content/format/RecordSealer.hpp"
 #include "content/format/StoreEntry.hpp"
 #include "content/format/StoreState.hpp"
 #include "haylen/content/Error.hpp"
@@ -58,7 +59,7 @@ class LocalStoreTest : public ::testing::Test {
     [[nodiscard]] std::vector<std::uint8_t> makeRecord(std::uint64_t seed, std::size_t size = 4000) const {
         const std::vector<std::uint8_t> plain = test::TestFiles::randomBytes(size, seed);
         std::vector<std::uint8_t> ciphertext;
-        const ChunkRecord record = ChunkRecord::seal(key, plain, ChunkRecord::identifyContent(plain), ciphertext);
+        const ChunkRecord record = RecordSealer::seal(key, plain, ChunkRecord::identifyContent(plain), ciphertext);
         const ChunkRecord::Header header = record.serialize();
         std::vector<std::uint8_t> bytes(header.begin(), header.end());
         bytes.insert(bytes.end(), ciphertext.begin(), ciphertext.end());

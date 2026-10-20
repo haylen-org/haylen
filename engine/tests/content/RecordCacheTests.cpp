@@ -11,6 +11,7 @@
 #include "content/RecordCache.hpp"
 #include "content/crypto/ContentKey.hpp"
 #include "content/format/ChunkRecord.hpp"
+#include "content/format/RecordSealer.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -21,7 +22,7 @@ class RecordCacheTest : public ::testing::Test {
   protected:
     RecordCacheTest() : key(test::ReleaseFixture::makeKey(1)), otherKey(test::ReleaseFixture::makeKey(2)), cache(directory.getPath()) {
         plain = test::TestFiles::bytes("A chunk of an asset that repeats, repeats, repeats and repeats until it compresses.");
-        record = ChunkRecord::seal(key, plain, ChunkRecord::identifyContent(plain), ciphertext);
+        record = RecordSealer::seal(key, plain, ChunkRecord::identifyContent(plain), ciphertext);
     }
 
     // The single entry of the cache, wherever its key and encoder place it.
@@ -67,7 +68,7 @@ TEST_F(RecordCacheTest, IgnoresEntriesThatDoNotVerify) {
     // An entry that holds the record of another chunk, or bytes after its record, never serves.
     const std::vector<std::uint8_t> otherPlain = test::TestFiles::bytes("Another chunk of another asset.");
     std::vector<std::uint8_t> otherCiphertext;
-    const ChunkRecord::Header otherHeader = ChunkRecord::seal(key, otherPlain, ChunkRecord::identifyContent(otherPlain), otherCiphertext).serialize();
+    const ChunkRecord::Header otherHeader = RecordSealer::seal(key, otherPlain, ChunkRecord::identifyContent(otherPlain), otherCiphertext).serialize();
     std::ofstream(findEntry(), std::ios::binary | std::ios::trunc).write(reinterpret_cast<const char*>(otherHeader.data()), static_cast<std::streamsize>(otherHeader.size())).write(reinterpret_cast<const char*>(otherCiphertext.data()), static_cast<std::streamsize>(otherCiphertext.size()));
     EXPECT_FALSE(cache.find(key, record.contentId, found).has_value());
     cache.store(key, record, ciphertext);

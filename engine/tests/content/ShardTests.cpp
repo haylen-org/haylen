@@ -19,6 +19,8 @@
 #include "content/crypto/KeyRing.hpp"
 #include "content/format/Catalog.hpp"
 #include "content/format/ChunkRecord.hpp"
+#include "content/format/Compressor.hpp"
+#include "content/format/RecordSealer.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
 #include "haylen/content/Error.hpp"
@@ -79,7 +81,7 @@ class ShardTest : public ::testing::Test {
         ShardWriter writer(folder, std::move(key));
         for (const std::vector<std::uint8_t>& chunk : chunks) {
             std::vector<std::uint8_t> ciphertext;
-            const ChunkRecord record = ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
+            const ChunkRecord record = RecordSealer::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
             writer.add(record, ciphertext);
         }
         return writer.finish();
@@ -103,7 +105,7 @@ class ShardTest : public ::testing::Test {
         header.indexOffset = ShardHeader::kSize + dataSize;
         header.indexSize = index.size();
         header.entryCount = entries;
-        header.sealIndex(*getKey(), index);
+        ShardWriter::sealIndex(header, *getKey(), index);
         std::vector<std::uint8_t> file(static_cast<std::size_t>(header.indexOffset));
         std::ranges::copy(header.serialize(), file.begin());
         file.insert(file.end(), index.begin(), index.end());
@@ -154,19 +156,19 @@ class ShardTest : public ::testing::Test {
 TEST_F(ShardTest, SealsChunksDeterministically) {
     const std::vector<std::uint8_t> plain = test::TestFiles::bytes(std::string(10000, 'x'));
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = ChunkRecord::seal(*getKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+    const ChunkRecord record = RecordSealer::seal(*getKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
     EXPECT_EQ(record.codec, Compression::Codec::Zstd);
     EXPECT_EQ(record.plainSize, plain.size());
     EXPECT_EQ(record.encodedSize, ciphertext.size());
     EXPECT_EQ(record.contentId, Digest::of(plain));
 
     std::vector<std::uint8_t> again;
-    EXPECT_EQ(ChunkRecord::seal(*getKey(), plain, record.contentId, again).serialize(), record.serialize());
+    EXPECT_EQ(RecordSealer::seal(*getKey(), plain, record.contentId, again).serialize(), record.serialize());
     EXPECT_EQ(again, ciphertext) << "An unchanged chunk seals to the same bytes in every build.";
 
     std::vector<std::uint8_t> otherCiphertext;
     const std::vector<std::uint8_t> other = test::TestFiles::bytes(std::string(10000, 'y'));
-    const ChunkRecord otherRecord = ChunkRecord::seal(*getKey(), other, ChunkRecord::identifyContent(other), otherCiphertext);
+    const ChunkRecord otherRecord = RecordSealer::seal(*getKey(), other, ChunkRecord::identifyContent(other), otherCiphertext);
     EXPECT_NE(otherRecord.nonce, record.nonce);
     EXPECT_NE(otherRecord.storedId, record.storedId);
 
@@ -180,7 +182,7 @@ TEST_F(ShardTest, SealsChunksDeterministically) {
 TEST_F(ShardTest, RejectsEveryChangeToARecord) {
     const std::vector<std::uint8_t> plain = test::TestFiles::randomBytes(3000, 9);
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = ChunkRecord::seal(*getKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+    const ChunkRecord record = RecordSealer::seal(*getKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
     const ChunkRecord::Header header = record.serialize();
 
     for (std::size_t index = 0; index < ChunkRecord::kHeaderSize + ciphertext.size(); index += 3) {
@@ -205,7 +207,7 @@ TEST_F(ShardTest, ChecksTheContentIdOfDecodedChunks) {
     // A record sealed with the key under a content ID that does not match its bytes authenticates, but its bytes never reach the caller.
     const std::vector<std::uint8_t> plain = test::TestFiles::randomBytes(2000, 10);
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord forged = ChunkRecord::seal(*getKey(), plain, Digest::of(test::TestFiles::bytes("other")), ciphertext);
+    const ChunkRecord forged = RecordSealer::seal(*getKey(), plain, Digest::of(test::TestFiles::bytes("other")), ciphertext);
     std::vector<std::uint8_t> opened;
     try {
         forged.open(*getKey(), ciphertext, opened);
@@ -220,7 +222,7 @@ TEST_F(ShardTest, ChecksTheSizeOfDecodedChunks) {
     // A record whose header declares one byte more than its compressed bytes decode to authenticates, since the key sealed it so, but nothing of it reaches the caller.
     const std::vector<std::uint8_t> plain = test::TestFiles::bytes(std::string(10000, 'x'));
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord sealed = ChunkRecord::seal(*getKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+    const ChunkRecord sealed = RecordSealer::seal(*getKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
     ASSERT_EQ(sealed.codec, Compression::Codec::Zstd);
 
     // The header without its tag is the additional data of the encryption.
@@ -260,7 +262,7 @@ TEST_F(ShardTest, WritesAndReadsShards) {
     std::vector<std::uint8_t> scratch;
     std::vector<std::uint8_t> plain;
     for (const std::vector<std::uint8_t>& chunk : chunks) {
-        const Compression::Encoded encoded = Compression::encode(chunk);
+        const Compressor::Encoded encoded = Compressor::encode(chunk);
         reader.readChunk({.storedId = ChunkRecord::identifyStored(encoded.codec, encoded.profile, encoded.bytes), .contentId = Digest::of(chunk), .plainSize = chunk.size(), .encodedSize = encoded.bytes.size(), .codec = encoded.codec, .profile = encoded.profile}, scratch, plain);
         EXPECT_EQ(plain, chunk);
     }
@@ -284,7 +286,7 @@ TEST_F(ShardTest, LeavesNoFileOfAShardItDidNotFinish) {
         ShardWriter writer(stopped, getKey());
         const std::vector<std::uint8_t> chunk = test::TestFiles::bytes("A chunk of a build that stopped.");
         std::vector<std::uint8_t> ciphertext;
-        const ChunkRecord record = ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
+        const ChunkRecord record = RecordSealer::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
         writer.add(record, ciphertext);
         EXPECT_FALSE(std::filesystem::is_empty(stopped));
     }
@@ -305,7 +307,7 @@ TEST_F(ShardTest, RejectsARecordWithoutItsEncryptedBytes) {
     ShardWriter writer(directory.getPath(), getKey());
     const std::vector<std::uint8_t> chunk = test::TestFiles::bytes("A chunk whose bytes stay behind.");
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = ChunkRecord::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
+    const ChunkRecord record = RecordSealer::seal(*getKey(), chunk, ChunkRecord::identifyContent(chunk), ciphertext);
     EXPECT_THROW(writer.add(record, {}), std::invalid_argument);
     EXPECT_THROW(writer.add(record, std::span(ciphertext).first(ciphertext.size() - 1)), std::invalid_argument);
     EXPECT_EQ(writer.getEntryCount(), 0U);
@@ -356,7 +358,7 @@ TEST_F(ShardTest, ReadsRecordsBeyondFourGigabytes) {
     // The record sits past 5 GiB of a sparse file, so every offset of the shard needs 64 bits.
     const std::vector<std::uint8_t> plain = test::TestFiles::randomBytes(4096, 11);
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = ChunkRecord::seal(*getKey(), plain, Digest::of(plain), ciphertext);
+    const ChunkRecord record = RecordSealer::seal(*getKey(), plain, Digest::of(plain), ciphertext);
     const std::uint64_t recordOffset = std::uint64_t{5} << 30;
 
     const ChunkRecord::Header recordHeader = record.serialize();
@@ -370,7 +372,7 @@ TEST_F(ShardTest, ReadsRecordsBeyondFourGigabytes) {
     header.indexOffset = recordOffset + bytes.size();
     header.indexSize = index.size();
     header.entryCount = 1;
-    header.sealIndex(*getKey(), index);
+    ShardWriter::sealIndex(header, *getKey(), index);
     const ShardHeader::Bytes headerBytes = header.serialize();
 
     const std::uint64_t size = header.indexOffset + header.indexSize;
@@ -409,7 +411,7 @@ TEST_F(ShardTest, ReportsChunksTheShardDoesNotHold) {
 
     // A record serves only the chunk its catalog describes, with the same content ID, sizes and codec.
     std::vector<std::uint8_t> ciphertext;
-    const Catalog::Chunk stored = describe(ChunkRecord::seal(*getKey(), chunks.front(), Digest::of(chunks.front()), ciphertext));
+    const Catalog::Chunk stored = describe(RecordSealer::seal(*getKey(), chunks.front(), Digest::of(chunks.front()), ciphertext));
     Catalog::Chunk otherContent = stored;
     otherContent.contentId = Digest::of(test::TestFiles::bytes("another chunk"));
     Catalog::Chunk larger = stored;
