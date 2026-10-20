@@ -57,9 +57,12 @@ platform::VideoDecoder::Read FakeVideoDecoder::readFrame(Frame& frame) {
 
 bool FakeVideoDecoder::readAudio(std::vector<float>& samples, double until) {
     const double end = std::min(until, settings.info.duration);
-    const auto frames = static_cast<std::size_t>(std::max(0.0, std::floor((end - soundTime) * settings.info.sampleRate)));
+    // The frames count up to the end, so a time that rounding puts a hair short of it still reaches it.
+    const auto frames = static_cast<std::size_t>(std::max(0.0, std::floor((end - soundTime) * settings.info.sampleRate + 1e-6)));
     samples.insert(samples.end(), frames * settings.info.channels, settings.sample);
     soundTime += static_cast<double>(frames) / settings.info.sampleRate;
+    const std::scoped_lock lock(log->mutex);
+    log->soundTime = soundTime;
     return soundTime < settings.info.duration;
 }
 

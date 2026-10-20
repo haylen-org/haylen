@@ -167,6 +167,30 @@ TEST_F(VideoTest, PlaysItsSoundThroughABusOfTheMixer) {
     EXPECT_EQ(fixture.engine().getPlugin<plugins::VideoPlugin>().getVideoCount(), 0U);
 }
 
+// A seek while the decoder reads the end of the sound for the time it leaves plays the sound of the new time.
+TEST_F(VideoTest, PlaysTheSoundOfASeekThatLandsWhileTheEndOfTheSoundDecodes) {
+    loadIntro();
+    fixture.frames(5);
+    hold(true);
+    fixture.runLua("intro:seek(0.9)");
+    // clang-format off
+    ASSERT_TRUE(fixture.frameUntil([this] {
+        const std::scoped_lock lock(log->mutex);
+        return !log->seeks.empty() && log->seeks.back() == 0.9;
+    }));
+    // clang-format on
+
+    // The read of the frame at 0.9 waits while the video seeks back to the start, and then decodes the sound up to the end.
+    fixture.runLua("intro:seek(0)");
+    hold(false);
+    // clang-format off
+    ASSERT_TRUE(fixture.frameUntil([this] {
+        const std::scoped_lock lock(log->mutex);
+        return log->seeks.back() == 0.0 && log->soundTime > 0.0 && log->soundTime < 0.9;
+    }));
+    // clang-format on
+}
+
 TEST_F(VideoTest, ReportsFilesThatFailAndPlatformsWithoutADecoder) {
     fixture.runLua("broken = video.load('videos/broken.mp4') broken:on('error', function(error) events[#events + 1] = error.code .. ': ' .. error.message end)");
     ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return broken.state") == "failed"; }));

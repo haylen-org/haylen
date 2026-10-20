@@ -23,6 +23,9 @@ class FakeVideoDecoder final : public platform::VideoDecoder {
         std::vector<std::string> controls;
         int framesRead = 0;
         double clock = 0.0;
+
+        // How far the sound decoded, as of the last read of sound.
+        double soundTime = 0.0;
         bool frameShown = false;
         std::set<std::thread::id> readingThreads;
 

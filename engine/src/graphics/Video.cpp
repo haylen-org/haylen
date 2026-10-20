@@ -382,12 +382,15 @@ void Video::schedule() {
 // The sound of a frame decodes with it, a little ahead of its time, so the ring never runs dry while frames wait. Exceptions of the decoder fail the video at the next update.
 void Video::decode(const std::shared_ptr<Shared>& shared) {
     Shared& state = *shared;
+    // The end of the sound belongs to a generation, so a seek that starts a new one meanwhile never hears the end of the old one.
     std::uint64_t generation = 0;
     std::optional<double> target;
+    bool soundEnded = false;
     {
         const std::scoped_lock lock(state.mutex);
         generation = state.generation;
         target = std::exchange(state.seekTo, std::nullopt);
+        soundEnded = state.soundEnded;
     }
     const bool sounded = state.info.channels > 0;
     try {
@@ -409,8 +412,8 @@ void Video::decode(const std::shared_ptr<Shared>& shared) {
             }
             const Read read = state.decoder->readFrame(frame);
             const bool last = read != Read::Frame;
-            if (sounded && !state.soundEnded) {
-                state.soundEnded = !state.decoder->readAudio(state.samples, last ? state.info.duration : frame.time + kSoundAhead);
+            if (sounded && !soundEnded) {
+                soundEnded = !state.decoder->readAudio(state.samples, last ? state.info.duration : frame.time + kSoundAhead);
             }
 
             const std::scoped_lock lock(state.mutex);
@@ -418,6 +421,7 @@ void Video::decode(const std::shared_ptr<Shared>& shared) {
                 state.spare.push_back(std::move(frame));
                 break;
             }
+            state.soundEnded = soundEnded;
             pushSound(state);
             if (last) {
                 state.framesEnded = true;
