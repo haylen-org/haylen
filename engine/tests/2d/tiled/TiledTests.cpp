@@ -758,7 +758,8 @@ TEST_F(MapRendererTest, DrawsALayerThatMixesWithWhatLiesBelowAsAGroup) {
 
     // The decor renders into a group, the map draws offscreen up to it, copies what it drew below, goes on and reaches the screen.
     EXPECT_EQ(stats.passes, 5U);
-    for (const core::Json& layer : tiled::MapWriter::write(map.getMap(), "maps/island.tmj")["layers"]) {
+    const core::Json written = tiled::MapWriter::write(map.getMap(), "maps/island.tmj");
+    for (const core::Json& layer : written["layers"]) {
         if (layer.value("name", std::string{}) == "decor") {
             EXPECT_EQ(layer.value("mode", std::string{}), "overlay");
         }
