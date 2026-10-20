@@ -1,5 +1,5 @@
 # Builds the protected release of an app package with the content tool and lays out what ships with the app, for haylen_add_app with HAYLEN_PROTECTED_RELEASE.
-# Reads TOOL, PACKAGE, IDENTIFIER, KEYS, PROFILE, BUILD, RELEASE, PREVIOUS, CACHE, SHIPPED, PACKS, SERVER, BOOT and STAMP. PREVIOUS names the folder of the last release that shipped, or is empty. BOOT is empty except for web pages, which download the manifests and the app domain it holds before the app starts and stream the rest of RELEASE.
+# Reads TOOL, PACKAGE, IDENTIFIER, KEYS, PROFILE, BUILD, RELEASE, PREVIOUS, CACHE, SHIPPED, PACKS, SERVER, SHARD_TARGET, BOOT and STAMP. PREVIOUS names the folder of the last release that shipped, or is empty. SHARD_TARGET is the size in bytes that the shards aim for, or empty for the default of the content tool. BOOT is empty except for web pages, which download the manifests and the app domain it holds before the app starts and stream the rest of RELEASE.
 
 # The keys of an app are created once on the machine of its developer, while continuous integration receives them and never creates them, since every release of an app needs the same keys.
 if(NOT EXISTS "${KEYS}/keys.json")
@@ -19,7 +19,11 @@ if(NOT PREVIOUS STREQUAL "")
 elseif(EXISTS "${RELEASE}/app.hmanifest")
   set(previous --previous "${RELEASE}")
 endif()
-execute_process(COMMAND "${TOOL}" build "${PACKAGE}" --keys "${KEYS}" --profile "${PROFILE}" --build "${BUILD}" --output "${staging}" --cache "${CACHE}" ${previous} COMMAND_ERROR_IS_FATAL ANY)
+set(target)
+if(NOT SHARD_TARGET STREQUAL "")
+  set(target --shard-target "${SHARD_TARGET}")
+endif()
+execute_process(COMMAND "${TOOL}" build "${PACKAGE}" --keys "${KEYS}" --profile "${PROFILE}" --build "${BUILD}" --output "${staging}" --cache "${CACHE}" ${previous} ${target} COMMAND_ERROR_IS_FATAL ANY)
 file(REMOVE_RECURSE "${RELEASE}")
 file(RENAME "${staging}" "${RELEASE}")
 

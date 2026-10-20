@@ -371,11 +371,13 @@ function(haylen_add_release target package apple_project web_shell)
     message(FATAL_ERROR "A protected release needs the content tool of the host. Name it with \"HAYLEN_CONTENT_TOOL\", such as the haylen-content of the desktop artifacts that \"haylen.py engine --platform desktop\" builds.")
   endif()
 
-  # The profile names the platform family of the release, and the build number comes from the version, 1.2.3 being 1002003.
+  # The profile names the platform family of the release, and the build number comes from the version, 1.2.3 being 1002003. Android releases build shards that fill an install-time asset pack of haylen.py several times over, as CONTENT_SHARD_TARGETS of haylen.py says.
+  set(shard_target "")
   if(APPLE)
     set(profile apple)
   elseif(ANDROID)
     set(profile android)
+    set(shard_target 268435456)
   elseif(EMSCRIPTEN)
     set(profile web)
   elseif(WIN32)
@@ -407,7 +409,7 @@ function(haylen_add_release target package apple_project web_shell)
   endif()
   file(GLOB_RECURSE package_files CONFIGURE_DEPENDS "${package}/source/*" "${package}/content/*" "${package}/plugins/*")
   add_custom_command(OUTPUT "${stamp}"
-    COMMAND "${CMAKE_COMMAND}" "-DTOOL=${tool}" "-DPACKAGE=${package}" "-DIDENTIFIER=${app_identifier}" "-DKEYS=${keys}" "-DPROFILE=${profile}" "-DBUILD=${build}" "-DRELEASE=${folder}/release" "-DPREVIOUS=${HAYLEN_PREVIOUS_RELEASE}" "-DCACHE=${folder}/cache" "-DSHIPPED=${folder}/shipped" "-DPACKS=${folder}/packs" "-DSERVER=${server}" "-DBOOT=${boot}" "-DSTAMP=${stamp}" -P "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake"
+    COMMAND "${CMAKE_COMMAND}" "-DTOOL=${tool}" "-DPACKAGE=${package}" "-DIDENTIFIER=${app_identifier}" "-DKEYS=${keys}" "-DPROFILE=${profile}" "-DBUILD=${build}" "-DRELEASE=${folder}/release" "-DPREVIOUS=${HAYLEN_PREVIOUS_RELEASE}" "-DCACHE=${folder}/cache" "-DSHIPPED=${folder}/shipped" "-DPACKS=${folder}/packs" "-DSERVER=${server}" "-DSHARD_TARGET=${shard_target}" "-DBOOT=${boot}" "-DSTAMP=${stamp}" -P "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake"
     DEPENDS "${package}/app.json" ${package_files} "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" ${tool_target}
     COMMENT "Building the protected release of ${target}."
     VERBATIM

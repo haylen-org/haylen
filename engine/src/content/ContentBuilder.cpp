@@ -118,7 +118,8 @@ void ContentBuilder::keepEarlierShards(const std::vector<File>& files) {
             ++statistics.missingShards;
             continue;
         }
-        if (live[shard] == 0 || live[shard] < earlierShards[shard].fileSize - earlierShards[shard].fileSize / 2) {
+        const std::uint64_t size = earlierShards[shard].fileSize;
+        if (live[shard] == 0 || live[shard] < size - size / 2 || size > 2 * target + kRecordSpan) {
             ++statistics.droppedShards;
             continue;
         }

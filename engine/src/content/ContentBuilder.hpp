@@ -15,13 +15,15 @@
 #include "content/crypto/ContentKey.hpp"
 #include "content/crypto/Digest.hpp"
 #include "content/format/Catalog.hpp"
+#include "content/format/ChunkRecord.hpp"
+#include "content/format/ShardIndex.hpp"
 #include "content/format/ShardReference.hpp"
 #include "haylen/content/Delivery.hpp"
 #include "haylen/io/Package.hpp"
 
 namespace haylen::content {
 
-// Builds the shards and the plain catalog of one domain from the files of a source package. Files are taken in path order, the files of each delivery and of each pack in shards of their own and the required ones first, and read in windows, so no file is ever loaded whole, and each is split into chunks that are identified, compressed and sealed. A chunk whose content an earlier release already stored is referenced in its old shard instead of being stored again, so an update writes only new chunks into new shards and never touches the old ones. An earlier shard stays only while the files still use at least half of its bytes, and the chunks they use of a shard that falls below that move into the new shards, so releases that follow each other never carry more dead bytes than live ones. New shards close near the target size, and a file small against that target stays in one shard.
+// Builds the shards and the plain catalog of one domain from the files of a source package. Files are taken in path order, the files of each delivery and of each pack in shards of their own and the required ones first, and read in windows, so no file is ever loaded whole, and each is split into chunks that are identified, compressed and sealed. A chunk whose content an earlier release already stored is referenced in its old shard instead of being stored again, so an update writes only new chunks into new shards and never touches the old ones. An earlier shard stays only while the files still use at least half of its bytes and it is no larger than twice the target and one record, and the chunks they use of a shard that falls below that or outgrows the target move into the new shards, so releases that follow each other never carry more dead bytes than live ones and a release built for a smaller target, such as the one of a store that bounds its files, holds no larger shard. New shards close near the target size, and a file small against that target stays in one shard.
 class ContentBuilder final {
   public:
     static constexpr std::uint64_t kDefaultShardTarget = std::uint64_t{1} << 30;
@@ -66,6 +68,9 @@ class ContentBuilder final {
 
   private:
     static constexpr std::uint64_t kWholeFileDivisor = 16;
+
+    // A shard this builder writes passes its target by at most a file it keeps whole or one record, so an earlier shard beyond this span of twice the target was built for a larger one.
+    static constexpr std::uint64_t kRecordSpan = ChunkRecord::kHeaderSize + ChunkRecord::kMaximumPlainSize + ShardIndex::kEntrySize;
 
     struct Piece {
         std::uint64_t offset = 0;

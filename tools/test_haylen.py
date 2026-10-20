@@ -1313,7 +1313,7 @@ class AndroidPluginsTest(unittest.TestCase):
             haylen.build_android(app, project, arguments)
             run.assert_called_once()
 
-    def test_a_release_too_large_for_the_base_module_goes_into_install_time_asset_packs(self):
+    def test_a_release_too_large_for_the_base_module_moves_its_content_shards_into_install_time_asset_packs(self):
         scratch = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, scratch)
         generated = scratch / "project" / haylen.GENERATED_FOLDER
@@ -1321,18 +1321,21 @@ class AndroidPluginsTest(unittest.TestCase):
         release.mkdir(parents=True)
         for name in ("app.hmanifest", "content.hmanifest"):
             (release / name).write_bytes(b"m" * 10)
-        for index in range(5):
+        for index in range(6):
             (release / f"{index:064x}.hpak").write_bytes(b"s" * 100)
+        kept = {"app.hmanifest", "content.hmanifest", f"{0:064x}.hpak"}
         with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})), mock.patch.object(haylen, "ANDROID_ASSET_PACK_LIMIT", 250):
-            with mock.patch.object(haylen, "ANDROID_BASE_RELEASE_LIMIT", 1000):
-                self.assertEqual(haylen.write_android_asset_packs(generated), [], "A release that fits the base module stays there.")
-            with mock.patch.object(haylen, "ANDROID_BASE_RELEASE_LIMIT", 300):
-                packs = haylen.write_android_asset_packs(generated)
+            packs = haylen.write_android_asset_packs(generated, kept)
         self.assertEqual(packs, ["haylencontent1", "haylencontent2", "haylencontent3"])
-        self.assertEqual(sorted(path.name for path in release.iterdir()), ["app.hmanifest", "content.hmanifest"])
+        self.assertEqual({path.name for path in release.iterdir()}, kept, "The manifests and the shards of the app domain stay in the base module.")
         self.assertEqual([len(list((generated / "asset-packs" / pack / "src" / "main" / "assets" / "app").iterdir())) for pack in packs], [2, 2, 1])
         self.assertIn('deliveryType.set("install-time")', (generated / "asset-packs" / "haylencontent1" / "build.gradle.kts").read_text())
-        self.assertEqual(haylen.android_release_shards(scratch / "project"), {f"{index:064x}.hpak" for index in range(5)})
+        self.assertEqual(haylen.android_release_shards(scratch / "project"), {f"{index:064x}.hpak" for index in range(6)})
+
+    def test_android_releases_build_shards_that_fit_an_asset_pack_in_lua_and_cpp_apps(self):
+        target = haylen.CONTENT_SHARD_TARGETS["android"]
+        self.assertLessEqual(target * 2 + 5 * 1024**2, haylen.ANDROID_ASSET_PACK_LIMIT, "A shard holds at most twice its target and one record, so it fits a pack.")
+        self.assertIn(f"set(shard_target {target})", (haylen.ROOT / "engine" / "cmake" / "haylen-app.cmake").read_text(encoding="utf-8"))
 
     def test_a_build_only_run_builds_and_checks_every_abi_without_a_device(self):
         args = haylen.build_parser().parse_args(["run", "game", "--platform", "android", "--config", "Release", "--build-only"])

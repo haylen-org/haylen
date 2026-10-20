@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -138,6 +139,38 @@ TEST_F(ContentToolTest, ExplainsWhatACommandLacks) {
     EXPECT_EQ(run({"publish", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--channel", "stable", "--output", getPath("tree")}), 1);
     EXPECT_EQ(errors.str(), "Error: The app cannot publish with the keys of \"com.haylen.other\".\n");
     EXPECT_FALSE(std::filesystem::exists(getPath("tree")));
+}
+
+TEST_F(ContentToolTest, BuildsShardsOfTheSizeThatItsTargetNames) {
+    constexpr std::size_t kFileSize = 256 * 1024;
+    for (std::uint64_t index = 0; index < 4; ++index) {
+        const std::vector<std::uint8_t> bytes = test::TestFiles::randomBytes(kFileSize, index + 1);
+        app.write("content/world/part-" + std::to_string(index) + ".bin", std::string(bytes.begin(), bytes.end()));
+    }
+    ASSERT_EQ(run({"keys", "create", getPath("keys"), "--identifier", "com.haylen.tests"}), 0) << errors.str();
+    // clang-format off
+    const auto build = [this](const std::string& name, std::vector<std::string> extra) {
+        std::vector<std::string> arguments = {"build", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "android", "--build", "7", "--output", getPath(name)};
+        arguments.insert(arguments.end(), extra.begin(), extra.end());
+        return run(arguments);
+    };
+    const auto largestShard = [this](const std::string& name) {
+        std::uintmax_t largest = 0;
+        for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getPath(name))) {
+            largest = entry.path().extension() == ".hpak" ? std::max(largest, entry.file_size()) : largest;
+        }
+        return largest;
+    };
+    // clang-format on
+
+    ASSERT_EQ(build("whole", {}), 0) << errors.str();
+    EXPECT_GT(largestShard("whole"), 4 * kFileSize) << "The default target keeps the content in one shard.";
+    ASSERT_EQ(build("split", {"--shard-target", std::to_string(kFileSize)}), 0) << errors.str();
+    EXPECT_LE(largestShard("split"), kFileSize + kFileSize / 4) << "A shard passes its target by at most one record.";
+    ASSERT_EQ(run({"verify", getPath("split"), "--keys", getPath("keys")}), 0) << errors.str();
+
+    EXPECT_EQ(build("empty", {"--shard-target", "0"}), 1);
+    EXPECT_EQ(errors.str(), "Error: The option \"--shard-target\" takes a size above zero bytes.\n");
 }
 
 } // namespace haylen::content

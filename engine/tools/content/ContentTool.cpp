@@ -191,7 +191,11 @@ void ContentTool::runBuild(Arguments& arguments) {
     const std::filesystem::path folder = arguments.takeOption("output");
     const std::optional<std::string> earlier = arguments.takeOptional("previous");
     const std::optional<std::string> cache = arguments.takeOptional("cache");
+    options.shardTarget = arguments.takeOptionalNumber("shard-target").value_or(ContentBuilder::kDefaultShardTarget);
     arguments.finish();
+    if (options.shardTarget == 0) {
+        throw std::invalid_argument("The option \"--shard-target\" takes a size above zero bytes.");
+    }
 
     const std::shared_ptr<const io::Package> package = io::Package::openDirectory(app);
     const core::AppConfig config = core::AppConfig::fromPackage(*package);

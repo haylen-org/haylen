@@ -134,10 +134,12 @@ APPLE_SWIFT_HELPERS = "HaylenBridgeAsync.swift"
 # The files of a release folder besides its shards, and the suffix of the shards.
 RELEASE_MANIFESTS = ("app.hmanifest", "content.hmanifest")
 RELEASE_SHARD_SUFFIX = ".hpak"
-# The largest protected release that the store of a content profile accepts inside an app, with the words that name the limit: the App Store limits the uncompressed size of an iOS or tvOS app, and Google Play the compressed download of the base module, whose shards are compressed already.
-# Google Play takes a base module of at most 200 MB to download, which also carries the code and the native libraries of the app, and asset packs that install with the app on top of it. A protected release larger than the share of the base module that this leaves goes into install-time asset packs of at most the size below each, which Android reads through the same assets as the base module.
-ANDROID_BASE_RELEASE_LIMIT = 150 * 1024**2
-ANDROID_ASSET_PACK_LIMIT = 512 * 1024**2
+# The largest protected release that the store of a content profile accepts inside an app, with the words that name the limit: the App Store limits the uncompressed size of an iOS or tvOS app, and Google Play the compressed download of the app with its install-time asset packs, whose shards are compressed already.
+# Google Play takes a base module of at most 500 MB to download, which also carries the code and the native libraries of the app, and install-time asset packs of at most 1.5 GB each on top of it. A protected release larger than the share of the base module that this leaves moves its content shards into install-time asset packs of at most the size below each, which Android reads through the same assets as the base module, while the manifests and the shards of the app domain, the code of the app, stay in the base module.
+ANDROID_BASE_RELEASE_LIMIT = 384 * 1024**2
+ANDROID_ASSET_PACK_LIMIT = 1024**3
+# The size that the shards of a content profile aim for, when the store of the profile bounds the files that hold them. A shard holds at most twice its target and one record, and the content tool builds the earlier shards that pass that again, so the shards of Android releases always fit an install-time asset pack. The function haylen_add_app of `engine/cmake/haylen-app.cmake` gives C++ apps the same targets.
+CONTENT_SHARD_TARGETS = {"android": 256 * 1024**2}
 ANDROID_ASSET_PACK_NAME = "haylencontent"
 ANDROID_ASSET_PACK_MODULE = """// Written by haylen.py: an asset pack of the protected release of the app, which Google Play installs with it.
 plugins {{
@@ -151,7 +153,7 @@ assetPack {{
     }}
 }}
 """
-STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app")}
+STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app"), "android": (4 * 1000**3, "the 4 GB that Google Play accepts for the download of an app with its install-time asset packs")}
 # Symbol files, which stay with the developer and never ship.
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
@@ -3050,7 +3052,7 @@ def write_android_splash(app: App, resources: Path) -> None:
         shutil.copy2(app.splash_logo, resources / "drawable" / f"haylen_splash_logo{app.splash_logo.suffix.lower()}")
 
 
-def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path | None = None) -> None:
+def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, release: Path | None = None) -> None:
     """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version, orientation and status bar of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Android project `{shown_path(root)}`")
@@ -3060,7 +3062,8 @@ def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path
     if release:
         # A release is a flat folder, which Android lists without an index.
         shutil.copytree(release, generated / "assets" / "app")
-        packs = write_android_asset_packs(generated)
+        if sum(path.stat().st_size for path in release.iterdir()) > ANDROID_BASE_RELEASE_LIMIT:
+            packs = write_android_asset_packs(generated, set(release_app_files(app, release, config, jobs)))
     else:
         files = copy_package(app, generated / "assets" / "app")
         # Android cannot list asset folders recursively, so the runtime reads the files of the package from this index.
@@ -3086,12 +3089,10 @@ def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path
     write_if_changed(generated / "haylen.properties", "\n".join([*lines, *(f"{key}={java_property(value)}" for key, value in values.items())]) + "\n")
 
 
-def write_android_asset_packs(generated: Path) -> list[str]:
-    """Moves the shards of a protected release that does not fit the base module of Google Play into install-time asset packs of the project, filled in the order of their names, and returns the names of the packs. Their shards keep the folder `app/` of the assets, where the runtime reads the release whichever module installed them, and the manifests stay in the base module."""
+def write_android_asset_packs(generated: Path, kept: set[str]) -> list[str]:
+    """Moves the content shards of a protected release too large for the base module of Google Play into install-time asset packs of the project, filled in the order of their names, and returns the names of the packs. The files in `kept`, the manifests and the shards of the app domain, stay in the base module, since asset packs hold content and not the code of the app. The shards in the packs keep the folder `app/` of the assets, where the runtime reads the release whichever module installed them."""
     folder = generated / "assets" / "app"
-    shards = sorted(path for path in folder.iterdir() if path.name.endswith(RELEASE_SHARD_SUFFIX))
-    if sum(path.stat().st_size for path in folder.iterdir()) <= ANDROID_BASE_RELEASE_LIMIT:
-        return []
+    shards = sorted(path for path in folder.iterdir() if path.name.endswith(RELEASE_SHARD_SUFFIX) and path.name not in kept)
     packs: list[str] = []
     filled = ANDROID_ASSET_PACK_LIMIT
     for shard in shards:
@@ -3104,7 +3105,7 @@ def write_android_asset_packs(generated: Path) -> list[str]:
             filled = 0
         shard.rename(generated / "asset-packs" / packs[-1] / "src" / "main" / "assets" / "app" / shard.name)
         filled += size
-    terminal.info(f"The protected release is larger than the share of the base module of Google Play that the app leaves it, so its shards go into the install-time asset packs {quoted_names(packs)}.")
+    terminal.info(f"The protected release is larger than the share of the base module of Google Play that the app leaves it, so its content shards go into the install-time asset packs {quoted_names(packs)}.")
     return packs
 
 
@@ -3324,9 +3325,9 @@ def prepare_android_run(app: App, args: argparse.Namespace) -> Path:
     """Prepares the Android project of a Lua app: a debug build plays the package with the Lua player of the `haylen` library, and a release build ships the protected release with a library of the app."""
     root = project_root(app, "android")
     if args.config != "Release":
-        prepare_android(app, root, "haylen", args.jobs)
+        prepare_android(app, root, "haylen", args.engine_config, args.jobs)
         return root
-    prepare_android(app, root, ANDROID_RELEASE_LIBRARY, args.jobs, build_release(app, CONTENT_PROFILES["android"], args.engine_config, args.jobs, args.previous_release))
+    prepare_android(app, root, ANDROID_RELEASE_LIBRARY, args.engine_config, args.jobs, build_release(app, CONTENT_PROFILES["android"], args.engine_config, args.jobs, args.previous_release))
     build_release_library(app, root / GENERATED_FOLDER / "jniLibs", args)
     return root
 
@@ -3398,12 +3399,7 @@ def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[st
     """Places the protected release of an app in `app/` of its site with a runtime of its own for each backend, linked against the web SDK with the bootstrap of the app, and returns the files that download before the app starts: the manifests and the app domain, while the shards of the content stay on the site and stream by range."""
     release = build_release(app, CONTENT_PROFILES["web"], args.engine_config, args.jobs, args.previous_release)
     shutil.copytree(release_folder(app, CONTENT_PROFILES["web"]), site / "app")
-    tool = content_tool(args.engine_config, args.jobs)
-    boot = app.build_folder / "release" / "web.boot"
-    shutil.rmtree(boot, ignore_errors=True)
-    run([tool, "stage", release_folder(app, CONTENT_PROFILES["web"]), "--keys", ensure_keys(app, tool), "--output", boot, "--app-only"])
-    files = sorted(path.name for path in boot.iterdir())
-    shutil.rmtree(boot)
+    files = release_app_files(app, release_folder(app, CONTENT_PROFILES["web"]), args.engine_config, args.jobs)
 
     project = app.build_folder / "release-web"
     project.mkdir(parents=True, exist_ok=True)
@@ -4645,7 +4641,7 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     release = Path((built / "release.txt").read_text(encoding="utf-8").strip()) if args.config == "Release" else None
     ensure_artifacts("android", args.engine_config, args.jobs)
     root = project_root(app, "android")
-    prepare_android(app, root, target, args.jobs, release)
+    prepare_android(app, root, target, args.engine_config, args.jobs, release)
     copy_into(built / f"lib{target}.so", root / GENERATED_FOLDER / "jniLibs" / abi)
     apk = build_android(app, root, args, abi)
     requirements = check_android(app, root, args)
@@ -4752,6 +4748,8 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
         command += ["--previous", Path(previous).resolve()]
     elif (folder / "app.hmanifest").is_file():
         command += ["--previous", folder]
+    if profile in CONTENT_SHARD_TARGETS:
+        command += ["--shard-target", str(CONTENT_SHARD_TARGETS[profile])]
     terminal.step(f'Building the protected release of `{shown_path(app.folder)}` for the profile "{profile}"')
     run(command)
     shutil.rmtree(folder, ignore_errors=True)
@@ -4769,6 +4767,17 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
     run(command if app.content_server else [*command, "--ship-deferred"])
     warn_store_size(shipped, profile)
     return shipped
+
+
+def release_app_files(app: App, release: Path, config: str, jobs: int) -> list[str]:
+    """The files of a protected release that its app domain needs, the manifests and the shards of the code of the app, which the content tool finds in the manifests of the release."""
+    tool = content_tool(config, jobs)
+    boot = app.build_folder / "release" / "app-files"
+    shutil.rmtree(boot, ignore_errors=True)
+    run([tool, "stage", release, "--keys", ensure_keys(app, tool), "--output", boot, "--app-only"], echo=False)
+    files = sorted(path.name for path in boot.iterdir())
+    shutil.rmtree(boot)
+    return files
 
 
 def release_packs_folder(app: App, profile: str) -> Path:

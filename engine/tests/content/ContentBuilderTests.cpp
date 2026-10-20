@@ -159,6 +159,25 @@ TEST_F(ContentBuilderTest, DropsShardsThatNoFileUsesAnymore) {
     EXPECT_NE(patch.shards.front(), base.shards.front());
 }
 
+TEST_F(ContentBuilderTest, BuildsTheShardsOfALargerTargetAgainForASmallerOne) {
+    const std::uint64_t target = 3 * kMegabyte;
+    const Files files = makeFiles();
+    const ContentBuilder::Result whole = build(directory.getPath(), files);
+    ASSERT_EQ(whole.shards.size(), 1U);
+
+    const ContentBuilder::Result split = build(directory.getPath(), files, &whole, target);
+    EXPECT_EQ(split.keptShards, 0U);
+    EXPECT_EQ(split.statistics.droppedShards, 1U);
+    for (const ShardReference& shard : split.shards) {
+        EXPECT_LE(shard.fileSize, target + Chunker::kMaximumSize);
+    }
+
+    // The shards of the smaller target stay in the next build with that target.
+    const ContentBuilder::Result next = build(directory.getPath(), files, &split, target);
+    EXPECT_EQ(next.keptShards, split.shards.size());
+    EXPECT_EQ(next.statistics.newChunks, 0U);
+}
+
 TEST_F(ContentBuilderTest, ClosesShardsNearTheirTarget) {
     // A small target makes several shards, and files small against the target never split between two of them.
     const std::uint64_t target = 3 * kMegabyte;
