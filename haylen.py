@@ -1645,6 +1645,10 @@ PACKAGE_URL = re.compile(r"(https://|ssh://|git@)\S+")
 EXACT_VERSION = re.compile(r"\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?")
 SYSTEM_FRAMEWORK = re.compile(r"[A-Za-z0-9_+.-]+\.(framework|tbd)")
 OBJC_CLASS = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+EXTENSION_NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
+APPLE_VERSION = re.compile(r"\d+(\.\d+){0,2}")
+# The kinds of app extension that a plugin adds to the Apple apps, with the XcodeGen type of each and the Info.plist key that names its extension point.
+APPLE_EXTENSION_TYPES = {"extensionKit": ("extensionkit-extension", "EXAppExtensionAttributes", "EXExtensionPointIdentifier"), "appExtension": ("app-extension", "NSExtension", "NSExtensionPointIdentifier")}
 GRADLE_PLUGIN_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)+")
 GRADLE_PLUGIN_VERSION = re.compile(r"[0-9A-Za-z._+-]+")
 PLACEHOLDER_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -1832,7 +1836,7 @@ class PluginManifestCheck:
             return
         if not any(platform in self.platforms for platform in ("ios", "catalyst", "tvos", "macos")):
             self.report("apple", 'needs "ios", "catalyst", "tvos" or "macos" in "platforms".')
-        self.check_keys("apple", apple, {"class", "sources", "packages", "frameworks", "infoPlist", "entitlements", "privacy", "resources", "buildScripts"}, set())
+        self.check_keys("apple", apple, {"class", "sources", "packages", "frameworks", "infoPlist", "entitlements", "privacy", "resources", "buildScripts", "extensions", "assetPacks"}, set())
         if "class" in apple and not (isinstance(apple["class"], str) and OBJC_CLASS.fullmatch(apple["class"])):
             self.report("apple.class", 'must be the Objective-C name of the plugin class, such as "HaylenCameraScannerPlugin".')
         if "sources" in apple:
@@ -1867,7 +1871,40 @@ class PluginManifestCheck:
         for index, resource in enumerate(resources if isinstance(resources, list) else []):
             self.check_source(f"apple.resources[{index}]", resource)
         self.check_build_scripts(apple.get("buildScripts", []))
+        self.check_extensions(apple.get("extensions", []))
+        packs = apple.get("assetPacks", {})
+        if self.is_object("apple.assetPacks", packs, 'must be an object, such as {"prefetch": "${prefetchPacks}"}.'):
+            self.check_keys("apple.assetPacks", packs, {"prefetch"}, set())
+            prefetch = packs.get("prefetch", [])
+            if not (isinstance(prefetch, list) and all(isinstance(pack, str) for pack in prefetch)) and not (isinstance(prefetch, str) and PARAMETER_REFERENCE.fullmatch(prefetch)):
+                self.report("apple.assetPacks.prefetch", "must list the packs that the system downloads with the install, or name an array parameter that lists them.")
         self.check_references("apple", apple)
+
+    def check_extensions(self, extensions: object) -> None:
+        """Checks the app extensions that a plugin adds to the Apple apps, each a target of its own that the app embeds."""
+        if not isinstance(extensions, list):
+            self.report("apple.extensions", "must list the app extensions of the plugin.")
+            return
+        for index, extension in enumerate(extensions):
+            key = f"apple.extensions[{index}]"
+            if not self.is_object(key, extension, 'must be an object with the "name", "type", "point" and "sources" of the extension.'):
+                continue
+            self.check_keys(key, extension, {"name", "type", "point", "sources", "minimumVersion", "frameworks", "infoPlist", "entitlements"}, {"name", "type", "point", "sources"})
+            if "name" in extension and not (isinstance(extension["name"], str) and EXTENSION_NAME.fullmatch(extension["name"])):
+                self.report(f"{key}.name", 'must be a name of letters and digits that starts with a capital letter, such as "Downloads".')
+            if "type" in extension and extension["type"] not in APPLE_EXTENSION_TYPES:
+                self.report(f"{key}.type", f"must be {quoted_names(list(APPLE_EXTENSION_TYPES))}.")
+            if "point" in extension and not (isinstance(extension["point"], str) and extension["point"]):
+                self.report(f"{key}.point", 'must be the identifier of the extension point, such as "com.apple.background-asset-downloader-extension".')
+            if "sources" in extension:
+                self.check_path(f"{key}.sources", extension["sources"], "folder")
+            if "minimumVersion" in extension and not (isinstance(extension["minimumVersion"], str) and APPLE_VERSION.fullmatch(extension["minimumVersion"])):
+                self.report(f"{key}.minimumVersion", 'must be the oldest system version that the extension runs on, such as "26.0".')
+            if "frameworks" in extension:
+                self.check_texts(f"{key}.frameworks", extension["frameworks"], SYSTEM_FRAMEWORK, 'must list system frameworks and libraries, such as "BackgroundAssets.framework".')
+            for entry in ("infoPlist", "entitlements"):
+                if entry in extension:
+                    self.is_object(f"{key}.{entry}", extension[entry], "must be an object of keys and values.")
 
     def check_privacy(self, privacy: object) -> None:
         """Checks the privacy declarations of a plugin, which join the privacy manifest of the app."""
@@ -2533,15 +2570,27 @@ def write_apple_privacy(app: App, root: Path, generated: Path) -> None:
     write_if_changed(generated / "PrivacyInfo.xcprivacy", plistlib.dumps(merge_privacy(manifests), sort_keys=True).decode())
 
 
+def apple_app_settings(app: App) -> dict[str, str]:
+    """The build settings of the identity of an app that `Haylen.xcconfig` gives every target, which the `Info.plist` keys and entitlements of plugins may name as `$(NAME)`."""
+    return {"HAYLEN_PRODUCT_NAME": app.name, "HAYLEN_DISPLAY_NAME": app.name, "HAYLEN_BUNDLE_IDENTIFIER": app.identifier, "MARKETING_VERSION": app.version, "CURRENT_PROJECT_VERSION": app.version}
+
+
+def expand_app_settings(value: object, settings: dict[str, str]) -> object:
+    """Replaces the build settings of the identity of an app in a value of a plugin, as Xcode does when it builds the `Info.plist` and the entitlements, so the check compares it with the built app."""
+    if isinstance(value, str):
+        return re.sub(r"\$\((\w+)\)", lambda match: settings.get(match[1], match[0]), value)
+    if isinstance(value, list):
+        return [expand_app_settings(item, settings) for item in value]
+    if isinstance(value, dict):
+        return {key: expand_app_settings(item, settings) for key, item in value.items()}
+    return value
+
+
 def write_apple_xcconfig(app: App, generated: Path, native: list[str]) -> None:
     """Writes `Haylen.xcconfig`, which `App.xcconfig` includes first, so the lines of the developer after the include win."""
     xcconfig = [
         "// Written by haylen.py from app.json. The file App.xcconfig includes it first, so its own settings win.",
-        f"HAYLEN_PRODUCT_NAME = {app.name}",
-        f"HAYLEN_DISPLAY_NAME = {app.name}",
-        f"HAYLEN_BUNDLE_IDENTIFIER = {app.identifier}",
-        f"MARKETING_VERSION = {app.version}",
-        f"CURRENT_PROJECT_VERSION = {app.version}",
+        *(f"{name} = {value}" for name, value in apple_app_settings(app).items()),
         *native,
         "OTHER_LDFLAGS = $(inherited) $(HAYLEN_NATIVE_LDFLAGS)",
         "// A release keeps its debug information in a dSYM next to the build and strips the app as it builds, so a release that runs is the one that ships.",
@@ -2613,8 +2662,10 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
     packages: dict[str, dict] = {}
     package_owners: dict[str, str] = {}
     bundled: dict[str, str] = {}
-    templates = {template: {"sources": [], "postBuildScripts": []} for template in APPLE_TEMPLATES}
+    templates = {template: {"sources": [], "postBuildScripts": [], "extensions": []} for template in APPLE_TEMPLATES}
     linked: dict[str, dict[tuple[str, ...], list[str] | None]] = {template: {} for template in APPLE_TEMPLATES}
+    extensions: dict[str, dict] = {}
+    shutil.rmtree(generated / "extensions", ignore_errors=True)
     for plugin in app.plugins:
         apple = plugin_section(app, plugin, "apple")
         if apple is None:
@@ -2642,6 +2693,17 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
                 raise BuildError(f'The plugins "{package_owners[name]}" and "{plugin.id}" ask for the Swift package "{name}" from different URLs or versions. Use versions of the plugins that pin the same package.')
             package_owners.setdefault(name, plugin.id)
 
+        for extension in apple.get("extensions", []):
+            shutil.copytree(plugin.folder / extension["sources"], copied / "extensions" / extension["name"], ignore=COPY_IGNORED)
+            for template, filters in apple_template_plugins(plugin).items():
+                if filters.get("destinationFilters") == ["macCatalyst"]:
+                    continue
+                target = f"{extension['name']}{template.removeprefix('Haylen')}"
+                if target in extensions:
+                    raise BuildError(f'The plugins "{extensions[target]["plugin"]}" and "{plugin.id}" both add the app extension "{extension["name"]}". Keep only one of them.')
+                extensions[target] = {"plugin": plugin.id, "template": template, "extension": extension}
+                templates[template]["extensions"].append(target)
+
         # A product or framework that two plugins link joins the template once, for every destination either plugin builds for.
         for template, filters in apple_template_plugins(plugin).items():
             templates[template]["sources"] += [{**source, **filters} for source in sources]
@@ -2660,6 +2722,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         engine = [framework for framework in frameworks[listed] if framework not in own]
         catalyst = [framework for framework in frameworks["macCatalyst"] if framework not in frameworks["iOS"] and framework not in own] if template == "HaylenIOS" else []
         dependencies = [{"framework": "Haylen.xcframework", "embed": False}, *({"sdk": framework} for framework in engine), *({"sdk": framework, "destinationFilters": ["macCatalyst"]} for framework in catalyst)]
+        dependencies += [{"target": target, "embed": True, **({"destinationFilters": ["iOS"]} if template == "HaylenIOS" else {})} for target in templates[template]["extensions"]]
         for dependency, destinations in linked[template].items():
             if dependency[0] == "sdk" and (dependency[1] in engine or dependency[1] in catalyst or dependency[1] in own):
                 continue
@@ -2680,9 +2743,55 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
             settings["ENABLE_USER_SCRIPT_SANDBOXING"] = "NO"
         included[template] = {"dependencies": dependencies, "sources": [*sources, *templates[template]["sources"]], "settings": {"base": settings}, **({"postBuildScripts": scripts} if scripts else {})}
 
-    document = {**({"packages": packages} if packages else {}), "targetTemplates": included}
+    targets = {target: apple_extension_target(app, generated, target, entry["plugin"], entry["template"], entry["extension"]) for target, entry in extensions.items()}
+    document = {**({"packages": packages} if packages else {}), "targetTemplates": included, **({"targets": targets} if targets else {})}
     header = "# Written by haylen.py from app.json, the plugins of the app and the engine artifacts. The file project.yml includes it, and each target takes its template in \"templates\".\n"
     write_if_changed(generated / "project.yml", header + json.dumps(document, indent=4) + "\n")
+
+
+def apple_extension_target(app: App, generated: Path, target: str, plugin: str, template: str, extension: dict) -> dict:
+    """Writes the Info.plist and the entitlements of an app extension of a plugin for the platform of a target template, and returns its XcodeGen target, which builds the sources of the extension with the identity of the app from `Haylen.xcconfig`, its bundle identifier being the one of the app followed by the name of the extension in lowercase. The app of the template embeds it."""
+    kind, attributes, point = APPLE_EXTENSION_TYPES[extension["type"]]
+    platform = APPLE_TEMPLATES[template][2]
+    info = {
+        "CFBundleDevelopmentRegion": "$(DEVELOPMENT_LANGUAGE)",
+        "CFBundleDisplayName": extension["name"],
+        "CFBundleExecutable": "$(EXECUTABLE_NAME)",
+        "CFBundleIdentifier": "$(PRODUCT_BUNDLE_IDENTIFIER)",
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": "$(PRODUCT_NAME)",
+        "CFBundlePackageType": "$(PRODUCT_BUNDLE_PACKAGE_TYPE)",
+        "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+        "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
+        **extension.get("infoPlist", {}),
+    }
+    info[attributes] = {point: extension["point"], **info.get(attributes, {})}
+    folder = generated / "extensions" / target
+    folder.mkdir(parents=True, exist_ok=True)
+    write_if_changed(folder / "Info.plist", plistlib.dumps(info, sort_keys=True).decode())
+    settings = {
+        "PRODUCT_NAME": extension["name"],
+        "PRODUCT_MODULE_NAME": extension["name"],
+        "PRODUCT_BUNDLE_IDENTIFIER": f"$(HAYLEN_BUNDLE_IDENTIFIER).{extension['name'].lower()}",
+        "INFOPLIST_FILE": f"{GENERATED_FOLDER}/extensions/{target}/Info.plist",
+        "GENERATE_INFOPLIST_FILE": "NO",
+        "SWIFT_OBJC_BRIDGING_HEADER": "",
+        "SKIP_INSTALL": "YES",
+    }
+    if extension.get("entitlements"):
+        write_if_changed(folder / f"{target}.entitlements", plistlib.dumps(extension["entitlements"], sort_keys=True).decode())
+        settings["CODE_SIGN_ENTITLEMENTS"] = f"{GENERATED_FOLDER}/extensions/{target}/{target}.entitlements"
+    spec = {
+        "type": kind,
+        "platform": platform,
+        "configFiles": {"Debug": "Haylen.xcconfig", "Release": "Haylen.xcconfig"},
+        "sources": [{"path": f"plugins/{plugin}/extensions/{extension['name']}", "name": extension["name"], "group": "plugins"}],
+        "dependencies": [{"sdk": framework} for framework in extension.get("frameworks", [])],
+        "settings": {"base": settings},
+    }
+    if "minimumVersion" in extension:
+        spec["deploymentTarget"] = extension["minimumVersion"]
+    return spec
 
 
 def development_bootstrap(release: str) -> str:
@@ -2711,6 +2820,7 @@ def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_c
     if config == "Release":
         shutil.copytree(build_release(app, CONTENT_PROFILES[run_platform], engine_config, jobs, previous), generated / "app")
         write_bootstrap(app, CONTENT_PROFILES[run_platform], generated / BOOTSTRAP_SOURCE, engine_config, jobs)
+        write_apple_asset_packs(app)
     else:
         copy_package(app, generated / "app")
         write_if_changed(generated / BOOTSTRAP_SOURCE, development_bootstrap("!DEBUG"))
@@ -2720,6 +2830,45 @@ def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_c
     write_apple_plists(app, root, generated)
     write_apple_privacy(app, root, generated)
     write_apple_spec(app, root, generated, write_apple_entitlements(app, root, generated), write_apple_native_symbols(app, generated))
+
+
+def apple_asset_packs_folder(app: App) -> Path:
+    """The folder of the asset packs of Background Assets that the last Apple release of an app made, one `.aar` file per named pack, which the developer uploads to App Store Connect."""
+    return app.build_folder / "release" / "apple.asset-packs"
+
+
+def write_apple_asset_packs(app: App) -> list[Path]:
+    """Packs every named pack of the Apple release of an app into an asset pack of Background Assets with `ba-package`, when a plugin of the app delivers them from the App Store, and returns the archives. The packs that the plugin lists in `prefetch` download with the install and every update, the others when the app asks for them, and the shards of each sit in a folder named after the pack, which the plugin finds in the downloaded packs."""
+    output = apple_asset_packs_folder(app)
+    shutil.rmtree(output, ignore_errors=True)
+    delivering = [(plugin, section["assetPacks"]) for plugin in app.plugins if (section := plugin_section(app, plugin, "apple")) is not None and "assetPacks" in section]
+    packs = release_packs_folder(app, "apple")
+    folders = sorted(path for path in packs.iterdir() if path.is_dir()) if packs.is_dir() else []
+    if not delivering or not folders:
+        return []
+    if len(delivering) > 1:
+        raise BuildError(f"The plugins {quoted_names([plugin.id for plugin, _ in delivering])} all deliver the packs of the app from the App Store. Keep only one of them.")
+    plugin, settings = delivering[0]
+    prefetch = settings.get("prefetch", [])
+    if not isinstance(prefetch, list) or not all(isinstance(pack, str) for pack in prefetch):
+        raise BuildError(f'The plugin "{plugin.id}" must list in "prefetch" the names of the packs that the system downloads with the install.')
+    unknown = [pack for pack in prefetch if pack not in app.content_packs]
+    if unknown:
+        raise BuildError(f'The plugin "{plugin.id}" downloads with the install the packs {quoted_names(unknown)}, which "content.delivery" of "app.json" does not name. List only the packs of the app.')
+
+    platforms = [name for platform, name in (("ios", "iOS"), ("tvos", "tvOS"), ("macos", "macOS")) if plugin.supports(platform)]
+    output.mkdir(parents=True)
+    archives = []
+    for folder in folders:
+        policy = {"prefetch": {"installationEventTypes": ["firstInstallation", "subsequentUpdate"]}} if folder.name in prefetch else {"onDemand": {}}
+        manifest = output / f"{folder.name}.json"
+        # The tool takes the paths of the sources relative to the source root, which is relative to the manifest.
+        manifest.write_text(json.dumps({"assetPackID": folder.name, "downloadPolicy": policy, "fileSelectors": [{"directorySource": folder.name, "directoryDestination": folder.name}], "platforms": platforms, "sourceRoot": os.path.relpath(packs, output)}, indent=4) + "\n", encoding="utf-8")
+        archives.append(output / f"{folder.name}.aar")
+        run(["xcrun", "ba-package", "package", manifest, "--output-path", archives[-1]])
+        manifest.unlink()
+    terminal.info(f'The plugin "{plugin.id}" delivers the named packs of the release from the App Store, in the asset packs of `{shown_path(output)}`, which the App Store Connect upload of the app takes.')
+    return archives
 
 
 def apple_project_inputs(root: Path) -> str:
@@ -2890,6 +3039,11 @@ def apple_code(executable: Path) -> list[Path]:
     return [executable, *([debug] if debug.is_file() else [])]
 
 
+def apple_objc_classes(listing: str) -> set[str]:
+    """Reads the runtime names of the Objective-C classes of an app from the `__objc_classname` section that `otool` lists, which the runtime finds plugin classes by and which stays in release builds, whose symbols are stripped."""
+    return {parts[1] for line in listing.splitlines() if len(parts := line.split()) == 2 and re.fullmatch(r"[0-9a-f]+", parts[0])}
+
+
 def apple_linked(executable: Path) -> set[str]:
     """Lists the system frameworks and libraries that the code of an app links, such as `Metal.framework` and `libz.tbd`."""
     linked = set()
@@ -2903,11 +3057,17 @@ def apple_linked(executable: Path) -> set[str]:
 
 
 def apple_entitlements(bundle: Path, executable: Path) -> dict:
-    """Reads the entitlements that an app bundle is signed with, which apps for simulators carry in a section of their executable instead of their signature."""
+    """Reads the entitlements that an app bundle is signed with, which apps for simulators carry in a section of their executable instead of their signature, whose entitlements are then empty."""
     signed = subprocess.run(["codesign", "-d", "--entitlements", "-", "--xml", str(bundle)], capture_output=True)
-    if signed.stdout.strip():
-        return plistlib.loads(signed.stdout)
+    if signed.stdout.strip() and (entitlements := plistlib.loads(signed.stdout)):
+        return entitlements
     with tempfile.TemporaryDirectory() as scratch:
+        # The tool reads one architecture, so a universal executable gives it the first of its slices.
+        architectures = capture(["lipo", "-archs", executable]).split()
+        if len(architectures) > 1:
+            thin = Path(scratch) / "executable"
+            run(["lipo", executable, "-thin", architectures[0], "-output", thin], echo=False)
+            executable = thin
         section = Path(scratch) / "entitlements"
         subprocess.run(["segedit", str(executable), "-extract", "__TEXT", "__entitlements", str(section)], capture_output=True)
         return plistlib.loads(section.read_bytes()) if section.is_file() and section.read_bytes().strip() else {}
@@ -2926,7 +3086,7 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
     linked = apple_linked(executable)
     entitlements = apple_entitlements(bundle, executable)
     privacy = read_plist(resources / "PrivacyInfo.xcprivacy") if (resources / "PrivacyInfo.xcprivacy").is_file() else {}
-    symbols = {symbol for code in apple_code(executable) for symbol in capture(["nm", "-jU", code]).split()}
+    classes = {name for code in apple_code(executable) for name in apple_objc_classes(capture(["otool", "-v", "-s", "__TEXT", "__objc_classname", code]))}
     plugin_platform = RUN_TARGETS[args.platform].plugins
     entitlements_file = APPLE_ENTITLEMENTS[plugin_platform][0]
     targets = f'the target of `{shown_path(root / "project.yml")}`'
@@ -2956,13 +3116,14 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
         if apple is None or not plugin.supports(plugin_platform):
             continue
         owner = f'The plugin "{plugin.id}"'
-        if "class" in apple and f"_OBJC_CLASS_$_{apple['class']}" not in symbols:
+        if "class" in apple and apple["class"] not in classes:
             missing.append(Requirement(f'{owner} needs its Apple sources in the app, whose class "{apple["class"]}" the built app lacks, so the plugin does not load.', f'Keep "templates: [{template}]" on {targets}.'))
         for framework in apple.get("frameworks", []):
             need_framework(owner, framework)
-        for key, value in apple.get("infoPlist", {}).items():
+        expanded = expand_app_settings(apple, apple_app_settings(app))
+        for key, value in expanded.get("infoPlist", {}).items():
             need_plist(owner, key, value)
-        for key, value in apple.get("entitlements", {}).items():
+        for key, value in expanded.get("entitlements", {}).items():
             if not holds(entitlements, {key: value}):
                 missing.append(Requirement(f'{owner} needs the entitlement "{key}", which the built app is not signed with.', f'Add to `{shown_path(root / entitlements_file)}`:', plist_snippet(key, value)))
         need_privacy(owner, apple.get("privacy", {}))

@@ -101,6 +101,28 @@ class RequirementTest(unittest.TestCase):
         self.assertFalse(haylen.holds(built, {"NSMicrophoneUsageDescription": "Needed"}))
         self.assertFalse(haylen.holds({"com.apple.developer.game-center": False}, {"com.apple.developer.game-center": True}))
 
+    def test_plugin_values_name_the_build_settings_of_the_identity_of_the_app(self):
+        app = mock.Mock(identifier="com.haylen.music", version="1.2.0")
+        app.name = "Music"
+        apple = {"entitlements": {"com.apple.security.application-groups": ["group.$(HAYLEN_BUNDLE_IDENTIFIER)"]}, "infoPlist": {"Build": "$(MARKETING_VERSION)", "Other": "$(SRCROOT)/file"}}
+        self.assertEqual(haylen.expand_app_settings(apple, haylen.apple_app_settings(app)), {"entitlements": {"com.apple.security.application-groups": ["group.com.haylen.music"]}, "infoPlist": {"Build": "1.2.0", "Other": "$(SRCROOT)/file"}})
+
+    def test_release_builds_find_plugin_classes_by_their_runtime_names(self):
+        listing = "\n".join(["App.app/App (architecture x86_64):", "Contents of (__TEXT,__objc_classname) section", "000000010128a820  StorePlugin", "000000010128a837  _TtC9HaylenApp9AppBridge", "000000010128a84d  ", "App.app/App (architecture arm64):", "Contents of (__TEXT,__objc_classname) section", "0000000100f0a820  StorePlugin"])
+        self.assertEqual(haylen.apple_objc_classes(listing), {"StorePlugin", "_TtC9HaylenApp9AppBridge"})
+
+    def test_the_entitlements_of_a_universal_simulator_app_come_from_a_slice_of_its_executable(self):
+        written = {"com.apple.security.application-groups": ["group.com.haylen.music"]}
+        def run(command, **_):
+            if command[0] == "codesign":
+                return subprocess.CompletedProcess(command, 0, plistlib.dumps({}), b"")
+            Path(command[-1]).write_bytes(plistlib.dumps(written))
+            self.assertNotEqual(command[1], "App", "The section comes from one slice, not the universal executable.")
+            return subprocess.CompletedProcess(command, 0, b"", b"")
+        with mock.patch.object(haylen.subprocess, "run", side_effect=run), mock.patch.object(haylen, "capture", return_value="x86_64 arm64\n"), mock.patch.object(haylen, "run") as thin:
+            self.assertEqual(haylen.apple_entitlements(Path("App.app"), Path("App")), written)
+        self.assertEqual([str(part) for part in thin.call_args.args[0][:4]], ["lipo", "App", "-thin", "x86_64"])
+
     def test_a_snippet_holds_the_key_and_its_value(self):
         self.assertEqual(haylen.plist_snippet("NSCameraUsageDescription", "Scans codes."), "<key>NSCameraUsageDescription</key>\n<string>Scans codes.</string>")
         self.assertEqual(plistlib.loads(("<plist><dict>" + haylen.plist_snippet("UIApplicationSceneManifest", {"UIApplicationSupportsMultipleScenes": True}) + "</dict></plist>").encode()), {"UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes": True}})
@@ -1352,6 +1374,68 @@ class AndroidPluginsTest(unittest.TestCase):
         files["properties"].unlink()
         with mock.patch.dict(os.environ, {name: "" for name in variables}), self.assertRaisesRegex(haylen.BuildError, "needs the upload key of the app"):
             haylen.android_release_key(scratch)
+
+    def test_an_app_extension_of_a_plugin_builds_with_the_identity_of_the_app(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        extension = {"name": "Downloads", "type": "extensionKit", "point": "com.apple.background-asset-downloader-extension", "sources": "apple-extension", "minimumVersion": "26.0", "frameworks": ["BackgroundAssets.framework"], "entitlements": {"com.apple.security.application-groups": ["group.$(HAYLEN_BUNDLE_IDENTIFIER)"]}}
+        target = haylen.apple_extension_target(mock.Mock(), scratch, "DownloadsTVOS", "assets", "HaylenTVOS", extension)
+        self.assertEqual(target["type"], "extensionkit-extension")
+        self.assertEqual(target["platform"], "tvOS")
+        self.assertEqual(target["deploymentTarget"], "26.0")
+        self.assertEqual(target["sources"], [{"path": "plugins/assets/extensions/Downloads", "name": "Downloads", "group": "plugins"}])
+        self.assertEqual(target["dependencies"], [{"sdk": "BackgroundAssets.framework"}])
+        self.assertEqual(target["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"], "$(HAYLEN_BUNDLE_IDENTIFIER).downloads")
+        info = plistlib.loads((scratch / "extensions" / "DownloadsTVOS" / "Info.plist").read_bytes())
+        self.assertEqual(info["EXAppExtensionAttributes"], {"EXExtensionPointIdentifier": "com.apple.background-asset-downloader-extension"})
+        self.assertEqual((info["CFBundleShortVersionString"], info["CFBundleVersion"]), ("$(MARKETING_VERSION)", "$(CURRENT_PROJECT_VERSION)"), "The extension takes the version of the app it is embedded in.")
+        self.assertEqual(plistlib.loads((scratch / "extensions" / "DownloadsTVOS" / "DownloadsTVOS.entitlements").read_bytes()), extension["entitlements"])
+
+    def test_the_extensions_and_asset_packs_of_an_apple_part_are_checked(self):
+        root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, root)
+        folder = root / "assets"
+        (folder / "apple").mkdir(parents=True)
+        (folder / "apple-extension").mkdir()
+        extension = {"name": "Downloads", "type": "extensionKit", "point": "com.apple.background-asset-downloader-extension", "sources": "apple-extension", "minimumVersion": "26.0"}
+        manifest = {"id": "assets", "name": "Assets", "version": "1.0.0", "description": "Delivers packs.", "platforms": ["ios"], "parameters": {"prefetchPacks": {"type": "array", "default": [], "description": "Packs."}}, "apple": {"class": "AssetsPlugin", "sources": "apple", "assetPacks": {"prefetch": "${prefetchPacks}"}, "extensions": [extension]}}
+        self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), [])
+        manifest["apple"]["extensions"] = [{**extension, "name": "downloads", "type": "widget", "minimumVersion": "latest"}, {"name": "Other"}]
+        manifest["apple"]["assetPacks"] = {"prefetch": 3}
+        self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), [
+            'The key "apple.extensions[0].name" must be a name of letters and digits that starts with a capital letter, such as "Downloads".',
+            'The key "apple.extensions[0].type" must be "extensionKit", "appExtension".',
+            'The key "apple.extensions[0].minimumVersion" must be the oldest system version that the extension runs on, such as "26.0".',
+            'The key "apple.extensions[1].point" is missing.',
+            'The key "apple.extensions[1].sources" is missing.',
+            'The key "apple.extensions[1].type" is missing.',
+            'The key "apple.assetPacks.prefetch" must list the packs that the system downloads with the install, or name an array parameter that lists them.',
+        ])
+
+    def test_a_plugin_that_delivers_packs_from_the_app_store_packs_each_named_pack_with_its_download_policy(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        for pack in ("chapter-2", "intro.music"):
+            (scratch / "release" / "apple.packs" / pack).mkdir(parents=True)
+            (scratch / "release" / "apple.packs" / pack / f"{pack}.hpak").write_bytes(b"s")
+        assets = haylen.Plugin(scratch, {"id": "assets", "version": "1.0.0", "platforms": ["ios", "tvos"], "apple": {"assetPacks": {"prefetch": "${prefetchPacks}"}}}, None)
+        app = mock.Mock(plugins=[assets], plugin_values={"assets": {"prefetchPacks": ["intro.music"]}}, content_packs=["chapter-2", "intro.music"], build_folder=scratch)
+        manifests = {}
+        def package(command, **_):
+            manifests[Path(command[3]).stem] = json.loads(Path(command[3]).read_text())
+            Path(command[-1]).write_bytes(b"archive")
+        with mock.patch.object(haylen, "run", side_effect=package), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            archives = haylen.write_apple_asset_packs(app)
+        self.assertEqual([path.name for path in archives], ["chapter-2.aar", "intro.music.aar"])
+        self.assertEqual(manifests["chapter-2"]["downloadPolicy"], {"onDemand": {}})
+        self.assertEqual(manifests["intro.music"]["downloadPolicy"], {"prefetch": {"installationEventTypes": ["firstInstallation", "subsequentUpdate"]}})
+        self.assertEqual(manifests["intro.music"]["fileSelectors"], [{"directorySource": "intro.music", "directoryDestination": "intro.music"}])
+        self.assertEqual(manifests["intro.music"]["platforms"], ["iOS", "tvOS"])
+        self.assertEqual((haylen.apple_asset_packs_folder(app) / manifests["intro.music"]["sourceRoot"]).resolve(), scratch / "release" / "apple.packs")
+        self.assertEqual(sorted(path.name for path in haylen.apple_asset_packs_folder(app).iterdir()), ["chapter-2.aar", "intro.music.aar"], "The manifests of the tool leave once the archives exist.")
+        app.plugin_values["assets"]["prefetchPacks"] = ["chapter-3"]
+        with self.assertRaisesRegex(haylen.BuildError, 'the packs "chapter-3", which "content.delivery"'):
+            haylen.write_apple_asset_packs(app)
 
     def test_an_android_project_without_the_files_of_its_plugins_stops_before_gradle(self):
         scratch = Path(tempfile.mkdtemp()).resolve()
