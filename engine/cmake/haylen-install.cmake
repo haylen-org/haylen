@@ -98,6 +98,9 @@ if(APPLE)
 elseif(MSVC)
   set(merge_kind lib)
   set(merge_tool "${CMAKE_AR}")
+  if(HAYLEN_LINK_TIME_OPTIMIZATION AND CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(merge_ltcg ON)
+  endif()
 else()
   set(merge_kind mri)
   set(merge_tool "${CMAKE_AR}")
@@ -106,7 +109,7 @@ endif()
 # The objects of the runtime are no file of a target, so the merge names them itself and runs again whenever one of them changes.
 foreach(part engine runtime)
   add_custom_command(OUTPUT "${${part}_library}"
-    COMMAND "${CMAKE_COMMAND}" -DKIND=${merge_kind} "-DTOOL=${merge_tool}" "-DOUTPUT=${${part}_library}" "-DINPUTS=${sdk_libraries}/${part}-inputs.txt" -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
+    COMMAND "${CMAKE_COMMAND}" -DKIND=${merge_kind} "-DTOOL=${merge_tool}" "-DLTCG=${merge_ltcg}" "-DOUTPUT=${${part}_library}" "-DINPUTS=${sdk_libraries}/${part}-inputs.txt" -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
     DEPENDS "${sdk_libraries}/${part}-inputs.txt" ${built_archives} haylen_platform haylen_runtime "$<TARGET_OBJECTS:haylen_runtime>"
     COMMENT "Merging the Haylen ${part} library."
     VERBATIM
