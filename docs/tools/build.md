@@ -340,11 +340,13 @@ Only a page that sets `Module.haylen.development` runs in development, which the
 
 The file `engine/platform/web/haylen-runtime.js` is linked with `--pre-js` and fills `Module.haylen` with the API a page or a browser editor uses. None of these calls reloads the page.
 
+The runtime of a release, which carries the bootstrap of its app, plays only its protected release, so `loadZip`, `clearFiles`, `setFile`, `removeFile`, `applyChanges` and `run` throw an `Error` there and leave the app as it is.
+
 | Function | Meaning |
 | --- | --- |
 | `loadZip(bytes)` | Replaces the running app with a zipped package given as a `Uint8Array` or an `ArrayBuffer`. A file that is not a valid zip shows the error screen and reaches `onError`, like any package that fails to load. |
 | `clearFiles()` | Stops the app and empties its package, for an app that the page builds file by file before `run()`. |
-| `setFile(path, content)` | Adds or replaces a file of the package that plays. `path` is relative to the package root, such as `source/main.lua` or `content/ui/logo.png`, and `content` is a string or bytes. The app reads the new file the next time it loads it, and `applyChanges()` applies it at once. An absolute path or one that leaves the package throws an `Error` with the reason, and so does a page that plays a protected release, whose files never change. |
+| `setFile(path, content)` | Adds or replaces a file of the package that plays. `path` is relative to the package root, such as `source/main.lua` or `content/ui/logo.png`, and `content` is a string or bytes. The app reads the new file the next time it loads it, and `applyChanges()` applies it at once. An absolute path or one that leaves the package throws an `Error` with the reason. |
 | `removeFile(path)` | Removes a file of the package that plays and returns whether it existed. An invalid path throws an `Error`. |
 | `applyChanges()` | Applies every file that `setFile` and `removeFile` changed since its last call, as one batch at the start of the next frame. A page in development reloads them the way [hot reload](../core/lua.md#hot-reload) applies saved files: assets and Lua modules in place, and `app.json` or `source/main.lua` with a restart. Any other page restarts the app with them. |
 | `run()` | Starts the package from `source/main.lua`, replacing the running app. |

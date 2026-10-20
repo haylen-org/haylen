@@ -80,6 +80,13 @@ TEST_F(BootstrapTest, OpensTheReleaseOfItsApp) {
     EXPECT_TRUE(ReleasePackage::openBundled(folder, &bootstrap)->isLuaBytecode("source/main.lua"));
 }
 
+// A release build never plays plain files that someone put in the place of its release.
+TEST_F(BootstrapTest, RefusesPlainFilesInThePlaceOfItsRelease) {
+    const auto plain = std::make_shared<io::MemoryPackage>("plain", std::map<std::string, std::vector<std::uint8_t>>{{"app.json", test::TestFiles::bytes("{}")}, {"source/main.lua", test::TestFiles::bytes("print('swapped')")}});
+    const Bootstrap bootstrap = makeBootstrap();
+    expectCode(Error::Code::MissingManifest, [&] { (void)ReleasePackage::openBundled(plain, &bootstrap); });
+}
+
 TEST_F(BootstrapTest, RefusesReleasesItHasNoKeysFor) {
     expectCode(Error::Code::KeyUnavailable, [&] { (void)ReleasePackage::openBundled(io::Package::openDirectory(release.getFolder()), nullptr); });
 

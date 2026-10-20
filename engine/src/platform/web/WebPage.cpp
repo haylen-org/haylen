@@ -11,6 +11,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Mixer.hpp"
+#include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/debug/Profiler.hpp"
@@ -114,20 +115,39 @@ const char* WebPage::getLastError() noexcept {
     return lastError.c_str();
 }
 
-void WebPage::loadZip(const std::uint8_t* bytes, int size) {
-    std::vector<std::uint8_t> archive(bytes, bytes + size);
-    SokolRuntime::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
+void WebPage::requireEditable() {
+    if (content::Bootstrap::find() != nullptr) {
+        throw std::runtime_error("The release runtime of the app plays only its protected release, so the page cannot change its files.");
+    }
+}
+
+int WebPage::loadZip(const std::uint8_t* bytes, int size) {
+    // clang-format off
+    return answer([&] {
+        requireEditable();
+        std::vector<std::uint8_t> archive(bytes, bytes + size);
+        SokolRuntime::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
+        return 1;
+    });
+    // clang-format on
 }
 
 // The app stops, and the empty package waits for the files of the page until `run` starts it.
-void WebPage::clearFiles() {
-    touched.clear();
-    SokolRuntime::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor")));
+int WebPage::clearFiles() {
+    // clang-format off
+    return answer([] {
+        requireEditable();
+        touched.clear();
+        SokolRuntime::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor")));
+        return 1;
+    });
+    // clang-format on
 }
 
 int WebPage::setFile(const char* path, const std::uint8_t* bytes, int size) {
     // clang-format off
     return answer([&] {
+        requireEditable();
         std::string entry = io::Path::normalize(path);
         SokolRuntime::getOverlay().setFile(entry, std::vector<std::uint8_t>(bytes, bytes + size));
         touched.push_back(std::move(entry));
@@ -139,6 +159,7 @@ int WebPage::setFile(const char* path, const std::uint8_t* bytes, int size) {
 int WebPage::removeFile(const char* path) {
     // clang-format off
     return answer([&] {
+        requireEditable();
         std::string entry = io::Path::normalize(path);
         const bool removed = SokolRuntime::getOverlay().removeFile(entry);
         touched.push_back(std::move(entry));
@@ -147,19 +168,31 @@ int WebPage::removeFile(const char* path) {
     // clang-format on
 }
 
-void WebPage::runFiles() {
-    touched.clear();
-    SokolRuntime::restart();
+int WebPage::runFiles() {
+    // clang-format off
+    return answer([] {
+        requireEditable();
+        touched.clear();
+        SokolRuntime::restart();
+        return 1;
+    });
+    // clang-format on
 }
 
 // Without development there is no module graph to reload modules in place, so the app restarts with the edited files.
-void WebPage::applyChanges() {
-    const std::vector<std::string> changed = std::exchange(touched, {});
-    if (DevelopmentSession* session = SokolRuntime::getDevelopmentSession()) {
-        session->addChanges(changed);
-        return;
-    }
-    SokolRuntime::restart();
+int WebPage::applyChanges() {
+    // clang-format off
+    return answer([] {
+        requireEditable();
+        const std::vector<std::string> changed = std::exchange(touched, {});
+        if (DevelopmentSession* session = SokolRuntime::getDevelopmentSession()) {
+            session->addChanges(changed);
+            return 1;
+        }
+        SokolRuntime::restart();
+        return 1;
+    });
+    // clang-format on
 }
 
 void WebPage::reportReloaded(const core::Json& report) {
@@ -360,12 +393,12 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_uncover_app() {
     haylen::platform::SokolHost::getNativeViews().uncoverApp();
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_load_zip(const std::uint8_t* bytes, int size) {
-    haylen::platform::WebPage::loadZip(bytes, size);
+EMSCRIPTEN_KEEPALIVE int haylen_web_load_zip(const std::uint8_t* bytes, int size) {
+    return haylen::platform::WebPage::loadZip(bytes, size);
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_clear_files() {
-    haylen::platform::WebPage::clearFiles();
+EMSCRIPTEN_KEEPALIVE int haylen_web_clear_files() {
+    return haylen::platform::WebPage::clearFiles();
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_set_file(const char* path, const std::uint8_t* bytes, int size) {
@@ -376,8 +409,8 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_remove_file(const char* path) {
     return haylen::platform::WebPage::removeFile(path);
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_run_files() {
-    haylen::platform::WebPage::runFiles();
+EMSCRIPTEN_KEEPALIVE int haylen_web_run_files() {
+    return haylen::platform::WebPage::runFiles();
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_console(double id, const char* line) {
@@ -400,8 +433,8 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_paused() {
     return haylen::platform::SokolRuntime::isPaused() ? 1 : 0;
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_apply_changes() {
-    haylen::platform::WebPage::applyChanges();
+EMSCRIPTEN_KEEPALIVE int haylen_web_apply_changes() {
+    return haylen::platform::WebPage::applyChanges();
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_visibility(int visible) {

@@ -56,6 +56,10 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
 }
 
 std::shared_ptr<io::Package> ReleasePackage::openBundled(std::shared_ptr<io::Package> files, const Bootstrap* bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore, std::string remoteAddress) {
+    // A build with the keys of its app plays only its protected release, so plain files in its place never run.
+    if (bootstrap != nullptr && !files->exists(kAppManifestFile)) {
+        throw Error(Error::Code::MissingManifest, "This build of the app plays only its protected release, and the release is missing or damaged. Install the app again.");
+    }
     if (!files->exists(kAppManifestFile)) {
         return files;
     }

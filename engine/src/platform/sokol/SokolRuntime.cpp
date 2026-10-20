@@ -85,6 +85,10 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
         core::Log::warning("The release build of the app ignores \"--dev\" and \"--dev-server\", since a release never runs in development.");
         options.development = false;
     }
+    if (!options.package.empty() && content::Bootstrap::find() != nullptr) {
+        core::Log::warning("The release build of the app ignores the package \"{}\", since it plays only its own release.", options.package);
+        options.package.clear();
+    }
     for (const std::string& folder : options.nativeFolders) {
         NativeLibraries::addSearchFolder(folder);
     }

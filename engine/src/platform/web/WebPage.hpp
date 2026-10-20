@@ -30,14 +30,14 @@ class WebPage final {
     static void reportStopped() noexcept;
     static void reportFrame(core::Engine& engine);
 
-    // Requests of the page. The ones that answer a number answer -1 when they fail, with the reason kept for `getLastError`, which `haylen-runtime.js` throws as a JavaScript error. The page edits the files of the package that plays, under its overlay, and `applyChanges` hands the paths it touched to hot reload in development, or restarts the app otherwise.
+    // Requests of the page. The ones that answer a number answer -1 when they fail, with the reason kept for `getLastError`, which `haylen-runtime.js` throws as a JavaScript error. The page edits the files of the package that plays, under its overlay, and `applyChanges` hands the paths it touched to hot reload in development, or restarts the app otherwise. The runtime of a release, which carries the bootstrap of its app, plays only its protected release and refuses every one of these requests.
     [[nodiscard]] static const char* getLastError() noexcept;
-    static void loadZip(const std::uint8_t* bytes, int size);
-    static void clearFiles();
+    static int loadZip(const std::uint8_t* bytes, int size);
+    static int clearFiles();
     static int setFile(const char* path, const std::uint8_t* bytes, int size);
     static int removeFile(const char* path);
-    static void runFiles();
-    static void applyChanges();
+    static int runFiles();
+    static int applyChanges();
 
     // Passes the report of every batch of changes that hot reload applied to the page.
     static void reportReloaded(const core::Json& report);
@@ -85,6 +85,7 @@ class WebPage final {
     [[nodiscard]] static core::Json getFrameStatistics(core::Engine& engine);
 
     template <typename Body> static int answer(Body&& body);
+    static void requireEditable();
 };
 
 } // namespace haylen::platform

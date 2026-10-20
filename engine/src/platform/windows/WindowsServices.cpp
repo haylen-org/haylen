@@ -66,13 +66,15 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     }
 
     const std::filesystem::path directory = std::filesystem::path(executable).parent_path();
-    if (std::filesystem::is_directory(directory / "app")) {
+    // A release build plays only the release next to it, while a development build may also ship its package as a zip.
+    const content::Bootstrap* bootstrap = content::Bootstrap::find();
+    if (bootstrap != nullptr || std::filesystem::is_directory(directory / "app")) {
         // The shards of the packs that a store installs on their own, such as the expansions of a desktop game, land in `packs` next to the release.
         std::shared_ptr<io::Package> files = io::Package::openDirectory(directory / "app");
         if (std::filesystem::is_directory(directory / "packs")) {
             files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{files, io::Package::openDirectory(directory / "packs")});
         }
-        return content::ReleasePackage::openBundled(std::move(files), content::Bootstrap::find(), [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
+        return content::ReleasePackage::openBundled(std::move(files), bootstrap, [](std::string_view identifier) { return std::make_unique<content::FolderStoreFiles>(getContentStoreDirectory(identifier)); });
     }
     return io::Package::open(directory / "app.zip");
 }

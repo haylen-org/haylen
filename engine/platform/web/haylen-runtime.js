@@ -1336,13 +1336,21 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    // Replaces the running app with a zipped package.
+    // Entry points that can fail answer -1 and keep the reason, which becomes a JavaScript error.
+    const checked = (result) => {
+        if (result < 0) {
+            throw new Error(Module.UTF8ToString(Module._haylen_web_last_error()));
+        }
+        return result;
+    };
+
+    // Replaces the running app with a zipped package. The runtime of a release refuses it, as it refuses every request of the editor API.
     haylen.loadZip = function (bytes) {
         const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
         const pointer = Module._malloc(data.length);
         Module.HEAPU8.set(data, pointer);
         try {
-            Module._haylen_web_load_zip(pointer, data.length);
+            checked(Module._haylen_web_load_zip(pointer, data.length));
         } finally {
             Module._free(pointer);
         }
@@ -1350,15 +1358,7 @@ Module.haylen = Module.haylen || {};
 
     // Editor API: `setFile` and `removeFile` edit the package that plays, `applyChanges` applies the files edited since its last call the way hot reload does in development and restarts the app otherwise, `run` starts the package again from `source/main.lua`, and `clearFiles` stops the app and empties the package for an app built file by file.
     haylen.clearFiles = function () {
-        Module._haylen_web_clear_files();
-    };
-
-    // Entry points that can fail answer -1 and keep the reason, which becomes a JavaScript error.
-    const checked = (result) => {
-        if (result < 0) {
-            throw new Error(Module.UTF8ToString(Module._haylen_web_last_error()));
-        }
-        return result;
+        checked(Module._haylen_web_clear_files());
     };
 
     haylen.setFile = function (path, content) {
@@ -1377,7 +1377,7 @@ Module.haylen = Module.haylen || {};
     };
 
     haylen.run = function () {
-        Module._haylen_web_run_files();
+        checked(Module._haylen_web_run_files());
     };
 
     // Starts the last playing app again from its package, which reloads every script.
@@ -1426,7 +1426,7 @@ Module.haylen = Module.haylen || {};
     };
 
     haylen.applyChanges = function () {
-        Module._haylen_web_apply_changes();
+        checked(Module._haylen_web_apply_changes());
     };
 
     // WebSockets the app opened through `haylen.net`, by the id the runtime gave them. Their events reach the app on its next frame.
