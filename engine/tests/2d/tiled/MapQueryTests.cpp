@@ -107,6 +107,7 @@ TEST_F(MapQueryTest, CastsTileRaysOnlyOverTheCellsOfTheLayer) {
     tiled::Map endlessMap = map;
     tiled::Layer& walls = endlessMap.layers.front();
     walls.chunks = {{.x = -4, .y = 0, .width = 2, .height = 1, .gids = {0, 1}}, {.x = 2, .y = 0, .width = 2, .height = 1, .gids = {1, 0}}};
+    walls.infinite = true;
     const std::optional<tiled::MapQuery::TileHit> chunk = tiled::MapQuery(endlessMap).castTiles("walls", math::Ray::between({-1000.0F, 8.0F}, {1000.0F, 8.0F}));
     ASSERT_TRUE(chunk.has_value());
     EXPECT_EQ(chunk->column, -3);

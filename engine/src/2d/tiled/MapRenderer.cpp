@@ -172,7 +172,7 @@ template <typename Visit> void MapRenderer::forEachCell(const Layer& layer, Visi
     };
     // clang-format on
 
-    if (layer.chunks.empty()) {
+    if (!layer.infinite) {
         visitGrid(0, 0, layer.width, layer.height, layer.gids);
         return;
     }
@@ -280,6 +280,7 @@ Layer& MapRenderer::addLayer(Layer layer) {
         throw std::invalid_argument("A layer of a map needs a name of its own, and \"" + layer.name + "\" is empty or taken.");
     }
     layer.id = nextLayerId();
+    layer.infinite = layer.kind == Layer::Kind::Tile && map.infinite;
     if (layer.kind == Layer::Kind::Tile && !map.infinite) {
         layer.width = map.width;
         layer.height = map.height;

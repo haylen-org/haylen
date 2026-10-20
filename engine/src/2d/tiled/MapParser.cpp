@@ -99,18 +99,56 @@ std::vector<std::uint8_t> MapParser::decodeBase64(std::string_view text) {
 }
 
 std::vector<std::uint8_t> MapParser::inflate(const std::vector<std::uint8_t>& compressed, bool gzip, std::size_t expected) {
-    std::vector<std::uint8_t> output(expected);
     z_stream stream{};
-    stream.next_in = const_cast<Bytef*>(compressed.data());
-    stream.avail_in = static_cast<uInt>(compressed.size());
-    stream.next_out = output.data();
-    stream.avail_out = static_cast<uInt>(output.size());
     if (inflateInit2(&stream, gzip ? 16 + MAX_WBITS : MAX_WBITS) != Z_OK) {
         throw std::runtime_error("Tile layer data could not be decompressed.");
     }
-    const int status = ::inflate(&stream, Z_FINISH);
+    stream.next_in = const_cast<Bytef*>(compressed.data());
+    stream.avail_in = static_cast<uInt>(compressed.size());
+
+    // The output may grow one byte past the size the layer expects, which tells data that holds too many cells.
+    std::vector<std::uint8_t> output;
+    int status = Z_OK;
+    while (status == Z_OK && output.size() <= expected) {
+        const std::size_t done = output.size();
+        const std::size_t step = std::min(expected + 1 - done, kDecompressStep);
+        output.resize(done + step);
+        stream.next_out = output.data() + done;
+        stream.avail_out = static_cast<uInt>(step);
+        status = ::inflate(&stream, Z_NO_FLUSH);
+        output.resize(done + step - stream.avail_out);
+    }
     inflateEnd(&stream);
-    if (status != Z_STREAM_END || stream.total_out != expected) {
+
+    if (status != Z_STREAM_END || output.size() != expected) {
+        throw std::runtime_error("Tile layer data could not be decompressed.");
+    }
+    return output;
+}
+
+std::vector<std::uint8_t> MapParser::decompressZstd(const std::vector<std::uint8_t>& compressed, std::size_t expected) {
+    const std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> context(ZSTD_createDCtx(), &ZSTD_freeDCtx);
+    if (!context) {
+        throw std::runtime_error("Tile layer data could not be decompressed.");
+    }
+    ZSTD_inBuffer input{compressed.data(), compressed.size(), 0};
+
+    // The output may grow one byte past the size the layer expects, which tells data that holds too many cells.
+    std::vector<std::uint8_t> output;
+    std::size_t remaining = 1;
+    while (remaining != 0 && output.size() <= expected) {
+        const std::size_t done = output.size();
+        const std::size_t step = std::min(expected + 1 - done, kDecompressStep);
+        output.resize(done + step);
+        ZSTD_outBuffer target{output.data() + done, step, 0};
+        remaining = ZSTD_decompressStream(context.get(), &target, &input);
+        output.resize(done + target.pos);
+        if (ZSTD_isError(remaining) != 0U || (target.pos == 0 && input.pos == input.size)) {
+            break;
+        }
+    }
+
+    if (ZSTD_isError(remaining) != 0U || remaining != 0 || output.size() != expected) {
         throw std::runtime_error("Tile layer data could not be decompressed.");
     }
     return output;
@@ -142,12 +180,7 @@ std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, cons
     if (compression == "zlib" || compression == "gzip") {
         bytes = inflate(bytes, compression == "gzip", cells * 4);
     } else if (compression == "zstd") {
-        std::vector<std::uint8_t> output(cells * 4);
-        const std::size_t size = ZSTD_decompress(output.data(), output.size(), bytes.data(), bytes.size());
-        if (ZSTD_isError(size) != 0U || size != output.size()) {
-            throw std::runtime_error("Tile layer data could not be decompressed.");
-        }
-        bytes = std::move(output);
+        bytes = decompressZstd(bytes, cells * 4);
     } else if (!compression.empty()) {
         throw std::invalid_argument("The compression of a tile layer must be \"zlib\", \"gzip\" or \"zstd\", not \"" + compression + "\".");
     }
@@ -413,7 +446,8 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
         layer.kind = Layer::Kind::Tile;
         layer.width = entry.value("width", 0);
         layer.height = entry.value("height", 0);
-        if (entry.contains("chunks")) {
+        layer.infinite = entry.contains("chunks");
+        if (layer.infinite) {
             for (const core::Json& chunk : entry.at("chunks")) {
                 Layer::Chunk parsed{.x = chunk.at("x").get<int>(), .y = chunk.at("y").get<int>(), .width = chunk.at("width").get<int>(), .height = chunk.at("height").get<int>()};
                 parsed.gids = readTileData(entry, chunk.at("data"), countCells(parsed.width, parsed.height, name));

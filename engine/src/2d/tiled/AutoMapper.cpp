@@ -45,6 +45,7 @@ struct AutoMapper::Target {
             return *layer;
         }
         Layer created{.id = nextLayerId++, .name = std::string(name), .kind = kind};
+        created.infinite = kind == Layer::Kind::Tile && map.infinite;
         if (kind == Layer::Kind::Tile && !map.infinite) {
             created.width = map.width;
             created.height = map.height;

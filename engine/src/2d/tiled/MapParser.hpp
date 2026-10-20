@@ -39,11 +39,15 @@ class MapParser final {
     // Cells are indexed with `int` and their data takes four bytes each, so a layer holds as many cells as both allow.
     static constexpr std::size_t kMaxCells = std::min<std::size_t>(std::numeric_limits<int>::max(), std::numeric_limits<std::size_t>::max() / 4);
 
+    // Compressed data grows its output by this many bytes at a time, so a layer whose size claims more cells than its data holds never allocates them.
+    static constexpr std::size_t kDecompressStep = std::size_t{1} << 16U;
+
     MapParser(const Map::JsonReader& reader, Map& target) noexcept : read(reader), map(target) {}
 
     [[nodiscard]] static std::size_t countCells(int width, int height, std::string_view layer);
     [[nodiscard]] static std::vector<std::uint8_t> decodeBase64(std::string_view text);
     [[nodiscard]] static std::vector<std::uint8_t> inflate(const std::vector<std::uint8_t>& compressed, bool gzip, std::size_t expected);
+    [[nodiscard]] static std::vector<std::uint8_t> decompressZstd(const std::vector<std::uint8_t>& compressed, std::size_t expected);
     [[nodiscard]] static std::vector<std::uint32_t> readTileData(const core::Json& layer, const core::Json& data, std::size_t cells);
     [[nodiscard]] static std::optional<math::Color> readOptionalColor(const core::Json& object, const char* key);
     // The blend modes of Tiled layers by the names of the Tiled format.

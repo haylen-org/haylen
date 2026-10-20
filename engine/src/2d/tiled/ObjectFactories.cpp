@@ -29,15 +29,15 @@ bool ObjectFactories::has(std::string_view type) const noexcept {
 }
 
 std::size_t ObjectFactories::spawn(const MapRenderer& map, std::string_view layer) const {
-    std::vector<std::pair<const Object*, math::Vec2>> objects;
-    map.forEachObject(layer, [&objects](const Object& object, math::Vec2 position) { objects.emplace_back(&object, position); });
+    // The factories run after the walk over the map on copies of its objects, since a factory may change the map, and a factory may add or remove factories, its own too, so each one runs from a copy.
+    std::vector<std::pair<Object, math::Vec2>> objects;
+    map.forEachObject(layer, [&objects](const Object& object, math::Vec2 position) { objects.emplace_back(object, position); });
 
-    // The factories run after the walk over the map, and a factory may add or remove factories, its own too, so each one runs from a copy.
     std::size_t spawned = 0;
     for (const auto& [object, position] : objects) {
-        if (const auto found = factories.find(object->type); found != factories.end()) {
+        if (const auto found = factories.find(object.type); found != factories.end()) {
             const Factory factory = found->second;
-            factory(*object, position);
+            factory(object, position);
             ++spawned;
         }
     }

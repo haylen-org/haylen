@@ -49,6 +49,9 @@ struct Layer {
     std::vector<std::uint32_t> gids;
     std::vector<Chunk> chunks;
 
+    // Whether the layer keeps its cells in chunks, as every tile layer of an infinite map does, which holds even while it has none.
+    bool infinite = false;
+
     std::vector<Object> objects;
     bool indexDrawOrder = false;
 

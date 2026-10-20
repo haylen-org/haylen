@@ -20,7 +20,7 @@ std::string_view Layer::kindName(Kind value) noexcept {
 }
 
 std::uint32_t Layer::getGid(int column, int row) const noexcept {
-    if (chunks.empty()) {
+    if (!infinite) {
         if (column < 0 || row < 0 || column >= width || row >= height) {
             return 0;
         }
@@ -35,14 +35,14 @@ std::uint32_t Layer::getGid(int column, int row) const noexcept {
 }
 
 bool Layer::contains(int column, int row) const noexcept {
-    if (chunks.empty()) {
+    if (!infinite) {
         return column >= 0 && row >= 0 && column < width && row < height;
     }
     return std::ranges::any_of(chunks, [column, row](const Chunk& chunk) { return column >= chunk.x && row >= chunk.y && column < chunk.x + chunk.width && row < chunk.y + chunk.height; });
 }
 
 void Layer::setGid(int column, int row, std::uint32_t value) {
-    if (chunks.empty()) {
+    if (!infinite) {
         if (column < 0 || row < 0 || column >= width || row >= height) {
             throw std::out_of_range("The cell is outside the tile layer.");
         }

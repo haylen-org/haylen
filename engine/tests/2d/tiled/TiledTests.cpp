@@ -25,6 +25,7 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/Math.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -358,6 +359,18 @@ TEST_F(MapTest, RejectsBrokenData) {
     map["layers"][0]["compression"] = "zstd";
     EXPECT_THROW((void)parse(map), std::runtime_error);
 
+    // A layer that claims far more cells than its compressed data holds fails without allocating them.
+    for (const std::string compression : {"zlib", "zstd"}) {
+        map = orthogonalMap();
+        map["layers"][0]["width"] = 46340;
+        map["layers"][0]["height"] = 46340;
+        map["layers"][0]["compression"] = compression;
+        map["layers"][0]["data"] = encodeTiles({1, 2, 3}, compression);
+        const test::AllocationTracker allocations;
+        EXPECT_THROW((void)parse(map), std::runtime_error);
+        EXPECT_LT(allocations.getLargest(), std::size_t{1} << 20U);
+    }
+
     map = orthogonalMap();
     map["layers"][0]["data"] = core::Json::array({1, 2});
     EXPECT_THROW((void)parse(map), std::invalid_argument);
@@ -409,7 +422,7 @@ TEST_F(MapTest, RejectsBrokenData) {
 
     tiled::Layer layer{.width = 2, .height = 2, .gids = std::vector<std::uint32_t>(4, 0)};
     EXPECT_THROW(layer.setGid(2, 0, 1), std::out_of_range);
-    tiled::Layer chunked{.chunks = {{.x = 0, .y = 0, .width = 1, .height = 1, .gids = {0}}}};
+    tiled::Layer chunked{.chunks = {{.x = 0, .y = 0, .width = 1, .height = 1, .gids = {0}}}, .infinite = true};
     chunked.setGid(0, 0, 3);
     EXPECT_EQ(chunked.getGid(0, 0), 3U);
     EXPECT_THROW(chunked.setGid(5, 5, 1), std::out_of_range);
@@ -1022,6 +1035,8 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
         return table.concat(spawned, ' ') .. ' ' .. #map:spawn({player = function() return 1 end}, 'things')
     )"), "spawn@10.0,20.0 1 3 1");
     // clang-format on
+    // A factory that removes the layer of the objects still to come leaves them whole.
+    EXPECT_EQ(fixture.lua("local copy = tiled.newMapRenderer(assets.load('maps/island.tmj')) local names = {} copy:spawn({player = function() copy:removeLayer('things') end, collision = function(object) names[#names + 1] = object.name end}) return table.concat(names, ' ')"), "zone pond wall fence");
     EXPECT_NE(fixture.lua("map:spawn({rock = 5})").find("The factory for the Tiled class \"rock\" is not a function."), std::string::npos);
     EXPECT_NE(fixture.lua("map:spawn({}, 'ground')").find("The map has no object layer named \"ground\"."), std::string::npos);
     EXPECT_EQ(fixture.lua("local x, y = map:cellToWorld(2, 1) local c, r = map:worldToCell(40, 20) local ox, oy = map:objectToWorld(3, 4) return x .. ',' .. y .. ' ' .. c .. ',' .. r .. ' ' .. ox .. ',' .. oy"), "32.0,16.0 2,1 3.0,4.0");
@@ -1092,6 +1107,9 @@ TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
 
     EXPECT_EQ(fixture.lua("return tostring(map:layer('things').indexDrawOrder) .. ' ' .. #map:layer('ground').chunks .. ' ' .. map:layer('sky').imageSize.x .. ' ' .. map:layer('sky').transparentColor:toHex() .. ' ' .. tostring(map:layer('things').objects[1].propertyTypes.hp)"), "false 0 8.0 #FFFF00FF nil");
     EXPECT_EQ(fixture.lua("local chunks = endless:layer('ground').chunks return #chunks .. ' ' .. chunks[1].x .. ',' .. chunks[1].y .. ' ' .. chunks[1].width .. 'x' .. chunks[1].height .. ' ' .. table.concat(chunks[1].gids, ',') .. ' ' .. chunks[2].gids[4]"), "2 -2,0 2x2 1,2,3,4 8");
+    // An infinite layer without chunks holds no cells, though its file gave it a size.
+    EXPECT_EQ(fixture.lua("endless:removeChunk('ground', -2, 0) endless:removeChunk('ground', 0, 0) endless:draw() return endless:tile('ground', 1, 1) .. ' ' .. #endless:layer('ground').chunks .. ' ' .. tostring(endless:layer('ground').infinite) .. ' ' .. tostring(map:layer('ground').infinite)"), "0 0 true false");
+    EXPECT_NE(fixture.lua("endless:setTile('ground', 1, 1, 2)").find("outside every chunk"), std::string::npos);
 
     EXPECT_EQ(fixture.lua("local t = map:tilesets()[1] return t.grid.orientation .. ' ' .. t.grid.width .. 'x' .. t.grid.height .. ' ' .. tostring(t.transformations.flipHorizontal) .. ' ' .. tostring(t.transformations.flipVertical) .. ' ' .. tostring(t.transformations.rotate) .. ' ' .. tostring(t.transformations.preferUntransformed)"), "isometric 32.0x16.0 true false true true");
     EXPECT_EQ(fixture.lua("local layer = map:layer('things') local sign for _, object in ipairs(layer.objects) do if object.name == 'sign' then sign = object end end return layer.color:toHex() .. ' ' .. tostring(sign.text.underline) .. ' ' .. tostring(sign.text.strikeout) .. ' ' .. tostring(sign.text.kerning) .. ' ' .. tostring(map:layer('ground').color)"), "#FFA0C040 true true false nil");

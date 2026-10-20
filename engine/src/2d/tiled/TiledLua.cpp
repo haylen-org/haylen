@@ -196,6 +196,8 @@ void TiledLua::pushLayer(lua_State* L, const Layer& layer) {
         setInteger(L, "height", layer.height);
         pushChunks(L, layer.chunks);
         lua_setfield(L, -2, "chunks");
+        lua_pushboolean(L, layer.infinite ? 1 : 0);
+        lua_setfield(L, -2, "infinite");
         break;
     case Layer::Kind::Object:
         pushObjects(L, layer.objects);
@@ -437,22 +439,33 @@ int TiledLua::mapSpawn(lua_State* L) {
     std::vector<std::pair<const Object*, math::Vec2>> objects;
     checkRenderer(L).forEachObject(layer, [&objects](const Object& object, math::Vec2 position) { objects.emplace_back(&object, position); });
 
-    // The factories run Lua, so they run after the walk over the map.
+    // The factories run Lua that may change the map, so every object becomes a table before the first factory runs.
+    lua_createtable(L, static_cast<int>(objects.size()), 0);
+    const int spawned = lua_gettop(L);
+    for (std::size_t index = 0; index < objects.size(); ++index) {
+        pushObject(L, *objects[index].first);
+        setNumber(L, "worldX", objects[index].second.x);
+        setNumber(L, "worldY", objects[index].second.y);
+        lua_rawseti(L, spawned, static_cast<lua_Integer>(index + 1));
+    }
+
     lua_newtable(L);
     const int results = lua_gettop(L);
     lua_Integer count = 0;
-    for (const auto& [object, position] : objects) {
-        lua_getfield(L, 2, object->type.c_str());
+    const auto total = static_cast<lua_Integer>(objects.size());
+    for (lua_Integer index = 1; index <= total; ++index) {
+        lua_rawgeti(L, spawned, index);
+        lua_getfield(L, -1, "type");
+        lua_gettable(L, 2);
         if (lua_isnil(L, -1)) {
-            lua_pop(L, 1);
+            lua_pop(L, 2);
             continue;
         }
         if (!lua_isfunction(L, -1)) {
-            return luaL_error(L, "The factory for the Tiled class \"%s\" is not a function.", object->type.c_str());
+            lua_getfield(L, -2, "type");
+            return luaL_error(L, "The factory for the Tiled class \"%s\" is not a function.", lua_tostring(L, -1));
         }
-        pushObject(L, *object);
-        setNumber(L, "worldX", position.x);
-        setNumber(L, "worldY", position.y);
+        lua_insert(L, -2);
         lua_call(L, 1, 1);
         if (lua_isnil(L, -1)) {
             lua_pop(L, 1);

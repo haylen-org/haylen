@@ -48,7 +48,7 @@ math::Vec2 MapQuery::alignmentPivot(std::string_view alignment, Map::Orientation
 }
 
 math::Rect MapQuery::getCellBounds(const Layer& layer) noexcept {
-    if (layer.chunks.empty()) {
+    if (!layer.infinite) {
         return {0.0F, 0.0F, static_cast<float>(layer.width), static_cast<float>(layer.height)};
     }
     const auto cellsOf = [](const Layer::Chunk& chunk) { return math::Rect{static_cast<float>(chunk.x), static_cast<float>(chunk.y), static_cast<float>(chunk.width), static_cast<float>(chunk.height)}; };

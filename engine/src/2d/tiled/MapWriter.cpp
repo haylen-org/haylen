@@ -216,7 +216,7 @@ core::Json MapWriter::writeLayer(const Layer& layer, std::string_view directory)
     case Layer::Kind::Tile:
         entry["width"] = layer.width;
         entry["height"] = layer.height;
-        if (layer.chunks.empty()) {
+        if (!layer.infinite) {
             entry["data"] = layer.gids;
         } else {
             core::Json chunks = core::Json::array();

@@ -344,6 +344,7 @@ Every layer table has these fields:
 | `properties`, `propertyTypes` | table | Custom properties and their type names. |
 | `width`, `height` | integer | Tile layers only. Layer size in cells. |
 | `chunks` | table | Tile layers only. The chunks of an infinite map, each with `x` and `y` (its first cell), `width`, `height` and `gids`, the global tile ids row by row with their flip flags. Empty on other maps. |
+| `infinite` | boolean | Tile layers only. Whether the layer keeps its cells in `chunks`, as every tile layer of an infinite map does, which holds even once it has no chunk left. Such a layer has no cells outside its chunks, and its `width` and `height` are the size its file gave it. |
 | `objects` | table | Object layers only. List of object tables. |
 | `indexDrawOrder` | boolean | Object layers only. The value is `true` when objects draw in list order, `false` when they sort by their y position. |
 | `color` | Color or nil | Object layers only. The color Tiled shows the objects of the layer in, for the app's own drawings of the layer, or `nil` when the layer keeps the default. |
