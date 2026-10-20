@@ -1,0 +1,8 @@
+{
+    "name": "Web Memory",
+    "identifier": "com.haylen.webmemory",
+    "version": "1.0.0",
+    "content": {
+        "delivery": [{"match": "large/**", "mode": "onDemand"}]
+    }
+}

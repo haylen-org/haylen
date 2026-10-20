@@ -1358,6 +1358,17 @@ class CheckTest(unittest.TestCase):
             self.assertEqual(checked, [haylen.App(app, "web").build_folder / "web"])
 
 
+class WebMemoryTest(unittest.TestCase):
+    """The memory check of the web stops on a page that failed, missed the download or holds memory that grows with what it downloads."""
+
+    def test_stops_on_memory_that_grows_with_the_download(self):
+        good = {"failure": None, "finished": True, "receivedBytes": haylen.WEB_MEMORY_FILE_SIZE + 1, "peakWasmBytes": 128 * 1024**2, "buffersAfterCollection": 16 * 1024**2, "log": []}
+        haylen.check_web_memory(good)
+        for change, message in (({"peakWasmBytes": haylen.WEB_MEMORY_FILE_SIZE}, "grows with what it downloads"), ({"buffersAfterCollection": 128 * 1024**2}, "array buffers"), ({"receivedBytes": 1024}, "fewer than"), ({"finished": False}, "did not finish"), ({"failure": "Broken."}, "failed: Broken.")):
+            with self.assertRaisesRegex(haylen.BuildError, message):
+                haylen.check_web_memory({**good, **change})
+
+
 class CppReleaseTest(unittest.TestCase):
     """The Release configuration of a C++ project ships the protected release with the content tool of the desktop artifacts, and every other configuration turns it off again in the cache of the build tree."""
 

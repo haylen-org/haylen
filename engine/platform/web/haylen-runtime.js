@@ -2133,6 +2133,7 @@ Module.haylen = Module.haylen || {};
     haylen.contentStore = (function () {
         let worker = null;
         let space = 0;
+        let unwritten = 0;
         let refused = false;
         let nextId = 1;
         const replies = new Map();
@@ -2186,6 +2187,9 @@ Module.haylen = Module.haylen || {};
                     if (message.op === "estimate" && message.ok) {
                         space = message.available;
                     }
+                    if (message.op === "append") {
+                        unwritten -= message.size;
+                    }
                 };
                 const opened = await ask({ op: "open", identifier });
                 if (!opened.ok) {
@@ -2210,9 +2214,19 @@ Module.haylen = Module.haylen || {};
                 post({ op: "write", name, bytes }, [bytes.buffer]);
                 post({ op: "estimate" });
             },
+            // The room of the origin is estimated again after each whole file, such as every state the store commits, and not after each record a download appends, which would hold the queue of the worker up.
             append(name, bytes) {
-                post({ op: "append", name, bytes }, [bytes.buffer]);
-                post({ op: "estimate" });
+                if (worker) {
+                    unwritten += bytes.length;
+                }
+                post({ op: "append", name, bytes, size: bytes.length }, [bytes.buffer]);
+            },
+            // The bytes of appends that the worker has not written yet, which downloads keep within a bound.
+            unwritten() {
+                return unwritten;
+            },
+            flush(name) {
+                post({ op: "flush", name });
             },
             truncate(name, size) {
                 post({ op: "truncate", name, size });

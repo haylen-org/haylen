@@ -52,6 +52,9 @@ class StoreFiles {
 
     // Keeps ranges readable for the whole run, which the content an app needs to start asks for.
     virtual void pin(const std::vector<Range>& ranges);
+
+    // The bytes that the store accepted and has not written yet. Files on the device write before a call returns, while the web hands them to a worker, which writes them later.
+    [[nodiscard]] virtual std::uint64_t getUnwrittenBytes() const;
 };
 
 } // namespace haylen::content

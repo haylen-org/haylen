@@ -163,6 +163,10 @@ void LocalStore::load(const std::vector<Digest>& storedIds, std::function<void(b
     files->load(getRanges(storedIds), std::move(done));
 }
 
+std::uint64_t LocalStore::getUnwrittenBytes() const {
+    return files->getUnwrittenBytes();
+}
+
 void LocalStore::pin(const std::vector<Digest>& storedIds) {
     files->pin(getRanges(storedIds));
 }

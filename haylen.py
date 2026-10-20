@@ -678,7 +678,98 @@ def command_build(args: argparse.Namespace) -> None:
     run(command)
 
 
+# The memory check of the web: a protected release with a large file that downloads on demand, which a page downloads in the background in a headless browser, while the memory of WebAssembly and the array buffers that the page and its workers keep stay far below the size of the file.
+WEB_MEMORY_APP = ENGINE_DIR / "tests" / "data" / "web-memory"
+WEB_MEMORY_DRIVER = ENGINE_DIR / "tests" / "web" / "memory-check.mjs"
+WEB_MEMORY_FILE_SIZE = 384 * 1024**2
+WEB_MEMORY_WASM_LIMIT = WEB_MEMORY_FILE_SIZE // 2
+WEB_MEMORY_BUFFER_LIMIT = 64 * 1024**2
+WEB_MEMORY_SECONDS = 600
+CHROME_PATHS = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", r"C:\Program Files\Google\Chrome\Application\chrome.exe"]
+
+
+def find_chrome() -> str:
+    """The Chrome or Chromium of this machine, or the one that `HAYLEN_CHROME` names."""
+    for candidate in [os.environ.get("HAYLEN_CHROME", ""), *CHROME_PATHS]:
+        if candidate and (Path(candidate).is_file() or shutil.which(candidate)):
+            return shutil.which(candidate) or candidate
+    raise BuildError('No Chrome or Chromium was found for the memory check of the web. Install one, or name it with "HAYLEN_CHROME".')
+
+
+def free_port() -> int:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+def command_test_web(args: argparse.Namespace) -> None:
+    """Builds the release site of the memory check app with a large file in its content, serves it, opens it in a headless browser and stops when the page holds memory that grows with the file."""
+    folder = BUILD_ROOT / "tests" / "web-memory"
+    shutil.rmtree(folder, ignore_errors=True)
+    shutil.copytree(WEB_MEMORY_APP, folder)
+    (folder / "content" / "large").mkdir(parents=True)
+    with open(folder / "content" / "large" / "blob.bin", "wb") as blob:
+        for _ in range(WEB_MEMORY_FILE_SIZE // (1024**2)):
+            blob.write(os.urandom(1024**2))
+    args.config = "Release"
+    args.engine_config = "Release"
+    args.previous_release = None
+    target = RUN_TARGETS["web"]
+    app = App(folder, target.plugins)
+    ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
+    site = target.prepare(app, args)
+
+    handler = functools.partial(type("Handler", (WebHandler,), {"log_message": lambda *arguments: None}), directory=str(site))
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    debugging = free_port()
+    profile = Path(tempfile.mkdtemp())
+    browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        deadline = time.monotonic() + 30
+        while True:
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{debugging}/json/version", timeout=1).close()
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    raise BuildError("The headless browser of the memory check of the web did not start.") from None
+                time.sleep(0.2)
+        node = next((emsdk_root() / "node").glob(f"*/bin/{'node.exe' if host_name() == 'windows' else 'node'}"), None)
+        if node is None:
+            raise BuildError(f'The Emscripten SDK holds no Node, which runs the memory check of the web. Install it again with "{TOOL} tools --emsdk".')
+        terminal.step("Running the memory check of the web in a headless browser")
+        report = json.loads(capture([node, WEB_MEMORY_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/", str(WEB_MEMORY_SECONDS)]))
+    finally:
+        browser.terminate()
+        browser.wait()
+        server.shutdown()
+        server.server_close()
+        shutil.rmtree(profile, ignore_errors=True)
+    check_web_memory(report)
+    terminal.success(f"The page downloaded {report['receivedBytes']} bytes with a peak of {report['peakWasmBytes']} bytes of WebAssembly memory and kept {report['buffersAfterCollection']} bytes of array buffers.")
+
+
+def check_web_memory(report: dict) -> None:
+    """Stops on a memory check of the web whose page failed, never finished, missed the download, or held memory that grows with the file."""
+    if report["failure"] or not report["finished"]:
+        log = "\n".join(report["log"])
+        raise BuildError(f"The page of the memory check of the web {'failed: ' + report['failure'] if report['failure'] else 'did not finish'}. Its last log lines follow.\n{log}")
+    problems = []
+    if report["receivedBytes"] < WEB_MEMORY_FILE_SIZE:
+        problems.append(f"The page received {report['receivedBytes']} bytes, fewer than the {WEB_MEMORY_FILE_SIZE} bytes of the large file.")
+    if report["peakWasmBytes"] > WEB_MEMORY_WASM_LIMIT:
+        problems.append(f"The memory of WebAssembly grew to {report['peakWasmBytes']} bytes, more than {WEB_MEMORY_WASM_LIMIT} bytes, so the page holds memory that grows with what it downloads.")
+    if report["buffersAfterCollection"] > WEB_MEMORY_BUFFER_LIMIT:
+        problems.append(f"The page and its workers keep {report['buffersAfterCollection']} bytes of array buffers after a collection, more than {WEB_MEMORY_BUFFER_LIMIT} bytes.")
+    if problems:
+        raise BuildError(" ".join(problems))
+
+
 def command_test(args: argparse.Namespace) -> None:
+    if args.platform in ("web", "web-webgl2"):
+        command_test_web(args)
+        return
     args.platform = host_name()
     args.target = "haylen_tests"
     command_build(args)
@@ -5308,7 +5399,7 @@ def build_parser() -> argparse.ArgumentParser:
     tools.add_argument("--gradle", action="store_true", help=f"Install Gradle {GRADLE_VERSION} into .tools.")
     tools.set_defaults(handler=command_tools)
 
-    for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, "Build and run the engine tests on this machine.")):
+    for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, 'Build and run the engine tests on this machine, or with "--platform web" the memory check of the web in a headless browser.')):
         sub = commands.add_parser(name, parents=[common], help=help_text)
         add_build_options(sub)
         sub.set_defaults(handler=handler)

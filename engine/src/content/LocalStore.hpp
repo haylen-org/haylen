@@ -98,6 +98,9 @@ class LocalStore final {
     // Removes the records outside the live set, and the manifests, shard indexes and staged records that are no longer kept, and moves the live records of segments that are mostly dead into new ones, without ever touching what the live set uses. It moves records only when the device has room for them and its margin, and otherwise removes only the segments that hold no live record. The new journal becomes active with a new state, so a collection that a crash interrupts leaves the store as it was, and one that `stop` ends before it switches throws `UpdateInterrupted` and leaves the store as it was too.
     Collection collect(const std::unordered_set<Digest, Digest::Hash>& liveRecords, const std::set<Digest>& keptManifests, const std::set<Digest>& keptShards, const std::atomic<bool>& stop);
 
+    // The bytes of records that the files of the store have not written yet, which downloads keep within a bound.
+    [[nodiscard]] std::uint64_t getUnwrittenBytes() const;
+
     [[nodiscard]] Statistics getStatistics() const;
     [[nodiscard]] std::uint64_t getAvailableSpace() const;
 

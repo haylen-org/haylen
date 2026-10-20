@@ -149,6 +149,14 @@ haylen test
 
 The command configures `build/<host>-<config>` when needed, builds `haylen_tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
 
+## The memory check of the web
+
+```sh
+haylen test --platform web
+```
+
+The page of the web reads content through a worker and keeps records in memory within a budget, which only a browser shows, so this check runs one. It copies the app `engine/tests/data/web-memory` into `build/tests/web-memory`, writes a file of 384 MiB of random bytes into its content, which `app.json` delivers on demand, builds its release site, serves it and opens it in a headless Chrome, the one that `HAYLEN_CHROME` names or else the one of the machine. The driver `engine/tests/web/memory-check.mjs`, which the Node of the Emscripten SDK runs, follows the page and its workers over the debugging protocol while the app prefetches the file and reads a small asset, and reports the bytes they received, the peak of the memory of WebAssembly and the array buffers they keep after a collection. The check fails when the page did not download the file, when the memory of WebAssembly grew past half of the file or when more than 64 MiB of array buffers stay, which a page that holds what it downloads would do.
+
 ## The test project
 
 The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop, and its menu runs one test at a time or every test one after the other.
@@ -230,7 +238,7 @@ The workflow `.github/workflows/ci.yml` runs on every push to a branch and every
 | `format` | Ubuntu | Installs clang-format 23.1.3, runs `python haylen.py format --check` and the tests of the rules of `haylen.py`. |
 | `desktop` | macOS, Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages on Linux, and Ninja with the MSVC environment on Windows. Runs `python haylen.py test --config Debug`, then `python haylen.py sdk --config Release --check-consumers package`, which builds the SDK and the consumer project `engine/tests/consumer` that finds it with `find_package`. |
 | `coverage` | macOS | Runs `python haylen.py coverage`, whose report table shows in the log. |
-| `web` | Ubuntu | Caches the Emscripten SDK in `.tools/emsdk` and runs `python haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player. |
+| `web` | Ubuntu | Caches the Emscripten SDK in `.tools/emsdk` and runs `python haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, then `python haylen.py test --platform web`, the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner. |
 | `android` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2 and the Android 37.2 platform, and runs `python haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository. |
 | `apple` | macOS | Installs Ninja and runs `python haylen.py engine --platform apple`, which builds `Haylen.xcframework`. |
 | `desktop-apps` | Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages, `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux, and Ninja with the MSVC environment on Windows. Creates the starter app with `python haylen.py new build/starter`, adds to it a plugin that `python haylen.py plugin new build/echo-check` creates from the plugin template, and runs `python haylen.py dist build/starter` for the platform, which builds the desktop artifacts, the C library of the plugin, the starter app from the Linux or Windows template in the Release configuration and its `.deb` and AppImage or its installer, then checks the installed app and validates its desktop entry on Linux. Then it creates the starter C++ app with `python haylen.py new build/starter-cpp --kind cpp` and builds it with `python haylen.py run-cpp build/starter-cpp --build-only`, which compiles the engine with the app. |

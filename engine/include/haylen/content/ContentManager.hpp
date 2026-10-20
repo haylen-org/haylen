@@ -134,8 +134,11 @@ class ContentManager final {
     // Adds a source of packs, which the manager asks after the sources before it for a pack that an asset needs, before the content server, and returns the connection that removes it. A source that the connection removes while it delivers counts as one that does not deliver the pack.
     core::Connection addPackSource(std::shared_ptr<PackSource> source);
 
-    // Brings the assets that the device lacks, by their paths relative to `content`, and calls back once all of them are on the device: the assets of packs from the sources of packs first, and the rest from the content server. Throws `std::invalid_argument` for an asset that does not exist.
+    // Brings the assets that the device lacks, by their paths relative to `content`, and calls back once all of them are on the device and readable, for a load that follows: the assets of packs from the sources of packs first, and the rest from the content server. Throws `std::invalid_argument` for an asset that does not exist.
     void acquire(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done);
+
+    // Brings the assets that the device lacks like `acquire`, without reading them in where the store keeps them elsewhere, as on the web, so a large prefetch holds no memory for what nothing reads yet.
+    void prefetch(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done);
 
     // Asks the channel for newer content. Throws `std::logic_error` in an app without a content server.
     void check(std::function<void(std::optional<Update>, std::optional<Error>)> done);
@@ -183,15 +186,16 @@ class ContentManager final {
     using PackSources = std::vector<std::shared_ptr<PackSourceLink>>;
 
     // Asks the sources for each pack in turn, and then for the next pack, until every pack was asked for or a source failed.
+    void bringAssets(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done, bool readIn);
     void deliverPacks(std::vector<std::string> packs, std::size_t index, std::shared_ptr<const PackSources> sources, ProgressCallback onProgress, Completion done);
     void askSource(std::string pack, std::shared_ptr<const PackSources> sources, std::size_t index, ProgressCallback onProgress, Completion done);
-    void bring(std::vector<std::string> wanted, ProgressCallback onProgress, Completion done);
+    void fetchFromServer(std::vector<std::string> wanted, ProgressCallback onProgress, Completion done, bool readIn);
 
     void startCheck();
     void installOffer(ProgressCallback onProgress, Completion done);
     void bringRequired();
     void finishStart();
-    void prefetch();
+    void prefetchRules();
     void fail(const Error& failure);
 
     // The network and the state of the app steer the work of the manager: the work that failed for want of a network starts again when it comes back, and the background downloads stop while the app is in the background.

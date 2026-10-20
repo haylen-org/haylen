@@ -87,6 +87,8 @@ jobs:
           key: emsdk-${{ hashFiles('haylen.py') }}
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py --verbose engine --platform web
+      - name: Check the memory of a page that downloads a large release
+        run: python haylen.py --verbose test --platform web
 
   android:
     runs-on: ubuntu-latest

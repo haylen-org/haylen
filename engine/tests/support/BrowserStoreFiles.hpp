@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -14,10 +15,23 @@
 
 namespace haylen::test {
 
-// The files of a content store in a folder that behave like the store of the web: the bytes that a run appends can be read, while bytes from an earlier run can be read only once `load` brought them in. It counts the ranges it loaded.
+// The files of a content store in a folder that behave like the store of the web: the bytes that a run appends can be read, while bytes from an earlier run can be read only once `load` brought them in. It counts the ranges it read in, leaving out the ones it held already, as the store of the web does.
 class BrowserStoreFiles final : public content::StoreFiles {
   public:
     explicit BrowserStoreFiles(const std::filesystem::path& folder) : files(folder) {}
+
+    // Holds a number of bytes as not written yet, as the worker of the web does while its writes fall behind.
+    void setUnwrittenBytes(std::uint64_t value) noexcept {
+        unwritten = value;
+    }
+    [[nodiscard]] std::uint64_t getUnwrittenBytes() const override {
+        return unwritten;
+    }
+
+    // Lets go of every record that a download appends at once, as the store of the web does past its budget during a large download.
+    void dropAppended() noexcept {
+        keepsAppended = false;
+    }
 
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> read(const std::string& name) const override {
         return files.read(name);
@@ -28,7 +42,9 @@ class BrowserStoreFiles final : public content::StoreFiles {
     std::uint64_t append(const std::string& name, std::span<const std::uint8_t> bytes) override {
         const std::uint64_t offset = files.append(name, bytes);
         std::scoped_lock lock(mutex);
-        resident.emplace(name, offset, bytes.size());
+        if (keepsAppended) {
+            resident.emplace(name, offset, bytes.size());
+        }
         return offset;
     }
     void sync(const std::string& name) override {
@@ -60,9 +76,8 @@ class BrowserStoreFiles final : public content::StoreFiles {
         {
             std::scoped_lock lock(mutex);
             for (const Range& range : ranges) {
-                resident.emplace(range.name, range.offset, range.size);
+                loaded += resident.emplace(range.name, range.offset, range.size).second ? 1 : 0;
             }
-            loaded += ranges.size();
         }
         done(true);
     }
@@ -77,6 +92,8 @@ class BrowserStoreFiles final : public content::StoreFiles {
     mutable std::mutex mutex;
     std::set<std::tuple<std::string, std::uint64_t, std::uint64_t>> resident;
     std::size_t loaded = 0;
+    std::atomic<std::uint64_t> unwritten = 0;
+    bool keepsAppended = true;
 };
 
 } // namespace haylen::test

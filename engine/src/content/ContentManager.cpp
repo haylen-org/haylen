@@ -148,7 +148,7 @@ void ContentManager::resumeOnline() {
         return;
     }
     if (prefetchWanted && !prefetching && !inBackground) {
-        prefetch();
+        prefetchRules();
     }
     if (checkAgain && retryable) {
         checkAgain = false;
@@ -166,7 +166,7 @@ void ContentManager::pauseBackground() {
 void ContentManager::resumeBackground() {
     inBackground = false;
     if (prefetchWanted && !prefetching) {
-        prefetch();
+        prefetchRules();
     }
 }
 
@@ -223,7 +223,7 @@ void ContentManager::bringRequired() {
                 }
                 fail(*failure);
             },
-        });
+        }, Downloader::Priority::Foreground, Downloader::Use::Read);
     });
     // clang-format on
 }
@@ -252,7 +252,7 @@ void ContentManager::finishStart() {
         if (!hasServer()) {
             return;
         }
-        prefetch();
+        prefetchRules();
         if (settings.updates && settings.updates->enabled) {
             startCheck();
         }
@@ -260,7 +260,7 @@ void ContentManager::finishStart() {
     // clang-format on
 }
 
-void ContentManager::prefetch() {
+void ContentManager::prefetchRules() {
     prefetchWanted = true;
     prefetching = true;
     const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
@@ -296,7 +296,7 @@ void ContentManager::prefetch() {
                 prefetchRequest = 0;
                 if (failure && failure->getCode() == Error::Code::NetworkCancelled) {
                     if (!inBackground) {
-                        prefetch();
+                        prefetchRules();
                     }
                     return;
                 }
@@ -332,6 +332,14 @@ void ContentManager::startCheck() {
 }
 
 void ContentManager::acquire(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done) {
+    bringAssets(paths, std::move(onProgress), std::move(done), true);
+}
+
+void ContentManager::prefetch(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done) {
+    bringAssets(paths, std::move(onProgress), std::move(done), false);
+}
+
+void ContentManager::bringAssets(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done, bool readIn) {
     std::vector<std::string> wanted;
     for (const std::string& path : paths) {
         if (!engine.getPackage().exists(toPackagePath(path))) {
@@ -369,11 +377,11 @@ void ContentManager::acquire(const std::vector<std::string>& paths, ProgressCall
     }
     std::erase_if(packSources, [](const std::shared_ptr<PackSourceLink>& link) { return !link->isConnected(); });
     if (packs.empty() || packSources.empty()) {
-        bring(std::move(wanted), std::move(onProgress), std::move(done));
+        fetchFromServer(std::move(wanted), std::move(onProgress), std::move(done), readIn);
         return;
     }
     // clang-format off
-    deliverPacks(std::move(packs), 0, std::make_shared<const PackSources>(packSources), onProgress, [this, wanted = std::move(wanted), onProgress, done = std::move(done)](std::optional<Error> failure) mutable {
+    deliverPacks(std::move(packs), 0, std::make_shared<const PackSources>(packSources), onProgress, [this, wanted = std::move(wanted), onProgress, done = std::move(done), readIn](std::optional<Error> failure) mutable {
         if (failure) {
             done(std::move(failure));
             return;
@@ -383,7 +391,7 @@ void ContentManager::acquire(const std::vector<std::string>& paths, ProgressCall
             done(std::nullopt);
             return;
         }
-        bring(std::move(wanted), std::move(onProgress), std::move(done));
+        fetchFromServer(std::move(wanted), std::move(onProgress), std::move(done), readIn);
     });
     // clang-format on
 }
@@ -461,7 +469,7 @@ void ContentManager::askSource(std::string pack, std::shared_ptr<const PackSourc
     // clang-format on
 }
 
-void ContentManager::bring(std::vector<std::string> wanted, ProgressCallback onProgress, Completion done) {
+void ContentManager::fetchFromServer(std::vector<std::string> wanted, ProgressCallback onProgress, Completion done, bool readIn) {
     if (!downloader || !hasServer()) {
         const std::string& path = wanted.front();
         const std::string pack(settings.getPack(path));
@@ -485,7 +493,7 @@ void ContentManager::bring(std::vector<std::string> wanted, ProgressCallback onP
     // clang-format off
     engine.getJobs().run([content, chunks = std::move(chunks), store = release->getStore()] {
         return std::pair(Downloader::findMissing(*content->shards, chunks), store->getAvailableSpace());
-    }, [this, owner = std::weak_ptr(alive), content, onProgress = std::move(onProgress), done = std::move(done)](core::JobSystem::Result<std::pair<std::vector<Catalog::Chunk>, std::uint64_t>> found) mutable {
+    }, [this, owner = std::weak_ptr(alive), content, onProgress = std::move(onProgress), done = std::move(done), readIn](core::JobSystem::Result<std::pair<std::vector<Catalog::Chunk>, std::uint64_t>> found) mutable {
         if (owner.expired()) {
             return;
         }
@@ -505,7 +513,7 @@ void ContentManager::bring(std::vector<std::string> wanted, ProgressCallback onP
                 }
             },
             .onComplete = std::move(done),
-        });
+        }, Downloader::Priority::Foreground, readIn ? Downloader::Use::Read : Downloader::Use::Keep);
     });
     // clang-format on
 }

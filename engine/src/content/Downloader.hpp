@@ -39,6 +39,9 @@ class Downloader final {
     // Background work holds at most this many of those requests, so what the app waits for always finds a free one.
     static constexpr std::size_t kMaximumBackgroundTransfers = 1;
 
+    // The records that wait to be checked and written hold memory, and so do the bytes that a store writes later, as on the web, so no transfer starts while they hold more than this, where the checks or the writes fall behind the network.
+    static constexpr std::uint64_t kMaximumHeldBytes = std::uint64_t{16} << 20;
+
     // A record whose download stops keeps its bytes for a resume once it holds at least this much.
     static constexpr std::size_t kMinimumPartialSize = 64 * 1024;
 
@@ -54,6 +57,12 @@ class Downloader final {
     struct Progress {
         std::uint64_t receivedBytes = 0;
         std::uint64_t totalBytes = 0;
+    };
+
+    // What a request brings records for: to read them at once, as a load does, which where the store keeps records elsewhere, as on the web, reads them in again before the request ends, or to keep them on the device, as a prefetch or an update does, which leaves out the records that the store holds already.
+    enum class Use : std::uint8_t {
+        Read,
+        Keep,
     };
 
     struct Statistics {
@@ -83,12 +92,12 @@ class Downloader final {
     [[nodiscard]] static std::uint64_t measure(std::span<const Catalog::Chunk> chunks, const LocalStore& store);
 
     // Brings chunks that the device lacked when `findMissing` looked, and returns the ID of the request. Chunks that the store received since are skipped. A record that a foreground request also waits for downloads in the foreground.
-    std::uint64_t fetch(std::shared_ptr<const ShardSet> shards, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks, Priority priority = Priority::Foreground);
+    std::uint64_t fetch(std::shared_ptr<const ShardSet> shards, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks, Priority priority = Priority::Foreground, Use use = Use::Keep);
 
     // Ends a request with `NetworkCancelled`. Downloads that other requests still need go on.
     void cancel(std::uint64_t request);
 
-    // Reports the progress of the requests that received bytes since the last call, once per frame.
+    // Reports the progress of the requests that received bytes since the last call, once per frame, and starts the transfers that waited for the store to write what it held.
     void update();
 
     [[nodiscard]] const Statistics& getStatistics() const noexcept {
@@ -111,6 +120,9 @@ class Downloader final {
         Callbacks callbacks;
         Priority priority = Priority::Foreground;
         std::set<Digest> waiting;
+
+        // Every record a request to read brings, which it reads in before it ends where the store keeps records elsewhere, as on the web.
+        std::vector<Digest> records;
         Progress progress;
         bool changed = false;
     };
@@ -173,6 +185,7 @@ class Downloader final {
     std::vector<std::shared_ptr<Transfer>> activeTransfers;
     std::map<std::pair<Digest, std::uint64_t>, PartialRecord> partials;
     Statistics statistics;
+    std::uint64_t verifyingBytes = 0;
 };
 
 } // namespace haylen::content

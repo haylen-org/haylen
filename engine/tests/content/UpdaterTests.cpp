@@ -271,6 +271,82 @@ TEST_F(UpdaterTest, KeepsTheContentWhenThePowerFailsAsTheUpdateBecomesActive) {
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
 }
 
+// A store of the web lets go of the records of a large download past its budget, so a download that a load waits for reads its records in again before it ends, while a download that only keeps content on the device, such as a prefetch, reads nothing in.
+TEST_F(UpdaterTest, ReadsInTheRecordsOfADownloadThatALoadWaitsFor) {
+    publish(makeUpdate(2));
+    for (const Downloader::Use use : {Downloader::Use::Keep, Downloader::Use::Read}) {
+        const test::TemporaryDirectory folder;
+        auto files = std::make_unique<test::BrowserStoreFiles>(folder.getPath());
+        test::BrowserStoreFiles& browser = *files;
+        browser.dropAppended();
+        const auto client = std::make_unique<Client>(*this, std::move(files));
+        const UpdateOffer offer = requireOffer(*client);
+        std::optional<std::optional<Error>> fetched;
+        // clang-format off
+        client->downloader->fetch(offer.content->shards, offer.missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {
+            .onProgress = {},
+            .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
+        }, Downloader::Priority::Foreground, use);
+        // clang-format on
+        ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
+        ASSERT_FALSE(*fetched);
+
+        const bool reads = use == Downloader::Use::Read;
+        EXPECT_EQ(browser.getLoadedCount(), reads ? offer.missing.size() : 0U);
+        std::vector<std::uint8_t> scratch;
+        std::vector<std::uint8_t> plain;
+        for (const Catalog::Chunk& chunk : offer.missing) {
+            if (reads) {
+                EXPECT_NO_THROW(offer.content->shards->readChunk(chunk, scratch, plain));
+            } else {
+                EXPECT_THROW(offer.content->shards->readChunk(chunk, scratch, plain), Error);
+            }
+        }
+
+        // Keeping content that the store holds already reads nothing in and downloads nothing.
+        std::optional<std::optional<Error>> kept;
+        server.clearExchanges();
+        client->downloader->fetch(offer.content->shards, offer.missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&kept](std::optional<Error> error) { kept.emplace(std::move(error)); }});
+        ASSERT_TRUE(runtime.pumpUntil([&kept] { return kept.has_value(); }));
+        EXPECT_EQ(server.getSentBytes(), 0U);
+        EXPECT_EQ(browser.getLoadedCount(), reads ? offer.missing.size() : 0U);
+    }
+}
+
+// A store of the web writes through a worker that may fall behind the network, so downloads hold their next transfers while it holds too much that it has not written, and go on once it wrote it.
+TEST_F(UpdaterTest, HoldsTransfersWhileTheStoreFallsBehind) {
+    publish(makeUpdate(2));
+    auto files = std::make_unique<test::BrowserStoreFiles>(store.getPath());
+    test::BrowserStoreFiles& browser = *files;
+    const auto client = std::make_unique<Client>(*this, std::move(files));
+    const UpdateOffer offer = requireOffer(*client);
+    browser.setUnwrittenBytes(Downloader::kMaximumHeldBytes + 1);
+    server.clearExchanges();
+
+    std::optional<std::optional<Error>> fetched;
+    // clang-format off
+    client->downloader->fetch(offer.content->shards, offer.missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {
+        .onProgress = {},
+        .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
+    });
+    (void)runtime.pumpUntil([&client] {
+        client->downloader->update();
+        return false;
+    }, std::chrono::milliseconds(300));
+    // clang-format on
+    EXPECT_FALSE(fetched);
+    EXPECT_LT(server.getSentBytes(), offer.downloadBytes / 8) << "Only the shard indexes download while the store falls behind, and no record.";
+
+    browser.setUnwrittenBytes(0);
+    // clang-format off
+    ASSERT_TRUE(runtime.pumpUntil([&client, &fetched] {
+        client->downloader->update();
+        return fetched.has_value();
+    }));
+    // clang-format on
+    EXPECT_FALSE(*fetched);
+}
+
 TEST_F(UpdaterTest, DownloadsOnlyWhatChanged) {
     publish(makeUpdate(2));
     const std::unique_ptr<Client> client = connect();
@@ -474,7 +550,7 @@ TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
     client->downloader->fetch(content->shards, missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {
         .onProgress = [&total](const Downloader::Progress& progress) { total = std::max(total, progress.totalBytes); },
         .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
-    });
+    }, Downloader::Priority::Foreground, Downloader::Use::Read);
     // clang-format on
     ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
     ASSERT_FALSE(*fetched);

@@ -20,6 +20,10 @@ EM_JS(void, haylen_js_store_append, (const char* name, const uint8_t* data, int 
     Module.haylen.contentStore.append(UTF8ToString(name), HEAPU8.slice(data, data + size));
 });
 
+EM_JS(void, haylen_js_store_flush, (const char* name), {
+    Module.haylen.contentStore.flush(UTF8ToString(name));
+});
+
 EM_JS(void, haylen_js_store_truncate, (const char* name, double size), {
     Module.haylen.contentStore.truncate(UTF8ToString(name), size);
 });
@@ -30,6 +34,10 @@ EM_JS(void, haylen_js_store_remove, (const char* name), {
 
 EM_JS(void, haylen_js_store_read, (int request, const char* name, double offset, double size), {
     Module.haylen.contentStore.read(request, UTF8ToString(name), offset, size);
+});
+
+EM_JS(double, haylen_js_store_unwritten, (), {
+    return Module.haylen.contentStore.unwritten();
 });
 
 EM_JS(double, haylen_js_store_available, (), {
@@ -82,17 +90,20 @@ std::uint64_t WebStoreFiles::append(const std::string& name, std::span<const std
         return metadata.append(name, bytes);
     }
 
-    // A record that a download appends is about to be read, so it stays in memory too.
+    // A record that a download appends stays in memory while the budget has room for it, and goes first past it.
     std::uint64_t& size = segmentSizes[name];
     const std::uint64_t offset = size;
     size += bytes.size();
-    keep(name, offset, {bytes.begin(), bytes.end()});
+    keep(name, offset, {bytes.begin(), bytes.end()}, true);
     return offset;
 }
 
-// The worker writes and flushes every change before the next one, so a change is durable once it is kept, and a refused one surfaces at the next change.
-void WebStoreFiles::sync(const std::string&) {
+// The worker writes every change before the next one and flushes a segment when the store syncs it, so the records reach the disk before the state that names them, and a refused change surfaces at the next one.
+void WebStoreFiles::sync(const std::string& name) {
     requireKept();
+    if (isSegment(name)) {
+        haylen_js_store_flush(name.c_str());
+    }
 }
 
 void WebStoreFiles::truncate(const std::string& name, std::uint64_t size) {
@@ -148,6 +159,7 @@ void WebStoreFiles::readRange(const std::string& name, std::uint64_t offset, std
         throw content::Error(content::Error::Code::CacheCorrupt, "The content store did not read in the bytes " + std::to_string(offset) + " of \"" + name + "\" before they were read.");
     }
     found->second.lastUse = emscripten_get_now();
+    found->second.appended = false;
     std::copy_n(found->second.bytes.begin(), target.size(), target.begin());
 }
 
@@ -176,6 +188,10 @@ void WebStoreFiles::load(std::vector<Range> ranges, std::function<void(bool)> do
         haylen_js_store_read(static_cast<int>(request), range.name.c_str(), static_cast<double>(range.offset), static_cast<double>(range.size));
         requests.emplace(request, Request{.load = load, .range = std::move(range)});
     }
+}
+
+std::uint64_t WebStoreFiles::getUnwrittenBytes() const {
+    return static_cast<std::uint64_t>(haylen_js_store_unwritten());
 }
 
 void WebStoreFiles::pin(const std::vector<Range>& ranges) {
@@ -210,7 +226,7 @@ void WebStoreFiles::finishRequest(std::uint32_t request, std::span<const std::ui
     requests.erase(found);
     Load& load = loads.at(finished.load);
     if (ok && bytes.size() == finished.range.size) {
-        keep(finished.range.name, finished.range.offset, {bytes.begin(), bytes.end()});
+        keep(finished.range.name, finished.range.offset, {bytes.begin(), bytes.end()}, false);
     } else {
         load.ok = false;
     }
@@ -222,22 +238,24 @@ void WebStoreFiles::finishRequest(std::uint32_t request, std::span<const std::ui
     }
 }
 
-void WebStoreFiles::keep(const std::string& name, std::uint64_t offset, std::vector<std::uint8_t> bytes) {
+void WebStoreFiles::keep(const std::string& name, std::uint64_t offset, std::vector<std::uint8_t> bytes, bool appended) {
     residentBytes += bytes.size();
     Resident& entry = resident[{name, offset}];
     residentBytes -= entry.bytes.size();
     entry.bytes = std::move(bytes);
     entry.lastUse = emscripten_get_now();
+    entry.appended = appended;
     evict();
 }
 
 void WebStoreFiles::evict() {
-    // The ranges used least recently go first, never a pinned one and never one used a moment ago.
+    // The ranges used least recently go first, never a pinned one and never one read a moment ago, while a record that a download appended and nothing read yet may go at once.
     const double now = emscripten_get_now();
     while (residentBytes > kResidentBudget) {
         auto oldest = resident.end();
         for (auto entry = resident.begin(); entry != resident.end(); ++entry) {
-            if (!entry->second.pinned && now - entry->second.lastUse > kRecentMilliseconds && (oldest == resident.end() || entry->second.lastUse < oldest->second.lastUse)) {
+            const bool evictable = entry->second.appended || now - entry->second.lastUse > kRecentMilliseconds;
+            if (!entry->second.pinned && evictable && (oldest == resident.end() || entry->second.lastUse < oldest->second.lastUse)) {
                 oldest = entry;
             }
         }

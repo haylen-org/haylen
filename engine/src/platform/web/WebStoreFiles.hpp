@@ -17,13 +17,13 @@
 
 namespace haylen::platform {
 
-// The local content store of a web page, which the page keeps in the private file system of its origin through a worker, so downloads survive the next visit while the browser keeps the storage of the site. The small files, the state, the journal, manifests, shard indexes and staged records, also live in the memory file system, where the page restored them before the runtime started. Segments stay in the browser, and only the ranges that `load` reads in, the records that downloads append and the content an app needs to start live in memory, within a budget that drops the ranges read least recently. Every change reaches the worker in order, which writes and flushes it before the next one.
+// The local content store of a web page, which the page keeps in the private file system of its origin through a worker, so downloads survive the next visit while the browser keeps the storage of the site. The small files, the state, the journal, manifests, shard indexes and staged records, also live in the memory file system, where the page restored them before the runtime started. Segments stay in the browser, and only the ranges that `load` reads in, the records that downloads append and the content an app needs to start live in memory, within a budget that drops the ranges read least recently. A record that a download appends holds no claim to stay, so a large download never holds more than the budget, and a download that something waits for reads its records in again before it ends. Every change reaches the worker in order, and a segment reaches the disk when the store syncs it, before the state that names its records.
 class WebStoreFiles final : public content::StoreFiles {
   public:
     static constexpr std::string_view kRoot = "/content-store";
 
     // The ranges of segments in memory beyond the pinned ones stay within this budget, past which the least recently used go.
-    static constexpr std::uint64_t kResidentBudget = std::uint64_t{256} << 20;
+    static constexpr std::uint64_t kResidentBudget = std::uint64_t{64} << 20;
 
     // A range used this recently stays even past the budget, so a range that a load just read in is there for the read that follows.
     static constexpr double kRecentMilliseconds = 5000.0;
@@ -47,6 +47,7 @@ class WebStoreFiles final : public content::StoreFiles {
     [[nodiscard]] bool isResident(const std::string& name, std::uint64_t offset, std::uint64_t size) const override;
     void load(std::vector<Range> ranges, std::function<void(bool)> done) override;
     void pin(const std::vector<Range>& ranges) override;
+    [[nodiscard]] std::uint64_t getUnwrittenBytes() const override;
 
     // Receives a range that the page read from the browser, or none when the read failed.
     static void receive(std::uint32_t request, std::span<const std::uint8_t> bytes, bool ok);
@@ -62,6 +63,7 @@ class WebStoreFiles final : public content::StoreFiles {
         std::vector<std::uint8_t> bytes;
         double lastUse = 0.0;
         bool pinned = false;
+        bool appended = false;
     };
 
     struct Load {
@@ -77,7 +79,8 @@ class WebStoreFiles final : public content::StoreFiles {
 
     [[nodiscard]] static bool isSegment(std::string_view name) noexcept;
     void requireKept() const;
-    void keep(const std::string& name, std::uint64_t offset, std::vector<std::uint8_t> bytes);
+    // Keeps a range in memory as used now. A record that a download appended holds no claim to stay until something reads it.
+    void keep(const std::string& name, std::uint64_t offset, std::vector<std::uint8_t> bytes, bool appended);
     void evict();
     void finishRequest(std::uint32_t request, std::span<const std::uint8_t> bytes, bool ok);
 

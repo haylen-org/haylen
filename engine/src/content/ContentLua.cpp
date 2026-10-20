@@ -208,7 +208,7 @@ int ContentLua::prefetch(lua_State* L) {
 
     const lua::Promise promise(engine);
     // clang-format off
-    engine.getContent().acquire(paths, std::move(onProgress), [&engine, promise](std::optional<Error> failure) {
+    engine.getContent().prefetch(paths, std::move(onProgress), [&engine, promise](std::optional<Error> failure) {
         if (failure) {
             reject(engine.getLuaState(), promise, *failure);
             return;

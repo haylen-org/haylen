@@ -49,7 +49,7 @@ std::uint64_t Downloader::measure(std::span<const Catalog::Chunk> chunks, const 
     return bytes;
 }
 
-std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks, Priority priority) {
+std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks, Priority priority, Use use) {
     const std::uint64_t id = nextRequest++;
     Request& request = requests[id];
     request.callbacks = std::move(callbacks);
@@ -58,7 +58,10 @@ std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::s
     std::set<Digest> touched;
     std::vector<Digest> held;
     for (const Catalog::Chunk& chunk : chunks) {
-        if (request.waiting.contains(chunk.storedId) || store->contains(chunk.storedId)) {
+        if (use == Use::Read) {
+            request.records.push_back(chunk.storedId);
+        }
+        if (request.waiting.contains(chunk.storedId) || store->contains(chunk.storedId) || (use == Use::Keep && store->holds(chunk.storedId))) {
             continue;
         }
         request.waiting.insert(chunk.storedId);
@@ -313,7 +316,7 @@ bool Downloader::isForeground(const Transfer& transfer) const {
 }
 
 void Downloader::pump() {
-    while (activeTransfers.size() < kMaximumTransfers && !waitingTransfers.empty()) {
+    while (activeTransfers.size() < kMaximumTransfers && !waitingTransfers.empty() && verifyingBytes + store->getUnwrittenBytes() <= kMaximumHeldBytes) {
         // The foreground goes first, and background work takes a request only while nothing in the foreground waits and it holds fewer than its share.
         auto next = std::ranges::find_if(waitingTransfers, [this](const std::shared_ptr<Transfer>& waiting) { return isForeground(*waiting); });
         if (next == waitingTransfers.end()) {
@@ -481,8 +484,10 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
     }
 
     // The record is checked against the signed catalog and the index of its shard and opened on the task pool, and only then written to the store on the I/O pool.
+    const std::uint64_t size = record.size();
+    verifyingBytes += size;
     // clang-format off
-    jobs.post([this, &pool = jobs, owner = std::weak_ptr(alive), localStore = store, chunk = found->second.chunk, entry, keys = shard.keys, keyId = shard.index->getHeader().keyId, record = std::move(record)]() mutable {
+    jobs.post([this, &pool = jobs, owner = std::weak_ptr(alive), localStore = store, chunk = found->second.chunk, entry, keys = shard.keys, keyId = shard.index->getHeader().keyId, size, record = std::move(record)]() mutable {
         std::optional<Error> failure;
         try {
             const ChunkRecord header = ChunkRecord::parse(std::span(record).first<ChunkRecord::kHeaderSize>());
@@ -497,22 +502,24 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
             failure = error;
         }
         if (failure) {
-            pool.postToFrame([this, owner, storedId = chunk.storedId, failure] {
+            pool.postToFrame([this, owner, storedId = chunk.storedId, size, failure] {
                 if (!owner.expired()) {
+                    verifyingBytes -= size;
                     stored(storedId, failure);
                 }
             });
             return;
         }
-        pool.postIo([this, &pool, owner, localStore, storedId = chunk.storedId, keyId, record = std::move(record)] {
+        pool.postIo([this, &pool, owner, localStore, storedId = chunk.storedId, keyId, size, record = std::move(record)] {
             std::optional<Error> writeFailure;
             try {
                 localStore->addRecord(keyId, record);
             } catch (const Error& error) {
                 writeFailure = error;
             }
-            pool.postToFrame([this, owner, storedId, writeFailure] {
+            pool.postToFrame([this, owner, storedId, size, writeFailure] {
                 if (!owner.expired()) {
+                    verifyingBytes -= size;
                     stored(storedId, writeFailure);
                 }
             });
@@ -583,15 +590,24 @@ void Downloader::complete(std::uint64_t id, std::optional<Error> failure) {
 
     // The callbacks run in a later turn of the loop, so callers never meet them inside their own call.
     // clang-format off
-    jobs.postToFrame([owner = std::weak_ptr(alive), callbacks = std::move(request.callbacks), progress = request.progress, failure = std::move(failure)] {
-        if (owner.expired()) {
-            return;
-        }
-        if (callbacks.onProgress && !failure) {
-            callbacks.onProgress({.receivedBytes = progress.totalBytes, .totalBytes = progress.totalBytes});
-        }
-        callbacks.onComplete(failure);
-    });
+    auto finish = [&pool = jobs, owner = std::weak_ptr(alive), callbacks = std::move(request.callbacks), progress = request.progress](std::optional<Error> result) mutable {
+        pool.postToFrame([owner, callbacks = std::move(callbacks), progress, result = std::move(result)] {
+            if (owner.expired()) {
+                return;
+            }
+            if (callbacks.onProgress && !result) {
+                callbacks.onProgress({.receivedBytes = progress.totalBytes, .totalBytes = progress.totalBytes});
+            }
+            callbacks.onComplete(result);
+        });
+    };
+    if (failure || request.records.empty()) {
+        finish(std::move(failure));
+    } else {
+        store->load(request.records, [finish = std::move(finish)](bool ok) mutable {
+            finish(ok ? std::nullopt : std::optional(Error(Error::Code::CacheCorrupt, "The content store could not read in the downloaded content. Try again.")));
+        });
+    }
     // clang-format on
     dropUnwanted();
 }
@@ -624,6 +640,9 @@ void Downloader::update() {
     }
     for (const auto& [report, progress] : reports) {
         report(progress);
+    }
+    if (!waitingTransfers.empty()) {
+        pump();
     }
 }
 
