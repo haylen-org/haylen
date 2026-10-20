@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -12,6 +13,7 @@
 
 #include "content/FolderStoreFiles.hpp"
 #include "content/StoreFiles.hpp"
+#include "haylen/content/Error.hpp"
 
 namespace haylen::platform {
 
@@ -49,6 +51,9 @@ class WebStoreFiles final : public content::StoreFiles {
     // Receives a range that the page read from the browser, or none when the read failed.
     static void receive(std::uint32_t request, std::span<const std::uint8_t> bytes, bool ok);
 
+    // Receives the first change that the browser refused, after which the worker keeps no later change, so the files of the browser stay at the last state they hold whole. Every later change of the store throws `QuotaExceeded` when the browser ran out of quota and `PermissionDenied` otherwise.
+    static void refuse(bool quota, std::string message);
+
   private:
     static constexpr std::string_view kSegmentFolder = "segments";
     static constexpr std::string_view kSizesFile = ".segments";
@@ -71,6 +76,7 @@ class WebStoreFiles final : public content::StoreFiles {
     };
 
     [[nodiscard]] static bool isSegment(std::string_view name) noexcept;
+    void requireKept() const;
     void keep(const std::string& name, std::uint64_t offset, std::vector<std::uint8_t> bytes);
     void evict();
     void finishRequest(std::uint32_t request, std::span<const std::uint8_t> bytes, bool ok);
@@ -78,6 +84,7 @@ class WebStoreFiles final : public content::StoreFiles {
     static WebStoreFiles* active;
 
     content::FolderStoreFiles metadata;
+    std::optional<content::Error> refused;
     std::map<std::string, std::uint64_t> segmentSizes;
     mutable std::map<std::pair<std::string, std::uint64_t>, Resident> resident;
     std::uint64_t residentBytes = 0;

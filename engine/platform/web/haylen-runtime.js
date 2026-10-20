@@ -2133,6 +2133,7 @@ Module.haylen = Module.haylen || {};
     haylen.contentStore = (function () {
         let worker = null;
         let space = 0;
+        let refused = false;
         let nextId = 1;
         const replies = new Map();
 
@@ -2177,8 +2178,10 @@ Module.haylen = Module.haylen || {};
                         replies.delete(message.id);
                         return;
                     }
-                    if (!message.ok) {
-                        console.warn("The browser did not keep a change of the downloaded content, which downloads again on the next visit: " + message.message);
+                    if (!message.ok && !refused) {
+                        refused = true;
+                        console.warn("The browser did not keep a change of the downloaded content, so it keeps the content it held before: " + message.message);
+                        callEngine("haylen_web_store_refused", null, ["number", "string"], [message.quota ? 1 : 0, message.message]);
                     }
                     if (message.op === "estimate" && message.ok) {
                         space = message.available;

@@ -62,12 +62,20 @@ std::optional<std::vector<std::uint8_t>> WebStoreFiles::read(const std::string& 
     return metadata.read(name);
 }
 
+void WebStoreFiles::requireKept() const {
+    if (refused) {
+        throw *refused;
+    }
+}
+
 void WebStoreFiles::write(const std::string& name, std::span<const std::uint8_t> bytes) {
+    requireKept();
     metadata.write(name, bytes);
     haylen_js_store_write(name.c_str(), bytes.data(), static_cast<int>(bytes.size()));
 }
 
 std::uint64_t WebStoreFiles::append(const std::string& name, std::span<const std::uint8_t> bytes) {
+    requireKept();
     haylen_js_store_append(name.c_str(), bytes.data(), static_cast<int>(bytes.size()));
     if (!isSegment(name)) {
         return metadata.append(name, bytes);
@@ -81,14 +89,19 @@ std::uint64_t WebStoreFiles::append(const std::string& name, std::span<const std
     return offset;
 }
 
-void WebStoreFiles::sync(const std::string&) {}
+// The worker writes and flushes every change before the next one, so a change is durable once it is kept, and a refused one surfaces at the next change.
+void WebStoreFiles::sync(const std::string&) {
+    requireKept();
+}
 
 void WebStoreFiles::truncate(const std::string& name, std::uint64_t size) {
+    requireKept();
     metadata.truncate(name, size);
     haylen_js_store_truncate(name.c_str(), static_cast<double>(size));
 }
 
 void WebStoreFiles::remove(const std::string& name) {
+    requireKept();
     haylen_js_store_remove(name.c_str());
     if (!isSegment(name)) {
         metadata.remove(name);
@@ -178,6 +191,15 @@ void WebStoreFiles::receive(std::uint32_t request, std::span<const std::uint8_t>
     }
 }
 
+void WebStoreFiles::refuse(bool quota, std::string message) {
+    if (active == nullptr || active->refused) {
+        return;
+    }
+    const content::Error::Code code = quota ? content::Error::Code::QuotaExceeded : content::Error::Code::PermissionDenied;
+    const std::string reason = quota ? "The browser ran out of storage for this site, so the downloaded content stays as it was before the last change." : "The browser refused a change of the downloaded content, which stays as it was before that change.";
+    active->refused.emplace(code, reason, content::Error::Details{.platformMessage = std::move(message)});
+}
+
 void WebStoreFiles::finishRequest(std::uint32_t request, std::span<const std::uint8_t> bytes, bool ok) {
     const auto found = requests.find(request);
     if (found == requests.end()) {
@@ -232,5 +254,9 @@ extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_store_received(int request, const std::uint8_t* bytes, int size, int ok) {
     haylen::platform::WebStoreFiles::receive(static_cast<std::uint32_t>(request), {bytes, static_cast<std::size_t>(size)}, ok != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_store_refused(int quota, const char* message) {
+    haylen::platform::WebStoreFiles::refuse(quota != 0, message);
 }
 }

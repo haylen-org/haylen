@@ -43,6 +43,7 @@ class Error final : public std::runtime_error {
         UnexpectedHttpStatus,
         UpdateInterrupted,
         DiskFull,
+        QuotaExceeded,
         PermissionDenied,
         CacheCorrupt,
         InsufficientStorage,
@@ -74,7 +75,7 @@ class Error final : public std::runtime_error {
     [[nodiscard]] static std::string_view getCodeName(Code value) noexcept;
 
   private:
-    static const std::array<std::pair<std::string_view, Code>, 33> kCodeNames;
+    static const std::array<std::pair<std::string_view, Code>, 34> kCodeNames;
 
     Code code;
     Details details;

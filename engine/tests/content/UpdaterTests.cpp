@@ -27,6 +27,7 @@
 #include "support/BrowserStoreFiles.hpp"
 #include "support/ContentServer.hpp"
 #include "support/LimitedStoreFiles.hpp"
+#include "support/QuotaStoreFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -214,6 +215,21 @@ TEST_F(UpdaterTest, KeepsTheContentWhenTheDeviceLacksRoom) {
     EXPECT_TRUE(error->isRetryable());
     EXPECT_GT(error->getDetails().requiredBytes, error->getDetails().availableBytes);
     EXPECT_EQ(error->getDetails().availableBytes, 10 * kMegabyte);
+    EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
+}
+
+// A browser that refuses a record past its quota, after its estimate promised room, leaves the content as it was and reports the code that tells the app to free storage.
+TEST_F(UpdaterTest, KeepsTheContentWhenTheBrowserRunsOutOfQuota) {
+    Files update = makeUpdate(2);
+    update["content/maps/world.bin"] = test::TestFiles::randomBytes(3 * kMegabyte, 22);
+    publish(update);
+    const auto client = std::make_unique<Client>(*this, std::make_unique<test::QuotaStoreFiles>(store.getPath(), kMegabyte));
+    const std::optional<Error> error = install(*client, requireOffer(*client));
+
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error->getCode(), Error::Code::QuotaExceeded);
+    EXPECT_EQ(Error::getCodeName(error->getCode()), "quotaExceeded");
+    EXPECT_TRUE(error->isRetryable());
     EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
 }
 

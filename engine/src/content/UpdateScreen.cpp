@@ -73,6 +73,8 @@ std::string UpdateScreen::getStatus() const {
         case Error::Code::InsufficientStorage:
         case Error::Code::DiskFull:
             return std::format("The device needs {} of free room for the content. Free some room and try again.", formatBytes(error->getDetails().requiredBytes.value_or(0)));
+        case Error::Code::QuotaExceeded:
+            return "The browser keeps no more content for this site. Free some of its storage and try again.";
         default:
             return error->what();
         }

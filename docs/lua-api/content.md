@@ -40,7 +40,7 @@ Returns the last failure as a table, or `nil`:
 
 | Field | Meaning |
 | --- | --- |
-| `code` | The kind of failure, such as `'networkOffline'`, `'networkTimeout'`, `'insufficientStorage'`, `'rangeUnsupported'`, `'manifestIncompatible'` or `'manifestRollbackRejected'`, as the [content guide](../content/content.md#errors) lists them. |
+| `code` | The kind of failure, such as `'networkOffline'`, `'networkTimeout'`, `'insufficientStorage'`, `'quotaExceeded'`, `'rangeUnsupported'`, `'manifestIncompatible'` or `'manifestRollbackRejected'`, as the [content guide](../content/content.md#errors) lists them. |
 | `message` | The sentence that explains it. |
 | `retryable` | Whether trying again may succeed without a new build of the app, such as once the network comes back or room is freed. |
 | `httpStatus` | The status the server answered, when the failure was one. |

@@ -5,7 +5,7 @@
 namespace haylen::content {
 
 // clang-format off
-const std::array<std::pair<std::string_view, Error::Code>, 33> Error::kCodeNames{{
+const std::array<std::pair<std::string_view, Error::Code>, 34> Error::kCodeNames{{
     {"unsupportedFormat", Code::UnsupportedFormat},
     {"unsupportedVersion", Code::UnsupportedVersion},
     {"corruptHeader", Code::CorruptHeader},
@@ -35,6 +35,7 @@ const std::array<std::pair<std::string_view, Error::Code>, 33> Error::kCodeNames
     {"unexpectedHttpStatus", Code::UnexpectedHttpStatus},
     {"updateInterrupted", Code::UpdateInterrupted},
     {"diskFull", Code::DiskFull},
+    {"quotaExceeded", Code::QuotaExceeded},
     {"permissionDenied", Code::PermissionDenied},
     {"cacheCorrupt", Code::CacheCorrupt},
     {"insufficientStorage", Code::InsufficientStorage},
@@ -54,6 +55,7 @@ bool Error::isRetryable() const noexcept {
     case Code::NetworkFailed:
     case Code::UpdateInterrupted:
     case Code::DiskFull:
+    case Code::QuotaExceeded:
     case Code::CacheCorrupt:
     case Code::InsufficientStorage:
     case Code::StoreAssetUnavailable:
