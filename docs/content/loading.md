@@ -379,8 +379,8 @@ Every platform ships the same protected release, built for its profile, and the 
 
 | Platform | What ships | How content arrives later |
 | --- | --- | --- |
-| Apple | The release in `app/` of the bundle resources, and the bootstrap compiled into the app. | From the server of `updates.baseUrl`, and on macOS from `packs/` next to the bundle. |
-| Android | The release in the assets of the APK or the App Bundle, with its shards uncompressed, and `libhaylen_app.so` with the bootstrap for every ABI. | From the server of `updates.baseUrl`. |
+| Apple | The release in `app/` of the bundle resources, and the bootstrap compiled into the app. | From the server of `updates.baseUrl`, on macOS from `packs/` next to the bundle, and on iOS and tvOS 26 and later the named packs from the asset packs of Background Assets that the App Store hosts, through a plugin such as `background-assets`. |
+| Android | The release in the assets of the APK or the App Bundle, with its shards uncompressed, a release too large for the base module of Google Play in install-time asset packs, and `libhaylen_app.so` with the bootstrap for every ABI. | From the server of `updates.baseUrl`, and the named packs from `fast-follow` and `on-demand` asset packs of Google Play, through a plugin such as `play-asset-delivery`. |
 | Steam | The depot of the app with the executable or the bundle and its release, and a depot per pack. | Through SteamPipe, which updates changed files, and from the server of `updates.baseUrl` when the app names one. |
 | Web | The runtime of the app for WebGPU and WebGL2 and the whole release in `app/` of the site. | By byte range from `app/` of the site, into the browser store. |
 
@@ -404,6 +404,15 @@ MyGame.app/
 
 On macOS the release sits in `Contents/Resources/app/`. The app plays it from the bundle, keeps downloads in `Application Support/<identifier>-content` and on tvOS in `Caches/<identifier>-content`, and on macOS reads packs from `packs/` next to the bundle.
 
+An app with a plugin that delivers its named packs from the App Store, such as `background-assets`, also gets an asset pack of Background Assets for each pack, which the developer uploads to App Store Connect with the build, and the plugin adds the downloader extension, the App Group and the keys of the `Info.plist` that the system needs:
+
+```text
+build/apps/my-game-1a2b3c4d/release/apple.asset-packs/
+  chapter-2.aar                The pack "chapter-2", which downloads when the app loads one of its assets.
+  intro.music.aar              The pack "intro.music", which the plugin lists in "prefetch" and downloads with the install.
+MyGame.app/Extensions/Downloads.appex   The downloader extension of the plugin.
+```
+
 ### Google Play
 
 ```sh
@@ -422,7 +431,15 @@ assets/haylen-plugins.json     The plugins with an Android part and their values
 lib/<abi>/libhaylen_app.so     The Lua player with the bootstrap of the app, without symbols.
 ```
 
-Everything ships in the base module, and the template keeps `noCompress` of `hpak`, which `check --config Release` verifies. Downloads stay in `no_backup/<identifier>-content` of the data folder of the app.
+The template keeps `noCompress` of `hpak`, which `check --config Release` verifies, and downloads stay in `no_backup/<identifier>-content` of the data folder of the app. Haylen picks the asset packs on its own, so the developer never splits the release by hand:
+
+```text
+haylen/asset-packs/haylencontent1/src/main/assets/app/<id>.hpak   The content shards of a release larger than the share of the base module that the code leaves it, 384 MiB, in install-time asset packs of at most 1 GiB, which install with the app.
+haylen/asset-packs/chapter_2/src/main/assets/<id>.hpak            The pack "chapter-2" as an on-demand asset pack, with a plugin that declares "assetPacks", such as "play-asset-delivery".
+haylen/asset-packs/intro_music/src/main/assets/<id>.hpak          The pack "intro.music" as a fast-follow asset pack, which the plugin lists in "fastFollow".
+```
+
+The manifests and the shards of the app domain, the code of the app, always stay in the base module, the shards of Android releases aim for 256 MiB so each fits its pack, and the App Bundle of `bundleRelease` holds every pack. The command `run` installs a release with install-time packs from the universal APK of the bundle, and a release with packs that Google Play delivers later with bundletool in the local testing mode of Play, as the [distribution guide](../tools/distribution.md#release-builds) describes, and the folders `<pack>/assets/` of the App Bundle show what each pack holds.
 
 ### Steam
 

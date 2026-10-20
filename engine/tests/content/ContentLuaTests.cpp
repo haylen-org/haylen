@@ -35,7 +35,7 @@ TEST_F(ContentLuaTest, TellsWhatPlaysAndWhatIsOnTheDevice) {
     EXPECT_EQ(fixture.lua("local progress = content.progress() return progress.receivedBytes .. ' ' .. progress.totalBytes"), "0 0");
     EXPECT_EQ(fixture.lua("return tostring(content.error()) .. ' ' .. tostring(content.update())"), "nil nil");
     EXPECT_EQ(fixture.lua("local stats = content.stats() return stats.generation .. ' ' .. stats.storedRecords"), "0 0");
-    EXPECT_EQ(fixture.lua("local stats = content.stats() return stats.openShards .. ' ' .. stats.decodedChunks .. ' ' .. stats.activeReads .. ' ' .. stats.wantedRecords .. ' ' .. stats.downloadRate .. ' ' .. stats.reusedBytes"), "0 0 0 0 0.0 0");
+    EXPECT_EQ(fixture.lua("local stats = content.stats() return stats.openShards .. ' ' .. stats.decodedChunks .. ' ' .. stats.activeReads .. ' ' .. stats.wantedRecords .. ' ' .. stats.downloadRate .. ' ' .. stats.reusedBytes .. ' ' .. stats.installedShards .. ' ' .. stats.remoteShards .. ' ' .. stats.missingChunks .. ' ' .. stats.pendingPrefetch"), "0 0 0 0 0.0 0 0 0 0 0");
 }
 
 TEST_F(ContentLuaTest, BringsAGroupWithoutLoadingIt) {

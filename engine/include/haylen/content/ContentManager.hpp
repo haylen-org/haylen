@@ -61,7 +61,7 @@ class ContentManager final {
         std::uint64_t reusedBytes = 0;
     };
 
-    // The content and its downloads for debugging. The reads count since the content was mounted: the shards open now, the chunks decoded with their plain bytes and the milliseconds that reading, decrypting, decompressing and checking them took, and the reads that run now. The downloads count since the app started, with the records that still wait, the range requests that run, the bytes per second over the last half second and the bytes that the last update offer reuses.
+    // The content and its downloads for debugging. The reads count since the content was mounted: the shards open now, the chunks decoded with their plain bytes and the milliseconds that reading, decrypting, decompressing and checking them took, and the reads that run now. The downloads count since the app started, with the records that still wait, the range requests that run, the bytes per second over the last half second and the bytes that the last update offer reuses. A survey on a worker, at most once a second while something reads the statistics, counts the shards of the content that the device holds as files, installed with the app or by a store, the shards it does not, whose records the local store or the server brings, the chunks that the device holds in neither, and the prefetched chunks among them.
     struct Statistics {
         std::uint64_t generation = 0;
         std::uint64_t catalogFiles = 0;
@@ -80,6 +80,10 @@ class ContentManager final {
         std::uint64_t activeTransfers = 0;
         double downloadRate = 0.0;
         std::uint64_t reusedBytes = 0;
+        std::uint64_t installedShards = 0;
+        std::uint64_t remoteShards = 0;
+        std::uint64_t missingChunks = 0;
+        std::uint64_t pendingPrefetch = 0;
     };
 
     using ProgressCallback = std::function<void(const Progress&)>;
@@ -161,6 +165,15 @@ class ContentManager final {
   private:
     static const std::array<std::pair<std::string_view, Status>, 5> kStatusNames;
     static constexpr std::chrono::milliseconds kRateInterval{500};
+    static constexpr std::chrono::milliseconds kSurveyInterval{1000};
+
+    // What the last survey of the content counted.
+    struct Survey {
+        std::uint64_t installedShards = 0;
+        std::uint64_t remoteShards = 0;
+        std::uint64_t missingChunks = 0;
+        std::uint64_t pendingPrefetch = 0;
+    };
 
     // A source of packs as the manager holds it. Removing it answers the requests that wait for it as not delivered, and its late answers change nothing.
     class PackSourceLink final : public core::Connection::Link {
@@ -196,6 +209,7 @@ class ContentManager final {
     void bringRequired();
     void finishStart();
     void prefetchRules();
+    void startSurvey();
     void fail(const Error& failure);
 
     // The network and the state of the app steer the work of the manager: the work that failed for want of a network starts again when it comes back, and the background downloads stop while the app is in the background.
@@ -244,6 +258,10 @@ class ContentManager final {
     std::chrono::steady_clock::time_point rateSampled = std::chrono::steady_clock::now();
     std::uint64_t rateBytes = 0;
     double downloadRate = 0.0;
+    Survey survey;
+    mutable bool surveyWanted = false;
+    bool surveying = false;
+    std::chrono::steady_clock::time_point surveyed;
 };
 
 } // namespace haylen::content

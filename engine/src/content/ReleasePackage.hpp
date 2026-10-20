@@ -86,6 +86,9 @@ class ReleasePackage final : public io::Package {
     // The keys the release decrypts with now, which grow as `acquireKey` brings keys that later content needs. Content opened before keeps the keys it opened with.
     [[nodiscard]] std::shared_ptr<const KeyRing> getKeys() const;
 
+    // Tells for each shard of a content whether the device holds its file, in the release or in a pack folder, without opening any.
+    [[nodiscard]] std::vector<bool> findInstalledShards(const Content& shown) const;
+
     // Asks the key provider for a key that the release does not hold, such as the key of an update, and calls `done` once, from any thread, with whether the key is in the ring now. A release without a provider, or whose provider does not give the key, answers false, and the content the release plays stays as it is.
     void acquireKey(const Digest& id, std::function<void(bool)> done);
     [[nodiscard]] std::span<const VerifyingKey> getTrustedKeys() const noexcept {

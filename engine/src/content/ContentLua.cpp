@@ -265,7 +265,7 @@ int ContentLua::cancel(lua_State* L) {
 
 int ContentLua::stats(lua_State* L) {
     const ContentManager::Statistics statistics = getManager(L).getStatistics();
-    lua_createtable(L, 0, 17);
+    lua_createtable(L, 0, 21);
     setInteger(L, "generation", statistics.generation);
     setInteger(L, "catalogFiles", statistics.catalogFiles);
     setInteger(L, "storedRecords", statistics.storedRecords);
@@ -285,6 +285,10 @@ int ContentLua::stats(lua_State* L) {
     lua_pushnumber(L, statistics.downloadRate);
     lua_setfield(L, -2, "downloadRate");
     setInteger(L, "reusedBytes", statistics.reusedBytes);
+    setInteger(L, "installedShards", statistics.installedShards);
+    setInteger(L, "remoteShards", statistics.remoteShards);
+    setInteger(L, "missingChunks", statistics.missingChunks);
+    setInteger(L, "pendingPrefetch", statistics.pendingPrefetch);
     return 1;
 }
 

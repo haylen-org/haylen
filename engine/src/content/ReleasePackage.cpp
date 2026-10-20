@@ -158,6 +158,17 @@ std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<
     return std::make_shared<const Content>(Content{.manifest = std::move(manifest), .catalog = std::move(catalog), .shards = std::move(shards), .package = std::move(package)});
 }
 
+std::vector<bool> ReleasePackage::findInstalledShards(const Content& shown) const {
+    const std::vector<ShardReference>& references = shown.shards->getReferences();
+    std::vector<bool> installed(references.size());
+    const std::scoped_lock lock(packs->mutex);
+    for (std::size_t index = 0; index < references.size(); ++index) {
+        const std::string name = references[index].getFileName();
+        installed[index] = files->exists(name) || std::ranges::any_of(packs->folders, [&name](const std::shared_ptr<const io::Package>& pack) { return pack->exists(name); });
+    }
+    return installed;
+}
+
 void ReleasePackage::addPackFolder(const std::filesystem::path& folder) {
     if (!std::filesystem::is_directory(folder)) {
         throw std::runtime_error("The pack folder \"" + folder.generic_string() + "\" does not exist.");

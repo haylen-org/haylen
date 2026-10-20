@@ -285,6 +285,32 @@ TEST_F(ContentManagerTest, StopsPrefetchingInTheBackgroundAndGoesOnOnceActive) {
     ASSERT_TRUE(frameUntil([this] { return engine->getContent().isLocal("music/theme.ogg"); }));
 }
 
+TEST_F(ContentManagerTest, CountsTheShardsAndChunksThatTheDeviceHoldsAndLacks) {
+    server.setStalls(true);
+    run(ship());
+    ContentManager::Statistics statistics;
+    // clang-format off
+    ASSERT_TRUE(frameUntil([this, &statistics] {
+        statistics = engine->getContent().getStatistics();
+        return statistics.installedShards > 0;
+    }));
+    // clang-format on
+    EXPECT_GT(statistics.remoteShards, 0U) << "The shards of the level and the music stay with the server.";
+    EXPECT_GE(statistics.missingChunks, 2U) << "The level and the music are not on the device.";
+    EXPECT_GE(statistics.pendingPrefetch, 1U);
+    EXPECT_LT(statistics.pendingPrefetch, statistics.missingChunks) << "The level loads on demand, so only the music is prefetched.";
+
+    server.setStalls(false);
+    // clang-format off
+    ASSERT_TRUE(frameUntil([this, &statistics] {
+        statistics = engine->getContent().getStatistics();
+        return statistics.pendingPrefetch == 0;
+    }));
+    // clang-format on
+    EXPECT_TRUE(engine->getContent().isLocal("music/theme.ogg"));
+    EXPECT_GE(statistics.missingChunks, 1U) << "The level still waits for the app to load it.";
+}
+
 // Apple systems such as iOS and tvOS may empty the caches of an app while it is suspended, so the content that the app needs comes down again once it is active.
 TEST_F(ContentManagerTest, BringsBackTheContentThatTheDeviceRemovedInTheBackground) {
     run(shipWithoutContent());

@@ -649,12 +649,15 @@ void ContentManager::retry() {
 }
 
 void ContentManager::update() {
+    const auto now = std::chrono::steady_clock::now();
+    if (release && surveyWanted && !surveying && now - surveyed >= kSurveyInterval) {
+        startSurvey();
+    }
     if (!downloader) {
         return;
     }
     downloader->update();
 
-    const auto now = std::chrono::steady_clock::now();
     if (now - rateSampled >= kRateInterval) {
         const std::uint64_t downloaded = downloader->getStatistics().downloadedBytes;
         downloadRate = static_cast<double>(downloaded - rateBytes) / std::chrono::duration<double>(now - rateSampled).count();
@@ -663,8 +666,41 @@ void ContentManager::update() {
     }
 }
 
+void ContentManager::startSurvey() {
+    surveyWanted = false;
+    surveying = true;
+    // clang-format off
+    engine.getJobs().run([release = std::shared_ptr<const ReleasePackage>(release), content = release->getContent(), rules = settings] {
+        const std::vector<bool> installed = release->findInstalledShards(*content);
+        const std::vector<bool> appInstalled = release->findInstalledShards(*release->getApp());
+        const LocalStore* store = release->getStore().get();
+        const auto isLocal = [&installed, store](const Catalog::Chunk& chunk) { return installed[chunk.shard] || (store != nullptr && store->contains(chunk.storedId)); };
+        Survey counted;
+        counted.installedShards = static_cast<std::uint64_t>(std::ranges::count(installed, true) + std::ranges::count(appInstalled, true));
+        counted.remoteShards = installed.size() + appInstalled.size() - counted.installedShards;
+        for (std::uint64_t index = 0; index < content->catalog->getChunkCount(); ++index) {
+            counted.missingChunks += isLocal(content->catalog->getChunk(index)) ? 0 : 1;
+        }
+        for (const Catalog::Chunk& chunk : Updater::getChunks(*content->catalog, Delivery::Prefetch, rules)) {
+            counted.pendingPrefetch += isLocal(chunk) ? 0 : 1;
+        }
+        return counted;
+    }, [this, owner = std::weak_ptr(alive)](core::JobSystem::Result<Survey> counted) {
+        if (owner.expired()) {
+            return;
+        }
+        surveying = false;
+        surveyed = std::chrono::steady_clock::now();
+        if (counted.isOk()) {
+            survey = *counted.value;
+        }
+    });
+    // clang-format on
+}
+
 ContentManager::Statistics ContentManager::getStatistics() const {
-    Statistics statistics{.generation = getGeneration()};
+    surveyWanted = true;
+    Statistics statistics{.generation = getGeneration(), .installedShards = survey.installedShards, .remoteShards = survey.remoteShards, .missingChunks = survey.missingChunks, .pendingPrefetch = survey.pendingPrefetch};
     if (release) {
         const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
         statistics.catalogFiles = content->catalog->getFileCount();
