@@ -1034,6 +1034,14 @@ class DesktopProjectTest(unittest.TestCase):
         self.assertIn("MSVC_RUNTIME_LIBRARY MultiThreadedDebugDLL", haylen.desktop_cmake("windows", "Debug", {}))
         self.assertIn('INSTALL_RPATH "$ORIGIN;$ORIGIN/lib"', haylen.desktop_cmake("linux", "Release", {}))
 
+    def test_the_content_reports_reach_the_terminal(self):
+        # What verify, inspect and diff find is what the developer reads, so it prints instead of staying in the log of the command.
+        arguments = haylen.argparse.Namespace(app=str(self.app), platform="linux", engine_config="Release", jobs=1, chunks=False, earlier=str(self.scratch / "a"), later=str(self.scratch / "b"))
+        for command in (haylen.command_content_verify, haylen.command_content_inspect, haylen.command_content_diff):
+            with mock.patch.object(haylen, "content_tool", return_value=Path("haylen-content")), mock.patch.object(haylen, "ensure_keys", return_value=Path("keys")), mock.patch.object(haylen, "content_release", return_value=Path("release")), mock.patch.object(haylen, "run") as run:
+                command(arguments)
+            self.assertTrue(run.call_args.kwargs.get("stream"), command.__name__)
+
     def test_r8_keeps_every_java_method_that_the_engine_calls(self):
         # The engine resolves its Java methods by name when the library loads, so a method that R8 removes from a minified app stops the app before it starts.
         bridge = (haylen.ENGINE_DIR / "src" / "platform" / "android" / "JavaBridge.cpp").read_text(encoding="utf-8")

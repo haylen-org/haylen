@@ -4639,19 +4639,19 @@ def command_content_build(args: argparse.Namespace) -> None:
 def command_content_verify(args: argparse.Namespace) -> None:
     app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
     tool = content_tool(args.engine_config, args.jobs)
-    run([tool, "verify", content_release(app, args), "--keys", ensure_keys(app, tool)])
+    run([tool, "verify", content_release(app, args), "--keys", ensure_keys(app, tool)], echo=False, stream=True)
 
 
 def command_content_inspect(args: argparse.Namespace) -> None:
     app = App(resolve_app(args.app), RUN_TARGETS[args.platform].plugins)
     tool = content_tool(args.engine_config, args.jobs)
-    run([tool, "inspect", content_release(app, args), "--keys", ensure_keys(app, tool), *(["--chunks"] if args.chunks else [])], echo=False)
+    run([tool, "inspect", content_release(app, args), "--keys", ensure_keys(app, tool), *(["--chunks"] if args.chunks else [])], echo=False, stream=True)
 
 
 def command_content_diff(args: argparse.Namespace) -> None:
     app = App(resolve_app(args.app), host_name())
     tool = content_tool(args.engine_config, args.jobs)
-    run([tool, "diff", Path(args.earlier).resolve(), Path(args.later).resolve(), "--keys", ensure_keys(app, tool)], echo=False)
+    run([tool, "diff", Path(args.earlier).resolve(), Path(args.later).resolve(), "--keys", ensure_keys(app, tool)], echo=False, stream=True)
 
 
 def command_content_publish(args: argparse.Namespace) -> None:

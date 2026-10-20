@@ -51,6 +51,13 @@ class ReleaseInspector final {
         Domain content;
     };
 
+    // A file of both releases whose delivery changed, such as content that became on demand, which changes what the app downloads before it starts even when no chunk changed.
+    struct Redelivery {
+        std::string path;
+        Delivery before = Delivery::Required;
+        Delivery after = Delivery::Required;
+    };
+
     struct Difference {
         std::uint64_t newChunks = 0;
         std::uint64_t newBytes = 0;
@@ -65,6 +72,7 @@ class ReleaseInspector final {
         std::vector<std::string> addedFiles;
         std::vector<std::string> changedFiles;
         std::vector<std::string> removedFiles;
+        std::vector<Redelivery> redeliveredFiles;
     };
 
     struct Verification {

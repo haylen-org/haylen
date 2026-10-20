@@ -302,6 +302,9 @@ void ContentTool::runDiff(Arguments& arguments) {
                 output << "  " << label << " \"" << path << "\".\n";
             }
         }
+        for (const ReleaseInspector::Redelivery& file : difference.redeliveredFiles) {
+            output << std::format("  Delivered \"{}\" as \"{}\" instead of \"{}\".\n", file.path, core::AppConfig::deliveryName(file.after), core::AppConfig::deliveryName(file.before));
+        }
         download += difference.downloadBytes + std::filesystem::file_size(after / ReleasePackage::getManifestFile(newer->envelope.domain));
     }
     output << std::format("An app that holds the earlier release downloads about {} bytes to reach the later one.\n", download);

@@ -99,6 +99,24 @@ TEST_F(ReleaseInspectorTest, ComparesTwoReleases) {
     EXPECT_TRUE(app.newShards.empty());
 }
 
+// A file whose delivery changes downloads at another time, which the comparison names even when the file kept its chunks.
+TEST_F(ReleaseInspectorTest, NamesTheFilesWhoseDeliveryChanged) {
+    Files files = makeFiles();
+    release.build(io::MemoryPackage("source", files));
+    const ReleaseInspector::Report before = makeInspector().inspect(release.getFolder());
+
+    files["app.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "world/**", "mode": "onDemand"}]}})");
+    release.build(io::MemoryPackage("source", files));
+    const ReleaseInspector::Report after = makeInspector().inspect(release.getFolder());
+
+    const ReleaseInspector::Difference content = ReleaseInspector::compare(before.content, after.content);
+    EXPECT_TRUE(content.changedFiles.empty());
+    ASSERT_EQ(content.redeliveredFiles.size(), 2U);
+    EXPECT_EQ(content.redeliveredFiles.front().path, "content/world/copy.bin");
+    EXPECT_EQ(content.redeliveredFiles.front().before, Delivery::Required);
+    EXPECT_EQ(content.redeliveredFiles.front().after, Delivery::OnDemand);
+}
+
 TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
     release.build(io::MemoryPackage("source", makeFiles()));
     const ReleaseInspector inspector = makeInspector();

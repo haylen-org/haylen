@@ -484,7 +484,18 @@ haylen content publish ~/apps/my-game --platform android --channel stable --outp
 haylen content compact ~/apps/my-game ~/cdn/my-game --keep 2
 ```
 
-The command `content diff` lists the chunks the two releases share, add and drop, the files added, changed and removed, and the bytes an app that holds the earlier release downloads. The command `content publish` builds the content domain as the next generation of the channel, reusing the packs of the current generation, or for the first generation the shards of the release that ships with the app, so it adds only the packs of new chunks and a new manifest, and moves the channel pointer last. Upload the tree to the server with any tool that copies files, the packs and manifests before `channels/`, so no app reads a pointer to files that are not there yet. An installed app downloads only the chunks it lacks, verifies every one, and switches to the new content as one transaction, so an interrupted update leaves the content it plays as it was, as [updates](content.md#updates) describes. An app with `enabled` set to `false` checks, downloads and applies updates itself with [`haylen.content`](../lua-api/content.md#updates).
+The command `content diff` lists the chunks the two releases share, add and drop, the files added, changed and removed, the files whose delivery changed, and the bytes an app that holds the earlier release downloads. Here a small app changed one line of a data file and made its 2 MiB track load on demand:
+
+```text
+The app domain adds 1 chunks of 642 bytes, reuses 1 chunks of 2231 bytes and drops 1 chunks of 487 bytes, with 1 new shards and 0 added, 1 changed and 0 removed files.
+  Changed "app.json".
+The content domain adds 1 chunks of 15 bytes, reuses 3 chunks of 2158815 bytes and drops 1 chunks of 15 bytes, with 1 new shards and 0 added, 1 changed and 0 removed files.
+  Changed "content/data/levels.json".
+  Delivered "content/music/theme.ogg" as "onDemand" instead of "required".
+An app that holds the earlier release downloads about 2604 bytes to reach the later one.
+```
+
+The second build kept both shards of the first one byte for byte, the 2 MiB shard of the track among them, and added a shard of 367 bytes for the new data file and one of 656 bytes for the new `app.json`, so a store that patches files by their bytes, such as Steam, ships only the two small shards and the manifests. The track kept its record where it was, and its new delivery lives in the catalog, so it downloads nothing again. The command `content publish` builds the content domain as the next generation of the channel, reusing the packs of the current generation, or for the first generation the shards of the release that ships with the app, so it adds only the packs of new chunks and a new manifest, and moves the channel pointer last. Upload the tree to the server with any tool that copies files, the packs and manifests before `channels/`, so no app reads a pointer to files that are not there yet. An installed app downloads only the chunks it lacks, verifies every one, and switches to the new content as one transaction, so an interrupted update leaves the content it plays as it was, as [updates](content.md#updates) describes. An app with `enabled` set to `false` checks, downloads and applies updates itself with [`haylen.content`](../lua-api/content.md#updates).
 
 ## Inspecting a release
 

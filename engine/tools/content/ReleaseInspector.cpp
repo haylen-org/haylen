@@ -129,26 +129,27 @@ ReleaseInspector::Difference ReleaseInspector::compare(const Domain& before, con
         }
     }
 
-    // A file changed when its chunks are not the same chunks in the same order.
-    std::map<std::string, std::vector<Digest>> earlier;
+    // A file changed when its chunks are not the same chunks in the same order, and its delivery may change either way.
+    std::map<std::string, const File*> earlier;
     for (const File& file : before.files) {
-        std::vector<Digest>& ids = earlier[file.path];
-        std::ranges::transform(file.chunks, std::back_inserter(ids), &Chunk::storedId);
+        earlier.emplace(file.path, &file);
     }
     for (const File& file : after.files) {
-        std::vector<Digest> ids;
-        std::ranges::transform(file.chunks, std::back_inserter(ids), &Chunk::storedId);
         const auto found = earlier.find(file.path);
         if (found == earlier.end()) {
             difference.addedFiles.push_back(file.path);
             continue;
         }
-        if (found->second != ids) {
+        const File& previous = *found->second;
+        if (!std::ranges::equal(previous.chunks, file.chunks, {}, &Chunk::storedId, &Chunk::storedId)) {
             difference.changedFiles.push_back(file.path);
+        }
+        if (previous.delivery != file.delivery) {
+            difference.redeliveredFiles.push_back({.path = file.path, .before = previous.delivery, .after = file.delivery});
         }
         earlier.erase(found);
     }
-    for (const auto& [path, ids] : earlier) {
+    for (const auto& [path, file] : earlier) {
         difference.removedFiles.push_back(path);
     }
     return difference;
