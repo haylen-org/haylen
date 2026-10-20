@@ -45,6 +45,8 @@
 #include <windows.h>
 
 #include <cstdlib>
+#elif defined(__linux__)
+#include "platform/linux/LinuxAccessibility.hpp"
 #endif
 
 namespace haylen::platform {
@@ -405,6 +407,11 @@ void SokolRuntime::onEvent(const sapp_event* source, void* data) {
     // Android sends the axes of controllers only to the window with the focus, so a stick released while another window has it would keep its last value.
     if (source->type == SAPP_EVENTTYPE_UNFOCUSED) {
         AndroidGamepads::releaseAxes();
+    }
+#elif defined(__linux__)
+    // Screen readers follow the focus of the window that is active, which the window tells them as it gains and loses the focus.
+    if (source->type == SAPP_EVENTTYPE_FOCUSED || source->type == SAPP_EVENTTYPE_UNFOCUSED) {
+        LinuxAccessibility::setActive(source->type == SAPP_EVENTTYPE_FOCUSED);
     }
 #endif
     if (runtime.engine == nullptr) {

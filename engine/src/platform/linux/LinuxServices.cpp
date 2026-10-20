@@ -13,6 +13,7 @@
 #include "io/CompositePackage.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "platform/linux/LinuxAccessibility.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxDialogs.hpp"
 #include "platform/linux/LinuxGamepads.hpp"
@@ -31,6 +32,7 @@ void Services::initialize() {
     LinuxGamepads::scan();
     LinuxSystem::watchBattery();
     LinuxSettings::observe();
+    LinuxAccessibility::start();
 }
 
 void Services::shutdown() noexcept {
@@ -180,14 +182,17 @@ void Services::vibrate(float) {}
 // The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}
 
-// The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
 bool Services::isAccessibilityTreeWanted() {
-    return false;
+    return LinuxAccessibility::isWanted();
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
+void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+    LinuxAccessibility::update(elements, focused);
+}
 
-void Services::announce(std::string_view, bool) {}
+void Services::announce(std::string_view text, bool interrupt) {
+    LinuxAccessibility::announce(text, interrupt);
+}
 
 // Linux has no decoder of video files that every distribution ships, as the video reference explains.
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {

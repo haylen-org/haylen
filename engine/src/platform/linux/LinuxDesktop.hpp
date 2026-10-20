@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <string>
 #include <vector>
 
 #include "haylen/math/Polygon.hpp"
@@ -18,6 +19,10 @@ class LinuxDesktop final {
   public:
     static void setStyle(const WindowStyle& value);
     [[nodiscard]] static math::Rect getFrame();
+
+    // The title of the window and its top left corner on the screen in pixels, which screen readers read.
+    [[nodiscard]] static std::string getTitle();
+    [[nodiscard]] static math::Vec2 getOrigin();
     static void setFrame(const math::Rect& value);
     [[nodiscard]] static std::vector<Monitor> getMonitors();
     static void setPassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> value);

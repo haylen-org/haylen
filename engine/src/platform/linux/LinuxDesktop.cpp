@@ -184,6 +184,26 @@ math::Rect LinuxDesktop::getFrame() {
     return {static_cast<float>(x) / scale, static_cast<float>(y) / scale, sapp_widthf() / scale, sapp_heightf() / scale};
 }
 
+std::string LinuxDesktop::getTitle() {
+    Display* display = getDisplay();
+    char* name = nullptr;
+    if (XFetchName(display, getWindow(), &name) == 0 || name == nullptr) {
+        return {};
+    }
+    std::string title(name);
+    XFree(name);
+    return title;
+}
+
+math::Vec2 LinuxDesktop::getOrigin() {
+    Display* display = getDisplay();
+    int x = 0;
+    int y = 0;
+    ::Window child = 0;
+    XTranslateCoordinates(display, getWindow(), DefaultRootWindow(display), 0, 0, &x, &y, &child);
+    return {static_cast<float>(x), static_cast<float>(y)};
+}
+
 void LinuxDesktop::setFrame(const math::Rect& value) {
     Display* display = getDisplay();
     const ::Window window = getWindow();

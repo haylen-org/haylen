@@ -876,7 +876,7 @@ elseif(ANDROID)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
 else()
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()
 
 add_library(haylen_runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})

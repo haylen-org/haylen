@@ -8,11 +8,14 @@
 
 namespace haylen::platform {
 
-// Follows the color scheme and the accessibility settings of the desktop through the settings portal, which the engine reaches with GIO loaded at run time: the color scheme, the contrast and the reduced motion of the appearance namespace and the text scaling factor of the GNOME interface settings. Without GIO, a session bus or a portal that knows a setting, it keeps its default and never changes. Linux has no setting for reduced transparency, and the portal tells nothing about screen readers.
+// Follows the color scheme and the accessibility settings of the desktop through the settings portal, which the engine reaches with GIO loaded at run time: the color scheme, the contrast and the reduced motion of the appearance namespace and the text scaling factor of the GNOME interface settings. Without GIO, a session bus or a portal that knows a setting, it keeps its default and never changes. Linux has no setting for reduced transparency, and the accessibility bus tells whether a screen reader runs.
 class LinuxSettings final {
   public:
     // Reads the settings once, waiting a second at most for the portal on each, and subscribes to their changes, which arrive while the main context of GLib runs.
     static void observe();
+
+    // Reports whether a screen reader runs, as the accessibility bus tells.
+    static void setScreenReader(bool value);
 
   private:
     static constexpr int kSessionBus = 2;

@@ -41,6 +41,11 @@ void LinuxSettings::observe() {
     read(connection, kInterface, kTextScaling);
 }
 
+void LinuxSettings::setScreenReader(bool value) {
+    accessibility.screenReader = value;
+    SokolHost::getSystemState().setAccessibility(accessibility);
+}
+
 bool LinuxSettings::load(void* library) {
     return LinuxGlib::find(library, busGetSync, "g_bus_get_sync") && LinuxGlib::find(library, callSync, "g_dbus_connection_call_sync") && LinuxGlib::find(library, subscribe, "g_dbus_connection_signal_subscribe") && LinuxGlib::find(library, newString, "g_variant_new_string") && LinuxGlib::find(library, newTuple, "g_variant_new_tuple") && LinuxGlib::find(library, getChild, "g_variant_get_child_value") && LinuxGlib::find(library, isOfType, "g_variant_is_of_type") && LinuxGlib::find(library, getVariant, "g_variant_get_variant") && LinuxGlib::find(library, getUint32, "g_variant_get_uint32") && LinuxGlib::find(library, getDouble, "g_variant_get_double") && LinuxGlib::find(library, getString, "g_variant_get_string") && LinuxGlib::find(library, unref, "g_variant_unref");
 }
