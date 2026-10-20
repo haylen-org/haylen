@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -147,7 +148,12 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
         } else if (tag == "common") {
             description.lineHeight = static_cast<float>(number("lineHeight"));
             description.base = static_cast<float>(number("base"));
-            description.pages.resize(static_cast<std::size_t>(std::max(number("pages"), 0)));
+            // The page count of the binary format has 16 bits, and the text format keeps to it, so a hostile count never sizes a huge list.
+            const int pages = number("pages");
+            if (pages < 0 || pages > std::numeric_limits<std::uint16_t>::max()) {
+                throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " needs a page count from 0 to 65535.");
+            }
+            description.pages.resize(static_cast<std::size_t>(pages));
             hasCommon = true;
         } else if (tag == "page") {
             const int id = number("id");

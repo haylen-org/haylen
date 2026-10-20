@@ -14,6 +14,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/text/BitmapFont.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -118,6 +119,10 @@ TEST_F(BitmapFontTest, ReadsTextAndBinaryBmFonts) {
     EXPECT_THROW((void)BitmapFont::parse(bytesOf("info size=16\ncommon lineHeight=18 base=14 pages=1\n")), std::invalid_argument);
     EXPECT_THROW((void)BitmapFont::parse(bytesOf("info size=16\ncommon lineHeight=18 base=14 pages=1\npage id=3 file=\"a.png\"\n")), std::invalid_argument);
     EXPECT_THROW((void)BitmapFont::parse(bytesOf("info size=16\ncommon lineHeight=x base=14 pages=1\n")), std::invalid_argument);
+    // A page count past the 16 bits of the binary format fails before it sizes the list of pages.
+    const test::AllocationTracker allocations;
+    EXPECT_THROW((void)BitmapFont::parse(bytesOf("info size=16\ncommon lineHeight=18 base=14 pages=2000000000\n")), std::invalid_argument);
+    EXPECT_LT(allocations.getLargest(), std::size_t{1} << 20U);
     std::vector<std::uint8_t> truncated = binaryFont();
     truncated.resize(truncated.size() - 4);
     EXPECT_THROW((void)BitmapFont::parse(truncated), std::invalid_argument);
