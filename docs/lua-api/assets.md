@@ -234,6 +234,24 @@ if assets.exists('maps/bonus.tmj') then
 end
 ```
 
+### assets.bytesAsync(path, offset, count)
+
+Reads a file, or the range of `count` bytes at `offset`, like `assets.bytes`, on the I/O pool, so a large read never holds a frame up, and returns a promise that resolves to the bytes as a Lua string. A file that downloads on demand in a protected release comes down first, as `assets.loadAsync` brings it. The promise rejects with the reason of a file that does not exist, of a range that is too large and of a download that fails, the messages of `assets.bytes` and of `content.prefetch`.
+
+```lua
+local async = require('async')
+local assets = require('haylen.assets')
+
+async.spawn(function()
+    local header, err = assets.bytesAsync('recordings/match.bin', 0, 64):await()
+    if not header then
+        print(err)
+        return
+    end
+    print(string.unpack('<I4', header))
+end)
+```
+
 ### assets.fileSize(path)
 
 Returns the size of a file in bytes, without reading it. A missing file raises `The package file "<file>" was not found.`

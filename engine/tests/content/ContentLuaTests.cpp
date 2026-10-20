@@ -55,6 +55,24 @@ TEST_F(ContentLuaTest, BringsAGroupWithoutLoadingIt) {
     EXPECT_EQ(fixture.lua("return assets.json('levels/forest.json').trees"), "12");
 }
 
+// A file read off the frame thread comes down first when it downloads on demand, whole or by range, and a missing file rejects with the reason.
+TEST_F(ContentLuaTest, ReadsTheBytesOfAFileOffTheFrameThread) {
+    // clang-format off
+    fixture.runLua(R"(
+        async.spawn(function()
+            local whole = assets.bytesAsync('levels/forest.json'):await()
+            local part = assets.bytesAsync('levels/forest.json', 2, 5):await()
+            local _, missing = assets.bytesAsync('levels/none.json'):await()
+            result = whole .. '|' .. part .. '|' .. tostring(content.isLocal('levels/forest.json')) .. '|' .. tostring(missing)
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return result") != "nil"; }));
+    const std::string result = fixture.lua("return result");
+    EXPECT_EQ(result.substr(0, result.find("|true|")), R"({"trees": 12}|trees)");
+    EXPECT_NE(result.find("none.json"), std::string::npos) << result;
+}
+
 TEST_F(ContentLuaTest, LoadsAnAssetThatDownloadsOnlyAsynchronously) {
     EXPECT_NE(fixture.lua("return assets.json('levels/forest.json')").find("is not on the device yet"), std::string::npos);
     // clang-format off

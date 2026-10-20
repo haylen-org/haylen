@@ -5,9 +5,11 @@
 #include <deque>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "haylen/assets/GroupManifest.hpp"
@@ -105,6 +107,11 @@ class Manager final {
 
     // Reads at most `size` bytes of a file at an offset, fewer when the file ends first, so files of any size are read in parts.
     [[nodiscard]] std::vector<std::uint8_t> bytes(std::string_view path, std::uint64_t offset, std::size_t size) const;
+
+    // Read a whole file or a range of it on the I/O pool, after the bytes that are not on the device came down, and call back on the frame thread with the bytes or the error message.
+    using BytesCallback = std::function<void(std::vector<std::uint8_t>, std::string)>;
+    void bytesAsync(std::string_view path, BytesCallback callback);
+    void bytesAsync(std::string_view path, std::uint64_t offset, std::size_t size, BytesCallback callback);
     [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const;
     [[nodiscard]] bool exists(std::string_view path) const;
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const;
@@ -198,6 +205,7 @@ class Manager final {
     [[nodiscard]] Request makeRequest(std::string_view typeName, std::string_view path, const core::Json& options) const;
     [[nodiscard]] std::shared_ptr<void> findCached(const std::string& key) const;
     [[nodiscard]] std::vector<GroupManifest::Entry> expand(const std::vector<GroupManifest::Entry>& entries) const;
+    void readAsync(std::string path, std::optional<std::pair<std::uint64_t, std::size_t>> range, BytesCallback callback);
     void startLoad(Request request, Callback callback);
     void readAndDecode(const std::shared_ptr<Request>& loading, const std::string& key, const Type& assetType);
 

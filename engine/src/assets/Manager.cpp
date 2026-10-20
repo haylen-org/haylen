@@ -489,6 +489,43 @@ std::vector<std::uint8_t> Manager::bytes(std::string_view path, std::uint64_t of
     return package.readAssetRange(path, offset, size);
 }
 
+void Manager::bytesAsync(std::string_view path, BytesCallback callback) {
+    readAsync(io::Path::normalize(path), std::nullopt, std::move(callback));
+}
+
+void Manager::bytesAsync(std::string_view path, std::uint64_t offset, std::size_t size, BytesCallback callback) {
+    readAsync(io::Path::normalize(path), std::pair(offset, size), std::move(callback));
+}
+
+void Manager::readAsync(std::string path, std::optional<std::pair<std::uint64_t, std::size_t>> range, BytesCallback callback) {
+    auto done = std::make_shared<BytesCallback>(std::move(callback));
+    // clang-format off
+    auto read = [this, owner = std::weak_ptr<bool>(alive), path, range, done] {
+        jobs.runIo([&files = package, path, range] { return range ? files.readAssetRange(path, range->first, range->second) : files.readAsset(path); }, [owner, done](core::JobSystem::Result<std::vector<std::uint8_t>> result) {
+            if (!owner.expired()) {
+                (*done)(result.isOk() ? std::move(*result.value) : std::vector<std::uint8_t>{}, std::move(result.error));
+            }
+        });
+    };
+    if (isLocal(path)) {
+        read();
+        return;
+    }
+
+    // Bytes that are not on the device come down first, as for any asynchronous load.
+    availability.acquire({path}, {}, [owner = std::weak_ptr<bool>(alive), read, done](const std::string& error) {
+        if (owner.expired()) {
+            return;
+        }
+        if (error.empty()) {
+            read();
+            return;
+        }
+        (*done)({}, error);
+    });
+    // clang-format on
+}
+
 std::uint64_t Manager::getFileSize(std::string_view path) const {
     return package.getAssetSize(path);
 }

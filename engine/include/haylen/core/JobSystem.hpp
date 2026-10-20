@@ -43,23 +43,12 @@ class JobSystem final {
     void postIo(std::function<void()> work);
     void postToFrame(std::function<void()> work);
 
-    // Runs work on the task pool and calls `completion` on the frame thread with the value or the error message.
+    // Runs work on the task pool, or blocking work such as reading files on the I/O pool, and calls `completion` on the frame thread with the value or the error message.
     template <typename Work, typename Completion> void run(Work&& work, Completion&& completion) {
-        using Value = std::invoke_result_t<Work>;
-
-        // clang-format off
-        post([this, work = std::forward<Work>(work), completion = std::forward<Completion>(completion)]() mutable {
-            auto result = std::make_shared<Result<Value>>();
-            try {
-                result->value.emplace(work());
-            } catch (const std::exception& exception) {
-                result->error = exception.what();
-            } catch (...) {
-                result->error = "Background job failed with an unknown exception.";
-            }
-            postToFrame([completion = std::move(completion), result]() mutable { completion(std::move(*result)); });
-        });
-        // clang-format on
+        post(wrap(std::forward<Work>(work), std::forward<Completion>(completion)));
+    }
+    template <typename Work, typename Completion> void runIo(Work&& work, Completion&& completion) {
+        postIo(wrap(std::forward<Work>(work), std::forward<Completion>(completion)));
     }
 
     // Splits `[begin, end)` into chunks of at least `grainSize` items and runs them in parallel, including on the calling thread. Workers and the caller take chunks one at a time, so the caller runs every chunk no worker started and never waits behind other work queued on the task pool. Only the frame thread may call it.
@@ -76,6 +65,24 @@ class JobSystem final {
     void setTraceRecorder(std::shared_ptr<debug::TraceRecorder> value);
 
   private:
+    // The job that runs work, catches its failure and hands the result to the frame thread.
+    template <typename Work, typename Completion> std::function<void()> wrap(Work&& work, Completion&& completion) {
+        using Value = std::invoke_result_t<Work>;
+
+        // clang-format off
+        return [this, work = std::forward<Work>(work), completion = std::forward<Completion>(completion)]() mutable {
+            auto result = std::make_shared<Result<Value>>();
+            try {
+                result->value.emplace(work());
+            } catch (const std::exception& exception) {
+                result->error = exception.what();
+            } catch (...) {
+                result->error = "Background job failed with an unknown exception.";
+            }
+            postToFrame([completion = std::move(completion), result]() mutable { completion(std::move(*result)); });
+        };
+        // clang-format on
+    }
     struct ParallelRange;
     struct Queue;
 

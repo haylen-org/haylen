@@ -13,6 +13,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
+#include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -77,6 +78,29 @@ int AssetsLua::bytes(lua_State* L) {
     const std::string_view path = lua::Stack::read<std::string_view>(L, 1);
     const std::vector<std::uint8_t> data = lua_isnoneornil(L, 2) ? getAssets(L).bytes(path) : getAssets(L).bytes(path, lua::Stack::read<std::uint64_t>(L, 2), lua::Stack::read<std::size_t>(L, 3));
     lua_pushlstring(L, reinterpret_cast<const char*>(data.data()), data.size());
+    return 1;
+}
+
+// Reads a file, or a range of it, off the frame thread and returns a promise of its bytes as a string, which rejects with the reason of a file that is missing or does not come down.
+int AssetsLua::bytesAsync(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const std::string path = lua::Stack::read<std::string>(L, 1);
+    const lua::Promise promise(engine);
+    // clang-format off
+    auto settle = [promise](std::vector<std::uint8_t> data, std::string error) {
+        if (!error.empty()) {
+            promise.reject(std::move(error));
+            return;
+        }
+        promise.resolveWith([data = std::move(data)](lua_State* state) { lua_pushlstring(state, reinterpret_cast<const char*>(data.data()), data.size()); });
+    };
+    // clang-format on
+    if (lua_isnoneornil(L, 2)) {
+        engine.getAssets().bytesAsync(path, std::move(settle));
+    } else {
+        engine.getAssets().bytesAsync(path, lua::Stack::read<std::uint64_t>(L, 2), lua::Stack::read<std::size_t>(L, 3), std::move(settle));
+    }
+    promise.push(L);
     return 1;
 }
 
@@ -246,7 +270,7 @@ int AssetsLua::uploadCount(lua_State* L) {
 
 int AssetsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"texture", &lua::Binding::native<&texture>}, {"font", &lua::Binding::native<&font>}, {"shader", &lua::Binding::native<&shader>}, {"vectorImage", &lua::Binding::native<&vectorImage>}, {"json", &lua::Binding::native<&json>}, {"text", &lua::Binding::native<&text>}, {"bytes", &lua::Binding::native<&bytes>}, {"fileSize", &lua::Binding::native<&fileSize>}, {"exists", &lua::Binding::native<&exists>}, {"list", &lua::Binding::native<&list>}, {"typeForPath", &lua::Binding::native<&typeForPath>}, {"hasType", &hasType}, {"load", &lua::Binding::native<&load>}, {"loadAsync", &lua::Binding::native<&loadAsync>}, {"defineGroups", &lua::Binding::native<&defineGroups>}, {"defineGroup", &lua::Binding::native<&defineGroup>}, {"preload", &lua::Binding::native<&preload>}, {"unloadGroup", &lua::Binding::native<&unloadGroup>}, {"groupProgress", &lua::Binding::native<&groupProgress>}, {"groupLoaded", &lua::Binding::native<&groupLoaded>}, {"groups", &lua::Binding::native<&groups>}, {"cachedCount", &cachedCount}, {"pendingCount", &pendingCount}, {"releaseUnused", &releaseUnused}, {"setUploadBudget", &lua::Binding::native<&setUploadBudget>}, {"uploadBudget", &uploadBudget}, {"uploadCount", &uploadCount}, {nullptr, nullptr},
+        {"texture", &lua::Binding::native<&texture>}, {"font", &lua::Binding::native<&font>}, {"shader", &lua::Binding::native<&shader>}, {"vectorImage", &lua::Binding::native<&vectorImage>}, {"json", &lua::Binding::native<&json>}, {"text", &lua::Binding::native<&text>}, {"bytes", &lua::Binding::native<&bytes>}, {"bytesAsync", &lua::Binding::native<&bytesAsync>}, {"fileSize", &lua::Binding::native<&fileSize>}, {"exists", &lua::Binding::native<&exists>}, {"list", &lua::Binding::native<&list>}, {"typeForPath", &lua::Binding::native<&typeForPath>}, {"hasType", &hasType}, {"load", &lua::Binding::native<&load>}, {"loadAsync", &lua::Binding::native<&loadAsync>}, {"defineGroups", &lua::Binding::native<&defineGroups>}, {"defineGroup", &lua::Binding::native<&defineGroup>}, {"preload", &lua::Binding::native<&preload>}, {"unloadGroup", &lua::Binding::native<&unloadGroup>}, {"groupProgress", &lua::Binding::native<&groupProgress>}, {"groupLoaded", &lua::Binding::native<&groupLoaded>}, {"groups", &lua::Binding::native<&groups>}, {"cachedCount", &cachedCount}, {"pendingCount", &pendingCount}, {"releaseUnused", &releaseUnused}, {"setUploadBudget", &lua::Binding::native<&setUploadBudget>}, {"uploadBudget", &uploadBudget}, {"uploadCount", &uploadCount}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
