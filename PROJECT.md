@@ -2048,7 +2048,7 @@ Tiled:
 README e documentação:
 
 - [x] README com o símbolo da marca e o nome escrito em texto, as plataformas suportadas com emojis, os renderers de cada plataforma, as features em lista objetiva, um índice para a documentação e a menção de que a engine foi feita pensando em IA. Feito: o `README.md` abre com o símbolo e o nome Haylen em texto, tem a seção "Made with AI in mind", a tabela de plataformas com emojis e o renderer de cada uma (Metal, Direct3D 11, OpenGL, OpenGL ES 3, WebGPU e WebGL2), as features em lista curta com emojis e a tabela de módulos que leva à documentação.
-- [ ] Validar toda a documentação procurando inconsistências com o código.
+- [x] Validar toda a documentação procurando inconsistências com o código. Conferidos: as mensagens de erro citadas contra as do código, as funções documentadas contra as registradas nos bindings nos dois sentidos, as chaves de `app.json`, as opções e os nomes de enums, os códigos de erro do conteúdo, os comandos e opções do `haylen.py`, os links, a sintaxe de todos os exemplos Lua e a saída dos exemplos que dizem o que imprimem.
 
 Revisão:
 
