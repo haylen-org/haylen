@@ -32,7 +32,7 @@ void AllocationTracker::record(std::size_t size) noexcept {
 
 } // namespace haylen::test
 
-// The standard names the replaceable allocation functions, so the program replaces them here, and they only forward to the tracker and to `malloc` and `free`. The array and nothrow forms call these by default, and the aligned forms keep their own pair.
+// The standard names the replaceable allocation functions, so the program replaces them here, and they only forward to the tracker and to `malloc` and `free`. Every form is replaced, the array and nothrow ones too, since a sanitizer that replaces the forms a program leaves out would free its own allocations with the `free` of these, and the aligned forms keep their own pair.
 void* operator new(std::size_t size) {
     haylen::test::AllocationTracker::record(size);
     if (void* memory = std::malloc(size == 0 ? 1 : size)) {
@@ -41,10 +41,39 @@ void* operator new(std::size_t size) {
     throw std::bad_alloc();
 }
 
+void* operator new[](std::size_t size) {
+    return operator new(size);
+}
+
+void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
+    haylen::test::AllocationTracker::record(size);
+    return std::malloc(size == 0 ? 1 : size);
+}
+
+void* operator new[](std::size_t size, const std::nothrow_t& tag) noexcept {
+    return operator new(size, tag);
+}
+
 void operator delete(void* memory) noexcept {
     std::free(memory);
 }
 
 void operator delete(void* memory, std::size_t) noexcept {
+    std::free(memory);
+}
+
+void operator delete[](void* memory) noexcept {
+    std::free(memory);
+}
+
+void operator delete[](void* memory, std::size_t) noexcept {
+    std::free(memory);
+}
+
+void operator delete(void* memory, const std::nothrow_t&) noexcept {
+    std::free(memory);
+}
+
+void operator delete[](void* memory, const std::nothrow_t&) noexcept {
     std::free(memory);
 }

@@ -92,6 +92,29 @@ class PrivacyTest(unittest.TestCase):
         self.assertEqual(haylen.merge_privacy([{}, {}]), {})
 
 
+class FormatTest(unittest.TestCase):
+    def test_multi_line_lambdas_need_markers_while_the_array_forms_of_new_and_delete_do_not(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        source = scratch / "Source.cpp"
+        source.write_text("\n".join([
+            "void* operator new[](std::size_t size) {",
+            "}",
+            "void operator delete[](void* memory, std::size_t) noexcept {",
+            "}",
+            "const auto call = [this](int value) {",
+            "};",
+            "// clang-format off",
+            "const auto guarded = [&value] {",
+            "};",
+            "// clang-format on",
+        ]))
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            findings = haylen.unguarded_lambdas([source])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("Source.cpp:5", findings[0])
+
+
 class RequirementTest(unittest.TestCase):
     def test_a_built_value_holds_the_items_and_keys_it_needs(self):
         built = {"CFBundleURLTypes": [{"CFBundleURLName": "other"}, {"CFBundleURLName": "demo", "CFBundleURLSchemes": ["demo", "more"]}], "NSCameraUsageDescription": "Reworded", "com.apple.developer.game-center": True}

@@ -182,6 +182,7 @@ set(HAYLEN_TEST_SOURCES
   platform/WindowsPowerStatusTests.cpp
   storage/StorageTests.cpp
   support/AllocationTracker.cpp
+  support/AllocationTrackerTests.cpp
   support/ContentParsers.cpp
   support/ContentServer.cpp
   support/CountingPackage.cpp

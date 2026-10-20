@@ -906,7 +906,8 @@ def format_sources() -> list[Path]:
     return sorted(files)
 
 
-LAMBDA_START = re.compile(r"\]\s*(\([^)]*\))?\s*(mutable\s*)?(noexcept\s*)?(->\s*[\w:<>]+\s*)?\{\s*$")
+# The opening line of a lambda whose body goes on below, which the brackets of the array forms of "operator new" and "operator delete" never are.
+LAMBDA_START = re.compile(r"(?<!operator new\[)(?<!operator delete\[)\]\s*(\([^)]*\))?\s*(mutable\s*)?(noexcept\s*)?(->\s*[\w:<>]+\s*)?\{\s*$")
 
 
 def unguarded_lambdas(files: list[Path]) -> list[str]:
