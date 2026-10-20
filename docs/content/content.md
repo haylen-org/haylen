@@ -642,6 +642,7 @@ Failures of protected content raise `content::Error` of `haylen/content/Error.hp
 | `PermissionDenied` | The device does not let the store write its folder. |
 | `CacheCorrupt` | A file of the local store is damaged, such as a record that fails its checks, which the store removes so a download replaces it. |
 | `InsufficientStorage` | The device lacks the room an update needs, which the error names with the room that is free. |
+| `StoreAssetUnavailable` | Content is not on the device and the app names no server to download it from, such as an asset of a [pack](#delivery) that its store did not install. |
 
 ## Security
 
