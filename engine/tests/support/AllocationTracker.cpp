@@ -32,7 +32,7 @@ void AllocationTracker::record(std::size_t size) noexcept {
 
 } // namespace haylen::test
 
-// The standard names the replaceable allocation functions, so the program replaces them here, and they only forward to the tracker and to `malloc` and `free`. Every form is replaced, the array and nothrow ones too, since a sanitizer that replaces the forms a program leaves out would free its own allocations with the `free` of these, and the aligned forms keep their own pair.
+// The standard names the replaceable allocation functions, so the program replaces them here, and they only forward to the tracker and to `malloc` and `free`. The array and nothrow forms are replaced too, since a sanitizer that replaces the forms a program leaves out would free its own allocations with the `free` of these, while the aligned forms keep their own pair.
 void* operator new(std::size_t size) {
     haylen::test::AllocationTracker::record(size);
     if (void* memory = std::malloc(size == 0 ? 1 : size)) {
