@@ -210,6 +210,7 @@ TEST_F(UpdaterTest, DownloadsOnlyWhatChanged) {
     const UpdateOffer offer = requireOffer(*client);
 
     EXPECT_LT(offer.downloadBytes, 200U * 1024U) << "The unchanged music and image come from the shards that ship with the app.";
+    EXPECT_GT(offer.reusedBytes, 3U * kMegabyte) << "The offer reuses the bytes of the unchanged music and image.";
     server.clearExchanges();
     ASSERT_FALSE(install(*client, offer));
     EXPECT_LT(server.getSentBytes(), 300U * 1024U);

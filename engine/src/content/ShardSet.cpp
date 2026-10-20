@@ -1,6 +1,7 @@
 #include "content/ShardSet.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <utility>
 
 #include "content/format/ChunkRecord.hpp"
@@ -69,22 +70,39 @@ void ShardSet::forgetMissing() const {
 }
 
 void ShardSet::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {
+    const auto started = std::chrono::steady_clock::now();
+    activeReads.fetch_add(1, std::memory_order_relaxed);
     try {
         if (const std::shared_ptr<const ShardReader> reader = findShard(chunk.shard)) {
             reader->readChunk(chunk, scratch, plain);
-            return;
-        }
-        if (!store) {
+        } else if (store) {
+            readRecord(chunk, scratch, plain);
+        } else {
             throw Error(Error::Code::MissingShard, "The shard file \"" + references[chunk.shard].getFileName() + "\" is missing, so the app needs to be installed again.");
         }
-        readRecord(chunk, scratch, plain);
     } catch (Error& error) {
+        activeReads.fetch_sub(1, std::memory_order_relaxed);
         Error::Details& details = error.getDetails();
         details.packId = references[chunk.shard].shardId.toHex();
         details.contentId = chunk.contentId.toHex();
         details.storedId = chunk.storedId.toHex();
         throw;
+    } catch (...) {
+        activeReads.fetch_sub(1, std::memory_order_relaxed);
+        throw;
     }
+
+    activeReads.fetch_sub(1, std::memory_order_relaxed);
+    decodedChunks.fetch_add(1, std::memory_order_relaxed);
+    decodedBytes.fetch_add(plain.size(), std::memory_order_relaxed);
+    decodeNanoseconds.fetch_add(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - started).count()), std::memory_order_relaxed);
+}
+
+ShardSet::Reads ShardSet::getReads() const {
+    Reads reads{.decodedChunks = decodedChunks.load(std::memory_order_relaxed), .decodedBytes = decodedBytes.load(std::memory_order_relaxed), .decodeNanoseconds = decodeNanoseconds.load(std::memory_order_relaxed), .activeReads = activeReads.load(std::memory_order_relaxed)};
+    const std::scoped_lock lock(mutex);
+    reads.openShards = static_cast<std::uint64_t>(std::ranges::count_if(readers, [](const std::shared_ptr<const ShardReader>& reader) { return reader != nullptr; }));
+    return reads;
 }
 
 void ShardSet::readRecord(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {

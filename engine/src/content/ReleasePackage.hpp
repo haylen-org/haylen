@@ -74,6 +74,9 @@ class ReleasePackage final : public io::Package {
     void mount(std::shared_ptr<const Content> content);
 
     [[nodiscard]] std::shared_ptr<const Content> getContent() const;
+    [[nodiscard]] const std::shared_ptr<const Content>& getApp() const noexcept {
+        return app;
+    }
     [[nodiscard]] const std::shared_ptr<const Content>& getBundledContent() const noexcept {
         return bundled;
     }

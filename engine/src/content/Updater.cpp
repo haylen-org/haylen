@@ -129,8 +129,16 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
             if (offer->content->manifest->getId() != manifest || envelope.generation != generation || envelope.channel != channelName) {
                 throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest.toHex() + "\" is not the one its channel names.");
             }
-            offer->missing = Downloader::findMissing(*offer->content->shards, getChunks(*offer->content->catalog, Delivery::Required, rules));
+            const std::vector<Catalog::Chunk> required = getChunks(*offer->content->catalog, Delivery::Required, rules);
+            offer->missing = Downloader::findMissing(*offer->content->shards, required);
             offer->downloadBytes = Downloader::measure(offer->missing, *releasePackage->getStore());
+
+            // What the update shares with the content on the device, which the shard files and the store already hold, never downloads again.
+            std::uint64_t requiredBytes = 0;
+            for (const Catalog::Chunk& chunk : required) {
+                requiredBytes += ChunkRecord::kHeaderSize + chunk.encodedSize;
+            }
+            offer->reusedBytes = requiredBytes - offer->downloadBytes;
         } catch (const Error& error) {
             offer.reset();
             failure = error;

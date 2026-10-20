@@ -16,6 +16,7 @@ struct UpdateOffer {
     std::shared_ptr<const std::vector<std::uint8_t>> manifest;
     std::vector<Catalog::Chunk> missing;
     std::uint64_t downloadBytes = 0;
+    std::uint64_t reusedBytes = 0;
 };
 
 } // namespace haylen::content

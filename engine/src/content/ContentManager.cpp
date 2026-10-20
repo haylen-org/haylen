@@ -9,6 +9,7 @@
 #include "content/Downloader.hpp"
 #include "content/HttpTransport.hpp"
 #include "content/ReleasePackage.hpp"
+#include "content/ShardSet.hpp"
 #include "content/UpdateOffer.hpp"
 #include "content/Updater.hpp"
 #include "haylen/assets/Manager.hpp"
@@ -54,7 +55,7 @@ std::optional<ContentManager::Update> ContentManager::getUpdate() const {
     if (!offer) {
         return std::nullopt;
     }
-    return Update{.generation = offer->generation, .downloadBytes = offer->downloadBytes};
+    return Update{.generation = offer->generation, .downloadBytes = offer->downloadBytes, .reusedBytes = offer->reusedBytes};
 }
 
 std::string ContentManager::toPackagePath(std::string_view path) const {
@@ -607,15 +608,33 @@ void ContentManager::retry() {
 }
 
 void ContentManager::update() {
-    if (downloader) {
-        downloader->update();
+    if (!downloader) {
+        return;
+    }
+    downloader->update();
+
+    const auto now = std::chrono::steady_clock::now();
+    if (now - rateSampled >= kRateInterval) {
+        const std::uint64_t downloaded = downloader->getStatistics().downloadedBytes;
+        downloadRate = static_cast<double>(downloaded - rateBytes) / std::chrono::duration<double>(now - rateSampled).count();
+        rateBytes = downloaded;
+        rateSampled = now;
     }
 }
 
 ContentManager::Statistics ContentManager::getStatistics() const {
     Statistics statistics{.generation = getGeneration()};
     if (release) {
-        statistics.catalogFiles = release->getContent()->catalog->getFileCount();
+        const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
+        statistics.catalogFiles = content->catalog->getFileCount();
+        for (const ShardSet* shards : {release->getApp()->shards.get(), content->shards.get()}) {
+            const ShardSet::Reads reads = shards->getReads();
+            statistics.openShards += reads.openShards;
+            statistics.decodedChunks += reads.decodedChunks;
+            statistics.decodedBytes += reads.decodedBytes;
+            statistics.decodeMilliseconds += static_cast<double>(reads.decodeNanoseconds) / 1.0e6;
+            statistics.activeReads += reads.activeReads;
+        }
     }
     if (downloader) {
         const LocalStore::Statistics stored = release->getStore()->getStatistics();
@@ -625,6 +644,10 @@ ContentManager::Statistics ContentManager::getStatistics() const {
         statistics.requests = downloader->getStatistics().requests;
         statistics.resumedRecords = downloader->getStatistics().resumedRecords;
         statistics.pendingDownloads = downloader->isIdle() ? 0 : 1;
+        statistics.wantedRecords = downloader->getWantedRecords();
+        statistics.activeTransfers = downloader->getActiveTransfers();
+        statistics.downloadRate = downloadRate;
+        statistics.reusedBytes = offer ? offer->reusedBytes : 0;
     }
     return statistics;
 }

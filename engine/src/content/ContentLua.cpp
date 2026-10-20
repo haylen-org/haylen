@@ -151,9 +151,10 @@ int ContentLua::update(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
-    lua_createtable(L, 0, 2);
+    lua_createtable(L, 0, 3);
     setInteger(L, "generation", found->generation);
     setInteger(L, "downloadBytes", found->downloadBytes);
+    setInteger(L, "reusedBytes", found->reusedBytes);
     return 1;
 }
 
@@ -264,15 +265,26 @@ int ContentLua::cancel(lua_State* L) {
 
 int ContentLua::stats(lua_State* L) {
     const ContentManager::Statistics statistics = getManager(L).getStatistics();
-    lua_createtable(L, 0, 8);
+    lua_createtable(L, 0, 17);
     setInteger(L, "generation", statistics.generation);
     setInteger(L, "catalogFiles", statistics.catalogFiles);
     setInteger(L, "storedRecords", statistics.storedRecords);
     setInteger(L, "storedBytes", statistics.storedBytes);
+    setInteger(L, "openShards", statistics.openShards);
+    setInteger(L, "decodedChunks", statistics.decodedChunks);
+    setInteger(L, "decodedBytes", statistics.decodedBytes);
+    lua_pushnumber(L, statistics.decodeMilliseconds);
+    lua_setfield(L, -2, "decodeMilliseconds");
+    setInteger(L, "activeReads", statistics.activeReads);
     setInteger(L, "downloadedBytes", statistics.downloadedBytes);
     setInteger(L, "requests", statistics.requests);
     setInteger(L, "resumedRecords", statistics.resumedRecords);
     setInteger(L, "pendingDownloads", statistics.pendingDownloads);
+    setInteger(L, "wantedRecords", statistics.wantedRecords);
+    setInteger(L, "activeTransfers", statistics.activeTransfers);
+    lua_pushnumber(L, statistics.downloadRate);
+    lua_setfield(L, -2, "downloadRate");
+    setInteger(L, "reusedBytes", statistics.reusedBytes);
     return 1;
 }
 

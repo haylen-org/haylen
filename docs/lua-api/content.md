@@ -70,7 +70,7 @@ end)
 
 ### content.update()
 
-Returns the update that the last check found, as a table with `generation` and `downloadBytes`, the bytes that installing it downloads, or `nil`.
+Returns the update that the last check found, as a table with `generation`, `downloadBytes`, the bytes that installing it downloads, and `reusedBytes`, the bytes of its required content that the device already holds and that installing it never downloads again, or `nil`.
 
 ### content.isLocal(path)
 
@@ -126,7 +126,7 @@ end, {owner = self})
 
 ### content.stats()
 
-Returns counters of the content for debugging: `generation`, `catalogFiles`, the files the content holds, `storedRecords` and `storedBytes`, what the local store of downloads holds, `downloadedBytes` and `requests` since the app started, `resumedRecords`, the downloads that went on from where an earlier one stopped, and `pendingDownloads`, which is `1` while anything downloads.
+Returns counters of the content for debugging, which the Content section of the [debug overlay](debug.md) shows too: `generation`, `catalogFiles`, the files the content holds, `storedRecords` and `storedBytes`, what the local store of downloads holds, `openShards`, the shard files open now, `decodedChunks` and `decodedBytes`, the chunks read since the content was mounted and their plain bytes, `decodeMilliseconds`, the time that reading, decrypting, decompressing and checking them took on every thread, `activeReads`, the chunk reads that run now, `downloadedBytes` and `requests` since the app started, `resumedRecords`, the downloads that went on from where an earlier one stopped, `pendingDownloads`, which is `1` while anything downloads, `wantedRecords`, the records that downloads still wait for, `activeTransfers`, the range requests that run now, `downloadRate`, the bytes per second over the last half second, and `reusedBytes`, the bytes that the offered update reuses.
 
 ## Bringing assets
 

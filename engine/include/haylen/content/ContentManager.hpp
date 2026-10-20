@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -53,21 +54,32 @@ class ContentManager final {
         std::uint64_t totalBytes = 0;
     };
 
-    // Newer content that the channel offers: its generation and the bytes that installing it downloads.
+    // Newer content that the channel offers: its generation, the bytes that installing it downloads and the bytes of its required content that the device already holds, which it reuses.
     struct Update {
         std::uint64_t generation = 0;
         std::uint64_t downloadBytes = 0;
+        std::uint64_t reusedBytes = 0;
     };
 
+    // The content and its downloads for debugging. The reads count since the content was mounted: the shards open now, the chunks decoded with their plain bytes and the milliseconds that reading, decrypting, decompressing and checking them took, and the reads that run now. The downloads count since the app started, with the records that still wait, the range requests that run, the bytes per second over the last half second and the bytes that the last update offer reuses.
     struct Statistics {
         std::uint64_t generation = 0;
         std::uint64_t catalogFiles = 0;
         std::uint64_t storedRecords = 0;
         std::uint64_t storedBytes = 0;
+        std::uint64_t openShards = 0;
+        std::uint64_t decodedChunks = 0;
+        std::uint64_t decodedBytes = 0;
+        double decodeMilliseconds = 0.0;
+        std::uint64_t activeReads = 0;
         std::uint64_t downloadedBytes = 0;
         std::uint64_t requests = 0;
         std::uint64_t resumedRecords = 0;
         std::uint64_t pendingDownloads = 0;
+        std::uint64_t wantedRecords = 0;
+        std::uint64_t activeTransfers = 0;
+        double downloadRate = 0.0;
+        std::uint64_t reusedBytes = 0;
     };
 
     using ProgressCallback = std::function<void(const Progress&)>;
@@ -145,6 +157,7 @@ class ContentManager final {
 
   private:
     static const std::array<std::pair<std::string_view, Status>, 5> kStatusNames;
+    static constexpr std::chrono::milliseconds kRateInterval{500};
 
     // A source of packs as the manager holds it. Removing it answers the requests that wait for it as not delivered, and its late answers change nothing.
     class PackSourceLink final : public core::Connection::Link {
@@ -221,6 +234,9 @@ class ContentManager final {
     bool prefetching = false;
     bool checkAgain = false;
     std::uint64_t prefetchRequest = 0;
+    std::chrono::steady_clock::time_point rateSampled = std::chrono::steady_clock::now();
+    std::uint64_t rateBytes = 0;
+    double downloadRate = 0.0;
 };
 
 } // namespace haylen::content

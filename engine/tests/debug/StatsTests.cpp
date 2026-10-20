@@ -460,7 +460,7 @@ TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-// The overlay lists the scenes, the log at every level, the objects with their memory and the events with their listeners once their sections open.
+// The overlay lists the scenes, the log at every level, the content, the objects with their memory and the events with their listeners once their sections open.
 TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     std::vector<std::string> entries;
     test::EngineFixture fixture;
@@ -478,6 +478,7 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
     ImGuiWindow* window = ImGui::FindWindowByName("Haylen debug");
     ASSERT_NE(window, nullptr);
+    window->StateStorage.SetInt(window->GetID("Content"), 1);
     window->StateStorage.SetInt(window->GetID("Objects"), 1);
     window->StateStorage.SetInt(window->GetID("Signals and events"), 1);
     fixture.frames(2);

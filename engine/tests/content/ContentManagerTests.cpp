@@ -221,6 +221,18 @@ TEST_F(ContentManagerTest, LoadsAnAssetOnDemandOnlyAsynchronously) {
     EXPECT_EQ((*std::static_pointer_cast<core::Json>(loaded))["trees"], 12);
     EXPECT_TRUE(engine->getContent().isLocal("levels/forest.json"));
     EXPECT_EQ(engine->getAssets().json("levels/forest.json")["trees"], 12);
+
+    // The statistics count the reads of the content and the downloads that brought the level and the music it prefetches.
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatistics().pendingDownloads == 0; }));
+    const ContentManager::Statistics statistics = engine->getContent().getStatistics();
+    EXPECT_GE(statistics.openShards, 1U);
+    EXPECT_GE(statistics.decodedChunks, 2U);
+    EXPECT_GT(statistics.decodedBytes, 0U);
+    EXPECT_GT(statistics.decodeMilliseconds, 0.0);
+    EXPECT_EQ(statistics.activeReads, 0U);
+    EXPECT_GT(statistics.downloadedBytes, 0U);
+    EXPECT_EQ(statistics.wantedRecords, 0U);
+    EXPECT_EQ(statistics.activeTransfers, 0U);
 }
 
 TEST_F(ContentManagerTest, PreloadsAGroupWhoseAssetsDownload) {

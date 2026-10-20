@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -22,6 +23,15 @@ class ShardSet final {
   public:
     static constexpr std::size_t kMaxOpenShards = 16;
 
+    // What the set read since it was made: the shards open now, the chunks it decoded with their plain bytes and the time it took to read, decrypt, decompress and check them, and the reads that run now.
+    struct Reads {
+        std::uint64_t openShards = 0;
+        std::uint64_t decodedChunks = 0;
+        std::uint64_t decodedBytes = 0;
+        std::uint64_t decodeNanoseconds = 0;
+        std::uint64_t activeReads = 0;
+    };
+
     // Opens the file of a shard, or returns nothing when the device does not hold it.
     using Opener = std::function<std::unique_ptr<io::PackageReader>(const ShardReference&)>;
 
@@ -38,6 +48,8 @@ class ShardSet final {
 
     // Looks again for the shard files that were missing, once a store delivered some of them.
     void forgetMissing() const;
+
+    [[nodiscard]] Reads getReads() const;
 
     [[nodiscard]] const std::vector<ShardReference>& getReferences() const noexcept {
         return references;
@@ -66,6 +78,10 @@ class ShardSet final {
     mutable std::vector<std::shared_ptr<const ShardReader>> readers;
     mutable std::vector<bool> missing;
     mutable std::vector<std::uint32_t> recent;
+    mutable std::atomic<std::uint64_t> decodedChunks = 0;
+    mutable std::atomic<std::uint64_t> decodedBytes = 0;
+    mutable std::atomic<std::uint64_t> decodeNanoseconds = 0;
+    mutable std::atomic<std::uint64_t> activeReads = 0;
 };
 
 } // namespace haylen::content

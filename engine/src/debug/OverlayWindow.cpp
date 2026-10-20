@@ -7,6 +7,7 @@
 #include <string>
 
 #include "core/SignalLua.hpp"
+#include "haylen/content/ContentManager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Scene.hpp"
 #include "haylen/core/SceneManager.hpp"
@@ -109,6 +110,17 @@ void OverlayWindow::drawResources(const Stats& stats) {
         ImGui::PushStyleColor(ImGuiCol_PlotHistogram, fraction > 0.9F ? ImVec4(0.9F, 0.35F, 0.3F, 1.0F) : ImVec4(0.35F, 0.6F, 0.9F, 1.0F));
         ImGui::ProgressBar(fraction, {-1.0F, 0.0F}, label.c_str());
         ImGui::PopStyleColor();
+    }
+}
+
+void OverlayWindow::drawContent(const content::ContentManager& content) {
+    const content::ContentManager::Statistics statistics = content.getStatistics();
+    ImGui::TextWrapped("Generation %llu, %llu files, %s", static_cast<unsigned long long>(statistics.generation), static_cast<unsigned long long>(statistics.catalogFiles), content.isProtected() ? "protected release" : "folder of the app");
+    ImGui::TextWrapped("Shards open %llu, reads running %llu, chunks decoded %llu (%s in %.1f ms)", static_cast<unsigned long long>(statistics.openShards), static_cast<unsigned long long>(statistics.activeReads), static_cast<unsigned long long>(statistics.decodedChunks), formatBytes(static_cast<std::int64_t>(statistics.decodedBytes)).c_str(), statistics.decodeMilliseconds);
+    ImGui::TextWrapped("Store %llu records (%s)", static_cast<unsigned long long>(statistics.storedRecords), formatBytes(static_cast<std::int64_t>(statistics.storedBytes)).c_str());
+    ImGui::TextWrapped("Downloaded %s in %llu requests, %s/s, %llu records waiting, %llu transfers, %llu resumed", formatBytes(static_cast<std::int64_t>(statistics.downloadedBytes)).c_str(), static_cast<unsigned long long>(statistics.requests), formatBytes(static_cast<std::int64_t>(statistics.downloadRate)).c_str(), static_cast<unsigned long long>(statistics.wantedRecords), static_cast<unsigned long long>(statistics.activeTransfers), static_cast<unsigned long long>(statistics.resumedRecords));
+    if (statistics.reusedBytes > 0) {
+        ImGui::TextWrapped("The offered update reuses %s that the device holds", formatBytes(static_cast<std::int64_t>(statistics.reusedBytes)).c_str());
     }
 }
 
@@ -289,6 +301,9 @@ bool OverlayWindow::draw(core::Engine& engine, const Stats& stats, const std::ve
     }
     if (ImGui::CollapsingHeader("Memory, counters and GPU pools", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawResources(stats);
+    }
+    if (ImGui::CollapsingHeader("Content")) {
+        drawContent(engine.getContent());
     }
     if (ImGui::CollapsingHeader("Objects")) {
         drawObjects(stats.objects);

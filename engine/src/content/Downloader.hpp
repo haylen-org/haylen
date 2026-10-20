@@ -98,6 +98,14 @@ class Downloader final {
         return requests.empty();
     }
 
+    // The records that requests still wait for, and the range requests that run now.
+    [[nodiscard]] std::size_t getWantedRecords() const noexcept {
+        return wanted.size();
+    }
+    [[nodiscard]] std::size_t getActiveTransfers() const noexcept {
+        return activeTransfers.size();
+    }
+
   private:
     struct Request {
         Callbacks callbacks;
