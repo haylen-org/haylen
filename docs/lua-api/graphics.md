@@ -194,7 +194,7 @@ local product = {name = 'Trail shoes', placeholder = 'FUqTgEQNZQ1lDWUAaw1lDWUNZQ
 local cover = graphics.newTexture(graphics.decodePlaceholder(product.placeholder, 32, 24), {filter = 'linear'})
 
 async.spawn(function()
-    local response = http.get('https://example.com/shoes.png'):await()
+    local response = http.client.get('https://example.com/shoes.png'):await()
     local image = graphics.decodeImageAsync(response.body):await()
     local swatches = image:swatches()
     product.tint = swatches.vibrant or swatches.dominant
