@@ -372,6 +372,9 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
     publish(update);
     const std::unique_ptr<Client> client = connect();
     const UpdateOffer offer = requireOffer(*client);
+    const auto locate = [&client](const ShardReference& pack) { return client->updater->locate(pack); };
+    std::vector<std::string> finished;
+    // clang-format off
     const auto chunksOf = [&offer](std::string_view path) {
         const Catalog& catalog = *offer.content->catalog;
         const Catalog::File file = catalog.getFile(*catalog.findFile(path));
@@ -381,16 +384,13 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
         }
         return chunks;
     };
-    const auto locate = [&client](const ShardReference& pack) { return client->updater->locate(pack); };
-    std::vector<std::string> finished;
     const auto fetch = [&](std::string_view path, Downloader::Priority priority) {
-        // clang-format off
         client->downloader->fetch(offer.content->shards, chunksOf(path), locate, {.onComplete = [&finished, name = std::string(path)](std::optional<Error> error) {
             EXPECT_FALSE(error) << error->what();
             finished.push_back(name);
         }}, priority);
-        // clang-format on
     };
+    // clang-format on
     server.clearExchanges();
     server.setDelay(150);
 
