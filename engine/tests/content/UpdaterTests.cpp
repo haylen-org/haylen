@@ -220,19 +220,16 @@ TEST_F(UpdaterTest, KeepsTheContentWhenTheDownloadOfTheManifestStops) {
     ASSERT_FALSE(install(*client, again));
 }
 
-// An app that stops while it verifies the manifest of an update leaves the store as it was, and the next start finds the update again.
+// An app that stops while it checks for an update leaves the store as it was, and the next start finds the update again. The server holds its answers, so the app stops in the middle of its check however fast the machine is.
 TEST_F(UpdaterTest, LeavesTheStoreAsItWasWhenTheAppStopsWhileItChecks) {
     publish(makeUpdate(2));
     {
         std::unique_ptr<Client> client = connect();
+        server.setStalls(true);
         client->updater->check([](std::optional<UpdateOffer>, std::optional<Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
-        // clang-format off
-        ASSERT_TRUE(runtime.pumpUntil([this] {
-            const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
-            return std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.path.starts_with(std::string(PublicationLayout::kManifestsFolder)); });
-        }));
-        // clang-format on
+        ASSERT_TRUE(runtime.pumpUntil([this] { return server.getAnswering() > 0; }));
         client.reset();
+        server.setStalls(false);
         (void)runtime.pumpUntil([] { return false; }, std::chrono::milliseconds(200));
     }
 

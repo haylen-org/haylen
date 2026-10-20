@@ -64,6 +64,11 @@ class ContentServer final {
         delay = milliseconds;
     }
 
+    // The requests that the server answers now.
+    [[nodiscard]] int getAnswering() const noexcept {
+        return concurrent;
+    }
+
     // The most requests that the server answered at once.
     [[nodiscard]] int getMostConcurrent() const noexcept {
         return mostConcurrent;
