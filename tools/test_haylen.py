@@ -1034,6 +1034,29 @@ class DesktopProjectTest(unittest.TestCase):
         self.assertIn("MSVC_RUNTIME_LIBRARY MultiThreadedDebugDLL", haylen.desktop_cmake("windows", "Debug", {}))
         self.assertIn('INSTALL_RPATH "$ORIGIN;$ORIGIN/lib"', haylen.desktop_cmake("linux", "Release", {}))
 
+    def test_r8_keeps_every_java_method_that_the_engine_calls(self):
+        # The engine resolves its Java methods by name when the library loads, so a method that R8 removes from a minified app stops the app before it starts.
+        bridge = (haylen.ENGINE_DIR / "src" / "platform" / "android" / "JavaBridge.cpp").read_text(encoding="utf-8")
+        rules = (haylen.ENGINE_DIR / "platform" / "android" / "haylen" / "consumer-rules.pro").read_text(encoding="utf-8")
+        classes = dict(re.findall(r'(\w+Class) = findClass\(\*env, "dev/haylen/(\w+)"\)', bridge))
+        types = {"V": "void", "Z": "boolean", "B": "byte", "I": "int", "J": "long", "F": "float", "D": "double"}
+
+        def java(signature: str) -> list[str]:
+            found, index = [], 0
+            while index < len(signature):
+                dimensions = len(signature[index:]) - len(signature[index:].lstrip("["))
+                index += dimensions
+                found.append(types[signature[index]] + "[]" * dimensions)
+                index += 1
+            return found
+
+        methods = re.findall(r'findMethod\(\*env, (\w+Class), "(\w+)", "\(([^)]*)\)(.+?)"\)', bridge)
+        self.assertGreater(len(methods), 20)
+        for owner, name, arguments, result in methods:
+            block = re.search(r"-keep class dev\.haylen\." + classes[owner] + r" \{(.*?)\}", rules, re.S)
+            self.assertIsNotNone(block, f"The rules of R8 keep no class dev.haylen.{classes[owner]}.")
+            self.assertIn(f"static {java(result)[0]} {name}({', '.join(java(arguments))});", block.group(1), f"The rules of R8 keep no method {name} of dev.haylen.{classes[owner]}.")
+
     def test_the_version_resource_takes_the_values_of_app_json(self):
         generated = self.scratch / "generated"
         haylen.write_windows_resources(haylen.App(self.app, "windows"), generated)
