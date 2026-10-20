@@ -141,10 +141,12 @@ void SkeletonAnimation::collectEvents(float from, float to, bool loop, std::vect
         return;
     }
 
-    // Each pass the times cross reports its events in order, with at most three passes for a step longer than the animation.
-    const float firstPass = std::max(std::floor(from / duration), std::floor(to / duration) - 2.0F);
-    for (float pass = firstPass; pass <= std::floor(to / duration); pass += 1.0F) {
-        const float base = pass * duration;
+    // Each pass the times cross reports its events in order, with at most three passes for a step longer than the animation, counted as integers since a float pass stops growing at large times.
+    const float lastPass = std::floor(to / duration);
+    const float firstPass = std::max(std::floor(from / duration), lastPass - 2.0F);
+    const int passes = std::clamp(static_cast<int>(lastPass - firstPass) + 1, 1, 3);
+    for (int pass = 0; pass < passes; ++pass) {
+        const float base = (firstPass + static_cast<float>(pass)) * duration;
         for (const Event& event : events) {
             const float at = base + event.time;
             if (at > from && at <= to) {

@@ -30,6 +30,7 @@ void AnimatedBatch::addAnimation(std::string name, Animation animation) {
         animations[slot] = std::move(animation);
         for (std::size_t index = 0; index < states.size(); ++index) {
             if (states[index].animation == slot) {
+                states[index].frame = static_cast<std::uint32_t>(animations[slot].frameAt(states[index].time));
                 show(index);
             }
         }
@@ -223,8 +224,10 @@ void AnimatedBatch::advance(float amount, core::JobSystem* jobs) {
             endedSprites.push_back(index);
         }
     }
+    // A listener may update the batch again, which fills the list anew, so the listeners hear a copy of it.
     if (!endedSprites.empty()) {
-        completed.emit(endedSprites);
+        const std::vector<std::size_t> ended = endedSprites;
+        completed.emit(ended);
     }
 }
 

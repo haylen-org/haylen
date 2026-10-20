@@ -156,6 +156,28 @@ TEST_F(AnimatorTest, PlaysAnimationsAndReportsProgress) {
     EXPECT_FALSE(untouched.texture.isValid());
 }
 
+// A callback that replaces the animation that plays with a shorter one ends the step on the frame it was entering.
+TEST_F(AnimatorTest, StopsTheStepWhenACallbackReplacesTheAnimation) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
+    animation2d::Animator animator;
+    animator.add("run", makeStrip(texture, animation2d::Animation::Loop::Loop));
+    animator.play("run");
+
+    std::vector<std::string> events;
+    // clang-format off
+    animator.onFrame = [&](std::string_view name, std::size_t frame) {
+        events.push_back(std::string(name) + ":" + std::to_string(frame));
+        if (frame == 3) {
+            animator.add("run", animation2d::Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .cells = {0, 1}, .framesPerSecond = 100.0F}));
+        }
+    };
+    // clang-format on
+    animator.update(0.35F);
+    EXPECT_EQ(events, (std::vector<std::string>{"run:1", "run:2", "run:3"}));
+    EXPECT_LT(animator.getFrame(), 2U);
+}
+
 TEST_F(AnimatorTest, QueuesAnimationsAfterTheCurrentPass) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));

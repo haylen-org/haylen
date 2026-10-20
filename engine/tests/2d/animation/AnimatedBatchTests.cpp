@@ -75,6 +75,34 @@ TEST_F(AnimatedBatchTest, AdvancesEverySpriteAtItsOwnSpeed) {
     EXPECT_EQ(batch.getAnimation(1), "attack");
 }
 
+TEST_F(AnimatedBatchTest, ReplacesAnimationsAndHearsEndsWhileListenersUpdate) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
+    AnimatedBatch batch(texture);
+    batch.addAnimation("walk", makeStrip(texture, Animation::Loop::Loop));
+    const std::size_t walker = batch.add({}, "walk");
+    batch.update(0.35F);
+    ASSERT_EQ(batch.getFrame(walker), 3U);
+
+    // A shorter animation in place of the one a sprite plays shows the frame of its time among the new frames.
+    Animation shorter{.texture = texture, .loop = Animation::Loop::Loop};
+    shorter.frames.push_back({.source = {0.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.2F});
+    shorter.frames.push_back({.source = {16.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.2F});
+    batch.addAnimation("walk", shorter);
+    EXPECT_EQ(batch.getFrame(walker), 1U);
+    EXPECT_EQ(batch.get(walker).source, (math::Rect{16.0F, 0.0F, 16.0F, 16.0F}));
+
+    // A listener that updates the batch again leaves the list the other listeners hear whole.
+    batch.addAnimation("attack", makeStrip(texture, Animation::Loop::Once));
+    const std::size_t first = batch.add({}, "attack");
+    const std::size_t second = batch.add({}, "attack");
+    std::vector<std::size_t> heard;
+    batch.completed.connect([&batch](std::span<const std::size_t>) { batch.update(0.0F); });
+    batch.completed.connect([&heard](std::span<const std::size_t> ended) { heard.assign(ended.begin(), ended.end()); });
+    batch.update(0.5F);
+    EXPECT_EQ(heard, (std::vector<std::size_t>{first, second}));
+}
+
 TEST_F(AnimatedBatchTest, UpdatesLargeBatchesOnTheJobSystemLikeOnOneThread) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));

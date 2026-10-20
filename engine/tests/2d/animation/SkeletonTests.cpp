@@ -110,6 +110,36 @@ TEST_F(SkeletonTest, ComposesBoneTransformsAndPlaysTracks) {
     EXPECT_EQ(skeleton.getTrackAnimation(1), "lift");
 }
 
+TEST_F(SkeletonTest, FiresEventsSafelyWhenListenersUpdateAndLongStepsPass) {
+    test::EngineFixture fixture;
+    Skeleton skeleton(makeData(fixture));
+    skeleton.play("wave", {.track = 0, .loop = true});
+
+    // A listener that updates the skeleton again hears its own events without losing the ones still waiting.
+    std::vector<float> heard;
+    bool nested = false;
+    // clang-format off
+    skeleton.eventFired.connect([&](const Skeleton::Event& event) {
+        heard.push_back(event.number);
+        if (!nested) {
+            nested = true;
+            skeleton.update(2.0F);
+        }
+    });
+    // clang-format on
+    skeleton.update(1.5F);
+    EXPECT_EQ(heard.size(), 4U);
+
+    // A step of a billion seconds reports the events of its last passes and ends.
+    heard.clear();
+    skeleton.update(1.0e9F);
+    EXPECT_GE(heard.size(), 1U);
+    EXPECT_LE(heard.size(), 3U);
+
+    EXPECT_THROW(skeleton.play("wave", {.track = Skeleton::kMaxTracks}), std::out_of_range);
+    EXPECT_THROW(skeleton.setTrackWeight(Skeleton::kMaxTracks, 0.5F), std::out_of_range);
+}
+
 TEST_F(SkeletonTest, CrossfadesBetweenAnimations) {
     test::EngineFixture fixture;
     Skeleton skeleton(makeData(fixture));

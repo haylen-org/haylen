@@ -17,9 +17,10 @@ void Animator::add(std::string name, Animation animation) {
     }
     animation.validate();
 
-    // Replacing the animation that plays keeps its time, so its frame is looked up again among the new frames.
+    // Replacing the animation that plays keeps its time, so its frame is looked up again among the new frames, and a step that a callback of the old frames runs in stops there.
     if (name == current) {
         frame = animation.frameAt(time);
+        ++plays;
     }
     animations.insert_or_assign(std::move(name), std::move(animation));
 }
@@ -96,13 +97,16 @@ void Animator::step(std::uint32_t ticks) {
     advance(active, static_cast<float>(ticks));
 }
 
-// Shows a frame, reports it and runs its events, unless a callback already switched animations.
+// Shows a frame, reports it and runs its events, unless a callback already switched or replaced the animation.
 void Animator::enter(std::size_t shown) {
     frame = shown;
     const std::string name = current;
     const std::uint64_t played = plays;
     if (onFrame) {
         onFrame(name, frame);
+    }
+    if (plays != played) {
+        return;
     }
     const std::vector<std::string> events = getAnimation(name).frames[shown].events;
     for (std::size_t index = 0; index < events.size() && onEvent && plays == played; ++index) {

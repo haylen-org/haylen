@@ -766,7 +766,7 @@ scene.push({
 
 ### skeleton:play(name, options) and skeleton:crossFade(name, seconds, options)
 
-Play an animation on a track from its start, at once or crossfading from what the track played over `seconds`. The table `options` takes `track`, counted from 1 (default 1), `loop` (default `true`) and, for `play`, `fade` in seconds. An animation the data lacks raises `The skeleton has no animation "<name>".`.
+Play an animation on a track from its start, at once or crossfading from what the track played over `seconds`. The table `options` takes `track`, counted from 1 (default 1), `loop` (default `true`) and, for `play`, `fade` in seconds. An animation the data lacks raises `The skeleton has no animation "<name>".`, and a skeleton has tracks 1 to 32, so a later track raises `A skeleton has at most 32 tracks.`, as `setTrackWeight` does.
 
 ### skeleton:stop(track), skeleton:setTrackWeight(track, weight), skeleton:trackAnimation(track) and skeleton:trackTime(track)
 

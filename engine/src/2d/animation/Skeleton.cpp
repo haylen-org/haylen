@@ -4,6 +4,7 @@
 #include <cmath>
 #include <numbers>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -61,6 +62,9 @@ void Skeleton::setAttachment(std::string_view slot, std::string_view name) {
 }
 
 Skeleton::Track& Skeleton::getTrack(std::size_t index) {
+    if (index >= kMaxTracks) {
+        throw std::out_of_range("A skeleton has at most " + std::to_string(kMaxTracks) + " tracks.");
+    }
     if (index >= tracks.size()) {
         tracks.resize(index + 1);
     }
@@ -320,18 +324,21 @@ void Skeleton::update(float deltaSeconds) {
     }
     pose();
 
-    // Listeners may play other animations, so the events of a track come from what it played when the update began.
+    // Listeners may play other animations, so the events of a track come from what it played when the update began, and they may update the skeleton again, so the events wait in a list of their own that the next update reuses.
+    std::vector<const SkeletonAnimation::Event*> events = std::move(passed);
     for (std::size_t index = 0; index < tracks.size(); ++index) {
         if (!tracks[index].current) {
             continue;
         }
         const Entry entry = *tracks[index].current;
-        passed.clear();
-        entry.animation->collectEvents(entry.previousTime, entry.time, entry.loop, passed);
-        for (const SkeletonAnimation::Event* event : passed) {
+        events.clear();
+        entry.animation->collectEvents(entry.previousTime, entry.time, entry.loop, events);
+        for (const SkeletonAnimation::Event* event : events) {
             eventFired.emit({.track = index, .animation = entry.animation->name, .name = event->name, .text = event->text, .number = event->number});
         }
     }
+    events.clear();
+    passed = std::move(events);
 }
 
 std::optional<math::Vec2> Skeleton::getPoint(std::string_view slot) const {

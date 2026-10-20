@@ -26,6 +26,8 @@ namespace haylen::animation2d {
 // One posed instance of a skeleton. Tracks play animations over each other in track order, each with a weight and a crossfade from the animation it played before, so a walk on one track and an aim on another mix. Every update advances the tracks, poses the bones from the setup pose, solves the constraints and computes the world transforms, and a draw sends every slot in draw order, regions and meshes alike, as meshes of the atlas texture.
 class Skeleton final {
   public:
+    static constexpr std::size_t kMaxTracks = 32;
+
     struct BonePose {
         math::Vec2 position{};
         float rotation = 0.0F;
