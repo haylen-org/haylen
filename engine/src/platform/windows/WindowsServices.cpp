@@ -20,6 +20,7 @@
 #include "io/CompositePackage.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsDialogs.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
@@ -42,7 +43,9 @@ void Services::initialize() {
     WindowsSystem::reportBattery();
 }
 
-void Services::shutdown() noexcept {}
+void Services::shutdown() noexcept {
+    WindowsAccessibility::release();
+}
 
 void Services::reportError(const core::Json&) {}
 
@@ -232,14 +235,17 @@ void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& valu
     WindowsMediaSession::update(value);
 }
 
-// The screen readers of this platform have no interface the engine serves yet, as the accessibility reference explains.
 bool Services::isAccessibilityTreeWanted() {
-    return false;
+    return WindowsAccessibility::isWanted();
 }
 
-void Services::updateAccessibility(std::span<const AccessibilityElement>, std::uint64_t) {}
+void Services::updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
+    WindowsAccessibility::update(elements, focused);
+}
 
-void Services::announce(std::string_view, bool) {}
+void Services::announce(std::string_view text, bool interrupt) {
+    WindowsAccessibility::announce(text, interrupt);
+}
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<WindowsVideoDecoder>(std::move(file), path);

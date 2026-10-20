@@ -4,11 +4,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <string_view>
 
 #include "haylen/math/Geometry.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
+#include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsText.hpp"
 #include "sokol_app.h"
@@ -230,6 +232,11 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         }
         // The accessibility settings change with several of the settings that Windows announces, so every announcement reads them again.
         WindowsSystem::reportAccessibility();
+        break;
+    case WM_GETOBJECT:
+        if (const std::optional<LRESULT> answered = WindowsAccessibility::answer(window, wParam, lParam)) {
+            return *answered;
+        }
         break;
     case WM_POWERBROADCAST:
         if (wParam == PBT_APMPOWERSTATUSCHANGE) {
