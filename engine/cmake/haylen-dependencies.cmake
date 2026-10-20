@@ -220,6 +220,8 @@ CPMAddPackage(
     "ZSTD_MULTITHREAD_SUPPORT OFF"
   SYSTEM YES
 )
+# Zstandard passes an option to the assembler, which the link of GCC drops from code compiled for link-time optimization with a warning, so it builds as machine code.
+set_property(TARGET libzstd_static PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF)
 
 # Monocypher gives protected content its authenticated encryption (XChaCha20-Poly1305), its hashes and key derivation (BLAKE2b) and its manifest signatures (Ed25519). It is an audited C library of two files without dependencies, so it builds the same on every target, the web included, and the release pinned here fixes a timing leak of its signatures.
 CPMAddPackage(

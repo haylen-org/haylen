@@ -777,6 +777,18 @@ haylen_embed_file(haylen_engine "${budoux_SOURCE_DIR}/budoux/models/th.json" get
 haylen_enable_warnings(haylen_engine)
 haylen_enable_coverage(haylen_engine)
 
+# GCC and MSVC link the intermediate code of a Release build only when the link asks for it, so every program that links the engine asks, whatever its own configuration, which a Debug app that links the prebuilt SDK has. GCC repeats its checks of string bounds at that link on code that it inlines from other files and reports bounds that no call reaches, while every file of the engine passes those checks where it compiles, so the link leaves them to the compile.
+if(HAYLEN_LINK_TIME_OPTIMIZATION AND CMAKE_BUILD_TYPE STREQUAL "Release")
+  if(MSVC)
+    target_link_options(haylen_engine INTERFACE /LTCG /INCREMENTAL:NO)
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_options(haylen_engine INTERFACE -flto=auto -Wno-stringop-overflow -Wno-stringop-overread)
+  elseif(ANDROID AND ANDROID_PLATFORM_LEVEL LESS 29)
+    # Android before API 29 keeps thread-local variables in emulated storage, which the compile uses, so the code that the link generates from the intermediate code uses it too.
+    target_link_options(haylen_engine INTERFACE "LINKER:-plugin-opt=-emulated-tls")
+  endif()
+endif()
+
 # The writing side of the content format, which builds, seals, signs and compiles releases on the machines that make them: the content tool, the tests and the benchmarks link it, while apps link only the reading side of the engine, so it builds only for them.
 add_library(haylen_content_writer STATIC EXCLUDE_FROM_ALL
   src/content/ContentBuilder.cpp

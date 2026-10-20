@@ -13,6 +13,16 @@ if(NOT MSVC)
   endif()
 endif()
 
+# A Release build compiles the engine and its dependencies to the intermediate code of the compiler, so the link of each program optimizes the engine, its dependencies and the program as one and drops what the program never reaches. The prebuilt SDK keeps that code, so an app that links it is optimized the same way. The tools of Apple build an xcframework only from machine code, so its slices compile without it.
+include(CheckIPOSupported)
+check_ipo_supported(RESULT HAYLEN_LINK_TIME_OPTIMIZATION LANGUAGES C CXX)
+if(HAYLEN_BUILD_FRAMEWORK)
+  set(HAYLEN_LINK_TIME_OPTIMIZATION OFF)
+endif()
+if(HAYLEN_LINK_TIME_OPTIMIZATION)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif()
+
 # Every function and object lands in a section of its own, so linking with "--gc-sections" drops what a release never calls. Apple linkers strip dead code by atom without them.
 if(NOT MSVC AND NOT APPLE)
   add_compile_options(-ffunction-sections -fdata-sections)

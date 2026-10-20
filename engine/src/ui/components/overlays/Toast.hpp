@@ -150,7 +150,7 @@ class Toast final : public Component {
     [[nodiscard]] const Content& getContent(const Notice& notice) const noexcept {
         return notice.own ? content : notice.content;
     }
-    [[nodiscard]] Notice* findNotice(std::string_view id) noexcept;
+    [[nodiscard]] Notice* findNotice(std::string_view notice) noexcept;
 
     // The values of the events of a notice, which name it by its id when it has one.
     [[nodiscard]] static core::Json describeNotice(const Notice& notice);

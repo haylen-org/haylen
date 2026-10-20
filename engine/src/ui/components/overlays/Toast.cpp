@@ -72,8 +72,8 @@ core::Json Toast::describeNotice(const Notice& notice) {
     return payload;
 }
 
-Toast::Notice* Toast::findNotice(std::string_view id) noexcept {
-    const auto found = std::ranges::find_if(notices, [id](const Notice& notice) { return !notice.own && !notice.leaving && notice.id == id; });
+Toast::Notice* Toast::findNotice(std::string_view notice) noexcept {
+    const auto found = std::ranges::find_if(notices, [notice](const Notice& shown) { return !shown.own && !shown.leaving && shown.id == notice; });
     return found != notices.end() ? &*found : nullptr;
 }
 
@@ -88,15 +88,15 @@ void Toast::command(Context& context, std::string_view name, const core::Json& a
     }
     const std::string where = "the \"" + std::string(name) + "\" command of a \"toast\"";
     PropertyReader reader(arguments, getKind());
-    std::string id;
-    reader.read("notice", id);
+    std::string noticeId;
+    reader.read("notice", noticeId);
 
     if (name == "hide") {
         core::JsonValidator::requireKnownKeys(arguments, {"notice"}, where);
         reader.finish();
-        Notice* found = id.empty() ? nullptr : findNotice(id);
-        if (!id.empty() && found == nullptr) {
-            throw std::invalid_argument("The toast \"" + getId() + "\" shows no notice \"" + id + "\".");
+        Notice* found = noticeId.empty() ? nullptr : findNotice(noticeId);
+        if (!noticeId.empty() && found == nullptr) {
+            throw std::invalid_argument("The toast \"" + getId() + "\" shows no notice \"" + noticeId + "\".");
         }
         for (Notice& notice : notices) {
             if (!notice.leaving && (found == nullptr || &notice == found)) {
@@ -108,10 +108,10 @@ void Toast::command(Context& context, std::string_view name, const core::Json& a
     }
 
     core::JsonValidator::requireKnownKeys(arguments, {"notice", "title", "text", "action", "tone", "variant", "indicator", "progress", "closable", "duration"}, where);
-    Notice* found = id.empty() ? nullptr : findNotice(id);
+    Notice* found = noticeId.empty() ? nullptr : findNotice(noticeId);
     if (name == "update") {
         if (found == nullptr) {
-            throw std::invalid_argument(id.empty() ? "The \"update\" command of a \"toast\" needs the \"notice\" it changes." : "The toast \"" + getId() + "\" shows no notice \"" + id + "\".");
+            throw std::invalid_argument(noticeId.empty() ? "The \"update\" command of a \"toast\" needs the \"notice\" it changes." : "The toast \"" + getId() + "\" shows no notice \"" + noticeId + "\".");
         }
         readContent(reader, found->content);
         reader.finish();
@@ -130,7 +130,7 @@ void Toast::command(Context& context, std::string_view name, const core::Json& a
         found->elapsed = 0.0F;
         return;
     }
-    notices.push_back({.id = std::move(id), .content = std::move(shown)});
+    notices.push_back({.id = std::move(noticeId), .content = std::move(shown)});
 }
 
 math::Vec2 Toast::measureContent(Context&, float) {
