@@ -44,10 +44,8 @@ PocoWebSocket::Workers::~Workers() {
     }
     for (const std::weak_ptr<Connection>& weak : stopped) {
         if (const std::shared_ptr<Connection> alive = weak.lock()) {
-            {
-                const std::scoped_lock lock(alive->mutex);
-                alive->stopping = true;
-            }
+            const std::scoped_lock lock(alive->mutex);
+            alive->stopping = true;
             alive->poller.wakeUp();
         }
     }
@@ -125,10 +123,8 @@ PocoWebSocket::PocoWebSocket(const std::string& url, std::vector<std::string> pr
 }
 
 PocoWebSocket::~PocoWebSocket() {
-    {
-        const std::scoped_lock lock(connection->mutex);
-        connection->stopping = true;
-    }
+    const std::scoped_lock lock(connection->mutex);
+    connection->stopping = true;
     connection->poller.wakeUp();
 }
 
@@ -161,13 +157,11 @@ void PocoWebSocket::close(int code, std::string reason) {
     wake(*connection);
 }
 
-// A wake-up still pending covers the next one, so the pipe behind the poll set never fills up however much the app sends.
+// A wake-up still pending covers the next one, so the pipe behind the poll set never fills up however much the app sends. Every wake-up and the clearing of the poll set hold the mutex, since clearing it replaces the descriptor that a wake-up writes to.
 void PocoWebSocket::wake(Connection& target) {
-    {
-        const std::scoped_lock lock(target.mutex);
-        if (std::exchange(target.wakePending, true)) {
-            return;
-        }
+    const std::scoped_lock lock(target.mutex);
+    if (std::exchange(target.wakePending, true)) {
+        return;
     }
     target.poller.wakeUp();
 }
@@ -252,6 +246,7 @@ void PocoWebSocket::connectAndServe(Connection& target, Workers& workers, const 
     } catch (const std::exception& error) {
         fail(target, error.what());
     }
+    const std::scoped_lock lock(target.mutex);
     target.poller.clear();
 }
 
