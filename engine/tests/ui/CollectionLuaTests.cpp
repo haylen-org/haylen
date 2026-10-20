@@ -163,6 +163,13 @@ TEST_F(CollectionLuaTest, ReportsTheErrorsOfItsMethods) {
     EXPECT_NE(error("ui.mount(ui.collection{types = {row = {template = ui.label{id = 'name'}}}})").find("A node inside a collection template names itself with \"part\", not \"id\"."), std::string::npos);
     EXPECT_NE(error("gui:set('list', {types = {row = {template = ui.row{ui.label{part = 'a'}, ui.label{part = 'a'}}}}})").find("The part \"a\" is used more than once in the template of the type \"row\"."), std::string::npos);
 
+    // New types that an item still lacks fail before the collection changes, so it goes on drawing its items.
+    fixture.runLua("kinds = ui.mount(ui.collection{id = 'kinds', height = 100, types = {a = {template = ui.label{}}, b = {template = ui.label{}}}}) kinds:collection('kinds'):setItems({{id = 'x', type = 'a'}, {id = 'y', type = 'b'}})");
+    EXPECT_NE(error("kinds:set('kinds', {types = {b = {template = ui.label{}}}})").find("The item \"x\" of the collection \"kinds\" has the type \"a\", which the collection does not declare."), std::string::npos);
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return kinds:collection('kinds').count .. ' ' .. tostring(kinds:get('kinds').types.a ~= nil)"), "2 true");
+    fixture.runLua("kinds:unmount()");
+
     fixture.runLua("gui:unmount()");
     EXPECT_NE(error("return list.count").find("The GUI is not mounted."), std::string::npos);
     EXPECT_EQ(getEngine().getError(), nullptr);

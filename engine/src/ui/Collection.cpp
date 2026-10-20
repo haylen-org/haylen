@@ -102,6 +102,16 @@ void Collection::compile(const ComponentRegistry& components) {
     }
 }
 
+// The items of the source take the types of the replacement, so a change of the types that an item still uses fails before it applies.
+void Collection::checkReplacement(const Component& replacement) const {
+    if (!source) {
+        return;
+    }
+    const auto& next = dynamic_cast<const Collection&>(replacement);
+    std::vector<std::uint16_t> found;
+    readTypes(0, source->getCount(), *next.types, next.placeholderType, found);
+}
+
 // New types replace every cell, since a cell belongs to the template it was built from, and keep the binders of the types that stay.
 void Collection::rebuildTypes() {
     if (!typesChanged) {
@@ -125,6 +135,11 @@ void Collection::rebuildTypes() {
         }
     }
 
+    // Every item takes a type of the new table before anything changes, so a type that an item still uses leaves the collection as it was.
+    if (source) {
+        readTypes(0, source->getCount(), *built, placeholderIndex, typeScratch);
+    }
+
     std::vector<Binder> kept(built->size());
     for (std::uint16_t type = 0; types && type < types->size(); ++type) {
         if (const std::optional<std::uint16_t> found = built->find(types->get(type).getName())) {
@@ -142,35 +157,38 @@ void Collection::rebuildTypes() {
     estimatesDirty = true;
     layoutDirty = true;
     if (source) {
-        readTypes(0, source->getCount(), typeScratch);
         sizes->assign(typeScratch);
     }
 }
 
 void Collection::checkType(std::string_view item, std::string_view type) const {
-    if (type.empty() && types->size() != 1) {
+    checkType(item, type, *types);
+}
+
+void Collection::checkType(std::string_view item, std::string_view type, const CellTypes& table) const {
+    if (type.empty() && table.size() != 1) {
         throw std::invalid_argument("The item \"" + std::string(item) + "\" of the collection \"" + getId() + "\" needs a type, because the collection declares several.");
     }
-    if (!type.empty() && !types->find(type)) {
+    if (!type.empty() && !table.find(type)) {
         throw std::invalid_argument("The item \"" + std::string(item) + "\" of the collection \"" + getId() + "\" has the type \"" + std::string(type) + "\", which the collection does not declare.");
     }
 }
 
 // An item that did not load yet takes the placeholder type, or no type, which draws nothing in its place.
-std::uint16_t Collection::readType(std::size_t index) const {
+std::uint16_t Collection::readType(std::size_t index, const CellTypes& table, std::optional<std::uint16_t> placeholderIndex) const {
     const std::string_view itemId = source->getId(index);
     if (itemId.empty()) {
-        return placeholderType.value_or(SizeCache::kNoType);
+        return placeholderIndex.value_or(SizeCache::kNoType);
     }
     const std::string_view name = source->getType(index);
-    checkType(itemId, name);
-    return name.empty() ? 0 : *types->find(name);
+    checkType(itemId, name, table);
+    return name.empty() ? 0 : *table.find(name);
 }
 
-void Collection::readTypes(std::size_t first, std::size_t count, std::vector<std::uint16_t>& found) const {
+void Collection::readTypes(std::size_t first, std::size_t count, const CellTypes& table, std::optional<std::uint16_t> placeholderIndex, std::vector<std::uint16_t>& found) const {
     found.resize(count);
     for (std::size_t offset = 0; offset < count; ++offset) {
-        found[offset] = readType(first + offset);
+        found[offset] = readType(first + offset, table, placeholderIndex);
     }
 }
 
@@ -214,7 +232,7 @@ void Collection::applyChange(const CollectionSource::Change& change) {
     const auto count = static_cast<std::ptrdiff_t>(change.count);
     switch (change.kind) {
     case Kind::Inserted:
-        readTypes(change.index, change.count, typeScratch);
+        readTypes(change.index, change.count, *types, placeholderType, typeScratch);
         sizes->insert(change.index, typeScratch);
         selected.insert(selected.begin() + first, change.count, 0);
         noteEntering(change.index, change.count);
@@ -233,13 +251,13 @@ void Collection::applyChange(const CollectionSource::Change& change) {
         break;
     case Kind::Changed:
         for (std::size_t index = change.index; index < change.index + change.count; ++index) {
-            const std::uint16_t type = readType(index);
+            const std::uint16_t type = readType(index, *types, placeholderType);
             layoutDirty = layoutDirty || type != sizes->getType(index);
             sizes->setType(index, type);
         }
         break;
     case Kind::Replaced: {
-        readTypes(0, change.previous.size(), typeScratch);
+        readTypes(0, change.previous.size(), *types, placeholderType, typeScratch);
         sizes->remap(change.previous, typeScratch);
         std::vector<std::uint8_t> next(change.previous.size(), 0);
         remapping.assign(before, CollectionSource::Change::kNew);

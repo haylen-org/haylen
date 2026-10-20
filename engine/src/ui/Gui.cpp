@@ -210,6 +210,7 @@ void Gui::set(std::string_view id, const core::Json& changes) {
     const std::unique_ptr<Component> checked = registry.create(component.getKind());
     checked->apply(merged);
     checked->compile(registry);
+    component.checkReplacement(*checked);
     component.apply(changes);
     component.compile(registry);
     properties.insert_or_assign(std::string(id), std::move(merged));

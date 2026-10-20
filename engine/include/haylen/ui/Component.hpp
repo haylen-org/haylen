@@ -226,6 +226,9 @@ class Component {
     // Builds what the node needs from the registry once its properties are applied, such as the cell templates of a collection.
     virtual void compile(const ComponentRegistry&) {}
 
+    // Throws when a fresh node of the same kind with the properties a change would give this one does not fit what this node keeps besides its properties, such as the items of a collection, so such a change leaves the node as it was.
+    virtual void checkReplacement(const Component&) const {}
+
     // Whether the node prepares itself before the GUIs draw, where Lua may run, such as a collection that binds its cells.
     [[nodiscard]] virtual bool hasPreparation() const noexcept {
         return false;

@@ -154,6 +154,7 @@ class Collection final : public Component {
         return true;
     }
     void compile(const ComponentRegistry& components) override;
+    void checkReplacement(const Component& replacement) const override;
     void prepare(Context& context) override;
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
@@ -229,8 +230,10 @@ class Collection final : public Component {
     [[nodiscard]] std::size_t findFirstFrom(double offset) const;
 
     void rebuildTypes();
-    [[nodiscard]] std::uint16_t readType(std::size_t index) const;
-    void readTypes(std::size_t first, std::size_t count, std::vector<std::uint16_t>& found) const;
+    // The types of items read against a table of types, the one of the collection or new ones it checks before it takes them.
+    void checkType(std::string_view item, std::string_view type, const CellTypes& table) const;
+    [[nodiscard]] std::uint16_t readType(std::size_t index, const CellTypes& table, std::optional<std::uint16_t> placeholderIndex) const;
+    void readTypes(std::size_t first, std::size_t count, const CellTypes& table, std::optional<std::uint16_t> placeholderIndex, std::vector<std::uint16_t>& found) const;
     void applyChange(const CollectionSource::Change& change);
     [[nodiscard]] std::optional<std::size_t> mapIndex(std::size_t index, const CollectionSource::Change& change) const;
     void remapIndices(const CollectionSource::Change& change, std::size_t before);
