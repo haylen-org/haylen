@@ -1057,6 +1057,37 @@ class DesktopProjectTest(unittest.TestCase):
             self.assertIsNotNone(block, f"The rules of R8 keep no class dev.haylen.{classes[owner]}.")
             self.assertIn(f"static {java(result)[0]} {name}({', '.join(java(arguments))});", block.group(1), f"The rules of R8 keep no method {name} of dev.haylen.{classes[owner]}.")
 
+    def test_release_binaries_keep_their_symbols_apart(self):
+        linux = haylen.desktop_cmake("linux", "Release", {})
+        self.assertIn('"$<$<CONFIG:Release>:LINKER:--gc-sections>"', linux)
+        self.assertIn("--only-keep-debug", linux)
+        self.assertIn('"--add-gnu-debuglink=$<TARGET_FILE:${target}>.debug"', linux)
+        windows = haylen.desktop_cmake("windows", "Release", {})
+        for option in ("/DEBUG", "/OPT:REF", "/OPT:ICF"):
+            self.assertIn(f'"$<$<CONFIG:Release>:{option}>"', windows)
+        generated = self.scratch / "generated"
+        haylen.write_apple_xcconfig(haylen.App(self.app, "ios"), generated, [])
+        xcconfig = (generated / "Haylen.xcconfig").read_text()
+        for setting in ("DEBUG_INFORMATION_FORMAT[config=Release] = dwarf-with-dsym", "DEPLOYMENT_POSTPROCESSING[config=Release] = YES", "STRIP_STYLE[config=Release] = all"):
+            self.assertIn(setting, xcconfig)
+
+    def test_a_release_site_minifies_its_scripts_and_leaves_the_runtimes(self):
+        emsdk = self.scratch / "emsdk"
+        node = emsdk / "node" / "24.0.0_64bit" / "bin" / ("node.exe" if haylen.host_name() == "windows" else "node")
+        node.parent.mkdir(parents=True)
+        node.write_text("")
+        site = self.scratch / "site"
+        for name in ("loader.js", "app.js", "webgpu/haylen.js", "webgpu/haylen-content-store.js", "plugins/banner/banner.js"):
+            (site / name).parent.mkdir(parents=True, exist_ok=True)
+            (site / name).write_text("const value = 1;\n")
+        with mock.patch.object(haylen, "emsdk_root", return_value=emsdk), mock.patch.object(haylen, "run") as run:
+            haylen.minify_web_scripts(site)
+        commands = {Path(call.args[0][2]).relative_to(site).as_posix(): call.args[0] for call in run.call_args_list}
+        self.assertEqual(sorted(commands), ["app.js", "loader.js", "plugins/banner/banner.js", "webgpu/haylen-content-store.js"])
+        self.assertIn("--module", commands["plugins/banner/banner.js"])
+        self.assertNotIn("--module", commands["loader.js"])
+        self.assertEqual(commands["app.js"][0], node)
+
     def test_the_version_resource_takes_the_values_of_app_json(self):
         generated = self.scratch / "generated"
         haylen.write_windows_resources(haylen.App(self.app, "windows"), generated)

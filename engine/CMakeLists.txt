@@ -33,6 +33,7 @@ list(APPEND CMAKE_MODULE_PATH "${HAYLEN_CMAKE_DIR}")
 
 include(cpm)
 include(haylen-platform)
+include(haylen-release)
 include(haylen-warnings)
 include(haylen-coverage)
 include(haylen-shaders)

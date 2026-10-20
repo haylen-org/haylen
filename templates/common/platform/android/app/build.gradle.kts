@@ -86,8 +86,10 @@ android {
     }
 
     buildTypes {
+        // A release keeps only the code and the resources that the app reaches, which R8 finds from the manifest, the layouts and the code.
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.findByName("release")
         }

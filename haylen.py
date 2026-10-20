@@ -2356,6 +2356,11 @@ def write_apple_xcconfig(app: App, generated: Path, native: list[str]) -> None:
         f"CURRENT_PROJECT_VERSION = {app.version}",
         *native,
         "OTHER_LDFLAGS = $(inherited) $(HAYLEN_NATIVE_LDFLAGS)",
+        "// A release keeps its debug information in a dSYM next to the build and strips the app as it builds, so a release that runs is the one that ships.",
+        "DEBUG_INFORMATION_FORMAT[config=Release] = dwarf-with-dsym",
+        "DEPLOYMENT_POSTPROCESSING[config=Release] = YES",
+        "STRIP_INSTALLED_PRODUCT[config=Release] = YES",
+        "STRIP_STYLE[config=Release] = all",
         "",
     ]
     write_if_changed(generated / "Haylen.xcconfig", "\n".join(xcconfig))
@@ -3216,7 +3221,23 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
         for backend in ("webgpu", "webgl2"):
             shutil.copytree(ARTIFACTS_DIR / "web" / backend, site / backend)
     write_web_settings(app, site, release)
+    if args.config == "Release":
+        minify_web_scripts(site)
     return site
+
+
+def minify_web_scripts(site: Path) -> None:
+    """Minifies the scripts of a release site with the terser of the pinned Emscripten, which linked the runtimes minified already: the classic scripts of the page and its workers keep their top-level names, which they share, and the web modules of the plugins minify as modules."""
+    emscripten = emsdk_root() / "upstream" / "emscripten"
+    node = next((emsdk_root() / "node").glob(f"*/bin/{'node.exe' if host_name() == 'windows' else 'node'}"), None)
+    if node is None:
+        raise BuildError(f'The Emscripten SDK in `{shown_path(emsdk_root())}` holds no Node.js. Install it again with "{TOOL} tools".')
+    terser = emscripten / "node_modules" / "terser" / "bin" / "terser"
+    for script in sorted(site.rglob("*.js")):
+        if script.name == "haylen.js":
+            continue
+        module = ["--module"] if "plugins" in script.relative_to(site).parts else []
+        run([node, terser, script, "--compress", "--mangle", *module, "--output", script])
 
 
 def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requirement]:
@@ -3400,11 +3421,20 @@ def desktop_cmake(platform: str, engine_config: str, values: dict[str, str]) -> 
             '    file(CREATE_LINK "${HAYLEN_PACKAGE_DIR}" "${package}" SYMBOLIC)',
             "  endif()",
             '  add_custom_target(${target}_native ALL COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin" VERBATIM)',
+            "  # A release keeps the public symbols of the executable in a PDB next to the build for crash reports, which the install leaves out, and drops the code nothing calls.",
+            '  target_link_options(${target} PRIVATE "$<$<CONFIG:Release>:/DEBUG>" "$<$<CONFIG:Release>:/OPT:REF>" "$<$<CONFIG:Release>:/OPT:ICF>")',
         ]
     else:
         lines += [
             '  set_target_properties(${target} PROPERTIES BUILD_RPATH "$ORIGIN;$ORIGIN/lib" INSTALL_RPATH "$ORIGIN;$ORIGIN/lib")',
-            '  target_link_options(${target} PRIVATE "LINKER:--enable-new-dtags" "$<$<CONFIG:Release>:LINKER:--strip-all>")',
+            '  target_link_options(${target} PRIVATE "LINKER:--enable-new-dtags" "$<$<CONFIG:Release>:LINKER:--gc-sections>")',
+            "  # A release ships stripped, while its symbols stay in a file next to the build for crash reports, which the install leaves out and the executable names in its debug link.",
+            '  if(CMAKE_BUILD_TYPE STREQUAL "Release")',
+            "    add_custom_command(TARGET ${target} POST_BUILD",
+            '      COMMAND "${CMAKE_OBJCOPY}" --only-keep-debug "$<TARGET_FILE:${target}>" "$<TARGET_FILE:${target}>.debug"',
+            '      COMMAND "${CMAKE_OBJCOPY}" --strip-all "--add-gnu-debuglink=$<TARGET_FILE:${target}>.debug" "$<TARGET_FILE:${target}>"',
+            "      VERBATIM)",
+            "  endif()",
             '  if(NOT EXISTS "${package}")',
             '    file(CREATE_LINK "${HAYLEN_PACKAGE_DIR}" "${package}" SYMBOLIC)',
             '    file(CREATE_LINK "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin/lib" SYMBOLIC)',
