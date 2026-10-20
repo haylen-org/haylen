@@ -31,6 +31,9 @@ class Geometry final {
     // Triangulates a simple polygon in either winding and returns counter-clockwise triangle indices.
     [[nodiscard]] static std::vector<std::uint32_t> triangulate(std::span<const Vec2> polygon);
 
+    // Triangulates into `triangles` with `remaining` as working storage, both of which keep their storage, so a polygon triangulated every frame allocates only when it grows.
+    static void triangulate(std::span<const Vec2> polygon, std::vector<std::uint32_t>& triangles, std::vector<std::uint32_t>& remaining);
+
   private:
     [[nodiscard]] static bool pointInTriangle(Vec2 point, Vec2 a, Vec2 b, Vec2 c) noexcept;
 };

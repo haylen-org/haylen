@@ -658,6 +658,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
     const math::Color dotColor = math::Color::white();
     const math::Spline curve({{0.0F, 0.0F}, {40.0F, 60.0F}, {80.0F, -20.0F}, {120.0F, 30.0F}}, math::Spline::Kind::Bezier);
     const std::vector<math::Vec2> points{{10.0F, 10.0F}, {20.0F, 12.0F}, {30.0F, 8.0F}};
+    const std::vector<math::Vec2> polygon{{0.0F, 0.0F}, {40.0F, 0.0F}, {40.0F, 30.0F}, {20.0F, 10.0F}, {0.0F, 30.0F}};
     const std::vector<graphics2d::MeshVertex> mesh{{{0.0F, 0.0F}}, {{10.0F, 0.0F}}, {{0.0F, 10.0F}}};
     const std::vector<std::uint32_t> indices{0, 1, 2};
     graphics2d::Parallax parallax;
@@ -702,6 +703,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
         renderer.drawNineSlice(tiled, {0.0F, 50.0F, 100.0F, 40.0F});
         renderer.drawRectOutline({0.0F, 0.0F, 30.0F, 30.0F}, 2.0F, math::Color::white());
         renderer.drawPolyline(line, 2.0F, math::Color::white());
+        renderer.drawPolygon(polygon, math::Color::white());
         renderer.drawCircle({60.0F, 60.0F}, 10.0F, math::Color::white());
         renderer.drawArc({60.0F, 60.0F}, 20.0F, 4.0F, 0.0F, 2.0F, math::Color::white());
         renderer.drawShape({.bounds = {100.0F, 100.0F, 80.0F, 30.0F}, .radii = {8.0F, 8.0F, 8.0F, 8.0F}, .borderWidth = 2.0F, .borderColor = math::Color::black()});

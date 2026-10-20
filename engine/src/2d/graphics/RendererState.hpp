@@ -134,6 +134,8 @@ struct RendererState {
     std::vector<GpuInstance> scratchInstances;
     std::vector<GpuVertex> scratchVertices;
     std::vector<std::uint32_t> scratchIndices;
+    std::vector<std::uint32_t> polygonTriangles;
+    std::vector<std::uint32_t> polygonCorners;
     std::vector<NineSlice::Patch> patches;
     std::vector<math::Vec2> curvePoints;
 

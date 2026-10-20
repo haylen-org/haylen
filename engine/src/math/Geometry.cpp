@@ -171,11 +171,18 @@ std::vector<Vec2> Geometry::convexHull(std::span<const Vec2> points) {
 
 std::vector<std::uint32_t> Geometry::triangulate(std::span<const Vec2> polygon) {
     std::vector<std::uint32_t> triangles;
+    std::vector<std::uint32_t> remaining;
+    triangulate(polygon, triangles, remaining);
+    return triangles;
+}
+
+void Geometry::triangulate(std::span<const Vec2> polygon, std::vector<std::uint32_t>& triangles, std::vector<std::uint32_t>& remaining) {
+    triangles.clear();
     if (polygon.size() < 3) {
-        return triangles;
+        return;
     }
 
-    std::vector<std::uint32_t> remaining(polygon.size());
+    remaining.resize(polygon.size());
     std::iota(remaining.begin(), remaining.end(), std::uint32_t{0});
     if (signedArea(polygon) < 0.0F) {
         std::reverse(remaining.begin(), remaining.end());
@@ -217,7 +224,6 @@ std::vector<std::uint32_t> Geometry::triangulate(std::span<const Vec2> polygon) 
     if (remaining.size() == 3) {
         triangles.insert(triangles.end(), {remaining[0], remaining[1], remaining[2]});
     }
-    return triangles;
 }
 
 } // namespace haylen::math

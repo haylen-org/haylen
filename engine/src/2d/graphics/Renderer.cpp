@@ -731,8 +731,8 @@ void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color
         return;
     }
 
-    const std::vector<std::uint32_t> triangles = math::Geometry::triangulate(points);
-    PolygonMesh::build(points, triangles, color.toRgba8(), state->getPixelSize(), state->scratchVertices, state->scratchIndices);
+    math::Geometry::triangulate(points, state->polygonTriangles, state->polygonCorners);
+    PolygonMesh::build(points, state->polygonTriangles, color.toRgba8(), state->getPixelSize(), state->scratchVertices, state->scratchIndices);
     state->addMesh(state->white, state->scratchVertices, state->scratchIndices, order);
 }
 
