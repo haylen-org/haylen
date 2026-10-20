@@ -1313,6 +1313,27 @@ class AndroidPluginsTest(unittest.TestCase):
             haylen.build_android(app, project, arguments)
             run.assert_called_once()
 
+    def test_a_release_too_large_for_the_base_module_goes_into_install_time_asset_packs(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        generated = scratch / "project" / haylen.GENERATED_FOLDER
+        release = generated / "assets" / "app"
+        release.mkdir(parents=True)
+        for name in ("app.hmanifest", "content.hmanifest"):
+            (release / name).write_bytes(b"m" * 10)
+        for index in range(5):
+            (release / f"{index:064x}.hpak").write_bytes(b"s" * 100)
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})), mock.patch.object(haylen, "ANDROID_ASSET_PACK_LIMIT", 250):
+            with mock.patch.object(haylen, "ANDROID_BASE_RELEASE_LIMIT", 1000):
+                self.assertEqual(haylen.write_android_asset_packs(generated), [], "A release that fits the base module stays there.")
+            with mock.patch.object(haylen, "ANDROID_BASE_RELEASE_LIMIT", 300):
+                packs = haylen.write_android_asset_packs(generated)
+        self.assertEqual(packs, ["haylencontent1", "haylencontent2", "haylencontent3"])
+        self.assertEqual(sorted(path.name for path in release.iterdir()), ["app.hmanifest", "content.hmanifest"])
+        self.assertEqual([len(list((generated / "asset-packs" / pack / "src" / "main" / "assets" / "app").iterdir())) for pack in packs], [2, 2, 1])
+        self.assertIn('deliveryType.set("install-time")', (generated / "asset-packs" / "haylencontent1" / "build.gradle.kts").read_text())
+        self.assertEqual(haylen.android_release_shards(scratch / "project"), {f"{index:064x}.hpak" for index in range(5)})
+
     def test_a_debug_build_for_a_device_packs_only_its_abi(self):
         app = mock.Mock(plugins=[], plugin_values={}, build_folder=Path("build"))
         for config, abi, packed in (("Debug", "x86_64", True), ("Debug", None, False), ("Release", "x86_64", False)):

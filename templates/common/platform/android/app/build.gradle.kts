@@ -59,6 +59,9 @@ android {
         jniLibs.directories.add("../haylen/jniLibs")
     }
 
+    // The asset packs that hold the shards of a protected release too large for the base module install with the app.
+    assetPacks += haylenEntries("assetPacks").map { ":${it.first}" }
+
     // The shards of a protected release stay uncompressed in the APK, so the runtime reads their ranges in place.
     androidResources {
         noCompress += "hpak"

@@ -34,6 +34,13 @@ haylen.getProperty("plugins").split(",").filter { it.isNotEmpty() }.forEach { en
     project(":$id").projectDir = file(folder)
 }
 
+// The install-time asset packs that hold the shards of a protected release too large for the base module of Google Play, which `haylen.py` writes into `haylen/asset-packs/` and lists as `name=folder` entries.
+haylen.getProperty("assetPacks").split(",").filter { it.isNotEmpty() }.forEach { entry ->
+    val (name, folder) = entry.split("=")
+    include(":$name")
+    project(":$name").projectDir = file(folder)
+}
+
 // Every module finds the engine version in the extra property `haylenEngineVersion`, which the plugin modules depend on the engine libraries with, and builds into the build folder of the app, outside this project. The action takes plain values, since Gradle keeps it apart from this script.
 run {
     val engineVersion = haylen.getProperty("engineVersion")

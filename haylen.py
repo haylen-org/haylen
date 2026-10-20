@@ -135,7 +135,23 @@ APPLE_SWIFT_HELPERS = "HaylenBridgeAsync.swift"
 RELEASE_MANIFESTS = ("app.hmanifest", "content.hmanifest")
 RELEASE_SHARD_SUFFIX = ".hpak"
 # The largest protected release that the store of a content profile accepts inside an app, with the words that name the limit: the App Store limits the uncompressed size of an iOS or tvOS app, and Google Play the compressed download of the base module, whose shards are compressed already.
-STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app"), "android": (200 * 1024**2, "the 200 MB that Google Play accepts for the compressed download of the base module of an app")}
+# Google Play takes a base module of at most 200 MB to download, which also carries the code and the native libraries of the app, and asset packs that install with the app on top of it. A protected release larger than the share of the base module that this leaves goes into install-time asset packs of at most the size below each, which Android reads through the same assets as the base module.
+ANDROID_BASE_RELEASE_LIMIT = 150 * 1024**2
+ANDROID_ASSET_PACK_LIMIT = 512 * 1024**2
+ANDROID_ASSET_PACK_NAME = "haylencontent"
+ANDROID_ASSET_PACK_MODULE = """// Written by haylen.py: an asset pack of the protected release of the app, which Google Play installs with it.
+plugins {{
+    id("com.android.asset-pack")
+}}
+
+assetPack {{
+    packName.set("{name}")
+    dynamicDelivery {{
+        deliveryType.set("install-time")
+    }}
+}}
+"""
+STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app")}
 # Symbol files, which stay with the developer and never ship.
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
@@ -2893,11 +2909,13 @@ def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path
     """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version, orientation and status bar of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Android project `{shown_path(root)}`")
-    for name in ("assets", "res", "jniLibs", "plugins"):
+    for name in ("assets", "res", "jniLibs", "plugins", "asset-packs"):
         shutil.rmtree(generated / name, ignore_errors=True)
+    packs: list[str] = []
     if release:
         # A release is a flat folder, which Android lists without an index.
         shutil.copytree(release, generated / "assets" / "app")
+        packs = write_android_asset_packs(generated)
     else:
         files = copy_package(app, generated / "assets" / "app")
         # Android cannot list asset folders recursively, so the runtime reads the files of the package from this index.
@@ -2916,10 +2934,40 @@ def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path
         "statusBar": app.status_bar,
         "library": library,
         "buildDirectory": (app.build_folder / "gradle").as_posix(),
+        "assetPacks": ",".join(f"{name}={GENERATED_FOLDER}/asset-packs/{name}" for name in packs),
         **prepare_android_plugins(app, root),
     }
     lines = ["# Written by haylen.py from app.json and the plugins of the app. The Gradle scripts of the project read it."]
     write_if_changed(generated / "haylen.properties", "\n".join([*lines, *(f"{key}={java_property(value)}" for key, value in values.items())]) + "\n")
+
+
+def write_android_asset_packs(generated: Path) -> list[str]:
+    """Moves the shards of a protected release that does not fit the base module of Google Play into install-time asset packs of the project, filled in the order of their names, and returns the names of the packs. Their shards keep the folder `app/` of the assets, where the runtime reads the release whichever module installed them, and the manifests stay in the base module."""
+    folder = generated / "assets" / "app"
+    shards = sorted(path for path in folder.iterdir() if path.name.endswith(RELEASE_SHARD_SUFFIX))
+    if sum(path.stat().st_size for path in folder.iterdir()) <= ANDROID_BASE_RELEASE_LIMIT:
+        return []
+    packs: list[str] = []
+    filled = ANDROID_ASSET_PACK_LIMIT
+    for shard in shards:
+        size = shard.stat().st_size
+        if filled + size > ANDROID_ASSET_PACK_LIMIT:
+            packs.append(f"{ANDROID_ASSET_PACK_NAME}{len(packs) + 1}")
+            module = generated / "asset-packs" / packs[-1]
+            (module / "src" / "main" / "assets" / "app").mkdir(parents=True)
+            (module / "build.gradle.kts").write_text(ANDROID_ASSET_PACK_MODULE.format(name=packs[-1]), encoding="utf-8")
+            filled = 0
+        shard.rename(generated / "asset-packs" / packs[-1] / "src" / "main" / "assets" / "app" / shard.name)
+        filled += size
+    terminal.info(f"The protected release is larger than the share of the base module of Google Play that the app leaves it, so its shards go into the install-time asset packs {quoted_names(packs)}.")
+    return packs
+
+
+def android_release_shards(root: Path) -> set[str]:
+    """The shards of the protected release that a prepared Android project ships, in its base module and its asset packs."""
+    generated = root / GENERATED_FOLDER
+    folders = [generated / "assets" / "app", *(generated / "asset-packs").glob("*/src/main/assets/app")]
+    return {path.name for folder in folders if folder.is_dir() for path in folder.iterdir() if path.name.endswith(RELEASE_SHARD_SUFFIX)}
 
 
 def android_device(requested: str | None) -> str:
@@ -2943,7 +2991,7 @@ def aapt2() -> Path:
 def android_product(app: App, config: str) -> Path:
     """Finds the newest APK of a configuration that Gradle built into the build folder of the app, whatever product flavors the project defines."""
     variant = "release" if config == "Release" else "debug"
-    folder = app.build_folder / "gradle" / "app" / "outputs" / "apk"
+    folder = app.build_folder / "gradle" / "app" / "outputs"
     apks = sorted((path for path in folder.rglob("*.apk") if variant in path.parent.parts), key=lambda path: path.stat().st_mtime) if folder.is_dir() else []
     if not apks:
         raise BuildError(f'No APK of `{shown_path(app.folder)}` was built in the "{config}" configuration. Build it with "{TOOL} run {shown_path(app.folder)} --platform android".')
@@ -2964,7 +3012,7 @@ def android_device_abi(device: str) -> str:
 
 
 def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | None = None) -> Path:
-    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project. A debug build for a device names its ABI with the Gradle property `haylen.abi`, whose debug build type of the template packs only the native libraries of that ABI, so it builds and installs faster and fits a device with little room. A file that a plugin needs in the project, such as the configuration of a service, stops the build first with the copy to make, since Gradle would fail without it."""
+    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project. A debug build for a device names its ABI with the Gradle property `haylen.abi`, whose debug build type of the template packs only the native libraries of that ABI, so it builds and installs faster and fits a device with little room. A release whose shards went into asset packs builds the universal APK of the bundle, which holds the asset packs that install with the app, as Google Play installs them. A file that a plugin needs in the project, such as the configuration of a service, stops the build first with the copy to make, since Gradle would fail without it."""
     lacking = missing_android_plugin_files(app, root)
     if lacking:
         copies = " ".join(f'The plugin "{plugin.id}" needs "{destination}", so copy `{shown_path(source)}` to `{shown_path(root / destination)}`.' for plugin, source, destination in lacking)
@@ -2972,7 +3020,9 @@ def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | Non
     variant = "Release" if args.config == "Release" else "Debug"
     terminal.step(f'Building the APK of `{shown_path(root)}` with Gradle in the "{args.config}" configuration')
     only = [f"-Phaylen.abi={abi}"] if abi and variant == "Debug" else []
-    run([ensure_gradle(), "-p", root, f":app:assemble{variant}", f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache", *only])
+    packed = variant == "Release" and any((root / GENERATED_FOLDER / "asset-packs").glob("*/build.gradle.kts"))
+    task = f":app:package{variant}UniversalApk" if packed else f":app:assemble{variant}"
+    run([ensure_gradle(), "-p", root, task, f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache", *only])
     return android_product(app, args.config)
 
 
@@ -3065,6 +3115,8 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
     if args.config == "Release":
         missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, apk_entries(apk), "assets/app", read_secrets(app))]
         missing += [Requirement(f'The release holds the shard "{name}" compressed, while the runtime reads shards in place.', f'Keep "noCompress" of "hpak" in `{shown_path(root / "app" / "build.gradle.kts")}`.') for name in compressed]
+        packs = f'Keep the asset packs of "{GENERATED_FOLDER}/haylen.properties" in `{shown_path(root / "settings.gradle.kts")}` and `{shown_path(root / "app" / "build.gradle.kts")}`, as the template does.'
+        missing += [Requirement(f'The built app lacks the shard "{name}" of its protected release.', packs) for name in sorted(android_release_shards(root) - {entry.removeprefix("assets/app/") for entry in entries})]
     return missing
 
 
