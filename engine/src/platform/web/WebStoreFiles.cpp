@@ -36,6 +36,10 @@ EM_JS(void, haylen_js_store_read, (int request, const char* name, double offset,
     Module.haylen.contentStore.read(request, UTF8ToString(name), offset, size);
 });
 
+EM_JS(int, haylen_js_store_persistent, (), {
+    return Module.haylen.contentStore.persistent() ? 1 : 0;
+});
+
 EM_JS(double, haylen_js_store_unwritten, (), {
     return Module.haylen.contentStore.unwritten();
 });
@@ -49,7 +53,7 @@ namespace haylen::platform {
 
 WebStoreFiles* WebStoreFiles::active = nullptr;
 
-WebStoreFiles::WebStoreFiles() : metadata(std::filesystem::path(kRoot)) {
+WebStoreFiles::WebStoreFiles() : metadata(std::filesystem::path(kRoot)), persistent(haylen_js_store_persistent() != 0) {
     active = this;
     if (const std::optional<std::vector<std::uint8_t>> bytes = metadata.read(std::string(kSizesFile))) {
         const core::Json sizes = core::Json::parse(*bytes);
@@ -123,6 +127,7 @@ void WebStoreFiles::remove(const std::string& name) {
     for (auto entry = resident.begin(); entry != resident.end();) {
         if (entry->first.first == name) {
             residentBytes -= entry->second.bytes.size();
+            onlyBytes -= entry->second.only ? entry->second.bytes.size() : 0;
             entry = resident.erase(entry);
         } else {
             ++entry;
@@ -163,7 +168,11 @@ void WebStoreFiles::readRange(const std::string& name, std::uint64_t offset, std
     std::copy_n(found->second.bytes.begin(), target.size(), target.begin());
 }
 
+// A page that keeps its downloads in memory has the room that the records it holds leave of its memory room.
 std::uint64_t WebStoreFiles::getAvailableSpace() const {
+    if (!persistent) {
+        return kMemoryRoom - std::min(onlyBytes, kMemoryRoom);
+    }
     return static_cast<std::uint64_t>(haylen_js_store_available());
 }
 
@@ -242,9 +251,17 @@ void WebStoreFiles::keep(const std::string& name, std::uint64_t offset, std::vec
     residentBytes += bytes.size();
     Resident& entry = resident[{name, offset}];
     residentBytes -= entry.bytes.size();
+    onlyBytes -= entry.only ? entry.bytes.size() : 0;
     entry.bytes = std::move(bytes);
     entry.lastUse = emscripten_get_now();
     entry.appended = appended;
+
+    // Without files in the browser, a record that a download appends lives only here, so it stays for the visit.
+    if (appended && !persistent) {
+        entry.pinned = true;
+        entry.only = true;
+        onlyBytes += entry.bytes.size();
+    }
     evict();
 }
 

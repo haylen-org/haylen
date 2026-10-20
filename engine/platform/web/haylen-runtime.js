@@ -2225,6 +2225,10 @@ Module.haylen = Module.haylen || {};
             unwritten() {
                 return unwritten;
             },
+            // Whether the files of the store live in the browser, or the downloads of the visit stay in memory.
+            persistent() {
+                return worker !== null;
+            },
             flush(name) {
                 post({ op: "flush", name });
             },

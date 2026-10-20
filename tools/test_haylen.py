@@ -1377,6 +1377,13 @@ class WebMemoryTest(unittest.TestCase):
             with self.assertRaisesRegex(haylen.BuildError, message):
                 haylen.check_web_memory({**good, **change})
 
+    def test_stops_on_a_page_without_files_that_misses_its_room(self):
+        refused = {"downloadedMedium": True, "finished": False, "failure": "The content needs 486613920 bytes of room on the device and 251656020 are free."}
+        haylen.check_web_memory_without_files(refused)
+        for change, message in (({"downloadedMedium": False}, "did not download the medium file"), ({"finished": True, "failure": None}, "downloaded it"), ({"failure": "The network failed."}, "reported: The network failed.")):
+            with self.assertRaisesRegex(haylen.BuildError, message):
+                haylen.check_web_memory_without_files({**refused, **change})
+
 
 class CppReleaseTest(unittest.TestCase):
     """The Release configuration of a C++ project ships the protected release with the content tool of the desktop artifacts, and every other configuration turns it off again in the cache of the build tree."""

@@ -1,11 +1,11 @@
-// Opens the page of the memory check of the web in a headless browser over its debugging protocol, follows the page and its workers until the app logs that it downloaded the large file, and prints what it measured as JSON: the bytes that the page and its workers received, the peak of the memory of WebAssembly, and the memory behind the array buffers of the page and its workers once the browser collected their garbage.
-// Run it with Node: node memory-check.mjs <debugging port> <page address> <seconds>
-const [port, url, seconds] = process.argv.slice(2);
+// Opens the page of the memory check of the web in a headless browser over its debugging protocol, follows the page and its workers until the app logs that it downloaded the large file or failed, and prints what it measured as JSON: the bytes that the page and its workers received, whether the medium file came down, the peak of the memory of WebAssembly, and the memory behind the array buffers of the page and its workers once the browser collected their garbage. With "memory" the page runs as in a browser that keeps no files for it.
+// Run it with Node: node memory-check.mjs <debugging port> <page address> <seconds> <files|memory>
+const [port, url, seconds, store] = process.argv.slice(2);
 const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json();
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 const pending = new Map();
 const sessions = new Set([""]);
-const result = { receivedBytes: 0, peakWasmBytes: 0, buffersAfterCollection: 0, finished: false, failure: null, log: [] };
+const result = { receivedBytes: 0, peakWasmBytes: 0, buffersAfterCollection: 0, downloadedMedium: false, finished: false, failure: null, log: [] };
 let id = 0;
 
 const send = (method, params = {}, sessionId = "") =>
@@ -35,7 +35,9 @@ socket.onmessage = (event) => {
     } else if (message.method === "Runtime.consoleAPICalled") {
         const text = message.params.args.map((arg) => arg.value ?? arg.description).join(" ");
         result.log.push(text);
-        if (text.includes("The memory check downloaded")) {
+        if (text.includes("The memory check downloaded the medium file")) {
+            result.downloadedMedium = true;
+        } else if (text.includes("The memory check downloaded the large file")) {
             result.finished = true;
         } else if (message.params.type === "error") {
             result.failure = text;
@@ -47,6 +49,10 @@ socket.onmessage = (event) => {
 
 await new Promise((resolve) => (socket.onopen = resolve));
 await follow("");
+if (store === "memory") {
+    await send("Page.enable");
+    await send("Page.addScriptToEvaluateOnNewDocument", { source: "delete StorageManager.prototype.getDirectory;" });
+}
 await send("Page.navigate", { url });
 
 // The memory of WebAssembly only grows, so its size four times a second gives its peak.

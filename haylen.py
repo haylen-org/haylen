@@ -678,10 +678,11 @@ def command_build(args: argparse.Namespace) -> None:
     run(command)
 
 
-# The memory check of the web: a protected release with a large file that downloads on demand, which a page downloads in the background in a headless browser, while the memory of WebAssembly and the array buffers that the page and its workers keep stay far below the size of the file.
+# The memory check of the web: a protected release with a medium and a large file that download on demand, which a page downloads in the background in a headless browser, while the memory of WebAssembly and the array buffers that the page and its workers keep stay far below the size of the files. A page in a browser that keeps no files for it holds the medium file in memory and refuses the large one for want of room.
 WEB_MEMORY_APP = ENGINE_DIR / "tests" / "data" / "web-memory"
 WEB_MEMORY_DRIVER = ENGINE_DIR / "tests" / "web" / "memory-check.mjs"
 WEB_MEMORY_FILE_SIZE = 384 * 1024**2
+WEB_MEMORY_MEDIUM_SIZE = 16 * 1024**2
 WEB_MEMORY_WASM_LIMIT = WEB_MEMORY_FILE_SIZE // 2
 WEB_MEMORY_BUFFER_LIMIT = 64 * 1024**2
 WEB_MEMORY_SECONDS = 600
@@ -703,14 +704,15 @@ def free_port() -> int:
 
 
 def command_test_web(args: argparse.Namespace) -> None:
-    """Builds the release site of the memory check app with a large file in its content, serves it, opens it in a headless browser and stops when the page holds memory that grows with the file."""
+    """Builds the release site of the memory check app with a medium and a large file in its content, serves it, opens it in a headless browser with the files of the browser and without them, and stops when the page holds memory that grows with what it downloads or a page without files misses its room."""
     folder = BUILD_ROOT / "tests" / "web-memory"
     shutil.rmtree(folder, ignore_errors=True)
     shutil.copytree(WEB_MEMORY_APP, folder)
     (folder / "content" / "large").mkdir(parents=True)
-    with open(folder / "content" / "large" / "blob.bin", "wb") as blob:
-        for _ in range(WEB_MEMORY_FILE_SIZE // (1024**2)):
-            blob.write(os.urandom(1024**2))
+    for name, size in (("medium.bin", WEB_MEMORY_MEDIUM_SIZE), ("blob.bin", WEB_MEMORY_FILE_SIZE)):
+        with open(folder / "content" / "large" / name, "wb") as file:
+            for _ in range(size // (1024**2)):
+                file.write(os.urandom(1024**2))
     args.config = "Release"
     args.engine_config = "Release"
     args.previous_release = None
@@ -722,6 +724,19 @@ def command_test_web(args: argparse.Namespace) -> None:
     handler = functools.partial(type("Handler", (WebHandler,), {"log_message": lambda *arguments: None}), directory=str(site))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        reports = {store: run_web_memory_page(f"http://127.0.0.1:{server.server_address[1]}/", store) for store in ("files", "memory")}
+    finally:
+        server.shutdown()
+        server.server_close()
+    check_web_memory(reports["files"])
+    check_web_memory_without_files(reports["memory"])
+    report = reports["files"]
+    terminal.success(f"The page downloaded {report['receivedBytes']} bytes with a peak of {report['peakWasmBytes']} bytes of WebAssembly memory and kept {report['buffersAfterCollection']} bytes of array buffers, and a page without files kept the medium file in memory and refused the large one for want of room.")
+
+
+def run_web_memory_page(url: str, store: str) -> dict:
+    """Opens the page of the memory check in a headless browser of its own and returns what the driver measured, with the files of the browser or, with "memory", as a browser that keeps no files for the page."""
     debugging = free_port()
     profile = Path(tempfile.mkdtemp())
     browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -738,16 +753,20 @@ def command_test_web(args: argparse.Namespace) -> None:
         node = next((emsdk_root() / "node").glob(f"*/bin/{'node.exe' if host_name() == 'windows' else 'node'}"), None)
         if node is None:
             raise BuildError(f'The Emscripten SDK holds no Node, which runs the memory check of the web. Install it again with "{TOOL} tools --emsdk".')
-        terminal.step("Running the memory check of the web in a headless browser")
-        report = json.loads(capture([node, WEB_MEMORY_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/", str(WEB_MEMORY_SECONDS)]))
+        terminal.step(f"Running the memory check of the web in a headless browser{' that keeps no files for the page' if store == 'memory' else ''}")
+        return json.loads(capture([node, WEB_MEMORY_DRIVER, str(debugging), url, str(WEB_MEMORY_SECONDS), store]))
     finally:
         browser.terminate()
         browser.wait()
-        server.shutdown()
-        server.server_close()
         shutil.rmtree(profile, ignore_errors=True)
-    check_web_memory(report)
-    terminal.success(f"The page downloaded {report['receivedBytes']} bytes with a peak of {report['peakWasmBytes']} bytes of WebAssembly memory and kept {report['buffersAfterCollection']} bytes of array buffers.")
+
+
+def check_web_memory_without_files(report: dict) -> None:
+    """Stops on a page without files in the browser that did not keep the medium file in memory, or that took the large one past its room instead of refusing it for want of room."""
+    if not report["downloadedMedium"]:
+        raise BuildError(f"A page whose browser keeps no files did not download the medium file{': ' + report['failure'] if report['failure'] else ''}.")
+    if report["finished"] or not report["failure"] or "of room" not in report["failure"]:
+        raise BuildError(f"A page whose browser keeps no files should refuse the large file for want of room, and it {'downloaded it' if report['finished'] else 'reported: ' + str(report['failure'])}.")
 
 
 def check_web_memory(report: dict) -> None:

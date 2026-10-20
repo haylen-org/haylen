@@ -25,6 +25,9 @@ class WebStoreFiles final : public content::StoreFiles {
     // The ranges of segments in memory beyond the pinned ones stay within this budget, past which the least recently used go.
     static constexpr std::uint64_t kResidentBudget = std::uint64_t{64} << 20;
 
+    // A page whose browser keeps no files for it, or whose files another tab of the app holds, keeps the records it downloads in memory for the visit, within this room.
+    static constexpr std::uint64_t kMemoryRoom = std::uint64_t{256} << 20;
+
     // A range used this recently stays even past the budget, so a range that a load just read in is there for the read that follows.
     static constexpr double kRecentMilliseconds = 5000.0;
 
@@ -64,6 +67,7 @@ class WebStoreFiles final : public content::StoreFiles {
         double lastUse = 0.0;
         bool pinned = false;
         bool appended = false;
+        bool only = false;
     };
 
     struct Load {
@@ -91,6 +95,8 @@ class WebStoreFiles final : public content::StoreFiles {
     std::map<std::string, std::uint64_t> segmentSizes;
     mutable std::map<std::pair<std::string, std::uint64_t>, Resident> resident;
     std::uint64_t residentBytes = 0;
+    std::uint64_t onlyBytes = 0;
+    bool persistent = false;
     std::map<std::uint32_t, Load> loads;
     std::map<std::uint32_t, Request> requests;
     std::uint32_t nextId = 1;
