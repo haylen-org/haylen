@@ -75,6 +75,10 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
         tab(*current, g.IO.KeyShift);
         return;
     }
+    if (tabbing && current == nullptr && g.ActiveId == 0) {
+        enter(g.IO.KeyShift);
+        return;
+    }
     if (g.ActiveId != 0) {
         return;
     }
@@ -664,6 +668,26 @@ void FocusNavigator::tab(const Target& source, bool backward) {
     apply(next);
     if (next.inputable) {
         activate(next);
+    }
+}
+
+// With nothing focused, Tab enters the topmost GUI with controls at its first control, or at its last one backward, so a keyboard alone reaches a GUI that focuses nothing by itself.
+void FocusNavigator::enter(bool backward) {
+    const auto withGui = std::ranges::find_if(drawn.targets.rbegin(), drawn.targets.rend(), [this](const Target& target) { return drawn.nodes[target.node].gui != nullptr; });
+    if (withGui == drawn.targets.rend()) {
+        return;
+    }
+    const Gui* gui = drawn.nodes[withGui->node].gui;
+    const Target* chosen = nullptr;
+    for (const Target& target : drawn.targets) {
+        if (drawn.nodes[target.node].gui == gui && (chosen == nullptr || backward)) {
+            chosen = &target;
+        }
+    }
+    ringVisible = true;
+    apply(*chosen);
+    if (chosen->inputable) {
+        activate(*chosen);
     }
 }
 

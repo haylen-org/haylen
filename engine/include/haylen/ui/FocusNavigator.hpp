@@ -283,6 +283,7 @@ class FocusNavigator final {
     void switchFocus(const Target* source);
     void move(const Target& source, FocusDirection direction);
     void tab(const Target& source, bool backward);
+    void enter(bool backward);
     void apply(const Target& target);
     void activate(const Target& target);
     void cancel(const Target* source);

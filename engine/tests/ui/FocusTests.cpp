@@ -168,6 +168,17 @@ TEST_F(FocusTest, ForgetsAGuiThatWentAwayWithTheFocus) {
     EXPECT_EQ(getUi().getFocus().getFocusedGui(), second.get());
 }
 
+// A keyboard alone enters a GUI that focuses nothing by itself, as a screen reader user does, with Tab at its first control.
+TEST_F(FocusTest, TabsIntoAGuiThatFocusesNothing) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "label", "text": "Settings"}, {"kind": "button", "id": "play", "text": "Play"}, {"kind": "button", "id": "quit", "text": "Quit"}]})");
+    frames(2);
+    EXPECT_EQ(getUi().getFocus().getFocusedGui(), nullptr);
+    key(input::Key::Tab);
+    EXPECT_TRUE(isFocused(*gui, "play"));
+    key(input::Key::Tab);
+    EXPECT_TRUE(isFocused(*gui, "quit"));
+}
+
 // Tab in the frame after the GUI with the focus went away finds nothing of that GUI to move to and leaves the focus alone.
 TEST_F(FocusTest, TabsNowhereAfterTheGuiWithTheFocusWentAway) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "a", "text": "A", "autofocus": true}, {"kind": "button", "id": "b", "text": "B"}]})");
