@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <string>
@@ -13,6 +14,7 @@
 #include "haylen/content/Error.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/ReleaseFixture.hpp"
+#include "support/ServiceKeyProvider.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::content {
@@ -113,6 +115,37 @@ TEST_F(BootstrapTest, InstallsTheBootstrapOfTheRunningApp) {
     ASSERT_NE(Bootstrap::find(), nullptr);
     EXPECT_EQ(Bootstrap::find()->identifier, test::ReleaseFixture::kIdentifier);
     EXPECT_EQ(Bootstrap::find()->keys->getKeyIds(), std::vector{getKeyId()});
+}
+
+// A C++ app adds the provider of its service after the keys that its release build compiles in, and a key that the release lacks is asked of each provider in turn.
+TEST_F(BootstrapTest, AddsAProviderAfterTheKeysOfTheApp) {
+    EXPECT_TRUE(Bootstrap::install(makeBootstrap()));
+    const auto service = std::make_shared<test::ServiceKeyProvider>();
+    const KeyProvider::Key later = test::ReleaseFixture::makeKey(2);
+    service->allow(later);
+    Bootstrap::addKeyProvider(service);
+
+    const KeyProvider& keys = *Bootstrap::find()->keys;
+    const KeyProvider::KeyId laterId = test::ServiceKeyProvider::identify(later);
+    // clang-format off
+    const auto request = [&keys](const KeyProvider::KeyId& id) {
+        std::promise<bool> answer;
+        keys.requestKey(id, [&answer](bool given) { answer.set_value(given); });
+        return answer.get_future().get();
+    };
+    // clang-format on
+    EXPECT_EQ(keys.getKeyIds(), std::vector{getKeyId()});
+    EXPECT_TRUE(request(laterId));
+    EXPECT_EQ(keys.getKeyIds(), (std::vector{getKeyId(), laterId}));
+    KeyProvider::Key given{};
+    ASSERT_TRUE(keys.getKey(laterId, given));
+    EXPECT_EQ(given, later);
+
+    EXPECT_FALSE(request(KeyProvider::KeyId{}));
+    EXPECT_EQ(service->getRequests(), 2);
+
+    // The bootstrap of the process lets the service go, so the threads of its answers end with the test.
+    EXPECT_TRUE(Bootstrap::install(makeBootstrap()));
 }
 
 } // namespace haylen::content

@@ -110,21 +110,21 @@ void Updater::check(std::function<void(std::optional<UpdateOffer>, std::optional
                 done(std::nullopt, std::move(manifestFailure));
                 return;
             }
-            readOffer(generation, manifest, std::move(manifestBytes), std::move(done));
+            readOffer(generation, manifest, std::move(manifestBytes), false, std::move(done));
         });
     });
     // clang-format on
 }
 
-void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done) {
+void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, bool keyRequested, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done) {
     // Verifying, decrypting and measuring the offer runs on the task pool, which also opens the shard files the measure looks into.
     // clang-format off
-    jobs.post([&pool = jobs, owner = std::weak_ptr(alive), releasePackage = release, channelName = channel, rules = settings, generation, manifest, bytes = std::move(bytes), done = std::move(done)]() mutable {
+    jobs.post([this, &pool = jobs, owner = std::weak_ptr(alive), releasePackage = release, channelName = channel, rules = settings, generation, manifest, bytes = std::move(bytes), keyRequested, done = std::move(done)]() mutable {
         std::optional<UpdateOffer> offer;
         std::optional<Error> failure;
         try {
             auto shared = std::make_shared<const std::vector<std::uint8_t>>(bytes);
-            offer = UpdateOffer{.generation = generation, .content = releasePackage->load(std::move(bytes)), .manifest = std::move(shared)};
+            offer = UpdateOffer{.generation = generation, .content = releasePackage->load(*shared), .manifest = shared};
             const Manifest::Envelope& envelope = offer->content->manifest->getEnvelope();
             if (offer->content->manifest->getId() != manifest || envelope.generation != generation || envelope.channel != channelName) {
                 throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest.toHex() + "\" is not the one its channel names.");
@@ -135,10 +135,35 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
             offer.reset();
             failure = error;
         }
-        pool.postToFrame([owner, offer = std::move(offer), failure = std::move(failure), done = std::move(done)]() mutable {
-            if (!owner.expired()) {
-                done(std::move(offer), std::move(failure));
+
+        // An update encrypted under a key the app does not hold yet asks the key provider for it once, and reads the offer again with it.
+        const std::optional<Digest> key = failure && failure->getCode() == Error::Code::UnknownKeyId && !keyRequested ? Digest::fromHex(failure->getDetails().keyId) : std::nullopt;
+        pool.postToFrame([this, owner, generation, manifest, bytes = std::move(bytes), key, offer = std::move(offer), failure = std::move(failure), done = std::move(done)]() mutable {
+            if (owner.expired()) {
+                return;
             }
+            if (key) {
+                requestKey(generation, manifest, std::move(bytes), *key, std::move(done));
+                return;
+            }
+            done(std::move(offer), std::move(failure));
+        });
+    });
+    // clang-format on
+}
+
+void Updater::requestKey(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, const Digest& key, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done) {
+    // clang-format off
+    release->acquireKey(key, [this, &pool = jobs, owner = std::weak_ptr(alive), generation, manifest, bytes = std::move(bytes), key, done = std::move(done)](bool given) mutable {
+        pool.postToFrame([this, owner, generation, manifest, bytes = std::move(bytes), key, given, done = std::move(done)]() mutable {
+            if (owner.expired()) {
+                return;
+            }
+            if (given) {
+                readOffer(generation, manifest, std::move(bytes), true, std::move(done));
+                return;
+            }
+            done(std::nullopt, Error(Error::Code::KeyUnavailable, "The update \"" + manifest.toHex() + "\" needs the content key \"" + key.toHex() + "\", which the key provider of the app did not give. The app keeps playing its content, and the update installs once the provider gives the key, such as after the player signs in.", {.manifestId = manifest.toHex(), .keyId = key.toHex()}));
         });
     });
     // clang-format on

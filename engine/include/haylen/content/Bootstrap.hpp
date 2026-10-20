@@ -24,6 +24,9 @@ class Bootstrap final {
     // Makes the bootstrap the one of the running app and returns true, so the static member that calls it holds a value.
     static bool install(Bootstrap bootstrap);
 
+    // Adds a provider after the keys of the installed bootstrap, such as one that obtains the keys of later content from the service of an online game, so the release asks it for every key it lacks. A C++ app calls it in `main` before the engine starts. A build without a bootstrap plays its files as they are and needs no key, so the provider stays unused there.
+    static void addKeyProvider(std::shared_ptr<const KeyProvider> provider);
+
     // Returns the bootstrap of the running app, or null in a build without one, such as the development player.
     [[nodiscard]] static const Bootstrap* find() noexcept;
 

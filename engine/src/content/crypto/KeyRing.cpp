@@ -17,7 +17,7 @@ bool KeyRing::contains(const Digest& id) const noexcept {
 std::shared_ptr<const ContentKey> KeyRing::get(const Digest& id) const {
     const auto found = keys.find(id);
     if (found == keys.end()) {
-        throw Error(Error::Code::UnknownKeyId, "The content key \"" + id.toHex() + "\" is not available to this app. Install the app build that matches its content.");
+        throw Error(Error::Code::UnknownKeyId, "The content key \"" + id.toHex() + "\" is not available to this app. Install the app build that matches its content.", {.keyId = id.toHex()});
     }
     return found->second;
 }

@@ -9,6 +9,7 @@
 
 #include "content/KeyStore.hpp"
 #include "haylen/core/Json.hpp"
+#include "support/PrivateFiles.hpp"
 #include "support/TemporaryDirectory.hpp"
 
 namespace haylen::content {
@@ -40,13 +41,10 @@ TEST_F(KeyStoreTest, CreatesKeysThatOnlyTheirOwnerReads) {
     ASSERT_EQ(created.getContentKeyIds().size(), 1U);
     EXPECT_TRUE(created.getContentKeys()->contains(created.getActiveKeyId()));
 
-#if !defined(_WIN32)
-    using std::filesystem::perms;
-    EXPECT_EQ(std::filesystem::status(getFolder()).permissions() & perms::all, perms::owner_all);
+    test::PrivateFiles::expectOwnerOnly(getFolder());
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getFolder())) {
-        EXPECT_EQ(entry.status().permissions() & perms::all, perms::owner_read | perms::owner_write) << entry.path();
+        test::PrivateFiles::expectOwnerOnly(entry.path());
     }
-#endif
 
     const KeyStore opened = KeyStore::open(getFolder());
     EXPECT_EQ(opened.getIdentifier(), "com.haylen.tests");

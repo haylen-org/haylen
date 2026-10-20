@@ -11,7 +11,7 @@ add_library(haylen_content_tool STATIC
 target_include_directories(haylen_content_tool PUBLIC "${HAYLEN_ENGINE_DIR}/tools" "${HAYLEN_ENGINE_DIR}/src")
 target_link_libraries(haylen_content_tool PUBLIC haylen_engine haylen_monocypher)
 if(WIN32)
-  target_link_libraries(haylen_content_tool PRIVATE bcrypt)
+  target_link_libraries(haylen_content_tool PRIVATE advapi32 bcrypt)
 endif()
 haylen_enable_warnings(haylen_content_tool)
 haylen_enable_coverage(haylen_content_tool)

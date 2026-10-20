@@ -45,12 +45,13 @@ class ReleasePackage final : public io::Package {
         std::string reason;
     };
 
-    ReleasePackage(std::shared_ptr<const io::Package> releaseFiles, std::shared_ptr<const KeyRing> contentKeys, std::span<const VerifyingKey> trustedKeys, Compatibility releaseCompatibility, std::shared_ptr<LocalStore> localStore);
+    // The key provider, when the release has one, gives the keys that later content needs, such as the key of an update that the service of an online game hands out.
+    ReleasePackage(std::shared_ptr<const io::Package> releaseFiles, std::shared_ptr<const KeyRing> contentKeys, std::span<const VerifyingKey> trustedKeys, Compatibility releaseCompatibility, std::shared_ptr<LocalStore> localStore, std::shared_ptr<const KeyProvider> keyProvider = nullptr);
 
     // Opens a release from its files, with the local store of its downloads or without one.
     [[nodiscard]] static std::unique_ptr<ReleasePackage> open(std::shared_ptr<const io::Package> files, std::shared_ptr<const KeyRing> keys, std::span<const VerifyingKey> trustedKeys, const Compatibility& compatibility, std::shared_ptr<LocalStore> store = nullptr);
 
-    // Opens a release with what the bootstrap of the app holds: the content keys of its provider, which the key ring derives its subkeys from before they are wiped, the public keys it trusts, and its app, build and profile, and with the local store in the files given, when any. A store that the device refuses to open leaves the release without one, which plays the content that ships with the app. Throws `KeyUnavailable` when the provider cannot give a key it lists.
+    // Opens a release with what the bootstrap of the app holds: the content keys of its provider, which the key ring derives its subkeys from before they are wiped, the public keys it trusts, and its app, build and profile, and with the local store in the files given, when any. A store that the device refuses to open leaves the release without one, which plays the content that ships with the app. Throws `KeyUnavailable` when the provider cannot give a key it lists, and keeps the provider for the keys that later content needs.
     [[nodiscard]] static std::unique_ptr<ReleasePackage> open(std::shared_ptr<const io::Package> files, const Bootstrap& bootstrap, std::function<std::unique_ptr<StoreFiles>(std::string_view identifier)> openStore = {}, std::string remoteAddress = {});
 
     // Opens the package that ships with an app: the protected release, with the bootstrap that the release build of the app compiled in, when the files hold an app manifest, or else the files themselves, which development builds ship. Throws `KeyUnavailable` for a release in a build without a bootstrap.
@@ -79,9 +80,11 @@ class ReleasePackage final : public io::Package {
     [[nodiscard]] const std::shared_ptr<LocalStore>& getStore() const noexcept {
         return store;
     }
-    [[nodiscard]] const std::shared_ptr<const KeyRing>& getKeys() const noexcept {
-        return keys;
-    }
+    // The keys the release decrypts with now, which grow as `acquireKey` brings keys that later content needs. Content opened before keeps the keys it opened with.
+    [[nodiscard]] std::shared_ptr<const KeyRing> getKeys() const;
+
+    // Asks the key provider for a key that the release does not hold, such as the key of an update, and calls `done` once, from any thread, with whether the key is in the ring now. A release without a provider, or whose provider does not give the key, answers false, and the content the release plays stays as it is.
+    void acquireKey(const Digest& id, std::function<void(bool)> done);
     [[nodiscard]] std::span<const VerifyingKey> getTrustedKeys() const noexcept {
         return trusted;
     }
@@ -122,7 +125,14 @@ class ReleasePackage final : public io::Package {
 
     std::shared_ptr<const io::Package> files;
     std::shared_ptr<PackFolders> packs = std::make_shared<PackFolders>();
-    std::shared_ptr<const KeyRing> keys;
+    // The key ring and the provider that adds to it, which a key that arrives from any thread replaces under the lock with a ring that also holds the new key.
+    struct Keys {
+        std::mutex mutex;
+        std::shared_ptr<const KeyRing> ring;
+        std::shared_ptr<const KeyProvider> provider;
+    };
+
+    std::shared_ptr<Keys> keys = std::make_shared<Keys>();
     std::vector<VerifyingKey> trusted;
     Compatibility compatibility;
     std::shared_ptr<LocalStore> store;

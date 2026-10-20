@@ -245,7 +245,7 @@ target_compile_definitions(haylen_tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTA
 # On Windows the tests also run the decoder of Media Foundation and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
 if(WIN32)
   target_sources(haylen_tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")
-  target_link_libraries(haylen_tests PRIVATE ole32 oleaut32 mfplat mfreadwrite mfuuid uiautomationcore)
+  target_link_libraries(haylen_tests PRIVATE advapi32 ole32 oleaut32 mfplat mfreadwrite mfuuid uiautomationcore)
 endif()
 haylen_enable_warnings(haylen_tests)
 haylen_enable_coverage(haylen_tests)

@@ -253,6 +253,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/StreamSource.cpp
   src/content/Bootstrap.cpp
   src/content/Compatibility.cpp
+  src/content/CompositeKeyProvider.cpp
   src/content/ContentBuilder.cpp
   src/content/ContentLua.cpp
   src/content/ContentManager.cpp
@@ -264,6 +265,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/crypto/SigningKey.cpp
   src/content/crypto/VerifyingKey.cpp
   src/content/EmbeddedKeyProvider.cpp
+  src/content/KeyProvider.cpp
   src/content/Error.cpp
   src/content/FolderStoreFiles.cpp
   src/content/format/BinaryReader.cpp

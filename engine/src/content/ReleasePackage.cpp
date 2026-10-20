@@ -12,7 +12,9 @@
 
 namespace haylen::content {
 
-ReleasePackage::ReleasePackage(std::shared_ptr<const io::Package> releaseFiles, std::shared_ptr<const KeyRing> contentKeys, std::span<const VerifyingKey> trustedKeys, Compatibility releaseCompatibility, std::shared_ptr<LocalStore> localStore) : files(std::move(releaseFiles)), keys(std::move(contentKeys)), trusted(trustedKeys.begin(), trustedKeys.end()), compatibility(std::move(releaseCompatibility)), store(std::move(localStore)) {
+ReleasePackage::ReleasePackage(std::shared_ptr<const io::Package> releaseFiles, std::shared_ptr<const KeyRing> contentKeys, std::span<const VerifyingKey> trustedKeys, Compatibility releaseCompatibility, std::shared_ptr<LocalStore> localStore, std::shared_ptr<const KeyProvider> keyProvider) : files(std::move(releaseFiles)), trusted(trustedKeys.begin(), trustedKeys.end()), compatibility(std::move(releaseCompatibility)), store(std::move(localStore)) {
+    keys->ring = std::move(contentKeys);
+    keys->provider = std::move(keyProvider);
     app = load(files->read(kAppManifestFile), Manifest::Domain::App);
     bundled = load(files->read(kContentManifestFile), Manifest::Domain::Content);
     content = bundled;
@@ -50,7 +52,7 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
             core::Log::warning("The content store of the app could not be opened, so the app plays the content it ships with: {}", error.what());
         }
     }
-    std::unique_ptr<ReleasePackage> package = open(std::move(files), std::move(keys), trusted, compatibility, std::move(store));
+    auto package = std::make_unique<ReleasePackage>(std::move(files), std::move(keys), trusted, compatibility, std::move(store), bootstrap.keys);
     package->remote = std::move(remoteAddress);
     return package;
 }
@@ -69,6 +71,51 @@ std::shared_ptr<io::Package> ReleasePackage::openBundled(std::shared_ptr<io::Pac
     return open(std::move(files), *bootstrap, std::move(openStore), std::move(remoteAddress));
 }
 
+std::shared_ptr<const KeyRing> ReleasePackage::getKeys() const {
+    const std::scoped_lock lock(keys->mutex);
+    return keys->ring;
+}
+
+void ReleasePackage::acquireKey(const Digest& id, std::function<void(bool)> done) {
+    std::shared_ptr<const KeyProvider> provider;
+    {
+        const std::scoped_lock lock(keys->mutex);
+        if (keys->ring->contains(id)) {
+            done(true);
+            return;
+        }
+        provider = keys->provider;
+    }
+    if (!provider) {
+        done(false);
+        return;
+    }
+    KeyProvider::KeyId wanted{};
+    std::ranges::copy(id.getBytes(), wanted.begin());
+    // clang-format off
+    provider->requestKey(wanted, [shared = keys, provider, wanted, id, done = std::move(done)](bool given) {
+        KeyProvider::Key key{};
+        if (!given || !provider->getKey(wanted, key)) {
+            done(false);
+            return;
+        }
+        auto ring = std::make_shared<KeyRing>();
+        {
+            const std::scoped_lock lock(shared->mutex);
+            *ring = *shared->ring;
+            ring->add(key);
+            crypto_wipe(key.data(), key.size());
+            if (!ring->contains(id)) {
+                done(false);
+                return;
+            }
+            shared->ring = std::move(ring);
+        }
+        done(true);
+    });
+    // clang-format on
+}
+
 std::string_view ReleasePackage::getManifestFile(Manifest::Domain domain) noexcept {
     return domain == Manifest::Domain::App ? kAppManifestFile : kContentManifestFile;
 }
@@ -78,6 +125,7 @@ std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<
 }
 
 std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<std::uint8_t> manifestBytes, Manifest::Domain domain) const {
+    const std::shared_ptr<const KeyRing> ring = getKeys();
     auto manifest = std::make_shared<const Manifest>(Manifest::read(std::move(manifestBytes), trusted));
     if (manifest->getEnvelope().domain != domain) {
         throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest->getId().toHex() + "\" belongs to the other domain.", {.manifestId = manifest->getId().toHex()});
@@ -86,13 +134,13 @@ std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<
 
     std::shared_ptr<const Catalog> catalog;
     try {
-        catalog = std::make_shared<const Catalog>(manifest->decryptCatalog(*keys));
+        catalog = std::make_shared<const Catalog>(manifest->decryptCatalog(*ring));
     } catch (Error& error) {
         error.getDetails().manifestId = manifest->getId().toHex();
         throw;
     }
     // clang-format off
-    auto shards = std::make_shared<const ShardSet>(manifest->getEnvelope().shards, keys, [releaseFiles = files, packFolders = packs](const ShardReference& reference) -> std::unique_ptr<io::PackageReader> {
+    auto shards = std::make_shared<const ShardSet>(manifest->getEnvelope().shards, ring, [releaseFiles = files, packFolders = packs](const ShardReference& reference) -> std::unique_ptr<io::PackageReader> {
         const std::string name = reference.getFileName();
         if (releaseFiles->exists(name)) {
             return releaseFiles->openReader(name);
@@ -145,6 +193,11 @@ void ReleasePackage::recover() {
             content = std::move(loaded);
             break;
         } catch (const Error& error) {
+            // Content under a key that the provider does not hold yet stays in the store and plays from a start at which the provider holds it.
+            if (error.getCode() == Error::Code::UnknownKeyId) {
+                core::Log::warning("The content \"{}\" waits for its key, so the app plays earlier content: {}", id.toHex(), error.what());
+                continue;
+            }
             if (!recovery) {
                 recovery = Recovery{.failed = id, .reason = error.what()};
             }

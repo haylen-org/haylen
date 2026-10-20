@@ -29,6 +29,7 @@
 #include "support/LimitedStoreFiles.hpp"
 #include "support/QuotaStoreFiles.hpp"
 #include "support/ReleaseFixture.hpp"
+#include "support/ServiceKeyProvider.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 #include "support/VarnRuntime.hpp"
@@ -44,10 +45,10 @@ class UpdaterTest : public ::testing::Test {
 
     // An installed app: its release with the local store of its downloads and the parts that update it.
     struct Client {
-        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles) : jobs(test.jobSystems.emplace_back(test.runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; })), transport(test.runtime.getRuntime()) {
+        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles, std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr) : jobs(test.jobSystems.emplace_back(test.runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; })), transport(test.runtime.getRuntime()) {
             const VerifyingKey trusted = test.release.getSigningKey().getVerifyingKey();
             auto recordStore = std::make_shared<LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
-            package = ReleasePackage::open(test.release.getFiles(), test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore));
+            package = std::make_shared<ReleasePackage>(test.release.getFiles(), keys ? std::move(keys) : test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore), std::move(provider));
             downloader = std::make_unique<Downloader>(jobs, transport, package->getStore());
             updater = std::make_unique<Updater>(package, jobs, transport, *downloader, core::AppConfig::Content{.updates = core::AppConfig::Content::Updates{.baseUrl = test.server.getUrl()}});
         }
@@ -75,7 +76,11 @@ class UpdaterTest : public ::testing::Test {
     }
 
     ChannelPublisher::Publication publish(const Files& files, std::uint64_t appBuild = test::ReleaseFixture::kAppBuild) const {
-        const ChannelPublisher publisher(release.getKeys(), release.getContentKeyId(), release.getSharedSigningKey());
+        return publish(files, release.getKeys(), release.getContentKeyId(), appBuild);
+    }
+
+    ChannelPublisher::Publication publish(const Files& files, std::shared_ptr<const KeyRing> keys, const Digest& keyId, std::uint64_t appBuild = test::ReleaseFixture::kAppBuild) const {
+        const ChannelPublisher publisher(std::move(keys), keyId, release.getSharedSigningKey());
         return publisher.publish(io::MemoryPackage("source", files), tree.getPath(), {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = appBuild, .channel = "stable", .release = release.getFolder()});
     }
 
@@ -86,8 +91,8 @@ class UpdaterTest : public ::testing::Test {
         return files;
     }
 
-    [[nodiscard]] std::unique_ptr<Client> connect() {
-        return std::make_unique<Client>(*this, std::make_unique<FolderStoreFiles>(store.getPath()));
+    [[nodiscard]] std::unique_ptr<Client> connect(std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr) {
+        return std::make_unique<Client>(*this, std::make_unique<FolderStoreFiles>(store.getPath()), std::move(keys), std::move(provider));
     }
 
     std::pair<std::optional<UpdateOffer>, std::optional<Error>> check(Client& client) {
@@ -162,6 +167,41 @@ TEST_F(UpdaterTest, InstallsAnUpdateThatPlaysFromTheNextStart) {
     auto [offer, error] = check(*client);
     EXPECT_FALSE(offer);
     EXPECT_FALSE(error);
+}
+
+// An online game hands out the key of an update from its service, so the app plays the content it has until the service gives the key, and the update installs once it does.
+TEST_F(UpdaterTest, AsksTheKeyProviderForTheKeyOfAnUpdate) {
+    const KeyProvider::Key rotatedKey = test::ReleaseFixture::makeKey(2);
+    auto rotated = std::make_shared<KeyRing>(*release.getKeys());
+    const Digest rotatedId = rotated->add(rotatedKey);
+    publish(makeUpdate(2), rotated, rotatedId);
+    {
+        const auto service = std::make_shared<test::ServiceKeyProvider>();
+        const std::unique_ptr<Client> client = connect(release.getKeys(), service);
+        auto [refused, error] = check(*client);
+        EXPECT_FALSE(refused);
+        ASSERT_TRUE(error);
+        EXPECT_EQ(error->getCode(), Error::Code::KeyUnavailable) << error->what();
+        EXPECT_EQ(error->getDetails().keyId, rotatedId.toHex());
+        EXPECT_EQ(service->getRequests(), 1);
+        EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
+
+        service->allow(rotatedKey);
+        const UpdateOffer offer = requireOffer(*client);
+        EXPECT_EQ(service->getRequests(), 2);
+        ASSERT_FALSE(install(*client, offer));
+    }
+
+    // A start at which the provider does not hold the key yet plays the content before and keeps the update for a later start.
+    {
+        const std::unique_ptr<Client> client = connect(release.getKeys(), std::make_shared<test::ServiceKeyProvider>());
+        EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
+        EXPECT_FALSE(client->package->takeRecovery());
+        EXPECT_FALSE(client->package->getStore()->getState().active.isZero());
+    }
+
+    const std::unique_ptr<Client> client = connect(rotated);
+    EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
 }
 
 TEST_F(UpdaterTest, DownloadsOnlyWhatChanged) {

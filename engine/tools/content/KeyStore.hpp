@@ -48,6 +48,9 @@ class KeyStore final {
         return signingKey;
     }
 
+    // Writes a file that only its owner opens, such as a key or the bootstrap that seals the keys of an app, and closes it to everyone else before anything is written into it.
+    static void writePrivate(const std::filesystem::path& file, std::span<const std::uint8_t> bytes);
+
     // Reads every content key and seals it for the bootstrap of the app, wiping the key once it is sealed.
     [[nodiscard]] std::vector<EmbeddedKeyProvider::SealedKey> sealContentKeys() const;
 
@@ -58,7 +61,7 @@ class KeyStore final {
 
     [[nodiscard]] static std::string getContentKeyFile(const Digest& id);
     [[nodiscard]] static Secret readSecret(const std::filesystem::path& file);
-    static void writePrivate(const std::filesystem::path& file, std::span<const std::uint8_t> bytes);
+    static void restrictToOwner(const std::filesystem::path& path, bool folder);
     void writeIndex() const;
 
     std::filesystem::path folder;

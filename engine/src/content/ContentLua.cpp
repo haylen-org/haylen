@@ -41,7 +41,7 @@ void ContentLua::pushError(lua_State* L, const Error& failure) {
     if (details.availableBytes) {
         setInteger(L, "availableBytes", *details.availableBytes);
     }
-    for (const auto& [field, value] : {std::pair{"path", &details.path}, {"manifestId", &details.manifestId}, {"packId", &details.packId}, {"contentId", &details.contentId}, {"storedId", &details.storedId}, {"platform", &details.platform}, {"platformMessage", &details.platformMessage}}) {
+    for (const auto& [field, value] : {std::pair{"path", &details.path}, {"manifestId", &details.manifestId}, {"packId", &details.packId}, {"contentId", &details.contentId}, {"storedId", &details.storedId}, {"keyId", &details.keyId}, {"platform", &details.platform}, {"platformMessage", &details.platformMessage}}) {
         if (!value->empty()) {
             lua::Stack::push(L, *value);
             lua_setfield(L, -2, field);

@@ -66,7 +66,8 @@ class Updater final {
 
   private:
     void fetch(const std::string& url, std::uint64_t maximumSize, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done);
-    void readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
+    void readOffer(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, bool keyRequested, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
+    void requestKey(std::uint64_t generation, const Digest& manifest, std::vector<std::uint8_t> bytes, const Digest& key, std::function<void(std::optional<UpdateOffer>, std::optional<Error>)> done);
     void commit(const UpdateOffer& offer, std::function<void(std::optional<Error>)> done) const;
     static void markPending(LocalStore& store, const UpdateOffer& offer);
     [[nodiscard]] static std::uint64_t getRequiredSpace(const UpdateOffer& offer) noexcept;

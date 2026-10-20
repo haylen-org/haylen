@@ -46,7 +46,7 @@ Returns the last failure as a table, or `nil`:
 | `httpStatus` | The status the server answered, when the failure was one. |
 | `requiredBytes`, `availableBytes` | The room an update needs and the room that is free, when the device lacked it. |
 | `path` | The file of the package that the app read, such as `content/levels/forest.json`, when a read failed. |
-| `manifestId`, `packId`, `contentId`, `storedId` | The hexadecimal IDs of the manifest, the pack, the plain content and the stored record involved, when the failure knows them. |
+| `manifestId`, `packId`, `contentId`, `storedId`, `keyId` | The hexadecimal IDs of the manifest, the pack, the plain content, the stored record and the content key involved, when the failure knows them, such as the key of an update that no key provider of the app gives. |
 | `platform` | The content profile of the app, when a manifest was made for another one. |
 | `platformMessage` | What the system or the browser said, such as the reason of a refused write. |
 

@@ -50,7 +50,7 @@ class Error final : public std::runtime_error {
         StoreAssetUnavailable,
     };
 
-    // What else is known about a failure. Every field is empty when it does not apply. The path is the path of the file in the package that the app reads, the IDs are the hexadecimal IDs of the manifest, the pack, the plain content and the stored record involved, and the platform is the content profile of the app.
+    // What else is known about a failure. Every field is empty when it does not apply. The path is the path of the file in the package that the app reads, the IDs are the hexadecimal IDs of the manifest, the pack, the plain content, the stored record and the content key involved, and the platform is the content profile of the app.
     struct Details {
         std::optional<int> httpStatus;
         std::optional<std::uint64_t> requiredBytes;
@@ -61,6 +61,7 @@ class Error final : public std::runtime_error {
         std::string packId;
         std::string contentId;
         std::string storedId;
+        std::string keyId;
         std::string platform;
     };
 

@@ -359,14 +359,7 @@ void ContentTool::runBootstrap(Arguments& arguments) {
         if (file.has_parent_path()) {
             std::filesystem::create_directories(file.parent_path());
         }
-        std::ofstream(file, std::ios::binary | std::ios::trunc).close();
-        std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write, std::filesystem::perm_options::replace);
-        std::ofstream stream(file, std::ios::binary | std::ios::trunc);
-        stream << source;
-        stream.close();
-        if (!stream) {
-            throw std::runtime_error("The bootstrap \"" + file.generic_string() + "\" could not be written.");
-        }
+        KeyStore::writePrivate(file, {reinterpret_cast<const std::uint8_t*>(source.data()), source.size()});
     }
     output << "Wrote the bootstrap of \"" << store.getIdentifier() << "\" for the profile \"" << profile << "\" into \"" << file.generic_string() << "\".\n";
 }
