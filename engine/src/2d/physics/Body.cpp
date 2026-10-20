@@ -66,7 +66,8 @@ void Body::setType(Type value) {
 }
 
 math::Vec2 Body::getPosition() const {
-    return Box2DConverter::toPixels(b2Body_GetPosition(b2LoadBodyId(checkedId())), world->getPixelsPerMeter());
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    return Box2DConverter::toPixels(b2Body_GetPosition(body), world->getPixelsPerMeter());
 }
 
 float Body::getRotation() const {
@@ -74,7 +75,8 @@ float Body::getRotation() const {
 }
 
 void Body::setTransform(math::Vec2 position, float rotation) {
-    b2Body_SetTransform(b2LoadBodyId(checkedId()), Box2DConverter::toMeters(position, world->getPixelsPerMeter()), b2MakeRot(rotation));
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    b2Body_SetTransform(body, Box2DConverter::toMeters(position, world->getPixelsPerMeter()), b2MakeRot(rotation));
 }
 
 void Body::moveTo(math::Vec2 position, float rotation, float seconds) {
@@ -94,11 +96,13 @@ void Body::moveTo(math::Vec2 position, float rotation, float seconds) {
 }
 
 math::Vec2 Body::getVelocity() const {
-    return Box2DConverter::toPixels(b2Body_GetLinearVelocity(b2LoadBodyId(checkedId())), world->getPixelsPerMeter());
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    return Box2DConverter::toPixels(b2Body_GetLinearVelocity(body), world->getPixelsPerMeter());
 }
 
 void Body::setVelocity(math::Vec2 value) {
-    b2Body_SetLinearVelocity(b2LoadBodyId(checkedId()), Box2DConverter::toMeters(value, world->getPixelsPerMeter()));
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    b2Body_SetLinearVelocity(body, Box2DConverter::toMeters(value, world->getPixelsPerMeter()));
 }
 
 float Body::getAngularVelocity() const {
@@ -165,7 +169,8 @@ void Body::setInertia(float value) {
 }
 
 math::Vec2 Body::getWorldCenter() const {
-    return Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(b2LoadBodyId(checkedId())), world->getPixelsPerMeter());
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    return Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(body), world->getPixelsPerMeter());
 }
 
 void Body::applyForce(math::Vec2 force, std::optional<math::Vec2> point) {
@@ -247,11 +252,13 @@ void Body::setSleepEnabled(bool value) {
 }
 
 float Body::getSleepThreshold() const {
-    return b2Body_GetSleepThreshold(b2LoadBodyId(checkedId())) * world->getPixelsPerMeter();
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    return b2Body_GetSleepThreshold(body) * world->getPixelsPerMeter();
 }
 
 void Body::setSleepThreshold(float value) {
-    b2Body_SetSleepThreshold(b2LoadBodyId(checkedId()), Box2DConverter::toSpeed(value, world->getPixelsPerMeter()));
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    b2Body_SetSleepThreshold(body, Box2DConverter::toSpeed(value, world->getPixelsPerMeter()));
 }
 
 void Body::dropThrough(float seconds) {

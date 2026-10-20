@@ -147,7 +147,8 @@ void Joint::setConstraintDampingRatio(float value) {
 }
 
 std::optional<float> Joint::getBreakForce() const {
-    const auto found = world->breakLimits.find(checkedId());
+    const std::uint64_t checked = checkedId();
+    const auto found = world->breakLimits.find(checked);
     if (found == world->breakLimits.end() || !found->second.force) {
         return std::nullopt;
     }
@@ -167,7 +168,8 @@ void Joint::setBreakForce(std::optional<float> value) {
 }
 
 std::optional<float> Joint::getBreakTorque() const {
-    const auto found = world->breakLimits.find(checkedId());
+    const std::uint64_t checked = checkedId();
+    const auto found = world->breakLimits.find(checked);
     if (found == world->breakLimits.end() || !found->second.torque) {
         return std::nullopt;
     }

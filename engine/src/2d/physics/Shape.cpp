@@ -275,7 +275,8 @@ std::vector<Shape> Shape::getOverlaps() const {
 
 // Box2D moves bodies along the right perpendicular of the contact normal, which runs counter-clockwise on screen in the downward y of the engine, so the sign flips.
 float Shape::getTangentSpeed() const {
-    return -b2Shape_GetSurfaceMaterial(b2LoadShapeId(checkedId())).tangentSpeed * world->getPixelsPerMeter();
+    const b2ShapeId shape = b2LoadShapeId(checkedId());
+    return -b2Shape_GetSurfaceMaterial(shape).tangentSpeed * world->getPixelsPerMeter();
 }
 
 void Shape::setTangentSpeed(float value) {
@@ -286,7 +287,8 @@ void Shape::setTangentSpeed(float value) {
 }
 
 std::optional<math::Vec2> Shape::getOneWay() const {
-    const auto found = world->oneWayShapes.find(checkedId());
+    const std::uint64_t checked = checkedId();
+    const auto found = world->oneWayShapes.find(checked);
     return found == world->oneWayShapes.end() ? std::nullopt : std::optional<math::Vec2>(found->second.direction);
 }
 
